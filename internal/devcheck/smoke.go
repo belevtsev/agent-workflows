@@ -94,7 +94,7 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 	env := make([]string, 0, len(os.Environ()))
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		if !slices.Contains([]string{"HOME", "SHELL", "PATH", "TYPESAFE_API_KEY", "SUBQ_API_KEY", "CODEX_HOME", "XDG_STATE_HOME", "AGENT_WORKFLOWS_FAULT", "ZDOTDIR", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM"}, name) && !strings.HasPrefix(name, "BASH_FUNC_") {
+		if !slices.Contains([]string{"HOME", "SHELL", "PATH", "TYPESAFE_API_KEY", "SUBQ_API_KEY", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "XDG_STATE_HOME", "AGENT_WORKFLOWS_FAULT", "ZDOTDIR", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM"}, name) && !strings.HasPrefix(name, "BASH_FUNC_") {
 			env = append(env, entry)
 		}
 	}
@@ -128,7 +128,7 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 	launch := func(arguments ...string) ([]byte, error) {
 		return run(native, append(arguments, paths...)...)
 	}
-	if _, err := run(filepath.Join(checkout, "install.sh"), append([]string{"--dry-run", "--shell", "bash"}, paths[2:]...)...); err != nil {
+	if _, err := run(filepath.Join(checkout, "install.sh"), append([]string{"--dry-run", "--shell", "bash", "--host", "codex"}, paths[2:]...)...); err != nil {
 		return err
 	}
 	for _, path := range []string{home, codex, state} {
@@ -146,7 +146,7 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 	if err := os.WriteFile(python, []byte(probe), 0o755); err != nil {
 		return err
 	}
-	setup, err := run(filepath.Join(checkout, "install.sh"), append([]string{"--shell", "bash"}, paths[2:]...)...)
+	setup, err := run(filepath.Join(checkout, "install.sh"), append([]string{"--shell", "bash", "--host", "codex"}, paths[2:]...)...)
 	if err != nil {
 		return err
 	}
@@ -255,8 +255,88 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 			return fmt.Errorf("uninstall retained owned path: %s", path)
 		}
 	}
-	_, err = fmt.Fprintln(output, "Native preview, setup, direct cw, repeat, custom-root discovery, interrupted locator recovery and uninstall smoke passed.")
+	if err := smokeClaudeHost(checkout, home, codex, state, manifest.Registrations, run); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(output, "Native preview, setup, direct cw, repeat, custom-root discovery, interrupted locator recovery, uninstall and Claude host smoke passed.")
 	return err
+}
+
+// smokeClaudeHost installs for Claude Code alone, adds Codex, removes Codex, and
+// uninstalls, checking that user files come back byte for byte.
+func smokeClaudeHost(checkout, home, codex, state string, registrations map[string]string, run func(string, ...string) ([]byte, error)) error {
+	claude := filepath.Join(home, "claude config")
+	if err := os.MkdirAll(claude, 0o700); err != nil {
+		return err
+	}
+	files := map[string][]byte{
+		filepath.Join(claude, "CLAUDE.md"):     []byte("# Personal instructions\n"),
+		filepath.Join(claude, "settings.json"): []byte("{\n  \"theme\": \"dark\"\n}\n"),
+	}
+	for path, data := range files {
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			return err
+		}
+	}
+	install := func(host string) ([]byte, error) {
+		return run(filepath.Join(checkout, "install.sh"), "--shell", "bash", "--host", host, "--home", home, "--codex-home", codex, "--claude-home", claude, "--state-dir", state)
+	}
+	setup, err := install("claude")
+	if err != nil {
+		return err
+	}
+	if err := requireInstalled(setup, true); err != nil {
+		return err
+	}
+	for skill := range registrations {
+		if info, err := os.Stat(filepath.Join(claude, "skills", skill)); err != nil || !info.IsDir() {
+			return fmt.Errorf("Claude registration does not resolve: %s", skill)
+		}
+	}
+	settings, err := os.ReadFile(filepath.Join(claude, "settings.json"))
+	if err != nil {
+		return err
+	}
+	if !bytes.Contains(settings, []byte(`"model": "claude-opus-5-5"`)) || !bytes.Contains(settings, []byte(`"theme": "dark"`)) {
+		return errors.New("Claude settings were not merged")
+	}
+	if _, err := os.Lstat(filepath.Join(codex, "AGENTS.md")); !errors.Is(err, fs.ErrNotExist) {
+		return errors.New("Claude-only install wrote Codex instructions")
+	}
+	if _, err := install("all"); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(filepath.Join(codex, "AGENTS.md")); err != nil {
+		return fmt.Errorf("adding Codex did not install its instructions: %w", err)
+	}
+	installed := filepath.Join(home, ".local", "bin", "cw")
+	if _, err := run(installed, "uninstall", "--host", "codex"); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(filepath.Join(codex, "AGENTS.md")); !errors.Is(err, fs.ErrNotExist) {
+		return errors.New("removing Codex retained its instructions")
+	}
+	status, err := run(installed, "status")
+	if err != nil {
+		return err
+	}
+	if err := requireInstalled(status, true); err != nil {
+		return err
+	}
+	uninstalled, err := run(installed, "uninstall")
+	if err != nil {
+		return err
+	}
+	if err := requireInstalled(uninstalled, false); err != nil {
+		return err
+	}
+	for path, want := range files {
+		data, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(data, want) {
+			return fmt.Errorf("uninstall did not restore %s", path)
+		}
+	}
+	return nil
 }
 
 func requireInstalled(data []byte, want bool) error {

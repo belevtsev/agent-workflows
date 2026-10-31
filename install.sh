@@ -41,7 +41,7 @@ for argument in "$@"; do
             exit 0
             ;;
         --help|-h|help)
-            printf '%s\n' 'cw — Agent workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --state-dir PATH,' '         --shell auto|bash|zsh|none, --no-checkout,' '         --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
+            printf '%s\n' 'cw — Agent workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --claude-home PATH,' '         --state-dir PATH, --shell auto|bash|zsh|none, --no-checkout,' '         --host auto|codex|claude|all (install/setup and uninstall),' '         --forget (uninstall --host only), --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
             exit 0
             ;;
     esac

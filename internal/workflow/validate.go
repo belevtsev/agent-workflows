@@ -1444,7 +1444,7 @@ func ValidateSuite(root string) (Object, error) {
 		"version": manifest["version"], "registrations": manifest["registrations"],
 		"global_instructions": manifest["global_instructions"], "model_policy": manifest["model_policy"],
 		"claude_model_policy": manifest["claude_model_policy"],
-		"skill_count": len(names), "markdown_files_checked": markdown,
+		"skill_count":         len(names), "markdown_files_checked": markdown,
 		"required_licenses": len(manifest["required_licenses"].([]any)),
 	}, nil
 }

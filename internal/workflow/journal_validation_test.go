@@ -121,26 +121,26 @@ func TestInstallerRejectsDuplicateRecoveryPathsBeforeAnyReversal(t *testing.T) {
 func TestInstallerRejectsResealedMalformedStateBeforeAnyMutation(t *testing.T) {
 	cases := map[string]func(Object){
 		"null original": func(state Object) {
-			for _, raw := range object(state["registrations"]) {
+			for _, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
 				object(raw)["original"] = nil
 				break
 			}
 		},
 		"unknown original kind": func(state Object) {
-			for _, raw := range object(state["registrations"]) {
+			for _, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
 				object(raw)["original"] = Object{"kind": "unsupported"}
 				break
 			}
 		},
 		"empty original symlink": func(state Object) {
-			for _, raw := range object(state["registrations"]) {
+			for _, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
 				object(raw)["original"] = Object{"kind": "symlink", "target": ""}
 				break
 			}
 		},
-		"unknown global origin": func(state Object) { state["global_origin"] = Object{"kind": "unsupported"} },
-		"false model metadata":  func(state Object) { state["model_config"] = false },
-		"null model metadata":   func(state Object) { state["model_config"] = nil },
+		"unknown global origin": func(state Object) { hostRecord(state, hostCodex)["global_origin"] = Object{"kind": "unsupported"} },
+		"false model metadata":  func(state Object) { hostRecord(state, hostCodex)["model_config"] = false },
+		"null model metadata":   func(state Object) { hostRecord(state, hostCodex)["model_config"] = nil },
 		"nonarray history":      func(state Object) { state["history"] = Object{} },
 		"malformed history":     func(state Object) { state["history"] = []any{false} },
 	}

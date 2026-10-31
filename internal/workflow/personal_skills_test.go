@@ -112,11 +112,11 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	state, err := i.state(true)
-	if err != nil || integer(state["version"]) != 2 || len(object(state["registrations"])) != 26 {
+	if err != nil || integer(state["version"]) != 3 || len(object(hostRecord(state, hostCodex)["registrations"])) != 26 {
 		t.Fatalf("version-two installed state: %#v, %v", state, err)
 	}
 	for name := range originals {
-		origin, err := i.validatePersonalOrigin(name, object(object(object(state["registrations"])[name])["original"]))
+		origin, err := i.validatePersonalOrigin(name, object(object(object(hostRecord(state, hostCodex)["registrations"])[name])["original"]))
 		if err != nil || origin.Path != locations[name] || origin.Backup != i.personalBackup(name) {
 			t.Fatalf("personal origin %s: %#v, %v", name, origin, err)
 		}
@@ -188,7 +188,7 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 					}
 					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					journal, err := readJSON(i.journalPath)
-					if err != nil || integer(journal["version"]) != 2 {
+					if err != nil || integer(journal["version"]) != 3 {
 						t.Fatalf("missing version-two journal: %v", err)
 					}
 					if err := os.Rename(i.Source, i.Source+" absent"); err != nil {
@@ -317,11 +317,11 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 					t.Fatal(err)
 				}
 				state := mustRegistrationState(t, i)
-				if len(object(state["registrations"])) != 26 || integer(state["version"]) != 2 {
+				if len(object(hostRecord(state, hostCodex)["registrations"])) != 26 || integer(state["version"]) != 3 {
 					t.Fatal("additive setup did not activate 26 v2 registrations")
 				}
-				for name, raw := range object(prior["registrations"]) {
-					if !equal(object(raw)["original"], object(object(state["registrations"])[name])["original"]) {
+				for name, raw := range object(hostRecord(prior, hostCodex)["registrations"]) {
+					if !equal(object(raw)["original"], object(object(hostRecord(state, hostCodex)["registrations"])[name])["original"]) {
 						t.Fatalf("changed historical origin %s", name)
 					}
 				}
@@ -336,7 +336,7 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 						t.Fatal(err)
 					}
 					state = mustRegistrationState(t, i)
-					if len(object(state["registrations"])) != historical || object(object(state["manager"])["runtime"])["revision"] != sha || integer(state["version"]) != 2 {
+					if len(object(hostRecord(state, hostCodex)["registrations"])) != historical || object(object(state["manager"])["runtime"])["revision"] != sha || integer(state["version"]) != 3 {
 						t.Fatal("rollback changed manager identity or historical registration subset")
 					}
 				}

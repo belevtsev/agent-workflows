@@ -62,6 +62,21 @@ func (i *Installer) perform(op Object) error {
 			return writeObservation(path, Object{"kind": "absent"})
 		}
 		return atomicWrite(path, data, mode)
+	case claudeSettingsOperationKind:
+		if path != i.host(hostClaude).settings {
+			return errors.New("unsafe Claude settings path")
+		}
+		if err := realDirectory(filepath.Dir(path), true); err != nil {
+			return err
+		}
+		data, mode, remove, err := ClaudeSettingsRender(path, op)
+		if err != nil {
+			return err
+		}
+		if remove {
+			return writeObservation(path, Object{"kind": "absent"})
+		}
+		return atomicWrite(path, data, mode)
 	}
 	current, e := observe(path)
 	if e != nil {
@@ -79,7 +94,7 @@ func (i *Installer) transact(command string, ops []Object) error {
 	if err := i.registrationAdditionCheck(ops); err != nil {
 		return err
 	}
-	j := Object{"version": 2, "command": command, "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "operations": ops}
+	j := Object{"version": 3, "command": command, "home": i.Home, "codex_home": i.Codex, "claude_home": i.Claude, "state_dir": i.State, "operations": ops}
 	var operations []any
 	for _, op := range ops {
 		operations = append(operations, op)
@@ -124,7 +139,7 @@ func (i *Installer) loadJournal() (Object, error) {
 	if e = decodeJournal(j); e != nil {
 		return nil, e
 	}
-	if integer(j["version"]) != 2 || j["home"] != i.Home || j["codex_home"] != i.Codex || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
+	if integer(j["version"]) != 3 || j["home"] != i.Home || j["codex_home"] != i.Codex || j["claude_home"] != i.Claude || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
 		return nil, errors.New("corrupt journal or roots do not match")
 	}
 	if raw, present := j["recovery_runtime"]; present {
@@ -157,11 +172,11 @@ func (i *Installer) loadJournal() (Object, error) {
 			return nil, e
 		}
 		kind := text(op["kind"])
-		if (kind == "global" || kind == "global_recovery") && path != i.agents {
-			return nil, errors.New("global journal operation requires AGENTS.md")
+		if (kind == "global" || kind == "global_recovery") && !i.isInstructions(path) {
+			return nil, errors.New("global journal operation requires an instruction file")
 		}
-		if kind == "path" && path == i.agents {
-			return nil, errors.New("AGENTS.md requires a managed global operation")
+		if kind == "path" && i.isInstructions(path) {
+			return nil, errors.New("instruction files require a managed global operation")
 		}
 		switch kind {
 		case "personal_skill":
@@ -195,6 +210,14 @@ func (i *Installer) loadJournal() (Object, error) {
 				return nil, e
 			}
 			continue
+		case claudeSettingsOperationKind:
+			if path != i.host(hostClaude).settings {
+				return nil, errors.New("unsafe Claude settings path in journal")
+			}
+			if e = ClaudeSettingsValidateOperation(op); e != nil {
+				return nil, e
+			}
+			continue
 		case "path":
 			if !exactFields(op, "kind", "path", "before", "after", "label") {
 				return nil, errors.New("invalid path journal fields")
@@ -210,10 +233,10 @@ func (i *Installer) loadJournal() (Object, error) {
 		default:
 			return nil, errors.New("unsafe operation kind in journal")
 		}
-		if path == i.config {
-			return nil, errors.New("model config requires keyed journal operation")
+		if path == i.config || (i.Claude != "" && path == i.host(hostClaude).settings) {
+			return nil, errors.New("settings files require a keyed journal operation")
 		}
-		if path != i.current && path != i.statePath && path != i.agents && !(filepath.Dir(path) == i.skills && registrationName(filepath.Base(path))) {
+		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) {
 			return nil, errors.New("unsafe path in mutation journal")
 		}
 		for _, side := range []string{"before", "after"} {
@@ -227,10 +250,10 @@ func (i *Installer) loadJournal() (Object, error) {
 			if path == i.statePath && ob["kind"] != "absent" && ob["kind"] != "file" {
 				return nil, errors.New("unsafe state observation")
 			}
-			if path == i.agents && ob["kind"] != "absent" && ob["kind"] != "file" {
+			if i.isInstructions(path) && ob["kind"] != "absent" && ob["kind"] != "file" {
 				return nil, errors.New("unsafe global observation")
 			}
-			if filepath.Dir(path) == i.skills && ob["kind"] != "absent" && ob["kind"] != "symlink" {
+			if i.isSkillLink(path) && ob["kind"] != "absent" && ob["kind"] != "symlink" {
 				return nil, errors.New("unsafe registration observation")
 			}
 			if path == i.current && ob["kind"] == "symlink" {
@@ -257,13 +280,8 @@ func (i *Installer) loadJournal() (Object, error) {
 				if e = i.validateStateStructure(s); e != nil {
 					return nil, e
 				}
-				if s["home"] != i.Home || s["codex_home"] != i.Codex || s["state_dir"] != i.State {
+				if s["home"] != i.Home || s["state_dir"] != i.State {
 					return nil, errors.New("journal state roots mismatch")
-				}
-				if meta := object(s["model_config"]); meta != nil {
-					if e = ModelValidateMetadata(meta); e != nil {
-						return nil, e
-					}
 				}
 				if _, _, e = i.release(text(s["release"])); e != nil {
 					return nil, e
@@ -280,7 +298,7 @@ func (i *Installer) loadJournal() (Object, error) {
 }
 func (i *Installer) restoreRemovedGlobal(op, current Object) (Object, error) {
 	if current["kind"] != "absent" && current["kind"] != "file" {
-		return nil, errors.New("AGENTS.md ownership changed during removal recovery")
+		return nil, errors.New("instruction file ownership changed during removal recovery")
 	}
 	contents := []byte{}
 	var e error
@@ -361,6 +379,15 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 			continue
 		case sharedConfigOperationKind:
 			rev, err := ConfigReversal(path, op)
+			if err != nil {
+				return nil, err
+			}
+			if rev != nil {
+				reversals = append(reversals, rev)
+			}
+			continue
+		case claudeSettingsOperationKind:
+			rev, err := ClaudeSettingsReversal(path, op)
 			if err != nil {
 				return nil, err
 			}
@@ -501,6 +528,15 @@ func (i *Installer) pendingRecovery(j Object) ([]Object, error) {
 				pending = append(pending, change)
 			}
 			continue
+		case claudeSettingsOperationKind:
+			change, err := ClaudeSettingsPending(path, op)
+			if err != nil {
+				return nil, err
+			}
+			if change != nil {
+				pending = append(pending, change)
+			}
+			continue
 		}
 		current, e := observe(path)
 		if e != nil {
@@ -509,7 +545,7 @@ func (i *Installer) pendingRecovery(j Object) ([]Object, error) {
 		switch op["kind"] {
 		case "global_recovery":
 			if current["kind"] != "file" && current["kind"] != "absent" {
-				return nil, errors.New("AGENTS.md ownership changed during interrupted recovery")
+				return nil, errors.New("instruction file ownership changed during interrupted recovery")
 			}
 			contents := []byte{}
 			if current["kind"] == "file" {

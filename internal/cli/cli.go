@@ -45,10 +45,10 @@ type Config struct {
 const ManagerProtocol = workflow.ManagerProtocol
 
 type options struct {
-	source, home, codex, state, shell                                        string
+	source, home, codex, claude, state, shell, host                          string
 	dryRun, apply, noCheckout, json, bootstrap, prepareOnly, managerProtocol bool
 	releaseIdentity                                                          bool
-	adoptPersonalSkills                                                      bool
+	adoptPersonalSkills, forget                                              bool
 }
 type usageError struct{ error }
 
@@ -118,7 +118,7 @@ func defaults(config Config) Config {
 // NewCommand constructs the only supported product command surface.
 func NewCommand(config Config) *cobra.Command {
 	config = defaults(config)
-	o := options{shell: "auto"}
+	o := options{shell: "auto", host: "auto"}
 	root := &cobra.Command{Use: "cw", Short: "Manage agent workflow skills", Long: "Install, update, validate and recover the managed agent workflow skills. Mutations apply by default; --dry-run makes no downloads or persistent writes.", SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true, Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return usage(fmt.Errorf("unknown command: %s", args[0]))
@@ -134,6 +134,9 @@ func NewCommand(config Config) *cobra.Command {
 	flags.StringVar(&o.source, "source", "", "Workflow source checkout")
 	flags.StringVar(&o.home, "home", "", "Installation home directory")
 	flags.StringVar(&o.codex, "codex-home", "", "Codex configuration directory")
+	flags.StringVar(&o.claude, "claude-home", "", "Claude Code configuration directory")
+	flags.StringVar(&o.host, "host", "auto", "Agent host for install or uninstall: auto, codex, claude or all")
+	flags.BoolVar(&o.forget, "forget", false, "Detach an uninstalled host whose files are already gone")
 	flags.StringVar(&o.state, "state-dir", "", "Ownership and runtime state directory")
 	flags.StringVar(&o.shell, "shell", "auto", "Install PATH in auto, bash, zsh or none")
 	flags.BoolVar(&o.adoptPersonalSkills, "adopt-personal-skills", false, "Back up and adopt verified standalone personal skills during install/setup")
@@ -259,6 +262,16 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	if o.prepareOnly && !install {
 		return usage(errors.New("--prepare-only is supported only for install/setup"))
 	}
+	hosts, err := selectedHosts(o.host)
+	if err != nil {
+		return usage(err)
+	}
+	if !install && action != "uninstall" && cmd.Flags().Changed("host") {
+		return usage(errors.New("--host is supported only for install/setup and uninstall"))
+	}
+	if o.forget && (action != "uninstall" || len(hosts) == 0) {
+		return usage(errors.New("--forget requires uninstall with an explicit --host"))
+	}
 	executable, err := config.Executable()
 	if err != nil {
 		return err
@@ -322,8 +335,19 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	if o.bootstrap {
 		apply = o.apply && !o.dryRun
 	}
-	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, State: o.state}
-	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Context: cmd.Context()}
+	if o.claude == "" {
+		// Recorded roots win so a later shell's CLAUDE_CONFIG_DIR cannot detach an
+		// installation from the directory it was activated in.
+		o.claude = workflow.RecordedClaudeHome(o.state)
+	}
+	if o.claude == "" {
+		o.claude = config.Getenv("CLAUDE_CONFIG_DIR")
+	}
+	if o.claude == "" {
+		o.claude = filepath.Join(o.home, ".claude")
+	}
+	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, Claude: o.claude, State: o.state}
+	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Hosts: hosts, Forget: o.forget, Context: cmd.Context()}
 	if action == "validate" {
 		report, err := config.Validate(workflow.Normalize(o.source))
 		if err != nil {
@@ -401,9 +425,21 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 			"subq":             workflow.Object{"credential_available": subqCredential},
 			"openai_decisions": workflow.Object{"credential_available": openaiCredential},
 		},
-		NextStep:      "Reload your shell startup file for cw and open a fresh Codex chat",
+		NextStep:      "Reload your shell startup file for cw and start a fresh agent session",
 		Prerequisites: skillPrerequisites(status, o.home, os.Stat, exec.LookPath),
 	})
+}
+
+func selectedHosts(value string) ([]string, error) {
+	switch value {
+	case "auto":
+		return nil, nil
+	case "codex", "claude":
+		return []string{value}, nil
+	case "all":
+		return []string{"codex", "claude"}, nil
+	}
+	return nil, errors.New("--host must be auto, codex, claude or all")
 }
 
 func writeJSON(out io.Writer, value any) error {

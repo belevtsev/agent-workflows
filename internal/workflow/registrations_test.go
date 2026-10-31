@@ -60,12 +60,12 @@ func registrationChanges(t *testing.T, report Object) []RegistrationChange {
 
 func assertAddedRegistrations(t *testing.T, installer *Installer, state, prior Object) {
 	t.Helper()
-	if got := len(object(state["registrations"])); got != 12 {
+	if got := len(object(hostRecord(state, hostCodex)["registrations"])); got != 12 {
 		t.Fatalf("active registrations = %d, want twelve", got)
 	}
-	for name, raw := range object(state["registrations"]) {
+	for name, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
 		item := object(raw)
-		if old := object(object(prior["registrations"])[name]); old != nil {
+		if old := object(object(hostRecord(prior, hostCodex)["registrations"])[name]); old != nil {
 			if !equal(item["original"], old["original"]) {
 				t.Fatalf("activation changed original ownership: %s", name)
 			}
@@ -161,7 +161,7 @@ func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
 				t.Fatal(err)
 			}
 			state, err = i.state(true)
-			if err != nil || !equal(state["registrations"], prior["registrations"]) {
+			if err != nil || !equal(hostRecord(state, hostCodex)["registrations"], hostRecord(prior, hostCodex)["registrations"]) {
 				t.Fatalf("rollback did not restore nine ownership rows: %#v, %v", state, err)
 			}
 			for _, name := range backendFixtureNames {
@@ -373,7 +373,7 @@ func TestRegistrationRollbackRefusesAdoptedOriginsAndChangedOwnedLinks(t *testin
 				t.Fatal(err)
 			}
 			state := mustRegistrationState(t, i)
-			item := object(object(state["registrations"])[name])
+			item := object(object(hostRecord(state, hostCodex)["registrations"])[name])
 			switch originKind {
 			case "symlink":
 				item["original"] = Object{"kind": "symlink", "target": filepath.Join(f.base, "adopted prior checkout", "skills", name)}
@@ -446,7 +446,7 @@ func TestRegistrationNoCheckoutUpdateDryRunWithSourceBehindActive(t *testing.T) 
 	if _, err := i.Update(); err != nil {
 		t.Fatal(err)
 	}
-	if state := mustRegistrationState(t, i); state["release"] != second || len(object(state["registrations"])) != 12 || f.git(t, "rev-parse", "HEAD") != f.first {
+	if state := mustRegistrationState(t, i); state["release"] != second || len(object(hostRecord(state, hostCodex)["registrations"])) != 12 || f.git(t, "rev-parse", "HEAD") != f.first {
 		t.Fatal("no-checkout update did not activate twelve while retaining nine in source")
 	}
 	// An allowed URL with a missing rewrite destination makes a fetch fail.

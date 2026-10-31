@@ -10,6 +10,7 @@ import (
 // RegistrationChange describes discovery changes without changing the deployed
 // ownership or recovery schema. Unchanged registrations are omitted.
 type RegistrationChange struct {
+	Host       string `json:"host"`
 	Name       string `json:"name"`
 	Action     string `json:"action"`
 	BeforeRoot string `json:"before_root,omitempty"`
@@ -25,24 +26,26 @@ type registrationChangePlan struct {
 // registrationPlan is shared by fresh installation, forward activation, and
 // rollback. Typed ownership determines which changes are safe; existing raw
 // origins are copied intact to retain their sealed serialization.
-func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ...string) (registrationChangePlan, error) {
+func (i *Installer) registrationPlan(h hostTarget, s, manifest Object, rollback bool, roots ...string) (registrationChangePlan, error) {
 	plan := registrationChangePlan{Changes: []RegistrationChange{}, Records: Object{}, Operations: []Object{}}
 	next := object(manifest["registrations"])
 	if len(next) == 0 {
 		return plan, errors.New("registrations must be a nonempty mapping")
 	}
-	if err := realDirectory(i.skills, false); err != nil {
+	if err := realDirectory(h.skills, false); err != nil {
 		return plan, err
 	}
-	var owned OwnershipRecord
-	var err error
-	if s != nil {
-		owned, err = decodeOwnership(s)
+	var owned HostRecord
+	var ownedManifest map[string]string
+	hs := hostRecord(s, h.id)
+	if hs != nil {
+		record, err := decodeOwnership(s)
 		if err != nil {
 			return plan, err
 		}
+		owned, ownedManifest = record.Hosts[h.id], record.ManifestRegistrations
 	}
-	for name, before := range owned.ManifestRegistrations {
+	for name, before := range ownedManifest {
 		after, present := next[name]
 		if !present {
 			if !rollback {
@@ -64,35 +67,36 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 		if !ok || !registrationName(name) || !registrationRoot(root) {
 			return plan, errors.New("unsafe registration name or root")
 		}
-		if _, exists := owned.ManifestRegistrations[name]; !exists {
+		if _, exists := ownedManifest[name]; !exists {
 			if rollback {
 				return plan, fmt.Errorf("rollback target is not a registration subset: %s", name)
 			}
 			additions[name] = root
 		}
 	}
+	var err error
 	adoptions := map[string]PersonalSkillOriginRecord{}
-	if i.AdoptPersonalSkills && !rollback {
+	if h.id == hostCodex && i.AdoptPersonalSkills && !rollback {
 		root := ""
 		if len(roots) == 1 {
 			root = roots[0]
 		}
 		adoptions, err = i.personalAdoptions(additions, manifest, root)
 	} else {
-		err = i.duplicates(additions)
+		err = i.duplicates(h, additions)
 	}
 	if err != nil {
 		return plan, err
 	}
 	for _, name := range keys(next) {
 		root := text(next[name])
-		_, exists := owned.ManifestRegistrations[name]
-		path, target := filepath.Join(i.skills, name), i.target(root)
+		_, exists := ownedManifest[name]
+		path, target := filepath.Join(h.skills, name), i.target(root)
 		if !exists {
 			if origin, adopt := adoptions[name]; adopt {
 				plan.Records[name] = Object{"target": target, "original": asObject(origin)}
 				plan.Operations = append(plan.Operations, personalOperation(name, origin, path, target, "personal", "managed", "adopt-personal:"+name))
-				plan.Changes = append(plan.Changes, RegistrationChange{Name: name, Action: "adopt", AfterRoot: root})
+				plan.Changes = append(plan.Changes, RegistrationChange{Host: h.id, Name: name, Action: "adopt", AfterRoot: root})
 				continue
 			}
 			before, err := observe(path)
@@ -103,29 +107,29 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 				return plan, fmt.Errorf("unrelated occupied registration: %s", path)
 			}
 			plan.Records[name] = Object{"target": target, "original": before}
-			plan.Operations = append(plan.Operations, pathOperation(path, before, Object{"kind": "symlink", "target": target}, "registration:"+name))
-			plan.Changes = append(plan.Changes, RegistrationChange{Name: name, Action: "add", AfterRoot: root})
+			plan.Operations = append(plan.Operations, pathOperation(path, before, Object{"kind": "symlink", "target": target}, hostLabel(h, "registration:"+name)))
+			plan.Changes = append(plan.Changes, RegistrationChange{Host: h.id, Name: name, Action: "add", AfterRoot: root})
 			continue
 		}
-		item := clone(object(object(s["registrations"])[name]))
+		item := clone(object(object(hs["registrations"])[name]))
 		item["target"] = target
 		plan.Records[name] = item
 	}
-	for _, name := range keys(object(s["registrations"])) {
+	for _, name := range keys(object(hs["registrations"])) {
 		if _, present := next[name]; present {
 			continue
 		}
 		item := owned.Registrations[name]
 		before := Object{"kind": "symlink", "target": item.Target}
-		actual, err := observe(filepath.Join(i.skills, name))
+		actual, err := observe(filepath.Join(h.skills, name))
 		if err != nil {
 			return plan, err
 		}
 		if !equal(actual, before) {
 			return plan, fmt.Errorf("owned registration changed: %s", name)
 		}
-		plan.Operations = append(plan.Operations, pathOperation(filepath.Join(i.skills, name), before, Object{"kind": "absent"}, "registration:"+name))
-		plan.Changes = append(plan.Changes, RegistrationChange{Name: name, Action: "remove", BeforeRoot: owned.ManifestRegistrations[name]})
+		plan.Operations = append(plan.Operations, pathOperation(filepath.Join(h.skills, name), before, Object{"kind": "absent"}, hostLabel(h, "registration:"+name)))
+		plan.Changes = append(plan.Changes, RegistrationChange{Host: h.id, Name: name, Action: "remove", BeforeRoot: ownedManifest[name]})
 	}
 	return plan, nil
 }
@@ -133,7 +137,7 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 // Recheck discovery conflicts immediately before journaling and each creation.
 // Other discovery roots are external to the manager's installation lock.
 func (i *Installer) registrationAdditionCheck(ops []Object) error {
-	additions := Object{}
+	additions := map[string]Object{}
 	for _, op := range ops {
 		if op["kind"] == "personal_skill" {
 			record, err := i.validatePersonalOperation(op)
@@ -159,7 +163,7 @@ func (i *Installer) registrationAdditionCheck(ops []Object) error {
 			continue
 		}
 		path := text(op["path"])
-		if op["kind"] == "path" && filepath.Dir(path) == i.skills && object(op["before"])["kind"] == "absent" && object(op["after"])["kind"] == "symlink" {
+		if op["kind"] == "path" && i.isSkillLink(path) && object(op["before"])["kind"] == "absent" && object(op["after"])["kind"] == "symlink" {
 			actual, err := observe(path)
 			if err != nil {
 				return err
@@ -167,11 +171,17 @@ func (i *Installer) registrationAdditionCheck(ops []Object) error {
 			if !equal(actual, op["before"]) {
 				return fmt.Errorf("unrelated occupied registration: %s", path)
 			}
-			additions[filepath.Base(path)] = true
+			directory := filepath.Dir(path)
+			if additions[directory] == nil {
+				additions[directory] = Object{}
+			}
+			additions[directory][filepath.Base(path)] = true
 		}
 	}
-	if len(additions) == 0 {
-		return nil
+	for _, h := range i.knownHosts() {
+		if err := i.duplicates(h, additions[h.skills]); err != nil {
+			return err
+		}
 	}
-	return i.duplicates(additions)
+	return nil
 }

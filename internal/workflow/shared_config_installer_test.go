@@ -188,7 +188,7 @@ func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			if state["shared_config"] == nil || (state["model_config"] != nil) != (command == "setup") {
+			if hostRecord(state, hostCodex)["shared_config"] == nil || (hostRecord(state, hostCodex)["model_config"] != nil) != (command == "setup") {
 				t.Fatalf("unexpected config ownership for %s: %#v", command, state)
 			}
 			if command == "install" && !strings.Contains(installed, "model = 'local-model'") {
@@ -275,7 +275,7 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state["shared_config"] != nil || state["release"] != fixture.first {
+	if hostRecord(state, hostCodex)["shared_config"] != nil || state["release"] != fixture.first {
 		t.Fatalf("historical rollback retained shared ownership: %#v", state)
 	}
 	if got := installerRead(t, path); got != beforeConfig+"\n# Local edit before rollback\n" {
@@ -304,7 +304,7 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 				fixture.git(t, "push", origin, "main")
 				sharedLifecycleExecute(t, fixture, "update")
 				state, err := fixture.installer(false).state(true)
-				if err != nil || state["model_config"] != nil {
+				if err != nil || hostRecord(state, hostCodex)["model_config"] != nil {
 					t.Fatalf("shared-only update enrolled root defaults: %#v, %v", state, err)
 				}
 				sharedLifecycleExecute(t, fixture, "setup")
@@ -315,7 +315,7 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 			if err != nil {
 				t.Fatal(err)
 			}
-			if state["shared_config"] != nil || state["config_original_exists"] != false || state["model_config"] == nil {
+			if hostRecord(state, hostCodex)["shared_config"] != nil || hostRecord(state, hostCodex)["config_original_exists"] != false || hostRecord(state, hostCodex)["model_config"] == nil {
 				t.Fatalf("rollback lost earliest config origin: %#v", state)
 			}
 			sharedLifecycleExecute(t, fixture, "uninstall")
@@ -338,7 +338,7 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if integer(journal["version"]) != 2 {
+			if integer(journal["version"]) != 3 {
 				t.Fatal("shared config was journaled without a capable v2 recovery runtime")
 			}
 			count := 0

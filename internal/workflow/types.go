@@ -9,6 +9,7 @@ type Paths struct {
 	Source string
 	Home   string
 	Codex  string
+	Claude string
 	State  string
 }
 
