@@ -250,7 +250,7 @@ func TestConsultationRuntimeProcessBoundsAndSecretEnvironment(t *testing.T) {
 	outside := filepath.Join(root, "outside target")
 	installerWrite(t, hostileConfig, "[global]\ntarget = "+outside+"\nprefix = "+outside+"\n", 0o600)
 	t.Setenv("PIP_CONFIG_FILE", hostileConfig)
-	installerWrite(t, interpreter, "#!/bin/sh\nif [ -n \"${TYPESAFE_API_KEY-}${SUBQ_API_KEY-}\" ]; then exit 99; fi\nif [ \"${PIP_CONFIG_FILE-}\" != "+aliasQuote(os.DevNull)+" ]; then exit 98; fi\nprintf '%s' ready\n", 0o755)
+	installerWrite(t, interpreter, "#!/bin/sh\nif [ -n \"${TYPESAFE_API_KEY-}${SUBQ_API_KEY-}\" ]; then exit 99; fi\nif [ \"${PIP_CONFIG_FILE-}\" != "+shellQuote(os.DevNull)+" ]; then exit 98; fi\nprintf '%s' ready\n", 0o755)
 	if output, err := runConsultationProcess(t.Context(), interpreter, "-I", "-B", "-c", "probe"); err != nil || string(output) != "ready" {
 		t.Fatalf("credential environment inherited: %q, %v", output, err)
 	}
@@ -266,7 +266,7 @@ func TestConsultationRuntimeProcessBoundsAndSecretEnvironment(t *testing.T) {
 		t.Fatalf("unbounded output accepted: %v", err)
 	}
 	childOutput := filepath.Join(root, "delayed child write")
-	installerWrite(t, interpreter, "#!/bin/sh\n(/bin/sleep 0.4; printf unsafe > "+aliasQuote(childOutput)+") &\n/bin/sleep 10\n", 0o755)
+	installerWrite(t, interpreter, "#!/bin/sh\n(/bin/sleep 0.4; printf unsafe > "+shellQuote(childOutput)+") &\n/bin/sleep 10\n", 0o755)
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 	started := time.Now()

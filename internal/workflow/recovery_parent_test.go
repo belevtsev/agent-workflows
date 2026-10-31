@@ -7,31 +7,19 @@ import (
 )
 
 func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
-	for _, affected := range []string{"skills", "codex", "legacy-source", "legacy-backup"} {
+	for _, affected := range []string{"skills", "codex"} {
 		t.Run(affected, func(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
-			legacy := affected == "legacy-source" || affected == "legacy-backup"
-			if legacy {
-				path := filepath.Join(fixture.paths.Home, ".codex", "skills", "typesafe-ai")
-				installerCopyTree(t, filepath.Join(fixture.paths.Source, text(object(fixture.manifest["registrations"])["typesafe-ai"])), path)
-				installer.TypeSafeLegacy = new("")
-			} else {
-				fixture.seedUserFiles(t)
-			}
+			fixture.seedUserFiles(t)
 			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
-			if _, err := installer.Setup(!legacy); err == nil {
+			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt installation")
 			}
 			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			parent := installer.skills
-			switch affected {
-			case "codex":
+			if affected == "codex" {
 				parent = installer.Codex
-			case "legacy-source":
-				parent = filepath.Join(installer.Home, ".codex", "skills")
-			case "legacy-backup":
-				parent = filepath.Join(installer.State, "backups")
 			}
 			foreign := filepath.Join(fixture.base, "foreign "+affected)
 			if err := os.Rename(parent, foreign); err != nil {

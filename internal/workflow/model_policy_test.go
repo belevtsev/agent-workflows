@@ -244,7 +244,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	original := fixture.seedUserFiles(t)
 	legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
 	origin := fixture.bareOrigin(t)
-	installer := nativePolicyInstaller(t, fixture, legacy, "cw-manager-v4")
+	installer := nativePolicyInstaller(t, fixture, legacy, ManagerProtocol)
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
 	fixture.git(t, "push", origin, "main")
 	fixture.git(t, "reset", "--hard", legacy)
-	installer = nativePolicyInstaller(t, fixture, maxRevision, "cw-manager-v5")
+	installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
 	installer.NoCheckout = true
 	installerAppend(t, installer.config, "# independent model comment\n")
 	if err := os.Chmod(installer.config, 0o604); err != nil {
@@ -270,7 +270,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 		t.Fatal("no-checkout model activation changed the source HEAD")
 	}
 	assertInstalledModelPolicy(t, installer, maxRevision, "max", "xhigh")
-	assertManagerProtocol(t, installer, "cw-manager-v5")
+	assertManagerProtocol(t, installer, ManagerProtocol)
 	activated, err := installer.state(true)
 	if err != nil {
 		t.Fatal(err)
@@ -287,7 +287,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 		t.Fatalf("checkout-free policy rollback: %v", err)
 	}
 	assertInstalledModelPolicy(t, installer, legacy, "ultra", "max")
-	assertManagerProtocol(t, installer, "cw-manager-v5")
+	assertManagerProtocol(t, installer, ManagerProtocol)
 	rolledBack, err := installer.state(true)
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +302,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 		t.Fatal(err)
 	}
 	assertInstalledModelPolicy(t, installer, maxRevision, "max", "xhigh")
-	assertManagerProtocol(t, installer, "cw-manager-v5")
+	assertManagerProtocol(t, installer, ManagerProtocol)
 	if err := os.Rename(fixture.paths.Source, missingSource); err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +331,7 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
-			installer := nativePolicyInstaller(t, fixture, legacy, "cw-manager-v4")
+			installer := nativePolicyInstaller(t, fixture, legacy, ManagerProtocol)
 			if _, err := installer.Setup(true); err != nil {
 				t.Fatal(err)
 			}
@@ -341,7 +341,7 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 			}
 			configBefore := installerRead(t, installer.config)
 			maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
-			installer = nativePolicyInstaller(t, fixture, maxRevision, "cw-manager-v5")
+			installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
 			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 				t.Fatalf("policy activation fault: %v", err)
@@ -365,7 +365,7 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 				t.Fatalf("historical ownership changed after recovery: %v", err)
 			}
 			assertInstalledModelPolicy(t, installer, legacy, "ultra", "max")
-			assertManagerProtocol(t, installer, "cw-manager-v4")
+			assertManagerProtocol(t, installer, ManagerProtocol)
 			if installerRead(t, installer.config) != configBefore+"# after interrupted policy activation\n" {
 				t.Fatal("policy recovery lost unrelated TOML bytes")
 			}
@@ -383,7 +383,7 @@ func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testin
 	revision := commitModelPolicy(t, fixture, func(policy Object) {
 		policy["profiles"].(Object)["expert"] = Object{"model": "gpt-6-astra", "reasoning_effort": "ultra", "user_requested_efforts": []any{"max"}, "scope": "substantive"}
 	}, "Additional expert profile")
-	installer := nativePolicyInstaller(t, fixture, revision, "cw-manager-v5")
+	installer := nativePolicyInstaller(t, fixture, revision, ManagerProtocol)
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
 	}

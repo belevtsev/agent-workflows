@@ -96,7 +96,7 @@ func validatePersonalInventory(entries []PersonalInventoryEntry) error {
 
 func readPersonalCatalog(root string, manifest Object) (PersonalSkillCatalog, error) {
 	var result PersonalSkillCatalog
-	if integer(manifest["version"]) != 2 {
+	if integer(manifest["version"]) != 3 {
 		return result, nil
 	}
 	if manifest["adoption_catalog"] != personalCatalogName {
@@ -117,7 +117,7 @@ func readPersonalCatalog(root string, manifest Object) (PersonalSkillCatalog, er
 	if err = json.Unmarshal(data, &result, json.RejectUnknownMembers(true)); err != nil {
 		return result, fmt.Errorf("invalid personal skill catalog: %w", err)
 	}
-	if result.Version != 1 || len(result.Skills) == 0 {
+	if result.Version != 1 || result.Skills == nil {
 		return result, errors.New("unsupported or incomplete personal skill catalog")
 	}
 	var raw Object
@@ -194,7 +194,7 @@ func validatePersonalInventoryFields(raw any) error {
 		if item["kind"] == "file" {
 			fields = append(fields, "sha256")
 		}
-		if !aliasFields(item, fields...) || !validMode(item["mode"]) {
+		if !exactFields(item, fields...) || !validMode(item["mode"]) {
 			return errors.New("personal inventory entry has invalid fields or mode")
 		}
 	}
@@ -258,7 +258,7 @@ func checkPersonalRenameFilesystem(origin, backup string) error {
 	return nil
 }
 
-func (i *Installer) personalAdoptions(additions, manifest Object, root string, legacy bool) (map[string]PersonalSkillOriginRecord, error) {
+func (i *Installer) personalAdoptions(additions, manifest Object, root string) (map[string]PersonalSkillOriginRecord, error) {
 	result := map[string]PersonalSkillOriginRecord{}
 	roots, err := i.discoveryRoots()
 	if err != nil {
@@ -273,7 +273,7 @@ func (i *Installer) personalAdoptions(additions, manifest Object, root string, l
 		for _, discovery := range roots {
 			target := filepath.Join(discovery, name)
 			_, err := os.Lstat(target)
-			if err == nil && !(legacy && name == "typesafe-ai" && target == i.legacyPath()) {
+			if err == nil {
 				occupants = append(occupants, target)
 			} else if err != nil && !os.IsNotExist(err) {
 				return nil, err
@@ -287,10 +287,6 @@ func (i *Installer) personalAdoptions(additions, manifest Object, root string, l
 		}
 		trusted, ok := catalog.Skills[name]
 		if !ok {
-			// Legacy symlink migration is checked by the registration planner.
-			if occupants[0] == filepath.Join(i.skills, name) && i.MigrateFrom != "" {
-				continue
-			}
 			return nil, fmt.Errorf("occupied personal registration has no trusted catalog: %s", occupants[0])
 		}
 		actual, err := personalInventory(occupants[0])
@@ -322,7 +318,7 @@ func personalOperation(name string, origin PersonalSkillOriginRecord, registrati
 
 func (i *Installer) validatePersonalOrigin(name string, raw Object) (PersonalSkillOriginRecord, error) {
 	var origin PersonalSkillOriginRecord
-	if !aliasFields(raw, "kind", "path", "backup", "inventory") {
+	if !exactFields(raw, "kind", "path", "backup", "inventory") {
 		return origin, errors.New("invalid personal origin fields")
 	}
 	if err := json.Unmarshal(legacyJSON(raw), &origin, json.RejectUnknownMembers(true)); err != nil {
@@ -346,13 +342,13 @@ func (i *Installer) validatePersonalOrigin(name string, raw Object) (PersonalSki
 
 func (i *Installer) validatePersonalOperation(op Object) (PersonalSkillOperationRecord, error) {
 	var result PersonalSkillOperationRecord
-	if !aliasFields(op, "kind", "path", "label", "personal") || op["kind"] != "personal_skill" {
+	if !exactFields(op, "kind", "path", "label", "personal") || op["kind"] != "personal_skill" {
 		return result, errors.New("invalid composed personal operation fields")
 	}
 	if err := json.Unmarshal(legacyJSON(op["personal"]), &result, json.RejectUnknownMembers(true)); err != nil {
 		return result, err
 	}
-	if !aliasFields(object(op["personal"]), "name", "origin_path", "backup_path", "registration_path", "target", "inventory", "before_phase", "after_phase") {
+	if !exactFields(object(op["personal"]), "name", "origin_path", "backup_path", "registration_path", "target", "inventory", "before_phase", "after_phase") {
 		return result, errors.New("invalid composed personal record fields")
 	}
 	if err := validatePersonalInventoryFields(object(op["personal"])["inventory"]); err != nil {

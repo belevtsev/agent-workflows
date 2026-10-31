@@ -3,7 +3,6 @@ package workflow
 import (
 	"bytes"
 	"context"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -18,14 +17,9 @@ import (
 const profileStart = "# >>> agent-workflows PATH >>>"
 const profileEnd = "# <<< agent-workflows PATH <<<"
 
-// CodexDefaultsCapability identifies native support for shared config ownership.
-const CodexDefaultsCapability = "cw-codex-defaults-v1"
-
-// OpenAIDecisionsCapability identifies the optional adviser policy extension.
-const OpenAIDecisionsCapability = "cw-openai-decisions-v1"
-
-// ThreeAdviserCapability identifies the required three-provider policy contract.
-const ThreeAdviserCapability = "cw-three-adviser-v1"
+// ManagerProtocol identifies the sealed runtime, ownership and policy contract.
+// The bootstrap and staged recovery runtimes must report this exact value.
+const ManagerProtocol = "cw-manager-v7"
 
 type ProfileRecord struct {
 	Shell          string `json:"shell"`
@@ -45,12 +39,12 @@ type ManagerRecord struct {
 }
 
 type RuntimeLocator struct {
-	Version     int    `json:"version,omitzero"`
+	Version     int    `json:"version"`
 	Source      string `json:"source"`
 	Home        string `json:"home"`
 	Codex       string `json:"codex"`
 	State       string `json:"state"`
-	CommandPath string `json:"command_path,omitempty"`
+	CommandPath string `json:"command_path"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
 }
 
@@ -59,7 +53,7 @@ type runtimeReceipt struct {
 	Identity        RuntimeIdentity `json:"identity"`
 	SHA256          string          `json:"sha256"`
 	LocatorSHA256   string          `json:"locator_sha256"`
-	ManagerProtocol string          `json:"manager_protocol,omitempty"`
+	ManagerProtocol string          `json:"manager_protocol"`
 	Integrity       string          `json:"integrity_sha256,omitempty"`
 }
 
@@ -102,18 +96,14 @@ func (i *Installer) prepareRuntimeFor(sha string) error {
 	if err != nil {
 		return err
 	}
-	i.runtimeProtocol = protocol
-	if i.AdoptPersonalSkills && protocol != "cw-manager-v6" {
-		return errors.New("personal skill adoption requires a verified native v6 runtime")
+	if protocol != ManagerProtocol {
+		return errors.New("native runtime candidate does not support the manager protocol")
 	}
+	i.runtimeProtocol = protocol
 	return nil
 }
 
 func (i *Installer) inspectRuntimeProtocol(binary string) (string, error) {
-	return i.inspectRuntimeCapability(binary, "--manager-protocol")
-}
-
-func (i *Installer) inspectRuntimeCapability(binary, flag string) (string, error) {
 	if err := realDirectory(filepath.Dir(binary), false); err != nil {
 		return "", err
 	}
@@ -126,7 +116,7 @@ func (i *Installer) inspectRuntimeCapability(binary, flag string) (string, error
 	}
 	ctx, cancel := context.WithTimeout(i.Context, 5*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, flag)
+	command := exec.CommandContext(ctx, binary, "--manager-protocol")
 	var output bytes.Buffer
 	command.Stdout = &boundedProtocolWriter{buffer: &output}
 	if err := command.Run(); err != nil {
@@ -136,64 +126,6 @@ func (i *Installer) inspectRuntimeCapability(binary, flag string) (string, error
 		return "", fmt.Errorf("cannot inspect native runtime capability: %w", err)
 	}
 	return strings.TrimSpace(output.String()), nil
-}
-
-func (i *Installer) verifySharedConfigRuntime(binary string) error {
-	protocol, err := i.inspectRuntimeProtocol(binary)
-	if err != nil {
-		return err
-	}
-	if protocol != "cw-manager-v6" {
-		return errors.New("shared Codex config requires a verified native v6 runtime")
-	}
-	capability, err := i.inspectRuntimeCapability(binary, "--codex-defaults-capability")
-	if err != nil {
-		return fmt.Errorf("shared Codex config requires native capability %s: %w", CodexDefaultsCapability, err)
-	}
-	if capability != CodexDefaultsCapability {
-		return fmt.Errorf("shared Codex config requires native capability %s", CodexDefaultsCapability)
-	}
-	return nil
-}
-
-func (i *Installer) verifyPolicyRuntime(binary, release string, manifest Object) error {
-	release, err := suiteRoot(release, false)
-	if err != nil {
-		return err
-	}
-	policyPath, err := suiteRelativePath(release, manifest["model_policy"], "model_policy")
-	if err != nil {
-		return err
-	}
-	policy, err := suiteModelPolicy(policyPath)
-	if err != nil {
-		return err
-	}
-	consultation := object(policy["consultation"])
-	_, optional := consultation["optional_providers"]
-	_, required := object(consultation["providers"])["openai_decisions"]
-	if !optional && !required {
-		return nil
-	}
-	name, flag, expected := "optional OpenAI adviser policy", "--openai-decisions-capability", OpenAIDecisionsCapability
-	if required {
-		name, flag, expected = "required three-adviser policy", "--three-adviser-capability", ThreeAdviserCapability
-	}
-	protocol, err := i.inspectRuntimeProtocol(binary)
-	if err != nil {
-		return err
-	}
-	if protocol != "cw-manager-v6" {
-		return fmt.Errorf("%s requires a verified native v6 runtime", name)
-	}
-	capability, err := i.inspectRuntimeCapability(binary, flag)
-	if err != nil {
-		return fmt.Errorf("%s requires native capability %s: %w", name, expected, err)
-	}
-	if capability != expected {
-		return fmt.Errorf("%s requires native capability %s", name, expected)
-	}
-	return nil
 }
 
 type boundedProtocolWriter struct{ buffer *bytes.Buffer }
@@ -206,12 +138,8 @@ func (w *boundedProtocolWriter) Write(data []byte) (int, error) {
 }
 
 func (i *Installer) runtimeLocatorBytes() []byte {
-	locator := RuntimeLocator{Source: i.Source, Home: i.Home, Codex: i.Codex, State: i.State, CommandPath: i.commandPath()}
-	if i.runtimeProtocol == "cw-manager-v6" {
-		locator.Version = 2
-		return legacyJSON(seal(asObject(locator)))
-	}
-	return legacyJSON(locator)
+	locator := RuntimeLocator{Version: 2, Source: i.Source, Home: i.Home, Codex: i.Codex, State: i.State, CommandPath: i.commandPath()}
+	return legacyJSON(seal(asObject(locator)))
 }
 
 func asObject(value any) Object {
@@ -231,31 +159,16 @@ func (i *Installer) decodeRuntimeLocator(data []byte) (RuntimeLocator, error) {
 	if err := json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return RuntimeLocator{}, err
 	}
-	if locator.Version == 2 {
-		if err := VerifyLocalSeal(data); err != nil {
-			return RuntimeLocator{}, err
-		}
-	} else if locator.Version != 0 || locator.Integrity != "" {
+	if locator.Version != 2 {
 		return RuntimeLocator{}, errors.New("unsupported native locator version")
+	}
+	if err := VerifyLocalSeal(data); err != nil {
+		return RuntimeLocator{}, err
 	}
 	if locator.Home != i.Home || locator.Codex != i.Codex || locator.State != i.State || locator.Source == "" || Normalize(locator.Source) != locator.Source {
 		return RuntimeLocator{}, errors.New("unsafe native locator roots")
 	}
-	var fields map[string]jsontext.Value
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return RuntimeLocator{}, err
-	}
-	if locator.Version == 0 {
-		if _, present := fields["version"]; present {
-			return RuntimeLocator{}, errors.New("legacy locator must not declare a version")
-		}
-		if _, present := fields["integrity_sha256"]; present {
-			return RuntimeLocator{}, errors.New("legacy locator must not declare an integrity seal")
-		}
-	} else if !aliasFields(asObject(locator), "version", "source", "home", "codex", "state", "command_path", "integrity_sha256") {
-		return RuntimeLocator{}, errors.New("version-two locator requires every sealed root")
-	}
-	if _, present := fields["command_path"]; present && locator.CommandPath != i.commandPath() {
+	if locator.CommandPath != i.commandPath() {
 		return RuntimeLocator{}, errors.New("unsafe native locator command path")
 	}
 	return locator, nil
@@ -277,20 +190,11 @@ func (i *Installer) runtimeRelease(revision string) (RuntimeIdentity, error) {
 	if err = json.Unmarshal(legacyJSON(data), &receipt, json.RejectUnknownMembers(true)); err != nil {
 		return RuntimeIdentity{}, err
 	}
-	if (receipt.Version != 1 && receipt.Version != 2) || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != revision {
+	if receipt.Version != 2 || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != revision {
 		return RuntimeIdentity{}, errors.New("invalid native runtime receipt")
 	}
-	if receipt.Version == 2 {
-		if err := verifySeal(data); err != nil || receipt.ManagerProtocol != "cw-manager-v6" {
-			return RuntimeIdentity{}, errors.New("invalid v6 runtime receipt seal or capability")
-		}
-	} else {
-		if _, present := data["manager_protocol"]; present {
-			return RuntimeIdentity{}, errors.New("legacy runtime receipt has unexpected capability fields")
-		}
-		if _, present := data["integrity_sha256"]; present {
-			return RuntimeIdentity{}, errors.New("legacy runtime receipt has unexpected integrity seal")
-		}
+	if err := verifySeal(data); err != nil || receipt.ManagerProtocol != ManagerProtocol {
+		return RuntimeIdentity{}, errors.New("invalid native runtime receipt seal or protocol")
 	}
 	info, err := os.Lstat(filepath.Join(dir, "cw"))
 	if err != nil {
@@ -320,24 +224,18 @@ func (i *Installer) runtimeRelease(revision string) (RuntimeIdentity, error) {
 	if hash(locatorBytes) != receipt.LocatorSHA256 {
 		return RuntimeIdentity{}, errors.New("native runtime locator differs from its immutable receipt or roots")
 	}
-	if receipt.Version == 2 {
-		var locator RuntimeLocator
-		if err := json.Unmarshal(locatorBytes, &locator); err != nil || locator.Version != 2 {
-			return RuntimeIdentity{}, errors.New("v6 runtime receipt requires a sealed version-two locator")
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 3 {
+		return RuntimeIdentity{}, errors.New("native runtime release contains unexpected files")
+	}
+	for _, entry := range entries {
+		if entry.Name() != "cw" && entry.Name() != "locator.json" && entry.Name() != "receipt.json" {
+			return RuntimeIdentity{}, errors.New("native runtime release contains unexpected files")
 		}
-		entries, err := os.ReadDir(dir)
-		if err != nil || len(entries) != 3 {
-			return RuntimeIdentity{}, errors.New("v6 runtime release contains unexpected files")
-		}
-		for _, entry := range entries {
-			if entry.Name() != "cw" && entry.Name() != "locator.json" && entry.Name() != "receipt.json" {
-				return RuntimeIdentity{}, errors.New("v6 runtime release contains unexpected files")
-			}
-		}
-		info, err := os.Lstat(filepath.Join(dir, "receipt.json"))
-		if err != nil || unixMode(info.Mode()) != 0o600 {
-			return RuntimeIdentity{}, errors.New("v6 runtime receipt mode changed")
-		}
+	}
+	info, err = os.Lstat(filepath.Join(dir, "receipt.json"))
+	if err != nil || unixMode(info.Mode()) != 0o600 {
+		return RuntimeIdentity{}, errors.New("native runtime receipt mode changed")
 	}
 	return receipt.Identity, nil
 }
@@ -354,10 +252,10 @@ func (i *Installer) stageRuntime() error {
 	if err != nil {
 		return err
 	}
-	i.runtimeProtocol = protocol
-	if i.AdoptPersonalSkills && protocol != "cw-manager-v6" {
-		return errors.New("personal skill adoption requires a verified native v6 runtime")
+	if protocol != ManagerProtocol {
+		return errors.New("native runtime candidate does not support the manager protocol")
 	}
+	i.runtimeProtocol = protocol
 	info, err := os.Lstat(i.RuntimeCandidate)
 	if err != nil {
 		return err
@@ -400,13 +298,8 @@ func (i *Installer) stageRuntime() error {
 	if err = atomicWrite(filepath.Join(temporary, "locator.json"), locator, 0o600); err != nil {
 		return err
 	}
-	receipt := runtimeReceipt{Version: 1, Identity: identity, SHA256: hash(binary), LocatorSHA256: hash(locator)}
-	receiptBytes := legacyJSON(receipt)
-	if protocol == "cw-manager-v6" {
-		receipt.Version, receipt.ManagerProtocol = 2, protocol
-		receiptBytes = legacyJSON(seal(asObject(receipt)))
-	}
-	if err = atomicWrite(filepath.Join(temporary, "receipt.json"), receiptBytes, 0o600); err != nil {
+	receipt := runtimeReceipt{Version: 2, Identity: identity, SHA256: hash(binary), LocatorSHA256: hash(locator), ManagerProtocol: protocol}
+	if err = atomicWrite(filepath.Join(temporary, "receipt.json"), legacyJSON(seal(asObject(receipt))), 0o600); err != nil {
 		return err
 	}
 	if err = i.Context.Err(); err != nil {
@@ -420,7 +313,7 @@ func (i *Installer) stageRuntime() error {
 
 func pathSegment(paths Paths, leading string) string {
 	bin := filepath.Join(paths.Home, ".local", "bin")
-	return leading + profileStart + "\ncase \":$PATH:\" in\n  *" + aliasQuote(":"+bin+":") + "*) ;;\n  *) export PATH=" + aliasQuote(bin) + ":\"$PATH\" ;;\nesac\n" + profileEnd + "\n"
+	return leading + profileStart + "\ncase \":$PATH:\" in\n  *" + shellQuote(":"+bin+":") + "*) ;;\n  *) export PATH=" + shellQuote(bin) + ":\"$PATH\" ;;\nesac\n" + profileEnd + "\n"
 }
 
 func (i *Installer) validateManager(value Object) error {
@@ -432,11 +325,11 @@ func (i *Installer) validateManager(value Object) error {
 		return errors.New("invalid native manager ownership")
 	}
 	if manager.Profile != nil {
-		if !aliasFields(object(value["profile"]), "shell", "path", "segment", "original_exists", "original_mode") {
+		if !exactFields(object(value["profile"]), "shell", "path", "segment", "original_exists", "original_mode") {
 			return errors.New("invalid PATH profile fields")
 		}
 		profile := manager.Profile
-		path, err := aliasRCPath(i.Paths, profile.Shell)
+		path, err := shellStartupPath(i.Paths, profile.Shell)
 		if err != nil {
 			return err
 		}
@@ -489,7 +382,7 @@ func (i *Installer) verifyManager(value Object) error {
 		return errors.New("native locator roots changed")
 	}
 	if manager.Profile != nil {
-		data, exists, _, err := aliasRead(manager.Profile.Path)
+		data, exists, _, err := readStartup(manager.Profile.Path)
 		if err != nil {
 			return err
 		}
@@ -503,17 +396,6 @@ func (i *Installer) verifyManager(value Object) error {
 }
 
 func profileLocate(data []byte, expected string) (int, int, error) {
-	if strings.Contains(expected, aliasStart) {
-		start, end, err := aliasLocate(data, expected)
-		if err != nil {
-			return 0, 0, err
-		}
-		remainder := append(bytes.Clone(data[:start]), data[end:]...)
-		if bytes.Contains(remainder, []byte("agent-workflows PATH")) {
-			return 0, 0, errors.New("unidentified PATH markers beside legacy wrapper")
-		}
-		return start, end, nil
-	}
 	if bytes.Count(data, []byte(profileStart)) != 1 || bytes.Count(data, []byte(profileEnd)) != 1 {
 		return 0, 0, errors.New("startup file must contain one owned PATH marker pair")
 	}
@@ -527,8 +409,8 @@ func profileLocate(data []byte, expected string) (int, int, error) {
 	if bytes.Contains(remainder, []byte("agent-workflows PATH")) {
 		return 0, 0, errors.New("unidentified PATH profile markers")
 	}
-	if err := aliasUnowned(remainder); err != nil {
-		return 0, 0, err
+	if hasCWDefinition(remainder) {
+		return 0, 0, errors.New("existing cw definition in shell startup file; refusing to overwrite it")
 	}
 	return begin, end, nil
 }
@@ -548,14 +430,6 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 		if old["source"] != i.Source {
 			return nil, nil, errors.New("native manager belongs to another source checkout")
 		}
-	}
-	if sharedConfigStateRequired(state) {
-		if err := i.verifySharedConfigRuntime(i.RuntimeCandidate); err != nil {
-			return nil, nil, err
-		}
-	}
-	if legacy := object(state["command_alias"]); legacy != nil && legacy["source"] != i.Source {
-		return nil, nil, errors.New("cw belongs to another source checkout; use the enrolled checkout")
 	}
 	if old == nil {
 		if command, err := exec.LookPath("cw"); command != "" && (err == nil || errors.Is(err, exec.ErrDot)) && Normalize(command) != i.commandPath() {
@@ -609,20 +483,24 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 				}
 				ops = append(ops, removal)
 			}
-			profile, changes, err := i.prepareProfile(nil)
+			profile, op, err := i.prepareProfile()
 			if err != nil {
 				return nil, nil, err
 			}
 			manager.Profile = profile
-			ops = append(ops, changes...)
+			if op != nil {
+				ops = append(ops, op)
+			}
 		}
 	} else {
-		profile, changes, err := i.prepareProfile(object(state["command_alias"]))
+		profile, op, err := i.prepareProfile()
 		if err != nil {
 			return nil, nil, err
 		}
 		manager.Profile = profile
-		ops = append(ops, changes...)
+		if op != nil {
+			ops = append(ops, op)
+		}
 	}
 	return asObject(manager), ops, nil
 }
@@ -644,96 +522,34 @@ func (i *Installer) managerPathLabel(path string) string {
 	}
 }
 
-func (i *Installer) prepareProfile(legacy Object) (*ProfileRecord, []Object, error) {
-	if legacy == nil || i.Shell == "auto" || legacy["shell"] == i.Shell {
-		profile, op, err := i.prepareSingleProfile(legacy)
-		if err != nil {
-			return nil, nil, err
-		}
-		if op == nil {
-			return profile, nil, nil
-		}
-		return profile, []Object{op}, nil
+func (i *Installer) prepareProfile() (*ProfileRecord, Object, error) {
+	shell, _ := selectedShell(i.Shell, i.Paths, map[string]string{"SHELL": os.Getenv("SHELL"), "ZDOTDIR": os.Getenv("ZDOTDIR")})
+	if shell == "" {
+		return nil, nil, nil
 	}
-	if err := AliasVerify(legacy, i.Paths); err != nil {
-		return nil, nil, err
-	}
-	originalMode, _ := aliasInteger(legacy["original_mode"])
-	record := &ProfileRecord{Shell: text(legacy["shell"]), Path: text(legacy["path"]), Segment: text(legacy["segment"]), OriginalExists: legacy["original_exists"].(bool), OriginalMode: originalMode}
-	removal, err := i.profileRemoval(record, text(legacy["source"]))
+	path, err := shellStartupPath(i.Paths, shell)
 	if err != nil {
 		return nil, nil, err
 	}
-	profile, op, err := i.prepareSingleProfile(nil)
+	data, exists, mode, err := readStartup(path)
 	if err != nil {
 		return nil, nil, err
 	}
-	changes := []Object{removal}
-	if op != nil {
-		changes = append(changes, op)
+	if hasCWDefinition(data) {
+		return nil, nil, errors.New("existing cw definition in shell startup file; refusing to overwrite it")
 	}
-	return profile, changes, nil
-}
-
-func (i *Installer) prepareSingleProfile(legacy Object) (*ProfileRecord, Object, error) {
-	var shell, path string
-	var beforeSegment any
-	var originalExists bool
-	var originalMode int
-	if legacy != nil {
-		if err := AliasVerify(legacy, i.Paths); err != nil {
-			return nil, nil, err
-		}
-		shell, path = text(legacy["shell"]), text(legacy["path"])
-		beforeSegment = legacy["segment"]
-		originalExists, _ = legacy["original_exists"].(bool)
-		originalMode, _ = aliasInteger(legacy["original_mode"])
-	} else {
-		shell, _ = aliasSelectedShell(i.Shell, i.Paths, map[string]string{"SHELL": os.Getenv("SHELL"), "ZDOTDIR": os.Getenv("ZDOTDIR")})
-		if shell == "" {
-			return nil, nil, nil
-		}
-		var err error
-		path, err = aliasRCPath(i.Paths, shell)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	data, exists, mode, err := aliasRead(path)
-	if err != nil {
-		return nil, nil, err
+	if bytes.Contains(data, []byte("agent-workflows PATH")) {
+		return nil, nil, errors.New("preexisting PATH markers need ownership state")
 	}
 	leading := ""
-	if beforeSegment != nil {
-		if _, _, err = profileLocate(data, beforeSegment.(string)); err != nil {
-			return nil, nil, err
-		}
-		if strings.HasPrefix(beforeSegment.(string), "\n") {
-			leading = "\n"
-		}
-	} else {
-		if err = aliasUnowned(data); err != nil {
-			return nil, nil, err
-		}
-		if bytes.Contains(data, []byte("agent-workflows PATH")) {
-			return nil, nil, errors.New("preexisting PATH markers need ownership state")
-		}
-		originalExists, originalMode = exists, mode
-		if len(data) > 0 && !bytes.HasSuffix(data, []byte("\n")) {
-			leading = "\n"
-		}
+	if len(data) > 0 && !bytes.HasSuffix(data, []byte("\n")) {
+		leading = "\n"
 	}
 	if pathIncludes(os.Getenv("PATH"), filepath.Join(i.Home, ".local", "bin")) {
-		if legacy == nil {
-			return nil, nil, nil
-		}
-		return nil, Object{"kind": "command_profile", "path": path, "shell": shell, "source": legacy["source"], "before_segment": beforeSegment, "after_segment": nil, "before_exists": exists, "after_exists": originalExists, "before_mode": mode, "after_mode": originalMode, "label": "command-profile"}, nil
+		return nil, nil, nil
 	}
-	profile := &ProfileRecord{Shell: shell, Path: path, Segment: pathSegment(i.Paths, leading), OriginalExists: originalExists, OriginalMode: originalMode}
-	op := Object{"kind": "command_profile", "path": path, "shell": shell, "source": i.Source, "before_segment": beforeSegment, "after_segment": profile.Segment, "before_exists": exists, "after_exists": true, "before_mode": mode, "after_mode": mode, "label": "command-profile"}
-	if legacy != nil {
-		op["source"] = legacy["source"]
-	}
+	profile := &ProfileRecord{Shell: shell, Path: path, Segment: pathSegment(i.Paths, leading), OriginalExists: exists, OriginalMode: mode}
+	op := Object{"kind": "command_profile", "path": path, "shell": shell, "source": i.Source, "before_segment": nil, "after_segment": profile.Segment, "before_exists": exists, "after_exists": true, "before_mode": mode, "after_mode": mode, "label": "command-profile"}
 	return profile, op, nil
 }
 
@@ -747,7 +563,7 @@ func pathIncludes(value, directory string) bool {
 }
 
 func (i *Installer) validateManagerPath(op Object) error {
-	if !aliasFields(op, "kind", "path", "before", "after", "label") || op["kind"] != "manager_path" {
+	if !exactFields(op, "kind", "path", "before", "after", "label") || op["kind"] != "manager_path" {
 		return errors.New("invalid native manager operation")
 	}
 	path := text(op["path"])
@@ -795,10 +611,10 @@ func (i *Installer) validateManagerPath(op Object) error {
 }
 
 func (i *Installer) validateProfileOperation(op Object) error {
-	if !aliasFields(op, "kind", "path", "shell", "source", "before_segment", "after_segment", "before_exists", "after_exists", "before_mode", "after_mode", "label") || op["kind"] != "command_profile" {
+	if !exactFields(op, "kind", "path", "shell", "source", "before_segment", "after_segment", "before_exists", "after_exists", "before_mode", "after_mode", "label") || op["kind"] != "command_profile" {
 		return errors.New("invalid PATH profile operation")
 	}
-	path, err := aliasRCPath(i.Paths, op["shell"])
+	path, err := shellStartupPath(i.Paths, op["shell"])
 	if err != nil {
 		return err
 	}
@@ -815,12 +631,12 @@ func (i *Installer) validateProfileOperation(op Object) error {
 		if _, ok := op[side+"_exists"].(bool); !ok {
 			return errors.New("invalid PATH profile existence")
 		}
-		if _, ok := aliasInteger(op[side+"_mode"]); !ok {
+		if _, ok := modeInteger(op[side+"_mode"]); !ok {
 			return errors.New("invalid PATH profile mode")
 		}
 		if raw := op[side+"_segment"]; raw != nil {
 			segment, ok := raw.(string)
-			if !ok || (segment != pathSegment(paths, "") && segment != pathSegment(paths, "\n") && segment != aliasSegment(paths, "") && segment != aliasSegment(paths, "\n")) {
+			if !ok || (segment != pathSegment(paths, "") && segment != pathSegment(paths, "\n")) {
 				return errors.New("invalid PATH profile segment")
 			}
 			if !op[side+"_exists"].(bool) {
@@ -831,13 +647,16 @@ func (i *Installer) validateProfileOperation(op Object) error {
 	if op["before_segment"] == op["after_segment"] {
 		return errors.New("unchanged PATH profile operation")
 	}
-	_, _, _, err = aliasRead(path)
+	_, _, _, err = readStartup(path)
 	return err
 }
 
 func profileCurrent(data []byte, op Object) (any, error) {
-	if !bytes.Contains(data, []byte(aliasMarker)) && !bytes.Contains(data, []byte("agent-workflows PATH")) {
-		return nil, aliasUnowned(data)
+	if !bytes.Contains(data, []byte("agent-workflows PATH")) {
+		if hasCWDefinition(data) {
+			return nil, errors.New("existing cw definition in shell startup file; refusing to overwrite it")
+		}
+		return nil, nil
 	}
 	for _, side := range []string{"before_segment", "after_segment"} {
 		if segment := op[side]; segment != nil {
@@ -853,7 +672,7 @@ func (i *Installer) renderProfile(op Object) ([]byte, os.FileMode, bool, error) 
 	if err := i.validateProfileOperation(op); err != nil {
 		return nil, 0, false, err
 	}
-	data, exists, mode, err := aliasRead(text(op["path"]))
+	data, exists, mode, err := readStartup(text(op["path"]))
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -886,21 +705,21 @@ func (i *Installer) renderProfile(op Object) ([]byte, os.FileMode, bool, error) 
 		result = append(append(bytes.Clone(data[:start]), target...), data[end:]...)
 	}
 	remove := !op["after_exists"].(bool) && len(result) == 0
-	beforeMode, _ := aliasInteger(op["before_mode"])
+	beforeMode, _ := modeInteger(op["before_mode"])
 	if remove && exists && mode != beforeMode {
 		return nil, 0, false, errors.New("startup mode changed before removal")
 	}
 	if !exists {
-		mode, _ = aliasInteger(op["after_mode"])
+		mode, _ = modeInteger(op["after_mode"])
 	}
-	return result, aliasFileMode(mode), remove, nil
+	return result, fileModeBits(mode), remove, nil
 }
 
 func (i *Installer) profileReversal(op Object) (Object, error) {
 	if err := i.validateProfileOperation(op); err != nil {
 		return nil, err
 	}
-	data, exists, mode, err := aliasRead(text(op["path"]))
+	data, exists, mode, err := readStartup(text(op["path"]))
 	if err != nil {
 		return nil, err
 	}
@@ -926,7 +745,7 @@ func (i *Installer) profilePending(op Object) (Object, error) {
 	if err := i.validateProfileOperation(op); err != nil {
 		return nil, err
 	}
-	data, _, _, err := aliasRead(text(op["path"]))
+	data, _, _, err := readStartup(text(op["path"]))
 	if err != nil {
 		return nil, err
 	}
@@ -970,7 +789,7 @@ func (i *Installer) managerRemoval(value Object) ([]Object, error) {
 }
 
 func (i *Installer) profileRemoval(profile *ProfileRecord, source string) (Object, error) {
-	data, exists, mode, err := aliasRead(profile.Path)
+	data, exists, mode, err := readStartup(profile.Path)
 	if err != nil {
 		return nil, err
 	}

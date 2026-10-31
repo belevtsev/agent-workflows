@@ -18,7 +18,6 @@ func personalFixtureUpgrade(t *testing.T, fixture *installerFixture) (string, ma
 		t.Fatal(err)
 	}
 	manifest := clone(fixture.manifest)
-	manifest["version"], manifest["adoption_catalog"] = 2, personalCatalogName
 	manifest["registrations"] = clone(object(manifest["registrations"]))
 	catalog := PersonalSkillCatalog{Version: 1, Skills: map[string]PersonalSkillCatalogRecord{}}
 	originals := map[string]string{}
@@ -54,13 +53,6 @@ func personalFixtureUpgrade(t *testing.T, fixture *installerFixture) (string, ma
 	return sha, originals
 }
 
-func v6FixtureInstaller(t *testing.T, fixture *installerFixture, revision string, apply bool) *Installer {
-	t.Helper()
-	i := nativeFixtureInstaller(t, fixture, revision, apply)
-	installerWrite(t, i.RuntimeCandidate, "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' cw-manager-v6; fi\n", 0o755)
-	return i
-}
-
 func seedPersonalSkill(t *testing.T, original, destination string) []PersonalInventoryEntry {
 	t.Helper()
 	installerCopyTree(t, original, destination)
@@ -87,7 +79,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 	}
 	originalUser := fixture.seedUserFiles(t)
 	sha, originals := personalFixtureUpgrade(t, fixture)
-	i := v6FixtureInstaller(t, fixture, sha, true)
+	i := nativeFixtureInstaller(t, fixture, sha, true)
 	i.AdoptPersonalSkills = true
 	roots := []string{i.skills, filepath.Join(i.Codex, "skills"), filepath.Join(i.Home, ".codex", "skills")}
 	locations := map[string]string{}
@@ -103,7 +95,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 		}
 	}
 	before := installerSnapshot(t, fixture.base)
-	ordinary := v6FixtureInstaller(t, fixture, sha, false)
+	ordinary := nativeFixtureInstaller(t, fixture, sha, false)
 	if _, err := ordinary.Setup(true); err == nil {
 		t.Fatal("ordinary setup adopted occupied personal names")
 	}
@@ -172,7 +164,7 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 				t.Run(name+"/"+action+"/"+boundary, func(t *testing.T) {
 					fixture := newInstallerFixture(t)
 					sha, originals := personalFixtureUpgrade(t, fixture)
-					i := v6FixtureInstaller(t, fixture, sha, true)
+					i := nativeFixtureInstaller(t, fixture, sha, true)
 					i.AdoptPersonalSkills = true
 					location := filepath.Join(i.Codex, "skills", name)
 					if name == "archify" {
@@ -247,7 +239,7 @@ func TestPersonalSkillsModifiedOccupiedAndDuplicateInputsRefuse(t *testing.T) {
 		t.Run(corruption, func(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			sha, originals := personalFixtureUpgrade(t, fixture)
-			i := v6FixtureInstaller(t, fixture, sha, true)
+			i := nativeFixtureInstaller(t, fixture, sha, true)
 			i.AdoptPersonalSkills = true
 			location := filepath.Join(i.Codex, "skills", "production-plan")
 			seedPersonalSkill(t, originals["production-plan"], location)
@@ -316,7 +308,7 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 				}
 				prior := mustRegistrationState(t, old)
 				sha, originals := personalFixtureUpgrade(t, fixture)
-				i := v6FixtureInstaller(t, fixture, sha, true)
+				i := nativeFixtureInstaller(t, fixture, sha, true)
 				i.AdoptPersonalSkills = adoption
 				if adoption {
 					seedPersonalSkill(t, originals["production-plan"], filepath.Join(i.Codex, "skills", "production-plan"))
@@ -354,7 +346,7 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 }
 
 func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v3", "cw-manager-v5"} {
+	for _, protocol := range []string{ManagerProtocol} {
 		t.Run(protocol, func(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			old := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -364,7 +356,7 @@ func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
 			}
 			beforeState := installerRead(t, old.statePath)
 			sha, originals := personalFixtureUpgrade(t, fixture)
-			i := v6FixtureInstaller(t, fixture, sha, true)
+			i := nativeFixtureInstaller(t, fixture, sha, true)
 			i.AdoptPersonalSkills = true
 			location := filepath.Join(i.skills, "archify")
 			original := seedPersonalSkill(t, originals["archify"], location)
@@ -399,48 +391,12 @@ func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
 	}
 }
 
-func TestPersonalSkillsRequireStagedRuntimeBeforeV2Journal(t *testing.T) {
-	fixture := newInstallerFixture(t)
-	sha, originals := personalFixtureUpgrade(t, fixture)
-	i := v6FixtureInstaller(t, fixture, sha, true)
-	i.AdoptPersonalSkills = true
-	seedPersonalSkill(t, originals["archify"], filepath.Join(i.skills, "archify"))
-	if err := i.prepareRuntimeFor(sha); err != nil {
-		t.Fatal(err)
-	}
-	release, manifest, err := i.stage(sha)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ops, _, err := i.fresh(sha, release, manifest, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := i.transact("setup", ops); err == nil {
-		t.Fatal("mere candidate cache was accepted before v2 journal")
-	}
-	if exists(i.journalPath) || exists(i.current) {
-		t.Fatal("unrecoverable v2 transaction was published")
-	}
-	if err := i.stageRuntime(); err != nil {
-		t.Fatal(err)
-	}
-	unlock, err := lockRoot(i.State, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer unlock()
-	if _, err := i.Setup(true); err == nil || !strings.Contains(err.Error(), "another installer mutation") {
-		t.Fatalf("concurrent adoption bypassed lock: %v", err)
-	}
-}
-
 func TestPersonalSkillsUninstallChangedDestinationOrBackupRefuses(t *testing.T) {
 	for _, change := range []string{"destination", "backup"} {
 		t.Run(change, func(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			sha, originals := personalFixtureUpgrade(t, fixture)
-			i := v6FixtureInstaller(t, fixture, sha, true)
+			i := nativeFixtureInstaller(t, fixture, sha, true)
 			i.AdoptPersonalSkills = true
 			location := filepath.Join(i.Codex, "skills", "production-plan")
 			seedPersonalSkill(t, originals["production-plan"], location)
@@ -473,7 +429,7 @@ func TestPersonalSkillCrossFilesystemRefuses(t *testing.T) {
 	}
 	t.Cleanup(func() { os.RemoveAll(state) })
 	fixture.paths.State = state
-	i := v6FixtureInstaller(t, fixture, sha, true)
+	i := nativeFixtureInstaller(t, fixture, sha, true)
 	i.AdoptPersonalSkills = true
 	location := filepath.Join(i.skills, "archify")
 	original := seedPersonalSkill(t, originals["archify"], location)
@@ -490,7 +446,7 @@ func TestPersonalSkillCrossFilesystemRefuses(t *testing.T) {
 func TestPersonalSkillCancellationBetweenCompoundStepsRecovers(t *testing.T) {
 	fixture := newInstallerFixture(t)
 	sha, originals := personalFixtureUpgrade(t, fixture)
-	i := v6FixtureInstaller(t, fixture, sha, true)
+	i := nativeFixtureInstaller(t, fixture, sha, true)
 	i.AdoptPersonalSkills = true
 	location := filepath.Join(i.skills, "archify")
 	original := seedPersonalSkill(t, originals["archify"], location)

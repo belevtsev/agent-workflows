@@ -18,7 +18,6 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 		return nil, e
 	}
 	after := clone(s)
-	after["version"] = i.nextStateVersion(s)
 	ops := plan.Operations
 	if !equal(s["manifest_registrations"], m["registrations"]) {
 		after["registrations"] = plan.Records
@@ -51,7 +50,7 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 		if e != nil {
 			return nil, e
 		}
-		global, e := i.globalOperation(contents, replacement, old, segment, "global", nil, nil)
+		global, e := i.globalOperation(contents, replacement, old, segment, "global")
 		if e != nil {
 			return nil, e
 		}
@@ -77,19 +76,7 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 			return nil, e
 		}
 		after["manager"], after["source"] = manager, i.Source
-		delete(after, "command_alias")
 		ops = append(ops, changes...)
-	} else if enroll && !i.nativeRequested() && s["manager"] == nil {
-		meta, change, _, e := AliasPrepare(i.Paths, i.Shell, object(s["command_alias"]))
-		if e != nil {
-			return nil, e
-		}
-		if meta != nil {
-			after["command_alias"] = meta
-		}
-		if change != nil {
-			ops = append(ops, change)
-		}
 	}
 	after = seal(after)
 	if !equal(after, s) {
@@ -99,19 +86,9 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 }
 
 func (i *Installer) prepareConfig(s Object, release string, m Object, enroll bool) (Object, Object, error) {
-	if i.Apply && i.RuntimeCandidate != "" {
-		if err := i.verifyPolicyRuntime(i.RuntimeCandidate, release, m); err != nil {
-			return nil, nil, err
-		}
-	}
 	shared, err := SharedConfigDefaults(release)
 	if err != nil {
 		return nil, nil, err
-	}
-	if (shared != nil || sharedConfigStateRequired(s)) && i.RuntimeCandidate != "" {
-		if err := i.verifySharedConfigRuntime(i.RuntimeCandidate); err != nil {
-			return nil, nil, err
-		}
 	}
 	var models map[string]string
 	if enroll || s["model_config"] != nil {
@@ -142,7 +119,7 @@ func (i *Installer) fresh(sha, release string, m Object, enroll bool) ([]Object,
 	}
 	s := i.newState(sha, m, records, origin, segment)
 	ops = append([]Object{pathOperation(i.current, Object{"kind": "absent"}, Object{"kind": "symlink", "target": release}, "pointer")}, ops...)
-	aliasReport := Object{"managed": false}
+	command := Object{"managed": false}
 	s, change, e := i.prepareConfig(s, release, m, enroll)
 	if e != nil {
 		return nil, nil, e
@@ -150,43 +127,29 @@ func (i *Installer) fresh(sha, release string, m Object, enroll bool) ([]Object,
 	if change != nil {
 		ops = append(ops, change)
 	}
-	if i.nativeRequested() {
-		if enroll || s["shared_config"] != nil {
-			if i.RuntimeCandidate != "" {
-				manager, changes, e := i.managerPlan(nil)
-				if e != nil {
-					return nil, nil, e
-				}
-				s["manager"] = manager
-				ops = append(ops, changes...)
-				aliasReport = Object{"managed": true, "kind": "native", "path": i.commandPath()}
-			} else {
-				aliasReport = Object{"managed": false, "kind": "native", "status": "deferred"}
+	if i.nativeRequested() && (enroll || s["shared_config"] != nil) {
+		if i.RuntimeCandidate != "" {
+			manager, changes, e := i.managerPlan(nil)
+			if e != nil {
+				return nil, nil, e
 			}
-		}
-	} else if enroll {
-		am, ac, ar, e := AliasPrepare(i.Paths, i.Shell, nil)
-		if e != nil {
-			return nil, nil, e
-		}
-		aliasReport = ar
-		if am != nil {
-			s["command_alias"] = am
-		}
-		if ac != nil {
-			ops = append(ops, ac)
+			s["manager"] = manager
+			ops = append(ops, changes...)
+			command = Object{"managed": true, "kind": "native", "path": i.commandPath()}
+		} else {
+			command = Object{"managed": false, "kind": "native", "status": "deferred"}
 		}
 	}
 	s = seal(s)
 	ops = append(ops, pathOperation(i.statePath, Object{"kind": "absent"}, expectedState(s), "state"))
-	return ops, aliasReport, nil
+	return ops, command, nil
 }
 func (i *Installer) Setup(enroll bool) (Object, error) {
 	if err := i.Context.Err(); err != nil {
 		return nil, err
 	}
 	if i.AdoptPersonalSkills && !i.nativeRequested() {
-		return nil, errors.New("personal skill adoption requires a native v6 manager")
+		return nil, errors.New("personal skill adoption requires a native manager")
 	}
 	if exists(i.journalPath) {
 		return nil, errors.New("an unfinished mutation requires recover")
@@ -222,9 +185,6 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 		if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e == nil {
 			ops, e = i.activation(s, sha, release, m, enroll, false)
 		}
-		if e == nil && !i.nativeRequested() && s["manager"] == nil {
-			_, _, ar, e = AliasPrepare(i.Paths, i.Shell, object(s["command_alias"]))
-		}
 	}
 	if e != nil {
 		return nil, e
@@ -238,7 +198,7 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if !enroll {
 		command = "install"
 	}
-	report := Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": plan.Changes, "changed": changed, "model_defaults": defaults, "command_alias": ar, "model_config": Object{"managed": enroll}}
+	report := Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": plan.Changes, "changed": changed, "model_defaults": defaults, "manager_command": ar, "model_config": Object{"managed": enroll}}
 	shared, e := SharedConfigDefaults(release)
 	if e != nil {
 		return nil, e
@@ -303,7 +263,7 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 		}
 	}
 	report["changed"] = len(ops) > 0 || runtime["changed"] == true
-	report["command_alias"] = ar
+	report["manager_command"] = ar
 	return report, nil
 }
 func (i *Installer) Status() (Object, error) {
@@ -318,7 +278,7 @@ func (i *Installer) Status() (Object, error) {
 		if exists(i.current) {
 			return nil, errors.New("active pointer exists without ownership state")
 		}
-		return Object{"installed": false, "model_config": Object{"managed": false}, "shared_config": Object{"managed": false}, "command_alias": Object{"managed": false}}, nil
+		return Object{"installed": false, "model_config": Object{"managed": false}, "shared_config": Object{"managed": false}, "manager_command": Object{"managed": false}}, nil
 	}
 	if e = i.verifyOwned(s); e != nil {
 		return nil, e
@@ -336,7 +296,7 @@ func (i *Installer) Status() (Object, error) {
 	if len(h) > 0 {
 		previous = object(h[len(h)-1])["release"]
 	}
-	report := Object{"installed": true, "release": s["release"], "previous_release": previous, "registrations": keys(object(s["registrations"])), "state_dir": i.State, "model_defaults": defaults, "model_profiles": profiles, "model_config": Object{"managed": s["model_config"] != nil}, "command_alias": AliasReport(object(s["command_alias"]))}
+	report := Object{"installed": true, "release": s["release"], "previous_release": previous, "registrations": keys(object(s["registrations"])), "state_dir": i.State, "model_defaults": defaults, "model_profiles": profiles, "model_config": Object{"managed": s["model_config"] != nil}, "manager_command": Object{"managed": false}}
 	shared, e := SharedConfigDefaults(release)
 	if e != nil {
 		return nil, e
@@ -344,7 +304,7 @@ func (i *Installer) Status() (Object, error) {
 	report["shared_config"] = Object{"managed": s["shared_config"] != nil, "defaults": shared}
 	if manager := object(s["manager"]); manager != nil {
 		report["manager"] = manager
-		report["command_alias"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
+		report["manager_command"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
 	}
 	return report, nil
 }
@@ -603,18 +563,7 @@ func (i *Installer) Uninstall() (Object, error) {
 			ops = append(ops, personalOperation(name, origin, filepath.Join(i.skills, name), text(item["target"]), "managed", "personal", "restore-personal:"+name))
 			continue
 		}
-		restored := original
-		if original["kind"] == "legacy" {
-			restored = Object{"kind": "absent"}
-		}
-		ops = append(ops, pathOperation(filepath.Join(i.skills, name), Object{"kind": "symlink", "target": item["target"]}, restored, "registration:"+name))
-		if original["kind"] == "legacy" {
-			destination := text(original["path"])
-			if destination != filepath.Join(i.Home, ".codex", "skills", "typesafe-ai") || exists(destination) {
-				return nil, errors.New("legacy restore destination is unsafe or occupied")
-			}
-			ops = append(ops, Object{"kind": "rename", "path": original["backup"], "destination": destination, "observation": original["observation"], "label": "legacy"})
-		}
+		ops = append(ops, pathOperation(filepath.Join(i.skills, name), Object{"kind": "symlink", "target": item["target"]}, original, "registration:"+name))
 	}
 	contents, e := i.readAgents()
 	if e != nil {
@@ -625,18 +574,11 @@ func (i *Installer) Uninstall() (Object, error) {
 		return nil, e
 	}
 	origin := object(s["global_origin"])
-	var replacement []byte
-	if origin["kind"] == "prefix" {
-		replacement, e = decode(origin["prefix"])
-		if e != nil {
-			return nil, e
-		}
-	}
-	after, e := replaceOwned(contents, segment, replacement)
+	after, e := replaceOwned(contents, segment, nil)
 	if e != nil {
 		return nil, e
 	}
-	global, e := i.globalOperation(contents, after, segment, nil, "global", nil, replacement)
+	global, e := i.globalOperation(contents, after, segment, nil, "global")
 	if e != nil {
 		return nil, e
 	}
@@ -652,13 +594,6 @@ func (i *Installer) Uninstall() (Object, error) {
 		ops = append(ops, change)
 	} else if meta := object(s["model_config"]); meta != nil {
 		change, e := ModelRemoval(i.config, meta)
-		if e != nil {
-			return nil, e
-		}
-		ops = append(ops, change)
-	}
-	if meta := object(s["command_alias"]); meta != nil {
-		change, e := AliasRemoval(meta, i.Paths)
 		if e != nil {
 			return nil, e
 		}

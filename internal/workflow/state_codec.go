@@ -18,8 +18,8 @@ func VerifyLocalSeal(data []byte) error {
 	return verifySeal(value)
 }
 
-// OwnershipRecord is the typed boundary for the deployed v1 document. The
-// original JSON object is retained for its Python-compatible integrity seal.
+// OwnershipRecord is the typed boundary for the sealed ownership document. The
+// original JSON object is retained for its canonical integrity seal.
 type OwnershipRecord struct {
 	Version               int                           `json:"version"`
 	Release               string                        `json:"release"`
@@ -35,7 +35,6 @@ type OwnershipRecord struct {
 	ModelConfig           *ModelMetadataRecord          `json:"model_config,omitempty"`
 	SharedConfig          *ModelMetadataRecord          `json:"shared_config,omitempty"`
 	ConfigOriginalExists  *bool                         `json:"config_original_exists,omitempty"`
-	CommandAlias          *LegacyCommandRecord          `json:"command_alias,omitempty"`
 	Manager               *ManagerRecord                `json:"manager,omitempty"`
 	Integrity             string                        `json:"integrity_sha256"`
 }
@@ -51,18 +50,16 @@ type ActivationRecord struct {
 }
 
 type GlobalOriginRecord struct {
-	Kind   string `json:"kind"`
-	Mode   *int   `json:"mode,omitempty"`
-	Prefix string `json:"prefix,omitempty"`
+	Kind string `json:"kind"`
+	Mode *int   `json:"mode,omitempty"`
 }
 
 type OriginRecord struct {
-	Kind        string                   `json:"kind"`
-	Target      string                   `json:"target,omitempty"`
-	Path        string                   `json:"path,omitempty"`
-	Backup      string                   `json:"backup,omitempty"`
-	Observation *ObservationRecord       `json:"observation,omitempty"`
-	Inventory   []PersonalInventoryEntry `json:"inventory,omitempty"`
+	Kind      string                   `json:"kind"`
+	Target    string                   `json:"target,omitempty"`
+	Path      string                   `json:"path,omitempty"`
+	Backup    string                   `json:"backup,omitempty"`
+	Inventory []PersonalInventoryEntry `json:"inventory,omitempty"`
 }
 
 type ObservationRecord struct {
@@ -79,15 +76,6 @@ type InventoryRecord struct {
 	SHA256 string `json:"sha256,omitempty"`
 }
 
-type LegacyCommandRecord struct {
-	Shell          string `json:"shell"`
-	Path           string `json:"path"`
-	Source         string `json:"source"`
-	Segment        string `json:"segment"`
-	OriginalExists bool   `json:"original_exists"`
-	OriginalMode   int    `json:"original_mode"`
-}
-
 type ModelKeyRecord struct {
 	Present        bool   `json:"present"`
 	Representation string `json:"representation,omitempty"`
@@ -102,35 +90,30 @@ type ModelMetadataRecord struct {
 // OperationRecord is a typed union at the recovery boundary. Discriminated
 // validators enforce each kind's exact field set and permitted owned paths.
 type OperationRecord struct {
-	Kind              string                        `json:"kind"`
-	Path              string                        `json:"path"`
-	Label             string                        `json:"label"`
-	Before            *ObservationRecord            `json:"before,omitempty"`
-	After             *ObservationRecord            `json:"after,omitempty"`
-	Destination       string                        `json:"destination,omitempty"`
-	Observation       *ObservationRecord            `json:"observation,omitempty"`
-	Shell             string                        `json:"shell,omitempty"`
-	Source            string                        `json:"source,omitempty"`
-	BeforeSegment     *string                       `json:"before_segment,omitempty"`
-	AfterSegment      *string                       `json:"after_segment,omitempty"`
-	BeforeExists      *bool                         `json:"before_exists,omitempty"`
-	AfterExists       *bool                         `json:"after_exists,omitempty"`
-	BeforeMode        *int                          `json:"before_mode,omitempty"`
-	AfterMode         *int                          `json:"after_mode,omitempty"`
-	BeforeReplacement string                        `json:"before_replacement,omitempty"`
-	AfterReplacement  string                        `json:"after_replacement,omitempty"`
-	SourceSegment     *string                       `json:"source_segment,omitempty"`
-	TargetSegment     *string                       `json:"target_segment,omitempty"`
-	Replacement       string                        `json:"replacement,omitempty"`
-	Restoration       *OperationRecord              `json:"restoration,omitempty"`
-	BeforeKeys        map[string]ModelKeyRecord     `json:"before_keys,omitempty"`
-	AfterKeys         map[string]ModelKeyRecord     `json:"after_keys,omitempty"`
-	Personal          *PersonalSkillOperationRecord `json:"personal,omitempty"`
+	Kind          string                        `json:"kind"`
+	Path          string                        `json:"path"`
+	Label         string                        `json:"label"`
+	Before        *ObservationRecord            `json:"before,omitempty"`
+	After         *ObservationRecord            `json:"after,omitempty"`
+	Shell         string                        `json:"shell,omitempty"`
+	Source        string                        `json:"source,omitempty"`
+	BeforeSegment *string                       `json:"before_segment,omitempty"`
+	AfterSegment  *string                       `json:"after_segment,omitempty"`
+	BeforeExists  *bool                         `json:"before_exists,omitempty"`
+	AfterExists   *bool                         `json:"after_exists,omitempty"`
+	BeforeMode    *int                          `json:"before_mode,omitempty"`
+	AfterMode     *int                          `json:"after_mode,omitempty"`
+	SourceSegment *string                       `json:"source_segment,omitempty"`
+	TargetSegment *string                       `json:"target_segment,omitempty"`
+	Restoration   *OperationRecord              `json:"restoration,omitempty"`
+	BeforeKeys    map[string]ModelKeyRecord     `json:"before_keys,omitempty"`
+	AfterKeys     map[string]ModelKeyRecord     `json:"after_keys,omitempty"`
+	Personal      *PersonalSkillOperationRecord `json:"personal,omitempty"`
 }
 
 // JournalRecord validates envelope field types before any recovery planning.
 // Operation validation remains discriminated by kind and constrained to owned
-// paths, including the exact legacy managed-segment formats.
+// paths.
 type JournalRecord struct {
 	Version            int               `json:"version"`
 	Command            string            `json:"command"`
@@ -148,16 +131,8 @@ func decodeOwnership(value Object) (OwnershipRecord, error) {
 	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
 		return record, fmt.Errorf("invalid ownership record: %w", err)
 	}
-	if (record.Version != 1 && record.Version != 2) || record.Registrations == nil || record.ManifestRegistrations == nil || record.History == nil {
+	if record.Version != 2 || record.Registrations == nil || record.ManifestRegistrations == nil || record.History == nil {
 		return record, errors.New("unsupported or incomplete ownership record")
-	}
-	if record.Version == 1 {
-		for name, item := range record.Registrations {
-			_, inventoryPresent := object(object(object(value["registrations"])[name])["original"])["inventory"]
-			if inventoryPresent || (item.Original != nil && item.Original.Kind == "personal") {
-				return record, errors.New("version-one ownership cannot contain personal adoption records")
-			}
-		}
 	}
 	if record.Source != "" && Normalize(record.Source) != record.Source {
 		return record, errors.New("invalid recorded source path")
@@ -216,21 +191,8 @@ func decodeJournal(value Object) error {
 	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("invalid journal record: %w", err)
 	}
-	if (record.Version != 1 && record.Version != 2) || record.Operations == nil {
+	if record.Version != 2 || record.Operations == nil {
 		return errors.New("unsupported or incomplete journal record")
-	}
-	if record.Version == 1 {
-		if _, present := value["recovery_runtime"]; present {
-			return errors.New("version-one journal cannot contain a recovery runtime")
-		}
-		for _, field := range []string{"operations", "recovery_operations"} {
-			for _, raw := range sequence(value[field]) {
-				op := object(raw)
-				if _, present := op["personal"]; present || op["kind"] == "personal_skill" {
-					return errors.New("version-one journal cannot contain personal operations")
-				}
-			}
-		}
 	}
 	switch record.Command {
 	case "install", "setup", "update", "rollback", "uninstall":

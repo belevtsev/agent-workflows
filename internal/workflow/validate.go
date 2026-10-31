@@ -236,16 +236,12 @@ func LoadManifest(root string) (Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read valid skills-manifest.json: %w", err)
 	}
-	fields := []string{"version", "registrations", "global_instructions", "required_licenses", "model_policy"}
-	if suiteInteger(object(value)["version"], 2) {
-		fields = append(fields, "adoption_catalog")
-	}
-	manifest, err := suiteMapping(value, "manifest", fields...)
+	manifest, err := suiteMapping(value, "manifest", "version", "registrations", "global_instructions", "required_licenses", "model_policy", "adoption_catalog")
 	if err != nil {
 		return nil, err
 	}
-	if !suiteInteger(manifest["version"], 1) && !suiteInteger(manifest["version"], 2) {
-		return nil, errors.New("manifest version must be 1 or 2")
+	if !suiteInteger(manifest["version"], 3) {
+		return nil, errors.New("manifest version must be 3")
 	}
 	registrations, err := suiteMapping(manifest["registrations"], "registrations")
 	if err != nil || len(registrations) == 0 {
@@ -396,7 +392,7 @@ func suiteInspectTree(root string) ([]string, error) {
 		}
 		if entry.IsDir() {
 			releaseStage := strings.HasPrefix(name, ".cw-release-")
-			if (releaseStage || slices.Contains([]string{".venv", "__pycache__", ".bin", ".bin.lock", "dist"}, name)) && ignored(target) {
+			if (releaseStage || slices.Contains([]string{".venv", "__pycache__", ".bin", ".bin.lock", "dist", ".claude"}, name)) && ignored(target) {
 				return filepath.SkipDir
 			}
 			if releaseStage || suitePrivateDirectories[name] {

@@ -25,6 +25,9 @@ htmlcov/
 dist/
 .cw-release-*/
 
+# Claude Code local settings and worktrees
+.claude/
+
 # Generated local diagrams and their delivery/browser evidence
 .archify/
 

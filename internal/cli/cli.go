@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/workflow"
@@ -42,29 +41,11 @@ type Config struct {
 	Prepare                    func(context.Context, string, string, string) (manageruntime.Candidate, error)
 }
 
-// ManagerProtocol identifies support for sealed native runtimes, personal skill
-// adoption, and the current model reasoning policy.
-const ManagerProtocol = "cw-manager-v6"
-
-// ModelPolicyCapability is separate from the sealed runtime/state protocol.
-// Older v6 managers cannot validate the paired-provider policy extension.
-const ModelPolicyCapability = "cw-model-policy-v2-dual-choice"
-
-// CodexDefaultsCapability identifies support for shared Codex config ownership.
-const CodexDefaultsCapability = workflow.CodexDefaultsCapability
-
-// OpenAIDecisionsCapability identifies the optional adviser policy extension.
-const OpenAIDecisionsCapability = workflow.OpenAIDecisionsCapability
-
-// ThreeAdviserCapability identifies the required three-provider policy contract.
-const ThreeAdviserCapability = workflow.ThreeAdviserCapability
+// ManagerProtocol identifies the contract the bootstrap requires of a manager.
+const ManagerProtocol = workflow.ManagerProtocol
 
 type options struct {
-	modelPolicyCapability                                                    bool
-	codexDefaultsCapability                                                  bool
-	openaiDecisionsCapability                                                bool
-	threeAdviserCapability                                                   bool
-	source, home, codex, state, shell, migrate, legacy                       string
+	source, home, codex, state, shell                                        string
 	dryRun, apply, noCheckout, json, bootstrap, prepareOnly, managerProtocol bool
 	releaseIdentity                                                          bool
 	adoptPersonalSkills                                                      bool
@@ -90,23 +71,8 @@ func ExitCode(err error) int {
 // Execute runs a fresh command with explicit arguments and cancellation.
 func Execute(ctx context.Context, args []string, config Config) error {
 	command := NewCommand(config)
-	command.SetArgs(normalizeLegacy(args))
+	command.SetArgs(args)
 	return command.ExecuteContext(ctx)
-}
-
-// normalizeLegacy preserves the former optional --typesafe-legacy PATH syntax.
-// pflag's optional values otherwise accept only --typesafe-legacy=PATH.
-func normalizeLegacy(args []string) []string {
-	out := make([]string, 0, len(args))
-	for index := 0; index < len(args); index++ {
-		if args[index] == "--typesafe-legacy" && index+1 < len(args) && !strings.HasPrefix(args[index+1], "-") {
-			out = append(out, "--typesafe-legacy="+args[index+1])
-			index++
-			continue
-		}
-		out = append(out, args[index])
-	}
-	return out
 }
 
 func defaults(config Config) Config {
@@ -170,29 +136,18 @@ func NewCommand(config Config) *cobra.Command {
 	flags.StringVar(&o.codex, "codex-home", "", "Codex configuration directory")
 	flags.StringVar(&o.state, "state-dir", "", "Ownership and runtime state directory")
 	flags.StringVar(&o.shell, "shell", "auto", "Install PATH in auto, bash, zsh or none")
-	flags.StringVar(&o.migrate, "migrate-from", "", "Explicit previous source migration")
-	flags.StringVar(&o.legacy, "typesafe-legacy", "", "Adopt prior TypeSafe registration (optional path)")
 	flags.BoolVar(&o.adoptPersonalSkills, "adopt-personal-skills", false, "Back up and adopt verified standalone personal skills during install/setup")
-	flags.Lookup("typesafe-legacy").NoOptDefVal = ""
 	flags.BoolVar(&o.dryRun, "dry-run", false, "Check locally without writes or downloads")
 	flags.BoolVar(&o.apply, "apply", false, "Apply changes (the default)")
 	flags.BoolVar(&o.noCheckout, "no-checkout", false, "Update without fast-forwarding source checkout")
 	flags.BoolVar(&o.json, "json", false, "Emit JSON (the default)")
-	flags.BoolVar(&o.bootstrap, "bootstrap", false, "Legacy read-only default")
+	flags.BoolVar(&o.bootstrap, "bootstrap", false, "Read-only default")
 	flags.BoolVar(&o.prepareOnly, "prepare-only", false, "Prepare exact manager without activation")
 	flags.BoolVar(&o.managerProtocol, "manager-protocol", false, "Report native manager bootstrap protocol")
-	flags.BoolVar(&o.modelPolicyCapability, "model-policy-capability", false, "Report supported source model policy capability")
-	flags.BoolVar(&o.codexDefaultsCapability, "codex-defaults-capability", false, "Report supported shared Codex config capability")
-	flags.BoolVar(&o.openaiDecisionsCapability, "openai-decisions-capability", false, "Report supported optional OpenAI adviser policy capability")
-	flags.BoolVar(&o.threeAdviserCapability, "three-adviser-capability", false, "Report supported required three-adviser policy capability")
 	flags.BoolVar(&o.releaseIdentity, "release-identity", false, "Report native release build identity")
 	_ = flags.MarkHidden("bootstrap")
 	_ = flags.MarkHidden("prepare-only")
 	_ = flags.MarkHidden("manager-protocol")
-	_ = flags.MarkHidden("model-policy-capability")
-	_ = flags.MarkHidden("codex-defaults-capability")
-	_ = flags.MarkHidden("openai-decisions-capability")
-	_ = flags.MarkHidden("three-adviser-capability")
 	_ = flags.MarkHidden("release-identity")
 	run := func(cmd *cobra.Command, _ []string) error {
 		if o.releaseIdentity {
@@ -201,22 +156,6 @@ func NewCommand(config Config) *cobra.Command {
 		}
 		if o.managerProtocol {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), ManagerProtocol)
-			return err
-		}
-		if o.modelPolicyCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), ModelPolicyCapability)
-			return err
-		}
-		if o.codexDefaultsCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), CodexDefaultsCapability)
-			return err
-		}
-		if o.openaiDecisionsCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), OpenAIDecisionsCapability)
-			return err
-		}
-		if o.threeAdviserCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), ThreeAdviserCapability)
 			return err
 		}
 		action := cmd.Name()
@@ -326,8 +265,8 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	}
 	locator, locatorErr := config.Resolve(executable)
 	if errors.Is(locatorErr, manageruntime.ErrLocatorMissing) && o.source != "" && o.home != "" && o.codex != "" && o.state != "" {
-		// Explicit roots remain available for recovering a legacy fixture with
-		// no descriptor. An owned layout must never select defaults from cwd.
+		// Explicit roots remain available for a runtime with no descriptor. An
+		// owned layout must never select defaults from cwd.
 		locatorErr = os.ErrNotExist
 	}
 	if locatorErr != nil && !errors.Is(locatorErr, os.ErrNotExist) {
@@ -384,10 +323,7 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 		apply = o.apply && !o.dryRun
 	}
 	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, State: o.state}
-	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, MigrateFrom: o.migrate, AdoptPersonalSkills: o.adoptPersonalSkills, Context: cmd.Context()}
-	if cmd.Flags().Changed("typesafe-legacy") {
-		options.TypeSafeLegacy = new(o.legacy)
-	}
+	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Context: cmd.Context()}
 	if action == "validate" {
 		report, err := config.Validate(workflow.Normalize(o.source))
 		if err != nil {

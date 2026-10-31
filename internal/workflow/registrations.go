@@ -22,21 +22,9 @@ type registrationChangePlan struct {
 	Operations []Object
 }
 
-func compatibleRegistrationRoot(name, before, after string) bool {
-	if before == after {
-		return true
-	}
-	switch name {
-	case "cc-skills-golang", "db-postgres", "typesafe-ai":
-		legacy, modern := "vendor/"+name, "third_party/"+name
-		return before == legacy && after == modern || before == modern && after == legacy
-	}
-	return false
-}
-
 // registrationPlan is shared by fresh installation, forward activation, and
 // rollback. Typed ownership determines which changes are safe; existing raw
-// origins are copied intact to retain historical v1 serialization and seals.
+// origins are copied intact to retain their sealed serialization.
 func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ...string) (registrationChangePlan, error) {
 	plan := registrationChangePlan{Changes: []RegistrationChange{}, Records: Object{}, Operations: []Object{}}
 	next := object(manifest["registrations"])
@@ -66,7 +54,7 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 			}
 			continue
 		}
-		if !compatibleRegistrationRoot(name, before, text(after)) {
+		if before != text(after) {
 			return plan, errors.New("registration names or roots changed; explicit uninstall and install are required")
 		}
 	}
@@ -89,23 +77,16 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 		if len(roots) == 1 {
 			root = roots[0]
 		}
-		adoptions, err = i.personalAdoptions(additions, manifest, root, s == nil)
+		adoptions, err = i.personalAdoptions(additions, manifest, root)
 	} else {
-		err = i.duplicates(additions, s == nil)
+		err = i.duplicates(additions)
 	}
 	if err != nil {
 		return plan, err
 	}
-	migration := ""
-	if s == nil && i.MigrateFrom != "" {
-		migration = Normalize(i.MigrateFrom)
-		if err = realDirectory(migration, false); err != nil {
-			return plan, err
-		}
-	}
 	for _, name := range keys(next) {
 		root := text(next[name])
-		beforeRoot, exists := owned.ManifestRegistrations[name]
+		_, exists := owned.ManifestRegistrations[name]
 		path, target := filepath.Join(i.skills, name), i.target(root)
 		if !exists {
 			if origin, adopt := adoptions[name]; adopt {
@@ -118,7 +99,7 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 			if err != nil {
 				return plan, err
 			}
-			if before["kind"] != "absent" && (s != nil || before["kind"] != "symlink" || migration == "" || normalizeAlias(text(before["target"])) != normalizeAlias(filepath.Join(migration, root))) {
+			if before["kind"] != "absent" {
 				return plan, fmt.Errorf("unrelated occupied registration: %s", path)
 			}
 			plan.Records[name] = Object{"target": target, "original": before}
@@ -127,10 +108,6 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 			continue
 		}
 		item := clone(object(object(s["registrations"])[name]))
-		if beforeRoot != root {
-			plan.Operations = append(plan.Operations, pathOperation(path, Object{"kind": "symlink", "target": item["target"]}, Object{"kind": "symlink", "target": target}, "registration:"+name))
-			plan.Changes = append(plan.Changes, RegistrationChange{Name: name, Action: "move", BeforeRoot: beforeRoot, AfterRoot: root})
-		}
 		item["target"] = target
 		plan.Records[name] = item
 	}
@@ -157,7 +134,6 @@ func (i *Installer) registrationPlan(s, manifest Object, rollback bool, roots ..
 // Other discovery roots are external to the manager's installation lock.
 func (i *Installer) registrationAdditionCheck(ops []Object) error {
 	additions := Object{}
-	legacy := false
 	for _, op := range ops {
 		if op["kind"] == "personal_skill" {
 			record, err := i.validatePersonalOperation(op)
@@ -183,9 +159,6 @@ func (i *Installer) registrationAdditionCheck(ops []Object) error {
 			continue
 		}
 		path := text(op["path"])
-		if op["kind"] == "rename" && path == i.legacyPath() && op["destination"] == filepath.Join(i.State, "backups", "typesafe-ai") {
-			legacy = true
-		}
 		if op["kind"] == "path" && filepath.Dir(path) == i.skills && object(op["before"])["kind"] == "absent" && object(op["after"])["kind"] == "symlink" {
 			actual, err := observe(path)
 			if err != nil {
@@ -200,5 +173,5 @@ func (i *Installer) registrationAdditionCheck(ops []Object) error {
 	if len(additions) == 0 {
 		return nil
 	}
-	return i.duplicates(additions, legacy)
+	return i.duplicates(additions)
 }

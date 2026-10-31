@@ -71,7 +71,7 @@ func sharedInstallerFixture(t *testing.T) *installerFixture {
 func sharedLifecycleInstaller(t *testing.T, fixture *installerFixture, apply bool) *Installer {
 	t.Helper()
 	revision := fixture.git(t, "rev-parse", "HEAD")
-	installer := sharedConfigRuntimeFixtureFor(t, fixture, revision, CodexDefaultsCapability)
+	installer := sharedConfigRuntimeFixtureFor(t, fixture, revision)
 	installer.Apply = apply
 	installer.PrepareConsultationRuntime = func(ctx context.Context, path string, _ bool) (Object, error) {
 		if ctx != installer.Context || path != filepath.Join(installer.Home, ".venvs", "codex-decisions") {
@@ -83,7 +83,7 @@ func sharedLifecycleInstaller(t *testing.T, fixture *installerFixture, apply boo
 		if ctx != installer.Context || source != installer.Source || state != installer.State {
 			t.Fatal("shared config runtime preparation lost the installation context or roots")
 		}
-		candidate := sharedConfigRuntimeFixtureFor(t, fixture, selectedRevision, CodexDefaultsCapability)
+		candidate := sharedConfigRuntimeFixtureFor(t, fixture, selectedRevision)
 		return RuntimeCandidate{Path: candidate.RuntimeCandidate, Identity: candidate.RuntimeIdentity}, nil
 	}
 	return installer

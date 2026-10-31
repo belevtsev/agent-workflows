@@ -23,8 +23,6 @@ type Options struct {
 	Apply                      bool
 	NoCheckout                 bool
 	Shell                      string
-	MigrateFrom                string
-	TypeSafeLegacy             *string
 	AdoptPersonalSkills        bool
 }
 type Installer struct {
@@ -98,7 +96,7 @@ func (i *Installer) state(required bool) (Object, error) {
 	if e = verifySeal(s); e != nil {
 		return nil, e
 	}
-	if (integer(s["version"]) != 1 && integer(s["version"]) != 2) || !commitSHA.MatchString(text(s["release"])) || s["home"] != i.Home || s["codex_home"] != i.Codex || s["state_dir"] != i.State || object(s["registrations"]) == nil || object(s["manifest_registrations"]) == nil || sequence(s["history"]) == nil {
+	if integer(s["version"]) != 2 || !commitSHA.MatchString(text(s["release"])) || s["home"] != i.Home || s["codex_home"] != i.Codex || s["state_dir"] != i.State || object(s["registrations"]) == nil || object(s["manifest_registrations"]) == nil || sequence(s["history"]) == nil {
 		return nil, errors.New("unsupported or corrupt installation ownership state or roots")
 	}
 	if _, e = decode(s["global_segment"]); e != nil {
@@ -114,10 +112,10 @@ func (i *Installer) validateStateStructure(s Object) error {
 	if _, err := decodeOwnership(s); err != nil {
 		return err
 	}
-	if (integer(s["version"]) != 1 && integer(s["version"]) != 2) || s["home"] != i.Home || s["codex_home"] != i.Codex || s["state_dir"] != i.State || !commitSHA.MatchString(text(s["release"])) {
+	if integer(s["version"]) != 2 || s["home"] != i.Home || s["codex_home"] != i.Codex || s["state_dir"] != i.State || !commitSHA.MatchString(text(s["release"])) {
 		return errors.New("corrupt installation state or roots")
 	}
-	for _, key := range []string{"model_config", "shared_config", "command_alias"} {
+	for _, key := range []string{"model_config", "shared_config"} {
 		if value, present := s[key]; present {
 			metadata, err := requiredObject(value, key)
 			if err != nil {
@@ -125,10 +123,8 @@ func (i *Installer) validateStateStructure(s Object) error {
 			}
 			if key == "model_config" {
 				err = ModelValidateMetadata(metadata)
-			} else if key == "shared_config" {
-				err = SharedConfigValidateMetadata(metadata)
 			} else {
-				err = AliasValidateMetadata(metadata, i.Paths)
+				err = SharedConfigValidateMetadata(metadata)
 			}
 			if err != nil {
 				return err
@@ -164,13 +160,8 @@ func (i *Installer) validateStateStructure(s Object) error {
 		}
 	}
 	origin := object(s["global_origin"])
-	if origin == nil || (origin["kind"] != "absent" && origin["kind"] != "unmanaged" && origin["kind"] != "prefix") {
+	if origin == nil || (origin["kind"] != "absent" && origin["kind"] != "unmanaged") {
 		return errors.New("corrupt global instruction origin")
-	}
-	if origin["kind"] == "prefix" {
-		if _, err := decode(origin["prefix"]); err != nil {
-			return err
-		}
 	}
 	if _, err := decode(s["global_segment"]); err != nil {
 		return err
@@ -200,17 +191,7 @@ func (i *Installer) validateStateStructure(s Object) error {
 			if _, ok := original["target"].(string); !ok {
 				return errors.New("corrupt original symlink")
 			}
-		case "legacy":
-			if err := validateObservation(object(original["observation"]), true); err != nil {
-				return err
-			}
-			if name != "typesafe-ai" || original["path"] != filepath.Join(i.Home, ".codex", "skills", "typesafe-ai") || original["backup"] != filepath.Join(i.State, "backups", "typesafe-ai") || object(original["observation"])["kind"] != "directory" {
-				return errors.New("unsafe legacy ownership")
-			}
 		case "personal":
-			if integer(s["version"]) != 2 {
-				return errors.New("personal adoption requires version-two ownership")
-			}
 			if _, err := i.validatePersonalOrigin(name, original); err != nil {
 				return err
 			}
@@ -361,16 +342,7 @@ func (i *Installer) readAgents() ([]byte, error) {
 	}
 	return decode(o["data"])
 }
-func (i *Installer) legacyPath() string {
-	if i.TypeSafeLegacy == nil {
-		return ""
-	}
-	if *i.TypeSafeLegacy == "" {
-		return filepath.Join(i.Home, ".codex", "skills", "typesafe-ai")
-	}
-	return Normalize(*i.TypeSafeLegacy)
-}
-func (i *Installer) duplicates(registrations Object, legacy bool) error {
+func (i *Installer) duplicates(registrations Object) error {
 	roots, err := i.discoveryRoots()
 	if err != nil {
 		return err
@@ -387,7 +359,7 @@ func (i *Installer) duplicates(registrations Object, legacy bool) error {
 				return errors.New("unsafe registration name")
 			}
 			path := filepath.Join(root, name)
-			if exists(path) && !(legacy && name == "typesafe-ai" && path == i.legacyPath()) {
+			if exists(path) {
 				return fmt.Errorf("duplicate discovery registration exists: %s", path)
 			}
 		}
@@ -444,16 +416,7 @@ func (i *Installer) verifyOwned(s Object) error {
 			return fmt.Errorf("owned registration changed: %s", name)
 		}
 		original := object(item["original"])
-		if original["kind"] == "legacy" {
-			backup := text(original["backup"])
-			ob, e := observe(backup)
-			if e != nil {
-				return e
-			}
-			if backup != filepath.Join(i.State, "backups", "typesafe-ai") || !equal(ob, original["observation"]) {
-				return errors.New("missing or modified adoption backup")
-			}
-		} else if original["kind"] == "personal" {
+		if original["kind"] == "personal" {
 			origin, err := i.validatePersonalOrigin(name, original)
 			if err != nil {
 				return err
@@ -473,7 +436,7 @@ func (i *Installer) verifyOwned(s Object) error {
 	if _, e = replaceOwned(data, segment, nil); e != nil {
 		return e
 	}
-	if e = i.duplicates(object(s["manifest_registrations"]), false); e != nil {
+	if e = i.duplicates(object(s["manifest_registrations"])); e != nil {
 		return e
 	}
 	if m := object(s["model_config"]); m != nil {
@@ -486,25 +449,15 @@ func (i *Installer) verifyOwned(s Object) error {
 			return e
 		}
 	}
-	if a := object(s["command_alias"]); a != nil {
-		if e = AliasVerify(a, i.Paths); e != nil {
-			return e
-		}
-	}
 	if manager := object(s["manager"]); manager != nil {
-		if err := i.verifyManager(manager); err != nil {
-			return err
-		}
-		if sharedConfigStateRequired(s) {
-			return i.verifySharedConfigRuntime(filepath.Join(i.runtimeDir(text(object(manager["runtime"])["revision"])), "cw"))
-		}
+		return i.verifyManager(manager)
 	}
 	return nil
 }
 func pathOperation(path string, before, after Object, label string) Object {
 	return Object{"kind": "path", "path": path, "before": before, "after": after, "label": label}
 }
-func (i *Installer) globalOperation(before, after, beforeSegment, afterSegment []byte, label string, beforeReplacement, afterReplacement []byte) (Object, error) {
+func (i *Installer) globalOperation(before, after, beforeSegment, afterSegment []byte, label string) (Object, error) {
 	ob, e := observe(i.agents)
 	if e != nil {
 		return nil, e
@@ -530,7 +483,7 @@ func (i *Installer) globalOperation(before, after, beforeSegment, afterSegment [
 	if afterSegment != nil {
 		as = encode(afterSegment)
 	}
-	return Object{"kind": "global", "path": i.agents, "before": ob, "after": Object{"kind": "file", "data": encode(after), "mode": mode}, "before_segment": bs, "after_segment": as, "before_replacement": encode(beforeReplacement), "after_replacement": encode(afterReplacement), "label": label}, nil
+	return Object{"kind": "global", "path": i.agents, "before": ob, "after": Object{"kind": "file", "data": encode(after), "mode": mode}, "before_segment": bs, "after_segment": as, "label": label}, nil
 }
 func (i *Installer) preflight(release string, m Object) (Object, Object, []byte, []Object, error) {
 	s, e := i.state(false)
@@ -550,53 +503,7 @@ func (i *Installer) preflight(release string, m Object) (Object, Object, []byte,
 	if e != nil {
 		return nil, nil, nil, nil, e
 	}
-	regs := object(m["registrations"])
-	migration := ""
-	if i.MigrateFrom != "" {
-		migration = Normalize(i.MigrateFrom)
-		if e = realDirectory(migration, false); e != nil {
-			return nil, nil, nil, nil, e
-		}
-	}
 	records, ops := plan.Records, plan.Operations
-	if legacy := i.legacyPath(); legacy != "" {
-		if legacy != filepath.Join(i.Home, ".codex", "skills", "typesafe-ai") {
-			return nil, nil, nil, nil, errors.New("legacy adoption is restricted to HOME/.codex/skills/typesafe-ai")
-		}
-		item := object(records["typesafe-ai"])
-		if item == nil || object(item["original"])["kind"] != "absent" {
-			return nil, nil, nil, nil, errors.New("typesafe-ai already exists in user root")
-		}
-		original, e := observe(legacy)
-		if e != nil {
-			return nil, nil, nil, nil, e
-		}
-		expected, e := observe(filepath.Join(release, text(regs["typesafe-ai"])))
-		if e != nil {
-			return nil, nil, nil, nil, e
-		}
-		if original["kind"] != "directory" || !equal(original["inventory"], expected["inventory"]) {
-			return nil, nil, nil, nil, errors.New("legacy typesafe-ai must contain exactly matching suite files and modes")
-		}
-		files := 0
-		for _, raw := range object(original["inventory"]) {
-			kind := object(raw)["kind"]
-			if kind == "file" {
-				files++
-			} else if kind != "directory" {
-				return nil, nil, nil, nil, errors.New("unsafe legacy file")
-			}
-		}
-		if files != 3 {
-			return nil, nil, nil, nil, errors.New("legacy typesafe-ai must contain three files")
-		}
-		backup := filepath.Join(i.State, "backups", "typesafe-ai")
-		if exists(backup) {
-			return nil, nil, nil, nil, errors.New("legacy backup path is occupied")
-		}
-		item["original"] = Object{"kind": "legacy", "path": legacy, "backup": backup, "observation": original}
-		ops = append([]Object{{"kind": "rename", "path": legacy, "destination": backup, "observation": original, "label": "legacy"}}, ops...)
-	}
 	before, e := i.readAgents()
 	if e != nil {
 		return nil, nil, nil, nil, e
@@ -620,30 +527,13 @@ func (i *Installer) preflight(release string, m Object) (Object, Object, []byte,
 	if hasMarkers(before) {
 		return nil, nil, nil, nil, errors.New("preexisting managed markers require ownership state")
 	}
-	var segment, after, legacyTemplate []byte
-	if migration != "" && len(before) > 0 {
-		lp := filepath.Join(migration, text(m["global_instructions"]))
-		lo, e := observe(lp)
-		if e != nil || lo["kind"] != "file" {
-			return nil, nil, nil, nil, errors.New("missing maintained legacy global template")
-		}
-		legacyTemplate, e = decode(lo["data"])
-		if e != nil || len(legacyTemplate) == 0 || !bytes.HasPrefix(before, legacyTemplate) {
-			return nil, nil, nil, nil, errors.New("legacy global conventions prefix was modified")
-		}
-		origin["kind"] = "prefix"
-		origin["prefix"] = encode(legacyTemplate)
-		segment = managedBlock(template, nil)
-		after = append(bytes.Clone(segment), before[len(legacyTemplate):]...)
-	} else {
-		leading := []byte{}
-		if len(before) > 0 && !bytes.HasSuffix(before, []byte("\n")) {
-			leading = []byte("\n")
-		}
-		segment = managedBlock(template, leading)
-		after = append(bytes.Clone(before), segment...)
+	leading := []byte{}
+	if len(before) > 0 && !bytes.HasSuffix(before, []byte("\n")) {
+		leading = []byte("\n")
 	}
-	op, e := i.globalOperation(before, after, nil, segment, "global", legacyTemplate, nil)
+	segment := managedBlock(template, leading)
+	after := append(bytes.Clone(before), segment...)
+	op, e := i.globalOperation(before, after, nil, segment, "global")
 	if e != nil {
 		return nil, nil, nil, nil, e
 	}
@@ -657,12 +547,5 @@ func expectedState(s Object) Object {
 	return Object{"kind": "file", "data": encode(legacyJSON(s)), "mode": 0600}
 }
 func (i *Installer) newState(sha string, m, records, origin Object, segment []byte) Object {
-	return seal(Object{"version": i.nextStateVersion(nil), "release": sha, "source": i.Source, "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "manifest_registrations": m["registrations"], "registrations": records, "global_origin": origin, "global_segment": encode(segment), "history": []any{}})
-}
-
-func (i *Installer) nextStateVersion(state Object) int {
-	if integer(state["version"]) == 2 || i.runtimeProtocol == "cw-manager-v6" || i.AdoptPersonalSkills {
-		return 2
-	}
-	return 1
+	return seal(Object{"version": 2, "release": sha, "source": i.Source, "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "manifest_registrations": m["registrations"], "registrations": records, "global_origin": origin, "global_segment": encode(segment), "history": []any{}})
 }

@@ -41,7 +41,7 @@ func TestPersonalStateNestedInsideOriginalRefusesBeforeStaging(t *testing.T) {
 	origin := filepath.Join(f.paths.Home, ".agents", "skills", "archify")
 	inventory := seedPersonalSkill(t, originals["archify"], origin)
 	f.paths.State = filepath.Join(origin, "private state")
-	i := v6FixtureInstaller(t, f, sha, true)
+	i := nativeFixtureInstaller(t, f, sha, true)
 	i.AdoptPersonalSkills = true
 	before := installerSnapshot(t, f.base)
 	if _, err := i.Setup(true); err == nil || !strings.Contains(err.Error(), "mutation paths overlap") {
@@ -54,7 +54,7 @@ func TestPersonalStateNestedInsideOriginalRefusesBeforeStaging(t *testing.T) {
 func personalCatalogFixture(t *testing.T) *suiteFixture {
 	t.Helper()
 	f := newSuiteFixture(t)
-	f.manifest["version"], f.manifest["adoption_catalog"] = 2, personalCatalogName
+	f.manifest["version"], f.manifest["adoption_catalog"] = 3, personalCatalogName
 	entries, err := personalInventory(filepath.Join(f.root, "skills", "example"))
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func interruptedPersonalFixture(t *testing.T, label string) (*installerFixture, 
 	t.Helper()
 	f := newInstallerFixture(t)
 	sha, originals := personalFixtureUpgrade(t, f)
-	i := v6FixtureInstaller(t, f, sha, true)
+	i := nativeFixtureInstaller(t, f, sha, true)
 	i.AdoptPersonalSkills = true
 	seedPersonalSkill(t, originals["archify"], filepath.Join(i.skills, "archify"))
 	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
@@ -245,30 +245,5 @@ func TestPersonalRecoveryRejectsChangedRuntimeOrOwnedDirectoryBeforeReversal(t *
 			}
 			installerUnchanged(t, f.base, before)
 		})
-	}
-}
-
-func TestLegacyCodecsRejectNewFieldsWithoutChangingV1Contract(t *testing.T) {
-	f := newInstallerFixture(t)
-	f.execute(t, "setup")
-	i := f.installer(true)
-	state, err := readJSON(i.statePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	object(object(object(state["registrations"])["code-review"])["original"])["inventory"] = nil
-	if _, err := decodeOwnership(state); err == nil {
-		t.Fatal("legacy ownership accepted new inventory field")
-	}
-	for _, field := range []string{"recovery_runtime", "personal"} {
-		journal := Object{"version": 1, "command": "install", "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "operations": []any{pathOperation(filepath.Join(i.skills, "example"), Object{"kind": "absent"}, Object{"kind": "absent"}, "fixture")}}
-		if field == "personal" {
-			object(sequence(journal["operations"])[0])[field] = nil
-		} else {
-			journal[field] = nil
-		}
-		if err := decodeJournal(journal); err == nil {
-			t.Fatalf("legacy journal accepted %s", field)
-		}
 	}
 }

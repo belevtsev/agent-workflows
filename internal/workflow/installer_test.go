@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"slices"
 	"strings"
 	"syscall"
@@ -70,11 +69,9 @@ func installerBuildFixture(t *testing.T, maintained, destination string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Lifecycle fixtures preserve the deployed thirteen-registration v1 source
-	// contract as new personal registrations are added to the maintained suite.
+	// Lifecycle fixtures keep a stable registration subset as new personal
+	// registrations are added to the maintained suite.
 	manifest = clone(manifest)
-	manifest["version"] = 1
-	delete(manifest, "adoption_catalog")
 	registrations := Object{}
 	for _, name := range []string{"cc-skills-golang", "db-postgres", "go-principal-engineer", "backend-security-review", "protobuf-contracts", "go-pki-mtls", "software-architecture", "code-review", "test-strategy", "security-threat-model", "task-orchestration", "typesafe-ai"} {
 		registrations[name] = object(manifest["registrations"])[name]
@@ -117,28 +114,13 @@ func installerBuildFixture(t *testing.T, maintained, destination string) {
 	} {
 		copyFile(relative)
 	}
-	// These lifecycle fixtures describe managers predating the OpenAI adviser
-	// extensions. Keep their policy independent of newly maintained defaults.
-	editModelPolicy(t, filepath.Join(destination, text(manifest["model_policy"])), func(policy Object) {
-		consultation := policy["consultation"].(Object)
-		delete(consultation, "optional_providers")
-		delete(object(consultation["providers"]), "openai_decisions")
-	})
 	write("skills-manifest.json", string(legacyJSON(manifest)), 0o644)
+	write(personalCatalogName, "{\"skills\":{},\"version\":1}", 0o644)
 	write("LICENSE", "Fixture permission notice.\n", 0o644)
 	for _, relative := range sequence(manifest["required_licenses"]) {
 		copyFile(text(relative))
 	}
 	for name, relative := range object(manifest["registrations"]) {
-		if name == "typesafe-ai" {
-			// Adoption requires exactly these maintained files and modes. Retain
-			// their contents so installation and restored backups match a real
-			// legacy TypeSafe directory, including its linked reference.
-			for _, file := range []string{"SKILL.md", "LICENSE", "references/development-consultations.md"} {
-				copyFile(filepath.ToSlash(filepath.Join(text(relative), filepath.FromSlash(file))))
-			}
-			continue
-		}
 		metadata := "---\nname: " + name + "\ndescription: Isolated installer lifecycle fixture.\n---\n\n# Fixture skill\n"
 		write(filepath.ToSlash(filepath.Join(text(relative), "SKILL.md")), metadata, 0o644)
 	}
@@ -460,7 +442,7 @@ func TestInstallerUpdateRejectsWrongOriginDirtyDivergenceAndInvalidRelease(t *te
 }
 
 func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
-	for _, conflict := range []string{"model", "global", "alias", "registration", "pointer", "release"} {
+	for _, conflict := range []string{"model", "global", "registration", "pointer", "release"} {
 		t.Run(conflict, func(t *testing.T) {
 			f := newInstallerFixture(t)
 			f.execute(t, "setup")
@@ -470,9 +452,6 @@ func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
 				installerWrite(t, i.config, strings.ReplaceAll(installerRead(t, i.config), "gpt-6.1-sol", "user-edited"), 0o600)
 			case "global":
 				installerWrite(t, i.agents, strings.Replace(installerRead(t, i.agents), "# Working conventions", "# User edited managed conventions", 1), 0o600)
-			case "alias":
-				path := filepath.Join(f.paths.Home, ".bashrc")
-				installerWrite(t, path, strings.Replace(installerRead(t, path), `"$@"`, `"$1"`, 1), 0o600)
 			case "registration", "pointer":
 				path := i.current
 				if conflict == "registration" {
@@ -526,7 +505,7 @@ func TestInstallerFreshSetupRecoversEveryActivationBoundary(t *testing.T) {
 	for _, name := range keys(object(f.manifest["registrations"])) {
 		labels = append(labels, "after-registration:"+name)
 	}
-	labels = append(labels, "after-global", "after-model-config", "after-command-alias", "after-state")
+	labels = append(labels, "after-global", "after-model-config", "after-state")
 	for _, label := range labels {
 		t.Run(label, func(t *testing.T) {
 			f := newInstallerFixture(t)
@@ -570,7 +549,7 @@ func TestInstallerUninstallRecoversEveryMutationBoundary(t *testing.T) {
 	for _, name := range keys(object(f.manifest["registrations"])) {
 		labels = append(labels, "after-registration:"+name)
 	}
-	labels = append(labels, "after-global", "after-model-config", "after-command-alias", "after-pointer", "after-state")
+	labels = append(labels, "after-global", "after-model-config", "after-pointer", "after-state")
 	for _, label := range labels {
 		t.Run(label, func(t *testing.T) {
 			f := newInstallerFixture(t)
@@ -589,7 +568,7 @@ func TestInstallerUninstallRecoversEveryMutationBoundary(t *testing.T) {
 }
 
 func TestInstallerInterruptedRecoveryKeepsIndependentEdits(t *testing.T) {
-	for _, target := range []string{"global", "model-config", "command-alias"} {
+	for _, target := range []string{"global", "model-config"} {
 		t.Run(target, func(t *testing.T) {
 			f := newInstallerFixture(t)
 			original := f.seedUserFiles(t)
@@ -620,24 +599,18 @@ func TestInstallerInterruptedRecoveryKeepsIndependentEdits(t *testing.T) {
 }
 
 func TestInstallerRecoveryRejectsOwnedEditsBeforePartialReversal(t *testing.T) {
-	for _, target := range []string{"global", "model", "alias", "pointer"} {
+	for _, target := range []string{"global", "model", "pointer"} {
 		t.Run(target, func(t *testing.T) {
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
-			if target == "alias" {
-				f.failAt(t, "setup", "after-command-alias")
-			} else {
-				f.execute(t, "setup")
-				f.newRelease(t)
-				f.failAt(t, "setup", "after-model-config")
-			}
+			f.execute(t, "setup")
+			f.newRelease(t)
+			f.failAt(t, "setup", "after-model-config")
 			i := f.installer(true)
 			path, old, replacement := i.agents, "New fixture instructions", "User changed owned block"
 			switch target {
 			case "model":
 				path, old, replacement = i.config, "gpt-6-sol", "user-edited"
-			case "alias":
-				path, old, replacement = filepath.Join(f.paths.Home, ".bashrc"), `"$@"`, `"$1"`
 			case "pointer":
 				if err := os.Remove(i.current); err != nil {
 					t.Fatal(err)
@@ -659,7 +632,7 @@ func TestInstallerRecoveryRejectsOwnedEditsBeforePartialReversal(t *testing.T) {
 }
 
 func TestInstallerJournalRejectsCorruptionAndPathsBeforeWrites(t *testing.T) {
-	for _, invalid := range []string{"checksum", "outside path", "full config write", "unowned model key", "alias path", "full alias write", "embedded alias path", "pointer escape"} {
+	for _, invalid := range []string{"checksum", "outside path", "full config write", "unowned model key", "pointer escape"} {
 		t.Run(invalid, func(t *testing.T) {
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
@@ -678,21 +651,6 @@ func TestInstallerJournalRejectsCorruptionAndPathsBeforeWrites(t *testing.T) {
 					op["kind"], op["before"], op["after"] = "path", Object{"kind": "absent"}, Object{"kind": "absent"}
 				case invalid == "unowned model key" && op["kind"] == "model_config":
 					object(op["after_keys"])["api_key"] = Object{"present": true, "value": "fixture-key"}
-				case invalid == "alias path" && op["kind"] == "command_alias":
-					op["path"] = filepath.Join(f.base, "foreign.rc")
-				case invalid == "full alias write" && op["kind"] == "command_alias":
-					op["kind"], op["before"], op["after"] = "path", Object{"kind": "absent"}, Object{"kind": "absent"}
-				case invalid == "embedded alias path" && op["path"] == i.statePath:
-					data, err := decode(object(op["after"])["data"])
-					if err != nil {
-						t.Fatal(err)
-					}
-					var state Object
-					if err := json.Unmarshal(data, &state); err != nil {
-						t.Fatal(err)
-					}
-					object(state["command_alias"])["path"] = filepath.Join(f.base, "foreign.rc")
-					object(op["after"])["data"] = encode(legacyJSON(seal(state)))
 				case invalid == "pointer escape" && op["path"] == i.current:
 					object(op["after"])["target"] = f.base
 				}
@@ -746,105 +704,6 @@ func TestInstallerMutationLockAndUnsafeLockRefuseWrites(t *testing.T) {
 		t.Fatalf("symlink lock accepted: %v", err)
 	}
 	installerUnchanged(t, f.base, before)
-}
-
-func TestInstallerMigrationRestoresRawLinksPrefixAndLegacyDirectory(t *testing.T) {
-	f := newInstallerFixture(t)
-	prior := filepath.Join(f.base, "prior suite")
-	installerCopyTree(t, f.paths.Source, prior)
-	originalLinks := map[string]string{}
-	for name, relative := range object(f.manifest["registrations"]) {
-		if name == "typesafe-ai" {
-			continue
-		}
-		target := filepath.Join(prior, text(relative))
-		path := filepath.Join(f.paths.Home, ".agents", "skills", name)
-		if err := os.Symlink(target, path); err != nil {
-			t.Fatal(err)
-		}
-		originalLinks[path] = target
-	}
-	legacy := filepath.Join(f.paths.Home, ".codex", "skills", "typesafe-ai")
-	installerCopyTree(t, filepath.Join(prior, text(object(f.manifest["registrations"])["typesafe-ai"])), legacy)
-	legacyBefore := installerSnapshot(t, legacy)
-	agents := filepath.Join(f.paths.Codex, "AGENTS.md")
-	prefix := installerRead(t, filepath.Join(prior, text(f.manifest["global_instructions"])))
-	installerWrite(t, agents, prefix+"\nKeep exact personal suffix\n", 0o640)
-	i := f.installer(true)
-	i.MigrateFrom = prior
-	i.TypeSafeLegacy = new("")
-	if _, err := i.Setup(false); err != nil {
-		t.Fatal(err)
-	}
-	if exists(legacy) {
-		t.Fatal("legacy skill directory was not adopted")
-	}
-	installerAppend(t, agents, "Further independent instructions\n")
-	f.execute(t, "uninstall")
-	installerUnchanged(t, legacy, legacyBefore)
-	for path, want := range originalLinks {
-		if got, err := os.Readlink(path); err != nil || got != want {
-			t.Fatalf("legacy target = %q, want %q: %v", got, want, err)
-		}
-	}
-	if got := installerRead(t, agents); got != prefix+"\nKeep exact personal suffix\nFurther independent instructions\n" {
-		t.Fatal("migration uninstall changed original prefix or personal suffix")
-	}
-}
-
-func TestInstallerLegacyAdoptionRecoveryRestoresDirectory(t *testing.T) {
-	for _, label := range []string{"after-legacy", "after-global", "after-state"} {
-		t.Run(label, func(t *testing.T) {
-			f := newInstallerFixture(t)
-			legacy := filepath.Join(f.paths.Home, ".codex", "skills", "typesafe-ai")
-			installerCopyTree(t, filepath.Join(f.paths.Source, text(object(f.manifest["registrations"])["typesafe-ai"])), legacy)
-			before := installerSnapshot(t, f.paths.Home)
-			i := f.installer(true)
-			i.TypeSafeLegacy = new("")
-			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
-			_, err := i.Setup(false)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
-				t.Fatalf("legacy setup at %s: %v", label, err)
-			}
-			f.execute(t, "recover")
-			installerUnchanged(t, f.paths.Home, before)
-			if f.execute(t, "status")["installed"] != false {
-				t.Fatal("adoption recovery retained installation ownership")
-			}
-		})
-	}
-}
-
-func TestInstallerNativeMacOSAliasMigration(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("requires native macOS maintained /tmp alias")
-	}
-	t.Setenv("TMPDIR", "/tmp")
-	if Normalize("/tmp") != "/private/tmp" {
-		t.Fatal("native macOS /tmp alias is unavailable; migration must execute")
-	}
-	f := newInstallerFixture(t)
-	prior := filepath.Join(f.base, "prior suite")
-	installerCopyTree(t, f.paths.Source, prior)
-	name := keys(object(f.manifest["registrations"]))[0]
-	raw := filepath.Join(prior, text(object(f.manifest["registrations"])[name]))
-	if Normalize(raw) == raw {
-		t.Fatal("temporary fixture did not traverse the native macOS alias")
-	}
-	path := filepath.Join(f.paths.Home, ".agents", "skills", name)
-	if err := os.Symlink(raw, path); err != nil {
-		t.Fatal(err)
-	}
-	i := f.installer(true)
-	i.MigrateFrom = prior
-	if _, err := i.Setup(false); err != nil {
-		t.Fatal(err)
-	}
-	f.execute(t, "uninstall")
-	if got, err := os.Readlink(path); err != nil || got != raw {
-		t.Fatalf("original macOS alias target = %q, want %q: %v", got, raw, err)
-	}
 }
 
 func TestInstallerPythonV1SealGolden(t *testing.T) {

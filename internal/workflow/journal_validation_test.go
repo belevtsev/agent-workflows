@@ -141,8 +141,6 @@ func TestInstallerRejectsResealedMalformedStateBeforeAnyMutation(t *testing.T) {
 		"unknown global origin": func(state Object) { state["global_origin"] = Object{"kind": "unsupported"} },
 		"false model metadata":  func(state Object) { state["model_config"] = false },
 		"null model metadata":   func(state Object) { state["model_config"] = nil },
-		"false alias metadata":  func(state Object) { state["command_alias"] = false },
-		"null alias metadata":   func(state Object) { state["command_alias"] = nil },
 		"nonarray history":      func(state Object) { state["history"] = Object{} },
 		"malformed history":     func(state Object) { state["history"] = []any{false} },
 	}

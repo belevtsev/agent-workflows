@@ -17,11 +17,9 @@ func (i *Installer) perform(op Object) error {
 	if err := i.registrationAdditionCheck([]Object{op}); err != nil {
 		return err
 	}
-	for _, field := range []string{"path", "destination"} {
-		if candidate := text(op[field]); candidate != "" {
-			if err := realDirectory(filepath.Dir(candidate), false); err != nil {
-				return err
-			}
+	if path != "" {
+		if err := realDirectory(filepath.Dir(path), false); err != nil {
+			return err
 		}
 	}
 	switch op["kind"] {
@@ -40,15 +38,6 @@ func (i *Installer) perform(op Object) error {
 		if err := i.validateManagerPath(op); err != nil {
 			return err
 		}
-	case "command_alias":
-		data, mode, remove, e := AliasRender(op, i.Paths)
-		if e != nil {
-			return e
-		}
-		if remove {
-			return writeObservation(path, Object{"kind": "absent"})
-		}
-		return atomicWrite(path, data, mode)
 	case "model_config":
 		if e := realDirectory(filepath.Dir(path), false); e != nil {
 			return e
@@ -73,32 +62,6 @@ func (i *Installer) perform(op Object) error {
 			return writeObservation(path, Object{"kind": "absent"})
 		}
 		return atomicWrite(path, data, mode)
-	case "rename":
-		destination := text(op["destination"])
-		left, e := observe(path)
-		if e != nil {
-			return e
-		}
-		right, e := observe(destination)
-		if e != nil {
-			return e
-		}
-		if !equal(left, op["observation"]) || right["kind"] != "absent" {
-			return errors.New("legacy adoption ownership changed")
-		}
-		if e = realDirectory(filepath.Dir(destination), true); e != nil {
-			return e
-		}
-		if e = realDirectory(filepath.Dir(path), false); e != nil {
-			return e
-		}
-		if e = os.Rename(path, destination); e != nil {
-			return e
-		}
-		if e = syncDir(filepath.Dir(path)); e != nil {
-			return e
-		}
-		return syncDir(filepath.Dir(destination))
 	}
 	current, e := observe(path)
 	if e != nil {
@@ -116,20 +79,19 @@ func (i *Installer) transact(command string, ops []Object) error {
 	if err := i.registrationAdditionCheck(ops); err != nil {
 		return err
 	}
-	version := i.transactionVersion(ops)
-	j := Object{"version": version, "command": command, "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "operations": ops}
-	if version == 2 {
-		var operations []any
-		for _, op := range ops {
-			operations = append(operations, op)
-		}
-		if err := i.validateMutationPaths(operations, "operations"); err != nil {
-			return err
-		}
-		identity, err := i.recoveryRuntimeFor(ops)
-		if err != nil {
-			return err
-		}
+	j := Object{"version": 2, "command": command, "home": i.Home, "codex_home": i.Codex, "state_dir": i.State, "operations": ops}
+	var operations []any
+	for _, op := range ops {
+		operations = append(operations, op)
+	}
+	if err := i.validateMutationPaths(operations, "operations"); err != nil {
+		return err
+	}
+	identity, found, err := i.recoveryRuntimeFor(ops)
+	if err != nil {
+		return err
+	}
+	if found {
 		j["recovery_runtime"] = asObject(identity)
 	}
 	if e := atomicWrite(i.journalPath, legacyJSON(seal(j)), 0600); e != nil {
@@ -162,20 +124,17 @@ func (i *Installer) loadJournal() (Object, error) {
 	if e = decodeJournal(j); e != nil {
 		return nil, e
 	}
-	if (integer(j["version"]) != 1 && integer(j["version"]) != 2) || j["home"] != i.Home || j["codex_home"] != i.Codex || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
+	if integer(j["version"]) != 2 || j["home"] != i.Home || j["codex_home"] != i.Codex || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
 		return nil, errors.New("corrupt journal or roots do not match")
 	}
-	if integer(j["version"]) == 2 {
+	if raw, present := j["recovery_runtime"]; present {
 		var identity RuntimeIdentity
-		if err := json.Unmarshal(legacyJSON(j["recovery_runtime"]), &identity, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(legacyJSON(raw), &identity, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
 		if e = i.verifyRecoveryRuntime(identity); e != nil {
 			return nil, e
 		}
-	}
-	if e = i.verifySharedConfigJournalRuntime(j); e != nil {
-		return nil, e
 	}
 	if recovery, present := j["recovery_operations"]; present {
 		if _, ok := recovery.([]any); !ok {
@@ -183,25 +142,8 @@ func (i *Installer) loadJournal() (Object, error) {
 		}
 	}
 	for _, field := range []string{"operations", "recovery_operations"} {
-		if integer(j["version"]) == 2 {
-			if e = i.validateMutationPaths(sequence(j[field]), field); e != nil {
-				return nil, e
-			}
-			continue
-		}
-		paths := make(map[string]bool)
-		for _, raw := range sequence(j[field]) {
-			op := object(raw)
-			for _, key := range []string{"path", "destination"} {
-				path := text(op[key])
-				if path == "" {
-					continue
-				}
-				if paths[path] {
-					return nil, fmt.Errorf("duplicate mutation path in %s", field)
-				}
-				paths[path] = true
-			}
+		if e = i.validateMutationPaths(sequence(j[field]), field); e != nil {
+			return nil, e
 		}
 	}
 	all := append(append([]any{}, sequence(j["operations"])...), sequence(j["recovery_operations"])...)
@@ -211,15 +153,8 @@ func (i *Installer) loadJournal() (Object, error) {
 		if path == "" || Normalize(path) != path {
 			return nil, errors.New("unsafe journal path")
 		}
-		for _, field := range []string{"path", "destination"} {
-			if candidate := text(op[field]); candidate != "" {
-				if Normalize(candidate) != candidate {
-					return nil, errors.New("unsafe journal destination")
-				}
-				if e = realDirectory(filepath.Dir(candidate), false); e != nil {
-					return nil, e
-				}
-			}
+		if e = realDirectory(filepath.Dir(path), false); e != nil {
+			return nil, e
 		}
 		kind := text(op["kind"])
 		if (kind == "global" || kind == "global_recovery") && path != i.agents {
@@ -230,9 +165,6 @@ func (i *Installer) loadJournal() (Object, error) {
 		}
 		switch kind {
 		case "personal_skill":
-			if integer(j["version"]) != 2 {
-				return nil, errors.New("personal adoption requires version-two journal")
-			}
 			if _, e = i.validatePersonalOperation(op); e != nil {
 				return nil, e
 			}
@@ -263,38 +195,16 @@ func (i *Installer) loadJournal() (Object, error) {
 				return nil, e
 			}
 			continue
-		case "command_alias":
-			if e = AliasValidateOperation(op, i.Paths); e != nil {
-				return nil, e
-			}
-			continue
-		case "rename":
-			if !aliasFields(op, "kind", "path", "destination", "observation", "label") {
-				return nil, errors.New("invalid rename journal fields")
-			}
-			if e = validateObservation(object(op["observation"]), true); e != nil {
-				return nil, e
-			}
-			if object(op["observation"])["kind"] != "directory" {
-				return nil, errors.New("legacy rename requires a directory")
-			}
-			a := filepath.Join(i.State, "backups", "typesafe-ai")
-			b := filepath.Join(i.Home, ".codex", "skills", "typesafe-ai")
-			destination := text(op["destination"])
-			if !((path == a && destination == b) || (path == b && destination == a)) {
-				return nil, errors.New("unsafe rename in journal")
-			}
-			continue
 		case "path":
-			if !aliasFields(op, "kind", "path", "before", "after", "label") {
+			if !exactFields(op, "kind", "path", "before", "after", "label") {
 				return nil, errors.New("invalid path journal fields")
 			}
 		case "global":
-			if !aliasFields(op, "kind", "path", "before", "after", "before_segment", "after_segment", "before_replacement", "after_replacement", "label") {
+			if !exactFields(op, "kind", "path", "before", "after", "before_segment", "after_segment", "label") {
 				return nil, errors.New("invalid global journal fields")
 			}
 		case "global_recovery":
-			if !aliasFields(op, "kind", "path", "before", "after", "source_segment", "target_segment", "replacement", "restoration", "label") {
+			if !exactFields(op, "kind", "path", "before", "after", "source_segment", "target_segment", "restoration", "label") {
 				return nil, errors.New("invalid global recovery fields")
 			}
 		default:
@@ -355,11 +265,6 @@ func (i *Installer) loadJournal() (Object, error) {
 						return nil, e
 					}
 				}
-				if meta := object(s["command_alias"]); meta != nil {
-					if e = AliasValidateMetadata(meta, i.Paths); e != nil {
-						return nil, e
-					}
-				}
 				if _, _, e = i.release(text(s["release"])); e != nil {
 					return nil, e
 				}
@@ -392,40 +297,25 @@ func (i *Installer) restoreRemovedGlobal(op, current Object) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	replacement, e := decode(op["after_replacement"])
+	original, e := decode(object(op["before"])["data"])
 	if e != nil {
 		return nil, e
 	}
-	if len(replacement) > 0 {
-		if bytes.Count(contents, replacement) != 1 {
-			return nil, errors.New("restored legacy prefix changed; refusing recovery")
-		}
-		pos := bytes.Index(contents, replacement)
-		if pos > 0 && contents[pos-1] != '\n' && !bytes.HasPrefix(segment, []byte("\n")) {
-			return nil, errors.New("legacy prefix no longer starts on a valid line")
-		}
-		contents = bytes.Replace(contents, replacement, segment, 1)
-	} else {
-		original, e := decode(object(op["before"])["data"])
-		if e != nil {
-			return nil, e
-		}
-		start, _, e := locateBlock(original)
-		if e != nil {
-			return nil, e
-		}
-		leading := len(segment) - len(bytes.TrimLeft(segment, "\n"))
-		if start < leading {
-			return nil, errors.New("invalid global segment")
-		}
-		prefix := original[:start-leading]
-		pos := 0
-		if bytes.HasPrefix(contents, prefix) {
-			pos = len(prefix)
-		}
-		out := append(bytes.Clone(contents[:pos]), segment...)
-		contents = append(out, contents[pos:]...)
+	start, _, e := locateBlock(original)
+	if e != nil {
+		return nil, e
 	}
+	leading := len(segment) - len(bytes.TrimLeft(segment, "\n"))
+	if start < leading {
+		return nil, errors.New("invalid global segment")
+	}
+	prefix := original[:start-leading]
+	pos := 0
+	if bytes.HasPrefix(contents, prefix) {
+		pos = len(prefix)
+	}
+	out := append(bytes.Clone(contents[:pos]), segment...)
+	contents = append(out, contents[pos:]...)
 	mode := current["mode"]
 	if mode == nil {
 		mode = object(op["before"])["mode"]
@@ -460,15 +350,6 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 				reversals = append(reversals, change)
 			}
 			continue
-		case "command_alias":
-			rev, e := AliasReversal(op, i.Paths)
-			if e != nil {
-				return nil, e
-			}
-			if rev != nil {
-				reversals = append(reversals, rev)
-			}
-			continue
 		case "model_config":
 			rev, e := ModelReversal(path, op)
 			if e != nil {
@@ -487,23 +368,6 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 				reversals = append(reversals, rev)
 			}
 			continue
-		case "rename":
-			left, e := observe(path)
-			if e != nil {
-				return nil, e
-			}
-			right, e := observe(text(op["destination"]))
-			if e != nil {
-				return nil, e
-			}
-			if equal(left, op["observation"]) && right["kind"] == "absent" {
-				continue
-			}
-			if left["kind"] == "absent" && equal(right, op["observation"]) {
-				reversals = append(reversals, Object{"kind": "rename", "path": op["destination"], "destination": path, "observation": op["observation"], "label": "recover-legacy"})
-				continue
-			}
-			return nil, errors.New("legacy paths changed; recovery refuses overwrite")
 		}
 		current, e := observe(path)
 		if e != nil {
@@ -537,7 +401,6 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 			rev["kind"] = "global_recovery"
 			rev["source_segment"] = nil
 			rev["target_segment"] = op["before_segment"]
-			rev["replacement"] = op["after_replacement"]
 			rev["restoration"] = op
 			reversals = append(reversals, rev)
 			continue
@@ -554,18 +417,11 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 					return nil, e
 				}
 			}
-			replacement := beforeSegment
-			if replacement == nil {
-				replacement, e = decode(op["before_replacement"])
-				if e != nil {
-					return nil, e
-				}
-			}
 			contents, e := decode(current["data"])
 			if e != nil {
 				return nil, e
 			}
-			restored, e := replaceOwned(contents, afterSegment, replacement)
+			restored, e := replaceOwned(contents, afterSegment, beforeSegment)
 			if e != nil {
 				if beforeSegment != nil {
 					if _, beforeErr := replaceOwned(contents, beforeSegment, nil); beforeErr == nil {
@@ -586,7 +442,6 @@ func (i *Installer) recoveryPlan(j Object) ([]Object, error) {
 			rev["kind"] = "global_recovery"
 			rev["source_segment"] = op["after_segment"]
 			rev["target_segment"] = op["before_segment"]
-			rev["replacement"] = encode(replacement)
 			rev["restoration"] = op
 			reversals = append(reversals, rev)
 		} else if equal(current, op["after"]) {
@@ -623,15 +478,6 @@ func (i *Installer) pendingRecovery(j Object) ([]Object, error) {
 			change, err := i.profilePending(op)
 			if err != nil {
 				return nil, err
-			}
-			if change != nil {
-				pending = append(pending, change)
-			}
-			continue
-		case "command_alias":
-			change, e := AliasPending(op, i.Paths)
-			if e != nil {
-				return nil, e
 			}
 			if change != nil {
 				pending = append(pending, change)
@@ -695,14 +541,7 @@ func (i *Installer) pendingRecovery(j Object) ([]Object, error) {
 				if source == nil {
 					return nil, errors.New("owned block changed during interrupted recovery")
 				}
-				replacement := target
-				if replacement == nil {
-					replacement, e = decode(op["replacement"])
-					if e != nil {
-						return nil, e
-					}
-				}
-				result, e := replaceOwned(contents, source, replacement)
+				result, e := replaceOwned(contents, source, target)
 				if e != nil {
 					return nil, e
 				}
@@ -724,16 +563,6 @@ func (i *Installer) pendingRecovery(j Object) ([]Object, error) {
 			change["before"] = current
 			change["after"] = after
 			pending = append(pending, change)
-		case "rename":
-			destination, e := observe(text(op["destination"]))
-			if e != nil {
-				return nil, e
-			}
-			if equal(current, op["observation"]) && destination["kind"] == "absent" {
-				pending = append(pending, op)
-			} else if current["kind"] != "absent" || !equal(destination, op["observation"]) {
-				return nil, errors.New("ownership changed during interrupted legacy recovery")
-			}
 		default:
 			if equal(current, op["before"]) {
 				pending = append(pending, op)

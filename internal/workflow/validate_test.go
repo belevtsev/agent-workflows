@@ -24,14 +24,15 @@ func newSuiteFixture(t *testing.T) *suiteFixture {
 	fixture := &suiteFixture{
 		root: t.TempDir(),
 		manifest: Object{
-			"version":             1,
+			"version":             3,
 			"registrations":       Object{"example": "skills/example", "task-orchestration": "skills/task-orchestration"},
 			"global_instructions": "global/AGENTS.md", "required_licenses": []any{"LICENSE"},
-			"model_policy": "skills/task-orchestration/model-policy.yaml",
+			"model_policy": "skills/task-orchestration/model-policy.yaml", "adoption_catalog": personalCatalogName,
 		},
 	}
 	fixture.write(t, "global/AGENTS.md", "# Working conventions\n\nUse source evidence.\n")
 	fixture.write(t, "LICENSE", "Fixture permission notice.\n")
+	fixture.write(t, personalCatalogName, `{"skills":{},"version":1}`)
 	fixture.skill(t, "skills/example", "example", "")
 	fixture.skill(t, "skills/task-orchestration", "task-orchestration", "")
 	for _, name := range []string{"model-policy.yaml", "references/jev-questions.json"} {
@@ -116,7 +117,7 @@ func TestValidateSuiteReportAndDefaultsWithoutWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report["version"] != 1 || report["skill_count"] != 2 || report["markdown_files_checked"] != 3 || report["required_licenses"] != 1 {
+	if report["version"] != 3 || report["skill_count"] != 2 || report["markdown_files_checked"] != 3 || report["required_licenses"] != 1 {
 		t.Fatalf("unexpected report: %#v", report)
 	}
 	if !reflect.DeepEqual(report["registrations"], fixture.manifest["registrations"]) {
@@ -208,7 +209,7 @@ func TestValidateManifestRejectsUnsafeInputs(t *testing.T) {
 	}{
 		{"boolean version", func(t *testing.T, f *suiteFixture) { f.manifest["version"] = true; f.writeManifest(t) }, "manifest version"},
 		{"fractional version", func(t *testing.T, f *suiteFixture) {
-			f.write(t, "skills-manifest.json", strings.ReplaceAll(string(mustSuiteJSON(t, f.manifest)), `"version":1`, `"version":1.0`))
+			f.write(t, "skills-manifest.json", strings.ReplaceAll(string(mustSuiteJSON(t, f.manifest)), `"version":3`, `"version":3.0`))
 		}, "manifest version"},
 		{"duplicate key", func(t *testing.T, f *suiteFixture) { f.write(t, "skills-manifest.json", `{"version":1,"version":1}`) }, "duplicate mapping key"},
 		{"extra field", func(t *testing.T, f *suiteFixture) { f.manifest["unexpected"] = "fixture-secret"; f.writeManifest(t) }, "invalid fields"},

@@ -289,7 +289,7 @@ func TestPrepareMissingReleaseAndCompilerDoesNotPublish(t *testing.T) {
 	}
 }
 
-func TestPrepareSupportedOptionalAdviserManager(t *testing.T) {
+func TestPrepareSupportedManager(t *testing.T) {
 	for _, origin := range []string{"cached", "released", "built"} {
 		t.Run(origin, func(t *testing.T) {
 			root := realTemp(t)
@@ -335,13 +335,9 @@ func TestPrepareSupportedOptionalAdviserManager(t *testing.T) {
 			if err != nil || candidate.Path != destination || candidate.Revision != fixtureSHA {
 				t.Fatalf("supported manager acquisition: %+v %v", candidate, err)
 			}
-			output, err := exec.CommandContext(t.Context(), candidate.Path, "--openai-decisions-capability").Output()
-			if err != nil || string(output) != "cw-openai-decisions-v1\n" {
-				t.Fatalf("acquired manager lost optional adviser support: %q %v", output, err)
-			}
-			output, err = exec.CommandContext(t.Context(), candidate.Path, "--three-adviser-capability").Output()
-			if err != nil || string(output) != "cw-three-adviser-v1\n" {
-				t.Fatalf("acquired manager lost required three-adviser support: %q %v", output, err)
+			output, err := exec.CommandContext(t.Context(), candidate.Path, "--manager-protocol").Output()
+			if err != nil || string(output) != "cw-manager-v7\n" {
+				t.Fatalf("acquired manager lost its protocol: %q %v", output, err)
 			}
 			if (origin == "cached" && requests.Load() != 0) || (origin != "cached" && requests.Load() == 0) || (origin == "built" && builds != 1) || (origin != "built" && builds != 0) {
 				t.Fatalf("unexpected supported acquisition requests=%d builds=%d", requests.Load(), builds)
@@ -386,12 +382,9 @@ func TestResolveInstalledLocatorThroughNativeLink(t *testing.T) {
 	if err := os.Symlink(filepath.Join(runtimeRoot, "current", "cw"), link); err != nil {
 		t.Fatal(err)
 	}
-	locator := Locator{Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
-	data, err := json.Marshal(locator)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = os.WriteFile(filepath.Join(runtimeRoot, "locator.json"), data, 0600); err != nil {
+	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
+	data := sealedLocatorFixture(t, &locator)
+	if err := os.WriteFile(filepath.Join(runtimeRoot, "locator.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Resolve(link)
@@ -402,7 +395,7 @@ func TestResolveInstalledLocatorThroughNativeLink(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 	locator.State = filepath.Join(root, "different")
-	data, _ = json.Marshal(locator)
+	data = sealedLocatorFixture(t, &locator)
 	if err = os.WriteFile(filepath.Join(runtimeRoot, "locator.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -548,13 +541,10 @@ func TestResolveImmutableReleaseLocatorAfterActiveLocatorRemoved(t *testing.T) {
 	}
 	binary := filepath.Join(releaseRoot, "cw")
 	writeFixture(t, binary, managerScript(true), 0755)
-	locator := Locator{Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
-	data, err := json.Marshal(locator)
-	if err != nil {
-		t.Fatal(err)
-	}
+	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
+	data := sealedLocatorFixture(t, &locator)
 	releaseLocator := filepath.Join(releaseRoot, "locator.json")
-	if err = os.WriteFile(releaseLocator, data, 0600); err != nil {
+	if err := os.WriteFile(releaseLocator, data, 0600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Resolve(binary)
@@ -580,60 +570,31 @@ func TestResolveImmutableReleaseLocatorAfterActiveLocatorRemoved(t *testing.T) {
 	}
 }
 
-func TestResolveLocatorCommandPathCompatibility(t *testing.T) {
-	root := realTemp(t)
-	runtimeRoot := filepath.Join(root, "runtime")
-	releaseRoot := filepath.Join(runtimeRoot, "releases", fixtureSHA)
-	if err := os.MkdirAll(releaseRoot, 0755); err != nil {
-		t.Fatal(err)
-	}
-	binary := filepath.Join(releaseRoot, "cw")
-	writeFixture(t, binary, managerScript(true), 0755)
-	legacy := Locator{Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root}
-	data, err := json.Marshal(legacy)
+// sealedLocatorFixture seals a locator with the fixture encoding pinned by
+// TestResolveSealedV2LocatorAndRejectChangedRoots.
+func sealedLocatorFixture(t *testing.T, locator *Locator) []byte {
+	t.Helper()
+	locator.Integrity = ""
+	unsigned, err := json.Marshal(*locator)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "command_path") {
-		t.Fatal("legacy locator encoding added an absent field")
+	var fields map[string]any
+	if err = json.Unmarshal(unsigned, &fields); err != nil {
+		t.Fatal(err)
 	}
-	for _, descriptor := range []string{filepath.Join(runtimeRoot, "locator.json"), filepath.Join(releaseRoot, "locator.json")} {
-		t.Run(filepath.Base(filepath.Dir(descriptor)), func(t *testing.T) {
-			for _, test := range []struct {
-				name  string
-				field string
-			}{
-				{name: "legacy"},
-				{name: "selected command", field: fmt.Sprintf(`,"command_path":%q`, filepath.Join(root, ".local", "bin", "cw"))},
-				{name: "other home", field: `,"command_path":"/another/home/.local/bin/cw"`},
-				{name: "empty", field: `,"command_path":""`},
-				{name: "null", field: `,"command_path":null`},
-			} {
-				t.Run(test.name, func(t *testing.T) {
-					record := strings.TrimSuffix(string(data), "}") + test.field + "}"
-					writeFixture(t, descriptor, record, 0600)
-					got, err := Resolve(binary)
-					if test.name == "legacy" || test.name == "selected command" {
-						if err != nil {
-							t.Fatal(err)
-						}
-						want := legacy
-						if test.field != "" {
-							want.CommandPath = filepath.Join(root, ".local", "bin", "cw")
-						}
-						if got != want {
-							t.Fatalf("locator changed: got %+v want %+v", got, want)
-						}
-					} else if err == nil {
-						t.Fatal("invalid command path accepted")
-					}
-				})
-			}
-			if err := os.Remove(descriptor); err != nil {
-				t.Fatal(err)
-			}
-		})
+	delete(fields, "integrity_sha256")
+	canonical, err := json.Marshal(fields, json.Deterministic(true), jsontext.WithIndent("  "), jsontext.EscapeForHTML(false), jsontext.EscapeForJS(false))
+	if err != nil {
+		t.Fatal(err)
 	}
+	sum := sha256.Sum256(append(canonical, '\n'))
+	locator.Integrity = hex.EncodeToString(sum[:])
+	sealed, err := json.Marshal(*locator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sealed
 }
 
 func TestResolveSealedV2LocatorAndRejectChangedRoots(t *testing.T) {
@@ -675,6 +636,7 @@ func TestResolveSealedV2LocatorAndRejectChangedRoots(t *testing.T) {
 			strings.Replace(string(valid), `,"version":2`, "", 1),
 			strings.Replace(string(valid), `"source":`, `"unknown":`, 1),
 			strings.Replace(string(valid), "source é 🔒", "other source", 1),
+			strings.Replace(string(valid), filepath.Join(root, ".local", "bin", "cw"), "/another/home/.local/bin/cw", 1),
 		} {
 			writeFixture(t, descriptor, changed, 0600)
 			if _, err := Resolve(binary); err == nil {

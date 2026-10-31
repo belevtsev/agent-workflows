@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "registrations": {
     "cc-skills-golang": "third_party/cc-skills-golang",
     "db-postgres": "third_party/db-postgres",
