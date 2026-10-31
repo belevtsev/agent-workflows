@@ -1,0 +1,9 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [],
+  "responses": {},
+  "exit": 2,
+  "stdout": "Decision consultation unavailable; Codex decision pending\n",
+  "stderr": ""
+}

@@ -45,22 +45,23 @@ internal/devcheck/testdata/backend-skills; give evaluators raw inputs without th
 expected decisions. Model evaluations and fresh discovery are separate from native
 test assertions; CI does not call hosted models or receive service credentials.
 
-The task-orchestration consultation helper has an optional resource test, run
-from skills/task-orchestration/scripts with Python and PyYAML available:
+`cw consult` lives in internal/consult. Its tests use local HTTP servers and synthetic
+records to check three-adviser requests, deadlines, partial failures, and
+evidence-bound finalization without service keys:
 
 ```sh
-python3 -B -m unittest -v test_validate_policy test_consult_decisions test_consult_openai test_evaluate_multilingual
+GOWORK=off go test ./internal/consult
 ```
 
-The helper tests use synthetic transports and records to check three-adviser requests,
-deadlines, partial failures, and evidence-bound finalization without service keys.
-This skill helper check is separate from native manager verification. Native CI
-remains Go-only and does not gain a Python dependency.
+internal/consult/testdata holds goldens captured from the original helpers, covering
+records, wire requests, digests and validation messages. They freeze the
+retained-record contract, so a change there is a compatibility change: new behavior
+needs new goldens rather than edits to these. Keep historical record versions readable.
 
-The multilingual corpus and runner are managed skill resources. Their offline
-tests check complete translations, withheld expected answers, deterministic
-scoring and safe bounded execution using synthetic transports. Run the explicit
-hosted evaluation separately, following the
+The multilingual corpus is a managed skill resource, and `cwdev eval multilingual`
+is its runner. Offline tests check complete translations, withheld expected answers,
+deterministic scoring and safe bounded execution using synthetic transports. Run the
+explicit hosted evaluation separately, following the
 [evaluation guide](../skills/task-orchestration/references/consultation-helper.md#multilingual-evaluation).
 Keep its reports outside source and immutable releases, freeze corpus/oracle hashes
 before requests, and retain incorrect or unavailable results without automatic
@@ -88,10 +89,10 @@ apply to new tasks; small and unchanged read-only tasks keep their existing path
 Use project-neutral fixtures, including a non-Go project, for API and CLI coverage.
 Worker records remain separate from sealed installer formats and adviser records.
 
-The optional Graphify runner has a separate resource test:
+`cw graphify` lives in internal/graphify:
 
 ```sh
-python3.14 -B -m unittest discover -s skills/graphify/scripts -p 'test_*.py' -v
+GOWORK=off go test ./internal/graphify
 ```
 
 Its synthetic repositories and fake local runtime verify tracked-source scope,

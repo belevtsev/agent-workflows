@@ -20,7 +20,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := cli.Execute(ctx, os.Args[1:], cli.Config{Version: version, Revision: revision, BuiltAt: builtAt, ReleaseIdentity: releaseIdentity, In: os.Stdin, Out: os.Stdout, Err: os.Stderr}); err != nil {
-		fmt.Fprintln(os.Stderr, "agent-workflows:", err)
+		// A command that already reported its own result carries no message.
+		if err.Error() != "" {
+			fmt.Fprintln(os.Stderr, "agent-workflows:", err)
+		}
 		os.Exit(cli.ExitCode(err))
 	}
 }

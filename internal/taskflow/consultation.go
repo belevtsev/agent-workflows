@@ -128,10 +128,11 @@ func validDescription(data jsontext.Value) bool {
 	}
 }
 
-// pythonCanonical matches the helper's json.dumps(sort_keys=True,
-// separators=(",", ":"), ensure_ascii=True). Retained helper records already
-// contain Python's normalized numeric representation, which is preserved here.
-func pythonCanonical(data []byte) ([]byte, error) {
+// canonicalJSON is the form request_sha256 covers: sorted keys, no insignificant
+// whitespace, and every character outside printable ASCII \u-escaped. Records
+// written by cw consult already hold normalized numbers, so their spelling is
+// preserved here rather than reparsed.
+func canonicalJSON(data []byte) ([]byte, error) {
 	decoder := json1.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	var value any
@@ -364,8 +365,8 @@ func validateProvider(name string, provider Provider, request SharedRequest, req
 	if err := validateUsage(provider.Result.Usage, openai); err != nil {
 		return err
 	}
-	a, _ := pythonCanonical(provider.Usage)
-	b, _ := pythonCanonical(provider.Result.Usage)
+	a, _ := canonicalJSON(provider.Usage)
+	b, _ := canonicalJSON(provider.Result.Usage)
 	if !bytes.Equal(a, b) {
 		return errors.New("provider usage differs from retained result")
 	}
@@ -460,7 +461,7 @@ func ValidateConsultation(data []byte, expected Context) (Consultation, error) {
 			}
 		}
 	}
-	canonical, err := pythonCanonical(record.Request)
+	canonical, err := canonicalJSON(record.Request)
 	if err != nil || digest(canonical) != record.RequestSHA256 {
 		return record, errors.New("shared consultation request fingerprint differs")
 	}

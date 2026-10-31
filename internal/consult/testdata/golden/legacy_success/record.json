@@ -1,0 +1,96 @@
+{
+  "request": {
+    "model": "jev-1.14.0",
+    "state": {
+      "z": [
+        1.5,
+        100.0,
+        -0.0,
+        0,
+        1e-07,
+        1e+22,
+        0.1,
+        123456789012345678901234567890,
+        1.7976931348623157e+308,
+        5e-324,
+        1e+16,
+        1000000000000000.0,
+        0.0001,
+        1e-05,
+        100.0,
+        1.0,
+        true,
+        false,
+        null,
+        [],
+        {}
+      ],
+      "a": "Ukr: \u041f\u0440\u0438\u0432\u0456\u0442 \u2014 emoji \ud83d\ude00 \ud83d\ude00 quote \" back \\ nl \n tab \t ctrl \u0001 \b \f \r del \u007f nbsp \u00a0 slash / \u0000",
+      "\u00e9": {
+        "b": 1,
+        "a": 2,
+        "\u0451": 3,
+        "Z": 4,
+        "\ud835\udcb3": 5
+      },
+      "": "empty key"
+    },
+    "questions": {
+      "zeta": {
+        "criteria": {
+          "supported": "\u0422\u0430\u043a \u2014 \u0434\u043e\u0432\u0435\u0434\u0435\u043d\u043e",
+          "contradicted": "Nein",
+          "insufficient_evidence": "\ud83d\ude00 unknown"
+        },
+        "instructions": "  Inspect state.\n\"Quote\" \\ back \t tab  ",
+        "type": "choice"
+      },
+      "alpha": {
+        "type": "choice",
+        "instructions": "Second question",
+        "criteria": {
+          "contradicted": "c",
+          "supported": "s",
+          "insufficient_evidence": "i"
+        }
+      }
+    }
+  },
+  "requested_model": "jev-1.14.0",
+  "status": "success",
+  "resolved_model": "jev-1.14.0",
+  "result": {
+    "model": "jev-1.14.0",
+    "answers": {
+      "zeta": {
+        "type": "choice",
+        "choice": "supported",
+        "probabilities": {
+          "supported": 1,
+          "contradicted": 0,
+          "insufficient_evidence": 0
+        },
+        "confidence": 1
+      },
+      "alpha": {
+        "type": "choice",
+        "choice": "supported",
+        "probabilities": {
+          "contradicted": 0,
+          "supported": 1,
+          "insufficient_evidence": 0
+        },
+        "confidence": 1
+      }
+    },
+    "usage": {
+      "input_tokens": 20,
+      "output_tokens": 3
+    }
+  },
+  "usage": {
+    "input_tokens": 20,
+    "output_tokens": 3
+  },
+  "duration_seconds": 0.0
+}

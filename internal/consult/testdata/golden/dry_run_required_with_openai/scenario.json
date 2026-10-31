@@ -1,0 +1,12 @@
+{
+  "policy": "required",
+  "flags": [
+    "--dry-run",
+    "--with-openai"
+  ],
+  "credentials": [],
+  "responses": {},
+  "exit": 0,
+  "stdout": "Decision consultation dry_run; Codex decision pending\n",
+  "stderr": ""
+}

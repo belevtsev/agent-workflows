@@ -1,0 +1,5 @@
+{
+  "exit": 1,
+  "stdout": "",
+  "stderr": "Decision consultation validation failed: decision must explain each rejected provider judgment\n"
+}

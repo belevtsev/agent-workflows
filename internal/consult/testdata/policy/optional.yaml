@@ -1,0 +1,100 @@
+version: 2
+
+# Read this file for each substantial task. It guides the coordinator; Codex
+# does not load these settings natively or switch a running session's model.
+# Authorized model/effort and role edits are validated against supported settings
+# and scope relationships. Consultation and publication safeguards stay mandatory.
+activation:
+  any_of:
+    - independent_workstreams
+    - cross_component_change
+    - consequential_uncertainty
+  bypass: small_edits_and_direct_factual_answers
+
+profiles:
+  sol:
+    model: gpt-6.1-sol
+    reasoning_effort: max
+    user_requested_efforts: [xhigh, ultra]
+    scope: substantive
+  luna_execution:
+    model: gpt-6-luna
+    reasoning_effort: xhigh
+    user_requested_efforts: []
+    scope: bounded_execution
+  luna:
+    model: gpt-6-luna
+    reasoning_effort: high
+    user_requested_efforts: []
+    scope: bounded_evidence
+
+effort_policy:
+  default_substantive: max
+  max_for_sol: configured_or_explicit_user_request
+  configured_max_profiles: [sol]
+  automatic_escalation: false
+
+effort_guidance:
+  ultra: Available for Sol only on explicit user request; task-directed delegation remains available at other efforts.
+  max: Configured default for substantive Sol work; delegate useful independent assignments according to the task.
+  xhigh: Configured default for bounded routine execution; promote uncertain scope or new consequential claims to substantive ownership.
+  comparison: Compare actual quality, total tokens, and elapsed time for equivalent work; effort labels alone do not establish depth, cost, or savings.
+
+roles:
+  coordinator: sol
+  coding: sol
+  testing: sol
+  planning: sol
+  architecture: sol
+  review: sol
+  diagnosis: sol
+  documentation: sol
+  issue_management: sol
+  pr_authoring: sol
+  pr_authoring_routine: luna_execution
+  commit_execution: luna_execution
+  pr_submission: luna_execution
+  lookup: luna
+  summarization: luna
+
+lookup_boundary: bounded_read_only_evidence_without_consequential_conclusions
+unknown_role_profile: sol
+fixed_specialists:
+  context_explorer:
+    respect_runtime_model: true
+    scope: evidence_gathering_only
+
+fallbacks:
+  luna_unavailable: sol
+  sol_unavailable: compatible_coordinator_or_report_blocker
+  jev_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
+
+# Mandatory for every activated substantial task: consult Jev, Snap and OpenAI before
+# implementation (or substantive drafting/review) and again during final review
+# against completed work and current checks, before completion or publication.
+# These are separate evidence batches; reuse is limited to the same checkpoint.
+# Record bounded attempts, restricted sharing, unavailable providers, and Codex's
+# disposition at each checkpoint. Keep the source-evidence fallback and no retries.
+# Checkpoint timing is skill instruction, not a new native manager policy field.
+consultation:
+  model: jev-1.14.0
+  deadline_seconds: 30
+  attempts_per_evidence_batch: 1
+  automatic_retries: false
+  questions: references/jev-questions.json
+  ownership: task_coordinator
+  reuse: unchanged_evidence_decisions_question_meaning_and_model
+  sharing: minimal_evidence_within_task_authorization
+  providers:
+    jev: jev-1.14.0
+    subq_snap: subq-snap-preview
+  comparison: codex_evidence_and_verification
+  optional_providers:
+    openai_decisions: gpt-6-luna
+
+publication:
+  authority: user_request_and_carried_authorization
+  analysis_output: draft
+  refresh_before_write: true
+  readback_after_write: true
+  uncertain_outcome: reconcile_before_retry

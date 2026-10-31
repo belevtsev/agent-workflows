@@ -1,0 +1,20 @@
+{
+  "jev": {
+    "url": "https://api.typesafe.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-jev-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":[\"list\",\"state\"],\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":{\"policy\":\"keep intact\",\"steps\":[1,2.5]},\"criteria\":{\"supported\":[\"keep\",\"intact\"],\"contradicted\":{\"meaning\":\"no\"}}}}}"
+  },
+  "subq_snap": {
+    "url": "https://api.subq.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-snap-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"subq-snap-preview\",\"state\":[\"list\",\"state\"],\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":{\"policy\":\"keep intact\",\"steps\":[1,2.5]},\"criteria\":{\"supported\":[\"keep\",\"intact\"],\"contradicted\":{\"meaning\":\"no\"}}}}}"
+  }
+}

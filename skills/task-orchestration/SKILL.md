@@ -117,13 +117,13 @@ Refusals are missing coverage for the affected question; preserve other valid
 answers and their rejection obligations. Snap's ID is a public
 preview alias, not an invented immutable version; record the returned model and
 recheck its contract when it changes. Batch independent questions sharing evidence
-and send one request to each provider concurrently within a 30-second batch budget
-covering startup, requests, and result transport. Each worker is bounded by the
-remaining budget; cleanup is bounded afterward, and automatic retries are disabled.
+and send one request to each provider concurrently with `cw consult`, within a
+30-second batch budget covering connections, requests, and complete responses. A
+provider still running at the deadline is cancelled, and automatic retries are disabled.
 Validate response IDs, types, allowed options,
 finite probabilities, distributions, and resolved model independently. Separate
 `TYPESAFE_API_KEY`, `SUBQ_API_KEY`, and `OPENAI_API_KEY` credentials remain outside inputs and records.
-For the helper's request, output, and privacy contract, read
+For its request, output, and privacy contract, read
 [consultation helper](references/consultation-helper.md) before using it.
 
 Codex owns the final decision. Compare all participating judgments against the exact
@@ -133,7 +133,7 @@ what to investigate; invalid or insufficient advice remains an investigation lea
 In the agreed task record retain the conclusion, supporting evidence references and
 verification, reasons for rejecting a judgment, unresolved facts, and provider coverage.
 The helper initializes `final_decision` as `pending`; it never chooses an answer.
-After verification, use its no-network `--adjudicate` mode to validate Codex's
+After verification, use the no-network `cw consult --adjudicate` mode to validate Codex's
 disposition and write a new final record, preserving the original provider record.
 If a required provider is unavailable or refuses a question, continue source work
 and disclose missing coverage. Do not describe a partial consultation as successful
@@ -158,11 +158,10 @@ fork inherits the parent and rejects overrides. Respect fixed specialist models
 and use them only within their evidence role. If overrides are unsupported, use a
 compatible inherited configuration or report the limit. Follow the policy's
 bounded-worker fallback; never silently lower a substantive effort or model family.
-Native `cw validate` and the optional Python policy validator check consistency,
-not runtime availability or automatic dispatch.
-The validator's `resolve_worker(policy, role, requested_effort=None)` returns the
-configured model and effort, applying permitted explicit overrides; inspect the
-role's scope before using that result for dispatch.
+Native `cw validate` checks consistency, not runtime availability or automatic
+dispatch. A role's profile gives its configured model and effort; an explicit user
+request can override that effort only with a value the profile lists in
+`user_requested_efforts`. Inspect the role's scope before using a profile for dispatch.
 
 Split useful independent questions or owned components. Give each worker a
 self-contained brief with exact source revision and inputs, question or owned

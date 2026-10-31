@@ -1,0 +1,24 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [
+    "OPENAI_API_KEY",
+    "SUBQ_API_KEY",
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {
+    "jev": {
+      "repeat": "x",
+      "count": 1048577
+    },
+    "subq_snap": {
+      "body": "{\"model\":\"subq-snap-preview\",\"ans"
+    },
+    "openai_decisions": {
+      "body": "not json"
+    }
+  },
+  "exit": 2,
+  "stdout": "Decision consultation unavailable; Codex decision pending\n",
+  "stderr": ""
+}

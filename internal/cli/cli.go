@@ -62,6 +62,9 @@ func ExitCode(err error) int {
 	if errors.Is(err, context.Canceled) {
 		return 130
 	}
+	if status, ok := errors.AsType[reportedExit](err); ok {
+		return int(status)
+	}
 	if _, ok := errors.AsType[usageError](err); ok {
 		return 2
 	}
@@ -202,6 +205,8 @@ func NewCommand(config Config) *cobra.Command {
 	addDoctorCommand(root, config, o)
 	addTaskCommands(root, config, o)
 	addMetricsCommand(root, config, o)
+	addConsultCommand(root, config)
+	addGraphifyCommands(root, config)
 	// Cobra's help path stays independent of source, state, Git and acquisition.
 	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", RunE: func(_ *cobra.Command, args []string) error {
 		target := root

@@ -290,7 +290,7 @@ func writeConsultation(t *testing.T, context Context, mutate func(*Consultation,
 		mutate(&record, &request)
 	}
 	record.Request = mustJSON(t, request)
-	canonical, err := pythonCanonical(record.Request)
+	canonical, err := canonicalJSON(record.Request)
 	if err != nil {
 		t.Fatal(err)
 	}

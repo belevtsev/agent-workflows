@@ -1,0 +1,23 @@
+{
+  "cases_per_language": 12,
+  "deadline_seconds_per_batch": 30,
+  "fixture_sha256": {
+    "inputs.json": "3e4dcc17662600c81cb5fe90553a519320749fa7d20ee0df55fd797b7ec09c3a",
+    "model-policy.yaml": "ea818ea3f25f45a3cb92b19aaf455213ece873bbd6422ea8c1d996078f8b543a",
+    "oracle.json": "fd1cbeb9cfc166f0b6f33489edd1ea86ff6f6f59f0c8319c978cee27e449055a"
+  },
+  "judgments_per_provider": 36,
+  "languages": [
+    "en",
+    "uk",
+    "de"
+  ],
+  "max_network_requests": 9,
+  "network_requests_made": 0,
+  "requested_models": {
+    "jev": "jev-1.14.0",
+    "openai_decisions": "gpt-6-luna",
+    "subq_snap": "subq-snap-preview"
+  },
+  "status": "offline_validated"
+}

@@ -1,20 +1,11 @@
 # Decision consultation helpers
 
-Read this before using [consult_decisions.py](../scripts/consult_decisions.py).
+Read this before using `cw consult`.
 It validates a prepared Choice-only request, sends the same shared input to Jev,
 SubQ Snap, and OpenAI Decisions concurrently, and records each result independently. All three
 are required at equal standing. It does not dispatch
-workers or decide which judgment is correct. Python and PyYAML are skill dependencies
-separate from the native Go installation manager. Missing dependencies do not justify
-automatic installation.
-
-Select an interpreter that can import `yaml` before calling the helper. If the
-user has provisioned `~/.venvs/codex-decisions/bin/python`, verify it with
-`~/.venvs/codex-decisions/bin/python -B -c 'import yaml'` and use that full path.
-Otherwise check `python3 -B -c 'import yaml'`. A virtual environment activated in
-another terminal does not change Codex's interpreter. If neither works, report
-the missing dependency and the isolated setup recipe in the repository README.
-Keep dependencies outside immutable skill snapshots and pass `-B` on every call.
+workers or decide which judgment is correct. The command is part of the native `cw`
+manager and needs no interpreter or package installation.
 
 ## Required task checkpoints
 
@@ -48,28 +39,22 @@ The helper can validate structure and compare returned choices; it cannot establ
 source truth or discover omitted evidence. Ask for a bounded judgment about the
 prepared evidence rather than code, findings, or explanations.
 
-From the editable checkout with the dependencies already available:
+Preview the request, then send it:
 
 ```sh
-python3 -B skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/preview.json --dry-run
-python3 -B skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/new-record.json
-```
-
-After managed installation, the helper is available through the registered skill
-path. With the provisioned runtime, call it directly without shell activation:
-
-```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/new-record.json
+cw consult --request /path/to/request.json --output /path/to/preview.json --dry-run
+cw consult --request /path/to/request.json --output /path/to/new-record.json
 ```
 
 `--policy /path/to/model-policy.yaml` selects a validated policy instead of the
-helper's adjacent default. `--dry-run` validates the policy and input and writes a
-task record without network access. A real call uses separate `TYPESAFE_API_KEY` and
-`SUBQ_API_KEY` and `OPENAI_API_KEY` environment variables, and one attempt per
-required provider. A 30-second batch
-budget covers process startup, requests, and result transport; each worker is bounded
-by the remaining budget, with bounded cleanup afterward. It neither retries nor
-substitutes another model.
+installed release's. Without it, `cw consult` reads the policy and its questions from
+`current/skills/task-orchestration` in the manager's state directory. `--dry-run`
+validates the policy and input and writes a task record without network access.
+A real call uses separate `TYPESAFE_API_KEY` and `SUBQ_API_KEY` and `OPENAI_API_KEY`
+environment variables, and one attempt per required provider. A 30-second batch
+budget covers connecting, sending, and reading every complete response; a provider
+still running at the deadline is cancelled and recorded as a timeout, and it cannot
+extend the batch. It neither retries nor substitutes another model.
 Missing credentials, malformed responses, timeouts, and safe service failure
 categories are recorded independently, so one provider's failure preserves the
 other's result. Responses are validated for IDs, types, options, finite values,
@@ -166,8 +151,12 @@ Once Codex has done that investigation, write a decision JSON and validate it ag
 the original consultation record:
 
 ```sh
-python3 -B skills/task-orchestration/scripts/consult_decisions.py --adjudicate /path/to/consultation.json --decision /path/to/codex-decision.json --output /path/to/final.json
+cw consult --adjudicate /path/to/consultation.json --decision /path/to/codex-decision.json --output /path/to/final.json
 ```
+
+`cw consult` exits `0` when the consultation is complete or the decision is resolved,
+`2` for partial or unavailable coverage or an unresolved decision, and `1` when input
+is invalid or the output path already exists.
 
 `--adjudicate` and `--request` are mutually exclusive. Adjudication makes no provider
 requests and uses no credentials. It writes a new record, preserving the consultation
@@ -223,11 +212,12 @@ Credentials and authentication are documented in the
 
 ## Multilingual evaluation
 
-[evaluate_multilingual.py](../scripts/evaluate_multilingual.py) provides a small
+`cwdev eval multilingual` provides a small
 synthetic baseline using the current three-adviser policy. It is separate from
 task consultations, skill-discovery evaluations and native manager checks. The
-bundled corpus lives in `evals/multilingual` relative to the skill; resources are
-resolved from the script rather than the current project directory.
+bundled corpus lives in `evals/multilingual` relative to the skill; `cwdev` is a
+maintainer tool that reads it from a source checkout, selected with `--source`
+(by default the current directory).
 
 The twelve neutral case IDs cover durable acknowledgement, tenant isolation,
 cancellation and release identity. Each family has supporting, contradictory and
@@ -241,17 +231,16 @@ definitions are part of each normal Choice request.
 Run offline validation without network access, credential lookup or output files:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/evaluate_multilingual.py
+GOWORK=off go run ./cmd/cwdev eval multilingual
 ```
 
-The installed command is available after normal managed activation of a release
-containing this resource. During development, use the editable checkout's script;
-do not edit installed snapshots. A hosted run requires `--live --output-dir PATH`,
-all three provider credentials in the environment, and a new private directory
-outside source repositories and managed releases:
+Run it from the editable checkout; do not edit installed snapshots. A hosted run
+requires `--live --output-dir PATH`, all three provider credentials in the
+environment, and a new private directory outside source repositories and managed
+releases:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/evaluate_multilingual.py --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01
+GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01
 ```
 
 Freeze the reviewed input and oracle hashes before the first hosted request. Each
@@ -289,9 +278,9 @@ installation, source validation and native CI never invoke the hosted evaluation
 
 ## Legacy Jev-only helper
 
-[consult_jev.py](../scripts/consult_jev.py) remains supported unchanged for existing
+`cw consult jev --request PATH --output PATH` remains supported for existing
 Jev-only integrations. It accepts its existing request contract and uses the legacy
-`consultation.model` policy field. The three-adviser helper uses `consultation.providers`
+`consultation.model` policy field. The three-adviser `cw consult` uses `consultation.providers`
 and `consultation.comparison: codex_evidence_and_verification` while preserving policy
 version 2. Follow the installed TypeSafe guide for other primitives. A Jev-only result
 does not provide three-provider coverage.

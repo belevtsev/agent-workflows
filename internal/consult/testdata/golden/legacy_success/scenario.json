@@ -1,0 +1,15 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {
+    "jev": {
+      "body": "{\"model\": \"jev-1.14.0\", \"answers\": {\"zeta\": {\"type\": \"choice\", \"choice\": \"supported\", \"probabilities\": {\"supported\": 1, \"contradicted\": 0, \"insufficient_evidence\": 0}, \"confidence\": 1}, \"alpha\": {\"type\": \"choice\", \"choice\": \"supported\", \"probabilities\": {\"contradicted\": 0, \"supported\": 1, \"insufficient_evidence\": 0}, \"confidence\": 1}}, \"usage\": {\"input_tokens\": 20, \"output_tokens\": 3, \"cost\": 7}, \"id\": \"resp_1\", \"diagnostic\": \"SECRET_CANARY\"}"
+    }
+  },
+  "exit": 0,
+  "stdout": "Consultation success\n",
+  "stderr": ""
+}

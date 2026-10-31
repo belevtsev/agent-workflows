@@ -1,0 +1,13 @@
+{
+  "policy": "required",
+  "flags": [
+    "--dry-run"
+  ],
+  "credentials": [],
+  "responses": {
+    "jev": {}
+  },
+  "exit": 0,
+  "stdout": "Consultation dry_run\n",
+  "stderr": ""
+}

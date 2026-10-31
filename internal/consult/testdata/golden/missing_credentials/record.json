@@ -1,0 +1,66 @@
+{
+  "version": 3,
+  "status": "unavailable",
+  "request": {
+    "state": {
+      "evidence": "The service acknowledges work only after storing it.",
+      "claim": "Acknowledgement follows storage."
+    },
+    "questions": {
+      "claim": {
+        "type": "choice",
+        "instructions": "Does the evidence support the claim?",
+        "criteria": {
+          "supported": "The evidence establishes the claim.",
+          "contradicted": "The evidence establishes an incompatible claim.",
+          "insufficient_evidence": "A necessary fact is missing."
+        }
+      }
+    }
+  },
+  "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+  "providers": {
+    "jev": {
+      "status": "unavailable",
+      "requested_model": "jev-1.14.0",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "error": {
+        "category": "missing_credential"
+      }
+    },
+    "subq_snap": {
+      "status": "unavailable",
+      "requested_model": "subq-snap-preview",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "error": {
+        "category": "missing_credential"
+      }
+    },
+    "openai_decisions": {
+      "status": "unavailable",
+      "requested_model": "gpt-6-luna",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "error": {
+        "category": "missing_credential"
+      }
+    }
+  },
+  "comparison": {
+    "claim": {
+      "status": "unavailable",
+      "choices": {},
+      "missing": {
+        "jev": "unavailable",
+        "subq_snap": "unavailable",
+        "openai_decisions": "unavailable"
+      }
+    }
+  },
+  "final_decision": {
+    "status": "pending",
+    "questions": {}
+  }
+}

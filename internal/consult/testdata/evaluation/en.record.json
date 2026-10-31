@@ -1,0 +1,715 @@
+{
+  "comparison": {
+    "c01": {
+      "choices": {
+        "jev": "supported",
+        "subq_snap": "supported"
+      },
+      "missing": {
+        "openai_decisions": "refusal"
+      },
+      "status": "partial"
+    },
+    "c02": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted",
+        "subq_snap": "supported"
+      },
+      "missing": {},
+      "status": "disagreement"
+    },
+    "c03": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence",
+        "subq_snap": "supported"
+      },
+      "missing": {},
+      "status": "disagreement"
+    },
+    "c04": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported",
+        "subq_snap": "supported"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c05": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted",
+        "subq_snap": "contradicted"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c06": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence",
+        "subq_snap": "insufficient_evidence"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c07": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported",
+        "subq_snap": "supported"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c08": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted",
+        "subq_snap": "contradicted"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c09": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence",
+        "subq_snap": "insufficient_evidence"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c10": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported",
+        "subq_snap": "supported"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c11": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted",
+        "subq_snap": "contradicted"
+      },
+      "missing": {},
+      "status": "agreement"
+    },
+    "c12": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence",
+        "subq_snap": "insufficient_evidence"
+      },
+      "missing": {},
+      "status": "agreement"
+    }
+  },
+  "final_decision": {
+    "questions": {},
+    "status": "pending"
+  },
+  "providers": {
+    "jev": {
+      "duration_seconds": 0.012,
+      "request_sha256": "8cc3d406d6ed8d7a74748eb6f56bb1ca94f66c01026a9fe43d5edc63a6d3cc10",
+      "requested_model": "jev-1.14.0",
+      "resolved_model": "jev-1.14.0",
+      "result": {
+        "answers": {
+          "c01": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c02": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c03": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c04": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c05": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c06": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c07": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c08": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c09": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c10": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c11": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c12": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "jev-1.14.0",
+        "usage": {
+          "input_tokens": 24,
+          "output_tokens": 2
+        }
+      },
+      "status": "success",
+      "usage": {
+        "input_tokens": 24,
+        "output_tokens": 2
+      }
+    },
+    "openai_decisions": {
+      "duration_seconds": 0.012,
+      "request_sha256": "8cc3d406d6ed8d7a74748eb6f56bb1ca94f66c01026a9fe43d5edc63a6d3cc10",
+      "requested_model": "gpt-6-luna",
+      "resolved_model": "gpt-6-luna",
+      "result": {
+        "answers": {
+          "c01": {
+            "type": "refusal"
+          },
+          "c02": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c03": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c04": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c05": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c06": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c07": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c08": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c09": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c10": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c11": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c12": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "gpt-6-luna",
+        "usage": {
+          "input_tokens": 24,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 2,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 26
+        }
+      },
+      "status": "partial",
+      "usage": {
+        "input_tokens": 24,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 2,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 26
+      }
+    },
+    "subq_snap": {
+      "duration_seconds": 0.012,
+      "request_sha256": "8cc3d406d6ed8d7a74748eb6f56bb1ca94f66c01026a9fe43d5edc63a6d3cc10",
+      "requested_model": "subq-snap-preview",
+      "resolved_model": "subq-snap-preview",
+      "result": {
+        "answers": {
+          "c01": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c02": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c03": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c04": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c05": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c06": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c07": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c08": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c09": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c10": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c11": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c12": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "subq-snap-preview",
+        "usage": {
+          "input_tokens": 24,
+          "output_tokens": 2
+        }
+      },
+      "status": "success",
+      "usage": {
+        "input_tokens": 24,
+        "output_tokens": 2
+      }
+    }
+  },
+  "request": {
+    "questions": {
+      "c01": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c01.claim using only state.cases.c01.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c02": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c02.claim using only state.cases.c02.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c03": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c03.claim using only state.cases.c03.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c04": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c04.claim using only state.cases.c04.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c05": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c05.claim using only state.cases.c05.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c06": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c06.claim using only state.cases.c06.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c07": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c07.claim using only state.cases.c07.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c08": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c08.claim using only state.cases.c08.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c09": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c09.claim using only state.cases.c09.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c10": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c10.claim using only state.cases.c10.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c11": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c11.claim using only state.cases.c11.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      },
+      "c12": {
+        "criteria": {
+          "contradicted": "The evidence establishes a fact that makes the claim false.",
+          "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false.",
+          "supported": "The evidence establishes that the entire claim is true."
+        },
+        "instructions": "Evaluate state.cases.c12.claim using only state.cases.c12.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+        "type": "choice"
+      }
+    },
+    "state": {
+      "cases": {
+        "c01": {
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client.",
+          "evidence": "For request R, the trace records this execution order: step 1 — the database transaction commits successfully; step 2 — the server sends the success acknowledgement to the client."
+        },
+        "c02": {
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client.",
+          "evidence": "For request R, the trace records this execution order: step 1 — the server sends the success acknowledgement to the client; step 2 — the database transaction commits successfully."
+        },
+        "c03": {
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client.",
+          "evidence": "For request R, the record confirms two events: a successful database transaction commit and a success acknowledgement sent by the server to the client. It contains no execution order or timestamps for these events."
+        },
+        "c04": {
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A.",
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server permits this user to access only tenant A records. The server returns the contents of exactly two records to the user: r1 belongs to tenant A and r2 belongs to tenant A."
+        },
+        "c05": {
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A.",
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server returns the contents of exactly two records to the user: r1 belongs to tenant A and r2 belongs to tenant B. The user receives the contents of both records."
+        },
+        "c06": {
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A.",
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server returns the contents of exactly two records to the user. The record does not identify the tenants that own those records or the access rule applied by the server."
+        },
+        "c07": {
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned.",
+          "evidence": "For task T, this execution order is recorded: step 1 — the parent function cancels the task context; step 2 — its owned worker stops running; step 3 — the parent function returns."
+        },
+        "c08": {
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned.",
+          "evidence": "For task T, this execution order is recorded: step 1 — the parent function cancels the task context; step 2 — the parent function returns; step 3 — its owned worker is observed still running and has not stopped."
+        },
+        "c09": {
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned.",
+          "evidence": "For task T, the record confirms that the parent function cancelled the task context and then returned. The record does not say whether or when its owned worker stopped running."
+        },
+        "c10": {
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111.",
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. A readback from the release service confirms that release v2.3.0 is published and its tag resolves to commit 1111111111111111111111111111111111111111."
+        },
+        "c11": {
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111.",
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. A readback from the release service confirms that release v2.3.0 is published and its tag resolves to commit 2222222222222222222222222222222222222222."
+        },
+        "c12": {
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111.",
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. CI completed successfully for that commit. No check was made of release publication, the release tag or the release source revision."
+        }
+      }
+    }
+  },
+  "request_sha256": "8cc3d406d6ed8d7a74748eb6f56bb1ca94f66c01026a9fe43d5edc63a6d3cc10",
+  "status": "partial",
+  "version": 3
+}

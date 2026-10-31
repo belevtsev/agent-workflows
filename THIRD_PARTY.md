@@ -50,8 +50,8 @@ features, and separate asset terms.
 
 ## Optional external Graphify runtime
 
-The independently authored `skills/graphify` instructions and guarded helper use
-the externally installed [`graphifyy`](https://pypi.org/project/graphifyy/0.9.91/)
+The independently authored `skills/graphify` instructions and guarded `cw graphify`
+command use the externally installed [`graphifyy`](https://pypi.org/project/graphifyy/0.9.91/)
 package, pinned to `0.9.91`. The assessment baseline is
 [Graphify-Labs/graphify commit `10130e79ed9caf8f60d998073e097531eaa1a395`](https://github.com/Graphify-Labs/graphify/tree/10130e79ed9caf8f60d998073e097531eaa1a395).
 Upstream declares Apache-2.0 and ships `LICENSE`, `LICENSE-MIT`, and `NOTICE`;

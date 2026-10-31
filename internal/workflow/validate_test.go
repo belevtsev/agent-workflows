@@ -497,6 +497,13 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 		{"automatic retries", func(p Object) { p["consultation"].(Object)["automatic_retries"] = true }},
 		{"question escapes", func(p Object) { p["consultation"].(Object)["questions"] = "../../global/AGENTS.md" }},
 		{"publication weakened", func(p Object) { p["publication"].(Object)["refresh_before_write"] = false }},
+		{"automatic Sol max rule", func(p Object) { p["effort_policy"].(Object)["max_for_sol"] = "automatic" }},
+		{"coding execution route", func(p Object) { p["roles"].(Object)["coding"] = "luna_execution" }},
+		{"agent publication authority", func(p Object) { p["publication"].(Object)["authority"] = "agent_choice" }},
+		{"empty optional guidance", func(p Object) { p["effort_guidance"].(Object)["xhigh"] = "" }},
+		{"unknown execution model", func(p Object) { p["profiles"].(Object)["luna_execution"].(Object)["model"] = "unknown" }},
+		{"execution Ultra effort", func(p Object) { p["profiles"].(Object)["luna_execution"].(Object)["reasoning_effort"] = "ultra" }},
+		{"substantive execution profile", func(p Object) { p["profiles"].(Object)["luna_execution"].(Object)["scope"] = "substantive" }},
 	}
 	for _, change := range changes {
 		t.Run(change.name, func(t *testing.T) {
@@ -669,6 +676,146 @@ func TestModelPolicyDecisionProviders(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func shippedPolicy() string {
+	return filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml")
+}
+
+func TestValidateModelPolicyAcceptsTheShippedRequiredTriple(t *testing.T) {
+	policy, err := ValidateModelPolicy(shippedPolicy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	consultation := policy["consultation"].(Object)
+	want := Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}
+	if !reflect.DeepEqual(consultation["providers"], want) {
+		t.Fatalf("providers = %v", consultation["providers"])
+	}
+	if _, present := consultation["optional_providers"]; present {
+		t.Fatal("the shipped policy must not keep an optional adviser")
+	}
+}
+
+func TestValidateModelPolicyFollowsAnInstalledCurrentSymlink(t *testing.T) {
+	fixture := newSuiteFixture(t)
+	root := t.TempDir()
+	current := filepath.Join(root, "current")
+	if err := os.Symlink(fixture.root, current); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(current, filepath.FromSlash(fixture.manifest["model_policy"].(string)))
+	if _, err := ValidateModelPolicy(path); err != nil {
+		t.Fatalf("policy behind a symlinked release refused: %v", err)
+	}
+	if _, err := ValidateModelPolicy(filepath.Join(root, "missing", "model-policy.yaml")); err == nil {
+		t.Fatal("missing policy accepted")
+	}
+}
+
+func TestPolicyTreatsSeparatorControlCharactersAsBlank(t *testing.T) {
+	for name, edit := range map[string]func(Object){
+		"invalid profile name":                  func(p Object) { p["profiles"].(Object)["\x1c"] = p["profiles"].(Object)["luna"] },
+		"invalid role name":                     func(p Object) { p["roles"].(Object)["\x1f"] = "sol" },
+		"effort guidance must be nonempty text": func(p Object) { p["effort_guidance"].(Object)["xhigh"] = "\x1d" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newSuiteFixture(t)
+			editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["model_policy"])), edit)
+			fixture.invalid(t, name)
+		})
+	}
+	for name, question := range map[string]string{
+		"invalid question ID":          `{"\u001e":{"type":"choice","instructions":"text","criteria":{"a":"x","b":"y"}}}`,
+		"invalid option ID":            `{"one":{"type":"choice","instructions":"text","criteria":{"\u001c":"x","b":"y"}}}`,
+		"empty or invalid description": `{"one":{"type":"choice","instructions":"\u001f","criteria":{"a":"x","b":"y"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			fixture := newSuiteFixture(t)
+			fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":`+question+`}`)
+			fixture.invalid(t, name)
+		})
+	}
+}
+
+func TestConfiguredMaxAcceptsEveryDeclaredMaxProfile(t *testing.T) {
+	fixture := newSuiteFixture(t)
+	path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
+	editModelPolicy(t, path, func(policy Object) {
+		profiles := policy["profiles"].(Object)
+		sol := profiles["sol"].(Object)
+		profiles["second_sol"] = Object{"model": sol["model"], "reasoning_effort": sol["reasoning_effort"], "user_requested_efforts": sol["user_requested_efforts"], "scope": sol["scope"]}
+		effort := policy["effort_policy"].(Object)
+		effort["configured_max_profiles"] = append(effort["configured_max_profiles"].([]any), "second_sol")
+	})
+	if _, err := ValidateModelPolicy(path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
+	policy, err := ValidateModelPolicy(shippedPolicy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for model, roles := range map[string]map[string][]string{
+		"gpt-6.1-sol": {"max": {"coordinator", "coding", "planning", "review", "documentation", "unknown-role"}},
+		"gpt-6-luna":  {"xhigh": {"commit_execution", "pr_authoring_routine", "pr_submission"}, "high": {"lookup", "summarization"}},
+	} {
+		for effort, names := range roles {
+			for _, role := range names {
+				worker, err := ResolveWorker(policy, role, "")
+				if err != nil || worker["model"] != model || worker["reasoning_effort"] != effort {
+					t.Fatalf("%s = %v, %v", role, worker, err)
+				}
+			}
+		}
+	}
+	for _, effort := range []string{"max", "xhigh", "ultra"} {
+		if worker, err := ResolveWorker(policy, "coding", effort); err != nil || worker["reasoning_effort"] != effort {
+			t.Fatalf("coding %s = %v, %v", effort, worker, err)
+		}
+	}
+	for _, test := range []struct{ role, effort string }{{"lookup", "ultra"}, {"commit_execution", "max"}, {"coding", "high"}, {" ", ""}, {"\x1c", ""}} {
+		if worker, err := ResolveWorker(policy, test.role, test.effort); err == nil {
+			t.Fatalf("%q at %q = %v", test.role, test.effort, worker)
+		}
+	}
+	if policy["profiles"].(Object)["sol"].(Object)["reasoning_effort"] != "max" {
+		t.Fatal("resolution changed the policy defaults")
+	}
+}
+
+func TestResolveWorkerKeepsHistoricalPoliciesReadable(t *testing.T) {
+	fixture := newSuiteFixture(t)
+	path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
+	editModelPolicy(t, path, func(policy Object) {
+		consultation := policy["consultation"].(Object)
+		delete(consultation, "providers")
+		delete(consultation, "comparison")
+		delete(consultation, "optional_providers")
+		historicalModelPolicy(policy)
+	})
+	policy, err := ValidateModelPolicy(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ role, requested, want string }{{"coding", "", "ultra"}, {"coding", "max", "max"}, {"commit_execution", "", "max"}} {
+		if worker, err := ResolveWorker(policy, test.role, test.requested); err != nil || worker["reasoning_effort"] != test.want {
+			t.Fatalf("%s = %v, %v", test.role, worker, err)
+		}
+	}
+}
+
+func TestResolveWorkerRejectsConfiguredSolMaxUnderLegacyRule(t *testing.T) {
+	policy, err := ValidateModelPolicy(shippedPolicy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy["effort_policy"].(Object)["max_for_sol"] = "explicit_user_request"
+	if _, err := ResolveWorker(policy, "coding", ""); err == nil || !strings.Contains(err.Error(), "Sol max requires") {
+		t.Fatalf("error = %v", err)
 	}
 }
 
