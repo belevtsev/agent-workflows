@@ -1,0 +1,11 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [],
+  "responses": {
+    "jev": {}
+  },
+  "exit": 2,
+  "stdout": "Consultation unavailable\n",
+  "stderr": ""
+}

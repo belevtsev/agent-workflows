@@ -136,16 +136,6 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 			return fmt.Errorf("preview created installation path: %s", path)
 		}
 	}
-	// Exercise the native environment-reuse boundary without package downloads.
-	// Provisioning/repair commands have separate fake-process lifecycle tests.
-	python := filepath.Join(home, ".venvs", "codex-decisions", "bin", "python")
-	if err := os.MkdirAll(filepath.Dir(python), 0o700); err != nil {
-		return err
-	}
-	probe := "#!/bin/sh\nprintf '%s\\n' '{\"status\":\"ready\",\"python_version\":\"3.9.6\",\"pyyaml_version\":\"6.0.3\",\"pip_available\":true}'\n"
-	if err := os.WriteFile(python, []byte(probe), 0o755); err != nil {
-		return err
-	}
 	setup, err := run(filepath.Join(checkout, "install.sh"), append([]string{"--shell", "bash", "--host", "codex"}, paths[2:]...)...)
 	if err != nil {
 		return err

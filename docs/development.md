@@ -1,15 +1,15 @@
 # Go development and releases
 
 The manager and its development automation use the Go version pinned in go.mod.
-Skills are separate resources under skills/ and third_party/; their helper scripts
-retain their own dependencies. No Go module vendor tree is present.
+First-party code, including the helpers skills call, is Go. Third-party skills under
+third_party/ keep their own dependencies. No Go module vendor tree is present.
 The resource-only third_party module boundary keeps bundled example Go files
 out of the manager's build and test package discovery.
 
 The application has a thin command entrypoint, injectable CLI I/O, focused internal
 installation/runtime/validation packages, and typed ownership/recovery boundaries.
-Preserve exact historical JSON sealing, immutable receipts, and the distinction
-between manager identity and the active skill snapshot.
+Preserve the sealed JSON encoding, immutable receipts, and the distinction between
+manager identity and the active skill snapshot.
 
 ## Verification
 
@@ -29,18 +29,20 @@ First-party automation must use Go. Only install.sh is allowed as a bootstrap;
 script resources supplied by skills are explicitly exempt. Do not add Python
 installer tests, environment preparation, or functional release shell scripts.
 
-Frozen historical state/journal fixtures must remain readable after refactors.
 Exercise interruption at every transaction boundary, changed owned content,
-concurrent commands, custom paths, direct invocation outside source, resource-root
-migration in both directions, and uncertain publication outcomes.
+concurrent commands, custom paths, direct invocation outside source, and uncertain
+publication outcomes, on each host.
 
-Additive registration scenarios must preserve historical ten-registration snapshots
-and v1 checksums. Verify additions, pre-merge conflicts, rollback removal of only
-absent-origin records, and source-independent recovery while the enrolled manager
-still points at its older runtime. Bootstrap fixtures cover v3/v4/v5 refusal, v6
-reuse and fresh acquisition, dry runs, and acquisition failures that preserve
-the cached manager and owned installation. Exact-revision acquisition retains
-its checksum and identity checks. Backend decision fixtures live in
+Host coverage must keep Codex-only and Claude-only installs free of each other's
+files, restore user `CLAUDE.md` and `settings.json` byte for byte, leave drifted
+settings keys alone in status, update, rollback, uninstall and recovery, and keep
+the remaining host working after a single-host uninstall. Additive registration
+scenarios verify additions, pre-merge conflicts, rollback removal of only
+absent-origin records, and source-independent recovery. Bootstrap fixtures cover
+refusal of older protocols, reuse and fresh acquisition, dry runs, and acquisition
+failures that preserve the cached manager and owned installation. Exact-revision
+acquisition retains its checksum and identity checks.
+Backend decision fixtures live in
 internal/devcheck/testdata/backend-skills; give evaluators raw inputs without their
 expected decisions. Model evaluations and fresh discovery are separate from native
 test assertions; CI does not call hosted models or receive service credentials.
@@ -108,8 +110,8 @@ is explicit per device; manager install and status must never provision it.
 The separate cwdev tool owns release automation, not the user manager:
 
 ```sh
-GOWORK=off go run ./cmd/cwdev release build --source "$PWD" --version v1.0.100 --revision COMMIT_SHA --dist "$PWD/dist"
-GOWORK=off go run ./cmd/cwdev release publish --source "$PWD" --version v1.0.100 --revision COMMIT_SHA --dist "$PWD/dist"
+GOWORK=off go run ./cmd/cwdev release build --source "$PWD" --version v2.0.100 --revision COMMIT_SHA --dist "$PWD/dist"
+GOWORK=off go run ./cmd/cwdev release publish --source "$PWD" --version v2.0.100 --revision COMMIT_SHA --dist "$PWD/dist"
 ```
 
 Replace COMMIT_SHA and the example version with the intended exact committed
@@ -124,7 +126,7 @@ Publishing an already exact public release performs no writes.
 
 CI retains cached Linux/macOS tests and race checks. Release artifacts are prepared
 alongside Linux validation, then reused by publication after both platform checks
-pass. Every successful main push produces v1.0.<workflow run number> for its exact
+pass. Every successful main push produces v2.0.<workflow run number> for its exact
 SHA; main runs are not superseded by later commits. Only obsolete PR runs cancel.
 Publication credentials exist only in the final job, and CI contains no shell
 business logic. Publication uses GitHub's legacy latest-release policy so semantic
@@ -133,20 +135,12 @@ version/creation ordering governs overlapping releases.
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
 defines 26 registrations and 71 entrypoints; model defaults come from its
-validated policy. The v6 bootstrap capability supports manifest v2 and verified
-personal directory adoption, retaining the max/xhigh policy. The separate
-`cw-model-policy-v2-dual-choice` capability gates the paired policy extension
-without changing sealed runtime or recovery formats. Bootstrap must replace an
-older v6 cache only after acquiring a manager with both capabilities, and preserve
-owned state when latest is incompatible; older managers require the one-time bootstrap
-[migration](operations.md#migration). Frozen historical ultra policies remain unchanged and
-must still validate for rollback and source-independent recovery.
+validated policies. `cw-manager-v7` is the single bootstrap protocol: `install.sh`
+requires it, and it covers manifest version 3, sealed runtimes, version 3 state and
+journals, and the required three-adviser policy. Bump it for any change a released
+manager cannot read. `install.sh` has no build fallback, so a gate that ships with its
+capability fails cold bootstraps until that release publishes.
 
-The separate `cw-three-adviser-v1` capability gates the required Jev/Snap/OpenAI
-provider policy. Bootstrap checks it alongside every previous capability, including
-`cw-openai-decisions-v1` for historical optional policies. Native activation checks
-the capability matching the selected snapshot's provider requirements. Ownership,
-runtime receipts and recovery journals keep their existing sealed formats.
 Consultation records evolve separately: version three requires all three providers;
 historical version-one pair and version-two optional records remain readable offline.
 Tests must reject disabled required coverage and opt-outs, preserve historical
@@ -156,8 +150,8 @@ For an unreleased committed local revision, use the pinned Go toolchain and the
 normal native CLI with all installation roots explicitly selected:
 
 ```sh
-GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/agent-workflows --dry-run
-GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/agent-workflows
+GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows --dry-run
+GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows
 ```
 
 Replace the example paths with the intended real roots. Source must be clean and
@@ -166,9 +160,8 @@ it does not edit installed snapshots or bypass published-manager capability chec
 
 Personal adoption fixtures must cover original and distributed inventories that
 differ, same-path Archify replacement, all directory/link boundaries, interrupted
-recovery resumption, cross-operation path overlap, and checkout-free cached v6
-recovery while the enrolled command remains old. V2 ownership/journal/runtime
-records use the same historical checksum encoding; never rewrite frozen fixtures.
+recovery resumption, cross-operation path overlap, and checkout-free recovery from
+a cached runtime.
 
 With Node.js available, run the bundled portable Archify tests from its package:
 

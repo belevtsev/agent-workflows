@@ -494,7 +494,7 @@ func checkDecisionItem(value any, id string, shared, compared *object) (bool, er
 	return true, nil
 }
 
-// adjudicate validates Codex's recorded disposition without hosted requests,
+// adjudicate validates the coordinator's recorded disposition without hosted requests,
 // the current policy, or voting. The record must first prove itself unchanged.
 func adjudicate(recordValue, decisionValue any) (*object, error) {
 	record, ok := mapping(recordValue)

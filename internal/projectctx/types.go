@@ -67,11 +67,11 @@ type Runner func(context.Context, Command) (CommandResult, error)
 // Timeout bounds the complete inspection, including all optional live probes.
 type DoctorOptions struct {
 	Repo, Home, CodexHome, ClaudeHome, SkillsHome string
-	Live                              bool
-	Timeout                           time.Duration
-	Run                               Runner
-	LookPath                          func(string) (string, error)
-	Getenv                            func(string) string
+	Live                                          bool
+	Timeout                                       time.Duration
+	Run                                           Runner
+	LookPath                                      func(string) (string, error)
+	Getenv                                        func(string) string
 }
 
 // Check uses a stable status vocabulary: missing, detected, configured,

@@ -83,7 +83,7 @@ func TestConsultDefaultPolicyFollowsStateResolutionOrder(t *testing.T) {
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)
 			}
-			if out.String() != "Decision consultation dry_run; Codex decision pending\n" {
+			if out.String() != "Decision consultation dry_run; Coordinator decision pending\n" {
 				t.Fatalf("stdout = %q", out.String())
 			}
 			data, err := os.ReadFile(output)
@@ -109,7 +109,7 @@ func TestConsultExplicitPolicyAndExitStatuses(t *testing.T) {
 	if ExitCode(err) != 2 || err.Error() != "" {
 		t.Fatalf("error = %v, exit %d", err, ExitCode(err))
 	}
-	if out.String() != "Decision consultation unavailable; Codex decision pending\n" || stderr.Len() != 0 {
+	if out.String() != "Decision consultation unavailable; Coordinator decision pending\n" || stderr.Len() != 0 {
 		t.Fatalf("stdout %q stderr %q", out, stderr)
 	}
 	out.Reset()

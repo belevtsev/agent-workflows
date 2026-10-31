@@ -19,6 +19,6 @@
     }
   },
   "exit": 2,
-  "stdout": "Decision consultation partial; Codex decision pending\n",
+  "stdout": "Decision consultation partial; Coordinator decision pending\n",
   "stderr": ""
 }

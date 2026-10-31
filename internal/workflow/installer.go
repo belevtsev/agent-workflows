@@ -16,17 +16,16 @@ const endMarker = "<!-- agent-workflows-end -->"
 
 type Options struct {
 	Paths
-	Context                    context.Context
-	RuntimeCandidate           string
-	RuntimeIdentity            RuntimeIdentity
-	PrepareRuntime             RuntimePreparer
-	PrepareConsultationRuntime ConsultationRuntimePreparer
-	Apply                      bool
-	NoCheckout                 bool
-	Shell                      string
-	AdoptPersonalSkills        bool
-	Hosts                      []string
-	Forget                     bool
+	Context             context.Context
+	RuntimeCandidate    string
+	RuntimeIdentity     RuntimeIdentity
+	PrepareRuntime      RuntimePreparer
+	Apply               bool
+	NoCheckout          bool
+	Shell               string
+	AdoptPersonalSkills bool
+	Hosts               []string
+	Forget              bool
 }
 type Installer struct {
 	Options

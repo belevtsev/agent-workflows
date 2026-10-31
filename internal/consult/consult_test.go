@@ -613,7 +613,7 @@ func TestMissingKeysThenOfflineAdjudicationFromFiles(t *testing.T) {
 	if code, err := Run(t.Context(), Options{Request: request, Output: output, Policy: policyFile("required"), Getenv: noCredentials, Stdout: &stdout, Stderr: &stderr, collect: sender.collect}); code != 2 || err != nil {
 		t.Fatalf("run = %d %v", code, err)
 	}
-	if stdout.String() != "Decision consultation unavailable; Codex decision pending\n" || stderr.Len() != 0 {
+	if stdout.String() != "Decision consultation unavailable; Coordinator decision pending\n" || stderr.Len() != 0 {
 		t.Fatalf("stdout %q stderr %q", stdout.String(), stderr.String())
 	}
 	decisionPath, final := filepath.Join(filepath.Dir(output), "decision.json"), filepath.Join(filepath.Dir(output), "final.json")

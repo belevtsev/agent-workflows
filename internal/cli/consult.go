@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -45,40 +44,13 @@ func selectedHome(root *cobra.Command, config Config) (string, error) {
 	return config.HomeDir()
 }
 
-// stateRoot follows the order the manager's other commands use: --state-dir, the
-// installed locator, then the XDG or home default.
-func stateRoot(root *cobra.Command, config Config) (string, error) {
-	if state, _ := root.PersistentFlags().GetString("state-dir"); state != "" {
-		return state, nil
-	}
-	executable, err := config.Executable()
-	if err != nil {
-		return "", err
-	}
-	locator, err := config.Resolve(executable)
-	if err == nil {
-		return locator.State, nil
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	if state := config.Getenv("XDG_STATE_HOME"); state != "" {
-		return filepath.Join(state, "agent-workflows"), nil
-	}
-	home, err := selectedHome(root, config)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".local", "state", "agent-workflows"), nil
-}
-
 // activePolicy locates the policy of the release that is currently installed.
 func activePolicy(root *cobra.Command, config Config) (string, error) {
-	state, err := stateRoot(root, config)
+	roots, err := resolveRoots(root, config)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(state, "current", "skills", "task-orchestration", "model-policy.yaml"), nil
+	return filepath.Join(roots.state, "current", "skills", "task-orchestration", "model-policy.yaml"), nil
 }
 
 func addConsultCommand(root *cobra.Command, config Config) {

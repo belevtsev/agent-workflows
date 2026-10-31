@@ -66,4 +66,4 @@ unresolved relationships when material, including excluded or untracked code and
 dynamic wiring the map cannot establish. A structural graph does not replace
 tests, runtime evidence, or required review and consultation checkpoints. For
 substantial work, preserve the required Jev, SubQ Snap, and OpenAI Decisions
-checkpoints; Codex makes the decision from source evidence and verification.
+checkpoints; the coordinator makes the decision from source evidence and verification.

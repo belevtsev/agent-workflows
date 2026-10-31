@@ -15,7 +15,7 @@ review, following the [entrypoint](../SKILL.md). Prepare distinct requests and n
 output paths for the two checkpoints. The first request assesses the proposed approach
 and verification plan; the final request assesses the completed work and current checks
 before completion or authorized publication. Include the checkpoint in request state
-and retain its provider coverage and Codex disposition in the task record.
+and retain its provider coverage and the coordinator disposition in the task record.
 
 Reuse is limited to the same checkpoint with applicable evidence, decisions, question
 meaning, and models. A pre-implementation record cannot satisfy final review. If calls
@@ -137,7 +137,7 @@ These categories describe provider coverage and choice equality. They do not est
 truth. `final_decision` starts as `pending`; no confidence comparison, vote, or
 automatic winner completes it.
 
-Codex investigates any disputed evidence and independently verifies the conclusion
+The coordinator investigates any disputed evidence and independently verifies the conclusion
 against exact sources and relevant tests or observations, including when the providers
 agree. In the agreed task record retain the final conclusion, evidence references and
 source revision, verification and its limits, rejected judgment and reason, unresolved
@@ -145,9 +145,9 @@ facts, and partial or unavailable provider coverage. If a material fact remains 
 or conflicting, retain an unresolved decision. An unavailable consultation alone does
 not prevent useful source work.
 
-## Finalize Codex's decision without network access
+## Finalize the coordinator's decision without network access
 
-Once Codex has done that investigation, write a decision JSON and validate it against
+Once the coordinator has done that investigation, write a decision JSON and validate it against
 the original consultation record:
 
 ```sh
@@ -190,7 +190,7 @@ reason for that question; missing or refused judgments do not. Agreement still n
 For `unresolved`, use `choice: null`, an empty rejection mapping, and a nonblank reason
 describing the material unknown; evidence and verification references may be empty. The final
 record is resolved only when every question is resolved. This structural validation
-checks that Codex recorded its decision obligations; it cannot prove the cited
+checks that the coordinator recorded its decision obligations; it cannot prove the cited
 evidence or reasoning correct and never chooses a winning confidence score.
 
 ## Sharing and recording
@@ -269,7 +269,7 @@ excluded from reports.
 
 The scorer does not choose an adviser or fill a task's `final_decision`.
 Consultation records retain their pending decisions; evaluation scores are separate.
-Codex interprets errors against the frozen facts and labels. A fixture defect
+The coordinator interprets errors against the frozen facts and labels. A fixture defect
 invalidates affected results; preserve the original run and correct the corpus as
 a separate version rather than changing labels to match answers. A small synthetic
 baseline does not establish calibrated confidence, production quality or a version
@@ -281,6 +281,6 @@ installation, source validation and native CI never invoke the hosted evaluation
 `cw consult jev --request PATH --output PATH` remains supported for existing
 Jev-only integrations. It accepts its existing request contract and uses the legacy
 `consultation.model` policy field. The three-adviser `cw consult` uses `consultation.providers`
-and `consultation.comparison: codex_evidence_and_verification` while preserving policy
+and `consultation.comparison: coordinator_evidence_and_verification` while preserving policy
 version 2. Follow the installed TypeSafe guide for other primitives. A Jev-only result
 does not provide three-provider coverage.

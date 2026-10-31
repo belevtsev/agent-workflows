@@ -1368,7 +1368,7 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 			return nil, errors.New("consultation providers must match the Jev model and use subq-snap-preview")
 		}
 		if consultation["comparison"] != "coordinator_evidence_and_verification" {
-			return nil, errors.New("consultation comparison must use Codex evidence and verification")
+			return nil, errors.New("consultation comparison must use coordinator evidence and verification")
 		}
 		if hasRequiredOpenAI {
 			if providers["openai_decisions"] != "gpt-6-luna" {

@@ -257,14 +257,14 @@ func Run(ctx context.Context, o Options) (int, error) {
 	}
 	if o.Adjudicate != "" {
 		status := record.get("final_decision").(*object).get("status").(string)
-		fmt.Fprintln(o.Stdout, "Codex decision "+status)
+		fmt.Fprintln(o.Stdout, "Coordinator decision "+status)
 		if status != "resolved" {
 			return 2, nil
 		}
 		return 0, nil
 	}
 	status := record.get("status").(string)
-	fmt.Fprintln(o.Stdout, "Decision consultation "+status+"; Codex decision pending")
+	fmt.Fprintln(o.Stdout, "Decision consultation "+status+"; Coordinator decision pending")
 	if status != "success" && status != "dry_run" {
 		return 2, nil
 	}

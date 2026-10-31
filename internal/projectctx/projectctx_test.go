@@ -252,11 +252,9 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	bin := filepath.Join(home, ".venvs/agent-graphify/bin")
-	for _, executable := range []string{"graphify", "python"} {
-		writeFile(t, bin, executable, "fixture")
-		if err := os.Chmod(filepath.Join(bin, executable), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	writeFile(t, bin, "graphify", "fixture")
+	if err := os.Chmod(filepath.Join(bin, "graphify"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	var calls []Command
 	run := func(_ context.Context, command Command) (CommandResult, error) {
@@ -279,11 +277,10 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 			output = "golang.org/x/tools/gopls v0.21.0"
 		case "mcp":
 			output = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\"}}\n"
+		case "--version":
+			output = "graphify 0.9.91\n"
 		default:
-			if filepath.Base(command.Executable) != "python" {
-				t.Fatalf("unexpected probe: %+v", command)
-			}
-			output = "0.9.91\n"
+			t.Fatalf("unexpected probe: %+v", command)
 		}
 		return CommandResult{Stdout: []byte(output)}, nil
 	}

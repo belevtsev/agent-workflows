@@ -117,7 +117,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan")
 	task.AddCommand(run)
 	var assessTask, assessmentFile string
-	assess := &cobra.Command{Use: "assess", Short: "Record acceptance and Codex decisions against actual source/check references", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	assess := &cobra.Command{Use: "assess", Short: "Record acceptance and Coordinator decisions against actual source/check references", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
@@ -207,7 +207,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	consult.Flags().StringVar(&consultFile, "input", "", "Original helper version-three consultation/adjudication JSON file")
 	task.AddCommand(consult)
 	var verifyTask string
-	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Codex decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}

@@ -17,6 +17,6 @@
     }
   },
   "exit": 0,
-  "stdout": "Decision consultation success; Codex decision pending\n",
+  "stdout": "Decision consultation success; Coordinator decision pending\n",
   "stderr": ""
 }

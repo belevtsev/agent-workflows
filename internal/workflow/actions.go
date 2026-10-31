@@ -301,11 +301,6 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	}
 	report["shared_config"] = Object{"managed": shared != nil, "defaults": shared}
 	if !i.Apply {
-		runtime, err := i.prepareConsultationRuntimeFor(release)
-		if err != nil {
-			return nil, err
-		}
-		report["consultation_runtime"] = runtime
 		return report, nil
 	}
 	unlock, e := lockRoot(i.State, false)
@@ -344,11 +339,6 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	runtime, e := i.prepareConsultationRuntimeFor(release)
-	if e != nil {
-		return nil, e
-	}
-	report["consultation_runtime"] = runtime
 	head, e := cleanHeadContext(i.Context, i.Source)
 	if e != nil || head != sha {
 		return nil, errors.New("source HEAD changed during setup")
@@ -358,7 +348,7 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 			return nil, e
 		}
 	}
-	report["changed"] = len(ops) > 0 || runtime["changed"] == true
+	report["changed"] = len(ops) > 0
 	report["manager_command"] = ar
 	return report, nil
 }
@@ -468,11 +458,7 @@ func (i *Installer) Update() (Object, error) {
 		if e = i.checkHostConfig(s, release, m); e != nil {
 			return nil, e
 		}
-		runtime, e := i.prepareConsultationRuntimeFor(release)
-		if e != nil {
-			return nil, e
-		}
-		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "consultation_runtime": runtime, "fetch": "origin/main only with apply"}, nil
+		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "fetch": "origin/main only with apply"}, nil
 	}
 	unlock, e := lockRoot(i.State, false)
 	if e != nil {
@@ -528,10 +514,6 @@ func (i *Installer) Update() (Object, error) {
 	if e = i.checkHostConfig(s, release, m); e != nil {
 		return nil, e
 	}
-	runtime, e := i.prepareConsultationRuntimeFor(release)
-	if e != nil {
-		return nil, e
-	}
 	// Runtime preparation can take time while discovery roots remain mutable.
 	// Reject newly occupied additions before advancing the source checkout.
 	changes, e := i.registrationChanges(s, m, false)
@@ -560,7 +542,7 @@ func (i *Installer) Update() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "consultation_runtime": runtime, "changed": len(ops) > 0 || runtime["changed"] == true}, nil
+	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "changed": len(ops) > 0}, nil
 }
 func (i *Installer) Rollback() (Object, error) {
 	if err := i.Context.Err(); err != nil {

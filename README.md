@@ -1,8 +1,8 @@
 # agent-workflows
 
-A Go skill manager for personal Agent workflows on macOS and Linux. Install
-editable skills, templates, model policy, and shared Codex defaults as verified,
-immutable snapshots. Updates are manual and reversible.
+A Go skill manager for personal agent workflows on macOS and Linux. Install
+editable skills, model policy, and shared instructions for Codex, Claude Code, or
+both, as verified, immutable snapshots. Updates are manual and reversible.
 
 This guide covers the [current release](https://github.com/belevtsev/agent-workflows/releases/latest).
 
@@ -11,27 +11,45 @@ This guide covers the [current release](https://github.com/belevtsev/agent-workf
 ```sh
 git clone https://github.com/belevtsev/agent-workflows.git
 cd agent-workflows
-./install.sh
+./install.sh --host claude
 ```
 
-You need Codex, Git, `curl`, `tar`, and `sha256sum` or macOS `shasum`, plus
-Python 3.7+ with `venv` and `ensurepip` support. Release binaries support
-macOS/Linux on ARM64 and AMD64 and need no Go installation. Building an unreleased
-revision requires the Go version in [go.mod](go.mod).
+Use `--host codex`, `--host claude`, or `--host all`. Without `--host`, install
+uses the host it can detect, and stops to ask if it finds both or neither.
 
-Installation registers 26 skills with 71 entrypoints, adds the managed global
-working instructions, and sets these coordinator defaults in your existing
-Codex configuration:
+You need Git, `curl`, `tar`, and `sha256sum` or macOS `shasum`, plus the host you
+are installing for. Release binaries support macOS/Linux on ARM64 and AMD64 and
+need no Go installation. Building an unreleased revision requires the Go version in
+[go.mod](go.mod).
+
+Installation registers 26 skills with 71 entrypoints on each selected host, and
+adds the same managed instructions to both:
+
+| | Codex | Claude Code |
+| --- | --- | --- |
+| Skills | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
+| Instructions | Managed block in `$CODEX_HOME/AGENTS.md` | Managed block in `~/.claude/CLAUDE.md` |
+| Settings | `model`, `model_reasoning_effort` and five memory keys in `config.toml` | `model` and `effortLevel` in `settings.json` |
+| Custom location | `--codex-home` or `CODEX_HOME` | `--claude-home` or `CLAUDE_CONFIG_DIR` |
+
+The Claude Code defaults come from the coordinator profile in
+[model-policy.claude.yaml](skills/task-orchestration/model-policy.claude.yaml):
+
+```json
+{
+  "model": "claude-opus-5-5",
+  "effortLevel": "xhigh"
+}
+```
+
+The Codex defaults come from
+[model-policy.yaml](skills/task-orchestration/model-policy.yaml) and
+[global/codex-defaults.toml](global/codex-defaults.toml):
 
 ```toml
 model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
-```
 
-It also applies the five shared memory settings from
-[global/codex-defaults.toml](global/codex-defaults.toml):
-
-```toml
 [features]
 memories = true
 
@@ -42,15 +60,16 @@ extract_model = "gpt-6.1-sol"
 consolidation_model = "gpt-6.1-sol"
 ```
 
-Local paths, MCP servers, project trust, credentials, unrelated settings, comments,
-and permissions are preserved. Each device keeps its own configuration. Use
-ordinary TOML tables or dotted keys for these shared settings; inline `features`
-or `memories` tables must be converted before installation.
+Unrelated settings, permissions and local content are preserved on both hosts.
+`settings.json` edits change only those two keys and keep every other byte. If you
+or Claude Code later change one of them, it stays yours: `cw status` reports it as
+`settings_drift`, and update, rollback and uninstall leave it alone. Each device
+keeps its own configuration. In `config.toml`, use ordinary TOML tables or dotted
+keys for the shared settings; inline `features` or `memories` tables must be
+converted before installation.
 
-The manager prepares `~/.venvs/codex-decisions` with `PyYAML>=6,<7` for the
-consultation helper. It reuses a healthy environment and repairs dependencies
-inside it. It installs no system packages. A custom `--home` places the environment
-under that home. Installation results report `consultation_runtime`.
+Under Claude Code, your `code-review` skill replaces the bundled `/code-review`.
+The `/review` alias still runs the bundled one.
 
 Setup links `~/.local/bin/cw` directly to the installed binary and adds a managed
 PATH entry to your Bash/zsh startup file when needed. Open a new terminal, then:
@@ -68,22 +87,78 @@ Use `./install.sh --dry-run` to preview installation without downloading, buildi
 or changing persistent state. See [operations](docs/operations.md) for custom
 paths, shell selection, and recovery.
 
+### Add or remove a host
+
+Run install again with another host. It adds that host to the same installation
+without changing the active release:
+
+```sh
+./install.sh --host codex
+```
+
+To drop one host and keep the other:
+
+```sh
+cw uninstall --host codex
+```
+
+If that host's files are already gone, add `--forget` so the record is removed
+without restoring anything:
+
+```sh
+cw uninstall --host codex --forget
+```
+
+### Upgrading from v1
+
+The v2 manager uses new paths and doesn't read a v1 installation, and a v1
+`cw update` refuses this source without changing anything. Before you start, note
+the `state_dir` that `cw status` reports. Then, using your existing `cw`:
+
+```sh
+cw uninstall
+```
+
+Clone or update this repository, and install:
+
+```sh
+./install.sh --host all --adopt-personal-skills
+```
+
+Uninstall restores your own files and adopted skills, and
+`--adopt-personal-skills` moves those skills back under management. Rollback
+history from v1 doesn't carry over. Once you have verified the new installation,
+delete the old `state_dir` and the old adviser Python environment. Task records stay
+where they were, and `--store` reads them.
+
 ## Current model policy
 
-| Role | Model | Reasoning effort |
-| --- | --- | --- |
-| Coordination, substantive work, review, and final verification | `gpt-6.1-sol` | `max` |
-| Bounded routine execution | `gpt-6-luna` | `xhigh` |
-| Bounded evidence gathering | `gpt-6-luna` | `high` |
-| Independent TypeSafe advice | `jev-1.14.0` | Provider managed |
-| Independent SubQ advice | `subq-snap-preview` | Provider managed |
-| Independent OpenAI Decisions advice | `gpt-6-luna` | Decisions API managed |
+Codex and Claude Code keep separate roles, and the rest of the policy is shared.
 
-The editable [model policy](skills/task-orchestration/model-policy.yaml) defines
-dispatch roles. Codex checks actual runtime model metadata; a saved policy does
-not switch an existing chat or prove account availability. Codex makes the final
-decision from source evidence and verification after considering all three required
-advisers at equal standing.
+| Role | Codex | Claude Code |
+| --- | --- | --- |
+| Coordination, substantive work, review, and final verification | `gpt-6.1-sol` at `max` | `claude-opus-5-5` at `xhigh` |
+| Bounded routine execution | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
+| Bounded evidence gathering | `gpt-6-luna` at `high` | `claude-opus-5-5` at `high` |
+
+Three independent advisers are required on both hosts:
+
+| Adviser | Model | Reasoning effort |
+| --- | --- | --- |
+| TypeSafe | `jev-1.14.0` | Provider managed |
+| SubQ | `subq-snap-preview` | Provider managed |
+| OpenAI Decisions | `gpt-6-luna` | Decisions API managed |
+
+The editable [Codex policy](skills/task-orchestration/model-policy.yaml) and
+[Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) define
+dispatch roles. [Host mapping](skills/task-orchestration/references/hosts.md) covers
+what differs in practice. The coordinator checks actual runtime model metadata; a
+saved policy does not switch an existing chat or prove account availability. It
+makes the final decision from source evidence and verification after considering
+all three required advisers at equal standing.
+
+`settings.json` rejects `max`, so `xhigh` is the highest persisted Claude Code
+effort. Use `/effort max` for a session.
 
 ## Included skills
 
@@ -117,21 +192,22 @@ advisers at equal standing.
 | docker-sandboxes-network-credentials | Configure sandbox networking and credential access |
 
 
-See [third-party notices](THIRD_PARTY.md). Skill helpers keep their own optional
+See [third-party notices](THIRD_PARTY.md). Skills keep their own optional
 dependencies. Archify requires Node.js 18+ and Chrome/Chromium for browser checks;
-Graphify uses a separately provisioned Python environment with pinned
-`graphifyy==0.9.91`; Docker skills require the corresponding Docker tools and
-platform support.
+Graphify needs a separately provisioned `graphify` executable from the pinned
+`graphifyy==0.9.91` Python package; Docker skills require the corresponding Docker
+tools and platform support.
 `cw status` reports detected executables in `skill_prerequisites`; each skill
 checks versions, access, and subcommands when used. The manager does not install
 optional tools.
 
-Use a natural request or invoke a skill explicitly:
+Use a natural request or invoke a skill explicitly. Claude Code uses `/name`, and
+Codex uses `$name`:
 
 ```text
-$production-plan Plan this change against the current repository contracts.
-$code-review Review this diff for concrete correctness and compatibility defects.
-$task-orchestration Implement this workflow, consult Jev, Snap and OpenAI Decisions at both checkpoints, and verify the result.
+/production-plan Plan this change against the current repository contracts.
+/code-review Review this diff for concrete correctness and compatibility defects.
+/task-orchestration Implement this workflow, consult Jev, Snap and OpenAI Decisions at both checkpoints, and verify the result.
 ```
 
 ## Global project workflow
@@ -160,8 +236,8 @@ source-bound adviser checkpoints in a private directory outside project source.
 `cw task verify` checks evidence against the current worktree. New substantial-change
 tasks also require an accepted independent worker review of the completed source
 before final consultation.
-Small and unchanged read-only tasks retain the lightweight path. Codex verifies
-the meaning of the evidence and makes the final decision. The
+Small and unchanged read-only tasks retain the lightweight path. The coordinator
+verifies the meaning of the evidence and makes the final decision. The
 [worker handoff guide](skills/task-orchestration/references/worker-handoffs.md)
 describes the reusable contract; project instructions still select their own checks.
 
@@ -187,7 +263,7 @@ flowchart TD
     Size -->|No| Small[Direct work and relevant checks]
     Size -->|Yes| Record[cw task: requirements and source identity]
     Record --> Before[Jev, Snap and OpenAI: before checkpoint]
-    Before --> Work[Codex works against source evidence]
+    Before --> Work[Coordinator works against source evidence]
     Work --> Checks[Run the selected project checks]
     Checks --> Review[Independent worker review and finding dispositions]
     Review --> Final[Jev, Snap and OpenAI: fresh final review]
@@ -238,7 +314,7 @@ See [runtime setup and commands](docs/operations.md#optional-graphify-runtime).
 `cw install`, update and status do not provision Graphify or build its cache.
 
 Substantial work still requires all three advisers before implementation and at
-final review. Codex decides from verified evidence and current checks.
+final review. The coordinator decides from verified evidence and current checks.
 
 Repository commands, product details, and operational constraints belong in the
 owning repository's instructions and docs. Skill selection does not grant
@@ -320,16 +396,20 @@ export SUBQ_API_KEY
 
 Run `cw status` to check `jev_credential_present` and `subq_credential_present`.
 These are offline booleans for that process; they do not validate keys or prove
-availability in another process. Start Codex CLI from the same terminal to inherit
+availability in another process. Start the CLI from the same terminal to inherit
 the exported keys:
+
+```sh
+claude
+```
 
 ```sh
 codex
 ```
 
-For Codex Desktop, supply both variables through your local secret manager or its
-launch environment. On macOS, after setting both variables in the terminal, a
-session-only option is:
+Desktop apps start from your login session, not your shell profile. Supply both
+variables through your local secret manager or the app's launch environment. On
+macOS, after setting both variables in the terminal, a session-only option is:
 
 ```sh
 set +x
@@ -337,7 +417,7 @@ launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"
 launchctl setenv SUBQ_API_KEY "$SUBQ_API_KEY"
 ```
 
-Fully quit and relaunch Codex, then open a fresh chat and verify key presence
+Fully quit and relaunch the app, then open a fresh session and verify key presence
 without displaying values. This launch environment applies to subsequently
 started GUI processes in the current login session; it is not persistent secret
 storage. Existing processes retain their startup environment.
@@ -381,18 +461,19 @@ A missing key records unavailable coverage and preserves the other advisers'
 results. The helper rejects attempts to exclude required OpenAI advice.
 
 `cw status` reports `openai_credential_present` as an offline boolean for its own
-process. For macOS Desktop, set the launch environment from the configured terminal:
+process. For a macOS desktop app, set the launch environment from the configured
+terminal:
 
 ```sh
 set +x
 launchctl setenv OPENAI_API_KEY "$OPENAI_API_KEY"
 ```
 
-Use a fresh Codex process and chat to inherit that environment and updated skill
+Use a fresh app process and session to inherit that environment and updated skill
 instructions. Keep request content within the task's permitted sharing and the
 account's [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
 
-## Consult advisers and let Codex decide
+## Consult advisers and let the coordinator decide
 
 For substantial work, the coordinator consults Jev, Snap and OpenAI Decisions before implementation,
 and again after integration and current checks, before completion or authorized
@@ -401,39 +482,39 @@ substantive drafting or review. Small edits and direct factual answers remain
 lightweight.
 
 Participating advisers receive the same permitted evidence, questions, and neutral
-Choice options. The [consultation helper](skills/task-orchestration/scripts/consult_decisions.py)
+Choice options. The [consultation helper](skills/task-orchestration/references/consultation-helper.md)
 uses one attempt per provider, a 30-second batch budget, and no automatic retries.
 It validates each response independently and records unavailable coverage. The
-coordinator records sharing restrictions. Codex checks advice against exact sources
+coordinator records sharing restrictions, checks advice against exact sources
 and tests, records reasons for rejecting differing advice, and leaves missing
 material facts unresolved.
 Confidence and voting do not choose the result.
 
 See the [decision diagrams](docs/decision-flow.md) for the task checkpoints,
-the three adviser branches, disagreement and missing coverage, and Codex's
-resolved/unresolved decisions.
+the three adviser branches, disagreement and missing coverage, and the
+coordinator's resolved/unresolved decisions.
 
-Use the managed interpreter directly. Prepare a request containing `{state,
+Prepare a request containing `{state,
 questions}` as described in the [helper contract](skills/task-orchestration/references/consultation-helper.md).
 Keep credentials outside requests, records, and shared evidence. The following
 commands use different output paths because the helper refuses overwrites:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/preview.json --dry-run
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/advice.json
+cw consult --request /path/to/request.json --output /path/to/preview.json --dry-run
+cw consult --request /path/to/request.json --output /path/to/advice.json
 ```
 
 The dry run validates and writes a record without network access. A live call can
 incur usage with participating providers. It records their independent results and leaves
-`final_decision` pending. After checking the evidence, Codex writes a decision and
-finalizes a separate record offline:
+`final_decision` pending. After checking the evidence, the coordinator writes a
+decision and finalizes a separate record offline:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/consult_decisions.py --adjudicate /path/to/advice.json --decision /path/to/codex-decision.json --output /path/to/final.json
+cw consult --adjudicate /path/to/advice.json --decision /path/to/decision.json --output /path/to/final.json
 ```
 
-An unavailable or refusing provider preserves the other results while Codex continues
-source verification and reports the coverage limit. A successful API response
+An unavailable or refusing provider preserves the other results while the
+coordinator continues source verification and reports the coverage limit. A successful API response
 proves access for that request; it does not prove judgment accuracy or
 implementation correctness.
 
@@ -441,7 +522,7 @@ Every request uses the three required models. OpenAI refusals are recorded per
 question, preserving other valid answers and identifying missing
 coverage. They do not become choices against a claim.
 
-To verify all three integrations from a fresh Codex chat, use:
+To verify all three integrations from a fresh agent session, use:
 
 ```text
 Use the installed task-orchestration workflow to check TYPESAFE_API_KEY and
@@ -450,7 +531,7 @@ request using only synthetic public text, jev-1.14.0,
 subq-snap-preview and OpenAI Decisions gpt-6-luna, with the
 30-second batch budget and no retries. Validate requested and returned models
 and report each provider's result or safe failure category. Compare the results
-with the supplied evidence and record Codex's final decision. Never print keys
+with the supplied evidence and record the coordinator's final decision. Never print keys
 or authorization headers.
 ```
 
@@ -467,7 +548,7 @@ agreement and confidence do not choose the correct answer.
 From the editable checkout, validate the corpus offline:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B skills/task-orchestration/scripts/evaluate_multilingual.py
+GOWORK=off go run ./cmd/cwdev eval multilingual
 ```
 
 For an explicit hosted run, supply the three provider keys through the process
@@ -475,7 +556,7 @@ environment and choose a new private output directory outside repositories and
 managed releases:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B skills/task-orchestration/scripts/evaluate_multilingual.py --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01
+GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.local/state/agent-workflows/audits/multilingual-baseline-01
 ```
 
 The live run makes at most nine provider requests without retries and writes
@@ -511,7 +592,7 @@ Recovery preserves unrelated edits and refuses modified owned content. Uninstall
 preserves the checkout, caches, credentials, connectors, and consultation environment.
 Use [operations](docs/operations.md) for detailed command and recovery contracts.
 
-Start a fresh Codex chat after install, update, or rollback to load the active
+Start a fresh agent session after install, update, or rollback to load the active
 instructions. Check `cw status` and `cw validate`, confirm the configured profiles
 against the model table above, and inspect actual chat runtime metadata separately.
 Authenticate GitHub, Jira, and Confluence on each device and verify the intended

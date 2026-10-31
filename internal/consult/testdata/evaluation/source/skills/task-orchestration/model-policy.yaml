@@ -89,7 +89,7 @@ consultation:
     jev: jev-1.14.0
     subq_snap: subq-snap-preview
     openai_decisions: gpt-6-luna
-  comparison: codex_evidence_and_verification
+  comparison: coordinator_evidence_and_verification
 
 publication:
   authority: user_request_and_carried_authorization

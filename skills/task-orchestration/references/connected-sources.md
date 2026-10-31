@@ -111,7 +111,7 @@ Read enough paginated results to establish completeness for the current question
   diff, conflict, or verification ambiguity.
 - Read back created or changed issues, PRs, reviews, and comments. If a write times out or
   returns an ambiguous outcome, inspect remote state before retrying. Attach a created PR
-  to the current Codex task when the app provides the attachment tool.
+  to the current task when the app provides the attachment tool.
 
 ## Repository documentation and restricted sharing
 

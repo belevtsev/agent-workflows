@@ -545,7 +545,7 @@ func ValidateConsultation(data []byte, expected Context) (Consultation, error) {
 	resolved := true
 	for id, item := range record.FinalDecision.Questions {
 		if !nonblank(item.Reason) || !textList(item.Evidence) || !textList(item.Verification) || item.RejectedJudgments == nil {
-			return record, errors.New("invalid Codex decision references or reason")
+			return record, errors.New("invalid Coordinator decision references or reason")
 		}
 		if item.Status == "unresolved" {
 			resolved = false
