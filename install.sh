@@ -4,9 +4,9 @@ set -eu
 
 checkout=$(CDPATH='' cd -P "$(dirname "$0")" && pwd)
 binary=$checkout/.bin/cw
-repository=belevtsev/codex-workflows
+repository=belevtsev/agent-workflows
 
-fail() { printf 'codex-workflows: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'agent-workflows: %s\n' "$*" >&2; exit 1; }
 case $(uname -s) in Darwin) target_os=darwin ;; Linux) target_os=linux ;; *) fail 'native cw supports macOS and Linux' ;; esac
 case $(uname -m) in arm64|aarch64) target_arch=arm64 ;; x86_64|amd64) target_arch=amd64 ;; *) fail 'native cw supports arm64 and amd64' ;; esac
 
@@ -49,7 +49,7 @@ for argument in "$@"; do
             exit 0
             ;;
         --help|-h|help)
-            printf '%s\n' 'cw — Codex workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --state-dir PATH,' '         --shell auto|bash|zsh|none, --migrate-from PATH, --typesafe-legacy[=PATH], --no-checkout,' '         --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
+            printf '%s\n' 'cw — Agent workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --state-dir PATH,' '         --shell auto|bash|zsh|none, --migrate-from PATH, --typesafe-legacy[=PATH], --no-checkout,' '         --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
             exit 0
             ;;
     esac

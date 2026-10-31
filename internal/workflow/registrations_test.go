@@ -589,11 +589,11 @@ func TestRegistrationNativeTransitionRecoversEveryOperationWithoutSource(t *test
 					f, i, prior, _ := nativeRegistrationTransition(t, action)
 					beforeHome := installerSnapshot(t, f.paths.Home)
 					beforeState := installerRead(t, i.statePath)
-					t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+					t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 					if _, err := i.Execute(action); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 						t.Fatalf("%s did not interrupt at %s: %v", action, label, err)
 					}
-					t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					if err := os.Rename(f.paths.Source, f.paths.Source+" unavailable"); err != nil {
 						t.Fatal(err)
 					}

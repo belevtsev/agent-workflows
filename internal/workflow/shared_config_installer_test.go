@@ -100,9 +100,9 @@ func sharedLifecycleExecute(t *testing.T, fixture *installerFixture, command str
 
 func sharedLifecycleFailAt(t *testing.T, fixture *installerFixture, command, label string) {
 	t.Helper()
-	t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	_, err := sharedLifecycleInstaller(t, fixture, true).Execute(command)
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 		t.Fatalf("%s with %s: got %v", command, label, err)
 	}

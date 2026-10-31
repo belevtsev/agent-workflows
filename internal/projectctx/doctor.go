@@ -144,10 +144,10 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		} else {
 			put("gopls_cli", "detected", "Optional gopls executable detected; version is unchecked", "executable_lookup")
 		}
-		bin := filepath.Join(options.Home, ".venvs", "codex-graphify", "bin")
+		bin := filepath.Join(options.Home, ".venvs", "agent-graphify", "bin")
 		pythonName, graphifyName := "python", "graphify"
 		if runtime.GOOS == "windows" {
-			bin = filepath.Join(options.Home, ".venvs", "codex-graphify", "Scripts")
+			bin = filepath.Join(options.Home, ".venvs", "agent-graphify", "Scripts")
 			pythonName, graphifyName = "python.exe", "graphify.exe"
 		}
 		if executableFile(filepath.Join(bin, graphifyName)) {

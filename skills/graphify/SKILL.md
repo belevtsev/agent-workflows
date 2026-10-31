@@ -24,8 +24,8 @@ as an incidental discovery step.
 For an installed skill, the guarded interface is:
 
 ```sh
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
+~/.venvs/agent-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
+~/.venvs/agent-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
 ```
 
 Use the actual catalog path if the skill is registered elsewhere. Build the

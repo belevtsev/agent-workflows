@@ -41,7 +41,7 @@ jobs:
         run: exec go build -mod=mod -trimpath -o .bin/cwdev ./cmd/cwdev
       - name: Verify native implementation and prepare main release in parallel
         env:
-          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux' && format('v1.0.{0}', github.run_number) || '' }}
+          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux' && format('v2.0.{0}', github.run_number) || '' }}
           SOURCE_REVISION: ${{ github.sha }}
         run: exec .bin/cwdev check --race --source . --revision "$SOURCE_REVISION" --release-version "$RELEASE_VERSION"
       - name: Retain exact validated release archives
@@ -85,6 +85,6 @@ jobs:
       - name: Publish or reconcile the exact release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: v1.0.${{ github.run_number }}
+          VERSION: v2.0.${{ github.run_number }}
           REVISION: ${{ github.sha }}
         run: exec go run ./cmd/cwdev release publish --source . --version "$VERSION" --revision "$REVISION" --dist dist

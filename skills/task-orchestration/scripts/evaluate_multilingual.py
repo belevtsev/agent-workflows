@@ -204,9 +204,9 @@ def protected_roots():
     roots = [SKILL_ROOT.resolve()]
     # A source-run evaluator also protects the default/XDG manager store. An
     # installed evaluator additionally discovers its custom immutable release root.
-    roots.append((Path.home() / ".local" / "state" / "codex-workflows" / "releases").resolve())
+    roots.append((Path.home() / ".local" / "state" / "agent-workflows" / "releases").resolve())
     if os.environ.get("XDG_STATE_HOME"):
-        roots.append((Path(os.environ["XDG_STATE_HOME"]) / "codex-workflows" / "releases").resolve())
+        roots.append((Path(os.environ["XDG_STATE_HOME"]) / "agent-workflows" / "releases").resolve())
     for ancestor in SKILL_ROOT.resolve().parents:
         if ancestor.name == "releases":
             roots.append(ancestor)

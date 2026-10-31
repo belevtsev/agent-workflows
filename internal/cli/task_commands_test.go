@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/taskflow"
 )
 
 func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {

@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-const aliasStart = "# >>> codex-workflows cw >>>"
-const aliasEnd = "# <<< codex-workflows cw <<<"
-const aliasMarker = "codex-workflows cw"
+const aliasStart = "# >>> agent-workflows cw >>>"
+const aliasEnd = "# <<< agent-workflows cw <<<"
+const aliasMarker = "agent-workflows cw"
 
 var aliasComments = regexp.MustCompile(`(?m)^[ \t]*#.*$`)
 var aliasFunctions = regexp.MustCompile(`\b(?:function\s+[^\n{]*\bcw\b|cw\s*\(\s*\)|functions\s*\[\s*["']?cw\b)`)
@@ -69,10 +69,10 @@ func aliasSegment(paths Paths, leading string) string {
 	invocation := strings.Join(arguments, " ") + ` "$@"`
 	owner := aliasQuote(invocation)
 	script := "if command -v cw >/dev/null 2>&1; then\n" +
-		`  if [ "${_CODEX_WORKFLOWS_CW_OWNER-}" != ` + owner + " ]; then\n" +
-		"    printf '%s\\n' 'codex-workflows: cw already exists; keeping current command' >&2\n" +
+		`  if [ "${_AGENT_WORKFLOWS_CW_OWNER-}" != ` + owner + " ]; then\n" +
+		"    printf '%s\\n' 'agent-workflows: cw already exists; keeping current command' >&2\n" +
 		"  fi\nelse\n  function cw {\n    " + invocation + "\n  }\n" +
-		"  typeset +x _CODEX_WORKFLOWS_CW_OWNER=" + owner + "\nfi\n"
+		"  typeset +x _AGENT_WORKFLOWS_CW_OWNER=" + owner + "\nfi\n"
 	return leading + aliasStart + "\n" + script + aliasEnd + "\n"
 }
 
@@ -185,7 +185,7 @@ func aliasLocate(data []byte, expected string) (int, int, error) {
 }
 
 func aliasUnowned(data []byte) error {
-	if bytes.Contains(data, []byte(aliasMarker)) || bytes.Contains(data, []byte("codex-workflows-cw")) {
+	if bytes.Contains(data, []byte(aliasMarker)) || bytes.Contains(data, []byte("agent-workflows-cw")) {
 		return errors.New("Preexisting cw markers require installation ownership state")
 	}
 	if aliasHasDefinition(data) {
@@ -391,7 +391,7 @@ func AliasValidateOperation(value Object, paths Paths) error {
 }
 
 func aliasCurrentSegment(data []byte, value Object) (any, error) {
-	if !bytes.Contains(data, []byte(aliasMarker)) && !bytes.Contains(data, []byte("codex-workflows-cw")) {
+	if !bytes.Contains(data, []byte(aliasMarker)) && !bytes.Contains(data, []byte("agent-workflows-cw")) {
 		return nil, aliasUnowned(data)
 	}
 	for _, key := range []string{"before_segment", "after_segment"} {

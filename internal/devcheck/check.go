@@ -13,8 +13,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/belevtsev/codex-workflows/internal/release"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/release"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 type Options struct {

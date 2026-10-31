@@ -251,7 +251,7 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := filepath.Join(home, ".venvs/codex-graphify/bin")
+	bin := filepath.Join(home, ".venvs/agent-graphify/bin")
 	for _, executable := range []string{"graphify", "python"} {
 		writeFile(t, bin, executable, "fixture")
 		if err := os.Chmod(filepath.Join(bin, executable), 0o755); err != nil {

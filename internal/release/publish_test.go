@@ -64,7 +64,7 @@ func newPublicationFixture(t *testing.T) *publicationFixture {
 	source := t.TempDir()
 	writeTest(t, filepath.Join(source, ".gitignore"), []byte("dist/\n"))
 	writeTest(t, filepath.Join(source, "README.md"), []byte("Release fixture\n"))
-	writeTest(t, filepath.Join(source, "go.mod"), []byte("module github.com/belevtsev/codex-workflows\n\ngo 1.27.1\n"))
+	writeTest(t, filepath.Join(source, "go.mod"), []byte("module github.com/belevtsev/agent-workflows\n\ngo 1.27.1\n"))
 	writeTest(t, filepath.Join(source, "cmd", "cw", "main.go"), []byte(fixtureMain))
 	gitTest(t, source, "init", "-q")
 	gitTest(t, source, "add", ".")
@@ -111,7 +111,7 @@ func newPublicationFixture(t *testing.T) *publicationFixture {
 func (fixture *publicationFixture) serve(writer http.ResponseWriter, request *http.Request) {
 	fixture.mu.Lock()
 	defer fixture.mu.Unlock()
-	path := strings.TrimPrefix(request.URL.Path, "/repos/belevtsev/codex-workflows")
+	path := strings.TrimPrefix(request.URL.Path, "/repos/belevtsev/agent-workflows")
 	if request.Header.Get("Authorization") != "Bearer fixture-secret" {
 		http.Error(writer, "missing fixture authorization", http.StatusForbidden)
 		return
@@ -362,7 +362,7 @@ func TestReadReleaseFindsDraftThroughAuthenticatedPagination(t *testing.T) {
 			requests := 0
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				requests++
-				if request.Header.Get("Authorization") != "Bearer fixture-secret" || request.URL.Path != "/repos/belevtsev/codex-workflows/releases" {
+				if request.Header.Get("Authorization") != "Bearer fixture-secret" || request.URL.Path != "/repos/belevtsev/agent-workflows/releases" {
 					http.Error(writer, "incorrect draft lookup", http.StatusForbidden)
 					return
 				}
@@ -382,7 +382,7 @@ func TestReadReleaseFindsDraftThroughAuthenticatedPagination(t *testing.T) {
 				}
 			}))
 			defer server.Close()
-			p := &publisher{options: PublishOptions{Version: "v1.0.8", Token: "fixture-secret"}, client: server.Client(), base: server.URL + "/repos/belevtsev/codex-workflows"}
+			p := &publisher{options: PublishOptions{Version: "v1.0.8", Token: "fixture-secret"}, client: server.Client(), base: server.URL + "/repos/belevtsev/agent-workflows"}
 			remote, err := p.readRelease(t.Context())
 			if duplicate {
 				if err == nil {

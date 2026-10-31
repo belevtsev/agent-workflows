@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 const fixtureSHA = "0123456789012345678901234567890123456789"

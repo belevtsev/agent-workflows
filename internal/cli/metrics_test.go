@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/outcomes"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 func metricsConfig(t *testing.T, root string) (Config, *bytes.Buffer) {

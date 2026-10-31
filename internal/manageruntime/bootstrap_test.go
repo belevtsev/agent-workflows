@@ -283,7 +283,7 @@ func TestBootstrapRejectsOlderReleasesWithoutChangingOwnedInstallation(t *testin
 func bootstrapOwnedInstallation(t *testing.T, root string) (string, map[string]string, map[string]string) {
 	t.Helper()
 	home := filepath.Join(root, "installed home")
-	state := filepath.Join(home, ".local", "state", "codex-workflows")
+	state := filepath.Join(home, ".local", "state", "agent-workflows")
 	owned := map[string]string{
 		filepath.Join(home, ".codex", "config.toml"): "model = \"fixture\"\n",
 		filepath.Join(home, ".codex", "AGENTS.md"):   "fixture instructions\n",

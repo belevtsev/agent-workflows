@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 func sameEncoded(a, b any) bool {

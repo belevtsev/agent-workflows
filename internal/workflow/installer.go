@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-const startMarker = "<!-- codex-workflows-start -->"
-const endMarker = "<!-- codex-workflows-end -->"
+const startMarker = "<!-- agent-workflows-start -->"
+const endMarker = "<!-- agent-workflows-end -->"
 
 type Options struct {
 	Paths
@@ -54,7 +54,7 @@ func managedBlock(template []byte, leading []byte) []byte {
 	return append(out, []byte(endMarker+"\n")...)
 }
 func hasMarkers(data []byte) bool {
-	return bytes.Contains(data, []byte("codex-workflows-start")) || bytes.Contains(data, []byte("codex-workflows-end"))
+	return bytes.Contains(data, []byte("agent-workflows-start")) || bytes.Contains(data, []byte("agent-workflows-end"))
 }
 func locateBlock(data []byte) (int, int, error) {
 	if bytes.Count(data, []byte(startMarker)) != 1 || bytes.Count(data, []byte(endMarker)) != 1 {
@@ -234,7 +234,7 @@ func (i *Installer) validateStateStructure(s Object) error {
 	return nil
 }
 func (i *Installer) preview(sha string) (string, Object, func(), error) {
-	dir, e := os.MkdirTemp("", "codex-workflows-preview-")
+	dir, e := os.MkdirTemp("", "agent-workflows-preview-")
 	if e != nil {
 		return "", nil, nil, e
 	}

@@ -94,7 +94,7 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 	env := make([]string, 0, len(os.Environ()))
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
-		if !slices.Contains([]string{"HOME", "SHELL", "PATH", "TYPESAFE_API_KEY", "SUBQ_API_KEY", "CODEX_HOME", "XDG_STATE_HOME", "CODEX_WORKFLOWS_FAULT", "ZDOTDIR", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM"}, name) && !strings.HasPrefix(name, "BASH_FUNC_") {
+		if !slices.Contains([]string{"HOME", "SHELL", "PATH", "TYPESAFE_API_KEY", "SUBQ_API_KEY", "CODEX_HOME", "XDG_STATE_HOME", "AGENT_WORKFLOWS_FAULT", "ZDOTDIR", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM"}, name) && !strings.HasPrefix(name, "BASH_FUNC_") {
 			env = append(env, entry)
 		}
 	}
@@ -219,7 +219,7 @@ func NativeSmoke(ctx context.Context, source, binary string, output io.Writer) e
 	}
 	fault := exec.CommandContext(ctx, installed, "uninstall")
 	fault.Dir = temporary
-	fault.Env = append(append([]string{}, env...), "CODEX_WORKFLOWS_FAULT=after-manager-locator")
+	fault.Env = append(append([]string{}, env...), "AGENT_WORKFLOWS_FAULT=after-manager-locator")
 	failure, err := fault.CombinedOutput()
 	if err == nil || !bytes.Contains(failure, []byte("after-manager-locator")) {
 		return fmt.Errorf("native interrupted-uninstall fixture did not reach its locator fault: %v\n%s", err, failure)

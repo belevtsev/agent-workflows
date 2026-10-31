@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"unicode/utf16"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 type Question struct {

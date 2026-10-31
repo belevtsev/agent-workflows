@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 func workerBrief(id, agent, role string, owned []string, checks ...string) WorkerBrief {

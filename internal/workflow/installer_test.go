@@ -32,7 +32,7 @@ func newInstallerFixture(t *testing.T) *installerFixture {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_OPTIONAL_LOCKS", "0")
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	t.Setenv("SHELL", "/bin/bash")
 	t.Setenv("ZDOTDIR", "")
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -213,9 +213,9 @@ func (f *installerFixture) execute(t *testing.T, command string) Object {
 
 func (f *installerFixture) failAt(t *testing.T, command, label string) {
 	t.Helper()
-	t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	_, err := f.installer(true).Execute(command)
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 		t.Fatalf("%s with %s: got %v", command, label, err)
 	}
@@ -307,7 +307,7 @@ func (f *installerFixture) bareOrigin(t *testing.T) string {
 	t.Helper()
 	origin := filepath.Join(f.base, "local origin.git")
 	f.git(t, "clone", "--bare", f.paths.Source, origin)
-	const official = "https://github.com/belevtsev/codex-workflows.git"
+	const official = "https://github.com/belevtsev/agent-workflows.git"
 	f.git(t, "remote", "add", "origin", official)
 	f.git(t, "config", "url."+origin+".insteadOf", official)
 	return origin
@@ -801,9 +801,9 @@ func TestInstallerLegacyAdoptionRecoveryRestoresDirectory(t *testing.T) {
 			before := installerSnapshot(t, f.paths.Home)
 			i := f.installer(true)
 			i.TypeSafeLegacy = new("")
-			t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			_, err := i.Setup(false)
-			t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 				t.Fatalf("legacy setup at %s: %v", label, err)
 			}

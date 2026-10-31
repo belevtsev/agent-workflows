@@ -305,8 +305,8 @@ class EvaluationTests(unittest.TestCase):
     def test_default_xdg_and_current_snapshot_release_roots_are_protected(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
-            default = base / ".local" / "state" / "codex-workflows" / "releases"
-            custom = base / "custom state" / "codex-workflows" / "releases"
+            default = base / ".local" / "state" / "agent-workflows" / "releases"
+            custom = base / "custom state" / "agent-workflows" / "releases"
             current = base / "other state" / "releases" / "revision" / "skills" / "task-orchestration"
             for directory in (default, custom, current):
                 directory.mkdir(parents=True)

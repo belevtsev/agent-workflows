@@ -101,7 +101,7 @@ def environment(runtime=None, output=None, child_home=None):
 
 
 def graphify_process(runtime, arguments, *, cwd, output=None, timeout):
-    with tempfile.TemporaryDirectory(prefix="codex-graphify-home-") as directory:
+    with tempfile.TemporaryDirectory(prefix="agent-graphify-home-") as directory:
         return process([runtime, *arguments], cwd=cwd, env=environment(runtime, output, Path(directory)), timeout=timeout)
 
 
@@ -155,7 +155,7 @@ def source(repo):
 
 
 def cache_paths(state, requested=None):
-    root = Path(requested or Path.home() / ".cache" / "codex-workflows" / "graphify").expanduser().resolve()
+    root = Path(requested or Path.home() / ".cache" / "agent-workflows" / "graphify").expanduser().resolve()
     protected = [Path(state["repository"]), Path(__file__).resolve().parent.parent]
     # A cache override may not enter another managed snapshot/source release either.
     if any(inside(root, p) for p in protected) or any((p / "skills-manifest.json").is_file() for p in (root, *root.parents)):
@@ -169,7 +169,7 @@ def cache_paths(state, requested=None):
 
 
 def resolve_runtime(override=None):
-    default = Path.home() / ".venvs" / "codex-graphify" / ("Scripts/graphify.exe" if os.name == "nt" else "bin/graphify")
+    default = Path.home() / ".venvs" / "agent-graphify" / ("Scripts/graphify.exe" if os.name == "nt" else "bin/graphify")
     candidates = [Path(override).expanduser()] if override else [default, Path(shutil.which("graphify") or "/nonexistent/graphify")]
     for candidate in candidates:
         if candidate.is_file() and os.access(candidate, os.X_OK):
@@ -178,7 +178,7 @@ def resolve_runtime(override=None):
             if rc or not re.fullmatch(r"graphify\s*" + re.escape(VERSION), out.strip()):
                 raise DiscoveryError("runtime_version", f"Explicit use requires graphifyy=={VERSION}; install the pinned separate runtime")
             return runtime
-    raise DiscoveryError("runtime_missing", f"Install graphifyy=={VERSION} in ~/.venvs/codex-graphify; normal source discovery remains available")
+    raise DiscoveryError("runtime_missing", f"Install graphifyy=={VERSION} in ~/.venvs/agent-graphify; normal source discovery remains available")
 
 
 def write_json(path, data):

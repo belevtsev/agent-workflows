@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/belevtsev/codex-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/internal/outcomes"
 	"github.com/spf13/cobra"
 )
 

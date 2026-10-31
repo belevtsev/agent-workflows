@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 var commitSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)

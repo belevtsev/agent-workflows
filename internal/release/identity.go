@@ -37,7 +37,7 @@ func ValidateNativeAssets(directory, version, revision string, stamp time.Time) 
 		if err != nil {
 			return nil, fmt.Errorf("release archive %s does not contain a Go cw binary", name)
 		}
-		if info.Path != "github.com/belevtsev/codex-workflows/cmd/cw" || info.Main.Path != "github.com/belevtsev/codex-workflows" || info.GoVersion != "go1.27.1" {
+		if info.Path != "github.com/belevtsev/agent-workflows/cmd/cw" || info.Main.Path != "github.com/belevtsev/agent-workflows" || info.GoVersion != "go1.27.1" {
 			return nil, fmt.Errorf("release binary module or Go toolchain differs: %s", name)
 		}
 		settings := make(map[string]string)

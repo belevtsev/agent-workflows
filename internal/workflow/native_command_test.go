@@ -192,11 +192,11 @@ func TestNativeManagerInterruptedShellMigrationRestoresLegacy(t *testing.T) {
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 	installer.Shell = "zsh"
 	t.Setenv("ZDOTDIR", "")
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "after-state")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 	if _, err = installer.Setup(true); err == nil {
 		t.Fatal("fault did not interrupt shell migration")
 	}
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	bash := filepath.Join(fixture.paths.Home, ".bashrc")
 	installerAppend(t, bash, "# later bash bytes\n")
 	installerAppend(t, zsh, "# later zsh bytes\n")
@@ -304,11 +304,11 @@ func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			original := fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt native enrollment")
 			}
-			t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			installer.Source = filepath.Join(fixture.base, "unavailable")
 			if _, err := installer.Recover(); err != nil {
 				t.Fatal(err)
@@ -331,18 +331,18 @@ func TestNativeManagerRecoveryPreservesIndependentProfileEdits(t *testing.T) {
 	fixture := newInstallerFixture(t)
 	original := fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "after-command-profile")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-command-profile")
 	if _, err := installer.Setup(true); err == nil {
 		t.Fatal("fault did not interrupt profile installation")
 	}
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	rc := filepath.Join(fixture.paths.Home, ".bashrc")
 	installerAppend(t, rc, "# independent after failure\n")
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "after-recover-command-profile")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-command-profile")
 	if _, err := installer.Recover(); err == nil {
 		t.Fatal("fault did not interrupt recovery")
 	}
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	installerAppend(t, rc, "# independent during recovery\n")
 	if _, err := installer.Recover(); err != nil {
 		t.Fatal(err)
@@ -402,11 +402,11 @@ func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err = installer.Uninstall(); err == nil {
 				t.Fatal("fault did not interrupt native uninstall")
 			}
-			t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if _, err = installer.runtimeRelease(fixture.first); err != nil {
 				t.Fatalf("immutable recovery metadata unavailable: %v", err)
 			}
@@ -434,11 +434,11 @@ func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			t.Setenv("CODEX_WORKFLOWS_FAULT", "after-state")
+			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt native setup")
 			}
-			t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			journal, err := readJSON(installer.journalPath)
 			if err != nil {
 				t.Fatal(err)

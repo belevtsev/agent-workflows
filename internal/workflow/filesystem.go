@@ -212,7 +212,7 @@ func atomicWrite(path string, data []byte, mode os.FileMode) error {
 	if e := realDirectory(filepath.Dir(path), true); e != nil {
 		return e
 	}
-	f, e := os.CreateTemp(filepath.Dir(path), ".codex-workflows-")
+	f, e := os.CreateTemp(filepath.Dir(path), ".agent-workflows-")
 	if e != nil {
 		return e
 	}
@@ -328,7 +328,7 @@ func writeObservation(path string, v Object) error {
 		if e := realDirectory(filepath.Dir(path), true); e != nil {
 			return e
 		}
-		f, e := os.CreateTemp(filepath.Dir(path), ".codex-workflows-link-")
+		f, e := os.CreateTemp(filepath.Dir(path), ".agent-workflows-link-")
 		if e != nil {
 			return e
 		}
@@ -365,7 +365,7 @@ func gitContext(ctx context.Context, source string, args ...string) ([]byte, err
 	return out, nil
 }
 func fault(label string) error {
-	if os.Getenv("CODEX_WORKFLOWS_FAULT") == label {
+	if os.Getenv("AGENT_WORKFLOWS_FAULT") == label {
 		return fmt.Errorf("injected failure at %s (recover before retrying)", label)
 	}
 	return nil

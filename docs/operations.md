@@ -150,9 +150,9 @@ activating Graphify on a device. The guarded runner supports macOS and Linux.
 Python 3.14 with `venv` and `ensurepip` is the recommended interpreter for this pin:
 
 ```sh
-python3.14 -m venv "$HOME/.venvs/codex-graphify"
-"$HOME/.venvs/codex-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
-"$HOME/.venvs/codex-graphify/bin/python" -m pip check
+python3.14 -m venv "$HOME/.venvs/agent-graphify"
+"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
+"$HOME/.venvs/agent-graphify/bin/python" -m pip check
 ```
 
 Use an explicit path to a suitable Python interpreter if `python3.14` is not on
@@ -165,8 +165,8 @@ prove version compatibility or a complete graph.
 Use the guarded helper from the installed skill:
 
 ```sh
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
+~/.venvs/agent-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
+~/.venvs/agent-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
 ```
 
 For a custom installation home or registration, substitute the actual interpreter

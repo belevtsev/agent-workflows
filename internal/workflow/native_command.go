@@ -15,8 +15,8 @@ import (
 	"time"
 )
 
-const profileStart = "# >>> codex-workflows PATH >>>"
-const profileEnd = "# <<< codex-workflows PATH <<<"
+const profileStart = "# >>> agent-workflows PATH >>>"
+const profileEnd = "# <<< agent-workflows PATH <<<"
 
 // CodexDefaultsCapability identifies native support for shared config ownership.
 const CodexDefaultsCapability = "cw-codex-defaults-v1"
@@ -509,7 +509,7 @@ func profileLocate(data []byte, expected string) (int, int, error) {
 			return 0, 0, err
 		}
 		remainder := append(bytes.Clone(data[:start]), data[end:]...)
-		if bytes.Contains(remainder, []byte("codex-workflows PATH")) {
+		if bytes.Contains(remainder, []byte("agent-workflows PATH")) {
 			return 0, 0, errors.New("unidentified PATH markers beside legacy wrapper")
 		}
 		return start, end, nil
@@ -524,7 +524,7 @@ func profileLocate(data []byte, expected string) (int, int, error) {
 		return 0, 0, errors.New("owned PATH profile changed")
 	}
 	remainder := append(bytes.Clone(data[:begin]), data[end:]...)
-	if bytes.Contains(remainder, []byte("codex-workflows PATH")) {
+	if bytes.Contains(remainder, []byte("agent-workflows PATH")) {
 		return 0, 0, errors.New("unidentified PATH profile markers")
 	}
 	if err := aliasUnowned(remainder); err != nil {
@@ -715,7 +715,7 @@ func (i *Installer) prepareSingleProfile(legacy Object) (*ProfileRecord, Object,
 		if err = aliasUnowned(data); err != nil {
 			return nil, nil, err
 		}
-		if bytes.Contains(data, []byte("codex-workflows PATH")) {
+		if bytes.Contains(data, []byte("agent-workflows PATH")) {
 			return nil, nil, errors.New("preexisting PATH markers need ownership state")
 		}
 		originalExists, originalMode = exists, mode
@@ -836,7 +836,7 @@ func (i *Installer) validateProfileOperation(op Object) error {
 }
 
 func profileCurrent(data []byte, op Object) (any, error) {
-	if !bytes.Contains(data, []byte(aliasMarker)) && !bytes.Contains(data, []byte("codex-workflows PATH")) {
+	if !bytes.Contains(data, []byte(aliasMarker)) && !bytes.Contains(data, []byte("agent-workflows PATH")) {
 		return nil, aliasUnowned(data)
 	}
 	for _, side := range []string{"before_segment", "after_segment"} {

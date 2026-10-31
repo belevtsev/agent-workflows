@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 // Detection deliberately does not execute optional tools: plugin startup can
@@ -50,9 +50,9 @@ func skillPrerequisites(status workflow.Object, home string, stat func(string) (
 		report["docker_sandboxes"] = toolPrerequisite{"not_checked", "Sandbox tools and platform support are checked by the relevant skill when used"}
 	}
 	if graphify {
-		path := filepath.Join(home, ".venvs", "codex-graphify", "bin", "graphify")
+		path := filepath.Join(home, ".venvs", "agent-graphify", "bin", "graphify")
 		if runtime.GOOS == "windows" {
-			path = filepath.Join(home, ".venvs", "codex-graphify", "Scripts", "graphify.exe")
+			path = filepath.Join(home, ".venvs", "agent-graphify", "Scripts", "graphify.exe")
 		}
 		isExecutable := func(path string) bool {
 			info, err := stat(path)

@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 func validateCommand(argv []string) error {

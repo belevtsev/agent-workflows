@@ -1,16 +1,16 @@
-# codex-workflows
+# agent-workflows
 
-A Go skill manager for personal Codex workflows on macOS and Linux. Install
+A Go skill manager for personal Agent workflows on macOS and Linux. Install
 editable skills, templates, model policy, and shared Codex defaults as verified,
 immutable snapshots. Updates are manual and reversible.
 
-This guide covers the [current release](https://github.com/belevtsev/codex-workflows/releases/latest).
+This guide covers the [current release](https://github.com/belevtsev/agent-workflows/releases/latest).
 
 ## Install
 
 ```sh
-git clone https://github.com/belevtsev/codex-workflows.git
-cd codex-workflows
+git clone https://github.com/belevtsev/agent-workflows.git
+cd agent-workflows
 ./install.sh
 ```
 

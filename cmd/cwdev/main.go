@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/belevtsev/codex-workflows/internal/devcheck"
-	"github.com/belevtsev/codex-workflows/internal/release"
+	"github.com/belevtsev/agent-workflows/internal/devcheck"
+	"github.com/belevtsev/agent-workflows/internal/release"
 )
 
 func run(ctx context.Context, arguments []string) error {

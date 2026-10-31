@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/belevtsev/codex-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 

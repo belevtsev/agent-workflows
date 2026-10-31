@@ -125,13 +125,13 @@ func TestAliasSelectedShell(t *testing.T) {
 
 func TestAliasSegmentExactDeployedBytes(t *testing.T) {
 	paths := Paths{Source: "/source", Home: "/home", Codex: "/codex", State: "/state"}
-	want := "# >>> codex-workflows cw >>>\n" +
+	want := "# >>> agent-workflows cw >>>\n" +
 		"if command -v cw >/dev/null 2>&1; then\n" +
-		"  if [ \"${_CODEX_WORKFLOWS_CW_OWNER-}\" != '/source/install.sh --home /home --codex-home /codex --state-dir /state \"$@\"' ]; then\n" +
-		"    printf '%s\\n' 'codex-workflows: cw already exists; keeping current command' >&2\n" +
+		"  if [ \"${_AGENT_WORKFLOWS_CW_OWNER-}\" != '/source/install.sh --home /home --codex-home /codex --state-dir /state \"$@\"' ]; then\n" +
+		"    printf '%s\\n' 'agent-workflows: cw already exists; keeping current command' >&2\n" +
 		"  fi\nelse\n  function cw {\n    /source/install.sh --home /home --codex-home /codex --state-dir /state \"$@\"\n  }\n" +
-		"  typeset +x _CODEX_WORKFLOWS_CW_OWNER='/source/install.sh --home /home --codex-home /codex --state-dir /state \"$@\"'\nfi\n" +
-		"# <<< codex-workflows cw <<<\n"
+		"  typeset +x _AGENT_WORKFLOWS_CW_OWNER='/source/install.sh --home /home --codex-home /codex --state-dir /state \"$@\"'\nfi\n" +
+		"# <<< agent-workflows cw <<<\n"
 	if got := aliasSegment(paths, ""); got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
@@ -222,7 +222,7 @@ func TestAliasAbsentAndEmptyOriginsRemainDistinct(t *testing.T) {
 }
 
 func TestAliasConflictingDefinitionsAndMarkersRefuse(t *testing.T) {
-	definitions := []string{"cw() { :; }\n", "function cw { :; }\n", "alias cw='prior'\n", "alias other='one' cw='prior'\n", "if true; then cw() { :; }; fi\n", "if true; then alias cw='prior'; fi\n", "command alias cw='prior'\n", "alias 'cw'='prior'\n", "alias \"cw\"=\"prior\"\n", "alias \\\ncw='prior'\n", "functions[cw]='prior'\n", aliasStart + "\n", "# codex-workflows-cw-start\n"}
+	definitions := []string{"cw() { :; }\n", "function cw { :; }\n", "alias cw='prior'\n", "alias other='one' cw='prior'\n", "if true; then cw() { :; }; fi\n", "if true; then alias cw='prior'; fi\n", "command alias cw='prior'\n", "alias 'cw'='prior'\n", "alias \"cw\"=\"prior\"\n", "alias \\\ncw='prior'\n", "functions[cw]='prior'\n", aliasStart + "\n", "# agent-workflows-cw-start\n"}
 	for _, data := range definitions {
 		t.Run(data, func(t *testing.T) {
 			paths := aliasTestPaths(t)
@@ -532,7 +532,7 @@ func TestAliasRuntimeGuardAndDoubleSource(t *testing.T) {
 			if bytes.Contains(stdout.Bytes(), []byte("fixture-secret-must-not-leak")) {
 				t.Fatal("real-shell fixture inherited a credential")
 			}
-			if stderr.Len() != 0 || bytes.Contains(stdout.Bytes(), []byte("_CODEX_WORKFLOWS_CW_OWNER=")) {
+			if stderr.Len() != 0 || bytes.Contains(stdout.Bytes(), []byte("_AGENT_WORKFLOWS_CW_OWNER=")) {
 				t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
 			}
 		})

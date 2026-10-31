@@ -354,12 +354,12 @@ func (i *Installer) allowedOrigin() error {
 		return e
 	}
 	value := strings.TrimSpace(string(url))
-	for _, base := range []string{"git@github.com:belevtsev/codex-workflows", "https://github.com/belevtsev/codex-workflows", "ssh://git@github.com/belevtsev/codex-workflows"} {
+	for _, base := range []string{"git@github.com:belevtsev/agent-workflows", "https://github.com/belevtsev/agent-workflows", "ssh://git@github.com/belevtsev/agent-workflows"} {
 		if value == base || value == base+".git" {
 			return nil
 		}
 	}
-	return errors.New("origin must be the belevtsev/codex-workflows GitHub repository")
+	return errors.New("origin must be the belevtsev/agent-workflows GitHub repository")
 }
 func (i *Installer) Update() (Object, error) {
 	if i.AdoptPersonalSkills {

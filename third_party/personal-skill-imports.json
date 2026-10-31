@@ -62,7 +62,7 @@
           "mode": 420,
           "source_sha256": "d5ad7d6d7d949a8a8c37af4f80d79a8b4e057245e30ba11866efb40c6771dafa",
           "imported_sha256": "7a7dadd13ce6087895f7a3823e9c90f7077ccd54719bfa5ec9b8f5043b487043",
-          "adaptation": "Refreshed to upstream Archify 3.2.0. Disable the automatic updater while preserving unavailable receipt shape; report managed-by-codex-workflows and perform no update I/O."
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Disable the automatic updater while preserving unavailable receipt shape; report managed-by-agent-workflows and perform no update I/O."
         },
         {
           "path": "bin/finalize.mjs",
@@ -1369,14 +1369,14 @@
           "mode": 420,
           "source_sha256": "5a1add913beee623cdc9c009bad1980f4538bae1b9862bf92e41c83dd8a90666",
           "imported_sha256": "3ddc715f9432301e9c30c5931a39cc03e4237a589e05cdf6fc62ae84e5e0512a",
-          "adaptation": "Refreshed to upstream Archify 3.2.0. Make direct updater checks silent no-ops with a managed-by-codex-workflows receipt and no update I/O."
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Make direct updater checks silent no-ops with a managed-by-agent-workflows receipt and no update I/O."
         },
         {
           "path": "scripts/delivery-update-child.mjs",
           "mode": 420,
           "source_sha256": "23b2cf0cb79935b90238558b511966bdf04c4158605c0651b1ccdc90b1736e5f",
           "imported_sha256": "b4b409bad3ecdc96c327219a5576f65d5a3a6159f662d57e27b3782d940c17af",
-          "adaptation": "Refreshed to upstream Archify 3.2.0. Make the legacy update child a silent no-op with a managed-by-codex-workflows receipt and no update I/O."
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Make the legacy update child a silent no-op with a managed-by-agent-workflows receipt and no update I/O."
         },
         {
           "path": "scripts/generate-brand-marks.mjs",

@@ -155,8 +155,8 @@ For an unreleased committed local revision, use the pinned Go toolchain and the
 normal native CLI with all installation roots explicitly selected:
 
 ```sh
-GOWORK=off go run ./cmd/cw install --source /path/to/codex-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/codex-workflows --dry-run
-GOWORK=off go run ./cmd/cw install --source /path/to/codex-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/codex-workflows
+GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/agent-workflows --dry-run
+GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --state-dir /path/to/home/.local/state/agent-workflows
 ```
 
 Replace the example paths with the intended real roots. Source must be clean and

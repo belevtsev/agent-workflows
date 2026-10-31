@@ -13,8 +13,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -153,7 +153,7 @@ func defaults(config Config) Config {
 func NewCommand(config Config) *cobra.Command {
 	config = defaults(config)
 	o := options{shell: "auto"}
-	root := &cobra.Command{Use: "cw", Short: "Manage Codex workflow skills", Long: "Install, update, validate and recover the managed Codex workflow skills. Mutations apply by default; --dry-run makes no downloads or persistent writes.", SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true, Args: func(cmd *cobra.Command, args []string) error {
+	root := &cobra.Command{Use: "cw", Short: "Manage agent workflow skills", Long: "Install, update, validate and recover the managed agent workflow skills. Mutations apply by default; --dry-run makes no downloads or persistent writes.", SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true, Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return usage(fmt.Errorf("unknown command: %s", args[0]))
 		}
@@ -377,7 +377,7 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 		if state == "" {
 			state = filepath.Join(o.home, ".local", "state")
 		}
-		o.state = filepath.Join(state, "codex-workflows")
+		o.state = filepath.Join(state, "agent-workflows")
 	}
 	apply := !o.dryRun
 	if o.bootstrap {
