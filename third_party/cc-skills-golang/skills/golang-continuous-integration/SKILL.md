@@ -29,7 +29,7 @@ metadata:
   upstream:
     user-invocable: true
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(goreleaser:*) Bash(gh:*) AskUserQuestion
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(goreleaser:*) Bash(gh:*) AskUserQuestion
 ---
 
 **Modes:**

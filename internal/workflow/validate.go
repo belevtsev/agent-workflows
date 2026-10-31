@@ -236,7 +236,7 @@ func LoadManifest(root string) (Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read valid skills-manifest.json: %w", err)
 	}
-	manifest, err := suiteMapping(value, "manifest", "version", "registrations", "global_instructions", "required_licenses", "model_policy", "adoption_catalog")
+	manifest, err := suiteMapping(value, "manifest", "version", "registrations", "global_instructions", "required_licenses", "model_policy", "claude_model_policy", "adoption_catalog")
 	if err != nil {
 		return nil, err
 	}
@@ -306,15 +306,17 @@ func LoadManifest(root string) (Object, error) {
 			return nil, errors.New("required license is empty")
 		}
 	}
-	policy, err := suiteRelativePath(root, manifest["model_policy"], "model_policy")
-	if err != nil {
-		return nil, err
-	}
-	if !suiteRegular(policy) || !slices.Contains([]string{".yaml", ".yml"}, strings.ToLower(filepath.Ext(policy))) {
-		return nil, errors.New("model_policy must reference an existing YAML file")
-	}
-	if !slices.ContainsFunc(roots, func(source string) bool { return suiteWithin(source, policy) }) {
-		return nil, errors.New("model_policy must be inside a registered skill source")
+	for _, field := range []string{"model_policy", "claude_model_policy"} {
+		policy, err := suiteRelativePath(root, manifest[field], field)
+		if err != nil {
+			return nil, err
+		}
+		if !suiteRegular(policy) || !slices.Contains([]string{".yaml", ".yml"}, strings.ToLower(filepath.Ext(policy))) {
+			return nil, fmt.Errorf("%s must reference an existing YAML file", field)
+		}
+		if !slices.ContainsFunc(roots, func(source string) bool { return suiteWithin(source, policy) }) {
+			return nil, fmt.Errorf("%s must be inside a registered skill source", field)
+		}
 	}
 	if _, err = readPersonalCatalog(root, manifest); err != nil {
 		return nil, err
@@ -1284,7 +1286,7 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 		if providers["jev"] != model || providers["subq_snap"] != "subq-snap-preview" {
 			return nil, errors.New("consultation providers must match the Jev model and use subq-snap-preview")
 		}
-		if consultation["comparison"] != "codex_evidence_and_verification" {
+		if consultation["comparison"] != "coordinator_evidence_and_verification" {
 			return nil, errors.New("consultation comparison must use Codex evidence and verification")
 		}
 		if hasRequiredOpenAI {
@@ -1432,12 +1434,16 @@ func ValidateSuite(root string) (Object, error) {
 	if _, err := suiteModelPolicy(policyPath); err != nil {
 		return nil, fmt.Errorf("model policy is invalid: %w", err)
 	}
+	if _, err := ClaudeModelDefaults(root, manifest); err != nil {
+		return nil, fmt.Errorf("Claude model policy is invalid: %w", err)
+	}
 	if _, err := SharedConfigDefaults(root); err != nil {
 		return nil, fmt.Errorf("shared Codex defaults are invalid: %w", err)
 	}
 	return Object{
 		"version": manifest["version"], "registrations": manifest["registrations"],
 		"global_instructions": manifest["global_instructions"], "model_policy": manifest["model_policy"],
+		"claude_model_policy": manifest["claude_model_policy"],
 		"skill_count": len(names), "markdown_files_checked": markdown,
 		"required_licenses": len(manifest["required_licenses"].([]any)),
 	}, nil

@@ -46,5 +46,6 @@
     "third_party/archify/assets/JetBrainsMono-OFL.txt"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
+  "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
   "adoption_catalog": "personal-skill-origins.json"
 }

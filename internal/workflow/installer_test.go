@@ -109,7 +109,7 @@ func installerBuildFixture(t *testing.T, maintained, destination string) {
 	}
 	for _, relative := range []string{
 		".gitignore", "install.sh",
-		text(manifest["global_instructions"]), text(manifest["model_policy"]),
+		text(manifest["global_instructions"]), text(manifest["model_policy"]), text(manifest["claude_model_policy"]),
 		filepath.ToSlash(filepath.Join(filepath.Dir(text(manifest["model_policy"])), "references", "jev-questions.json")),
 	} {
 		copyFile(relative)

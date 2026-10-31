@@ -411,6 +411,12 @@ func ignored(path string) bool {
 				return true
 			}
 		}
+		if index > 0 && parts[index-1] == ".claude" {
+			switch part {
+			case "worktrees", "projects", "sessions", "settings.local.json":
+				return true
+			}
+		}
 	}
 	return false
 }

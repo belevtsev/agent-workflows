@@ -20,7 +20,7 @@ metadata:
   upstream:
     user-invocable: true
     compatibility: Designed for Claude Code, Codex or similar harness. Requires git.
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(git:*) Agent AskUserQuestion LSP Bash(gopls:*) mcp__gopls__*
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(git:*) Agent AskUserQuestion LSP Bash(gopls:*) mcp__gopls__*
 ---
 
 # Go skill discovery

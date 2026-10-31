@@ -1,7 +1,9 @@
 version: 2
 
-# Read this file for each substantial task. It guides the coordinator; Codex
+# Read this file for each substantial task. It guides the coordinator; the host
 # does not load these settings natively or switch a running session's model.
+# On Codex these profiles apply directly. Claude Code uses model-policy.claude.yaml
+# for profiles and roles, and shares everything else here.
 # Authorized model/effort and role edits are validated against supported settings
 # and scope relationships. Consultation and publication safeguards stay mandatory.
 activation:
@@ -73,8 +75,8 @@ fallbacks:
 # implementation (or substantive drafting/review) and again during final review
 # against completed work and current checks, before completion or publication.
 # These are separate evidence batches; reuse is limited to the same checkpoint.
-# Record bounded attempts, restricted sharing, unavailable providers, and Codex's
-# disposition at each checkpoint. Keep the source-evidence fallback and no retries.
+# Record bounded attempts, restricted sharing, unavailable providers, and the
+# coordinator's disposition at each checkpoint. Keep the source-evidence fallback and no retries.
 # Checkpoint timing is skill instruction, not a new native manager policy field.
 consultation:
   model: jev-1.14.0
@@ -89,7 +91,7 @@ consultation:
     jev: jev-1.14.0
     subq_snap: subq-snap-preview
     openai_decisions: gpt-6-luna
-  comparison: codex_evidence_and_verification
+  comparison: coordinator_evidence_and_verification
 
 publication:
   authority: user_request_and_carried_authorization

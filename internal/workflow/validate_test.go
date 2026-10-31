@@ -28,6 +28,7 @@ func newSuiteFixture(t *testing.T) *suiteFixture {
 			"registrations":       Object{"example": "skills/example", "task-orchestration": "skills/task-orchestration"},
 			"global_instructions": "global/AGENTS.md", "required_licenses": []any{"LICENSE"},
 			"model_policy": "skills/task-orchestration/model-policy.yaml", "adoption_catalog": personalCatalogName,
+			"claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
 		},
 	}
 	fixture.write(t, "global/AGENTS.md", "# Working conventions\n\nUse source evidence.\n")
@@ -35,7 +36,7 @@ func newSuiteFixture(t *testing.T) *suiteFixture {
 	fixture.write(t, personalCatalogName, `{"skills":{},"version":1}`)
 	fixture.skill(t, "skills/example", "example", "")
 	fixture.skill(t, "skills/task-orchestration", "task-orchestration", "")
-	for _, name := range []string{"model-policy.yaml", "references/jev-questions.json"} {
+	for _, name := range []string{"model-policy.yaml", "model-policy.claude.yaml", "references/jev-questions.json"} {
 		data, err := os.ReadFile(filepath.Join("..", "..", "skills", "task-orchestration", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
@@ -543,7 +544,7 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 func TestModelPolicyDecisionProviders(t *testing.T) {
 	dual := func(consultation Object) {
 		consultation["providers"] = Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview"}
-		consultation["comparison"] = "codex_evidence_and_verification"
+		consultation["comparison"] = "coordinator_evidence_and_verification"
 	}
 	optional := func(consultation Object) {
 		dual(consultation)

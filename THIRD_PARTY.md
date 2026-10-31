@@ -27,6 +27,9 @@ resources or their MIT notice. TypeSafe's discovery description is shortened
 locally without upgrading or changing its API/integration guidance. These are
 maintained adaptations of the retained material, not new upstream revisions.
 
+The Go bundle's upstream `allowed-tools` lists are kept under `metadata.upstream`
+rather than as live frontmatter, so Claude Code does not pre-approve those tools.
+
 The 82 original Docker skill files were verified against their exact upstream
 Git blobs at the recorded commit. Local adaptations shorten discovery and UI
 descriptions, quote UI strings consistently, and identify the invoked skill in
