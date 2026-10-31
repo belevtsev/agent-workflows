@@ -1,0 +1,22 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [
+    "SUBQ_API_KEY",
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {
+    "jev": {
+      "body": "{\"model\": \"jev-1.14.0\", \"answers\": {\"claim\": {\"type\": \"choice\", \"choice\": \"supported\", \"probabilities\": {\"supported\": 1, \"contradicted\": 0, \"insufficient_evidence\": 0}, \"confidence\": 1}}, \"usage\": {\"input_tokens\": 20, \"output_tokens\": 3, \"cost\": 7}, \"id\": \"resp_1\", \"diagnostic\": \"SECRET_CANARY\"}"
+    },
+    "subq_snap": {
+      "body": "{\"model\": \"subq-snap-preview\", \"answers\": {\"claim\": {\"type\": \"choice\", \"choice\": \"supported\", \"probabilities\": {\"supported\": 1, \"contradicted\": 0, \"insufficient_evidence\": 0}, \"confidence\": 1}}, \"usage\": {\"input_tokens\": 20, \"output_tokens\": 3, \"cost\": 7}, \"id\": \"resp_1\", \"diagnostic\": \"SECRET_CANARY\"}"
+    },
+    "openai_decisions": {
+      "body": "{\"id\": \"dec_1\", \"model\": \"gpt-6-luna\", \"answers\": [{\"name\": \"claim\", \"type\": \"choice\", \"choice\": \"supported\", \"confidence\": 0.7, \"extra\": 1, \"probabilities\": [{\"value\": \"insufficient_evidence\", \"probability\": 0.25}, {\"value\": \"contradicted\", \"probability\": 0.25}, {\"value\": \"supported\", \"probability\": 0.5}]}], \"usage\": {\"input_tokens\": 23, \"output_tokens\": 5, \"total_tokens\": 28, \"other\": 1, \"input_tokens_details\": {\"cached_tokens\": 1, \"cache_write_tokens\": 2, \"x\": 1}, \"output_tokens_details\": {\"reasoning_tokens\": 3}}}"
+    }
+  },
+  "exit": 2,
+  "stdout": "Decision consultation partial; Coordinator decision pending\n",
+  "stderr": ""
+}

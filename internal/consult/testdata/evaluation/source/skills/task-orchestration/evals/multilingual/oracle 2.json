@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "labels": {
+    "c01": {
+      "expected": "supported",
+      "rationale": "The trace explicitly places the successful transaction commit at step 1 and the server's success acknowledgement at step 2. This establishes the claimed order for the observed request."
+    },
+    "c02": {
+      "expected": "contradicted",
+      "rationale": "The trace explicitly places the success acknowledgement before the successful transaction commit, reversing the order asserted by the claim."
+    },
+    "c03": {
+      "expected": "insufficient_evidence",
+      "rationale": "Both events are confirmed, but their execution order and timestamps are absent. The order in which the events are listed is not evidence of their execution order."
+    },
+    "c04": {
+      "expected": "supported",
+      "rationale": "The authenticated user's tenant is A. The response is exhaustive: exactly two records were returned, both owned by tenant A. The stated access rule is consistent with this observed response."
+    },
+    "c05": {
+      "expected": "contradicted",
+      "rationale": "The authenticated user belongs to tenant A but actually receives the contents of r2, which belongs to tenant B. This is an observed cross-tenant disclosure, not merely an omitted filter description."
+    },
+    "c06": {
+      "expected": "insufficient_evidence",
+      "rationale": "The user's tenant and the response size are known, but the returned records' ownership and the server's access rule are unspecified. Neither isolation nor a cross-tenant disclosure is established."
+    },
+    "c07": {
+      "expected": "supported",
+      "rationale": "The recorded execution order puts the owned worker's stop at step 2 and the parent function's return at step 3. This directly establishes the claimed lifecycle order."
+    },
+    "c08": {
+      "expected": "contradicted",
+      "rationale": "After cancellation, the parent returns at step 2. At step 3 its owned worker is still running and has not stopped, directly contradicting a stop before the parent's return."
+    },
+    "c09": {
+      "expected": "insufficient_evidence",
+      "rationale": "Cancellation and the parent's subsequent return are recorded, but the worker's outcome and stop time are not. Cancellation alone does not establish that the worker stopped before the parent returned."
+    },
+    "c10": {
+      "expected": "supported",
+      "rationale": "The release-service readback verifies both publication and a tag resolving to the exact requested source commit. Both parts of the claim are established."
+    },
+    "c11": {
+      "expected": "contradicted",
+      "rationale": "The release-service readback verifies publication but resolves the release tag to a different source commit. The verified mismatch makes the claim false."
+    },
+    "c12": {
+      "expected": "insufficient_evidence",
+      "rationale": "Only successful CI for the requested commit is observed. Neither release publication nor the published tag's source commit was checked, so successful CI does not establish or disprove the claim."
+    }
+  }
+}

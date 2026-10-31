@@ -1,0 +1,15 @@
+{
+  "policy": "required",
+  "flags": [
+    "--without-openai"
+  ],
+  "credentials": [
+    "OPENAI_API_KEY",
+    "SUBQ_API_KEY",
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {},
+  "exit": 1,
+  "stdout": "",
+  "stderr": "Decision consultation validation failed: required OpenAI adviser cannot be disabled\n"
+}

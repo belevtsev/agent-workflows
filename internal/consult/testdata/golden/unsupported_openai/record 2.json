@@ -1,0 +1,117 @@
+{
+  "version": 3,
+  "status": "partial",
+  "request": {
+    "state": [
+      "list",
+      "state"
+    ],
+    "questions": {
+      "claim": {
+        "type": "choice",
+        "instructions": {
+          "policy": "keep intact",
+          "steps": [
+            1,
+            2.5
+          ]
+        },
+        "criteria": {
+          "supported": [
+            "keep",
+            "intact"
+          ],
+          "contradicted": {
+            "meaning": "no"
+          }
+        }
+      }
+    }
+  },
+  "request_sha256": "221e3d6401b4da957f789bf83e7ccae68f5b5c5818cc36e3cdfa6b1cfedd6a2b",
+  "providers": {
+    "jev": {
+      "status": "success",
+      "requested_model": "jev-1.14.0",
+      "request_sha256": "221e3d6401b4da957f789bf83e7ccae68f5b5c5818cc36e3cdfa6b1cfedd6a2b",
+      "duration_seconds": 0.0,
+      "resolved_model": "jev-1.14.0",
+      "result": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "claim": {
+            "type": "choice",
+            "choice": "supported",
+            "probabilities": {
+              "supported": 1,
+              "contradicted": 0
+            },
+            "confidence": 1
+          }
+        },
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 3
+        }
+      },
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 3
+      }
+    },
+    "subq_snap": {
+      "status": "success",
+      "requested_model": "subq-snap-preview",
+      "request_sha256": "221e3d6401b4da957f789bf83e7ccae68f5b5c5818cc36e3cdfa6b1cfedd6a2b",
+      "duration_seconds": 0.0,
+      "resolved_model": "subq-snap-preview",
+      "result": {
+        "model": "subq-snap-preview",
+        "answers": {
+          "claim": {
+            "type": "choice",
+            "choice": "supported",
+            "probabilities": {
+              "supported": 1,
+              "contradicted": 0
+            },
+            "confidence": 1
+          }
+        },
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 3
+        }
+      },
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 3
+      }
+    },
+    "openai_decisions": {
+      "status": "unavailable",
+      "requested_model": "gpt-6-luna",
+      "request_sha256": "221e3d6401b4da957f789bf83e7ccae68f5b5c5818cc36e3cdfa6b1cfedd6a2b",
+      "duration_seconds": 0.0,
+      "error": {
+        "category": "unsupported_request"
+      }
+    }
+  },
+  "comparison": {
+    "claim": {
+      "status": "partial",
+      "choices": {
+        "jev": "supported",
+        "subq_snap": "supported"
+      },
+      "missing": {
+        "openai_decisions": "unavailable"
+      }
+    }
+  },
+  "final_decision": {
+    "status": "pending",
+    "questions": {}
+  }
+}

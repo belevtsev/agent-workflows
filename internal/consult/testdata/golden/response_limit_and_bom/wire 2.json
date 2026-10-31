@@ -1,0 +1,29 @@
+{
+  "jev": {
+    "url": "https://api.typesafe.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-jev-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":{\"evidence\":\"The service acknowledges work only after storing it.\",\"claim\":\"Acknowledgement follows storage.\"},\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":\"Does the evidence support the claim?\",\"criteria\":{\"supported\":\"The evidence establishes the claim.\",\"contradicted\":\"The evidence establishes an incompatible claim.\",\"insufficient_evidence\":\"A necessary fact is missing.\"}}}}"
+  },
+  "openai_decisions": {
+    "url": "https://api.openai.com/v1/decisions",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-openai-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"gpt-6-luna\",\"input\":\"{\\\"claim\\\":\\\"Acknowledgement follows storage.\\\",\\\"evidence\\\":\\\"The service acknowledges work only after storing it.\\\"}\",\"questions\":[{\"type\":\"choice\",\"name\":\"claim\",\"instructions\":\"Does the evidence support the claim?\",\"choices\":[{\"value\":\"contradicted\",\"description\":\"The evidence establishes an incompatible claim.\"},{\"value\":\"insufficient_evidence\",\"description\":\"A necessary fact is missing.\"},{\"value\":\"supported\",\"description\":\"The evidence establishes the claim.\"}]}]}"
+  },
+  "subq_snap": {
+    "url": "https://api.subq.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-snap-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"subq-snap-preview\",\"state\":{\"evidence\":\"The service acknowledges work only after storing it.\",\"claim\":\"Acknowledgement follows storage.\"},\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":\"Does the evidence support the claim?\",\"criteria\":{\"supported\":\"The evidence establishes the claim.\",\"contradicted\":\"The evidence establishes an incompatible claim.\",\"insufficient_evidence\":\"A necessary fact is missing.\"}}}}"
+  }
+}

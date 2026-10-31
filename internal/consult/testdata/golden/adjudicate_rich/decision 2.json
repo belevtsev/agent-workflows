@@ -1,0 +1,28 @@
+{
+  "questions": {
+    "zeta": {
+      "status": "resolved",
+      "choice": "supported",
+      "reason": "Source and fixture establish storage before acknowledgement — ✓.",
+      "evidence": [
+        "fixture/service.go:12 at fixture-revision"
+      ],
+      "verification": [
+        "source inspected; storage-before-ack test passed"
+      ],
+      "rejected_judgments": {}
+    },
+    "alpha": {
+      "status": "resolved",
+      "choice": "supported",
+      "reason": "Source and fixture establish storage before acknowledgement — ✓.",
+      "evidence": [
+        "fixture/service.go:12 at fixture-revision"
+      ],
+      "verification": [
+        "source inspected; storage-before-ack test passed"
+      ],
+      "rejected_judgments": {}
+    }
+  }
+}

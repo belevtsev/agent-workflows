@@ -1,0 +1,23 @@
+{
+  "policy": "required",
+  "flags": [],
+  "credentials": [
+    "OPENAI_API_KEY",
+    "SUBQ_API_KEY",
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {
+    "jev": {
+      "body": "{\"model\": \"jev-1.13.0\", \"answers\": {\"claim\": {\"type\": \"choice\", \"choice\": \"supported\", \"probabilities\": {\"supported\": 1, \"contradicted\": 0, \"insufficient_evidence\": 0}, \"confidence\": 1}}, \"usage\": {\"input_tokens\": 20, \"output_tokens\": 3, \"cost\": 7}, \"id\": \"resp_1\", \"diagnostic\": \"SECRET_CANARY\"}"
+    },
+    "subq_snap": {
+      "body": "{\"model\":\"x\",\"model\":\"y\"}"
+    },
+    "openai_decisions": {
+      "body": "{\"model\":\"gpt-6-luna\",\"answers\":[],\"usage\":NaN}"
+    }
+  },
+  "exit": 2,
+  "stdout": "Decision consultation unavailable; Coordinator decision pending\n",
+  "stderr": ""
+}

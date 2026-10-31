@@ -61,15 +61,13 @@ type transport struct {
 }
 
 func newTransport() transport {
-	base := http.DefaultTransport.(*http.Transport).Clone()
 	// One connection per attempt leaves net/http nothing to replay, and these are
 	// the HTTP/1.1, uncompressed, close-delimited exchanges the advisers receive.
-	base.DisableKeepAlives = true
-	base.DisableCompression = true
-	base.Protocols = new(http.Protocols)
+	// This is a new Transport because a clone of the default one keeps offering h2
+	// over TLS, which an HTTP/1 client then cannot read. The batch deadline is the
+	// only bound, covering every phase of the exchange.
+	base := &http.Transport{Proxy: http.ProxyFromEnvironment, DisableKeepAlives: true, DisableCompression: true, Protocols: new(http.Protocols)}
 	base.Protocols.SetHTTP1(true)
-	// The batch deadline is the only bound, covering every phase of the exchange.
-	base.TLSHandshakeTimeout = 0
 	return transport{endpoints: fixedEndpoints, client: &http.Client{
 		Transport: base,
 		// A redirect is unavailable advice; never send credentials to a new URL.
