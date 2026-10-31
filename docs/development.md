@@ -131,7 +131,7 @@ version/creation ordering governs overlapping releases.
 
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
-defines 27 registrations and 72 entrypoints; model defaults come from its
+defines 26 registrations and 71 entrypoints; model defaults come from its
 validated policy. The v6 bootstrap capability supports manifest v2 and verified
 personal directory adoption, retaining the max/xhigh policy. The separate
 `cw-model-policy-v2-dual-choice` capability gates the paired policy extension

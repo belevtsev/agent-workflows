@@ -2,7 +2,6 @@
   "version": 2,
   "registrations": {
     "cc-skills-golang": "third_party/cc-skills-golang",
-    "drawio-skill": "third_party/drawio-skill",
     "db-postgres": "third_party/db-postgres",
     "go-principal-engineer": "skills/go-principal-engineer",
     "backend-security-review": "skills/backend-security-review",
@@ -33,8 +32,6 @@
   "required_licenses": [
     "third_party/cc-skills-golang/LICENSE",
     "third_party/db-postgres/LICENSE",
-    "third_party/drawio-skill/LICENSE",
-    "third_party/drawio-skill/data/SHAPE-INDEX-NOTICE.md",
     "skills/security-threat-model/LICENSE.txt",
     "third_party/typesafe-ai/LICENSE",
     "licenses/go-toml-LICENSE",

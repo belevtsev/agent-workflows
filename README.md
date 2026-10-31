@@ -19,7 +19,7 @@ Python 3.7+ with `venv` and `ensurepip` support. Release binaries support
 macOS/Linux on ARM64 and AMD64 and need no Go installation. Building an unreleased
 revision requires the Go version in [go.mod](go.mod).
 
-Installation registers 27 skills with 72 entrypoints, adds the managed global
+Installation registers 26 skills with 71 entrypoints, adds the managed global
 working instructions, and sets these coordinator defaults in your existing
 Codex configuration:
 
@@ -101,7 +101,6 @@ advisers at equal standing.
 | go-pki-mtls | Review reusable certificate, trust, and service identity lifecycles |
 | cc-skills-golang | Go specialist skills |
 | db-postgres | Diagnose PostgreSQL against actual evidence |
-| drawio-skill | Create editable diagrams and inspect rendered exports |
 | archify | Render portable, inspectable architecture and workflow diagrams |
 | graphify | Explore tracked Go source with a local structural graph |
 | typesafe-ai | Use TypeSafe and Jev for scoped judgments |

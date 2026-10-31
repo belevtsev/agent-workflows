@@ -30,4 +30,4 @@ npm run check:brand-marks
 
 Do not hand-edit `renderers/shared/generated-brand-marks.mjs`.
 
-In the managed codex-workflows distribution, generation requires an explicit external output directory. `--check` reads the bundled generated module without modifying it. Simple Icons is an optional development prerequisite; runtime rendering uses the bundled mark data and Node built-ins. Review generated files as an explicit managed source update.
+In the managed agent-workflows distribution, generation requires an explicit external output directory. `--check` reads the bundled generated module without modifying it. Simple Icons is an optional development prerequisite; runtime rendering uses the bundled mark data and Node built-ins. Review generated files as an explicit managed source update.

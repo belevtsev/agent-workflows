@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// codex-workflows distribution patch: no upstream update checks or cache writes.
+// agent-workflows distribution patch: no upstream update checks or cache writes.
 import { fileURLToPath } from 'node:url';
 import { sameEntry } from '../renderers/shared/path-semantics.mjs';
 
 function managed() {
-  return { status: 'silent', reason: 'managed-by-codex-workflows' };
+  return { status: 'silent', reason: 'managed-by-agent-workflows' };
 }
 
 export async function checkForUpdate(_options = {}) { return managed(); }

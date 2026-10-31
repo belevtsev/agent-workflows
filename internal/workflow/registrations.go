@@ -27,7 +27,7 @@ func compatibleRegistrationRoot(name, before, after string) bool {
 		return true
 	}
 	switch name {
-	case "cc-skills-golang", "drawio-skill", "db-postgres", "typesafe-ai":
+	case "cc-skills-golang", "db-postgres", "typesafe-ai":
 		legacy, modern := "vendor/"+name, "third_party/"+name
 		return before == legacy && after == modern || before == modern && after == legacy
 	}

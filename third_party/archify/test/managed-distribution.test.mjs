@@ -77,7 +77,7 @@ test('managed update exports and direct helper CLIs perform no network or cache 
     get fetchImpl() { throw new Error('managed check accessed a network option'); },
     get now() { throw new Error('managed check accessed the clock'); },
   };
-  const expected = { status: 'silent', reason: 'managed-by-codex-workflows' };
+  const expected = { status: 'silent', reason: 'managed-by-agent-workflows' };
   assert.deepEqual(await checkForUpdate(options), expected);
   assert.deepEqual(await setUpdatePreference(options), expected);
   const checker = path.join(directory, 'forbidden-checker.mjs');
@@ -86,7 +86,7 @@ test('managed update exports and direct helper CLIs perform no network or cache 
   assert.deepEqual(delivery, {
     status: 'unavailable', installedVersion: null, availableVersion: null,
     releaseNotes: null, checkedAt: null, source: null, noticeRequired: false,
-    noticeText: null, reason: 'managed-by-codex-workflows',
+    noticeText: null, reason: 'managed-by-agent-workflows',
   });
   fs.rmSync(checker);
   const preload = path.join(directory, 'network-tripwire.mjs');
@@ -171,13 +171,13 @@ test('relocated zero-install package renders and delivers all five modes with un
     assertSuccess(result);
     const receipt = JSON.parse(result.stdout);
     assert.equal(receipt.ok, true);
-    assert.equal(receipt.update.reason, 'managed-by-codex-workflows');
+    assert.equal(receipt.update.reason, 'managed-by-agent-workflows');
     assert.equal(receipt.update.noticeRequired, false);
     assertSuccess(invoke(installed, ['check', delivered, '--require-provenance', '--json'], workspace, env));
   }
   const examples = path.join(workspace, 'examples');
   assertSuccess(invoke(installed, ['examples', '--output-dir', examples], workspace, env));
-  assert.equal(fs.readdirSync(examples).filter(name => name.endsWith('.html')).length, 5);
+  assert.equal(fs.readdirSync(examples).filter(name => name.endsWith('.html')).length, 15);
   assertSuccess(invoke(installed, ['demo', path.join(workspace, 'demo')], workspace, env));
   assert.deepEqual(hashes(installed), before);
   assert.deepEqual(fs.readdirSync(env.HOME), [], 'automatic runtime helpers must not create user-home state');
@@ -216,7 +216,7 @@ test('missing Chrome never produces a passing finalize receipt', t => {
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.ok, false);
   assert.notEqual(receipt.gates['browser-check'], 'pass');
-  assert.equal(receipt.update.reason, 'managed-by-codex-workflows');
+  assert.equal(receipt.update, undefined);
   assert.deepEqual(hashes(skillRoot), before);
 });
 
@@ -277,5 +277,5 @@ test('font and individual mark licenses retain their separate notices and proven
   }
   assert.match(notices, /does not.*every packaged mark.*cleared/s);
   assert.match(fs.readFileSync(path.join(skillRoot, 'assets/JetBrainsMono-OFL.txt'), 'utf8'), /SIL OPEN FONT LICENSE Version 1.1/);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(skillRoot, 'skill-release.json'))).version, '3.0.1');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(skillRoot, 'skill-release.json'))).version, '3.2.0');
 });

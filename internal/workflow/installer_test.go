@@ -76,7 +76,7 @@ func installerBuildFixture(t *testing.T, maintained, destination string) {
 	manifest["version"] = 1
 	delete(manifest, "adoption_catalog")
 	registrations := Object{}
-	for _, name := range []string{"cc-skills-golang", "drawio-skill", "db-postgres", "go-principal-engineer", "backend-security-review", "protobuf-contracts", "go-pki-mtls", "software-architecture", "code-review", "test-strategy", "security-threat-model", "task-orchestration", "typesafe-ai"} {
+	for _, name := range []string{"cc-skills-golang", "db-postgres", "go-principal-engineer", "backend-security-review", "protobuf-contracts", "go-pki-mtls", "software-architecture", "code-review", "test-strategy", "security-threat-model", "task-orchestration", "typesafe-ai"} {
 		registrations[name] = object(manifest["registrations"])[name]
 	}
 	manifest["registrations"] = registrations

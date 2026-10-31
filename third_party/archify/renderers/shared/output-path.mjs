@@ -9,7 +9,7 @@ import {
 } from './path-semantics.mjs';
 import { PortablePathError, validatePortablePath } from './portable-path.mjs';
 
-// codex-workflows distribution patch: the installed package is read-only.
+// agent-workflows distribution patch: the installed package is read-only.
 const managedPackageRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 export function assertExternalOutputPath(targetPath) {

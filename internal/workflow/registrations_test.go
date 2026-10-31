@@ -26,12 +26,12 @@ func historicalRegistrationFixture(t *testing.T) *installerFixture {
 	if !equal(manifest, f.manifest) {
 		installerWrite(t, filepath.Join(f.paths.Source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
 		f.git(t, "add", ".")
-		f.git(t, "commit", "-qm", "Historical ten registrations")
+		f.git(t, "commit", "-qm", "Historical nine registrations")
 		f.first = f.git(t, "rev-parse", "HEAD")
 		f.manifest = manifest
 	}
-	if got := len(registrations); got != 10 {
-		t.Fatalf("historical fixture registrations = %d, want ten", got)
+	if got := len(registrations); got != 9 {
+		t.Fatalf("historical fixture registrations = %d, want nine", got)
 	}
 	return f
 }

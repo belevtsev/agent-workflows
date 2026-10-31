@@ -14,7 +14,7 @@
         "original_file_count": 314,
         "original_entry_count": 345,
         "inventory_sha256": "fb3c808d9cd86e007171e9d2faf99661ea1d27d4435ef7440cae46cb54a54fd0",
-        "verification_limits": "Version and repository are declared by the personal distribution; no upstream commit or release-content match is verified. The complete original inventory includes excluded upstream tests."
+        "verification_limits": "Version and repository are declared by the personal distribution; no upstream commit or release-content match is verified for that original. The complete original inventory includes excluded upstream tests. The vendored tree was then refreshed from upstream tag v3.2.0, commit 208acba8d412335185b2056fedf54b3405df43fb; adaptation notes mark refreshed files."
       },
       "files": [
         {
@@ -27,14 +27,15 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "cf348309c5350c285714151a409d7451669fe00f4537824c38038a6e18767b6d",
-          "imported_sha256": "0e0fcbf606c831d78b582c5b0b331ab6980a30c0942a346996d5da12c8879084",
-          "adaptation": "Shortened discovery; documented the managed distribution and required artifacts/evidence outside the installed package; retained all five diagram modes."
+          "imported_sha256": "46d2cf6e0700a2fe790560e608219d9e8e032ee8ea3e0628e306a58dcc944edb",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Shortened discovery; documented the managed distribution and required artifacts/evidence outside the installed package; retained all five diagram modes."
         },
         {
           "path": "THIRD_PARTY_NOTICES.md",
           "mode": 420,
           "source_sha256": "0b7fb59365dc21c93b0f62526d74ee913aeec9ae532c112bc76afa7edcd56e14",
-          "imported_sha256": "0b7fb59365dc21c93b0f62526d74ee913aeec9ae532c112bc76afa7edcd56e14"
+          "imported_sha256": "ae6f236bd0aef72bad196099aa8687cccff6e01cc3a60e6c32bbad688266f678",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "assets/JetBrainsMono-OFL.txt",
@@ -46,27 +47,29 @@
           "path": "assets/template.html",
           "mode": 420,
           "source_sha256": "b0b550d644b77cad401bbc4b21375919ef01db45d235122a0ee42b732cb34233",
-          "imported_sha256": "b0b550d644b77cad401bbc4b21375919ef01db45d235122a0ee42b732cb34233"
+          "imported_sha256": "4fe243de7448f83d2123e987db5ec2539b662480a6e3ce3c90deb9e0c9ad11ef",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "bin/archify.mjs",
           "mode": 493,
           "source_sha256": "97788086acaac4122aafc56c48acfe5fde1979d6aaa67db73aa1f4ab70b34390",
-          "imported_sha256": "61967ecfcb74b7c9dfec2c09f8c1b2b7bf193eaffc3fa9ea8d2cc880c8bb7c07",
-          "adaptation": "Check managed-package containment before creating demo/migration outputs and require an explicit external examples output directory."
+          "imported_sha256": "c68197e6765089887b4057dfdf3bd651ce41fef68a129834119e1e582f78ed21",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Check managed-package containment before creating demo/migration outputs and require an explicit external examples output directory."
         },
         {
           "path": "bin/delivery-update.mjs",
           "mode": 420,
           "source_sha256": "d5ad7d6d7d949a8a8c37af4f80d79a8b4e057245e30ba11866efb40c6771dafa",
-          "imported_sha256": "abc7d2b6fc0f8b5c4af1aa057a544287d1082a77a0b49953c2801101652cb5f1",
-          "adaptation": "Disable the automatic updater while preserving unavailable receipt shape; report managed-by-codex-workflows and perform no update I/O."
+          "imported_sha256": "7a7dadd13ce6087895f7a3823e9c90f7077ccd54719bfa5ec9b8f5043b487043",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Disable the automatic updater while preserving unavailable receipt shape; report managed-by-codex-workflows and perform no update I/O."
         },
         {
           "path": "bin/finalize.mjs",
           "mode": 420,
           "source_sha256": "c62710a0e80dc11b79e2c6a1a163fd9f6df46e13de141e3dd4d506554170d824",
-          "imported_sha256": "c62710a0e80dc11b79e2c6a1a163fd9f6df46e13de141e3dd4d506554170d824"
+          "imported_sha256": "766e053afaeaca8045b8a0558f50cb6b685dfe21cb9d00e7776d407d6db364e8",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "bin/open-artifact.mjs",
@@ -78,7 +81,8 @@
           "path": "bin/preview.mjs",
           "mode": 420,
           "source_sha256": "2d01245850ab259500f0ff1782bef9f9c6f9caad0d13ad82061ef75a20fbaedb",
-          "imported_sha256": "2d01245850ab259500f0ff1782bef9f9c6f9caad0d13ad82061ef75a20fbaedb"
+          "imported_sha256": "95bdc09c7ea2679f137bf1bf4248cdb401a54da979ff4a16d518caafeae0070d",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "bin/recover-output.mjs",
@@ -90,15 +94,15 @@
           "path": "bin/visual-check.mjs",
           "mode": 420,
           "source_sha256": "93d07354e6b94725a8da354f90b7781f2739101f336afccd532ac6de9895a24c",
-          "imported_sha256": "d5c5fe9874c235b6de76cfcd1a7c0bd0f73a6a46563f26674bcef67d47b45a7a",
-          "adaptation": "Reject evidence output paths inside the managed package before creating directories."
+          "imported_sha256": "c5449682cd83fa7280ef8febb943b08f04d8141d5f8f65bce2f2b5992a7d85ba",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Reject evidence output paths inside the managed package before creating directories."
         },
         {
           "path": "brand-marks/README.md",
           "mode": 420,
           "source_sha256": "8b771a16322ce9ea47fdc00b9935e33adf0f3af608f2d735235443e15ef622e2",
-          "imported_sha256": "a7484c0293e7a7d2718baaeb3bec7c929de59eb21bff4ccd41a1ff033c9648f3",
-          "adaptation": "Document explicit external generator output directories and managed package immutability."
+          "imported_sha256": "c4abb7fb80deb70a48086919f879ab2a6a559efa58275b1e123d3e6dbb326871",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Document explicit external generator output directories and managed package immutability."
         },
         {
           "path": "brand-marks/catalog.json",
@@ -110,19 +114,35 @@
           "path": "delta/architecture-delta.mjs",
           "mode": 420,
           "source_sha256": "94ad7ac625202759386e4ff06431902d0c198c32b62bc99ebf894616cb94deca",
-          "imported_sha256": "94ad7ac625202759386e4ff06431902d0c198c32b62bc99ebf894616cb94deca"
+          "imported_sha256": "80f25a93c1ae6f40ebd6c066a3cfbff468fc48f258755d3740f6347a45ebe7a8",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/agent-run.lifecycle.json",
           "mode": 420,
           "source_sha256": "230242a7557663877766c43a9fe7cffe8b4fb66e4866457dccd24c63175b4917",
-          "imported_sha256": "230242a7557663877766c43a9fe7cffe8b4fb66e4866457dccd24c63175b4917"
+          "imported_sha256": "5ba36f5ce91ed428cb48b599e275424916d82b619b9a3231cbd1bbc3966fc54b",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/agent-tool-call.workflow.json",
           "mode": 420,
           "source_sha256": "d67965d50872c97e4ff3476271e645bf19fab6b3ab44e111bdb44b063e3aa36f",
           "imported_sha256": "d67965d50872c97e4ff3476271e645bf19fab6b3ab44e111bdb44b063e3aa36f"
+        },
+        {
+          "path": "examples/archify-dev-activity.timeline.json",
+          "mode": 420,
+          "source_sha256": "e9c8d76528e8c38a68d9a8df2499c462f6b9633292ea43bf33350546ef2fd3a3",
+          "source_git_blob": "d799c85e6c305670fb9307fa3b1fca3c62ccb9b2",
+          "imported_sha256": "e9c8d76528e8c38a68d9a8df2499c462f6b9633292ea43bf33350546ef2fd3a3"
+        },
+        {
+          "path": "examples/archify-repository.tree.json",
+          "mode": 420,
+          "source_sha256": "970617ee844ecfb1bb792c677aa8b85688abfd2cf8ab2365dc03ea9e26e6b9c7",
+          "source_git_blob": "923b8ad43b7c346a7c07b2338567f90588151dae",
+          "imported_sha256": "970617ee844ecfb1bb792c677aa8b85688abfd2cf8ab2365dc03ea9e26e6b9c7"
         },
         {
           "path": "examples/async-job-roundtrip.sequence.json",
@@ -155,22 +175,66 @@
           "imported_sha256": "eb4ae056035dd3316414a5d7f6599525107b5d1af7bedbd905460ade77daf5c6"
         },
         {
+          "path": "examples/checkout-request.waterfall.json",
+          "mode": 420,
+          "source_sha256": "55a5f74699a0f0e44018a4a000556d43c90430b95f39accac6141af8318b5133",
+          "source_git_blob": "d3cb44167b36e4112fa3c1e28f309dca4cd08303",
+          "imported_sha256": "55a5f74699a0f0e44018a4a000556d43c90430b95f39accac6141af8318b5133"
+        },
+        {
+          "path": "examples/class-payment-processors-rendered.html",
+          "mode": 420,
+          "source_sha256": "d94a3ea55770d1cd2685a7ad6bccf194acecf07b505f210ba56fd2d3307d52a5",
+          "source_git_blob": "46f711e544bd61d2aa3d0be1bbbcd1dd51a12818",
+          "imported_sha256": "d94a3ea55770d1cd2685a7ad6bccf194acecf07b505f210ba56fd2d3307d52a5"
+        },
+        {
+          "path": "examples/class-payments-rendered.html",
+          "mode": 420,
+          "source_sha256": "40574bed3eb6ad5ecd1325f41597335676bed7242912f41ae2876af183e5a874",
+          "source_git_blob": "d6dd74230afa50c2d6b7a6d77edd320d8a955d3b",
+          "imported_sha256": "40574bed3eb6ad5ecd1325f41597335676bed7242912f41ae2876af183e5a874"
+        },
+        {
           "path": "examples/dataflow-product-analytics.html",
           "mode": 420,
           "source_sha256": "6d6790f1fa3631241dba4065e33ba2ce947a1da032cdd6d7d44c7190f85d3f5d",
-          "imported_sha256": "6d6790f1fa3631241dba4065e33ba2ce947a1da032cdd6d7d44c7190f85d3f5d"
+          "imported_sha256": "3ad4b3badbcd6440d1ca06ed87070e7e1ebe851840bcd8651cccd4536ac3f99e",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "examples/delivery.explainer.json",
+          "mode": 420,
+          "source_sha256": "188cf8777816ac034dd5a92b04bf427b0f1a8dbfa0956ae072b2d4091427806c",
+          "source_git_blob": "48eb24564d0c45a09640884238737bf65bd8bc69",
+          "imported_sha256": "188cf8777816ac034dd5a92b04bf427b0f1a8dbfa0956ae072b2d4091427806c"
         },
         {
           "path": "examples/deployment-release.lifecycle.json",
           "mode": 420,
           "source_sha256": "f565a8acfebdb21453e2bccd82d3760b4736e38fe194fb2f0804b57817eba813",
-          "imported_sha256": "f565a8acfebdb21453e2bccd82d3760b4736e38fe194fb2f0804b57817eba813"
+          "imported_sha256": "e3dc105d03c1c9881160006cdace23cb5d8533803e337caf0ec287c64e775275",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "examples/erd-orders-rendered.html",
+          "mode": 420,
+          "source_sha256": "3d0dcdda77c8436762c0b4e07c52457d5b16543cddc5e6aaf1f47d099b17a694",
+          "source_git_blob": "982f80eee38ec4a77d9f1091e488d9671ad422ba",
+          "imported_sha256": "3d0dcdda77c8436762c0b4e07c52457d5b16543cddc5e6aaf1f47d099b17a694"
         },
         {
           "path": "examples/event-stream.dataflow.json",
           "mode": 420,
           "source_sha256": "3bdd77674282009c7c68d588cf8a3c495bc98a3be1b9c45327fd1801a6f83a23",
           "imported_sha256": "3bdd77674282009c7c68d588cf8a3c495bc98a3be1b9c45327fd1801a6f83a23"
+        },
+        {
+          "path": "examples/example-rebuild.waterfall.json",
+          "mode": 420,
+          "source_sha256": "77d610013a5aab031df739c207b66ebc26e1740371b51da06956ecf06b5e9929",
+          "source_git_blob": "56f2fdc2c1d9a043841513e1c971cbd54f4e1c76",
+          "imported_sha256": "77d610013a5aab031df739c207b66ebc26e1740371b51da06956ecf06b5e9929"
         },
         {
           "path": "examples/holiday-planning.workflow.json",
@@ -188,25 +252,22 @@
           "path": "examples/lifecycle-agent-run.html",
           "mode": 420,
           "source_sha256": "0874c0723b10104ea03c566d1d63d958b6f93a6788c0075c1d1d162ccdb4054c",
-          "imported_sha256": "0874c0723b10104ea03c566d1d63d958b6f93a6788c0075c1d1d162ccdb4054c"
+          "imported_sha256": "c31f00939790af2b9f417d2dd440683382cd3f49c7d91d13953b5b1bebdf755b",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/de.json",
           "mode": 420,
           "source_sha256": "d1cf160d3ada814676566b787f203c2aee99f8f5d5b51d2e3e0b3c03f55a33df",
-          "imported_sha256": "d1cf160d3ada814676566b787f203c2aee99f8f5d5b51d2e3e0b3c03f55a33df"
-        },
-        {
-          "path": "examples/locales/es.json",
-          "mode": 420,
-          "source_sha256": "1389068b7dddb5e72ed425d12084ca9104942bef933440a16113d60619f1daf3",
-          "imported_sha256": "1389068b7dddb5e72ed425d12084ca9104942bef933440a16113d60619f1daf3"
+          "imported_sha256": "77975293855578923fbbee29f478d9d84002c04d6a7b3e22cd9db8cf3fb414ba",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/fr.json",
           "mode": 420,
           "source_sha256": "805495b259b417ccc03744023e5bf803811752c0c4e8fc5be7433e2ac73e875d",
-          "imported_sha256": "805495b259b417ccc03744023e5bf803811752c0c4e8fc5be7433e2ac73e875d"
+          "imported_sha256": "ea1af868932eb22761094a4950b769fd0634430fe706fc4ea4335eca7f0529bb",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/fr.partial.json",
@@ -218,31 +279,64 @@
           "path": "examples/locales/it.json",
           "mode": 420,
           "source_sha256": "76e45186196675e7a0e2e2281073da38c0971596e6ed6eae11ccc479ceda6eae",
-          "imported_sha256": "76e45186196675e7a0e2e2281073da38c0971596e6ed6eae11ccc479ceda6eae"
+          "imported_sha256": "be8cd15fcd0311521dc8ae1f35bbcf8e33a180e20e5ce94fd0d65dec4e147e6b",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/ja.json",
           "mode": 420,
           "source_sha256": "79418f8eb65dc6c4928a4cab54e4515b4bfffd867814323eda6c8aa3c96fac33",
-          "imported_sha256": "79418f8eb65dc6c4928a4cab54e4515b4bfffd867814323eda6c8aa3c96fac33"
-        },
-        {
-          "path": "examples/locales/ko.json",
-          "mode": 420,
-          "source_sha256": "958db2030014f6835a0bf62813f58fb80ea66b48a13af6d2586805704709616f",
-          "imported_sha256": "958db2030014f6835a0bf62813f58fb80ea66b48a13af6d2586805704709616f"
+          "imported_sha256": "bb6d66d7e1126c5c622423317a536728820d3fe686be90d0c9cc8f6ca4ff3e67",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/pt.json",
           "mode": 420,
           "source_sha256": "efbae92eebc09636e2c3bbc6786a666a6336258bd8c2d451bd78b2921042ab67",
-          "imported_sha256": "efbae92eebc09636e2c3bbc6786a666a6336258bd8c2d451bd78b2921042ab67"
+          "imported_sha256": "8e3c6a054183e96465bd882bc23d38eafe19c0484eda5709f4e2b37e132e0731",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/ru.json",
           "mode": 420,
           "source_sha256": "3bd0eadf6cdfe65511e81a11f04b61bb33cc94e1b89044203d191e4296a3f40d",
-          "imported_sha256": "3bd0eadf6cdfe65511e81a11f04b61bb33cc94e1b89044203d191e4296a3f40d"
+          "imported_sha256": "ea673bf7156d87ac43d754839155a1a145aafa481b5de540e04d1f8d3ec008d3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "examples/orders.erd.json",
+          "mode": 420,
+          "source_sha256": "1777a374647084466f4d7ce3a968004be6ab70ac9cf82459b96bed7c556cdfdd",
+          "source_git_blob": "f79065f37029898d5cc88ff68010d12b460a9485",
+          "imported_sha256": "1777a374647084466f4d7ce3a968004be6ab70ac9cf82459b96bed7c556cdfdd"
+        },
+        {
+          "path": "examples/payment-incident.timeline.json",
+          "mode": 420,
+          "source_sha256": "c1f535b3cc915ddd47ecd7df4e3ef02c441c8c3191daced5cf4422cff8dec95f",
+          "source_git_blob": "29d77a08337a9ef89a8f39282883f63e6dd037e4",
+          "imported_sha256": "c1f535b3cc915ddd47ecd7df4e3ef02c441c8c3191daced5cf4422cff8dec95f"
+        },
+        {
+          "path": "examples/payment-platform.tree.json",
+          "mode": 420,
+          "source_sha256": "1e99f37b3845d67fa97c9a2ff33109981c23bfdb0d03ba05b7d92944dcdfc61f",
+          "source_git_blob": "8eaa590c483b40e67bf152a25db5bdbbc8039d6d",
+          "imported_sha256": "1e99f37b3845d67fa97c9a2ff33109981c23bfdb0d03ba05b7d92944dcdfc61f"
+        },
+        {
+          "path": "examples/payment-processors.class.json",
+          "mode": 420,
+          "source_sha256": "98742b997db4782981460e8110e5fba899d8500c92c086aa867c5c62c3b89222",
+          "source_git_blob": "3368f6f67ca795154a13037feb677b1a34801a6d",
+          "imported_sha256": "98742b997db4782981460e8110e5fba899d8500c92c086aa867c5c62c3b89222"
+        },
+        {
+          "path": "examples/payments.class.json",
+          "mode": 420,
+          "source_sha256": "afba837f97a041e14687cbe8893523232c4afad7afd922d9b128606d1b3f12c8",
+          "source_git_blob": "9c9daf19d5476f9ee2af884a4b924e8a5c8ee4b8",
+          "imported_sha256": "afba837f97a041e14687cbe8893523232c4afad7afd922d9b128606d1b3f12c8"
         },
         {
           "path": "examples/product-analytics.dataflow.json",
@@ -254,7 +348,8 @@
           "path": "examples/production-deployment.architecture.json",
           "mode": 420,
           "source_sha256": "cb54bad2dfd0c2d02aa5b496bde6839789a0f07f23062343c4458b8d38806c13",
-          "imported_sha256": "cb54bad2dfd0c2d02aa5b496bde6839789a0f07f23062343c4458b8d38806c13"
+          "imported_sha256": "610a5614667e8f108bdcf1769c9d7af5c3ce0fb62be3ea50550b10eb752e4bda",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/release-delivery.workflow.json",
@@ -266,13 +361,71 @@
           "path": "examples/sequence-cache-miss-request.html",
           "mode": 420,
           "source_sha256": "307951a168d2492eb0c41f318260d0a866f6e6057df5253d3528c32a23084ea3",
-          "imported_sha256": "307951a168d2492eb0c41f318260d0a866f6e6057df5253d3528c32a23084ea3"
+          "imported_sha256": "1d5900665532daa696681210023e08b95d6858c96781b4bbb26c677c301bcd0d",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "examples/subscription-billing-rendered.html",
+          "mode": 420,
+          "source_sha256": "b4f11e17fda7ed78ef818367f71de4898bb43eafe0a7757f26f4e1277bf16ec3",
+          "source_git_blob": "5d2879f91e3307065babc7e88ba2add8e8c3b01f",
+          "imported_sha256": "b4f11e17fda7ed78ef818367f71de4898bb43eafe0a7757f26f4e1277bf16ec3"
+        },
+        {
+          "path": "examples/subscription-billing.erd.json",
+          "mode": 420,
+          "source_sha256": "89945699d92b9cc0ab91263cf38a07c350867d260eacd5d8ba1dc835fe2d22ed",
+          "source_git_blob": "ac75e30e94db67bfee8eedab9095e7ba8c18e6b0",
+          "imported_sha256": "89945699d92b9cc0ab91263cf38a07c350867d260eacd5d8ba1dc835fe2d22ed"
+        },
+        {
+          "path": "examples/timeline-archify-dev-activity-rendered.html",
+          "mode": 420,
+          "source_sha256": "692d8b48257e227a9ccc6a699bbbdf5a48c07cbcd08557bd8b48c1ecb3848aaf",
+          "source_git_blob": "69c6ffd8215bba4b35313bbea123f540d3ccf532",
+          "imported_sha256": "692d8b48257e227a9ccc6a699bbbdf5a48c07cbcd08557bd8b48c1ecb3848aaf"
+        },
+        {
+          "path": "examples/timeline-payment-incident-rendered.html",
+          "mode": 420,
+          "source_sha256": "222c4995eac9e1ffcfabc1297174504f462149607ead1a281607eaaf9f73dcd8",
+          "source_git_blob": "1a5bce8b8f3a703099fe5c3d70c3aa02baf86cc3",
+          "imported_sha256": "222c4995eac9e1ffcfabc1297174504f462149607ead1a281607eaaf9f73dcd8"
+        },
+        {
+          "path": "examples/tree-archify-repository-rendered.html",
+          "mode": 420,
+          "source_sha256": "a000d17dd87414ada14f1e5039e95cb0504f7194529db336d72a2f2369d72a07",
+          "source_git_blob": "60eb64aff78ed21997d65d6dc347a4cfd6690911",
+          "imported_sha256": "a000d17dd87414ada14f1e5039e95cb0504f7194529db336d72a2f2369d72a07"
+        },
+        {
+          "path": "examples/tree-payment-platform-rendered.html",
+          "mode": 420,
+          "source_sha256": "1f7b0a95699d6208fdaeda801cfa7e261b8ced13ac17be3de86dd5246987c250",
+          "source_git_blob": "e553b65ae19289796906d7daf7a753457e980e47",
+          "imported_sha256": "1f7b0a95699d6208fdaeda801cfa7e261b8ced13ac17be3de86dd5246987c250"
+        },
+        {
+          "path": "examples/waterfall-checkout-request-rendered.html",
+          "mode": 420,
+          "source_sha256": "aaafa380d6eef4cebd8a7461ac1e7bbeb960b4d445139ce447b86af6caf6db96",
+          "source_git_blob": "3514b20352022f9f5982628b278cfe2f4e11bab5",
+          "imported_sha256": "aaafa380d6eef4cebd8a7461ac1e7bbeb960b4d445139ce447b86af6caf6db96"
+        },
+        {
+          "path": "examples/waterfall-example-rebuild-rendered.html",
+          "mode": 420,
+          "source_sha256": "873b684dc631e1942979c5d02dfa4d789d24dc2a30a7b32abdd7df533c607006",
+          "source_git_blob": "9c49ab14120b557d6fd1e5c2d8ec47c507f9adfa",
+          "imported_sha256": "873b684dc631e1942979c5d02dfa4d789d24dc2a30a7b32abdd7df533c607006"
         },
         {
           "path": "examples/web-app-rendered.html",
           "mode": 420,
           "source_sha256": "8233f4f600c89559b64ac650ad11b66ee1423103e8b6c5e53f63740afc06f6da",
-          "imported_sha256": "8233f4f600c89559b64ac650ad11b66ee1423103e8b6c5e53f63740afc06f6da"
+          "imported_sha256": "37b490991c6eaa483b36bd37b7886ed52fd5a10f2351131dbde8197807c07f73",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/web-app.architecture.json",
@@ -284,7 +437,351 @@
           "path": "examples/workflow-agent-tool-call-rendered.html",
           "mode": 420,
           "source_sha256": "3edbb38a05430865ee2f620c35de49f8e78dfd8788be14840d9e134b5912230d",
-          "imported_sha256": "3edbb38a05430865ee2f620c35de49f8e78dfd8788be14840d9e134b5912230d"
+          "imported_sha256": "38220f39f8110f9f0b1fdbd96fd750bd33a3750de45dc2913827e3fc30224c85",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "explainer/browser-check.mjs",
+          "mode": 420,
+          "source_sha256": "cbbebfca2cb58cde0791f349e4f13490c0d085ce2f8653279139cf2aed334677",
+          "source_git_blob": "72f8f8b07a7bbb585463d8b7995e83b434d79427",
+          "imported_sha256": "cbbebfca2cb58cde0791f349e4f13490c0d085ce2f8653279139cf2aed334677"
+        },
+        {
+          "path": "explainer/charts.mjs",
+          "mode": 420,
+          "source_sha256": "bb49c5e8e5d6ba70a511d292dbac6a47953a010b67a8563e5f68222c7b220390",
+          "source_git_blob": "8b03886e64c60edf3487e019d5f7518bc41087ad",
+          "imported_sha256": "bb49c5e8e5d6ba70a511d292dbac6a47953a010b67a8563e5f68222c7b220390"
+        },
+        {
+          "path": "explainer/check.mjs",
+          "mode": 420,
+          "source_sha256": "151211edd6f1b842ee63b1aef8682cb68e6237ce3b9e7a81e09667420f2b9b3b",
+          "source_git_blob": "e4e45cd22a9377d16725c2f4796bcb79754c1e01",
+          "imported_sha256": "151211edd6f1b842ee63b1aef8682cb68e6237ce3b9e7a81e09667420f2b9b3b"
+        },
+        {
+          "path": "explainer/diagrams.mjs",
+          "mode": 420,
+          "source_sha256": "bb4aae343968db5a5ad70c368ad41dcc9d2ac93f3ace02645059daf33cab16ba",
+          "source_git_blob": "efde2a5cad4ac747ea239afda83fff2fd33ab35c",
+          "imported_sha256": "bb4aae343968db5a5ad70c368ad41dcc9d2ac93f3ace02645059daf33cab16ba"
+        },
+        {
+          "path": "explainer/diff.mjs",
+          "mode": 420,
+          "source_sha256": "0851a6b9715a3f277308cb88c84a5ef5fc943f09a9e0a391a573438fe8a30fbb",
+          "source_git_blob": "02679b14d6f386bb2c42b84be87389cf4e9e1586",
+          "imported_sha256": "0851a6b9715a3f277308cb88c84a5ef5fc943f09a9e0a391a573438fe8a30fbb"
+        },
+        {
+          "path": "explainer/inline.mjs",
+          "mode": 420,
+          "source_sha256": "e024b719a365077b547cb3d50ac9909db7e080ca5bde62387e5d62ead3f819f3",
+          "source_git_blob": "cdaa58c7408ecc0668e7490442bc84000bc82a2c",
+          "imported_sha256": "e024b719a365077b547cb3d50ac9909db7e080ca5bde62387e5d62ead3f819f3"
+        },
+        {
+          "path": "explainer/layout.mjs",
+          "mode": 420,
+          "source_sha256": "656232369fe0394e35f827c1b5295fb8f14d315e7fa53d5f16248440519736c8",
+          "source_git_blob": "dddc7095478019d737b942844fbe91e5695edba3",
+          "imported_sha256": "656232369fe0394e35f827c1b5295fb8f14d315e7fa53d5f16248440519736c8"
+        },
+        {
+          "path": "explainer/page-bundle.mjs",
+          "mode": 420,
+          "source_sha256": "1d4fc3f65b4eb4207a0c3b86a2968310f931a9b945fcd1fc3021ce98a29f7310",
+          "source_git_blob": "32bb7c7b29d041bd28559652f5741a7e28d71198",
+          "imported_sha256": "1d4fc3f65b4eb4207a0c3b86a2968310f931a9b945fcd1fc3021ce98a29f7310"
+        },
+        {
+          "path": "explainer/parse.mjs",
+          "mode": 420,
+          "source_sha256": "dd0d05672e92453b1b1cea31372792cbe03aecdd80f21e2f3aa0eda49d3be853",
+          "source_git_blob": "4b4edb62321c7296bdbadf29b6d4ae03df3dfaec",
+          "imported_sha256": "dd0d05672e92453b1b1cea31372792cbe03aecdd80f21e2f3aa0eda49d3be853"
+        },
+        {
+          "path": "explainer/patch.mjs",
+          "mode": 420,
+          "source_sha256": "b2721021de474431537705d696325ea01eb946e9095e8476fad1802d2fb5be4d",
+          "source_git_blob": "5b14ccb089a90e57f800912bea71a2d92fe6bf6a",
+          "imported_sha256": "b2721021de474431537705d696325ea01eb946e9095e8476fad1802d2fb5be4d"
+        },
+        {
+          "path": "explainer/prepare.mjs",
+          "mode": 420,
+          "source_sha256": "d8ff050738d7c858d62641b069455482814de0c4bdf7c0872d0a2a663b1b0643",
+          "source_git_blob": "0d9accd9d6bc8740182e05595407b5961128433e",
+          "imported_sha256": "d8ff050738d7c858d62641b069455482814de0c4bdf7c0872d0a2a663b1b0643"
+        },
+        {
+          "path": "explainer/reader.css",
+          "mode": 420,
+          "source_sha256": "20ae425a84157c2d478241250975e74fca8938b47b85c5414149710ff4a3538f",
+          "source_git_blob": "5eefd93d1a3cee4e22e53a9754f9b37d5c5ebde8",
+          "imported_sha256": "20ae425a84157c2d478241250975e74fca8938b47b85c5414149710ff4a3538f"
+        },
+        {
+          "path": "explainer/reader.js",
+          "mode": 420,
+          "source_sha256": "202d3ad200accd89a1484fe64610d9bc8bb4544c14c3f51522ba74f965b332c6",
+          "source_git_blob": "46a176c554ea791bda7fa3bb960283d59dcd3ccd",
+          "imported_sha256": "202d3ad200accd89a1484fe64610d9bc8bb4544c14c3f51522ba74f965b332c6"
+        },
+        {
+          "path": "explainer/render.mjs",
+          "mode": 420,
+          "source_sha256": "415c8c0638f42abc3b96f1b105453780678f1e33a9994f844cfbe4833670f25d",
+          "source_git_blob": "ba0f825f7cb601fcfe0ec14093b09f8971292467",
+          "imported_sha256": "415c8c0638f42abc3b96f1b105453780678f1e33a9994f844cfbe4833670f25d"
+        },
+        {
+          "path": "explainer/revision.mjs",
+          "mode": 420,
+          "source_sha256": "29032cab30c03b2e4c48730f40175e0e59aa4794893c02e5ae38668776c18288",
+          "source_git_blob": "cef50adc22bef429e9212978df2c98e2920eeaa6",
+          "imported_sha256": "29032cab30c03b2e4c48730f40175e0e59aa4794893c02e5ae38668776c18288"
+        },
+        {
+          "path": "explainer/sources.mjs",
+          "mode": 420,
+          "source_sha256": "c6aae2ef90b6e49d16c1ccd5cfc5351a7716b8f9150e1c261dbd6ca8b8ca9ab5",
+          "source_git_blob": "3caff3488e17cbaccd1e05e9f481ab2ee30768ab",
+          "imported_sha256": "c6aae2ef90b6e49d16c1ccd5cfc5351a7716b8f9150e1c261dbd6ca8b8ca9ab5"
+        },
+        {
+          "path": "explainer/validate.mjs",
+          "mode": 420,
+          "source_sha256": "4e14063082b4bced482e0d2f771de5b29ef805677fcc354dfd283b9e16bd1b0a",
+          "source_git_blob": "2d8ad4200fdb3bed00a3af9971ad44bf88e2ce58",
+          "imported_sha256": "4e14063082b4bced482e0d2f771de5b29ef805677fcc354dfd283b9e16bd1b0a"
+        },
+        {
+          "path": "explainer/vendor/pele/LICENSE",
+          "mode": 420,
+          "source_sha256": "311bccc30de6f7b9cbfb64232bb0c911ccb2191abe316550813ae25b2c7925b9",
+          "source_git_blob": "fd6f9c893d2feb140f6d1e853a8bc0908b3bdf5b",
+          "imported_sha256": "311bccc30de6f7b9cbfb64232bb0c911ccb2191abe316550813ae25b2c7925b9"
+        },
+        {
+          "path": "explainer/vendor/pele/README.md",
+          "mode": 420,
+          "source_sha256": "47cb1894b1d248c49b7d79590a97fba294b090a7f2bac178a85baa79f2dae0d6",
+          "source_git_blob": "99da26a8e41ad97c057c5eabebc7b963e7ce1ba3",
+          "imported_sha256": "47cb1894b1d248c49b7d79590a97fba294b090a7f2bac178a85baa79f2dae0d6"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/3DKXF73K.js",
+          "mode": 420,
+          "source_sha256": "5901afffb8349d0cb095e93494e8d3f36f09497b28a9255e066c52b6ce0a6c31",
+          "source_git_blob": "a34e6786c15219957d1506fa6f1b2bc337b1a28e",
+          "imported_sha256": "5901afffb8349d0cb095e93494e8d3f36f09497b28a9255e066c52b6ce0a6c31"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/42UTT654.js",
+          "mode": 420,
+          "source_sha256": "365a5dcd61413ed715d375c053466ef89652aaa5065214720045d22d3198d7ed",
+          "source_git_blob": "f65681462b318b300eca567878c9e1c00e58d9c4",
+          "imported_sha256": "365a5dcd61413ed715d375c053466ef89652aaa5065214720045d22d3198d7ed"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/DKTLEL5E.js",
+          "mode": 420,
+          "source_sha256": "91864eed78a6a3cc9791d20fb9b61fd8f458c12101662883cd23e755fd2a4cb6",
+          "source_git_blob": "d0f45a9f876a042df5e99a28ff4736380c3983fb",
+          "imported_sha256": "91864eed78a6a3cc9791d20fb9b61fd8f458c12101662883cd23e755fd2a4cb6"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/EEIX5ZYH.js",
+          "mode": 420,
+          "source_sha256": "1e097466abf989151f92368e6ff7cb463e2ae191724e307ca2d004a58126b651",
+          "source_git_blob": "a0ebc5679c427c46d83a6367b47c7eec6c2b1ec9",
+          "imported_sha256": "1e097466abf989151f92368e6ff7cb463e2ae191724e307ca2d004a58126b651"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/EJ5KOXYD.js",
+          "mode": 420,
+          "source_sha256": "cb84c22da57a11eb988d4e671b12ff17018923619883ddf49cd0b0ab270c4bbe",
+          "source_git_blob": "a424acd6d1d7655fe8eb9e6c668b365c6a816a6f",
+          "imported_sha256": "cb84c22da57a11eb988d4e671b12ff17018923619883ddf49cd0b0ab270c4bbe"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/GUJTEFZK.js",
+          "mode": 420,
+          "source_sha256": "e8584ce5872c50c6370efc1fbce911848506d84ff6fa88e4f079f412b5e2f068",
+          "source_git_blob": "e63fb1b2009159c77683824f6d62ee58a5ec2a2c",
+          "imported_sha256": "e8584ce5872c50c6370efc1fbce911848506d84ff6fa88e4f079f412b5e2f068"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/IZOKQ2GT.js",
+          "mode": 420,
+          "source_sha256": "80d3ebe446ae5447bf88c7f01b762478f51ce8cdd6e270b90f4b58534fc363f8",
+          "source_git_blob": "e33d93ea9589ec190514ccaff232086bdba5ca07",
+          "imported_sha256": "80d3ebe446ae5447bf88c7f01b762478f51ce8cdd6e270b90f4b58534fc363f8"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/L4LY553T.js",
+          "mode": 420,
+          "source_sha256": "d574102b3e5499e752513c2ba75f152cd447b9f81d877ddffd37faed0e7dae16",
+          "source_git_blob": "0ca62840c100fb9e72143484550636ad0d6edd81",
+          "imported_sha256": "d574102b3e5499e752513c2ba75f152cd447b9f81d877ddffd37faed0e7dae16"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/MSKIJHB2.js",
+          "mode": 420,
+          "source_sha256": "94317f9dabbe5793c8ed57a298b5a68474fcca6c62ecd07fabd9a3c6f15d3e23",
+          "source_git_blob": "4d965a60feaf9661aa3bd9cacacc722faf075b6a",
+          "imported_sha256": "94317f9dabbe5793c8ed57a298b5a68474fcca6c62ecd07fabd9a3c6f15d3e23"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/RVARI57O.js",
+          "mode": 420,
+          "source_sha256": "3dc7661b060578920eab83aafd1fa261886e7e331d44f8f5d2f34bd0804027a3",
+          "source_git_blob": "e068f148a2dbe605027324c0d5f62578a28f9b28",
+          "imported_sha256": "3dc7661b060578920eab83aafd1fa261886e7e331d44f8f5d2f34bd0804027a3"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/UKSIWDDN.js",
+          "mode": 420,
+          "source_sha256": "c0f5a984eaefaefa550d525670624e9d426bb7280ba33fcb5f9fa8adca804fc3",
+          "source_git_blob": "bbb8b563223a87fc85db6f74833e955bacf8ee2f",
+          "imported_sha256": "c0f5a984eaefaefa550d525670624e9d426bb7280ba33fcb5f9fa8adca804fc3"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/UPTXNAXN.js",
+          "mode": 420,
+          "source_sha256": "f2fc18109dfb5ca72ea43c7951c4ce36d20a890b2fefb2d531fa751aa9911b87",
+          "source_git_blob": "729d0cebd568a0701756a568c46a27f5d8a574a5",
+          "imported_sha256": "f2fc18109dfb5ca72ea43c7951c4ce36d20a890b2fefb2d531fa751aa9911b87"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/XTDUIGUI.js",
+          "mode": 420,
+          "source_sha256": "1ed02bff674691de6cb6ce6b3863fb021b1508f33b992515faeac876d0716c39",
+          "source_git_blob": "d734d0fc9209b01429b3ff03da99ca621d15c672",
+          "imported_sha256": "1ed02bff674691de6cb6ce6b3863fb021b1508f33b992515faeac876d0716c39"
+        },
+        {
+          "path": "explainer/vendor/pele/chunks/YAYTP6L5.js",
+          "mode": 420,
+          "source_sha256": "9246835c2b1544ab95dd1b89b7ce4cfaa2a89aa26873f3d52f7e4a17ef957da6",
+          "source_git_blob": "f3d641cd77eff30a82f98d058a6be5cf3991adba",
+          "imported_sha256": "9246835c2b1544ab95dd1b89b7ce4cfaa2a89aa26873f3d52f7e4a17ef957da6"
+        },
+        {
+          "path": "explainer/vendor/pele/core.js",
+          "mode": 420,
+          "source_sha256": "ac428c1ca244f030f363e0d0f12e623df92c1439d2a211310d1ff73f0ed224a4",
+          "source_git_blob": "24938e1a76196890cb80fde599f07e9878e167c0",
+          "imported_sha256": "ac428c1ca244f030f363e0d0f12e623df92c1439d2a211310d1ff73f0ed224a4"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/pie.js",
+          "mode": 420,
+          "source_sha256": "a2bc92d2f8842b476cdb8a039455493db2c71d6a4e3a1b3dc97cfc1f409056d1",
+          "source_git_blob": "79d1511756b87826c07c3408c12e67179559618a",
+          "imported_sha256": "a2bc92d2f8842b476cdb8a039455493db2c71d6a4e3a1b3dc97cfc1f409056d1"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/quadrantChart.js",
+          "mode": 420,
+          "source_sha256": "9ac8fc714b3973854efdd960fb6831c973e72624bb9b0bc091ada8958794ebfb",
+          "source_git_blob": "d9b1f52c4d15c5c77fa09952db621fd1ce665455",
+          "imported_sha256": "9ac8fc714b3973854efdd960fb6831c973e72624bb9b0bc091ada8958794ebfb"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/radar.js",
+          "mode": 420,
+          "source_sha256": "379748e709992f9e242028ad4a1b103f75ad693a84331c8fc33df0f258a7a9fe",
+          "source_git_blob": "6699fbba898a49b1ffa8d2cf25db9c8686a9afd4",
+          "imported_sha256": "379748e709992f9e242028ad4a1b103f75ad693a84331c8fc33df0f258a7a9fe"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/sankey.js",
+          "mode": 420,
+          "source_sha256": "a789e591ba81fd434418a64561005caf50760f11cbaa9d4dd589e777bbfe8e36",
+          "source_git_blob": "41d33a4a0e8ca22c0daad4d45bb5b43cdd885158",
+          "imported_sha256": "a789e591ba81fd434418a64561005caf50760f11cbaa9d4dd589e777bbfe8e36"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/venn.js",
+          "mode": 420,
+          "source_sha256": "e4bc9943916a8ce8b07d0848eda99d38f7e8334708998a5d951acf27a5f4a059",
+          "source_git_blob": "3cb40deec5c8364871a05fdb967e5dd83de6f5da",
+          "imported_sha256": "e4bc9943916a8ce8b07d0848eda99d38f7e8334708998a5d951acf27a5f4a059"
+        },
+        {
+          "path": "explainer/vendor/pele/diagrams/xychart.js",
+          "mode": 420,
+          "source_sha256": "817de14381d9ba413dc70947824ff2538ba532c232592035a5b836094434e4bb",
+          "source_git_blob": "8a62c964ed2482d4d9879f5fb507b99953b20a70",
+          "imported_sha256": "817de14381d9ba413dc70947824ff2538ba532c232592035a5b836094434e4bb"
+        },
+        {
+          "path": "explainer/writing.mjs",
+          "mode": 420,
+          "source_sha256": "1030bc5b09f932e805f87390d8b51a1a23bc8dab2cc02068873621e26da8781f",
+          "source_git_blob": "a534249fd1eefa5cbf20a2b005eeef08562a361b",
+          "imported_sha256": "1030bc5b09f932e805f87390d8b51a1a23bc8dab2cc02068873621e26da8781f"
+        },
+        {
+          "path": "locales/README.md",
+          "mode": 420,
+          "source_sha256": "f1f59d12d490927bfdb804b1a71e76ea057f2ef8dc1d98f9aa053343e0f80056",
+          "source_git_blob": "07941272af11d7d49750a134bdbc26b588d2fc47",
+          "imported_sha256": "f1f59d12d490927bfdb804b1a71e76ea057f2ef8dc1d98f9aa053343e0f80056"
+        },
+        {
+          "path": "locales/ar.json",
+          "mode": 420,
+          "source_sha256": "4a8d5c821a16fa94c97b68784481841c323e288d841acd84ac8415c063483a9f",
+          "source_git_blob": "edfe36c9f4a94fbf391c967f8db1c5efcffff34c",
+          "imported_sha256": "4a8d5c821a16fa94c97b68784481841c323e288d841acd84ac8415c063483a9f"
+        },
+        {
+          "path": "locales/en.json",
+          "mode": 420,
+          "source_sha256": "1e8b43d8ba6d8ae75c2b393b2edb43cac5e142f33cbc2d1a2351e0e8baf9e1aa",
+          "source_git_blob": "ce8c4c72cef31df683590d544327d8a3e1512052",
+          "imported_sha256": "1e8b43d8ba6d8ae75c2b393b2edb43cac5e142f33cbc2d1a2351e0e8baf9e1aa"
+        },
+        {
+          "path": "locales/es.json",
+          "mode": 420,
+          "source_sha256": "f2b971994cb9f7091758e605931b4b4959103ed0090916fe281bfb2f2e1e5cc7",
+          "source_git_blob": "85bf4dcee4ab94decc6368b978f74ab07a0b049f",
+          "imported_sha256": "f2b971994cb9f7091758e605931b4b4959103ed0090916fe281bfb2f2e1e5cc7"
+        },
+        {
+          "path": "locales/ko.json",
+          "mode": 420,
+          "source_sha256": "b7f2be52c61e4ced665ea62bb0670b4c2615a6c706127246a44bbcffdf65f8be",
+          "source_git_blob": "38c14e32676f4d5d85b0511a342d358c75ea328c",
+          "imported_sha256": "b7f2be52c61e4ced665ea62bb0670b4c2615a6c706127246a44bbcffdf65f8be"
+        },
+        {
+          "path": "locales/manifest.json",
+          "mode": 420,
+          "source_sha256": "9a377676b5d16f97a6a1f9326aadbb447321e9ceb5744718181796ce3dcce0d8",
+          "source_git_blob": "34080e03359e03ce46cae8fde4b7a8732bf14ac1",
+          "imported_sha256": "9a377676b5d16f97a6a1f9326aadbb447321e9ceb5744718181796ce3dcce0d8"
+        },
+        {
+          "path": "locales/zh-CN.json",
+          "mode": 420,
+          "source_sha256": "83d870452e9ff3459a3cae88be6900d9a98b268e6cfba94b608a7c10f484e485",
+          "source_git_blob": "c78685837cbcbf78a7f9613ce74b6a198c1f9fec",
+          "imported_sha256": "83d870452e9ff3459a3cae88be6900d9a98b268e6cfba94b608a7c10f484e485"
+        },
+        {
+          "path": "locales/zh-TW.json",
+          "mode": 420,
+          "source_sha256": "0db367aec82cf92b08d4335d5ed021480801f7ae79b1e2c1a0c79b27d4eafb2e",
+          "source_git_blob": "f4bad2942e1ada0f8015843cb7f2159d97c91245",
+          "imported_sha256": "0db367aec82cf92b08d4335d5ed021480801f7ae79b1e2c1a0c79b27d4eafb2e"
         },
         {
           "path": "migrations/workflow-v2.mjs",
@@ -296,21 +793,22 @@
           "path": "package-lock.json",
           "mode": 420,
           "source_sha256": "1b598ae0631f20322902faf50feb259b18d13dee458756d41627f2536b756940",
-          "imported_sha256": "c548c641b3a31256414c45770fefe1bf70b6cdb8f7965d0a74041434fb2e8ab5",
-          "adaptation": "Retain only optional Ajv, Simple Icons, and their locked resource-generator dependencies."
+          "imported_sha256": "dd5ef998ea0dcb1efde2ef45ff0ee01c6d6c7d6e7c3382767eadbca6702a34f3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Retain only optional Ajv, Simple Icons, and their locked resource-generator dependencies."
         },
         {
           "path": "package.json",
           "mode": 420,
           "source_sha256": "5c20239e54ff4c73c03b42b95c021f5b5ce74b35f6bb878d1f5bc59a213c9aa3",
-          "imported_sha256": "d25f301e7b7d55d8d702baf8b47c5ba5ea502148a14fbdf6e67fec751e6fa9d4",
-          "adaptation": "Remove commands requiring the upstream parent project and provide standalone tests and resource commands."
+          "imported_sha256": "4e4eb5e3d5b26a16d1c7448fbfd8da28006d81f56eff868909830706a21f45f2",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Remove commands requiring the upstream parent project and provide standalone tests and resource commands."
         },
         {
           "path": "recipes/scenarios.mjs",
           "mode": 420,
           "source_sha256": "6c655f643dd198cc76a6cfd0f5b945dac1388eaed10bf00f195dcd9f077401b4",
-          "imported_sha256": "6c655f643dd198cc76a6cfd0f5b945dac1388eaed10bf00f195dcd9f077401b4"
+          "imported_sha256": "1e93ba15d0782be535251bfb406cf8cc056291d84d77d33ca9dca01df743528f",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/architecture-layout-repair.md",
@@ -322,50 +820,63 @@
           "path": "references/authoring-contract.md",
           "mode": 420,
           "source_sha256": "b5d521401b6d38d2792b2feb18906ad2b9d50a1c265acd42be51b3d49f456eb8",
-          "imported_sha256": "b5d521401b6d38d2792b2feb18906ad2b9d50a1c265acd42be51b3d49f456eb8"
+          "imported_sha256": "c7c9918ee28e213defd4cb504f0440ae366a8db4665938d2a0db0b62da565901",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/authoring-defaults.md",
           "mode": 420,
           "source_sha256": "7277ebf440c568fac425af5ad085ff60976ec401fe694c0ea984efff192961b0",
-          "imported_sha256": "7277ebf440c568fac425af5ad085ff60976ec401fe694c0ea984efff192961b0"
+          "imported_sha256": "11a2c60b31cb8a4bc19e83ff2e8351c1b5af93cfa091512e6d053a13288eaf6c",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/brand-marks.md",
           "mode": 420,
           "source_sha256": "304d48735e07673197715856271532cd2dfb7fbada184936a15dea3b40ec1f06",
-          "imported_sha256": "304d48735e07673197715856271532cd2dfb7fbada184936a15dea3b40ec1f06"
+          "imported_sha256": "d6e1a6ceafd07e48f27caf01655ea642365a5416ed0543b4022ca62750b58f0f",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/delivery-contract.md",
           "mode": 420,
           "source_sha256": "aa167fd1d2c5ab48cf7c53cd25dc9f49a8b52059e848d71d76b2489aa5b68780",
-          "imported_sha256": "aa167fd1d2c5ab48cf7c53cd25dc9f49a8b52059e848d71d76b2489aa5b68780"
+          "imported_sha256": "0e283a418871a19c7adcc493c461ae6180e9b233f14ad95a19a9c15e109d2415",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/distribution-patches.md",
           "mode": 420,
-          "imported_sha256": "38759c2412643ff827f84714b4d7ce6c869edbed0960f6130737c7dcb49d6a5c",
+          "imported_sha256": "d59abead861a1e0529b9e412bd611a3ecd7b11727f9d241feadf7811903fe4c5",
           "adaptation": "Add the managed distribution patch record, retained feature/license scope, and verification limits."
+        },
+        {
+          "path": "references/explainer-authoring.md",
+          "mode": 420,
+          "source_sha256": "722c126f05192da499f75468e9c1b3001daa4a844894ebf45a854b6687a4af18",
+          "source_git_blob": "814f76f1d4f87faccbe09bfa963b0af55947b858",
+          "imported_sha256": "722c126f05192da499f75468e9c1b3001daa4a844894ebf45a854b6687a4af18"
         },
         {
           "path": "references/repository-authoring.md",
           "mode": 420,
           "source_sha256": "da8fa6d2bbc4572e5253e53bbc2d08088568f4d5350e61aa4e2029b2a5d2beb1",
-          "imported_sha256": "da8fa6d2bbc4572e5253e53bbc2d08088568f4d5350e61aa4e2029b2a5d2beb1"
+          "imported_sha256": "c1648fc0c1b85a3a9bfbf3a8919dfa741ff0b5a55ea310d1fcacbf6ee837e139",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "references/update-awareness.md",
           "mode": 420,
           "source_sha256": "57750c5c730b1804b6b1ece3af972d47cfe4d06ef7920fba4418c5b09c842b41",
-          "imported_sha256": "b12461bbbb4c4dadd1220de45a15a52cd728ab1202c80da78588f3524148c938",
-          "adaptation": "Replace automatic update guidance with explicit cw update under shared manager ownership."
+          "imported_sha256": "53e29ac04007193fe13da203e8bf0ecf342b313f25cdf32a7411acbfa82760e9",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Replace automatic update guidance with explicit cw update under shared manager ownership."
         },
         {
           "path": "references/viewer-runtime.md",
           "mode": 420,
           "source_sha256": "cabdf042069f0029f449755229335248d1568681542ec331e181fdc91efee14a",
-          "imported_sha256": "cabdf042069f0029f449755229335248d1568681542ec331e181fdc91efee14a"
+          "imported_sha256": "7d35ef52a8f47e77e8ec827cea7c71219bf1aafa53b5ef72ad4f1e1437f882a4",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/architecture/grid.mjs",
@@ -377,61 +888,127 @@
           "path": "renderers/architecture/labels.mjs",
           "mode": 420,
           "source_sha256": "7cf5bb20c3039f49683fe81a461110c42de0a006a58c867c47fdd3089a58bbbc",
-          "imported_sha256": "7cf5bb20c3039f49683fe81a461110c42de0a006a58c867c47fdd3089a58bbbc"
+          "imported_sha256": "3a0066a987d8ad20121d0f7261d8bcfd3659443a335ea5e47938e7779ae12d31",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/architecture/render-architecture.mjs",
           "mode": 420,
           "source_sha256": "3831899e2e12cedd2e8225285fc9e50e8cd032f036fac87264b0bd5ddc60fda6",
-          "imported_sha256": "3831899e2e12cedd2e8225285fc9e50e8cd032f036fac87264b0bd5ddc60fda6"
+          "imported_sha256": "50bf6f0748446ba99c4236e29e2e39755d5a2b8894fb598f104f7b3107063ca3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/architecture/routing.mjs",
           "mode": 420,
           "source_sha256": "b952b3ec0364827fa7fbff10a28e2a83f0ba11921c67f5ee224e5ef58c833cbb",
-          "imported_sha256": "b952b3ec0364827fa7fbff10a28e2a83f0ba11921c67f5ee224e5ef58c833cbb"
+          "imported_sha256": "908ddaf85caaa2d5d4a17c0544489ad9500614914c64a1d2ee2b96c4cc9ad4b3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/class/README.md",
+          "mode": 420,
+          "source_sha256": "33074161e184a98dbb2b65d0ee308779b216a3c97dda4dfaa2bd6e2fb2e9f526",
+          "source_git_blob": "efaea675ab7fb46b9042b63c9f25274bc1325a23",
+          "imported_sha256": "33074161e184a98dbb2b65d0ee308779b216a3c97dda4dfaa2bd6e2fb2e9f526"
+        },
+        {
+          "path": "renderers/class/render-class.mjs",
+          "mode": 420,
+          "source_sha256": "e4943c1e91062aba7c72715e4887165f03908de03a1c99dc71f296bb0d1214cf",
+          "source_git_blob": "58705d95cbae41f700e1614f04587bbcaa99faa1",
+          "imported_sha256": "e4943c1e91062aba7c72715e4887165f03908de03a1c99dc71f296bb0d1214cf"
         },
         {
           "path": "renderers/dataflow/README.md",
           "mode": 420,
           "source_sha256": "5e380fa7fe32c93a2f978a2db5ad7d2e91afa5fc3cae62c4d27c4a2c81502873",
-          "imported_sha256": "5e380fa7fe32c93a2f978a2db5ad7d2e91afa5fc3cae62c4d27c4a2c81502873"
+          "imported_sha256": "3e9c8368e5aab1e686817745628d6da6e584b5009973ae1ee8e4fbea1f324ba5",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/dataflow/dataflow-compiler.mjs",
+          "mode": 420,
+          "source_sha256": "e27a9b69876927b7285ce14569d22b92e32e8173fd953184ac13a8a02408e257",
+          "source_git_blob": "753829eb2515e8ac6a30437c603eac1f71ecc8a2",
+          "imported_sha256": "e27a9b69876927b7285ce14569d22b92e32e8173fd953184ac13a8a02408e257"
+        },
+        {
+          "path": "renderers/dataflow/joint-label-routing.mjs",
+          "mode": 420,
+          "source_sha256": "8d1fd73d0d6055f6c551dcbc7ea3b01e4b801216c3101b2246e4172a564beea8",
+          "source_git_blob": "1954204aa1bcdff97837b09a0c7ce534bb35f445",
+          "imported_sha256": "8d1fd73d0d6055f6c551dcbc7ea3b01e4b801216c3101b2246e4172a564beea8"
+        },
+        {
+          "path": "renderers/dataflow/label-capacity.mjs",
+          "mode": 420,
+          "source_sha256": "187af128f09630e512931b22bb301115d2a4d72c925cf02d3fc4736fb1846cb9",
+          "source_git_blob": "a7d4246e181e4cfbbc09cb77fa291d65ef2a72e7",
+          "imported_sha256": "187af128f09630e512931b22bb301115d2a4d72c925cf02d3fc4736fb1846cb9"
         },
         {
           "path": "renderers/dataflow/render-dataflow.mjs",
           "mode": 420,
           "source_sha256": "a8540e7b1a4794c6da6b64707ce17e970ca5e876544fd29554d2503c196f1dde",
-          "imported_sha256": "a8540e7b1a4794c6da6b64707ce17e970ca5e876544fd29554d2503c196f1dde"
+          "imported_sha256": "befc8bdacd86c07dd0b65a4b9635632a1246dd8dae7cb98dcf6d31dde361da2c",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/erd/README.md",
+          "mode": 420,
+          "source_sha256": "2dce4b5da474d2b1f4190d34f5f3b625e2a479460da8ee89b8dbe0481e9245f4",
+          "source_git_blob": "1713bd684bec22235c401a2d02972a103d9501e3",
+          "imported_sha256": "2dce4b5da474d2b1f4190d34f5f3b625e2a479460da8ee89b8dbe0481e9245f4"
+        },
+        {
+          "path": "renderers/erd/grid.mjs",
+          "mode": 420,
+          "source_sha256": "1aa4644d8ef13fdebe5adf48377c0755222a0288f6cc487faf052d7957a78a32",
+          "source_git_blob": "3233d2934aaccb7c5b7bb02ad8908f39069cf541",
+          "imported_sha256": "1aa4644d8ef13fdebe5adf48377c0755222a0288f6cc487faf052d7957a78a32"
+        },
+        {
+          "path": "renderers/erd/render-erd.mjs",
+          "mode": 420,
+          "source_sha256": "ed180a39c00bec377bde0c48c8af798bb93e97d0cf006dd321a9ba14d5c50d7e",
+          "source_git_blob": "95200370fd9596cbbca5fb90f6a5a1ed13b7806f",
+          "imported_sha256": "ed180a39c00bec377bde0c48c8af798bb93e97d0cf006dd321a9ba14d5c50d7e"
+        },
+        {
+          "path": "renderers/explainer/render-explainer.mjs",
+          "mode": 420,
+          "source_sha256": "a646f6e5450bfcde6bd0aac23487d0f9d7feb947b307079f9a6f2df27087fe93",
+          "source_git_blob": "c83ace5f6f2b8dd7cc1151c94e2ffed91fa50e9f",
+          "imported_sha256": "a646f6e5450bfcde6bd0aac23487d0f9d7feb947b307079f9a6f2df27087fe93"
         },
         {
           "path": "renderers/lifecycle/README.md",
           "mode": 420,
           "source_sha256": "2ce9bcd31529e97c176701a4dceb2f82f70f04a9483441779341eeeb79c54a9a",
-          "imported_sha256": "2ce9bcd31529e97c176701a4dceb2f82f70f04a9483441779341eeeb79c54a9a"
-        },
-        {
-          "path": "renderers/lifecycle/grid-routing.mjs",
-          "mode": 420,
-          "source_sha256": "81ae4d3a90aed30471f23dbc3083768d4979e96cf96544f9465713c2cd09e13f",
-          "imported_sha256": "81ae4d3a90aed30471f23dbc3083768d4979e96cf96544f9465713c2cd09e13f"
+          "imported_sha256": "42aa4d37721661d1f59babb7e6467d910c7569d8573add2679c04942f5ebd72a",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/lifecycle/render-lifecycle.mjs",
           "mode": 420,
           "source_sha256": "1ed2e359a5eab6a2bd9473c36c6184498d68748e9175cddf6894aa7b2ba3f670",
-          "imported_sha256": "1ed2e359a5eab6a2bd9473c36c6184498d68748e9175cddf6894aa7b2ba3f670"
+          "imported_sha256": "b700af01fa3848d7dfdf492b9efaccc7b384e6ad509a75bf9ac9af2038e4efc6",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/sequence/README.md",
           "mode": 420,
           "source_sha256": "51d78bc944d10e06ded74ede3ca5b78f916db3e8e45ae099eabc204e4d316ef3",
-          "imported_sha256": "51d78bc944d10e06ded74ede3ca5b78f916db3e8e45ae099eabc204e4d316ef3"
+          "imported_sha256": "d93cdf05140ae60f8a5df495da5cd5c9dc492f2338760c53626f3943454d00b3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/sequence/render-sequence.mjs",
           "mode": 420,
           "source_sha256": "46ed05a34655fbe6c421586366aa81480bca893233d61b9391e21afc667f15a1",
-          "imported_sha256": "46ed05a34655fbe6c421586366aa81480bca893233d61b9391e21afc667f15a1"
+          "imported_sha256": "249689c4de5636bf7d746a04b3369f5576b91f76ea533502b313f943da4a8a95",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/atomic-output.mjs",
@@ -441,28 +1018,39 @@
           "adaptation": "Enforce managed-package containment during capture, verification, and publication recovery."
         },
         {
+          "path": "renderers/shared/automatic-labels.mjs",
+          "mode": 420,
+          "source_sha256": "3f3b63cd9cfd242968a739ca703291d7788567ec5699b5e7d6a11a4079e15917",
+          "source_git_blob": "85b1bd17f4b1cb0fd759bf40d0ed1022210167eb",
+          "imported_sha256": "3f3b63cd9cfd242968a739ca703291d7788567ec5699b5e7d6a11a4079e15917"
+        },
+        {
           "path": "renderers/shared/brand-marks.mjs",
           "mode": 420,
           "source_sha256": "5cfc3c517ca6fe7e867c208101059dd7747ca3de3c9934b17583d6cf20336620",
-          "imported_sha256": "5cfc3c517ca6fe7e867c208101059dd7747ca3de3c9934b17583d6cf20336620"
+          "imported_sha256": "87436fa956c98dc9bbabf826d5f254587c1b3e7a829883f4098e04c62f4b5345",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/cli.mjs",
           "mode": 420,
           "source_sha256": "097f968a614008b07972f56de995e5b933c61ee0ba0d16d967c0a97c6d92e9d7",
-          "imported_sha256": "097f968a614008b07972f56de995e5b933c61ee0ba0d16d967c0a97c6d92e9d7"
+          "imported_sha256": "9df5e6efb3dddc50b72d0daf3ca9d2b611bab31c5f1076f6769bd94999c5688c",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/desktop-readability.mjs",
           "mode": 420,
           "source_sha256": "de68f2ed92573ae714659d556f97eca01296f4e0063b94c429370efcc38f909a",
-          "imported_sha256": "de68f2ed92573ae714659d556f97eca01296f4e0063b94c429370efcc38f909a"
+          "imported_sha256": "55ee7aba702d7883a08b6e54b39b00d5a17918a0c6bcf0c0fea19034f4de8990",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/diagnostics.mjs",
           "mode": 420,
           "source_sha256": "d052a0e72eec2a2bf29c70dacdd3350100e2c76fc2627d14f79234077c571e3f",
-          "imported_sha256": "d052a0e72eec2a2bf29c70dacdd3350100e2c76fc2627d14f79234077c571e3f"
+          "imported_sha256": "4635119e65f77f28f0a81c038642c7d7de318ba9400073f37decd59df258dcd6",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/engineering-profiles.mjs",
@@ -480,38 +1068,57 @@
           "path": "renderers/shared/generated-validators.mjs",
           "mode": 420,
           "source_sha256": "33697207b90a0eb0d0566a1c46eaf3cb58f85cef0f43caeec991017ade34c2b9",
-          "imported_sha256": "33697207b90a0eb0d0566a1c46eaf3cb58f85cef0f43caeec991017ade34c2b9"
+          "imported_sha256": "f9e6d4f4ef5c5ab98013563c7ea1d27d58c67111832bd4167989dc0c88405181",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/geometry.mjs",
           "mode": 420,
           "source_sha256": "b25d849e6e256b1eef37fa3bb88712d0617d6eb646a2355a934505fcaa9be75d",
-          "imported_sha256": "b25d849e6e256b1eef37fa3bb88712d0617d6eb646a2355a934505fcaa9be75d"
+          "imported_sha256": "818f6c000595f11a915cce2f73b5deb1a82ececf6c578a22bee70099988ea7a5",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/i18n.mjs",
           "mode": 420,
           "source_sha256": "03f5356110a08b2cf684a484af5502bb392482de1ef61123707c6da2724c5201",
-          "imported_sha256": "03f5356110a08b2cf684a484af5502bb392482de1ef61123707c6da2724c5201"
+          "imported_sha256": "1e6601157babd70c455dcddc93868f4665e56e7e723708d95dcc791dd1b636b9",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/layout-report.mjs",
           "mode": 420,
           "source_sha256": "4b5fa6e1af2b2efdd57d7fac16359089a059a745cc19ad1595ba42c3e483aec7",
-          "imported_sha256": "4b5fa6e1af2b2efdd57d7fac16359089a059a745cc19ad1595ba42c3e483aec7"
+          "imported_sha256": "979da7226c5080cb16fb352236d5705cc79c06c15d0a3550b95963af02c63b6e",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/legend.mjs",
           "mode": 420,
           "source_sha256": "1cc5033a188690fc5f5fef1bd7915a275e6c790bb3061c63c00a97b234625cbe",
-          "imported_sha256": "1cc5033a188690fc5f5fef1bd7915a275e6c790bb3061c63c00a97b234625cbe"
+          "imported_sha256": "c33fcb54cc5aa60d788154036daa165f85d2e06d28aa9f1d4a73705fa278de70",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/shared/node-card-style.mjs",
+          "mode": 420,
+          "source_sha256": "80a0d473b936ee198e73cb89addd43a6344fb81da94f9fc88c53ae759cbf748d",
+          "source_git_blob": "f3446ad0d7e2036e1671e9734a748c7ae1faad29",
+          "imported_sha256": "80a0d473b936ee198e73cb89addd43a6344fb81da94f9fc88c53ae759cbf748d"
         },
         {
           "path": "renderers/shared/output-path.mjs",
           "mode": 420,
           "source_sha256": "7422139101abd93493918898a97bed06f2212bfd411d3514cd229b6d57a3797e",
-          "imported_sha256": "d72c9d26dfa0f8cab17f7a31f531d6d8609e11a3fd97555e2c9b8258cb5de7d7",
-          "adaptation": "Reject writes physically inside the managed package, including symlink aliases and nonexistent descendants; fail closed when containment cannot be verified."
+          "imported_sha256": "ea1a6bc3cfb870d814b1c6e4e9fec3545acc256cf0c97aaa240560a942d022b3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Reject writes physically inside the managed package, including symlink aliases and nonexistent descendants; fail closed when containment cannot be verified."
+        },
+        {
+          "path": "renderers/shared/owned-temp-directory.mjs",
+          "mode": 420,
+          "source_sha256": "fb94515f8cd4b6b28799a7367745235822e2169534b8200791600ce7c3953a0e",
+          "source_git_blob": "cc910f094828fac6beb150d40f6af4a3bdf71ebd",
+          "imported_sha256": "fb94515f8cd4b6b28799a7367745235822e2169534b8200791600ce7c3953a0e"
         },
         {
           "path": "renderers/shared/path-semantics.mjs",
@@ -529,19 +1136,22 @@
           "path": "renderers/shared/repository-evidence.mjs",
           "mode": 420,
           "source_sha256": "19c652af2afec5604e9ce23d356f3cc2c5d6146592531036da20e79f4db3ed1d",
-          "imported_sha256": "19c652af2afec5604e9ce23d356f3cc2c5d6146592531036da20e79f4db3ed1d"
+          "imported_sha256": "d1e14f82ba07eb4df9fb0986b4d0c02110d1eaa05a4454f33e92bd1e5dfdc8d3",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/repository-location.mjs",
           "mode": 420,
           "source_sha256": "9ee8294c39d1be40f5aca3334fdfc7527ef9b224d6c1e69ca57aefc6a8c77856",
-          "imported_sha256": "9ee8294c39d1be40f5aca3334fdfc7527ef9b224d6c1e69ca57aefc6a8c77856"
+          "imported_sha256": "344044d8240a093919894bd63278652bd01b3717c5b49fb174a6f77bea28b839",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/route-quality.mjs",
           "mode": 420,
           "source_sha256": "0ae7e16210f8e00bb615da34d5323dee65efe52ceb11a40ea49fdd10b5257daa",
-          "imported_sha256": "0ae7e16210f8e00bb615da34d5323dee65efe52ceb11a40ea49fdd10b5257daa"
+          "imported_sha256": "c9cb9aae3a1623667f0490ba755bbc0ba57e5957e7ea56379d872eb1f2bb2090",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/sidecar-path.mjs",
@@ -556,6 +1166,13 @@
           "imported_sha256": "e728bf6a729972f95ae09e368ea370490d10ff94d49debe2fab2e9bac923ee1a"
         },
         {
+          "path": "renderers/shared/svg-path-analysis.mjs",
+          "mode": 420,
+          "source_sha256": "4c498ef5ba090a2d658c2ce3d80145f4cc63da9462f547b621206250096957c5",
+          "source_git_blob": "e77c2b691a86850e8bdad3c4c01070fd46822ed3",
+          "imported_sha256": "4c498ef5ba090a2d658c2ce3d80145f4cc63da9462f547b621206250096957c5"
+        },
+        {
           "path": "renderers/shared/text-fit.mjs",
           "mode": 420,
           "source_sha256": "ebd499072ef4fe31c9aabf45a01c204a9c2c142d45f087c3240673f90f477038",
@@ -565,43 +1182,99 @@
           "path": "renderers/shared/utils.mjs",
           "mode": 420,
           "source_sha256": "422b66c6945de473b1f96e4f3641339b6a24c8ccef60795a38ca2386e10bc26b",
-          "imported_sha256": "422b66c6945de473b1f96e4f3641339b6a24c8ccef60795a38ca2386e10bc26b"
+          "imported_sha256": "d0e8692b8acdc6993578c5d4aeb67065effdf5bf4cf2cd127bf561c677af38f5",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/shared/validator.mjs",
           "mode": 420,
           "source_sha256": "7460d7fcbcdf710649256c5e96142ae26d807a655d3296ee8caf7f5e158622cc",
-          "imported_sha256": "7460d7fcbcdf710649256c5e96142ae26d807a655d3296ee8caf7f5e158622cc"
+          "imported_sha256": "f5cf5b9aa3623a456e9a07f0c5f08fe09a0a67d3ba356e32937c3287c75c3bc9",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/timeline/README.md",
+          "mode": 420,
+          "source_sha256": "377cb185f8ddfca2a0349d122e736a6fc832d5c8e0555039f0e0bcc4f5038c86",
+          "source_git_blob": "7718ced3fa6db0129513d368f291c1688602fe74",
+          "imported_sha256": "377cb185f8ddfca2a0349d122e736a6fc832d5c8e0555039f0e0bcc4f5038c86"
+        },
+        {
+          "path": "renderers/timeline/render-timeline.mjs",
+          "mode": 420,
+          "source_sha256": "125fc65b2cd2ac725a3ad655f4dcb8f14e158e21d04af72924839830181e294c",
+          "source_git_blob": "dfa390c2f4032db67e7198e35142996aa659097d",
+          "imported_sha256": "125fc65b2cd2ac725a3ad655f4dcb8f14e158e21d04af72924839830181e294c"
+        },
+        {
+          "path": "renderers/tree/README.md",
+          "mode": 420,
+          "source_sha256": "c1afbcb94e026910987199776d76896b58b7947db2f94d90d1da608e44ca9a35",
+          "source_git_blob": "87b1b9ade6baf73bbb03ab3dfd3f697aaf4dd9a8",
+          "imported_sha256": "c1afbcb94e026910987199776d76896b58b7947db2f94d90d1da608e44ca9a35"
+        },
+        {
+          "path": "renderers/tree/render-tree.mjs",
+          "mode": 420,
+          "source_sha256": "4e2ba7d4a3f567760c3801e7439bd18fa28acfe51e581479bd56ad549e240b68",
+          "source_git_blob": "2fd00e1e0570674be2298aed1f72c86cfee38b12",
+          "imported_sha256": "4e2ba7d4a3f567760c3801e7439bd18fa28acfe51e581479bd56ad549e240b68"
+        },
+        {
+          "path": "renderers/waterfall/README.md",
+          "mode": 420,
+          "source_sha256": "13afed9d91d02bdabea0b920c23cd6ee851a42e53d30e80042e2aee4f845ecd0",
+          "source_git_blob": "410f9bf6f8b2c780cb7c5f7c4a5a3b3824f1d871",
+          "imported_sha256": "13afed9d91d02bdabea0b920c23cd6ee851a42e53d30e80042e2aee4f845ecd0"
+        },
+        {
+          "path": "renderers/waterfall/render-waterfall.mjs",
+          "mode": 420,
+          "source_sha256": "df95d32ef3b790c9b830f5e7a5741d71ae14b9f602d65db84bc60235a74d3290",
+          "source_git_blob": "71c4f4063ee49c29595f0921f9c94587f0244f45",
+          "imported_sha256": "df95d32ef3b790c9b830f5e7a5741d71ae14b9f602d65db84bc60235a74d3290"
         },
         {
           "path": "renderers/workflow/README.md",
           "mode": 420,
           "source_sha256": "c3ca0e258d3bba43390eda95f308d12388b1c778db972bbd936a5f5ad3344142",
-          "imported_sha256": "c3ca0e258d3bba43390eda95f308d12388b1c778db972bbd936a5f5ad3344142"
+          "imported_sha256": "d6f13218145cf373fafa6005eb718c1564a424b486253048b11d242c33c445aa",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/workflow/render-workflow.mjs",
           "mode": 420,
           "source_sha256": "df6cb1330231616dcb83592c3cc1dbf4b3e45567779836ae031ff57d2d517b89",
-          "imported_sha256": "df6cb1330231616dcb83592c3cc1dbf4b3e45567779836ae031ff57d2d517b89"
+          "imported_sha256": "304df0df006c44ab01ad534f34cb48cbe163f7ed2e7e2e8490dfee88827d3aba",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/workflow/workflow-compiler.mjs",
           "mode": 420,
           "source_sha256": "25646b0a7ee13d62ed7b21c915d40665608ffd57c69af263a8ec4250ceb9214e",
-          "imported_sha256": "25646b0a7ee13d62ed7b21c915d40665608ffd57c69af263a8ec4250ceb9214e"
+          "imported_sha256": "a84fa7570341166e9190892b4ab9bd5fd1ac63290cc9ec5a48dcaaf8a4183a3f",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "renderers/workflow/workflow-migration-geometry.mjs",
           "mode": 420,
           "source_sha256": "ebfc5085dd008ae63802f500402fb7bf8ca0ae28460997d867f45e5493b8fbe6",
-          "imported_sha256": "ebfc5085dd008ae63802f500402fb7bf8ca0ae28460997d867f45e5493b8fbe6"
+          "imported_sha256": "47729f32eae163c05c249cc0a663949fae745a9c74fe9548c83eb361b31e285a",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "renderers/workflow/workflow-placement-repair.mjs",
+          "mode": 420,
+          "source_sha256": "3ee6e83c3a5279e1af2b06db39fd39c3348264b2daa159a94cda3e1d8de5ed7c",
+          "source_git_blob": "ff43b50d0666fb434d75058fcddfdc9552e0da74",
+          "imported_sha256": "3ee6e83c3a5279e1af2b06db39fd39c3348264b2daa159a94cda3e1d8de5ed7c"
         },
         {
           "path": "schemas/README.md",
           "mode": 420,
           "source_sha256": "eeb4d75e4864128493939f277481ade4c5f023932ed5c0846cc539fdac9ae6aa",
-          "imported_sha256": "eeb4d75e4864128493939f277481ade4c5f023932ed5c0846cc539fdac9ae6aa"
+          "imported_sha256": "dcb6e86f3d1591004c669764ec62558bd01384c2e9155bb82d8a3be1c3842e05",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "schemas/architecture.schema.json",
@@ -610,10 +1283,18 @@
           "imported_sha256": "aef992b585a18a4016b8207254fe43a6227b0d45322a1ba95e0f69a80fc8f8c1"
         },
         {
+          "path": "schemas/class.schema.json",
+          "mode": 420,
+          "source_sha256": "0ecfb9948563166c4f23df784d618ddd93f003ee61402a9349c5f63b0284ff2a",
+          "source_git_blob": "2ef8b84266fe98dc4b1b1a04b828cf343f7a18bf",
+          "imported_sha256": "0ecfb9948563166c4f23df784d618ddd93f003ee61402a9349c5f63b0284ff2a"
+        },
+        {
           "path": "schemas/common.schema.json",
           "mode": 420,
           "source_sha256": "60912458e44224647a147a4dfccf0b40e0ea9c631767aabdeb5e82456f27c4e6",
-          "imported_sha256": "60912458e44224647a147a4dfccf0b40e0ea9c631767aabdeb5e82456f27c4e6"
+          "imported_sha256": "3bb6bde1122ebc1d47f73cf12400015baa0c7e5650e5780b0e89773d7ead4def",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "schemas/dataflow.schema.json",
@@ -622,16 +1303,53 @@
           "imported_sha256": "f01b2faafa5fd6e300f6b5045eeca70f70226552411180442d6e528dd45172f1"
         },
         {
+          "path": "schemas/erd.schema.json",
+          "mode": 420,
+          "source_sha256": "83aef0349f3cd415a00da4ed30c7864056dc9599627e004e6b7168ad4149ebc8",
+          "source_git_blob": "0153501ebb7f8032c67e4fe65c060c7f6a55404e",
+          "imported_sha256": "83aef0349f3cd415a00da4ed30c7864056dc9599627e004e6b7168ad4149ebc8"
+        },
+        {
+          "path": "schemas/explainer.schema.json",
+          "mode": 420,
+          "source_sha256": "9fc54042927602b1c37dd130061989f7d9a90718888ad75943275be2fd7d1371",
+          "source_git_blob": "0f6f237dabf0866fe1aca2fdeb11dc4d3f023b19",
+          "imported_sha256": "9fc54042927602b1c37dd130061989f7d9a90718888ad75943275be2fd7d1371"
+        },
+        {
           "path": "schemas/lifecycle.schema.json",
           "mode": 420,
           "source_sha256": "6b310026a3bc5d4eb7f36a1ed862b8c95d88ce57246ce078ba3094e0d6ff3c90",
-          "imported_sha256": "6b310026a3bc5d4eb7f36a1ed862b8c95d88ce57246ce078ba3094e0d6ff3c90"
+          "imported_sha256": "151befae29a68833ba26e7848769e89ab9dc71fc5bba234a91a62307338cfa49",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "schemas/sequence.schema.json",
           "mode": 420,
           "source_sha256": "411dcda121d7e95170a6850fb1cec51bec2e78222ce74b8465e11bcbd8e6e41a",
-          "imported_sha256": "411dcda121d7e95170a6850fb1cec51bec2e78222ce74b8465e11bcbd8e6e41a"
+          "imported_sha256": "97af565f8b6d8fbd4b5be40ddb52f4943accab2cf4f386d695e800d367dd4f89",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "schemas/timeline.schema.json",
+          "mode": 420,
+          "source_sha256": "4a657251d454bde44ef4697c960fe7503eeb4db4e50f9540c7e2d54046dd0769",
+          "source_git_blob": "7cc4b7ce168ac7ee5e058d22383a5a4388b94db4",
+          "imported_sha256": "4a657251d454bde44ef4697c960fe7503eeb4db4e50f9540c7e2d54046dd0769"
+        },
+        {
+          "path": "schemas/tree.schema.json",
+          "mode": 420,
+          "source_sha256": "65c794a1f522ce336afe787bd59adb63a81f57a5bba3ac266f2bae5c3a07b8c3",
+          "source_git_blob": "05106a1c2f945c44c15111fb0994f912f0bf865c",
+          "imported_sha256": "65c794a1f522ce336afe787bd59adb63a81f57a5bba3ac266f2bae5c3a07b8c3"
+        },
+        {
+          "path": "schemas/waterfall.schema.json",
+          "mode": 420,
+          "source_sha256": "7c3000534b491ce86b96ace528e9bd5a453ba3d14294a724da3ece4bd83b51f6",
+          "source_git_blob": "f6a37397d83dba739b273f6ffba0f1df3129203c",
+          "imported_sha256": "7c3000534b491ce86b96ace528e9bd5a453ba3d14294a724da3ece4bd83b51f6"
         },
         {
           "path": "schemas/workflow.schema.json",
@@ -643,21 +1361,22 @@
           "path": "scripts/check-render-output.mjs",
           "mode": 420,
           "source_sha256": "6ca0507cbbe442e5fa709477e7257b31a3fa929aa7f1a56ddbcbb3328df87a7d",
-          "imported_sha256": "6ca0507cbbe442e5fa709477e7257b31a3fa929aa7f1a56ddbcbb3328df87a7d"
+          "imported_sha256": "dcfb6c8eccd08bd7ce4b9fc1928cd4c3a6794b49a512e0afa1aea87e1e332195",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "scripts/check-update.mjs",
           "mode": 420,
           "source_sha256": "5a1add913beee623cdc9c009bad1980f4538bae1b9862bf92e41c83dd8a90666",
-          "imported_sha256": "8ab7ae78c8d25756655f7127ab037caa92761b9a58b0aa77bd584047236cc5b6",
-          "adaptation": "Make direct updater checks silent no-ops with a managed-by-codex-workflows receipt and no update I/O."
+          "imported_sha256": "3ddc715f9432301e9c30c5931a39cc03e4237a589e05cdf6fc62ae84e5e0512a",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Make direct updater checks silent no-ops with a managed-by-codex-workflows receipt and no update I/O."
         },
         {
           "path": "scripts/delivery-update-child.mjs",
           "mode": 420,
           "source_sha256": "23b2cf0cb79935b90238558b511966bdf04c4158605c0651b1ccdc90b1736e5f",
-          "imported_sha256": "991e70566ab48a937c11deb11af24767b6d9cd7d44ff9ef89925d70d87d11a37",
-          "adaptation": "Make the legacy update child a silent no-op with a managed-by-codex-workflows receipt and no update I/O."
+          "imported_sha256": "b4b409bad3ecdc96c327219a5576f65d5a3a6159f662d57e27b3782d940c17af",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Make the legacy update child a silent no-op with a managed-by-codex-workflows receipt and no update I/O."
         },
         {
           "path": "scripts/generate-brand-marks.mjs",
@@ -670,51 +1389,61 @@
           "path": "scripts/generate-validators.mjs",
           "mode": 420,
           "source_sha256": "fc8f003d7def53abaccac25148517cdccd390d975fc6fc745dee64a71425b9a2",
-          "imported_sha256": "3323179c7086e65330b0b5d40593cc99122b5432d81bd288bf853a23bfacb8ae",
-          "adaptation": "Require an external output directory for writes and validate output policy before loading optional generator dependencies; keep check mode read-only."
+          "imported_sha256": "e5dbae2a2d84afd3d255d88f06bf962123a8469366df9006c22b232b3833f98f",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Require an external output directory for writes and validate output policy before loading optional generator dependencies; keep check mode read-only."
         },
         {
           "path": "scripts/output-directory.mjs",
           "mode": 420,
-          "imported_sha256": "635e282390e57c3073e0db392389275e1a918c357a5a572984ca29fe4ff2add5",
+          "imported_sha256": "b86d17f85d4f1d4ad2f02dd0ef8fa421148af2cc934b1b38ff91b73777b43ca3",
           "adaptation": "Add external-output and managed-package containment enforcement for resource generators."
         },
         {
           "path": "scripts/render-examples.mjs",
           "mode": 420,
           "source_sha256": "a173a053fb26c0ac3cd72eb9b4e50411e67ca8c50bec57f05d4ca8ba79db2c0b",
-          "imported_sha256": "77f8d9535abdf837e674cc283dd522446d18e6012951a36daf6f71a1e46b9b92",
-          "adaptation": "Require an explicit external output directory instead of refreshing installed HTML examples in place."
+          "imported_sha256": "32566e995e27b4d4ba188c05f65811f66c7894d8852a1ba35a618cf8e28874d9",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Require an explicit external output directory instead of refreshing installed HTML examples in place."
         },
         {
           "path": "scripts/update-contract.mjs",
           "mode": 420,
           "source_sha256": "7c5d34c5fa2e08fcd0b42e33a0f3b4685fcecf3ac88f1ed820528df8fdc46cbc",
-          "imported_sha256": "7c5d34c5fa2e08fcd0b42e33a0f3b4685fcecf3ac88f1ed820528df8fdc46cbc"
+          "imported_sha256": "b6eb5e18ebea770c0a0c2cf2ba45d122d85abe61e94b9a5426602a9f84910b31",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "skill-release.json",
           "mode": 420,
           "source_sha256": "93a31980e200d0749d887982eba8b6c3b33452a14e3a04d4e6969b9c42c7eacf",
-          "imported_sha256": "93a31980e200d0749d887982eba8b6c3b33452a14e3a04d4e6969b9c42c7eacf"
+          "imported_sha256": "1ea25551e0359e547267d40e83812ffd1a7bdf7398826b65f2a2fcf1a11ba596",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "test/finalize-browser.test.mjs",
           "mode": 420,
           "source_sha256": "28ec4ea83e8d1a72edd5b481bf5d81509105a7117ef7c8103dbb599b138aa1d7",
-          "imported_sha256": "36326cf1a54d36ed72cf42567d1dde035f930b00dca8b8c650d9535de0994e4e",
-          "adaptation": "Relocate the package and isolate HOME/output directories while retaining the actual browser verification gate."
+          "imported_sha256": "e2a18d0f3a8624712257e8add6fdffcbde7855094d1187c0dc810ac542f3ac9f",
+          "adaptation": "Refreshed to upstream Archify 3.2.0. Relocate the package and isolate HOME/output directories while retaining the actual browser verification gate."
         },
         {
           "path": "test/finalize.test.mjs",
           "mode": 420,
           "source_sha256": "8034c15ff495e1ffa76fccc4f8e04376e2f1ee37dc8487abcffc433d32cd5013",
-          "imported_sha256": "8034c15ff495e1ffa76fccc4f8e04376e2f1ee37dc8487abcffc433d32cd5013"
+          "imported_sha256": "cfce7294be6cfecbe49c9544a2c18ec7ec4129ef8c0560656b6a8fe32298c5e1",
+          "adaptation": "Refreshed to upstream Archify 3.2.0."
+        },
+        {
+          "path": "test/helpers/dense-fixture.mjs",
+          "mode": 420,
+          "source_sha256": "1844ad59e78306b0f0817d23331223bc9516ef8f2bebcd53355068ef69c0fafe",
+          "source_git_blob": "0e0d294aec9826ca706443afc1f9aa7da3d6bd4b",
+          "imported_sha256": "1844ad59e78306b0f0817d23331223bc9516ef8f2bebcd53355068ef69c0fafe"
         },
         {
           "path": "test/managed-distribution.test.mjs",
           "mode": 420,
-          "imported_sha256": "f50e4ee4635f053f3810701efb7d05404531041a7f8f40f77ae63020194a5837",
+          "imported_sha256": "c40dbfb5685d6079660982f5459de1505b045b07bdcd3909e391dff997650ebf",
           "adaptation": "Add regressions for updater no-ops, immutable package outputs, all five diagram modes, portable helpers, and retained asset notices."
         },
         {
@@ -743,6 +1472,9 @@
         }
       ],
       "excluded_source_files": [
+        "examples/locales/es.json",
+        "examples/locales/ko.json",
+        "renderers/lifecycle/grid-routing.mjs",
         "test/adaptive-reader-layout.test.mjs",
         "test/animation.test.mjs",
         "test/architecture-automatic-labels.test.mjs",

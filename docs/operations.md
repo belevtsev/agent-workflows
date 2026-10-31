@@ -65,7 +65,7 @@ Skill registrations resolve through current. The source checkout remains editabl
 installed snapshots are never edited directly. The manager version and active
 skill revision are distinct, especially after rollback or --no-checkout.
 
-The current manifest manages 27 registrations with 72 entrypoints, a marked block
+The current manifest manages 26 registrations with 71 entrypoints, a marked block
 in global AGENTS.md, the top-level model/model_reasoning_effort values, shared
 memory defaults, and enrolled command/PATH
 registration. It preserves unrelated content, comments, modes, credentials, and
