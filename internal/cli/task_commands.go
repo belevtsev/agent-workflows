@@ -70,22 +70,11 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		chosenStore := store
 		if chosenStore == "" {
-			codexHome, _ := root.PersistentFlags().GetString("codex-home")
-			if codexHome == "" {
-				codexHome = config.Getenv("CODEX_HOME")
+			roots, err := resolveRoots(root, config)
+			if err != nil {
+				return err
 			}
-			if codexHome == "" {
-				home, _ := root.PersistentFlags().GetString("home")
-				if home == "" {
-					var err error
-					home, err = config.HomeDir()
-					if err != nil {
-						return err
-					}
-				}
-				codexHome = filepath.Join(home, ".codex")
-			}
-			chosenStore = filepath.Join(codexHome, "workflow-tasks")
+			chosenStore = filepath.Join(roots.state, "workflow-tasks")
 		}
 		record, err := taskflow.Start(cmd.Context(), selected, chosenStore, plan)
 		if err != nil {

@@ -430,6 +430,56 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	})
 }
 
+// installRoots are the directories an installation lives in. Read-only commands
+// resolve them the same way as install, so a custom root reaches every command.
+type installRoots struct{ home, codex, claude, state string }
+
+func resolveRoots(root *cobra.Command, config Config) (installRoots, error) {
+	var roots installRoots
+	flags := root.PersistentFlags()
+	for flag, value := range map[string]*string{"home": &roots.home, "codex-home": &roots.codex, "claude-home": &roots.claude, "state-dir": &roots.state} {
+		*value, _ = flags.GetString(flag)
+	}
+	if executable, err := config.Executable(); err == nil {
+		if locator, err := config.Resolve(executable); err == nil {
+			for _, pair := range [][2]*string{{&roots.home, &locator.Home}, {&roots.codex, &locator.Codex}, {&roots.state, &locator.State}} {
+				if *pair[0] == "" {
+					*pair[0] = *pair[1]
+				}
+			}
+		}
+	}
+	if roots.home == "" {
+		var err error
+		if roots.home, err = config.HomeDir(); err != nil {
+			return roots, errors.New("resolve home directory")
+		}
+	}
+	if roots.codex == "" {
+		roots.codex = config.Getenv("CODEX_HOME")
+	}
+	if roots.codex == "" {
+		roots.codex = filepath.Join(roots.home, ".codex")
+	}
+	if roots.state == "" {
+		state := config.Getenv("XDG_STATE_HOME")
+		if state == "" {
+			state = filepath.Join(roots.home, ".local", "state")
+		}
+		roots.state = filepath.Join(state, "agent-workflows")
+	}
+	if roots.claude == "" {
+		roots.claude = workflow.RecordedClaudeHome(roots.state)
+	}
+	if roots.claude == "" {
+		roots.claude = config.Getenv("CLAUDE_CONFIG_DIR")
+	}
+	if roots.claude == "" {
+		roots.claude = filepath.Join(roots.home, ".claude")
+	}
+	return roots, nil
+}
+
 func selectedHosts(value string) ([]string, error) {
 	switch value {
 	case "auto":

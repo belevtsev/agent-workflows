@@ -24,7 +24,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(key string) string {
-		if key != "CODEX_HOME" {
+		if key != "CODEX_HOME" && key != "CLAUDE_CONFIG_DIR" && key != "XDG_STATE_HOME" {
 			t.Fatal("task command queried adviser credentials")
 		}
 		return ""
@@ -46,7 +46,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Baseline.Root != canonicalRepo || !strings.HasPrefix(record.Directory, filepath.Join(canonicalHome, ".codex", "workflow-tasks")) {
+	if record.Baseline.Root != canonicalRepo || !strings.HasPrefix(record.Directory, filepath.Join(canonicalHome, ".local", "state", "agent-workflows", "workflow-tasks")) {
 		t.Fatalf("wrong project/storage: %+v", record)
 	}
 	out.Reset()
@@ -125,19 +125,19 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 	}
 	defaultHome := filepath.Join(base, "default-home")
 	explicitHome := filepath.Join(base, "explicit-home")
-	envCodex := filepath.Join(base, "environment-codex")
-	explicitCodex := filepath.Join(base, "explicit-codex")
+	envState := filepath.Join(base, "environment-state")
+	explicitState := filepath.Join(base, "explicit-state")
 	explicitStore := filepath.Join(base, "explicit-store")
 	plan := `{"title":"Profile storage","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`
 	cases := []struct {
 		name, environment, want string
 		flags                   []string
 	}{
-		{name: "default", want: filepath.Join(defaultHome, ".codex", "workflow-tasks")},
-		{name: "explicit home", flags: []string{"--home", explicitHome}, want: filepath.Join(explicitHome, ".codex", "workflow-tasks")},
-		{name: "environment beats home", environment: envCodex, flags: []string{"--home", explicitHome}, want: filepath.Join(envCodex, "workflow-tasks")},
-		{name: "explicit Codex beats environment", environment: envCodex, flags: []string{"--home", explicitHome, "--codex-home", explicitCodex}, want: filepath.Join(explicitCodex, "workflow-tasks")},
-		{name: "explicit store beats profile", environment: envCodex, flags: []string{"--home", explicitHome, "--codex-home", explicitCodex, "--store", explicitStore}, want: explicitStore},
+		{name: "default", want: filepath.Join(defaultHome, ".local", "state", "agent-workflows", "workflow-tasks")},
+		{name: "explicit home", flags: []string{"--home", explicitHome}, want: filepath.Join(explicitHome, ".local", "state", "agent-workflows", "workflow-tasks")},
+		{name: "environment beats home", environment: envState, flags: []string{"--home", explicitHome}, want: filepath.Join(envState, "agent-workflows", "workflow-tasks")},
+		{name: "explicit state beats environment", environment: envState, flags: []string{"--home", explicitHome, "--state-dir", explicitState}, want: filepath.Join(explicitState, "workflow-tasks")},
+		{name: "explicit store beats profile", environment: envState, flags: []string{"--home", explicitHome, "--state-dir", explicitState, "--store", explicitStore}, want: explicitStore},
 	}
 	for _, item := range cases {
 		t.Run(item.name, func(t *testing.T) {
@@ -154,15 +154,12 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 				if item.name == "explicit store beats profile" {
 					t.Fatal("explicit storage read environment")
 				}
-				if key != "CODEX_HOME" {
-					t.Fatalf("unexpected environment query %s", key)
+				if key == "XDG_STATE_HOME" {
+					return item.environment
 				}
-				return item.environment
+				return ""
 			}
-			config.Resolve = func(string) (manageruntime.Locator, error) {
-				t.Fatal("task storage acquired installer locator")
-				return manageruntime.Locator{}, nil
-			}
+			config.Resolve = func(string) (manageruntime.Locator, error) { return manageruntime.Locator{}, os.ErrNotExist }
 			args := append([]string{"task", "start", "--plan", "-"}, item.flags...)
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)

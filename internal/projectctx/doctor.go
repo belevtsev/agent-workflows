@@ -59,8 +59,15 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			options.CodexHome = filepath.Join(options.Home, ".codex")
 		}
 	}
-	if options.SkillsHome == "" {
-		options.SkillsHome = filepath.Join(options.Home, ".agents", "skills")
+	if options.ClaudeHome == "" {
+		options.ClaudeHome = options.Getenv("CLAUDE_CONFIG_DIR")
+		if options.ClaudeHome == "" {
+			options.ClaudeHome = filepath.Join(options.Home, ".claude")
+		}
+	}
+	skillRoots := []string{filepath.Join(options.Home, ".agents", "skills"), filepath.Join(options.ClaudeHome, "skills")}
+	if options.SkillsHome != "" {
+		skillRoots = []string{options.SkillsHome}
 	}
 	profile, err := Inspect(ctx, options.Repo)
 	if err != nil {
@@ -82,6 +89,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		report.Credentials.Environment[key] = strings.TrimSpace(options.Getenv(key)) != ""
 	}
 	readCodexMetadata(ctx, options.CodexHome, &report)
+	readClaudeMetadata(options.ClaudeHome, &report)
 	credentialCheck := func(name, source string, values map[string]bool) {
 		count := 0
 		for _, value := range values {
@@ -99,10 +107,14 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 	credentialCheck("credentials_launcher", "codex_mcp_literal_env", report.Credentials.Launcher)
 	credentialCheck("credentials_codex_shell", "codex_shell_environment_policy_set", report.Credentials.CodexShell)
 	skillCount := 0
-	for _, skill := range []string{"task-orchestration", "production-plan", "code-review"} {
-		if info, err := os.Stat(filepath.Join(options.SkillsHome, skill, "SKILL.md")); err == nil && info.Mode().IsRegular() {
-			skillCount++
+	for _, root := range skillRoots {
+		count := 0
+		for _, skill := range []string{"task-orchestration", "production-plan", "code-review"} {
+			if info, err := os.Stat(filepath.Join(root, skill, "SKILL.md")); err == nil && info.Mode().IsRegular() {
+				count++
+			}
 		}
+		skillCount = max(skillCount, count)
 	}
 	skillStatus := "configured"
 	if skillCount == 0 {
@@ -308,6 +320,31 @@ func readCodexMetadata(ctx context.Context, codexHome string, report *DoctorRepo
 		}
 		report.Checks["mcp_"+kind] = Check{Status: status, Detail: detail, Source: "codex_config_enabled_state"}
 	}
+}
+
+// readClaudeMetadata reports only whether settings parse. Their values stay out
+// of doctor output, which is safe to share.
+func readClaudeMetadata(claudeHome string, report *DoctorReport) {
+	path := filepath.Join(claudeHome, "settings.json")
+	check := func(status, detail string) {
+		report.Checks["claude_config"] = Check{Status: status, Detail: detail, Source: "selected_claude_settings"}
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		check("missing", "Selected Claude Code settings are unavailable; no values were returned")
+		return
+	}
+	if !info.Mode().IsRegular() || info.Size() > 1<<20 {
+		check("degraded", "Selected Claude Code settings must be a bounded regular file")
+		return
+	}
+	data, err := os.ReadFile(path)
+	var settings map[string]any
+	if err != nil || json.Unmarshal(data, &settings) != nil {
+		check("degraded", "Selected Claude Code settings could not be parsed; raw diagnostics were not returned")
+		return
+	}
+	check("detected", "Settings parse; no values were returned")
 }
 
 func credentialPresence(values map[string]any, result map[string]bool) {
