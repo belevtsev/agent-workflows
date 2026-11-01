@@ -40,6 +40,6 @@ Preserve the requested observable behavior while changing structure. Identify th
 - For a package move, assess import cycles, initialization order, API paths, and rollout. Type aliases can preserve identity during a staged migration when that compatibility is needed.
 - Preserve unrelated work. A failed check calls for diagnosis and repair of this change, not an automatic repository-wide revert.
 
-Read [tooling](references/go-tooling.md) or the [transform catalog](references/catalog.md) for exact mechanics. Use [structural changes](references/structural.md) for package/API moves, [verification selection](references/safety-net.md) for uncertain behavior coverage, and [staging workflow](references/workflow.md) only for a multi-step migration. No fixed coverage threshold replaces inspection of the actual changed paths.
+Before removing code that looks unnecessary, read [simplifying code](references/simplifying.md). Read [tooling](references/go-tooling.md) or the [transform catalog](references/catalog.md) for exact mechanics. Use [structural changes](references/structural.md) for package/API moves, [verification selection](references/safety-net.md) for uncertain behavior coverage, and [staging workflow](references/workflow.md) only for a multi-step migration. No fixed coverage threshold replaces inspection of the actual changed paths.
 
 Run the relevant allowed checks and required repository gates. Add race evidence for concurrency changes or comparable measurements for a performance-sensitive path; a routine rename does not require an assurance campaign.

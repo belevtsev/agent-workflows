@@ -1,0 +1,4 @@
+interface:
+  display_name: "Domain Modeling"
+  short_description: "Pin down domain language and record hard-to-reverse decisions"
+  default_prompt: "Use $domain-modeling to challenge the terms in this design, probe them with concrete scenarios, and check stated rules against the code."

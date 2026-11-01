@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clocks and Time"
+  short_description: "Avoid wall-clock, skew, time zone, and DST bugs"
+  default_prompt: "Use $clocks-and-time to check this code's durations, stored timestamps, zone handling, and any ordering that relies on clocks."

@@ -149,7 +149,7 @@ func TestValidateSourceTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report["registrations"].(Object)) != 26 || report["skill_count"].(int) != 71 {
+	if len(report["registrations"].(Object)) != 33 || report["skill_count"].(int) != 78 {
 		t.Fatalf("unexpected maintained suite report: %#v", report)
 	}
 	manifest, err := LoadManifest(root)

@@ -29,4 +29,4 @@ Apply the project's established formatter and conventions to the requested files
 - Reduce nesting where it clarifies failure paths. Named conditions should explain domain meaning, not hide order-sensitive work.
 - An exported rename can break consumers; visibility and method sets are API decisions, not formatting.
 
-Read [examples and detailed conventions](references/practices.md) only for the relevant clarity issue. [Conditional-expression and argument examples](references/details.md) expand the cases where a rewrite can obscure behavior. Repository and user conventions take precedence over these defaults.
+Read [examples and detailed conventions](references/practices.md) only for the relevant clarity issue. When style rules conflict, or for exit handling and time types, read [decisions from the style guides](references/style-guides.md). [Conditional-expression and argument examples](references/details.md) expand the cases where a rewrite can obscure behavior. Repository and user conventions take precedence over these defaults.

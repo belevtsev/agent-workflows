@@ -31,4 +31,4 @@ Trace the changed value's ownership and lifetime before choosing a defensive fix
 - `defer` runs at function exit, not the end of a loop iteration. Account for close errors when they affect data durability or the promised result.
 - Do not copy live locks or keep Go pointers alive through `uintptr`. A successful type assertion or compiler check proves only the property it checked.
 
-Use [nil safety](references/nil-safety.md), [slice/map safety](references/slice-map-safety.md), or [numeric, resource, and assertion examples](references/practices.md) for the hazard in scope. Verify the observable failure path with appropriate focused evidence.
+Use [nil safety](references/nil-safety.md), [slice/map safety](references/slice-map-safety.md), [numbers and text](references/numbers-and-text.md), or [numeric, resource, and assertion examples](references/practices.md) for the hazard in scope. Verify the observable failure path with appropriate focused evidence.

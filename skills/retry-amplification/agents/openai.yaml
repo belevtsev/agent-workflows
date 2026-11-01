@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retry Amplification"
+  short_description: "Stop retry storms and failures that outlive their cause"
+  default_prompt: "Use $retry-amplification to multiply retries along this call chain and check budgets, jitter, deadlines, idempotency, and the shed path."

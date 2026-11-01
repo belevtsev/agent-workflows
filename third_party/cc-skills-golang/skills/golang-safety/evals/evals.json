@@ -237,7 +237,7 @@
     "assertions": [
       {
         "id": "10.1",
-        "text": "Uses epsilon comparison (math.Abs(a-b) < epsilon), not == — IEEE 754 arithmetic is not exact for runtime float64 values"
+        "text": "Uses a tolerance comparison, not ==: fixed only where the scale is known such as cents, otherwise combined relative and absolute — IEEE 754 arithmetic is not exact for runtime float64 values"
       },
       {
         "id": "10.2",
@@ -562,7 +562,7 @@
     "assertions": [
       {
         "id": "23.1",
-        "text": "Uses epsilon comparison (math.Abs(a-b) < epsilon), not == — floating-point arithmetic can produce values that differ by tiny fractions"
+        "text": "Uses a tolerance comparison, not ==: fixed only where the scale is known such as cents, otherwise combined relative and absolute — floating-point arithmetic can produce values that differ by tiny fractions"
       },
       {
         "id": "23.2",
@@ -778,7 +778,7 @@
     "assertions": [
       {
         "id": "31.1",
-        "text": "Uses epsilon comparison (math.Abs) not == or != — float arithmetic is not exact; prices computed via multiplication/division may differ by tiny fractions"
+        "text": "Uses a tolerance comparison, not == or !=: fixed only where the scale is known such as cents, otherwise combined relative and absolute — float arithmetic is not exact; prices computed via multiplication/division may differ by tiny fractions"
       },
       {
         "id": "31.2",

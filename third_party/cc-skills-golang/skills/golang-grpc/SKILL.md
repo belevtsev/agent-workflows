@@ -127,6 +127,8 @@ conn, err := grpc.NewClient("dns:///user-service:50051",
 client := pb.NewUserServiceClient(conn)
 ```
 
+`retryPolicy` bounds each call, not the aggregate, so a degraded dependency still receives every retry. Add `"retryThrottling": {"maxTokens": 10, "tokenRatio": 0.1}` at the top level of the service config, and use the `retry-amplification` skill when several layers retry.
+
 ## Error Handling
 
 Always return gRPC errors using `status.Error` with a specific code — a raw `error` becomes `codes.Unknown`, telling the client nothing actionable. Clients use codes to decide retry vs fail-fast vs degrade.

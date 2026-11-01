@@ -22,7 +22,7 @@ are installing for. Release binaries support macOS/Linux on ARM64 and AMD64 and
 need no Go installation. Building an unreleased revision requires the Go version in
 [go.mod](go.mod).
 
-Installation registers 26 skills with 71 entrypoints on each selected host, and
+Installation registers 33 skills with 78 entrypoints on each selected host, and
 adds the same managed instructions to both:
 
 | | Codex | Claude Code |
@@ -113,6 +113,20 @@ without restoring anything:
 cw uninstall --host codex --forget
 ```
 
+### Go diagnostics in Claude Code
+
+Claude Code gets live Go diagnostics and navigation from the `gopls-lsp` plugin. It adds no context cost and needs `gopls` on your `PATH`.
+
+```bash
+claude plugin marketplace add anthropics/claude-plugins-official
+```
+
+```bash
+claude plugin install gopls-lsp@claude-plugins-official
+```
+
+Use this marketplace, not the built-in directory. `gopls-lsp@anthropic-plugin-directory` installs without error but contains no language server. Check with `claude plugin details gopls-lsp@claude-plugins-official`, which should list `LSP servers (1)`.
+
 ### Upgrading from v1
 
 The v2 manager uses new paths and doesn't read a v1 installation, and a v1
@@ -173,6 +187,13 @@ effort. Use `/effort max` for a session.
 | code-review | Review correctness and compatibility risks |
 | go-principal-engineer | Resolve production Go ownership and lifecycle decisions |
 | software-architecture | Assess boundaries and interface evolution |
+| codebase-design | Design deep modules with small interfaces and real seams |
+| domain-modeling | Sharpen domain language and record hard-to-reverse decisions |
+| parse-dont-validate | Turn repeated checks into types parsed at the boundary |
+| expand-contract | Plan zero-downtime schema, API, and event changes |
+| isolation-anomalies | Find write skew and lost updates in transactions |
+| retry-amplification | Prevent retry storms and failures that outlive their cause |
+| clocks-and-time | Avoid wall-clock, skew, time zone, and DST bugs |
 | test-strategy | Choose verification for changed behavior |
 | security-threat-model | Build a repository-grounded threat model |
 | backend-security-review | Scope backend security checks and verify findings against reachable paths |

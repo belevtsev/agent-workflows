@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codebase Design"
+  short_description: "Design deep modules with small interfaces and real seams"
+  default_prompt: "Use $codebase-design to assess this interface, apply the deletion test, and propose a deeper shape that stays testable through its surface."

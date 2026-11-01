@@ -11,6 +11,13 @@ Carry the user's scope and existing authorization across turns. Preserve unrelat
 - Keep skills reusable across projects: development practices, architecture, diagrams, and testing. Put repository commands and constraints in `AGENTS.md` or development docs; keep product features, incident history, and operational recipes in the owning repository's docs.
 - Delegate bounded independent investigation, implementation, or review when another agent can make useful progress alongside the primary agent and the harness permits it. Give each agent a question or file ownership, relevant constraints, and an evidence/output contract. Keep integration and completion with the primary agent; avoid duplicate exploration and needless agents for small tasks.
 
+## Code Review Rules
+
+- Check a change against what was asked, separately from code quality.
+- Flag a failure that's logged and dropped, a fallback nobody asked for, and retries that exhaust and report success.
+- Flag code that reads rows, decides, and writes without a constraint, a lock every writer takes, or a serializable retry.
+- Flag a test that couldn't fail for the defect it claims to prevent.
+
 ## Coordinating substantial tasks
 
 The workflow is global and reusable across projects. For substantial repository work, run `cw doctor --repo /absolute/target/path` at the start and after material workspace or environment changes. Read the reported repository contracts and select checks for that project; Go tooling and Graphify apply only to supported Go work. Metadata, live tool reachability, search freshness, and semantic correctness are different evidence. An unavailable discovery tool retains the normal source fallback.

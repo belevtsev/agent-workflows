@@ -134,7 +134,7 @@ version/creation ordering governs overlapping releases.
 
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
-defines 26 registrations and 71 entrypoints; model defaults come from its
+defines 33 registrations and 78 entrypoints; model defaults come from its
 validated policies. `cw-manager-v7` is the single bootstrap protocol: `install.sh`
 requires it, and it covers manifest version 3, sealed runtimes, version 3 state and
 journals, and the required three-adviser policy. Bump it for any change a released
