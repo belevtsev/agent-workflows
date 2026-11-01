@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 // WorkerBrief is immutable coordinator-supplied work scope. OwnedPaths covers

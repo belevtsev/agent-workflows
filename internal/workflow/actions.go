@@ -6,22 +6,34 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
 func (i *Installer) activation(s Object, sha, release string, m Object, enroll, rollback bool) ([]Object, error) {
-	plan, e := i.registrationPlan(s, m, rollback, release)
-	if e != nil {
-		return nil, e
+	recorded := i.recordedHosts(s)
+	var ops []Object
+	plans := map[string]registrationChangePlan{}
+	for _, h := range recorded {
+		plan, e := i.registrationPlan(h, s, m, rollback, release)
+		if e != nil {
+			return nil, e
+		}
+		plans[h.id] = plan
+		ops = append(ops, plan.Operations...)
 	}
 	if e := i.verifyOwned(s); e != nil {
 		return nil, e
 	}
 	after := clone(s)
-	after["version"] = i.nextStateVersion(s)
-	ops := plan.Operations
+	hosts := clone(object(s["hosts"]))
+	for _, h := range recorded {
+		hosts[h.id] = clone(hostRecord(s, h.id))
+	}
 	if !equal(s["manifest_registrations"], m["registrations"]) {
-		after["registrations"] = plan.Records
+		for _, h := range recorded {
+			object(hosts[h.id])["registrations"] = plans[h.id].Records
+		}
 		after["manifest_registrations"] = m["registrations"]
 	}
 	if sha != s["release"] {
@@ -29,67 +41,68 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 		if rollback {
 			history = history[:len(history)-1]
 		} else {
-			history = append(history, Object{"release": s["release"], "global_segment": s["global_segment"]})
+			history = append(history, Object{"release": s["release"]})
 		}
 		after["history"] = history
 		after["release"] = sha
-		old, e := decode(s["global_segment"])
-		if e != nil {
-			return nil, e
-		}
 		template, e := os.ReadFile(filepath.Join(release, text(m["global_instructions"])))
 		if e != nil {
 			return nil, e
 		}
-		segment := managedBlock(template, old[:len(old)-len(bytes.TrimLeft(old, "\n"))])
-		after["global_segment"] = encode(segment)
-		contents, e := i.readAgents()
+		ops = append(ops, pathOperation(i.current, i.expectedPointer(s), Object{"kind": "symlink", "target": release}, "pointer"))
+		for _, h := range recorded {
+			hs := object(hosts[h.id])
+			old, e := decode(hs["global_segment"])
+			if e != nil {
+				return nil, e
+			}
+			segment := managedBlock(template, old[:len(old)-len(bytes.TrimLeft(old, "\n"))])
+			hs["global_segment"] = encode(segment)
+			contents, e := i.readInstructions(h)
+			if e != nil {
+				return nil, e
+			}
+			replacement, e := replaceOwned(contents, old, segment)
+			if e != nil {
+				return nil, e
+			}
+			global, e := i.globalOperation(h, contents, replacement, old, segment, hostLabel(h, "global"))
+			if e != nil {
+				return nil, e
+			}
+			ops = append(ops, global)
+		}
+	}
+	for _, h := range recorded {
+		updated, change, e := i.prepareHostConfig(h, object(hosts[h.id]), release, m, enroll)
 		if e != nil {
 			return nil, e
 		}
-		replacement, e := replaceOwned(contents, old, segment)
+		hosts[h.id] = updated
+		if change != nil {
+			ops = append(ops, change)
+		}
+	}
+	adding := false
+	if !rollback {
+		added, changes, e := i.addHosts(s, release, m, enroll)
 		if e != nil {
 			return nil, e
 		}
-		global, e := i.globalOperation(contents, replacement, old, segment, "global", nil, nil)
-		if e != nil {
-			return nil, e
+		for id, record := range added {
+			hosts[id] = record
 		}
-		ops = append(ops, pathOperation(i.current, i.expectedPointer(s), Object{"kind": "symlink", "target": release}, "pointer"), global)
+		ops = append(ops, changes...)
+		adding = len(added) > 0
 	}
-	config, change, e := i.prepareConfig(s, release, m, enroll)
-	if e != nil {
-		return nil, e
-	}
-	for _, field := range []string{"model_config", "shared_config", "config_original_exists"} {
-		if value, present := config[field]; present {
-			after[field] = value
-		} else {
-			delete(after, field)
-		}
-	}
-	if change != nil {
-		ops = append(ops, change)
-	}
-	if !rollback && i.nativeRequested() && i.RuntimeCandidate != "" {
+	after["hosts"] = hosts
+	if !rollback && !adding && i.nativeRequested() && i.RuntimeCandidate != "" {
 		manager, changes, e := i.managerPlan(s)
 		if e != nil {
 			return nil, e
 		}
 		after["manager"], after["source"] = manager, i.Source
-		delete(after, "command_alias")
 		ops = append(ops, changes...)
-	} else if enroll && !i.nativeRequested() && s["manager"] == nil {
-		meta, change, _, e := AliasPrepare(i.Paths, i.Shell, object(s["command_alias"]))
-		if e != nil {
-			return nil, e
-		}
-		if meta != nil {
-			after["command_alias"] = meta
-		}
-		if change != nil {
-			ops = append(ops, change)
-		}
 	}
 	after = seal(after)
 	if !equal(after, s) {
@@ -98,36 +111,59 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 	return ops, nil
 }
 
-func (i *Installer) prepareConfig(s Object, release string, m Object, enroll bool) (Object, Object, error) {
-	if i.Apply && i.RuntimeCandidate != "" {
-		if err := i.verifyPolicyRuntime(i.RuntimeCandidate, release, m); err != nil {
+// addHosts plans the first activation of selected hosts that state does not
+// record yet. Adding a host never changes the release or its history.
+func (i *Installer) addHosts(s Object, release string, m Object, enroll bool) (Object, []Object, error) {
+	selected, err := i.selectedHosts(s)
+	if err != nil {
+		return nil, nil, err
+	}
+	records := Object{}
+	var ops []Object
+	for _, h := range selected {
+		if hostRecord(s, h.id) != nil {
+			continue
+		}
+		record, changes, _, err := i.installHost(h, s, release, m)
+		if err != nil {
 			return nil, nil, err
 		}
+		record, change, err := i.prepareHostConfig(h, record, release, m, enroll)
+		if err != nil {
+			return nil, nil, err
+		}
+		records[h.id] = record
+		ops = append(ops, changes...)
+		if change != nil {
+			ops = append(ops, change)
+		}
+	}
+	return records, ops, nil
+}
+
+func (i *Installer) prepareHostConfig(h hostTarget, hs Object, release string, m Object, enroll bool) (Object, Object, error) {
+	if h.id == hostClaude {
+		return i.prepareClaudeConfig(h, hs, release, m, enroll)
 	}
 	shared, err := SharedConfigDefaults(release)
 	if err != nil {
 		return nil, nil, err
 	}
-	if (shared != nil || sharedConfigStateRequired(s)) && i.RuntimeCandidate != "" {
-		if err := i.verifySharedConfigRuntime(i.RuntimeCandidate); err != nil {
-			return nil, nil, err
-		}
-	}
 	var models map[string]string
-	if enroll || s["model_config"] != nil {
+	if enroll || hs["model_config"] != nil {
 		models, err = ModelDefaults(release, m)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-	if shared != nil || sharedConfigStateRequired(s) {
-		return configPrepare(i.config, models, shared, s)
+	if shared != nil || sharedConfigStateRequired(hs) {
+		return configPrepare(i.config, models, shared, hs)
 	}
-	after := clone(s)
+	after := clone(hs)
 	if models == nil {
 		return after, nil, nil
 	}
-	metadata, change, err := ModelPrepare(i.config, models, object(s["model_config"]))
+	metadata, change, err := ModelPrepare(i.config, models, object(hs["model_config"]))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,67 +171,101 @@ func (i *Installer) prepareConfig(s Object, release string, m Object, enroll boo
 	return after, change, nil
 }
 
+func (i *Installer) prepareClaudeConfig(h hostTarget, hs Object, release string, m Object, enroll bool) (Object, Object, error) {
+	after := clone(hs)
+	if !enroll && hs["settings"] == nil {
+		return after, nil, nil
+	}
+	defaults, err := ClaudeModelDefaults(release, m)
+	if err != nil {
+		return nil, nil, err
+	}
+	metadata, change, err := ClaudeSettingsPrepare(h.settings, defaults, object(hs["settings"]))
+	if err != nil {
+		return nil, nil, err
+	}
+	after["settings"] = metadata
+	return after, change, nil
+}
+
 func (i *Installer) fresh(sha, release string, m Object, enroll bool) ([]Object, Object, error) {
-	records, origin, segment, ops, e := i.preflight(release, m)
+	s, e := i.state(false)
 	if e != nil {
 		return nil, nil, e
 	}
-	s := i.newState(sha, m, records, origin, segment)
-	ops = append([]Object{pathOperation(i.current, Object{"kind": "absent"}, Object{"kind": "symlink", "target": release}, "pointer")}, ops...)
-	aliasReport := Object{"managed": false}
-	s, change, e := i.prepareConfig(s, release, m, enroll)
+	if s != nil || exists(i.current) {
+		return nil, nil, errors.New("an installation already exists; use status or update")
+	}
+	hosts, changes, e := i.addHosts(nil, release, m, enroll)
 	if e != nil {
 		return nil, nil, e
 	}
-	if change != nil {
-		ops = append(ops, change)
-	}
-	if i.nativeRequested() {
-		if enroll || s["shared_config"] != nil {
-			if i.RuntimeCandidate != "" {
-				manager, changes, e := i.managerPlan(nil)
-				if e != nil {
-					return nil, nil, e
-				}
-				s["manager"] = manager
-				ops = append(ops, changes...)
-				aliasReport = Object{"managed": true, "kind": "native", "path": i.commandPath()}
-			} else {
-				aliasReport = Object{"managed": false, "kind": "native", "status": "deferred"}
+	s = i.newState(sha, m, hosts)
+	ops := append([]Object{pathOperation(i.current, Object{"kind": "absent"}, Object{"kind": "symlink", "target": release}, "pointer")}, changes...)
+	command := Object{"managed": false}
+	if i.nativeRequested() && (enroll || sharedConfigStateRequired(hostRecord(s, hostCodex))) {
+		if i.RuntimeCandidate != "" {
+			manager, changes, e := i.managerPlan(nil)
+			if e != nil {
+				return nil, nil, e
 			}
-		}
-	} else if enroll {
-		am, ac, ar, e := AliasPrepare(i.Paths, i.Shell, nil)
-		if e != nil {
-			return nil, nil, e
-		}
-		aliasReport = ar
-		if am != nil {
-			s["command_alias"] = am
-		}
-		if ac != nil {
-			ops = append(ops, ac)
+			s["manager"] = manager
+			ops = append(ops, changes...)
+			command = Object{"managed": true, "kind": "native", "path": i.commandPath()}
+		} else {
+			command = Object{"managed": false, "kind": "native", "status": "deferred"}
 		}
 	}
 	s = seal(s)
 	ops = append(ops, pathOperation(i.statePath, Object{"kind": "absent"}, expectedState(s), "state"))
-	return ops, aliasReport, nil
+	return ops, command, nil
 }
+
+// registrationChanges reports what each host would change, for dry runs and
+// activation reports. It adds no ownership.
+func (i *Installer) registrationChanges(s, m Object, rollback bool, roots ...string) ([]RegistrationChange, error) {
+	var hosts []hostTarget
+	var err error
+	if rollback {
+		hosts = i.recordedHosts(s)
+	} else if hosts, err = i.selectedHosts(s); err != nil {
+		return nil, err
+	} else if err = i.checkHomesOffRegistrations(hosts, object(m["registrations"])); err != nil {
+		return nil, err
+	}
+	changes := []RegistrationChange{}
+	for _, h := range hosts {
+		plan, err := i.registrationPlan(h, s, m, rollback, roots...)
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, plan.Changes...)
+	}
+	return changes, nil
+}
+
 func (i *Installer) Setup(enroll bool) (Object, error) {
 	if err := i.Context.Err(); err != nil {
 		return nil, err
 	}
 	if i.AdoptPersonalSkills && !i.nativeRequested() {
-		return nil, errors.New("personal skill adoption requires a native v6 manager")
+		return nil, errors.New("personal skill adoption requires a native manager")
 	}
 	if exists(i.journalPath) {
 		return nil, errors.New("an unfinished mutation requires recover")
 	}
-	sha, e := cleanHeadContext(i.Context, i.Source)
+	s, e := i.state(false)
 	if e != nil {
 		return nil, e
 	}
-	s, e := i.state(false)
+	adding, e := i.addsHost(s)
+	if e != nil {
+		return nil, e
+	}
+	if adding && enroll {
+		return i.addHostsFromInstalled(s)
+	}
+	sha, e := cleanHeadContext(i.Context, i.Source)
 	if e != nil {
 		return nil, e
 	}
@@ -204,7 +274,7 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 		return nil, e
 	}
 	defer cleanup()
-	plan, e := i.registrationPlan(s, m, false, release)
+	changes, e := i.registrationChanges(s, m, false, release)
 	if e != nil {
 		return nil, e
 	}
@@ -222,34 +292,15 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 		if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e == nil {
 			ops, e = i.activation(s, sha, release, m, enroll, false)
 		}
-		if e == nil && !i.nativeRequested() && s["manager"] == nil {
-			_, _, ar, e = AliasPrepare(i.Paths, i.Shell, object(s["command_alias"]))
-		}
 	}
 	if e != nil {
 		return nil, e
 	}
-	defaults, e := ModelDefaults(release, m)
+	report, e := i.setupReport(sha, release, m, changes, ops, ar, enroll)
 	if e != nil {
 		return nil, e
 	}
-	changed := len(ops) > 0
-	command := "setup"
-	if !enroll {
-		command = "install"
-	}
-	report := Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": plan.Changes, "changed": changed, "model_defaults": defaults, "command_alias": ar, "model_config": Object{"managed": enroll}}
-	shared, e := SharedConfigDefaults(release)
-	if e != nil {
-		return nil, e
-	}
-	report["shared_config"] = Object{"managed": shared != nil, "defaults": shared}
 	if !i.Apply {
-		runtime, err := i.prepareConsultationRuntimeFor(release)
-		if err != nil {
-			return nil, err
-		}
-		report["consultation_runtime"] = runtime
 		return report, nil
 	}
 	unlock, e := lockRoot(i.State, false)
@@ -288,23 +339,76 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	runtime, e := i.prepareConsultationRuntimeFor(release)
-	if e != nil {
-		return nil, e
-	}
-	report["consultation_runtime"] = runtime
 	head, e := cleanHeadContext(i.Context, i.Source)
 	if e != nil || head != sha {
 		return nil, errors.New("source HEAD changed during setup")
 	}
 	if len(ops) > 0 {
-		if e = i.transact(command, ops); e != nil {
+		if e = i.transact(text(report["command"]), ops); e != nil {
 			return nil, e
 		}
 	}
-	report["changed"] = len(ops) > 0 || runtime["changed"] == true
-	report["command_alias"] = ar
+	report["changed"] = len(ops) > 0
+	report["manager_command"] = ar
 	return report, nil
+}
+
+// addHostsFromInstalled activates new hosts on the release already active, so
+// neither the checkout nor a newer manager can move what a rollback chose.
+func (i *Installer) addHostsFromInstalled(s Object) (Object, error) {
+	sha := text(s["release"])
+	release, m, e := i.release(sha)
+	if e != nil {
+		return nil, e
+	}
+	changes, e := i.registrationChanges(s, m, false, release)
+	if e != nil {
+		return nil, e
+	}
+	ops, e := i.activation(s, sha, release, m, true, false)
+	if e != nil {
+		return nil, e
+	}
+	report, e := i.setupReport(sha, release, m, changes, ops, nil, true)
+	if e != nil || !i.Apply {
+		return report, e
+	}
+	unlock, e := lockRoot(i.State, false)
+	if e != nil {
+		return nil, e
+	}
+	defer unlock()
+	current, e := i.state(true)
+	if e != nil {
+		return nil, e
+	}
+	if !equal(current, s) {
+		return nil, errors.New("installation changed before setup")
+	}
+	if ops, e = i.activation(s, sha, release, m, true, false); e != nil {
+		return nil, e
+	}
+	if e = i.transact("setup", ops); e != nil {
+		return nil, e
+	}
+	report["changed"] = len(ops) > 0
+	return report, nil
+}
+
+func (i *Installer) setupReport(sha, release string, m Object, changes []RegistrationChange, ops []Object, manager Object, enroll bool) (Object, error) {
+	defaults, e := ModelDefaults(release, m)
+	if e != nil {
+		return nil, e
+	}
+	shared, e := SharedConfigDefaults(release)
+	if e != nil {
+		return nil, e
+	}
+	command := "setup"
+	if !enroll {
+		command = "install"
+	}
+	return Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": changes, "changed": len(ops) > 0, "model_defaults": defaults, "manager_command": manager, "model_config": Object{"managed": enroll}, "shared_config": Object{"managed": shared != nil, "defaults": shared}}, nil
 }
 func (i *Installer) Status() (Object, error) {
 	if exists(i.journalPath) {
@@ -318,7 +422,7 @@ func (i *Installer) Status() (Object, error) {
 		if exists(i.current) {
 			return nil, errors.New("active pointer exists without ownership state")
 		}
-		return Object{"installed": false, "model_config": Object{"managed": false}, "shared_config": Object{"managed": false}, "command_alias": Object{"managed": false}}, nil
+		return Object{"installed": false, "model_config": Object{"managed": false}, "shared_config": Object{"managed": false}, "manager_command": Object{"managed": false}}, nil
 	}
 	if e = i.verifyOwned(s); e != nil {
 		return nil, e
@@ -336,15 +440,20 @@ func (i *Installer) Status() (Object, error) {
 	if len(h) > 0 {
 		previous = object(h[len(h)-1])["release"]
 	}
-	report := Object{"installed": true, "release": s["release"], "previous_release": previous, "registrations": keys(object(s["registrations"])), "state_dir": i.State, "model_defaults": defaults, "model_profiles": profiles, "model_config": Object{"managed": s["model_config"] != nil}, "command_alias": AliasReport(object(s["command_alias"]))}
+	codex := hostRecord(s, hostCodex)
+	report := Object{"installed": true, "release": s["release"], "previous_release": previous, "registrations": keys(object(s["manifest_registrations"])), "state_dir": i.State, "model_defaults": defaults, "model_profiles": profiles, "model_config": Object{"managed": codex["model_config"] != nil}, "manager_command": Object{"managed": false}}
 	shared, e := SharedConfigDefaults(release)
 	if e != nil {
 		return nil, e
 	}
-	report["shared_config"] = Object{"managed": s["shared_config"] != nil, "defaults": shared}
+	report["shared_config"] = Object{"managed": codex["shared_config"] != nil, "defaults": shared}
+	report["hosts"], e = i.hostReports(s, release, m)
+	if e != nil {
+		return nil, e
+	}
 	if manager := object(s["manager"]); manager != nil {
 		report["manager"] = manager
-		report["command_alias"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
+		report["manager_command"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
 	}
 	return report, nil
 }
@@ -354,12 +463,12 @@ func (i *Installer) allowedOrigin() error {
 		return e
 	}
 	value := strings.TrimSpace(string(url))
-	for _, base := range []string{"git@github.com:belevtsev/codex-workflows", "https://github.com/belevtsev/codex-workflows", "ssh://git@github.com/belevtsev/codex-workflows"} {
+	for _, base := range []string{"git@github.com:belevtsev/agent-workflows", "https://github.com/belevtsev/agent-workflows", "ssh://git@github.com/belevtsev/agent-workflows"} {
 		if value == base || value == base+".git" {
 			return nil
 		}
 	}
-	return errors.New("origin must be the belevtsev/codex-workflows GitHub repository")
+	return errors.New("origin must be the belevtsev/agent-workflows GitHub repository")
 }
 func (i *Installer) Update() (Object, error) {
 	if i.AdoptPersonalSkills {
@@ -396,7 +505,7 @@ func (i *Installer) Update() (Object, error) {
 			return nil, e
 		}
 		defer cleanup()
-		plan, e := i.registrationPlan(s, m, false)
+		changes, e := i.registrationChanges(s, m, false)
 		if e != nil {
 			return nil, e
 		}
@@ -404,14 +513,10 @@ func (i *Installer) Update() (Object, error) {
 		if e != nil {
 			return nil, e
 		}
-		if _, _, e = i.prepareConfig(s, release, m, false); e != nil {
+		if e = i.checkHostConfig(s, release, m); e != nil {
 			return nil, e
 		}
-		runtime, e := i.prepareConsultationRuntimeFor(release)
-		if e != nil {
-			return nil, e
-		}
-		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": plan.Changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "consultation_runtime": runtime, "fetch": "origin/main only with apply"}, nil
+		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "fetch": "origin/main only with apply"}, nil
 	}
 	unlock, e := lockRoot(i.State, false)
 	if e != nil {
@@ -450,8 +555,7 @@ func (i *Installer) Update() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	plan, e := i.registrationPlan(s, m, false)
-	if e != nil {
+	if _, e = i.registrationChanges(s, m, false); e != nil {
 		return nil, e
 	}
 	if e = i.prepareRuntimeFor(sha); e != nil {
@@ -465,16 +569,12 @@ func (i *Installer) Update() (Object, error) {
 			return nil, e
 		}
 	}
-	if _, _, e = i.prepareConfig(s, release, m, false); e != nil {
-		return nil, e
-	}
-	runtime, e := i.prepareConsultationRuntimeFor(release)
-	if e != nil {
+	if e = i.checkHostConfig(s, release, m); e != nil {
 		return nil, e
 	}
 	// Runtime preparation can take time while discovery roots remain mutable.
 	// Reject newly occupied additions before advancing the source checkout.
-	plan, e = i.registrationPlan(s, m, false)
+	changes, e := i.registrationChanges(s, m, false)
 	if e != nil {
 		return nil, e
 	}
@@ -500,7 +600,7 @@ func (i *Installer) Update() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": plan.Changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "consultation_runtime": runtime, "changed": len(ops) > 0 || runtime["changed"] == true}, nil
+	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "changed": len(ops) > 0}, nil
 }
 func (i *Installer) Rollback() (Object, error) {
 	if err := i.Context.Err(); err != nil {
@@ -523,23 +623,12 @@ func (i *Installer) Rollback() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	plan, e := i.registrationPlan(s, m, true)
+	changes, e := i.registrationChanges(s, m, true)
 	if e != nil {
 		return nil, e
-	}
-	segment, e := decode(previous["global_segment"])
-	if e != nil {
-		return nil, e
-	}
-	template, e := os.ReadFile(filepath.Join(release, text(m["global_instructions"])))
-	if e != nil {
-		return nil, e
-	}
-	if !bytes.Equal(segment, managedBlock(template, segment[:len(segment)-len(bytes.TrimLeft(segment, "\n"))])) {
-		return nil, errors.New("previous managed block does not match its validated release")
 	}
 	if !i.Apply {
-		return Object{"command": "rollback", "dry_run": true, "release": sha, "registration_changes": plan.Changes}, nil
+		return Object{"command": "rollback", "dry_run": true, "release": sha, "registration_changes": changes}, nil
 	}
 	unlock, e := lockRoot(i.State, false)
 	if e != nil {
@@ -560,7 +649,7 @@ func (i *Installer) Rollback() (Object, error) {
 	if e = i.transact("rollback", ops); e != nil {
 		return nil, e
 	}
-	return Object{"command": "rollback", "dry_run": false, "release": sha, "registration_changes": plan.Changes}, nil
+	return Object{"command": "rollback", "dry_run": false, "release": sha, "registration_changes": changes}, nil
 }
 func (i *Installer) Uninstall() (Object, error) {
 	if err := i.Context.Err(); err != nil {
@@ -573,8 +662,15 @@ func (i *Installer) Uninstall() (Object, error) {
 	if e = i.verifyOwned(s); e != nil {
 		return nil, e
 	}
+	removed := i.recordedHosts(s)
+	if len(i.Hosts) > 0 {
+		removed = slices.DeleteFunc(removed, func(h hostTarget) bool { return !slices.Contains(i.Hosts, h.id) })
+		if len(removed) != len(i.Hosts) {
+			return nil, errors.New("uninstall names a host this installation does not record")
+		}
+	}
 	if !i.Apply {
-		return Object{"command": "uninstall", "dry_run": true, "release": s["release"]}, nil
+		return Object{"command": "uninstall", "dry_run": true, "release": s["release"], "hosts": hostIDs(removed)}, nil
 	}
 	unlock, e := lockRoot(i.State, false)
 	if e != nil {
@@ -592,77 +688,28 @@ func (i *Installer) Uninstall() (Object, error) {
 		return nil, e
 	}
 	ops := []Object{}
-	for _, name := range keys(object(s["registrations"])) {
-		item := object(object(s["registrations"])[name])
-		original := object(item["original"])
-		if original["kind"] == "personal" {
-			origin, err := i.validatePersonalOrigin(name, original)
-			if err != nil {
-				return nil, err
-			}
-			ops = append(ops, personalOperation(name, origin, filepath.Join(i.skills, name), text(item["target"]), "managed", "personal", "restore-personal:"+name))
+	for _, h := range removed {
+		if i.Forget {
 			continue
 		}
-		restored := original
-		if original["kind"] == "legacy" {
-			restored = Object{"kind": "absent"}
-		}
-		ops = append(ops, pathOperation(filepath.Join(i.skills, name), Object{"kind": "symlink", "target": item["target"]}, restored, "registration:"+name))
-		if original["kind"] == "legacy" {
-			destination := text(original["path"])
-			if destination != filepath.Join(i.Home, ".codex", "skills", "typesafe-ai") || exists(destination) {
-				return nil, errors.New("legacy restore destination is unsafe or occupied")
-			}
-			ops = append(ops, Object{"kind": "rename", "path": original["backup"], "destination": destination, "observation": original["observation"], "label": "legacy"})
-		}
-	}
-	contents, e := i.readAgents()
-	if e != nil {
-		return nil, e
-	}
-	segment, e := decode(s["global_segment"])
-	if e != nil {
-		return nil, e
-	}
-	origin := object(s["global_origin"])
-	var replacement []byte
-	if origin["kind"] == "prefix" {
-		replacement, e = decode(origin["prefix"])
+		changes, e := i.hostRemoval(h, s)
 		if e != nil {
 			return nil, e
 		}
+		ops = append(ops, changes...)
 	}
-	after, e := replaceOwned(contents, segment, replacement)
-	if e != nil {
-		return nil, e
-	}
-	global, e := i.globalOperation(contents, after, segment, nil, "global", nil, replacement)
-	if e != nil {
-		return nil, e
-	}
-	if len(after) == 0 && origin["kind"] == "absent" {
-		global["after"] = Object{"kind": "absent"}
-	}
-	ops = append(ops, global)
-	if sharedConfigStateRequired(s) {
-		change, e := ConfigRemoval(i.config, s)
-		if e != nil {
+	if len(removed) < len(i.recordedHosts(s)) {
+		after := clone(s)
+		hosts := clone(object(s["hosts"]))
+		for _, h := range removed {
+			delete(hosts, h.id)
+		}
+		after["hosts"] = hosts
+		ops = append(ops, pathOperation(i.statePath, expectedState(s), expectedState(seal(after)), "state"))
+		if e = i.transact("uninstall", ops); e != nil {
 			return nil, e
 		}
-		ops = append(ops, change)
-	} else if meta := object(s["model_config"]); meta != nil {
-		change, e := ModelRemoval(i.config, meta)
-		if e != nil {
-			return nil, e
-		}
-		ops = append(ops, change)
-	}
-	if meta := object(s["command_alias"]); meta != nil {
-		change, e := AliasRemoval(meta, i.Paths)
-		if e != nil {
-			return nil, e
-		}
-		ops = append(ops, change)
+		return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true}, nil
 	}
 	if manager := object(s["manager"]); manager != nil {
 		changes, err := i.managerRemoval(manager)
@@ -675,8 +722,116 @@ func (i *Installer) Uninstall() (Object, error) {
 	if e = i.transact("uninstall", ops); e != nil {
 		return nil, e
 	}
-	return Object{"command": "uninstall", "dry_run": false, "restored_adoptions": true, "retained_release_cache": filepath.Join(i.State, "releases")}, nil
+	return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true, "retained_release_cache": filepath.Join(i.State, "releases")}, nil
 }
+
+// hostRemoval restores everything one host owns and leaves the shared release,
+// manager and other hosts alone.
+func (i *Installer) hostRemoval(h hostTarget, s Object) ([]Object, error) {
+	hs := hostRecord(s, h.id)
+	ops := []Object{}
+	registrations := object(hs["registrations"])
+	for _, name := range keys(registrations) {
+		item := object(registrations[name])
+		original := object(item["original"])
+		if original["kind"] == "personal" {
+			origin, err := i.validatePersonalOrigin(name, original)
+			if err != nil {
+				return nil, err
+			}
+			ops = append(ops, personalOperation(name, origin, filepath.Join(h.skills, name), text(item["target"]), "managed", "personal", "restore-personal:"+name))
+			continue
+		}
+		ops = append(ops, pathOperation(filepath.Join(h.skills, name), Object{"kind": "symlink", "target": item["target"]}, original, hostLabel(h, "registration:"+name)))
+	}
+	contents, e := i.readInstructions(h)
+	if e != nil {
+		return nil, e
+	}
+	segment, e := decode(hs["global_segment"])
+	if e != nil {
+		return nil, e
+	}
+	after, e := replaceOwned(contents, segment, nil)
+	if e != nil {
+		return nil, e
+	}
+	global, e := i.globalOperation(h, contents, after, segment, nil, hostLabel(h, "global"))
+	if e != nil {
+		return nil, e
+	}
+	if len(after) == 0 && object(hs["global_origin"])["kind"] == "absent" {
+		global["after"] = Object{"kind": "absent"}
+	}
+	ops = append(ops, global)
+	if h.id == hostClaude {
+		if meta := object(hs["settings"]); meta != nil {
+			change, e := ClaudeSettingsRemoval(h.settings, meta)
+			if e != nil {
+				return nil, e
+			}
+			if change != nil {
+				ops = append(ops, change)
+			}
+		}
+		return ops, nil
+	}
+	if sharedConfigStateRequired(hs) {
+		change, e := ConfigRemoval(i.config, hs)
+		if e != nil {
+			return nil, e
+		}
+		ops = append(ops, change)
+	} else if meta := object(hs["model_config"]); meta != nil {
+		change, e := ModelRemoval(i.config, meta)
+		if e != nil {
+			return nil, e
+		}
+		ops = append(ops, change)
+	}
+	return ops, nil
+}
+
+func hostIDs(hosts []hostTarget) []string {
+	ids := []string{}
+	for _, h := range hosts {
+		ids = append(ids, h.id)
+	}
+	return ids
+}
+
+// checkHostConfig confirms every recorded host can accept a candidate release
+// before an update advances the source checkout.
+func (i *Installer) checkHostConfig(s Object, release string, m Object) error {
+	for _, h := range i.recordedHosts(s) {
+		if _, _, err := i.prepareHostConfig(h, hostRecord(s, h.id), release, m, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (i *Installer) hostReports(s Object, release string, m Object) (Object, error) {
+	reports := Object{}
+	for _, h := range i.recordedHosts(s) {
+		report := Object{"home": h.root, "skills": h.skills, "instructions": h.instructions, "settings": h.settings}
+		if h.id == hostClaude {
+			defaults, err := ClaudeModelDefaults(release, m)
+			if err != nil {
+				return nil, err
+			}
+			report["model_defaults"] = defaults
+			drift, err := ClaudeSettingsDrift(h.settings, object(hostRecord(s, h.id)["settings"]))
+			if err != nil {
+				return nil, err
+			}
+			report["settings_drift"] = drift
+		}
+		reports[h.id] = report
+	}
+	return reports, nil
+}
+
 func (i *Installer) Execute(command string) (Object, error) {
 	switch command {
 	case "setup":

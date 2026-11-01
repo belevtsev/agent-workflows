@@ -22,7 +22,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(benchstat:*) Bash(benchdiff:*) Bash(cob:*) Bash(gobenchdata:*) Bash(curl:*) mcp__context7__resolve-library-id mcp__context7__query-docs WebSearch AskUserQuestion EnterWorktree ExitWorktree
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(benchstat:*) Bash(benchdiff:*) Bash(cob:*) Bash(gobenchdata:*) Bash(curl:*) mcp__context7__resolve-library-id mcp__context7__query-docs WebSearch AskUserQuestion EnterWorktree ExitWorktree
 ---
 
 # Go performance measurement
@@ -33,6 +33,6 @@ Use the benchmark API supported by the module's Go version. Prevent dead-code el
 
 Compare repeated compatible runs with benchstat or equivalent statistical evidence. Run variants serially on shared hardware, account for noise and warmup, and distinguish statistical significance from a meaningful regression. Profiles show different quantities: cumulative allocation, retained heap, CPU samples, blocking, and timeline evidence are not interchangeable.
 
-Read [benchmark patterns and commands](references/practices.md), [benchstat](references/benchstat.md), [pprof](references/pprof.md), or [trace](references/trace.md) for the operation. [Compiler analysis](references/compiler-analysis.md) and [diagnostic tools](references/tools.md) answer narrower questions. Use [CI regression detection](references/ci-regression.md) only for that requested workflow, and [investigation sessions](references/investigation-session.md) for production diagnosis.
+Read [benchmark patterns and commands](references/practices.md), [benchstat](references/benchstat.md), [pprof](references/pprof.md), or [trace](references/trace.md) for the operation. [Compiler analysis](references/compiler-analysis.md) and [diagnostic tools](references/tools.md) answer narrower questions. For load tests and tail latency, read [coordinated omission](references/coordinated-omission.md), because a closed-loop harness hides stalls. Use [CI regression detection](references/ci-regression.md) only for that requested workflow, and [investigation sessions](references/investigation-session.md) for production diagnosis.
 
 Execute commands in the repository's permitted environment. Preserve useful raw results outside source unless the task asks for checked-in evidence; a benchmark request does not imply a commit or CI change.

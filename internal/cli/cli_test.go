@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 const fixtureSHA = "0123456789012345678901234567890123456789"
@@ -41,7 +41,7 @@ func testConfig(t *testing.T) (Config, *bytes.Buffer, *workflow.Options, *fakeSe
 	return config, out, options, service
 }
 func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
-	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"setup", "--help"}, {"version"}, {"--manager-protocol"}, {"--model-policy-capability"}, {"--codex-defaults-capability"}, {"--openai-decisions-capability"}, {"--three-adviser-capability"}, {"--release-identity"}} {
+	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"help", "consult"}, {"help", "consult", "jev"}, {"help", "graphify", "query"}, {"consult", "--help"}, {"graphify", "build", "--help"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"setup", "--help"}, {"version"}, {"--manager-protocol"}, {"--release-identity"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			config, out, _, _ := testConfig(t)
 			config.ReleaseIdentity = "release-identity-fixture"
@@ -54,20 +54,8 @@ func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
 			if len(out.Bytes()) == 0 {
 				t.Fatal("empty output")
 			}
-			if args[0] == "--manager-protocol" && out.String() != "cw-manager-v6\n" {
+			if args[0] == "--manager-protocol" && out.String() != "cw-manager-v7\n" {
 				t.Fatalf("wrong bootstrap protocol: %q", out.String())
-			}
-			if args[0] == "--model-policy-capability" && out.String() != "cw-model-policy-v2-dual-choice\n" {
-				t.Fatalf("wrong model policy capability: %q", out.String())
-			}
-			if args[0] == "--codex-defaults-capability" && out.String() != "cw-codex-defaults-v1\n" {
-				t.Fatalf("wrong Codex defaults capability: %q", out.String())
-			}
-			if args[0] == "--openai-decisions-capability" && out.String() != "cw-openai-decisions-v1\n" {
-				t.Fatalf("wrong OpenAI adviser capability: %q", out.String())
-			}
-			if args[0] == "--three-adviser-capability" && out.String() != "cw-three-adviser-v1\n" {
-				t.Fatalf("wrong required three-adviser capability: %q", out.String())
 			}
 			if args[0] == "--release-identity" && out.String() != config.ReleaseIdentity+"\n" {
 				t.Fatalf("wrong release identity: %q", out.String())
@@ -91,7 +79,7 @@ func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
 func TestInstalledCommandResolvesLocatorInsteadOfCWD(t *testing.T) {
 	config, out, options, service := testConfig(t)
 	config.Resolve = func(string) (manageruntime.Locator, error) {
-		return manageruntime.Locator{Source: "/owned/source", Home: "/owned/home", Codex: "/owned/codex", State: "/owned/state"}, nil
+		return manageruntime.Locator{Source: "/owned/source", Home: "/owned/home", State: "/owned/state"}, nil
 	}
 	config.WorkingDir = func() (string, error) { t.Fatal("installed manager used cwd"); return "", nil }
 	if err := Execute(t.Context(), []string{"status"}, config); err != nil {
@@ -108,6 +96,25 @@ func TestInstalledCommandResolvesLocatorInsteadOfCWD(t *testing.T) {
 		t.Fatalf("incompatible report: %+v", report)
 	}
 }
+func TestHostRootsPreferFlagsThenRecordsThenEnvironment(t *testing.T) {
+	config, _, _, _ := testConfig(t)
+	config.Getenv = func(key string) string { return "/env/" + key }
+	state := t.TempDir()
+	if codex, claude := hostRoots(config, "/home", state, "", ""); codex != "/env/CODEX_HOME" || claude != "/env/CLAUDE_CONFIG_DIR" {
+		t.Fatalf("unrecorded hosts: %q, %q", codex, claude)
+	}
+	journal := `{"version":3,"command":"setup","home":"/home","codex_home":"/recorded/codex","claude_home":"/recorded/claude","state_dir":"` + state + `","operations":[]}`
+	if err := os.WriteFile(filepath.Join(state, "journal.json"), []byte(journal), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if codex, claude := hostRoots(config, "/home", state, "", ""); codex != "/recorded/codex" || claude != "/recorded/claude" {
+		t.Fatalf("recorded hosts: %q, %q", codex, claude)
+	}
+	if codex, claude := hostRoots(config, "/home", state, "/flag/codex", "/flag/claude"); codex != "/flag/codex" || claude != "/flag/claude" {
+		t.Fatalf("explicit roots: %q, %q", codex, claude)
+	}
+}
+
 func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 	cases := []struct {
 		name              string
@@ -171,10 +178,10 @@ func TestInstallAliasAndDefaultEnroll(t *testing.T) {
 }
 func TestDryRunAndLegacyFlagsPreserved(t *testing.T) {
 	config, _, options, _ := testConfig(t)
-	if err := Execute(t.Context(), []string{"install", "--dry-run", "--typesafe-legacy", "/old/typesafe"}, config); err != nil {
+	if err := Execute(t.Context(), []string{"install", "--dry-run"}, config); err != nil {
 		t.Fatal(err)
 	}
-	if options.Apply || options.TypeSafeLegacy == nil || *options.TypeSafeLegacy != "/old/typesafe" {
+	if options.Apply {
 		t.Fatalf("wrong flags: %+v", options)
 	}
 	config, _, options, _ = testConfig(t)

@@ -23,7 +23,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness. Requires go and swag CLI.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs Bash(swag:*) AskUserQuestion Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs Bash(swag:*) AskUserQuestion Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
 ---
 
 **Modes:**

@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -71,19 +70,13 @@ func sharedInstallerFixture(t *testing.T) *installerFixture {
 func sharedLifecycleInstaller(t *testing.T, fixture *installerFixture, apply bool) *Installer {
 	t.Helper()
 	revision := fixture.git(t, "rev-parse", "HEAD")
-	installer := sharedConfigRuntimeFixtureFor(t, fixture, revision, CodexDefaultsCapability)
+	installer := sharedConfigRuntimeFixtureFor(t, fixture, revision)
 	installer.Apply = apply
-	installer.PrepareConsultationRuntime = func(ctx context.Context, path string, _ bool) (Object, error) {
-		if ctx != installer.Context || path != filepath.Join(installer.Home, ".venvs", "codex-decisions") {
-			t.Fatal("consultation environment preparation lost the installation context or selected home")
-		}
-		return Object{"managed": true, "path": path, "python": filepath.Join(path, "bin", "python"), "status": "ready", "changed": false}, nil
-	}
 	installer.PrepareRuntime = func(ctx context.Context, source, selectedRevision, state string) (RuntimeCandidate, error) {
 		if ctx != installer.Context || source != installer.Source || state != installer.State {
 			t.Fatal("shared config runtime preparation lost the installation context or roots")
 		}
-		candidate := sharedConfigRuntimeFixtureFor(t, fixture, selectedRevision, CodexDefaultsCapability)
+		candidate := sharedConfigRuntimeFixtureFor(t, fixture, selectedRevision)
 		return RuntimeCandidate{Path: candidate.RuntimeCandidate, Identity: candidate.RuntimeIdentity}, nil
 	}
 	return installer
@@ -100,9 +93,9 @@ func sharedLifecycleExecute(t *testing.T, fixture *installerFixture, command str
 
 func sharedLifecycleFailAt(t *testing.T, fixture *installerFixture, command, label string) {
 	t.Helper()
-	t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	_, err := sharedLifecycleInstaller(t, fixture, true).Execute(command)
-	t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 		t.Fatalf("%s with %s: got %v", command, label, err)
 	}
@@ -168,9 +161,6 @@ func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T
 			if err != nil || report["dry_run"] != true {
 				t.Fatalf("preview %s: %#v, %v", command, report, err)
 			}
-			if environment := object(report["consultation_runtime"]); environment["status"] != "deferred" || environment["changed"] != false {
-				t.Fatalf("preview provisioned a consultation environment: %#v", environment)
-			}
 			installerUnchanged(t, fixture.base, before)
 			sharedLifecycleExecute(t, fixture, command)
 			sharedInstallerAssertDefaults(t, fixture, "gpt-6.1-sol", "gpt-6.1-sol")
@@ -188,7 +178,7 @@ func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			if state["shared_config"] == nil || (state["model_config"] != nil) != (command == "setup") {
+			if hostRecord(state, hostCodex)["shared_config"] == nil || (hostRecord(state, hostCodex)["model_config"] != nil) != (command == "setup") {
 				t.Fatalf("unexpected config ownership for %s: %#v", command, state)
 			}
 			if command == "install" && !strings.Contains(installed, "model = 'local-model'") {
@@ -275,7 +265,7 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state["shared_config"] != nil || state["release"] != fixture.first {
+	if hostRecord(state, hostCodex)["shared_config"] != nil || state["release"] != fixture.first {
 		t.Fatalf("historical rollback retained shared ownership: %#v", state)
 	}
 	if got := installerRead(t, path); got != beforeConfig+"\n# Local edit before rollback\n" {
@@ -304,7 +294,7 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 				fixture.git(t, "push", origin, "main")
 				sharedLifecycleExecute(t, fixture, "update")
 				state, err := fixture.installer(false).state(true)
-				if err != nil || state["model_config"] != nil {
+				if err != nil || hostRecord(state, hostCodex)["model_config"] != nil {
 					t.Fatalf("shared-only update enrolled root defaults: %#v, %v", state, err)
 				}
 				sharedLifecycleExecute(t, fixture, "setup")
@@ -315,7 +305,7 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 			if err != nil {
 				t.Fatal(err)
 			}
-			if state["shared_config"] != nil || state["config_original_exists"] != false || state["model_config"] == nil {
+			if hostRecord(state, hostCodex)["shared_config"] != nil || hostRecord(state, hostCodex)["config_original_exists"] != false || hostRecord(state, hostCodex)["model_config"] == nil {
 				t.Fatalf("rollback lost earliest config origin: %#v", state)
 			}
 			sharedLifecycleExecute(t, fixture, "uninstall")
@@ -338,7 +328,7 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if integer(journal["version"]) != 2 {
+			if integer(journal["version"]) != 3 {
 				t.Fatal("shared config was journaled without a capable v2 recovery runtime")
 			}
 			count := 0
@@ -487,10 +477,6 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 			fixture.seedUserFiles(t)
 			sharedInstallerRelease(t, fixture, resource)
 			installer := sharedLifecycleInstaller(t, fixture, true)
-			installer.PrepareConsultationRuntime = func(context.Context, string, bool) (Object, error) {
-				t.Fatal("invalid source reached consultation environment provisioning")
-				return nil, nil
-			}
 			before := installerSnapshot(t, fixture.base)
 			if _, err := installer.Setup(false); err == nil {
 				t.Fatal("installation accepted invalid shared source defaults")
@@ -514,10 +500,6 @@ func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
 			fixture.seedUserFiles(t)
 			installerWrite(t, sharedInstallerConfigPath(fixture), config, 0o640)
 			installer := sharedLifecycleInstaller(t, fixture, true)
-			installer.PrepareConsultationRuntime = func(context.Context, string, bool) (Object, error) {
-				t.Fatal("invalid device config reached consultation environment provisioning")
-				return nil, nil
-			}
 			before := installerSnapshot(t, fixture.base)
 			if _, err := installer.Setup(false); err == nil {
 				t.Fatal("installation accepted invalid or unsupported device config")
@@ -525,61 +507,4 @@ func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
 			installerUnchanged(t, fixture.base, before)
 		})
 	}
-}
-
-func TestSharedConfigInstallerProvisioningFailureStopsActivation(t *testing.T) {
-	fixture := sharedInstallerFixture(t)
-	fixture.seedUserFiles(t)
-	path := sharedInstallerConfigPath(fixture)
-	installerWrite(t, path, sharedInstallerDeviceConfig, 0o640)
-	installer := sharedLifecycleInstaller(t, fixture, true)
-	calls := 0
-	installer.PrepareConsultationRuntime = func(ctx context.Context, environment string, apply bool) (Object, error) {
-		calls++
-		if ctx != installer.Context || environment != filepath.Join(installer.Home, ".venvs", "codex-decisions") || !apply {
-			t.Fatal("installation did not provision under the selected home before activation")
-		}
-		return nil, errors.New("fixture Python 3 is unavailable; install an interpreter with venv support and retry")
-	}
-	before := installerSnapshot(t, fixture.paths.Home)
-	if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "Python 3 is unavailable") {
-		t.Fatalf("installation ignored consultation environment failure: %v", err)
-	}
-	if calls != 1 {
-		t.Fatalf("environment preparer called %d times, want one", calls)
-	}
-	installerUnchanged(t, fixture.paths.Home, before)
-	for _, path := range []string{installer.statePath, installer.journalPath, installer.current, installer.commandPath()} {
-		if exists(path) {
-			t.Fatalf("failed environment preparation published owned path %s", path)
-		}
-	}
-}
-
-func TestSharedConfigInstallerUninstallRetainsPreparedEnvironment(t *testing.T) {
-	fixture := sharedInstallerFixture(t)
-	fixture.seedUserFiles(t)
-	installer := sharedLifecycleInstaller(t, fixture, true)
-	environment := filepath.Join(installer.Home, ".venvs", "codex-decisions")
-	marker := filepath.Join(environment, "local-environment-marker")
-	installer.PrepareConsultationRuntime = func(ctx context.Context, path string, apply bool) (Object, error) {
-		if ctx != installer.Context || path != environment {
-			t.Fatal("installation selected the wrong consultation environment")
-		}
-		if apply {
-			installerWrite(t, marker, "retained local environment fixture\n", 0o600)
-		}
-		return Object{"managed": true, "path": path, "python": filepath.Join(path, "bin", "python"), "status": "ready", "changed": apply}, nil
-	}
-	if _, err := installer.Setup(true); err != nil {
-		t.Fatal(err)
-	}
-	if got := installerRead(t, marker); got != "retained local environment fixture\n" {
-		t.Fatalf("installation did not prepare the selected environment: %q", got)
-	}
-	sharedLifecycleExecute(t, fixture, "uninstall")
-	if got := installerRead(t, marker); got != "retained local environment fixture\n" {
-		t.Fatalf("uninstall removed local environment data: %q", got)
-	}
-	sharedInstallerAssertMode(t, marker, 0o600)
 }

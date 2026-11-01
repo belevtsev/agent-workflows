@@ -2,25 +2,28 @@
 
 ## Install and inspect
 
-Use clean committed source and an existing Codex installation:
+Use clean committed source, and name the host you are installing for:
 
 ```sh
-./install.sh --dry-run
-./install.sh
+./install.sh --host claude --dry-run
+./install.sh --host claude
 cw status
 ```
+
+`--host` accepts `auto`, `codex`, `claude` or `all`. `auto` uses the hosts already
+recorded. A fresh installation uses the one host it detects from `CODEX_HOME` or
+`~/.codex` and `CLAUDE_CONFIG_DIR` or `~/.claude`, and stops if it finds both or
+neither, rather than writing to a second tool's configuration unasked.
 
 The bootstrap obtains a verified executable, then Go performs the installation.
 The default action is install; setup remains an alias. Mutations apply by default;
 add --dry-run for a read-only local preview. A cold bootstrap preview reports
 deferred validation without downloads or writes. cw status itself is offline.
-The manager runs in Go. Installation uses an available Python 3.7+ with
-virtual-environment support to prepare the consultation helper's isolated
-Python/PyYAML environment; other skill-specific helpers retain their own
-dependencies.
+The manager and its helpers run in Go, so installation needs no Python. Skills can
+bring their own dependencies; `cw status` reports detected tools.
 
 Status reports `model_profiles` with each configured model, reasoning effort, and
-scope from the active snapshot. This is policy evidence. It does not identify the
+scope from the active snapshot, and `hosts` with each host's roots. This is policy evidence. It does not identify the
 model or effort used by an existing chat or establish account runtime availability.
 
 ## Global project diagnostics and evidence
@@ -35,8 +38,8 @@ Missing or unsupported tooling is qualified and retains normal source discovery.
 Neither mode installs dependencies, changes watcher enrollment or calls advisers.
 
 `cw task` keeps source-bound requirements, actual argv check execution, references,
-two substantial-task adviser checkpoints and Codex's decision in a private external
-task directory. `cw metrics schema` describes the versioned observation format;
+two substantial-task adviser checkpoints and the coordinator's decision in a private
+external task directory, by default `STATE/workflow-tasks`. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. These commands do not alter installer ownership, receipt or
@@ -50,14 +53,29 @@ measurement input and model advice do not authorize publication or deployment.
 ## Paths and ownership
 
 --source selects the checkout. --home selects the installation home; --codex-home
-selects the existing Codex directory; --state-dir selects device-local state.
-Initial defaults use the user home, CODEX_HOME, and XDG_STATE_HOME. Subsequent
-installed commands resolve their installation locator rather than the current
-working directory. Explicit flags can override recorded paths.
+selects the Codex directory; --claude-home selects the Claude Code directory;
+--state-dir selects device-local state. Initial defaults use the user home,
+CODEX_HOME, CLAUDE_CONFIG_DIR, and XDG_STATE_HOME. Subsequent installed commands
+resolve their installation locator and recorded hosts rather than the current
+working directory, so a later shell's environment cannot detach an installation
+from the directory it was activated in.
 
 ```sh
-./install.sh --home '/path/with spaces/home' --codex-home /path/to/codex --state-dir /path/to/state
+./install.sh --host all --home '/path/with spaces/home' --codex-home /path/to/codex --claude-home /path/to/claude --state-dir /path/to/state
 ```
+
+A host's directory is fixed when that host enrolls, so a Claude-only installation
+leaves the Codex directory open until you add Codex. The hosts can't share a skills
+directory, because Codex also reads `skills/` under its own home, and neither home
+can sit on a skill's path inside a skills directory. Install compares physical
+directories, so another spelling of the same directory is still an overlap, and it
+refuses an overlap before writing anything. Use separate `--codex-home` and
+`--claude-home` directories.
+
+A filesystem can fold different names into one directory, by case or by Unicode
+form, and only the filesystem can say so once they exist. If a new home's name could
+collide with another path, install stops and asks you to create both directories
+first, then gives the exact answer.
 
 State holds immutable releases/<SHA> snapshots, the active current pointer,
 ownership/history, recovery records, and immutable manager runtime versions.
@@ -65,12 +83,66 @@ Skill registrations resolve through current. The source checkout remains editabl
 installed snapshots are never edited directly. The manager version and active
 skill revision are distinct, especially after rollback or --no-checkout.
 
-The current manifest manages 27 registrations with 72 entrypoints, a marked block
-in global AGENTS.md, the top-level model/model_reasoning_effort values, shared
-memory defaults, and enrolled command/PATH
-registration. It preserves unrelated content, comments, modes, credentials, and
-repository instructions. Original settings and adopted registrations remain
-reserved for uninstall. Modified owned content is a conflict.
+The current manifest manages 33 registrations with 78 entrypoints on each host, a
+marked block in that host's global instructions, its model defaults, and one
+enrolled command/PATH registration. It preserves unrelated content, comments,
+modes, credentials, and repository instructions. Original settings and adopted
+registrations remain reserved for uninstall. Modified owned content is a conflict,
+except for the Claude Code settings keys described below.
+
+State records each host separately under `hosts`. One release, `current` pointer
+and manager serve every host, so an update or rollback activates them together.
+
+## Claude Code host
+
+Links live in `<claude-home>/skills/<name>`. `cc-skills-golang` keeps its single
+link: Claude Code loads that folder as the `cc-skills-golang@skills-dir` plugin
+because it carries `.claude-plugin/plugin.json`, so its skills appear as
+`cc-skills-golang:<skill>`. A name already present in `skills/` is a conflict.
+Personal skill adoption applies only to Codex.
+
+The instructions block is rendered from the same template as Codex, with the same
+markers, into `<claude-home>/CLAUDE.md`.
+
+`settings.json` gets exactly two keys from the coordinator profile in
+`model-policy.claude.yaml`: `model` and `effortLevel`. The edit changes those
+values' bytes and nothing else. Malformed JSON, a non-object document, or a
+symlinked file stops installation before anything changes.
+
+Claude Code can rewrite this file itself, for example when you change model in the
+app, so these keys don't follow the conflict rule. A key that no longer holds the
+managed value is yours:
+
+- `cw status` lists it under `hosts.claude.settings_drift`.
+- Update and rollback leave it alone and don't refuse.
+- Uninstall restores only keys that still hold the managed value.
+- An interrupted transaction skips a key that moved to a third value.
+
+## Hosts
+
+Add a host at any time. It joins the active release with no new history entry:
+
+```sh
+./install.sh --host codex
+```
+
+An addition reads the installed release, not the checkout, and leaves the release,
+history and manager alone. It never undoes a rollback, and a dirty or older checkout
+doesn't block it. Naming only hosts that are already recorded isn't an addition, so
+that install activates HEAD as usual.
+
+Remove one host and keep the rest. This restores that host's files and leaves the
+shared release, manager and other host alone:
+
+```sh
+cw uninstall --host codex --dry-run
+cw uninstall --host codex
+```
+
+If that host's directory is already gone, `cw uninstall --host codex --forget`
+removes its record without touching files. Without `--forget`, missing owned files
+are reported as changes, and every other command keeps refusing. Removing the last
+host is the same as a full `cw uninstall`.
 
 ## Shared Codex configuration
 
@@ -112,65 +184,50 @@ All involved root and shared values use one recoverable config-file operation.
 Changes to an owned value cause a conflict. Independent local edits made before
 rendering or during interrupted recovery survive the value merge.
 
-## Consultation helper environment
+## Consultation command
 
-For source snapshots containing the shared-defaults resource, applying install,
-setup, or update prepares `HOME/.venvs/codex-decisions`, where HOME is the selected
-`--home`. It creates the virtual environment with an available Python 3.7+ and
-installs `PyYAML>=6,<7` through that environment's interpreter. A healthy existing
-environment is reused. Missing or unsupported PyYAML is repaired inside the
-existing environment. Dry runs do not create the environment or install packages;
-historical snapshots without the resource skip this preparation.
-
-Install/setup/update results include `consultation_runtime` with the environment
-path, interpreter path, and status. `ready` confirms the selected environment was
-verified or prepared; `deferred` describes a dry run, and `not_required` describes
-a historical snapshot without the resource. Provisioning or repair sets the
-overall result's `changed` value even when the skill snapshot remains the same.
-
-Provisioning installs no system packages, changes no shell activation, and does
-not change which Python the Codex app selects. Invoke the helper with the isolated
-interpreter directly:
+`cw consult` runs the three adviser calls. It reads the active release's policy and
+question files, so it works from any directory and needs nothing but the provider
+keys in its environment:
 
 ```sh
-~/.venvs/codex-decisions/bin/python -B ~/.agents/skills/task-orchestration/scripts/consult_decisions.py --request /path/to/request.json --output /path/to/new-record.json --dry-run
+cw consult --request /path/to/request.json --output /path/to/new-record.json --dry-run
 ```
 
-For a custom home, replace `~` with that selected home. If Python is unavailable
-or lacks virtual-environment support, preparation fails before managed activation
-and reports how to supply Python 3.7+ with venv/ensurepip support on PATH and retry.
-The virtual environment is outside immutable skill releases and remains available after rollback or
-uninstall.
+See the [helper contract](../skills/task-orchestration/references/consultation-helper.md)
+for request and record formats.
 
 ## Optional Graphify runtime
 
 The first-party [Graphify skill](../skills/graphify/SKILL.md) uses the external
 `graphifyy==0.9.91` package. Provision this optional runtime explicitly when
-activating Graphify on a device. The guarded runner supports macOS and Linux.
-Python 3.14 with `venv` and `ensurepip` is the recommended interpreter for this pin:
+activating Graphify on a device. `cw graphify` supports macOS and Linux. That
+package is a Python tool, so this optional runtime is the one place the workflow
+touches Python, and it lives outside this repository. Python 3.14 with `venv` and
+`ensurepip` is the recommended interpreter for this pin:
 
 ```sh
-python3.14 -m venv "$HOME/.venvs/codex-graphify"
-"$HOME/.venvs/codex-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
-"$HOME/.venvs/codex-graphify/bin/python" -m pip check
+python3.14 -m venv "$HOME/.venvs/agent-graphify"
+"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
+"$HOME/.venvs/agent-graphify/bin/python" -m pip check
 ```
 
 Use an explicit path to a suitable Python interpreter if `python3.14` is not on
-PATH. This environment is separate from `codex-decisions`; leave the system and
-Codex-selected Python defaults unchanged. Generic install, update, validation,
-and status do not install Graphify, invoke its CLI, or create graph caches.
+PATH, and leave the system Python defaults unchanged. Generic install, update,
+validation, and status do not install Graphify, invoke its CLI, or create graph
+caches.
 `cw status` reports optional prerequisites offline; detected executables do not
 prove version compatibility or a complete graph.
 
-Use the guarded helper from the installed skill:
+Use the guarded command:
 
 ```sh
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
+cw graphify build --repo /path/to/repo
+cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
 ```
 
-For a custom installation home or registration, substitute the actual interpreter
-and catalog paths. The helper snapshots eligible tracked Go source and module
+It finds `~/.venvs/agent-graphify/bin/graphify`, then `graphify` on PATH; `--runtime`
+names another executable. It snapshots eligible tracked Go source and module
 metadata, omitting vendored and fixture trees. It fixes local code-only flags,
 disables LLM deduplication, sets `GRAPHIFY_NO_AUTO_REFRESH=1` and
 `GRAPHIFY_QUERY_LOG_DISABLE=1`, and launches the CLI with a minimal environment.
@@ -195,24 +252,17 @@ The current policy declares `openai_decisions: gpt-6-luna` under
 `consultation.providers`, alongside Jev and SubQ Snap. Supply `OPENAI_API_KEY`
 together with `TYPESAFE_API_KEY` and `SUBQ_API_KEY`. Every consultation includes all
 three required advisers; a missing key records unavailable coverage and preserves
-the other results. `--without-openai` is rejected for this policy. Installation,
+the other results. Excluding OpenAI is rejected for this policy. Installation,
 local validation and status do not require credentials or make hosted requests.
 
 `cw status` reports `openai_credential_present` from its own environment without
-calling OpenAI. A terminal export does not update an already running Desktop
-process; use the [setup instructions](../README.md#set-up-openai-decisions)
-and a fresh process/chat. The helper never reads macOS launchctl or another
-process's secrets by itself.
+calling OpenAI. A terminal export does not update an already running desktop app;
+use the [setup instructions](../README.md#set-up-openai-decisions) and a fresh
+process and session. `cw consult` never reads macOS launchctl or another process's
+secrets by itself.
 
-A snapshot with three required providers needs the separate
-`cw-three-adviser-v1` manager capability. Bootstrap retains every prior capability
-check, including `cw-openai-decisions-v1` for older optional snapshots. A published manager lacking a required
-capability is refused before owned state changes. For unreleased committed source,
-use the supported [Go development installation](development.md#distribution)
-with explicit source/home/Codex/state roots. Existing sealed ownership and recovery
-records are unchanged. See the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
-for unavailable/refused coverage, mandatory version-three records, and offline
-adjudication of preserved historical records.
+See the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
+for unavailable/refused coverage and offline adjudication.
 
 ## Direct cw command
 
@@ -223,126 +273,31 @@ override shell selection. Unknown shells and custom zsh startup locations are
 reported for manual PATH enrollment. Existing unowned cw definitions/paths are
 not replaced.
 
-Open a new terminal after migration. An existing shell may retain the former
-function: use unfunction cw in zsh or unset -f cw in Bash, then reload the matching
-startup file. Retain unrelated shell/profile edits.
+Open a new terminal after installing so the shell picks up the PATH entry. Retain
+unrelated shell/profile edits.
 
-## Migration
+## Upgrading from v1
 
-Existing managed installations are read using their historical state and checksum
-format. Run the new bootstrap with explicit source when migrating an installation
-that previously used --shell none. Recover any pending old journal before
-migration. Source-independent removal of an owned legacy block does not require
-its old launcher to remain executable.
+The v2 manager doesn't read a v1 installation. Its manifest version makes a v1
+`cw update` refuse this source before anything changes, so moving across is a
+one-time reinstall:
 
-For unmanaged legacy registrations, opt in to their adoption explicitly:
+1. Note `state_dir` from `cw status`. If `cw status` reports a modified release
+   because of a stray `__pycache__`, delete that directory inside the release first.
+2. Run `cw uninstall` with the existing `cw`.
+3. From a clean checkout of this repository, run
+   `./install.sh --host all --adopt-personal-skills`.
+4. Verify with `cw status`, then delete the old `state_dir` and the old adviser
+   Python environment.
 
-```sh
-./install.sh --migrate-from /path/to/previous-source --dry-run
-./install.sh --migrate-from /path/to/previous-source
-```
+Rollback history from v1 doesn't carry over. Records under `$CODEX_HOME/workflow-tasks`
+stay in place and remain readable with `--store`.
 
-For the separately installed TypeSafe skill under the selected home's
-.codex/skills/typesafe-ai, add --typesafe-legacy. Adoption verifies its exact
-matching files and keeps an ownership-checked backup. Unrelated occupied or
-dangling paths remain conflicts. Credentials are never migration inputs.
+## Adopting standalone personal skills
 
-The known vendor-to-third_party resource move changes owned registration targets
-through the journal. Historical snapshots/receipts stay intact. Rollback derives
-targets and names from the older snapshot. Forward install/update may add new
-registrations but refuses removal, rename, or arbitrary retargeting of existing
-ones. Each addition must be absent under ~/.agents/skills and free of collisions
-under both the selected Codex home and standard ~/.codex/skills. New names are
-not adopted from occupied paths, including dangling symlinks, during ordinary
-installation or update.
-
-### Manager v3, v4, or v5 to v6
-
-After a compatible cw-manager-v6 release is published, run these commands from
-the clean checkout:
-
-```sh
-git pull --ff-only
-./install.sh --adopt-personal-skills
-cw status
-```
-
-The old cw update rejects manifest v2 during validation, before
-acquiring the new runtime. This one-time bootstrap route upgrades without
-uninstalling or losing adoption records. The policy changes to Sol 6.1 max for
-coordinator/substantive work, Luna xhigh for bounded execution, and Luna high for
-bounded evidence. These model defaults are retained from v5. The pack grows to
-26 registrations and 71 entrypoints.
-
-Bootstrap verifies platform, checksum and capabilities. It requires `cw-manager-v6`,
-`cw-model-policy-v2-dual-choice`, and `cw-codex-defaults-v1`. If latest lacks a
-required capability, it refuses
-activation and preserves the old binary and owned installation. Retry after a
-compatible release is published. Go separately requires an exact candidate runtime, downloading
-its release or building source if unavailable. Building requires the Go version
-in go.mod. An independently verified exact-commit local v6 binary can be used in
-isolated development environments before publication.
-
-Recover a pending old transaction before migration. If an interruption leaves cw
-running an older manager during the first v6 activation, use ./install.sh recover
-with the compatible v6 cached bootstrap binary. Before writing a v2 journal,
-activation stages a verified v6 executable, sealed locator, and receipt beneath
-STATE/runtime/releases/REVISION/. Without the checkout, invoke that exact
-STATE/runtime/releases/REVISION/cw executable directly with `recover`. Its
-immutable locator retains installation roots even if recovery has already
-reversed the active runtime pointer. Custom roots can also be supplied explicitly
-with --source, --home, --codex-home, and --state-dir. Preserve receipts and journals;
-the old enrolled command cannot recover a v2 transaction.
-
-### Older v6 managers to paired consultations
-
-An older v6 manager cannot validate the added paired-provider policy fields and
-therefore rejects ordinary `cw update` before preparing its replacement. After a
-compatible release is published, use the bootstrap from a clean updated checkout:
-
-```sh
-git pull --ff-only
-./install.sh --dry-run
-./install.sh
-cw status
-```
-
-The separate model-policy capability lets bootstrap refresh an outdated v6 cache
-while preserving the existing v6 runtime, receipt, and journal formats. Dry runs
-stay offline when that cache lacks the new capability and report deferred
-validation. Existing adopted directories need no new adoption flag. The source
-is still activated only by the exact-revision Go manager.
-
-### Older v6 managers to shared Codex defaults
-
-An existing v6 manager with paired-policy support can validate a source revision
-containing the optional shared-defaults resource and acquire the new manager
-through its normal update path:
-
-```sh
-cw update
-cw update
-cw status
-```
-
-The first invocation replaces the older manager. The second applies the shared
-settings through the capable manager and records their independent ownership.
-Subsequent updates are a no-op when the snapshot, owned values, and helper
-environment match. The
-updated bootstrap applies manager acquisition and defaults in one installation
-from a clean updated checkout. Managers that also lack paired-policy support
-still need the bootstrap route described above.
-
-Shared config activation and recovery require `cw-codex-defaults-v1` in a verified
-v6 executable. The transaction stages a capable recovery runtime before writing
-its journal. Historical model-only states and journals retain their exact format
-and remain readable without the new capability.
-
-### Adopting standalone personal skills
-
-Only install/setup accepts --adopt-personal-skills. A fresh installation with
-absent destinations needs no flag. An existing standalone production-plan,
-Archify, or Docker skill requires explicit adoption:
+Only install/setup accepts --adopt-personal-skills, and it applies to the Codex host.
+A fresh installation with absent destinations needs no flag. An existing standalone
+production-plan, Archify, or Docker skill requires explicit adoption:
 
 ```sh
 ./install.sh --adopt-personal-skills --dry-run
@@ -350,7 +305,7 @@ Archify, or Docker skill requires explicit adoption:
 cw status
 ```
 
-Manifest v2 refers to personal-skill-origins.json. Its source-relative hashes,
+The manifest refers to personal-skill-origins.json. Its source-relative hashes,
 paths, and modes describe the verified originals, including files deliberately
 omitted from the distributed Archify runtime. Exactly one matching directory
 may exist per name across ~/.agents/skills, the selected Codex skills directory,
@@ -369,8 +324,11 @@ stop the transaction. No credentials or personal tool configuration are adopted.
 Rollback refuses a target snapshot that omits an adopted registration. Keep the
 current release or uninstall to restore originals; do not remove adoption records
 to bypass this protection. Ordinary absent-origin additions remain removable by
-rollback. Existing v1 snapshots, receipts, and journals retain their encoding;
-pending legacy transactions must be recovered before adoption.
+rollback.
+
+Forward install/update may add new registrations but refuses removal, rename, or
+arbitrary retargeting of existing ones. New names are not adopted from occupied
+paths, including dangling symlinks, during ordinary installation or update.
 
 ## Update and rollback
 
@@ -403,8 +361,8 @@ cw rollback
 
 Rollback restores the previous skills and owned instruction/model defaults, while
 keeping a compatible manager. It does not rewind source Git or change GitHub.
-Returning to a previous snapshot with ultra restores its historical defaults
-while retaining the v6 manager. Status then reports those restored model profiles.
+Status then reports the restored model profiles. Hosts are not part of a release,
+so rollback never adds or removes one, and a host you removed stays removed.
 Shared memory values follow the previous snapshot's resource. Returning to a
 snapshot without that resource restores the original shared values or their
 absence and releases shared ownership. The earliest config-file origin remains
@@ -414,7 +372,7 @@ The target snapshot must have a subset of the active registration names. A path
 absent from that snapshot is removed only if its recorded origin was absent and
 its current link remains exactly owned. Adopted symlink/directory origins cannot
 be dropped; their restoration remains an uninstall responsibility.
-Install/update/rollback require a fresh Codex chat to observe new instructions.
+Install/update/rollback require a fresh agent session to observe new instructions.
 
 ## Interrupted activation and removal
 

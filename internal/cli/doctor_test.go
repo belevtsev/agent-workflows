@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +46,7 @@ func TestDoctorTargetsCwdIndependentlyOfInstallerSource(t *testing.T) {
 	doctorWrite(t, target, "package.json", "{}")
 	doctorWrite(t, source, "go.mod", "module wrong.example/source\n")
 	doctorWrite(t, home, ".codex/config.toml", "[shell_environment_policy.set]\nOPENAI_API_KEY = 'secret-value'\n")
-	root, out := doctorFixture(t, Config{WorkingDir: func() (string, error) { return target, nil }, HomeDir: func() (string, error) { return "", errors.New("--home was ignored") }, Getenv: func(string) string { return "" }, Resolve: func(string) (manageruntime.Locator, error) { panic("doctor resolved installation ownership") }})
+	root, out := doctorFixture(t, Config{WorkingDir: func() (string, error) { return target, nil }, HomeDir: func() (string, error) { return "", errors.New("--home was ignored") }, Getenv: func(string) string { return "" }, Resolve: func(string) (manageruntime.Locator, error) { return manageruntime.Locator{Source: source}, nil }})
 	root.SetArgs([]string{"doctor", "--source", source, "--home", home})
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Isolation Anomalies"
+  short_description: "Find write skew and lost updates in transactions"
+  default_prompt: "Use $isolation-anomalies to check this code for read-decide-write races, name the anomaly, and choose the simplest fix that holds under concurrency."

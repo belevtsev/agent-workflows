@@ -2,7 +2,7 @@
 
 Jev `jev-1.14.0`, SubQ `subq-snap-preview` and OpenAI Decisions `gpt-6-luna`
 are required advisers at equal standing. They receive the same permitted evidence
-and questions. Codex checks their judgments against sources and verification and
+and questions. The coordinator checks their judgments against sources and verification and
 makes the final decision; agreement, confidence and voting do not establish truth.
 
 ## Task checkpoints and rework
@@ -20,7 +20,7 @@ flowchart TD
     Draft[Plan, draft or review only]
     Check[Integrate and run relevant verification]
     Final[Checkpoint 2: fresh advice from all three<br/>Completed work and current checks]
-    Decide{Codex independently assesses the evidence}
+    Decide{The coordinator independently assesses the evidence}
     Ready[Report the verified result<br/>Publish only when already authorized]
     Rework[Revise within scope and recheck<br/>Refresh affected evidence and advice]
     Unknown[Record unresolved material facts<br/>Continue useful work; request input only if needed]
@@ -46,7 +46,7 @@ Adviser judgments grant no implementation or publication permission.
 ## Decision forks inside each checkpoint
 
 The branches below describe each question. Provider status, overall consultation
-availability and Codex's final decision are recorded separately.
+availability and the coordinator's final decision are recorded separately.
 
 ```mermaid
 flowchart TD
@@ -61,7 +61,7 @@ flowchart TD
     Differ[Disagreement]
     Partial[Partial coverage<br/>Some choices; at least one missing]
     None[Unavailable coverage<br/>No choices]
-    Evidence[Codex inspects sources and relevant checks<br/>Investigate disputed or missing facts]
+    Evidence[The coordinator inspects sources and relevant checks<br/>Investigate disputed or missing facts]
     Facts{Enough verified evidence to decide?}
     Resolved[Resolved question with a substantive choice<br/>Reason, evidence, checks and rejected-judgment reasons]
     Unresolved[Unresolved question<br/>choice: null; explain the material gap]
@@ -90,9 +90,9 @@ flowchart TD
 
 | Observed choices for one question | Comparison status | Next step |
 | --- | --- | --- |
-| All three choices match | `agreement` | Codex verifies the claim against evidence |
-| All three answer; choices differ | `disagreement` | Codex investigates and explains each rejected judgment |
-| Some choices, including two conflicting answers and one missing adviser | `partial` | Keep those choices and the missing-coverage map; Codex verifies independently |
+| All three choices match | `agreement` | The coordinator verifies the claim against evidence |
+| All three answer; choices differ | `disagreement` | The coordinator investigates and explains each rejected judgment |
+| Some choices, including two conflicting answers and one missing adviser | `partial` | Keep those choices and the missing-coverage map; the coordinator verifies independently |
 | No choices | `unavailable` | Record the gap and continue source-based work where possible |
 
 A refusal supplies no choice and does not contradict the claim. OpenAI can refuse
@@ -106,13 +106,13 @@ be silently disabled. A material evidence change calls for an affected consultat
 to be refreshed, rather than repeatedly asking unchanged questions until models agree.
 
 `resolved` means a question has an evidenced substantive choice, which may support
-or contradict a claim. It does not mean approval. Codex records a reason for every
+or contradict a claim. It does not mean approval. The coordinator records a reason for every
 actual provider choice it rejects. Missing material facts remain unresolved even
 if all three advisers agree; the final record resolves only when every question
 resolves.
 
 Source contracts: [task orchestration](../skills/task-orchestration/SKILL.md),
 [model policy](../skills/task-orchestration/model-policy.yaml),
-[collection and adjudication](../skills/task-orchestration/scripts/consult_decisions.py),
-[OpenAI response handling](../skills/task-orchestration/scripts/consult_openai.py),
+[collection and adjudication](../internal/consult/record.go),
+[OpenAI response handling](../internal/consult/provider.go),
 and [global working scope](../global/AGENTS.md).

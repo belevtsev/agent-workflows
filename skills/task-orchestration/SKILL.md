@@ -13,13 +13,16 @@ requirements, repository instructions, and the user's authorization still govern
 ## Establish policy, scope, and evidence
 
 Read [model-policy.yaml](model-policy.yaml) and the relevant section of
-[use cases](references/use-cases.md). Read [connected sources](references/connected-sources.md)
+[use cases](references/use-cases.md). Under Claude Code, also read
+[model-policy.claude.yaml](model-policy.claude.yaml), which replaces the profiles and
+roles, and [host mapping](references/hosts.md), which covers dispatch and paths. Where
+this skill names Sol and Luna below, use the matching Claude Code profile. Read [connected sources](references/connected-sources.md)
 only when Jira, Confluence, GitHub, or documentation supplies evidence or requested
 writes. Fetch linked evidence needed for the decision; unrelated services are not
 prerequisites for local work.
 
-The YAML is configurable dispatch policy, not native Codex configuration. Defaults
-are Sol 6.1 `max` for substantive work, Luna `high` for bounded evidence, and Luna
+The YAML is configurable dispatch policy, not native host configuration. Codex
+defaults are Sol 6.1 `max` for substantive work, Luna `high` for bounded evidence, and Luna
 `xhigh` for bounded routine execution. Resolve each role's profile and scope from
 the current policy, preserving explicit user choices. Sol `max` may be configured
 or explicitly requested; Sol `ultra` needs an explicit user request allowed by the
@@ -43,7 +46,7 @@ the selected project, independently of the manager's installation source. Keep
 project commands and deployment rules in that repository's instructions. Bind each
 consultation to the emitted task context, execute only explicitly selected checks,
 and run task verification before completion. The native record checks identity and
-evidence consistency; Codex still verifies meaning and omitted facts. For work
+evidence consistency; the coordinator still verifies meaning and omitted facts. For work
 spanning repositories, retain one source-bound record per repository and batch
 compatible contexts into the same adviser request. Non-repository tasks retain the
 chat/artifact ledger above; small tasks remain lightweight. Use `cw metrics` for
@@ -117,23 +120,23 @@ Refusals are missing coverage for the affected question; preserve other valid
 answers and their rejection obligations. Snap's ID is a public
 preview alias, not an invented immutable version; record the returned model and
 recheck its contract when it changes. Batch independent questions sharing evidence
-and send one request to each provider concurrently within a 30-second batch budget
-covering startup, requests, and result transport. Each worker is bounded by the
-remaining budget; cleanup is bounded afterward, and automatic retries are disabled.
+and send one request to each provider concurrently with `cw consult`, within a
+30-second batch budget covering connections, requests, and complete responses. A
+provider still running at the deadline is cancelled, and automatic retries are disabled.
 Validate response IDs, types, allowed options,
 finite probabilities, distributions, and resolved model independently. Separate
 `TYPESAFE_API_KEY`, `SUBQ_API_KEY`, and `OPENAI_API_KEY` credentials remain outside inputs and records.
-For the helper's request, output, and privacy contract, read
+For its request, output, and privacy contract, read
 [consultation helper](references/consultation-helper.md) before using it.
 
-Codex owns the final decision. Compare all participating judgments against the exact
+The coordinator owns the final decision. Compare all participating judgments against the exact
 source and relevant tests or observations, even when they agree. Do not select a winner by
 confidence, probability, majority vote, or provider identity. Disagreement identifies
 what to investigate; invalid or insufficient advice remains an investigation lead.
 In the agreed task record retain the conclusion, supporting evidence references and
 verification, reasons for rejecting a judgment, unresolved facts, and provider coverage.
 The helper initializes `final_decision` as `pending`; it never chooses an answer.
-After verification, use its no-network `--adjudicate` mode to validate Codex's
+After verification, use the no-network `cw consult --adjudicate` mode to validate the coordinator's
 disposition and write a new final record, preserving the original provider record.
 If a required provider is unavailable or refuses a question, continue source work
 and disclose missing coverage. Do not describe a partial consultation as successful
@@ -153,16 +156,16 @@ uncertain verification return to substantive ownership. Model selection never
 relaxes a role's action bounds.
 
 Check actual runtime capabilities before spawning. When overrides are supported,
-supply model and effort explicitly and use `fork_turns="none"`: a full-history
-fork inherits the parent and rejects overrides. Respect fixed specialist models
+supply model and effort explicitly. Under Codex, use `fork_turns="none"`: a
+full-history fork inherits the parent and rejects overrides. Under Claude Code,
+follow the [host mapping](references/hosts.md). Respect fixed specialist models
 and use them only within their evidence role. If overrides are unsupported, use a
 compatible inherited configuration or report the limit. Follow the policy's
 bounded-worker fallback; never silently lower a substantive effort or model family.
-Native `cw validate` and the optional Python policy validator check consistency,
-not runtime availability or automatic dispatch.
-The validator's `resolve_worker(policy, role, requested_effort=None)` returns the
-configured model and effort, applying permitted explicit overrides; inspect the
-role's scope before using that result for dispatch.
+Native `cw validate` checks consistency, not runtime availability or automatic
+dispatch. A role's profile gives its configured model and effort; an explicit user
+request can override that effort only with a value the profile lists in
+`user_requested_efforts`. Inspect the role's scope before using a profile for dispatch.
 
 Split useful independent questions or owned components. Give each worker a
 self-contained brief with exact source revision and inputs, question or owned
@@ -187,7 +190,7 @@ Substantial source changes require an independent substantive worker review befo
 the final adviser checkpoint. Give the reviewer the completed source, relevant
 contracts, and selected check results. It must be a different agent from the
 coordinator and implementation workers. Record each finding and its evidence-backed
-disposition; Codex can reject a finding with a reason. Review and check execution may
+disposition; the coordinator can reject a finding with a reason. Review and check execution may
 overlap once source is stable. Later source changes require a current review and
 refresh only affected checks and acceptance evidence. The three adviser APIs remain
 separate required checkpoints. Missing independent review cannot be presented as
@@ -204,4 +207,4 @@ authorization, and verify writes through readback. Reconcile uncertain outcomes
 before retrying. Finish with the completed result and evidence at its actual scope:
 structural fixtures, fresh discovery, model advice, tests, CI, and deployment remain
 distinct. Mention materially used Jev/Snap/OpenAI advice and providers that were
-unavailable; identify Codex's independently supported decision.
+unavailable; identify the coordinator's independently supported decision.

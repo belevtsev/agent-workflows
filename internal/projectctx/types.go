@@ -66,12 +66,12 @@ type Runner func(context.Context, Command) (CommandResult, error)
 // DoctorOptions selects the target independently of the workflow installation.
 // Timeout bounds the complete inspection, including all optional live probes.
 type DoctorOptions struct {
-	Repo, Home, CodexHome, SkillsHome string
-	Live                              bool
-	Timeout                           time.Duration
-	Run                               Runner
-	LookPath                          func(string) (string, error)
-	Getenv                            func(string) string
+	Repo, Home, CodexHome, ClaudeHome, SkillsHome string
+	Live                                          bool
+	Timeout                                       time.Duration
+	Run                                           Runner
+	LookPath                                      func(string) (string, error)
+	Getenv                                        func(string) string
 }
 
 // Check uses a stable status vocabulary: missing, detected, configured,

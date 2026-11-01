@@ -288,7 +288,7 @@ func validateRecord(record Record) error {
 		}
 	}
 	if record.Decision != nil && !slices.Contains([]string{"resolved", "unresolved"}, record.Decision.Decision.Status) {
-		return errors.New("invalid stored Codex decision")
+		return errors.New("invalid stored Coordinator decision")
 	}
 	if record.Verification != nil && record.Verification.TaskID != record.ID {
 		return errors.New("verification belongs to a different task")

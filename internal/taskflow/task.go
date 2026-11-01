@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 // Start captures the immutable before-work baseline and creates private records
@@ -195,7 +195,7 @@ func permittedNonExecution(record Record) bool {
 
 func Assess(ctx context.Context, path string, input AssessmentInput) (Record, error) {
 	if len(input.Requirements) == 0 && input.Decision == nil {
-		return Record{}, errors.New("assessment must update a requirement or the Codex decision")
+		return Record{}, errors.New("assessment must update a requirement or the Coordinator decision")
 	}
 	return update(path, func(_ *os.Root, record *Record) error {
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
@@ -247,7 +247,7 @@ func Assess(ctx context.Context, path string, input AssessmentInput) (Record, er
 		if input.Decision != nil {
 			decision := *input.Decision
 			if !nonblank(decision.Reason) || (decision.Status != "resolved" && decision.Status != "unresolved") {
-				return errors.New("Codex decision needs resolved/unresolved status and a reason")
+				return errors.New("Coordinator decision needs resolved/unresolved status and a reason")
 			}
 			var runs []string
 			if decision.Status == "resolved" {
@@ -255,7 +255,7 @@ func Assess(ctx context.Context, path string, input AssessmentInput) (Record, er
 					return err
 				}
 				if len(decision.CheckIDs) == 0 && (!permittedNonExecution(*record) || !nonblank(decision.NonExecutionReason)) {
-					return errors.New("resolved Codex decision needs check evidence or permitted non-execution reasoning")
+					return errors.New("resolved Coordinator decision needs check evidence or permitted non-execution reasoning")
 				}
 				runs, err = bindChecks(*record, snapshot, decision.CheckIDs)
 				if err != nil {

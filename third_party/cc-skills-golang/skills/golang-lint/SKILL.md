@@ -23,7 +23,7 @@ metadata:
     paths:
     - '**/*.go'
     - .golangci.yml
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent
 ---
 
 # Go lint configuration and findings

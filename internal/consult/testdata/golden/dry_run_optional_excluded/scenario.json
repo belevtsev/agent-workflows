@@ -1,0 +1,16 @@
+{
+  "policy": "optional",
+  "flags": [
+    "--dry-run",
+    "--without-openai"
+  ],
+  "credentials": [
+    "OPENAI_API_KEY",
+    "SUBQ_API_KEY",
+    "TYPESAFE_API_KEY"
+  ],
+  "responses": {},
+  "exit": 0,
+  "stdout": "Decision consultation dry_run; Coordinator decision pending\n",
+  "stderr": ""
+}

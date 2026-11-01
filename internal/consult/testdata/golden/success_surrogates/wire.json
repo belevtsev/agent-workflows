@@ -1,0 +1,29 @@
+{
+  "jev": {
+    "url": "https://api.typesafe.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-jev-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"jev-1.14.0\",\"state\":{\"lone high\":\"x\\ud83dy\",\"lone low\":\"\\ude00\",\"\\ud800key\":[\"\\ud83d\\ud83d\\ude00\"],\"swapped\":\"\\ude00\\ud83d\"},\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":\"\\ud83d text\",\"criteria\":{\"supported\":\"s\\ud800\",\"contradicted\":\"c\"}}}}"
+  },
+  "openai_decisions": {
+    "url": "https://api.openai.com/v1/decisions",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-openai-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"gpt-6-luna\",\"input\":\"{\\\"lone high\\\":\\\"x\\\\ud83dy\\\",\\\"lone low\\\":\\\"\\\\ude00\\\",\\\"swapped\\\":\\\"\\\\ude00\\\\ud83d\\\",\\\"\\\\ud800key\\\":[\\\"\\\\ud83d\\\\ud83d\\\\ude00\\\"]}\",\"questions\":[{\"type\":\"choice\",\"name\":\"claim\",\"instructions\":\"\\ud83d text\",\"choices\":[{\"value\":\"contradicted\",\"description\":\"c\"},{\"value\":\"supported\",\"description\":\"s\\ud800\"}]}]}"
+  },
+  "subq_snap": {
+    "url": "https://api.subq.ai/v1/systemone",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer fake-snap-key",
+      "Content-type": "application/json"
+    },
+    "body": "{\"model\":\"subq-snap-preview\",\"state\":{\"lone high\":\"x\\ud83dy\",\"lone low\":\"\\ude00\",\"\\ud800key\":[\"\\ud83d\\ud83d\\ude00\"],\"swapped\":\"\\ude00\\ud83d\"},\"questions\":{\"claim\":{\"type\":\"choice\",\"instructions\":\"\\ud83d text\",\"criteria\":{\"supported\":\"s\\ud800\",\"contradicted\":\"c\"}}}}"
+  }
+}

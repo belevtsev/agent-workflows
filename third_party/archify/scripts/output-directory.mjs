@@ -1,4 +1,4 @@
-// codex-workflows distribution patch: resource scripts write only externally.
+// agent-workflows distribution patch: resource scripts write only externally.
 import { resolveNativeOutputDirectory } from '../renderers/shared/output-path.mjs';
 
 export function parseExternalOutputDirectory(args, { allowCheck = false } = {}) {

@@ -27,7 +27,7 @@ test('finalize proves all four gates in real Chrome with bounded mixed-case side
 }, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'archify-finalize-browser-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  // codex-workflows distribution patch: real browser work uses a relocated,
+  // agent-workflows distribution patch: real browser work uses a relocated,
   // zero-install package and isolated external HOME/artifact paths.
   const installed = path.join(dir, 'relocated-skill');
   fs.cpSync(skillRoot, installed, { recursive: true, filter: source => !['test', 'node_modules', '.git'].includes(path.relative(skillRoot, source).split(path.sep)[0]) });

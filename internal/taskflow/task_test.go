@@ -290,7 +290,7 @@ func writeConsultation(t *testing.T, context Context, mutate func(*Consultation,
 		mutate(&record, &request)
 	}
 	record.Request = mustJSON(t, request)
-	canonical, err := pythonCanonical(record.Request)
+	canonical, err := canonicalJSON(record.Request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,7 +372,7 @@ func TestFinalCheckpointBindsCompletedEvidenceAtUnchangedSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := PrepareContext(t.Context(), record.Directory, "final"); err == nil {
-		t.Fatal("final context emitted before checks, assessments and Codex decision")
+		t.Fatal("final context emitted before checks, assessments and Coordinator decision")
 	}
 	// Guessing a final request against the original source cannot bypass the
 	// missing prepared checkpoint and its evidence binding.

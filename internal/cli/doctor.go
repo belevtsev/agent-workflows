@@ -2,10 +2,9 @@ package cli
 
 import (
 	"errors"
-	"path/filepath"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/spf13/cobra"
 )
 
@@ -35,28 +34,11 @@ func addDoctorCommand(root *cobra.Command, config Config, o options) {
 					return errors.New("resolve current project directory")
 				}
 			}
-			home := o.home
-			if flag := root.PersistentFlags().Lookup("home"); flag != nil {
-				home = flag.Value.String()
+			roots, err := resolveRoots(root, config)
+			if err != nil {
+				return err
 			}
-			if home == "" {
-				var err error
-				home, err = config.HomeDir()
-				if err != nil {
-					return errors.New("resolve doctor home directory")
-				}
-			}
-			codexHome := o.codex
-			if flag := root.PersistentFlags().Lookup("codex-home"); flag != nil {
-				codexHome = flag.Value.String()
-			}
-			if codexHome == "" {
-				codexHome = config.Getenv("CODEX_HOME")
-				if codexHome == "" {
-					codexHome = filepath.Join(home, ".codex")
-				}
-			}
-			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: home, CodexHome: codexHome, SkillsHome: skillsHome, Live: live, Timeout: timeout, Getenv: config.Getenv})
+			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, Live: live, Timeout: timeout, Getenv: config.Getenv})
 			if err != nil {
 				return err
 			}
@@ -64,7 +46,7 @@ func addDoctorCommand(root *cobra.Command, config Config, o options) {
 		},
 	}
 	command.Flags().StringVar(&repo, "repo", "", "Selected project directory (defaults to the current directory)")
-	command.Flags().StringVar(&skillsHome, "skills-home", "", "Skill entrypoint directory (defaults to HOME/.agents/skills)")
+	command.Flags().StringVar(&skillsHome, "skills-home", "", "Skill entrypoint directory (defaults to the Codex and Claude Code skill roots)")
 	command.Flags().BoolVar(&live, "live", false, "Run bounded optional local status, protocol and package-version probes")
 	command.Flags().DurationVar(&timeout, "timeout", 15*time.Second, "Complete inspection deadline (100ms to 1m)")
 	root.AddCommand(command)

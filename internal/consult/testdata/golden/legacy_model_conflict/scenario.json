@@ -1,0 +1,13 @@
+{
+  "policy": "required",
+  "flags": [
+    "--dry-run"
+  ],
+  "credentials": [],
+  "responses": {
+    "jev": {}
+  },
+  "exit": 1,
+  "stdout": "",
+  "stderr": "Consultation validation failed: request conflicts with pinned model\n"
+}

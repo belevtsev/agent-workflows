@@ -1,8 +1,7 @@
 {
-  "version": 2,
+  "version": 3,
   "registrations": {
     "cc-skills-golang": "third_party/cc-skills-golang",
-    "drawio-skill": "third_party/drawio-skill",
     "db-postgres": "third_party/db-postgres",
     "go-principal-engineer": "skills/go-principal-engineer",
     "backend-security-review": "skills/backend-security-review",
@@ -27,14 +26,19 @@
     "docker-sandboxes-env": "third_party/docker-skills/docker-sandboxes-env",
     "docker-sandboxes-kits": "third_party/docker-skills/docker-sandboxes-kits",
     "docker-sandboxes-lifecycle": "third_party/docker-skills/docker-sandboxes-lifecycle",
-    "docker-sandboxes-network-credentials": "third_party/docker-skills/docker-sandboxes-network-credentials"
+    "docker-sandboxes-network-credentials": "third_party/docker-skills/docker-sandboxes-network-credentials",
+    "codebase-design": "skills/codebase-design",
+    "domain-modeling": "skills/domain-modeling",
+    "parse-dont-validate": "skills/parse-dont-validate",
+    "expand-contract": "skills/expand-contract",
+    "isolation-anomalies": "skills/isolation-anomalies",
+    "retry-amplification": "skills/retry-amplification",
+    "clocks-and-time": "skills/clocks-and-time"
   },
   "global_instructions": "global/AGENTS.md",
   "required_licenses": [
     "third_party/cc-skills-golang/LICENSE",
     "third_party/db-postgres/LICENSE",
-    "third_party/drawio-skill/LICENSE",
-    "third_party/drawio-skill/data/SHAPE-INDEX-NOTICE.md",
     "skills/security-threat-model/LICENSE.txt",
     "third_party/typesafe-ai/LICENSE",
     "licenses/go-toml-LICENSE",
@@ -46,8 +50,19 @@
     "third_party/docker-skills/LICENSE",
     "third_party/archify/LICENSE",
     "third_party/archify/THIRD_PARTY_NOTICES.md",
-    "third_party/archify/assets/JetBrainsMono-OFL.txt"
+    "third_party/archify/assets/JetBrainsMono-OFL.txt",
+    "skills/codebase-design/LICENSE",
+    "skills/domain-modeling/LICENSE",
+    "skills/parse-dont-validate/LICENSE",
+    "skills/test-strategy/LICENSE",
+    "third_party/cc-skills-golang/ADAPTED-LICENSES",
+    "skills/expand-contract/LICENSE",
+    "skills/isolation-anomalies/LICENSE",
+    "skills/retry-amplification/LICENSE",
+    "licenses/adapted-skill-sources-LICENSE",
+    "skills/clocks-and-time/LICENSE"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
+  "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
   "adoption_catalog": "personal-skill-origins.json"
 }

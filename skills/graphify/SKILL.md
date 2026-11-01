@@ -13,22 +13,24 @@ An unavailable graph must not stop useful source discovery.
 
 ## Build and query
 
-Resolve this skill's directory from the skill catalog. Run
-`scripts/graphify_runner.py` with the dedicated Graphify environment's Python and
-`-B`. The guarded runner supports macOS and Linux; the optional external runtime
-must already be provisioned for this device.
+Use `cw graphify`. The guarded runner supports macOS and Linux; the optional
+external runtime, pinned to `graphifyy==0.9.91`, must already be provisioned for
+this device. `cw` finds it in the dedicated Graphify environment, at `--runtime
+PATH`, or on `PATH`.
 If it is missing or incompatible, report that limitation and continue with source
 reads, `rg`, semantic search, or available Go tooling. Do not install dependencies
 as an incidental discovery step.
 
-For an installed skill, the guarded interface is:
+The guarded interface is:
 
 ```sh
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py build --repo /path/to/repo
-~/.venvs/codex-graphify/bin/python -B ~/.agents/skills/graphify/scripts/graphify_runner.py query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
+cw graphify build --repo /path/to/repo
+cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
 ```
 
-Use the actual catalog path if the skill is registered elsewhere. Build the
+Both print one JSON object. When no current graph is available they report
+`status: unavailable` with a `code` and exit `2`; use the normal source discovery it
+names. Build the
 snapshot for the intended worktree, then ask a focused structural question.
 Prefer a narrow relationship question after locating candidate symbols. Broad
 prose can produce noisy, truncated context. Treat omitted relationships as
@@ -64,4 +66,4 @@ unresolved relationships when material, including excluded or untracked code and
 dynamic wiring the map cannot establish. A structural graph does not replace
 tests, runtime evidence, or required review and consultation checkpoints. For
 substantial work, preserve the required Jev, SubQ Snap, and OpenAI Decisions
-checkpoints; Codex makes the decision from source evidence and verification.
+checkpoints; the coordinator makes the decision from source evidence and verification.

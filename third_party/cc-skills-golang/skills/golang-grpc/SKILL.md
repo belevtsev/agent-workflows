@@ -22,7 +22,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs Bash(protoc:*) AskUserQuestion Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs Bash(protoc:*) AskUserQuestion Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
 ---
 
 **Modes:**
@@ -126,6 +126,8 @@ conn, err := grpc.NewClient("dns:///user-service:50051",
 )
 client := pb.NewUserServiceClient(conn)
 ```
+
+`retryPolicy` bounds each call, not the aggregate, so a degraded dependency still receives every retry. Add `"retryThrottling": {"maxTokens": 10, "tokenRatio": 0.1}` at the top level of the service config, and use the `retry-amplification` skill when several layers retry.
 
 ## Error Handling
 

@@ -31,11 +31,7 @@ func (i *Installer) mutationPaths(op Object) ([]string, error) {
 		}
 		return paths, nil
 	}
-	paths := []string{text(op["path"])}
-	if op["kind"] == "rename" {
-		paths = append(paths, text(op["destination"]))
-	}
-	return paths, nil
+	return []string{text(op["path"])}, nil
 }
 
 func pathsOverlap(a, b string) bool {
@@ -80,76 +76,6 @@ func stateFromObservation(ob Object) (Object, error) {
 	return state, nil
 }
 
-func (i *Installer) transactionVersion(ops []Object) int {
-	if i.runtimeProtocol == "cw-manager-v6" || i.AdoptPersonalSkills {
-		return 2
-	}
-	for _, op := range ops {
-		if op["kind"] == "personal_skill" || op["kind"] == sharedConfigOperationKind {
-			return 2
-		}
-		if op["path"] == i.statePath {
-			for _, side := range []string{"after", "before"} {
-				state, err := stateFromObservation(object(op[side]))
-				if err == nil && (integer(state["version"]) == 2 || sharedConfigStateRequired(state)) {
-					return 2
-				}
-			}
-		}
-	}
-	return 1
-}
-
-func (i *Installer) sharedConfigRuntimeRequiredForOperations(ops []Object) (bool, error) {
-	required := false
-	for _, op := range ops {
-		if op["kind"] == sharedConfigOperationKind {
-			required = true
-		}
-		if op["path"] != i.statePath {
-			continue
-		}
-		for _, side := range []string{"before", "after"} {
-			state, err := stateFromObservation(object(op[side]))
-			if err != nil {
-				return false, err
-			}
-			required = required || sharedConfigStateRequired(state)
-		}
-	}
-	return required, nil
-}
-
-func (i *Installer) verifySharedConfigRecoveryRuntime(identity RuntimeIdentity) error {
-	if err := i.verifyRecoveryRuntime(identity); err != nil {
-		return err
-	}
-	return i.verifySharedConfigRuntime(filepath.Join(i.runtimeDir(identity.Revision), "cw"))
-}
-
-// verifySharedConfigJournalRuntime checks both the forward transaction and any
-// saved reversals before recovery starts changing owned paths.
-func (i *Installer) verifySharedConfigJournalRuntime(journal Object) error {
-	var operations []Object
-	for _, field := range []string{"operations", "recovery_operations"} {
-		for _, raw := range sequence(journal[field]) {
-			operations = append(operations, object(raw))
-		}
-	}
-	required, err := i.sharedConfigRuntimeRequiredForOperations(operations)
-	if err != nil || !required {
-		return err
-	}
-	if integer(journal["version"]) != 2 {
-		return errors.New("shared Codex config requires a version-two recovery journal")
-	}
-	var identity RuntimeIdentity
-	if err := json.Unmarshal(legacyJSON(journal["recovery_runtime"]), &identity, json.RejectUnknownMembers(true)); err != nil {
-		return err
-	}
-	return i.verifySharedConfigRecoveryRuntime(identity)
-}
-
 func (i *Installer) verifyRecoveryRuntime(identity RuntimeIdentity) error {
 	verified, err := i.runtimeRelease(identity.Revision)
 	if err != nil {
@@ -158,28 +84,18 @@ func (i *Installer) verifyRecoveryRuntime(identity RuntimeIdentity) error {
 	if verified != identity {
 		return errors.New("recovery runtime identity differs from its immutable receipt")
 	}
-	receipt, err := readJSON(filepath.Join(i.runtimeDir(identity.Revision), "receipt.json"))
-	if err != nil || integer(receipt["version"]) != 2 || receipt["manager_protocol"] != "cw-manager-v6" {
-		return errors.New("version-two journal requires a staged native v6 recovery runtime")
-	}
 	protocol, err := i.inspectRuntimeProtocol(filepath.Join(i.runtimeDir(identity.Revision), "cw"))
-	if err != nil || protocol != "cw-manager-v6" {
-		return errors.New("staged recovery runtime does not support the v6 manager protocol")
+	if err != nil || protocol != ManagerProtocol {
+		return errors.New("staged recovery runtime does not support the manager protocol")
 	}
 	return nil
 }
 
-func (i *Installer) recoveryRuntimeFor(ops []Object) (RuntimeIdentity, error) {
-	sharedConfig, err := i.sharedConfigRuntimeRequiredForOperations(ops)
-	if err != nil {
-		return RuntimeIdentity{}, err
-	}
-	verify := i.verifyRecoveryRuntime
-	if sharedConfig {
-		verify = i.verifySharedConfigRecoveryRuntime
-	}
-	if i.runtimeProtocol == "cw-manager-v6" && validRuntimeIdentity(i.RuntimeIdentity) {
-		return i.RuntimeIdentity, verify(i.RuntimeIdentity)
+// recoveryRuntimeFor names the verified runtime that can recover these
+// operations. Transactions before the first manager enrollment have none.
+func (i *Installer) recoveryRuntimeFor(ops []Object) (RuntimeIdentity, bool, error) {
+	if i.runtimeProtocol == ManagerProtocol && validRuntimeIdentity(i.RuntimeIdentity) {
+		return i.RuntimeIdentity, true, i.verifyRecoveryRuntime(i.RuntimeIdentity)
 	}
 	for _, op := range ops {
 		if op["path"] != i.statePath {
@@ -188,7 +104,7 @@ func (i *Installer) recoveryRuntimeFor(ops []Object) (RuntimeIdentity, error) {
 		for _, side := range []string{"after", "before"} {
 			state, err := stateFromObservation(object(op[side]))
 			if err != nil {
-				return RuntimeIdentity{}, err
+				return RuntimeIdentity{}, false, err
 			}
 			manager := object(state["manager"])
 			if manager == nil {
@@ -196,10 +112,10 @@ func (i *Installer) recoveryRuntimeFor(ops []Object) (RuntimeIdentity, error) {
 			}
 			var identity RuntimeIdentity
 			if err = json.Unmarshal(legacyJSON(manager["runtime"]), &identity, json.RejectUnknownMembers(true)); err != nil {
-				return identity, err
+				return identity, false, err
 			}
-			return identity, verify(identity)
+			return identity, true, i.verifyRecoveryRuntime(identity)
 		}
 	}
-	return RuntimeIdentity{}, errors.New("version-two journal has no verified staged recovery runtime")
+	return RuntimeIdentity{}, false, nil
 }

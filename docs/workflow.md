@@ -7,9 +7,17 @@ authorized. Publishing, messaging, committing, pushing, and infrastructure
 changes need authorization for that action.
 
 For substantial work, the coordinator reads
-[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml). This is
-an editable routing policy interpreted by the skill; Codex does not load the
-YAML as native settings or change a running chat's model automatically.
+[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml), and under
+Claude Code also
+[`model-policy.claude.yaml`](../skills/task-orchestration/model-policy.claude.yaml),
+which replaces its profiles and roles. These are editable routing policies
+interpreted by the skill; neither host loads the YAML as native settings or changes
+a running chat's model automatically.
+
+The table shows the Codex defaults. Under Claude Code, every role uses
+`claude-opus-5-5`, at `xhigh` for substantive and bounded execution work and `high`
+for bounded evidence. See the
+[host mapping](../skills/task-orchestration/references/hosts.md).
 
 | Work | Default model | Effort |
 | --- | --- | --- |
@@ -26,25 +34,36 @@ results do not prove correctness or grant permission.
 
 ## Local configuration
 
-`./install.sh` enrolls two root settings in the machine's existing Codex
-`config.toml`, using the validated coordinator policy:
+`./install.sh` enrolls two settings for each selected host, using its validated
+coordinator policy. In Codex `config.toml`:
 
 ```toml
 model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
 ```
 
+In Claude Code `settings.json`:
+
+```json
+{
+  "model": "claude-opus-5-5",
+  "effortLevel": "xhigh"
+}
+```
+
 Paths, trusted projects, plugins, MCP settings, permissions, and authentication
 remain local decisions. The Go manager preserves unrelated configuration, comments,
-and permissions. It owns the two root model keys, global instruction block, 27
-skill registrations, and enrolled direct command/PATH registration. It records
-original values once and restores them on uninstall.
+and permissions. On each host it owns the two model keys, global instruction block,
+and 33 skill registrations, plus one enrolled direct command/PATH registration. It
+records original values once and restores them on uninstall. A Claude Code settings
+key you have since changed stays yours; see
+[operations](operations.md#claude-code-host).
 
 cw is a direct executable link on PATH. It uses recorded installation roots from
 any directory; no shell command wrapper is involved. Install selects Bash/zsh for
 optional PATH enrollment; --shell none leaves enrollment to the user. Help/version
 are offline. Updates and rollbacks apply the selected skill snapshot's model
-defaults, while a running Codex chat keeps its existing session settings.
+defaults, while a running session keeps its existing settings.
 
 `cw status` includes `model_profiles`, a map of profile names to `model`,
 `reasoning_effort`, and `scope`, read from the validated active snapshot. This
@@ -113,10 +132,10 @@ and [evaluation boundaries](skill-evaluation.md).
 
 `skills-manifest.json` registers `typesafe-ai` from
 [`third_party/typesafe-ai`](../third_party/typesafe-ai/SKILL.md). Resolve the installed
-skill through Codex's skill catalog and read its
+skill through the host's skill catalog and read its
 [development-consultation guide](../third_party/typesafe-ai/references/development-consultations.md)
 relative to that skill's root. Jev is TypeSafe's hosted System One model. The
-task-orchestration [consultation helper](../skills/task-orchestration/scripts/consult_decisions.py)
+task-orchestration [consultation helper](../skills/task-orchestration/references/consultation-helper.md)
 requires Jev, SubQ Snap and OpenAI Decisions at equal standing; these advisers need no
 separate executable or SDK.
 The existing Jev-only helper remains supported unchanged.
@@ -130,7 +149,7 @@ and [API Console](https://console.subq.ai/) for its separate key. The README's
 steps show masked terminal input, boolean presence checks, CLI inheritance, and
 desktop launch environments. Supply `TYPESAFE_API_KEY`, `SUBQ_API_KEY` and `OPENAI_API_KEY` through
 the process environment or a local secret manager; an export in another terminal
-does not update a running Codex or integration-server process. Restart from the
+does not update a running agent or integration-server process. Restart from the
 configured environment and open a fresh chat. Never commit key values, put them
 in prompts, or include them in logs or evidence shared with workers.
 
@@ -158,8 +177,8 @@ phase instructions is separate from the manager's policy validation contract.
 The installed policy keeps version 2 and `consultation.model`, requires providers
 `jev: jev-1.14.0`, `subq_snap: subq-snap-preview` and
 `openai_decisions: gpt-6-luna`, and retains
-`comparison: codex_evidence_and_verification`. A manager must advertise
-`cw-three-adviser-v1` before activating this required-three policy.
+`comparison: coordinator_evidence_and_verification`. Historical policies keep
+`codex_evidence_and_verification`, which stays valid.
 Send the same permitted minimal text state, questions, and Choice options to
 participating advisers concurrently, with one attempt per provider and a 30-second
 batch budget covering startup, requests, and result transport.
@@ -223,9 +242,9 @@ source material for a setup check. A successful response is availability
 evidence for that request, not evidence of calibrated accuracy or implementation
 correctness.
 
-Codex owns the final decision. The consultation helper records independent provider
+The coordinator owns the final decision. The consultation helper records independent provider
 results and per-question agreement, disagreement, partial coverage, or unavailable
-coverage, leaving `final_decision` pending. Codex compares the judgments against
+coverage, leaving `final_decision` pending. The coordinator compares the judgments against
 exact sources and relevant tests or observations, including when all advisers agree.
 Neither confidence, probabilities, voting, nor provider identity selects a winner.
 Record the conclusion, evidence references, independent verification, rejected
@@ -245,7 +264,7 @@ change. Do not edit immutable installed releases in place.
 
 ## Connected services
 
-Authenticate Jira, Confluence, and GitHub independently in Codex on each device
+Authenticate Jira, Confluence, and GitHub independently in each host on each device
 using the intended account for each service. Skill installation does not
 establish connector access or copy authentication. Verify the identity and a
 permitted read for each service separately before using it for a task.

@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const repository = "belevtsev/codex-workflows"
+const repository = "belevtsev/agent-workflows"
 const maxArchive = 128 << 20
 
 var errReleaseUnavailable = errors.New("no exact-revision native release is available")
@@ -211,7 +211,7 @@ func (a Acquirer) fetch(ctx context.Context, address string, limit int64) ([]byt
 		return nil, err
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("User-Agent", "codex-workflows-native-manager")
+	request.Header.Set("User-Agent", "agent-workflows-native-manager")
 	response, err := clone.Do(request)
 	if err != nil {
 		return nil, err

@@ -4,9 +4,9 @@ set -eu
 
 checkout=$(CDPATH='' cd -P "$(dirname "$0")" && pwd)
 binary=$checkout/.bin/cw
-repository=belevtsev/codex-workflows
+repository=belevtsev/agent-workflows
 
-fail() { printf 'codex-workflows: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'agent-workflows: %s\n' "$*" >&2; exit 1; }
 case $(uname -s) in Darwin) target_os=darwin ;; Linux) target_os=linux ;; *) fail 'native cw supports macOS and Linux' ;; esac
 case $(uname -m) in arm64|aarch64) target_arch=arm64 ;; x86_64|amd64) target_arch=amd64 ;; *) fail 'native cw supports arm64 and amd64' ;; esac
 
@@ -20,22 +20,14 @@ identify_binary() {
 }
 
 if [ -L "$checkout/.bin" ] || { [ -e "$checkout/.bin" ] && [ ! -d "$checkout/.bin" ]; }; then fail '.bin is occupied or symlinked'; fi
-identify_manager_capabilities() {
+identify_manager_protocol() {
     protocol=$("$1" --manager-protocol 2>/dev/null) || return 1
-    [ "$protocol" = cw-manager-v6 ] || return 1
-    policy=$("$1" --model-policy-capability 2>/dev/null) || return 1
-    [ "$policy" = cw-model-policy-v2-dual-choice ] || return 1
-    defaults_capability=$("$1" --codex-defaults-capability 2>/dev/null) || return 1
-    [ "$defaults_capability" = cw-codex-defaults-v1 ] || return 1
-    openai_decisions_capability=$("$1" --openai-decisions-capability 2>/dev/null) || return 1
-    [ "$openai_decisions_capability" = cw-openai-decisions-v1 ] || return 1
-    three_adviser_capability=$("$1" --three-adviser-capability 2>/dev/null) || return 1
-    [ "$three_adviser_capability" = cw-three-adviser-v1 ]
+    [ "$protocol" = cw-manager-v7 ]
 }
 
 if [ -e "$binary" ] || [ -L "$binary" ]; then
     identify_binary "$binary" || fail 'unidentified .bin/cw; refusing to replace it'
-    if identify_manager_capabilities "$binary"; then
+    if identify_manager_protocol "$binary"; then
         exec "$binary" --source "$checkout" "$@"
     fi
 fi
@@ -49,7 +41,7 @@ for argument in "$@"; do
             exit 0
             ;;
         --help|-h|help)
-            printf '%s\n' 'cw — Codex workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --state-dir PATH,' '         --shell auto|bash|zsh|none, --migrate-from PATH, --typesafe-legacy[=PATH], --no-checkout,' '         --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
+            printf '%s\n' 'cw — Agent workflows' '' 'Usage: ./install.sh [install|setup|update|status|validate|version|help|rollback|recover|uninstall] [options]' '' 'install (setup alias) activates validated local HEAD; update fetches origin/main.' 'status and validate inspect locally; rollback, recover and uninstall manage owned state.' 'Options: --dry-run, --source PATH, --home PATH, --codex-home PATH, --claude-home PATH,' '         --state-dir PATH, --shell auto|bash|zsh|none, --no-checkout,' '         --host auto|codex|claude|all (install/setup and uninstall),' '         --forget (uninstall --host only), --adopt-personal-skills (install/setup only)' 'Mutations apply by default. Cold dry runs make no downloads or persistent writes.'
             exit 0
             ;;
     esac
@@ -69,7 +61,7 @@ if [ -L "$checkout/.bin" ] || { [ -e "$checkout/.bin" ] && [ ! -d "$checkout/.bi
 mkdir -p "$checkout/.bin"
 if [ -e "$binary" ] || [ -L "$binary" ]; then
     identify_binary "$binary" || fail 'unidentified .bin/cw; refusing to replace it'
-    if identify_manager_capabilities "$binary"; then
+    if identify_manager_protocol "$binary"; then
         cleanup; trap - EXIT INT TERM
         exec "$binary" --source "$checkout" "$@"
     fi
@@ -90,7 +82,7 @@ actual=${actual%% *}
 tar -xOzf "$temporary/$asset" cw > "$temporary/cw" || fail 'release archive has no readable cw binary'
 chmod 755 "$temporary/cw"
 identify_binary "$temporary/cw" || fail 'release asset is not an identifiable native manager for this platform'
-identify_manager_capabilities "$temporary/cw" || fail 'released native manager does not support the required bootstrap capabilities cw-manager-v6, cw-model-policy-v2-dual-choice, cw-codex-defaults-v1, cw-openai-decisions-v1, and cw-three-adviser-v1'
+identify_manager_protocol "$temporary/cw" || fail 'released native manager does not support the required bootstrap protocol cw-manager-v7'
 mv "$temporary/cw" "$binary"
 cleanup
 trap - EXIT INT TERM

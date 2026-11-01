@@ -13,17 +13,20 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/belevtsev/codex-workflows/internal/devcheck"
-	"github.com/belevtsev/codex-workflows/internal/release"
+	"github.com/belevtsev/agent-workflows/internal/devcheck"
+	"github.com/belevtsev/agent-workflows/internal/release"
 )
 
 func run(ctx context.Context, arguments []string) error {
 	if len(arguments) == 0 || arguments[0] == "help" || arguments[0] == "--help" || arguments[0] == "-h" {
-		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n\nRelease builds require a clean exact source revision. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets.")
+		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n  cwdev eval multilingual [--source PATH] [--live --output-dir PATH]\n\nRelease builds require a clean exact source revision. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets. Evaluation\nvalidates its corpus offline unless --live explicitly allows one hosted baseline.")
 		return nil
 	}
 	action := arguments[0]
 	arguments = arguments[1:]
+	if action == "eval" {
+		return evaluate(ctx, arguments)
+	}
 	if action == "release" {
 		if len(arguments) == 0 || (arguments[0] != "build" && arguments[0] != "publish") {
 			return errors.New("release requires build or publish")
@@ -94,6 +97,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := run(ctx, os.Args[1:]); err != nil {
+		if status, ok := errors.AsType[exitStatus](err); ok {
+			os.Exit(int(status))
+		}
 		fmt.Fprintln(os.Stderr, "cwdev:", err)
 		os.Exit(1)
 	}

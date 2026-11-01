@@ -18,12 +18,16 @@ htmlcov/
 .DS_Store
 *.swp
 *.swo
+* [0-9].*
 
 # Native build and release artifacts
 .bin/
 .bin.lock/
 dist/
 .cw-release-*/
+
+# Claude Code local settings and worktrees
+.claude/
 
 # Generated local diagrams and their delivery/browser evidence
 .archify/

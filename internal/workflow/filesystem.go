@@ -21,6 +21,7 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 var commitSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -163,6 +164,76 @@ func realDirectory(path string, create bool) error {
 	}
 	return nil
 }
+
+// closestExisting returns the deepest part of path that exists and the names
+// still to be created below it.
+func closestExisting(path string) (os.FileInfo, []string, error) {
+	var missing []string
+	for {
+		info, err := os.Stat(path)
+		if err == nil {
+			return info, missing, nil
+		}
+		if !os.IsNotExist(err) || path == filepath.Dir(path) {
+			return nil, nil, err
+		}
+		missing = slices.Insert(missing, 0, filepath.Base(path))
+		path = filepath.Dir(path)
+	}
+}
+
+// sameDirectory reports whether two paths reach one physical directory, now or
+// once created. Only the filesystem knows which names it folds together, so new
+// names that could collide stay undecided until they exist.
+func sameDirectory(a, b string) (same, undecided bool, err error) {
+	left, leftMissing, err := closestExisting(a)
+	if err != nil {
+		return false, false, err
+	}
+	right, rightMissing, err := closestExisting(b)
+	if err != nil {
+		return false, false, err
+	}
+	if !os.SameFile(left, right) || len(leftMissing) != len(rightMissing) {
+		return false, false, nil
+	}
+	for index, name := range leftMissing {
+		other := rightMissing[index]
+		if name == other {
+			continue
+		}
+		if plainASCII(name) && plainASCII(other) && !strings.EqualFold(name, other) {
+			return false, false, nil
+		}
+		undecided = true
+	}
+	return !undecided, undecided, nil
+}
+
+func plainASCII(name string) bool {
+	return !strings.ContainsFunc(name, func(r rune) bool { return r >= utf8.RuneSelf })
+}
+
+// entryHolding names the entry of root that path is, or is inside. It returns
+// nothing when path is root itself or outside it.
+func entryHolding(root, path string) (string, error) {
+	entry := ""
+	for {
+		same, undecided, err := sameDirectory(root, path)
+		switch {
+		case err != nil:
+			return "", err
+		case same:
+			return entry, nil
+		case undecided:
+			return "", fmt.Errorf("cannot tell whether %s and %s are separate directories until they exist; create both and run this again", root, path)
+		case path == filepath.Dir(path):
+			return "", nil
+		}
+		entry, path = filepath.Base(path), filepath.Dir(path)
+	}
+}
+
 func syncDir(path string) error {
 	f, e := os.Open(path)
 	if e != nil {
@@ -212,7 +283,7 @@ func atomicWrite(path string, data []byte, mode os.FileMode) error {
 	if e := realDirectory(filepath.Dir(path), true); e != nil {
 		return e
 	}
-	f, e := os.CreateTemp(filepath.Dir(path), ".codex-workflows-")
+	f, e := os.CreateTemp(filepath.Dir(path), ".agent-workflows-")
 	if e != nil {
 		return e
 	}
@@ -328,7 +399,7 @@ func writeObservation(path string, v Object) error {
 		if e := realDirectory(filepath.Dir(path), true); e != nil {
 			return e
 		}
-		f, e := os.CreateTemp(filepath.Dir(path), ".codex-workflows-link-")
+		f, e := os.CreateTemp(filepath.Dir(path), ".agent-workflows-link-")
 		if e != nil {
 			return e
 		}
@@ -365,7 +436,7 @@ func gitContext(ctx context.Context, source string, args ...string) ([]byte, err
 	return out, nil
 }
 func fault(label string) error {
-	if os.Getenv("CODEX_WORKFLOWS_FAULT") == label {
+	if os.Getenv("AGENT_WORKFLOWS_FAULT") == label {
 		return fmt.Errorf("injected failure at %s (recover before retrying)", label)
 	}
 	return nil

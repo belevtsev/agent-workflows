@@ -98,7 +98,7 @@ func Publish(ctx context.Context, options PublishOptions) (*Publication, error) 
 		return nil, err
 	}
 	if options.Repo == "" {
-		options.Repo = "belevtsev/codex-workflows"
+		options.Repo = "belevtsev/agent-workflows"
 	}
 	if !regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`).MatchString(options.Repo) {
 		return nil, errors.New("invalid release repository")
@@ -148,7 +148,7 @@ func Publish(ctx context.Context, options PublishOptions) (*Publication, error) 
 	}
 	if remote == nil {
 		body := map[string]any{"tag_name": options.Version, "target_commitish": options.Revision, "draft": true,
-			"name": "Codex workflows " + options.Version, "body": "Native cw for macOS/Linux on AMD64 and ARM64. Source revision: " + options.Revision + ". SHA256SUMS verifies each archive."}
+			"name": "Agent workflows " + options.Version, "body": "Native cw for macOS/Linux on AMD64 and ARM64. Source revision: " + options.Revision + ". SHA256SUMS verifies each archive."}
 		writeErr := p.jsonRequest(ctx, http.MethodPost, p.base+"/releases", body, nil)
 		err = reconcile(ctx, "draft creation", func() (bool, error) {
 			var readErr error
@@ -457,6 +457,6 @@ func (p *publisher) newRequest(ctx context.Context, method, endpoint string, bod
 	request.Header.Set("Authorization", "Bearer "+p.options.Token)
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	request.Header.Set("User-Agent", "codex-workflows-cwdev")
+	request.Header.Set("User-Agent", "agent-workflows-cwdev")
 	return request, nil
 }

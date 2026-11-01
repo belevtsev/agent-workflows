@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/belevtsev/codex-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
 type workerPathInfo struct {

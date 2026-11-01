@@ -70,7 +70,7 @@ Before implementation, place the exact emitted context in the shared consultatio
 request's `state.task_context`. A coordinated multi-repository task can instead
 put its contexts in `state.task_contexts`; each task's context must occur once.
 Give Jev, Snap and OpenAI the same permitted evidence and questions using the
-[consultation helper](consultation-helper.md). Codex checks each judgment against
+[consultation helper](consultation-helper.md). The coordinator checks each judgment against
 sources and finalizes a new adjudicated record with explicit rejection reasons.
 
 ```sh
@@ -79,7 +79,7 @@ cw task consult --task /path/returned/by/start --phase before --input /private/p
 
 The task command validates the adviser artifact and its binding. It does not make
 provider requests, select a winning adviser, or prove cited semantics. Required
-unavailable coverage is recorded rather than invented; unresolved material Codex
+unavailable coverage is recorded rather than invented; unresolved material the coordinator
 decisions remain unresolved. A small task can use `kind: "small"` without adviser
 checkpoints. Use that path only for the existing small-task scope.
 
@@ -104,7 +104,7 @@ source-changing check cannot become a passing result.
 Checks execute approved local code without a sandbox. Select them within the
 user's authorized scope; a task plan is not permission for external side effects.
 
-Record acceptance and Codex's decision through an assessment JSON. A source
+Record acceptance and the coordinator's decision through an assessment JSON. A source
 reference contains its repository-relative `path`, valid `start_line`/`end_line`,
 and the SHA-256 of the complete current file. Reference a completed check by ID;
 only requirements explicitly permitting non-execution can use a stated rationale.
@@ -124,7 +124,7 @@ cw task context --task /path/returned/by/start --phase final
 ```
 
 Use that new final context and the completed diff/check evidence for a fresh
-three-adviser final-review request. Attach Codex's separately adjudicated result:
+three-adviser final-review request. Attach the coordinator's separately adjudicated result:
 
 ```sh
 cw task consult --task /path/returned/by/start --phase final --input /private/path/review-final.json
@@ -134,13 +134,13 @@ cw task verify --task /path/returned/by/start
 Verification rejects stale source, missing requirements/checks, invalid references
 and missing or mismatched substantial-task checkpoints. Hashes and structural
 validation establish consistency, not semantic truth or complete test coverage.
-The final context also binds completed checks, acceptance and Codex's decision;
+The final context also binds completed checks, acceptance and the coordinator's decision;
 changing those facts requires a fresh final context and adviser review even when source
 bytes stay unchanged. An outstanding owned check cannot complete the task.
 Version-two worker evidence is also bound into final context. Incomplete handoffs,
 unaccepted results and missing or stale independent worker review prevent completion.
 Later source or worker/check changes require a current worker review as applicable.
-Codex retains responsibility for source interpretation, relevant tests, permitted
+The coordinator retains responsibility for source interpretation, relevant tests, permitted
 actions and a candid completion report. Refresh only evidence affected by later
 changes. Task verification does not grant authorization for Git publication,
 deployment or external messages.

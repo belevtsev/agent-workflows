@@ -73,7 +73,13 @@ func suiteMapping(value any, name string, fields ...string) (Object, error) {
 
 func suiteText(value any) bool {
 	text, ok := value.(string)
-	return ok && strings.TrimSpace(text) != ""
+	return ok && !policyBlank(text)
+}
+
+// policyBlank also treats the ASCII separators U+001C through U+001F as
+// whitespace, so a control character cannot stand in for a name or description.
+func policyBlank(text string) bool {
+	return strings.TrimFunc(text, func(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }) == ""
 }
 
 func suiteInteger(value any, expected int) bool {
@@ -236,16 +242,12 @@ func LoadManifest(root string) (Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read valid skills-manifest.json: %w", err)
 	}
-	fields := []string{"version", "registrations", "global_instructions", "required_licenses", "model_policy"}
-	if suiteInteger(object(value)["version"], 2) {
-		fields = append(fields, "adoption_catalog")
-	}
-	manifest, err := suiteMapping(value, "manifest", fields...)
+	manifest, err := suiteMapping(value, "manifest", "version", "registrations", "global_instructions", "required_licenses", "model_policy", "claude_model_policy", "adoption_catalog")
 	if err != nil {
 		return nil, err
 	}
-	if !suiteInteger(manifest["version"], 1) && !suiteInteger(manifest["version"], 2) {
-		return nil, errors.New("manifest version must be 1 or 2")
+	if !suiteInteger(manifest["version"], 3) {
+		return nil, errors.New("manifest version must be 3")
 	}
 	registrations, err := suiteMapping(manifest["registrations"], "registrations")
 	if err != nil || len(registrations) == 0 {
@@ -310,15 +312,17 @@ func LoadManifest(root string) (Object, error) {
 			return nil, errors.New("required license is empty")
 		}
 	}
-	policy, err := suiteRelativePath(root, manifest["model_policy"], "model_policy")
-	if err != nil {
-		return nil, err
-	}
-	if !suiteRegular(policy) || !slices.Contains([]string{".yaml", ".yml"}, strings.ToLower(filepath.Ext(policy))) {
-		return nil, errors.New("model_policy must reference an existing YAML file")
-	}
-	if !slices.ContainsFunc(roots, func(source string) bool { return suiteWithin(source, policy) }) {
-		return nil, errors.New("model_policy must be inside a registered skill source")
+	for _, field := range []string{"model_policy", "claude_model_policy"} {
+		policy, err := suiteRelativePath(root, manifest[field], field)
+		if err != nil {
+			return nil, err
+		}
+		if !suiteRegular(policy) || !slices.Contains([]string{".yaml", ".yml"}, strings.ToLower(filepath.Ext(policy))) {
+			return nil, fmt.Errorf("%s must reference an existing YAML file", field)
+		}
+		if !slices.ContainsFunc(roots, func(source string) bool { return suiteWithin(source, policy) }) {
+			return nil, fmt.Errorf("%s must be inside a registered skill source", field)
+		}
 	}
 	if _, err = readPersonalCatalog(root, manifest); err != nil {
 		return nil, err
@@ -396,7 +400,7 @@ func suiteInspectTree(root string) ([]string, error) {
 		}
 		if entry.IsDir() {
 			releaseStage := strings.HasPrefix(name, ".cw-release-")
-			if (releaseStage || slices.Contains([]string{".venv", "__pycache__", ".bin", ".bin.lock", "dist"}, name)) && ignored(target) {
+			if (releaseStage || slices.Contains([]string{".venv", "__pycache__", ".bin", ".bin.lock", "dist", ".claude"}, name)) && ignored(target) {
 				return filepath.SkipDir
 			}
 			if releaseStage || suitePrivateDirectories[name] {
@@ -1020,7 +1024,7 @@ func policyDescription(value any) bool {
 	}
 	switch value := value.(type) {
 	case string:
-		return strings.TrimSpace(value) != ""
+		return !policyBlank(value)
 	case []any:
 		return len(value) > 0
 	case map[string]any:
@@ -1063,7 +1067,7 @@ func policyQuestions(policyPath string, reference any) error {
 		return errors.New("question templates are empty or invalid")
 	}
 	for name, value := range templates {
-		if strings.TrimSpace(name) == "" {
+		if policyBlank(name) {
 			return errors.New("invalid question ID")
 		}
 		question, err := suiteMapping(value, "question", "type", "instructions", "criteria")
@@ -1081,7 +1085,7 @@ func policyQuestions(policyPath string, reference any) error {
 			return errors.New("Choice needs at least two options")
 		}
 		for option, description := range criteria {
-			if strings.TrimSpace(option) == "" {
+			if policyBlank(option) {
 				return errors.New("invalid option ID")
 			}
 			if !policyDescription(description) {
@@ -1090,6 +1094,109 @@ func policyQuestions(policyPath string, reference any) error {
 		}
 	}
 	return nil
+}
+
+// policyEfforts keeps historical explicit-only Sol policies readable without
+// blocking new defaults. Every profile must already be valid.
+func policyEfforts(policy, profiles Object) (Object, error) {
+	effortPolicy, err := suiteMapping(policy["effort_policy"], "effort_policy", "default_substantive", "max_for_sol", "configured_max_profiles", "automatic_escalation")
+	if err != nil {
+		return nil, err
+	}
+	var maxProfiles []string
+	for name, value := range profiles {
+		if value.(Object)["reasoning_effort"] == "max" {
+			maxProfiles = append(maxProfiles, name)
+		}
+	}
+	maxRule, ok := effortPolicy["max_for_sol"].(string)
+	if !ok || !slices.Contains([]string{"explicit_user_request", "configured_or_explicit_user_request"}, maxRule) {
+		return nil, errors.New("invalid Sol max rule")
+	}
+	if maxRule == "explicit_user_request" {
+		for _, name := range maxProfiles {
+			if slices.Contains([]string{"gpt-6.1-sol", "gpt-6-sol"}, profiles[name].(Object)["model"].(string)) {
+				return nil, errors.New("Sol max requires an explicit user request")
+			}
+		}
+	}
+	configured, err := policyList(effortPolicy["configured_max_profiles"], "invalid configured max profiles", func(name string) bool { _, present := profiles[name]; return present }, false)
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(configured)
+	slices.Sort(maxProfiles)
+	if !slices.Equal(configured, maxProfiles) {
+		return nil, errors.New("invalid configured max profiles")
+	}
+	if effortPolicy["automatic_escalation"] != false {
+		return nil, errors.New("automatic effort escalation must be disabled")
+	}
+	return effortPolicy, nil
+}
+
+// ResolveWorker selects a role's model and effort from a validated policy
+// without changing its defaults. requestedEffort is an explicit user request,
+// never an automatic escalation; empty means none, and the selected profile
+// must permit any other value.
+func ResolveWorker(policy Object, role, requestedEffort string) (map[string]string, error) {
+	if policyBlank(role) {
+		return nil, errors.New("invalid role name")
+	}
+	roles, err := suiteMapping(policy["roles"], "roles")
+	if err != nil {
+		return nil, err
+	}
+	profiles, err := suiteMapping(policy["profiles"], "profiles")
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range profiles {
+		if _, err := policyProfile(value); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := policyEfforts(policy, profiles); err != nil {
+		return nil, err
+	}
+	name, known := roles[role]
+	if !known {
+		name = policy["unknown_role_profile"]
+	}
+	profile, err := policyReferenced(profiles, name)
+	if err != nil {
+		return nil, err
+	}
+	if known && !policyRoleScope(role, profile["scope"]) || !known && profile["scope"] != "substantive" {
+		return nil, errors.New("invalid role routing")
+	}
+	model, effort := profile["model"].(string), profile["reasoning_effort"].(string)
+	if requestedEffort != "" {
+		if !slices.Contains(policyModelEfforts[model], requestedEffort) {
+			return nil, errors.New("unsupported requested reasoning effort")
+		}
+		if requestedEffort != effort && !slices.Contains(profile["user_requested_efforts"].([]any), any(requestedEffort)) {
+			return nil, errors.New("requested reasoning effort is not permitted")
+		}
+		effort = requestedEffort
+	}
+	return map[string]string{"model": model, "reasoning_effort": effort}, nil
+}
+
+// ValidateModelPolicy applies the suite's complete policy rules to one policy
+// file for commands that read it outside suite validation. The file's directory
+// is canonicalized first because an installed release is reached through the
+// state directory's current symlink.
+func ValidateModelPolicy(policyPath string) (Object, error) {
+	absolute, err := filepath.Abs(policyPath)
+	if err != nil {
+		return nil, errors.New("cannot read model policy")
+	}
+	parent, err := suiteResolve(filepath.Dir(absolute))
+	if err != nil {
+		return nil, errors.New("cannot read model policy")
+	}
+	return suiteModelPolicy(filepath.Join(parent, filepath.Base(absolute)))
 }
 
 func suiteModelPolicy(policyPath string) (Object, error) {
@@ -1129,45 +1236,17 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 			return nil, errors.New("missing required profile")
 		}
 	}
-	var maxProfiles []string
 	for name, value := range profiles {
-		if strings.TrimSpace(name) == "" {
+		if policyBlank(name) {
 			return nil, errors.New("invalid profile name")
 		}
-		profile, err := policyProfile(value)
-		if err != nil {
+		if _, err := policyProfile(value); err != nil {
 			return nil, err
 		}
-		if profile["reasoning_effort"] == "max" {
-			maxProfiles = append(maxProfiles, name)
-		}
 	}
-	effortPolicy, err := suiteMapping(policy["effort_policy"], "effort_policy", "default_substantive", "max_for_sol", "configured_max_profiles", "automatic_escalation")
+	effortPolicy, err := policyEfforts(policy, profiles)
 	if err != nil {
 		return nil, err
-	}
-	maxRule, ok := effortPolicy["max_for_sol"].(string)
-	if !ok || !slices.Contains([]string{"explicit_user_request", "configured_or_explicit_user_request"}, maxRule) {
-		return nil, errors.New("invalid Sol max rule")
-	}
-	if maxRule == "explicit_user_request" {
-		for _, name := range maxProfiles {
-			if slices.Contains([]string{"gpt-6.1-sol", "gpt-6-sol"}, profiles[name].(Object)["model"].(string)) {
-				return nil, errors.New("Sol max requires an explicit user request")
-			}
-		}
-	}
-	configured, err := policyList(effortPolicy["configured_max_profiles"], "invalid configured max profiles", func(name string) bool { _, present := profiles[name]; return present }, false)
-	if err != nil {
-		return nil, err
-	}
-	slices.Sort(configured)
-	slices.Sort(maxProfiles)
-	if !slices.Equal(configured, maxProfiles) {
-		return nil, errors.New("invalid configured max profiles")
-	}
-	if effortPolicy["automatic_escalation"] != false {
-		return nil, errors.New("automatic effort escalation must be disabled")
 	}
 	guidance, err := suiteMapping(policy["effort_guidance"], "effort_guidance")
 	if err != nil {
@@ -1196,7 +1275,7 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 		}
 	}
 	for role, name := range roles {
-		if strings.TrimSpace(role) == "" {
+		if policyBlank(role) {
 			return nil, errors.New("invalid role name")
 		}
 		profile, err := policyReferenced(profiles, name)
@@ -1288,8 +1367,9 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 		if providers["jev"] != model || providers["subq_snap"] != "subq-snap-preview" {
 			return nil, errors.New("consultation providers must match the Jev model and use subq-snap-preview")
 		}
-		if consultation["comparison"] != "codex_evidence_and_verification" {
-			return nil, errors.New("consultation comparison must use Codex evidence and verification")
+		// Policies from before the coordinator rename keep their original marker.
+		if comparison := consultation["comparison"]; comparison != "coordinator_evidence_and_verification" && comparison != "codex_evidence_and_verification" {
+			return nil, errors.New("consultation comparison must use coordinator evidence and verification")
 		}
 		if hasRequiredOpenAI {
 			if providers["openai_decisions"] != "gpt-6-luna" {
@@ -1436,13 +1516,17 @@ func ValidateSuite(root string) (Object, error) {
 	if _, err := suiteModelPolicy(policyPath); err != nil {
 		return nil, fmt.Errorf("model policy is invalid: %w", err)
 	}
+	if _, err := ClaudeModelDefaults(root, manifest); err != nil {
+		return nil, fmt.Errorf("Claude model policy is invalid: %w", err)
+	}
 	if _, err := SharedConfigDefaults(root); err != nil {
 		return nil, fmt.Errorf("shared Codex defaults are invalid: %w", err)
 	}
 	return Object{
 		"version": manifest["version"], "registrations": manifest["registrations"],
 		"global_instructions": manifest["global_instructions"], "model_policy": manifest["model_policy"],
-		"skill_count": len(names), "markdown_files_checked": markdown,
+		"claude_model_policy": manifest["claude_model_policy"],
+		"skill_count":         len(names), "markdown_files_checked": markdown,
 		"required_licenses": len(manifest["required_licenses"].([]any)),
 	}, nil
 }

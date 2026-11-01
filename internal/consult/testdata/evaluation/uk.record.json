@@ -1,0 +1,602 @@
+{
+  "comparison": {
+    "c01": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c02": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c03": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c04": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c05": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c06": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c07": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c08": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c09": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c10": {
+      "choices": {
+        "jev": "supported",
+        "openai_decisions": "supported"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c11": {
+      "choices": {
+        "jev": "contradicted",
+        "openai_decisions": "contradicted"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    },
+    "c12": {
+      "choices": {
+        "jev": "insufficient_evidence",
+        "openai_decisions": "insufficient_evidence"
+      },
+      "missing": {
+        "subq_snap": "unavailable"
+      },
+      "status": "partial"
+    }
+  },
+  "final_decision": {
+    "questions": {},
+    "status": "pending"
+  },
+  "providers": {
+    "jev": {
+      "duration_seconds": 0.012,
+      "request_sha256": "5b863b9697b9fdf44cc12a3fd04da13dcb32e8be2ff17abd188ebb213aaa6f8a",
+      "requested_model": "jev-1.14.0",
+      "resolved_model": "jev-1.14.0",
+      "result": {
+        "answers": {
+          "c01": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c02": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c03": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c04": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c05": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c06": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c07": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c08": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c09": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c10": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c11": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c12": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "jev-1.14.0",
+        "usage": {
+          "input_tokens": 24,
+          "output_tokens": 2
+        }
+      },
+      "status": "success",
+      "usage": {
+        "input_tokens": 24,
+        "output_tokens": 2
+      }
+    },
+    "openai_decisions": {
+      "duration_seconds": 0.012,
+      "request_sha256": "5b863b9697b9fdf44cc12a3fd04da13dcb32e8be2ff17abd188ebb213aaa6f8a",
+      "requested_model": "gpt-6-luna",
+      "resolved_model": "gpt-6-luna",
+      "result": {
+        "answers": {
+          "c01": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c02": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c03": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c04": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c05": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c06": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c07": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c08": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c09": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c10": {
+            "choice": "supported",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 0.0,
+              "supported": 1.0
+            },
+            "type": "choice"
+          },
+          "c11": {
+            "choice": "contradicted",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 1.0,
+              "insufficient_evidence": 0.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          },
+          "c12": {
+            "choice": "insufficient_evidence",
+            "confidence": 1.0,
+            "probabilities": {
+              "contradicted": 0.0,
+              "insufficient_evidence": 1.0,
+              "supported": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "gpt-6-luna",
+        "usage": {
+          "input_tokens": 24,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 2,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 26
+        }
+      },
+      "status": "success",
+      "usage": {
+        "input_tokens": 24,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 2,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 26
+      }
+    },
+    "subq_snap": {
+      "duration_seconds": 30.0,
+      "error": {
+        "category": "timeout"
+      },
+      "request_sha256": "5b863b9697b9fdf44cc12a3fd04da13dcb32e8be2ff17abd188ebb213aaa6f8a",
+      "requested_model": "subq-snap-preview",
+      "status": "unavailable"
+    }
+  },
+  "request": {
+    "questions": {
+      "c01": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c01.claim лише на підставі state.cases.c01.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c02": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c02.claim лише на підставі state.cases.c02.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c03": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c03.claim лише на підставі state.cases.c03.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c04": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c04.claim лише на підставі state.cases.c04.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c05": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c05.claim лише на підставі state.cases.c05.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c06": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c06.claim лише на підставі state.cases.c06.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c07": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c07.claim лише на підставі state.cases.c07.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c08": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c08.claim лише на підставі state.cases.c08.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c09": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c09.claim лише на підставі state.cases.c09.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c10": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c10.claim лише на підставі state.cases.c10.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c11": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c11.claim лише на підставі state.cases.c11.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      },
+      "c12": {
+        "criteria": {
+          "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+          "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження.",
+          "supported": "Доказові дані підтверджують істинність усього твердження."
+        },
+        "instructions": "Оцініть state.cases.c12.claim лише на підставі state.cases.c12.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+        "type": "choice"
+      }
+    },
+    "state": {
+      "cases": {
+        "c01": {
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання.",
+          "evidence": "Для запиту R трасування фіксує таку послідовність виконання: крок 1 — транзакцію бази даних успішно зафіксовано; крок 2 — сервер надсилає клієнту підтвердження успішного виконання."
+        },
+        "c02": {
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання.",
+          "evidence": "Для запиту R трасування фіксує таку послідовність виконання: крок 1 — сервер надсилає клієнту підтвердження успішного виконання; крок 2 — транзакцію бази даних успішно зафіксовано."
+        },
+        "c03": {
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання.",
+          "evidence": "Для запиту R запис підтверджує дві події: успішну фіксацію транзакції бази даних і надсилання сервером клієнту підтвердження успішного виконання. Він не містить послідовності виконання або часових позначок цих подій."
+        },
+        "c04": {
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A.",
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер дозволяє цьому користувачу доступ лише до записів тенанта A. Сервер повертає користувачу вміст рівно двох записів: r1 належить тенанту A, і r2 належить тенанту A."
+        },
+        "c05": {
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A.",
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер повертає користувачу вміст рівно двох записів: r1 належить тенанту A, а r2 належить тенанту B. Користувач отримує вміст обох записів."
+        },
+        "c06": {
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A.",
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер повертає користувачу вміст рівно двох записів. У записі спостереження не вказано, яким тенантам належать ці записи та яке правило доступу застосував сервер."
+        },
+        "c07": {
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування.",
+          "evidence": "Для завдання T зафіксовано таку послідовність виконання: крок 1 — батьківська функція скасовує контекст завдання; крок 2 — воркер, за який вона відповідає, припиняє роботу; крок 3 — батьківська функція повертає керування."
+        },
+        "c08": {
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування.",
+          "evidence": "Для завдання T зафіксовано таку послідовність виконання: крок 1 — батьківська функція скасовує контекст завдання; крок 2 — батьківська функція повертає керування; крок 3 — спостереження підтверджує, що воркер, за який вона відповідає, досі працює і ще не припинив роботу."
+        },
+        "c09": {
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування.",
+          "evidence": "Для завдання T запис підтверджує, що батьківська функція скасувала контекст завдання, а потім повернула керування. У записі не вказано, чи припинив роботу воркер, за який вона відповідає, і коли це сталося."
+        },
+        "c10": {
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111.",
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Повторне читання даних сервісу релізів підтверджує, що реліз v2.3.0 опубліковано і його тег вказує на коміт 1111111111111111111111111111111111111111."
+        },
+        "c11": {
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111.",
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Повторне читання даних сервісу релізів підтверджує, що реліз v2.3.0 опубліковано і його тег вказує на коміт 2222222222222222222222222222222222222222."
+        },
+        "c12": {
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111.",
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Для цього коміту CI завершився успішно. Публікацію релізу, тег релізу та ревізію вихідного коду релізу не перевіряли."
+        }
+      }
+    }
+  },
+  "request_sha256": "5b863b9697b9fdf44cc12a3fd04da13dcb32e8be2ff17abd188ebb213aaa6f8a",
+  "status": "partial",
+  "version": 3
+}

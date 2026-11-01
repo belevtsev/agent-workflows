@@ -78,7 +78,7 @@ acceptance JSON contains `task_id`, `assignment_id`, `result_sha256`,
 `coordinator_id`, `status`, `reason`, `evidence`, `check_ids` and `findings`.
 Copy the exact emitted result hash; `evidence` contains real current source
 references. Status is `accepted`, `rejected` or `unused`. Account for every finding
-with `finding_id`, disposition `status`, `reason` and source `evidence`. Codex can
+with `finding_id`, disposition `status`, `reason` and source `evidence`. The coordinator can
 reject a finding against evidence; reviewer agreement is not a veto or permission.
 A finding disposition of `accepted` acknowledges an unresolved finding and blocks
 completion. Use `resolved` for an addressed finding or `rejected` for a finding
@@ -114,7 +114,7 @@ and refresh affected evidence. Implementation handoffs can retain scoped evidenc
 after unrelated edits; final review must cover the whole current source.
 
 The gate checks structure, bindings, current source, actual check records and
-declared identity separation. Codex still verifies that an independent reviewer
+declared identity separation. The coordinator still verifies that an independent reviewer
 actually investigated the change and that its conclusions are sound. Declared
 changes are checked against scope and source; they do not prove that undeclared
 edits never occurred or establish operating-system isolation.

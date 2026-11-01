@@ -25,10 +25,13 @@ func ValidateAutomation(root string) error {
 			return err
 		}
 		name := filepath.ToSlash(relative)
+		extension := strings.ToLower(filepath.Ext(name))
+		if strings.HasPrefix(name, "skills/") && extension == ".py" {
+			return fmt.Errorf("first-party skills must use Go: %s", name)
+		}
 		if name == "install.sh" || strings.HasPrefix(name, "skills/") || strings.HasPrefix(name, "third_party/") {
 			continue
 		}
-		extension := strings.ToLower(filepath.Ext(name))
 		base := strings.ToLower(filepath.Base(name))
 		if extension == ".py" || extension == ".sh" || extension == ".bash" || extension == ".zsh" ||
 			(strings.HasPrefix(base, "requirements") && extension == ".txt") {

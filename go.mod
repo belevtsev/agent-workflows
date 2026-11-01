@@ -1,4 +1,4 @@
-module github.com/belevtsev/codex-workflows
+module github.com/belevtsev/agent-workflows
 
 go 1.27.1
 

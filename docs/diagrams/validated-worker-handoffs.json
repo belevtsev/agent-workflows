@@ -8,7 +8,7 @@
     "animation": "none",
     "output": "docs/diagrams/validated-worker-handoffs.html",
     "repository": {
-      "url": "https://github.com/belevtsev/codex-workflows.git",
+      "url": "https://github.com/belevtsev/agent-workflows.git",
       "revision": "0dc43e4b9462cb99ecf872eefdccad0062f82f23",
       "provider": "github",
       "link_mode": "local-only"

@@ -59,8 +59,15 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			options.CodexHome = filepath.Join(options.Home, ".codex")
 		}
 	}
-	if options.SkillsHome == "" {
-		options.SkillsHome = filepath.Join(options.Home, ".agents", "skills")
+	if options.ClaudeHome == "" {
+		options.ClaudeHome = options.Getenv("CLAUDE_CONFIG_DIR")
+		if options.ClaudeHome == "" {
+			options.ClaudeHome = filepath.Join(options.Home, ".claude")
+		}
+	}
+	skillRoots := []string{filepath.Join(options.Home, ".agents", "skills"), filepath.Join(options.ClaudeHome, "skills")}
+	if options.SkillsHome != "" {
+		skillRoots = []string{options.SkillsHome}
 	}
 	profile, err := Inspect(ctx, options.Repo)
 	if err != nil {
@@ -82,6 +89,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		report.Credentials.Environment[key] = strings.TrimSpace(options.Getenv(key)) != ""
 	}
 	readCodexMetadata(ctx, options.CodexHome, &report)
+	readClaudeMetadata(options.ClaudeHome, &report)
 	credentialCheck := func(name, source string, values map[string]bool) {
 		count := 0
 		for _, value := range values {
@@ -99,10 +107,14 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 	credentialCheck("credentials_launcher", "codex_mcp_literal_env", report.Credentials.Launcher)
 	credentialCheck("credentials_codex_shell", "codex_shell_environment_policy_set", report.Credentials.CodexShell)
 	skillCount := 0
-	for _, skill := range []string{"task-orchestration", "production-plan", "code-review"} {
-		if info, err := os.Stat(filepath.Join(options.SkillsHome, skill, "SKILL.md")); err == nil && info.Mode().IsRegular() {
-			skillCount++
+	for _, root := range skillRoots {
+		count := 0
+		for _, skill := range []string{"task-orchestration", "production-plan", "code-review"} {
+			if info, err := os.Stat(filepath.Join(root, skill, "SKILL.md")); err == nil && info.Mode().IsRegular() {
+				count++
+			}
 		}
+		skillCount = max(skillCount, count)
 	}
 	skillStatus := "configured"
 	if skillCount == 0 {
@@ -136,7 +148,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		}
 		put(name, status, detail, "project_markers")
 	}
-	var gopls, graphify, graphifyPython string
+	var gopls, graphify string
 	if goApplicable {
 		gopls = lookup("gopls")
 		if gopls == "" {
@@ -144,24 +156,19 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		} else {
 			put("gopls_cli", "detected", "Optional gopls executable detected; version is unchecked", "executable_lookup")
 		}
-		bin := filepath.Join(options.Home, ".venvs", "codex-graphify", "bin")
-		pythonName, graphifyName := "python", "graphify"
+		name := "graphify"
+		directory := "bin"
 		if runtime.GOOS == "windows" {
-			bin = filepath.Join(options.Home, ".venvs", "codex-graphify", "Scripts")
-			pythonName, graphifyName = "python.exe", "graphify.exe"
+			name, directory = "graphify.exe", "Scripts"
 		}
-		if executableFile(filepath.Join(bin, graphifyName)) {
-			graphify = filepath.Join(bin, graphifyName)
-			if executableFile(filepath.Join(bin, pythonName)) {
-				graphifyPython = filepath.Join(bin, pythonName)
-			}
-		} else {
+		graphify = filepath.Join(options.Home, ".venvs", "agent-graphify", directory, name)
+		if !executableFile(graphify) {
 			graphify = lookup("graphify")
 		}
 		if graphify == "" {
 			put("graphify_cli", "missing", "Go project detected but optional Graphify executable was not detected", "executable_lookup")
 		} else {
-			put("graphify_cli", "detected", "Optional Graphify executable detected; graph cache freshness remains owned by the Graphify runner", "executable_lookup")
+			put("graphify_cli", "detected", "Optional Graphify executable detected; graph cache freshness remains owned by cw graphify", "executable_lookup")
 		}
 	}
 	if options.Live {
@@ -207,21 +214,17 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			} else {
 				put("gopls_mcp", "verified", "Direct gopls MCP initialization succeeded and the probe process was closed; Codex launcher dispatch remains unchecked", "live_direct_protocol")
 			}
-			put("gopls_dispatch", "unchecked", "Direct protocol initialization does not verify Codex interface dispatch or Go source analysis", "no_interface_dispatch_probe")
+			put("gopls_dispatch", "unchecked", "Direct protocol initialization does not verify host interface dispatch or Go source analysis", "no_interface_dispatch_probe")
 		}
 		if goApplicable && graphify != "" {
-			if graphifyPython == "" {
-				put("graphify_version", "unchecked", "A dedicated Graphify interpreter was not detected; no global Python or provisioning fallback was attempted", "executable_lookup")
+			result, probeErr := probe(graphify, []string{"--version"}, "", 0)
+			version := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(result.Stdout)), "graphify"))
+			if probeErr != nil || version == "" {
+				put("graphify_version", "degraded", "Bounded Graphify version probe was unavailable", "live_version_probe")
+			} else if version != "0.9.91" {
+				put("graphify_version", "stale", "Graphify does not report the supported 0.9.91 version", "live_version_probe")
 			} else {
-				result, probeErr := probe(graphifyPython, []string{"-I", "-c", "from importlib.metadata import version; print(version('graphifyy'))"}, "", 0)
-				version := strings.TrimSpace(string(result.Stdout))
-				if probeErr != nil || version == "" {
-					put("graphify_version", "degraded", "Bounded Graphify package metadata probe was unavailable", "live_package_metadata")
-				} else if version != "0.9.91" {
-					put("graphify_version", "stale", "Graphify package metadata does not match the supported 0.9.91 version", "live_package_metadata")
-				} else {
-					put("graphify_version", "verified", "Graphify package metadata matches 0.9.91; graph construction and cache freshness were not queried", "live_package_metadata")
-				}
+				put("graphify_version", "verified", "Graphify reports 0.9.91; graph construction and cache freshness were not queried", "live_version_probe")
 			}
 		}
 	}
@@ -308,6 +311,31 @@ func readCodexMetadata(ctx context.Context, codexHome string, report *DoctorRepo
 		}
 		report.Checks["mcp_"+kind] = Check{Status: status, Detail: detail, Source: "codex_config_enabled_state"}
 	}
+}
+
+// readClaudeMetadata reports only whether settings parse. Their values stay out
+// of doctor output, which is safe to share.
+func readClaudeMetadata(claudeHome string, report *DoctorReport) {
+	path := filepath.Join(claudeHome, "settings.json")
+	check := func(status, detail string) {
+		report.Checks["claude_config"] = Check{Status: status, Detail: detail, Source: "selected_claude_settings"}
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		check("missing", "Selected Claude Code settings are unavailable; no values were returned")
+		return
+	}
+	if !info.Mode().IsRegular() || info.Size() > 1<<20 {
+		check("degraded", "Selected Claude Code settings must be a bounded regular file")
+		return
+	}
+	data, err := os.ReadFile(path)
+	var settings map[string]any
+	if err != nil || json.Unmarshal(data, &settings) != nil {
+		check("degraded", "Selected Claude Code settings could not be parsed; raw diagnostics were not returned")
+		return
+	}
+	check("detected", "Settings parse; no values were returned")
 }
 
 func credentialPresence(values map[string]any, result map[string]bool) {

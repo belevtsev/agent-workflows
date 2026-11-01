@@ -17,7 +17,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__* mcp__context7__resolve-library-id mcp__context7__query-docs
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__* mcp__context7__resolve-library-id mcp__context7__query-docs
 ---
 
 # Go data structures

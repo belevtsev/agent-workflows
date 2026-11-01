@@ -22,7 +22,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(benchstat:*) Bash(fieldalignment:*) Bash(staticcheck:*) Bash(curl:*) Bash(fgprof:*) Bash(perf:*) WebSearch AskUserQuestion EnterWorktree ExitWorktree
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch Bash(benchstat:*) Bash(fieldalignment:*) Bash(staticcheck:*) Bash(curl:*) Bash(fgprof:*) Bash(perf:*) WebSearch AskUserQuestion EnterWorktree ExitWorktree
 ---
 
 # Go performance changes
@@ -33,4 +33,4 @@ Use comparable workloads, toolchains, hardware, concurrency, and warm/cold condi
 
 Preserve correctness, ownership, memory bounds, and cancellation. A cache needs explicit freshness/invalidation and capacity behavior; a pool must not leak state across users. Avoid runtime tuning that masks unbounded work.
 
-Read [memory](references/memory.md), [CPU](references/cpu.md), [I/O](references/io-networking.md), [runtime](references/runtime.md), or [caching](references/caching.md) for the measured cause. [Measurement examples](references/practices.md) retain the investigation loop and [observability](references/observability.md) covers production signals. Use the benchmark specialist when comparison mechanics are needed. A plausible improvement is not a measured result.
+Read [memory](references/memory.md), [CPU](references/cpu.md), [I/O](references/io-networking.md), [runtime](references/runtime.md), [caching](references/caching.md), or [cache failure modes](references/cache-failures.md) for the measured cause. [Measurement examples](references/practices.md) retain the investigation loop and [observability](references/observability.md) covers production signals. Use the benchmark specialist when comparison mechanics are needed. A plausible improvement is not a measured result.

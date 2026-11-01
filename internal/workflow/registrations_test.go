@@ -13,7 +13,7 @@ import (
 var backendFixtureNames = []string{"backend-security-review", "go-pki-mtls", "protobuf-contracts"}
 
 // Keep this lifecycle fixture historical as the maintained pack grows. Its
-// initial immutable snapshot has the original ten registrations.
+// initial immutable snapshot has the original nine registrations.
 func historicalRegistrationFixture(t *testing.T) *installerFixture {
 	t.Helper()
 	f := newInstallerFixture(t)
@@ -26,12 +26,12 @@ func historicalRegistrationFixture(t *testing.T) *installerFixture {
 	if !equal(manifest, f.manifest) {
 		installerWrite(t, filepath.Join(f.paths.Source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
 		f.git(t, "add", ".")
-		f.git(t, "commit", "-qm", "Historical ten registrations")
+		f.git(t, "commit", "-qm", "Historical nine registrations")
 		f.first = f.git(t, "rev-parse", "HEAD")
 		f.manifest = manifest
 	}
-	if got := len(registrations); got != 10 {
-		t.Fatalf("historical fixture registrations = %d, want ten", got)
+	if got := len(registrations); got != 9 {
+		t.Fatalf("historical fixture registrations = %d, want nine", got)
 	}
 	return f
 }
@@ -60,12 +60,12 @@ func registrationChanges(t *testing.T, report Object) []RegistrationChange {
 
 func assertAddedRegistrations(t *testing.T, installer *Installer, state, prior Object) {
 	t.Helper()
-	if got := len(object(state["registrations"])); got != 13 {
-		t.Fatalf("active registrations = %d, want thirteen", got)
+	if got := len(object(hostRecord(state, hostCodex)["registrations"])); got != 12 {
+		t.Fatalf("active registrations = %d, want twelve", got)
 	}
-	for name, raw := range object(state["registrations"]) {
+	for name, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
 		item := object(raw)
-		if old := object(object(prior["registrations"])[name]); old != nil {
+		if old := object(object(hostRecord(prior, hostCodex)["registrations"])[name]); old != nil {
 			if !equal(item["original"], old["original"]) {
 				t.Fatalf("activation changed original ownership: %s", name)
 			}
@@ -90,7 +90,7 @@ func TestRegistrationFreshAndRepeatedInstallPlans(t *testing.T) {
 	}
 	before := installerSnapshot(t, f.base)
 	report, err := i.Setup(true)
-	if err != nil || report["release"] != second || len(registrationChanges(t, report)) != 13 {
+	if err != nil || report["release"] != second || len(registrationChanges(t, report)) != 12 {
 		t.Fatalf("fresh install preview: %#v, %v", report, err)
 	}
 	if calls != 0 {
@@ -116,21 +116,6 @@ func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
 			original := f.seedUserFiles(t)
 			origin := f.bareOrigin(t)
 			i := f.installer(true)
-			// Preserve both forms of historical origin through addition,
-			// rollback, readdition, and selective uninstall.
-			legacyCheckout := filepath.Join(f.base, "prior adopted checkout")
-			installerCopyTree(t, f.paths.Source, legacyCheckout)
-			adoptedTarget := filepath.Join(legacyCheckout, "skills", "code-review")
-			if err := os.Symlink(adoptedTarget, filepath.Join(i.skills, "code-review")); err != nil {
-				t.Fatal(err)
-			}
-			legacySkill := filepath.Join(i.Home, ".codex", "skills", "typesafe-ai")
-			installerCopyTree(t, filepath.Join(legacyCheckout, "third_party", "typesafe-ai"), legacySkill)
-			legacyInventory := installerSnapshot(t, legacySkill)
-			agents := filepath.Join(f.paths.Codex, "AGENTS.md")
-			original[agents] = installerRead(t, filepath.Join(legacyCheckout, text(f.manifest["global_instructions"]))) + original[agents]
-			installerWrite(t, agents, original[agents], 0o640)
-			i.MigrateFrom, i.TypeSafeLegacy = legacyCheckout, new("")
 			if _, err := i.Setup(true); err != nil {
 				t.Fatal(err)
 			}
@@ -176,8 +161,8 @@ func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
 				t.Fatal(err)
 			}
 			state, err = i.state(true)
-			if err != nil || !equal(state["registrations"], prior["registrations"]) {
-				t.Fatalf("rollback did not restore ten ownership rows: %#v, %v", state, err)
+			if err != nil || !equal(hostRecord(state, hostCodex)["registrations"], hostRecord(prior, hostCodex)["registrations"]) {
+				t.Fatalf("rollback did not restore nine ownership rows: %#v, %v", state, err)
 			}
 			for _, name := range backendFixtureNames {
 				if exists(filepath.Join(i.skills, name)) {
@@ -213,10 +198,6 @@ func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
 					t.Fatalf("selective uninstall changed %s: got %q, want %q", path, got, want+"\n# independent later edit\n")
 				}
 			}
-			if target, err := os.Readlink(filepath.Join(i.skills, "code-review")); err != nil || target != adoptedTarget {
-				t.Fatalf("selective uninstall lost adopted raw link: %q, %v", target, err)
-			}
-			installerUnchanged(t, legacySkill, legacyInventory)
 		})
 	}
 }
@@ -379,54 +360,23 @@ func mustRegistrationState(t *testing.T, i *Installer) Object {
 }
 
 func TestRegistrationRollbackRefusesAdoptedOriginsAndChangedOwnedLinks(t *testing.T) {
-	for _, originKind := range []string{"symlink", "legacy", "changed link"} {
+	for _, originKind := range []string{"symlink", "changed link"} {
 		t.Run(originKind, func(t *testing.T) {
 			f := historicalRegistrationFixture(t)
 			name := backendFixtureNames[0]
-			if originKind == "legacy" {
-				// Frozen v1 installations can carry legacy adoption rows. Their
-				// immutable prior manifest need not contain that registration.
-				name = "typesafe-ai"
-				manifest := clone(f.manifest)
-				manifest["registrations"] = clone(object(f.manifest["registrations"]))
-				delete(object(manifest["registrations"]), name)
-				installerWrite(t, filepath.Join(f.paths.Source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
-				f.git(t, "add", ".")
-				f.git(t, "commit", "-qm", "Historical snapshot before legacy registration")
-				f.first = f.git(t, "rev-parse", "HEAD")
-				f.manifest = manifest
-			}
 			i := f.installer(true)
 			if _, err := i.Setup(true); err != nil {
 				t.Fatal(err)
 			}
 			addBackendFixtureRegistrations(t, f)
-			if originKind == "legacy" {
-				manifest, err := LoadManifest(f.paths.Source)
-				if err != nil {
-					t.Fatal(err)
-				}
-				object(manifest["registrations"])[name] = "third_party/typesafe-ai"
-				installerWrite(t, filepath.Join(f.paths.Source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
-				f.git(t, "add", ".")
-				f.git(t, "commit", "-qm", "Restore legacy registration")
-			}
 			if _, err := i.Setup(true); err != nil {
 				t.Fatal(err)
 			}
 			state := mustRegistrationState(t, i)
-			item := object(object(state["registrations"])[name])
+			item := object(object(hostRecord(state, hostCodex)["registrations"])[name])
 			switch originKind {
 			case "symlink":
 				item["original"] = Object{"kind": "symlink", "target": filepath.Join(f.base, "adopted prior checkout", "skills", name)}
-			case "legacy":
-				backup := filepath.Join(i.State, "backups", name)
-				installerCopyTree(t, filepath.Join(f.paths.Source, "third_party", name), backup)
-				observation, err := observe(backup)
-				if err != nil {
-					t.Fatal(err)
-				}
-				item["original"] = Object{"kind": "legacy", "path": filepath.Join(i.Home, ".codex", "skills", name), "backup": backup, "observation": observation}
 			case "changed link":
 				path := filepath.Join(i.skills, name)
 				if err := os.Remove(path); err != nil {
@@ -496,8 +446,8 @@ func TestRegistrationNoCheckoutUpdateDryRunWithSourceBehindActive(t *testing.T) 
 	if _, err := i.Update(); err != nil {
 		t.Fatal(err)
 	}
-	if state := mustRegistrationState(t, i); state["release"] != second || len(object(state["registrations"])) != 13 || f.git(t, "rev-parse", "HEAD") != f.first {
-		t.Fatal("no-checkout update did not activate thirteen while retaining ten in source")
+	if state := mustRegistrationState(t, i); state["release"] != second || len(object(hostRecord(state, hostCodex)["registrations"])) != 12 || f.git(t, "rev-parse", "HEAD") != f.first {
+		t.Fatal("no-checkout update did not activate twelve while retaining nine in source")
 	}
 	// An allowed URL with a missing rewrite destination makes a fetch fail.
 	// The dry run must use only clean local ancestry and owned cached state.
@@ -589,11 +539,11 @@ func TestRegistrationNativeTransitionRecoversEveryOperationWithoutSource(t *test
 					f, i, prior, _ := nativeRegistrationTransition(t, action)
 					beforeHome := installerSnapshot(t, f.paths.Home)
 					beforeState := installerRead(t, i.statePath)
-					t.Setenv("CODEX_WORKFLOWS_FAULT", label)
+					t.Setenv("AGENT_WORKFLOWS_FAULT", label)
 					if _, err := i.Execute(action); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 						t.Fatalf("%s did not interrupt at %s: %v", action, label, err)
 					}
-					t.Setenv("CODEX_WORKFLOWS_FAULT", "")
+					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					if err := os.Rename(f.paths.Source, f.paths.Source+" unavailable"); err != nil {
 						t.Fatal(err)
 					}

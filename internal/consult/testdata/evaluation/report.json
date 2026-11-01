@@ -1,0 +1,1013 @@
+{
+  "batches": {
+    "de": {
+      "providers": {
+        "jev": {
+          "duration_seconds": 0.0,
+          "error": {
+            "category": "invalid_response"
+          },
+          "requested_model": "jev-1.14.0",
+          "status": "unavailable"
+        },
+        "openai_decisions": {
+          "duration_seconds": 0.012,
+          "requested_model": "gpt-6-luna",
+          "resolved_model": "gpt-6-luna",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 2,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 26
+          }
+        },
+        "subq_snap": {
+          "duration_seconds": 0.012,
+          "requested_model": "subq-snap-preview",
+          "resolved_model": "subq-snap-preview",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "output_tokens": 2
+          }
+        }
+      },
+      "record_file": "de.record.json"
+    },
+    "en": {
+      "providers": {
+        "jev": {
+          "duration_seconds": 0.012,
+          "requested_model": "jev-1.14.0",
+          "resolved_model": "jev-1.14.0",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "output_tokens": 2
+          }
+        },
+        "openai_decisions": {
+          "duration_seconds": 0.012,
+          "requested_model": "gpt-6-luna",
+          "resolved_model": "gpt-6-luna",
+          "status": "partial",
+          "usage": {
+            "input_tokens": 24,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 2,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 26
+          }
+        },
+        "subq_snap": {
+          "duration_seconds": 0.012,
+          "requested_model": "subq-snap-preview",
+          "resolved_model": "subq-snap-preview",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "output_tokens": 2
+          }
+        }
+      },
+      "record_file": "en.record.json"
+    },
+    "uk": {
+      "providers": {
+        "jev": {
+          "duration_seconds": 0.012,
+          "requested_model": "jev-1.14.0",
+          "resolved_model": "jev-1.14.0",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "output_tokens": 2
+          }
+        },
+        "openai_decisions": {
+          "duration_seconds": 0.012,
+          "requested_model": "gpt-6-luna",
+          "resolved_model": "gpt-6-luna",
+          "status": "success",
+          "usage": {
+            "input_tokens": 24,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 2,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 26
+          }
+        },
+        "subq_snap": {
+          "duration_seconds": 30.0,
+          "error": {
+            "category": "timeout"
+          },
+          "requested_model": "subq-snap-preview",
+          "status": "unavailable"
+        }
+      },
+      "record_file": "uk.record.json"
+    }
+  },
+  "execution": {
+    "automatic_retries": false,
+    "cases_per_language": 12,
+    "completed_batches": [
+      "en",
+      "uk",
+      "de"
+    ],
+    "deadline_seconds_per_batch": 30,
+    "judgments_per_provider": 36,
+    "languages": [
+      "en",
+      "uk",
+      "de"
+    ],
+    "max_network_requests": 9
+  },
+  "kind": "synthetic_multilingual_evaluation",
+  "provenance": {
+    "artifacts": {
+      "inputs.json": {
+        "sha256": "3e4dcc17662600c81cb5fe90553a519320749fa7d20ee0df55fd797b7ec09c3a"
+      },
+      "model-policy.yaml": {
+        "sha256": "b258fea1119e9a9da2662b0b5b37fb00df7dcdfde00bc6449f35f8fe9da0e5dc"
+      },
+      "oracle.json": {
+        "sha256": "fd1cbeb9cfc166f0b6f33489edd1ea86ff6f6f59f0c8319c978cee27e449055a"
+      }
+    },
+    "requested_models": {
+      "jev": "jev-1.14.0",
+      "openai_decisions": "gpt-6-luna",
+      "subq_snap": "subq-snap-preview"
+    }
+  },
+  "scoring": {
+    "jev": {
+      "consistency": {
+        "complete_triplets": 0,
+        "consistent_triplets": 0,
+        "incomplete_triplets": 12,
+        "possible_triplets": 12,
+        "ratio": null
+      },
+      "languages": {
+        "de": {
+          "accuracy": null,
+          "cases": [
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c01",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c02",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c04",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c05",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c07",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c08",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c10",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c11",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "missing_reason": "invalid_response",
+              "outcome": "missing"
+            }
+          ],
+          "correct": 0,
+          "correct_over_total": 0.0,
+          "coverage": 0.0,
+          "incorrect": 0,
+          "missing": 12,
+          "total": 12,
+          "valid_answers": 0
+        },
+        "en": {
+          "accuracy": 1.0,
+          "cases": [
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 12,
+          "correct_over_total": 1.0,
+          "coverage": 1.0,
+          "incorrect": 0,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        },
+        "uk": {
+          "accuracy": 1.0,
+          "cases": [
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 12,
+          "correct_over_total": 1.0,
+          "coverage": 1.0,
+          "incorrect": 0,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        }
+      },
+      "totals": {
+        "accuracy": 1.0,
+        "correct": 24,
+        "correct_over_total": 0.666667,
+        "coverage": 0.666667,
+        "incorrect": 0,
+        "missing": 12,
+        "total": 36,
+        "valid_answers": 24
+      }
+    },
+    "openai_decisions": {
+      "consistency": {
+        "complete_triplets": 11,
+        "consistent_triplets": 4,
+        "incomplete_triplets": 1,
+        "possible_triplets": 12,
+        "ratio": 0.363636
+      },
+      "languages": {
+        "de": {
+          "accuracy": 0.333333,
+          "cases": [
+            {
+              "choice": "insufficient_evidence",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 4,
+          "correct_over_total": 0.333333,
+          "coverage": 1.0,
+          "incorrect": 8,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        },
+        "en": {
+          "accuracy": 1.0,
+          "cases": [
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c01",
+              "missing_reason": "refusal",
+              "outcome": "missing"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 11,
+          "correct_over_total": 0.916667,
+          "coverage": 0.916667,
+          "incorrect": 0,
+          "missing": 1,
+          "total": 12,
+          "valid_answers": 11
+        },
+        "uk": {
+          "accuracy": 1.0,
+          "cases": [
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 12,
+          "correct_over_total": 1.0,
+          "coverage": 1.0,
+          "incorrect": 0,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        }
+      },
+      "totals": {
+        "accuracy": 0.771429,
+        "correct": 27,
+        "correct_over_total": 0.75,
+        "coverage": 0.972222,
+        "incorrect": 8,
+        "missing": 1,
+        "total": 36,
+        "valid_answers": 35
+      }
+    },
+    "subq_snap": {
+      "consistency": {
+        "complete_triplets": 0,
+        "consistent_triplets": 0,
+        "incomplete_triplets": 12,
+        "possible_triplets": 12,
+        "ratio": null
+      },
+      "languages": {
+        "de": {
+          "accuracy": 1.0,
+          "cases": [
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 12,
+          "correct_over_total": 1.0,
+          "coverage": 1.0,
+          "incorrect": 0,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        },
+        "en": {
+          "accuracy": 0.833333,
+          "cases": [
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c01",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "contradicted",
+              "id": "c02",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "supported",
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "outcome": "incorrect"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c04",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c05",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c07",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c08",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "outcome": "correct"
+            },
+            {
+              "choice": "supported",
+              "expected": "supported",
+              "id": "c10",
+              "outcome": "correct"
+            },
+            {
+              "choice": "contradicted",
+              "expected": "contradicted",
+              "id": "c11",
+              "outcome": "correct"
+            },
+            {
+              "choice": "insufficient_evidence",
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "outcome": "correct"
+            }
+          ],
+          "correct": 10,
+          "correct_over_total": 0.833333,
+          "coverage": 1.0,
+          "incorrect": 2,
+          "missing": 0,
+          "total": 12,
+          "valid_answers": 12
+        },
+        "uk": {
+          "accuracy": null,
+          "cases": [
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c01",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c02",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c03",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c04",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c05",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c06",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c07",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c08",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c09",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "supported",
+              "id": "c10",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "contradicted",
+              "id": "c11",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            },
+            {
+              "choice": null,
+              "expected": "insufficient_evidence",
+              "id": "c12",
+              "missing_reason": "timeout",
+              "outcome": "missing"
+            }
+          ],
+          "correct": 0,
+          "correct_over_total": 0.0,
+          "coverage": 0.0,
+          "incorrect": 0,
+          "missing": 12,
+          "total": 12,
+          "valid_answers": 0
+        }
+      },
+      "totals": {
+        "accuracy": 0.916667,
+        "correct": 22,
+        "correct_over_total": 0.611111,
+        "coverage": 0.666667,
+        "incorrect": 2,
+        "missing": 12,
+        "total": 36,
+        "valid_answers": 24
+      }
+    }
+  },
+  "status": "incomplete",
+  "version": 1
+}

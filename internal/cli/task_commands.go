@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/belevtsev/codex-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -70,22 +70,11 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		chosenStore := store
 		if chosenStore == "" {
-			codexHome, _ := root.PersistentFlags().GetString("codex-home")
-			if codexHome == "" {
-				codexHome = config.Getenv("CODEX_HOME")
+			roots, err := resolveRoots(root, config)
+			if err != nil {
+				return err
 			}
-			if codexHome == "" {
-				home, _ := root.PersistentFlags().GetString("home")
-				if home == "" {
-					var err error
-					home, err = config.HomeDir()
-					if err != nil {
-						return err
-					}
-				}
-				codexHome = filepath.Join(home, ".codex")
-			}
-			chosenStore = filepath.Join(codexHome, "workflow-tasks")
+			chosenStore = filepath.Join(roots.state, "workflow-tasks")
 		}
 		record, err := taskflow.Start(cmd.Context(), selected, chosenStore, plan)
 		if err != nil {
@@ -128,7 +117,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan")
 	task.AddCommand(run)
 	var assessTask, assessmentFile string
-	assess := &cobra.Command{Use: "assess", Short: "Record acceptance and Codex decisions against actual source/check references", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	assess := &cobra.Command{Use: "assess", Short: "Record acceptance and Coordinator decisions against actual source/check references", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
@@ -218,7 +207,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	consult.Flags().StringVar(&consultFile, "input", "", "Original helper version-three consultation/adjudication JSON file")
 	task.AddCommand(consult)
 	var verifyTask string
-	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Codex decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}

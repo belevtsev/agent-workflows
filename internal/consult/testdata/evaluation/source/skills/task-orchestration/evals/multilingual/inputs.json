@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "languages": ["en", "uk", "de"],
+  "instructions": {
+    "en": "Evaluate state.cases.{case_id}.claim using only state.cases.{case_id}.evidence. Choose the option whose definition matches the evidence. Do not use other cases or outside knowledge.",
+    "uk": "Оцініть state.cases.{case_id}.claim лише на підставі state.cases.{case_id}.evidence. Виберіть варіант, визначення якого відповідає доказовим даним. Не використовуйте інші випадки або зовнішні знання.",
+    "de": "Bewerte state.cases.{case_id}.claim ausschließlich anhand von state.cases.{case_id}.evidence. Wähle die Option, deren Definition zu den Belegen passt. Verwende weder andere Fälle noch externes Wissen."
+  },
+  "options": {
+    "en": {
+      "supported": "The evidence establishes that the entire claim is true.",
+      "contradicted": "The evidence establishes a fact that makes the claim false.",
+      "insufficient_evidence": "The evidence establishes neither that the claim is true nor that it is false."
+    },
+    "uk": {
+      "supported": "Доказові дані підтверджують істинність усього твердження.",
+      "contradicted": "Доказові дані встановлюють факт, через який твердження є хибним.",
+      "insufficient_evidence": "Доказові дані не встановлюють ані істинність, ані хибність твердження."
+    },
+    "de": {
+      "supported": "Die Belege zeigen, dass die gesamte Aussage zutrifft.",
+      "contradicted": "Die Belege zeigen einen Sachverhalt, durch den die Aussage falsch ist.",
+      "insufficient_evidence": "Die Belege zeigen weder, dass die Aussage zutrifft, noch, dass sie falsch ist."
+    }
+  },
+  "cases": [
+    {
+      "id": "c01",
+      "family": "durability",
+      "variants": {
+        "en": {
+          "evidence": "For request R, the trace records this execution order: step 1 — the database transaction commits successfully; step 2 — the server sends the success acknowledgement to the client.",
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client."
+        },
+        "uk": {
+          "evidence": "Для запиту R трасування фіксує таку послідовність виконання: крок 1 — транзакцію бази даних успішно зафіксовано; крок 2 — сервер надсилає клієнту підтвердження успішного виконання.",
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання."
+        },
+        "de": {
+          "evidence": "Für Anfrage R zeichnet die Ablaufverfolgung diese Ausführungsreihenfolge auf: Schritt 1 — die Datenbanktransaktion wird erfolgreich festgeschrieben; Schritt 2 — der Server sendet die Erfolgsbestätigung an den Client.",
+          "claim": "Bei der beobachteten Anfrage wurde die Datenbanktransaktion erfolgreich festgeschrieben, bevor der Server die Erfolgsbestätigung an den Client sendete."
+        }
+      }
+    },
+    {
+      "id": "c02",
+      "family": "durability",
+      "variants": {
+        "en": {
+          "evidence": "For request R, the trace records this execution order: step 1 — the server sends the success acknowledgement to the client; step 2 — the database transaction commits successfully.",
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client."
+        },
+        "uk": {
+          "evidence": "Для запиту R трасування фіксує таку послідовність виконання: крок 1 — сервер надсилає клієнту підтвердження успішного виконання; крок 2 — транзакцію бази даних успішно зафіксовано.",
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання."
+        },
+        "de": {
+          "evidence": "Für Anfrage R zeichnet die Ablaufverfolgung diese Ausführungsreihenfolge auf: Schritt 1 — der Server sendet die Erfolgsbestätigung an den Client; Schritt 2 — die Datenbanktransaktion wird erfolgreich festgeschrieben.",
+          "claim": "Bei der beobachteten Anfrage wurde die Datenbanktransaktion erfolgreich festgeschrieben, bevor der Server die Erfolgsbestätigung an den Client sendete."
+        }
+      }
+    },
+    {
+      "id": "c03",
+      "family": "durability",
+      "variants": {
+        "en": {
+          "evidence": "For request R, the record confirms two events: a successful database transaction commit and a success acknowledgement sent by the server to the client. It contains no execution order or timestamps for these events.",
+          "claim": "In the observed request, the database transaction committed successfully before the server sent the success acknowledgement to the client."
+        },
+        "uk": {
+          "evidence": "Для запиту R запис підтверджує дві події: успішну фіксацію транзакції бази даних і надсилання сервером клієнту підтвердження успішного виконання. Він не містить послідовності виконання або часових позначок цих подій.",
+          "claim": "У спостережуваному запиті транзакцію бази даних було успішно зафіксовано до того, як сервер надіслав клієнту підтвердження успішного виконання."
+        },
+        "de": {
+          "evidence": "Für Anfrage R bestätigt der Datensatz zwei Ereignisse: das erfolgreiche Festschreiben der Datenbanktransaktion und eine vom Server an den Client gesendete Erfolgsbestätigung. Er enthält weder eine Ausführungsreihenfolge noch Zeitstempel für diese Ereignisse.",
+          "claim": "Bei der beobachteten Anfrage wurde die Datenbanktransaktion erfolgreich festgeschrieben, bevor der Server die Erfolgsbestätigung an den Client sendete."
+        }
+      }
+    },
+    {
+      "id": "c04",
+      "family": "tenant_isolation",
+      "variants": {
+        "en": {
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server permits this user to access only tenant A records. The server returns the contents of exactly two records to the user: r1 belongs to tenant A and r2 belongs to tenant A.",
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A."
+        },
+        "uk": {
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер дозволяє цьому користувачу доступ лише до записів тенанта A. Сервер повертає користувачу вміст рівно двох записів: r1 належить тенанту A, і r2 належить тенанту A.",
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A."
+        },
+        "de": {
+          "evidence": "Der authentifizierte Benutzer gehört zu Mandant A. Bei der beobachteten Anfrage erlaubt der Server diesem Benutzer den Zugriff nur auf Datensätze von Mandant A. Der Server gibt den Inhalt von genau zwei Datensätzen an den Benutzer zurück: r1 gehört zu Mandant A und r2 gehört zu Mandant A.",
+          "claim": "Bei der beobachteten Anfrage des authentifizierten Benutzers von Mandant A gehörten alle zurückgegebenen Datensätze zu Mandant A."
+        }
+      }
+    },
+    {
+      "id": "c05",
+      "family": "tenant_isolation",
+      "variants": {
+        "en": {
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server returns the contents of exactly two records to the user: r1 belongs to tenant A and r2 belongs to tenant B. The user receives the contents of both records.",
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A."
+        },
+        "uk": {
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер повертає користувачу вміст рівно двох записів: r1 належить тенанту A, а r2 належить тенанту B. Користувач отримує вміст обох записів.",
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A."
+        },
+        "de": {
+          "evidence": "Der authentifizierte Benutzer gehört zu Mandant A. Bei der beobachteten Anfrage gibt der Server den Inhalt von genau zwei Datensätzen an den Benutzer zurück: r1 gehört zu Mandant A und r2 gehört zu Mandant B. Der Benutzer erhält den Inhalt beider Datensätze.",
+          "claim": "Bei der beobachteten Anfrage des authentifizierten Benutzers von Mandant A gehörten alle zurückgegebenen Datensätze zu Mandant A."
+        }
+      }
+    },
+    {
+      "id": "c06",
+      "family": "tenant_isolation",
+      "variants": {
+        "en": {
+          "evidence": "The authenticated user belongs to tenant A. For the observed request, the server returns the contents of exactly two records to the user. The record does not identify the tenants that own those records or the access rule applied by the server.",
+          "claim": "For the observed request by the authenticated user from tenant A, every returned record belonged to tenant A."
+        },
+        "uk": {
+          "evidence": "Автентифікований користувач належить до тенанта A. Для спостережуваного запиту сервер повертає користувачу вміст рівно двох записів. У записі спостереження не вказано, яким тенантам належать ці записи та яке правило доступу застосував сервер.",
+          "claim": "Для спостережуваного запиту автентифікованого користувача з тенанта A всі повернуті записи належали тенанту A."
+        },
+        "de": {
+          "evidence": "Der authentifizierte Benutzer gehört zu Mandant A. Bei der beobachteten Anfrage gibt der Server den Inhalt von genau zwei Datensätzen an den Benutzer zurück. Die Aufzeichnung nennt weder die Mandanten, denen diese Datensätze gehören, noch die vom Server angewandte Zugriffsregel.",
+          "claim": "Bei der beobachteten Anfrage des authentifizierten Benutzers von Mandant A gehörten alle zurückgegebenen Datensätze zu Mandant A."
+        }
+      }
+    },
+    {
+      "id": "c07",
+      "family": "cancellation",
+      "variants": {
+        "en": {
+          "evidence": "For task T, this execution order is recorded: step 1 — the parent function cancels the task context; step 2 — its owned worker stops running; step 3 — the parent function returns.",
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned."
+        },
+        "uk": {
+          "evidence": "Для завдання T зафіксовано таку послідовність виконання: крок 1 — батьківська функція скасовує контекст завдання; крок 2 — воркер, за який вона відповідає, припиняє роботу; крок 3 — батьківська функція повертає керування.",
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування."
+        },
+        "de": {
+          "evidence": "Für Aufgabe T ist diese Ausführungsreihenfolge aufgezeichnet: Schritt 1 — die übergeordnete Funktion bricht den Aufgabenkontext ab; Schritt 2 — der von ihr verantwortete Worker beendet seine Ausführung; Schritt 3 — die übergeordnete Funktion kehrt zurück.",
+          "claim": "Bei der beobachteten Aufgabe beendete der von der übergeordneten Funktion verantwortete Worker seine Ausführung, bevor die übergeordnete Funktion zurückkehrte."
+        }
+      }
+    },
+    {
+      "id": "c08",
+      "family": "cancellation",
+      "variants": {
+        "en": {
+          "evidence": "For task T, this execution order is recorded: step 1 — the parent function cancels the task context; step 2 — the parent function returns; step 3 — its owned worker is observed still running and has not stopped.",
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned."
+        },
+        "uk": {
+          "evidence": "Для завдання T зафіксовано таку послідовність виконання: крок 1 — батьківська функція скасовує контекст завдання; крок 2 — батьківська функція повертає керування; крок 3 — спостереження підтверджує, що воркер, за який вона відповідає, досі працює і ще не припинив роботу.",
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування."
+        },
+        "de": {
+          "evidence": "Für Aufgabe T ist diese Ausführungsreihenfolge aufgezeichnet: Schritt 1 — die übergeordnete Funktion bricht den Aufgabenkontext ab; Schritt 2 — die übergeordnete Funktion kehrt zurück; Schritt 3 — es wird beobachtet, dass der von ihr verantwortete Worker noch läuft und seine Ausführung noch nicht beendet hat.",
+          "claim": "Bei der beobachteten Aufgabe beendete der von der übergeordneten Funktion verantwortete Worker seine Ausführung, bevor die übergeordnete Funktion zurückkehrte."
+        }
+      }
+    },
+    {
+      "id": "c09",
+      "family": "cancellation",
+      "variants": {
+        "en": {
+          "evidence": "For task T, the record confirms that the parent function cancelled the task context and then returned. The record does not say whether or when its owned worker stopped running.",
+          "claim": "For the observed task, the worker owned by the parent function stopped running before the parent function returned."
+        },
+        "uk": {
+          "evidence": "Для завдання T запис підтверджує, що батьківська функція скасувала контекст завдання, а потім повернула керування. У записі не вказано, чи припинив роботу воркер, за який вона відповідає, і коли це сталося.",
+          "claim": "Для спостережуваного завдання воркер, за який відповідає батьківська функція, припинив роботу до того, як батьківська функція повернула керування."
+        },
+        "de": {
+          "evidence": "Für Aufgabe T bestätigt die Aufzeichnung, dass die übergeordnete Funktion den Aufgabenkontext abbrach und danach zurückkehrte. Die Aufzeichnung sagt nicht, ob oder wann der von ihr verantwortete Worker seine Ausführung beendete.",
+          "claim": "Bei der beobachteten Aufgabe beendete der von der übergeordneten Funktion verantwortete Worker seine Ausführung, bevor die übergeordnete Funktion zurückkehrte."
+        }
+      }
+    },
+    {
+      "id": "c10",
+      "family": "release_identity",
+      "variants": {
+        "en": {
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. A readback from the release service confirms that release v2.3.0 is published and its tag resolves to commit 1111111111111111111111111111111111111111.",
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111."
+        },
+        "uk": {
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Повторне читання даних сервісу релізів підтверджує, що реліз v2.3.0 опубліковано і його тег вказує на коміт 1111111111111111111111111111111111111111.",
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111."
+        },
+        "de": {
+          "evidence": "Der angeforderte Quellcode-Commit ist 1111111111111111111111111111111111111111. Ein erneutes Auslesen des Release-Dienstes bestätigt, dass Release v2.3.0 veröffentlicht ist und sein Tag auf Commit 1111111111111111111111111111111111111111 verweist.",
+          "claim": "Release v2.3.0 ist veröffentlicht und sein Tag verweist auf den angeforderten Quellcode-Commit 1111111111111111111111111111111111111111."
+        }
+      }
+    },
+    {
+      "id": "c11",
+      "family": "release_identity",
+      "variants": {
+        "en": {
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. A readback from the release service confirms that release v2.3.0 is published and its tag resolves to commit 2222222222222222222222222222222222222222.",
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111."
+        },
+        "uk": {
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Повторне читання даних сервісу релізів підтверджує, що реліз v2.3.0 опубліковано і його тег вказує на коміт 2222222222222222222222222222222222222222.",
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111."
+        },
+        "de": {
+          "evidence": "Der angeforderte Quellcode-Commit ist 1111111111111111111111111111111111111111. Ein erneutes Auslesen des Release-Dienstes bestätigt, dass Release v2.3.0 veröffentlicht ist und sein Tag auf Commit 2222222222222222222222222222222222222222 verweist.",
+          "claim": "Release v2.3.0 ist veröffentlicht und sein Tag verweist auf den angeforderten Quellcode-Commit 1111111111111111111111111111111111111111."
+        }
+      }
+    },
+    {
+      "id": "c12",
+      "family": "release_identity",
+      "variants": {
+        "en": {
+          "evidence": "The requested source commit is 1111111111111111111111111111111111111111. CI completed successfully for that commit. No check was made of release publication, the release tag or the release source revision.",
+          "claim": "Release v2.3.0 is published and its tag resolves to the requested source commit 1111111111111111111111111111111111111111."
+        },
+        "uk": {
+          "evidence": "Запитаний коміт вихідного коду — 1111111111111111111111111111111111111111. Для цього коміту CI завершився успішно. Публікацію релізу, тег релізу та ревізію вихідного коду релізу не перевіряли.",
+          "claim": "Реліз v2.3.0 опубліковано і його тег вказує на запитаний коміт вихідного коду 1111111111111111111111111111111111111111."
+        },
+        "de": {
+          "evidence": "Der angeforderte Quellcode-Commit ist 1111111111111111111111111111111111111111. CI wurde für diesen Commit erfolgreich abgeschlossen. Die Veröffentlichung des Releases, der Release-Tag und die Quellcode-Revision des Releases wurden nicht überprüft.",
+          "claim": "Release v2.3.0 ist veröffentlicht und sein Tag verweist auf den angeforderten Quellcode-Commit 1111111111111111111111111111111111111111."
+        }
+      }
+    }
+  ]
+}

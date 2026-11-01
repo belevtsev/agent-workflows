@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 func TestOptionalPrerequisitesReportMissingToolsWithoutExecutingThem(t *testing.T) {
@@ -48,9 +48,9 @@ func TestGraphifyPrerequisiteRequiresRegistration(t *testing.T) {
 
 func TestGraphifyPrerequisiteExecutableDetection(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "custom-installation-home")
-	defaultPath := filepath.Join(home, ".venvs", "codex-graphify", "bin", "graphify")
+	defaultPath := filepath.Join(home, ".venvs", "agent-graphify", "bin", "graphify")
 	if runtime.GOOS == "windows" {
-		defaultPath = filepath.Join(home, ".venvs", "codex-graphify", "Scripts", "graphify.exe")
+		defaultPath = filepath.Join(home, ".venvs", "agent-graphify", "Scripts", "graphify.exe")
 	}
 	pathCandidate := filepath.Join(t.TempDir(), "portable", "graphify")
 	if runtime.GOOS == "windows" {

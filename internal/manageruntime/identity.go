@@ -5,7 +5,6 @@ package manageruntime
 import (
 	"bytes"
 	"context"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -18,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 var commitSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -40,12 +39,11 @@ type Candidate struct {
 
 // Locator binds an installed manager to its installation independently of cwd.
 type Locator struct {
-	Version     int    `json:"version,omitzero"`
+	Version     int    `json:"version"`
 	Source      string `json:"source"`
 	Home        string `json:"home"`
-	Codex       string `json:"codex"`
 	State       string `json:"state"`
-	CommandPath string `json:"command_path,omitempty"`
+	CommandPath string `json:"command_path"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
 }
 
@@ -137,29 +135,18 @@ func Resolve(executable string) (Locator, error) {
 	if err = json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
-	for _, p := range []string{locator.Source, locator.Home, locator.Codex, locator.State} {
+	for _, p := range []string{locator.Source, locator.Home, locator.State} {
 		if p == "" || !filepath.IsAbs(p) || filepath.Clean(p) != p || strings.ContainsAny(p, "\x00\r\n") {
 			return Locator{}, errors.New("unsafe installed manager locator paths")
 		}
 	}
-	var fields map[string]jsontext.Value
-	if err = json.Unmarshal(data, &fields); err != nil {
-		return Locator{}, err
+	if locator.Version != 2 {
+		return Locator{}, errors.New("unsupported installed manager locator version")
 	}
-	if _, present := fields["version"]; present {
-		if locator.Version != 2 {
-			return Locator{}, errors.New("unsupported installed manager locator version")
-		}
-		if err = workflow.VerifyLocalSeal(data); err != nil {
-			return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
-		}
-		if _, present := fields["command_path"]; !present {
-			return Locator{}, errors.New("installed manager v2 locator is missing its command path")
-		}
-	} else if _, present := fields["integrity_sha256"]; present {
-		return Locator{}, errors.New("unversioned installed manager locator has an integrity field")
+	if err = workflow.VerifyLocalSeal(data); err != nil {
+		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
-	if _, present := fields["command_path"]; present && locator.CommandPath != filepath.Join(locator.Home, ".local", "bin", "cw") {
+	if locator.CommandPath != filepath.Join(locator.Home, ".local", "bin", "cw") {
 		return Locator{}, errors.New("unsafe installed manager command path")
 	}
 	stateRoot := filepath.Dir(runtimeRoot)

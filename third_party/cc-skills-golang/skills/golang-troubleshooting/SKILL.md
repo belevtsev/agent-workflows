@@ -22,7 +22,7 @@ metadata:
     compatibility: Designed for Claude Code, Codex or similar harness, and for projects using Golang.
     paths:
     - '**/*.go'
-allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Bash(dlv:*) Agent WebFetch WebSearch AskUserQuestion
+    allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Bash(dlv:*) Agent WebFetch WebSearch AskUserQuestion
 ---
 
 # Go failure diagnosis
@@ -40,4 +40,5 @@ Read the reference matching the symptom:
 - [Diagnostic tools](references/diagnostic-tools.md) for a specific missing observation.
 - [Production debugging](references/production-debug.md) when live evidence is authorized.
 - [Testing a failure](references/testing-debug.md) or [methodology](references/methodology.md) when the investigation needs those techniques.
+- [Build a feedback loop](references/feedback-loop.md) for a hard bug, before forming theories.
 - [Review flags](references/code-review-flags.md) for a requested review.

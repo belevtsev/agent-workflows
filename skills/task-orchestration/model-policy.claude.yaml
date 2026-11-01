@@ -1,0 +1,38 @@
+version: 1
+
+# Claude Code roles for the coordinator and its workers. Activation, adviser
+# consultation and publication rules stay in model-policy.yaml, which applies on
+# every host. Agent tool dispatch accepts aliases only, so references/hosts.md
+# maps these profiles to `model: opus` with an explicit effort.
+profiles:
+  substantive:
+    model: claude-opus-5-5
+    effort: xhigh
+    scope: substantive
+  bounded_execution:
+    model: claude-opus-5-5
+    effort: xhigh
+    scope: bounded_execution
+  bounded_evidence:
+    model: claude-opus-5-5
+    effort: high
+    scope: bounded_evidence
+
+roles:
+  coordinator: substantive
+  coding: substantive
+  testing: substantive
+  planning: substantive
+  architecture: substantive
+  review: substantive
+  diagnosis: substantive
+  documentation: substantive
+  issue_management: substantive
+  pr_authoring: substantive
+  pr_authoring_routine: bounded_execution
+  commit_execution: bounded_execution
+  pr_submission: bounded_execution
+  lookup: bounded_evidence
+  summarization: bounded_evidence
+
+unknown_role_profile: substantive

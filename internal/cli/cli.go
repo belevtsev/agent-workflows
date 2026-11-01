@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -11,10 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
-	"github.com/belevtsev/codex-workflows/internal/manageruntime"
-	"github.com/belevtsev/codex-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/manageruntime"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -42,32 +42,14 @@ type Config struct {
 	Prepare                    func(context.Context, string, string, string) (manageruntime.Candidate, error)
 }
 
-// ManagerProtocol identifies support for sealed native runtimes, personal skill
-// adoption, and the current model reasoning policy.
-const ManagerProtocol = "cw-manager-v6"
-
-// ModelPolicyCapability is separate from the sealed runtime/state protocol.
-// Older v6 managers cannot validate the paired-provider policy extension.
-const ModelPolicyCapability = "cw-model-policy-v2-dual-choice"
-
-// CodexDefaultsCapability identifies support for shared Codex config ownership.
-const CodexDefaultsCapability = workflow.CodexDefaultsCapability
-
-// OpenAIDecisionsCapability identifies the optional adviser policy extension.
-const OpenAIDecisionsCapability = workflow.OpenAIDecisionsCapability
-
-// ThreeAdviserCapability identifies the required three-provider policy contract.
-const ThreeAdviserCapability = workflow.ThreeAdviserCapability
+// ManagerProtocol identifies the contract the bootstrap requires of a manager.
+const ManagerProtocol = workflow.ManagerProtocol
 
 type options struct {
-	modelPolicyCapability                                                    bool
-	codexDefaultsCapability                                                  bool
-	openaiDecisionsCapability                                                bool
-	threeAdviserCapability                                                   bool
-	source, home, codex, state, shell, migrate, legacy                       string
+	source, home, codex, claude, state, shell, host                          string
 	dryRun, apply, noCheckout, json, bootstrap, prepareOnly, managerProtocol bool
 	releaseIdentity                                                          bool
-	adoptPersonalSkills                                                      bool
+	adoptPersonalSkills, forget                                              bool
 }
 type usageError struct{ error }
 
@@ -81,6 +63,9 @@ func ExitCode(err error) int {
 	if errors.Is(err, context.Canceled) {
 		return 130
 	}
+	if status, ok := errors.AsType[reportedExit](err); ok {
+		return int(status)
+	}
 	if _, ok := errors.AsType[usageError](err); ok {
 		return 2
 	}
@@ -90,23 +75,8 @@ func ExitCode(err error) int {
 // Execute runs a fresh command with explicit arguments and cancellation.
 func Execute(ctx context.Context, args []string, config Config) error {
 	command := NewCommand(config)
-	command.SetArgs(normalizeLegacy(args))
+	command.SetArgs(args)
 	return command.ExecuteContext(ctx)
-}
-
-// normalizeLegacy preserves the former optional --typesafe-legacy PATH syntax.
-// pflag's optional values otherwise accept only --typesafe-legacy=PATH.
-func normalizeLegacy(args []string) []string {
-	out := make([]string, 0, len(args))
-	for index := 0; index < len(args); index++ {
-		if args[index] == "--typesafe-legacy" && index+1 < len(args) && !strings.HasPrefix(args[index+1], "-") {
-			out = append(out, "--typesafe-legacy="+args[index+1])
-			index++
-			continue
-		}
-		out = append(out, args[index])
-	}
-	return out
 }
 
 func defaults(config Config) Config {
@@ -152,8 +122,8 @@ func defaults(config Config) Config {
 // NewCommand constructs the only supported product command surface.
 func NewCommand(config Config) *cobra.Command {
 	config = defaults(config)
-	o := options{shell: "auto"}
-	root := &cobra.Command{Use: "cw", Short: "Manage Codex workflow skills", Long: "Install, update, validate and recover the managed Codex workflow skills. Mutations apply by default; --dry-run makes no downloads or persistent writes.", SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true, Args: func(cmd *cobra.Command, args []string) error {
+	o := options{shell: "auto", host: "auto"}
+	root := &cobra.Command{Use: "cw", Short: "Manage agent workflow skills", Long: "Install, update, validate and recover the managed agent workflow skills. Mutations apply by default; --dry-run makes no downloads or persistent writes.", SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true, Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return usage(fmt.Errorf("unknown command: %s", args[0]))
 		}
@@ -168,31 +138,23 @@ func NewCommand(config Config) *cobra.Command {
 	flags.StringVar(&o.source, "source", "", "Workflow source checkout")
 	flags.StringVar(&o.home, "home", "", "Installation home directory")
 	flags.StringVar(&o.codex, "codex-home", "", "Codex configuration directory")
+	flags.StringVar(&o.claude, "claude-home", "", "Claude Code configuration directory")
+	flags.StringVar(&o.host, "host", "auto", "Agent host for install or uninstall: auto, codex, claude or all")
+	flags.BoolVar(&o.forget, "forget", false, "Detach an uninstalled host whose files are already gone")
 	flags.StringVar(&o.state, "state-dir", "", "Ownership and runtime state directory")
 	flags.StringVar(&o.shell, "shell", "auto", "Install PATH in auto, bash, zsh or none")
-	flags.StringVar(&o.migrate, "migrate-from", "", "Explicit previous source migration")
-	flags.StringVar(&o.legacy, "typesafe-legacy", "", "Adopt prior TypeSafe registration (optional path)")
 	flags.BoolVar(&o.adoptPersonalSkills, "adopt-personal-skills", false, "Back up and adopt verified standalone personal skills during install/setup")
-	flags.Lookup("typesafe-legacy").NoOptDefVal = ""
 	flags.BoolVar(&o.dryRun, "dry-run", false, "Check locally without writes or downloads")
 	flags.BoolVar(&o.apply, "apply", false, "Apply changes (the default)")
 	flags.BoolVar(&o.noCheckout, "no-checkout", false, "Update without fast-forwarding source checkout")
 	flags.BoolVar(&o.json, "json", false, "Emit JSON (the default)")
-	flags.BoolVar(&o.bootstrap, "bootstrap", false, "Legacy read-only default")
+	flags.BoolVar(&o.bootstrap, "bootstrap", false, "Read-only default")
 	flags.BoolVar(&o.prepareOnly, "prepare-only", false, "Prepare exact manager without activation")
 	flags.BoolVar(&o.managerProtocol, "manager-protocol", false, "Report native manager bootstrap protocol")
-	flags.BoolVar(&o.modelPolicyCapability, "model-policy-capability", false, "Report supported source model policy capability")
-	flags.BoolVar(&o.codexDefaultsCapability, "codex-defaults-capability", false, "Report supported shared Codex config capability")
-	flags.BoolVar(&o.openaiDecisionsCapability, "openai-decisions-capability", false, "Report supported optional OpenAI adviser policy capability")
-	flags.BoolVar(&o.threeAdviserCapability, "three-adviser-capability", false, "Report supported required three-adviser policy capability")
 	flags.BoolVar(&o.releaseIdentity, "release-identity", false, "Report native release build identity")
 	_ = flags.MarkHidden("bootstrap")
 	_ = flags.MarkHidden("prepare-only")
 	_ = flags.MarkHidden("manager-protocol")
-	_ = flags.MarkHidden("model-policy-capability")
-	_ = flags.MarkHidden("codex-defaults-capability")
-	_ = flags.MarkHidden("openai-decisions-capability")
-	_ = flags.MarkHidden("three-adviser-capability")
 	_ = flags.MarkHidden("release-identity")
 	run := func(cmd *cobra.Command, _ []string) error {
 		if o.releaseIdentity {
@@ -201,22 +163,6 @@ func NewCommand(config Config) *cobra.Command {
 		}
 		if o.managerProtocol {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), ManagerProtocol)
-			return err
-		}
-		if o.modelPolicyCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), ModelPolicyCapability)
-			return err
-		}
-		if o.codexDefaultsCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), CodexDefaultsCapability)
-			return err
-		}
-		if o.openaiDecisionsCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), OpenAIDecisionsCapability)
-			return err
-		}
-		if o.threeAdviserCapability {
-			_, err := fmt.Fprintln(cmd.OutOrStdout(), ThreeAdviserCapability)
 			return err
 		}
 		action := cmd.Name()
@@ -260,6 +206,8 @@ func NewCommand(config Config) *cobra.Command {
 	addDoctorCommand(root, config, o)
 	addTaskCommands(root, config, o)
 	addMetricsCommand(root, config, o)
+	addConsultCommand(root, config)
+	addGraphifyCommands(root, config)
 	// Cobra's help path stays independent of source, state, Git and acquisition.
 	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", RunE: func(_ *cobra.Command, args []string) error {
 		target := root
@@ -320,14 +268,24 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	if o.prepareOnly && !install {
 		return usage(errors.New("--prepare-only is supported only for install/setup"))
 	}
+	hosts, err := selectedHosts(o.host)
+	if err != nil {
+		return usage(err)
+	}
+	if !install && action != "uninstall" && cmd.Flags().Changed("host") {
+		return usage(errors.New("--host is supported only for install/setup and uninstall"))
+	}
+	if o.forget && (action != "uninstall" || len(hosts) == 0) {
+		return usage(errors.New("--forget requires uninstall with an explicit --host"))
+	}
 	executable, err := config.Executable()
 	if err != nil {
 		return err
 	}
 	locator, locatorErr := config.Resolve(executable)
 	if errors.Is(locatorErr, manageruntime.ErrLocatorMissing) && o.source != "" && o.home != "" && o.codex != "" && o.state != "" {
-		// Explicit roots remain available for recovering a legacy fixture with
-		// no descriptor. An owned layout must never select defaults from cwd.
+		// Explicit roots remain available for a runtime with no descriptor. An
+		// owned layout must never select defaults from cwd.
 		locatorErr = os.ErrNotExist
 	}
 	if locatorErr != nil && !errors.Is(locatorErr, os.ErrNotExist) {
@@ -339,9 +297,6 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 		}
 		if o.home == "" {
 			o.home = locator.Home
-		}
-		if o.codex == "" {
-			o.codex = locator.Codex
 		}
 		if o.state == "" {
 			o.state = locator.State
@@ -366,28 +321,20 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 			}
 		}
 	}
-	if o.codex == "" {
-		o.codex = config.Getenv("CODEX_HOME")
-		if o.codex == "" {
-			o.codex = filepath.Join(o.home, ".codex")
-		}
-	}
 	if o.state == "" {
 		state := config.Getenv("XDG_STATE_HOME")
 		if state == "" {
 			state = filepath.Join(o.home, ".local", "state")
 		}
-		o.state = filepath.Join(state, "codex-workflows")
+		o.state = filepath.Join(state, "agent-workflows")
 	}
 	apply := !o.dryRun
 	if o.bootstrap {
 		apply = o.apply && !o.dryRun
 	}
-	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, State: o.state}
-	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, MigrateFrom: o.migrate, AdoptPersonalSkills: o.adoptPersonalSkills, Context: cmd.Context()}
-	if cmd.Flags().Changed("typesafe-legacy") {
-		options.TypeSafeLegacy = new(o.legacy)
-	}
+	o.codex, o.claude = hostRoots(config, o.home, o.state, o.codex, o.claude)
+	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, Claude: o.claude, State: o.state}
+	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Hosts: hosts, Forget: o.forget, Context: cmd.Context()}
 	if action == "validate" {
 		report, err := config.Validate(workflow.Normalize(o.source))
 		if err != nil {
@@ -465,9 +412,65 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 			"subq":             workflow.Object{"credential_available": subqCredential},
 			"openai_decisions": workflow.Object{"credential_available": openaiCredential},
 		},
-		NextStep:      "Reload your shell startup file for cw and open a fresh Codex chat",
+		NextStep:      "Reload your shell startup file for cw and start a fresh agent session",
 		Prerequisites: skillPrerequisites(status, o.home, os.Stat, exec.LookPath),
 	})
+}
+
+// hostRoots resolves each host's directory. Recorded roots win so a later shell's
+// environment cannot detach a host from where it was enrolled.
+func hostRoots(config Config, home, state, codex, claude string) (string, string) {
+	recordedCodex, recordedClaude := workflow.RecordedHomes(state)
+	return cmp.Or(codex, recordedCodex, config.Getenv("CODEX_HOME"), filepath.Join(home, ".codex")),
+		cmp.Or(claude, recordedClaude, config.Getenv("CLAUDE_CONFIG_DIR"), filepath.Join(home, ".claude"))
+}
+
+// installRoots are the directories an installation lives in. Read-only commands
+// resolve them the same way as install, so a custom root reaches every command.
+type installRoots struct{ home, codex, claude, state string }
+
+func resolveRoots(root *cobra.Command, config Config) (installRoots, error) {
+	var roots installRoots
+	flags := root.PersistentFlags()
+	for flag, value := range map[string]*string{"home": &roots.home, "codex-home": &roots.codex, "claude-home": &roots.claude, "state-dir": &roots.state} {
+		*value, _ = flags.GetString(flag)
+	}
+	if executable, err := config.Executable(); err == nil {
+		if locator, err := config.Resolve(executable); err == nil {
+			for _, pair := range [][2]*string{{&roots.home, &locator.Home}, {&roots.state, &locator.State}} {
+				if *pair[0] == "" {
+					*pair[0] = *pair[1]
+				}
+			}
+		}
+	}
+	if roots.home == "" {
+		var err error
+		if roots.home, err = config.HomeDir(); err != nil {
+			return roots, errors.New("resolve home directory")
+		}
+	}
+	if roots.state == "" {
+		state := config.Getenv("XDG_STATE_HOME")
+		if state == "" {
+			state = filepath.Join(roots.home, ".local", "state")
+		}
+		roots.state = filepath.Join(state, "agent-workflows")
+	}
+	roots.codex, roots.claude = hostRoots(config, roots.home, roots.state, roots.codex, roots.claude)
+	return roots, nil
+}
+
+func selectedHosts(value string) ([]string, error) {
+	switch value {
+	case "auto":
+		return nil, nil
+	case "codex", "claude":
+		return []string{value}, nil
+	case "all":
+		return []string{"codex", "claude"}, nil
+	}
+	return nil, errors.New("--host must be auto, codex, claude or all")
 }
 
 func writeJSON(out io.Writer, value any) error {
