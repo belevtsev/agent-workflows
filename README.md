@@ -113,6 +113,20 @@ without restoring anything:
 cw uninstall --host codex --forget
 ```
 
+### Go diagnostics in Claude Code
+
+Claude Code gets live Go diagnostics and navigation from the `gopls-lsp` plugin. It adds no context cost and needs `gopls` on your `PATH`.
+
+```bash
+claude plugin marketplace add anthropics/claude-plugins-official
+```
+
+```bash
+claude plugin install gopls-lsp@claude-plugins-official
+```
+
+Use this marketplace, not the built-in directory. `gopls-lsp@anthropic-plugin-directory` installs without error but contains no language server. Check with `claude plugin details gopls-lsp@claude-plugins-official`, which should list `LSP servers (1)`.
+
 ### Upgrading from v1
 
 The v2 manager uses new paths and doesn't read a v1 installation, and a v1
