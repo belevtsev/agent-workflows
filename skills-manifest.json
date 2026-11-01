@@ -49,7 +49,9 @@
     "third_party/archify/assets/JetBrainsMono-OFL.txt",
     "skills/codebase-design/LICENSE",
     "skills/domain-modeling/LICENSE",
-    "skills/parse-dont-validate/LICENSE"
+    "skills/parse-dont-validate/LICENSE",
+    "skills/test-strategy/LICENSE",
+    "third_party/cc-skills-golang/ADAPTED-LICENSES"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
   "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
