@@ -27,9 +27,29 @@ jq -r '.files[] | .file_name as $f | .mutations[] | select(.status=="LIVED") | "
 - `--diff` can silently skip every mutant in a repository with several Go modules ([#296](https://github.com/go-gremlins/gremlins/issues/296)). Check the mutant count before trusting it.
 - Generics aren't supported ([#252](https://github.com/go-gremlins/gremlins/issues/252)).
 - `--diff` still gathers coverage first, so a slow package costs its full test time before any mutant runs.
-- It doesn't delete statements, so a removed call or missing state change goes unprobed. `go-mutesting` adds that for critical packages.
+- It doesn't delete statements, so a removed call or missing state change goes unprobed.
 
 Set no target score. A number invites weak tests written to reach it.
+
+## Add statement deletion for critical packages
+
+`go-mutesting` removes statements and expressions, which finds what Gremlins can't. Use Gremlins first, then this on the packages that matter most. Its tags aren't valid Go module versions, so install from `@latest`.
+
+```sh
+go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest
+go-mutesting --disable 'numbers/*' ./internal/outcomes/...
+jq -r '.escaped[] | "\(.mutator.mutatorName) \(.mutator.originalFilePath):\(.mutator.originalStartLine)"' report.json
+```
+
+| Tool, on one 960-line package | Mutants | Survivors | Time |
+| --- | --- | --- | --- |
+| Gremlins | 188 | 21 | 26 seconds |
+| `go-mutesting --disable 'numbers/*'` | 417 | 114 | 1 minute 21 seconds |
+| `go-mutesting` with every mutator | 543 | 186 | 3 minutes 46 seconds |
+
+The extra survivors are worth having: deleting one `Mean` assignment failed no test, because no test checked `Mean` at all. The `numbers/*` mutators are worth disabling, since 72 of the 186 survivors only changed a numeric literal.
+
+Three things catch people out. `PASS` in its output means the mutant was caught, and `FAIL` means it survived. It writes `report.json` to the working directory, 15MB here, so run it in a clone. Its own documentation warns about false positives, so check each survivor as described below.
 
 ## Read survivors as a map
 
