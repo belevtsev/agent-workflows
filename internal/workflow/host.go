@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 const (
@@ -88,15 +87,22 @@ func (i *Installer) selectedHosts(s Object) ([]hostTarget, error) {
 
 // checkSkillDirectories refuses hosts that would discover each other's
 // registrations. Codex also reads skills from under its own home, so a shared
-// directory would commit state that later verification rejects. Paths compare
-// without case because macOS volumes usually ignore it.
+// directory would commit state that later verification rejects.
 func (i *Installer) checkSkillDirectories(hosts []hostTarget) error {
 	if len(hosts) < 2 {
 		return nil
 	}
 	claude := i.host(hostClaude).skills
-	if slices.ContainsFunc(i.codexSkillRoots(), func(root string) bool { return strings.EqualFold(root, claude) }) {
-		return fmt.Errorf("Codex and Claude Code would share a skills directory: %s; use separate --codex-home and --claude-home directories", claude)
+	for _, root := range i.codexSkillRoots() {
+		same, undecided, err := sameDirectory(root, claude)
+		switch {
+		case err != nil:
+			return err
+		case same:
+			return fmt.Errorf("Codex and Claude Code would share a skills directory: %s; use separate --codex-home and --claude-home directories", claude)
+		case undecided:
+			return fmt.Errorf("cannot tell whether %s and %s are separate directories until they exist; create both and run this again", root, claude)
+		}
 	}
 	return nil
 }

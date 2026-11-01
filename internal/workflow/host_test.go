@@ -135,21 +135,133 @@ func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
 	}
 }
 
+// onDataVolume spells path through the macOS data volume firmlink, which reaches
+// the same directory without a symlink.
+func onDataVolume(path string) string {
+	return filepath.Join("/System/Volumes/Data", Normalize(path))
+}
+
+// requireOneDirectory skips when this platform keeps two spellings apart.
+func requireOneDirectory(t *testing.T, a, b string) {
+	t.Helper()
+	left, err := os.Stat(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := os.Stat(b)
+	if err != nil || !os.SameFile(left, right) {
+		t.Skipf("%s and %s are separate here", a, b)
+	}
+}
+
+func TestSameDirectory(t *testing.T) {
+	base := Normalize(t.TempDir())
+	one, two, link := filepath.Join(base, "one"), filepath.Join(base, "two"), filepath.Join(base, "link")
+	for _, directory := range []string{one, two} {
+		if err := os.Mkdir(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(one, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name            string
+		a, b            string
+		same, undecided bool
+	}{
+		{"one path", one, one, true, false},
+		{"two directories", one, two, false, false},
+		{"a symlink", link, one, true, false},
+		{"new name below a symlink", filepath.Join(link, "new"), filepath.Join(one, "new"), true, false},
+		{"one new path", filepath.Join(base, "new", "skills"), filepath.Join(base, "new", "skills"), true, false},
+		{"new names below different directories", filepath.Join(one, "new"), filepath.Join(two, "new"), false, false},
+		{"different new names", filepath.Join(base, "new"), filepath.Join(base, "old"), false, false},
+		{"different depth", filepath.Join(base, "new"), filepath.Join(base, "new", "skills"), false, false},
+		{"new names differing by case", filepath.Join(base, "new"), filepath.Join(base, "NEW"), false, true},
+		{"new names in two Unicode forms", filepath.Join(base, "codéx"), filepath.Join(base, "codéx"), false, true},
+		{"new names only a table would fold", filepath.Join(base, "straße"), filepath.Join(base, "STRASSE"), false, true},
+		{"a new name a non-ASCII letter could fold to", filepath.Join(base, "k"), filepath.Join(base, "K"), false, true},
+		{"an undecided name then a different name", filepath.Join(base, "new", "one"), filepath.Join(base, "NEW", "two"), false, false},
+		{"a different name then an undecided name", filepath.Join(base, "one new", "codéx"), filepath.Join(base, "two new", "codéx"), false, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			for _, paths := range [][2]string{{test.a, test.b}, {test.b, test.a}} {
+				same, undecided, err := sameDirectory(paths[0], paths[1])
+				if err != nil || same != test.same || undecided != test.undecided {
+					t.Fatalf("sameDirectory(%q, %q) = %t, %t, %v", paths[0], paths[1], same, undecided, err)
+				}
+			}
+		})
+	}
+	for name, alias := range map[string]string{"data volume firmlink": onDataVolume(one), "case": filepath.Join(base, "ONE")} {
+		t.Run(name, func(t *testing.T) {
+			requireOneDirectory(t, one, alias)
+			for _, paths := range [][2]string{{one, alias}, {filepath.Join(one, "new"), filepath.Join(alias, "new")}} {
+				if same, undecided, err := sameDirectory(paths[0], paths[1]); err != nil || !same || undecided {
+					t.Fatalf("sameDirectory(%q, %q) = %t, %t, %v", paths[0], paths[1], same, undecided, err)
+				}
+			}
+		})
+	}
+	file := filepath.Join(base, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := sameDirectory(filepath.Join(file, "new"), one); err == nil {
+		t.Fatal("path below a file was not an error")
+	}
+}
+
 func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
+	mkdir := func(t *testing.T, path string) {
+		t.Helper()
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for _, test := range []struct {
 		name  string
-		roots func(*installerFixture)
+		roots func(*testing.T, *installerFixture)
 	}{
-		{"same home", func(f *installerFixture) { f.paths.Claude = f.paths.Codex }},
-		{"Claude in the default Codex home", func(f *installerFixture) {
+		{"same home", func(_ *testing.T, f *installerFixture) { f.paths.Claude = f.paths.Codex }},
+		{"Claude in the default Codex home", func(_ *testing.T, f *installerFixture) {
 			f.paths.Codex = filepath.Join(f.base, "custom codex")
 			f.paths.Claude = filepath.Join(f.paths.Home, ".codex")
 		}},
-		{"Claude in the personal skills root", func(f *installerFixture) { f.paths.Claude = filepath.Join(f.paths.Home, ".agents") }},
+		{"Claude in the personal skills root", func(_ *testing.T, f *installerFixture) { f.paths.Claude = filepath.Join(f.paths.Home, ".agents") }},
+		{"symlinked home", func(t *testing.T, f *installerFixture) {
+			mkdir(t, f.paths.Codex)
+			f.paths.Claude = filepath.Join(f.base, "linked claude")
+			if err := os.Symlink(f.paths.Codex, f.paths.Claude); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"data volume firmlink", func(t *testing.T, f *installerFixture) {
+			mkdir(t, f.paths.Codex)
+			f.paths.Claude = onDataVolume(f.paths.Codex)
+			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
+		}},
+		{"data volume firmlink, neither created", func(t *testing.T, f *installerFixture) {
+			requireOneDirectory(t, f.base, onDataVolume(f.base))
+			f.paths.Codex = filepath.Join(f.base, "shared")
+			f.paths.Claude = onDataVolume(f.paths.Codex)
+		}},
+		{"Unicode spelling", func(t *testing.T, f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.base, "codéx")
+			f.paths.Claude = filepath.Join(f.base, "codéx")
+			mkdir(t, f.paths.Codex)
+			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
+		}},
+		{"case spelling", func(t *testing.T, f *installerFixture) {
+			mkdir(t, f.paths.Codex)
+			f.paths.Claude = filepath.Join(filepath.Dir(f.paths.Codex), strings.ToUpper(filepath.Base(f.paths.Codex)))
+			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := claudeFixture(t)
-			test.roots(f)
+			test.roots(t, f)
 			before := installerSnapshot(t, f.base)
 			for _, apply := range []bool{false, true} {
 				if _, err := f.hostInstaller(apply, hostCodex, hostClaude).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
@@ -163,22 +275,69 @@ func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
 
 func TestEnrollingAHostRefusesASharedSkillsDirectory(t *testing.T) {
 	for _, hosts := range [][2]string{{hostClaude, hostCodex}, {hostCodex, hostClaude}} {
-		t.Run(hosts[0]+" first", func(t *testing.T) {
+		for name, spell := range map[string]func(string) string{"same spelling": func(path string) string { return path }, "data volume firmlink": onDataVolume} {
+			t.Run(hosts[0]+" first, "+name, func(t *testing.T) {
+				f := claudeFixture(t)
+				if err := os.MkdirAll(f.paths.Codex, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				f.paths.Claude = spell(f.paths.Codex)
+				requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
+				if _, err := f.hostInstaller(true, hosts[0]).Setup(true); err != nil {
+					t.Fatal(err)
+				}
+				before := installerSnapshot(t, f.base)
+				if _, err := f.hostInstaller(true, hosts[1]).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
+					t.Fatalf("second host was not refused: %v", err)
+				}
+				installerUnchanged(t, f.base, before)
+				if _, err := f.hostInstaller(true).Status(); err != nil {
+					t.Fatalf("refusal broke the installation: %v", err)
+				}
+				if _, err := f.hostInstaller(true).Uninstall(); err != nil {
+					t.Fatalf("refusal blocked uninstall: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestUndecidedHostRootsRefuseBeforeWrites(t *testing.T) {
+	for _, test := range []struct{ name, codex, claude string }{
+		{"Unicode forms", "codéx", "codéx"},
+		{"letters a table would miss", "straße", "STRASSE"},
+		{"case", "shared", "SHARED"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			f := claudeFixture(t)
-			f.paths.Claude = f.paths.Codex
-			if _, err := f.hostInstaller(true, hosts[0]).Setup(true); err != nil {
-				t.Fatal(err)
-			}
+			f.paths.Codex, f.paths.Claude = filepath.Join(f.base, test.codex), filepath.Join(f.base, test.claude)
 			before := installerSnapshot(t, f.base)
-			if _, err := f.hostInstaller(true, hosts[1]).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
-				t.Fatalf("second host was not refused: %v", err)
+			for _, apply := range []bool{false, true} {
+				if _, err := f.hostInstaller(apply, hostCodex, hostClaude).Setup(true); err == nil || !strings.Contains(err.Error(), "until they exist") {
+					t.Fatalf("apply %t: %v", apply, err)
+				}
 			}
 			installerUnchanged(t, f.base, before)
-			if _, err := f.hostInstaller(true).Status(); err != nil {
-				t.Fatalf("refusal broke the installation: %v", err)
+			for _, home := range []string{f.paths.Codex, f.paths.Claude} {
+				if err := os.MkdirAll(home, 0o700); err != nil {
+					t.Fatal(err)
+				}
 			}
-			if _, err := f.hostInstaller(true).Uninstall(); err != nil {
-				t.Fatalf("refusal blocked uninstall: %v", err)
+			left, err := os.Stat(f.paths.Codex)
+			if err != nil {
+				t.Fatal(err)
+			}
+			right, err := os.Stat(f.paths.Claude)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = f.hostInstaller(true, hostCodex, hostClaude).Setup(true)
+			if os.SameFile(left, right) {
+				if err == nil || !strings.Contains(err.Error(), "skills directory") {
+					t.Fatalf("one directory was not refused: %v", err)
+				}
+			} else if err != nil {
+				t.Fatalf("separate directories were refused: %v", err)
 			}
 		})
 	}
