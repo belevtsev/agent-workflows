@@ -114,6 +114,7 @@ func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(f.paths.Codex, "skills")); err != nil {
 		t.Fatal(err)
 	}
+	origin := f.bareOrigin(t)
 	if _, err := f.hostInstaller(false, hostClaude).Setup(true); err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
@@ -121,7 +122,9 @@ func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
 		t.Fatalf("install: %v", err)
 	}
 	f.newRelease(t)
-	if _, err := f.hostInstaller(true).Setup(true); err != nil {
+	f.git(t, "push", origin, "main")
+	f.git(t, "reset", "--hard", f.first)
+	if _, err := f.hostInstaller(true).Update(); err != nil {
 		t.Fatalf("update: %v", err)
 	}
 	if _, err := f.hostInstaller(true).Uninstall(); err != nil {
