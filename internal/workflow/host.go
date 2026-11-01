@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 const (
@@ -79,7 +80,25 @@ func (i *Installer) selectedHosts(s Object) ([]hostTarget, error) {
 			return nil, fmt.Errorf("unsupported host: %s", id)
 		}
 	}
+	if err := i.checkSkillDirectories(hosts); err != nil {
+		return nil, err
+	}
 	return hosts, nil
+}
+
+// checkSkillDirectories refuses hosts that would discover each other's
+// registrations. Codex also reads skills from under its own home, so a shared
+// directory would commit state that later verification rejects. Paths compare
+// without case because macOS volumes usually ignore it.
+func (i *Installer) checkSkillDirectories(hosts []hostTarget) error {
+	if len(hosts) < 2 {
+		return nil
+	}
+	claude := i.host(hostClaude).skills
+	if slices.ContainsFunc(i.codexSkillRoots(), func(root string) bool { return strings.EqualFold(root, claude) }) {
+		return fmt.Errorf("Codex and Claude Code would share a skills directory: %s; use separate --codex-home and --claude-home directories", claude)
+	}
+	return nil
 }
 
 // addsHost reports whether an install would activate a host state does not

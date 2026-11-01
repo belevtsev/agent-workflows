@@ -201,17 +201,22 @@ func validatePersonalInventoryFields(raw any) error {
 	return nil
 }
 
-func (i *Installer) discoveryRoots() ([]string, error) {
+func (i *Installer) codexSkillRoots() []string {
 	var roots []string
 	for _, root := range []string{i.skills, filepath.Join(i.Codex, "skills"), filepath.Join(i.Home, ".codex", "skills")} {
-		root = Normalize(root)
-		if slices.Contains(roots, root) {
-			continue
+		if root = Normalize(root); !slices.Contains(roots, root) {
+			roots = append(roots, root)
 		}
+	}
+	return roots
+}
+
+func (i *Installer) discoveryRoots() ([]string, error) {
+	roots := i.codexSkillRoots()
+	for _, root := range roots {
 		if err := realDirectory(root, false); err != nil {
 			return nil, err
 		}
-		roots = append(roots, root)
 	}
 	return roots, nil
 }

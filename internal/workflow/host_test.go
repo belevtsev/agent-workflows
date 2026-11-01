@@ -135,6 +135,55 @@ func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
 	}
 }
 
+func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		roots func(*installerFixture)
+	}{
+		{"same home", func(f *installerFixture) { f.paths.Claude = f.paths.Codex }},
+		{"Claude in the default Codex home", func(f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.base, "custom codex")
+			f.paths.Claude = filepath.Join(f.paths.Home, ".codex")
+		}},
+		{"Claude in the personal skills root", func(f *installerFixture) { f.paths.Claude = filepath.Join(f.paths.Home, ".agents") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := claudeFixture(t)
+			test.roots(f)
+			before := installerSnapshot(t, f.base)
+			for _, apply := range []bool{false, true} {
+				if _, err := f.hostInstaller(apply, hostCodex, hostClaude).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
+					t.Fatalf("apply %t: %v", apply, err)
+				}
+			}
+			installerUnchanged(t, f.base, before)
+		})
+	}
+}
+
+func TestEnrollingAHostRefusesASharedSkillsDirectory(t *testing.T) {
+	for _, hosts := range [][2]string{{hostClaude, hostCodex}, {hostCodex, hostClaude}} {
+		t.Run(hosts[0]+" first", func(t *testing.T) {
+			f := claudeFixture(t)
+			f.paths.Claude = f.paths.Codex
+			if _, err := f.hostInstaller(true, hosts[0]).Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			before := installerSnapshot(t, f.base)
+			if _, err := f.hostInstaller(true, hosts[1]).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
+				t.Fatalf("second host was not refused: %v", err)
+			}
+			installerUnchanged(t, f.base, before)
+			if _, err := f.hostInstaller(true).Status(); err != nil {
+				t.Fatalf("refusal broke the installation: %v", err)
+			}
+			if _, err := f.hostInstaller(true).Uninstall(); err != nil {
+				t.Fatalf("refusal blocked uninstall: %v", err)
+			}
+		})
+	}
+}
+
 func TestFreshInstallRefusesAmbiguousHostDetection(t *testing.T) {
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)
