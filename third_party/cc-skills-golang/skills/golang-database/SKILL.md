@@ -189,7 +189,7 @@ For context patterns in depth, see the `samber/cc-skills-golang@golang-context` 
 
 ## Transactions, Isolation Levels, and Locking
 
-For transaction patterns, isolation levels, `SELECT FOR UPDATE`, and locking variants, see [Transactions](./references/transactions.md).
+For transaction patterns, isolation levels, `SELECT FOR UPDATE`, and locking variants, see [Transactions](./references/transactions.md). For an invariant spanning several rows, use the `isolation-anomalies` skill, because snapshot isolation still permits write skew.
 
 ## Connection Pool
 
@@ -204,7 +204,7 @@ For sizing guidance and formulas, see [Database Performance](./references/perfor
 
 ## Migrations
 
-Use an external migration tool. Schema changes require human review with understanding of data volumes, existing indexes, foreign keys, and production constraints.
+Use an external migration tool. Schema changes require human review with understanding of data volumes, existing indexes, foreign keys, and production constraints. For changing a live schema without downtime, use the `expand-contract` skill.
 
 Recommended tools:
 
@@ -227,6 +227,7 @@ Do not rely on triggers, views, materialized views, stored procedures, or row-le
 - **[Transactions](./references/transactions.md)** — Transaction boundaries, isolation levels, deadlock prevention, `SELECT FOR UPDATE`
 - **[Testing Database Code](./references/testing.md)** — Mock connections, integration tests with containers, fixtures, schema setup/teardown
 - **[Database Performance](./references/performance.md)** — Connection pool sizing, batch processing, indexing strategy, query optimization
+- **[Index Design](./references/index-design.md)** — Composite column order, predicates that silently lose an index, covering and partial indexes
 - **[Struct Scanning](./references/scanning.md)** — Struct tags, NULLable column handling, JSON marshaling patterns
 
 ## Cross-References

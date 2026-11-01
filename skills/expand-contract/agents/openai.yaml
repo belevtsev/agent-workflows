@@ -1,0 +1,4 @@
+interface:
+  display_name: "Expand and Contract"
+  short_description: "Plan zero-downtime schema and API changes"
+  default_prompt: "Use $expand-contract to split this change into deployable steps that stay compatible with old and new code, and name what proves the old path is unused."
