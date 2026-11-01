@@ -214,6 +214,26 @@ func plainASCII(name string) bool {
 	return !strings.ContainsFunc(name, func(r rune) bool { return r >= utf8.RuneSelf })
 }
 
+// entryHolding names the entry of root that path is, or is inside. It returns
+// nothing when path is root itself or outside it.
+func entryHolding(root, path string) (string, error) {
+	entry := ""
+	for {
+		same, undecided, err := sameDirectory(root, path)
+		switch {
+		case err != nil:
+			return "", err
+		case same:
+			return entry, nil
+		case undecided:
+			return "", fmt.Errorf("cannot tell whether %s and %s are separate directories until they exist; create both and run this again", root, path)
+		case path == filepath.Dir(path):
+			return "", nil
+		}
+		entry, path = filepath.Base(path), filepath.Dir(path)
+	}
+}
+
 func syncDir(path string) error {
 	f, e := os.Open(path)
 	if e != nil {

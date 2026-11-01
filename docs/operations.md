@@ -66,9 +66,16 @@ from the directory it was activated in.
 
 A host's directory is fixed when that host enrolls, so a Claude-only installation
 leaves the Codex directory open until you add Codex. The hosts can't share a skills
-directory, because Codex also reads `skills/` under its own home. Install refuses
-an overlap before writing anything, so use separate `--codex-home` and
+directory, because Codex also reads `skills/` under its own home, and neither home
+can sit on a skill's path inside a skills directory. Install compares physical
+directories, so another spelling of the same directory is still an overlap, and it
+refuses an overlap before writing anything. Use separate `--codex-home` and
 `--claude-home` directories.
+
+A filesystem can fold different names into one directory, by case or by Unicode
+form, and only the filesystem can say so once they exist. If a new home's name could
+collide with another path, install stops and asks you to create both directories
+first, then gives the exact answer.
 
 State holds immutable releases/<SHA> snapshots, the active current pointer,
 ownership/history, recovery records, and immutable manager runtime versions.

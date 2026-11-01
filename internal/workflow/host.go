@@ -107,6 +107,44 @@ func (i *Installer) checkSkillDirectories(hosts []hostTarget) error {
 	return nil
 }
 
+// checkHomesOffRegistrations refuses a home at or below a path a skill needs.
+// Codex verification would read that home as a duplicate of the skill, and a
+// link there would sit above the home's own files. Other names under a skills
+// directory collide with nothing.
+func (i *Installer) checkHomesOffRegistrations(hosts []hostTarget, registrations Object) error {
+	var roots []string
+	for _, h := range hosts {
+		if h.id == hostCodex {
+			roots = append(roots, i.codexSkillRoots()...)
+		} else {
+			roots = append(roots, h.skills)
+		}
+	}
+	for _, h := range hosts {
+		for _, root := range roots {
+			entry, err := entryHolding(root, Normalize(h.root))
+			if err != nil {
+				return err
+			}
+			if entry == "" {
+				continue
+			}
+			for _, name := range keys(registrations) {
+				same, undecided, err := sameDirectory(filepath.Join(root, name), filepath.Join(root, entry))
+				switch {
+				case err != nil:
+					return err
+				case same:
+					return fmt.Errorf("home %s sits on the %s skill in %s; choose a home outside that path", h.root, name, root)
+				case undecided:
+					return fmt.Errorf("cannot tell whether home %s sits on the %s skill until it exists; create the home and run this again", h.root, name)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // addsHost reports whether an install would activate a host state does not
 // record yet.
 func (i *Installer) addsHost(s Object) (bool, error) {

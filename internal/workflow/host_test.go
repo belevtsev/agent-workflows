@@ -343,6 +343,120 @@ func TestUndecidedHostRootsRefuseBeforeWrites(t *testing.T) {
 	}
 }
 
+func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
+	both := []string{hostCodex, hostClaude}
+	for _, test := range []struct {
+		name  string
+		hosts []string
+		roots func(*testing.T, *installerFixture)
+	}{
+		{"Codex home on a discovered skill name", []string{hostCodex}, func(_ *testing.T, f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.paths.Home, ".codex", "skills", "code-review")
+		}},
+		{"Claude home on a linked skill name", both, func(_ *testing.T, f *installerFixture) {
+			f.paths.Claude = filepath.Join(f.paths.Home, ".agents", "skills", "code-review")
+		}},
+		{"Codex home on a Claude skill name", both, func(_ *testing.T, f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.paths.Claude, "skills", "code-review")
+		}},
+		{"Claude home below a skill name", both, func(_ *testing.T, f *installerFixture) {
+			f.paths.Claude = filepath.Join(f.paths.Home, ".agents", "skills", "code-review", "nested", "claude")
+		}},
+		{"Claude home in a case spelling", both, func(t *testing.T, f *installerFixture) {
+			requireOneDirectory(t, filepath.Join(f.paths.Home, ".agents"), filepath.Join(f.paths.Home, ".AGENTS"))
+			f.paths.Claude = filepath.Join(f.paths.Home, ".AGENTS", "skills", "code-review")
+		}},
+		{"Claude home on the data volume", both, func(t *testing.T, f *installerFixture) {
+			requireOneDirectory(t, f.paths.Home, onDataVolume(f.paths.Home))
+			f.paths.Claude = onDataVolume(filepath.Join(f.paths.Home, ".agents", "skills", "code-review"))
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := claudeFixture(t)
+			test.roots(t, f)
+			before := installerSnapshot(t, f.base)
+			for _, apply := range []bool{false, true} {
+				if _, err := f.hostInstaller(apply, test.hosts...).Setup(true); err == nil || !strings.Contains(err.Error(), "sits on the") {
+					t.Fatalf("apply %t: %v", apply, err)
+				}
+			}
+			installerUnchanged(t, f.base, before)
+		})
+	}
+	t.Run("a spelling the filesystem has to settle", func(t *testing.T) {
+		f := claudeFixture(t)
+		skills := filepath.Join(f.paths.Home, ".agents", "skills")
+		f.paths.Claude = filepath.Join(skills, "CODE-REVIEW")
+		before := installerSnapshot(t, f.base)
+		if _, err := f.hostInstaller(true, both...).Setup(true); err == nil || !strings.Contains(err.Error(), "create the home") {
+			t.Fatalf("undecided home: %v", err)
+		}
+		installerUnchanged(t, f.base, before)
+		if err := os.Mkdir(f.paths.Claude, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		_, err := f.hostInstaller(true, both...).Setup(true)
+		if exists(filepath.Join(skills, "code-review")) {
+			if err == nil || !strings.Contains(err.Error(), "sits on the") {
+				t.Fatalf("folded home: %v", err)
+			}
+		} else if err != nil {
+			t.Fatalf("separate home: %v", err)
+		}
+	})
+	t.Run("Claude alone", func(t *testing.T) {
+		f := claudeFixture(t)
+		f.paths.Claude = filepath.Join(f.paths.Home, ".codex", "skills", "code-review")
+		if _, err := f.hostInstaller(true, hostClaude).Setup(true); err != nil {
+			t.Fatalf("a Claude-only install read Codex roots: %v", err)
+		}
+		before := installerSnapshot(t, f.base)
+		if _, err := f.hostInstaller(true, hostCodex).Setup(true); err == nil || !strings.Contains(err.Error(), "sits on the") {
+			t.Fatalf("adding Codex: %v", err)
+		}
+		installerUnchanged(t, f.base, before)
+		if _, err := f.hostInstaller(true).Uninstall(); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestHostHomesClearOfSkillNamesInstall(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		hosts []string
+		roots func(*installerFixture)
+	}{
+		{"another name in a Codex skills root", []string{hostCodex, hostClaude}, func(f *installerFixture) {
+			f.paths.Claude = filepath.Join(f.paths.Codex, "skills", "claude-config")
+		}},
+		{"another name in the Claude skills root", []string{hostCodex, hostClaude}, func(f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.paths.Claude, "skills", "codex-config")
+		}},
+		{"a home inside a home", []string{hostCodex, hostClaude}, func(f *installerFixture) {
+			f.paths.Claude = filepath.Join(f.paths.Codex, "claude")
+		}},
+		{"a home at a skills root", []string{hostCodex}, func(f *installerFixture) {
+			f.paths.Codex = filepath.Join(f.paths.Home, ".agents", "skills")
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := claudeFixture(t)
+			test.roots(f)
+			i := f.hostInstaller(true, test.hosts...)
+			if _, err := i.Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := i.Status(); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := i.Uninstall(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestCodexHomeSpelledAsThePersonalRootInstalls(t *testing.T) {
 	upper := func(path string) string {
 		return filepath.Join(filepath.Dir(path), strings.ToUpper(filepath.Base(path)))

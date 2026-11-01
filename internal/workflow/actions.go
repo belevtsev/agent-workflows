@@ -230,6 +230,8 @@ func (i *Installer) registrationChanges(s, m Object, rollback bool, roots ...str
 		hosts = i.recordedHosts(s)
 	} else if hosts, err = i.selectedHosts(s); err != nil {
 		return nil, err
+	} else if err = i.checkHomesOffRegistrations(hosts, object(m["registrations"])); err != nil {
+		return nil, err
 	}
 	changes := []RegistrationChange{}
 	for _, h := range hosts {
