@@ -186,7 +186,7 @@ ORDER BY idx_scan;
 
 - Foreign key columns (PostgreSQL does NOT auto-index foreign keys)
 - Columns frequently used in `WHERE`, `JOIN`, or `ORDER BY`
-- Composite indexes for multi-column queries (leftmost column is most selective)
+- Composite indexes for multi-column queries: equality columns first, then the range or sort column. Order by how queries filter, not by cardinality, because a range predicate stops every later column from seeking
 - Partial indexes for filtered queries (`WHERE active = true`)
 
 ### When to suggest removing indexes

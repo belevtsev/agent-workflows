@@ -15,7 +15,7 @@ Prevents programmer mistakes — bugs, panics, and silent data corruption in nor
 6. **Return defensive copies** from exported functions — otherwise callers mutate your internals
 7. **`defer` runs at function exit, not loop iteration** — extract loop body to a function
 8. **Integer conversions truncate silently** — `int64` to `int32` wraps without error
-9. **Float arithmetic is not exact** — use epsilon comparison or `math/big`
+9. **Float arithmetic is not exact** — compare with a tolerance suited to the scale, or use `math/big`
 10. **Design useful zero values** — nil map fields panic on first write; use lazy init
 11. **Use `sync.Once` for lazy init** — guarantees exactly-once even under concurrency
 
@@ -115,10 +115,16 @@ i32 := int32(val)
 var a, b, c float64 = 0.1, 0.2, 0.3
 a+b == c // false
 
-// ✓ Good — use epsilon comparison
-const epsilon = 1e-9
-math.Abs((a+b)-c) < epsilon // true
+// ✓ Good — the relative term scales with large values, the absolute term handles
+// values near zero
+func almostEqual(a, b, relTol, absTol float64) bool {
+	return math.Abs(a-b) <= math.Max(relTol*math.Max(math.Abs(a), math.Abs(b)), absTol)
+}
+
+almostEqual(a+b, c, 1e-9, 1e-13) // true
 ```
+
+A bare `math.Abs(a-b) < 1e-9` is wrong when magnitudes vary: it rejects rounding noise around `1e12` and accepts `1e-12` and `2e-12` as equal. A fixed tolerance is fine only when the scale is known, such as cents. Pick tolerances from how much error the computation accumulates.
 
 ### Division by zero
 
@@ -254,7 +260,7 @@ if s, ok := reflect.TypeAssert[string](v); ok {
 | Assuming `append` always copies | If capacity allows, both slices share the backing array. Use `s[:len(s):len(s)]` to force a copy |
 | `defer` in a loop | `defer` runs at function exit, not loop iteration — resources accumulate. Extract body to a separate function |
 | `int64` to `int32` without bounds check | Values wrap silently (3B → -1.29B). Check against `math.MaxInt32`/`math.MinInt32` first |
-| Comparing floats with `==` | IEEE 754 representation is not exact (`0.1+0.2 != 0.3`). Use `math.Abs(a-b) < epsilon` |
+| Comparing floats with `==` | IEEE 754 representation is not exact (`0.1+0.2 != 0.3`). Use a tolerance suited to the scale: a bare epsilon fails across magnitudes |
 | Integer division without zero check | Integer division by zero panics. Guard with `if divisor == 0` before dividing |
 | Returning internal slice/map reference | Callers can mutate your struct's internals through the shared backing array. Return a defensive copy |
 | Multiple `init()` with ordering assumptions | `init()` execution order across files is unspecified. → See `samber/cc-skills-golang@golang-design-patterns` — use explicit constructors |
