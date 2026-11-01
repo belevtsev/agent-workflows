@@ -1,9 +1,0 @@
-{
-  "policy": "required",
-  "flags": [],
-  "credentials": [],
-  "responses": {},
-  "exit": 2,
-  "stdout": "Decision consultation unavailable; Coordinator decision pending\n",
-  "stderr": ""
-}

@@ -18,6 +18,7 @@ htmlcov/
 .DS_Store
 *.swp
 *.swo
+* [0-9].*
 
 # Native build and release artifacts
 .bin/

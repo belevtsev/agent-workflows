@@ -1,2 +1,0 @@
-{"state": {"lone high": "x\ud83dy", "lone low": "\ude00", "\ud800key": ["\ud83d😀"], "swapped": "\ude00\ud83d"},
- "questions": {"claim": {"type": "choice", "instructions": "\ud83d text", "criteria": {"supported": "s\ud800", "contradicted": "c"}}}}
