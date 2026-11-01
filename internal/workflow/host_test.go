@@ -343,6 +343,82 @@ func TestUndecidedHostRootsRefuseBeforeWrites(t *testing.T) {
 	}
 }
 
+func TestCodexHomeSpelledAsThePersonalRootInstalls(t *testing.T) {
+	upper := func(path string) string {
+		return filepath.Join(filepath.Dir(path), strings.ToUpper(filepath.Base(path)))
+	}
+	for _, test := range []struct {
+		name    string
+		spell   func(string) string
+		created bool
+	}{
+		{"case spelling", upper, true},
+		{"case spelling, neither created", upper, false},
+		{"data volume firmlink", onDataVolume, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := claudeFixture(t)
+			agents := filepath.Join(f.paths.Home, ".agents")
+			f.paths.Codex = test.spell(agents)
+			requireOneDirectory(t, agents, f.paths.Codex)
+			if !test.created {
+				if err := os.RemoveAll(agents); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			i := f.hostInstaller(true)
+			if _, err := i.Status(); err != nil {
+				t.Fatalf("status rejected the install's own links: %v", err)
+			}
+			if _, err := i.Uninstall(); err != nil {
+				t.Fatalf("uninstall rejected the install's own links: %v", err)
+			}
+			if exists(filepath.Join(agents, "skills", "code-review")) {
+				t.Fatal("uninstall left a registration")
+			}
+		})
+	}
+}
+
+func TestPersonalSkillInASpelledCodexRootIsAdoptedOnce(t *testing.T) {
+	for name, spell := range map[string]func(string) string{
+		"case spelling":        func(path string) string { return filepath.Join(filepath.Dir(path), ".CODEX") },
+		"data volume firmlink": onDataVolume,
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInstallerFixture(t)
+			defaultHome := f.paths.Codex
+			f.paths.Codex = spell(defaultHome)
+			requireOneDirectory(t, defaultHome, f.paths.Codex)
+			sha, originals := personalFixtureUpgrade(t, f)
+			skill := ""
+			for candidate := range originals {
+				if candidate != "archify" {
+					skill = candidate
+					break
+				}
+			}
+			origin := filepath.Join(defaultHome, "skills", skill)
+			inventory := seedPersonalSkill(t, originals[skill], origin)
+			i := nativeFixtureInstaller(t, f, sha, true)
+			i.AdoptPersonalSkills = true
+			if _, err := i.Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := i.Status(); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := i.Uninstall(); err != nil {
+				t.Fatal(err)
+			}
+			assertPersonalDirectory(t, origin, inventory)
+		})
+	}
+}
+
 func TestFreshInstallRefusesAmbiguousHostDetection(t *testing.T) {
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)

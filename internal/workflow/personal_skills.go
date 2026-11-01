@@ -211,11 +211,24 @@ func (i *Installer) codexSkillRoots() []string {
 	return roots
 }
 
+// discoveryRoots lists each directory Codex reads once. A root spelled another
+// way is an earlier root, so what it holds is not a duplicate of that root.
 func (i *Installer) discoveryRoots() ([]string, error) {
-	roots := i.codexSkillRoots()
-	for _, root := range roots {
+	var roots []string
+	for _, root := range i.codexSkillRoots() {
 		if err := realDirectory(root, false); err != nil {
 			return nil, err
+		}
+		alias := false
+		for _, kept := range roots {
+			same, _, err := sameDirectory(kept, root)
+			if err != nil {
+				return nil, err
+			}
+			alias = alias || same
+		}
+		if !alias {
+			roots = append(roots, root)
 		}
 	}
 	return roots, nil
