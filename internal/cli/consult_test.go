@@ -160,6 +160,30 @@ func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 	}
 }
 
+func TestGraphifyBuildRejectsInheritedDryRunBeforeWrites(t *testing.T) {
+	for _, args := range [][]string{{"--dry-run", "graphify", "build"}, {"graphify", "build", "--dry-run"}} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			config, _, _, _ := testConfig(t)
+			config.HomeDir = func() (string, error) { t.Fatal("dry-run accessed storage"); return "", nil }
+			directory := t.TempDir()
+			marker, cache := filepath.Join(directory, "ran"), filepath.Join(directory, "cache")
+			runtime := filepath.Join(directory, "graphify")
+			if err := os.WriteFile(runtime, []byte("#!/bin/sh\ntouch '"+marker+"'\n"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			err := Execute(t.Context(), append(args, "--repo", directory, "--runtime", runtime, "--cache-root", cache), config)
+			if err == nil || ExitCode(err) != 2 || !strings.Contains(err.Error(), "rejects --dry-run") {
+				t.Fatalf("dry-run was not rejected explicitly: %v", err)
+			}
+			for _, path := range []string{marker, cache} {
+				if _, err := os.Lstat(path); !os.IsNotExist(err) {
+					t.Fatalf("dry-run wrote %s: %v", path, err)
+				}
+			}
+		})
+	}
+}
+
 func TestGraphifyReportsUnavailableAsStructuredOutput(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is required")

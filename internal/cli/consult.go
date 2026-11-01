@@ -171,6 +171,9 @@ func addGraphifyCommands(root *cobra.Command, config Config) {
 		return command
 	}
 	define("build", "Reuse a current graph or extract one from a tracked Go snapshot", 300, noPositional, func(cmd *cobra.Command, _ []string, options graphify.Options) error {
+		if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
+			return usage(errors.New("graphify build rejects --dry-run; no graph was built"))
+		}
 		result, err := graphify.Build(cmd.Context(), options)
 		return report(cmd, result, err)
 	})
