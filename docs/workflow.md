@@ -177,7 +177,8 @@ phase instructions is separate from the manager's policy validation contract.
 The installed policy keeps version 2 and `consultation.model`, requires providers
 `jev: jev-1.14.0`, `subq_snap: subq-snap-preview` and
 `openai_decisions: gpt-6-luna`, and retains
-`comparison: coordinator_evidence_and_verification`.
+`comparison: coordinator_evidence_and_verification`. Historical policies keep
+`codex_evidence_and_verification`, which stays valid.
 Send the same permitted minimal text state, questions, and Choice options to
 participating advisers concurrently, with one attempt per provider and a 30-second
 batch budget covering startup, requests, and result transport.

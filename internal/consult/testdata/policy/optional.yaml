@@ -88,7 +88,7 @@ consultation:
   providers:
     jev: jev-1.14.0
     subq_snap: subq-snap-preview
-  comparison: coordinator_evidence_and_verification
+  comparison: codex_evidence_and_verification
   optional_providers:
     openai_decisions: gpt-6-luna
 

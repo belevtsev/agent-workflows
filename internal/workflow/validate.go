@@ -1367,7 +1367,8 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 		if providers["jev"] != model || providers["subq_snap"] != "subq-snap-preview" {
 			return nil, errors.New("consultation providers must match the Jev model and use subq-snap-preview")
 		}
-		if consultation["comparison"] != "coordinator_evidence_and_verification" {
+		// Policies from before the coordinator rename keep their original marker.
+		if comparison := consultation["comparison"]; comparison != "coordinator_evidence_and_verification" && comparison != "codex_evidence_and_verification" {
 			return nil, errors.New("consultation comparison must use coordinator evidence and verification")
 		}
 		if hasRequiredOpenAI {

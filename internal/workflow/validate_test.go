@@ -548,6 +548,16 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 	})
 }
 
+func TestShippedPolicyUsesCurrentComparisonMarker(t *testing.T) {
+	policy, err := ValidateModelPolicy(filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := object(policy["consultation"])["comparison"]; got != "coordinator_evidence_and_verification" {
+		t.Fatalf("shipped policy uses the historical marker: %v", got)
+	}
+}
+
 func TestModelPolicyDecisionProviders(t *testing.T) {
 	dual := func(consultation Object) {
 		consultation["providers"] = Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview"}
@@ -597,6 +607,8 @@ func TestModelPolicyDecisionProviders(t *testing.T) {
 		{"Snap model type", false, func(c Object) { dual(c); c["providers"].(Object)["subq_snap"] = []any{"subq-snap-preview"} }},
 		{"comparison null", false, func(c Object) { dual(c); c["comparison"] = nil }},
 		{"comparison votes", false, func(c Object) { dual(c); c["comparison"] = "majority_vote" }},
+		{"historical comparison marker", true, func(c Object) { dual(c); c["comparison"] = "codex_evidence_and_verification" }},
+		{"unknown comparison marker", false, func(c Object) { dual(c); c["comparison"] = "claude_evidence_and_verification" }},
 		{"optional without required pair", false, func(c Object) { c["optional_providers"] = Object{"openai_decisions": "gpt-6-luna"} }},
 		{"optional without comparison", false, func(c Object) { optional(c); delete(c, "comparison") }},
 		{"optional without providers", false, func(c Object) { optional(c); delete(c, "providers") }},

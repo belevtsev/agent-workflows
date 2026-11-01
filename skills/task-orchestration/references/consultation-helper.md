@@ -282,5 +282,6 @@ installation, source validation and native CI never invoke the hosted evaluation
 Jev-only integrations. It accepts its existing request contract and uses the legacy
 `consultation.model` policy field. The three-adviser `cw consult` uses `consultation.providers`
 and `consultation.comparison: coordinator_evidence_and_verification` while preserving policy
-version 2. Follow the installed TypeSafe guide for other primitives. A Jev-only result
+version 2. Historical policies keep `codex_evidence_and_verification`, which stays valid.
+Follow the installed TypeSafe guide for other primitives. A Jev-only result
 does not provide three-provider coverage.
