@@ -31,4 +31,4 @@ Make failure behavior useful to the caller. Preserve documented sentinel, typed-
 - Account for cleanup and durability failures. Return or combine independent errors when they affect the promised result; do not silently replace the original cause.
 - Expected failures return errors. Recovery belongs at an owned boundary with an explicit policy; it does not make corrupted state safe to continue.
 
-Read [creation](references/error-creation.md), [wrapping and inspection](references/error-wrapping.md), or [handling and logging](references/error-handling.md) for the relevant contract. [Summary examples](references/practices.md) retain additional comparisons.
+When reviewing error paths or fallbacks, read [silent failures](references/silent-failures.md). Read [creation](references/error-creation.md), [wrapping and inspection](references/error-wrapping.md), or [handling and logging](references/error-handling.md) for the relevant contract. [Summary examples](references/practices.md) retain additional comparisons.

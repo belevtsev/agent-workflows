@@ -1,6 +1,6 @@
 # Skill discovery and bounded evaluation
 
-The suite has 32 registrations and 77 entrypoints. Discovery metadata
+The suite has 33 registrations and 78 entrypoints. Discovery metadata
 is concise; entrypoints retain scope and essential safeguards, with detailed
 references loaded only for the current question. Model/effort defaults are
 validated policy, not claims of improved quality, token savings, or elapsed time.
@@ -111,7 +111,7 @@ retry failures or continue a contaminated session.
    use `--ignore-user-config`. Never copy, display, or log auth files/tokens. Do not
    change the user's real skill registrations or installation.
 2. Build a sanitized catalog containing only the pinned snapshot's `skills/` and
-   `third_party/` resources. Link the 32 registrations in the disposable
+   `third_party/` resources. Link the 33 registrations in the disposable
    task home to that catalog. Do not expose the complete snapshot or checkout:
    those also contain evaluator files. Record catalog identity and registrations.
    This copy is an evaluation fixture, not a suite upgrade or live activation.

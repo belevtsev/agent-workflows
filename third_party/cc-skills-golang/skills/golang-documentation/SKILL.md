@@ -29,6 +29,7 @@ Explain caller obligations and observable behavior that signatures cannot show: 
 Read only the needed format:
 
 - [Code comments](references/code-comments.md): package/API comments, examples, deprecation.
+- [Comment accuracy](references/comment-accuracy.md): checking what comments claim against the code.
 - [Project documents](references/project-docs.md): README, CONTRIBUTING, changelog, delivery.
 - [Library documentation](references/library.md) or [application documentation](references/application.md): audience-specific needs.
 - [Examples and templates](references/practices.md): detailed samples and links to existing assets.

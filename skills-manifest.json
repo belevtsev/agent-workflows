@@ -32,7 +32,8 @@
     "parse-dont-validate": "skills/parse-dont-validate",
     "expand-contract": "skills/expand-contract",
     "isolation-anomalies": "skills/isolation-anomalies",
-    "retry-amplification": "skills/retry-amplification"
+    "retry-amplification": "skills/retry-amplification",
+    "clocks-and-time": "skills/clocks-and-time"
   },
   "global_instructions": "global/AGENTS.md",
   "required_licenses": [
@@ -58,7 +59,8 @@
     "skills/expand-contract/LICENSE",
     "skills/isolation-anomalies/LICENSE",
     "skills/retry-amplification/LICENSE",
-    "licenses/adapted-skill-sources-LICENSE"
+    "licenses/adapted-skill-sources-LICENSE",
+    "skills/clocks-and-time/LICENSE"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
   "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",

@@ -22,7 +22,7 @@ are installing for. Release binaries support macOS/Linux on ARM64 and AMD64 and
 need no Go installation. Building an unreleased revision requires the Go version in
 [go.mod](go.mod).
 
-Installation registers 32 skills with 77 entrypoints on each selected host, and
+Installation registers 33 skills with 78 entrypoints on each selected host, and
 adds the same managed instructions to both:
 
 | | Codex | Claude Code |
@@ -179,6 +179,7 @@ effort. Use `/effort max` for a session.
 | expand-contract | Plan zero-downtime schema, API, and event changes |
 | isolation-anomalies | Find write skew and lost updates in transactions |
 | retry-amplification | Prevent retry storms and failures that outlive their cause |
+| clocks-and-time | Avoid wall-clock, skew, time zone, and DST bugs |
 | test-strategy | Choose verification for changed behavior |
 | security-threat-model | Build a repository-grounded threat model |
 | backend-security-review | Scope backend security checks and verify findings against reachable paths |

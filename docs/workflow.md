@@ -54,7 +54,7 @@ In Claude Code `settings.json`:
 Paths, trusted projects, plugins, MCP settings, permissions, and authentication
 remain local decisions. The Go manager preserves unrelated configuration, comments,
 and permissions. On each host it owns the two model keys, global instruction block,
-and 32 skill registrations, plus one enrolled direct command/PATH registration. It
+and 33 skill registrations, plus one enrolled direct command/PATH registration. It
 records original values once and restores them on uninstall. A Claude Code settings
 key you have since changed stays yours; see
 [operations](operations.md#claude-code-host).
