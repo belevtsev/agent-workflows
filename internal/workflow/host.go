@@ -122,14 +122,15 @@ func (i *Installer) isSkillLink(path string) bool {
 	return slices.ContainsFunc(i.knownHosts(), func(h hostTarget) bool { return filepath.Dir(path) == h.skills }) && registrationName(filepath.Base(path))
 }
 
-// RecordedClaudeHome reads the Claude root an installation already uses. A
-// journal comes first because interrupted uninstalls can leave no state file.
-func RecordedClaudeHome(stateDir string) string {
+// RecordedHomes reads the host roots an installation already uses. A journal
+// comes first because interrupted uninstalls can leave no state file. A host
+// with no record returns an empty root and stays free to enroll anywhere.
+func RecordedHomes(stateDir string) (codex, claude string) {
 	if journal, err := readJournalRecord(filepath.Join(stateDir, "journal.json")); err == nil {
-		return text(journal["claude_home"])
+		return text(journal["codex_home"]), text(journal["claude_home"])
 	}
 	if state, err := readOwnership(filepath.Join(stateDir, "state.json")); err == nil {
-		return text(hostRecord(state, hostClaude)["home"])
+		return text(hostRecord(state, hostCodex)["home"]), text(hostRecord(state, hostClaude)["home"])
 	}
-	return ""
+	return "", ""
 }

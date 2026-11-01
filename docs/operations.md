@@ -64,6 +64,12 @@ from the directory it was activated in.
 ./install.sh --host all --home '/path/with spaces/home' --codex-home /path/to/codex --claude-home /path/to/claude --state-dir /path/to/state
 ```
 
+A host's directory is fixed when that host enrolls, so a Claude-only installation
+leaves the Codex directory open until you add Codex. The hosts can't share a skills
+directory, because Codex also reads `skills/` under its own home. Install refuses
+an overlap before writing anything, so use separate `--codex-home` and
+`--claude-home` directories.
+
 State holds immutable releases/<SHA> snapshots, the active current pointer,
 ownership/history, recovery records, and immutable manager runtime versions.
 Skill registrations resolve through current. The source checkout remains editable;

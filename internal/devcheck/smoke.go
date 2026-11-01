@@ -268,10 +268,11 @@ func smokeClaudeHost(checkout, home, codex, state string, registrations map[stri
 			return err
 		}
 	}
-	install := func(host string) ([]byte, error) {
-		return run(filepath.Join(checkout, "install.sh"), "--shell", "bash", "--host", host, "--home", home, "--codex-home", codex, "--claude-home", claude, "--state-dir", state)
+	install := func(host, codexHome string) ([]byte, error) {
+		return run(filepath.Join(checkout, "install.sh"), "--shell", "bash", "--host", host, "--home", home, "--codex-home", codexHome, "--claude-home", claude, "--state-dir", state)
 	}
-	setup, err := install("claude")
+	// A Claude-only install must leave the Codex root open until Codex enrolls.
+	setup, err := install("claude", filepath.Join(home, "unenrolled codex"))
 	if err != nil {
 		return err
 	}
@@ -293,7 +294,7 @@ func smokeClaudeHost(checkout, home, codex, state string, registrations map[stri
 	if _, err := os.Lstat(filepath.Join(codex, "AGENTS.md")); !errors.Is(err, fs.ErrNotExist) {
 		return errors.New("Claude-only install wrote Codex instructions")
 	}
-	if _, err := install("all"); err != nil {
+	if _, err := install("all", codex); err != nil {
 		return err
 	}
 	if _, err := os.Lstat(filepath.Join(codex, "AGENTS.md")); err != nil {

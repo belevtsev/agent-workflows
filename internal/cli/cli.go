@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -297,9 +298,6 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 		if o.home == "" {
 			o.home = locator.Home
 		}
-		if o.codex == "" {
-			o.codex = locator.Codex
-		}
 		if o.state == "" {
 			o.state = locator.State
 		}
@@ -323,12 +321,6 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 			}
 		}
 	}
-	if o.codex == "" {
-		o.codex = config.Getenv("CODEX_HOME")
-		if o.codex == "" {
-			o.codex = filepath.Join(o.home, ".codex")
-		}
-	}
 	if o.state == "" {
 		state := config.Getenv("XDG_STATE_HOME")
 		if state == "" {
@@ -340,17 +332,7 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	if o.bootstrap {
 		apply = o.apply && !o.dryRun
 	}
-	if o.claude == "" {
-		// Recorded roots win so a later shell's CLAUDE_CONFIG_DIR cannot detach an
-		// installation from the directory it was activated in.
-		o.claude = workflow.RecordedClaudeHome(o.state)
-	}
-	if o.claude == "" {
-		o.claude = config.Getenv("CLAUDE_CONFIG_DIR")
-	}
-	if o.claude == "" {
-		o.claude = filepath.Join(o.home, ".claude")
-	}
+	o.codex, o.claude = hostRoots(config, o.home, o.state, o.codex, o.claude)
 	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, Claude: o.claude, State: o.state}
 	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Hosts: hosts, Forget: o.forget, Context: cmd.Context()}
 	if action == "validate" {
@@ -435,6 +417,14 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	})
 }
 
+// hostRoots resolves each host's directory. Recorded roots win so a later shell's
+// environment cannot detach a host from where it was enrolled.
+func hostRoots(config Config, home, state, codex, claude string) (string, string) {
+	recordedCodex, recordedClaude := workflow.RecordedHomes(state)
+	return cmp.Or(codex, recordedCodex, config.Getenv("CODEX_HOME"), filepath.Join(home, ".codex")),
+		cmp.Or(claude, recordedClaude, config.Getenv("CLAUDE_CONFIG_DIR"), filepath.Join(home, ".claude"))
+}
+
 // installRoots are the directories an installation lives in. Read-only commands
 // resolve them the same way as install, so a custom root reaches every command.
 type installRoots struct{ home, codex, claude, state string }
@@ -447,7 +437,7 @@ func resolveRoots(root *cobra.Command, config Config) (installRoots, error) {
 	}
 	if executable, err := config.Executable(); err == nil {
 		if locator, err := config.Resolve(executable); err == nil {
-			for _, pair := range [][2]*string{{&roots.home, &locator.Home}, {&roots.codex, &locator.Codex}, {&roots.state, &locator.State}} {
+			for _, pair := range [][2]*string{{&roots.home, &locator.Home}, {&roots.state, &locator.State}} {
 				if *pair[0] == "" {
 					*pair[0] = *pair[1]
 				}
@@ -460,12 +450,6 @@ func resolveRoots(root *cobra.Command, config Config) (installRoots, error) {
 			return roots, errors.New("resolve home directory")
 		}
 	}
-	if roots.codex == "" {
-		roots.codex = config.Getenv("CODEX_HOME")
-	}
-	if roots.codex == "" {
-		roots.codex = filepath.Join(roots.home, ".codex")
-	}
 	if roots.state == "" {
 		state := config.Getenv("XDG_STATE_HOME")
 		if state == "" {
@@ -473,15 +457,7 @@ func resolveRoots(root *cobra.Command, config Config) (installRoots, error) {
 		}
 		roots.state = filepath.Join(state, "agent-workflows")
 	}
-	if roots.claude == "" {
-		roots.claude = workflow.RecordedClaudeHome(roots.state)
-	}
-	if roots.claude == "" {
-		roots.claude = config.Getenv("CLAUDE_CONFIG_DIR")
-	}
-	if roots.claude == "" {
-		roots.claude = filepath.Join(roots.home, ".claude")
-	}
+	roots.codex, roots.claude = hostRoots(config, roots.home, roots.state, roots.codex, roots.claude)
 	return roots, nil
 }
 

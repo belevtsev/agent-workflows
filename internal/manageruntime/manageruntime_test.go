@@ -382,7 +382,7 @@ func TestResolveInstalledLocatorThroughNativeLink(t *testing.T) {
 	if err := os.Symlink(filepath.Join(runtimeRoot, "current", "cw"), link); err != nil {
 		t.Fatal(err)
 	}
-	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
+	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
 	data := sealedLocatorFixture(t, &locator)
 	if err := os.WriteFile(filepath.Join(runtimeRoot, "locator.json"), data, 0600); err != nil {
 		t.Fatal(err)
@@ -541,7 +541,7 @@ func TestResolveImmutableReleaseLocatorAfterActiveLocatorRemoved(t *testing.T) {
 	}
 	binary := filepath.Join(releaseRoot, "cw")
 	writeFixture(t, binary, managerScript(true), 0755)
-	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, Codex: filepath.Join(root, "codex"), State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
+	locator := Locator{Version: 2, Source: filepath.Join(root, "source"), Home: root, State: root, CommandPath: filepath.Join(root, ".local", "bin", "cw")}
 	data := sealedLocatorFixture(t, &locator)
 	releaseLocator := filepath.Join(releaseRoot, "locator.json")
 	if err := os.WriteFile(releaseLocator, data, 0600); err != nil {
@@ -608,7 +608,7 @@ func TestResolveSealedV2LocatorAndRejectChangedRoots(t *testing.T) {
 	writeFixture(t, binary, managerScript(true), 0755)
 	fields := map[string]any{
 		"version": 2, "source": filepath.Join(root, "source é 🔒"),
-		"home": root, "codex": filepath.Join(root, "codex"), "state": root,
+		"home": root, "state": root,
 		"command_path": filepath.Join(root, ".local", "bin", "cw"),
 	}
 	// Independent fixture encoding pins the historical Python ASCII checksum,

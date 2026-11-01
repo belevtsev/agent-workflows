@@ -42,7 +42,6 @@ type RuntimeLocator struct {
 	Version     int    `json:"version"`
 	Source      string `json:"source"`
 	Home        string `json:"home"`
-	Codex       string `json:"codex"`
 	State       string `json:"state"`
 	CommandPath string `json:"command_path"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
@@ -138,7 +137,7 @@ func (w *boundedProtocolWriter) Write(data []byte) (int, error) {
 }
 
 func (i *Installer) runtimeLocatorBytes() []byte {
-	locator := RuntimeLocator{Version: 2, Source: i.Source, Home: i.Home, Codex: i.Codex, State: i.State, CommandPath: i.commandPath()}
+	locator := RuntimeLocator{Version: 2, Source: i.Source, Home: i.Home, State: i.State, CommandPath: i.commandPath()}
 	return legacyJSON(seal(asObject(locator)))
 }
 
@@ -165,7 +164,7 @@ func (i *Installer) decodeRuntimeLocator(data []byte) (RuntimeLocator, error) {
 	if err := VerifyLocalSeal(data); err != nil {
 		return RuntimeLocator{}, err
 	}
-	if locator.Home != i.Home || locator.Codex != i.Codex || locator.State != i.State || locator.Source == "" || Normalize(locator.Source) != locator.Source {
+	if locator.Home != i.Home || locator.State != i.State || locator.Source == "" || Normalize(locator.Source) != locator.Source {
 		return RuntimeLocator{}, errors.New("unsafe native locator roots")
 	}
 	if locator.CommandPath != i.commandPath() {

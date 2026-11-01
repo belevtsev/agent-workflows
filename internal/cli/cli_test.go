@@ -79,7 +79,7 @@ func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
 func TestInstalledCommandResolvesLocatorInsteadOfCWD(t *testing.T) {
 	config, out, options, service := testConfig(t)
 	config.Resolve = func(string) (manageruntime.Locator, error) {
-		return manageruntime.Locator{Source: "/owned/source", Home: "/owned/home", Codex: "/owned/codex", State: "/owned/state"}, nil
+		return manageruntime.Locator{Source: "/owned/source", Home: "/owned/home", State: "/owned/state"}, nil
 	}
 	config.WorkingDir = func() (string, error) { t.Fatal("installed manager used cwd"); return "", nil }
 	if err := Execute(t.Context(), []string{"status"}, config); err != nil {
@@ -96,6 +96,25 @@ func TestInstalledCommandResolvesLocatorInsteadOfCWD(t *testing.T) {
 		t.Fatalf("incompatible report: %+v", report)
 	}
 }
+func TestHostRootsPreferFlagsThenRecordsThenEnvironment(t *testing.T) {
+	config, _, _, _ := testConfig(t)
+	config.Getenv = func(key string) string { return "/env/" + key }
+	state := t.TempDir()
+	if codex, claude := hostRoots(config, "/home", state, "", ""); codex != "/env/CODEX_HOME" || claude != "/env/CLAUDE_CONFIG_DIR" {
+		t.Fatalf("unrecorded hosts: %q, %q", codex, claude)
+	}
+	journal := `{"version":3,"command":"setup","home":"/home","codex_home":"/recorded/codex","claude_home":"/recorded/claude","state_dir":"` + state + `","operations":[]}`
+	if err := os.WriteFile(filepath.Join(state, "journal.json"), []byte(journal), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if codex, claude := hostRoots(config, "/home", state, "", ""); codex != "/recorded/codex" || claude != "/recorded/claude" {
+		t.Fatalf("recorded hosts: %q, %q", codex, claude)
+	}
+	if codex, claude := hostRoots(config, "/home", state, "/flag/codex", "/flag/claude"); codex != "/flag/codex" || claude != "/flag/claude" {
+		t.Fatalf("explicit roots: %q, %q", codex, claude)
+	}
+}
+
 func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 	cases := []struct {
 		name              string

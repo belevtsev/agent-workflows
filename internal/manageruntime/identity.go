@@ -42,7 +42,6 @@ type Locator struct {
 	Version     int    `json:"version"`
 	Source      string `json:"source"`
 	Home        string `json:"home"`
-	Codex       string `json:"codex"`
 	State       string `json:"state"`
 	CommandPath string `json:"command_path"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
@@ -136,7 +135,7 @@ func Resolve(executable string) (Locator, error) {
 	if err = json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
-	for _, p := range []string{locator.Source, locator.Home, locator.Codex, locator.State} {
+	for _, p := range []string{locator.Source, locator.Home, locator.State} {
 		if p == "" || !filepath.IsAbs(p) || filepath.Clean(p) != p || strings.ContainsAny(p, "\x00\r\n") {
 			return Locator{}, errors.New("unsafe installed manager locator paths")
 		}

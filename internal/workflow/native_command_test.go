@@ -36,12 +36,52 @@ func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
 		{name: "empty", path: ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			locator := RuntimeLocator{Version: 2, Source: installer.Source, Home: installer.Home, Codex: installer.Codex, State: installer.State, CommandPath: test.path}
+			locator := RuntimeLocator{Version: 2, Source: installer.Source, Home: installer.Home, State: installer.State, CommandPath: test.path}
 			_, err := installer.decodeRuntimeLocator(legacyJSON(seal(asObject(locator))))
 			if (err == nil) != test.valid {
 				t.Fatalf("valid=%t: %v", test.valid, err)
 			}
 		})
+	}
+}
+
+func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
+	f := claudeFixture(t)
+	installer := func(hosts ...string) *Installer {
+		i := nativeFixtureInstaller(t, f, f.first, true)
+		i.Hosts = hosts
+		return i
+	}
+	if _, err := installer(hostClaude).Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"first codex", "second codex"} {
+		f.paths.Codex = filepath.Join(f.base, name)
+		i := installer(hostCodex)
+		if _, err := i.Setup(true); err != nil {
+			t.Fatalf("enroll at %s: %v", name, err)
+		}
+		state, err := i.state(true)
+		if err != nil || hostRecord(state, hostCodex)["home"] != i.Codex {
+			t.Fatalf("Codex root not recorded: %#v, %v", hostRecord(state, hostCodex)["home"], err)
+		}
+		if codex, claude := RecordedHomes(f.paths.State); codex != i.Codex || claude != i.Claude {
+			t.Fatalf("recorded roots: %q, %q", codex, claude)
+		}
+		if _, err := installer().Status(); err != nil {
+			t.Fatalf("status at %s: %v", name, err)
+		}
+		f.paths.Codex = filepath.Join(f.base, "another codex")
+		if _, err := installer().Status(); err == nil {
+			t.Fatal("a recorded Codex root must stay bound")
+		}
+		f.paths.Codex = filepath.Join(f.base, name)
+		if _, err := installer(hostCodex).Uninstall(); err != nil {
+			t.Fatalf("remove from %s: %v", name, err)
+		}
+		if codex, _ := RecordedHomes(f.paths.State); codex != "" {
+			t.Fatalf("removed host left a recorded root: %q", codex)
+		}
 	}
 }
 
@@ -240,7 +280,7 @@ func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
 				case corruption == "runtime-target" && op["path"] == installer.runtimeCurrent():
 					object(op["after"])["target"] = fixture.paths.Source
 				case corruption == "locator-roots" && op["path"] == installer.locatorPath():
-					object(op["after"])["data"] = encode(legacyJSON(RuntimeLocator{Source: fixture.paths.Source, Home: fixture.base, Codex: fixture.paths.Codex, State: fixture.paths.State}))
+					object(op["after"])["data"] = encode(legacyJSON(RuntimeLocator{Source: fixture.paths.Source, Home: fixture.base, State: fixture.paths.State}))
 				case corruption == "profile-path" && op["kind"] == "command_profile":
 					op["path"] = filepath.Join(fixture.base, "foreign rc")
 				case corruption == "profile-content" && op["kind"] == "command_profile":

@@ -474,7 +474,7 @@ func TestClaudeHostRecoversEveryBoundary(t *testing.T) {
 				if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 					t.Fatalf("fault %s: %v", label, err)
 				}
-				if got := RecordedClaudeHome(f.paths.State); got != i.Claude {
+				if _, got := RecordedHomes(f.paths.State); got != i.Claude {
 					t.Fatalf("journal lost the Claude root: %q", got)
 				}
 				if _, err = i.Recover(); err != nil {
