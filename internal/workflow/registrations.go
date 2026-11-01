@@ -179,6 +179,9 @@ func (i *Installer) registrationAdditionCheck(ops []Object) error {
 		}
 	}
 	for _, h := range i.knownHosts() {
+		if len(additions[h.skills]) == 0 {
+			continue
+		}
 		if err := i.duplicates(h, additions[h.skills]); err != nil {
 			return err
 		}

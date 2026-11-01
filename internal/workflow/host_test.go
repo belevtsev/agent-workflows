@@ -105,6 +105,33 @@ func TestClaudeHostOnEmptyConfigRemovesWhatItCreated(t *testing.T) {
 	}
 }
 
+func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
+	f := claudeFixture(t)
+	seedClaudeFiles(t, f)
+	if err := os.MkdirAll(f.paths.Codex, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(f.paths.Codex, "skills")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.hostInstaller(false, hostClaude).Setup(true); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if _, err := f.hostInstaller(true, hostClaude).Setup(true); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	f.newRelease(t)
+	if _, err := f.hostInstaller(true).Setup(true); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if _, err := f.hostInstaller(true).Uninstall(); err != nil {
+		t.Fatalf("uninstall: %v", err)
+	}
+	if _, err := f.hostInstaller(true, hostCodex).Setup(true); err == nil || !strings.Contains(err.Error(), "unsafe") {
+		t.Fatalf("a selected Codex host must still refuse the symlink: %v", err)
+	}
+}
+
 func TestFreshInstallRefusesAmbiguousHostDetection(t *testing.T) {
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)
