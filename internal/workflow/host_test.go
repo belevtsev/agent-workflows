@@ -395,13 +395,23 @@ func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
 		if err := os.Mkdir(f.paths.Claude, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		_, err := f.hostInstaller(true, both...).Setup(true)
-		if exists(filepath.Join(skills, "code-review")) {
+		folded := exists(filepath.Join(skills, "code-review"))
+		i := f.hostInstaller(true, both...)
+		_, err := i.Setup(true)
+		if folded {
 			if err == nil || !strings.Contains(err.Error(), "sits on the") {
 				t.Fatalf("folded home: %v", err)
 			}
-		} else if err != nil {
+			return
+		}
+		if err != nil {
 			t.Fatalf("separate home: %v", err)
+		}
+		if _, err := i.Status(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := i.Uninstall(); err != nil {
+			t.Fatal(err)
 		}
 	})
 	t.Run("Claude alone", func(t *testing.T) {
