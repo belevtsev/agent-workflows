@@ -83,6 +83,7 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 			ops = append(ops, change)
 		}
 	}
+	adding := false
 	if !rollback {
 		added, changes, e := i.addHosts(s, release, m, enroll)
 		if e != nil {
@@ -92,9 +93,10 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 			hosts[id] = record
 		}
 		ops = append(ops, changes...)
+		adding = len(added) > 0
 	}
 	after["hosts"] = hosts
-	if !rollback && i.nativeRequested() && i.RuntimeCandidate != "" {
+	if !rollback && !adding && i.nativeRequested() && i.RuntimeCandidate != "" {
 		manager, changes, e := i.managerPlan(s)
 		if e != nil {
 			return nil, e
@@ -250,11 +252,18 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if exists(i.journalPath) {
 		return nil, errors.New("an unfinished mutation requires recover")
 	}
-	sha, e := cleanHeadContext(i.Context, i.Source)
+	s, e := i.state(false)
 	if e != nil {
 		return nil, e
 	}
-	s, e := i.state(false)
+	adding, e := i.addsHost(s)
+	if e != nil {
+		return nil, e
+	}
+	if adding && enroll {
+		return i.addHostsFromInstalled(s)
+	}
+	sha, e := cleanHeadContext(i.Context, i.Source)
 	if e != nil {
 		return nil, e
 	}
@@ -285,21 +294,10 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	defaults, e := ModelDefaults(release, m)
+	report, e := i.setupReport(sha, release, m, changes, ops, ar, enroll)
 	if e != nil {
 		return nil, e
 	}
-	changed := len(ops) > 0
-	command := "setup"
-	if !enroll {
-		command = "install"
-	}
-	report := Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": changes, "changed": changed, "model_defaults": defaults, "manager_command": ar, "model_config": Object{"managed": enroll}}
-	shared, e := SharedConfigDefaults(release)
-	if e != nil {
-		return nil, e
-	}
-	report["shared_config"] = Object{"managed": shared != nil, "defaults": shared}
 	if !i.Apply {
 		return report, nil
 	}
@@ -344,13 +342,71 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 		return nil, errors.New("source HEAD changed during setup")
 	}
 	if len(ops) > 0 {
-		if e = i.transact(command, ops); e != nil {
+		if e = i.transact(text(report["command"]), ops); e != nil {
 			return nil, e
 		}
 	}
 	report["changed"] = len(ops) > 0
 	report["manager_command"] = ar
 	return report, nil
+}
+
+// addHostsFromInstalled activates new hosts on the release already active, so
+// neither the checkout nor a newer manager can move what a rollback chose.
+func (i *Installer) addHostsFromInstalled(s Object) (Object, error) {
+	sha := text(s["release"])
+	release, m, e := i.release(sha)
+	if e != nil {
+		return nil, e
+	}
+	changes, e := i.registrationChanges(s, m, false, release)
+	if e != nil {
+		return nil, e
+	}
+	ops, e := i.activation(s, sha, release, m, true, false)
+	if e != nil {
+		return nil, e
+	}
+	report, e := i.setupReport(sha, release, m, changes, ops, nil, true)
+	if e != nil || !i.Apply {
+		return report, e
+	}
+	unlock, e := lockRoot(i.State, false)
+	if e != nil {
+		return nil, e
+	}
+	defer unlock()
+	current, e := i.state(true)
+	if e != nil {
+		return nil, e
+	}
+	if !equal(current, s) {
+		return nil, errors.New("installation changed before setup")
+	}
+	if ops, e = i.activation(s, sha, release, m, true, false); e != nil {
+		return nil, e
+	}
+	if e = i.transact("setup", ops); e != nil {
+		return nil, e
+	}
+	report["changed"] = len(ops) > 0
+	return report, nil
+}
+
+func (i *Installer) setupReport(sha, release string, m Object, changes []RegistrationChange, ops []Object, manager Object, enroll bool) (Object, error) {
+	defaults, e := ModelDefaults(release, m)
+	if e != nil {
+		return nil, e
+	}
+	shared, e := SharedConfigDefaults(release)
+	if e != nil {
+		return nil, e
+	}
+	command := "setup"
+	if !enroll {
+		command = "install"
+	}
+	return Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": changes, "changed": len(ops) > 0, "model_defaults": defaults, "manager_command": manager, "model_config": Object{"managed": enroll}, "shared_config": Object{"managed": shared != nil, "defaults": shared}}, nil
 }
 func (i *Installer) Status() (Object, error) {
 	if exists(i.journalPath) {

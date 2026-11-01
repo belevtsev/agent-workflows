@@ -222,6 +222,137 @@ func TestAddClaudeThenRemoveCodexKeepsClaudeWorking(t *testing.T) {
 	}
 }
 
+func addHostFixture(t *testing.T) *installerFixture {
+	t.Helper()
+	f := historicalRegistrationFixture(t)
+	f.paths.Claude = filepath.Join(f.paths.Home, ".claude")
+	seedClaudeFiles(t, f)
+	return f
+}
+
+func assertLinks(t *testing.T, h hostTarget, names []string, want bool) {
+	t.Helper()
+	for _, name := range names {
+		if _, err := os.Lstat(filepath.Join(h.skills, name)); (err == nil) != want {
+			t.Fatalf("%s link %s: want %t, got %v", h.id, name, want, err)
+		}
+	}
+}
+
+func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		rolledBack bool
+		hosts      []string
+	}{
+		{"checkout ahead", false, []string{hostClaude}},
+		{"rolled back", true, []string{hostClaude}},
+		{"rolled back naming every host", true, []string{hostCodex, hostClaude}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := addHostFixture(t)
+			if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			second := addBackendFixtureRegistrations(t, f)
+			if test.rolledBack {
+				if _, err := f.hostInstaller(true).Setup(true); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := f.hostInstaller(true).Rollback(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			i := f.hostInstaller(true, test.hosts...)
+			before, err := i.state(true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pointer, _ := os.Readlink(i.current)
+			snapshot := installerSnapshot(t, f.base)
+			report, err := f.hostInstaller(false, test.hosts...).Setup(true)
+			if err != nil || report["release"] != f.first {
+				t.Fatalf("preview: %#v, %v", report, err)
+			}
+			installerUnchanged(t, f.base, snapshot)
+			report, err = i.Setup(true)
+			if err != nil || report["release"] != f.first || report["changed"] != true {
+				t.Fatalf("add: %#v, %v", report, err)
+			}
+			after, err := i.state(true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if after["release"] != f.first || !equal(after["history"], before["history"]) || !equal(after["manifest_registrations"], before["manifest_registrations"]) {
+				t.Fatalf("adding a host changed the release: %v, %v", after["release"], after["history"])
+			}
+			if got, _ := os.Readlink(i.current); got != pointer {
+				t.Fatal("adding a host moved the active pointer")
+			}
+			claude := i.host(hostClaude)
+			assertLinks(t, claude, keys(object(f.manifest["registrations"])), true)
+			assertLinks(t, claude, backendFixtureNames, false)
+			if _, err := f.hostInstaller(true, test.hosts...).Setup(true); err != nil {
+				t.Fatal(err)
+			}
+			moved, err := i.state(true)
+			if err != nil || moved["release"] != second {
+				t.Fatalf("install of recorded hosts stayed behind HEAD: %v, %v", moved["release"], err)
+			}
+			assertLinks(t, claude, backendFixtureNames, true)
+			assertLinks(t, i.host(hostCodex), backendFixtureNames, true)
+		})
+	}
+}
+
+func TestAddingHostIgnoresTheCheckout(t *testing.T) {
+	f := addHostFixture(t)
+	second := addBackendFixtureRegistrations(t, f)
+	if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	f.git(t, "reset", "--hard", f.first)
+	installerWrite(t, filepath.Join(f.paths.Source, "uncommitted.txt"), "work in progress\n", 0o644)
+	i := f.hostInstaller(true, hostClaude)
+	if _, err := i.Setup(true); err != nil {
+		t.Fatalf("a dirty checkout behind the release blocked the host: %v", err)
+	}
+	state, err := i.state(true)
+	if err != nil || state["release"] != second {
+		t.Fatalf("release moved: %v, %v", state["release"], err)
+	}
+	assertLinks(t, i.host(hostClaude), backendFixtureNames, true)
+}
+
+func TestAddingHostLeavesTheManagerAlone(t *testing.T) {
+	f := addHostFixture(t)
+	i := nativeFixtureInstaller(t, f, f.first, true)
+	i.Hosts = []string{hostCodex}
+	if _, err := i.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	before, err := i.state(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime, _ := os.Readlink(i.runtimeCurrent())
+	newer := nativeFixtureInstaller(t, f, addBackendFixtureRegistrations(t, f), true)
+	newer.Hosts = []string{hostClaude}
+	if _, err := newer.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	after, err := i.state(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after["release"] != before["release"] || !equal(after["manager"], before["manager"]) {
+		t.Fatalf("adding a host changed the manager: %v, %v", after["release"], after["manager"])
+	}
+	if got, _ := os.Readlink(i.runtimeCurrent()); got != runtime {
+		t.Fatalf("adding a host moved the runtime: %s", got)
+	}
+}
+
 func TestClaudeSettingsDriftIsReportedAndLeftAlone(t *testing.T) {
 	f := claudeFixture(t)
 	original := seedClaudeFiles(t, f)

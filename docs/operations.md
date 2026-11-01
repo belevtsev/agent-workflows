@@ -113,6 +113,11 @@ Add a host at any time. It joins the active release with no new history entry:
 ./install.sh --host codex
 ```
 
+An addition reads the installed release, not the checkout, and leaves the release,
+history and manager alone. It never undoes a rollback, and a dirty or older checkout
+doesn't block it. Naming only hosts that are already recorded isn't an addition, so
+that install activates HEAD as usual.
+
 Remove one host and keep the rest. This restores that host's files and leaves the
 shared release, manager and other host alone:
 

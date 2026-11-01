@@ -96,6 +96,10 @@ without changing the active release:
 ./install.sh --host codex
 ```
 
+The host comes from the installed release, not your checkout, so this also works
+after a rollback or with uncommitted changes. To move to the checkout's HEAD
+afterwards, run `./install.sh` again without `--host`.
+
 To drop one host and keep the other:
 
 ```sh

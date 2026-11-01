@@ -82,6 +82,19 @@ func (i *Installer) selectedHosts(s Object) ([]hostTarget, error) {
 	return hosts, nil
 }
 
+// addsHost reports whether an install would activate a host state does not
+// record yet.
+func (i *Installer) addsHost(s Object) (bool, error) {
+	if s == nil {
+		return false, nil
+	}
+	hosts, err := i.selectedHosts(s)
+	if err != nil {
+		return false, err
+	}
+	return slices.ContainsFunc(hosts, func(h hostTarget) bool { return hostRecord(s, h.id) == nil }), nil
+}
+
 func (i *Installer) isInstructions(path string) bool {
 	return slices.ContainsFunc(i.knownHosts(), func(h hostTarget) bool { return h.instructions == path })
 }
