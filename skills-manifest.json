@@ -26,7 +26,10 @@
     "docker-sandboxes-env": "third_party/docker-skills/docker-sandboxes-env",
     "docker-sandboxes-kits": "third_party/docker-skills/docker-sandboxes-kits",
     "docker-sandboxes-lifecycle": "third_party/docker-skills/docker-sandboxes-lifecycle",
-    "docker-sandboxes-network-credentials": "third_party/docker-skills/docker-sandboxes-network-credentials"
+    "docker-sandboxes-network-credentials": "third_party/docker-skills/docker-sandboxes-network-credentials",
+    "codebase-design": "skills/codebase-design",
+    "domain-modeling": "skills/domain-modeling",
+    "parse-dont-validate": "skills/parse-dont-validate"
   },
   "global_instructions": "global/AGENTS.md",
   "required_licenses": [
@@ -43,7 +46,10 @@
     "third_party/docker-skills/LICENSE",
     "third_party/archify/LICENSE",
     "third_party/archify/THIRD_PARTY_NOTICES.md",
-    "third_party/archify/assets/JetBrainsMono-OFL.txt"
+    "third_party/archify/assets/JetBrainsMono-OFL.txt",
+    "skills/codebase-design/LICENSE",
+    "skills/domain-modeling/LICENSE",
+    "skills/parse-dont-validate/LICENSE"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
   "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",

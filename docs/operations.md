@@ -83,7 +83,7 @@ Skill registrations resolve through current. The source checkout remains editabl
 installed snapshots are never edited directly. The manager version and active
 skill revision are distinct, especially after rollback or --no-checkout.
 
-The current manifest manages 26 registrations with 71 entrypoints on each host, a
+The current manifest manages 29 registrations with 74 entrypoints on each host, a
 marked block in that host's global instructions, its model defaults, and one
 enrolled command/PATH registration. It preserves unrelated content, comments,
 modes, credentials, and repository instructions. Original settings and adopted

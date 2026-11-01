@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parse, Don't Validate"
+  short_description: "Turn repeated checks into types that prove them"
+  default_prompt: "Use $parse-dont-validate to find repeated checks and impossible states here, and propose narrower types parsed at the boundary."
