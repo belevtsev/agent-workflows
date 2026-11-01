@@ -57,7 +57,8 @@
     "third_party/cc-skills-golang/ADAPTED-LICENSES",
     "skills/expand-contract/LICENSE",
     "skills/isolation-anomalies/LICENSE",
-    "skills/retry-amplification/LICENSE"
+    "skills/retry-amplification/LICENSE",
+    "licenses/adapted-skill-sources-LICENSE"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
   "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
