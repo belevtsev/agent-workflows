@@ -5,9 +5,9 @@ never authorize implementation, publication, or operations. Resolve model, effor
 and role scope from [model-policy.yaml](../model-policy.yaml), following the
 [entrypoint](../SKILL.md)'s runtime and authorization safeguards.
 
-Defaults are Sol 6.1 `max` for substantive work, Luna `high` for bounded evidence,
-and Luna `xhigh` for bounded routine execution. Sol `max` can be configured or
-explicitly requested; Sol `ultra` requires an explicit permitted user request.
+Defaults are Astra `max` for substantive work, Luna `high` for bounded evidence,
+and Luna `xhigh` for bounded routine execution. Astra `max` can be configured or
+explicitly requested; Astra `ultra` requires an explicit permitted user request.
 Automatic escalation stays disabled. Configuration does not switch active sessions
 or prove depth, cost, or savings.
 

@@ -449,7 +449,7 @@ func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
 			i := f.installer(true)
 			switch conflict {
 			case "model":
-				installerWrite(t, i.config, strings.ReplaceAll(installerRead(t, i.config), "gpt-6.1-sol", "user-edited"), 0o600)
+				installerWrite(t, i.config, strings.ReplaceAll(installerRead(t, i.config), "gpt-6-astra", "user-edited"), 0o600)
 			case "global":
 				installerWrite(t, i.agents, strings.Replace(installerRead(t, i.agents), "# Working conventions", "# User edited managed conventions", 1), 0o600)
 			case "registration", "pointer":
