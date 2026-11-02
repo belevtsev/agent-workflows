@@ -12,11 +12,11 @@ func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
 			fixture.seedUserFiles(t)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt installation")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			parent := installer.skills
 			if affected == "codex" {
 				parent = installer.Codex

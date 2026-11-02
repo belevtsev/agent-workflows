@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 )
@@ -24,6 +25,29 @@ type installerFixture struct {
 	base     string
 	first    string
 	manifest Object
+	env      *fixtureEnv
+}
+
+// fixtureEnv is one test's view of the variables the installer reads, so tests
+// can change PATH or a fault label without touching the process environment.
+type fixtureEnv struct {
+	mu     sync.Mutex
+	values map[string]string
+}
+
+func (e *fixtureEnv) Getenv(name string) string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if value, found := e.values[name]; found {
+		return value
+	}
+	return os.Getenv(name)
+}
+
+func (e *fixtureEnv) Setenv(name, value string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.values[name] = value
 }
 
 func newInstallerFixture(t *testing.T) *installerFixture {
@@ -31,15 +55,12 @@ func newInstallerFixture(t *testing.T) *installerFixture {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_OPTIONAL_LOCKS", "0")
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
-	t.Setenv("SHELL", "/bin/bash")
-	t.Setenv("ZDOTDIR", "")
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	base := filepath.Join(t.TempDir(), "installer fixtures with spaces ' Ω")
-	f := &installerFixture{base: base}
+	f := &installerFixture{base: base, env: &fixtureEnv{values: map[string]string{"AGENT_WORKFLOWS_FAULT": ""}}}
 	f.paths = Paths{Source: filepath.Join(base, "source checkout"), Home: filepath.Join(base, "user home"),
 		Codex: filepath.Join(base, "user home", ".codex"), State: filepath.Join(base, "private state")}
 	installerBuildFixture(t, root, f.paths.Source)
@@ -181,7 +202,7 @@ func installerGit(t *testing.T, source string, args ...string) string {
 }
 
 func (f *installerFixture) installer(apply bool) *Installer {
-	return NewInstaller(Options{Paths: f.paths, Apply: apply, Shell: "bash"})
+	return NewInstaller(Options{Paths: f.paths, Apply: apply, Shell: "bash", Getenv: f.env.Getenv})
 }
 
 func (f *installerFixture) execute(t *testing.T, command string) Object {
@@ -195,9 +216,9 @@ func (f *installerFixture) execute(t *testing.T, command string) Object {
 
 func (f *installerFixture) failAt(t *testing.T, command, label string) {
 	t.Helper()
-	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+	f.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	_, err := f.installer(true).Execute(command)
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	f.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 		t.Fatalf("%s with %s: got %v", command, label, err)
 	}

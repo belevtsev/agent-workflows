@@ -435,8 +435,8 @@ func gitContext(ctx context.Context, source string, args ...string) ([]byte, err
 	}
 	return out, nil
 }
-func fault(label string) error {
-	if os.Getenv("AGENT_WORKFLOWS_FAULT") == label {
+func (i *Installer) fault(label string) error {
+	if i.Getenv("AGENT_WORKFLOWS_FAULT") == label {
 		return fmt.Errorf("injected failure at %s (recover before retrying)", label)
 	}
 	return nil

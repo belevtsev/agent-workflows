@@ -112,14 +112,14 @@ func (i *Installer) transact(command string, ops []Object) error {
 	if e := atomicWrite(i.journalPath, legacyJSON(seal(j)), 0600); e != nil {
 		return e
 	}
-	if e := fault("after-journal"); e != nil {
+	if e := i.fault("after-journal"); e != nil {
 		return e
 	}
 	for _, op := range ops {
 		if e := i.perform(op); e != nil {
 			return e
 		}
-		if e := fault("after-" + text(op["label"])); e != nil {
+		if e := i.fault("after-" + text(op["label"])); e != nil {
 			return e
 		}
 	}
@@ -650,7 +650,7 @@ func (i *Installer) Recover() (Object, error) {
 		if e = i.perform(op); e != nil {
 			return nil, e
 		}
-		if e = fault("after-" + text(op["label"])); e != nil {
+		if e = i.fault("after-" + text(op["label"])); e != nil {
 			return nil, e
 		}
 	}

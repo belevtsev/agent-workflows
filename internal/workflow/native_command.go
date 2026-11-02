@@ -431,7 +431,7 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 		}
 	}
 	if old == nil {
-		if command, err := exec.LookPath("cw"); command != "" && (err == nil || errors.Is(err, exec.ErrDot)) && Normalize(command) != i.commandPath() {
+		if command, err := lookPath("cw", i.Getenv("PATH")); command != "" && (err == nil || errors.Is(err, exec.ErrDot)) && Normalize(command) != i.commandPath() {
 			return nil, nil, fmt.Errorf("another cw command is on PATH: %s", command)
 		}
 	}
@@ -522,7 +522,7 @@ func (i *Installer) managerPathLabel(path string) string {
 }
 
 func (i *Installer) prepareProfile() (*ProfileRecord, Object, error) {
-	shell, _ := selectedShell(i.Shell, i.Paths, map[string]string{"SHELL": os.Getenv("SHELL"), "ZDOTDIR": os.Getenv("ZDOTDIR")})
+	shell, _ := selectedShell(i.Shell, i.Paths, map[string]string{"SHELL": i.Getenv("SHELL"), "ZDOTDIR": i.Getenv("ZDOTDIR")})
 	if shell == "" {
 		return nil, nil, nil
 	}
@@ -544,12 +544,31 @@ func (i *Installer) prepareProfile() (*ProfileRecord, Object, error) {
 	if len(data) > 0 && !bytes.HasSuffix(data, []byte("\n")) {
 		leading = "\n"
 	}
-	if pathIncludes(os.Getenv("PATH"), filepath.Join(i.Home, ".local", "bin")) {
+	if pathIncludes(i.Getenv("PATH"), filepath.Join(i.Home, ".local", "bin")) {
 		return nil, nil, nil
 	}
 	profile := &ProfileRecord{Shell: shell, Path: path, Segment: pathSegment(i.Paths, leading), OriginalExists: exists, OriginalMode: mode}
 	op := Object{"kind": "command_profile", "path": path, "shell": shell, "source": i.Source, "before_segment": nil, "after_segment": profile.Segment, "before_exists": exists, "after_exists": true, "before_mode": mode, "after_mode": mode, "label": "command-profile"}
 	return profile, op, nil
+}
+
+// lookPath is exec.LookPath against the installer's PATH rather than the
+// process's, including ErrDot for a match found through a relative entry.
+func lookPath(file, pathList string) (string, error) {
+	for _, directory := range filepath.SplitList(pathList) {
+		if directory == "" {
+			directory = "."
+		}
+		path := filepath.Join(directory, file)
+		if info, err := os.Stat(path); err != nil || info.IsDir() || info.Mode().Perm()&0o111 == 0 {
+			continue
+		}
+		if !filepath.IsAbs(path) {
+			return path, &exec.Error{Name: file, Err: exec.ErrDot}
+		}
+		return path, nil
+	}
+	return "", &exec.Error{Name: file, Err: exec.ErrNotFound}
 }
 
 func pathIncludes(value, directory string) bool {

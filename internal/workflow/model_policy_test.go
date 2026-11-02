@@ -344,11 +344,11 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 			configBefore := installerRead(t, installer.config)
 			maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
 			installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 				t.Fatalf("policy activation fault: %v", err)
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if err := os.Rename(fixture.paths.Source, fixture.paths.Source+" unavailable"); err != nil {
 				t.Fatal(err)
 			}

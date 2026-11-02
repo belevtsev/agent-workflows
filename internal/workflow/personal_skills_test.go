@@ -99,7 +99,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 	if _, err := ordinary.Setup(true); err == nil {
 		t.Fatal("ordinary setup adopted occupied personal names")
 	}
-	preview := NewInstaller(Options{Paths: fixture.paths, Context: t.Context(), AdoptPersonalSkills: true, Shell: "bash", PrepareRuntime: func(context.Context, string, string, string) (RuntimeCandidate, error) {
+	preview := NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Context: t.Context(), AdoptPersonalSkills: true, Shell: "bash", PrepareRuntime: func(context.Context, string, string, string) (RuntimeCandidate, error) {
 		t.Fatal("adoption dry run acquired a runtime")
 		return RuntimeCandidate{}, nil
 	}})
@@ -136,7 +136,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 	if err := os.Rename(i.Source, i.Source+" unavailable"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = NewInstaller(Options{Paths: fixture.paths, Apply: true, Context: t.Context()}).Uninstall(); err != nil {
+	if _, err = NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Apply: true, Context: t.Context()}).Uninstall(); err != nil {
 		t.Fatal(err)
 	}
 	for name := range originals {
@@ -182,11 +182,11 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 					if boundary != "complete" {
 						label += ":" + boundary
 					}
-					t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+					fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 					if _, err := i.Execute(action); err == nil || !strings.Contains(err.Error(), label) {
 						t.Fatalf("missing compound fault at %s: %v", label, err)
 					}
-					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+					fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					journal, err := readJSON(i.journalPath)
 					if err != nil || integer(journal["version"]) != 3 {
 						t.Fatalf("missing version-two journal: %v", err)
@@ -202,12 +202,12 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 					if action == "uninstall" && boundary == "unlink" {
 						recoveryBoundary = "link"
 					}
-					t.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-personal:"+name+":"+recoveryBoundary)
-					recovery := NewInstaller(Options{Paths: fixture.paths, Apply: true, Context: t.Context()})
+					fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-personal:"+name+":"+recoveryBoundary)
+					recovery := NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Apply: true, Context: t.Context()})
 					if _, err := recovery.Recover(); err == nil {
 						t.Fatal("recovery compound fault did not interrupt")
 					}
-					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+					fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					recovery.Apply = false
 					beforeRecovery := installerSnapshot(t, i.State)
 					if _, err := recovery.Recover(); err != nil {
@@ -360,20 +360,20 @@ func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
 			i.AdoptPersonalSkills = true
 			location := filepath.Join(i.skills, "archify")
 			original := seedPersonalSkill(t, originals["archify"], location)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 			if _, err := i.Setup(true); err == nil {
 				t.Fatal("setup fault did not interrupt")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if err := os.Rename(i.Source, i.Source+" unavailable"); err != nil {
 				t.Fatal(err)
 			}
-			recovery := NewInstaller(Options{Paths: fixture.paths, Apply: true, Context: t.Context()})
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-manager-runtime")
+			recovery := NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Apply: true, Context: t.Context()})
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-manager-runtime")
 			if _, err := recovery.Recover(); err == nil || !strings.Contains(err.Error(), "after-recover-manager-runtime") {
 				t.Fatalf("runtime reversal fault: %v", err)
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if target, err := os.Readlink(i.runtimeCurrent()); err != nil || target != i.runtimeDir(fixture.first) {
 				t.Fatalf("enrolled manager was not reverted to old runtime: %q, %v", target, err)
 			}
@@ -450,11 +450,11 @@ func TestPersonalSkillCancellationBetweenCompoundStepsRecovers(t *testing.T) {
 	i.AdoptPersonalSkills = true
 	location := filepath.Join(i.skills, "archify")
 	original := seedPersonalSkill(t, originals["archify"], location)
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-adopt-personal:archify:rename")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-adopt-personal:archify:rename")
 	if _, err := i.Setup(true); err == nil {
 		t.Fatal("compound pause did not interrupt")
 	}
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	i.Context = ctx

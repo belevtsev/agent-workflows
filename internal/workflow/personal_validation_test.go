@@ -142,11 +142,11 @@ func interruptedPersonalFixture(t *testing.T, label string) (*installerFixture, 
 	i := nativeFixtureInstaller(t, f, sha, true)
 	i.AdoptPersonalSkills = true
 	seedPersonalSkill(t, originals["archify"], filepath.Join(i.skills, "archify"))
-	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+	f.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	if _, err := i.Setup(true); err == nil || !strings.Contains(err.Error(), label) {
 		t.Fatalf("personal fixture interruption %s: %v", label, err)
 	}
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	f.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	return f, i
 }
 
@@ -156,11 +156,11 @@ func TestPersonalJournalEnumeratesCompoundPathsAndRejectsInterOperationOverlap(t
 			t.Run(field+"/"+owned, func(t *testing.T) {
 				f, i := interruptedPersonalFixture(t, "after-adopt-personal:archify:rename")
 				if field == "recovery_operations" {
-					t.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-personal:archify:rename")
+					f.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-personal:archify:rename")
 					if _, err := i.Recover(); err == nil {
 						t.Fatal("recovery interruption missing")
 					}
-					t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+					f.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 				}
 				journal, err := readJSON(i.journalPath)
 				if err != nil {

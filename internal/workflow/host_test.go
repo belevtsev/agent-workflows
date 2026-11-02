@@ -823,13 +823,13 @@ func TestClaudeHostRecoversEveryBoundary(t *testing.T) {
 				for _, path := range []string{filepath.Join(f.paths.Claude, "CLAUDE.md"), filepath.Join(f.paths.Claude, "settings.json")} {
 					before[path] = installerRead(t, path)
 				}
-				t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+				f.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 				i := f.hostInstaller(true, hostClaude)
 				if command == "uninstall" {
 					i.Hosts = nil
 				}
 				_, err := i.Execute(command)
-				t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+				f.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 				if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 					t.Fatalf("fault %s: %v", label, err)
 				}
