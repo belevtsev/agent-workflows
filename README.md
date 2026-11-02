@@ -49,6 +49,7 @@ The Codex defaults come from
 ```toml
 model = "gpt-6-astra"
 model_reasoning_effort = "max"
+model_context_window = 512000
 
 [features]
 memories = true

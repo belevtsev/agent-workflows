@@ -147,9 +147,11 @@ host is the same as a full `cw uninstall`.
 ## Shared Codex configuration
 
 The optional version-one `global/codex-defaults.toml` resource delivers exactly
-these five portable values through install and update:
+these six portable values through install and update:
 
 ```toml
+model_context_window = 512000
+
 [features]
 memories = true
 
@@ -163,6 +165,9 @@ consolidation_model = "gpt-6-astra"
 Its `version = 1` belongs to the source resource and is not written into the
 device's config. Additional resource settings, missing keys, or incorrect value
 types are rejected. Historical snapshots without the resource remain valid.
+`model_context_window` must be a positive integer number of tokens. Codex applies
+it to whichever model that config runs, so keep it within every model's maximum;
+the current catalog allows 872,000 for each listed model.
 `cw status` reports shared ownership and the active snapshot's defaults in
 `shared_config`.
 

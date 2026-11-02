@@ -1,4 +1,5 @@
 version = 1
+model_context_window = 512000
 
 [features]
 memories = true

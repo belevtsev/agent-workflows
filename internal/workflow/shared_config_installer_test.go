@@ -40,6 +40,7 @@ args = ['--private']
 
 func sharedInstallerResource(extractModel, consolidationModel string) string {
 	return fmt.Sprintf(`version = 1
+model_context_window = 512000
 
 [features]
 memories = true
@@ -129,6 +130,7 @@ func sharedInstallerAssertDefaults(t *testing.T, fixture *installerFixture, extr
 	expected := Object{
 		"features.memories": true, "memories.generate_memories": true, "memories.use_memories": true,
 		"memories.extract_model": extractModel, "memories.consolidation_model": consolidationModel,
+		"model_context_window": int64(512000),
 	}
 	for key, want := range expected {
 		if got, found := sharedInstallerLookup(values, key); !found || !reflect.DeepEqual(got, want) {
@@ -338,9 +340,9 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 					continue
 				}
 				count++
-				wantKeys := 5
+				wantKeys := 6
 				if command == "setup" {
-					wantKeys = 7
+					wantKeys = 8
 				}
 				if op["kind"] != "codex_config" || len(object(op["before_keys"])) != wantKeys || len(object(op["after_keys"])) != wantKeys {
 					t.Fatalf("incomplete combined config operation: %#v", op)
@@ -420,6 +422,7 @@ func TestSharedConfigInstallerOwnedDriftRefusesMutation(t *testing.T) {
 		{"generation toggle", "generate_memories = true", "generate_memories = false"},
 		{"extract model", `extract_model = "gpt-6.1-sol"`, `extract_model = "local-change"`},
 		{"consolidation model", `consolidation_model = "gpt-6.1-sol"`, `consolidation_model = "local-change"`},
+		{"context window", "model_context_window = 512000", "model_context_window = 272000"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			fixture := sharedInstallerFixture(t)
@@ -470,6 +473,9 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 		"wrong feature type":          strings.Replace(valid, "memories = true", "memories = 'true'", 1),
 		"wrong model type":            strings.Replace(valid, `extract_model = "gpt-6.1-sol"`, "extract_model = true", 1),
 		"missing consolidation model": strings.Replace(valid, "consolidation_model = \"gpt-6.1-sol\"\n", "", 1),
+		"missing context window":      strings.Replace(valid, "model_context_window = 512000\n", "", 1),
+		"string context window":       strings.Replace(valid, "model_context_window = 512000", "model_context_window = '512000'", 1),
+		"zero context window":         strings.Replace(valid, "model_context_window = 512000", "model_context_window = 0", 1),
 		"unknown memory key":          valid + "device_retention = 99\n",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -491,6 +497,7 @@ func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
 		"malformed":            "other = [",
 		"wrong feature type":   "[features]\nmemories = 'false'\n",
 		"wrong model type":     "[memories]\nextract_model = true\n",
+		"wrong window type":    "model_context_window = '512k'\n",
 		"scalar memory parent": "memories = 'device value'\n",
 		"inline features":      "features = { memories = false, device_feature = true }\n",
 		"inline memories":      "memories = { extract_model = 'local-extract', device_retention = 17 }\n",
