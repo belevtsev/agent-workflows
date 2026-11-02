@@ -52,31 +52,18 @@ func (e *fixtureEnv) Setenv(name, value string) {
 
 func newInstallerFixture(t *testing.T) *installerFixture {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	t.Setenv("GIT_OPTIONAL_LOCKS", "0")
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
 	base := filepath.Join(t.TempDir(), "installer fixtures with spaces ' Ω")
 	f := &installerFixture{base: base, env: &fixtureEnv{values: map[string]string{"AGENT_WORKFLOWS_FAULT": ""}}}
 	f.paths = Paths{Source: filepath.Join(base, "source checkout"), Home: filepath.Join(base, "user home"),
 		Codex: filepath.Join(base, "user home", ".codex"), State: filepath.Join(base, "private state")}
-	installerBuildFixture(t, root, f.paths.Source)
+	installerCopyExact(t, installerTemplate, f.paths.Source)
 	for _, directory := range []string{f.paths.Codex, filepath.Join(f.paths.Home, ".agents", "skills")} {
 		if err := os.MkdirAll(directory, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	f.git(t, "init", "-b", "main")
-	f.git(t, "config", "user.name", "Installer Fixture")
-	f.git(t, "config", "user.email", "fixture@example.invalid")
-	f.git(t, "config", "gc.auto", "0")
-	f.git(t, "config", "maintenance.auto", "false")
-	f.git(t, "add", ".")
-	f.git(t, "commit", "-m", "Maintained fixture suite")
-	f.first = f.git(t, "rev-parse", "HEAD")
+	f.first = installerTemplateHead
+	var err error
 	f.manifest, err = LoadManifest(f.paths.Source)
 	if err != nil {
 		t.Fatal(err)
@@ -84,11 +71,12 @@ func newInstallerFixture(t *testing.T) *installerFixture {
 	return f
 }
 
-func installerBuildFixture(t *testing.T, maintained, destination string) {
-	t.Helper()
+// installerBuildSource writes the maintained lifecycle inputs, with minimal
+// skill metadata, without a testing.T so TestMain can build it once.
+func installerBuildSource(maintained, destination string) error {
 	manifest, err := LoadManifest(maintained)
 	if err != nil {
-		t.Fatal(err)
+		return err
 	}
 	// Lifecycle fixtures keep a stable registration subset as new personal
 	// registrations are added to the maintained suite.
@@ -105,45 +93,108 @@ func installerBuildFixture(t *testing.T, maintained, destination string) {
 		}
 	}
 	manifest["required_licenses"] = licenses
-	write := func(relative, contents string, mode os.FileMode) {
-		t.Helper()
+	write := func(relative string, contents []byte, mode os.FileMode) error {
 		target := filepath.Join(destination, filepath.FromSlash(relative))
 		// Git archives represent tracked directories as 0755. Matching those
 		// modes is material to exact legacy adoption inventory checks.
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			t.Fatal(err)
+			return err
 		}
-		installerWrite(t, target, contents, mode)
+		if err := os.WriteFile(target, contents, mode); err != nil {
+			return err
+		}
+		return os.Chmod(target, mode)
 	}
-	copyFile := func(relative string) {
-		t.Helper()
+	copyFile := func(relative string) error {
 		source := filepath.Join(maintained, filepath.FromSlash(relative))
 		data, err := os.ReadFile(source)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
 		info, err := os.Stat(source)
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
-		write(relative, string(data), info.Mode().Perm())
+		return write(relative, data, info.Mode().Perm())
 	}
 	for _, relative := range []string{
 		".gitignore", "install.sh",
 		text(manifest["global_instructions"]), text(manifest["model_policy"]), text(manifest["claude_model_policy"]),
 		filepath.ToSlash(filepath.Join(filepath.Dir(text(manifest["model_policy"])), "references", "jev-questions.json")),
 	} {
-		copyFile(relative)
+		if err := copyFile(relative); err != nil {
+			return err
+		}
 	}
-	write("skills-manifest.json", string(legacyJSON(manifest)), 0o644)
-	write(personalCatalogName, "{\"skills\":{},\"version\":1}", 0o644)
-	write("LICENSE", "Fixture permission notice.\n", 0o644)
+	for relative, contents := range map[string]string{
+		"skills-manifest.json": string(legacyJSON(manifest)),
+		personalCatalogName:    "{\"skills\":{},\"version\":1}",
+		"LICENSE":              "Fixture permission notice.\n",
+	} {
+		if err := write(relative, []byte(contents), 0o644); err != nil {
+			return err
+		}
+	}
 	for _, relative := range sequence(manifest["required_licenses"]) {
-		copyFile(text(relative))
+		if err := copyFile(text(relative)); err != nil {
+			return err
+		}
 	}
 	for name, relative := range object(manifest["registrations"]) {
 		metadata := "---\nname: " + name + "\ndescription: Isolated installer lifecycle fixture.\n---\n\n# Fixture skill\n"
-		write(filepath.ToSlash(filepath.Join(text(relative), "SKILL.md")), metadata, 0o644)
+		if err := write(filepath.ToSlash(filepath.Join(text(relative), "SKILL.md")), []byte(metadata), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// installerCopyExact copies a tree, .git included, with every entry's exact
+// permission bits: inventories compare modes, so the umask must not decide them.
+func installerCopyExact(t *testing.T, source, destination string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	directories := map[string]os.FileMode{}
+	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(destination, relative)
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			directories[target] = info.Mode().Perm()
+			return os.Mkdir(target, 0o700)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("fixture template contains nonregular file %s", relative)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, data, 0o600); err != nil {
+			return err
+		}
+		return os.Chmod(target, info.Mode().Perm())
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Restrictive directory modes would block writing their contents, so they
+	// are applied once everything is copied.
+	for directory, mode := range directories {
+		if err := os.Chmod(directory, mode); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
