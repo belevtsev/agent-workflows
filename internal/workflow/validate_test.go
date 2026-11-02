@@ -132,7 +132,7 @@ func TestValidateSuiteReportAndDefaultsWithoutWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(defaults, map[string]string{"model": "gpt-6.1-sol", "model_reasoning_effort": "max"}) {
+	if !reflect.DeepEqual(defaults, map[string]string{"model": "gpt-6-astra", "model_reasoning_effort": "max"}) {
 		t.Fatalf("unexpected coordinator defaults: %#v", defaults)
 	}
 	if after := suiteSnapshot(t, fixture.root); !reflect.DeepEqual(before, after) {
@@ -157,7 +157,7 @@ func TestValidateSourceTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	defaults, err := ModelDefaults(root, manifest)
-	if err != nil || defaults["model"] != "gpt-6.1-sol" || defaults["model_reasoning_effort"] != "max" {
+	if err != nil || defaults["model"] != "gpt-6-astra" || defaults["model_reasoning_effort"] != "max" {
 		t.Fatalf("maintained suite defaults = %#v, error = %v", defaults, err)
 	}
 }
@@ -478,7 +478,10 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 			profile := p["profiles"].(Object)["sol"].(Object)
 			profile["model"], profile["user_requested_efforts"] = "gpt-6-luna", []any{}
 		}},
-		{"Sol default max under legacy rule", func(p Object) { p["effort_policy"].(Object)["max_for_sol"] = "explicit_user_request" }},
+		{"Sol default max under legacy rule", func(p Object) {
+			p["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6.1-sol"
+			p["effort_policy"].(Object)["max_for_sol"] = "explicit_user_request"
+		}},
 		{"unsupported effort", func(p Object) { p["profiles"].(Object)["luna"].(Object)["reasoning_effort"] = "ultra" }},
 		{"duplicate requested effort", func(p Object) { p["profiles"].(Object)["sol"].(Object)["user_requested_efforts"] = []any{"max", "max"} }},
 		{"configured max mismatch", func(p Object) { p["effort_policy"].(Object)["configured_max_profiles"] = []any{} }},
@@ -772,7 +775,7 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	for model, roles := range map[string]map[string][]string{
-		"gpt-6.1-sol": {"max": {"coordinator", "coding", "planning", "review", "documentation", "unknown-role"}},
+		"gpt-6-astra": {"max": {"coordinator", "coding", "planning", "review", "documentation", "unknown-role"}},
 		"gpt-6-luna":  {"xhigh": {"commit_execution", "pr_authoring_routine", "pr_submission"}, "high": {"lookup", "summarization"}},
 	} {
 		for effort, names := range roles {
@@ -825,6 +828,7 @@ func TestResolveWorkerRejectsConfiguredSolMaxUnderLegacyRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6.1-sol"
 	policy["effort_policy"].(Object)["max_for_sol"] = "explicit_user_request"
 	if _, err := ResolveWorker(policy, "coding", ""); err == nil || !strings.Contains(err.Error(), "Sol max requires") {
 		t.Fatalf("error = %v", err)

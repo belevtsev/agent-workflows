@@ -14,6 +14,7 @@ func sharedTestDefaults() Object {
 	return Object{
 		"features.memories": true, "memories.generate_memories": true, "memories.use_memories": true,
 		"memories.extract_model": "gpt-6.1-sol", "memories.consolidation_model": "gpt-6.1-sol",
+		"model_context_window": int64(512000),
 	}
 }
 
@@ -45,6 +46,7 @@ func TestSharedConfigPreservesDeviceBytesAndRestoresTokens(t *testing.T) {
 		"whitespace":              "\n  \n\t\n",
 		"only nested lookalikes":  "[profiles.private.features]\nmemories = false\n[profiles.private.memories]\nextract_model = 'nested'\n",
 		"implicit parent tables":  "[memories.local]\npath = '/device'\n[features.local]\nvalue = true\n",
+		"device context window":   "model_context_window = 128000 # device window\n[features]\nother = true\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")
@@ -209,7 +211,7 @@ func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, filepath.FromSlash(sharedConfigResource))
-	valid := "version=1\n[features]\nmemories=true\n[memories]\ngenerate_memories=true\nuse_memories=true\nextract_model='gpt-6.1-sol'\nconsolidation_model='gpt-6.1-sol'\n"
+	valid := "version=1\nmodel_context_window=512000\n[features]\nmemories=true\n[memories]\ngenerate_memories=true\nuse_memories=true\nextract_model='gpt-6.1-sol'\nconsolidation_model='gpt-6.1-sol'\n"
 	modelTestWrite(t, path, []byte(valid), 0o644)
 	if got, err := SharedConfigDefaults(root); err != nil || !reflect.DeepEqual(got, sharedTestDefaults()) {
 		t.Fatalf("valid defaults rejected: %v, %v", got, err)
@@ -222,6 +224,10 @@ func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
 		strings.Replace(valid, "version=1", "version=1\nmodel='duplicated'", 1),
 		valid + "device_path='/private/device'\n",
 		strings.Replace(valid, "use_memories=true\n", "", 1),
+		strings.Replace(valid, "model_context_window=512000\n", "", 1),
+		strings.Replace(valid, "model_context_window=512000", "model_context_window=-1", 1),
+		strings.Replace(valid, "model_context_window=512000", "model_context_window=512000.0", 1),
+		strings.Replace(valid, "model_context_window=512000", "model_context_window='512000'", 1),
 	} {
 		modelTestWrite(t, path, []byte(invalid), 0o644)
 		if _, err := SharedConfigDefaults(root); err == nil {

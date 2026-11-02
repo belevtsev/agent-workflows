@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -20,6 +21,7 @@ const sharedConfigOperationKind = "codex_config"
 const sharedConfigResource = "global/codex-defaults.toml"
 
 var sharedConfigKeys = [...]string{
+	"model_context_window",
 	"features.memories", "memories.generate_memories", "memories.use_memories",
 	"memories.extract_model", "memories.consolidation_model",
 }
@@ -46,7 +48,7 @@ func SharedConfigDefaults(root string) (Object, error) {
 		return nil, err
 	}
 	var values Object
-	if !utf8.Valid(data) || toml.Unmarshal(data, &values) != nil || !modelFields(values, "version", "features", "memories") || !suiteInteger(values["version"], 1) {
+	if !utf8.Valid(data) || toml.Unmarshal(data, &values) != nil || !modelFields(values, "version", "model_context_window", "features", "memories") || !suiteInteger(values["version"], 1) {
 		return nil, errors.New("shared Codex defaults have invalid fields or version")
 	}
 	features, memories := object(values["features"]), object(values["memories"])
@@ -55,8 +57,10 @@ func SharedConfigDefaults(root string) (Object, error) {
 	}
 	defaults := Object{}
 	for _, key := range sharedConfigKeys {
-		group, name, _ := strings.Cut(key, ".")
-		value := object(values[group])[name]
+		value := values[key]
+		if group, name, nested := strings.Cut(key, "."); nested {
+			value = object(values[group])[name]
+		}
 		if err := configValueType(key, value); err != nil {
 			return nil, fmt.Errorf("invalid shared Codex default: %w", err)
 		}
@@ -82,6 +86,10 @@ func configValueType(key string, value any) error {
 		}
 	case "model", "model_reasoning_effort", "memories.extract_model", "memories.consolidation_model":
 		if _, ok := value.(string); ok {
+			return nil
+		}
+	case "model_context_window":
+		if tokens, ok := value.(int64); ok && tokens > 0 {
 			return nil
 		}
 	}
@@ -438,12 +446,13 @@ func configExpected(defaults Object, owned []string) (Object, error) {
 			return nil, err
 		}
 		var representation string
-		if text, ok := value.(string); ok {
-			representation = modelQuote(text)
-		} else if value.(bool) {
-			representation = "true"
-		} else {
-			representation = "false"
+		switch value := value.(type) {
+		case string:
+			representation = modelQuote(value)
+		case int64:
+			representation = strconv.FormatInt(value, 10)
+		case bool:
+			representation = strconv.FormatBool(value)
 		}
 		after[key] = Object{"present": true, "representation": representation}
 	}

@@ -21,12 +21,12 @@ for bounded evidence. See the
 
 | Work | Default model | Effort |
 | --- | --- | --- |
-| Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6.1-sol` | `max` |
+| Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6-astra` | `max` |
 | Bounded routine execution | `gpt-6-luna` | `xhigh` |
 | Bounded read-only lookup or summarization | `gpt-6-luna` | `high` |
 
 The policy preserves fixed specialist settings and describes availability
-fallbacks. Sol `max` is configured; Sol `ultra` requires an explicit user request.
+fallbacks. Astra `max` is configured; Astra `ultra` requires an explicit user request.
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
@@ -38,7 +38,7 @@ results do not prove correctness or grant permission.
 coordinator policy. In Codex `config.toml`:
 
 ```toml
-model = "gpt-6.1-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "max"
 ```
 
@@ -70,10 +70,12 @@ defaults, while a running session keeps its existing settings.
 reports configured routing, not live model availability or the current chat's
 model. Historical snapshots retain their own profile settings.
 
-The policy remains version 2. `max_for_sol: configured_or_explicit_user_request`
-permits configured Sol Max when `configured_max_profiles` exactly lists every
+The policy remains version 2. Its `sol` profile, `sol_unavailable` fallback and
+`max_for_sol` rule keep their names as schema identifiers; the `sol` profile now
+runs `gpt-6-astra`. `max_for_sol: configured_or_explicit_user_request`
+permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
-continue rejecting configured Sol Max. The native validator and optional Python
+continue rejecting configured Max for Sol models. The native validator and optional Python
 helper enforce the same rules. Manager v3/v4/v5 needs the one-time v6 bootstrap
 migration before it can validate the expanded manifest and personal adoption.
 

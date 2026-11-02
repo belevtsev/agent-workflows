@@ -41,6 +41,7 @@ func editModelPolicy(t *testing.T, path string, edit func(Object)) {
 // policy; the older v2 contract still has Ultra and Luna execution Max defaults.
 func historicalModelPolicy(policy Object) {
 	profiles := policy["profiles"].(Object)
+	profiles["sol"].(Object)["model"] = "gpt-6.1-sol"
 	profiles["sol"].(Object)["reasoning_effort"] = "ultra"
 	profiles["sol"].(Object)["user_requested_efforts"] = []any{"max"}
 	profiles["luna_execution"].(Object)["reasoning_effort"] = "max"
@@ -53,6 +54,7 @@ func historicalModelPolicy(policy Object) {
 
 func configuredModelPolicy(policy Object) {
 	profiles := policy["profiles"].(Object)
+	profiles["sol"].(Object)["model"] = "gpt-6-astra"
 	profiles["sol"].(Object)["reasoning_effort"] = "max"
 	profiles["sol"].(Object)["user_requested_efforts"] = []any{"xhigh", "ultra"}
 	profiles["luna_execution"].(Object)["reasoning_effort"] = "xhigh"
@@ -68,7 +70,7 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 		name, model, effort string
 		edit                func(Object)
 	}{
-		{"maintained defaults", "gpt-6.1-sol", "max", func(Object) {}},
+		{"maintained defaults", "gpt-6-astra", "max", func(Object) {}},
 		{"historical defaults and explicit Max override", "gpt-6.1-sol", "ultra", historicalModelPolicy},
 		{"historical previous Sol", "gpt-6-sol", "ultra", func(policy Object) {
 			historicalModelPolicy(policy)
@@ -89,19 +91,19 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 		{"configured previous Sol", "gpt-6-sol", "max", func(policy Object) {
 			policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6-sol"
 		}},
-		{"configured without optional xhigh guidance", "gpt-6.1-sol", "max", func(policy Object) {
+		{"configured without optional xhigh guidance", "gpt-6-astra", "max", func(policy Object) {
 			delete(policy["effort_guidance"].(Object), "xhigh")
 		}},
-		{"supported Luna effort overrides", "gpt-6.1-sol", "max", func(policy Object) {
+		{"supported Luna effort overrides", "gpt-6-astra", "max", func(policy Object) {
 			policy["profiles"].(Object)["luna_execution"].(Object)["user_requested_efforts"] = []any{"high", "xhigh", "max"}
 		}},
-		{"configured Ultra override", "gpt-6.1-sol", "ultra", func(policy Object) {
+		{"configured Ultra override", "gpt-6-astra", "ultra", func(policy Object) {
 			policy["profiles"].(Object)["sol"].(Object)["reasoning_effort"] = "ultra"
 			policy["profiles"].(Object)["sol"].(Object)["user_requested_efforts"] = []any{"max", "xhigh"}
 			policy["effort_policy"].(Object)["default_substantive"] = "ultra"
 			policy["effort_policy"].(Object)["configured_max_profiles"] = []any{}
 		}},
-		{"unordered exact configured Max profiles", "gpt-6.1-sol", "max", func(policy Object) {
+		{"unordered exact configured Max profiles", "gpt-6-astra", "max", func(policy Object) {
 			policy["profiles"].(Object)["luna_execution"].(Object)["reasoning_effort"] = "max"
 			policy["effort_policy"].(Object)["configured_max_profiles"] = []any{"sol", "luna_execution"}
 		}},
@@ -177,25 +179,25 @@ func TestModelPolicyRejectsInvalidConfiguredDefaultsAndCapabilities(t *testing.T
 	}
 }
 
-func policyProfiles(solEffort, executionEffort string) Object {
+func policyProfiles(solModel, solEffort, executionEffort string) Object {
 	return Object{
-		"sol":            Object{"model": "gpt-6.1-sol", "reasoning_effort": solEffort, "scope": "substantive"},
+		"sol":            Object{"model": solModel, "reasoning_effort": solEffort, "scope": "substantive"},
 		"luna_execution": Object{"model": "gpt-6-luna", "reasoning_effort": executionEffort, "scope": "bounded_execution"},
 		"luna":           Object{"model": "gpt-6-luna", "reasoning_effort": "high", "scope": "bounded_evidence"},
 	}
 }
 
-func assertInstalledModelPolicy(t *testing.T, installer *Installer, revision, solEffort, executionEffort string) {
+func assertInstalledModelPolicy(t *testing.T, installer *Installer, revision, solModel, solEffort, executionEffort string) {
 	t.Helper()
 	before := installerSnapshot(t, installer.State)
 	report, err := installer.Status()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report["installed"] != true || report["release"] != revision || !reflect.DeepEqual(report["model_profiles"], policyProfiles(solEffort, executionEffort)) {
+	if report["installed"] != true || report["release"] != revision || !reflect.DeepEqual(report["model_profiles"], policyProfiles(solModel, solEffort, executionEffort)) {
 		t.Fatalf("unexpected installed snapshot: %#v", report)
 	}
-	want := map[string]string{"model": "gpt-6.1-sol", "model_reasoning_effort": solEffort}
+	want := map[string]string{"model": solModel, "model_reasoning_effort": solEffort}
 	if !reflect.DeepEqual(report["model_defaults"], want) || object(report["model_config"])["managed"] != true {
 		t.Fatalf("unexpected model default ownership: %#v", report)
 	}
@@ -248,7 +250,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
 	}
-	assertInstalledModelPolicy(t, installer, legacy, "ultra", "max")
+	assertInstalledModelPolicy(t, installer, legacy, "gpt-6.1-sol", "ultra", "max")
 	initial, err := installer.state(true)
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +271,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if fixture.git(t, "rev-parse", "HEAD") != legacy {
 		t.Fatal("no-checkout model activation changed the source HEAD")
 	}
-	assertInstalledModelPolicy(t, installer, maxRevision, "max", "xhigh")
+	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	assertManagerProtocol(t, installer, ManagerProtocol)
 	activated, err := installer.state(true)
 	if err != nil {
@@ -282,11 +284,11 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if err := os.Rename(fixture.paths.Source, missingSource); err != nil {
 		t.Fatal(err)
 	}
-	assertInstalledModelPolicy(t, installer, maxRevision, "max", "xhigh")
+	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	if _, err := installer.Rollback(); err != nil {
 		t.Fatalf("checkout-free policy rollback: %v", err)
 	}
-	assertInstalledModelPolicy(t, installer, legacy, "ultra", "max")
+	assertInstalledModelPolicy(t, installer, legacy, "gpt-6.1-sol", "ultra", "max")
 	assertManagerProtocol(t, installer, ManagerProtocol)
 	rolledBack, err := installer.state(true)
 	if err != nil {
@@ -301,7 +303,7 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if _, err := installer.Update(); err != nil {
 		t.Fatal(err)
 	}
-	assertInstalledModelPolicy(t, installer, maxRevision, "max", "xhigh")
+	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	assertManagerProtocol(t, installer, ManagerProtocol)
 	if err := os.Rename(fixture.paths.Source, missingSource); err != nil {
 		t.Fatal(err)
@@ -364,7 +366,7 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 			if err != nil || !equal(state, before) {
 				t.Fatalf("historical ownership changed after recovery: %v", err)
 			}
-			assertInstalledModelPolicy(t, installer, legacy, "ultra", "max")
+			assertInstalledModelPolicy(t, installer, legacy, "gpt-6.1-sol", "ultra", "max")
 			assertManagerProtocol(t, installer, ManagerProtocol)
 			if installerRead(t, installer.config) != configBefore+"# after interrupted policy activation\n" {
 				t.Fatal("policy recovery lost unrelated TOML bytes")
@@ -394,7 +396,7 @@ func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := policyProfiles("max", "xhigh")
+	want := policyProfiles("gpt-6-astra", "max", "xhigh")
 	want["expert"] = Object{"model": "gpt-6-astra", "reasoning_effort": "ultra", "scope": "substantive"}
 	if !reflect.DeepEqual(report["model_profiles"], want) {
 		t.Fatalf("status projected profiles = %#v; want %#v", report["model_profiles"], want)
