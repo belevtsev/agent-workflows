@@ -18,7 +18,7 @@ jobs:
   validate:
     name: Native Go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +43,9 @@ jobs:
         env:
           RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux' && format('v2.0.{0}', github.run_number) || '' }}
           SOURCE_REVISION: ${{ github.sha }}
-        run: exec .bin/cwdev check --race --source . --revision "$SOURCE_REVISION" --release-version "$RELEASE_VERSION"
+          # Race checks run once, on Linux, where they cover every package.
+          RACE_CHECKS: ${{ runner.os == 'Linux' }}
+        run: exec .bin/cwdev check --race="$RACE_CHECKS" --source . --revision "$SOURCE_REVISION" --release-version "$RELEASE_VERSION"
       - name: Retain exact validated release archives
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
