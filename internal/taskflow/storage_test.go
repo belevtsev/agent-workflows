@@ -175,32 +175,51 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	}
 }
 
-func checkBarrier(t *testing.T) *net.TCPListener {
+func checkBarrier(t *testing.T, lifetime context.Context) *net.TCPListener {
 	t.Helper()
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { listener.Close() })
+	stopClosing := context.AfterFunc(lifetime, func() { listener.Close() })
+	t.Cleanup(func() {
+		stopClosing()
+		listener.Close()
+	})
 	return listener
 }
 
-func acceptCheckBarrier(t *testing.T, listener *net.TCPListener, id string) net.Conn {
+func checkBarrierIODeadline(lifetime context.Context) time.Time {
+	ioDeadline := time.Now().Add(15 * time.Second)
+	if deadline, ok := lifetime.Deadline(); ok && deadline.Before(ioDeadline) {
+		return deadline
+	}
+	return ioDeadline
+}
+
+func acceptCheckBarrier(t *testing.T, lifetime context.Context, listener *net.TCPListener, id string) net.Conn {
 	t.Helper()
-	if err := listener.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
+	if err := listener.SetDeadline(checkBarrierIODeadline(lifetime)); err != nil {
 		t.Fatal(err)
 	}
 	connection, err := listener.Accept()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { connection.Close() })
-	if err := connection.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
+	stopClosing := context.AfterFunc(lifetime, func() { connection.Close() })
+	t.Cleanup(func() {
+		stopClosing()
+		connection.Close()
+	})
+	if err := connection.SetReadDeadline(checkBarrierIODeadline(lifetime)); err != nil {
 		t.Fatal(err)
 	}
 	ready := make([]byte, len(id))
 	if _, err := io.ReadFull(connection, ready); err != nil || string(ready) != id {
 		t.Fatalf("child did not reach its execution barrier: id=%q err=%v", ready, err)
+	}
+	if err := connection.SetReadDeadline(time.Time{}); err != nil {
+		t.Fatal(err)
 	}
 	return connection
 }
@@ -220,36 +239,38 @@ func startBarrierCheck(t *testing.T, ctx context.Context, record Record, id stri
 	return done
 }
 
-func awaitCheckOutcome(t *testing.T, done <-chan checkOutcome) checkOutcome {
+func awaitCheckOutcome(t *testing.T, lifetime context.Context, done <-chan checkOutcome) checkOutcome {
 	t.Helper()
 	select {
 	case result := <-done:
 		return result
-	case <-time.After(20 * time.Second):
+	case <-lifetime.Done():
 		t.Fatal("owned check did not finish")
 		return checkOutcome{}
 	}
 }
 
 func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
-	listener := checkBarrier(t)
+	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancelLifetime()
+	deadline, _ := lifetime.Deadline()
+	deadlineArg := deadline.Format(time.RFC3339Nano)
+	listener := checkBarrier(t, lifetime)
 	marker := filepath.Join(t.TempDir(), "third-check-must-not-run")
-	plan := helperPlan(t, "small", "barrier", listener.Addr().String(), "first")
-	plan.Checks[0].ID, plan.Checks[0].TimeoutSeconds = "first", 30
+	plan := helperPlan(t, "small", "barrier", listener.Addr().String(), "first", deadlineArg)
+	plan.Checks[0].ID, plan.Checks[0].TimeoutSeconds = "first", 120
 	plan.Requirements[0].CheckIDs = []string{"first"}
 	second, third := plan.Checks[0], plan.Checks[0]
 	second.ID, third.ID = "second", "third"
-	second.Argv = append(append([]string(nil), second.Argv[:3]...), "barrier", listener.Addr().String(), second.ID)
+	second.Argv = append(append([]string(nil), second.Argv[:3]...), "barrier", listener.Addr().String(), second.ID, deadlineArg)
 	third.Argv = append(append([]string(nil), third.Argv[:3]...), "mutate", marker)
 	plan.Checks = append(plan.Checks, second, third)
 	record, _ := fixtureTask(t, plan)
 	record = extendTaskHistory(t, record, maxTaskRevisions-4)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	firstDone := startBarrierCheck(t, ctx, record, "first")
-	first := acceptCheckBarrier(t, listener, "first")
-	secondDone := startBarrierCheck(t, ctx, record, "second")
-	secondConnection := acceptCheckBarrier(t, listener, "second")
+	firstDone := startBarrierCheck(t, lifetime, record, "first")
+	first := acceptCheckBarrier(t, lifetime, listener, "first")
+	secondDone := startBarrierCheck(t, lifetime, record, "second")
+	secondConnection := acceptCheckBarrier(t, lifetime, listener, "second")
 	refuseCompetingUpdates := func() {
 		t.Helper()
 		names := taskArtifactNames(t, record.Directory)
@@ -257,7 +278,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		if _, err := update(record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
 			t.Fatalf("metadata writer spent a terminal slot: called=%t err=%v", called, err)
 		}
-		if run, err := Run(t.Context(), record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
+		if run, err := Run(lifetime, record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
 			t.Fatalf("new check spent another check's terminal slot: id=%q err=%v", run.ID, err)
 		}
 		if !slices.Equal(names, taskArtifactNames(t, record.Directory)) {
@@ -265,17 +286,23 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		}
 	}
 	refuseCompetingUpdates()
+	if err := first.SetWriteDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := first.Write([]byte{1}); err != nil {
 		t.Fatal(err)
 	}
-	if outcome := awaitCheckOutcome(t, firstDone); outcome.err != nil || outcome.run.Status != "passed" {
+	if outcome := awaitCheckOutcome(t, lifetime, firstDone); outcome.err != nil || outcome.run.Status != "passed" {
 		t.Fatalf("first terminal reservation lost: status=%q err=%v", outcome.run.Status, outcome.err)
 	}
 	refuseCompetingUpdates()
+	if err := secondConnection.SetWriteDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := secondConnection.Write([]byte{1}); err != nil {
 		t.Fatal(err)
 	}
-	if outcome := awaitCheckOutcome(t, secondDone); outcome.err != nil || outcome.run.Status != "passed" {
+	if outcome := awaitCheckOutcome(t, lifetime, secondDone); outcome.err != nil || outcome.run.Status != "passed" {
 		t.Fatalf("second terminal reservation lost: status=%q err=%v", outcome.run.Status, outcome.err)
 	}
 	stored, err := Load(record.Directory)
@@ -293,16 +320,20 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 }
 
 func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
-	listener := checkBarrier(t)
-	plan := helperPlan(t, "small", "barrier", listener.Addr().String(), "focused")
+	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
+	defer cancelLifetime()
+	deadline, _ := lifetime.Deadline()
+	listener := checkBarrier(t, lifetime)
+	plan := helperPlan(t, "small", "barrier", listener.Addr().String(), "focused", deadline.Format(time.RFC3339Nano))
+	plan.Checks[0].TimeoutSeconds = 120
 	record, _ := fixtureTask(t, plan)
 	record = extendTaskHistory(t, record, maxTaskRevisions-2)
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(lifetime)
 	defer cancel()
 	done := startBarrierCheck(t, ctx, record, "focused")
-	acceptCheckBarrier(t, listener, "focused")
+	acceptCheckBarrier(t, lifetime, listener, "focused")
 	cancel()
-	outcome := awaitCheckOutcome(t, done)
+	outcome := awaitCheckOutcome(t, lifetime, done)
 	if !errors.Is(outcome.err, context.Canceled) || outcome.run.Status != "cancelled" {
 		t.Fatalf("cancellation lost reserved result: status=%q err=%v", outcome.run.Status, outcome.err)
 	}

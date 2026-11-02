@@ -47,19 +47,38 @@ func TestCheckSubprocess(t *testing.T) {
 	case "output":
 		fmt.Print(strings.Repeat("x", MaxLogBytes+2048))
 	case "barrier":
-		connection, err := net.DialTimeout("tcp", args[1], 10*time.Second)
+		if len(args) != 4 {
+			os.Exit(25)
+		}
+		lifetimeDeadline, err := time.Parse(time.RFC3339Nano, args[3])
+		if err != nil || !lifetimeDeadline.After(time.Now()) {
+			os.Exit(25)
+		}
+		dialer := net.Dialer{Timeout: 10 * time.Second, Deadline: lifetimeDeadline}
+		connection, err := dialer.Dial("tcp", args[1])
 		if err != nil {
 			os.Exit(21)
 		}
 		defer connection.Close()
-		if err := connection.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		readinessDeadline := time.Now().Add(15 * time.Second)
+		if lifetimeDeadline.Before(readinessDeadline) {
+			readinessDeadline = lifetimeDeadline
+		}
+		if err := connection.SetWriteDeadline(readinessDeadline); err != nil {
+			connection.Close()
 			os.Exit(22)
 		}
 		if _, err := io.WriteString(connection, args[2]); err != nil {
+			connection.Close()
 			os.Exit(23)
+		}
+		if err := connection.SetReadDeadline(lifetimeDeadline); err != nil {
+			connection.Close()
+			os.Exit(22)
 		}
 		var release [1]byte
 		if _, err := io.ReadFull(connection, release[:]); err != nil {
+			connection.Close()
 			os.Exit(24)
 		}
 	case "wait-marker":
