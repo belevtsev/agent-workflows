@@ -7,7 +7,7 @@ import (
 	"slices"
 )
 
-var claudePolicyModels = []string{"claude-opus-5-5"}
+var claudePolicyModels = []string{"claude-opus-5-5", "claude-sonnet-5-5"}
 
 // settings.json rejects max, so the policy cannot persist it as a default.
 var claudePolicyEfforts = []string{"low", "medium", "high", "xhigh"}

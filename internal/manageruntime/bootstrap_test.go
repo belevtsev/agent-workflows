@@ -30,7 +30,7 @@ func managerScript(protocol bool) string {
 }
 
 func currentManagerScriptIdentity(revision string) string {
-	return managerScriptIdentity("cw-manager-v7", revision)
+	return managerScriptIdentity("cw-manager-v8", revision)
 }
 
 func managerScriptIdentity(protocol, revision string) string {
@@ -165,8 +165,8 @@ func TestBootstrapColdDryRunAndHelpPreserveLegacy(t *testing.T) {
 		})
 	}
 }
-func TestBootstrapRefreshesOlderNativeProtocol(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6"} {
+func TestBootstrapRefreshesUnsupportedNativeProtocol(t *testing.T) {
+	for _, protocol := range []string{"cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v9"} {
 		t.Run(protocol, func(t *testing.T) {
 			launcher, binary, calls := bootstrapFixture(t, false)
 			writeFixture(t, binary, managerScriptIdentity(protocol, fixtureSHA), 0755)
@@ -221,10 +221,10 @@ func TestBootstrapPreservesUnidentifiedCache(t *testing.T) {
 	}
 }
 
-func TestBootstrapRejectsOlderReleasesWithoutChangingOwnedInstallation(t *testing.T) {
-	for _, latest := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5"} {
+func TestBootstrapRejectsUnsupportedReleasesWithoutChangingOwnedInstallation(t *testing.T) {
+	for _, latest := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v9", "unknown"} {
 		t.Run(latest, func(t *testing.T) {
-			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5"} {
+			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7"} {
 				t.Run(cache, func(t *testing.T) {
 					launcher, binary, calls := bootstrapFixture(t, false)
 					root := filepath.Dir(filepath.Dir(launcher))
@@ -236,7 +236,7 @@ func TestBootstrapRejectsOlderReleasesWithoutChangingOwnedInstallation(t *testin
 					}
 					home, owned, links := bootstrapOwnedInstallation(t, root)
 					stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
-					if err == nil || stdout != "" || !strings.Contains(stderr, "released native manager does not support the required bootstrap protocol cw-manager-v7") {
+					if err == nil || stdout != "" || !strings.Contains(stderr, "released native manager does not support the required bootstrap protocol cw-manager-v8") {
 						t.Fatalf("latest %s was accepted: %v: stdout=%q stderr=%q", latest, err, stdout, stderr)
 					}
 					assertBootstrapCacheUnchanged(t, binary, old)
@@ -418,7 +418,7 @@ func TestBootstrapReusesCompatibleCacheWithoutRequiringSourceRevision(t *testing
 	}
 }
 
-func TestBootstrapColdV6Download(t *testing.T) {
+func TestBootstrapColdV8Download(t *testing.T) {
 	launcher, binary, calls := bootstrapFixture(t, false)
 	stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install")
 	if err != nil || strings.TrimSpace(stdout) != `{"forwarded":true}` || stderr != "" {
@@ -436,7 +436,7 @@ func TestBootstrapColdV6Download(t *testing.T) {
 }
 
 func TestBootstrapStaleManagersDryRunHasNoDownloadsOrPersistentWrites(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5"} {
+	for _, protocol := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7"} {
 		t.Run(protocol, func(t *testing.T) {
 			for _, argument := range []string{"--dry-run", "--dry-run=1", "--dry-run=t", "--dry-run=T", "--dry-run=true", "--dry-run=TRUE", "--dry-run=True", "--help"} {
 				t.Run(argument, func(t *testing.T) {

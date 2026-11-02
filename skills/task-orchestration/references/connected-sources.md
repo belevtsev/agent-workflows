@@ -99,16 +99,17 @@ Read enough paginated results to establish completeness for the current question
 - Draft PR titles and descriptions around the final diff, observable behavior, and relevant
   validation. Drafting does not authorize commits, pushes, PR creation, merge, or comments.
   Perform already requested publication without repeating an approval request.
-- Keep substantive PR authoring with the coordinator or a configured substantive
-  worker. A `pr_authoring_routine` worker may draft only a routine summary from fixed,
-  independently verified facts. The current default uses Luna's execution profile;
-  choosing a substantive profile preserves the same task and publication limits.
-  A `pr_submission` worker may execute a pre-approved title,
-  body, base, head, and exact revision after the coordinator refreshes the branch and
-  confirms the requested publication. Bounded evidence profiles remain limited to
-  read-only evidence. A `commit_execution` worker may
-  create only the pre-scoped commit; it must stop on scope,
-  diff, conflict, or verification ambiguity.
+- Explicitly dispatch the [GitHub worker](github-worker.md) for requested commits
+  and routine PR creation/update, including small tasks. Its `commit_execution`,
+  `pr_authoring_routine` and `pr_submission` roles use the `github` profile. It
+  drafts messages and PR text from fixed independently verified facts and executes
+  the scoped authorized commit/push and `gh` PR writes, following the brief,
+  prewrite refresh and readback contract. Substantive `pr_authoring` stays with
+  the coordinator or a substantive worker; new claims, scope changes, conflicts
+  or uncertain verification return there. Publishing verified facts alone does
+  not repeat full orchestration or adviser checkpoints. Bounded evidence profiles
+  remain read-only, and unavailable GitHub workers must not silently fall back to
+  an expensive profile.
 - Read back created or changed issues, PRs, reviews, and comments. If a write times out or
   returns an ambiguous outcome, inspect remote state before retrying. Attach a created PR
   to the current task when the app provides the attachment tool.

@@ -1,14 +1,19 @@
 ---
 name: task-orchestration
-description: Coordinate substantial work with bounded workers, grounded assumptions, required Jev, SubQ Snap and OpenAI Decisions advice, and verification tied to the revision.
+description: Coordinate substantial work with bounded workers, required Jev, SubQ Snap and OpenAI Decisions advice, and source-bound verification; route routine GitHub publication to a cheaper worker.
 ---
 
 # Task orchestration
 
 The coordinator owns the outcome, consultation, dispatch, integration, and final
 verification. Use this skill for independent workstreams or consequential
-uncertainty; keep small or dependent work with the main worker. Specialist evidence
-requirements, repository instructions, and the user's authorization still govern.
+uncertainty. For user-requested commits and routine PR creation/update, explicitly
+dispatch the [GitHub worker](references/github-worker.md), including small tasks;
+read only its policy, host mapping and brief contract when that is the whole task.
+That bounded publication step alone does not activate substantial orchestration
+or repeat adviser checkpoints. Keep other small or dependent work with the main
+worker. Specialist evidence requirements, repository instructions, and the user's
+authorization still govern.
 
 ## Establish policy, scope, and evidence
 
@@ -22,9 +27,10 @@ writes. Fetch linked evidence needed for the decision; unrelated services are no
 prerequisites for local work.
 
 The YAML is configurable dispatch policy, not native host configuration. Codex
-defaults are Astra `max` for substantive work, Luna `high` for bounded evidence, and Luna
-`xhigh` for bounded routine execution. Resolve each role's profile and scope from
-the current policy, preserving explicit user choices. Astra `max` may be configured
+defaults are Astra `max` for substantive work, Luna `high` for bounded evidence
+and the `github` execution profile, and Luna `xhigh` for other bounded execution.
+Claude's `github` profile uses Sonnet 5.5 `medium`. Resolve each role's profile and
+scope from the current policy, preserving explicit user choices. Astra `max` may be configured
 or explicitly requested; Astra `ultra` needs an explicit user request allowed by the
 profile. Never escalate automatically. A saved policy cannot switch an active
 session. Verify model and effort from runtime metadata; disclose a mismatch. Without
@@ -150,9 +156,11 @@ Advice and confidence never grant authorization.
 
 Substantive coding, testing, planning, review, diagnosis, documentation, new
 acceptance claims, and final verification use the configured non-Luna substantive
-profile. Routine execution requires fixed files, revision, content, and action
-authorization from the coordinator. New claims, ambiguous scope, conflicts, or
-uncertain verification return to substantive ownership. Model selection never
+profile. Routine execution requires fixed files, revision, verified facts, action
+bounds and authorization from the coordinator; routine GitHub wording can be drafted from
+fixed verified facts under the [GitHub worker contract](references/github-worker.md).
+New claims, ambiguous scope, conflicts or uncertain verification return to
+substantive ownership. Model selection never
 relaxes a role's action bounds.
 
 Check actual runtime capabilities before spawning. When overrides are supported,
@@ -161,7 +169,10 @@ full-history fork inherits the parent and rejects overrides. Under Claude Code,
 follow the [host mapping](references/hosts.md). Respect fixed specialist models
 and use them only within their evidence role. If overrides are unsupported, use a
 compatible inherited configuration or report the limit. Follow the policy's
-bounded-worker fallback; never silently lower a substantive effort or model family.
+bounded-worker fallback; the optional `github_unavailable: report_blocker`
+overrides profile fallbacks for the three GitHub execution roles on both hosts.
+Stop incompatible workers; never silently switch those roles to an expensive
+worker or lower a substantive effort or model family.
 Native `cw validate` checks consistency, not runtime availability or automatic
 dispatch. A role's profile gives its configured model and effort; an explicit user
 request can override that effort only with a value the profile lists in
@@ -180,7 +191,7 @@ Reconcile overlaps and independently verify conclusions; agreement and confidenc
 do not establish behavior. Preserve required design challenges and execution
 environments.
 
-For repository workers, use the native [worker handoff contract](references/worker-handoffs.md)
+For substantial repository workers, use the native [worker handoff contract](references/worker-handoffs.md)
 to record assignments, results, and coordinator acceptance. Create the assignment
 before dispatch and give the worker the emitted source binding and result contract.
 These commands validate records; dispatch and runtime identity verification remain

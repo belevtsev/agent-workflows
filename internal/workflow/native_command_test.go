@@ -13,9 +13,14 @@ import (
 
 func nativeFixtureInstaller(t *testing.T, fixture *installerFixture, revision string, apply bool) *Installer {
 	t.Helper()
+	return nativeFixtureInstallerProtocol(t, fixture, revision, ManagerProtocol, apply)
+}
+
+func nativeFixtureInstallerProtocol(t *testing.T, fixture *installerFixture, revision, protocol string, apply bool) *Installer {
+	t.Helper()
 	fixture.env.Setenv("PATH", "/usr/bin:/bin")
 	candidate := filepath.Join(fixture.base, "native candidate "+revision)
-	installerWrite(t, candidate, "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' "+ManagerProtocol+"; fi\n", 0o755)
+	installerWrite(t, candidate, "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' '"+protocol+"'; fi\n", 0o755)
 	installer := fixture.installer(apply)
 	installer.Context = t.Context()
 	installer.RuntimeCandidate = candidate

@@ -1,9 +1,55 @@
 package workflow
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestClaudeGitHubWorkerRouting(t *testing.T) {
+	t.Parallel()
+	fixture := newSuiteFixture(t)
+	shared, err := ValidateModelPolicy(filepath.Join(fixture.root, text(fixture.manifest["model_policy"])))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := suiteClaudeModelPolicy(filepath.Join(fixture.root, text(fixture.manifest["claude_model_policy"])), shared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profiles, roles := object(policy["profiles"]), object(policy["roles"])
+	for _, role := range policyExecutionRoles {
+		profile := object(profiles[text(roles[role])])
+		if roles[role] != "github" || profile["model"] != "claude-sonnet-5-5" || profile["effort"] != "medium" || profile["scope"] != "bounded_execution" {
+			t.Fatalf("%s has unexpected GitHub profile: %v", role, profile)
+		}
+	}
+	for _, role := range policySubstantiveRoles {
+		profile := object(profiles[text(roles[role])])
+		if profile["model"] != "claude-opus-5-5" || profile["effort"] != "xhigh" || profile["scope"] != "substantive" {
+			t.Fatalf("%s substantive default changed: %v", role, profile)
+		}
+	}
+}
+
+func TestClaudeHistoricalPolicyWithoutGitHubProfile(t *testing.T) {
+	t.Parallel()
+	fixture := newSuiteFixture(t)
+	editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["model_policy"])), historicalModelPolicy)
+	editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["claude_model_policy"])), func(policy Object) {
+		delete(object(policy["profiles"]), "github")
+		for _, role := range policyExecutionRoles {
+			object(policy["roles"])[role] = "bounded_execution"
+		}
+	})
+	if _, err := ValidateSuite(fixture.root); err != nil {
+		t.Fatal(err)
+	}
+	defaults, err := ClaudeModelDefaults(fixture.root, fixture.manifest)
+	if err != nil || defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "xhigh" {
+		t.Fatalf("historical defaults: %v, %v", defaults, err)
+	}
+}
 
 func TestClaudeModelDefaultsUseCoordinatorProfile(t *testing.T) {
 	t.Parallel()

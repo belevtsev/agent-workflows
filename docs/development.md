@@ -135,11 +135,37 @@ version/creation ordering governs overlapping releases.
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
 defines 33 registrations and 78 entrypoints; model defaults come from its
-validated policies. `cw-manager-v7` is the single bootstrap protocol: `install.sh`
-requires it, and it covers manifest version 3, sealed runtimes, version 3 state and
-journals, and the required three-adviser policy. Bump it for any change a released
-manager cannot read. `install.sh` has no build fallback, so a gate that ships with its
-capability fails cold bootstraps until that release publishes.
+validated policies. `cw-manager-v8` is the bootstrap and new-candidate protocol:
+`install.sh` and workflow preparation/staging require this exact capability, including
+for cached candidates. It covers the GitHub worker model policy, manifest version 3,
+sealed runtimes, version 3 state and journals, and the required three-adviser policy.
+Bump it for any change a released manager cannot read. Existing sealed v7 runtime
+receipts remain readable for status, upgrades, rollback, recovery and uninstall,
+with the same seal, content hash, locator, identity and ownership checks. Recovery
+also verifies that the existing executable reports v7 or v8. Skill rollback retains
+the active manager instead of reinstalling a v7 candidate.
+
+The lower-level exact-revision acquirer identifies and returns candidates without
+activating them; workflow capability validation remains mandatory afterward.
+
+A published v8 manager is required before bootstrapping v8 source: `install.sh`
+has no build fallback and rejects cached or downloaded v7 managers. Once that
+release exists, update the same clean enrolled source checkout and rebootstrap
+through setup:
+
+```sh
+git pull --ff-only
+./install.sh setup --dry-run
+./install.sh setup
+cw status
+```
+
+With only a v7 cache, the bootstrap dry run reports deferred validation without
+downloading; the applied setup acquires v8 before activating the new source.
+Rebootstrapping avoids asking an installed v7 manager to parse the new model policy
+before it can acquire its replacement. Compatibility regression fixtures simulate
+sealed v7 layouts with protocol-only executables and run the current Go lifecycle;
+they do not execute an archived v7 manager binary.
 
 Consultation records evolve separately: version three requires all three providers;
 historical version-one pair and version-two optional records remain readable offline.

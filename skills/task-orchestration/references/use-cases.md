@@ -6,8 +6,9 @@ and role scope from [model-policy.yaml](../model-policy.yaml), following the
 [entrypoint](../SKILL.md)'s runtime and authorization safeguards.
 
 Defaults are Astra `max` for substantive work, Luna `high` for bounded evidence,
-and Luna `xhigh` for bounded routine execution. Astra `max` can be configured or
-explicitly requested; Astra `ultra` requires an explicit permitted user request.
+Luna `high` for GitHub execution, and Luna `xhigh` for other bounded execution.
+Claude's GitHub execution default is Sonnet 5.5 `medium`. Astra `max` can be
+configured or explicitly requested; Astra `ultra` requires an explicit permitted user request.
 Automatic escalation stays disabled. Configuration does not switch active sessions
 or prove depth, cost, or savings.
 
@@ -35,13 +36,14 @@ the [worker handoff contract](worker-handoffs.md) before the final adviser check
 The coordinator resolves or rejects each finding against evidence. Refresh the
 review when source changes; keep small and unchanged read-only tasks lightweight.
 
-Mechanical commit creation needs fixed files, revision, message, evidence, and
-authorization; stop on scope or diff changes. Routine PR authoring summarizes only
-already verified facts. New behavior, compatibility, risk, acceptance, or
-qualification claims need substantive drafting and verification. Submission
-requires the refreshed authorized draft for the exact revision. Routine roles use
-Luna `xhigh`; their bounds apply to every model. Commit, push, merge, deployment,
-and infrastructure actions retain their own authorization.
+For a requested commit or routine PR creation/update, explicitly dispatch the
+[GitHub worker](github-worker.md), even for a small task. It drafts messages and
+PR text from fixed verified facts and performs scoped, authorized commit/push and
+`gh` PR writes with refresh and readback. Its three roles use the `github` profile;
+substantive `pr_authoring` stays with the substantive profile. New claims or changed
+scope return to the coordinator. Publishing already verified work alone does not
+require a new substantial task or repeat adviser checkpoints. Commit, push, merge,
+deployment and infrastructure actions retain their own authorization.
 
 ## Planning
 

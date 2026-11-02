@@ -810,8 +810,8 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	for model, roles := range map[string]map[string][]string{
-		"gpt-6-astra": {"max": {"coordinator", "coding", "planning", "review", "documentation", "unknown-role"}},
-		"gpt-6-luna":  {"xhigh": {"commit_execution", "pr_authoring_routine", "pr_submission"}, "high": {"lookup", "summarization"}},
+		"gpt-6-astra": {"max": {"coordinator", "coding", "planning", "review", "documentation", "pr_authoring", "unknown-role"}},
+		"gpt-6-luna":  {"high": {"commit_execution", "pr_authoring_routine", "pr_submission", "lookup", "summarization"}},
 	} {
 		for effort, names := range roles {
 			for _, role := range names {

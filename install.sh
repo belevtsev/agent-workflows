@@ -22,7 +22,7 @@ identify_binary() {
 if [ -L "$checkout/.bin" ] || { [ -e "$checkout/.bin" ] && [ ! -d "$checkout/.bin" ]; }; then fail '.bin is occupied or symlinked'; fi
 identify_manager_protocol() {
     protocol=$("$1" --manager-protocol 2>/dev/null) || return 1
-    [ "$protocol" = cw-manager-v7 ]
+    [ "$protocol" = cw-manager-v8 ]
 }
 
 if [ -e "$binary" ] || [ -L "$binary" ]; then
@@ -82,7 +82,7 @@ actual=${actual%% *}
 tar -xOzf "$temporary/$asset" cw > "$temporary/cw" || fail 'release archive has no readable cw binary'
 chmod 755 "$temporary/cw"
 identify_binary "$temporary/cw" || fail 'release asset is not an identifiable native manager for this platform'
-identify_manager_protocol "$temporary/cw" || fail 'released native manager does not support the required bootstrap protocol cw-manager-v7'
+identify_manager_protocol "$temporary/cw" || fail 'released native manager does not support the required bootstrap protocol cw-manager-v8'
 mv "$temporary/cw" "$binary"
 cleanup
 trap - EXIT INT TERM

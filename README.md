@@ -157,10 +157,12 @@ Codex and Claude Code keep separate roles, and the rest of the policy is shared.
 | Role | Codex | Claude Code |
 | --- | --- | --- |
 | Coordination, substantive work, review, and final verification | `gpt-6-astra` at `max` | `claude-opus-5-5` at `xhigh` |
-| Bounded routine execution | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
+| Routine commit, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` at `high` | `claude-sonnet-5-5` at `medium` |
+| Other bounded execution profiles | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
 | Bounded evidence gathering | `gpt-6-luna` at `high` | `claude-opus-5-5` at `high` |
 
-Three independent advisers are required on both hosts:
+For activated substantial work, three independent advisers are required on both
+hosts at the before-implementation and final-review checkpoints:
 
 | Adviser | Model | Reasoning effort |
 | --- | --- | --- |
@@ -175,6 +177,17 @@ what differs in practice. The coordinator checks actual runtime model metadata; 
 saved policy does not switch an existing chat or prove account availability. It
 makes the final decision from source evidence and verification after considering
 all three required advisers at equal standing.
+
+Requested commits and routine PR creation/update explicitly use the
+[`github` worker](skills/task-orchestration/references/github-worker.md), including
+small tasks. It drafts messages and descriptions from verified facts and performs
+scoped authorized commit/push and `gh` PR writes with prewrite refresh and readback.
+Substantive PR authoring stays with the coordinator or substantive worker. Routine
+publication alone adds no full orchestration or adviser calls. If compatible
+GitHub dispatch is unavailable, report the blocker rather than silently using an
+expensive worker. Codex dispatch uses explicit model/effort and no forked history;
+Claude uses Agent `model: sonnet`, `effort: medium` on 2.1.292 or newer. Verify the
+effective runtime metadata because aliases and environment overrides can change it.
 
 `settings.json` rejects `max`, so `xhigh` is the highest persisted Claude Code
 effort. Use `/effort max` for a session.

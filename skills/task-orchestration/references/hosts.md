@@ -19,24 +19,31 @@ have `CLAUDECODE=1`.
 
 ## Dispatching workers under Claude Code
 
-Every role uses Opus 5.5. Effort is what separates bounded work from substantive
-work.
+Substantive roles keep Opus 5.5. The three routine GitHub roles use the cheaper
+Sonnet 5.5 profile; resolve the current policy before dispatch.
 
 | Profile | Agent tool `model` | Agent tool `effort` |
 | --- | --- | --- |
 | `substantive` | `opus` | `xhigh` |
 | `bounded_execution` | `opus` | `xhigh` |
+| `github` | `sonnet` | `medium` |
 | `bounded_evidence` | `opus` | `high` |
 
 - Pass `model` and `effort` on every dispatch, including built-in agents such as
   `Explore`, which otherwise use their own default model.
-- The `model` field accepts aliases, not full model IDs, so the policy's
-  `claude-opus-5-5` becomes `opus`. The alias follows Anthropic's current Opus
-  release while the coordinator's default stays pinned. When a task depends on the
-  exact model, check what the worker reports and record any difference as a
-  limitation.
-- `CLAUDE_CODE_EFFORT_LEVEL` overrides per-dispatch effort, so report the effective
-  effort if that variable is set.
+- Agent accepts model aliases, not full IDs: `claude-opus-5-5` maps to `opus`,
+  and `claude-sonnet-5-5` to `sonnet`. An alias can resolve to another release.
+  Per-invocation `effort` requires Claude Code 2.1.292 or newer.
+- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces `CLAUDE_CODE_SUBAGENT_MODEL`, or the
+  inherited model if it is unset, instead of the Agent `model` argument.
+  `CLAUDE_CODE_EFFORT_LEVEL` overrides per-invocation effort. Organization
+  `availableModels` restrictions can also substitute the inherited model. See
+  [Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
+- Check the actual model and effort in host runtime metadata, such as `/tasks` or
+  transcript metadata, rather than worker prose. Stop an incompatible worker
+  before writes. If the configured GitHub worker or metadata verification is
+  unavailable, report the blocker; do not silently use an expensive model. The
+  [GitHub worker contract](github-worker.md) covers the shared fallback precedence.
 - Standard subagents start with a fresh context. This matches the Codex rule of
   dispatching with no forked history.
 - The settings default stops at `xhigh` because `settings.json` rejects `max`. Use
@@ -46,9 +53,9 @@ work.
 
 `references/jev-questions.json` names options such as `luna_lookup`,
 `luna_execution` and `sol_judgment`. These identifiers are stable question
-content, not model selections. Under Claude Code, read them as the
-`bounded_evidence`, `bounded_execution` and `substantive` profiles. They choose an
-effort level and an ownership boundary, since all three use the same model.
+content, not model selections. Resolve their scopes through the current host
+policy: bounded evidence, bounded execution (including `github` for the three
+GitHub roles), or substantive judgment. Both model and effort can differ.
 
 ## Advisers on either host
 

@@ -1311,7 +1311,18 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 	if specialist["respect_runtime_model"] != true || specialist["scope"] != "evidence_gathering_only" {
 		return nil, errors.New("invalid fixed-specialist model or scope")
 	}
-	fallbacks, err := suiteMapping(policy["fallbacks"], "fallbacks", "luna_unavailable", "sol_unavailable", "jev_unavailable_or_inconclusive")
+	fallbacks, err := suiteMapping(policy["fallbacks"], "fallbacks")
+	if err != nil {
+		return nil, err
+	}
+	fallbackFields := []string{"luna_unavailable", "sol_unavailable", "jev_unavailable_or_inconclusive"}
+	if value, present := fallbacks["github_unavailable"]; present {
+		if value != "report_blocker" {
+			return nil, errors.New("GitHub worker unavailability must report a blocker")
+		}
+		fallbackFields = append(fallbackFields, "github_unavailable")
+	}
+	fallbacks, err = suiteMapping(fallbacks, "fallbacks", fallbackFields...)
 	if err != nil {
 		return nil, err
 	}

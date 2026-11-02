@@ -41,6 +41,11 @@ func editModelPolicy(t *testing.T, path string, edit func(Object)) {
 // policy; the older v2 contract still has Ultra and Luna execution Max defaults.
 func historicalModelPolicy(policy Object) {
 	profiles := policy["profiles"].(Object)
+	delete(profiles, "github")
+	delete(policy["fallbacks"].(Object), "github_unavailable")
+	for _, role := range policyExecutionRoles {
+		policy["roles"].(Object)[role] = "luna_execution"
+	}
 	profiles["sol"].(Object)["model"] = "gpt-6.1-sol"
 	profiles["sol"].(Object)["reasoning_effort"] = "ultra"
 	profiles["sol"].(Object)["user_requested_efforts"] = []any{"max"}
@@ -63,6 +68,49 @@ func configuredModelPolicy(policy Object) {
 	effort["max_for_sol"] = "configured_or_explicit_user_request"
 	effort["configured_max_profiles"] = []any{"sol"}
 	policy["effort_guidance"].(Object)["xhigh"] = "Use for bounded execution."
+}
+
+func TestGitHubFallbackIsOptionalAndCannotEscalate(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name    string
+		present bool
+		value   any
+		valid   bool
+	}{
+		{"historical absent", false, nil, true},
+		{"report blocker", true, "report_blocker", true},
+		{"expensive profile", true, "sol", false},
+		{"empty", true, "", false},
+		{"null", true, nil, false},
+		{"wrong type", true, []any{"report_blocker"}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			fixture := newSuiteFixture(t)
+			path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
+			editModelPolicy(t, path, func(policy Object) {
+				fallbacks := object(policy["fallbacks"])
+				delete(fallbacks, "github_unavailable")
+				if test.present {
+					fallbacks["github_unavailable"] = test.value
+				}
+			})
+			policy, err := ValidateModelPolicy(path)
+			if (err == nil) != test.valid {
+				t.Fatalf("ValidateModelPolicy() error = %v; valid = %v", err, test.valid)
+			}
+			if err != nil {
+				return
+			}
+			for _, role := range policyExecutionRoles {
+				worker, err := ResolveWorker(policy, role, "")
+				if err != nil || worker["model"] != "gpt-6-luna" || worker["reasoning_effort"] != "high" {
+					t.Fatalf("fallback changed %s routing: %v, %v", role, worker, err)
+				}
+			}
+		})
+	}
 }
 
 func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
@@ -405,6 +453,7 @@ func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testin
 		t.Fatal(err)
 	}
 	want := policyProfiles("gpt-6-astra", "max", "xhigh")
+	want["github"] = Object{"model": "gpt-6-luna", "reasoning_effort": "high", "scope": "bounded_execution"}
 	want["expert"] = Object{"model": "gpt-6-astra", "reasoning_effort": "ultra", "scope": "substantive"}
 	if !reflect.DeepEqual(report["model_profiles"], want) {
 		t.Fatalf("status projected profiles = %#v; want %#v", report["model_profiles"], want)

@@ -18,8 +18,8 @@ const profileStart = "# >>> agent-workflows PATH >>>"
 const profileEnd = "# <<< agent-workflows PATH <<<"
 
 // ManagerProtocol identifies the sealed runtime, ownership and policy contract.
-// The bootstrap and staged recovery runtimes must report this exact value.
-const ManagerProtocol = "cw-manager-v7"
+// The bootstrap and newly staged runtimes must report this exact value.
+const ManagerProtocol = "cw-manager-v8"
 
 type ProfileRecord struct {
 	Shell          string `json:"shell"`
@@ -174,69 +174,81 @@ func (i *Installer) decodeRuntimeLocator(data []byte) (RuntimeLocator, error) {
 }
 
 func (i *Installer) runtimeRelease(revision string) (RuntimeIdentity, error) {
+	receipt, err := i.verifiedRuntimeReceipt(revision)
+	return receipt.Identity, err
+}
+
+func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, error) {
 	dir := i.runtimeDir(revision)
 	if !commitSHA.MatchString(revision) {
-		return RuntimeIdentity{}, errors.New("invalid runtime revision")
+		return runtimeReceipt{}, errors.New("invalid runtime revision")
 	}
 	if err := realDirectory(dir, false); err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	data, err := readJSON(filepath.Join(dir, "receipt.json"))
 	if err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	var receipt runtimeReceipt
 	if err = json.Unmarshal(legacyJSON(data), &receipt, json.RejectUnknownMembers(true)); err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	if receipt.Version != 2 || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != revision {
-		return RuntimeIdentity{}, errors.New("invalid native runtime receipt")
+		return runtimeReceipt{}, errors.New("invalid native runtime receipt")
 	}
-	if err := verifySeal(data); err != nil || receipt.ManagerProtocol != ManagerProtocol {
-		return RuntimeIdentity{}, errors.New("invalid native runtime receipt seal or protocol")
+	// Existing v7 releases use the same sealed receipt and ownership layout.
+	// New candidates must still pass the exact current protocol gates above and
+	// in stageRuntime; accepting an old receipt does not authorize staging it.
+	if err := verifySeal(data); err != nil || !readableManagerProtocol(receipt.ManagerProtocol) {
+		return runtimeReceipt{}, errors.New("invalid native runtime receipt seal or protocol")
 	}
 	info, err := os.Lstat(filepath.Join(dir, "cw"))
 	if err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	if !info.Mode().IsRegular() || unixMode(info.Mode()) != 0o755 {
-		return RuntimeIdentity{}, errors.New("native runtime is not a regular executable")
+		return runtimeReceipt{}, errors.New("native runtime is not a regular executable")
 	}
 	binary, err := os.ReadFile(filepath.Join(dir, "cw"))
 	if err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	if hash(binary) != receipt.SHA256 {
-		return RuntimeIdentity{}, errors.New("native runtime content differs from receipt")
+		return runtimeReceipt{}, errors.New("native runtime content differs from receipt")
 	}
 	locatorBytes, err := readRecordBytes(filepath.Join(dir, "locator.json"))
 	if err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	locatorInfo, err := os.Lstat(filepath.Join(dir, "locator.json"))
 	if err != nil || unixMode(locatorInfo.Mode()) != 0o600 {
-		return RuntimeIdentity{}, errors.New("native runtime locator mode changed")
+		return runtimeReceipt{}, errors.New("native runtime locator mode changed")
 	}
 	if _, err = i.decodeRuntimeLocator(locatorBytes); err != nil {
-		return RuntimeIdentity{}, err
+		return runtimeReceipt{}, err
 	}
 	if hash(locatorBytes) != receipt.LocatorSHA256 {
-		return RuntimeIdentity{}, errors.New("native runtime locator differs from its immutable receipt or roots")
+		return runtimeReceipt{}, errors.New("native runtime locator differs from its immutable receipt or roots")
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil || len(entries) != 3 {
-		return RuntimeIdentity{}, errors.New("native runtime release contains unexpected files")
+		return runtimeReceipt{}, errors.New("native runtime release contains unexpected files")
 	}
 	for _, entry := range entries {
 		if entry.Name() != "cw" && entry.Name() != "locator.json" && entry.Name() != "receipt.json" {
-			return RuntimeIdentity{}, errors.New("native runtime release contains unexpected files")
+			return runtimeReceipt{}, errors.New("native runtime release contains unexpected files")
 		}
 	}
 	info, err = os.Lstat(filepath.Join(dir, "receipt.json"))
 	if err != nil || unixMode(info.Mode()) != 0o600 {
-		return RuntimeIdentity{}, errors.New("native runtime receipt mode changed")
+		return runtimeReceipt{}, errors.New("native runtime receipt mode changed")
 	}
-	return receipt.Identity, nil
+	return receipt, nil
+}
+
+func readableManagerProtocol(protocol string) bool {
+	return protocol == ManagerProtocol || protocol == "cw-manager-v7"
 }
 
 func (i *Installer) stageRuntime() error {

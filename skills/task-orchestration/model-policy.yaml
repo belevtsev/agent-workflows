@@ -26,6 +26,11 @@ profiles:
     reasoning_effort: xhigh
     user_requested_efforts: []
     scope: bounded_execution
+  github:
+    model: gpt-6-luna
+    reasoning_effort: high
+    user_requested_efforts: []
+    scope: bounded_execution
   luna:
     model: gpt-6-luna
     reasoning_effort: high
@@ -41,7 +46,7 @@ effort_policy:
 effort_guidance:
   ultra: Available for Astra only on explicit user request; task-directed delegation remains available at other efforts.
   max: Configured default for substantive Astra work; delegate useful independent assignments according to the task.
-  xhigh: Configured default for bounded routine execution; promote uncertain scope or new consequential claims to substantive ownership.
+  xhigh: Configured default for other bounded execution; GitHub execution uses high. Promote uncertain scope or new consequential claims to substantive ownership.
   comparison: Compare actual quality, total tokens, and elapsed time for equivalent work; effort labels alone do not establish depth, cost, or savings.
 
 roles:
@@ -55,9 +60,9 @@ roles:
   documentation: sol
   issue_management: sol
   pr_authoring: sol
-  pr_authoring_routine: luna_execution
-  commit_execution: luna_execution
-  pr_submission: luna_execution
+  pr_authoring_routine: github
+  commit_execution: github
+  pr_submission: github
   lookup: luna
   summarization: luna
 
@@ -69,6 +74,9 @@ fixed_specialists:
     scope: evidence_gathering_only
 
 fallbacks:
+  # Optional, role-specific override on every host, including Claude Code.
+  # Without this key, historical profile fallbacks retain their meaning.
+  github_unavailable: report_blocker
   luna_unavailable: sol
   sol_unavailable: compatible_coordinator_or_report_blocker
   jev_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
