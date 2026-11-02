@@ -112,6 +112,7 @@ func suiteSnapshot(t *testing.T, root string) map[string][32]byte {
 }
 
 func TestValidateSuiteReportAndDefaultsWithoutWrites(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	before := suiteSnapshot(t, fixture.root)
 	report, err := ValidateSuite(fixture.root)
@@ -141,6 +142,7 @@ func TestValidateSuiteReportAndDefaultsWithoutWrites(t *testing.T) {
 }
 
 func TestValidateSourceTree(t *testing.T) {
+	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -163,6 +165,7 @@ func TestValidateSourceTree(t *testing.T) {
 }
 
 func TestValidateSuiteAcceptsVendoredMetadataAndComplexLinks(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	fixture.manifest["registrations"].(Object)["bundle"] = "vendor/bundle"
 	fixture.write(t, "vendor/bundle/skills/nested/SKILL.md", `---
@@ -203,6 +206,7 @@ metadata:
 }
 
 func TestValidateManifestRejectsUnsafeInputs(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		change func(*testing.T, *suiteFixture)
@@ -237,6 +241,7 @@ func TestValidateManifestRejectsUnsafeInputs(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			test.change(t, fixture)
 			fixture.invalid(t, test.want)
@@ -244,6 +249,7 @@ func TestValidateManifestRejectsUnsafeInputs(t *testing.T) {
 	}
 	for _, value := range []string{"../elsewhere", "/tmp/elsewhere", "C:\\private", "skills/../example", "skills//example", "./skills/example", "skills/example/", ".venv/example", "skills\x00/example"} {
 		t.Run("path "+value, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			fixture.manifest["registrations"].(Object)["example"] = value
 			fixture.writeManifest(t)
@@ -266,6 +272,7 @@ func mustSuiteJSON(t *testing.T, value any) []byte {
 }
 
 func TestValidateSuiteRejectsSkillMetadataProblems(t *testing.T) {
+	t.Parallel()
 	for _, frontmatter := range []string{
 		"# No frontmatter\n",
 		"---\nname: example\n",
@@ -285,22 +292,26 @@ func TestValidateSuiteRejectsSkillMetadataProblems(t *testing.T) {
 		"---\nname: example\ndescription: text\nunexpected: true\n---\n",
 	} {
 		t.Run(frontmatter, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			fixture.write(t, "skills/example/SKILL.md", frontmatter)
 			fixture.invalid(t, "skill")
 		})
 	}
 	t.Run("duplicate skill", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.skill(t, "skills/task-orchestration/nested", "example", "")
 		fixture.invalid(t, "duplicate skill name")
 	})
 	t.Run("registration mismatch", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.skill(t, "skills/example", "different", "")
 		fixture.invalid(t, "registration does not match")
 	})
 	t.Run("empty registration", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.manifest["registrations"].(Object)["empty"] = "skills/empty"
 		if err := os.Mkdir(filepath.Join(fixture.root, "skills/empty"), 0o700); err != nil {
@@ -312,8 +323,10 @@ func TestValidateSuiteRejectsSkillMetadataProblems(t *testing.T) {
 }
 
 func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"auth.json", "config.toml", ".env", ".env.local", ".DS_Store", "scripts/cache.pyc", "skills/example/__pycache__/helper.pyc", "private-baseline/SKILL.md", "skills/example/.git"} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			fixture.write(t, name, "fixture-secret")
 			_, err := ValidateSuite(fixture.root)
@@ -324,6 +337,7 @@ func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
 	}
 	for _, target := range []string{"LICENSE", "skills"} {
 		t.Run("symlink "+target, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			if err := os.Symlink(filepath.Join(fixture.root, target), filepath.Join(fixture.root, "linked")); err != nil {
 				t.Fatal(err)
@@ -332,6 +346,7 @@ func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
 		})
 	}
 	t.Run("source symlink", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		link := filepath.Join(t.TempDir(), "source")
 		if err := os.Symlink(fixture.root, link); err != nil {
@@ -342,6 +357,7 @@ func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
 		}
 	})
 	t.Run("manifest ancestor symlink escapes", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		if err := os.Symlink(t.TempDir(), filepath.Join(fixture.root, "outside")); err != nil {
 			t.Fatal(err)
@@ -355,6 +371,7 @@ func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
 }
 
 func TestValidateSuiteIgnoredArtifactsRequireRealUntrackedGitCheckout(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Fatal("git is required to verify checkout-local artifact rules")
 	}
@@ -391,6 +408,7 @@ func TestValidateSuiteIgnoredArtifactsRequireRealUntrackedGitCheckout(t *testing
 }
 
 func TestValidateSuiteIgnoredNativeArtifactsRequireRealUntrackedGitCheckout(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Fatal("git is required to verify checkout-local artifact rules")
 	}
@@ -449,6 +467,7 @@ func TestValidateSuiteIgnoredNativeArtifactsRequireRealUntrackedGitCheckout(t *t
 }
 
 func TestValidateMarkdownRejectsInvalidLiveReferences(t *testing.T) {
+	t.Parallel()
 	for _, body := range []string{
 		"[missing](missing.md)", "![missing](missing.png)", "[missing]: missing.md\n",
 		"[outside](../../../outside.md)", "[encoded](%2e%2e/%2e%2e/%2e%2e/outside.md)",
@@ -457,6 +476,7 @@ func TestValidateMarkdownRejectsInvalidLiveReferences(t *testing.T) {
 		"[cache](../../.venv/local.md)",
 	} {
 		t.Run(body, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			fixture.skill(t, "skills/example", "example", body)
 			fixture.invalid(t, "Markdown")
@@ -465,6 +485,7 @@ func TestValidateMarkdownRejectsInvalidLiveReferences(t *testing.T) {
 }
 
 func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
+	t.Parallel()
 	changes := []struct {
 		name string
 		edit func(Object)
@@ -510,6 +531,7 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 	}
 	for _, change := range changes {
 		t.Run(change.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			policyPath := filepath.Join(fixture.root, fixture.manifest["model_policy"].(string))
 			data, err := os.ReadFile(policyPath)
@@ -535,16 +557,19 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 		})
 	}
 	t.Run("duplicate policy key", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.write(t, fixture.manifest["model_policy"].(string), "version: 2\nversion: 2\n")
 		fixture.invalid(t, "duplicate mapping key")
 	})
 	t.Run("duplicate question keys", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":{"duplicate":{},"duplicate":{}}}`)
 		fixture.invalid(t, "duplicate mapping key")
 	})
 	t.Run("invalid choice", func(t *testing.T) {
+		t.Parallel()
 		fixture := newSuiteFixture(t)
 		fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":{"one":{"type":"choice","instructions":"text","criteria":{"only":"one"}}}}`)
 		fixture.invalid(t, "Choice needs at least two options")
@@ -552,6 +577,7 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 }
 
 func TestShippedPolicyUsesCurrentComparisonMarker(t *testing.T) {
+	t.Parallel()
 	policy, err := ValidateModelPolicy(filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -562,6 +588,7 @@ func TestShippedPolicyUsesCurrentComparisonMarker(t *testing.T) {
 }
 
 func TestModelPolicyDecisionProviders(t *testing.T) {
+	t.Parallel()
 	dual := func(consultation Object) {
 		consultation["providers"] = Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview"}
 		consultation["comparison"] = "coordinator_evidence_and_verification"
@@ -655,6 +682,7 @@ func TestModelPolicyDecisionProviders(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			policyPath := filepath.Join(fixture.root, fixture.manifest["model_policy"].(string))
 			data, err := os.ReadFile(policyPath)
@@ -699,6 +727,7 @@ func shippedPolicy() string {
 }
 
 func TestValidateModelPolicyAcceptsTheShippedRequiredTriple(t *testing.T) {
+	t.Parallel()
 	policy, err := ValidateModelPolicy(shippedPolicy())
 	if err != nil {
 		t.Fatal(err)
@@ -714,6 +743,7 @@ func TestValidateModelPolicyAcceptsTheShippedRequiredTriple(t *testing.T) {
 }
 
 func TestValidateModelPolicyFollowsAnInstalledCurrentSymlink(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	root := t.TempDir()
 	current := filepath.Join(root, "current")
@@ -730,12 +760,14 @@ func TestValidateModelPolicyFollowsAnInstalledCurrentSymlink(t *testing.T) {
 }
 
 func TestPolicyTreatsSeparatorControlCharactersAsBlank(t *testing.T) {
+	t.Parallel()
 	for name, edit := range map[string]func(Object){
 		"invalid profile name":                  func(p Object) { p["profiles"].(Object)["\x1c"] = p["profiles"].(Object)["luna"] },
 		"invalid role name":                     func(p Object) { p["roles"].(Object)["\x1f"] = "sol" },
 		"effort guidance must be nonempty text": func(p Object) { p["effort_guidance"].(Object)["xhigh"] = "\x1d" },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["model_policy"])), edit)
 			fixture.invalid(t, name)
@@ -747,6 +779,7 @@ func TestPolicyTreatsSeparatorControlCharactersAsBlank(t *testing.T) {
 		"empty or invalid description": `{"one":{"type":"choice","instructions":"\u001f","criteria":{"a":"x","b":"y"}}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":`+question+`}`)
 			fixture.invalid(t, name)
@@ -755,6 +788,7 @@ func TestPolicyTreatsSeparatorControlCharactersAsBlank(t *testing.T) {
 }
 
 func TestConfiguredMaxAcceptsEveryDeclaredMaxProfile(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
 	editModelPolicy(t, path, func(policy Object) {
@@ -770,6 +804,7 @@ func TestConfiguredMaxAcceptsEveryDeclaredMaxProfile(t *testing.T) {
 }
 
 func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
+	t.Parallel()
 	policy, err := ValidateModelPolicy(shippedPolicy())
 	if err != nil {
 		t.Fatal(err)
@@ -803,6 +838,7 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 }
 
 func TestResolveWorkerKeepsHistoricalPoliciesReadable(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
 	editModelPolicy(t, path, func(policy Object) {
@@ -824,6 +860,7 @@ func TestResolveWorkerKeepsHistoricalPoliciesReadable(t *testing.T) {
 }
 
 func TestResolveWorkerRejectsConfiguredSolMaxUnderLegacyRule(t *testing.T) {
+	t.Parallel()
 	policy, err := ValidateModelPolicy(shippedPolicy())
 	if err != nil {
 		t.Fatal(err)
@@ -836,6 +873,7 @@ func TestResolveWorkerRejectsConfiguredSolMaxUnderLegacyRule(t *testing.T) {
 }
 
 func TestSuiteYAMLAliasesAndDuplicateMergeKeys(t *testing.T) {
+	t.Parallel()
 	for _, valid := range []string{"name: example\ndescription: text\nmetadata:\n  first: &first {a: 1}\n  second: {<<: *first, b: 2}\n", "name: example\ndescription: text\nmetadata:\n  first: &first {a: 1}\n  second: &second {b: 2}\n  merged: {<<: [*first, *second]}\n"} {
 		if _, err := suiteYAML([]byte(valid)); err != nil {
 			t.Fatalf("valid aliases rejected: %v", err)

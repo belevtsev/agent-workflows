@@ -13,7 +13,7 @@ import (
 
 func nativeFixtureInstaller(t *testing.T, fixture *installerFixture, revision string, apply bool) *Installer {
 	t.Helper()
-	t.Setenv("PATH", "/usr/bin:/bin")
+	fixture.env.Setenv("PATH", "/usr/bin:/bin")
 	candidate := filepath.Join(fixture.base, "native candidate "+revision)
 	installerWrite(t, candidate, "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' "+ManagerProtocol+"; fi\n", 0o755)
 	installer := fixture.installer(apply)
@@ -24,6 +24,7 @@ func nativeFixtureInstaller(t *testing.T, fixture *installerFixture, revision st
 }
 
 func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 	for _, test := range []struct {
@@ -46,6 +47,7 @@ func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
 }
 
 func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	installer := func(hosts ...string) *Installer {
 		i := nativeFixtureInstaller(t, f, f.first, true)
@@ -86,15 +88,17 @@ func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
 }
 
 func TestNativeManagerAlreadyOnPATHDoesNotAddProfile(t *testing.T) {
+	t.Parallel()
 	for _, legacy := range []bool{false, true} {
 		t.Run(fmt.Sprintf("legacy %t", legacy), func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			original := fixture.seedUserFiles(t)
 			if legacy {
 				fixture.execute(t, "setup")
 			}
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			t.Setenv("PATH", filepath.Join(fixture.paths.Home, ".local", "bin")+":/usr/bin:/bin")
+			fixture.env.Setenv("PATH", filepath.Join(fixture.paths.Home, ".local", "bin")+":/usr/bin:/bin")
 			if _, err := installer.Setup(true); err != nil {
 				t.Fatal(err)
 			}
@@ -114,12 +118,13 @@ func TestNativeManagerAlreadyOnPATHDoesNotAddProfile(t *testing.T) {
 }
 
 func TestNativeManagerRejectsExternalPATHCommand(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 	otherBin := filepath.Join(fixture.base, "other bin")
 	installerWrite(t, filepath.Join(otherBin, "cw"), "#!/bin/sh\nexit 0\n", 0o755)
-	t.Setenv("PATH", otherBin+":/usr/bin:/bin")
+	fixture.env.Setenv("PATH", otherBin+":/usr/bin:/bin")
 	before := installerSnapshot(t, fixture.base)
 	if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "another cw command") {
 		t.Fatalf("external cw accepted: %v", err)
@@ -128,16 +133,18 @@ func TestNativeManagerRejectsExternalPATHCommand(t *testing.T) {
 }
 
 func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"after-manager-runtime", "after-manager-command", "after-manager-locator", "after-command-profile", "after-state"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			original := fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt native enrollment")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			installer.Source = filepath.Join(fixture.base, "unavailable")
 			if _, err := installer.Recover(); err != nil {
 				t.Fatal(err)
@@ -157,21 +164,22 @@ func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
 }
 
 func TestNativeManagerRecoveryPreservesIndependentProfileEdits(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	original := fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-command-profile")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-command-profile")
 	if _, err := installer.Setup(true); err == nil {
 		t.Fatal("fault did not interrupt profile installation")
 	}
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	rc := filepath.Join(fixture.paths.Home, ".bashrc")
 	installerAppend(t, rc, "# independent after failure\n")
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-command-profile")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-command-profile")
 	if _, err := installer.Recover(); err == nil {
 		t.Fatal("fault did not interrupt recovery")
 	}
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	installerAppend(t, rc, "# independent during recovery\n")
 	if _, err := installer.Recover(); err != nil {
 		t.Fatal(err)
@@ -182,8 +190,10 @@ func TestNativeManagerRecoveryPreservesIndependentProfileEdits(t *testing.T) {
 }
 
 func TestNativeManagerConflictAndPreparationFailureDoNotActivate(t *testing.T) {
+	t.Parallel()
 	for _, conflict := range []string{"command", "candidate"} {
 		t.Run(conflict, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -205,6 +215,7 @@ func TestNativeManagerConflictAndPreparationFailureDoNotActivate(t *testing.T) {
 }
 
 func TestNativeManagerRejectsTamperedRuntime(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -219,8 +230,10 @@ func TestNativeManagerRejectsTamperedRuntime(t *testing.T) {
 }
 
 func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"after-command-profile", "after-manager-command", "after-manager-runtime", "after-manager-locator", "after-state"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -231,11 +244,11 @@ func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err = installer.Uninstall(); err == nil {
 				t.Fatal("fault did not interrupt native uninstall")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if _, err = installer.runtimeRelease(fixture.first); err != nil {
 				t.Fatalf("immutable recovery metadata unavailable: %v", err)
 			}
@@ -258,16 +271,18 @@ func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
 }
 
 func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
+	t.Parallel()
 	for _, corruption := range []string{"command-path", "runtime-target", "locator-roots", "profile-path", "profile-content"} {
 		t.Run(corruption, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt native setup")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			journal, err := readJSON(installer.journalPath)
 			if err != nil {
 				t.Fatal(err)
@@ -298,6 +313,7 @@ func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
 }
 
 func TestNativeManagerSymlinkedCommandParentRefusesUninstall(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -320,6 +336,7 @@ func TestNativeManagerSymlinkedCommandParentRefusesUninstall(t *testing.T) {
 }
 
 func TestInstallerContextCancellationLeavesInstallationUntouched(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := fixture.installer(true)
@@ -334,6 +351,7 @@ func TestInstallerContextCancellationLeavesInstallationUntouched(t *testing.T) {
 }
 
 func TestNativeUpdateNoCheckoutPreparesFetchedRuntime(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	origin := fixture.bareOrigin(t)

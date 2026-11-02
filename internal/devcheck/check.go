@@ -27,7 +27,7 @@ type Options struct {
 	Output         io.Writer
 }
 
-// Check runs formatting, native tests, vet, maintained-source validation, and a
+// Check runs formatting, vet, maintained-source validation, native tests, and a
 // fresh isolated installation. On main it overlaps cross-builds with checks and
 // reuses the native release executable for smoke instead of building it twice.
 func Check(ctx context.Context, options Options) error {
@@ -79,17 +79,21 @@ func Check(ctx context.Context, options Options) error {
 	if len(bytes.TrimSpace(formatted)) != 0 {
 		return fmt.Errorf("Go formatting differs:\n%s", formatted)
 	}
-	testArgs := []string{"test", "-count=1"}
-	if options.Race {
-		testArgs = append(testArgs, "-race")
-	}
-	if err := run("go", append(testArgs, "./...")...); err != nil {
-		return err
-	}
+	// Cheap checks come first so a formatting, vet or manifest mistake fails in
+	// seconds rather than after the tests.
 	if err := run("go", "vet", "./..."); err != nil {
 		return err
 	}
 	if _, err := workflow.ValidateSuite(options.Source); err != nil {
+		return err
+	}
+	// The timeout turns a hung test into a failure with goroutine dumps, well
+	// inside the CI job's limit.
+	testArgs := []string{"test", "-count=1", "-timeout=5m"}
+	if options.Race {
+		testArgs = append(testArgs, "-race")
+	}
+	if err := run("go", append(testArgs, "./...")...); err != nil {
 		return err
 	}
 	if options.ReleaseVersion != "" {
@@ -108,7 +112,7 @@ func Check(ctx context.Context, options Options) error {
 	if err := NativeSmoke(ctx, options.Source, options.Binary, options.Output); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(options.Output, "Native formatting, tests, vet, source validation and installation smoke passed.")
+	_, err = fmt.Fprintln(options.Output, "Native formatting, vet, source validation, tests and installation smoke passed.")
 	return err
 }
 

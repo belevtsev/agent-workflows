@@ -37,6 +37,7 @@ func configTestApply(t *testing.T, path string, operation Object) {
 }
 
 func TestSharedConfigPreservesDeviceBytesAndRestoresTokens(t *testing.T) {
+	t.Parallel()
 	for name, original := range map[string]string{
 		"tables and quoted keys":  "# device header\nmodel = 'personal' # model note\nmodel_reasoning_effort = '''high'''\n\n[features]\n\"memories\" = false # feature note\nother = false\n\n[\"memories\"]\nextract_model = '''personal\nmodel''' # extraction note\nconsolidation_model = ''\nuse_memories = false\n\n[projects.\"/local/device\"]\ntrust_level = 'trusted'\n[profiles.personal]\nmodel = 'profile'\n",
 		"dotted and literal keys": "\"features.memories\" = 'literal'\n\"memories.extract_model\" = 'literal'\nfeatures . memories = false\nmemories . \"extract_model\" = 'old'\n[desktop]\npath = '/local/device'\n",
@@ -87,6 +88,7 @@ func TestSharedConfigPreservesDeviceBytesAndRestoresTokens(t *testing.T) {
 }
 
 func TestSharedConfigLegacyAbsentOriginSurvivesAcquisitionAndRelease(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	legacy, op, err := ModelPrepare(path, modelTestDefaults, nil)
 	if err != nil {
@@ -120,6 +122,7 @@ func TestSharedConfigLegacyAbsentOriginSurvivesAcquisitionAndRelease(t *testing.
 }
 
 func TestSharedConfigRefusesUnsafeLocalShapesBeforeChanges(t *testing.T) {
+	t.Parallel()
 	for _, original := range []string{
 		"features = { memories = false, local = true }\n",
 		"memories = { extract_model = 'old' }\n",
@@ -143,6 +146,7 @@ func TestSharedConfigRefusesUnsafeLocalShapesBeforeChanges(t *testing.T) {
 }
 
 func TestSharedConfigOperationRefusesUnownedKeysAndInjectedValues(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	_, operation, err := configPrepare(path, modelTestDefaults, sharedTestDefaults(), Object{})
 	if err != nil {
@@ -172,6 +176,7 @@ func TestSharedConfigOperationRefusesUnownedKeysAndInjectedValues(t *testing.T) 
 }
 
 func TestSharedConfigRecoveryPreservesUnownedChangesAndRejectsDrift(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	original := "# local\n[memories]\nextract_model = 'personal' # note\n[desktop]\npath = '/device'\n"
 	modelTestWrite(t, path, []byte(original), 0o640)
@@ -203,6 +208,7 @@ func TestSharedConfigRecoveryPreservesUnownedChangesAndRejectsDrift(t *testing.T
 }
 
 func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if defaults, err := SharedConfigDefaults(root); err != nil || defaults != nil {
 		t.Fatalf("historical source was changed: %v, %v", defaults, err)
@@ -246,6 +252,7 @@ func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
 }
 
 func TestSharedConfigOnlyDoesNotAcquireMainModel(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	original := "model = 1\nmodel_reasoning_effort = false\n[profiles.local]\nmodel = 'personal'\n"
 	modelTestWrite(t, path, []byte(original), 0o640)

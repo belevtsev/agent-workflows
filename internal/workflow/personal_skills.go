@@ -470,7 +470,7 @@ func (i *Installer) performPersonal(op Object) error {
 			if err = renamePersonalDirectory(record.OriginPath, record.BackupPath); err != nil {
 				return err
 			}
-			if err = fault("after-" + text(op["label"]) + ":rename"); err != nil {
+			if err = i.fault("after-" + text(op["label"]) + ":rename"); err != nil {
 				return err
 			}
 		}
@@ -483,13 +483,13 @@ func (i *Installer) performPersonal(op Object) error {
 		if err = writeObservation(record.RegistrationPath, Object{"kind": "symlink", "target": record.Target}); err != nil {
 			return err
 		}
-		return fault("after-" + text(op["label"]) + ":link")
+		return i.fault("after-" + text(op["label"]) + ":link")
 	}
 	if phase == "managed" {
 		if err = writeObservation(record.RegistrationPath, Object{"kind": "absent"}); err != nil {
 			return err
 		}
-		if err = fault("after-" + text(op["label"]) + ":unlink"); err != nil {
+		if err = i.fault("after-" + text(op["label"]) + ":unlink"); err != nil {
 			return err
 		}
 	}
@@ -502,7 +502,7 @@ func (i *Installer) performPersonal(op Object) error {
 	if err = renamePersonalDirectory(record.BackupPath, record.OriginPath); err != nil {
 		return err
 	}
-	return fault("after-" + text(op["label"]) + ":rename")
+	return i.fault("after-" + text(op["label"]) + ":rename")
 }
 
 func (i *Installer) personalReversal(op Object) (Object, error) {

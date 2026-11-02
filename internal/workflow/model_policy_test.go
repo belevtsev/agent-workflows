@@ -66,6 +66,7 @@ func configuredModelPolicy(policy Object) {
 }
 
 func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, model, effort string
 		edit                func(Object)
@@ -114,6 +115,7 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["model_policy"])), test.edit)
 			before := suiteSnapshot(t, fixture.root)
@@ -133,6 +135,7 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 }
 
 func TestModelPolicyRejectsInvalidConfiguredDefaultsAndCapabilities(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, message string
 		edit          func(Object)
@@ -169,6 +172,7 @@ func TestModelPolicyRejectsInvalidConfiguredDefaultsAndCapabilities(t *testing.T
 		{"missing required legacy guidance", "effort_guidance has invalid fields", func(policy Object) { delete(policy["effort_guidance"].(Object), "ultra") }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["model_policy"])), test.edit)
 			fixture.invalid(t, test.message)
@@ -242,6 +246,7 @@ func assertManagerProtocol(t *testing.T, installer *Installer, protocol string) 
 }
 
 func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	original := fixture.seedUserFiles(t)
 	legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
@@ -328,8 +333,10 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 }
 
 func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"after-model-config", "after-manager-runtime", "after-state"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
@@ -344,11 +351,11 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 			configBefore := installerRead(t, installer.config)
 			maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
 			installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 				t.Fatalf("policy activation fault: %v", err)
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			if err := os.Rename(fixture.paths.Source, fixture.paths.Source+" unavailable"); err != nil {
 				t.Fatal(err)
 			}
@@ -380,6 +387,7 @@ func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *
 }
 
 func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	revision := commitModelPolicy(t, fixture, func(policy Object) {

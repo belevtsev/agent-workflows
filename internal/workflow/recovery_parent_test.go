@@ -7,16 +7,18 @@ import (
 )
 
 func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
+	t.Parallel()
 	for _, affected := range []string{"skills", "codex"} {
 		t.Run(affected, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
 			fixture.seedUserFiles(t)
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("fault did not interrupt installation")
 			}
-			t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			parent := installer.skills
 			if affected == "codex" {
 				parent = installer.Codex
@@ -38,8 +40,10 @@ func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
 }
 
 func TestMutationRechecksParentBeforeDeletion(t *testing.T) {
+	t.Parallel()
 	for _, entrypoint := range []string{"perform", "write-observation"} {
 		t.Run(entrypoint, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
 			parent := installer.skills

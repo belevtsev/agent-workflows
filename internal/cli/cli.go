@@ -334,7 +334,7 @@ func executeAction(cmd *cobra.Command, config Config, o options, action string) 
 	}
 	o.codex, o.claude = hostRoots(config, o.home, o.state, o.codex, o.claude)
 	paths := workflow.Paths{Source: o.source, Home: o.home, Codex: o.codex, Claude: o.claude, State: o.state}
-	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Hosts: hosts, Forget: o.forget, Context: cmd.Context()}
+	options := workflow.Options{Paths: paths, Apply: apply, NoCheckout: o.noCheckout, Shell: o.shell, AdoptPersonalSkills: o.adoptPersonalSkills, Hosts: hosts, Forget: o.forget, Context: cmd.Context(), Getenv: config.Getenv}
 	if action == "validate" {
 		report, err := config.Validate(workflow.Normalize(o.source))
 		if err != nil {

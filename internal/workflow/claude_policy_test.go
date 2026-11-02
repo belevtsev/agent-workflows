@@ -6,6 +6,7 @@ import (
 )
 
 func TestClaudeModelDefaultsUseCoordinatorProfile(t *testing.T) {
+	t.Parallel()
 	fixture := newSuiteFixture(t)
 	defaults, err := ClaudeModelDefaults(fixture.root, fixture.manifest)
 	if err != nil {
@@ -17,6 +18,7 @@ func TestClaudeModelDefaultsUseCoordinatorProfile(t *testing.T) {
 }
 
 func TestClaudeModelPolicyRejectsInvalidMappings(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct{ name, old, replacement, message string }{
 		{"unknown model", "model: claude-opus-5-5", "model: gpt-6-luna", "unsupported Claude model"},
 		{"max effort", "effort: xhigh", "effort: max", "unsupported Claude effort"},
@@ -30,6 +32,7 @@ func TestClaudeModelPolicyRejectsInvalidMappings(t *testing.T) {
 		{"wrong version", "version: 1\n", "version: 2\n", "version has an invalid value"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newSuiteFixture(t)
 			path := "skills/task-orchestration/model-policy.claude.yaml"
 			original := installerRead(t, fixture.root+"/"+path)

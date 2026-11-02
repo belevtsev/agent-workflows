@@ -26,6 +26,8 @@ type Options struct {
 	AdoptPersonalSkills bool
 	Hosts               []string
 	Forget              bool
+	// Getenv reads the caller's environment; nil means the process environment.
+	Getenv func(string) string
 }
 type Installer struct {
 	Options
@@ -36,6 +38,9 @@ type Installer struct {
 func NewInstaller(options Options) *Installer {
 	if options.Context == nil {
 		options.Context = context.Background()
+	}
+	if options.Getenv == nil {
+		options.Getenv = os.Getenv
 	}
 	p := options.Paths
 	p.Source = Normalize(p.Source)
@@ -347,7 +352,7 @@ func (i *Installer) stage(sha string) (string, Object, error) {
 	if e = syncDir(parent); e != nil {
 		return "", nil, e
 	}
-	if e = fault("after-release-publication"); e != nil {
+	if e = i.fault("after-release-publication"); e != nil {
 		return "", nil, e
 	}
 	e = atomicWrite(receipt, legacyJSON(Object{"sha": sha, "inventory": contents}), 0600)

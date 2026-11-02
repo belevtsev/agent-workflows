@@ -9,8 +9,10 @@ import (
 // starts after real owned changes were applied, so a no-op or late failure must
 // also preserve the journal and every path already changed by the transaction.
 func TestInstallerRejectsMalformedRecoveryOperationsBeforeAnyReversal(t *testing.T) {
+	t.Parallel()
 	for name, value := range map[string]any{"false": false, "null": nil, "object": Object{}} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			fixture.failAt(t, "setup", "after-global")
@@ -31,6 +33,7 @@ func TestInstallerRejectsMalformedRecoveryOperationsBeforeAnyReversal(t *testing
 }
 
 func TestInstallerRejectsMalformedUndoObservationsBeforeAnyReversal(t *testing.T) {
+	t.Parallel()
 	cases := map[string]Object{
 		"invalid base64":   {"kind": "file", "data": "not-base64", "mode": 0o600},
 		"boolean mode":     {"kind": "file", "data": encode([]byte("original")), "mode": true},
@@ -43,6 +46,7 @@ func TestInstallerRejectsMalformedUndoObservationsBeforeAnyReversal(t *testing.T
 	}
 	for name, invalid := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			fixture.failAt(t, "setup", "after-global")
@@ -74,12 +78,14 @@ func TestInstallerRejectsMalformedUndoObservationsBeforeAnyReversal(t *testing.T
 }
 
 func TestInstallerRejectsDuplicateRecoveryPathsBeforeAnyReversal(t *testing.T) {
+	t.Parallel()
 	for _, resumed := range []bool{false, true} {
 		name := "original operations"
 		if resumed {
 			name = "resumed recovery operations"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			fixture.failAt(t, "setup", "after-global")
@@ -119,6 +125,7 @@ func TestInstallerRejectsDuplicateRecoveryPathsBeforeAnyReversal(t *testing.T) {
 }
 
 func TestInstallerRejectsResealedMalformedStateBeforeAnyMutation(t *testing.T) {
+	t.Parallel()
 	cases := map[string]func(Object){
 		"null original": func(state Object) {
 			for _, raw := range object(hostRecord(state, hostCodex)["registrations"]) {
@@ -146,6 +153,7 @@ func TestInstallerRejectsResealedMalformedStateBeforeAnyMutation(t *testing.T) {
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			fixture.execute(t, "setup")

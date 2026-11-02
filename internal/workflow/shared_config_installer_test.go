@@ -94,9 +94,9 @@ func sharedLifecycleExecute(t *testing.T, fixture *installerFixture, command str
 
 func sharedLifecycleFailAt(t *testing.T, fixture *installerFixture, command, label string) {
 	t.Helper()
-	t.Setenv("AGENT_WORKFLOWS_FAULT", label)
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
 	_, err := sharedLifecycleInstaller(t, fixture, true).Execute(command)
-	t.Setenv("AGENT_WORKFLOWS_FAULT", "")
+	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	if err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
 		t.Fatalf("%s with %s: got %v", command, label, err)
 	}
@@ -151,8 +151,10 @@ func sharedInstallerAssertMode(t *testing.T, path string, want os.FileMode) {
 }
 
 func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"install", "setup"} {
 		t.Run(command, func(t *testing.T) {
+			t.Parallel()
 			fixture := sharedInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			path := sharedInstallerConfigPath(fixture)
@@ -212,6 +214,7 @@ func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T
 }
 
 func TestSharedConfigInstallerUpdateRollbackAndOriginalRestoration(t *testing.T) {
+	t.Parallel()
 	fixture := sharedInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	path := sharedInstallerConfigPath(fixture)
@@ -252,6 +255,7 @@ func TestSharedConfigInstallerUpdateRollbackAndOriginalRestoration(t *testing.T)
 }
 
 func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	path := sharedInstallerConfigPath(fixture)
@@ -281,8 +285,10 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 }
 
 func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *testing.T) {
+	t.Parallel()
 	for _, order := range []string{"model first", "shared first"} {
 		t.Run(order, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			path := sharedInstallerConfigPath(fixture)
 			if order == "model first" {
@@ -319,8 +325,10 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 }
 
 func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"install", "setup"} {
 		t.Run(command, func(t *testing.T) {
+			t.Parallel()
 			fixture := sharedInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installerWrite(t, sharedInstallerConfigPath(fixture), sharedInstallerDeviceConfig, 0o640)
@@ -358,9 +366,11 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 }
 
 func TestSharedConfigInstallerActivationRecoveryRestoresOriginalBytes(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"install", "setup"} {
 		for _, boundary := range []string{"after-codex-config", "after-state"} {
 			t.Run(command+"/"+boundary, func(t *testing.T) {
+				t.Parallel()
 				fixture := sharedInstallerFixture(t)
 				original := fixture.seedUserFiles(t)
 				path := sharedInstallerConfigPath(fixture)
@@ -389,6 +399,7 @@ func TestSharedConfigInstallerActivationRecoveryRestoresOriginalBytes(t *testing
 }
 
 func TestSharedConfigInstallerInterruptedRecoveryPreservesIndependentEdits(t *testing.T) {
+	t.Parallel()
 	fixture := sharedInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	path := sharedInstallerConfigPath(fixture)
@@ -415,6 +426,7 @@ func TestSharedConfigInstallerInterruptedRecoveryPreservesIndependentEdits(t *te
 }
 
 func TestSharedConfigInstallerOwnedDriftRefusesMutation(t *testing.T) {
+	t.Parallel()
 	for _, mutation := range []struct {
 		name, before, after string
 	}{
@@ -425,6 +437,7 @@ func TestSharedConfigInstallerOwnedDriftRefusesMutation(t *testing.T) {
 		{"context window", "model_context_window = 512000", "model_context_window = 272000"},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := sharedInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			path := sharedInstallerConfigPath(fixture)
@@ -450,6 +463,7 @@ func TestSharedConfigInstallerOwnedDriftRefusesMutation(t *testing.T) {
 }
 
 func TestSharedConfigInstallerRecoveryRejectsOwnedDriftBeforeReversal(t *testing.T) {
+	t.Parallel()
 	fixture := sharedInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	path := sharedInstallerConfigPath(fixture)
@@ -465,6 +479,7 @@ func TestSharedConfigInstallerRecoveryRejectsOwnedDriftBeforeReversal(t *testing
 }
 
 func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
+	t.Parallel()
 	valid := sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol")
 	for name, resource := range map[string]string{
 		"malformed":                   "version = [",
@@ -479,6 +494,7 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 		"unknown memory key":          valid + "device_retention = 99\n",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			sharedInstallerRelease(t, fixture, resource)
@@ -493,6 +509,7 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 }
 
 func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
+	t.Parallel()
 	for name, config := range map[string]string{
 		"malformed":            "other = [",
 		"wrong feature type":   "[features]\nmemories = 'false'\n",
@@ -503,6 +520,7 @@ func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
 		"inline memories":      "memories = { extract_model = 'local-extract', device_retention = 17 }\n",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			fixture := sharedInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installerWrite(t, sharedInstallerConfigPath(fixture), config, 0o640)

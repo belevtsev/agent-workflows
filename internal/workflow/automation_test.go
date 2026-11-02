@@ -7,6 +7,7 @@ import (
 )
 
 func TestAutomationRejectsFirstPartyScripts(t *testing.T) {
+	t.Parallel()
 	for _, file := range []string{"scripts/setup.py", "skills/example/scripts/helper.py", "tests/smoke.sh", "tools/check.bash", "requirements-dev.txt", "run"} {
 		t.Run(file, func(t *testing.T) {
 			root := t.TempDir()
@@ -25,6 +26,7 @@ func TestAutomationRejectsFirstPartyScripts(t *testing.T) {
 }
 
 func TestAutomationPreservesSkillResourcesAndBootstrap(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, file := range []string{"install.sh", "skills/example/scripts/helper.sh", "third_party/example/helper.py", "third_party/example/helper.sh", "cmd/cw/main.go"} {
 		path := filepath.Join(root, filepath.FromSlash(file))
