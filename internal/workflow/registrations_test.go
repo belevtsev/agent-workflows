@@ -79,6 +79,7 @@ func assertAddedRegistrations(t *testing.T, installer *Installer, state, prior O
 }
 
 func TestRegistrationFreshAndRepeatedInstallPlans(t *testing.T) {
+	t.Parallel()
 	f := historicalRegistrationFixture(t)
 	second := addBackendFixtureRegistrations(t, f)
 	i := f.installer(false)
@@ -110,8 +111,10 @@ func TestRegistrationFreshAndRepeatedInstallPlans(t *testing.T) {
 }
 
 func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
+	t.Parallel()
 	for _, action := range []string{"setup", "update"} {
 		t.Run(action, func(t *testing.T) {
+			t.Parallel()
 			f := historicalRegistrationFixture(t)
 			original := f.seedUserFiles(t)
 			origin := f.bareOrigin(t)
@@ -203,8 +206,10 @@ func TestRegistrationAdditiveInstallAndUpdateRollbackReadd(t *testing.T) {
 }
 
 func TestRegistrationForwardRemovalsRenamesAndRootChangesRefuse(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"remove", "rename", "root"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			f := historicalRegistrationFixture(t)
 			origin := f.bareOrigin(t)
 			i := f.installer(true)
@@ -259,12 +264,14 @@ func TestRegistrationForwardRemovalsRenamesAndRootChangesRefuse(t *testing.T) {
 }
 
 func TestRegistrationAdditionConflictsAndMissingTargetsRefuseBeforeMerge(t *testing.T) {
+	t.Parallel()
 	for _, rootName := range []string{"managed", "custom codex", "standard codex", "missing target"} {
 		for _, dangling := range []bool{false, true} {
 			if rootName == "missing target" && dangling {
 				continue
 			}
 			t.Run(fmt.Sprintf("%s dangling=%t", rootName, dangling), func(t *testing.T) {
+				t.Parallel()
 				f := historicalRegistrationFixture(t)
 				f.paths.Codex = filepath.Join(f.base, "custom codex")
 				if err := os.MkdirAll(f.paths.Codex, 0o700); err != nil {
@@ -316,8 +323,10 @@ func TestRegistrationAdditionConflictsAndMissingTargetsRefuseBeforeMerge(t *test
 }
 
 func TestRegistrationAdditionRechecksDiscoveryBeforeTransaction(t *testing.T) {
+	t.Parallel()
 	for _, rootName := range []string{"managed", "codex"} {
 		t.Run(rootName, func(t *testing.T) {
+			t.Parallel()
 			f := historicalRegistrationFixture(t)
 			i := f.installer(true)
 			if _, err := i.Setup(true); err != nil {
@@ -360,8 +369,10 @@ func mustRegistrationState(t *testing.T, i *Installer) Object {
 }
 
 func TestRegistrationRollbackRefusesAdoptedOriginsAndChangedOwnedLinks(t *testing.T) {
+	t.Parallel()
 	for _, originKind := range []string{"symlink", "changed link"} {
 		t.Run(originKind, func(t *testing.T) {
+			t.Parallel()
 			f := historicalRegistrationFixture(t)
 			name := backendFixtureNames[0]
 			i := f.installer(true)
@@ -405,6 +416,7 @@ func TestRegistrationRollbackRefusesAdoptedOriginsAndChangedOwnedLinks(t *testin
 }
 
 func TestRegistrationUpdateRechecksAfterRuntimePreparationBeforeMerge(t *testing.T) {
+	t.Parallel()
 	f := historicalRegistrationFixture(t)
 	origin := f.bareOrigin(t)
 	i := nativeFixtureInstaller(t, f, f.first, true)
@@ -432,6 +444,7 @@ func TestRegistrationUpdateRechecksAfterRuntimePreparationBeforeMerge(t *testing
 }
 
 func TestRegistrationNoCheckoutUpdateDryRunWithSourceBehindActive(t *testing.T) {
+	t.Parallel()
 	f := historicalRegistrationFixture(t)
 	f.seedUserFiles(t)
 	origin := f.bareOrigin(t)
@@ -500,8 +513,10 @@ func nativeRegistrationTransition(t *testing.T, action string) (*installerFixtur
 }
 
 func TestRegistrationNativeTransitionRecoversEveryOperationWithoutSource(t *testing.T) {
+	t.Parallel()
 	for _, action := range []string{"update", "rollback"} {
 		t.Run(action, func(t *testing.T) {
+			t.Parallel()
 			f, i, state, second := nativeRegistrationTransition(t, action)
 			sha := second
 			if action == "rollback" {
@@ -536,6 +551,7 @@ func TestRegistrationNativeTransitionRecoversEveryOperationWithoutSource(t *test
 			}
 			for _, label := range labels {
 				t.Run(label, func(t *testing.T) {
+					t.Parallel()
 					f, i, prior, _ := nativeRegistrationTransition(t, action)
 					beforeHome := installerSnapshot(t, f.paths.Home)
 					beforeState := installerRead(t, i.statePath)

@@ -50,6 +50,7 @@ func modelTestRead(t *testing.T, path string) []byte {
 }
 
 func TestModelOriginalRepresentationCommentsModeAndTables(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	original := []byte("# User header\nmodel = 'original' # keep inline\nmodel_reasoning_effort=\"high\"\n\n[profiles.personal]\nmodel = 'profile'\n")
 	modelTestWrite(t, path, original, 0o640)
@@ -84,6 +85,7 @@ func TestModelOriginalRepresentationCommentsModeAndTables(t *testing.T) {
 }
 
 func TestModelMissingKeysPreserveEveryUnrelatedByte(t *testing.T) {
+	t.Parallel()
 	for _, original := range []string{"# heading\n[profile]\nmodel = 'profile'\n", "other='value'", "# heading without final newline", "\n  \n\t\n", "# CRLF\r\n[profile]\r\nvalue = 'other'\r\n", "other = [\n 'model', # untouched\n 'next',\n]\n"} {
 		t.Run(original, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")
@@ -106,6 +108,7 @@ func TestModelMissingKeysPreserveEveryUnrelatedByte(t *testing.T) {
 }
 
 func TestModelRemovalRetainsAttachedComment(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	metadata, operation, err := ModelPrepare(path, modelTestDefaults, nil)
 	if err != nil {
@@ -125,6 +128,7 @@ func TestModelRemovalRetainsAttachedComment(t *testing.T) {
 }
 
 func TestModelAbsentFileRemovalAndWhitespace(t *testing.T) {
+	t.Parallel()
 	for _, later := range []string{"", "# later user note\n", "\n  \n\t\n"} {
 		t.Run(later, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")
@@ -153,6 +157,7 @@ func TestModelAbsentFileRemovalAndWhitespace(t *testing.T) {
 }
 
 func TestModelConcurrentEditBetweenPreparationAndRender(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	modelTestWrite(t, path, []byte("other = 'before'\n"), 0o600)
 	_, operation, err := ModelPrepare(path, modelTestDefaults, nil)
@@ -167,6 +172,7 @@ func TestModelConcurrentEditBetweenPreparationAndRender(t *testing.T) {
 }
 
 func TestModelRecoveryAndRetryPreserveIndependentEdits(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	modelTestWrite(t, path, []byte("model = 'original'\n"), 0o640)
 	_, operation, err := ModelPrepare(path, modelTestDefaults, nil)
@@ -205,6 +211,7 @@ func TestModelRecoveryAndRetryPreserveIndependentEdits(t *testing.T) {
 }
 
 func TestModelRemovalRecoveryPreservesLaterContent(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	metadata, install, err := ModelPrepare(path, modelTestDefaults, nil)
 	if err != nil {
@@ -231,6 +238,7 @@ func TestModelRemovalRecoveryPreservesLaterContent(t *testing.T) {
 }
 
 func TestModelRejectsMalformedUnsafeAndChangedOwnedInput(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{"x =", "model = 'a'\nmodel = 'b'\n", "\xff", "model = 42\n", "model_reasoning_effort = true\n", "[model]\nx=1\n"} {
 		t.Run(content, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")
@@ -277,6 +285,7 @@ func TestModelRejectsMalformedUnsafeAndChangedOwnedInput(t *testing.T) {
 }
 
 func TestModelMetadataOperationJSONCompatibilityAndCorruption(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	metadata, operation, err := ModelPrepare(path, modelTestDefaults, nil)
 	if err != nil {
@@ -321,6 +330,7 @@ func TestModelMetadataOperationJSONCompatibilityAndCorruption(t *testing.T) {
 }
 
 func TestModelQuotedAndMultilineRepresentationsRoundTrip(t *testing.T) {
+	t.Parallel()
 	for _, content := range []string{"\"model\" = '''\nold # literal\nmodel = misleading\n''' # keep\n'model_reasoning_effort'=\"hi\\u0067h\"\n", "model = \"\"\"old \\\n text\"\"\"\nmodel_reasoning_effort = 'high'"} {
 		t.Run(content, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.toml")

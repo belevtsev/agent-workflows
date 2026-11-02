@@ -72,6 +72,7 @@ func assertPersonalDirectory(t *testing.T, target string, inventory []PersonalIn
 }
 
 func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.paths.Codex = filepath.Join(fixture.base, "selected Codex home with spaces")
 	if err := os.MkdirAll(fixture.paths.Codex, 0o700); err != nil {
@@ -153,6 +154,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 }
 
 func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"archify", "production-plan"} {
 		for _, action := range []string{"setup", "uninstall"} {
 			prefix := "adopt-personal:"
@@ -162,6 +164,7 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 			}
 			for _, boundary := range boundaries {
 				t.Run(name+"/"+action+"/"+boundary, func(t *testing.T) {
+					t.Parallel()
 					fixture := newInstallerFixture(t)
 					sha, originals := personalFixtureUpgrade(t, fixture)
 					i := nativeFixtureInstaller(t, fixture, sha, true)
@@ -235,8 +238,10 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 }
 
 func TestPersonalSkillsModifiedOccupiedAndDuplicateInputsRefuse(t *testing.T) {
+	t.Parallel()
 	for _, corruption := range []string{"contents", "extra", "mode", "symlink", "dangling", "duplicates", "occupied-backup", "unsafe-parent", "cancelled", "old-runtime"} {
 		t.Run(corruption, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			sha, originals := personalFixtureUpgrade(t, fixture)
 			i := nativeFixtureInstaller(t, fixture, sha, true)
@@ -295,9 +300,11 @@ func TestPersonalSkillsModifiedOccupiedAndDuplicateInputsRefuse(t *testing.T) {
 }
 
 func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *testing.T) {
+	t.Parallel()
 	for _, historical := range []int{9, 12} {
 		for _, adoption := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%d/adoption=%t", historical, adoption), func(t *testing.T) {
+				t.Parallel()
 				fixture := newInstallerFixture(t)
 				if historical == 9 {
 					fixture = historicalRegistrationFixture(t)
@@ -346,8 +353,10 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 }
 
 func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
+	t.Parallel()
 	for _, protocol := range []string{ManagerProtocol} {
 		t.Run(protocol, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			old := nativeFixtureInstaller(t, fixture, fixture.first, true)
 			installerWrite(t, old.RuntimeCandidate, "#!/bin/sh\nprintf '%s\\n' "+protocol+"\n", 0o755)
@@ -392,8 +401,10 @@ func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
 }
 
 func TestPersonalSkillsUninstallChangedDestinationOrBackupRefuses(t *testing.T) {
+	t.Parallel()
 	for _, change := range []string{"destination", "backup"} {
 		t.Run(change, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			sha, originals := personalFixtureUpgrade(t, fixture)
 			i := nativeFixtureInstaller(t, fixture, sha, true)
@@ -418,6 +429,7 @@ func TestPersonalSkillsUninstallChangedDestinationOrBackupRefuses(t *testing.T) 
 }
 
 func TestPersonalSkillCrossFilesystemRefuses(t *testing.T) {
+	t.Parallel()
 	if !exists("/dev/shm") {
 		t.Skip("second filesystem unavailable on this platform")
 	}
@@ -444,6 +456,7 @@ func TestPersonalSkillCrossFilesystemRefuses(t *testing.T) {
 }
 
 func TestPersonalSkillCancellationBetweenCompoundStepsRecovers(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	sha, originals := personalFixtureUpgrade(t, fixture)
 	i := nativeFixtureInstaller(t, fixture, sha, true)

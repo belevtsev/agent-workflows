@@ -43,6 +43,7 @@ func assertFiles(t *testing.T, files map[string]string) {
 }
 
 func TestClaudeHostInstallAndUninstallRestoreUserFilesExactly(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	original := seedClaudeFiles(t, f)
 	i := f.hostInstaller(true, hostClaude)
@@ -88,6 +89,7 @@ func TestClaudeHostInstallAndUninstallRestoreUserFilesExactly(t *testing.T) {
 }
 
 func TestClaudeHostOnEmptyConfigRemovesWhatItCreated(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	if err := os.MkdirAll(f.paths.Claude, 0o700); err != nil {
 		t.Fatal(err)
@@ -106,6 +108,7 @@ func TestClaudeHostOnEmptyConfigRemovesWhatItCreated(t *testing.T) {
 }
 
 func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)
 	if err := os.MkdirAll(f.paths.Codex, 0o700); err != nil {
@@ -155,6 +158,7 @@ func requireOneDirectory(t *testing.T, a, b string) {
 }
 
 func TestSameDirectory(t *testing.T) {
+	t.Parallel()
 	base := Normalize(t.TempDir())
 	one, two, link := filepath.Join(base, "one"), filepath.Join(base, "two"), filepath.Join(base, "link")
 	for _, directory := range []string{one, two} {
@@ -214,6 +218,7 @@ func TestSameDirectory(t *testing.T) {
 }
 
 func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
+	t.Parallel()
 	mkdir := func(t *testing.T, path string) {
 		t.Helper()
 		if err := os.MkdirAll(path, 0o700); err != nil {
@@ -260,6 +265,7 @@ func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			test.roots(t, f)
 			before := installerSnapshot(t, f.base)
@@ -274,9 +280,11 @@ func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
 }
 
 func TestEnrollingAHostRefusesASharedSkillsDirectory(t *testing.T) {
+	t.Parallel()
 	for _, hosts := range [][2]string{{hostClaude, hostCodex}, {hostCodex, hostClaude}} {
 		for name, spell := range map[string]func(string) string{"same spelling": func(path string) string { return path }, "data volume firmlink": onDataVolume} {
 			t.Run(hosts[0]+" first, "+name, func(t *testing.T) {
+				t.Parallel()
 				f := claudeFixture(t)
 				if err := os.MkdirAll(f.paths.Codex, 0o700); err != nil {
 					t.Fatal(err)
@@ -303,12 +311,14 @@ func TestEnrollingAHostRefusesASharedSkillsDirectory(t *testing.T) {
 }
 
 func TestUndecidedHostRootsRefuseBeforeWrites(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct{ name, codex, claude string }{
 		{"Unicode forms", "codéx", "codéx"},
 		{"letters a table would miss", "straße", "STRASSE"},
 		{"case", "shared", "SHARED"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			f.paths.Codex, f.paths.Claude = filepath.Join(f.base, test.codex), filepath.Join(f.base, test.claude)
 			before := installerSnapshot(t, f.base)
@@ -344,6 +354,7 @@ func TestUndecidedHostRootsRefuseBeforeWrites(t *testing.T) {
 }
 
 func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
+	t.Parallel()
 	both := []string{hostCodex, hostClaude}
 	for _, test := range []struct {
 		name  string
@@ -372,6 +383,7 @@ func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			test.roots(t, f)
 			before := installerSnapshot(t, f.base)
@@ -384,6 +396,7 @@ func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
 		})
 	}
 	t.Run("a spelling the filesystem has to settle", func(t *testing.T) {
+		t.Parallel()
 		f := claudeFixture(t)
 		skills := filepath.Join(f.paths.Home, ".agents", "skills")
 		f.paths.Claude = filepath.Join(skills, "CODE-REVIEW")
@@ -415,6 +428,7 @@ func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
 		}
 	})
 	t.Run("Claude alone", func(t *testing.T) {
+		t.Parallel()
 		f := claudeFixture(t)
 		f.paths.Claude = filepath.Join(f.paths.Home, ".codex", "skills", "code-review")
 		if _, err := f.hostInstaller(true, hostClaude).Setup(true); err != nil {
@@ -432,6 +446,7 @@ func TestHostHomesOnSkillNamesRefuseBeforeWrites(t *testing.T) {
 }
 
 func TestHostHomesClearOfSkillNamesInstall(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		hosts []string
@@ -451,6 +466,7 @@ func TestHostHomesClearOfSkillNamesInstall(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			test.roots(f)
 			i := f.hostInstaller(true, test.hosts...)
@@ -468,6 +484,7 @@ func TestHostHomesClearOfSkillNamesInstall(t *testing.T) {
 }
 
 func TestCodexHomeSpelledAsThePersonalRootInstalls(t *testing.T) {
+	t.Parallel()
 	upper := func(path string) string {
 		return filepath.Join(filepath.Dir(path), strings.ToUpper(filepath.Base(path)))
 	}
@@ -481,6 +498,7 @@ func TestCodexHomeSpelledAsThePersonalRootInstalls(t *testing.T) {
 		{"data volume firmlink", onDataVolume, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			agents := filepath.Join(f.paths.Home, ".agents")
 			f.paths.Codex = test.spell(agents)
@@ -508,11 +526,13 @@ func TestCodexHomeSpelledAsThePersonalRootInstalls(t *testing.T) {
 }
 
 func TestPersonalSkillInASpelledCodexRootIsAdoptedOnce(t *testing.T) {
+	t.Parallel()
 	for name, spell := range map[string]func(string) string{
 		"case spelling":        func(path string) string { return filepath.Join(filepath.Dir(path), ".CODEX") },
 		"data volume firmlink": onDataVolume,
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			defaultHome := f.paths.Codex
 			f.paths.Codex = spell(defaultHome)
@@ -544,6 +564,7 @@ func TestPersonalSkillInASpelledCodexRootIsAdoptedOnce(t *testing.T) {
 }
 
 func TestFreshInstallRefusesAmbiguousHostDetection(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)
 	before := installerSnapshot(t, f.base)
@@ -565,12 +586,14 @@ func TestFreshInstallRefusesAmbiguousHostDetection(t *testing.T) {
 }
 
 func TestAddClaudeThenRemoveCodexKeepsClaudeWorking(t *testing.T) {
+	t.Parallel()
 	for _, forget := range []bool{false, true} {
 		name := "uninstall"
 		if forget {
 			name = "forget"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			f := claudeFixture(t)
 			codexFiles := f.seedUserFiles(t)
 			claudeFiles := seedClaudeFiles(t, f)
@@ -651,6 +674,7 @@ func assertLinks(t *testing.T, h hostTarget, names []string, want bool) {
 }
 
 func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name       string
 		rolledBack bool
@@ -661,6 +685,7 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 		{"rolled back naming every host", true, []string{hostCodex, hostClaude}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			f := addHostFixture(t)
 			if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
 				t.Fatal(err)
@@ -717,6 +742,7 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 }
 
 func TestAddingHostIgnoresTheCheckout(t *testing.T) {
+	t.Parallel()
 	f := addHostFixture(t)
 	second := addBackendFixtureRegistrations(t, f)
 	if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
@@ -736,6 +762,7 @@ func TestAddingHostIgnoresTheCheckout(t *testing.T) {
 }
 
 func TestAddingHostLeavesTheManagerAlone(t *testing.T) {
+	t.Parallel()
 	f := addHostFixture(t)
 	i := nativeFixtureInstaller(t, f, f.first, true)
 	i.Hosts = []string{hostCodex}
@@ -765,6 +792,7 @@ func TestAddingHostLeavesTheManagerAlone(t *testing.T) {
 }
 
 func TestClaudeSettingsDriftIsReportedAndLeftAlone(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	original := seedClaudeFiles(t, f)
 	i := f.hostInstaller(true, hostClaude)
@@ -809,9 +837,11 @@ func TestClaudeSettingsDriftIsReportedAndLeftAlone(t *testing.T) {
 }
 
 func TestClaudeHostRecoversEveryBoundary(t *testing.T) {
+	t.Parallel()
 	for _, command := range []string{"setup", "uninstall"} {
 		for _, label := range []string{"after-pointer", "after-global:claude", "after-claude-settings", "after-state"} {
 			t.Run(command+"/"+label, func(t *testing.T) {
+				t.Parallel()
 				f := claudeFixture(t)
 				seedClaudeFiles(t, f)
 				if command == "uninstall" {
@@ -853,6 +883,7 @@ func TestClaudeHostRecoversEveryBoundary(t *testing.T) {
 }
 
 func TestClaudeSettingsEditsPreserveEverythingElse(t *testing.T) {
+	t.Parallel()
 	present := func(value string) Object { return Object{"present": true, "representation": value} }
 	for _, test := range []struct{ name, input, key, want string }{
 		{"replace in place", "{\n  \"model\":   \"old\",\n  \"z\": 1\n}\n", "model", "{\n  \"model\":   \"new\",\n  \"z\": 1\n}\n"},
@@ -889,6 +920,7 @@ func TestClaudeSettingsEditsPreserveEverythingElse(t *testing.T) {
 }
 
 func TestClaudeSettingsRejectsUnsafePaths(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	seedClaudeFiles(t, f)
 	i := f.hostInstaller(true, hostClaude)

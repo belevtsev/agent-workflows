@@ -24,6 +24,7 @@ func nativeFixtureInstaller(t *testing.T, fixture *installerFixture, revision st
 }
 
 func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 	for _, test := range []struct {
@@ -46,6 +47,7 @@ func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
 }
 
 func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
+	t.Parallel()
 	f := claudeFixture(t)
 	installer := func(hosts ...string) *Installer {
 		i := nativeFixtureInstaller(t, f, f.first, true)
@@ -86,8 +88,10 @@ func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
 }
 
 func TestNativeManagerAlreadyOnPATHDoesNotAddProfile(t *testing.T) {
+	t.Parallel()
 	for _, legacy := range []bool{false, true} {
 		t.Run(fmt.Sprintf("legacy %t", legacy), func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			original := fixture.seedUserFiles(t)
 			if legacy {
@@ -114,6 +118,7 @@ func TestNativeManagerAlreadyOnPATHDoesNotAddProfile(t *testing.T) {
 }
 
 func TestNativeManagerRejectsExternalPATHCommand(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -128,8 +133,10 @@ func TestNativeManagerRejectsExternalPATHCommand(t *testing.T) {
 }
 
 func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"after-manager-runtime", "after-manager-command", "after-manager-locator", "after-command-profile", "after-state"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			original := fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -157,6 +164,7 @@ func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
 }
 
 func TestNativeManagerRecoveryPreservesIndependentProfileEdits(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	original := fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -182,8 +190,10 @@ func TestNativeManagerRecoveryPreservesIndependentProfileEdits(t *testing.T) {
 }
 
 func TestNativeManagerConflictAndPreparationFailureDoNotActivate(t *testing.T) {
+	t.Parallel()
 	for _, conflict := range []string{"command", "candidate"} {
 		t.Run(conflict, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -205,6 +215,7 @@ func TestNativeManagerConflictAndPreparationFailureDoNotActivate(t *testing.T) {
 }
 
 func TestNativeManagerRejectsTamperedRuntime(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -219,8 +230,10 @@ func TestNativeManagerRejectsTamperedRuntime(t *testing.T) {
 }
 
 func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
+	t.Parallel()
 	for _, label := range []string{"after-command-profile", "after-manager-command", "after-manager-runtime", "after-manager-locator", "after-state"} {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -258,8 +271,10 @@ func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
 }
 
 func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
+	t.Parallel()
 	for _, corruption := range []string{"command-path", "runtime-target", "locator-roots", "profile-path", "profile-content"} {
 		t.Run(corruption, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -298,6 +313,7 @@ func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
 }
 
 func TestNativeManagerSymlinkedCommandParentRefusesUninstall(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
@@ -320,6 +336,7 @@ func TestNativeManagerSymlinkedCommandParentRefusesUninstall(t *testing.T) {
 }
 
 func TestInstallerContextCancellationLeavesInstallationUntouched(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	installer := fixture.installer(true)
@@ -334,6 +351,7 @@ func TestInstallerContextCancellationLeavesInstallationUntouched(t *testing.T) {
 }
 
 func TestNativeUpdateNoCheckoutPreparesFetchedRuntime(t *testing.T) {
+	t.Parallel()
 	fixture := newInstallerFixture(t)
 	fixture.seedUserFiles(t)
 	origin := fixture.bareOrigin(t)

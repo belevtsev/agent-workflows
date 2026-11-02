@@ -9,6 +9,7 @@ import (
 )
 
 func TestPersonalBackupAncestorSyncFailurePreventsOriginalMove(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	_, originals := personalFixtureUpgrade(t, f)
 	i := f.installer(true)
@@ -36,6 +37,7 @@ func TestPersonalBackupAncestorSyncFailurePreventsOriginalMove(t *testing.T) {
 }
 
 func TestPersonalStateNestedInsideOriginalRefusesBeforeStaging(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	sha, originals := personalFixtureUpgrade(t, f)
 	origin := filepath.Join(f.paths.Home, ".agents", "skills", "archify")
@@ -66,6 +68,7 @@ func personalCatalogFixture(t *testing.T) *suiteFixture {
 }
 
 func TestPersonalCatalogStrictSchemaAndCompleteInventories(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"version", "unknown-member", "unregistered", "unordered", "duplicate", "root", "parent", "symlink", "negative-mode", "fractional-mode", "missing-mode", "directory-hash", "missing-hash", "invalid-hash", "traversal", "absolute", "backslash", "empty-inventory", "raw-data"} {
 		t.Run(invalid, func(t *testing.T) {
 			f := personalCatalogFixture(t)
@@ -151,9 +154,11 @@ func interruptedPersonalFixture(t *testing.T, label string) (*installerFixture, 
 }
 
 func TestPersonalJournalEnumeratesCompoundPathsAndRejectsInterOperationOverlap(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"operations", "recovery_operations"} {
 		for _, owned := range []string{"origin_path", "backup_path", "registration_path", "nested"} {
 			t.Run(field+"/"+owned, func(t *testing.T) {
+				t.Parallel()
 				f, i := interruptedPersonalFixture(t, "after-adopt-personal:archify:rename")
 				if field == "recovery_operations" {
 					f.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-personal:archify:rename")
@@ -195,8 +200,10 @@ func TestPersonalJournalEnumeratesCompoundPathsAndRejectsInterOperationOverlap(t
 }
 
 func TestPersonalRecoveryRejectsChangedRuntimeOrOwnedDirectoryBeforeReversal(t *testing.T) {
+	t.Parallel()
 	for _, changed := range []string{"binary", "locator", "receipt", "receipt-mode", "extra-file", "forged-old-capability", "backup", "registration"} {
 		t.Run(changed, func(t *testing.T) {
+			t.Parallel()
 			f, i := interruptedPersonalFixture(t, "after-adopt-personal:archify:link")
 			dir := i.runtimeDir(i.RuntimeIdentity.Revision)
 			switch changed {

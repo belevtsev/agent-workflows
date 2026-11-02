@@ -368,6 +368,7 @@ func (f *installerFixture) bareOrigin(t *testing.T) string {
 }
 
 func TestInstallerSetupDryRunRepeatAndSelectiveUninstall(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	original := f.seedUserFiles(t)
 	before := installerSnapshot(t, f.base)
@@ -413,8 +414,10 @@ func TestInstallerSetupDryRunRepeatAndSelectiveUninstall(t *testing.T) {
 }
 
 func TestInstallerLocalOriginUpdateRollbackAndNoCheckout(t *testing.T) {
+	t.Parallel()
 	for _, noCheckout := range []bool{false, true} {
 		t.Run(fmt.Sprintf("no checkout %t", noCheckout), func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
 			origin := f.bareOrigin(t)
@@ -456,6 +459,7 @@ func TestInstallerLocalOriginUpdateRollbackAndNoCheckout(t *testing.T) {
 }
 
 func TestInstallerSetupLocalFastForwardNeverFetches(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	f.execute(t, "setup")
 	second := f.newRelease(t)
@@ -468,8 +472,10 @@ func TestInstallerSetupLocalFastForwardNeverFetches(t *testing.T) {
 }
 
 func TestInstallerUpdateRejectsWrongOriginDirtyDivergenceAndInvalidRelease(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"origin", "dirty", "divergence", "invalid release"} {
 		t.Run(invalid, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			origin := f.bareOrigin(t)
 			f.execute(t, "setup")
@@ -514,8 +520,10 @@ func TestInstallerUpdateRejectsWrongOriginDirtyDivergenceAndInvalidRelease(t *te
 }
 
 func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
+	t.Parallel()
 	for _, conflict := range []string{"model", "global", "registration", "pointer", "release"} {
 		t.Run(conflict, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.execute(t, "setup")
 			i := f.installer(true)
@@ -550,8 +558,10 @@ func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
 }
 
 func TestInstallerRewindAndDivergenceRejectBeforeActivation(t *testing.T) {
+	t.Parallel()
 	for _, diverge := range []bool{false, true} {
 		t.Run(fmt.Sprintf("divergent %t", diverge), func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.execute(t, "setup")
 			f.newRelease(t)
@@ -572,6 +582,7 @@ func TestInstallerRewindAndDivergenceRejectBeforeActivation(t *testing.T) {
 }
 
 func TestInstallerFreshSetupRecoversEveryActivationBoundary(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	labels := []string{"after-journal", "after-pointer"}
 	for _, name := range keys(object(f.manifest["registrations"])) {
@@ -580,6 +591,7 @@ func TestInstallerFreshSetupRecoversEveryActivationBoundary(t *testing.T) {
 	labels = append(labels, "after-global", "after-model-config", "after-state")
 	for _, label := range labels {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
 			before := installerSnapshot(t, f.paths.Home)
@@ -603,6 +615,7 @@ func TestInstallerFreshSetupRecoversEveryActivationBoundary(t *testing.T) {
 }
 
 func TestInstallerPublicationFailureCanResumeExactStage(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	f.seedUserFiles(t)
 	before := installerSnapshot(t, f.paths.Home)
@@ -616,6 +629,7 @@ func TestInstallerPublicationFailureCanResumeExactStage(t *testing.T) {
 }
 
 func TestInstallerUninstallRecoversEveryMutationBoundary(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	labels := []string{"after-journal"}
 	for _, name := range keys(object(f.manifest["registrations"])) {
@@ -624,6 +638,7 @@ func TestInstallerUninstallRecoversEveryMutationBoundary(t *testing.T) {
 	labels = append(labels, "after-global", "after-model-config", "after-pointer", "after-state")
 	for _, label := range labels {
 		t.Run(label, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
 			f.execute(t, "setup")
@@ -640,8 +655,10 @@ func TestInstallerUninstallRecoversEveryMutationBoundary(t *testing.T) {
 }
 
 func TestInstallerInterruptedRecoveryKeepsIndependentEdits(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"global", "model-config"} {
 		t.Run(target, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			original := f.seedUserFiles(t)
 			f.execute(t, "setup")
@@ -671,8 +688,10 @@ func TestInstallerInterruptedRecoveryKeepsIndependentEdits(t *testing.T) {
 }
 
 func TestInstallerRecoveryRejectsOwnedEditsBeforePartialReversal(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"global", "model", "pointer"} {
 		t.Run(target, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
 			f.execute(t, "setup")
@@ -704,8 +723,10 @@ func TestInstallerRecoveryRejectsOwnedEditsBeforePartialReversal(t *testing.T) {
 }
 
 func TestInstallerJournalRejectsCorruptionAndPathsBeforeWrites(t *testing.T) {
+	t.Parallel()
 	for _, invalid := range []string{"checksum", "outside path", "full config write", "unowned model key", "pointer escape"} {
 		t.Run(invalid, func(t *testing.T) {
+			t.Parallel()
 			f := newInstallerFixture(t)
 			f.seedUserFiles(t)
 			f.failAt(t, "setup", "after-journal")
@@ -742,6 +763,7 @@ func TestInstallerJournalRejectsCorruptionAndPathsBeforeWrites(t *testing.T) {
 }
 
 func TestInstallerMutationLockAndUnsafeLockRefuseWrites(t *testing.T) {
+	t.Parallel()
 	f := newInstallerFixture(t)
 	f.execute(t, "setup")
 	path := filepath.Join(f.paths.State, "mutation.lock")
@@ -779,6 +801,7 @@ func TestInstallerMutationLockAndUnsafeLockRefuseWrites(t *testing.T) {
 }
 
 func TestInstallerPythonV1SealGolden(t *testing.T) {
+	t.Parallel()
 	// Generated independently with Python json.dumps(sort_keys=True, indent=2,
 	// ensure_ascii=True) + newline and hashlib.sha256, without engine helpers.
 	const golden = `{

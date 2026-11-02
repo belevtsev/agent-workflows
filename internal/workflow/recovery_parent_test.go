@@ -7,8 +7,10 @@ import (
 )
 
 func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
+	t.Parallel()
 	for _, affected := range []string{"skills", "codex"} {
 		t.Run(affected, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
 			fixture.seedUserFiles(t)
@@ -38,8 +40,10 @@ func TestRecoveryRefusesSymlinkedOwnedParentsBeforeAnyReversal(t *testing.T) {
 }
 
 func TestMutationRechecksParentBeforeDeletion(t *testing.T) {
+	t.Parallel()
 	for _, entrypoint := range []string{"perform", "write-observation"} {
 		t.Run(entrypoint, func(t *testing.T) {
+			t.Parallel()
 			fixture := newInstallerFixture(t)
 			installer := fixture.installer(true)
 			parent := installer.skills
