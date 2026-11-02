@@ -624,6 +624,9 @@ func (i *Installer) Recover() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
+	if e = i.preflightMutationPaths(reversals, nil, false); e != nil {
+		return nil, e
+	}
 	if !i.Apply {
 		return Object{"command": "recover", "pending": true, "dry_run": true, "reversals": len(reversals)}, nil
 	}
@@ -638,6 +641,9 @@ func (i *Installer) Recover() (Object, error) {
 	}
 	reversals, e = i.pendingRecovery(j)
 	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(reversals, nil, false); e != nil {
 		return nil, e
 	}
 	if j["recovery_operations"] == nil {

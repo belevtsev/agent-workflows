@@ -16,8 +16,11 @@ import (
 	"time"
 )
 
+const maxTaskRevisions = 4096
+
 var revisionName = regexp.MustCompile(`^record-([0-9]{6})\.json$`)
 var errTaskLocked = errors.New("task is locked; inspect an interrupted writer before removing its .lock directory")
+var errTaskRevisionLimit = errors.New("task revision limit reached; start a new task")
 
 func randomID() (string, error) {
 	var data [16]byte
@@ -188,7 +191,7 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 			names = append(names, entry.Name())
 		}
 	}
-	if len(names) == 0 || len(names) > 4096 {
+	if len(names) == 0 || len(names) > maxTaskRevisions {
 		return Record{}, "", errors.New("missing task revisions or revision limit exceeded")
 	}
 	slices.Sort(names)
@@ -308,6 +311,35 @@ func Load(path string) (Record, error) {
 }
 
 func update(path string, change func(*os.Root, *Record) error) (Record, error) {
+	return updateWithCapacity(path, 1, "", change)
+}
+
+// Every running check owns one future terminal revision. Count reservations
+// from the stored state under the writer lock, including historical records;
+// only the terminal update for that exact run may spend its reserved slot.
+func requireRevisionCapacity(record Record, additional int, completingRunID string) error {
+	reserved := 0
+	found := completingRunID == ""
+	for _, run := range record.Checks {
+		if run.Status != "running" {
+			continue
+		}
+		if run.ID == completingRunID {
+			found = true
+		} else {
+			reserved++
+		}
+	}
+	if !found {
+		return errors.New("starting check record is missing or already terminal")
+	}
+	if record.Revision+additional+reserved > maxTaskRevisions {
+		return errTaskRevisionLimit
+	}
+	return nil
+}
+
+func updateWithCapacity(path string, additional int, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
 	root, directory, err := openTask(path)
 	if err != nil {
 		return Record{}, err
@@ -324,6 +356,9 @@ func update(path string, change func(*os.Root, *Record) error) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
+	if err := requireRevisionCapacity(record, additional, completingRunID); err != nil {
+		return Record{}, err
+	}
 	beforeBytes, err := encode(record)
 	if err != nil {
 		return Record{}, err
@@ -334,6 +369,9 @@ func update(path string, change func(*os.Root, *Record) error) (Record, error) {
 	record.Revision++
 	record.PreviousSHA256 = previous
 	record.UpdatedAt = time.Now().UTC()
+	if err := requireRevisionCapacity(record, 0, ""); err != nil {
+		return Record{}, err
+	}
 	if err := validateRecord(record); err != nil {
 		return Record{}, err
 	}
@@ -360,9 +398,9 @@ func update(path string, change func(*os.Root, *Record) error) (Record, error) {
 // Terminal results may race a short assessment/context writer. Preserve the
 // running revision while waiting for that writer; never overwrite or break a
 // lock, and never manufacture success if an abandoned lock outlives the bound.
-func updateWhenUnlocked(ctx context.Context, path string, change func(*os.Root, *Record) error) (Record, error) {
+func updateWhenUnlocked(ctx context.Context, path, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
 	for {
-		record, err := update(path, change)
+		record, err := updateWithCapacity(path, 1, completingRunID, change)
 		if !errors.Is(err, errTaskLocked) {
 			return record, err
 		}

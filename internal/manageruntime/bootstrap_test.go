@@ -12,7 +12,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -391,6 +393,95 @@ func assertBootstrapCleaned(t *testing.T, launcher, binary string) {
 		if strings.HasPrefix(entry.Name(), ".bootstrap.") {
 			t.Fatalf("temporary bootstrap remains: %s", entry.Name())
 		}
+	}
+}
+
+func TestBootstrapAbandonedLockHasRecoverableOwner(t *testing.T) {
+	launcher, binary, calls := bootstrapFixture(t, false)
+	mockCurl := filepath.Join(filepath.Dir(filepath.Dir(launcher)), "mock-bin", "curl")
+	original, err := os.ReadFile(mockCurl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The download child kills its actual bootstrap parent, bypassing EXIT traps.
+	writeFixture(t, mockCurl, "#!/bin/sh\nkill -KILL \"$PPID\"\nexit 0\n", 0755)
+	output, err := runBootstrap(t.Context(), launcher, "setup")
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || !exit.Sys().(syscall.WaitStatus).Signaled() || exit.Sys().(syscall.WaitStatus).Signal() != syscall.SIGKILL {
+		t.Fatalf("bootstrap was not killed: %v: %s", err, output)
+	}
+	lock := filepath.Join(filepath.Dir(launcher), ".bin.lock")
+	owner, err := os.ReadFile(filepath.Join(lock, "pid"))
+	if err != nil {
+		t.Fatalf("abandoned lock lacks owner evidence: %v", err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(owner)))
+	if err != nil || pid <= 0 {
+		t.Fatalf("invalid recorded owner: %q", owner)
+	}
+	if started, err := os.ReadFile(filepath.Join(lock, "started")); err != nil || len(started) == 0 {
+		t.Fatalf("abandoned lock lacks start-time evidence: %v", err)
+	}
+	writeFixture(t, mockCurl, string(original), 0755)
+	output, err = runBootstrap(t.Context(), launcher, "setup")
+	if err == nil || !strings.Contains(output, "owner PID "+strconv.Itoa(pid)) || !strings.Contains(output, "docs/operations.md#interrupted-bootstrap") {
+		t.Fatalf("missing owner and recovery guidance: %v: %s", err, output)
+	}
+	if after, err := os.ReadFile(filepath.Join(lock, "pid")); err != nil || !bytes.Equal(after, owner) {
+		t.Fatalf("refused retry changed owner: %v", err)
+	}
+	if _, err := os.Stat(calls); !os.IsNotExist(err) {
+		t.Fatalf("locked retry downloaded: %v", err)
+	}
+	// Follow the documented manual recovery only after the owner has exited.
+	for _, name := range []string{"pid", "started"} {
+		if err := os.Remove(filepath.Join(lock, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	output, err = runBootstrap(t.Context(), launcher, "setup")
+	if err != nil || strings.TrimSpace(output) != `{"forwarded":true}` {
+		t.Fatalf("recovered bootstrap failed: %v: %s", err, output)
+	}
+	if _, err := os.Stat(lock); !os.IsNotExist(err) {
+		t.Fatalf("successful recovery retained lock: %v", err)
+	}
+	if data, err := os.ReadFile(binary); err != nil || string(data) != managerScript(true) {
+		t.Fatalf("recovered cache differs: %v", err)
+	}
+}
+
+func TestBootstrapPreservesActiveAndUnknownLocks(t *testing.T) {
+	for _, owner := range []string{strconv.Itoa(os.Getpid()), "", "not-a-pid"} {
+		t.Run("owner-"+owner, func(t *testing.T) {
+			launcher, binary, calls := bootstrapFixture(t, true)
+			lock := filepath.Join(filepath.Dir(launcher), ".bin.lock")
+			if err := os.Mkdir(lock, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if owner != "" {
+				writeFixture(t, filepath.Join(lock, "pid"), owner+"\n", 0600)
+			}
+			output, err := runBootstrap(t.Context(), launcher, "setup")
+			if err == nil || !strings.Contains(output, "docs/operations.md#interrupted-bootstrap") {
+				t.Fatalf("lock lacked recovery guidance: %v: %s", err, output)
+			}
+			if _, err := os.Stat(lock); err != nil {
+				t.Fatalf("lock changed: %v", err)
+			}
+			if owner != "" {
+				if data, err := os.ReadFile(filepath.Join(lock, "pid")); err != nil || string(data) != owner+"\n" {
+					t.Fatalf("owner changed: %v", err)
+				}
+			}
+			assertBootstrapCacheUnchanged(t, binary, managerScript(false))
+			if _, err := os.Stat(calls); !os.IsNotExist(err) {
+				t.Fatalf("locked retry downloaded: %v", err)
+			}
+		})
 	}
 }
 

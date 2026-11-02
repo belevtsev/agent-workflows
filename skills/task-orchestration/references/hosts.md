@@ -49,6 +49,28 @@ Sonnet 5.5 profile; resolve the current policy before dispatch.
 - The settings default stops at `xhigh` because `settings.json` rejects `max`. Use
   `/effort max` for a session when the user asks for it.
 
+## Independent test authors on either host
+
+The [test-author contract](test-author.md) applies whenever behavioral tests or
+their helpers/data are authored, changed, removed or disabled. `test_author` is
+the dispatch identity; resolve the existing `testing` profile rather than adding
+a host policy role or selecting a cheaper publication profile. Preserve configured
+model/effort overrides and verify the effective settings.
+
+On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
+and `reasoning_effort`. On Claude, use a fresh Agent invocation with the resolved
+model alias and explicit `effort`, accounting for the overrides above. Do not
+resume a coder, coordinator or source-aware reviewer as the author. Inspect initial
+injected context and automatic project instructions as well as the handoff; a
+fresh conversation alone does not establish an unexposed context.
+
+Give only approved contract/interface/scaffold inputs and exact test-output paths.
+The coordinator retains implementation discovery and raw execution diagnostics.
+Inspect available tool transcripts for boundary violations; neither host dispatch
+nor native task ownership is a filesystem sandbox. If the author is exposed, stop
+or supersede it and use a fresh replacement. Report a blocker when suitable fresh
+context/model settings cannot be supplied; do not fall back to an exposed worker.
+
 ## Adviser questions
 
 `references/jev-questions.json` names options such as `luna_lookup`,

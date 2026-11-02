@@ -151,7 +151,9 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
 	var check Check
 	var logFile *os.File
-	_, err := update(path, func(root *os.Root, record *Record) error {
+	// The start revision also reserves its terminal revision before the callback
+	// can create a log or the planned child can execute.
+	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
 		found := false
 		for _, candidate := range record.Plan.Checks {
 			if candidate.ID == checkID {
@@ -250,7 +252,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 			run.Failure = "source_snapshot_changed_or_unavailable"
 		}
 	}
-	_, storeErr := updateWhenUnlocked(finishCtx, path, func(_ *os.Root, record *Record) error {
+	_, storeErr := updateWhenUnlocked(finishCtx, path, run.ID, func(_ *os.Root, record *Record) error {
 		for i := range record.Checks {
 			if record.Checks[i].ID == run.ID {
 				if record.Checks[i].Status != "running" {

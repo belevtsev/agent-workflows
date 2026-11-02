@@ -27,6 +27,15 @@ Record each checkpoint's disposition, including unavailable or restricted provid
 
 ## Implementation
 
+For every new or materially changed behavioral test, including small fixes and
+tests-only work, dispatch the [independent test author](test-author.md). Agree the
+versioned contract and interfaces first, then separate exact implementation and
+test-artifact ownership. Authors receive approved contracts/scaffolding only;
+source-aware coordination or verification owns execution and filtered feedback.
+A valid red-test handoff completes authorship, not verification. Return semantic
+assertion/fixture/helper/skip changes to an unexposed author and retain patch
+identity. Small author dispatch alone does not activate substantial checkpoints.
+
 Establish behavior, interfaces, and observable acceptance. Give workers exclusive
 file ownership and agree shared interfaces before edits; workers must accommodate
 others' changes. Integrate and run required checks in the repository environment,

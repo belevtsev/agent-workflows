@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,6 +46,22 @@ func TestCheckSubprocess(t *testing.T) {
 		os.WriteFile(args[1], []byte("changed\n"), 0600)
 	case "output":
 		fmt.Print(strings.Repeat("x", MaxLogBytes+2048))
+	case "barrier":
+		connection, err := net.DialTimeout("tcp", args[1], 10*time.Second)
+		if err != nil {
+			os.Exit(21)
+		}
+		defer connection.Close()
+		if err := connection.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+			os.Exit(22)
+		}
+		if _, err := io.WriteString(connection, args[2]); err != nil {
+			os.Exit(23)
+		}
+		var release [1]byte
+		if _, err := io.ReadFull(connection, release[:]); err != nil {
+			os.Exit(24)
+		}
 	case "wait-marker":
 		if err := os.WriteFile(args[1], []byte("ready"), 0600); err != nil {
 			os.Exit(15)
@@ -730,7 +747,7 @@ func TestTerminalPublicationWaitsForShortMetadataWriter(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := updateWhenUnlocked(ctx, record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
+		_, err := updateWhenUnlocked(ctx, record.Directory, "", func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
 		done <- err
 	}()
 	select {

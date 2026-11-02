@@ -1,13 +1,19 @@
 ---
 name: task-orchestration
-description: Coordinate substantial work with bounded workers, required Jev, SubQ Snap and OpenAI Decisions advice, and source-bound verification; route routine GitHub publication to a cheaper worker.
+description: Coordinate substantial work with bounded workers and source-bound verification; dispatch independent test authors and cheaper routine GitHub workers.
 ---
 
 # Task orchestration
 
 The coordinator owns the outcome, consultation, dispatch, integration, and final
 verification. Use this skill for independent workstreams or consequential
-uncertainty. For user-requested commits and routine PR creation/update, explicitly
+uncertainty. Whenever behavioral tests are added or materially changed, explicitly
+dispatch a fresh [test author](references/test-author.md), including small fixes
+and tests-only tasks. It receives only the agreed contract and approved scaffold;
+the coordinator or verifier inspects implementation and executes integrated tests.
+Read its contract, current testing policy and host mapping for a small authoring
+task; dispatch alone does not activate substantial orchestration. For
+user-requested commits and routine PR creation/update, explicitly
 dispatch the [GitHub worker](references/github-worker.md), including small tasks;
 read only its policy, host mapping and brief contract when that is the whole task.
 That bounded publication step alone does not activate substantial orchestration
@@ -190,6 +196,13 @@ Workers return exact sources, observations, changes, checks, and uncertainty.
 Reconcile overlaps and independently verify conclusions; agreement and confidence
 do not establish behavior. Preserve required design challenges and execution
 environments.
+
+Test authors follow the narrower [input and feedback boundary](references/test-author.md).
+Do not pass them implementation discovery, full task records or raw execution
+output. Their native writable role owns exact test artifacts with `check_ids: []`;
+the coordinator or verifier owns actual execution gates. Preserve authored patch
+identity and return semantic test changes to an unexposed author. A source-aware
+worker cannot retain the independent-authorship claim by rewriting the tests.
 
 For substantial repository workers, use the native [worker handoff contract](references/worker-handoffs.md)
 to record assignments, results, and coordinator acceptance. Create the assignment

@@ -9,6 +9,12 @@ automatically.
 Use the [official Go fuzzing guide](https://go.dev/doc/security/fuzz/) for the
 current runner and corpus mechanics rather than inventing version-specific flags.
 
+The [test-author protocol](../../task-orchestration/references/test-author.md)
+applies to targets, generators, harness helpers, and seed/corpus changes. The
+author uses approved contracts, interface extracts, scaffolding, and dependencies;
+the source-aware verifier owns integrated execution and raw failure evidence.
+Missing bounds, behavior, or private seams go to the coordinator, not source search.
+
 ## Define the domain and an oracle
 
 Name the input domain, externally relevant invariant, and failure signal before
@@ -16,8 +22,9 @@ writing `FuzzXxx`. Distinguish arbitrary malformed input from valid values and
 document bounds that are part of the actual contract. A crash-only target can find
 panics but cannot establish correct decoding, ownership, or authorization.
 
-Use an independent specification, trusted reference, small model, or justified
-property. Examples include semantic encode/decode preservation for valid messages,
+Use an approved independent specification, trusted reference, small model, or
+justified contractual property. Examples include semantic encode/decode
+preservation for valid messages,
 normalization idempotence, an exact error contract for invalid input, or state
 transitions preserving a named invariant. Protobuf serialization bytes are not a
 canonical oracle: compare decoded meaning, presence, and relevant unknown fields.
@@ -52,7 +59,8 @@ fixtures. Background work must be joined or canceled before the input finishes;
 parallel fuzz workers need isolated resources. Avoid per-input subprocesses or
 other costly effects unless that real boundary is the purpose and is safely bounded.
 
-Choose one target and a fixed time or iteration budget, worker count, and deadline
+The verifier chooses one target and a fixed time or iteration budget, worker
+count, and deadline
 consistent with the repository and available resources. An illustrative native Go
 shape is `go test ./path -run '^$' -fuzz '^FuzzTarget$' -fuzztime=30s -parallel=2`;
 derive the real package, target, flags, and required container from maintained
@@ -67,15 +75,20 @@ scope requires it. Do not run where no-tests or no-writes scope forbids them.
 
 ## Reproduce, minimize, and retain the regression
 
-On failure, retain the exact input/corpus identity, failing assertion or panic,
+On failure, the verifier retains the exact input/corpus identity, failing
+assertion or panic,
 source SHA/diff, Go version, package, target, build tags, flags, environment, and
 campaign budget. Record minimization or timeout status. An unreproduced timeout
 is an observation, not proof of a semantic defect.
 
-Re-run the exact failing corpus entry using the repository's supported command,
-then minimize while preserving the same failure signal and permitted budget.
-Confirm the original code fails for the intended reason and the fix passes that
-same input. Keep the minimized corpus case or a focused named regression that
-preserves the input and assertion; do not replace it with a broad happy-path test.
+The verifier re-runs the exact failing corpus entry using the repository's
+supported command, then minimizes while preserving the same failure signal and
+permitted budget. It confirms the original code fails for the intended reason and the fix passes that
+same input. Return only the case/requirement ID, contract input, expected/actual
+outcomes, and test or approved-interface diagnostics to the author. Raw panics,
+traces, coverage, and implementation details remain with the verifier. The author
+retains or changes a minimized corpus case or focused named regression within the
+approved contract and scope; the coordinator must not silently edit seeds or
+assertions. Do not replace the regression with a broad happy-path test.
 If a campaign is unavailable, report the seed-only or static evidence accurately
 and give the bounded next check without claiming fuzz exploration passed.

@@ -51,12 +51,35 @@ command -v curl >/dev/null 2>&1 || fail 'curl is required to bootstrap the nativ
 command -v tar >/dev/null 2>&1 || fail 'tar is required to bootstrap the native manager'
 command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || fail 'sha256sum or shasum is required to verify the native manager'
 lock=$checkout/.bin.lock
-mkdir "$lock" 2>/dev/null || fail 'another native manager bootstrap holds .bin.lock; wait and retry'
+bootstrap_lock_owner() {
+    bootstrap_owner=unknown
+    if [ -d "$lock" ] && [ ! -L "$lock" ] && [ -f "$lock/pid" ] && [ ! -L "$lock/pid" ]; then
+        recorded_pid=
+        IFS= read -r recorded_pid < "$lock/pid" || :
+        case $recorded_pid in
+            ''|*[!0-9]*) ;;
+            *) if [ "${#recorded_pid}" -le 10 ]; then bootstrap_owner=$recorded_pid; fi ;;
+        esac
+    fi
+}
+if ! mkdir -m 700 "$lock" 2>/dev/null; then
+    bootstrap_lock_owner
+    fail "native manager bootstrap lock exists: $lock (owner PID $bootstrap_owner); inspect docs/operations.md#interrupted-bootstrap for owner checks and abandoned-lock recovery"
+fi
 temporary=
-cleanup() { [ -z "$temporary" ] || rm -rf "$temporary"; rmdir "$lock" 2>/dev/null || :; }
+cleanup() {
+    [ -z "$temporary" ] || rm -rf "$temporary"
+    bootstrap_lock_owner
+    if [ "$bootstrap_owner" = "$$" ]; then
+        rm -f "$lock/pid" "$lock/started"
+        rmdir "$lock" 2>/dev/null || :
+    fi
+}
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+printf '%s\n' "$$" > "$lock/pid"
+date -u '+%Y-%m-%dT%H:%M:%SZ' > "$lock/started"
 if [ -L "$checkout/.bin" ] || { [ -e "$checkout/.bin" ] && [ ! -d "$checkout/.bin" ]; }; then fail '.bin is occupied or symlinked'; fi
 mkdir -p "$checkout/.bin"
 if [ -e "$binary" ] || [ -L "$binary" ]; then

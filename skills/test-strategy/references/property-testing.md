@@ -2,7 +2,9 @@
 
 Read this when a rule holds across a whole input domain, or when the correct answer can't be stated exactly. An example test checks one point. A property states a rule and lets a generator look for the counterexample.
 
-That trade only pays when the code has a shape to assert, such as an inverse, an invariant, or a reference to compare with. Code without one gets example tests, and that's a valid conclusion. Check first whether the shape is missing or just buried under I/O. A pure function extracted from the handler often exposes a property that was there all along.
+Follow the [test-author protocol](../../task-orchestration/references/test-author.md) for properties, models, generators, and corpus changes. Authors use approved contracts and interfaces, never implementation source or raw execution evidence. Missing guarantees, seams, or dependencies go to the coordinator.
+
+That trade only pays when the contract has a shape to assert, such as an inverse, an invariant, or an approved reference to compare with. Code without one gets example tests, and that's a valid conclusion. A source-aware coordinator can check whether the shape is missing or buried under I/O and propose an approved interface; extracting production code stays outside the test author's ownership.
 
 ## Choosing a tool in Go
 
@@ -22,7 +24,7 @@ From weakest to strongest:
 4. It's idempotent: `f(f(x)) == f(x)`.
 5. It round-trips, or it matches a reference: `decode(encode(x)) == x`, or `fast(x) == slow(x)`.
 
-"Doesn't crash" alone rarely justifies the dependency. A slow, obviously correct implementation makes an excellent oracle for a fast one, and it never has to ship.
+"Doesn't crash" alone rarely justifies the dependency. A small independent model derived from the approved contract can be a useful oracle; a copy or adaptation of the implementation cannot supply independent expectations.
 
 A property test can assert nothing in two ways:
 
@@ -77,16 +79,16 @@ func TestStackMatchesModel(t *testing.T) {
 
 ## When a property fails
 
-A failure means one of four things, and telling them apart is most of the work:
+A failure means one of four things. The source-aware verifier triages raw failures and returns contract-level inputs, expected/actual outcomes, and permitted diagnostics to the author:
 
 | Finding | What it means | Action |
 | --- | --- | --- |
-| The code is wrong | A stated guarantee is violated | Fix it, and keep the shrunk input as a regression |
-| The generator is too broad | The input breaks a stated precondition | Constrain the generator |
-| The property is wrong | It asserted something the code never promised | Fix the property |
-| The spec is ambiguous | Nobody decided this edge | Ask. Report it rather than quietly narrowing the generator |
+| The code is wrong | A stated guarantee is violated | The implementation owner fixes it; the author retains the contract regression |
+| The generator is too broad | The input breaks a stated precondition | The author constrains the generator to that approved precondition |
+| The property is wrong | It asserted something the contract never promised | Resolve the contract; the author corrects the property |
+| The spec is ambiguous | Nobody decided this edge | Ask the coordinator; do not quietly narrow the generator |
 
-Check what the code actually promises, in this order: an external spec, the types, the documentation, existing tests, and last the function's name. A name is the weakest signal, because plenty of functions do less than their name suggests.
+The coordinator establishes promises from authoritative requirements and approved interfaces, reconciling documentation and existing behavior as needed. The author receives only the approved packet; existing tests, implementation outputs, and function names do not establish expected behavior.
 
 ## Metamorphic testing
 
@@ -124,6 +126,6 @@ Find relations by asking these in order:
 4. What are two different ways to compute the same thing?
 5. What does the domain guarantee for any input, such as totals that must match?
 
-A relation can hold on broken code, since a function returning a constant satisfies many invariance relations. Combine relations, and keep example tests wherever an exact answer exists. Float relations need a tolerance derived from the computation.
+A relation can hold on broken code, since a function returning a constant satisfies many invariance relations. Combine relations, and keep example tests wherever an exact answer exists. Float relations need a tolerance justified by the approved numerical contract; ask for a missing bound instead of tuning it to observed output.
 
 _Property test failure triage and the strength ordering draw on ideas from `trailofbits/skills`, restated here. The metamorphic section is adapted from `coding-skills` by auralshin and rewritten for Go._

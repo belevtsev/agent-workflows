@@ -64,11 +64,19 @@ With `perSuccess` at 0.1, retries settle at about 10% of successful requests. gR
 **Always add jitter.** Plain exponential backoff synchronizes clients, so everyone who failed together retries together.
 
 ```go
-// fullJitter waits a random time up to the exponential ceiling.
+// fullJitter returns a random delay below the capped exponential ceiling.
+// attempt must be nonnegative; base and ceiling must be positive.
 func fullJitter(attempt int, base, ceiling time.Duration) time.Duration {
-	limit := ceiling
-	if attempt < 32 {
-		limit = min(ceiling, base<<attempt)
+	if attempt < 0 || base <= 0 || ceiling <= 0 {
+		panic("invalid backoff parameters")
+	}
+	limit := min(base, ceiling)
+	for ; attempt > 0 && limit < ceiling; attempt-- {
+		if limit > ceiling/2 {
+			limit = ceiling
+		} else {
+			limit *= 2
+		}
 	}
 	return rand.N(limit)
 }

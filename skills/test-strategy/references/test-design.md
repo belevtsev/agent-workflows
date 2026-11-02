@@ -2,17 +2,19 @@
 
 Read this when writing or changing tests, or adding fakes or test helpers. A test exists to catch a specific break, so it has to name that break and exercise the real thing.
 
+Apply the [test-author protocol](../../task-orchestration/references/test-author.md): authors use only the coordinator's approved contract packet and exact test-file scope. Source-aware investigation, integrated execution, and mutation analysis belong to the coordinator/verifier. Ask for missing contract details or private seams instead of inspecting the implementation.
+
 ## Name the break
 
-Before writing the test body, name the production change that should make it fail, and decide whether that change is a bug or a decision.
+Before writing the test body, name the contract violation that should make it fail. The source-aware verifier separately checks which production changes would cause it.
 
 | Answer | Action |
 | --- | --- |
-| You can't name a change | Redesign around an observable behavior |
-| Only the source text changed | Run the code and assert its effects |
+| You can't name a violation | Redesign around an observable behavior |
+| Only the source text changed | Have the verifier exercise effects through the approved interface |
 | Only an intentional decision changed | This is a change detector. Test the behavior that depends on the decision |
 
-**Derive expectations independently.** Use literals and hand-checked fixtures. An expected value computed by the code under test passes no matter what that code does:
+**Derive expectations from the approved contract.** Use literals and hand-checked fixtures grounded in requirements, not implementation observations. An expected value computed by the code under test passes no matter what that code does:
 
 ```go
 func TestBuildQuery(t *testing.T) {
@@ -29,7 +31,7 @@ func TestBuildQuery(t *testing.T) {
 }
 ```
 
-**No change detectors.** A test on a constant's value, exact wording, or private structure fires on redesign and sleeps through bugs. Test what depends on the decision:
+**No change detectors.** Unless explicitly contractual, a constant's value, exact wording, or private structure fires on redesign and sleeps through bugs. Test what depends on the decision:
 
 ```go
 func TestRetryStopsAtLimit(t *testing.T) {
@@ -55,19 +57,19 @@ func TestRetryStopsAtLimit(t *testing.T) {
 
 **The fake earns no assertions.** An assertion that a fake was called proves the fake exists. Assert what the real component did with the result. If the fake is what you're checking, remove the assertion or the fake.
 
-**Replace at the right level.** List the real method's side effects first. Replace only the slow or external operation below them, and keep real anything the test depends on. A fake that swallows a write the code later reads makes the test pass for the wrong reason.
+**Replace at the right level.** List the approved side-effect contract first. Replace only an approved slow or external boundary below those effects, and keep real anything the test depends on. The source-aware coordinator checks that the seam preserves the relevant behavior. A fake that swallows a write the code later reads makes the test pass for the wrong reason.
 
 **Keep doubles specific.** When arguments, call counts, or ordering are part of the contract, assert them. Give success, error, and malformed cases their own fixture, so the wrong branch can't satisfy the expectation.
 
-**Mirror real data completely.** Build fixtures with every field the real value has. Partial fixtures fail silently when code reads a field you omitted, so the test passes while the integration breaks.
+**Model the contracted data.** Build fixtures from approved type extracts and include fields relevant to the requirement and boundary. Ask for missing fields or semantics; do not inspect implementation data to fill gaps. The verifier checks fixture fidelity against real integration data and returns contract-level gaps.
 
-**Keep test-only code out of production.** A method called only from tests belongs in test utilities. `export_test.go` can reach internals without widening the public API.
+**Keep test-only code out of production.** A method called only from tests belongs in test utilities. `export_test.go` can expose a coordinator-approved private seam without widening the public API; the author needs an approved interface extract and exact ownership for that artifact.
 
 **Prefer real components over complex fakes.** When fake setup outgrows the test logic, switch to an integration test with the real dependency.
 
 ## Mutation check
 
-Before finishing, mentally change the production code. At least one test should fail for each realistic change:
+Before handoff, the author checks the contract scenarios below. Before finishing, the source-aware verifier mentally changes production code and checks that tests catch realistic violations:
 
 - A wrong constant or argument.
 - A wrong branch, or a comparison off by one at a limit.
@@ -75,7 +77,7 @@ Before finishing, mentally change the production code. At least one test should 
 - An empty or zero return, or a nil error on a failure path.
 - Missing handling for zero, empty, nil, unauthorized, or malformed input.
 
-A change nothing catches marks unprotected behavior or a tautological test. Run a real [mutation check](mutation-testing.md) when this doubt matters.
+A change nothing catches marks unprotected behavior or a tautological test. The verifier runs a real [mutation check](mutation-testing.md) when this doubt matters, and routes contract-level gaps back to the author without exposing mutation details.
 
 ## Warning signs
 

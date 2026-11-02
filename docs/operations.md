@@ -26,6 +26,46 @@ Status reports `model_profiles` with each configured model, reasoning effort, an
 scope from the active snapshot, and `hosts` with each host's roots. This is policy evidence. It does not identify the
 model or effort used by an existing chat or establish account runtime availability.
 
+## Interrupted bootstrap
+
+The bootstrap serializes cache acquisition with `.bin.lock` in its checkout.
+It records the owning process ID in `.bin.lock/pid` and the UTC acquisition time
+in `.bin.lock/started`. Normal exit removes its own lock. SIGKILL or a reboot can
+leave it behind; another invocation reports the owner and this recovery procedure.
+Locks are never reclaimed automatically because a PID alone cannot distinguish a
+live owner from PID reuse, and missing metadata does not prove that an owner died.
+
+From the affected checkout, inspect the recorded PID and time, then inspect that
+process. Replace `PID` below with the recorded value:
+
+```sh
+cat .bin.lock/pid .bin.lock/started
+TZ=UTC ps -p PID -o pid=,lstart=,command=
+```
+
+Wait for a live bootstrap and its download children to finish. For an abandoned
+lock, establish that its owner and children have exited and stop other bootstrap
+or recovery attempts for this checkout while removing the lock. Older bootstraps,
+or interruption before metadata was written, can leave an empty lock: in that case
+establish that no bootstrap is running for this checkout before proceeding.
+
+Remove only the two known metadata files and the empty, real lock directory:
+
+```sh
+(
+    set -eu
+    test -d .bin.lock
+    test ! -L .bin.lock
+    rm -f -- .bin.lock/pid .bin.lock/started
+    rmdir .bin.lock
+)
+```
+
+If the directory is not empty, inspect its contents instead of deleting it
+recursively. Retry the original `./install.sh` command. This procedure leaves
+cached managers and installation state untouched. Abandoned `.bin/.bootstrap.*`
+download directories are not activated and do not prevent the retry.
+
 ## Global project diagnostics and evidence
 
 Installation status and a target project's readiness are separate reports.
@@ -391,6 +431,23 @@ changed owned content. It includes runtime/command changes, and is a no-op witho
 a pending transaction. It does not rewind Git fast-forwards or delete caches.
 Use a verified cached executable or ./install.sh recover if a crash occurred
 before cw enrollment. Do not hand-edit ownership or recovery records.
+
+If a v8 upgrade's recovery is itself interrupted after restoring the old command
+link, `cw` may point to v7 while the pending journal still requires v8. Read
+`recovery_runtime.revision` from `STATE/journal.json` without editing it and use
+the preserved executable at `STATE/runtime/releases/RECOVERY_REVISION/cw`.
+Replace both placeholders with the recorded state directory and revision:
+
+```sh
+STATE/runtime/releases/RECOVERY_REVISION/cw --manager-protocol
+STATE/runtime/releases/RECOVERY_REVISION/cw recover --dry-run
+STATE/runtime/releases/RECOVERY_REVISION/cw recover
+```
+
+For a v8 upgrade, verify that the first command reports `cw-manager-v8` before
+recovery. This executable uses its immutable locator even with the source checkout
+absent. An old v7 executable cannot recover a v8 journal; `./install.sh recover`
+is an alternative only while the checkout is available.
 
 ```sh
 cw uninstall --dry-run

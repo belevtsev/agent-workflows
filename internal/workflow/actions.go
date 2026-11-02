@@ -278,23 +278,46 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
-	if e = i.prepareRuntimeFor(sha); e != nil {
-		return nil, e
+	// Plan destinations before runtime acquisition can write the state root.
+	// The native paths are reserved by preflight until its runtime is ready.
+	planner := *i
+	if !validRuntimeIdentity(i.RuntimeIdentity) || i.RuntimeIdentity.Revision != sha {
+		planner.RuntimeCandidate = ""
 	}
 	var ops []Object
 	var ar Object
 	if s == nil {
-		ops, ar, e = i.fresh(sha, release, m, enroll)
+		ops, ar, e = planner.fresh(sha, release, m, enroll)
 	} else {
 		if !enroll {
 			return nil, errors.New("an installation exists; use setup or update")
 		}
 		if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e == nil {
-			ops, e = i.activation(s, sha, release, m, enroll, false)
+			ops, e = planner.activation(s, sha, release, m, enroll, false)
 		}
 	}
 	if e != nil {
 		return nil, e
+	}
+	manager := enroll || ar["kind"] == "native"
+	if e = i.preflightMutationPaths(ops, s, manager); e != nil {
+		return nil, e
+	}
+	if e = i.prepareRuntimeFor(sha); e != nil {
+		return nil, e
+	}
+	if i.RuntimeCandidate != "" {
+		if s == nil {
+			ops, ar, e = i.fresh(sha, release, m, enroll)
+		} else {
+			ops, e = i.activation(s, sha, release, m, enroll, false)
+		}
+		if e != nil {
+			return nil, e
+		}
+		if e = i.preflightMutationPaths(ops, s, manager); e != nil {
+			return nil, e
+		}
 	}
 	report, e := i.setupReport(sha, release, m, changes, ops, ar, enroll)
 	if e != nil {
@@ -318,6 +341,9 @@ func (i *Installer) Setup(enroll bool) (Object, error) {
 	}
 	if currentHead != sha || !equal(s, currentState) {
 		return nil, errors.New("source HEAD or installation changed before setup")
+	}
+	if e = i.preflightMutationPaths(ops, s, manager); e != nil {
+		return nil, e
 	}
 	if i.RuntimeCandidate != "" {
 		if e = i.stageRuntime(); e != nil {
@@ -367,6 +393,9 @@ func (i *Installer) addHostsFromInstalled(s Object) (Object, error) {
 	}
 	ops, e := i.activation(s, sha, release, m, true, false)
 	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(ops, s, false); e != nil {
 		return nil, e
 	}
 	report, e := i.setupReport(sha, release, m, changes, ops, nil, true)
@@ -516,6 +545,15 @@ func (i *Installer) Update() (Object, error) {
 		if e = i.checkHostConfig(s, release, m); e != nil {
 			return nil, e
 		}
+		planner := *i
+		planner.RuntimeCandidate = ""
+		ops, e := planner.activation(s, head, release, m, false, false)
+		if e != nil {
+			return nil, e
+		}
+		if e = i.preflightMutationPaths(ops, s, true); e != nil {
+			return nil, e
+		}
 		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "fetch": "origin/main only with apply"}, nil
 	}
 	unlock, e := lockRoot(i.State, false)
@@ -551,11 +589,25 @@ func (i *Installer) Update() (Object, error) {
 	if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e != nil {
 		return nil, e
 	}
-	release, m, e := i.stage(sha)
+	preview, m, cleanup, e := i.preview(sha)
 	if e != nil {
 		return nil, e
 	}
+	defer cleanup()
 	if _, e = i.registrationChanges(s, m, false); e != nil {
+		return nil, e
+	}
+	planner := *i
+	planner.RuntimeCandidate = ""
+	ops, e := planner.activation(s, sha, preview, m, false, false)
+	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(ops, s, true); e != nil {
+		return nil, e
+	}
+	release, m, e := i.stage(sha)
+	if e != nil {
 		return nil, e
 	}
 	if e = i.prepareRuntimeFor(sha); e != nil {
@@ -578,6 +630,13 @@ func (i *Installer) Update() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
+	ops, e = i.activation(s, sha, release, m, false, false)
+	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(ops, s, true); e != nil {
+		return nil, e
+	}
 	current, e := cleanHeadContext(i.Context, i.Source)
 	if e != nil || current != head {
 		return nil, errors.New("source HEAD changed during update")
@@ -587,7 +646,7 @@ func (i *Installer) Update() (Object, error) {
 			return nil, e
 		}
 	}
-	ops, e := i.activation(s, sha, release, m, false, false)
+	ops, e = i.activation(s, sha, release, m, false, false)
 	if e != nil {
 		return nil, e
 	}
@@ -627,6 +686,13 @@ func (i *Installer) Rollback() (Object, error) {
 	if e != nil {
 		return nil, e
 	}
+	ops, e := i.activation(s, sha, release, m, false, true)
+	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(ops, s, false); e != nil {
+		return nil, e
+	}
 	if !i.Apply {
 		return Object{"command": "rollback", "dry_run": true, "release": sha, "registration_changes": changes}, nil
 	}
@@ -642,7 +708,7 @@ func (i *Installer) Rollback() (Object, error) {
 	if !equal(current, s) {
 		return nil, errors.New("installation changed before rollback")
 	}
-	ops, e := i.activation(s, sha, release, m, false, true)
+	ops, e = i.activation(s, sha, release, m, false, true)
 	if e != nil {
 		return nil, e
 	}
@@ -669,6 +735,13 @@ func (i *Installer) Uninstall() (Object, error) {
 			return nil, errors.New("uninstall names a host this installation does not record")
 		}
 	}
+	ops, e := i.uninstallOperations(s, removed)
+	if e != nil {
+		return nil, e
+	}
+	if e = i.preflightMutationPaths(ops, s, false); e != nil {
+		return nil, e
+	}
 	if !i.Apply {
 		return Object{"command": "uninstall", "dry_run": true, "release": s["release"], "hosts": hostIDs(removed)}, nil
 	}
@@ -687,6 +760,20 @@ func (i *Installer) Uninstall() (Object, error) {
 	if e = i.verifyOwned(s); e != nil {
 		return nil, e
 	}
+	ops, e = i.uninstallOperations(s, removed)
+	if e != nil {
+		return nil, e
+	}
+	if e = i.transact("uninstall", ops); e != nil {
+		return nil, e
+	}
+	if len(removed) < len(i.recordedHosts(s)) {
+		return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true}, nil
+	}
+	return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true, "retained_release_cache": filepath.Join(i.State, "releases")}, nil
+}
+
+func (i *Installer) uninstallOperations(s Object, removed []hostTarget) ([]Object, error) {
 	ops := []Object{}
 	for _, h := range removed {
 		if i.Forget {
@@ -706,10 +793,7 @@ func (i *Installer) Uninstall() (Object, error) {
 		}
 		after["hosts"] = hosts
 		ops = append(ops, pathOperation(i.statePath, expectedState(s), expectedState(seal(after)), "state"))
-		if e = i.transact("uninstall", ops); e != nil {
-			return nil, e
-		}
-		return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true}, nil
+		return ops, nil
 	}
 	if manager := object(s["manager"]); manager != nil {
 		changes, err := i.managerRemoval(manager)
@@ -719,10 +803,7 @@ func (i *Installer) Uninstall() (Object, error) {
 		ops = append(ops, changes...)
 	}
 	ops = append(ops, pathOperation(i.current, i.expectedPointer(s), Object{"kind": "absent"}, "pointer"), pathOperation(i.statePath, expectedState(s), Object{"kind": "absent"}, "state"))
-	if e = i.transact("uninstall", ops); e != nil {
-		return nil, e
-	}
-	return Object{"command": "uninstall", "dry_run": false, "hosts": hostIDs(removed), "restored_adoptions": true, "retained_release_cache": filepath.Join(i.State, "releases")}, nil
+	return ops, nil
 }
 
 // hostRemoval restores everything one host owns and leaves the shared release,

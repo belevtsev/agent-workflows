@@ -2,6 +2,8 @@
 
 Read this when you need to know whether tests would actually fail if the code broke. Coverage shows what ran. Mutation testing changes the code and checks that a test notices. Use it on important or recently changed packages, not across a whole repository, and report a missing tool rather than installing it unasked.
 
+This is source-aware verifier/reviewer work. Under the [test-author protocol](../../task-orchestration/references/test-author.md), authors do not inspect mutants, production source, coverage, or raw mutation/build/runtime output. The verifier translates a survivor into a requirement/case ID and contract input with expected/actual outcomes, or asks the coordinator to resolve an unspecified contract. New or changed tests, helpers, fixtures, skips, tolerances, and seeds return to an unexposed author; do not send mutant text or implementation-derived expected values.
+
 ## Run Gremlins
 
 [Gremlins](https://github.com/go-gremlins/gremlins) v0.6.0 is the practical choice. It's an external binary, works in temporary directories, and doesn't change your source.
@@ -58,9 +60,9 @@ A surviving mutant is a place to look, not a defect. Work through the survivors 
 1. **Rank by what the code does, not the mutation type.** A boundary survivor in a fee calculation matters more than an arithmetic survivor in a log line. Clusters in one function usually mean a path with no real assertions.
 2. **Find out why it survived.** The code may never run, tests may run it without asserting the outcome, or an error path may have only happy-path tests.
 3. **Reason about the original code,** not the mutant. A defect the mutation introduced says nothing about the real program.
-4. **Try to write the failing input.** Then classify it: a confirmed bug with a test proving it, a weak test with correct code, dead code to remove, or an equivalent mutant.
+4. **Try to construct the failing contract input.** Then classify it: a confirmed bug needing a contract-based regression, a weak test with correct code, dead code to remove, or an equivalent mutant. The verifier can reproduce a case; a fresh author owns behavioral test changes through the approved contract packet.
 
-Boundary survivors are the most common useful finding. A survivor on `len(value) <= limit` usually means no test uses a value exactly at the limit and one past it, so add both.
+Boundary survivors are the most common useful finding. A survivor on `len(value) <= limit` usually means no test uses a value exactly at the limit and one past it. Establish the boundary from the contract, then ask the author to cover both through permitted feedback.
 
 ## Before calling a mutant equivalent
 

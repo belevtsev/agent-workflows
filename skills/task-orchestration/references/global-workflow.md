@@ -91,6 +91,13 @@ the [worker brief, handoff and coordinator acceptance](worker-handoffs.md) throu
 output. These commands validate records rather than launch agents or expand
 their permissions.
 
+Mandatory [test-author dispatch](test-author.md) alone does not make a small task
+substantial. Use small native records for that scope, with an author assignment
+owning exact test artifacts and `check_ids: []`; the coordinator or verifier owns
+the plan's execution checks. A valid red-test handoff is authorship evidence, not
+a passing check. Keep implementation and raw task/check output outside the
+author's contract-only context.
+
 ## Execute and record evidence
 
 ```sh

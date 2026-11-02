@@ -14,15 +14,16 @@ which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
 a running chat's model automatically.
 
-The table shows the Codex defaults. Under Claude Code, every role uses
-`claude-opus-5-5`, at `xhigh` for substantive and bounded execution work and `high`
-for bounded evidence. See the
+The table shows the Codex defaults. Under Claude Code, the `github` profile uses
+`claude-sonnet-5-5` at `medium`. Other roles use `claude-opus-5-5`, at `xhigh` for
+substantive and other bounded execution work and `high` for bounded evidence. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 
 | Work | Default model | Effort |
 | --- | --- | --- |
 | Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6-astra` | `max` |
-| Bounded routine execution | `gpt-6-luna` | `xhigh` |
+| Routine commits, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` | `high` |
+| Other bounded execution profiles | `gpt-6-luna` | `xhigh` |
 | Bounded read-only lookup or summarization | `gpt-6-luna` | `high` |
 
 The policy preserves fixed specialist settings and describes availability
@@ -30,7 +31,37 @@ fallbacks. Astra `max` is configured; Astra `ultra` requires an explicit user re
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
-results do not prove correctness or grant permission.
+results do not prove correctness or grant permission. Ordinary commit and routine
+PR requests explicitly dispatch the [GitHub worker](../skills/task-orchestration/references/github-worker.md),
+including small tasks. Pass model and effort explicitly and verify effective host
+settings. `fallbacks.github_unavailable: report_blocker`, when present, overrides
+the general expensive fallback for these three roles on both hosts; historical
+policies without it retain their fallback behavior.
+
+## Independent test authors
+
+Whenever behavioral tests are added or materially changed, including small fixes
+and tests-only tasks, the coordinator dispatches a fresh
+[test author](../skills/task-orchestration/references/test-author.md) under the
+existing `testing` model profile. Helpers, fixtures, golden data, fuzz seeds,
+tolerances and removing/disabling tests are part of that ownership. This does not
+require new tests for formatting or documentation-only work.
+
+The author gets a versioned requirements/interface packet and approved scaffolding,
+not implementation source, history or reasoning. The coordinator or a source-aware
+verifier runs integrated tests and gives contract-level results without raw source
+diagnostics. Missing behavior or a private test seam returns to the coordinator.
+Semantic assertion and fixture changes return to an unexposed author; preserve
+the authored patch identity. Implementation exposure requires stopping that
+assignment and using a fresh replacement.
+
+Native author assignments use the existing writable role with exact test-file
+ownership and no assigned execution checks. A correctly failing regression can
+complete authorship while actual passing checks remain separate. Small tasks keep
+small native handoffs without substantial checkpoints solely for author dispatch;
+substantial changes retain independent source-aware final review. This guidance
+does not provide a filesystem sandbox, change model defaults or grant publication
+authority. Existing tests are not retroactively claimed as blind-authored.
 
 ## Local configuration
 
@@ -75,9 +106,11 @@ The policy remains version 2. Its `sol` profile, `sol_unavailable` fallback and
 runs `gpt-6-astra`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
-continue rejecting configured Max for Sol models. The native validator and optional Python
-helper enforce the same rules. Manager v3/v4/v5 needs the one-time v6 bootstrap
-migration before it can validate the expanded manifest and personal adoption.
+continue rejecting configured Max for Sol models. The native validator enforces
+these rules. New manager candidates must support `cw-manager-v8` to validate the
+GitHub policy. Existing v7 receipts remain readable, but an installed v7 manager
+needs the documented [v8 re-bootstrap](development.md#distribution) before it can
+activate the new source.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
 control context. Pass exact source revisions, ownership, constraints, and the

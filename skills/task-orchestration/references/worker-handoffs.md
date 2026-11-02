@@ -9,7 +9,10 @@ agents, authenticate identities, isolate permissions or authorize external actio
 
 ## Assign before dispatch
 
-Start the task and complete its before consultation. Set the plan's
+Start the task and, for substantial work, complete its before consultation. A
+small task's mandatory [test-author dispatch](test-author.md) alone adds neither
+substantial adviser checkpoints nor the substantial final-review gate; it still
+retains native assignment, handoff, acceptance and selected execution checks. Set the plan's
 `coordinator_id` to the actual coordinating agent; new tasks default to `/root`.
 Prepare a brief with a unique immutable assignment ID:
 
@@ -41,6 +44,20 @@ files or directory prefixes; `.` covers the whole project. Active implementation
 assignments cannot own overlapping paths. Shared-filesystem workers must preserve
 others' edits. `check_ids` selects commands already in the immutable task plan.
 Use `cw task run` to retain actual execution; a worker's assertion is not a pass.
+
+A `test_author` resolves the policy's `testing` model role but uses native
+`role: "implementation"`, exact test-artifact paths and `check_ids: []`. This
+permits handoff of a correctly failing regression without claiming a passing
+execution. Keep real checks in the plan with coordinator or `verification`
+ownership. Scope helpers, fixtures and behavioral data as well as test files;
+do not give a coder a directory that contains the author's owned files.
+
+Record contract ID/revision/digest, allowed inputs and feedback limits in existing
+brief constraints. Do not add unsupported native JSON fields. The author receives
+only its bounded assignment and approved packet, not full task history or raw
+check logs. Its summary or referenced artifact retains requirement-to-case
+mapping, inputs read, authored patch hashes, questions and any exposure. See the
+[test-author contract](test-author.md) for semantic edits and replacement rules.
 
 Use exact on-disk path spelling without symlink components. Existing direct file
 aliases are checked for active ownership; hardlinks hidden beneath separate

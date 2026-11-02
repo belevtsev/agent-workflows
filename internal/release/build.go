@@ -82,6 +82,10 @@ func Build(ctx context.Context, options BuildOptions) (*Assets, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(temporary)
+	source := filepath.Join(temporary, "source")
+	if err := exportSource(ctx, options.Source, revision, source); err != nil {
+		return nil, err
+	}
 	output := filepath.Join(temporary, "assets")
 	if err := os.Mkdir(output, 0o755); err != nil {
 		return nil, err
@@ -99,12 +103,12 @@ func Build(ctx context.Context, options BuildOptions) (*Assets, error) {
 				cancel()
 				return
 			}
-			if err := BuildBinary(ctx, options.Source, filepath.Join(stage, "cw"), options.Version, revision, stamp, parts[0], parts[1]); err != nil {
+			if err := buildBinary(ctx, source, filepath.Join(stage, "cw"), options.Version, revision, stamp, parts[0], parts[1], "readonly"); err != nil {
 				failures <- err
 				cancel()
 				return
 			}
-			if err := archive(filepath.Join(output, name), stage, options.Source, stamp); err != nil {
+			if err := archive(filepath.Join(output, name), stage, source, stamp); err != nil {
 				failures <- err
 				cancel()
 			}
@@ -156,14 +160,19 @@ func Build(ctx context.Context, options BuildOptions) (*Assets, error) {
 
 // BuildBinary builds one pinned, independent cw executable for a target platform.
 func BuildBinary(ctx context.Context, source, destination, version, revision string, stamp time.Time, targetOS, targetArch string) error {
+	return buildBinary(ctx, source, destination, version, revision, stamp, targetOS, targetArch, "mod")
+}
+
+func buildBinary(ctx context.Context, source, destination, version, revision string, stamp time.Time, targetOS, targetArch, moduleMode string) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return err
 	}
 	flags := fmt.Sprintf("-s -w -X main.version=%s -X main.revision=%s -X main.builtAt=%s", version, revision, stamp.UTC().Format(time.RFC3339))
 	flags += " -X main.releaseIdentity=" + releaseMarker(version, revision, stamp, targetOS, targetArch)
-	command := exec.CommandContext(ctx, "go", "build", "-mod=mod", "-trimpath", "-buildvcs=false", "-ldflags", flags, "-o", destination, "./cmd/cw")
+	moduleFlag := "-mod=" + moduleMode
+	command := exec.CommandContext(ctx, "go", "build", moduleFlag, "-trimpath", "-buildvcs=false", "-ldflags", flags, "-o", destination, "./cmd/cw")
 	command.Dir = source
-	command.Env = environment(map[string]string{"GOWORK": "off", "GOTOOLCHAIN": "go1.27.1", "GOENV": "off", "GOFLAGS": "-mod=mod", "GOEXPERIMENT": "", "CGO_ENABLED": "0", "GOOS": targetOS, "GOARCH": targetArch, "GOAMD64": "v1", "GOARM64": "v8.0"})
+	command.Env = environment(map[string]string{"GOWORK": "off", "GOTOOLCHAIN": "go1.27.1", "GOENV": "off", "GOFLAGS": moduleFlag, "GOEXPERIMENT": "", "CGO_ENABLED": "0", "GOOS": targetOS, "GOARCH": targetArch, "GOAMD64": "v1", "GOARM64": "v8.0"})
 	if output, err := command.CombinedOutput(); err != nil {
 		return fmt.Errorf("build %s/%s: %w\n%s", targetOS, targetArch, err, output)
 	}
@@ -249,7 +258,7 @@ func archive(destination, stage, source string, stamp time.Time) (err error) {
 
 func gitOutput(ctx context.Context, source string, arguments ...string) (string, error) {
 	command := exec.CommandContext(ctx, "git", append([]string{"-C", source}, arguments...)...)
-	command.Env = environment(map[string]string{"GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0"})
+	command.Env = environment(map[string]string{"GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GIT_NO_REPLACE_OBJECTS": "1"})
 	output, err := command.Output()
 	if err != nil {
 		return "", fmt.Errorf("git %s: %w", arguments[0], err)

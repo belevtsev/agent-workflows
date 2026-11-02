@@ -91,6 +91,16 @@ apply to new tasks; small and unchanged read-only tasks keep their existing path
 Use project-neutral fixtures, including a non-Go project, for API and CLI coverage.
 Worker records remain separate from sealed installer formats and adviser records.
 
+Changes to the independent test-author workflow also need bounded Codex and
+Claude smokes outside CI: give fresh authors only an approved contract and test
+scaffold, retain their authored patch identity, then execute their tests against
+unseen correct and defective implementations. Inspect initial context, available
+tool transcripts and effective model/effort; report enforcement and telemetry
+limits explicitly. Exercise red-test handoffs, ownership conflicts, missing
+contracts/seams, changed interfaces, contaminated feedback and prohibited assertion
+weakening. These are synthetic workflow checks, not measured project-quality
+improvements, and they must not modify personal host configuration.
+
 `cw graphify` lives in internal/graphify:
 
 ```sh
