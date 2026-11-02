@@ -234,13 +234,17 @@ func entryHolding(root, path string) (string, error) {
 	}
 }
 
+// syncFile flushes a file or directory to stable storage. Tests replace it once,
+// before any test runs, because they cannot observe durability.
+var syncFile = (*os.File).Sync
+
 func syncDir(path string) error {
 	f, e := os.Open(path)
 	if e != nil {
 		return e
 	}
 	defer f.Close()
-	return f.Sync()
+	return syncFile(f)
 }
 
 // durableDirectory publishes every new ancestor before callers can move the
@@ -292,7 +296,7 @@ func atomicWrite(path string, data []byte, mode os.FileMode) error {
 		_, e = f.Write(data)
 	}
 	if e == nil {
-		e = f.Sync()
+		e = syncFile(f)
 	}
 	ce := f.Close()
 	if e != nil {
