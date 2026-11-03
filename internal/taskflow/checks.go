@@ -19,7 +19,9 @@ import (
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
-func validateCommand(argv []string) error {
+// validateCommandShape checks the bounded representation shared by immutable
+// history and new commands without making an execution-policy decision.
+func validateCommandShape(argv []string) error {
 	if len(argv) == 0 || len(argv) > 256 || !nonblank(argv[0]) {
 		return errors.New("check needs an explicit argv with 1..256 arguments")
 	}
@@ -33,6 +35,13 @@ func validateCommand(argv []string) error {
 	if total > 65536 {
 		return errors.New("check argv exceeds 64 KiB")
 	}
+	return nil
+}
+
+func validateCommand(argv []string) error {
+	if err := validateCommandShape(argv); err != nil {
+		return err
+	}
 	name := strings.TrimSuffix(strings.ToLower(filepath.Base(argv[0])), ".exe")
 	switch name {
 	case "sh", "bash", "zsh", "dash", "fish", "ksh", "csh", "tcsh", "cmd", "powershell", "pwsh", "eval", "env", "sudo", "doas":
@@ -45,7 +54,11 @@ func validateCommand(argv []string) error {
 		if err != nil {
 			return err
 		}
-		if name == "git" && subcommand == "push" || name != "git" && (subcommand == "apply" || subcommand == "destroy") {
+		if name == "git" {
+			if subcommand != "" && !slices.Contains([]string{"diff", "status", "log", "show", "rev-parse", "rev-list", "ls-files", "ls-tree", "merge-base", "describe"}, subcommand) {
+				return errors.New("Git checks must select a supported inspection builtin")
+			}
+		} else if subcommand == "apply" || subcommand == "destroy" {
 			return errors.New("publication and deployment commands are outside task checks")
 		}
 		return nil
@@ -62,12 +75,13 @@ func validateCommand(argv []string) error {
 }
 
 // directSubcommand consumes global options before classifying a direct Git or
-// Terraform operation. Values of -C/-c/-chdir are data, and arguments after the
+// Terraform operation. Values of -C/-chdir are data, and arguments after the
 // command (including a source path named "push" or "apply") are not commands.
 // Unknown global options fail closed instead of guessing their value arity.
 func directSubcommand(tool string, args []string) (string, error) {
-	gitValues := []string{"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"}
-	gitFlags := []string{"-v", "--version", "-h", "--help", "-p", "--paginate", "-P", "--no-pager", "--bare", "--no-replace-objects", "--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs", "--no-optional-locks", "--no-lazy-fetch", "--no-advice", "--html-path", "--man-path", "--info-path", "--exec-path"}
+	if tool == "git" {
+		return directGitSubcommand(args)
+	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
@@ -79,28 +93,99 @@ func directSubcommand(tool string, args []string) (string, error) {
 		if !strings.HasPrefix(arg, "-") {
 			return arg, nil
 		}
-		consumes := tool == "git" && slices.Contains(gitValues, arg) || tool != "git" && arg == "-chdir"
-		if consumes {
+		if arg == "-chdir" {
 			if i+1 >= len(args) {
 				return "", errors.New("global check option is missing its value")
 			}
 			i++
 			continue
 		}
-		if tool == "git" {
-			if slices.Contains(gitFlags, arg) || strings.HasPrefix(arg, "-C") && len(arg) > 2 || strings.HasPrefix(arg, "-c") && len(arg) > 2 {
-				continue
-			}
-			option, _, hasValue := strings.Cut(arg, "=")
-			if hasValue && (slices.Contains(gitValues, option) || option == "--exec-path" || option == "--list-cmds") {
-				continue
-			}
-		} else if arg == "-help" || arg == "--help" || arg == "-version" || arg == "--version" || strings.HasPrefix(arg, "-chdir=") {
+		if arg == "-help" || arg == "--help" || arg == "-version" || arg == "--version" || strings.HasPrefix(arg, "-chdir=") {
 			continue
 		}
 		return "", fmt.Errorf("unsupported global %s check option %s", tool, arg)
 	}
 	return "", nil
+}
+
+// directGitSubcommand filters dispatch and explicit configuration overrides.
+// It does not sandbox a builtin's arguments or inherited Git configuration.
+func directGitSubcommand(args []string) (string, error) {
+	values := []string{"-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}
+	flags := []string{"-P", "--no-pager", "--bare", "--no-replace-objects", "--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs", "--no-optional-locks", "--no-lazy-fetch", "--no-advice"}
+	outputs := []string{"-v", "--version", "--html-path", "--man-path", "--info-path", "--exec-path"}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			if i+1 < len(args) && args[i+1] != "" {
+				return args[i+1], nil
+			}
+			return "", errors.New("Git check is missing an inspection builtin")
+		}
+		if !strings.HasPrefix(arg, "-") {
+			if arg == "" {
+				return "", errors.New("Git check is missing an inspection builtin")
+			}
+			return arg, nil
+		}
+		if arg == "-c" || arg == "--config-env" {
+			if i+1 >= len(args) {
+				return "", errors.New("global Git check option is missing its value")
+			}
+			i++
+			if err := validateGitConfigOverride(args[i], arg == "--config-env"); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if slices.Contains(values, arg) {
+			if i+1 >= len(args) {
+				return "", errors.New("global Git check option is missing its value")
+			}
+			i++
+			continue
+		}
+		if slices.Contains(outputs, arg) {
+			if i+1 != len(args) {
+				return "", errors.New("Git metadata output must stand alone without a command")
+			}
+			return "", nil
+		}
+		if slices.Contains(flags, arg) || strings.HasPrefix(arg, "-C") && len(arg) > 2 {
+			continue
+		}
+		if strings.HasPrefix(arg, "-c") && len(arg) > 2 {
+			if err := validateGitConfigOverride(arg[2:], false); err != nil {
+				return "", err
+			}
+			continue
+		}
+		option, value, hasValue := strings.Cut(arg, "=")
+		if hasValue {
+			if option == "--config-env" {
+				if err := validateGitConfigOverride(value, true); err != nil {
+					return "", err
+				}
+				continue
+			}
+			if slices.Contains(values[1:], option) {
+				continue
+			}
+		}
+		return "", fmt.Errorf("unsupported global Git check option %s", arg)
+	}
+	return "", errors.New("Git check is missing an inspection builtin or metadata output")
+}
+
+func validateGitConfigOverride(value string, fromEnvironment bool) error {
+	key, environment, assigned := strings.Cut(value, "=")
+	if fromEnvironment && (!assigned || environment == "" || strings.Contains(environment, "=")) {
+		return errors.New("Git check config-env needs a key and environment variable name")
+	}
+	if !slices.Contains([]string{"core.quotepath", "color.ui", "diff.noprefix", "diff.mnemonicprefix", "diff.context", "status.short", "status.branch"}, strings.ToLower(key)) {
+		return fmt.Errorf("unsupported Git check configuration key %s", key)
+	}
+	return nil
 }
 
 func checkEnvironment() []string {

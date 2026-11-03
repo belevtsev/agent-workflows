@@ -20,6 +20,13 @@ import (
 const sharedConfigOperationKind = "codex_config"
 const sharedConfigResource = "global/codex-defaults.toml"
 
+// Keep supported generations explicit. Later generations must retain older key
+// sets rather than derive them from a changing current generation.
+var historicalSharedConfigKeys = [...]string{
+	"features.memories", "memories.generate_memories", "memories.use_memories",
+	"memories.extract_model", "memories.consolidation_model",
+}
+
 var sharedConfigKeys = [...]string{
 	"model_context_window",
 	"features.memories", "memories.generate_memories", "memories.use_memories",
@@ -48,15 +55,19 @@ func SharedConfigDefaults(root string) (Object, error) {
 		return nil, err
 	}
 	var values Object
-	if !utf8.Valid(data) || toml.Unmarshal(data, &values) != nil || !modelFields(values, "version", "model_context_window", "features", "memories") || !suiteInteger(values["version"], 1) {
+	if !utf8.Valid(data) || toml.Unmarshal(data, &values) != nil || (!modelFields(values, "version", "model_context_window", "features", "memories") && !modelFields(values, "version", "features", "memories")) || !suiteInteger(values["version"], 1) {
 		return nil, errors.New("shared Codex defaults have invalid fields or version")
 	}
 	features, memories := object(values["features"]), object(values["memories"])
 	if !modelFields(features, "memories") || !modelFields(memories, "generate_memories", "use_memories", "extract_model", "consolidation_model") {
 		return nil, errors.New("shared Codex defaults contain unsupported settings")
 	}
+	owned := sharedConfigKeys[:]
+	if _, present := values["model_context_window"]; !present {
+		owned = historicalSharedConfigKeys[:]
+	}
 	defaults := Object{}
-	for _, key := range sharedConfigKeys {
+	for _, key := range owned {
 		value := values[key]
 		if group, name, nested := strings.Cut(key, "."); nested {
 			value = object(values[group])[name]
@@ -281,6 +292,17 @@ func configValidateSnapshot(raw any, owned []string) (Object, error) {
 	return values, nil
 }
 
+// Both shared-config generations use the same wire version. Accept only their
+// complete key sets; an arbitrary subset must never become an ownership group.
+func sharedConfigOwnedKeys(values Object) ([]string, error) {
+	for _, keys := range [][]string{sharedConfigKeys[:], historicalSharedConfigKeys[:]} {
+		if modelFields(values, keys...) {
+			return keys, nil
+		}
+	}
+	return nil, errors.New("corrupt shared config ownership keys")
+}
+
 func SharedConfigValidateMetadata(metadata Object) error {
 	if !modelFields(metadata, "original", "expected", "original_exists") {
 		return errors.New("corrupt shared config ownership metadata")
@@ -289,15 +311,19 @@ func SharedConfigValidateMetadata(metadata Object) error {
 	if !ok {
 		return errors.New("corrupt shared config ownership origin")
 	}
-	original, err := configValidateSnapshot(metadata["original"], sharedConfigKeys[:])
+	owned, err := sharedConfigOwnedKeys(object(metadata["original"]))
 	if err != nil {
 		return err
 	}
-	expected, err := configValidateSnapshot(metadata["expected"], sharedConfigKeys[:])
+	original, err := configValidateSnapshot(metadata["original"], owned)
 	if err != nil {
 		return err
 	}
-	for _, key := range sharedConfigKeys {
+	expected, err := configValidateSnapshot(metadata["expected"], owned)
+	if err != nil {
+		return err
+	}
+	for _, key := range owned {
 		if (!exists && original[key].(Object)["present"].(bool)) || !expected[key].(Object)["present"].(bool) {
 			return errors.New("corrupt shared config origin or managed defaults")
 		}
@@ -309,11 +335,12 @@ func SharedConfigVerify(path string, metadata Object) error {
 	if err := SharedConfigValidateMetadata(metadata); err != nil {
 		return err
 	}
-	doc, exists, _, err := configRead(path, sharedConfigKeys[:])
+	owned, _ := sharedConfigOwnedKeys(object(metadata["original"]))
+	doc, exists, _, err := configRead(path, owned)
 	if err != nil {
 		return err
 	}
-	if !exists || !reflect.DeepEqual(configSnapshot(doc, sharedConfigKeys[:]), metadata["expected"]) {
+	if !exists || !reflect.DeepEqual(configSnapshot(doc, owned), metadata["expected"]) {
 		return errors.New("owned shared Codex defaults changed; refusing to overwrite them")
 	}
 	return nil
@@ -323,20 +350,29 @@ func SharedConfigVerify(path string, metadata Object) error {
 // operation, with a separate discriminator and complete, allowlisted groups.
 func configOperationKeys(snapshot Object) ([]string, error) {
 	var owned []string
-	for _, group := range [][]string{modelKeys[:], sharedConfigKeys[:]} {
-		count := 0
-		for _, key := range group {
-			if _, ok := snapshot[key]; ok {
-				count++
-			}
+	models, shared := Object{}, Object{}
+	for _, key := range modelKeys {
+		if value, present := snapshot[key]; present {
+			models[key] = value
 		}
-		if count == 0 {
-			continue
-		}
-		if count != len(group) {
+	}
+	if len(models) != 0 {
+		if len(models) != len(modelKeys) {
 			return nil, errors.New("incomplete shared config operation group")
 		}
-		owned = append(owned, group...)
+		owned = append(owned, modelKeys[:]...)
+	}
+	for _, key := range sharedConfigKeys {
+		if value, present := snapshot[key]; present {
+			shared[key] = value
+		}
+	}
+	if len(shared) != 0 {
+		keys, err := sharedConfigOwnedKeys(shared)
+		if err != nil {
+			return nil, errors.New("incomplete shared config operation group")
+		}
+		owned = append(owned, keys...)
 	}
 	if len(owned) == 0 || len(owned) != len(snapshot) {
 		return nil, errors.New("unsupported shared config operation keys")
@@ -474,12 +510,51 @@ func configOrigin(s Object, exists bool) bool {
 // configPrepare updates independently recorded ownership in one file operation.
 // A nil shared resource releases that group's ownership during rollback/update.
 func configPrepare(path string, models map[string]string, shared Object, s Object) (Object, Object, error) {
-	var owned []string
-	if models != nil || s["model_config"] != nil {
-		owned = append(owned, modelKeys[:]...)
+	groups := []struct {
+		field              string
+		allKeys, oldKeys   []string
+		newKeys            []string
+		defaults, metadata Object
+	}{
+		{field: "model_config", allKeys: modelKeys[:], defaults: stringsObject(models)},
+		{field: "shared_config", allKeys: sharedConfigKeys[:], defaults: shared},
 	}
-	if shared != nil || s["shared_config"] != nil {
-		owned = append(owned, sharedConfigKeys[:]...)
+	var owned []string
+	for index := range groups {
+		group := &groups[index]
+		if raw, present := s[group.field]; present {
+			group.metadata = object(raw)
+			var err error
+			if group.field == "model_config" {
+				err = ModelValidateMetadata(group.metadata)
+				group.oldKeys = modelKeys[:]
+			} else {
+				err = SharedConfigValidateMetadata(group.metadata)
+				if err == nil {
+					group.oldKeys, _ = sharedConfigOwnedKeys(object(group.metadata["original"]))
+				}
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		if group.defaults != nil {
+			group.newKeys = modelKeys[:]
+			if group.field == "shared_config" {
+				var err error
+				group.newKeys, err = sharedConfigOwnedKeys(group.defaults)
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+		}
+		// Rendering and reversal must cover the deterministic union, including
+		// any key whose ownership is released by this transition.
+		for _, key := range group.allKeys {
+			if slices.Contains(group.oldKeys, key) || slices.Contains(group.newKeys, key) {
+				owned = append(owned, key)
+			}
+		}
 	}
 	if len(owned) == 0 {
 		return clone(s), nil, nil
@@ -490,29 +565,13 @@ func configPrepare(path string, models map[string]string, shared Object, s Objec
 	}
 	before, after, state := configSnapshot(doc, owned), Object{}, clone(s)
 	origin := configOrigin(s, exists)
-	for _, group := range []struct {
-		field    string
-		keys     []string
-		defaults Object
-	}{
-		{"model_config", modelKeys[:], stringsObject(models)},
-		{"shared_config", sharedConfigKeys[:], shared},
-	} {
-		metadata := object(s[group.field])
+	for _, group := range groups {
+		metadata := group.metadata
 		if group.defaults == nil && metadata == nil {
 			continue
 		}
 		if metadata != nil {
-			var err error
-			if group.field == "model_config" {
-				err = ModelValidateMetadata(metadata)
-			} else {
-				err = SharedConfigValidateMetadata(metadata)
-			}
-			if err != nil {
-				return nil, nil, err
-			}
-			if !exists || !reflect.DeepEqual(configSnapshot(doc, group.keys), metadata["expected"]) {
+			if !exists || !reflect.DeepEqual(configSnapshot(doc, group.oldKeys), metadata["expected"]) {
 				return nil, nil, fmt.Errorf("owned %s defaults changed; refusing to overwrite them", group.field)
 			}
 		}
@@ -521,18 +580,32 @@ func configPrepare(path string, models map[string]string, shared Object, s Objec
 			delete(state, group.field)
 			continue
 		}
-		expected, err := configExpected(group.defaults, group.keys)
+		expected, err := configExpected(group.defaults, group.newKeys)
 		if err != nil {
 			return nil, nil, err
 		}
 		maps.Copy(after, expected)
-		if metadata == nil {
-			metadata = Object{"original": configSnapshot(doc, group.keys), "original_exists": exists}
-		} else {
-			metadata = maps.Clone(metadata)
+		original, originalExists := configSnapshot(doc, group.newKeys), exists
+		if metadata != nil {
+			originalExists = metadata["original_exists"].(bool)
+			previous := metadata["original"].(Object)
+			for _, key := range group.oldKeys {
+				if slices.Contains(group.newKeys, key) {
+					original[key] = previous[key]
+				} else {
+					after[key] = previous[key]
+				}
+			}
+			for _, key := range group.newKeys {
+				if !slices.Contains(group.oldKeys, key) && original[key].(Object)["present"].(bool) {
+					// A newly acquired personal token makes this group's merged
+					// original present. The outer origin still records the file's
+					// earliest ownership and must not be promoted with the group.
+					originalExists = true
+				}
+			}
 		}
-		metadata["expected"] = expected
-		state[group.field] = metadata
+		state[group.field] = Object{"original": original, "expected": expected, "original_exists": originalExists}
 	}
 	if state["model_config"] != nil || state["shared_config"] != nil {
 		state["config_original_exists"] = origin
@@ -576,6 +649,9 @@ func ConfigRemoval(path string, s Object) (Object, error) {
 				err = ModelVerify(path, metadata)
 			} else {
 				err = SharedConfigVerify(path, metadata)
+				if err == nil {
+					group.keys, _ = sharedConfigOwnedKeys(object(metadata["original"]))
+				}
 			}
 			if err != nil {
 				return nil, err

@@ -200,6 +200,25 @@ func uniqueIDs(ids []string) bool {
 }
 
 func ValidatePlan(plan *Plan) error {
+	for i := range plan.Checks {
+		if plan.Checks[i].TimeoutSeconds == 0 {
+			plan.Checks[i].TimeoutSeconds = 300
+		}
+	}
+	if err := validateRecordedPlan(*plan); err != nil {
+		return err
+	}
+	for _, check := range plan.Checks {
+		if err := validateCommand(check.Argv); err != nil {
+			return fmt.Errorf("check %s: %w", check.ID, err)
+		}
+	}
+	return nil
+}
+
+// validateRecordedPlan checks immutable declarations without applying defaults
+// or asking whether today's manager would admit their commands for execution.
+func validateRecordedPlan(plan Plan) error {
 	if plan.CoordinatorID != "" && !validAgentID(plan.CoordinatorID) {
 		return errors.New("coordinator_id must be a bounded nonblank identity declaration")
 	}
@@ -210,19 +229,15 @@ func ValidatePlan(plan *Plan) error {
 		return errors.New("plan needs 1..256 requirements and at most 256 checks")
 	}
 	checks := map[string]bool{}
-	for i := range plan.Checks {
-		check := &plan.Checks[i]
+	for _, check := range plan.Checks {
 		if !identifier.MatchString(check.ID) || checks[check.ID] {
 			return errors.New("check IDs must be distinct identifiers")
 		}
 		checks[check.ID] = true
-		if check.TimeoutSeconds == 0 {
-			check.TimeoutSeconds = 300
-		}
 		if check.TimeoutSeconds < 1 || check.TimeoutSeconds > 3600 {
 			return errors.New("check timeout must be 1..3600 seconds")
 		}
-		if err := validateCommand(check.Argv); err != nil {
+		if err := validateCommandShape(check.Argv); err != nil {
 			return fmt.Errorf("check %s: %w", check.ID, err)
 		}
 	}

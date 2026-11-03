@@ -336,7 +336,7 @@ func TestPrepareSupportedManager(t *testing.T) {
 				t.Fatalf("supported manager acquisition: %+v %v", candidate, err)
 			}
 			output, err := exec.CommandContext(t.Context(), candidate.Path, "--manager-protocol").Output()
-			if err != nil || string(output) != "cw-manager-v8\n" {
+			if err != nil || string(output) != "cw-manager-v9\n" {
 				t.Fatalf("acquired manager lost its protocol: %q %v", output, err)
 			}
 			if (origin == "cached" && requests.Load() != 0) || (origin != "cached" && requests.Load() == 0) || (origin == "built" && builds != 1) || (origin != "built" && builds != 0) {

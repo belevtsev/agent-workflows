@@ -222,6 +222,13 @@ func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
 	if got, err := SharedConfigDefaults(root); err != nil || !reflect.DeepEqual(got, sharedTestDefaults()) {
 		t.Fatalf("valid defaults rejected: %v, %v", got, err)
 	}
+	legacy := strings.Replace(valid, "model_context_window=512000\n", "", 1)
+	modelTestWrite(t, path, []byte(legacy), 0o644)
+	legacyDefaults := sharedTestDefaults()
+	delete(legacyDefaults, "model_context_window")
+	if got, err := SharedConfigDefaults(root); err != nil || !reflect.DeepEqual(got, legacyDefaults) {
+		t.Fatalf("historical five-key defaults rejected: %v, %v", got, err)
+	}
 	for _, invalid := range []string{
 		strings.Replace(valid, "version=1", "version=2", 1),
 		strings.Replace(valid, "version=1", "version=1.0", 1),
@@ -230,7 +237,6 @@ func TestSharedConfigResourceAllowlistAndHistoricalAbsence(t *testing.T) {
 		strings.Replace(valid, "version=1", "version=1\nmodel='duplicated'", 1),
 		valid + "device_path='/private/device'\n",
 		strings.Replace(valid, "use_memories=true\n", "", 1),
-		strings.Replace(valid, "model_context_window=512000\n", "", 1),
 		strings.Replace(valid, "model_context_window=512000", "model_context_window=-1", 1),
 		strings.Replace(valid, "model_context_window=512000", "model_context_window=512000.0", 1),
 		strings.Replace(valid, "model_context_window=512000", "model_context_window='512000'", 1),

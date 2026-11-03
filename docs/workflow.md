@@ -107,10 +107,13 @@ runs `gpt-6-astra`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
 continue rejecting configured Max for Sol models. The native validator enforces
-these rules. New manager candidates must support `cw-manager-v8` to validate the
-GitHub policy. Existing v7 receipts remain readable, but an installed v7 manager
-needs the documented [v8 re-bootstrap](development.md#distribution) before it can
-activate the new source.
+these rules. New manager candidates must support `cw-manager-v9` to validate the
+GitHub policy and both complete five-key/six-key shared-config generations.
+Existing sealed v7/v8 receipts remain readable with their original checks. An
+installed legacy manager needs the documented [v9 rebootstrap](development.md#distribution)
+from a published, verified latest release before using `cw update` to activate
+the new source. Older readers are not promised compatibility with new six-key
+journals, and skill rollback retains the compatible manager.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
 control context. Pass exact source revisions, ownership, constraints, and the

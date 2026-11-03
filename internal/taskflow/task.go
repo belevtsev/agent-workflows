@@ -43,23 +43,30 @@ func Start(ctx context.Context, repo, store string, plan Plan) (Record, error) {
 	if err := parent.Mkdir(id, 0700); err != nil {
 		return Record{}, err
 	}
+	directory := filepath.Join(store, id)
+	initializationError := func(err error) error {
+		return fmt.Errorf("initialize task at %s; inspect and reload this path before retrying: %w", directory, err)
+	}
 	root, err := parent.OpenRoot(id)
 	if err != nil {
-		return Record{}, err
+		return Record{}, initializationError(err)
 	}
 	defer root.Close()
 	now := time.Now().UTC()
-	record := Record{Version: Version, ID: id, Directory: filepath.Join(store, id), Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
+	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot}
 	data, err := encode(record)
 	if err != nil {
-		return Record{}, err
+		return Record{}, initializationError(err)
 	}
 	if len(data) > MaxInputBytes {
-		return Record{}, errors.New("initial task revision exceeds size limit")
+		return Record{}, initializationError(errors.New("initial task revision exceeds size limit"))
 	}
 	if err := writeNew(root, "record-000001.json", data); err != nil {
-		return Record{}, err
+		return Record{}, initializationError(err)
+	}
+	if err := syncTaskDirectory(parent); err != nil {
+		return Record{}, initializationError(fmt.Errorf("task was published but its storage directory durability is uncertain: %w", err))
 	}
 	return record, nil
 }

@@ -19,7 +19,7 @@ const profileEnd = "# <<< agent-workflows PATH <<<"
 
 // ManagerProtocol identifies the sealed runtime, ownership and policy contract.
 // The bootstrap and newly staged runtimes must report this exact value.
-const ManagerProtocol = "cw-manager-v8"
+const ManagerProtocol = "cw-manager-v9"
 
 type ProfileRecord struct {
 	Shell          string `json:"shell"`
@@ -197,7 +197,7 @@ func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, err
 	if receipt.Version != 2 || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != revision {
 		return runtimeReceipt{}, errors.New("invalid native runtime receipt")
 	}
-	// Existing v7 releases use the same sealed receipt and ownership layout.
+	// Existing v7/v8 releases use the same sealed receipt and ownership layout.
 	// New candidates must still pass the exact current protocol gates above and
 	// in stageRuntime; accepting an old receipt does not authorize staging it.
 	if err := verifySeal(data); err != nil || !readableManagerProtocol(receipt.ManagerProtocol) {
@@ -248,7 +248,7 @@ func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, err
 }
 
 func readableManagerProtocol(protocol string) bool {
-	return protocol == ManagerProtocol || protocol == "cw-manager-v7"
+	return protocol == ManagerProtocol || protocol == "cw-manager-v8" || protocol == "cw-manager-v7"
 }
 
 func (i *Installer) stageRuntime() error {
@@ -411,9 +411,10 @@ func profileLocate(data []byte, expected string) (int, int, error) {
 		return 0, 0, errors.New("startup file must contain one owned PATH marker pair")
 	}
 	start := bytes.Index(data, []byte(profileStart))
-	end := bytes.Index(data, []byte(profileEnd)) + len(profileEnd) + 1
+	endMarker := bytes.Index(data, []byte(profileEnd))
+	end := endMarker + len(profileEnd) + 1
 	begin := start - (len(expected) - len(strings.TrimLeft(expected, "\n")))
-	if begin < 0 || end > len(data) || (start > 0 && data[start-1] != '\n') || string(data[begin:end]) != expected {
+	if start < 0 || endMarker <= start || begin < 0 || begin > end || end > len(data) || (start > 0 && data[start-1] != '\n') || string(data[begin:end]) != expected {
 		return 0, 0, errors.New("owned PATH profile changed")
 	}
 	remainder := append(bytes.Clone(data[:begin]), data[end:]...)
@@ -566,13 +567,21 @@ func (i *Installer) prepareProfile() (*ProfileRecord, Object, error) {
 
 // lookPath is exec.LookPath against the installer's PATH rather than the
 // process's, including ErrDot for a match found through a relative entry.
+// Explicit paths retain exec.LookPath's spelling and direct-path semantics.
 func lookPath(file, pathList string) (string, error) {
+	if strings.ContainsRune(file, os.PathSeparator) {
+		return exec.LookPath(file)
+	}
 	for _, directory := range filepath.SplitList(pathList) {
 		if directory == "" {
 			directory = "."
 		}
 		path := filepath.Join(directory, file)
-		if info, err := os.Stat(path); err != nil || info.IsDir() || info.Mode().Perm()&0o111 == 0 {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		if _, err := exec.LookPath(absolute); err != nil {
 			continue
 		}
 		if !filepath.IsAbs(path) {

@@ -22,6 +22,11 @@ deferred validation without downloads or writes. cw status itself is offline.
 The manager and its helpers run in Go, so installation needs no Python. Skills can
 bring their own dependencies; `cw status` reports detected tools.
 
+Before a legacy v7/v8 installation activates this source with `cw update`, follow
+the [v9 rebootstrap procedure](development.md#distribution) using the new
+installer. Its required latest release must already provide verified
+`cw-manager-v9` binaries and checksums for all supported platforms.
+
 Status reports `model_profiles` with each configured model, reasoning effort, and
 scope from the active snapshot, and `hosts` with each host's roots. This is policy evidence. It does not identify the
 model or effort used by an existing chat or establish account runtime availability.
@@ -186,8 +191,8 @@ host is the same as a full `cw uninstall`.
 
 ## Shared Codex configuration
 
-The optional version-one `global/codex-defaults.toml` resource delivers exactly
-these six portable values through install and update:
+The current optional version-one `global/codex-defaults.toml` resource delivers
+exactly these six portable values through install and update:
 
 ```toml
 model_context_window = 512000
@@ -203,8 +208,10 @@ consolidation_model = "gpt-6-astra"
 ```
 
 Its `version = 1` belongs to the source resource and is not written into the
-device's config. Additional resource settings, missing keys, or incorrect value
-types are rejected. Historical snapshots without the resource remain valid.
+device's config. Historical version-one resources contain exactly the same five
+memory keys and omit `model_context_window`; both complete groups are supported.
+Additional settings, other missing keys, mixed ownership groups, or incorrect
+value types are rejected. Historical snapshots without the resource remain valid.
 `model_context_window` must be a positive integer number of tokens. Codex applies
 it to whichever model that config runs, so keep it within every model's maximum;
 the current catalog allows 872,000 for each listed model.
@@ -216,7 +223,12 @@ The manager merges only owned value tokens into the selected Codex home's
 credentials, unrelated memory settings, comments, and current file permissions
 are preserved. It records each shared key's value or absence when first acquired,
 separately from the existing root-model ownership. Updating expected defaults
-does not replace those saved originals.
+does not replace those saved originals for retained keys. Moving from five to six
+keys acquires the context window using its current personal value or absence,
+including a value added after the original five-key enrollment. Moving back to
+five keys restores that saved token and releases context-window ownership. Later
+personal edits to the released key are preserved; reacquiring it saves its latest
+value. A snapshot without the resource restores and releases the entire group.
 
 Explicit `[features]` and `[memories]` tables and dotted keys are supported.
 Inline parent tables such as `features = { memories = false }` or
@@ -225,9 +237,10 @@ error before installation changes. Convert those parents to explicit tables or
 dotted keys while retaining their other local values, then retry. Malformed TOML,
 wrong owned value types, and a symlinked config also stop installation.
 
-All involved root and shared values use one recoverable config-file operation.
-Changes to an owned value cause a conflict. Independent local edits made before
-rendering or during interrupted recovery survive the value merge.
+All involved root and shared values, including keys being released, use one
+recoverable config-file operation. Changes to an already owned value cause a
+conflict; a newly acquired key is saved as personal origin. Independent local edits
+made before rendering or during interrupted recovery survive the value merge.
 
 ## Consultation command
 
@@ -408,11 +421,13 @@ Rollback restores the previous skills and owned instruction/model defaults, whil
 keeping a compatible manager. It does not rewind source Git or change GitHub.
 Status then reports the restored model profiles. Hosts are not part of a release,
 so rollback never adds or removes one, and a host you removed stays removed.
-Shared memory values follow the previous snapshot's resource. Returning to a
-snapshot without that resource restores the original shared values or their
-absence and releases shared ownership. The earliest config-file origin remains
-recorded while root-model ownership remains, including when shared ownership was
-acquired before root-model enrollment.
+Shared settings follow the previous snapshot's resource. A six-to-five-key
+rollback restores and releases the context window while preserving the five
+memory keys' saved originals. Returning to a snapshot without that resource
+restores the original shared values or their absence and releases shared
+ownership. The earliest config-file origin remains recorded while any config
+ownership remains, including when shared ownership was acquired before root-model
+enrollment or a later personal context window was acquired.
 The target snapshot must have a subset of the active registration names. A path
 absent from that snapshot is removed only if its recorded origin was absent and
 its current link remains exactly owned. Adopted symlink/directory origins cannot
@@ -432,8 +447,8 @@ a pending transaction. It does not rewind Git fast-forwards or delete caches.
 Use a verified cached executable or ./install.sh recover if a crash occurred
 before cw enrollment. Do not hand-edit ownership or recovery records.
 
-If a v8 upgrade's recovery is itself interrupted after restoring the old command
-link, `cw` may point to v7 while the pending journal still requires v8. Read
+If a v9 upgrade's recovery is itself interrupted after restoring the old command
+link, `cw` may point to v7/v8 while the pending journal still requires v9. Read
 `recovery_runtime.revision` from `STATE/journal.json` without editing it and use
 the preserved executable at `STATE/runtime/releases/RECOVERY_REVISION/cw`.
 Replace both placeholders with the recorded state directory and revision:
@@ -444,10 +459,13 @@ STATE/runtime/releases/RECOVERY_REVISION/cw recover --dry-run
 STATE/runtime/releases/RECOVERY_REVISION/cw recover
 ```
 
-For a v8 upgrade, verify that the first command reports `cw-manager-v8` before
+For a v9 upgrade, verify that the first command reports `cw-manager-v9` before
 recovery. This executable uses its immutable locator even with the source checkout
-absent. An old v7 executable cannot recover a v8 journal; `./install.sh recover`
-is an alternative only while the checkout is available.
+absent. Recovery checks a preserved executable against its own immutable receipt,
+so sealed v7/v8 runtimes remain readable without rewriting their records. Do not
+use a legacy reader for a new six-key journal; `./install.sh recover` is an
+alternative only while the checkout is available and the v9 release prerequisite
+is met. Skill rollback retains the compatible manager.
 
 ```sh
 cw uninstall --dry-run

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -69,42 +70,103 @@ func lookPath(name, searchPath string) (string, error) {
 // run executes one child in its own session without a shell. A timeout or
 // cancellation kills every owned descendant, not just the direct child.
 func run(ctx context.Context, arguments []string, directory string, env []string, timeout time.Duration) (int, string, string, error) {
+	return runWithOutputLimit(ctx, arguments, directory, env, timeout, maxGraphBytes)
+}
+
+// capturedOutput shares one raw byte budget between both pipe copiers. Writes
+// always consume their input, including after overflow, so only the owner of the
+// process decides when to kill and join it.
+type capturedOutput struct {
+	mu             sync.Mutex
+	remaining      int
+	stdout, stderr bytes.Buffer
+	overflow       chan struct{}
+	exceeded       bool
+}
+
+type captureStream struct {
+	output *capturedOutput
+	stderr bool
+}
+
+func (stream captureStream) Write(data []byte) (int, error) {
+	output := stream.output
+	output.mu.Lock()
+	defer output.mu.Unlock()
+	count := min(len(data), output.remaining)
+	buffer := &output.stdout
+	if stream.stderr {
+		buffer = &output.stderr
+	}
+	_, _ = buffer.Write(data[:count])
+	output.remaining -= count
+	if count < len(data) && !output.exceeded {
+		output.exceeded = true
+		close(output.overflow)
+	}
+	return len(data), nil
+}
+
+func runWithOutputLimit(ctx context.Context, arguments []string, directory string, env []string, timeout time.Duration, limit int) (int, string, string, error) {
 	if err := supported(); err != nil {
 		return 0, "", "", err
 	}
-	var stdout, stderr bytes.Buffer
-	command := &exec.Cmd{Path: arguments[0], Args: arguments, Dir: directory, Env: env, Stdout: &stdout, Stderr: &stderr}
+	if err := ctx.Err(); err != nil {
+		return 0, "", "", err
+	}
+	if len(arguments) == 0 {
+		return 0, "", "", errors.New("missing tool command")
+	}
+	output := &capturedOutput{remaining: max(0, limit), overflow: make(chan struct{})}
+	command := &exec.Cmd{Path: arguments[0], Args: arguments, Dir: directory, Env: env,
+		Stdout: captureStream{output: output}, Stderr: captureStream{output: output, stderr: true}, WaitDelay: killWait}
 	isolate(command)
 	if err := command.Start(); err != nil {
 		return 0, "", "", err
 	}
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
-	stop := func() {
-		killGroup(command)
-		select {
-		case <-done:
-		case <-time.After(killWait):
-		}
-	}
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	var waitErr error
+	var interrupted error
+	joined := false
 	select {
 	case waitErr = <-done:
+		joined = true
+	case <-output.overflow:
+		interrupted = refuse("output_limit", "Tool output exceeded the local limit")
 	case <-timer.C:
-		stop()
-		return 0, "", "", refuse("timeout", "Graphify operation timed out; no incomplete graph was activated")
+		interrupted = refuse("timeout", "Graphify operation timed out; no incomplete graph was activated")
 	case <-ctx.Done():
-		stop()
-		return 0, "", "", ctx.Err()
+		interrupted = ctx.Err()
 	}
+	// Wait can win the select after a short-lived child has already overflowed.
+	// Kill the group even then: descendants may outlive the direct child, and
+	// exec's context watcher would no longer own their lifetime.
+	if interrupted == nil {
+		select {
+		case <-output.overflow:
+			interrupted = refuse("output_limit", "Tool output exceeded the local limit")
+		default:
+		}
+	}
+	if interrupted != nil {
+		killGroup(command)
+		if !joined {
+			// This is the only Wait result. WaitDelay closes retained pipes and
+			// joins the copiers; never abandon a goroutine writing our buffers.
+			<-done
+		}
+		return 0, "", "", interrupted
+	}
+	// Completion transfers no descendant lifetime to the caller. Wait may
+	// retain ExitError over a copier timeout, and redirected descendants can
+	// outlive even a successful, fully joined leader.
+	killGroup(command)
 	if _, exited := errors.AsType[*exec.ExitError](waitErr); waitErr != nil && !exited {
 		return 0, "", "", waitErr
 	}
-	if stdout.Len()+stderr.Len() > maxGraphBytes {
-		return 0, "", "", refuse("output_limit", "Tool output exceeded the local limit")
-	}
 	// Invalid bytes become replacement characters, one per byte.
-	return command.ProcessState.ExitCode(), string([]rune(stdout.String())), string([]rune(stderr.String())), nil
+	return command.ProcessState.ExitCode(), string([]rune(output.stdout.String())), string([]rune(output.stderr.String())), nil
 }

@@ -847,12 +847,12 @@ func TestJSONIsStrictAndCommandsAreExplicit(t *testing.T) {
 			t.Fatalf("malformed JSON accepted: %s", input)
 		}
 	}
-	for _, argv := range [][]string{{"sh", "-c", "true"}, {"terraform", "apply"}, {"git", "push"}, {"npm", "publish"}, {"git", "-C", "path with spaces", "push"}, {"git", "-c", "core.pager=cat", "--git-dir=repository", "push"}, {"terraform", "-chdir=path with spaces", "apply"}, {"tofu", "-chdir", "path with spaces", "destroy"}} {
+	for _, argv := range [][]string{{"sh", "-c", "true"}, {"terraform", "apply"}, {"git", "push"}, {"npm", "publish"}, {"git", "-C", "path with spaces", "push"}, {"git", "-c", "core.pager=cat", "--git-dir=repository", "push"}, {"git", "-c", "core.pager=cat", "diff", "--", "push"}, {"terraform", "-chdir=path with spaces", "apply"}, {"tofu", "-chdir", "path with spaces", "destroy"}} {
 		if err := validateCommand(argv); err == nil {
 			t.Fatalf("unsafe check accepted: %v", argv)
 		}
 	}
-	for _, argv := range [][]string{{"terraform", "fmt", "-check"}, {"terraform", "validate"}, {"rojo", "build", "file with spaces.project.json"}, {"lune", "run", "validate"}, {"go", "test", "-run", "deploy"}, {"git", "-C", "push", "status", "--short"}, {"git", "-c", "core.pager=cat", "diff", "--", "push"}, {"terraform", "-chdir=path with spaces", "validate"}, {"terraform", "-chdir", "apply", "fmt", "-check"}, {"terraform", "test"}, {"terraform", "-version"}} {
+	for _, argv := range [][]string{{"terraform", "fmt", "-check"}, {"terraform", "validate"}, {"rojo", "build", "file with spaces.project.json"}, {"lune", "run", "validate"}, {"go", "test", "-run", "deploy"}, {"git", "-C", "push", "status", "--short"}, {"git", "-c", "core.quotePath=false", "diff", "--", "push"}, {"terraform", "-chdir=path with spaces", "validate"}, {"terraform", "-chdir", "apply", "fmt", "-check"}, {"terraform", "test"}, {"terraform", "-version"}} {
 		if err := validateCommand(argv); err != nil {
 			t.Fatalf("normal local validation denied: %v %v", argv, err)
 		}

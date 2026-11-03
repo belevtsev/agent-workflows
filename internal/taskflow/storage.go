@@ -70,6 +70,7 @@ func privateStore(path, repository string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	canonicalAncestor := canonical
 	for i := len(missing) - 1; i >= 0; i-- {
 		canonical = filepath.Join(canonical, missing[i])
 	}
@@ -81,8 +82,10 @@ func privateStore(path, repository string) (string, error) {
 			return "", errors.New("task records must be outside managed releases")
 		}
 	}
-	if err := os.MkdirAll(canonical, 0700); err != nil {
-		return "", err
+	if len(missing) > 0 {
+		if err := createStoreDirectories(canonicalAncestor, missing); err != nil {
+			return "", err
+		}
 	}
 	info, err := os.Lstat(canonical)
 	if err != nil {
@@ -92,6 +95,57 @@ func privateStore(path, repository string) (string, error) {
 		return "", errors.New("task storage must be a private directory (0700)")
 	}
 	return canonical, nil
+}
+
+// createStoreDirectories binds every new component to its opened parent. Each
+// new directory and its parent are synced before descending, including the
+// previously existing ancestor. Existing directories are never chmodded.
+func createStoreDirectories(ancestor string, missing []string) (err error) {
+	currentPath := ancestor
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("task storage creation at %s may be incomplete or not durable; inspect and reload this path before retrying: %w", currentPath, err)
+		}
+	}()
+	current, err := os.OpenRoot(ancestor)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, current.Close()) }()
+	for i := len(missing) - 1; i >= 0; i-- {
+		name := missing[i]
+		currentPath = filepath.Join(currentPath, name)
+		if mkdirErr := current.Mkdir(name, 0700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
+			return mkdirErr
+		}
+		info, err := current.Lstat(name)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0077 != 0 {
+			return errors.New("new task storage component must be a private directory and must not be a symlink")
+		}
+		child, err := current.OpenRoot(name)
+		if err != nil {
+			return err
+		}
+		opened, err := child.Stat(".")
+		if err != nil {
+			return errors.Join(err, child.Close())
+		}
+		if !os.SameFile(info, opened) {
+			return errors.Join(errors.New("task storage component changed while opening"), child.Close())
+		}
+		if err := errors.Join(syncTaskDirectory(child), syncTaskDirectory(current)); err != nil {
+			return errors.Join(err, child.Close())
+		}
+		parent := current
+		current = child
+		if err := parent.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func openTask(path string) (*os.Root, string, error) {
@@ -146,8 +200,25 @@ func privateRead(root *os.Root, name string, limit int64) ([]byte, error) {
 
 // writeNew publishes a fully written file with a no-replace hard link. A crash
 // before publication leaves only an ignored .write-* file; old revisions stay
-// intact. os.Root prevents path and symlink escapes during every operation.
+// intact. A successful publication also syncs its descriptor-bound directory.
+// os.Root prevents path and symlink escapes during every operation.
 func writeNew(root *os.Root, name string, data []byte) error {
+	return writeNewWithSync(root, name, data, syncTaskDirectory)
+}
+
+func syncTaskDirectory(root *os.Root) error {
+	directory, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	return errors.Join(directory.Sync(), directory.Close())
+}
+
+func writeNewWithSync(root *os.Root, name string, data []byte, syncDir func(*os.Root) error) error {
+	path, err := filepath.Abs(filepath.Join(root.Name(), name))
+	if err != nil {
+		return err
+	}
 	id, err := randomID()
 	if err != nil {
 		return err
@@ -171,6 +242,9 @@ func writeNew(root *os.Root, name string, data []byte) error {
 	}
 	if err := root.Link(temporary, name); err != nil {
 		return fmt.Errorf("publish new task artifact: %w", err)
+	}
+	if err := syncDir(root); err != nil {
+		return fmt.Errorf("task artifact %s was published but durability is uncertain; reload the task before retrying: %w", path, err)
 	}
 	return nil
 }
@@ -217,9 +291,6 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline) {
 			return Record{}, "", errors.New("immutable task baseline changed")
 		}
-		if err := ValidatePlan(&current.Plan); err != nil {
-			return Record{}, "", err
-		}
 		if err := validateRecord(current); err != nil {
 			return Record{}, "", err
 		}
@@ -243,6 +314,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 }
 
 func validateRecord(record Record) error {
+	if err := validateRecordedPlan(record.Plan); err != nil {
+		return err
+	}
 	if err := validateWorkerRecord(record); err != nil {
 		return err
 	}

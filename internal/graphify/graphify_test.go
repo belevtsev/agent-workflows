@@ -5,7 +5,9 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,13 +21,15 @@ import (
 // fakeConfig scripts the stand-in runtime. The test binary re-executes itself as
 // that runtime, because the guarded child environment passes nothing through.
 type fakeConfig struct {
-	Version   string `json:"version"`
-	Mode      string `json:"mode"`
-	QueryExit int    `json:"query_exit"`
-	LongQuery bool   `json:"long_query"`
-	Log       string `json:"log"`
-	Late      string `json:"late"`
-	Repo      string `json:"repo"`
+	Version            string `json:"version"`
+	Mode               string `json:"mode"`
+	QueryExit          int    `json:"query_exit"`
+	LongQuery          bool   `json:"long_query"`
+	Log                string `json:"log"`
+	Late               string `json:"late"`
+	Repo               string `json:"repo"`
+	ProductionGate     string `json:"production_gate,omitempty"`
+	ProductionDeadline string `json:"production_deadline,omitempty"`
 }
 
 type fakeCall struct {
@@ -100,10 +104,34 @@ func fakeExtract(config fakeConfig, args []string) int {
 	if err := os.WriteFile(filepath.Join(output, "graph.json"), data, 0o600); err != nil {
 		return 7
 	}
+	if config.ProductionGate != "" && !productionExtractionGate(config) {
+		return 26
+	}
 	if config.Mode == "change" {
 		_ = os.WriteFile(filepath.Join(config.Repo, "main.go"), []byte("package main\nfunc changed(){}\n"), 0o600)
 	}
 	return 0
+}
+
+func productionExtractionGate(config fakeConfig) bool {
+	deadline, err := time.Parse(time.RFC3339Nano, config.ProductionDeadline)
+	if err != nil || !deadline.After(time.Now()) {
+		return false
+	}
+	connection, err := net.DialTimeout("tcp", config.ProductionGate, 5*time.Second)
+	if err != nil {
+		return false
+	}
+	defer connection.Close()
+	if err := connection.SetDeadline(deadline); err != nil {
+		return false
+	}
+	if _, err := io.WriteString(connection, "extract\n"); err != nil {
+		return false
+	}
+	var release [1]byte
+	_, err = io.ReadFull(connection, release[:])
+	return err == nil && release[0] == 'x'
 }
 
 func fakeQuery(config fakeConfig, args []string) int {

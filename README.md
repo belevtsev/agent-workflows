@@ -22,6 +22,11 @@ are installing for. Release binaries support macOS/Linux on ARM64 and AMD64 and
 need no Go installation. Building an unreleased revision requires the Go version in
 [go.mod](go.mod).
 
+This source requires a published `cw-manager-v9` release with verified binaries
+and checksums for every supported platform. Existing v7/v8 installations must
+first [rebootstrap through the new installer](docs/development.md#distribution)
+before using `cw update` to activate this source.
+
 Installation registers 33 skills with 78 entrypoints on each selected host, and
 adds the same managed instructions to both:
 
@@ -29,7 +34,7 @@ adds the same managed instructions to both:
 | --- | --- | --- |
 | Skills | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
 | Instructions | Managed block in `$CODEX_HOME/AGENTS.md` | Managed block in `~/.claude/CLAUDE.md` |
-| Settings | `model`, `model_reasoning_effort` and five memory keys in `config.toml` | `model` and `effortLevel` in `settings.json` |
+| Settings | `model`, `model_reasoning_effort`, `model_context_window` and five memory keys in `config.toml` | `model` and `effortLevel` in `settings.json` |
 | Custom location | `--codex-home` or `CODEX_HOME` | `--claude-home` or `CLAUDE_CONFIG_DIR` |
 
 The Claude Code defaults come from the coordinator profile in
@@ -68,6 +73,11 @@ or Claude Code later change one of them, it stays yours: `cw status` reports it 
 keeps its own configuration. In `config.toml`, use ordinary TOML tables or dotted
 keys for the shared settings; inline `features` or `memories` tables must be
 converted before installation.
+
+Historical shared defaults with only the five memory keys remain supported.
+Acquiring the context window saves its current personal value or absence;
+returning to a five-key snapshot restores it and releases its ownership. Retained
+keys keep their saved originals. See [shared configuration](docs/operations.md#shared-codex-configuration).
 
 Under Claude Code, your `code-review` skill replaces the bundled `/code-review`.
 The `/review` alias still runs the bundled one.

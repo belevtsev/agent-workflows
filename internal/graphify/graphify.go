@@ -68,6 +68,8 @@ type Options struct {
 	// Executable locates this manager; its digest invalidates graphs built by a
 	// different runner, including a graph written with another safety policy.
 	Executable func() (string, error)
+	// renameCache is a per-build publication dependency; production uses os.Rename.
+	renameCache func(string, string) error
 }
 
 type scope struct {
@@ -408,8 +410,11 @@ func (o Options) cachePaths(state sourceState) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		info, statErr := os.Stat(component)
-		if symlink(component) || !inside(resolved, root) || statErr == nil && !info.IsDir() {
+		info, statErr := os.Lstat(component)
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			return "", "", statErr
+		}
+		if !inside(resolved, root) || statErr == nil && !info.IsDir() {
 			return "", "", refuse("cache_path", "Graphify cache components must be owned directories, never symlink redirects")
 		}
 	}
@@ -759,6 +764,167 @@ func (o Options) extract(ctx context.Context, runtime, pending string, content m
 	return validateGraph(filepath.Join(output, "graph.json"), state, snapshot, true)
 }
 
+func cacheDirectory(target string) (bool, error) {
+	info, err := os.Lstat(target)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.IsDir() {
+		return false, refuse("cache_path", "Graphify cache entries and recovery paths must be directories, never symlink redirects: "+target)
+	}
+	return true, nil
+}
+
+// activate serializes only publication and recovery, never extraction. A blank
+// pending permits recovery/cleanup for a graph which was already reusable.
+func (o Options) activate(ctx context.Context, state sourceState, parent, entry, pending string) (Summary, bool, error) {
+	lockCtx, cancel := context.WithTimeout(ctx, o.Timeout)
+	release, err := acquireCacheLock(lockCtx, entry+".lock")
+	cancel()
+	if err != nil {
+		if ctx.Err() != nil {
+			return Summary{}, false, ctx.Err()
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return Summary{}, false, refuse("timeout", "Graphify cache publication timed out; no incomplete graph was activated")
+		}
+		return Summary{}, false, err
+	}
+	defer release()
+	checkedParent, checkedEntry, err := o.cachePaths(state)
+	if err != nil {
+		return Summary{}, false, err
+	}
+	if checkedParent != parent || checkedEntry != entry {
+		return Summary{}, false, refuse("cache_path", "Graphify cache location changed while waiting to publish")
+	}
+	again, _, err := o.source(ctx)
+	if err != nil {
+		return Summary{}, false, err
+	}
+	if !reflect.DeepEqual(again, state) {
+		return Summary{}, false, refuse("source_changed", "Source changed before cache publication; build a fresh graph")
+	}
+	rename := o.renameCache
+	if rename == nil {
+		rename = os.Rename
+	}
+	repair := entry + ".repair"
+	repairExists, err := cacheDirectory(repair)
+	if err != nil {
+		return Summary{}, false, err
+	}
+	entryExists, err := cacheDirectory(entry)
+	if err != nil {
+		return Summary{}, false, err
+	}
+	cleanupRepair := func() error {
+		if _, err := cacheDirectory(repair); err != nil {
+			return err
+		}
+		if err := os.RemoveAll(repair); err != nil {
+			return fmt.Errorf("clean Graphify cache recovery directory %s: %w", repair, err)
+		}
+		repairExists = false
+		return nil
+	}
+	winner := func() (Summary, bool, error) {
+		present, err := cacheDirectory(entry)
+		if err != nil {
+			return Summary{}, false, err
+		}
+		if present {
+			if _, summary, err := currentEntry(state, entry); err == nil {
+				if repairExists {
+					if err := cleanupRepair(); err != nil {
+						return Summary{}, false, err
+					}
+				}
+				return summary, true, nil
+			}
+		}
+		return Summary{}, false, nil
+	}
+	// An interrupted publication must first put its preserved entry back. No
+	// candidate, successful or failed, is allowed to strand the only old copy.
+	if repairExists && !entryExists {
+		if err := rename(repair, entry); err != nil {
+			if summary, reused, winnerErr := winner(); reused {
+				return summary, true, nil
+			} else if winnerErr != nil {
+				return Summary{}, false, fmt.Errorf("recover Graphify cache entry: %w; inspect destination: %w; preserved recovery directory: %s", err, winnerErr, repair)
+			}
+			return Summary{}, false, fmt.Errorf("recover Graphify cache entry: %w; preserved recovery directory: %s", err, repair)
+		}
+		repairExists, entryExists = false, true
+	}
+	if summary, reused, err := winner(); reused || err != nil {
+		return summary, reused, err
+	}
+	if pending == "" {
+		return Summary{}, false, nil
+	}
+	// Reuse the complete-entry validator before moving any corruption, even
+	// after a potentially long wait. Both-invalid leftovers can then discard
+	// only the auxiliary copy: the active old directory still remains intact.
+	_, summary, err := currentEntry(state, pending)
+	if err != nil {
+		return Summary{}, false, err
+	}
+	if repairExists {
+		if err := cleanupRepair(); err != nil {
+			return Summary{}, false, err
+		}
+	}
+	if entryExists {
+		if err := rename(entry, repair); err != nil {
+			return Summary{}, false, fmt.Errorf("quarantine invalid Graphify cache entry: %w", err)
+		}
+		repairExists = true
+	}
+	publicationErr := rename(pending, entry)
+	if publicationErr == nil {
+		if repairExists {
+			if err := cleanupRepair(); err != nil {
+				return Summary{}, false, err
+			}
+		}
+		return summary, false, nil
+	}
+	// A writer which did not participate in our lock may have installed a
+	// valid entry. Preserve it and report its actual graph, not our candidate.
+	if summary, reused, winnerErr := winner(); reused {
+		return summary, true, nil
+	} else if winnerErr != nil {
+		if !repairExists {
+			return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; inspect destination: %w", publicationErr, winnerErr)
+		}
+		return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; inspect destination: %w; preserved recovery directory: %s", publicationErr, winnerErr, repair)
+	}
+	if !repairExists {
+		return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w", publicationErr)
+	}
+	present, err := cacheDirectory(entry)
+	if err != nil {
+		return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; inspect destination: %w; preserved recovery directory: %s", publicationErr, err, repair)
+	}
+	if present {
+		return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; destination was not absent, preserved recovery directory: %s", publicationErr, repair)
+	}
+	if restoreErr := rename(repair, entry); restoreErr != nil {
+		if summary, reused, winnerErr := winner(); reused {
+			return summary, true, nil
+		} else if winnerErr != nil {
+			return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; restore previous entry: %w; inspect destination: %w; preserved recovery directory: %s", publicationErr, restoreErr, winnerErr, repair)
+		}
+		return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; restore previous entry: %w; preserved recovery directory: %s", publicationErr, restoreErr, repair)
+	}
+	return Summary{}, false, fmt.Errorf("publish Graphify cache entry: %w; previous entry restored", publicationErr)
+}
+
 // Build reuses a current graph or extracts and activates a new one. A failed or
 // incomplete extraction never replaces anything, and a concurrent success wins.
 func Build(ctx context.Context, o Options) (BuildResult, error) {
@@ -776,12 +942,20 @@ func Build(ctx context.Context, o Options) (BuildResult, error) {
 		return result, err
 	}
 	result = BuildResult{Status: "ok", Command: "build", Graph: graphPath(entry), Provenance: provenance(state)}
-	if _, err := os.Stat(entry); err == nil {
-		if _, result.Summary, err = currentEntry(state, entry); err != nil {
+	if _, summary, err := currentEntry(state, entry); err == nil {
+		repairExists, err := cacheDirectory(entry + ".repair")
+		if err != nil {
 			return result, err
 		}
-		result.Reused = true
-		return result, nil
+		if repairExists {
+			if summary, reused, err := o.activate(ctx, state, parent, entry, ""); reused || err != nil {
+				result.Summary, result.Reused = summary, reused
+				return result, err
+			}
+		} else {
+			result.Summary, result.Reused = summary, true
+			return result, nil
+		}
 	}
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return result, err
@@ -817,20 +991,14 @@ func Build(ctx context.Context, o Options) (BuildResult, error) {
 	if err := writeJSON(filepath.Join(pending, "ready.json"), ready); err != nil {
 		return result, err
 	}
-	if _, err := os.Stat(entry); err == nil {
-		if _, _, err := currentEntry(state, entry); err != nil {
-			return result, err
-		}
-	} else if err := os.Rename(pending, entry); err != nil {
-		if !errors.Is(err, syscall.EEXIST) && !errors.Is(err, syscall.ENOTEMPTY) {
-			return result, err
-		}
-		if _, _, err := currentEntry(state, entry); err != nil {
-			return result, err
-		}
+	if _, _, err := currentEntry(state, pending); err != nil {
+		return result, err
+	}
+	if result.Summary, result.Reused, err = o.activate(ctx, state, parent, entry, pending); err != nil {
+		return result, err
 	}
 	elapsed := seconds(started)
-	result.Summary, result.ElapsedSeconds = summary, &elapsed
+	result.ElapsedSeconds = &elapsed
 	return result, nil
 }
 

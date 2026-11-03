@@ -31,8 +31,29 @@ func managerScript(protocol bool) string {
 	return managerScriptIdentity("", fixtureSHA)
 }
 
+func TestProductionBootstrapCachedV8RefreshesToVerifiedV9(test *testing.T) {
+	launcher, binary, calls := bootstrapFixture(test, false)
+	root := filepath.Dir(filepath.Dir(launcher))
+	current := managerScriptIdentity("cw-manager-v9", fixtureSHA)
+	bootstrapRelease(test, root, current)
+	writeFixture(test, binary, managerScriptIdentity("cw-manager-v8", fixtureSHA), 0o755)
+	stdout, stderr, err := bootstrapStreams(test.Context(), launcher, "status")
+	if err != nil || strings.TrimSpace(stdout) != `{"forwarded":true}` || stderr != "" {
+		test.Fatalf("cached v8 refresh: %v: stdout=%q stderr=%q", err, stdout, stderr)
+	}
+	data, err := os.ReadFile(binary)
+	if err != nil || string(data) != current {
+		test.Fatalf("cache did not receive verified v9: %q, %v", data, err)
+	}
+	requested, err := os.ReadFile(calls)
+	if err != nil || len(strings.Split(strings.TrimSpace(string(requested)), "\n")) != 2 {
+		test.Fatalf("v8 cache bypass did not acquire both verified assets: %q, %v", requested, err)
+	}
+	assertBootstrapCleaned(test, launcher, binary)
+}
+
 func currentManagerScriptIdentity(revision string) string {
-	return managerScriptIdentity("cw-manager-v8", revision)
+	return managerScriptIdentity("cw-manager-v9", revision)
 }
 
 func managerScriptIdentity(protocol, revision string) string {
@@ -168,7 +189,7 @@ func TestBootstrapColdDryRunAndHelpPreserveLegacy(t *testing.T) {
 	}
 }
 func TestBootstrapRefreshesUnsupportedNativeProtocol(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v9"} {
+	for _, protocol := range []string{"cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v10"} {
 		t.Run(protocol, func(t *testing.T) {
 			launcher, binary, calls := bootstrapFixture(t, false)
 			writeFixture(t, binary, managerScriptIdentity(protocol, fixtureSHA), 0755)
@@ -224,9 +245,9 @@ func TestBootstrapPreservesUnidentifiedCache(t *testing.T) {
 }
 
 func TestBootstrapRejectsUnsupportedReleasesWithoutChangingOwnedInstallation(t *testing.T) {
-	for _, latest := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v9", "unknown"} {
+	for _, latest := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v10", "unknown"} {
 		t.Run(latest, func(t *testing.T) {
-			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7"} {
+			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7", "cw-manager-v8"} {
 				t.Run(cache, func(t *testing.T) {
 					launcher, binary, calls := bootstrapFixture(t, false)
 					root := filepath.Dir(filepath.Dir(launcher))
@@ -238,7 +259,7 @@ func TestBootstrapRejectsUnsupportedReleasesWithoutChangingOwnedInstallation(t *
 					}
 					home, owned, links := bootstrapOwnedInstallation(t, root)
 					stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
-					if err == nil || stdout != "" || !strings.Contains(stderr, "released native manager does not support the required bootstrap protocol cw-manager-v8") {
+					if err == nil || stdout != "" || !strings.Contains(stderr, "released native manager does not support the required bootstrap protocol cw-manager-v9") {
 						t.Fatalf("latest %s was accepted: %v: stdout=%q stderr=%q", latest, err, stdout, stderr)
 					}
 					assertBootstrapCacheUnchanged(t, binary, old)
@@ -509,7 +530,7 @@ func TestBootstrapReusesCompatibleCacheWithoutRequiringSourceRevision(t *testing
 	}
 }
 
-func TestBootstrapColdV8Download(t *testing.T) {
+func TestProductionBootstrapColdV9Download(t *testing.T) {
 	launcher, binary, calls := bootstrapFixture(t, false)
 	stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install")
 	if err != nil || strings.TrimSpace(stdout) != `{"forwarded":true}` || stderr != "" {

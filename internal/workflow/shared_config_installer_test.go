@@ -481,6 +481,19 @@ func TestSharedConfigInstallerRecoveryRejectsOwnedDriftBeforeReversal(t *testing
 func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 	t.Parallel()
 	valid := sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol")
+	t.Run("supported five-key preview", func(test *testing.T) {
+		test.Parallel()
+		fixture := newInstallerFixture(test)
+		fixture.seedUserFiles(test)
+		resource := strings.Replace(valid, "model_context_window = 512000\n", "", 1)
+		sharedInstallerRelease(test, fixture, resource)
+		installer := sharedLifecycleInstaller(test, fixture, false)
+		before := installerSnapshot(test, fixture.base)
+		if _, err := installer.Setup(false); err != nil {
+			test.Fatalf("five-key shared source preview failed: %v", err)
+		}
+		installerUnchanged(test, fixture.base, before)
+	})
 	for name, resource := range map[string]string{
 		"malformed":                   "version = [",
 		"unsupported version":         strings.Replace(valid, "version = 1", "version = 2", 1),
@@ -488,7 +501,6 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 		"wrong feature type":          strings.Replace(valid, "memories = true", "memories = 'true'", 1),
 		"wrong model type":            strings.Replace(valid, `extract_model = "gpt-6.1-sol"`, "extract_model = true", 1),
 		"missing consolidation model": strings.Replace(valid, "consolidation_model = \"gpt-6.1-sol\"\n", "", 1),
-		"missing context window":      strings.Replace(valid, "model_context_window = 512000\n", "", 1),
 		"string context window":       strings.Replace(valid, "model_context_window = 512000", "model_context_window = '512000'", 1),
 		"zero context window":         strings.Replace(valid, "model_context_window = 512000", "model_context_window = 0", 1),
 		"unknown memory key":          valid + "device_retention = 99\n",

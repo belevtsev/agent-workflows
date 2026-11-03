@@ -66,6 +66,38 @@ check logs belong outside project source and immutable managed releases. The
 baseline identifies the selected worktree, revision and current source content,
 including relevant dirty and untracked files. Do not edit old revision files.
 
+New artifacts sync their file content before no-replace publication, then sync
+their descriptor-bound containing directory. New storage components and their
+parents are synced through the existing ancestor; starting a task also syncs the
+store after publishing its initial record. A reported durability failure can mean
+the named artifact is already published. Inspect and reload the absolute task or
+artifact path in the error before retrying. Keep published bytes intact rather
+than replaying an update callback or starting another check on that assumption.
+
+Checks execute the exact planned argv without a shell or argument rewriting.
+The Git gate permits known inspection dispatch: `diff`, `status`, `log`, `show`,
+`rev-parse`, `rev-list`, `ls-files`, `ls-tree`, `merge-base`, and `describe`.
+Standalone metadata outputs are `-v`/`--version`, `--html-path`, `--man-path`,
+`--info-path`, and bare `--exec-path`. Global directory/path values are consumed
+as data. Explicit `-c` and `--config-env` overrides allow only `core.quotePath`,
+`color.ui`, `diff.noprefix`, `diff.mnemonicPrefix`, `diff.context`, `status.short`,
+and `status.branch`, compared case-insensitively. Unknown commands, aliases,
+configuration keys, pagination, `--exec-path=...`, and `--list-cmds` selectors are
+refused. Terraform/tofu still classify their global options before refusing
+`apply` and `destroy`.
+
+This Git filter establishes known inspection dispatch. Arbitrary command
+arguments, inherited Git configuration/environment, and the selected executable
+remain separate trust boundaries. It does not guarantee that all admitted Git
+arguments are read-only or provide a sandbox for arbitrary executables.
+
+Loading a task validates its bounded plan structure and integrity without applying
+new-input defaults or today's command admission policy. Historical declarations
+and run argv remain unchanged, including commands now refused for new work.
+Starting a task checks every command against current policy; running a stored
+check rechecks its selected argv against current policy before execution or a
+new check log/revision. Readable history does not authorize reexecution.
+
 Before implementation, place the exact emitted context in the shared consultation
 request's `state.task_context`. A coordinated multi-repository task can instead
 put its contexts in `state.task_contexts`; each task's context must occur once.
