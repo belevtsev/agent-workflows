@@ -21,13 +21,13 @@ substantive and other bounded execution work and `high` for bounded evidence. Se
 
 | Work | Default model | Effort |
 | --- | --- | --- |
-| Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6-astra` | `max` |
+| Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6.1-sol` | `max` |
 | Routine commits, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` | `high` |
 | Other bounded execution profiles | `gpt-6-luna` | `xhigh` |
 | Bounded read-only lookup or summarization | `gpt-6-luna` | `high` |
 
 The policy preserves fixed specialist settings and describes availability
-fallbacks. Astra `max` is configured; Astra `ultra` requires an explicit user request.
+fallbacks. Sol 6.1 `max` is configured; Sol `ultra` requires an explicit user request.
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
@@ -69,7 +69,7 @@ authority. Existing tests are not retroactively claimed as blind-authored.
 coordinator policy. In Codex `config.toml`:
 
 ```toml
-model = "gpt-6-astra"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
 ```
 
@@ -103,7 +103,7 @@ model. Historical snapshots retain their own profile settings.
 
 The policy remains version 2. Its `sol` profile, `sol_unavailable` fallback and
 `max_for_sol` rule keep their names as schema identifiers; the `sol` profile now
-runs `gpt-6-astra`. `max_for_sol: configured_or_explicit_user_request`
+runs `gpt-6.1-sol`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
 continue rejecting configured Max for Sol models. The native validator enforces

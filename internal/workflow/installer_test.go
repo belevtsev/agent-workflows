@@ -529,7 +529,24 @@ func TestInstallerOwnedConflictsRejectBeforeAnyWrites(t *testing.T) {
 			i := f.installer(true)
 			switch conflict {
 			case "model":
-				installerWrite(t, i.config, strings.ReplaceAll(installerRead(t, i.config), "gpt-6-astra", "user-edited"), 0o600)
+				original := installerRead(t, i.config)
+				info, err := os.Stat(i.config)
+				if err != nil {
+					t.Fatal(err)
+				}
+				drifted := solDefaultsReplaceRootModel(t, original, "gpt-6.1-sol", "user-edited")
+				installerWrite(t, i.config, drifted, info.Mode().Perm())
+				actual := installerRead(t, i.config)
+				if actual == original || actual != drifted || solDefaultsReplaceRootModel(t, actual, "user-edited", "gpt-6.1-sol") != original {
+					t.Fatal("model conflict did not change exactly the root model value")
+				}
+				changedInfo, err := os.Stat(i.config)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if changedInfo.Mode().Perm() != info.Mode().Perm() {
+					t.Fatal("model conflict changed the config mode")
+				}
 			case "global":
 				installerWrite(t, i.agents, strings.Replace(installerRead(t, i.agents), "# Working conventions", "# User edited managed conventions", 1), 0o600)
 			case "registration", "pointer":

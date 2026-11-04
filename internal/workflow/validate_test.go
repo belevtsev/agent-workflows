@@ -133,7 +133,7 @@ func TestValidateSuiteReportAndDefaultsWithoutWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(defaults, map[string]string{"model": "gpt-6-astra", "model_reasoning_effort": "max"}) {
+	if !reflect.DeepEqual(defaults, map[string]string{"model": "gpt-6.1-sol", "model_reasoning_effort": "max"}) {
 		t.Fatalf("unexpected coordinator defaults: %#v", defaults)
 	}
 	if after := suiteSnapshot(t, fixture.root); !reflect.DeepEqual(before, after) {
@@ -159,7 +159,7 @@ func TestValidateSourceTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	defaults, err := ModelDefaults(root, manifest)
-	if err != nil || defaults["model"] != "gpt-6-astra" || defaults["model_reasoning_effort"] != "max" {
+	if err != nil || defaults["model"] != "gpt-6.1-sol" || defaults["model_reasoning_effort"] != "max" {
 		t.Fatalf("maintained suite defaults = %#v, error = %v", defaults, err)
 	}
 }
@@ -810,7 +810,7 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	for model, roles := range map[string]map[string][]string{
-		"gpt-6-astra": {"max": {"coordinator", "coding", "planning", "review", "documentation", "pr_authoring", "unknown-role"}},
+		"gpt-6.1-sol": {"max": {"coordinator", "coding", "testing", "planning", "architecture", "review", "diagnosis", "documentation", "issue_management", "pr_authoring", "unknown-role"}},
 		"gpt-6-luna":  {"high": {"commit_execution", "pr_authoring_routine", "pr_submission", "lookup", "summarization"}},
 	} {
 		for effort, names := range roles {
@@ -823,17 +823,21 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 		}
 	}
 	for _, effort := range []string{"max", "xhigh", "ultra"} {
-		if worker, err := ResolveWorker(policy, "coding", effort); err != nil || worker["reasoning_effort"] != effort {
+		if worker, err := ResolveWorker(policy, "coding", effort); err != nil || worker["model"] != "gpt-6.1-sol" || worker["reasoning_effort"] != effort {
 			t.Fatalf("coding %s = %v, %v", effort, worker, err)
 		}
 	}
-	for _, test := range []struct{ role, effort string }{{"lookup", "ultra"}, {"commit_execution", "max"}, {"coding", "high"}, {" ", ""}, {"\x1c", ""}} {
+	for _, test := range []struct{ role, effort string }{{"lookup", "ultra"}, {"commit_execution", "max"}, {"coding", "high"}, {"coding", "invalid-effort"}, {" ", ""}, {"\x1c", ""}} {
 		if worker, err := ResolveWorker(policy, test.role, test.effort); err == nil {
 			t.Fatalf("%q at %q = %v", test.role, test.effort, worker)
 		}
 	}
 	if policy["profiles"].(Object)["sol"].(Object)["reasoning_effort"] != "max" {
 		t.Fatal("resolution changed the policy defaults")
+	}
+	execution := policy["profiles"].(Object)["luna_execution"].(Object)
+	if execution["model"] != "gpt-6-luna" || execution["reasoning_effort"] != "xhigh" {
+		t.Fatalf("Luna execution defaults = %#v", execution)
 	}
 }
 
