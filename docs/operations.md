@@ -203,8 +203,8 @@ memories = true
 [memories]
 generate_memories = true
 use_memories = true
-extract_model = "gpt-6-astra"
-consolidation_model = "gpt-6-astra"
+extract_model = "gpt-6.1-sol"
+consolidation_model = "gpt-6.1-sol"
 ```
 
 Its `version = 1` belongs to the source resource and is not written into the

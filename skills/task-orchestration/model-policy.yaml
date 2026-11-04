@@ -17,7 +17,7 @@ profiles:
   # Profile names and the sol_* keys below are stable identifiers the validator
   # requires. `sol` is the substantive profile, whichever model it runs.
   sol:
-    model: gpt-6-astra
+    model: gpt-6.1-sol
     reasoning_effort: max
     user_requested_efforts: [xhigh, ultra]
     scope: substantive
@@ -44,8 +44,8 @@ effort_policy:
   automatic_escalation: false
 
 effort_guidance:
-  ultra: Available for Astra only on explicit user request; task-directed delegation remains available at other efforts.
-  max: Configured default for substantive Astra work; delegate useful independent assignments according to the task.
+  ultra: Available for Sol only on explicit user request; task-directed delegation remains available at other efforts.
+  max: Configured default for substantive Sol 6.1 work; delegate useful independent assignments according to the task.
   xhigh: Configured default for other bounded execution; GitHub execution uses high. Promote uncertain scope or new consequential claims to substantive ownership.
   comparison: Compare actual quality, total tokens, and elapsed time for equivalent work; effort labels alone do not establish depth, cost, or savings.
 

@@ -52,7 +52,7 @@ The Codex defaults come from
 [global/codex-defaults.toml](global/codex-defaults.toml):
 
 ```toml
-model = "gpt-6-astra"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "max"
 model_context_window = 512000
 
@@ -62,8 +62,8 @@ memories = true
 [memories]
 generate_memories = true
 use_memories = true
-extract_model = "gpt-6-astra"
-consolidation_model = "gpt-6-astra"
+extract_model = "gpt-6.1-sol"
+consolidation_model = "gpt-6.1-sol"
 ```
 
 Unrelated settings, permissions and local content are preserved on both hosts.
@@ -166,7 +166,7 @@ Codex and Claude Code keep separate roles, and the rest of the policy is shared.
 
 | Role | Codex | Claude Code |
 | --- | --- | --- |
-| Coordination, substantive work, review, and final verification | `gpt-6-astra` at `max` | `claude-opus-5-5` at `xhigh` |
+| Coordination, substantive work, review, and final verification | `gpt-6.1-sol` at `max` | `claude-opus-5-5` at `xhigh` |
 | Routine commit, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` at `high` | `claude-sonnet-5-5` at `medium` |
 | Other bounded execution profiles | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
 | Bounded evidence gathering | `gpt-6-luna` at `high` | `claude-opus-5-5` at `high` |

@@ -27,17 +27,17 @@ Read [model-policy.yaml](model-policy.yaml) and the relevant section of
 [use cases](references/use-cases.md). Under Claude Code, also read
 [model-policy.claude.yaml](model-policy.claude.yaml), which replaces the profiles and
 roles, and [host mapping](references/hosts.md), which covers dispatch and paths. Where
-this skill names Astra and Luna below, use the matching Claude Code profile. Read [connected sources](references/connected-sources.md)
+this skill names Sol and Luna below, use the matching Claude Code profile. Read [connected sources](references/connected-sources.md)
 only when Jira, Confluence, GitHub, or documentation supplies evidence or requested
 writes. Fetch linked evidence needed for the decision; unrelated services are not
 prerequisites for local work.
 
 The YAML is configurable dispatch policy, not native host configuration. Codex
-defaults are Astra `max` for substantive work, Luna `high` for bounded evidence
+defaults are Sol 6.1 `max` for substantive work, Luna `high` for bounded evidence
 and the `github` execution profile, and Luna `xhigh` for other bounded execution.
 Claude's `github` profile uses Sonnet 5.5 `medium`. Resolve each role's profile and
-scope from the current policy, preserving explicit user choices. Astra `max` may be configured
-or explicitly requested; Astra `ultra` needs an explicit user request allowed by the
+scope from the current policy, preserving explicit user choices. Sol `max` may be configured
+or explicitly requested; Sol `ultra` needs an explicit user request allowed by the
 profile. Never escalate automatically. A saved policy cannot switch an active
 session. Verify model and effort from runtime metadata; disclose a mismatch. Without
 an explicit user override, substantive coordination and final verification require

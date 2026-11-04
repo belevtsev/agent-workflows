@@ -5,10 +5,10 @@ never authorize implementation, publication, or operations. Resolve model, effor
 and role scope from [model-policy.yaml](../model-policy.yaml), following the
 [entrypoint](../SKILL.md)'s runtime and authorization safeguards.
 
-Defaults are Astra `max` for substantive work, Luna `high` for bounded evidence,
+Defaults are Sol 6.1 `max` for substantive work, Luna `high` for bounded evidence,
 Luna `high` for GitHub execution, and Luna `xhigh` for other bounded execution.
-Claude's GitHub execution default is Sonnet 5.5 `medium`. Astra `max` can be
-configured or explicitly requested; Astra `ultra` requires an explicit permitted user request.
+Claude's GitHub execution default is Sonnet 5.5 `medium`. Sol `max` can be
+configured or explicitly requested; Sol `ultra` requires an explicit permitted user request.
 Automatic escalation stays disabled. Configuration does not switch active sessions
 or prove depth, cost, or savings.
 

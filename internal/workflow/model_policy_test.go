@@ -119,7 +119,13 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 		name, model, effort string
 		edit                func(Object)
 	}{
-		{"maintained defaults", "gpt-6-astra", "max", func(Object) {}},
+		{"maintained defaults", "gpt-6.1-sol", "max", func(Object) {}},
+		{"configured historical Astra Max", "gpt-6-astra", "max", configuredModelPolicy},
+		{"configured supported custom profile", "gpt-6-sol", "ultra", func(policy Object) {
+			policy["profiles"].(Object)["custom"] = Object{"model": "gpt-6-sol", "reasoning_effort": "ultra", "user_requested_efforts": []any{"max"}, "scope": "substantive"}
+			policy["roles"].(Object)["coordinator"] = "custom"
+			policy["effort_policy"].(Object)["default_substantive"] = "ultra"
+		}},
 		{"historical defaults and explicit Max override", "gpt-6.1-sol", "ultra", historicalModelPolicy},
 		{"historical previous Sol", "gpt-6-sol", "ultra", func(policy Object) {
 			historicalModelPolicy(policy)
@@ -140,19 +146,19 @@ func TestModelPolicyAcceptsHistoricalAndConfiguredDefaults(t *testing.T) {
 		{"configured previous Sol", "gpt-6-sol", "max", func(policy Object) {
 			policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6-sol"
 		}},
-		{"configured without optional xhigh guidance", "gpt-6-astra", "max", func(policy Object) {
+		{"configured without optional xhigh guidance", "gpt-6.1-sol", "max", func(policy Object) {
 			delete(policy["effort_guidance"].(Object), "xhigh")
 		}},
-		{"supported Luna effort overrides", "gpt-6-astra", "max", func(policy Object) {
+		{"supported Luna effort overrides", "gpt-6.1-sol", "max", func(policy Object) {
 			policy["profiles"].(Object)["luna_execution"].(Object)["user_requested_efforts"] = []any{"high", "xhigh", "max"}
 		}},
-		{"configured Ultra override", "gpt-6-astra", "ultra", func(policy Object) {
+		{"configured Ultra override", "gpt-6.1-sol", "ultra", func(policy Object) {
 			policy["profiles"].(Object)["sol"].(Object)["reasoning_effort"] = "ultra"
 			policy["profiles"].(Object)["sol"].(Object)["user_requested_efforts"] = []any{"max", "xhigh"}
 			policy["effort_policy"].(Object)["default_substantive"] = "ultra"
 			policy["effort_policy"].(Object)["configured_max_profiles"] = []any{}
 		}},
-		{"unordered exact configured Max profiles", "gpt-6-astra", "max", func(policy Object) {
+		{"unordered exact configured Max profiles", "gpt-6.1-sol", "max", func(policy Object) {
 			policy["profiles"].(Object)["luna_execution"].(Object)["reasoning_effort"] = "max"
 			policy["effort_policy"].(Object)["configured_max_profiles"] = []any{"sol", "luna_execution"}
 		}},
@@ -452,7 +458,7 @@ func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := policyProfiles("gpt-6-astra", "max", "xhigh")
+	want := policyProfiles("gpt-6.1-sol", "max", "xhigh")
 	want["github"] = Object{"model": "gpt-6-luna", "reasoning_effort": "high", "scope": "bounded_execution"}
 	want["expert"] = Object{"model": "gpt-6-astra", "reasoning_effort": "ultra", "scope": "substantive"}
 	if !reflect.DeepEqual(report["model_profiles"], want) {
