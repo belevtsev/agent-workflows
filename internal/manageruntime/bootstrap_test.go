@@ -13,7 +13,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -65,11 +67,13 @@ exit "${CW_MOCK_CHILD_EXIT-0}"
 
 // R-BS: every payload, archive and call record is under this test's private
 // TMPDIR. The launcher receives only synthetic HOME and an explicit clean env.
-func bootstrapFixture(t *testing.T, legacy bool) (string, string, string) {
+// The directory holding install.sh contains nothing else: install.sh has no
+// checkout cache (.bin/cw) or checkout lock (.bin.lock) any more.
+func bootstrapFixture(t *testing.T) (string, string) {
 	t.Helper()
 	root := realTemp(t)
 	checkout := filepath.Join(root, "source with spaces")
-	if err := os.MkdirAll(filepath.Join(checkout, ".bin"), 0755); err != nil {
+	if err := os.MkdirAll(checkout, 0755); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile("../../install.sh")
@@ -78,10 +82,6 @@ func bootstrapFixture(t *testing.T, legacy bool) (string, string, string) {
 	}
 	launcher := filepath.Join(checkout, "install.sh")
 	writeFixture(t, launcher, string(data), 0755)
-	binary := filepath.Join(checkout, ".bin", "cw")
-	if legacy {
-		writeFixture(t, binary, managerScript(false), 0755)
-	}
 	mockBin := filepath.Join(root, "mock-bin")
 	if err := os.Mkdir(mockBin, 0755); err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ esac
 		t.Setenv(name, value)
 	}
 	bootstrapRelease(t, root, managerScript(true))
-	return launcher, binary, filepath.Join(root, "calls")
+	return launcher, filepath.Join(root, "calls")
 }
 func bootstrapRelease(t *testing.T, root, script string) {
 	t.Helper()
@@ -248,41 +248,30 @@ func assertBootstrapPinnedRequests(t *testing.T, calls string) {
 		}
 	}
 }
-func assertBootstrapCleaned(t *testing.T, launcher, binary string) {
+
+// assertBootstrapCleaned requires that no private stage survives, that Git
+// and Go were never invoked, and that the launcher directory still holds only
+// install.sh: no .bin cache, .bin.lock or .bootstrap.* stage is created there.
+func assertBootstrapCleaned(t *testing.T, launcher string) {
 	t.Helper()
 	root := filepath.Dir(filepath.Dir(launcher))
 	stages, err := filepath.Glob(filepath.Join(root, "cw-bootstrap.*"))
 	if err != nil || len(stages) != 0 {
 		t.Fatalf("private bootstrap stages remain: %v %v", stages, err)
 	}
-	entries, err := os.ReadDir(filepath.Dir(binary))
+	entries, err := os.ReadDir(filepath.Dir(launcher))
 	if err != nil {
 		t.Fatal(err)
 	}
+	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if strings.HasPrefix(entry.Name(), ".bootstrap.") {
-			t.Fatalf("checkout bootstrap stage remains: %s", entry.Name())
-		}
+		names = append(names, entry.Name())
+	}
+	if !slices.Equal(names, []string{"install.sh"}) {
+		t.Fatalf("bootstrap wrote next to install.sh: %v", names)
 	}
 	if _, err := os.Lstat(filepath.Join(root, "forbidden")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("bootstrap invoked Git or Go: %v", err)
-	}
-}
-func assertBootstrapCacheUnchanged(t *testing.T, binary, previous string) {
-	t.Helper()
-	if previous == "" {
-		if _, err := os.Lstat(binary); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("bootstrap published a checkout cache: %v", err)
-		}
-		return
-	}
-	data, err := os.ReadFile(binary)
-	if err != nil || string(data) != previous {
-		t.Fatalf("cache bytes changed: %v", err)
-	}
-	info, err := os.Stat(binary)
-	if err != nil || info.Mode().Perm() != 0755 {
-		t.Fatalf("cache permissions changed: %v", err)
 	}
 }
 func bootstrapOwnedInstallation(t *testing.T, root string) (string, map[string]string, map[string]string) {
@@ -333,19 +322,18 @@ func assertBootstrapOwnedInstallation(t *testing.T, owned, links map[string]stri
 		}
 	}
 }
-func bootstrapSuccess(t *testing.T, launcher, binary, previous string, args ...string) {
+func bootstrapSuccess(t *testing.T, launcher string, args ...string) {
 	t.Helper()
 	before := bootstrapTree(t, filepath.Dir(launcher))
 	stdout, stderr, err := bootstrapStreams(t.Context(), launcher, args...)
 	if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-		t.Fatal("bootstrap changed cache, lock or checkout inventory")
+		t.Fatal("bootstrap changed the launcher directory")
 	}
 	if err != nil || strings.TrimSpace(stdout) != `{"forwarded":true}` || stderr != "" {
 		t.Fatalf("verified child did not run: %v stdout=%q stderr=%q", err, stdout, stderr)
 	}
-	assertBootstrapCacheUnchanged(t, binary, previous)
 	assertBootstrapPinnedRequests(t, filepath.Join(filepath.Dir(filepath.Dir(launcher)), "calls"))
-	assertBootstrapCleaned(t, launcher, binary)
+	assertBootstrapCleaned(t, launcher)
 	steps, err := os.ReadFile(filepath.Join(filepath.Dir(filepath.Dir(launcher)), "child-calls"))
 	verified, executed := strings.Index(string(steps), "verified v1.2.3\n"), strings.Index(string(steps), "executed\n")
 	if err != nil || verified < 0 || executed <= verified {
@@ -359,145 +347,102 @@ func bootstrapSuccess(t *testing.T, launcher, binary, previous string, args ...s
 	}
 }
 
-// R-BS: old refresh/reuse tests now require preservation and fresh acquisition.
-func TestProductionBootstrapCachedV8PreservedByVerifiedV10(t *testing.T) {
-	launcher, binary, _ := bootstrapFixture(t, false)
-	old := managerScriptIdentity("cw-manager-v8", fixtureSHA)
-	writeFixture(t, binary, old, 0755)
-	bootstrapSuccess(t, launcher, binary, old, "status")
-}
-func TestBootstrapPreservesRecognizedLegacyManager(t *testing.T) {
-	launcher, binary, _ := bootstrapFixture(t, true)
-	bootstrapSuccess(t, launcher, binary, managerScript(false), "status", "--home", "/fixture/home")
-}
-func TestBootstrapPreservesAllCachedProtocols(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10"} {
-		t.Run(protocol, func(t *testing.T) {
-			launcher, binary, _ := bootstrapFixture(t, false)
-			old := managerScriptIdentity(protocol, fixtureSHA)
-			writeFixture(t, binary, old, 0755)
-			bootstrapSuccess(t, launcher, binary, old, "status")
-		})
-	}
-}
-func TestBootstrapPreservesUnidentifiedCache(t *testing.T) {
-	launcher, binary, _ := bootstrapFixture(t, true)
-	old := "#!/bin/sh\nprintf '%s\\n' unknown\n"
-	writeFixture(t, binary, old, 0755)
-	bootstrapSuccess(t, launcher, binary, old, "status")
-}
+// R-BS: every run acquires a fresh pinned cw-manager-v10 release; nothing is
+// cached or locked next to install.sh.
 func TestProductionBootstrapColdV10Download(t *testing.T) {
-	launcher, binary, _ := bootstrapFixture(t, false)
-	bootstrapSuccess(t, launcher, binary, "", "install")
-	if _, err := os.Lstat(filepath.Join(filepath.Dir(launcher), ".bin.lock")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("bootstrap created checkout lock: %v", err)
-	}
+	launcher, _ := bootstrapFixture(t)
+	bootstrapSuccess(t, launcher, "install")
 }
-func TestBootstrapIgnoresCompatibleCacheWithoutRequiringSourceRevision(t *testing.T) {
-	for _, args := range [][]string{{"status"}, {"recover"}, {"install", "--dry-run=false"}} {
-		t.Run(strings.Join(args, "_"), func(t *testing.T) {
-			launcher, binary, _ := bootstrapFixture(t, false)
-			old := currentManagerScriptIdentity(strings.Repeat("1", 40))
-			writeFixture(t, binary, old, 0755)
-			bootstrapSuccess(t, launcher, binary, old, args...)
+
+// R4: install.sh help describes only the standalone manager.
+var bootstrapRemovedHelp = []*regexp.Regexp{
+	regexp.MustCompile(`\bvalidate\b`),
+	regexp.MustCompile(`--migrate-from`),
+	regexp.MustCompile(`--source\b`),
+	regexp.MustCompile(`--no-checkout\b`),
+	regexp.MustCompile(`developer source compatibility`),
+}
+
+// R-BS / R4: dry-run boolean forms and help are offline: no downloads, child
+// runs or persistent writes, and help omits the removed source-mode surface.
+func TestBootstrapColdDryRunAndHelpAreOffline(t *testing.T) {
+	for _, argument := range []string{"--dry-run", "--dry-run=1", "--dry-run=t", "--dry-run=T", "--dry-run=true", "--dry-run=TRUE", "--dry-run=True", "--help", "help"} {
+		t.Run(argument, func(t *testing.T) {
+			launcher, calls := bootstrapFixture(t)
+			root := filepath.Dir(filepath.Dir(launcher))
+			home, owned, links := bootstrapOwnedInstallation(t, root)
+			before := bootstrapTree(t, root)
+			args := []string{"install", "--home", home, argument}
+			if argument == "help" {
+				args = []string{argument}
+			}
+			stdout, stderr, err := bootstrapStreams(t.Context(), launcher, args...)
+			if err != nil || stderr != "" {
+				t.Fatalf("offline bootstrap: %v stdout=%q stderr=%q", err, stdout, stderr)
+			}
+			if argument == "help" || argument == "--help" {
+				if !strings.Contains(stdout, "Usage: install.sh") {
+					t.Fatalf("standalone bootstrap help missing: %q", stdout)
+				}
+				for _, removed := range bootstrapRemovedHelp {
+					if removed.MatchString(stdout) {
+						t.Fatalf("help still lists removed surface %s: %q", removed, stdout)
+					}
+				}
+			} else {
+				// R-BS / bootstrap-native-v4: compare the standalone wire object,
+				// including exact fields and values, without requiring JSON key order.
+				want := map[string]any{"dry_run": true, "environment": map[string]any{"kind": "standalone", "status": "deferred"}, "next_step": "Run the bootstrap without --dry-run to prepare a verified standalone manager", "validation": "deferred"}
+				var got map[string]any
+				if err := json.Unmarshal([]byte(stdout), &got); err != nil || !reflect.DeepEqual(got, want) {
+					t.Fatalf("standalone dry-run wire differs: %q: %v", stdout, err)
+				}
+			}
+			if after := bootstrapTree(t, root); !reflect.DeepEqual(after, before) {
+				t.Fatal("offline bootstrap made persistent writes")
+			}
+			assertBootstrapOwnedInstallation(t, owned, links)
+			for _, path := range []string{calls, filepath.Join(root, "uname-calls"), filepath.Join(root, "child-calls")} {
+				if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("offline bootstrap invoked or created %s: %v", path, err)
+				}
+			}
+			assertBootstrapCleaned(t, launcher)
 		})
 	}
-	bootstrapReadOnlyCases(t, []string{"compatible-other-revision"}, false)
 }
-func TestBootstrapColdDryRunAndHelpPreserveLegacy(t *testing.T) {
-	bootstrapReadOnlyCases(t, []string{"legacy"}, false)
-}
-func TestBootstrapColdDryRunBooleanFormsNeverCreateCache(t *testing.T) {
-	bootstrapReadOnlyCases(t, []string{"cold"}, true)
-}
-func TestBootstrapStaleManagersDryRunHasNoDownloadsOrPersistentWrites(t *testing.T) {
-	bootstrapReadOnlyCases(t, []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7"}, false)
-}
-func bootstrapReadOnlyCases(t *testing.T, protocols []string, removeCache bool) {
-	t.Helper()
-	for _, protocol := range protocols {
-		for _, argument := range []string{"--dry-run", "--dry-run=1", "--dry-run=t", "--dry-run=T", "--dry-run=true", "--dry-run=TRUE", "--dry-run=True", "--help", "help"} {
-			t.Run(protocol+"/"+argument, func(t *testing.T) {
-				launcher, binary, calls := bootstrapFixture(t, protocol == "legacy")
-				root := filepath.Dir(filepath.Dir(launcher))
-				if protocol == "compatible-other-revision" {
-					writeFixture(t, binary, currentManagerScriptIdentity(strings.Repeat("1", 40)), 0755)
-				} else if protocol != "cold" && protocol != "legacy" {
-					writeFixture(t, binary, managerScriptIdentity(protocol, fixtureSHA), 0755)
-				}
-				if removeCache {
-					if err := os.Remove(filepath.Dir(binary)); err != nil {
-						t.Fatal(err)
-					}
-				}
-				home, owned, links := bootstrapOwnedInstallation(t, root)
-				before := bootstrapTree(t, root)
-				args := []string{"install", "--home", home, argument}
-				if argument == "help" || (protocol == "legacy" && strings.HasPrefix(argument, "--dry-run")) {
-					args = []string{argument}
-				}
-				stdout, stderr, err := bootstrapStreams(t.Context(), launcher, args...)
-				if err != nil || stderr != "" {
-					t.Fatalf("offline bootstrap: %v stdout=%q stderr=%q", err, stdout, stderr)
-				}
-				if argument == "help" || argument == "--help" {
-					if !strings.Contains(stdout, "Usage: install.sh") {
-						t.Fatalf("standalone bootstrap help missing: %q", stdout)
-					}
-				} else {
-					// R-BS / bootstrap-native-v4: compare the standalone wire object,
-					// including exact fields and values, without requiring JSON key order.
-					want := map[string]any{"dry_run": true, "environment": map[string]any{"kind": "standalone", "status": "deferred"}, "next_step": "Run the bootstrap without --dry-run to prepare a verified standalone manager", "validation": "deferred"}
-					var got map[string]any
-					if err := json.Unmarshal([]byte(stdout), &got); err != nil || !reflect.DeepEqual(got, want) {
-						t.Fatalf("standalone dry-run wire differs: %q: %v", stdout, err)
-					}
-				}
-				if after := bootstrapTree(t, root); !reflect.DeepEqual(after, before) {
-					t.Fatal("offline bootstrap made persistent writes")
-				}
-				assertBootstrapOwnedInstallation(t, owned, links)
-				for _, path := range []string{calls, filepath.Join(root, "uname-calls"), filepath.Join(root, "child-calls"), filepath.Join(filepath.Dir(launcher), ".bin.lock")} {
-					if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
-						t.Fatalf("offline bootstrap invoked or created %s: %v", path, err)
-					}
-				}
-			})
-		}
-	}
-}
+
+// R-BS: install.sh accepts only a published release whose manager reports
+// exactly cw-manager-v10; every other protocol is refused before the child runs.
 func TestBootstrapRejectsUnsupportedReleasesWithoutChangingOwnedInstallation(t *testing.T) {
-	for _, protocol := range []string{"cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "unknown"} {
+	for _, protocol := range []string{"cw-manager-v1", "cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v11", "cw-manager-v100", "unknown"} {
 		t.Run(protocol, func(t *testing.T) {
-			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v7", "cw-manager-v8"} {
-				t.Run(cache, func(t *testing.T) {
-					launcher, binary, calls := bootstrapFixture(t, false)
-					root := filepath.Dir(filepath.Dir(launcher))
-					old := ""
-					if cache != "cold" {
-						old = managerScriptIdentity(cache, strings.Repeat("1", 40))
-						writeFixture(t, binary, old, 0755)
-					}
-					home, owned, links := bootstrapOwnedInstallation(t, root)
-					bootstrapRelease(t, root, managerScriptIdentity(protocol, fixtureSHA))
-					before := bootstrapTree(t, filepath.Dir(launcher))
-					stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
-					if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-						t.Fatal("refused release changed cache, lock or checkout")
-					}
-					if err == nil || stdout != "" || !strings.Contains(stderr, "cw-manager-v10") {
-						t.Fatalf("unsupported release accepted: %v stdout=%q stderr=%q", err, stdout, stderr)
-					}
-					assertBootstrapCacheUnchanged(t, binary, old)
-					assertBootstrapOwnedInstallation(t, owned, links)
-					assertBootstrapPinnedRequests(t, calls)
-					assertBootstrapCleaned(t, launcher, binary)
-				})
+			launcher, calls := bootstrapFixture(t)
+			root := filepath.Dir(filepath.Dir(launcher))
+			home, owned, links := bootstrapOwnedInstallation(t, root)
+			bootstrapRelease(t, root, managerScriptIdentity(protocol, fixtureSHA))
+			before := bootstrapTree(t, filepath.Dir(launcher))
+			stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
+			if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
+				t.Fatal("refused release changed the launcher directory")
+			}
+			if err == nil || stdout != "" || !strings.Contains(stderr, "cw-manager-v10") {
+				t.Fatalf("unsupported release accepted: %v stdout=%q stderr=%q", err, stdout, stderr)
+			}
+			assertBootstrapOwnedInstallation(t, owned, links)
+			assertBootstrapPinnedRequests(t, calls)
+			assertBootstrapCleaned(t, launcher)
+			steps, err := os.ReadFile(filepath.Join(root, "child-calls"))
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(steps), "executed\n") {
+				t.Fatalf("refused release ran: %s", steps)
 			}
 		})
 	}
 }
-func TestBootstrapAcquisitionFailuresPreserveCacheAndOwnedInstallation(t *testing.T) {
+func TestBootstrapAcquisitionFailuresPreserveOwnedInstallation(t *testing.T) {
 	failures := []struct {
 		name    string
 		prepare func(*testing.T, string)
@@ -559,36 +504,26 @@ func TestBootstrapAcquisitionFailuresPreserveCacheAndOwnedInstallation(t *testin
 	}
 	for _, failure := range failures {
 		t.Run(failure.name, func(t *testing.T) {
-			for _, cache := range []string{"cold", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5"} {
-				t.Run(cache, func(t *testing.T) {
-					launcher, binary, _ := bootstrapFixture(t, false)
-					root := filepath.Dir(filepath.Dir(launcher))
-					old := ""
-					if cache != "cold" {
-						old = managerScriptIdentity(cache, fixtureSHA)
-						writeFixture(t, binary, old, 0755)
-					}
-					home, owned, links := bootstrapOwnedInstallation(t, root)
-					failure.prepare(t, root)
-					before := bootstrapTree(t, filepath.Dir(launcher))
-					stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
-					if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-						t.Fatal("failed acquisition changed cache, lock or checkout")
-					}
-					if err == nil || stdout != "" || stderr == "" {
-						t.Fatalf("invalid acquisition accepted: %v stdout=%q stderr=%q", err, stdout, stderr)
-					}
-					assertBootstrapCacheUnchanged(t, binary, old)
-					assertBootstrapOwnedInstallation(t, owned, links)
-					assertBootstrapCleaned(t, launcher, binary)
-					steps, err := os.ReadFile(filepath.Join(root, "child-calls"))
-					if err != nil && !errors.Is(err, os.ErrNotExist) {
-						t.Fatal(err)
-					}
-					if strings.Contains(string(steps), "executed\n") {
-						t.Fatalf("rejected candidate ran: %s", steps)
-					}
-				})
+			launcher, _ := bootstrapFixture(t)
+			root := filepath.Dir(filepath.Dir(launcher))
+			home, owned, links := bootstrapOwnedInstallation(t, root)
+			failure.prepare(t, root)
+			before := bootstrapTree(t, filepath.Dir(launcher))
+			stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install", "--home", home)
+			if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
+				t.Fatal("failed acquisition changed the launcher directory")
+			}
+			if err == nil || stdout != "" || stderr == "" {
+				t.Fatalf("invalid acquisition accepted: %v stdout=%q stderr=%q", err, stdout, stderr)
+			}
+			assertBootstrapOwnedInstallation(t, owned, links)
+			assertBootstrapCleaned(t, launcher)
+			steps, err := os.ReadFile(filepath.Join(root, "child-calls"))
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(steps), "executed\n") {
+				t.Fatalf("rejected candidate ran: %s", steps)
 			}
 		})
 	}
@@ -596,107 +531,17 @@ func TestBootstrapAcquisitionFailuresPreserveCacheAndOwnedInstallation(t *testin
 func TestBootstrapRejectsNonstableOrUnpinnedLatest(t *testing.T) {
 	for _, latest := range []string{"", "https://github.com/belevtsev/agent-workflows/releases/tag/v1.2.3-rc1", "https://github.com/belevtsev/agent-workflows/releases/tag/v01.2.3", "https://github.com/belevtsev/agent-workflows/releases/download/v1.2.3", "https://elsewhere.test/releases/tag/v1.2.3"} {
 		t.Run(latest, func(t *testing.T) {
-			launcher, binary, calls := bootstrapFixture(t, false)
+			launcher, calls := bootstrapFixture(t)
 			t.Setenv("CW_MOCK_LATEST", latest)
 			_, err := runBootstrap(t.Context(), launcher, "install")
 			if err == nil {
 				t.Fatal("untrusted latest URL accepted")
 			}
-			assertBootstrapCacheUnchanged(t, binary, "")
-			assertBootstrapCleaned(t, launcher, binary)
+			assertBootstrapCleaned(t, launcher)
 			data, err := os.ReadFile(calls)
 			if err != nil || strings.Count(string(data), "\n") != 1 {
 				t.Fatalf("invalid pin fetched assets or retried: %q %v", data, err)
 			}
-		})
-	}
-}
-func TestBootstrapPreservesAbandonedLock(t *testing.T) { bootstrapLockCases(t, []string{"abandoned"}) }
-func TestBootstrapPreservesActiveAndUnknownLocks(t *testing.T) {
-	bootstrapLockCases(t, []string{"active", "missing-owner", "invalid-owner", "regular-file", "symbolic-link"})
-}
-func bootstrapLockCases(t *testing.T, forms []string) {
-	t.Helper()
-	for _, form := range forms {
-		t.Run(form, func(t *testing.T) {
-			launcher, binary, _ := bootstrapFixture(t, true)
-			root := filepath.Dir(filepath.Dir(launcher))
-			lock := filepath.Join(filepath.Dir(launcher), ".bin.lock")
-			switch form {
-			case "regular-file":
-				writeFixture(t, lock, "unrelated lock bytes\n", 0600)
-			case "symbolic-link":
-				target := filepath.Join(root, "external lock")
-				writeFixture(t, target, "external lock bytes\n", 0600)
-				if err := os.Symlink(target, lock); err != nil {
-					t.Fatal(err)
-				}
-			default:
-				if err := os.Mkdir(lock, 0700); err != nil {
-					t.Fatal(err)
-				}
-				owner := "not-a-pid"
-				if form == "active" {
-					owner = strconv.Itoa(os.Getpid())
-				}
-				if form == "abandoned" {
-					owner = "2147483647"
-				}
-				if form != "missing-owner" {
-					writeFixture(t, filepath.Join(lock, "pid"), owner+"\n", 0600)
-				}
-				writeFixture(t, filepath.Join(lock, "started"), "synthetic prior start\n", 0600)
-			}
-			before := bootstrapTree(t, filepath.Dir(launcher))
-			var externalBefore map[string]string
-			if form == "symbolic-link" {
-				externalBefore = bootstrapTree(t, filepath.Join(root, "external lock"))
-			}
-			home, owned, links := bootstrapOwnedInstallation(t, root)
-			bootstrapSuccess(t, launcher, binary, managerScript(false), "setup", "--home", home)
-			if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-				t.Fatal("download-only bootstrap changed old lock or checkout")
-			}
-			assertBootstrapOwnedInstallation(t, owned, links)
-			if form == "symbolic-link" {
-				if after := bootstrapTree(t, filepath.Join(root, "external lock")); !reflect.DeepEqual(after, externalBefore) {
-					t.Fatal("external lock target changed")
-				}
-			}
-		})
-	}
-}
-func TestBootstrapPreservesOccupiedCacheForms(t *testing.T) {
-	for _, occupied := range []string{"symbolic-link", "directory", "non-executable"} {
-		t.Run(occupied, func(t *testing.T) {
-			launcher, binary, _ := bootstrapFixture(t, false)
-			payload := binary
-			switch occupied {
-			case "symbolic-link":
-				payload = filepath.Join(filepath.Dir(launcher), "external-manager")
-				writeFixture(t, payload, managerScript(true), 0755)
-				if err := os.Symlink(payload, binary); err != nil {
-					t.Fatal(err)
-				}
-			case "directory":
-				if err := os.Mkdir(binary, 0755); err != nil {
-					t.Fatal(err)
-				}
-				payload = filepath.Join(binary, "unrelated")
-				writeFixture(t, payload, "unrelated contents\n", 0644)
-			case "non-executable":
-				writeFixture(t, binary, managerScriptIdentity("cw-manager-v3", fixtureSHA), 0644)
-			}
-			before := bootstrapTree(t, filepath.Dir(launcher))
-			stdout, stderr, err := bootstrapStreams(t.Context(), launcher, "install")
-			if err != nil || strings.TrimSpace(stdout) != `{"forwarded":true}` || stderr != "" {
-				t.Fatalf("occupied cache blocked verified child: %v stdout=%q stderr=%q", err, stdout, stderr)
-			}
-			if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-				t.Fatal("occupied cache payload, link, inventory or mode changed")
-			}
-			assertBootstrapPinnedRequests(t, filepath.Join(filepath.Dir(filepath.Dir(launcher)), "calls"))
-			assertBootstrapCleaned(t, launcher, binary)
 		})
 	}
 }
@@ -709,7 +554,7 @@ func TestBootstrapStagesWhileChildRunsAndPreservesArgumentsStreamsAndExitStatus(
 func TestBootstrapCancellationCleansPrivateStage(t *testing.T) { bootstrapLiveChild(t, true) }
 func bootstrapLiveChild(t *testing.T, cancellation bool) {
 	t.Helper()
-	launcher, binary, calls := bootstrapFixture(t, false)
+	launcher, calls := bootstrapFixture(t)
 	root := filepath.Dir(filepath.Dir(launcher))
 	home, owned, links := bootstrapOwnedInstallation(t, root)
 	checkoutBefore := bootstrapTree(t, filepath.Dir(launcher))
@@ -794,27 +639,20 @@ waiting:
 		}
 	}
 	if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, checkoutBefore) {
-		t.Fatal("child lifecycle changed checkout or locks")
+		t.Fatal("child lifecycle changed the launcher directory")
 	}
-	assertBootstrapCacheUnchanged(t, binary, "")
 	assertBootstrapOwnedInstallation(t, owned, links)
 	assertBootstrapPinnedRequests(t, calls)
-	assertBootstrapCleaned(t, launcher, binary)
+	assertBootstrapCleaned(t, launcher)
 }
 
 // R-BS / bootstrap-native-v3: SIGKILL cannot run shell cleanup traps. Preserve
-// the killed-parent scenario, assert untouched installation/cache/lock, and
-// remove only fixture-owned residual stages before a verified retry.
-func TestBootstrapKilledParentPreservesCacheLocksAndOwnedInstallation(t *testing.T) {
-	launcher, binary, _ := bootstrapFixture(t, true)
+// the killed-parent scenario, assert an untouched installation and launcher
+// directory, and remove only fixture-owned residual stages before a verified retry.
+func TestBootstrapKilledParentPreservesOwnedInstallation(t *testing.T) {
+	launcher, _ := bootstrapFixture(t)
 	root := filepath.Dir(filepath.Dir(launcher))
 	home, owned, links := bootstrapOwnedInstallation(t, root)
-	lock := filepath.Join(filepath.Dir(launcher), ".bin.lock")
-	if err := os.Mkdir(lock, 0700); err != nil {
-		t.Fatal(err)
-	}
-	writeFixture(t, filepath.Join(lock, "pid"), "2147483647\n", 0600)
-	writeFixture(t, filepath.Join(lock, "started"), "prior interrupted owner\n", 0600)
 	before := bootstrapTree(t, filepath.Dir(launcher))
 	curl := filepath.Join(root, "mock-bin", "curl")
 	original, err := os.ReadFile(curl)
@@ -860,9 +698,8 @@ exit 0
 	}
 	_ = syscall.Kill(-command.Process.Pid, syscall.SIGTERM)
 	if after := bootstrapTree(t, filepath.Dir(launcher)); !reflect.DeepEqual(after, before) {
-		t.Fatal("killed parent changed checkout cache or old lock")
+		t.Fatal("killed parent changed the launcher directory")
 	}
-	assertBootstrapCacheUnchanged(t, binary, managerScript(false))
 	assertBootstrapOwnedInstallation(t, owned, links)
 	stages, err := filepath.Glob(filepath.Join(root, "cw-bootstrap.*"))
 	if err != nil {
@@ -874,6 +711,6 @@ exit 0
 		}
 	}
 	writeFixture(t, curl, string(original), 0755)
-	bootstrapSuccess(t, launcher, binary, managerScript(false), "setup", "--home", home)
+	bootstrapSuccess(t, launcher, "setup", "--home", home)
 	assertBootstrapOwnedInstallation(t, owned, links)
 }

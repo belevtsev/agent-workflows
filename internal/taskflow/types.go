@@ -19,7 +19,6 @@ import (
 
 const (
 	Version       = 2
-	LegacyVersion = 1
 	MaxInputBytes = 8 << 20
 	MaxLogBytes   = 128 << 10
 )

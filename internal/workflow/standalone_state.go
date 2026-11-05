@@ -17,7 +17,10 @@ type standaloneActivationRecord struct {
 	Base    bundled.Identity `json:"base"`
 }
 
-// Version four is deliberately separate from the sealed legacy v3 boundary.
+// standaloneOwnershipRecord is the typed boundary for the sealed version-four
+// ownership document. The original JSON object is retained for its canonical
+// integrity seal. Source stays decodable because every version-four state
+// records it, always empty.
 type standaloneOwnershipRecord struct {
 	Version               int                          `json:"version"`
 	Release               string                       `json:"release"`
@@ -61,8 +64,8 @@ func decodeStandaloneOwnership(value Object) (standaloneOwnershipRecord, error) 
 	if state.Version != 4 || !effectivePattern.MatchString(state.Release) || !validBaseIdentity(state.Base) || !digestPattern.MatchString(state.PreferencesSHA256) || !safeAbsolute(state.Home) || !safeAbsolute(state.StateDir) || !safeAbsolute(state.ConfigDir) || len(state.Hosts) == 0 || state.ManifestRegistrations == nil || state.History == nil || state.Manager == nil || state.Manager.Version != 2 {
 		return state, errors.New("unsupported or incomplete standalone ownership")
 	}
-	if state.Source != "" && !safeAbsolute(state.Source) {
-		return state, errors.New("unsafe retained source path")
+	if state.Source != "" {
+		return state, ErrLegacyInstallation
 	}
 	for id, host := range state.Hosts {
 		if (id != hostCodex && id != hostClaude) || !safeAbsolute(host.Home) || host.Registrations == nil || host.GlobalOrigin == nil {
@@ -70,7 +73,7 @@ func decodeStandaloneOwnership(value Object) (standaloneOwnershipRecord, error) 
 		}
 	}
 	for _, previous := range state.History {
-		if !validReleaseKey(previous.Release) || !validBaseIdentity(previous.Base) || commitSHA.MatchString(previous.Release) && previous.Release != previous.Base.Revision {
+		if !validReleaseKey(previous.Release) || !validBaseIdentity(previous.Base) {
 			return state, errors.New("invalid standalone activation history")
 		}
 	}
@@ -78,7 +81,7 @@ func decodeStandaloneOwnership(value Object) (standaloneOwnershipRecord, error) 
 }
 
 func (i *Installer) validateStandaloneState(state Object) error {
-	record, err := decodeStandaloneOwnership(state)
+	record, err := decodeOwnership(state)
 	if err != nil {
 		return err
 	}
@@ -138,6 +141,9 @@ func RecordedInstallation(stateDir string) (Installation, error) {
 	if err := realDirectory(result.State, false); err != nil {
 		return result, err
 	}
+	if err := legacyRecords(result.State); err != nil {
+		return result, err
+	}
 	journalPath := filepath.Join(result.State, "journal.json")
 	if exists(journalPath) {
 		j, err := readJournalRecord(journalPath)
@@ -175,7 +181,7 @@ func RecordedInstallation(stateDir string) (Installation, error) {
 		result.Home = text(state["home"])
 		result.Codex, result.Claude = text(hostRecord(state, hostCodex)["home"]), text(hostRecord(state, hostClaude)["home"])
 		result.ConfigDir = text(state["config_dir"])
-	} else if result.Home != state["home"] || integer(state["version"]) == 4 && result.ConfigDir != state["config_dir"] {
+	} else if result.Home != state["home"] || result.ConfigDir != state["config_dir"] {
 		return result, errors.New("pending journal and ownership roots differ")
 	}
 	return result, nil
@@ -233,9 +239,6 @@ func (i *Installer) readPreferences() (Preferences, Object, error) {
 }
 
 func (i *Installer) verifyPreferences(state Object) error {
-	if integer(state["version"]) != 4 {
-		return nil
-	}
 	prefs, observation, err := i.readPreferences()
 	if err != nil {
 		return err

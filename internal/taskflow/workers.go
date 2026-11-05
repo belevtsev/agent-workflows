@@ -233,20 +233,10 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 	return nil
 }
 
-func requireWorkers(record Record) error {
-	if record.Version != Version {
-		return errors.New("worker handoffs require a version 2 task; start a new task with 'cw task start' (legacy task evidence remains readable and updatable)")
-	}
-	return nil
-}
-
 // AssignWorker records a brief at the actual current source. It does not launch
 // or authorize a process, and IDs are declarations rather than authentication.
 func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
 	return update(taskPath, func(_ *os.Root, record *Record) error {
-		if err := requireWorkers(*record); err != nil {
-			return err
-		}
 		if err := validateBrief(*record, brief); err != nil {
 			return err
 		}
@@ -547,9 +537,6 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult) e
 
 func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
 	return update(taskPath, func(root *os.Root, record *Record) error {
-		if err := requireWorkers(*record); err != nil {
-			return err
-		}
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
 			return errors.New("worker result references an unknown assignment")
@@ -697,9 +684,6 @@ func workerResultFresh(record Record, assigned WorkerAssignment, bound BoundWork
 // and never satisfy a completed-work or independent-review gate.
 func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
 	return update(taskPath, func(root *os.Root, record *Record) error {
-		if err := requireWorkers(*record); err != nil {
-			return err
-		}
 		result := findWorkerResult(*record, input.AssignmentID)
 		if result == nil {
 			return errors.New("acceptance references a missing worker result; record a terminal handoff first")
@@ -826,9 +810,6 @@ func findingSourceObsolete(snapshot projectctx.Snapshot, refs []SourceRef) bool 
 
 func workerEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Snapshot) []string {
 	problems := []string{}
-	if record.Version != Version {
-		return problems
-	}
 	currentReview := false
 	for _, assigned := range record.Assignments {
 		result := findWorkerResult(record, assigned.Brief.ID)

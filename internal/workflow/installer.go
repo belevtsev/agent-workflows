@@ -21,9 +21,7 @@ type Options struct {
 	Context             context.Context
 	RuntimeCandidate    string
 	RuntimeIdentity     RuntimeIdentity
-	PrepareRuntime      RuntimePreparer
 	Apply               bool
-	NoCheckout          bool
 	Shell               string
 	AdoptPersonalSkills bool
 	Hosts               []string
@@ -34,7 +32,6 @@ type Options struct {
 	ConfigDir          string
 	Selection          *ConfigurationSelection
 	Configure          ConfigurationSelector
-	AdmitLegacy        func(context.Context, []string, string) error
 	ExpectedGeneration *string
 	ExpectedBundle     *bundled.Identity
 }
@@ -53,17 +50,15 @@ func NewInstaller(options Options) *Installer {
 		options.Getenv = os.Getenv
 	}
 	p := options.Paths
-	if p.Source != "" || options.Bundle == nil {
+	if p.Source != "" {
 		p.Source = Normalize(p.Source)
 	}
 	p.Home = Normalize(p.Home)
 	p.Codex = Normalize(p.Codex)
-	if options.Bundle != nil && p.Claude == "" {
+	if p.Claude == "" {
 		p.Claude = filepath.Join(p.Home, ".claude")
 	}
-	if p.Claude != "" {
-		p.Claude = Normalize(p.Claude)
-	}
+	p.Claude = Normalize(p.Claude)
 	p.State = Normalize(p.State)
 	options.Paths = p
 	return &Installer{Options: options, current: filepath.Join(p.State, "current"), statePath: filepath.Join(p.State, "state.json"), journalPath: filepath.Join(p.State, "journal.json"), agents: filepath.Join(p.Codex, "AGENTS.md"), config: filepath.Join(p.Codex, "config.toml"), skills: filepath.Join(p.Home, ".agents", "skills")}
@@ -121,63 +116,7 @@ func (i *Installer) state(required bool) (Object, error) {
 	if e = verifySeal(s); e != nil {
 		return nil, e
 	}
-	if integer(s["version"]) == 4 {
-		return s, i.validateStandaloneState(s)
-	}
-	if integer(s["version"]) != 3 || !commitSHA.MatchString(text(s["release"])) || s["home"] != i.Home || s["state_dir"] != i.State || object(s["hosts"]) == nil || object(s["manifest_registrations"]) == nil || sequence(s["history"]) == nil {
-		return nil, errors.New("unsupported or corrupt installation ownership state or roots")
-	}
-	if e = i.validateStateStructure(s); e != nil {
-		return nil, e
-	}
-	return s, nil
-}
-
-func (i *Installer) validateStateStructure(s Object) error {
-	if integer(s["version"]) == 4 {
-		return i.validateStandaloneState(s)
-	}
-	if _, err := decodeOwnership(s); err != nil {
-		return err
-	}
-	if integer(s["version"]) != 3 || s["home"] != i.Home || s["state_dir"] != i.State || !commitSHA.MatchString(text(s["release"])) {
-		return errors.New("corrupt installation state or roots")
-	}
-	if raw, present := s["manager"]; present {
-		manager, err := requiredObject(raw, "manager")
-		if err != nil {
-			return err
-		}
-		if err = i.validateManager(manager); err != nil {
-			return err
-		}
-		if s["source"] != manager["source"] {
-			return errors.New("native manager and ownership source differ")
-		}
-	}
-	manifest := object(s["manifest_registrations"])
-	if manifest == nil {
-		return errors.New("corrupt registration ownership")
-	}
-	if len(i.recordedHosts(s)) != len(object(s["hosts"])) {
-		return errors.New("installation records a host outside these roots")
-	}
-	for _, h := range i.recordedHosts(s) {
-		if err := i.validateHostStructure(h, hostRecord(s, h.id), manifest); err != nil {
-			return err
-		}
-	}
-	history, ok := s["history"].([]any)
-	if !ok {
-		return errors.New("corrupt activation history")
-	}
-	for _, raw := range history {
-		previous := object(raw)
-		if previous == nil || !commitSHA.MatchString(text(previous["release"])) {
-			return errors.New("corrupt prior release")
-		}
-	}
-	return nil
+	return s, i.validateStandaloneState(s)
 }
 
 func (i *Installer) validateHostStructure(h hostTarget, hs, manifest Object) error {
@@ -272,115 +211,8 @@ func (i *Installer) validateHostStructure(h hostTarget, hs, manifest Object) err
 	}
 	return nil
 }
-func (i *Installer) preview(sha string) (string, Object, func(), error) {
-	dir, e := os.MkdirTemp("", "agent-workflows-preview-")
-	if e != nil {
-		return "", nil, nil, e
-	}
-	cleanup := func() { os.RemoveAll(dir) }
-	m, e := exportCommitContext(i.Context, i.Source, sha, dir)
-	if e != nil {
-		cleanup()
-		return "", nil, nil, e
-	}
-	return dir, m, cleanup, nil
-}
-func (i *Installer) release(sha string) (string, Object, error) {
-	if effectivePattern.MatchString(sha) {
-		return i.effectiveRelease(sha)
-	}
-	if !commitSHA.MatchString(sha) {
-		return "", nil, errors.New("invalid release SHA")
-	}
-	dir := filepath.Join(i.State, "releases", sha)
-	if e := realDirectory(dir, false); e != nil {
-		return "", nil, e
-	}
-	receipt, e := readJSON(dir + ".receipt.json")
-	if e != nil {
-		return "", nil, e
-	}
-	contents, e := inventory(dir)
-	if e != nil {
-		return "", nil, e
-	}
-	if receipt["sha"] != sha || !equal(receipt["inventory"], contents) {
-		return "", nil, fmt.Errorf("missing or modified immutable release: %s", sha)
-	}
-	m, e := LoadManifestValidated(dir)
-	return dir, m, e
-}
-func (i *Installer) stage(sha string) (string, Object, error) {
-	parent := filepath.Join(i.State, "releases")
-	if e := durableDirectory(parent, syncDir); e != nil {
-		return "", nil, e
-	}
-	dir := filepath.Join(parent, sha)
-	receipt := dir + ".receipt.json"
-	if exists(dir) && !exists(receipt) {
-		state, e := i.state(false)
-		if e != nil {
-			return "", nil, e
-		}
-		referenced := state != nil && state["release"] == sha
-		for _, h := range sequence(state["history"]) {
-			if object(h)["release"] == sha {
-				referenced = true
-			}
-		}
-		pointer, _ := os.Readlink(i.current)
-		if referenced || pointer == dir {
-			return "", nil, errors.New("missing receipt for a referenced immutable release")
-		}
-		candidate, m, clean, e := i.preview(sha)
-		if e != nil {
-			return "", nil, e
-		}
-		defer clean()
-		actual, e := inventory(dir)
-		if e != nil {
-			return "", nil, e
-		}
-		expected, e := inventory(candidate)
-		if e != nil {
-			return "", nil, e
-		}
-		if !equal(actual, expected) {
-			return "", nil, errors.New("unreceipted release differs from its exact Git export")
-		}
-		if _, e = LoadManifestValidated(dir); e != nil {
-			return "", nil, e
-		}
-		e = atomicWrite(receipt, legacyJSON(Object{"sha": sha, "inventory": expected}), 0600)
-		return dir, m, e
-	}
-	if exists(dir) || exists(receipt) {
-		return i.release(sha)
-	}
-	temporary, e := os.MkdirTemp(parent, ".staging-")
-	if e != nil {
-		return "", nil, e
-	}
-	defer os.RemoveAll(temporary)
-	m, e := exportCommitContext(i.Context, i.Source, sha, temporary)
-	if e != nil {
-		return "", nil, e
-	}
-	contents, e := inventory(temporary)
-	if e != nil {
-		return "", nil, e
-	}
-	if e = os.Rename(temporary, dir); e != nil {
-		return "", nil, e
-	}
-	if e = syncDir(parent); e != nil {
-		return "", nil, e
-	}
-	if e = i.fault("after-release-publication"); e != nil {
-		return "", nil, e
-	}
-	e = atomicWrite(receipt, legacyJSON(Object{"sha": sha, "inventory": contents}), 0600)
-	return dir, m, e
+func (i *Installer) release(name string) (string, Object, error) {
+	return i.effectiveRelease(name)
 }
 func registrationName(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, "/\\")
@@ -636,5 +468,5 @@ func expectedState(s Object) Object {
 	return Object{"kind": "file", "data": encode(legacyJSON(s)), "mode": 0600}
 }
 func (i *Installer) newState(sha string, m, hosts Object) Object {
-	return Object{"version": 3, "release": sha, "source": i.Source, "home": i.Home, "state_dir": i.State, "manifest_registrations": m["registrations"], "hosts": hosts, "history": []any{}}
+	return Object{"version": 4, "release": sha, "home": i.Home, "state_dir": i.State, "manifest_registrations": m["registrations"], "hosts": hosts, "history": []any{}}
 }

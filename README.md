@@ -43,13 +43,13 @@ cw install --host all --preset recommended --non-interactive
 cw update --non-interactive
 ```
 
-`--json`, piped input/output, `--non-interactive`, dry runs and preparation never
-open the terminal interface. Prompts go to stderr; stdout remains JSON. Use
+`--json`, piped input/output, `--non-interactive` and dry runs never open the
+terminal interface. Prompts go to stderr; stdout remains JSON. Use
 `--settings FILE` instead of `--preset` to load nonsecret version-one preferences.
 
-This source requires a published `cw-manager-v10` release. Existing v7/v8/v9
-installations must first [rebootstrap with the new download installer](docs/development.md#distribution).
-Personal configuration is not updated by publishing a release.
+This source requires a published `cw-manager-v10` release. Personal
+configuration is not updated by publishing a release. If a `cw` older than v2.0.58
+installed your skills, see [moving from an older install](#moving-from-an-older-install).
 
 Installation registers 33 skills with 78 entrypoints on each selected host, and
 adds the same managed instructions to both:
@@ -120,8 +120,7 @@ embedded payload before activation. Status, rollback, recovery and uninstall
 work from recorded roots and cached snapshots. A skill rollback retains the
 capable manager and your current preferences. Re-running install on a standalone
 installation reconfigures its active cached base, including after rollback;
-`cw update` is the command that selects a newer release. Your source checkout,
-if any, stays untouched. `--source` is an explicit developer compatibility option.
+`cw update` is the command that selects a newer release.
 
 Use `cw install --dry-run` for a local preview without downloads or persistent
 writes. A cold `install.sh --dry-run` reports deferred validation. See
@@ -175,27 +174,25 @@ claude plugin install gopls-lsp@claude-plugins-official
 
 Use this marketplace, not the built-in directory. `gopls-lsp@anthropic-plugin-directory` installs without error but contains no language server. Check with `claude plugin details gopls-lsp@claude-plugins-official`, which should list `LSP servers (1)`.
 
-### Upgrading from v1
+### Moving from an older install
 
-The v2 manager uses new paths and doesn't read a v1 installation, and a v1
-`cw update` refuses this source without changing anything. Before you start, note
-the `state_dir` that `cw status` reports. Then, using your existing `cw`:
+This `cw` does not read an installation made by a `cw` older than v2.0.58
+(source-checkout installs and codex-workflows v1), or one that v2.0.58 migrated
+from such an install; it refuses one it finds and changes nothing. Move once. First, using your existing `cw`:
 
 ```sh
 cw uninstall
 ```
 
-Use the download installer with the same adoption option:
+Then run the download installer, with `--adopt-personal-skills` if you had
+adopted personal skills:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh -s -- --host all --adopt-personal-skills
 ```
 
-Uninstall restores your own files and adopted skills, and
-`--adopt-personal-skills` moves those skills back under management. Rollback
-history from v1 doesn't carry over. Once you have verified the new installation,
-delete the old `state_dir` and the old adviser Python environment. Task records stay
-where they were, and `--store` reads them.
+Old task records and rollback history do not carry over; start new tasks with
+`cw task start`.
 
 ## Current model policy
 
@@ -283,9 +280,10 @@ dependencies. Archify requires Node.js 18+ and Chrome/Chromium for browser check
 Graphify needs a separately provisioned `graphify` executable from the pinned
 `graphifyy==0.9.91` Python package; Docker skills require the corresponding Docker
 tools and platform support.
-`cw status` reports detected executables in `skill_prerequisites`; each skill
-checks versions, access, and subcommands when used. The manager does not install
-optional tools.
+`cw doctor --repo PATH` reports the optional `gopls`, `graphify` and `jbcontext`
+executables it detects as `gopls_cli`, `graphify_cli` and `jbcontext_cli`. Each
+skill checks its own tools, versions, access, and subcommands when used. The
+manager does not install optional tools.
 
 Use a natural request or invoke a skill explicitly. Claude Code uses `/name`, and
 Codex uses `$name`:
@@ -299,7 +297,7 @@ Codex uses `$name`:
 ## Global project workflow
 
 The same installed workflow serves every project. `--repo` selects the target
-workspace independently of the skill manager's enrolled source checkout. Project
+workspace independently of where the skills are installed. Project
 instructions supply their own commands and constraints; tool capabilities determine
 which discovery and checks apply.
 
@@ -480,10 +478,11 @@ printf '\n'
 export SUBQ_API_KEY
 ```
 
-Run `cw status` to check `jev_credential_present` and `subq_credential_present`.
-These are offline booleans for that process; they do not validate keys or prove
-availability in another process. Start the CLI from the same terminal to inherit
-the exported keys:
+Run `cw status` and check `credential_sources`. For `TYPESAFE_API_KEY` and
+`SUBQ_API_KEY` it shows whether the key comes from that process's environment or
+the private stored file. These are offline checks; they do not validate keys or
+prove availability in another process. Start the CLI from the same terminal to
+inherit the exported keys:
 
 ```sh
 claude
@@ -546,9 +545,9 @@ The installed workflow requires all three advisers on every consultation request
 A missing key records unavailable coverage and preserves the other advisers'
 results. The helper rejects attempts to exclude required OpenAI advice.
 
-`cw status` reports `openai_credential_present` as an offline boolean for its own
-process. For a macOS desktop app, set the launch environment from the configured
-terminal:
+`cw status` reports `OPENAI_API_KEY` in `credential_sources` the same way,
+offline and for its own process. For a macOS desktop app, set the launch
+environment from the configured terminal:
 
 ```sh
 set +x
@@ -655,15 +654,13 @@ Installation, source validation and CI never run the hosted evaluation.
 
 ## Maintain the installation
 
-Normal installation and update use verified release binaries. Developer `--source`
-operations require a clean committed checkout. Maintenance commands
+Installation and update use verified release binaries. Maintenance commands
 return JSON on stdout and errors on stderr. Choose the command for your task:
 
 | Command | Purpose |
 | --- | --- |
 | `cw status` | Inspect active/previous revisions, manager identity, registrations, owned settings, model profiles, and local credential presence |
-| `cw validate --source PATH` | Validate a developer source suite without activation |
-| `cw update --dry-run` | Inspect locally; defer release download and lineage checks without writes |
+| `cw update --dry-run` | Inspect locally; defer the release download without writes |
 | `cw update` | Pin and verify a stable release, review saved choices, and activate its bundled snapshot |
 | `cw rollback --dry-run` | Preview restoration of the previous validated snapshot |
 | `cw rollback` | Restore the previous snapshot and its owned settings using activation history |
@@ -676,7 +673,7 @@ The update preview is offline and cannot establish the current remote candidate.
 Failed update preparation leaves the active installation unchanged. Rollback
 restores skills and owned settings without rewinding Git or changing GitHub.
 Recovery preserves unrelated edits and refuses modified owned content. Uninstall
-preserves the checkout, caches, credentials, connectors, and consultation environment.
+preserves caches, credentials, connectors, and the consultation environment.
 Use [operations](docs/operations.md) for detailed command and recovery contracts.
 
 Start a fresh agent session after install, update, or rollback to load the active

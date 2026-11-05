@@ -13,7 +13,7 @@ for argument in "$@"; do
             exit 0
             ;;
         --help|-h|help)
-            printf '%s\n' 'cw — Agent workflows' '' 'Usage: install.sh [install|setup|update|status|validate|version|rollback|recover|uninstall] [options]' '' 'Downloads one verified standalone release, then runs its native installer.' 'Run without arguments for interactive setup when attached to a terminal.' 'Options include --dry-run, --json, --non-interactive, --preset recommended|balanced,' '  --settings PATH, --config-dir PATH, --migrate-from PATH, --home PATH,' '  --codex-home PATH, --claude-home PATH, --state-dir PATH, --host HOST,' '  --shell auto|bash|zsh|none, --adopt-personal-skills and --forget.' 'Explicit --source and --no-checkout select developer source compatibility.' 'Help and bootstrap dry runs make no downloads or persistent writes.'
+            printf '%s\n' 'cw — Agent workflows' '' 'Usage: install.sh [install|setup|update|status|version|rollback|recover|uninstall] [options]' '' 'Downloads one verified standalone release, then runs its native installer.' 'Run without arguments for interactive setup when attached to a terminal.' 'Options include --dry-run, --json, --non-interactive, --preset recommended|balanced,' '  --settings PATH, --config-dir PATH, --home PATH, --codex-home PATH,' '  --claude-home PATH, --state-dir PATH, --host HOST,' '  --shell auto|bash|zsh|none, --adopt-personal-skills and --forget.' 'Help and bootstrap dry runs make no downloads or persistent writes.'
             exit 0
             ;;
     esac

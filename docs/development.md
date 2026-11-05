@@ -39,9 +39,9 @@ settings keys alone in status, update, rollback, uninstall and recovery, and kee
 the remaining host working after a single-host uninstall. Additive registration
 scenarios verify additions, pre-merge conflicts, rollback removal of only
 absent-origin records, and source-independent recovery. Bootstrap fixtures cover
-refusal of older protocols, reuse and fresh acquisition, dry runs, and acquisition
-failures that preserve the cached manager and owned installation. Exact-revision
-acquisition retains its checksum and identity checks.
+refusal of older release protocols, fresh acquisition, dry runs, and acquisition
+failures that leave the owned installation unchanged. Release acquisition for
+`cw update` retains its checksum and identity checks.
 Backend decision fixtures live in
 internal/devcheck/testdata/backend-skills; give evaluators raw inputs without their
 expected decisions. Model evaluations and fresh discovery are separate from native
@@ -80,16 +80,16 @@ checks never invoke optional tools or hosted providers. Real-project read-only
 diagnostics, synthetic acceptance pilots and productivity comparisons are separate
 evidence; preserve that distinction in reports.
 
-New task records use version two for typed worker assignments, results and
-coordinator acceptance. Preserve version-one revision chains, plans, historical
-evidence hashes and completion semantics; never silently upgrade an old task or
-permit a version change inside its chain. Worker APIs require a new task. Tests
-must cover wrong task/brief/agent bindings, ownership overlap and unsafe paths,
-false check claims, incomplete or cancelled work, finding dispositions, independent
-review identity, and stale source/check/worker evidence. Substantial-change gates
-apply to new tasks; small and unchanged read-only tasks keep their existing path.
-Use project-neutral fixtures, including a non-Go project, for API and CLI coverage.
-Worker records remain separate from sealed installer formats and adviser records.
+Task records use version two for typed worker assignments, results and coordinator
+acceptance. An older task record is refused with guidance to start a new task;
+never silently upgrade an old task or permit a version change inside its chain.
+Tests must cover wrong task/brief/agent bindings, ownership overlap and unsafe
+paths, false check claims, incomplete or cancelled work, finding dispositions,
+independent review identity, and stale source/check/worker evidence.
+Substantial-change gates apply to new tasks; small and unchanged read-only tasks
+keep their existing path. Use project-neutral fixtures, including a non-Go
+project, for API and CLI coverage. Worker records remain separate from sealed
+installer formats and adviser records.
 
 Changes to the independent test-author workflow also need bounded Codex and
 Claude smokes outside CI: give fresh authors only an approved contract and test
@@ -145,12 +145,12 @@ version/creation ordering governs overlapping releases.
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
 defines 33 registrations and 78 entrypoints; model defaults come from its
-validated policies. `cw-manager-v10` adds self-contained resource payloads,
+validated policies. `cw-manager-v10` uses self-contained resource payloads,
 per-field preferences, sealed configuration roots, state/journal4 and version3
-standalone runtime receipts. Existing sealed v7/v8/v9 receipts and state3 remain
-readable without rewriting their identity or seals. Recovery verifies the exact
-protocol in each historical receipt; rollback retains the capable installed
-manager and derives an effective snapshot from cached base + current preferences.
+standalone runtime receipts. Installations made before v2.0.58 (source-checkout
+managers and codex-workflows v1), or migrated by v2.0.58 from one, are refused
+before any write. Rollback retains the capable installed manager and derives an
+effective snapshot from cached base + current preferences.
 
 Release builds export an exact immutable source revision, create a deterministic
 allowlisted payload, and inject it only into that disposable export. Generated
@@ -160,20 +160,6 @@ remain compatible; the independent CWBUNDLE1 marker binds the embedded base dige
 Archive checksums bind complete executable bytes. Developer builds without generated
 payload still support offline help/version but cannot silently install from cwd.
 
-Publish and verify all four v10 archives and SHA256SUMS before using the new installer.
-The existing release workflow owns version assignment. Once available, rebootstrap
-existing v7/v8/v9 installations through the download helper rather than asking an old
-manager to parse the new schema or use its old checkout-driven `cw update`:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh
-cw status
-```
-
-Use `--migrate-from /absolute/installed/cw` or explicit recorded roots when needed.
-The new installer leaves legacy source checkouts untouched. Pending legacy journals
-require separate explicit recovery. GitHub compare requests use BASE=old active
-and retained-runtime source SHA and HEAD=pinned target; only ahead/identical admits.
 Normal updates reject older stable versions and equal-version conflicting identities,
 including after skill rollback. Prepared cache artifacts alone are not authority.
 
@@ -182,22 +168,25 @@ historical version-one pair and version-two optional records remain readable off
 Tests must reject disabled required coverage and opt-outs, preserve historical
 adjudication, and distinguish unavailable, partially refused and all-refused advice.
 
-For an unreleased committed local revision, use the pinned Go toolchain and the
-normal native CLI with all installation roots explicitly selected:
+To try an unreleased committed revision, build its release archives with the
+pinned Go toolchain, extract `cw` from the archive for your platform, and run it
+with all installation roots explicitly selected:
 
 ```sh
-GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows --dry-run
-GOWORK=off go run ./cmd/cw install --source /path/to/agent-workflows --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows
+GOWORK=off go run ./cmd/cwdev release build --source "$PWD" --version v0.0.1 --revision "$(git rev-parse HEAD)" --dist /path/to/dist
+mkdir /path/to/local-cw && tar -xzf /path/to/dist/cw_darwin_arm64.tar.gz -C /path/to/local-cw cw
+/path/to/local-cw/cw install --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows --dry-run
+/path/to/local-cw/cw install --home /path/to/home --codex-home /path/to/home/.codex --claude-home /path/to/home/.claude --state-dir /path/to/home/.local/state/agent-workflows
 ```
 
-Replace the example paths with the intended real roots. Source must be clean and
-committed. This uses normal exact-revision acquisition/build and managed activation;
-it does not edit installed snapshots or bypass published-manager capability checks.
+Replace the example paths and platform with the intended ones. Source must be
+clean and committed. A plain `go build ./cmd/cw` has no embedded workflow payload
+and refuses lifecycle commands.
 
 Personal adoption fixtures must cover original and distributed inventories that
 differ, same-path Archify replacement, all directory/link boundaries, interrupted
-recovery resumption, cross-operation path overlap, and checkout-free recovery from
-a cached runtime.
+recovery resumption, cross-operation path overlap, and recovery from a cached
+runtime.
 
 With Node.js available, run the bundled portable Archify tests from its package:
 

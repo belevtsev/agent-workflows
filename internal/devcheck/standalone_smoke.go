@@ -578,7 +578,7 @@ func StandaloneNativeSmoke(ctx context.Context, source, binary string, output io
 		}
 	}
 	if output != nil {
-		if _, err := fmt.Fprintf(output, "R-N1 success; bash=exercised; zsh=%s; full_inventory=verified; update_rollback_migration=not-claimed\n", zsh); err != nil {
+		if _, err := fmt.Fprintf(output, "R-N1 success; bash=exercised; zsh=%s; full_inventory=verified; update_rollback=not-claimed\n", zsh); err != nil {
 			return errors.New("R-N1/report-write")
 		}
 	}

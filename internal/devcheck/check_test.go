@@ -27,21 +27,6 @@ func TestDeveloperPolicyPreservesIgnoredSkillEnvironment(t *testing.T) {
 	}
 }
 
-func TestSmokeRequiresInstalledReadback(t *testing.T) {
-	if err := requireInstalled([]byte(`{"status":{"installed":true}}`), true); err != nil {
-		t.Fatal(err)
-	}
-	if err := requireInstalled([]byte(`{"status":{"installed":false}}`), true); err == nil {
-		t.Fatal("missing activation accepted")
-	}
-	if err := requireInstalled([]byte(`not json`), false); err == nil {
-		t.Fatal("malformed native output accepted")
-	}
-	if err := requireInstalled([]byte(`{"status":{}}`), false); err == nil {
-		t.Fatal("missing installation status accepted")
-	}
-}
-
 func writeFixture(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

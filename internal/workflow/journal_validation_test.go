@@ -10,6 +10,23 @@ import (
 // also preserve the journal and every path already changed by the transaction.
 func TestInstallerRejectsMalformedRecoveryOperationsBeforeAnyReversal(t *testing.T) {
 	t.Parallel()
+	// Resealing an unchanged version-4 journal keeps it recoverable, so the
+	// refusals in this file come from the malformed values, not the seal.
+	t.Run("resealed unchanged", func(t *testing.T) {
+		t.Parallel()
+		fixture := newInstallerFixture(t)
+		fixture.seedUserFiles(t)
+		fixture.failAt(t, "setup", "after-global")
+		installer := fixture.installer(true)
+		journal, err := readJSON(installer.journalPath)
+		if err != nil || integer(journal["version"]) != 4 {
+			t.Fatalf("interrupted setup left no version-4 journal: %v", err)
+		}
+		installerWrite(t, installer.journalPath, string(legacyJSON(seal(journal))), 0o600)
+		if _, err := installer.Recover(); err != nil {
+			t.Fatalf("resealed unchanged journal: %v", err)
+		}
+	})
 	for name, value := range map[string]any{"false": false, "null": nil, "object": Object{}} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -151,6 +168,22 @@ func TestInstallerRejectsResealedMalformedStateBeforeAnyMutation(t *testing.T) {
 		"nonarray history":      func(state Object) { state["history"] = Object{} },
 		"malformed history":     func(state Object) { state["history"] = []any{false} },
 	}
+	// Resealing an unchanged version-4 state keeps it valid, so each refusal
+	// below comes from its malformed value, not the seal.
+	t.Run("resealed unchanged", func(t *testing.T) {
+		t.Parallel()
+		fixture := newInstallerFixture(t)
+		fixture.execute(t, "setup")
+		installer := fixture.installer(true)
+		state, err := readJSON(installer.statePath)
+		if err != nil || integer(state["version"]) != 4 {
+			t.Fatalf("setup wrote no version-4 state: %v", err)
+		}
+		installerWrite(t, installer.statePath, string(legacyJSON(seal(state))), 0o600)
+		if _, err := installer.Status(); err != nil {
+			t.Fatalf("resealed unchanged state: %v", err)
+		}
+	})
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

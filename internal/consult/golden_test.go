@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -173,9 +172,6 @@ func TestGoldenConsultationsMatchHelperRecords(t *testing.T) {
 	}
 	for _, path := range names {
 		name := filepath.Base(filepath.Dir(path))
-		if strings.HasPrefix(name, "legacy_") {
-			continue
-		}
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			item := decodeTestdata[scenario](t, "golden", name, "scenario.json")
@@ -283,45 +279,6 @@ func TestGoldenAdjudicationsMatchHelper(t *testing.T) {
 			if !bytes.Equal(got, want) {
 				t.Fatalf("final record differs:\n%s", got)
 			}
-		})
-	}
-}
-
-func TestGoldenLegacyHelperMatches(t *testing.T) {
-	names, err := filepath.Glob(filepath.Join("testdata", "golden", "legacy_*", "request.json"))
-	if err != nil || len(names) == 0 {
-		t.Fatalf("no goldens: %v", err)
-	}
-	for _, path := range names {
-		name := filepath.Base(filepath.Dir(path))
-		t.Run(name, func(t *testing.T) {
-			item := decodeTestdata[scenario](t, "golden", name, "scenario.json")
-			server := newFixture(t, item.Responses)
-			output := filepath.Join(t.TempDir(), "record.json")
-			var stdout, stderr bytes.Buffer
-			code, err := RunLegacy(t.Context(), LegacyOptions{Request: path, Output: output, Policy: filepath.Join("testdata", "policy", item.Policy+".yaml"), DryRun: slices.Contains(item.Flags, "--dry-run"),
-				Getenv: server.getenv(item.Credentials), Stdout: &stdout, Stderr: &stderr, transport: &server.sender})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if code != item.Exit || stdout.String() != item.Stdout || stderr.String() != item.Stderr {
-				t.Fatalf("exit %d stdout %q stderr %q; want %d %q %q", code, stdout.String(), stderr.String(), item.Exit, item.Stdout, item.Stderr)
-			}
-			want, err := os.ReadFile(filepath.Join(filepath.Dir(path), "record.json"))
-			if os.IsNotExist(err) {
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			got, err := os.ReadFile(output)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !bytes.Equal(normalizeDurations(got), want) {
-				t.Fatalf("record differs:\n%s", normalizeDurations(got))
-			}
-			checkWire(t, server, decodeTestdata[map[string]wireRequest](t, "golden", name, "wire.json"))
 		})
 	}
 }

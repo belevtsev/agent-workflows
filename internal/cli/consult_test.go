@@ -119,22 +119,6 @@ func TestConsultExplicitPolicyAndExitStatuses(t *testing.T) {
 	}
 }
 
-func TestConsultJevCommandUsesLegacyPolicyField(t *testing.T) {
-	policy := filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml")
-	request, output := requestFile(t)
-	config, out, _, _ := testConfig(t)
-	if err := Execute(t.Context(), []string{"consult", "jev", "--request", request, "--output", output, "--policy", policy, "--dry-run"}, config); err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(output)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out.String() != "Consultation dry_run\n" || !strings.Contains(string(data), `"requested_model": "jev-1.14.0"`) {
-		t.Fatalf("stdout %q record %s", out, data)
-	}
-}
-
 func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 	for _, args := range [][]string{
 		{"consult"}, {"consult", "--request", "r"}, {"consult", "--request", "r", "--adjudicate", "a", "--decision", "d", "--output", "o"},
@@ -142,7 +126,7 @@ func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 		{"consult", "--adjudicate", "a", "--decision", "d", "--output", "o", "--dry-run"},
 		{"consult", "--adjudicate", "a", "--decision", "d", "--output", "o", "--with-openai"},
 		{"consult", "--request", "r", "--output", "o", "--with-openai", "--without-openai"},
-		{"consult", "--unknown"}, {"consult", "unexpected"}, {"consult", "jev", "--request", "r"},
+		{"consult", "--unknown"}, {"consult", "unexpected"},
 		{"graphify", "unexpected"}, {"graphify", "build"}, {"graphify", "query", "--repo", "r"},
 		{"graphify", "build", "--repo", "r", "--timeout", "nan"}, {"graphify", "build", "--repo", "r", "--timeout", "inf"},
 		{"graphify", "build", "--repo", "r", "--timeout", "-1"}, {"graphify", "build", "--repo", "r", "--timeout", "601"},

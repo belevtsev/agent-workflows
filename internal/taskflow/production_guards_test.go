@@ -416,7 +416,7 @@ func productionRewriteHistory(test *testing.T, record Record, mutate func(int, *
 	}
 }
 
-func productionHistoricalFixture(test *testing.T, version int, denied []string) Record {
+func productionHistoricalFixture(test *testing.T, denied []string) Record {
 	test.Helper()
 	plan := helperPlan(test, "small", "pass", "path with spaces", "$(literal)", ";literal", "", "push")
 	plan.CoordinatorID = "production-test-author"
@@ -432,10 +432,6 @@ func productionHistoricalFixture(test *testing.T, version int, denied []string) 
 		test.Fatal(err)
 	}
 	productionRewriteHistory(test, record, func(revision int, historical *Record) {
-		historical.Version = version
-		if version == LegacyVersion {
-			historical.Plan.CoordinatorID = ""
-		}
 		historical.Plan.Checks[1].Argv = slices.Clone(denied)
 		for index := range historical.Checks {
 			if historical.Checks[index].CheckID == "historical" {
@@ -447,65 +443,63 @@ func productionHistoricalFixture(test *testing.T, version int, denied []string) 
 }
 
 func TestProductionHistoricalDeniedPlansStayReadable(test *testing.T) {
-	for _, version := range []int{LegacyVersion, Version} {
-		for _, payload := range []string{"pager", "alias-c", "alias-config-env"} {
-			test.Run(fmt.Sprintf("v%d/%s", version, payload), func(test *testing.T) {
-				marker := filepath.Join(test.TempDir(), "must-not-execute")
-				shellPayload := "!printf executed > '" + strings.ReplaceAll(marker, "'", "'\\''") + "'"
-				denied := []string{"git", "-c", "core.pager=cat", "diff"}
-				if payload == "alias-c" {
-					denied = []string{"git", "-calias.production=" + shellPayload, "production"}
-				} else if payload == "alias-config-env" {
-					test.Setenv("CW_PRODUCTION_ALIAS", shellPayload)
-					denied = []string{"git", "--config-env=alias.production=CW_PRODUCTION_ALIAS", "production"}
-				}
-				record := productionHistoricalFixture(test, version, denied)
-				original := productionTaskBytes(test, record.Directory)
-				loaded, err := Load(record.Directory)
-				if err != nil || loaded.Version != version || !slices.Equal(loaded.Plan.Checks[1].Argv, denied) {
-					test.Fatalf("historical plan is not structurally readable: %#v %v", loaded.Plan, err)
-				}
-				terminalFound := false
-				for _, run := range loaded.Checks {
-					if run.CheckID == "historical" && run.FinishedAt != nil {
-						terminalFound = true
-						if !slices.Equal(run.Argv, denied) {
-							test.Fatal("terminal recorded argv was normalized or rewritten")
-						}
+	for _, payload := range []string{"pager", "alias-c", "alias-config-env"} {
+		test.Run(fmt.Sprintf("v%d/%s", Version, payload), func(test *testing.T) {
+			marker := filepath.Join(test.TempDir(), "must-not-execute")
+			shellPayload := "!printf executed > '" + strings.ReplaceAll(marker, "'", "'\\''") + "'"
+			denied := []string{"git", "-c", "core.pager=cat", "diff"}
+			if payload == "alias-c" {
+				denied = []string{"git", "-calias.production=" + shellPayload, "production"}
+			} else if payload == "alias-config-env" {
+				test.Setenv("CW_PRODUCTION_ALIAS", shellPayload)
+				denied = []string{"git", "--config-env=alias.production=CW_PRODUCTION_ALIAS", "production"}
+			}
+			record := productionHistoricalFixture(test, denied)
+			original := productionTaskBytes(test, record.Directory)
+			loaded, err := Load(record.Directory)
+			if err != nil || loaded.Version != Version || !slices.Equal(loaded.Plan.Checks[1].Argv, denied) {
+				test.Fatalf("historical plan is not structurally readable: %#v %v", loaded.Plan, err)
+			}
+			terminalFound := false
+			for _, run := range loaded.Checks {
+				if run.CheckID == "historical" && run.FinishedAt != nil {
+					terminalFound = true
+					if !slices.Equal(run.Argv, denied) {
+						test.Fatal("terminal recorded argv was normalized or rewritten")
 					}
 				}
-				if !terminalFound || !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
-					test.Fatal("load mutated history or omitted terminal fixture")
+			}
+			if !terminalFound || !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
+				test.Fatal("load mutated history or omitted terminal fixture")
+			}
+			if _, err := Run(test.Context(), record.Directory, "historical"); err == nil {
+				test.Fatal("historical readability authorized denied execution")
+			}
+			if !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
+				test.Fatal("denied execution changed log/revision bytes or created artifacts")
+			}
+			if _, err := os.Stat(marker); !os.IsNotExist(err) {
+				test.Fatalf("historical read/run executed payload: %v", err)
+			}
+			prepared, err := PrepareContext(test.Context(), record.Directory, "before")
+			if err != nil || prepared.TaskID != loaded.ID || prepared.Phase != "before" {
+				test.Fatalf("safe metadata update denied: %#v %v", prepared, err)
+			}
+			run, err := Run(test.Context(), record.Directory, "focused")
+			expectedOutput := "path with spaces|$(literal)|;literal||push"
+			if err != nil || run.ExitCode == nil || *run.ExitCode != 0 || run.OutputSHA256 != digest([]byte(expectedOutput)) || run.OutputBytes != int64(len(expectedOutput)) || run.Truncated {
+				test.Fatalf("allowed sibling did not preserve literal output: %#v %v", run, err)
+			}
+			updated, err := Load(record.Directory)
+			if err != nil || updated.Version != Version || !slices.Equal(updated.Plan.Checks[1].Argv, denied) || !slices.Equal(run.Argv, updated.Plan.Checks[0].Argv) {
+				test.Fatalf("metadata/sibling update changed historical plan: %v", err)
+			}
+			for name, data := range original {
+				if strings.HasPrefix(filepath.Base(name), "record-") && string(productionTaskRead(test, filepath.Join(record.Directory, name))) != data {
+					test.Fatalf("ordinary update rewrote original revision %s", name)
 				}
-				if _, err := Run(test.Context(), record.Directory, "historical"); err == nil {
-					test.Fatal("historical readability authorized denied execution")
-				}
-				if !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
-					test.Fatal("denied execution changed log/revision bytes or created artifacts")
-				}
-				if _, err := os.Stat(marker); !os.IsNotExist(err) {
-					test.Fatalf("historical read/run executed payload: %v", err)
-				}
-				prepared, err := PrepareContext(test.Context(), record.Directory, "before")
-				if err != nil || prepared.TaskID != loaded.ID || prepared.Phase != "before" {
-					test.Fatalf("safe metadata update denied: %#v %v", prepared, err)
-				}
-				run, err := Run(test.Context(), record.Directory, "focused")
-				expectedOutput := "path with spaces|$(literal)|;literal||push"
-				if err != nil || run.ExitCode == nil || *run.ExitCode != 0 || run.OutputSHA256 != digest([]byte(expectedOutput)) || run.OutputBytes != int64(len(expectedOutput)) || run.Truncated {
-					test.Fatalf("allowed sibling did not preserve literal output: %#v %v", run, err)
-				}
-				updated, err := Load(record.Directory)
-				if err != nil || updated.Version != version || !slices.Equal(updated.Plan.Checks[1].Argv, denied) || !slices.Equal(run.Argv, updated.Plan.Checks[0].Argv) {
-					test.Fatalf("metadata/sibling update changed historical plan: %v", err)
-				}
-				for name, data := range original {
-					if strings.HasPrefix(filepath.Base(name), "record-") && string(productionTaskRead(test, filepath.Join(record.Directory, name))) != data {
-						test.Fatalf("ordinary update rewrote original revision %s", name)
-					}
-				}
-			})
-		}
+			}
+		})
 	}
 }
 

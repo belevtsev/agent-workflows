@@ -1,9 +1,7 @@
 package workflow
 
 import (
-	"archive/tar"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -11,10 +9,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -421,124 +417,11 @@ func writeObservation(path string, v Object) error {
 	}
 	return errors.New("unsupported write kind")
 }
-func git(source string, args ...string) ([]byte, error) {
-	return gitContext(context.Background(), source, args...)
-}
-func gitContext(ctx context.Context, source string, args ...string) ([]byte, error) {
-	argv := append([]string{"-c", "gc.auto=0", "-c", "maintenance.auto=false", "-C", source}, args...)
-	cmd := exec.CommandContext(ctx, "git", argv...)
-	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, e := cmd.Output()
-	if e != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, fmt.Errorf("git %s failed: %s", strings.Join(args, " "), strings.TrimSpace(stderr.String()))
-	}
-	return out, nil
-}
 func (i *Installer) fault(label string) error {
 	if i.Getenv("AGENT_WORKFLOWS_FAULT") == label {
 		return fmt.Errorf("injected failure at %s (recover before retrying)", label)
 	}
 	return nil
-}
-func cleanHead(source string) (string, error) {
-	return cleanHeadContext(context.Background(), source)
-}
-func cleanHeadContext(ctx context.Context, source string) (string, error) {
-	out, e := gitContext(ctx, source, "status", "--porcelain", "--untracked-files=all")
-	if e != nil {
-		return "", e
-	}
-	if len(bytes.TrimSpace(out)) > 0 {
-		return "", errors.New("source checkout is dirty or has untracked files")
-	}
-	out, e = gitContext(ctx, source, "rev-parse", "HEAD")
-	sha := strings.TrimSpace(string(out))
-	if e != nil {
-		return "", e
-	}
-	if !commitSHA.MatchString(sha) {
-		return "", errors.New("source HEAD is not a full commit SHA")
-	}
-	return sha, nil
-}
-func descendant(source, before, after string) error {
-	return descendantContext(context.Background(), source, before, after)
-}
-func descendantContext(ctx context.Context, source, before, after string) error {
-	_, e := gitContext(ctx, source, "merge-base", "--is-ancestor", before, after)
-	if e != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return errors.New("update is diverged or rewinds history; only a clean fast-forward is allowed")
-	}
-	return nil
-}
-func exportCommit(source, sha, directory string) (Object, error) {
-	return exportCommitContext(context.Background(), source, sha, directory)
-}
-func exportCommitContext(ctx context.Context, source, sha, directory string) (Object, error) {
-	data, e := gitContext(ctx, source, "-c", "tar.umask=0022", "archive", "--format=tar", sha)
-	if e != nil {
-		return nil, e
-	}
-	reader := tar.NewReader(bytes.NewReader(data))
-	dirs := map[string]os.FileMode{}
-	for {
-		h, e := reader.Next()
-		if errors.Is(e, io.EOF) {
-			break
-		}
-		if e != nil {
-			return nil, e
-		}
-		// git archive includes its commit ID in a global PAX metadata header.
-		// This header describes the archive and is never a filesystem entry.
-		if h.Typeflag == tar.TypeXGlobalHeader {
-			continue
-		}
-		name := strings.TrimSuffix(h.Name, "/")
-		if filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/../") || (h.Typeflag != tar.TypeReg && h.Typeflag != tar.TypeDir) {
-			return nil, fmt.Errorf("unsafe archive entry: %s", h.Name)
-		}
-		path := filepath.Join(directory, name)
-		if h.Typeflag == tar.TypeDir {
-			if e = os.MkdirAll(path, 0700); e != nil {
-				return nil, e
-			}
-			dirs[path] = os.FileMode(h.Mode) & 0777
-			continue
-		}
-		if e = os.MkdirAll(filepath.Dir(path), 0700); e != nil {
-			return nil, e
-		}
-		f, e := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if e != nil {
-			return nil, e
-		}
-		_, e = io.Copy(f, reader)
-		ce := f.Close()
-		if e != nil {
-			return nil, e
-		}
-		if ce != nil {
-			return nil, ce
-		}
-		if e = os.Chmod(path, os.FileMode(h.Mode)&0777); e != nil {
-			return nil, e
-		}
-	}
-	for p, mode := range dirs {
-		if e = os.Chmod(p, mode); e != nil {
-			return nil, e
-		}
-	}
-	return LoadManifestValidated(directory)
 }
 func LoadManifestValidated(root string) (Object, error) {
 	if _, e := ValidateSuite(root); e != nil {
@@ -572,12 +455,6 @@ func lockRoot(root string, recovery bool) (func(), error) {
 		return nil, errors.New("an unfinished mutation requires recover")
 	}
 	return func() { f.Close() }, nil
-}
-func assertEqual(a, b any, message string) error {
-	if !equal(a, b) {
-		return errors.New(message)
-	}
-	return nil
 }
 func requiredObject(v any, description string) (Object, error) {
 	x := object(v)

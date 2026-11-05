@@ -1,8 +1,6 @@
 package workflow
 
 import (
-	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,7 +74,12 @@ func TestSetupRefusesOverlappingNativeDestinationsBeforeWrites(t *testing.T) {
 		{"same spelling", func(_ *testing.T, f *installerFixture) {
 			f.paths.Claude = filepath.Join(f.paths.Home, ".local", "bin", "cw")
 		}},
-		{"missing folded parents", func(_ *testing.T, f *installerFixture) {
+		{"missing folded parents", func(t *testing.T, f *installerFixture) {
+			// The fixture creates the command directory; this case needs it
+			// missing so only the spelling can decide the overlap.
+			if err := os.RemoveAll(filepath.Join(f.paths.Home, ".local")); err != nil {
+				t.Fatal(err)
+			}
 			f.paths.Claude = filepath.Join(f.paths.Home, ".local", "BIN", "CW")
 		}},
 		{"existing case alias parent", func(t *testing.T, f *installerFixture) {
@@ -102,42 +105,29 @@ func TestSetupRefusesOverlappingNativeDestinationsBeforeWrites(t *testing.T) {
 			f.paths.Claude = filepath.Join(onDataVolume(f.paths.Home), ".local", "bin", "cw")
 		}},
 	} {
+		// The standalone candidate is always ready; the removed deferred
+		// runtime variant has no seam left. Staging the runtime would write
+		// below the state root, which the unchanged snapshot covers.
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			for _, deferred := range []bool{false, true} {
-				t.Run(map[bool]string{false: "ready runtime", true: "deferred runtime"}[deferred], func(t *testing.T) {
-					t.Parallel()
-					f := claudeFixture(t)
-					test.roots(t, f)
-					i := nativeFixtureInstaller(t, f, f.first, false)
-					i.Hosts, i.Shell = []string{hostClaude}, "none"
-					calls := 0
-					if deferred {
-						i.RuntimeCandidate = ""
-						i.PrepareRuntime = func(context.Context, string, string, string) (RuntimeCandidate, error) {
-							calls++
-							return RuntimeCandidate{}, errors.New("runtime acquisition must follow destination preflight")
-						}
-					}
-					before := installerSnapshot(t, f.base)
-					var previewError string
-					for _, apply := range []bool{false, true} {
-						i.Apply = apply
-						_, err := i.Setup(true)
-						if err == nil || (!strings.Contains(err.Error(), "overlapping mutation paths") && !strings.Contains(err.Error(), "cannot tell whether mutation paths")) {
-							t.Fatalf("apply %t accepted an overlapping command and host: %v", apply, err)
-						}
-						if !apply {
-							previewError = err.Error()
-						} else if err.Error() != previewError {
-							t.Fatalf("preview and apply refused different layouts: %q / %q", previewError, err)
-						}
-						installerUnchanged(t, f.base, before)
-					}
-					if calls != 0 {
-						t.Fatalf("runtime acquisition started before destination refusal: %d calls", calls)
-					}
-				})
+			f := claudeFixture(t)
+			test.roots(t, f)
+			i := nativeFixtureInstaller(t, f, f.first, false)
+			i.Hosts, i.Shell = []string{hostClaude}, "none"
+			before := installerSnapshot(t, f.base)
+			var previewError string
+			for _, apply := range []bool{false, true} {
+				i.Apply = apply
+				_, err := i.Setup(true)
+				if err == nil || (!strings.Contains(err.Error(), "overlapping mutation paths") && !strings.Contains(err.Error(), "cannot tell whether mutation paths")) {
+					t.Fatalf("apply %t accepted an overlapping command and host: %v", apply, err)
+				}
+				if !apply {
+					previewError = err.Error()
+				} else if err.Error() != previewError {
+					t.Fatalf("preview and apply refused different layouts: %q / %q", previewError, err)
+				}
+				installerUnchanged(t, f.base, before)
 			}
 		})
 	}

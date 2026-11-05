@@ -205,39 +205,52 @@ func TestPersonalRecoveryRejectsChangedRuntimeOrOwnedDirectoryBeforeReversal(t *
 		t.Run(changed, func(t *testing.T) {
 			t.Parallel()
 			f, i := interruptedPersonalFixture(t, "after-adopt-personal:archify:link")
-			dir := i.runtimeDir(i.RuntimeIdentity.Revision)
+			// The sealed runtime directory of the manager this setup enrolled.
+			dir := fixtureRuntimeDir(t, i.State, i.RuntimeIdentity.Revision)
 			switch changed {
 			case "binary":
-				installerAppend(t, filepath.Join(dir, "cw"), "changed\n")
+				fixtureRewrite(t, filepath.Join(dir, "cw"), []byte(installerRead(t, filepath.Join(dir, "cw"))+"changed\n"))
 			case "locator":
 				locator, err := readJSON(filepath.Join(dir, "locator.json"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				locator["source"] = filepath.Join(f.base, "other source")
-				installerWrite(t, filepath.Join(dir, "locator.json"), string(legacyJSON(locator)), 0o600)
+				fixtureRewrite(t, filepath.Join(dir, "locator.json"), legacyJSON(locator))
 			case "receipt":
 				receipt, err := readJSON(filepath.Join(dir, "receipt.json"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				receipt["manager_protocol"] = "cw-manager-v5"
-				installerWrite(t, filepath.Join(dir, "receipt.json"), string(legacyJSON(receipt)), 0o600)
+				fixtureRewrite(t, filepath.Join(dir, "receipt.json"), legacyJSON(receipt))
 			case "receipt-mode":
 				if err := os.Chmod(filepath.Join(dir, "receipt.json"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			case "extra-file":
+				info, err := os.Stat(dir)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(dir, info.Mode().Perm()|0o700); err != nil {
+					t.Fatal(err)
+				}
 				installerWrite(t, filepath.Join(dir, "extra"), "Changed cache.\n", 0o600)
+				if err := os.Chmod(dir, info.Mode().Perm()); err != nil {
+					t.Fatal(err)
+				}
 			case "forged-old-capability":
-				binary := []byte("#!/bin/sh\nprintf '%s\\n' cw-manager-v5\n")
-				installerWrite(t, filepath.Join(dir, "cw"), string(binary), 0o755)
+				// The executable now reports an old protocol for the same
+				// identity, and the receipt digest is resealed to match it.
+				binary := []byte(fixtureManagerScript(t, "cw-manager-v5", f.release(t, i.RuntimeIdentity.Revision).identity))
+				fixtureRewrite(t, filepath.Join(dir, "cw"), binary)
 				receipt, err := readJSON(filepath.Join(dir, "receipt.json"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				receipt["sha256"] = hash(binary)
-				installerWrite(t, filepath.Join(dir, "receipt.json"), string(legacyJSON(seal(receipt))), 0o600)
+				fixtureRewrite(t, filepath.Join(dir, "receipt.json"), legacyJSON(seal(receipt)))
 			case "backup":
 				installerAppend(t, filepath.Join(i.personalBackup("archify"), "SKILL.md"), "Changed original.\n")
 			case "registration":

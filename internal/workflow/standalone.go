@@ -103,6 +103,14 @@ func (i *Installer) standaloneState(required bool) (Object, error) {
 	if err := i.Context.Err(); err != nil {
 		return nil, err
 	}
+	if err := legacyRecords(i.State); err != nil {
+		return nil, err
+	}
+	// Ownership records keep an empty source field; a checkout source would
+	// write state that every later read refuses as legacy.
+	if i.Source != "" {
+		return nil, errors.New("source checkout installations are no longer supported")
+	}
 	if exists(i.journalPath) {
 		return nil, errors.New("an unfinished mutation requires explicit recover before configuration")
 	}
@@ -114,10 +122,6 @@ func (i *Installer) standaloneState(required bool) (Object, error) {
 		return nil, errors.New("installation generation differs from prepared handoff")
 	}
 	if state != nil {
-		if i.Source != "" && i.Source != text(state["source"]) {
-			return nil, errors.New("explicit source differs from retained installation roots")
-		}
-		i.Source = text(state["source"])
 		if err = i.verifyOwned(state); err != nil {
 			return nil, err
 		}
@@ -141,7 +145,7 @@ func (i *Installer) standaloneOrder(state Object, target bundled.Identity) error
 	// authority. Prepared runtimes can remain after cancellation; rollback
 	// retains this manager, so it remains the installation's high-water mark.
 	manager := object(state["manager"])
-	if integer(manager["version"]) != 2 {
+	if manager == nil {
 		return nil
 	}
 	var owned ManagerRecord
@@ -209,6 +213,9 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 	state, err := i.standaloneState(command == "update")
 	if err != nil {
 		return nil, err
+	}
+	if i.Bundle == nil {
+		return nil, errors.New("this installer has no embedded workflow payload")
 	}
 	if i.Selection != nil && i.Configure != nil {
 		return nil, errors.New("explicit selection and configuration callback are mutually exclusive")
@@ -304,7 +311,13 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 		i.Hosts = slices.Clone(selection.Hosts)
 		actor.Hosts = slices.Clone(selection.Hosts)
 	}
-	if _, err = i.selectedHosts(state); err != nil {
+	hosts, err := i.selectedHosts(state)
+	if err != nil {
+		return nil, err
+	}
+	// Setup, install and update all refuse a home that a skill registration
+	// of the release they would activate needs.
+	if err = i.checkHomesOffRegistrations(hosts, object(manifest["registrations"])); err != nil {
 		return nil, err
 	}
 	var effective, name string
@@ -344,28 +357,11 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 			return nil, err
 		}
 	}
-	admission := "not_required"
-	if state != nil && integer(state["version"]) == 3 {
-		admission = "deferred"
-		if i.Apply {
-			if i.AdmitLegacy == nil {
-				return nil, errors.New("legacy migration requires bounded release lineage admission")
-			}
-			bases := []string{text(state["release"])}
-			if revision := text(object(object(state["manager"])["runtime"])["revision"]); revision != "" && !slices.Contains(bases, revision) {
-				bases = append(bases, revision)
-			}
-			if err = i.AdmitLegacy(i.Context, bases, id.Revision); err != nil {
-				return nil, err
-			}
-			admission = "verified"
-		}
-	}
 	if err = guard.verify(); err != nil {
 		return nil, err
 	}
-	plan := func(root string, m Object, publish bool) ([]Object, error) {
-		ops, err := actor.standaloneOperations(state, name, root, m, id, prefs, beforePrefs, enroll, false, publish)
+	plan := func(root string, m Object) ([]Object, error) {
+		ops, err := actor.standaloneOperations(state, name, root, m, id, prefs, beforePrefs, enroll, false)
 		if err != nil {
 			return nil, err
 		}
@@ -374,14 +370,14 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 		}
 		return ops, nil
 	}
-	ops, err := plan(effective, manifest, false)
+	ops, err := plan(effective, manifest)
 	if err != nil {
 		return nil, err
 	}
 	if err = actor.preflightMutationPaths(ops, state, !cached); err != nil {
 		return nil, err
 	}
-	report := Object{"command": command, "dry_run": !i.Apply, "changed": len(ops) > 0, "configuration_committed": false, "preferences_applied": false, "config_dir": i.ConfigDir, "base_identity": asObject(id), "effective_digest": receipt["effective_digest"], "release": name, "migration": view.Migrating, "legacy_admission": admission}
+	report := Object{"command": command, "dry_run": !i.Apply, "changed": len(ops) > 0, "configuration_committed": false, "preferences_applied": false, "config_dir": i.ConfigDir, "base_identity": asObject(id), "effective_digest": receipt["effective_digest"], "release": name}
 	if !i.Apply {
 		return report, nil
 	}
@@ -430,7 +426,7 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 			return nil, err
 		}
 	}
-	ops, err = plan(installed, installedManifest, true)
+	ops, err = plan(installed, installedManifest)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +447,7 @@ func (i *Installer) standaloneApply(command string, enroll bool) (Object, error)
 	return report, nil
 }
 
-func (i *Installer) standaloneOperations(state Object, name, root string, manifest Object, id bundled.Identity, prefs Preferences, beforePrefs Object, enroll, rollback, publish bool) ([]Object, error) {
+func (i *Installer) standaloneOperations(state Object, name, root string, manifest Object, id bundled.Identity, prefs Preferences, beforePrefs Object, enroll, rollback bool) ([]Object, error) {
 	var ops []Object
 	var after Object
 	if state == nil {
@@ -484,20 +480,13 @@ func (i *Installer) standaloneOperations(state Object, name, root string, manife
 	history := []any{}
 	for _, raw := range sequence(after["history"]) {
 		previous := clone(object(raw))
-		if object(previous["base"]) == nil && state != nil && integer(state["version"]) == 4 && previous["release"] == state["release"] {
+		if object(previous["base"]) == nil && state != nil && previous["release"] == state["release"] {
 			previous["base"] = state["base"]
-		}
-		if object(previous["base"]) == nil {
-			base, _, _, err := i.legacyBase(text(previous["release"]), publish)
-			if err != nil {
-				return nil, err
-			}
-			previous["base"] = asObject(base)
 		}
 		history = append(history, previous)
 	}
 	// A v4 activation appended by the shared planner needs the old base identity.
-	if state != nil && integer(state["version"]) == 4 && !rollback && name != state["release"] && len(history) > 0 {
+	if state != nil && !rollback && name != state["release"] && len(history) > 0 {
 		object(history[len(history)-1])["base"] = state["base"]
 	}
 	if rollback {
@@ -535,11 +524,6 @@ func (i *Installer) standaloneRollback() (Object, error) {
 	state, err := i.standaloneState(true)
 	if err != nil {
 		return nil, err
-	}
-	if integer(state["version"]) == 3 {
-		legacy := *i
-		legacy.Bundle = nil
-		return legacy.Rollback()
 	}
 	history := sequence(state["history"])
 	if len(history) == 0 {
@@ -586,7 +570,7 @@ func (i *Installer) standaloneRollback() (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	ops, err := i.standaloneOperations(state, name, effective, manifest, id, prefs, beforePrefs, false, true, false)
+	ops, err := i.standaloneOperations(state, name, effective, manifest, id, prefs, beforePrefs, false, true)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +605,7 @@ func (i *Installer) standaloneRollback() (Object, error) {
 		return nil, err
 	}
 	// Rebuild against the actual immutable path; no Git or network is involved.
-	ops, err = i.standaloneOperations(state, name, filepath.Join(i.State, "releases", name), manifest, id, prefs, beforePrefs, false, true, false)
+	ops, err = i.standaloneOperations(state, name, filepath.Join(i.State, "releases", name), manifest, id, prefs, beforePrefs, false, true)
 	if err != nil {
 		return nil, err
 	}

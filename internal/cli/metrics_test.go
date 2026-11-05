@@ -64,7 +64,7 @@ func TestMetricsSummarizeIsReadOnlyAndUsesWorkingDirectory(t *testing.T) {
 	before := metricsFixture(t, root, file)
 	state := filepath.Join(t.TempDir(), "must-not-be-created")
 	config, out := metricsConfig(t, root)
-	if err := Execute(t.Context(), []string{"--state-dir", state, "--source", "/unread/source", "--apply", "metrics", "summarize", file}, config); err != nil {
+	if err := Execute(t.Context(), []string{"--state-dir", state, "--apply", "metrics", "summarize", file}, config); err != nil {
 		t.Fatal(err)
 	}
 	var report outcomes.Report

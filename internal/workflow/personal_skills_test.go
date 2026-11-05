@@ -44,10 +44,10 @@ func personalFixtureUpgrade(t *testing.T, fixture *installerFixture) (string, ma
 		originals[name] = original
 		// The managed source intentionally differs from the adoption input.
 		// It must be the catalog, never the adapted source, that qualifies it.
-		installerWrite(t, filepath.Join(fixture.paths.Source, root, "SKILL.md"), "---\nname: "+name+"\ndescription: Managed personal fixture adaptation.\n---\n\n# Managed skill\n", 0o644)
+		installerWrite(t, filepath.Join(fixture.source, root, "SKILL.md"), "---\nname: "+name+"\ndescription: Managed personal fixture adaptation.\n---\n\n# Managed skill\n", 0o644)
 	}
-	installerWrite(t, filepath.Join(fixture.paths.Source, personalCatalogName), string(legacyJSON(catalog)), 0o644)
-	installerWrite(t, filepath.Join(fixture.paths.Source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
+	installerWrite(t, filepath.Join(fixture.source, personalCatalogName), string(legacyJSON(catalog)), 0o644)
+	installerWrite(t, filepath.Join(fixture.source, "skills-manifest.json"), string(legacyJSON(manifest)), 0o644)
 	sha := fixture.newRelease(t)
 	fixture.manifest = manifest
 	return sha, originals
@@ -100,12 +100,12 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 	if _, err := ordinary.Setup(true); err == nil {
 		t.Fatal("ordinary setup adopted occupied personal names")
 	}
-	preview := NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Context: t.Context(), AdoptPersonalSkills: true, Shell: "bash", PrepareRuntime: func(context.Context, string, string, string) (RuntimeCandidate, error) {
-		t.Fatal("adoption dry run acquired a runtime")
-		return RuntimeCandidate{}, nil
-	}})
+	// The adoption preview neither stages the release nor copies the runtime;
+	// the standalone report no longer lists typed registration changes.
+	preview := nativeFixtureInstaller(t, fixture, sha, false)
+	preview.AdoptPersonalSkills = true
 	report, err := preview.Setup(true)
-	if err != nil || len(registrationChanges(t, report)) != 33 {
+	if err != nil || report["dry_run"] != true || report["release"] == nil {
 		t.Fatalf("adoption preview: %#v, %v", report, err)
 	}
 	installerUnchanged(t, fixture.base, before)
@@ -113,8 +113,8 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	state, err := i.state(true)
-	if err != nil || integer(state["version"]) != 3 || len(object(hostRecord(state, hostCodex)["registrations"])) != 33 {
-		t.Fatalf("version-two installed state: %#v, %v", state, err)
+	if err != nil || integer(state["version"]) != 4 || state["release"] != report["release"] || len(object(hostRecord(state, hostCodex)["registrations"])) != 33 {
+		t.Fatalf("version-four installed state: %#v, %v", state, err)
 	}
 	for name := range originals {
 		origin, err := i.validatePersonalOrigin(name, object(object(object(hostRecord(state, hostCodex)["registrations"])[name])["original"]))
@@ -134,9 +134,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 	for target := range originalUser {
 		installerAppend(t, target, "\n# independent later bytes\n")
 	}
-	if err := os.Rename(i.Source, i.Source+" unavailable"); err != nil {
-		t.Fatal(err)
-	}
+	// Uninstall needs neither the bundle nor the candidate.
 	if _, err = NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Apply: true, Context: t.Context()}).Uninstall(); err != nil {
 		t.Fatal(err)
 	}
@@ -191,11 +189,8 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 					}
 					fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 					journal, err := readJSON(i.journalPath)
-					if err != nil || integer(journal["version"]) != 3 {
-						t.Fatalf("missing version-two journal: %v", err)
-					}
-					if err := os.Rename(i.Source, i.Source+" absent"); err != nil {
-						t.Fatal(err)
+					if err != nil || integer(journal["version"]) != 4 {
+						t.Fatalf("missing version-four journal: %v", err)
 					}
 					// Interrupt recovery at its own first compound boundary too.
 					recoveryBoundary := "rename"
@@ -239,7 +234,7 @@ func TestPersonalSkillsCompoundBoundariesAndResumedRecovery(t *testing.T) {
 
 func TestPersonalSkillsModifiedOccupiedAndDuplicateInputsRefuse(t *testing.T) {
 	t.Parallel()
-	for _, corruption := range []string{"contents", "extra", "mode", "symlink", "dangling", "duplicates", "occupied-backup", "unsafe-parent", "cancelled", "old-runtime"} {
+	for _, corruption := range []string{"valid", "contents", "extra", "mode", "symlink", "dangling", "duplicates", "occupied-backup", "unsafe-parent", "cancelled", "old-runtime"} {
 		t.Run(corruption, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
@@ -285,11 +280,39 @@ func TestPersonalSkillsModifiedOccupiedAndDuplicateInputsRefuse(t *testing.T) {
 				cancel()
 				i.Context = ctx
 			case "old-runtime":
-				installerWrite(t, i.RuntimeCandidate, "#!/bin/sh\nprintf '%s\\n' cw-manager-v5\n", 0o755)
+				installerWrite(t, i.RuntimeCandidate, fixtureManagerScript(t, "cw-manager-v5", fixture.release(t, sha).identity), 0o755)
 			}
 			before := installerSnapshot(t, fixture.base)
-			if _, err := i.Setup(true); err == nil {
+			_, err := i.Setup(true)
+			if corruption == "valid" {
+				// The unchanged catalogued skill is adopted, so each refusal
+				// below comes from its own corruption.
+				if err != nil {
+					t.Fatalf("valid adoption: %v", err)
+				}
+				state := mustRegistrationState(t, i)
+				if _, err := i.validatePersonalOrigin("production-plan", object(object(object(hostRecord(state, hostCodex)["registrations"])["production-plan"])["original"])); err != nil {
+					t.Fatalf("valid adoption recorded no personal origin: %v", err)
+				}
+				return
+			}
+			if err == nil {
 				t.Fatalf("adoption accepted %s", corruption)
+			}
+			switch corruption {
+			case "cancelled":
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("cancelled adoption: %v", err)
+				}
+			case "old-runtime":
+				if !strings.Contains(err.Error(), "standalone manager lacks the required capability") {
+					t.Fatalf("old runtime refused for another reason: %v", err)
+				}
+			default:
+				// Each input refusal names the skill or the directory it is in.
+				if !strings.Contains(err.Error(), "production-plan") && !strings.Contains(err.Error(), filepath.Dir(location)) {
+					t.Fatalf("%s refused for another reason: %v", corruption, err)
+				}
 			}
 			installerUnchanged(t, fixture.base, before)
 			if exists(i.journalPath) || exists(i.current) {
@@ -320,12 +343,13 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 				if adoption {
 					seedPersonalSkill(t, originals["production-plan"], filepath.Join(i.Codex, "skills", "production-plan"))
 				}
-				if _, err := i.Setup(true); err != nil {
+				// Update is the command that activates the newer bundle.
+				if _, err := i.Update(); err != nil {
 					t.Fatal(err)
 				}
 				state := mustRegistrationState(t, i)
-				if len(object(hostRecord(state, hostCodex)["registrations"])) != 33 || integer(state["version"]) != 3 {
-					t.Fatal("additive setup did not activate 33 v2 registrations")
+				if len(object(hostRecord(state, hostCodex)["registrations"])) != 33 || integer(state["version"]) != 4 || stateRevision(state) != sha {
+					t.Fatal("additive update did not activate 33 v4 registrations")
 				}
 				for name, raw := range object(hostRecord(prior, hostCodex)["registrations"]) {
 					if !equal(object(raw)["original"], object(object(hostRecord(state, hostCodex)["registrations"])[name])["original"]) {
@@ -343,7 +367,7 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 						t.Fatal(err)
 					}
 					state = mustRegistrationState(t, i)
-					if len(object(hostRecord(state, hostCodex)["registrations"])) != historical || object(object(state["manager"])["runtime"])["revision"] != sha || integer(state["version"]) != 3 {
+					if len(object(hostRecord(state, hostCodex)["registrations"])) != historical || object(object(state["manager"])["runtime"])["revision"] != sha || integer(state["version"]) != 4 || stateRevision(state) != fixture.first {
 						t.Fatal("rollback changed manager identity or historical registration subset")
 					}
 				}
@@ -358,32 +382,34 @@ func TestPersonalSkillsRecoveryAfterRuntimeReversalWithoutSource(t *testing.T) {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
-			old := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			installerWrite(t, old.RuntimeCandidate, "#!/bin/sh\nprintf '%s\\n' "+protocol+"\n", 0o755)
+			old := nativeFixtureInstallerProtocol(t, fixture, fixture.first, protocol, true)
 			if _, err := old.Setup(true); err != nil {
 				t.Fatal(err)
 			}
+			oldRuntime := fixtureRuntimeDir(t, fixture.paths.State, fixture.first)
 			beforeState := installerRead(t, old.statePath)
 			sha, originals := personalFixtureUpgrade(t, fixture)
 			i := nativeFixtureInstaller(t, fixture, sha, true)
 			i.AdoptPersonalSkills = true
 			location := filepath.Join(i.skills, "archify")
 			original := seedPersonalSkill(t, originals["archify"], location)
+			// Update is the command that switches the runtime to the newer one.
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
-			if _, err := i.Setup(true); err == nil {
-				t.Fatal("setup fault did not interrupt")
+			if _, err := i.Update(); err == nil || !strings.Contains(err.Error(), "injected failure at after-state") {
+				t.Fatalf("update fault did not interrupt: %v", err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if err := os.Rename(i.Source, i.Source+" unavailable"); err != nil {
-				t.Fatal(err)
-			}
 			recovery := NewInstaller(Options{Paths: fixture.paths, Getenv: fixture.env.Getenv, Apply: true, Context: t.Context()})
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-manager-runtime")
 			if _, err := recovery.Recover(); err == nil || !strings.Contains(err.Error(), "after-recover-manager-runtime") {
 				t.Fatalf("runtime reversal fault: %v", err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if target, err := os.Readlink(i.runtimeCurrent()); err != nil || target != i.runtimeDir(fixture.first) {
+			target, err := os.Readlink(i.runtimeCurrent())
+			if err == nil && !filepath.IsAbs(target) {
+				target = filepath.Join(filepath.Dir(i.runtimeCurrent()), target)
+			}
+			if err != nil || filepath.Clean(target) != oldRuntime {
 				t.Fatalf("enrolled manager was not reverted to old runtime: %q, %v", target, err)
 			}
 			if _, err := recovery.Recover(); err != nil {
@@ -430,29 +456,49 @@ func TestPersonalSkillsUninstallChangedDestinationOrBackupRefuses(t *testing.T) 
 
 func TestPersonalSkillCrossFilesystemRefuses(t *testing.T) {
 	t.Parallel()
-	if !exists("/dev/shm") {
-		t.Skip("second filesystem unavailable on this platform")
+	adopt := func(t *testing.T, state string) (*Installer, string, []PersonalInventoryEntry, error) {
+		t.Helper()
+		fixture := newInstallerFixture(t)
+		sha, originals := personalFixtureUpgrade(t, fixture)
+		if state != "" {
+			fixture.paths.State = state
+		}
+		i := nativeFixtureInstaller(t, fixture, sha, true)
+		i.AdoptPersonalSkills = true
+		location := filepath.Join(i.skills, "archify")
+		original := seedPersonalSkill(t, originals["archify"], location)
+		_, err := i.Setup(true)
+		return i, location, original, err
 	}
-	fixture := newInstallerFixture(t)
-	sha, originals := personalFixtureUpgrade(t, fixture)
-	state, err := os.MkdirTemp("/dev/shm", "cw-personal-fixture-")
-	if err != nil {
-		t.Skipf("second filesystem unavailable: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(state) })
-	fixture.paths.State = state
-	i := nativeFixtureInstaller(t, fixture, sha, true)
-	i.AdoptPersonalSkills = true
-	location := filepath.Join(i.skills, "archify")
-	original := seedPersonalSkill(t, originals["archify"], location)
-	_, err = i.Setup(true)
-	if err == nil || !strings.Contains(err.Error(), "same filesystem") {
-		t.Fatalf("cross-filesystem adoption did not refuse: %v", err)
-	}
-	assertPersonalDirectory(t, location, original)
-	if exists(i.journalPath) || exists(i.current) {
-		t.Fatal("cross-filesystem adoption reached activation")
-	}
+	// On one filesystem the same adoption succeeds, so the refusal below
+	// comes from the second filesystem.
+	t.Run("same filesystem", func(t *testing.T) {
+		t.Parallel()
+		i, _, original, err := adopt(t, "")
+		if err != nil {
+			t.Fatalf("same-filesystem adoption: %v", err)
+		}
+		assertPersonalDirectory(t, i.personalBackup("archify"), original)
+	})
+	t.Run("second filesystem", func(t *testing.T) {
+		t.Parallel()
+		if !exists("/dev/shm") {
+			t.Skip("second filesystem unavailable on this platform")
+		}
+		state, err := os.MkdirTemp("/dev/shm", "cw-personal-fixture-")
+		if err != nil {
+			t.Skipf("second filesystem unavailable: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(state) })
+		i, location, original, err := adopt(t, state)
+		if err == nil || !strings.Contains(err.Error(), "same filesystem") {
+			t.Fatalf("cross-filesystem adoption did not refuse: %v", err)
+		}
+		assertPersonalDirectory(t, location, original)
+		if exists(i.journalPath) || exists(i.current) {
+			t.Fatal("cross-filesystem adoption reached activation")
+		}
+	})
 }
 
 func TestPersonalSkillCancellationBetweenCompoundStepsRecovers(t *testing.T) {
@@ -464,8 +510,8 @@ func TestPersonalSkillCancellationBetweenCompoundStepsRecovers(t *testing.T) {
 	location := filepath.Join(i.skills, "archify")
 	original := seedPersonalSkill(t, originals["archify"], location)
 	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-adopt-personal:archify:rename")
-	if _, err := i.Setup(true); err == nil {
-		t.Fatal("compound pause did not interrupt")
+	if _, err := i.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at after-adopt-personal:archify:rename") {
+		t.Fatalf("compound pause did not interrupt: %v", err)
 	}
 	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 	ctx, cancel := context.WithCancel(t.Context())

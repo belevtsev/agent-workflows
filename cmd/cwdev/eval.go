@@ -55,8 +55,9 @@ func evaluate(ctx context.Context, arguments []string) error {
 		}
 		if recorded == "" {
 			if command, e := exec.LookPath("cw"); e == nil {
+				// A legacy installation counts as no recorded configuration.
 				locator, e := manageruntime.Resolve(command)
-				if e != nil && !errors.Is(e, os.ErrNotExist) {
+				if e != nil && !errors.Is(e, os.ErrNotExist) && !errors.Is(e, manageruntime.ErrLegacyInstallation) {
 					return e
 				}
 				if e == nil {

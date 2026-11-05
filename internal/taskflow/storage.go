@@ -285,7 +285,10 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if err := decodeBytes(data, &current); err != nil {
 			return Record{}, "", err
 		}
-		if (current.Version != Version && current.Version != LegacyVersion) || current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
+		if current.Version == 1 {
+			return Record{}, "", errors.New("task record version 1 is no longer supported; start a new task with 'cw task start'")
+		}
+		if current.Version != Version || current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
 		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline) {

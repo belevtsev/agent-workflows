@@ -5,13 +5,12 @@
 Run the downloaded binary with `cw install` (or bare `cw`). A normal installation
 uses its embedded resources and never clones or builds a repository. `cw update`
 acquires one pinned stable release before handing off to its verified executable.
-`--source PATH` remains a separate opt-in developer checkout workflow.
 
 In an interactive terminal the four-step setup chooses hosts, model preferences,
 optional private API keys, and a before/after review. Enter accepts the selection;
 Esc or Ctrl-C before apply leaves active configuration unchanged. `--plain` and
 `TERM=dumb`/`NO_COLOR` use the plain interface. Machine modes (`--json`, piped
-streams, `--non-interactive`), dry runs and preparation do not prompt.
+streams, `--non-interactive`) and dry runs do not prompt.
 
 ```sh
 cw install --host all --preset recommended --non-interactive
@@ -49,32 +48,21 @@ If settings commit but credential saving or checking fails or is cancelled, the
 command reports a nonzero partial outcome. A post-rename storage-sync failure is
 reported as committed with persistence unconfirmed; reload the file before retrying.
 
-## Interrupted setup and legacy migration
+## Interrupted setup
 
-Status, rollback, recovery and uninstall do not need the old checkout. Pending
+Status, rollback, recovery and uninstall work from installed records. Pending
 journals prevent setup prompts and new mutations; run `cw recover` explicitly.
-Recovery validates the exact legacy protocol recorded in v7/v8/v9 receipts, and
-new standalone records use state/journal4 and manager v10. Old receipts are never
-rewritten just to claim compatibility. Cached but unactivated candidates do not
-establish installed version authority. Re-running install/setup on state4 uses
-the active cached base and retains the manager and activation history; explicit
-preference edits derive a new effective snapshot of that same base. Updates
-select a newer base. Runtime locator host paths are initial hints; sealed state
+Installations use state/journal4 and manager v10. Cached but unactivated
+candidates do not establish installed version authority. Re-running install/setup
+uses the active cached base and retains the manager and activation history;
+explicit preference edits derive a new effective snapshot of that same base.
+Updates select a newer base. Runtime locator host paths are initial hints; sealed state
 and journals own enrolled host roots, so adding a host can select its own root.
-
-Existing installations must rebootstrap using a verified v10 release, as described
-in [distribution](development.md#distribution). Use `--migrate-from /absolute/installed/cw`
-when the installed command cannot be discovered at its recorded/default location.
-Migration admits old active/runtime revisions only after bounded GitHub comparisons
-prove they are ancestors of the pinned target. Outages or divergent history refuse
-without changing active configuration. Dry run defers those network checks.
 
 The download helper stages a private executable, verifies its exact pinned source
 tag, and leaves activation to the native transaction. It never overwrites the
-active command before apply and removes its stage after the native child exits. Interrupted
-private staging directories are not installed releases. Historical `.bin.lock`
-locks belong only to old checkout bootstraps; establish that their owner and
-children exited before removing their two metadata files and empty lock directory.
+active command before apply and removes its stage after the native child exits.
+Interrupted private staging directories are not installed releases.
 
 ## Global project diagnostics and evidence
 
@@ -102,7 +90,7 @@ measurement input and model advice do not authorize publication or deployment.
 
 ## Paths and ownership
 
---source selects the checkout. --home selects the installation home; --codex-home
+--home selects the installation home; --codex-home
 selects the Codex directory; --claude-home selects the Claude Code directory;
 --state-dir selects device-local state. Initial defaults use the user home,
 CODEX_HOME, CLAUDE_CONFIG_DIR, and XDG_STATE_HOME. Subsequent installed commands
@@ -127,11 +115,11 @@ form, and only the filesystem can say so once they exist. If a new home's name c
 collide with another path, install stops and asks you to create both directories
 first, then gives the exact answer.
 
-State holds immutable releases/<SHA> snapshots, the active current pointer,
+State holds immutable base and effective release snapshots, the active current pointer,
 ownership/history, recovery records, and immutable manager runtime versions.
-Skill registrations resolve through current. An optional developer source checkout remains editable;
-installed snapshots are never edited directly. The manager version and active
-skill revision are distinct, especially after rollback or --no-checkout.
+Skill registrations resolve through current; installed snapshots are never edited
+directly. The manager version and active skill revision are distinct, especially
+after rollback.
 
 The current manifest manages 33 registrations with 78 entrypoints on each host, a
 marked block in that host's global instructions, its model defaults, and one
@@ -180,8 +168,7 @@ An addition reads the installed release and leaves its base, activation history
 and manager alone, including after rollback. Ordinary standalone install/setup
 also reconfigures this cached base when all selected hosts are already enrolled.
 Explicit preference edits can change its effective digest; `cw update` selects a
-new base. The explicit developer-source workflow retains its historical HEAD
-activation behavior when no new host is being added.
+new base.
 
 Remove one host and keep the rest. This restores that host's files and leaves the
 shared release, manager and other host alone:
@@ -320,8 +307,8 @@ three required advisers; a missing key records unavailable coverage and preserve
 the other results. Excluding OpenAI is rejected for this policy. Installation,
 local validation and status do not require credentials or make hosted requests.
 
-`cw status` reports `openai_credential_present` from its own environment without
-calling OpenAI. A terminal export does not update an already running desktop app;
+`cw status` reports in `credential_sources` whether `OPENAI_API_KEY` comes from
+its own environment or the private stored file, without calling OpenAI. A terminal export does not update an already running desktop app;
 use the [setup instructions](../README.md#set-up-openai-decisions) and a fresh
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
@@ -341,22 +328,24 @@ not replaced.
 Open a new terminal after installing so the shell picks up the PATH entry. Retain
 unrelated shell/profile edits.
 
-## Upgrading from v1
+## Moving from an older install
 
-The v2 manager doesn't read a v1 installation. Its manifest version makes a v1
-`cw update` refuse this source before anything changes, so moving across is a
-one-time reinstall:
+This `cw` reads only installations made by the standalone manager, first released
+in v2.0.58. When it finds one made by an earlier `cw` (a source-checkout manager or
+codex-workflows v1), or one that v2.0.58 migrated from such an install, every
+lifecycle command refuses before writing anything
+and asks you to run `cw uninstall` with your existing `cw`. Read-only commands
+such as `cw doctor`, `cw consult` and `cw task` ignore such an installation and
+use the default roots.
 
-1. Note `state_dir` from `cw status`. If `cw status` reports a modified release
-   because of a stray `__pycache__`, delete that directory inside the release first.
-2. Run `cw uninstall` with the existing `cw`.
-3. Run the new download installer with `--host all --adopt-personal-skills`
-   (no checkout is required).
-4. Verify with `cw status`, then delete the old `state_dir` and the old adviser
-   Python environment.
+Move once:
 
-Rollback history from v1 doesn't carry over. Records under `$CODEX_HOME/workflow-tasks`
-stay in place and remain readable with `--store`.
+1. Run `cw uninstall` with the existing `cw`.
+2. Run the download installer with `--host all`, adding `--adopt-personal-skills`
+   if you had adopted personal skills.
+
+Old task records and rollback history do not carry over. An older task record is
+refused; start a new task with `cw task start`.
 
 ## Adopting standalone personal skills
 
@@ -406,20 +395,14 @@ cw update
 cw status
 ```
 
-A preview checks local evidence and defers release discovery/lineage without
-network or persistent writes. Applied update pins one stable release, verifies
+A preview checks local evidence and defers release discovery without network or
+persistent writes. Applied update pins one stable release, verifies
 all platform/checksum metadata and its native archive, then hands off to that
 verified binary with the captured roots, expected state generation and target
 identity. The target rechecks ownership before activation. Concurrent changes,
-older versions, conflicting same-version identities and unavailable legacy
-lineage refuse; cached candidates never raise installed version authority.
-
-For explicit `--source PATH` developer operations only, install validates local
-HEAD. Update fetches origin/main and can fast-forward a clean checkout after
-preflight; `--no-checkout` keeps its HEAD while installing the fetched snapshot.
-Git uses existing authentication. Recovery does not rewind a developer checkout
-that advanced before an external edit stopped activation. Normal binary update
-never clones, fetches, builds or modifies a checkout.
+older versions and conflicting same-version identities refuse; cached candidates
+never raise installed version authority. Update never clones, fetches or builds a
+repository.
 
 ```sh
 cw rollback --dry-run
@@ -427,7 +410,7 @@ cw rollback
 ```
 
 Rollback restores the previous skills and owned instruction/model defaults, while
-keeping a compatible manager. It does not rewind source Git or change GitHub.
+keeping a compatible manager. It does not change Git or GitHub.
 Status then reports the restored model profiles. Hosts are not part of a release,
 so rollback never adds or removes one, and a host you removed stays removed.
 Shared settings follow the previous snapshot's resource. A six-to-five-key
@@ -452,14 +435,13 @@ cw recover
 
 Recovery reverses journaled owned changes, preserving unrelated edits and refusing
 changed owned content. It includes runtime/command changes, and is a no-op without
-a pending transaction. It does not rewind Git fast-forwards or delete caches.
+a pending transaction. It does not delete caches.
 Use a verified cached executable or ./install.sh recover if a crash occurred
 before cw enrollment. Do not hand-edit ownership or recovery records.
 
-If v10 recovery is itself interrupted after restoring a legacy command link,
-`cw` may point to a v7/v8/v9 reader while the pending version4 journal requires
-v10. Read only `recovery_runtime_key` from `STATE/journal.json`, without editing
-the journal, and use that exact preserved runtime. The key includes source
+If recovery is itself interrupted and `cw` no longer starts a v10 manager, read
+only `recovery_runtime_key` from `STATE/journal.json`, without editing the
+journal, and use that exact preserved runtime. The key includes source
 revision and base digest; it is not just the revision. Replace the placeholders:
 
 ```sh
@@ -469,18 +451,11 @@ STATE/runtime/releases/RECOVERY_RUNTIME_KEY/cw recover
 ```
 
 Verify `cw-manager-v10` before recovering a version4 journal. The cached executable
-uses its sealed locator and journal roots with no source checkout. Recovery checks
-each historical executable against its own immutable receipt, preserving the exact
-v7/v8/v9 protocol rather than rewriting it.
+uses its sealed locator and journal roots.
 
-For a historical v9 upgrade journal (version3), read `recovery_runtime.revision`
-and use `STATE/runtime/releases/RECOVERY_REVISION/cw` instead. Verify that reader
-reports `cw-manager-v9`; the revision-only layout is legacy guidance. A legacy
-reader cannot recover a newer version4 journal.
-
-The new download-only `install.sh recover` is another option once the verified
-v10 release is published. It can run from any directory and needs no checkout;
-pass the explicit recorded roots if the installed command is undiscoverable.
+The download-only `install.sh recover` is another option. It can run from any
+directory; pass the explicit recorded roots if the installed command is
+undiscoverable.
 Skill rollback retains the compatible manager.
 
 ```sh
@@ -490,10 +465,9 @@ cw uninstall
 
 Uninstall restores adopted registrations/original model and shared memory values
 and removes owned
-registrations, global/PATH blocks, and the command link. It preserves source,
-immutable caches, unrelated settings, credentials, and connectors. Reinstall
-through ./install.sh. Status, recovery, rollback, and uninstall use installed
-records even if source is dirty, invalid, or unavailable.
+registrations, global/PATH blocks, and the command link. It preserves immutable
+caches, unrelated settings, credentials, and connectors. Reinstall through
+./install.sh. Status, recovery, rollback, and uninstall use only installed records.
 It preserves later unrelated config content and current permissions. If the file
 was absent before the first config ownership was acquired, removal deletes it
 only when restoration leaves zero bytes; later comments, whitespace, or settings

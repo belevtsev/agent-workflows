@@ -99,6 +99,11 @@ explicit inclusion. Adjudication follows the saved record and uses no key or
 participation switch. Historical optional policies retain their existing flag
 behavior; they do not change the maintained requirements.
 
+The policy keeps version 2. `consultation.model` must equal
+`consultation.providers.jev` and anchors the Jev model.
+`consultation.comparison` is `coordinator_evidence_and_verification`; historical
+policies keep `codex_evidence_and_verification`, which stays valid.
+
 The fixed endpoint is `POST https://api.openai.com/v1/decisions`. The adapter maps
 canonical shared state to deterministic JSON text in `input`, question IDs to
 `name`, and each criterion key/description to a `choices` value/description. It
@@ -275,13 +280,3 @@ a separate version rather than changing labels to match answers. A small synthet
 baseline does not establish calibrated confidence, production quality or a version
 improvement. Offline resource tests exercise the runner with fake transports;
 installation, source validation and native CI never invoke the hosted evaluation.
-
-## Legacy Jev-only helper
-
-`cw consult jev --request PATH --output PATH` remains supported for existing
-Jev-only integrations. It accepts its existing request contract and uses the legacy
-`consultation.model` policy field. The three-adviser `cw consult` uses `consultation.providers`
-and `consultation.comparison: coordinator_evidence_and_verification` while preserving policy
-version 2. Historical policies keep `codex_evidence_and_verification`, which stays valid.
-Follow the installed TypeSafe guide for other primitives. A Jev-only result
-does not provide three-provider coverage.

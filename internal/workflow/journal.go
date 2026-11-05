@@ -107,10 +107,7 @@ func (i *Installer) transact(command string, ops []Object) error {
 	if err := i.registrationAdditionCheck(ops); err != nil {
 		return err
 	}
-	j := Object{"version": 3, "command": command, "home": i.Home, "codex_home": i.Codex, "claude_home": i.Claude, "state_dir": i.State, "operations": ops}
-	if i.standaloneJournalVersion(ops) == 4 {
-		j["version"], j["config_dir"] = 4, i.ConfigDir
-	}
+	j := Object{"version": 4, "command": command, "home": i.Home, "codex_home": i.Codex, "claude_home": i.Claude, "state_dir": i.State, "config_dir": i.ConfigDir, "operations": ops}
 	var operations []any
 	for _, op := range ops {
 		operations = append(operations, op)
@@ -124,13 +121,11 @@ func (i *Installer) transact(command string, ops []Object) error {
 	}
 	if found {
 		j["recovery_runtime"] = asObject(identity)
-		if integer(j["version"]) == 4 {
-			key, err := i.recoveryRuntimeKey(identity)
-			if err != nil {
-				return err
-			}
-			j["recovery_runtime_key"] = key
+		key, err := i.recoveryRuntimeKey(identity)
+		if err != nil {
+			return err
 		}
+		j["recovery_runtime_key"] = key
 	}
 	if e := atomicWrite(i.journalPath, legacyJSON(seal(j)), 0600); e != nil {
 		return e
@@ -162,18 +157,16 @@ func (i *Installer) loadJournal() (Object, error) {
 	if e = decodeJournal(j); e != nil {
 		return nil, e
 	}
-	if (integer(j["version"]) != 3 && integer(j["version"]) != 4) || j["home"] != i.Home || j["codex_home"] != i.Codex || j["claude_home"] != i.Claude || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
+	if integer(j["version"]) != 4 || j["home"] != i.Home || j["codex_home"] != i.Codex || j["claude_home"] != i.Claude || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
 		return nil, errors.New("corrupt journal or roots do not match")
 	}
-	if integer(j["version"]) == 4 {
-		config, err := ResolveConfigDir(i.Home, i.ConfigDir, text(j["config_dir"]), i.Getenv)
-		if err != nil {
-			return nil, err
-		}
-		i.ConfigDir = config
-		if err = i.validatePrivateDestinations(); err != nil {
-			return nil, err
-		}
+	config, err := ResolveConfigDir(i.Home, i.ConfigDir, text(j["config_dir"]), i.Getenv)
+	if err != nil {
+		return nil, err
+	}
+	i.ConfigDir = config
+	if err = i.validatePrivateDestinations(); err != nil {
+		return nil, err
 	}
 	if raw, present := j["recovery_runtime"]; present {
 		var identity RuntimeIdentity
@@ -183,11 +176,9 @@ func (i *Installer) loadJournal() (Object, error) {
 		if e = i.verifyRecoveryRuntime(identity); e != nil {
 			return nil, e
 		}
-		if integer(j["version"]) == 4 {
-			key, err := i.recoveryRuntimeKey(identity)
-			if err != nil || key != text(j["recovery_runtime_key"]) {
-				return nil, errors.New("recovery runtime key differs from journal")
-			}
+		key, err := i.recoveryRuntimeKey(identity)
+		if err != nil || key != text(j["recovery_runtime_key"]) {
+			return nil, errors.New("recovery runtime key differs from journal")
 		}
 	}
 	if recovery, present := j["recovery_operations"]; present {
@@ -275,7 +266,7 @@ func (i *Installer) loadJournal() (Object, error) {
 		if path == i.config || (i.Claude != "" && path == i.host(hostClaude).settings) {
 			return nil, errors.New("settings files require a keyed journal operation")
 		}
-		preferences := integer(j["version"]) == 4 && path == i.preferencesPath()
+		preferences := path == i.preferencesPath()
 		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) && !preferences {
 			return nil, errors.New("unsafe path in mutation journal")
 		}
@@ -303,7 +294,7 @@ func (i *Installer) loadJournal() (Object, error) {
 			}
 			if path == i.current && ob["kind"] == "symlink" {
 				release := text(ob["target"])
-				if filepath.Dir(release) != filepath.Join(i.State, "releases") || !validReleaseKey(filepath.Base(release)) || integer(j["version"]) == 3 && !commitSHA.MatchString(filepath.Base(release)) {
+				if filepath.Dir(release) != filepath.Join(i.State, "releases") || !validReleaseKey(filepath.Base(release)) {
 					return nil, errors.New("unsafe release pointer in journal")
 				}
 				if _, _, e = i.release(filepath.Base(release)); e != nil {
@@ -322,7 +313,7 @@ func (i *Installer) loadJournal() (Object, error) {
 				if e = verifySeal(s); e != nil {
 					return nil, e
 				}
-				if e = i.validateStateStructure(s); e != nil {
+				if e = i.validateStandaloneState(s); e != nil {
 					return nil, e
 				}
 				if s["home"] != i.Home || s["state_dir"] != i.State {
@@ -660,6 +651,9 @@ func (i *Installer) Recover() (Object, error) {
 	}
 	if !exists(i.journalPath) {
 		return Object{"command": "recover", "pending": false, "dry_run": !i.Apply}, nil
+	}
+	if e := legacyRecords(i.State); e != nil {
+		return nil, e
 	}
 	j, e := i.loadJournal()
 	if e != nil {

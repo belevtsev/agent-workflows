@@ -14,13 +14,19 @@ type Provider func(context.Context) (*Bundle, error)
 var embeddedRaw []byte
 var embeddedMarker string
 
+// Present reports whether the release builder linked a workflow payload into
+// this binary. It does not validate the payload; Embedded does that on demand.
+func Present() bool {
+	return len(embeddedRaw) != 0 && embeddedMarker != ""
+}
+
 // Embedded validates the carried resource pack only when it is requested.
 func Embedded(ctx context.Context) (*Bundle, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if len(embeddedRaw) == 0 || embeddedMarker == "" {
-		return nil, errors.New("this developer binary has no embedded resources; use a standalone release or explicit developer source mode")
+		return nil, errors.New("this developer binary has no embedded workflow payload; build a release with cwdev release build")
 	}
 	bundle, err := Open(embeddedRaw)
 	if err != nil {

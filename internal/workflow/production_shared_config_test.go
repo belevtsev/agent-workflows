@@ -1169,7 +1169,7 @@ func productionSharedAssertInstallerJournalUnion(test *testing.T, fixture *insta
 	if err != nil {
 		test.Fatal(err)
 	}
-	if integer(journal["version"]) != 3 {
+	if integer(journal["version"]) != 4 {
 		test.Fatalf("unexpected native journal version: %#v", journal["version"])
 	}
 	path := Normalize(sharedInstallerConfigPath(fixture))
@@ -1180,9 +1180,15 @@ func productionSharedAssertInstallerJournalUnion(test *testing.T, fixture *insta
 			continue
 		}
 		count++
+		// Install enrolls the root model defaults as well, so the update's one
+		// config operation carries them, unchanged, beside the shared keys.
 		before := productionSharedCurrentExpected(false)
 		before["model_context_window"] = productionSharedRecord(personalWindow)
-		productionSharedAssertOperation(test, path, operation, before, productionSharedCurrentExpected(true), "codex-config")
+		after := productionSharedCurrentExpected(true)
+		for key, representation := range map[string]string{"model": `"gpt-6.1-sol"`, "model_reasoning_effort": `"max"`} {
+			before[key], after[key] = productionSharedRecord(representation), productionSharedRecord(representation)
+		}
+		productionSharedAssertOperation(test, path, operation, before, after, "codex-config")
 	}
 	if count != 1 {
 		test.Fatalf("five-to-six update had %d config operations instead of one complete six-key union", count)
@@ -1190,9 +1196,11 @@ func productionSharedAssertInstallerJournalUnion(test *testing.T, fixture *insta
 }
 
 func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *testing.T) {
+	test.Parallel()
 	for _, originalExisted := range []bool{false, true} {
 		for _, boundary := range []string{"after-journal", "after-codex-config", "after-state"} {
 			test.Run(fmt.Sprintf("origin-%t/%s", originalExisted, boundary), func(test *testing.T) {
+				test.Parallel()
 				fixture := sharedInstallerFixture(test)
 				fixture.seedUserFiles(test)
 				path := sharedInstallerConfigPath(fixture)
@@ -1203,7 +1211,6 @@ func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *test
 				}
 				legacyRelease := sharedInstallerRelease(test, fixture, productionSharedFiveResource)
 				fixture.first = legacyRelease
-				origin := fixture.bareOrigin(test)
 				sharedLifecycleExecute(test, fixture, "install")
 				_, legacyHost := productionSharedAssertInstallerOwnership(test, fixture, false, originalExisted)
 				if !reflect.DeepEqual(object(object(legacyHost["shared_config"])["original"]), productionSharedOriginal(originalExisted)) {
@@ -1218,13 +1225,12 @@ func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *test
 				productionSharedSetWindow(test, path, personalWindow)
 				installerAppend(test, path, "\n# independent lifecycle comment\n[profiles.production_personal]\nmodel = 'do-not-touch'\n")
 				currentRelease := sharedInstallerRelease(test, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-				fixture.git(test, "push", origin, "main")
 				sharedLifecycleFailAt(test, fixture, "update", boundary)
 				productionSharedAssertInstallerJournalUnion(test, fixture, personalWindow)
 				installerAppend(test, path, "\n# personal edit after interrupted update\n")
 				sharedLifecycleExecute(test, fixture, "recover")
 				recoveredState, _ := productionSharedAssertInstallerOwnership(test, fixture, false, originalExisted)
-				if recoveredState["release"] != legacyRelease {
+				if stateRevision(recoveredState) != legacyRelease {
 					test.Fatalf("recovery retained the interrupted release: %#v", recoveredState["release"])
 				}
 				productionSharedAssertSnapshotOnDisk(test, path, Object{"model_context_window": productionSharedRecord(personalWindow)})
@@ -1233,10 +1239,9 @@ func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *test
 					test.Fatal("recovery lost an unowned edit made after interruption")
 				}
 				sharedInstallerAssertMode(test, path, mode)
-				fixture.git(test, "push", origin, "main")
 				sharedLifecycleExecute(test, fixture, "update")
 				updatedState, updatedHost := productionSharedAssertInstallerOwnership(test, fixture, true, originalExisted)
-				if updatedState["release"] != currentRelease {
+				if stateRevision(updatedState) != currentRelease {
 					test.Fatalf("update selected the wrong release: %#v", updatedState["release"])
 				}
 				original := productionSharedOriginal(originalExisted)
@@ -1247,13 +1252,12 @@ func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *test
 				manager := clone(object(updatedState["manager"]))
 				sharedLifecycleExecute(test, fixture, "rollback")
 				rolledBack, _ := productionSharedAssertInstallerOwnership(test, fixture, false, originalExisted)
-				if rolledBack["release"] != legacyRelease || !equal(rolledBack["manager"], manager) {
+				if stateRevision(rolledBack) != legacyRelease || !equal(rolledBack["manager"], manager) {
 					test.Fatal("skill rollback changed the current manager or selected the wrong release")
 				}
 				productionSharedAssertSnapshotOnDisk(test, path, Object{"model_context_window": productionSharedRecord(personalWindow)})
 				const latestWindow = "+262_144"
 				productionSharedSetWindow(test, path, latestWindow)
-				fixture.git(test, "push", origin, "main")
 				sharedLifecycleExecute(test, fixture, "update")
 				_, reacquiredHost := productionSharedAssertInstallerOwnership(test, fixture, true, originalExisted)
 				original["model_context_window"] = productionSharedRecord(latestWindow)
@@ -1287,11 +1291,9 @@ func TestProductionSharedInstallerAbsentOriginWithoutPersonalEditsRemovesConfig(
 		test.Fatal(err)
 	}
 	fixture.first = sharedInstallerRelease(test, fixture, productionSharedFiveResource)
-	origin := fixture.bareOrigin(test)
 	sharedLifecycleExecute(test, fixture, "install")
 	productionSharedAssertInstallerOwnership(test, fixture, false, false)
 	sharedInstallerRelease(test, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-	fixture.git(test, "push", origin, "main")
 	sharedLifecycleExecute(test, fixture, "update")
 	productionSharedAssertInstallerOwnership(test, fixture, true, false)
 	sharedLifecycleExecute(test, fixture, "rollback")
@@ -1306,10 +1308,8 @@ func TestProductionSharedInstallerRecoveryRefusesOwnedDriftWithoutMutation(test 
 	fixture := sharedInstallerFixture(test)
 	fixture.seedUserFiles(test)
 	fixture.first = sharedInstallerRelease(test, fixture, productionSharedFiveResource)
-	origin := fixture.bareOrigin(test)
 	sharedLifecycleExecute(test, fixture, "install")
 	sharedInstallerRelease(test, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-	fixture.git(test, "push", origin, "main")
 	sharedLifecycleFailAt(test, fixture, "update", "after-codex-config")
 	path := sharedInstallerConfigPath(fixture)
 	info, err := os.Stat(path)

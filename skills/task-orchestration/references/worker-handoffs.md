@@ -138,9 +138,8 @@ edits never occurred or establish operating-system isolation.
 
 ## Compatibility and proportion
 
-New task records use version two. Historical version-one records remain readable
-with their original evidence bindings and completion rules; start a new task for
-worker commands. No old record is silently upgraded. Small and unchanged
+Task records use version two. An older task record is refused; start a new task
+with `cw task start`. No old record is silently upgraded. Small and unchanged
 read-only tasks gain no mandatory review, but delegated work still needs complete
 acceptance or explicit closure as unused.
 

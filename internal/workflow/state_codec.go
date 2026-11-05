@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // VerifyLocalSeal checks the exact historical local-document checksum encoding.
@@ -16,21 +17,6 @@ func VerifyLocalSeal(data []byte) error {
 		return err
 	}
 	return verifySeal(value)
-}
-
-// OwnershipRecord is the typed boundary for the sealed ownership document. The
-// original JSON object is retained for its canonical integrity seal.
-type OwnershipRecord struct {
-	Version               int                   `json:"version"`
-	Release               string                `json:"release"`
-	Source                string                `json:"source,omitempty"`
-	Home                  string                `json:"home"`
-	StateDir              string                `json:"state_dir"`
-	ManifestRegistrations map[string]string     `json:"manifest_registrations"`
-	Hosts                 map[string]HostRecord `json:"hosts"`
-	History               []ActivationRecord    `json:"history"`
-	Manager               *ManagerRecord        `json:"manager,omitempty"`
-	Integrity             string                `json:"integrity_sha256"`
 }
 
 // HostRecord holds what one agent host owns. Settings metadata differs per host:
@@ -49,10 +35,6 @@ type HostRecord struct {
 type RegistrationRecord struct {
 	Target   string        `json:"target"`
 	Original *OriginRecord `json:"original"`
-}
-
-type ActivationRecord struct {
-	Release string `json:"release"`
 }
 
 type GlobalOriginRecord struct {
@@ -117,57 +99,44 @@ type OperationRecord struct {
 	Personal      *PersonalSkillOperationRecord `json:"personal,omitempty"`
 }
 
-// JournalRecord validates envelope field types before any recovery planning.
-// Operation validation remains discriminated by kind and constrained to owned
-// paths.
-type JournalRecord struct {
-	Version            int               `json:"version"`
-	Command            string            `json:"command"`
-	Home               string            `json:"home"`
-	CodexHome          string            `json:"codex_home"`
-	ClaudeHome         string            `json:"claude_home"`
-	StateDir           string            `json:"state_dir"`
-	Operations         []OperationRecord `json:"operations"`
-	RecoveryOperations []OperationRecord `json:"recovery_operations,omitempty"`
-	Integrity          string            `json:"integrity_sha256"`
-	RecoveryRuntime    *RuntimeIdentity  `json:"recovery_runtime,omitempty"`
+// ErrLegacyInstallation reports ownership state or a journal written by a cw
+// that predates the standalone manager. This release reads neither.
+var ErrLegacyInstallation = errors.New(`this installation was made by an older cw that this release no longer supports; run "cw uninstall" with your existing cw, then install again`)
+
+// decodeOwnership is the boundary every strict state reader uses. Versions one
+// to three predate the standalone manager. A version-four state that names a
+// source checkout or a commit-SHA release in its history was produced by the
+// removed migration from version three, and is refused the same way.
+func decodeOwnership(value Object) (standaloneOwnershipRecord, error) {
+	if v := integer(value["version"]); v >= 1 && v <= 3 {
+		return standaloneOwnershipRecord{}, ErrLegacyInstallation
+	}
+	if integer(value["version"]) == 4 {
+		if text(value["source"]) != "" {
+			return standaloneOwnershipRecord{}, ErrLegacyInstallation
+		}
+		for _, raw := range sequence(value["history"]) {
+			if commitSHA.MatchString(text(object(raw)["release"])) {
+				return standaloneOwnershipRecord{}, ErrLegacyInstallation
+			}
+		}
+	}
+	return decodeStandaloneOwnership(value)
 }
 
-func decodeOwnership(value Object) (OwnershipRecord, error) {
-	var record OwnershipRecord
-	if integer(value["version"]) == 4 {
-		standalone, err := decodeStandaloneOwnership(value)
-		if err != nil {
-			return record, err
-		}
-		record.Version, record.Release, record.Source, record.Home, record.StateDir = 4, standalone.Release, standalone.Source, standalone.Home, standalone.StateDir
-		record.Hosts, record.ManifestRegistrations, record.Manager = standalone.Hosts, standalone.ManifestRegistrations, standalone.Manager
-		return record, nil
+// legacyRecords returns ErrLegacyInstallation when the state root holds a
+// journal or ownership state from an older cw. Lifecycle commands call it
+// before anything else so the refusal precedes every write. Other read
+// failures are not this check's to report: the strict reads that follow
+// return them.
+func legacyRecords(stateDir string) error {
+	if _, err := readJournalRecord(filepath.Join(stateDir, "journal.json")); errors.Is(err, ErrLegacyInstallation) {
+		return err
 	}
-	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
-		return record, fmt.Errorf("invalid ownership record: %w", err)
+	if _, err := readOwnership(filepath.Join(stateDir, "state.json")); errors.Is(err, ErrLegacyInstallation) {
+		return err
 	}
-	if record.Version != 3 || len(record.Hosts) == 0 || record.ManifestRegistrations == nil || record.History == nil {
-		return record, errors.New("unsupported or incomplete ownership record")
-	}
-	if manager := object(value["manager"]); manager != nil {
-		fields := []string{"version", "source", "runtime", "command_path", "command_target"}
-		if _, present := manager["profile"]; present {
-			fields = append(fields, "profile")
-		}
-		if !exactFields(manager, fields...) {
-			return record, errors.New("invalid legacy manager fields")
-		}
-	}
-	for id, host := range record.Hosts {
-		if (id != hostCodex && id != hostClaude) || host.Registrations == nil || host.GlobalOrigin == nil {
-			return record, errors.New("unsupported or incomplete host ownership record")
-		}
-	}
-	if record.Source != "" && Normalize(record.Source) != record.Source {
-		return record, errors.New("invalid recorded source path")
-	}
-	return record, nil
+	return nil
 }
 
 func readOwnership(path string) (Object, error) {
@@ -212,20 +181,8 @@ func readJournalRecord(path string) (Object, error) {
 }
 
 func decodeJournal(value Object) error {
-	if integer(value["version"]) == 4 {
-		return decodeStandaloneJournal(value)
+	if v := integer(value["version"]); v >= 1 && v <= 3 {
+		return ErrLegacyInstallation
 	}
-	var record JournalRecord
-	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
-		return fmt.Errorf("invalid journal record: %w", err)
-	}
-	if record.Version != 3 || record.Operations == nil {
-		return errors.New("unsupported or incomplete journal record")
-	}
-	switch record.Command {
-	case "install", "setup", "update", "rollback", "uninstall":
-	default:
-		return errors.New("unknown journal command")
-	}
-	return nil
+	return decodeStandaloneJournal(value)
 }

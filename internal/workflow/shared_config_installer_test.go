@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,12 +52,21 @@ consolidation_model = %q
 `, extractModel, consolidationModel)
 }
 
+// sharedInstallerTryRelease packs the source with resource as the shared
+// defaults of the next release.
+func sharedInstallerTryRelease(t *testing.T, fixture *installerFixture, resource string) (string, error) {
+	t.Helper()
+	installerWrite(t, filepath.Join(fixture.source, filepath.FromSlash(sharedInstallerResourcePath)), resource, 0o644)
+	return fixture.tryCommit(t)
+}
+
 func sharedInstallerRelease(t *testing.T, fixture *installerFixture, resource string) string {
 	t.Helper()
-	installerWrite(t, filepath.Join(fixture.paths.Source, filepath.FromSlash(sharedInstallerResourcePath)), resource, 0o644)
-	fixture.git(t, "add", sharedInstallerResourcePath)
-	fixture.git(t, "commit", "-m", "Shared config fixture release")
-	return fixture.git(t, "rev-parse", "HEAD")
+	revision, err := sharedInstallerTryRelease(t, fixture, resource)
+	if err != nil {
+		t.Fatalf("pack shared config fixture release: %v", err)
+	}
+	return revision
 }
 
 func sharedInstallerFixture(t *testing.T) *installerFixture {
@@ -68,18 +76,11 @@ func sharedInstallerFixture(t *testing.T) *installerFixture {
 	return fixture
 }
 
+// sharedLifecycleInstaller carries the newest packed release and its manager.
 func sharedLifecycleInstaller(t *testing.T, fixture *installerFixture, apply bool) *Installer {
 	t.Helper()
-	revision := fixture.git(t, "rev-parse", "HEAD")
-	installer := sharedConfigRuntimeFixtureFor(t, fixture, revision)
+	installer := sharedConfigRuntimeFixtureFor(t, fixture, fixture.current)
 	installer.Apply = apply
-	installer.PrepareRuntime = func(ctx context.Context, source, selectedRevision, state string) (RuntimeCandidate, error) {
-		if ctx != installer.Context || source != installer.Source || state != installer.State {
-			t.Fatal("shared config runtime preparation lost the installation context or roots")
-		}
-		candidate := sharedConfigRuntimeFixtureFor(t, fixture, selectedRevision)
-		return RuntimeCandidate{Path: candidate.RuntimeCandidate, Identity: candidate.RuntimeIdentity}, nil
-	}
 	return installer
 }
 
@@ -182,11 +183,14 @@ func TestSharedConfigInstallerInstallAndSetupPreserveDeviceSettings(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			if hostRecord(state, hostCodex)["shared_config"] == nil || (hostRecord(state, hostCodex)["model_config"] != nil) != (command == "setup") {
+			// Install and setup are one standalone operation: both own the shared
+			// defaults and the root model, which uninstall restores below.
+			if hostRecord(state, hostCodex)["shared_config"] == nil || hostRecord(state, hostCodex)["model_config"] == nil {
 				t.Fatalf("unexpected config ownership for %s: %#v", command, state)
 			}
-			if command == "install" && !strings.Contains(installed, "model = 'local-model'") {
-				t.Fatal("install changed an unenrolled root model")
+			solDefaultsAssertRoot(t, fixture, "gpt-6.1-sol", "max")
+			if strings.Contains(installed, "model = 'local-model'") {
+				t.Fatalf("%s left the device root model unmanaged", command)
 			}
 			sharedInstallerAssertMode(t, path, 0o640)
 			status := sharedLifecycleExecute(t, fixture, "status")
@@ -219,19 +223,16 @@ func TestSharedConfigInstallerUpdateRollbackAndOriginalRestoration(t *testing.T)
 	fixture.seedUserFiles(t)
 	path := sharedInstallerConfigPath(fixture)
 	installerWrite(t, path, sharedInstallerDeviceConfig, 0o640)
-	origin := fixture.bareOrigin(t)
 	sharedLifecycleExecute(t, fixture, "setup")
 	installerWrite(t, path, strings.Replace(installerRead(t, path), "device_retention = 17", "device_retention = 99", 1)+"\n# Later local edit\n", 0o604)
 	second := sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6-sol", "gpt-6-luna"))
-	fixture.git(t, "push", origin, "main")
-	fixture.git(t, "reset", "--hard", fixture.first)
 	preview := sharedLifecycleInstaller(t, fixture, false)
 	before := installerSnapshot(t, fixture.base)
 	if _, err := preview.Update(); err != nil {
 		t.Fatal(err)
 	}
 	installerUnchanged(t, fixture.base, before)
-	if report := sharedLifecycleExecute(t, fixture, "update"); report["release"] != second || report["changed"] != true {
+	if report := sharedLifecycleExecute(t, fixture, "update"); report["changed"] != true || fixture.activeRevision(t) != second {
 		t.Fatalf("update did not activate shared defaults: %#v", report)
 	}
 	sharedInstallerAssertDefaults(t, fixture, "gpt-6-sol", "gpt-6-luna")
@@ -263,7 +264,8 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 	fixture.execute(t, "setup")
 	beforeConfig := installerRead(t, path)
 	sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-	sharedLifecycleExecute(t, fixture, "setup")
+	// Update, not setup, activates the release that adds the resource.
+	sharedLifecycleExecute(t, fixture, "update")
 	sharedInstallerAssertDefaults(t, fixture, "gpt-6.1-sol", "gpt-6.1-sol")
 	installerAppend(t, path, "\n# Local edit before rollback\n")
 	sharedLifecycleExecute(t, fixture, "rollback")
@@ -271,7 +273,7 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hostRecord(state, hostCodex)["shared_config"] != nil || state["release"] != fixture.first {
+	if hostRecord(state, hostCodex)["shared_config"] != nil || stateRevision(state) != fixture.first {
 		t.Fatalf("historical rollback retained shared ownership: %#v", state)
 	}
 	if got := installerRead(t, path); got != beforeConfig+"\n# Local edit before rollback\n" {
@@ -286,7 +288,9 @@ func TestSharedConfigInstallerRollbackToHistoricalResourceAbsence(t *testing.T) 
 
 func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *testing.T) {
 	t.Parallel()
-	for _, order := range []string{"model first", "shared first"} {
+	// A shared-only installation no longer exists: install enrolls the root
+	// model like setup, so both orders take model ownership first.
+	for _, order := range []string{"model first", "install first"} {
 		t.Run(order, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
@@ -294,16 +298,18 @@ func TestSharedConfigInstallerAbsentFileOriginSurvivesOwnershipMigration(t *test
 			if order == "model first" {
 				fixture.execute(t, "setup")
 				sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-				sharedLifecycleExecute(t, fixture, "setup")
-			} else {
-				origin := fixture.bareOrigin(t)
-				fixture.execute(t, "install")
-				sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-				fixture.git(t, "push", origin, "main")
 				sharedLifecycleExecute(t, fixture, "update")
+			} else {
+				fixture.execute(t, "install")
 				state, err := fixture.installer(false).state(true)
-				if err != nil || hostRecord(state, hostCodex)["model_config"] != nil {
-					t.Fatalf("shared-only update enrolled root defaults: %#v, %v", state, err)
+				if err != nil || hostRecord(state, hostCodex)["model_config"] == nil {
+					t.Fatalf("install did not enroll root defaults: %#v, %v", state, err)
+				}
+				sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
+				sharedLifecycleExecute(t, fixture, "update")
+				state, err = fixture.installer(false).state(true)
+				if err != nil || hostRecord(state, hostCodex)["model_config"] == nil || hostRecord(state, hostCodex)["shared_config"] == nil {
+					t.Fatalf("update after install did not keep both ownerships: %#v, %v", state, err)
 				}
 				sharedLifecycleExecute(t, fixture, "setup")
 			}
@@ -338,8 +344,8 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if integer(journal["version"]) != 3 {
-				t.Fatal("shared config was journaled without a capable v2 recovery runtime")
+			if integer(journal["version"]) != 4 {
+				t.Fatalf("shared config journal version = %v, want 4", journal["version"])
 			}
 			count := 0
 			for _, raw := range sequence(journal["operations"]) {
@@ -348,12 +354,16 @@ func TestSharedConfigInstallerOneRecoverableConfigOperation(t *testing.T) {
 					continue
 				}
 				count++
-				wantKeys := 6
-				if command == "setup" {
-					wantKeys = 8
-				}
+				// Install and setup both own the six shared keys and the two
+				// root model keys in the one combined operation.
+				const wantKeys = 8
 				if op["kind"] != "codex_config" || len(object(op["before_keys"])) != wantKeys || len(object(op["after_keys"])) != wantKeys {
 					t.Fatalf("incomplete combined config operation: %#v", op)
+				}
+				for _, key := range []string{"model", "model_reasoning_effort"} {
+					if _, found := object(op["after_keys"])[key]; !found {
+						t.Fatalf("%s operation does not own root %s: %#v", command, key, op)
+					}
 				}
 			}
 			if count != 1 {
@@ -442,7 +452,6 @@ func TestSharedConfigInstallerOwnedDriftRefusesMutation(t *testing.T) {
 			fixture.seedUserFiles(t)
 			path := sharedInstallerConfigPath(fixture)
 			installerWrite(t, path, sharedInstallerDeviceConfig, 0o640)
-			fixture.bareOrigin(t)
 			sharedLifecycleExecute(t, fixture, "setup")
 			installed := installerRead(t, path)
 			changed := strings.Replace(installed, mutation.before, mutation.after, 1)
@@ -509,7 +518,12 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
 			fixture.seedUserFiles(t)
-			sharedInstallerRelease(t, fixture, resource)
+			// A bundle that cannot be packed never reaches an installer; either
+			// refusal keeps the invalid defaults away from the device config.
+			if _, err := sharedInstallerTryRelease(t, fixture, resource); err != nil {
+				t.Logf("bundle build refused the invalid shared resource: %v", err)
+				return
+			}
 			installer := sharedLifecycleInstaller(t, fixture, true)
 			before := installerSnapshot(t, fixture.base)
 			if _, err := installer.Setup(false); err == nil {
@@ -522,24 +536,40 @@ func TestSharedConfigInstallerInvalidSourceRefusesMutation(t *testing.T) {
 
 func TestSharedConfigInstallerInvalidDeviceConfigRefusesMutation(t *testing.T) {
 	t.Parallel()
-	for name, config := range map[string]string{
-		"malformed":            "other = [",
-		"wrong feature type":   "[features]\nmemories = 'false'\n",
-		"wrong model type":     "[memories]\nextract_model = true\n",
-		"wrong window type":    "model_context_window = '512k'\n",
-		"scalar memory parent": "memories = 'device value'\n",
-		"inline features":      "features = { memories = false, device_feature = true }\n",
-		"inline memories":      "memories = { extract_model = 'local-extract', device_retention = 17 }\n",
+	for name, test := range map[string]struct{ config, key string }{
+		"valid":                {sharedInstallerDeviceConfig, ""},
+		"malformed":            {"other = [", "toml"},
+		"wrong feature type":   {"[features]\nmemories = 'false'\n", "memories"},
+		"wrong model type":     {"[memories]\nextract_model = true\n", "extract_model"},
+		"wrong window type":    {"model_context_window = '512k'\n", "model_context_window"},
+		"scalar memory parent": {"memories = 'device value'\n", "memories"},
+		"inline features":      {"features = { memories = false, device_feature = true }\n", "features"},
+		"inline memories":      {"memories = { extract_model = 'local-extract', device_retention = 17 }\n", "memories"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			fixture := sharedInstallerFixture(t)
 			fixture.seedUserFiles(t)
-			installerWrite(t, sharedInstallerConfigPath(fixture), config, 0o640)
+			path := sharedInstallerConfigPath(fixture)
+			installerWrite(t, path, test.config, 0o640)
 			installer := sharedLifecycleInstaller(t, fixture, true)
 			before := installerSnapshot(t, fixture.base)
-			if _, err := installer.Setup(false); err == nil {
+			_, err := installer.Setup(false)
+			if test.key == "" {
+				// A supported device config installs, so each refusal below
+				// comes from its own invalid shape.
+				if err != nil {
+					t.Fatalf("valid device config: %v", err)
+				}
+				sharedInstallerAssertDefaults(t, fixture, "gpt-6.1-sol", "gpt-6.1-sol")
+				return
+			}
+			if err == nil {
 				t.Fatal("installation accepted invalid or unsupported device config")
+			}
+			// The refusal names the device config or the key it cannot accept.
+			if !strings.Contains(err.Error(), "config.toml") && !strings.Contains(err.Error(), test.key) {
+				t.Fatalf("invalid device config refused for another reason: %v", err)
 			}
 			installerUnchanged(t, fixture.base, before)
 		})
