@@ -196,7 +196,18 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 	if report["configuration_committed"] == true && wizard.started {
 		credentialResult, err = wizard.SaveCredentials(ctx)
 		if err != nil {
-			_ = writeJSON(cmd.OutOrStdout(), workflow.Object{"action": action, "configuration_committed": true, "credentials": credentialResult, "status": "partial"})
+			// Only the wizard saves keys, and it reports to a person: settings are
+			// applied and the error line says what happened to the keys. A failed
+			// online check also shows which provider failed.
+			if credentialResult["check_status"] == "failed" {
+				status, statusErr := service.Status()
+				if statusErr != nil {
+					return errors.Join(err, statusErr)
+				}
+				if _, werr := fmt.Fprint(cmd.ErrOrStderr(), wizard.finishMessage(status, credentialResult)); werr != nil {
+					return errors.Join(err, errors.New("setup summary could not be written"))
+				}
+			}
 			return err
 		}
 	}
@@ -216,8 +227,13 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 		presence = nil
 		credentialStorage = "unavailable"
 	}
+	// An interactive setup ends with a human summary; --json, --non-interactive
+	// and non-terminal runs never start the wizard and keep the JSON report.
 	if wizard.started {
-		fmt.Fprintln(cmd.ErrOrStderr(), wizardSuccess(config, o, report))
+		if _, err := fmt.Fprint(cmd.ErrOrStderr(), wizard.finishMessage(status, credentialResult)); err != nil {
+			return errors.New("setup completed, but its summary could not be written")
+		}
+		return nil
 	}
 	return writeJSON(cmd.OutOrStdout(), workflow.Object{"action": action, "dry_run": !apply, "environment": environmentReport{"native_go", config.Version, config.Revision}, "result": report, "status": status, "credentials": credentialResult, "credential_sources": presence, "credential_storage_status": credentialStorage, "next_step": "Start a fresh agent session to use the selected settings"})
 }

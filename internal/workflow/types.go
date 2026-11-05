@@ -71,7 +71,9 @@ type ModelChoice struct {
 }
 
 type RoleConfiguration struct {
-	Role      string         `json:"role"`
+	Role string `json:"role"`
+	// Profile is the policy profile the role uses, such as "github".
+	Profile   string         `json:"profile"`
 	Scope     string         `json:"scope"`
 	Default   ModelSelection `json:"default"`
 	Effective ModelSelection `json:"effective"`

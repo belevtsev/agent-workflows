@@ -40,50 +40,154 @@ func credentialEnvironment(root *cobra.Command, config Config) (func(string) str
 	return (credentials.Resolver{Directory: directory, Getenv: config.Getenv}).Environment()
 }
 
-func (w *setupWizard) credentials(ctx context.Context) error {
-	store := credentials.Store{Directory: w.directory}
-	snapshot, err := store.Read()
+func providerName(name string) string {
+	switch name {
+	case credentials.TYPESAFE_API_KEY:
+		return "TypeSafe (Jev)"
+	case credentials.SUBQ_API_KEY:
+		return "SubQ (Snap)"
+	case credentials.OPENAI_API_KEY:
+		return "OpenAI Decisions"
+	}
+	return name
+}
+
+func providerShort(name string) string {
+	switch name {
+	case credentials.TYPESAFE_API_KEY:
+		return "TypeSafe"
+	case credentials.SUBQ_API_KEY:
+		return "SubQ"
+	case credentials.OPENAI_API_KEY:
+		return "OpenAI"
+	}
+	return name
+}
+
+// loadKeys records which keys are saved, without keeping their values.
+func (w *setupWizard) loadKeys() error {
+	if w.keysLoaded {
+		return nil
+	}
+	snapshot, err := (credentials.Store{Directory: w.directory}).Read()
 	if err != nil {
 		return err
 	}
 	w.generation = snapshot.Generation
 	for _, name := range credentials.Names {
-		stored := snapshot.Keys[name] != ""
-		environment := w.config.Getenv(name) != ""
-		description := "Optional. Enter skips this key. Saved keys are plaintext in a private local file."
-		if stored {
-			description = "Enter keeps the saved key. A new value replaces it in the private local plaintext file."
-		}
-		if environment {
-			description += " The environment key takes precedence; a saved replacement will be shadowed until that environment key is removed."
-		}
-		action := "keep"
-		if err = w.choose(ctx, "03 / Keys", name, description, []wizardOption{{"Keep existing / skip", "keep"}, {"Enter a stored key", "enter"}}, &action); err != nil {
-			return err
-		}
-		if action == "enter" {
-			key := ""
-			if err = w.input(ctx, "03 / Keys", name, "Hidden input. Empty input keeps the existing key or skips this provider.", &key, true); err != nil {
-				return err
-			}
-			if key != "" {
-				invalid := len(key) > 64<<10 || !utf8.ValidString(key) || strings.TrimSpace(key) != key
-				for _, r := range key {
-					invalid = invalid || unicode.IsSpace(r) || unicode.IsControl(r)
-				}
-				if invalid {
-					return errors.New("API key must be bounded text without whitespace or control characters")
-				}
-				w.changes[name] = &key
-			}
-		}
+		w.stored[name] = snapshot.Keys[name] != ""
 	}
-	probe := "no"
-	if err = w.choose(ctx, "03 / Keys", "Check available keys online?", "Optional, off by default. Sends one tiny synthetic request per available provider; may incur a small charge. No project data is sent.", []wizardOption{{"Skip online check", "no"}, {"Check keys after applying", "yes"}}, &probe); err != nil {
-		return err
-	}
-	w.checkKeys = probe == "yes"
+	clear(snapshot.Keys)
+	w.keysLoaded = true
 	return nil
+}
+
+func (w *setupWizard) keyStatus(name string) string {
+	environment := w.config.Getenv(name) != ""
+	switch {
+	case w.changes[name] != nil && environment:
+		return "new key ready · environment value still wins"
+	case w.changes[name] != nil:
+		return "new key ready"
+	case environment && w.stored[name]:
+		return "from environment · overrides saved key"
+	case environment:
+		return "from environment"
+	case w.stored[name]:
+		return "saved"
+	}
+	return "not set"
+}
+
+// keySummary describes every key for the review; brief shortens the online
+// check note for the one-line step summary.
+func (w *setupWizard) keySummary(brief bool) string {
+	parts := make([]string, 0, len(credentials.Names)+1)
+	known := false
+	for _, name := range credentials.Names {
+		known = known || w.changes[name] != nil || w.config.Getenv(name) != "" || w.stored[name]
+	}
+	if !known {
+		parts = append(parts, "none set")
+	}
+	for _, name := range credentials.Names {
+		if !known {
+			break
+		}
+		status := "not set"
+		switch {
+		case w.changes[name] != nil:
+			status = "new"
+		case w.config.Getenv(name) != "":
+			status = "environment"
+		case w.stored[name]:
+			status = "saved"
+		}
+		parts = append(parts, providerShort(name)+" "+status)
+	}
+	if w.checkKeys && brief {
+		parts = append(parts, "online check")
+	} else if w.checkKeys {
+		parts = append(parts, "online check after applying")
+	}
+	return strings.Join(parts, " · ")
+}
+
+func validKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	invalid := len(key) > 64<<10 || !utf8.ValidString(key) || strings.TrimSpace(key) != key
+	for _, r := range key {
+		invalid = invalid || unicode.IsSpace(r) || unicode.IsControl(r)
+	}
+	if invalid {
+		return "A key is one line of text without spaces or control characters."
+	}
+	return ""
+}
+
+// keysStep lists every provider key on one screen. Choosing a key opens a
+// hidden field; the online check is a toggle; Continue moves on.
+func (w *setupWizard) keysStep(ctx context.Context) (nav, error) {
+	if err := w.loadKeys(); err != nil {
+		return navQuit, err
+	}
+	for {
+		var items []menuItem
+		for _, name := range credentials.Names {
+			items = append(items, menuItem{label: providerName(name), value: name, detail: w.keyStatus(name)})
+		}
+		check := w.checkKeys
+		items = append(items,
+			menuItem{label: "Check keys online", value: "check", detail: "after applying · may cost a little", checked: &check},
+			menuItem{label: "Continue", value: "continue"})
+		m := &menu{step: stepKeys, title: "Adviser keys", help: "Optional. Saved keys go to a private plaintext file in " + w.short(w.directory) + ". A key set in your environment takes precedence.", items: items, value: "continue", back: true}
+		value, n, err := w.pick(ctx, m)
+		w.checkKeys = check
+		if err != nil || n != navNext {
+			return n, err
+		}
+		// The screen returns to Continue after each key, so Enter moves on.
+		if value == "continue" {
+			return navNext, nil
+		}
+		back := "Esc goes back"
+		if w.plain {
+			back = "b goes back"
+		}
+		help := "Paste or type the " + value + " value. Enter with an empty field keeps the current key; " + back + " without changes."
+		if w.config.Getenv(value) != "" {
+			help += " " + value + " is also set in your environment and will take precedence."
+		}
+		key, n, err := w.edit(ctx, editSpec{step: stepKeys, title: providerName(value) + " key", help: help, secret: true, validate: validKey})
+		if err != nil || n == navQuit {
+			return n, err
+		}
+		if n == navNext && key != "" {
+			w.changes[value] = &key
+		}
+	}
 }
 
 func (w *setupWizard) SaveCredentials(ctx context.Context) (workflow.Object, error) {
