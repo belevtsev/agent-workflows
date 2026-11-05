@@ -15,17 +15,21 @@ import (
 
 	"github.com/belevtsev/agent-workflows/internal/devcheck"
 	"github.com/belevtsev/agent-workflows/internal/release"
+	"github.com/belevtsev/agent-workflows/internal/sandboxtest"
 )
 
 func run(ctx context.Context, arguments []string) error {
 	if len(arguments) == 0 || arguments[0] == "help" || arguments[0] == "--help" || arguments[0] == "-h" {
-		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n  cwdev eval multilingual [--source PATH] [--live --output-dir PATH]\n\nRelease builds require a clean exact source revision. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets. Evaluation\nvalidates its corpus offline unless --live explicitly allows one hosted baseline.")
+		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n  cwdev eval multilingual [--source PATH] [--live --output-dir PATH]\n  cwdev sandbox test --source PATH --backend docker|sbx [--output FILE]\n\nRelease builds require a clean exact source revision. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets. Evaluation\nvalidates its corpus offline unless --live explicitly allows one hosted baseline.")
 		return nil
 	}
 	action := arguments[0]
 	arguments = arguments[1:]
 	if action == "eval" {
 		return evaluate(ctx, arguments)
+	}
+	if action == "sandbox" {
+		return sandbox(ctx, arguments)
 	}
 	if action == "release" {
 		if len(arguments) == 0 || (arguments[0] != "build" && arguments[0] != "publish") {
@@ -91,6 +95,48 @@ func run(ctx context.Context, arguments []string) error {
 		return err
 	}
 	return json.MarshalWrite(os.Stdout, publication, json.Deterministic(true))
+}
+
+func sandbox(ctx context.Context, arguments []string) error {
+	if len(arguments) == 0 || (arguments[0] != "test" && arguments[0] != "probe") {
+		return errors.New("sandbox requires test")
+	}
+	action := arguments[0]
+	flags := flag.NewFlagSet("sandbox "+action, flag.ContinueOnError)
+	if action == "test" {
+		source := flags.String("source", ".", "clean exact source checkout for host-side artifact preparation")
+		backend := flags.String("backend", "docker", "explicit docker or standalone sbx backend")
+		output := flags.String("output", "", "safe JSON report destination")
+		if err := flags.Parse(arguments[1:]); err != nil {
+			if errors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected sandbox arguments")
+		}
+		report, runErr := sandboxtest.Run(ctx, sandboxtest.Options{Source: *source, Backend: *backend, Output: *output})
+		writeErr := json.MarshalWrite(os.Stdout, report, json.Deterministic(true))
+		return errors.Join(runErr, writeErr)
+	}
+	first := flags.String("first", "", "first prepared standalone executable")
+	second := flags.String("second", "", "second prepared standalone executable")
+	root := flags.String("root", "", "private synthetic acceptance root")
+	expectedRevision := flags.String("expected-revision", "", "trusted exact source revision for both prepared executables")
+	if err := flags.Parse(arguments[1:]); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 || *first == "" || *second == "" || *root == "" || *expectedRevision == "" {
+		return errors.New("internal sandbox probe requires first, second, root and expected source revision")
+	}
+	// The dedicated test author owns Probe's behavioral assertions.
+	// Infrastructure supplies trusted inputs and process isolation.
+	result, probeErr := sandboxtest.Probe(ctx, *first, *second, *root, *expectedRevision)
+	if result == nil {
+		return errors.Join(probeErr, errors.New("independent acceptance probe returned no JSON result"))
+	}
+	return errors.Join(probeErr, json.MarshalWrite(os.Stdout, result, json.Deterministic(true)))
 }
 
 func main() {

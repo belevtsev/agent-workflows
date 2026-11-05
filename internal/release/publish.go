@@ -83,7 +83,7 @@ func (failure *httpFailure) Error() string {
 // Publish performs no destructive writes or automatic mutation retries. Every
 // uncertain response is reconciled by reading the exact expected remote state.
 func Publish(ctx context.Context, options PublishOptions) (*Publication, error) {
-	if !versionPattern.MatchString(options.Version) || !revisionPattern.MatchString(options.Revision) {
+	if !validStableReleaseVersion(options.Version) || !revisionPattern.MatchString(options.Revision) {
 		return nil, errors.New("a semantic release version and exact 40-character revision are required")
 	}
 	if options.Token == "" {
@@ -95,6 +95,9 @@ func Publish(ctx context.Context, options PublishOptions) (*Publication, error) 
 	}
 	assets, err := ValidateNativeAssets(options.Dist, options.Version, options.Revision, stamp)
 	if err != nil {
+		return nil, err
+	}
+	if err := validatePublishedSource(ctx, options.Source, options.Dist, options.Version, options.Revision); err != nil {
 		return nil, err
 	}
 	if options.Repo == "" {

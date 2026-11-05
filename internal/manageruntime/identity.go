@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/bundled"
 )
 
 var commitSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
@@ -25,16 +25,19 @@ var versionToken = regexp.MustCompile(`^[A-Za-z0-9._+-]+$`)
 
 // ErrLocatorMissing identifies an installed layout whose roots cannot be safely
 // inferred. Callers must supply explicit roots rather than falling back to cwd.
-var ErrLocatorMissing = errors.New("installed manager has no locator; provide --source, --home, --codex-home and --state-dir explicitly")
+var ErrLocatorMissing = errors.New("installed manager has no locator; provide the explicit recorded installation roots")
 
 // Candidate identifies a regular executable prepared for an exact revision.
 type Candidate struct {
-	Path     string `json:"-"`
-	Revision string `json:"revision"`
-	Version  string `json:"version"`
-	OS       string `json:"os"`
-	Arch     string `json:"arch"`
-	BuiltAt  string `json:"built_at"`
+	Path     string            `json:"-"`
+	Revision string            `json:"revision"`
+	Version  string            `json:"version"`
+	OS       string            `json:"os"`
+	Arch     string            `json:"arch"`
+	BuiltAt  string            `json:"built_at"`
+	Protocol string            `json:"-"`
+	Bundle   *bundled.Identity `json:"-"`
+	SHA256   string            `json:"-"`
 }
 
 // Locator binds an installed manager to its installation independently of cwd.
@@ -45,6 +48,9 @@ type Locator struct {
 	State       string `json:"state"`
 	CommandPath string `json:"command_path"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
+	Config      string `json:"config_dir,omitempty"`
+	Codex       string `json:"codex_home,omitempty"`
+	Claude      string `json:"claude_home,omitempty"`
 }
 
 // boundedBuffer refuses unlimited output from a subprocess.
@@ -135,15 +141,39 @@ func Resolve(executable string) (Locator, error) {
 	if err = json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
-	for _, p := range []string{locator.Source, locator.Home, locator.State} {
+	paths := []string{locator.Home, locator.State}
+	switch locator.Version {
+	case 2:
+		// Decode the old exact schema independently; adding optional v3 fields
+		// must never broaden what a sealed v2 locator is allowed to contain.
+		var legacy struct {
+			Version     int    `json:"version"`
+			Source      string `json:"source"`
+			Home        string `json:"home"`
+			State       string `json:"state"`
+			CommandPath string `json:"command_path"`
+			Integrity   string `json:"integrity_sha256,omitempty"`
+		}
+		if err := json.Unmarshal(data, &legacy, json.RejectUnknownMembers(true)); err != nil {
+			return Locator{}, fmt.Errorf("invalid legacy installed manager locator: %w", err)
+		}
+		paths = append(paths, locator.Source)
+	case 3:
+		paths = append(paths, locator.Config)
+		for _, optional := range []string{locator.Source, locator.Codex, locator.Claude} {
+			if optional != "" {
+				paths = append(paths, optional)
+			}
+		}
+	default:
+		return Locator{}, errors.New("unsupported installed manager locator version")
+	}
+	for _, p := range paths {
 		if p == "" || !filepath.IsAbs(p) || filepath.Clean(p) != p || strings.ContainsAny(p, "\x00\r\n") {
 			return Locator{}, errors.New("unsafe installed manager locator paths")
 		}
 	}
-	if locator.Version != 2 {
-		return Locator{}, errors.New("unsupported installed manager locator version")
-	}
-	if err = workflow.VerifyLocalSeal(data); err != nil {
+	if err = verifyLocatorSeal(data); err != nil {
 		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
 	if locator.CommandPath != filepath.Join(locator.Home, ".local", "bin", "cw") {
@@ -153,7 +183,13 @@ func Resolve(executable string) (Locator, error) {
 	if locator.State != stateRoot {
 		return Locator{}, errors.New("manager locator belongs to another runtime root")
 	}
-	if !commitSHA.MatchString(filepath.Base(parent)) {
+	key := filepath.Base(parent)
+	validKey := commitSHA.MatchString(key)
+	if locator.Version == 3 {
+		parts := strings.Split(key, "-")
+		validKey = len(parts) == 2 && commitSHA.MatchString(parts[0]) && standaloneDigest.MatchString(parts[1])
+	}
+	if !validKey {
 		return Locator{}, errors.New("invalid installed manager release path")
 	}
 	return locator, nil

@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/belevtsev/agent-workflows/internal/bundled"
+	"github.com/belevtsev/agent-workflows/internal/distribution"
 	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/workflow"
 	"github.com/spf13/cobra"
@@ -40,6 +42,10 @@ type Config struct {
 	Resolve                    func(string) (manageruntime.Locator, error)
 	Inspect                    func(context.Context, string) (manageruntime.Candidate, error)
 	Prepare                    func(context.Context, string, string, string) (manageruntime.Candidate, error)
+	Bundle                     bundled.Provider
+	Distribution               *distribution.Client
+	Terminal                   func() bool
+	Configure                  workflow.ConfigurationSelector
 }
 
 // ManagerProtocol identifies the contract the bootstrap requires of a manager.
@@ -50,6 +56,8 @@ type options struct {
 	dryRun, apply, noCheckout, json, bootstrap, prepareOnly, managerProtocol bool
 	releaseIdentity                                                          bool
 	adoptPersonalSkills, forget                                              bool
+	configDir, preset, settings, migrateFrom, handoff, verifyRelease         string
+	nonInteractive, plain, bundleIdentity                                    bool
 }
 type usageError struct{ error }
 
@@ -136,6 +144,18 @@ func NewCommand(config Config) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usage(err) })
 	flags := root.PersistentFlags()
 	flags.StringVar(&o.source, "source", "", "Workflow source checkout")
+	flags.StringVar(&o.configDir, "config-dir", "", "Private preferences and credential directory")
+	flags.StringVar(&o.preset, "preset", "", "Replace saved overrides with recommended or balanced defaults")
+	flags.StringVar(&o.settings, "settings", "", "Nonsecret preferences JSON file (exclusive with --preset)")
+	flags.StringVar(&o.migrateFrom, "migrate-from", "", "Installed cw command whose verified roots should be migrated")
+	flags.BoolVar(&o.nonInteractive, "non-interactive", false, "Use saved settings or explicit options without prompts")
+	flags.BoolVar(&o.plain, "plain", false, "Use the plain terminal setup interface")
+	flags.StringVar(&o.handoff, "prepared-handoff", "", "Private verified release handoff")
+	flags.BoolVar(&o.bundleIdentity, "bundle-identity", false, "Report the embedded resource identity")
+	_ = flags.MarkHidden("prepared-handoff")
+	_ = flags.MarkHidden("bundle-identity")
+	flags.StringVar(&o.verifyRelease, "verify-release", "", "Verify the embedded source against one pinned release tag")
+	_ = flags.MarkHidden("verify-release")
 	flags.StringVar(&o.home, "home", "", "Installation home directory")
 	flags.StringVar(&o.codex, "codex-home", "", "Codex configuration directory")
 	flags.StringVar(&o.claude, "claude-home", "", "Claude Code configuration directory")
@@ -157,6 +177,37 @@ func NewCommand(config Config) *cobra.Command {
 	_ = flags.MarkHidden("manager-protocol")
 	_ = flags.MarkHidden("release-identity")
 	run := func(cmd *cobra.Command, _ []string) error {
+		if o.verifyRelease != "" {
+			if config.Bundle == nil {
+				return errors.New("this binary has no standalone payload")
+			}
+			bundle, err := config.Bundle(cmd.Context())
+			if err != nil {
+				return err
+			}
+			id := bundle.Identity()
+			if id.Version != o.verifyRelease || id.Version != config.Version || id.Revision != config.Revision {
+				return errors.New("pinned release and embedded binary identity differ")
+			}
+			client := distribution.Client{}
+			if config.Distribution != nil {
+				client = *config.Distribution
+			}
+			if err = client.VerifyTag(cmd.Context(), o.verifyRelease, id.Revision); err != nil {
+				return err
+			}
+			return writeJSON(cmd.OutOrStdout(), workflow.Object{"release_tag_verified": true, "version": id.Version, "revision": id.Revision})
+		}
+		if o.bundleIdentity {
+			if config.Bundle == nil {
+				return errors.New("this developer binary has no embedded workflow payload")
+			}
+			bundle, err := config.Bundle(cmd.Context())
+			if err != nil {
+				return err
+			}
+			return writeJSON(cmd.OutOrStdout(), bundle.Identity())
+		}
 		if o.releaseIdentity {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), config.ReleaseIdentity)
 			return err
@@ -175,8 +226,8 @@ func NewCommand(config Config) *cobra.Command {
 	}
 	root.RunE = run
 	definitions := []struct{ name, short string }{
-		{"install", "Install validated local HEAD, global instructions, model defaults and cw"},
-		{"update", "Fetch origin/main, validate and activate its exact revision"},
+		{"install", "Set up bundled workflows, model defaults and cw"},
+		{"update", "Download, verify and activate the latest stable release"},
 		{"status", "Verify installed ownership, skills, runtime and model defaults locally"},
 		{"validate", "Validate the source skill suite without activating it"},
 		{"rollback", "Restore the previous validated installed release"},
@@ -252,6 +303,12 @@ type resultReport struct {
 }
 
 func executeAction(cmd *cobra.Command, config Config, o options, action string) error {
+	if config.Bundle != nil && o.source == "" {
+		return executeStandalone(cmd, config, o, action)
+	}
+	if o.configDir != "" || o.preset != "" || o.settings != "" || o.migrateFrom != "" || o.handoff != "" {
+		return usage(errors.New("configuration and migration options require the standalone bundled manager"))
+	}
 	if o.dryRun && o.apply {
 		return usage(errors.New("--apply and --dry-run are mutually exclusive"))
 	}

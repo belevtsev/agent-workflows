@@ -81,3 +81,24 @@ bundled with release archives:
 | [spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | [Apache notice](licenses/cobra-LICENSE) |
 | [spf13/pflag](https://github.com/spf13/pflag) | v1.0.9 | [BSD notice](licenses/pflag-LICENSE) |
 | [inconshreveable/mousetrap](https://github.com/inconshreveable/mousetrap) | v1.1.0 | [Apache notice](licenses/mousetrap-LICENSE) |
+
+The guided terminal interface and private file handling additionally link:
+
+| Module | Version | Retained license |
+| --- | --- | --- |
+| [github.com/charmbracelet/lipgloss](https://github.com/charmbracelet/lipgloss) | v1.1.0 | [LICENSE](licenses/module-github.com_charmbracelet_lipgloss-LICENSE) |
+| [github.com/muesli/cancelreader](https://github.com/muesli/cancelreader) | v0.2.2 | [LICENSE](licenses/module-github.com_muesli_cancelreader-LICENSE) |
+| [golang.org/x/sys](https://golang.org/x/sys) | v0.49.0 | [LICENSE](licenses/module-golang.org_x_sys-LICENSE) |
+| [golang.org/x/term](https://golang.org/x/term) | v0.47.0 | [LICENSE](licenses/module-golang.org_x_term-LICENSE) |
+| [github.com/aymanbagabas/go-osc52/v2](https://github.com/aymanbagabas/go-osc52/v2) | v2.0.1 | [LICENSE](licenses/module-github.com_aymanbagabas_go-osc52_v2-LICENSE) |
+| [github.com/charmbracelet/colorprofile](https://github.com/charmbracelet/colorprofile) | v0.2.3-0.20250311203215-f60798e515dc | [LICENSE](licenses/module-github.com_charmbracelet_colorprofile-LICENSE) |
+| [github.com/charmbracelet/x/ansi](https://github.com/charmbracelet/x/ansi) | v0.9.3 | [LICENSE](licenses/module-github.com_charmbracelet_x_ansi-LICENSE) |
+| [github.com/charmbracelet/x/cellbuf](https://github.com/charmbracelet/x/cellbuf) | v0.0.13 | [LICENSE](licenses/module-github.com_charmbracelet_x_cellbuf-LICENSE) |
+| [github.com/charmbracelet/x/term](https://github.com/charmbracelet/x/term) | v0.2.1 | [LICENSE](licenses/module-github.com_charmbracelet_x_term-LICENSE) |
+| [github.com/lucasb-eyer/go-colorful](https://github.com/lucasb-eyer/go-colorful) | v1.2.0 | [LICENSE](licenses/module-github.com_lucasb-eyer_go-colorful-LICENSE) |
+| [github.com/mattn/go-isatty](https://github.com/mattn/go-isatty) | v0.0.20 | [LICENSE](licenses/module-github.com_mattn_go-isatty-LICENSE) |
+| [github.com/mattn/go-runewidth](https://github.com/mattn/go-runewidth) | v0.0.16 | [LICENSE](licenses/module-github.com_mattn_go-runewidth-LICENSE) |
+| [github.com/muesli/termenv](https://github.com/muesli/termenv) | v0.16.0 | [LICENSE](licenses/module-github.com_muesli_termenv-LICENSE) |
+| [github.com/rivo/uniseg](https://github.com/rivo/uniseg) | v0.4.7 | [LICENSE.txt](licenses/module-github.com_rivo_uniseg-LICENSE.txt) |
+| [github.com/xo/terminfo](https://github.com/xo/terminfo) | v0.0.0-20220910002029-abceb7e1c41e | [LICENSE](licenses/module-github.com_xo_terminfo-LICENSE) |
+| [golang.org/x/exp](https://golang.org/x/exp) | v0.0.0-20231006140011-7918f672742d | [LICENSE](licenses/module-golang.org_x_exp-LICENSE) |

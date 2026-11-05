@@ -80,6 +80,13 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				options.Policy = policy
 			}
 			options.Getenv, options.Stdout, options.Stderr = config.Getenv, cmd.OutOrStdout(), cmd.ErrOrStderr()
+			if options.Request != "" && !options.DryRun {
+				getenv, err := credentialEnvironment(root, config)
+				if err != nil {
+					return err
+				}
+				options.Getenv = getenv
+			}
 			return finish(consult.Run(cmd.Context(), options))
 		},
 	}
@@ -110,6 +117,13 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			}
 			legacy.DryRun, _ = root.PersistentFlags().GetBool("dry-run")
 			legacy.Getenv, legacy.Stdout, legacy.Stderr = config.Getenv, cmd.OutOrStdout(), cmd.ErrOrStderr()
+			if !legacy.DryRun && config.Getenv("TYPESAFE_API_KEY") == "" {
+				getenv, err := credentialEnvironment(root, config)
+				if err != nil {
+					return err
+				}
+				legacy.Getenv = getenv
+			}
 			return finish(consult.RunLegacy(cmd.Context(), legacy))
 		},
 	}

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -19,7 +20,7 @@ const profileEnd = "# <<< agent-workflows PATH <<<"
 
 // ManagerProtocol identifies the sealed runtime, ownership and policy contract.
 // The bootstrap and newly staged runtimes must report this exact value.
-const ManagerProtocol = "cw-manager-v9"
+const ManagerProtocol = "cw-manager-v10"
 
 type ProfileRecord struct {
 	Shell          string `json:"shell"`
@@ -31,8 +32,10 @@ type ProfileRecord struct {
 
 type ManagerRecord struct {
 	Version       int             `json:"version"`
-	Source        string          `json:"source"`
+	Source        string          `json:"source,omitempty"`
 	Runtime       RuntimeIdentity `json:"runtime"`
+	RuntimeKey    string          `json:"runtime_key,omitempty"`
+	BaseDigest    string          `json:"base_digest,omitempty"`
 	CommandPath   string          `json:"command_path"`
 	CommandTarget string          `json:"command_target"`
 	Profile       *ProfileRecord  `json:"profile,omitempty"`
@@ -40,10 +43,13 @@ type ManagerRecord struct {
 
 type RuntimeLocator struct {
 	Version     int    `json:"version"`
-	Source      string `json:"source"`
+	Source      string `json:"source,omitempty"`
 	Home        string `json:"home"`
 	State       string `json:"state"`
 	CommandPath string `json:"command_path"`
+	Config      string `json:"config_dir,omitempty"`
+	Codex       string `json:"codex_home,omitempty"`
+	Claude      string `json:"claude_home,omitempty"`
 	Integrity   string `json:"integrity_sha256,omitempty"`
 }
 
@@ -53,6 +59,7 @@ type runtimeReceipt struct {
 	SHA256          string          `json:"sha256"`
 	LocatorSHA256   string          `json:"locator_sha256"`
 	ManagerProtocol string          `json:"manager_protocol"`
+	BaseDigest      string          `json:"base_digest,omitempty"`
 	Integrity       string          `json:"integrity_sha256,omitempty"`
 }
 
@@ -138,6 +145,9 @@ func (w *boundedProtocolWriter) Write(data []byte) (int, error) {
 
 func (i *Installer) runtimeLocatorBytes() []byte {
 	locator := RuntimeLocator{Version: 2, Source: i.Source, Home: i.Home, State: i.State, CommandPath: i.commandPath()}
+	if validBaseIdentity(i.bundleIdentity) {
+		locator.Version, locator.Config, locator.Codex, locator.Claude = 3, i.ConfigDir, i.Codex, i.Claude
+	}
 	return legacyJSON(seal(asObject(locator)))
 }
 
@@ -158,14 +168,34 @@ func (i *Installer) decodeRuntimeLocator(data []byte) (RuntimeLocator, error) {
 	if err := json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return RuntimeLocator{}, err
 	}
-	if locator.Version != 2 {
+	if locator.Version != 2 && locator.Version != 3 {
 		return RuntimeLocator{}, errors.New("unsupported native locator version")
 	}
 	if err := VerifyLocalSeal(data); err != nil {
 		return RuntimeLocator{}, err
 	}
-	if locator.Home != i.Home || locator.State != i.State || locator.Source == "" || Normalize(locator.Source) != locator.Source {
+	if locator.Home != i.Home || locator.State != i.State || locator.Source != "" && Normalize(locator.Source) != locator.Source || locator.Version == 2 && locator.Source == "" {
 		return RuntimeLocator{}, errors.New("unsafe native locator roots")
+	}
+	var raw Object
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return RuntimeLocator{}, err
+	}
+	if locator.Version == 2 {
+		if !exactFields(raw, "version", "source", "home", "state", "command_path", "integrity_sha256") {
+			return RuntimeLocator{}, errors.New("invalid legacy locator fields")
+		}
+	} else {
+		fields := []string{"version", "home", "state", "command_path", "config_dir", "codex_home", "claude_home", "integrity_sha256"}
+		if locator.Source != "" {
+			fields = append(fields, "source")
+		}
+		if !exactFields(raw, fields...) || !safeAbsolute(locator.Config) || locator.Config != i.ConfigDir || !safeAbsolute(locator.Codex) || !safeAbsolute(locator.Claude) {
+			return RuntimeLocator{}, errors.New("unsafe standalone locator roots")
+		}
+		// Host roots in immutable runtime locators are initial discovery hints.
+		// Enrollment can choose another unused host root later; sealed state and
+		// mutation journals bind the actual roots without rewriting old receipts.
 	}
 	if locator.CommandPath != i.commandPath() {
 		return RuntimeLocator{}, errors.New("unsafe native locator command path")
@@ -180,7 +210,7 @@ func (i *Installer) runtimeRelease(revision string) (RuntimeIdentity, error) {
 
 func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, error) {
 	dir := i.runtimeDir(revision)
-	if !commitSHA.MatchString(revision) {
+	if !supportedRuntimeKey(revision) {
 		return runtimeReceipt{}, errors.New("invalid runtime revision")
 	}
 	if err := realDirectory(dir, false); err != nil {
@@ -194,8 +224,11 @@ func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, err
 	if err = json.Unmarshal(legacyJSON(data), &receipt, json.RejectUnknownMembers(true)); err != nil {
 		return runtimeReceipt{}, err
 	}
-	if receipt.Version != 2 || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != revision {
+	if !readableReceiptFields(data, receipt.Version) || !validRuntimeIdentity(receipt.Identity) || receipt.Identity.Revision != runtimeKeyRevision(revision) {
 		return runtimeReceipt{}, errors.New("invalid native runtime receipt")
+	}
+	if receipt.Version == 2 && !commitSHA.MatchString(revision) || receipt.Version == 3 && (receipt.ManagerProtocol != ManagerProtocol || !digestPattern.MatchString(receipt.BaseDigest) || revision != receipt.Identity.Revision+"-"+receipt.BaseDigest) {
+		return runtimeReceipt{}, errors.New("native runtime receipt identity differs from its path")
 	}
 	// Existing v7/v8 releases use the same sealed receipt and ownership layout.
 	// New candidates must still pass the exact current protocol gates above and
@@ -248,7 +281,7 @@ func (i *Installer) verifiedRuntimeReceipt(revision string) (runtimeReceipt, err
 }
 
 func readableManagerProtocol(protocol string) bool {
-	return protocol == ManagerProtocol || protocol == "cw-manager-v8" || protocol == "cw-manager-v7"
+	return protocol == ManagerProtocol || slices.Contains(legacyRuntimeProtocols(), protocol)
 }
 
 func (i *Installer) stageRuntime() error {
@@ -278,9 +311,10 @@ func (i *Installer) stageRuntime() error {
 	if err != nil {
 		return err
 	}
-	dir := i.runtimeDir(identity.Revision)
+	key := i.candidateRuntimeKey()
+	dir := i.runtimeDir(key)
 	if exists(dir) {
-		owned, err := i.runtimeRelease(identity.Revision)
+		owned, err := i.runtimeRelease(key)
 		if err != nil {
 			return err
 		}
@@ -310,6 +344,9 @@ func (i *Installer) stageRuntime() error {
 		return err
 	}
 	receipt := runtimeReceipt{Version: 2, Identity: identity, SHA256: hash(binary), LocatorSHA256: hash(locator), ManagerProtocol: protocol}
+	if validBaseIdentity(i.bundleIdentity) {
+		receipt.Version, receipt.BaseDigest = 3, i.bundleIdentity.Digest
+	}
 	if err = atomicWrite(filepath.Join(temporary, "receipt.json"), legacyJSON(seal(asObject(receipt))), 0o600); err != nil {
 		return err
 	}
@@ -332,8 +369,14 @@ func (i *Installer) validateManager(value Object) error {
 	if err := json.Unmarshal(legacyJSON(value), &manager, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if manager.Version != 1 || manager.Source == "" || Normalize(manager.Source) != manager.Source || !validRuntimeIdentity(manager.Runtime) || manager.CommandPath != i.commandPath() || manager.CommandTarget != filepath.Join(i.runtimeCurrent(), "cw") {
+	if (manager.Version != 1 && manager.Version != 2) || manager.Source != "" && Normalize(manager.Source) != manager.Source || !validRuntimeIdentity(manager.Runtime) || manager.CommandPath != i.commandPath() || manager.CommandTarget != filepath.Join(i.runtimeCurrent(), "cw") {
 		return errors.New("invalid native manager ownership")
+	}
+	if manager.Version == 1 && (manager.Source == "" || manager.RuntimeKey != "" || manager.BaseDigest != "") {
+		return errors.New("invalid legacy native manager ownership")
+	}
+	if manager.Version == 2 && (!digestPattern.MatchString(manager.BaseDigest) || manager.RuntimeKey != manager.Runtime.Revision+"-"+manager.BaseDigest) {
+		return errors.New("invalid standalone native manager ownership")
 	}
 	if manager.Profile != nil {
 		if !exactFields(object(value["profile"]), "shell", "path", "segment", "original_exists", "original_mode") {
@@ -362,14 +405,14 @@ func (i *Installer) verifyManager(value Object) error {
 	if err := json.Unmarshal(legacyJSON(value), &manager); err != nil {
 		return err
 	}
-	identity, err := i.runtimeRelease(manager.Runtime.Revision)
+	identity, err := i.runtimeRelease(managerRuntimeKey(manager))
 	if err != nil {
 		return err
 	}
 	if identity != manager.Runtime {
 		return errors.New("native runtime identity differs from ownership")
 	}
-	for path, target := range map[string]string{i.commandPath(): manager.CommandTarget, i.runtimeCurrent(): i.runtimeDir(manager.Runtime.Revision)} {
+	for path, target := range map[string]string{i.commandPath(): manager.CommandTarget, i.runtimeCurrent(): i.runtimeDir(managerRuntimeKey(manager))} {
 		if err := realDirectory(filepath.Dir(path), false); err != nil {
 			return err
 		}
@@ -439,7 +482,7 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 		if err := i.verifyManager(old); err != nil {
 			return nil, nil, err
 		}
-		if old["source"] != i.Source {
+		if text(old["source"]) != i.Source {
 			return nil, nil, errors.New("native manager belongs to another source checkout")
 		}
 	}
@@ -449,6 +492,9 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 		}
 	}
 	manager := ManagerRecord{Version: 1, Source: i.Source, Runtime: i.RuntimeIdentity, CommandPath: i.commandPath(), CommandTarget: filepath.Join(i.runtimeCurrent(), "cw")}
+	if validBaseIdentity(i.bundleIdentity) {
+		manager.Version, manager.RuntimeKey, manager.BaseDigest = 2, i.candidateRuntimeKey(), i.bundleIdentity.Digest
+	}
 	ops := []Object{}
 	for _, path := range []string{i.runtimeCurrent(), i.commandPath()} {
 		if err := realDirectory(filepath.Dir(path), false); err != nil {
@@ -456,7 +502,7 @@ func (i *Installer) managerPlan(state Object) (Object, []Object, error) {
 		}
 		target := manager.CommandTarget
 		if path == i.runtimeCurrent() {
-			target = i.runtimeDir(i.RuntimeIdentity.Revision)
+			target = i.runtimeDir(i.candidateRuntimeKey())
 		}
 		before, err := observe(path)
 		if err != nil {
@@ -561,7 +607,13 @@ func (i *Installer) prepareProfile() (*ProfileRecord, Object, error) {
 		return nil, nil, nil
 	}
 	profile := &ProfileRecord{Shell: shell, Path: path, Segment: pathSegment(i.Paths, leading), OriginalExists: exists, OriginalMode: mode}
-	op := Object{"kind": "command_profile", "path": path, "shell": shell, "source": i.Source, "before_segment": nil, "after_segment": profile.Segment, "before_exists": exists, "after_exists": true, "before_mode": mode, "after_mode": mode, "label": "command-profile"}
+	// The historical operation schema requires an absolute source anchor. PATH
+	// rendering only uses Home; a source-free installation uses that bound root.
+	source := i.Source
+	if source == "" {
+		source = i.Home
+	}
+	op := Object{"kind": "command_profile", "path": path, "shell": shell, "source": source, "before_segment": nil, "after_segment": profile.Segment, "before_exists": exists, "after_exists": true, "before_mode": mode, "after_mode": mode, "label": "command-profile"}
 	return profile, op, nil
 }
 
@@ -828,6 +880,9 @@ func (i *Installer) managerRemoval(value Object) ([]Object, error) {
 }
 
 func (i *Installer) profileRemoval(profile *ProfileRecord, source string) (Object, error) {
+	if source == "" {
+		source = i.Home
+	}
 	data, exists, mode, err := readStartup(profile.Path)
 	if err != nil {
 		return nil, err

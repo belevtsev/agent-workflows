@@ -19,6 +19,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	releasebuild "github.com/belevtsev/agent-workflows/internal/release"
 )
 
 const repository = "belevtsev/agent-workflows"
@@ -415,76 +417,12 @@ func buildSource(ctx context.Context, source, sha, path string) error {
 	if err != nil {
 		return err
 	}
-	buildRoot, err := os.MkdirTemp(filepath.Dir(path), "source-")
+	stamp, err := time.Parse(time.RFC3339, builtAt)
 	if err != nil {
+		return errors.New("invalid exact source commit timestamp")
+	}
+	if err := releasebuild.BuildBinary(ctx, source, path, "dev", sha, stamp, runtime.GOOS, runtime.GOARCH); err != nil {
 		return err
-	}
-	defer os.RemoveAll(buildRoot)
-	command := exec.CommandContext(ctx, "git", "-C", source, "archive", "--format=tar", sha)
-	command.Env = environment("GIT_OPTIONAL_LOCKS=0")
-	var archive boundedBuffer
-	archive.limit = maxArchive
-	command.Stdout = &archive
-	command.Stderr = io.Discard
-	if err = command.Run(); err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return fmt.Errorf("export exact manager source: %w", err)
-	}
-	reader := tar.NewReader(bytes.NewReader(archive.Bytes()))
-	for {
-		header, err := reader.Next()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		clean := filepath.Clean(header.Name)
-		if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
-			return errors.New("unsafe source archive path")
-		}
-		destination := filepath.Join(buildRoot, clean)
-		switch header.Typeflag {
-		case tar.TypeXGlobalHeader:
-			// Git archives include the commit as global PAX metadata. It is not
-			// a filesystem entry and cannot supply a build input.
-			continue
-		case tar.TypeDir:
-			if err = os.MkdirAll(destination, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err = os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
-				return err
-			}
-			file, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-			if err != nil {
-				return err
-			}
-			_, copyErr := io.CopyN(file, reader, header.Size)
-			closeErr := file.Close()
-			if err = errors.Join(copyErr, closeErr); err != nil {
-				return err
-			}
-		default:
-			return errors.New("source archive contains unsupported links or entries")
-		}
-	}
-	ldflags := "-s -w -X main.version=dev -X main.revision=" + sha + " -X main.builtAt=" + builtAt
-	build := exec.CommandContext(ctx, "go", "build", "-mod=mod", "-trimpath", "-ldflags", ldflags, "-o", path, "./cmd/cw")
-	build.Dir = buildRoot
-	build.Env = environment("GOWORK=off", "GOTOOLCHAIN=go1.27.1", "CGO_ENABLED=0", "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH)
-	var output boundedBuffer
-	output.limit = 64 << 10
-	build.Stdout = &output
-	build.Stderr = &output
-	if err = build.Run(); err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return fmt.Errorf("build exact manager source (Go 1.27.1 required): %w: %s", err, output.String())
 	}
 	current, err := gitOutput(ctx, source, 128, "rev-parse", "--verify", "HEAD")
 	if err != nil || current != head {

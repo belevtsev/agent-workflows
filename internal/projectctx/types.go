@@ -67,6 +67,7 @@ type Runner func(context.Context, Command) (CommandResult, error)
 // Timeout bounds the complete inspection, including all optional live probes.
 type DoctorOptions struct {
 	Repo, Home, CodexHome, ClaudeHome, SkillsHome string
+	ConfigDir                                     string
 	Live                                          bool
 	Timeout                                       time.Duration
 	Run                                           Runner
@@ -95,7 +96,10 @@ type DoctorReport struct {
 // CredentialPresence reports booleans only. Launcher means literal Codex MCP
 // environment entries, independently of this doctor's process environment.
 type CredentialPresence struct {
-	Environment map[string]bool `json:"environment"`
-	Launcher    map[string]bool `json:"launcher"`
-	CodexShell  map[string]bool `json:"codex_shell"`
+	Environment map[string]bool   `json:"environment"`
+	Launcher    map[string]bool   `json:"launcher"`
+	CodexShell  map[string]bool   `json:"codex_shell"`
+	Stored      map[string]bool   `json:"stored,omitempty"`
+	Effective   map[string]bool   `json:"effective,omitempty"`
+	Sources     map[string]string `json:"sources,omitempty"`
 }

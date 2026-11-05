@@ -38,7 +38,11 @@ func addDoctorCommand(root *cobra.Command, config Config, o options) {
 			if err != nil {
 				return err
 			}
-			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, Live: live, Timeout: timeout, Getenv: config.Getenv})
+			directory, err := credentialDirectory(root, config)
+			if err != nil {
+				return err
+			}
+			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, ConfigDir: directory, Live: live, Timeout: timeout, Getenv: config.Getenv})
 			if err != nil {
 				return err
 			}

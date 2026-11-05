@@ -14,6 +14,19 @@ func (i *Installer) perform(op Object) error {
 		return err
 	}
 	path := text(op["path"])
+	if i.ConfigDir != "" && path == i.preferencesPath() {
+		if err := privateDirectory(i.ConfigDir, false); err != nil {
+			return err
+		}
+		if _, _, err := i.readPreferences(); err != nil {
+			return err
+		}
+		for _, side := range []string{"before", "after"} {
+			if err := i.validatePreferenceObservation(object(op[side])); err != nil {
+				return err
+			}
+		}
+	}
 	if err := i.registrationAdditionCheck([]Object{op}); err != nil {
 		return err
 	}
@@ -95,6 +108,9 @@ func (i *Installer) transact(command string, ops []Object) error {
 		return err
 	}
 	j := Object{"version": 3, "command": command, "home": i.Home, "codex_home": i.Codex, "claude_home": i.Claude, "state_dir": i.State, "operations": ops}
+	if i.standaloneJournalVersion(ops) == 4 {
+		j["version"], j["config_dir"] = 4, i.ConfigDir
+	}
 	var operations []any
 	for _, op := range ops {
 		operations = append(operations, op)
@@ -108,6 +124,13 @@ func (i *Installer) transact(command string, ops []Object) error {
 	}
 	if found {
 		j["recovery_runtime"] = asObject(identity)
+		if integer(j["version"]) == 4 {
+			key, err := i.recoveryRuntimeKey(identity)
+			if err != nil {
+				return err
+			}
+			j["recovery_runtime_key"] = key
+		}
 	}
 	if e := atomicWrite(i.journalPath, legacyJSON(seal(j)), 0600); e != nil {
 		return e
@@ -139,8 +162,18 @@ func (i *Installer) loadJournal() (Object, error) {
 	if e = decodeJournal(j); e != nil {
 		return nil, e
 	}
-	if integer(j["version"]) != 3 || j["home"] != i.Home || j["codex_home"] != i.Codex || j["claude_home"] != i.Claude || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
+	if (integer(j["version"]) != 3 && integer(j["version"]) != 4) || j["home"] != i.Home || j["codex_home"] != i.Codex || j["claude_home"] != i.Claude || j["state_dir"] != i.State || sequence(j["operations"]) == nil {
 		return nil, errors.New("corrupt journal or roots do not match")
+	}
+	if integer(j["version"]) == 4 {
+		config, err := ResolveConfigDir(i.Home, i.ConfigDir, text(j["config_dir"]), i.Getenv)
+		if err != nil {
+			return nil, err
+		}
+		i.ConfigDir = config
+		if err = i.validatePrivateDestinations(); err != nil {
+			return nil, err
+		}
 	}
 	if raw, present := j["recovery_runtime"]; present {
 		var identity RuntimeIdentity
@@ -149,6 +182,12 @@ func (i *Installer) loadJournal() (Object, error) {
 		}
 		if e = i.verifyRecoveryRuntime(identity); e != nil {
 			return nil, e
+		}
+		if integer(j["version"]) == 4 {
+			key, err := i.recoveryRuntimeKey(identity)
+			if err != nil || key != text(j["recovery_runtime_key"]) {
+				return nil, errors.New("recovery runtime key differs from journal")
+			}
 		}
 	}
 	if recovery, present := j["recovery_operations"]; present {
@@ -236,11 +275,17 @@ func (i *Installer) loadJournal() (Object, error) {
 		if path == i.config || (i.Claude != "" && path == i.host(hostClaude).settings) {
 			return nil, errors.New("settings files require a keyed journal operation")
 		}
-		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) {
+		preferences := integer(j["version"]) == 4 && path == i.preferencesPath()
+		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) && !preferences {
 			return nil, errors.New("unsafe path in mutation journal")
 		}
 		for _, side := range []string{"before", "after"} {
 			ob := object(op[side])
+			if preferences {
+				if e = i.validatePreferenceObservation(ob); e != nil {
+					return nil, e
+				}
+			}
 			if e = validateObservation(ob, false); e != nil {
 				return nil, e
 			}
@@ -258,7 +303,7 @@ func (i *Installer) loadJournal() (Object, error) {
 			}
 			if path == i.current && ob["kind"] == "symlink" {
 				release := text(ob["target"])
-				if filepath.Dir(release) != filepath.Join(i.State, "releases") || !commitSHA.MatchString(filepath.Base(release)) {
+				if filepath.Dir(release) != filepath.Join(i.State, "releases") || !validReleaseKey(filepath.Base(release)) || integer(j["version"]) == 3 && !commitSHA.MatchString(filepath.Base(release)) {
 					return nil, errors.New("unsafe release pointer in journal")
 				}
 				if _, _, e = i.release(filepath.Base(release)); e != nil {

@@ -135,11 +135,29 @@ type JournalRecord struct {
 
 func decodeOwnership(value Object) (OwnershipRecord, error) {
 	var record OwnershipRecord
+	if integer(value["version"]) == 4 {
+		standalone, err := decodeStandaloneOwnership(value)
+		if err != nil {
+			return record, err
+		}
+		record.Version, record.Release, record.Source, record.Home, record.StateDir = 4, standalone.Release, standalone.Source, standalone.Home, standalone.StateDir
+		record.Hosts, record.ManifestRegistrations, record.Manager = standalone.Hosts, standalone.ManifestRegistrations, standalone.Manager
+		return record, nil
+	}
 	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
 		return record, fmt.Errorf("invalid ownership record: %w", err)
 	}
 	if record.Version != 3 || len(record.Hosts) == 0 || record.ManifestRegistrations == nil || record.History == nil {
 		return record, errors.New("unsupported or incomplete ownership record")
+	}
+	if manager := object(value["manager"]); manager != nil {
+		fields := []string{"version", "source", "runtime", "command_path", "command_target"}
+		if _, present := manager["profile"]; present {
+			fields = append(fields, "profile")
+		}
+		if !exactFields(manager, fields...) {
+			return record, errors.New("invalid legacy manager fields")
+		}
 	}
 	for id, host := range record.Hosts {
 		if (id != hostCodex && id != hostClaude) || host.Registrations == nil || host.GlobalOrigin == nil {
@@ -156,10 +174,6 @@ func readOwnership(path string) (Object, error) {
 	data, err := readRecordBytes(path)
 	if err != nil {
 		return nil, err
-	}
-	var record OwnershipRecord
-	if err = json.Unmarshal(data, &record, json.RejectUnknownMembers(true)); err != nil {
-		return nil, fmt.Errorf("invalid ownership record: %w", err)
 	}
 	var value Object
 	if err = json.Unmarshal(data, &value); err != nil {
@@ -187,18 +201,20 @@ func readJournalRecord(path string) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	var record JournalRecord
-	if err = json.Unmarshal(data, &record, json.RejectUnknownMembers(true)); err != nil {
-		return nil, fmt.Errorf("invalid journal record: %w", err)
-	}
 	var value Object
 	if err = json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	if err = decodeJournal(value); err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
 func decodeJournal(value Object) error {
+	if integer(value["version"]) == 4 {
+		return decodeStandaloneJournal(value)
+	}
 	var record JournalRecord
 	if err := json.Unmarshal(legacyJSON(value), &record, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("invalid journal record: %w", err)

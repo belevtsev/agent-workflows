@@ -106,10 +106,10 @@ func Check(ctx context.Context, options Options) error {
 		if err := ExtractBinary(filepath.Join(options.Dist, name), options.Binary); err != nil {
 			return err
 		}
-	} else if err := release.BuildBinary(ctx, options.Source, options.Binary, "check", revision, stamp, runtime.GOOS, runtime.GOARCH); err != nil {
+	} else if err := release.BuildBinary(ctx, options.Source, options.Binary, "v0.0.101", revision, stamp, runtime.GOOS, runtime.GOARCH); err != nil {
 		return err
 	}
-	if err := NativeSmoke(ctx, options.Source, options.Binary, options.Output); err != nil {
+	if err := StandaloneNativeSmoke(ctx, options.Source, options.Binary, options.Output); err != nil {
 		return err
 	}
 	_, err = fmt.Fprintln(options.Output, "Native formatting, vet, source validation, tests and installation smoke passed.")

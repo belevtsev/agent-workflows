@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/internal/credentials"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -87,6 +88,22 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 	put("project_contracts", "detected", fmt.Sprintf("%d instruction files hashed as data; Git source coverage follows tracked and Git-unignored files, while marker scans skip dedicated dependency/cache trees", len(profile.Contracts)), "filesystem")
 	for _, key := range credentialKeys {
 		report.Credentials.Environment[key] = strings.TrimSpace(options.Getenv(key)) != ""
+	}
+	if options.ConfigDir != "" {
+		presence, err := (credentials.Resolver{Directory: options.ConfigDir, Getenv: options.Getenv}).Presence()
+		if err != nil {
+			put("credentials_stored", "degraded", "Private credential storage could not be verified", "private_local_file")
+		} else {
+			report.Credentials.Stored = credentialMap()
+			report.Credentials.Effective = credentialMap()
+			report.Credentials.Sources = map[string]string{}
+			for name, p := range presence {
+				report.Credentials.Stored[name] = p.Stored
+				report.Credentials.Effective[name] = p.Effective
+				report.Credentials.Sources[name] = p.Source
+			}
+			put("credentials_stored", "configured", "Stored and effective presence inspected; authentication was not attempted", "private_local_file")
+		}
 	}
 	readCodexMetadata(ctx, options.CodexHome, &report)
 	readClaudeMetadata(options.ClaudeHome, &report)

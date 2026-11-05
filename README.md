@@ -9,23 +9,47 @@ This guide covers the [current release](https://github.com/belevtsev/agent-workf
 ## Install
 
 ```sh
-git clone https://github.com/belevtsev/agent-workflows.git
-cd agent-workflows
-./install.sh --host claude
+curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh
 ```
 
-Use `--host codex`, `--host claude`, or `--host all`. Without `--host`, install
-uses the host it can detect, and stops to ask if it finds both or neither.
+The installer downloads a verified binary with its workflow resources included.
+There is no repository clone, Go build or Git requirement. Releases support
+macOS and Linux on ARM64 and AMD64. The small download helper uses `curl`, `tar`,
+and `sha256sum` or macOS `shasum`; alternatively unpack your platform archive from
+the release page and run `./cw install`.
 
-You need Git, `curl`, `tar`, and `sha256sum` or macOS `shasum`, plus the host you
-are installing for. Release binaries support macOS/Linux on ARM64 and AMD64 and
-need no Go installation. Building an unreleased revision requires the Go version in
-[go.mod](go.mod).
+In a terminal, setup opens a guided interface: choose hosts, keep the recommended
+models or select a preset, optionally save API keys, then review changes before
+applying. Enter accepts the selected default; Esc or Ctrl-C cancels before apply.
+Use `--plain` for a plain terminal interface. Updates default to keeping saved
+choices. Named presets explicitly replace existing overrides:
 
-This source requires a published `cw-manager-v9` release with verified binaries
-and checksums for every supported platform. Existing v7/v8 installations must
-first [rebootstrap through the new installer](docs/development.md#distribution)
-before using `cw update` to activate this source.
+| Choice | Codex substantive work | Claude substantive work |
+| --- | --- | --- |
+| Recommended | Sol 6.1 / max | Opus 5.5 / xhigh |
+| Balanced | Sol 6.1 / xhigh | Opus 5.5 / high |
+| Advanced | Each role, fallback and memory/context field separately | Each role and fallback separately |
+
+Recommended and Balanced retain the cheap GitHub defaults: Luna/high and
+Sonnet 5.5/medium. Unset preference fields follow future release defaults;
+explicit fields remain pinned, including a value equal to today's default.
+Advanced opens a field menu so you can edit one role or memory setting directly;
+Enter keeps the displayed value, and `default` clears a text override.
+
+For scripts, select hosts and preferences explicitly:
+
+```sh
+cw install --host all --preset recommended --non-interactive
+cw update --non-interactive
+```
+
+`--json`, piped input/output, `--non-interactive`, dry runs and preparation never
+open the terminal interface. Prompts go to stderr; stdout remains JSON. Use
+`--settings FILE` instead of `--preset` to load nonsecret version-one preferences.
+
+This source requires a published `cw-manager-v10` release. Existing v7/v8/v9
+installations must first [rebootstrap with the new download installer](docs/development.md#distribution).
+Personal configuration is not updated by publishing a release.
 
 Installation registers 33 skills with 78 entrypoints on each selected host, and
 adds the same managed instructions to both:
@@ -88,28 +112,41 @@ PATH entry to your Bash/zsh startup file when needed. Open a new terminal, then:
 ```sh
 cw version
 cw status
-cw validate
 ```
 
-Keep the checkout for installation and updates. The installed command works from
-any directory; status, rollback, recovery, and uninstall use installed records
-and snapshots. Manager version and active skill revision are reported separately.
-Use `./install.sh --dry-run` to preview installation without downloading, building,
-or changing persistent state. See [operations](docs/operations.md) for custom
-paths, shell selection, and recovery.
+The installed command works from any directory. `cw update` pins one stable
+release and verifies its tag, platform archives, checksums, source revision and
+embedded payload before activation. Status, rollback, recovery and uninstall
+work from recorded roots and cached snapshots. A skill rollback retains the
+capable manager and your current preferences. Re-running install on a standalone
+installation reconfigures its active cached base, including after rollback;
+`cw update` is the command that selects a newer release. Your source checkout,
+if any, stays untouched. `--source` is an explicit developer compatibility option.
+
+Use `cw install --dry-run` for a local preview without downloads or persistent
+writes. A cold `install.sh --dry-run` reports deferred validation. See
+[operations](docs/operations.md) for custom paths and recovery.
+
+### Private API keys
+
+Setup can optionally save `TYPESAFE_API_KEY`, `SUBQ_API_KEY` and `OPENAI_API_KEY`
+in a local plaintext `credentials.json`, with an owner-only directory and file.
+Environment variables win per provider. Keys are read only by adviser calls,
+the optional synthetic online check, and explicitly hosted evaluation; they are
+not copied into host settings or unrelated subprocesses. Online checking is off
+by default. Missing keys do not block installation.
+
+Preferences and credentials live under `$XDG_CONFIG_HOME/agent-workflows` or
+`~/.config/agent-workflows`; `--config-dir` selects a different initial directory.
+That absolute location is recorded and remains authoritative after XDG changes.
+Uninstall preserves these user-owned files. A credential-save or online-check
+failure after settings activation reports a nonzero partial result; it does not
+pretend that already-applied settings were rolled back.
 
 ### Add or remove a host
 
-Run install again with another host. It adds that host to the same installation
-without changing the active release:
-
-```sh
-./install.sh --host codex
-```
-
-The host comes from the installed release, not your checkout, so this also works
-after a rollback or with uncommitted changes. To move to the checkout's HEAD
-afterwards, run `./install.sh` again without `--host`.
+Run `cw install --host codex` or `cw install --host claude` and review the setup.
+Existing ownership and unrelated personal content remain protected.
 
 To drop one host and keep the other:
 
@@ -148,10 +185,10 @@ the `state_dir` that `cw status` reports. Then, using your existing `cw`:
 cw uninstall
 ```
 
-Clone or update this repository, and install:
+Use the download installer with the same adoption option:
 
 ```sh
-./install.sh --host all --adopt-personal-skills
+curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh -s -- --host all --adopt-personal-skills
 ```
 
 Uninstall restores your own files and adopted skills, and
@@ -618,15 +655,16 @@ Installation, source validation and CI never run the hosted evaluation.
 
 ## Maintain the installation
 
-Installation and update require a clean committed checkout. Maintenance commands
+Normal installation and update use verified release binaries. Developer `--source`
+operations require a clean committed checkout. Maintenance commands
 return JSON on stdout and errors on stderr. Choose the command for your task:
 
 | Command | Purpose |
 | --- | --- |
 | `cw status` | Inspect active/previous revisions, manager identity, registrations, owned settings, model profiles, and local credential presence |
-| `cw validate` | Validate the source skill suite without activating it |
-| `cw update --dry-run` | Preview local validation, ancestry, ownership, and registration changes without fetching or activating |
-| `cw update` | Fetch and validate exact `origin/main`, prepare its verified binary, fast-forward the checkout, and activate the snapshot |
+| `cw validate --source PATH` | Validate a developer source suite without activation |
+| `cw update --dry-run` | Inspect locally; defer release download and lineage checks without writes |
+| `cw update` | Pin and verify a stable release, review saved choices, and activate its bundled snapshot |
 | `cw rollback --dry-run` | Preview restoration of the previous validated snapshot |
 | `cw rollback` | Restore the previous snapshot and its owned settings using activation history |
 | `cw recover --dry-run` | Inspect recovery of an interrupted managed transaction |
@@ -642,7 +680,7 @@ preserves the checkout, caches, credentials, connectors, and consultation enviro
 Use [operations](docs/operations.md) for detailed command and recovery contracts.
 
 Start a fresh agent session after install, update, or rollback to load the active
-instructions. Check `cw status` and `cw validate`, confirm the configured profiles
+instructions. Check `cw status`, confirm the configured profiles
 against the model table above, and inspect actual chat runtime metadata separately.
 Authenticate GitHub, Jira, and Confluence on each device and verify the intended
 identity with a permitted read.

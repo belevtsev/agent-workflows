@@ -113,6 +113,6 @@ resolves.
 
 Source contracts: [task orchestration](../skills/task-orchestration/SKILL.md),
 [model policy](../skills/task-orchestration/model-policy.yaml),
-[collection and adjudication](../internal/consult/record.go),
-[OpenAI response handling](../internal/consult/provider.go),
+[collection and adjudication](https://github.com/belevtsev/agent-workflows/blob/main/internal/consult/record.go),
+[OpenAI response handling](https://github.com/belevtsev/agent-workflows/blob/main/internal/consult/provider.go),
 and [global working scope](../global/AGENTS.md).

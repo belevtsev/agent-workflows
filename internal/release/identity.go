@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/bundled"
 )
 
 const maxArchiveSize = 64 << 20
@@ -23,10 +25,14 @@ const maxUnpackedSize = 256 << 20
 // revision, platform and pinned Go compiler before any publication network call.
 // It reads Go build metadata without executing foreign-platform binaries.
 func ValidateNativeAssets(directory, version, revision string, stamp time.Time) (*Assets, error) {
+	if !validStableReleaseVersion(version) || !revisionPattern.MatchString(revision) {
+		return nil, errors.New("native release validation requires a stable version and exact source revision")
+	}
 	assets, err := ValidateAssets(directory)
 	if err != nil {
 		return nil, err
 	}
+	baseDigest := ""
 	for _, name := range ArchiveNames {
 		parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(name, "cw_"), ".tar.gz"), "_")
 		executable, err := archiveExecutable(filepath.Join(directory, name))
@@ -56,6 +62,11 @@ func ValidateNativeAssets(directory, version, revision string, stamp time.Time) 
 			settings["GOOS"] != parts[0] || settings["GOARCH"] != parts[1] || settings["CGO_ENABLED"] != "0" || settings["-trimpath"] != "true" {
 			return nil, fmt.Errorf("release binary identity differs from version, source revision or target: %s", name)
 		}
+		base, err := bundled.InspectBinary(executable)
+		if err != nil || base.Version != version || base.Revision != revision || base.OS != parts[0] || base.Arch != parts[1] || baseDigest != "" && base.Digest != baseDigest {
+			return nil, fmt.Errorf("release embedded bundle identity differs across source, version or targets: %s", name)
+		}
+		baseDigest = base.Digest
 	}
 	return assets, nil
 }
@@ -65,6 +76,14 @@ func releaseMarker(version, revision string, stamp time.Time, targetOS, targetAr
 }
 
 func archiveExecutable(filename string) ([]byte, error) {
+	contents, err := archiveContents(filename)
+	if err != nil {
+		return nil, err
+	}
+	return contents["cw"], nil
+}
+
+func archiveContents(filename string) (map[string][]byte, error) {
 	info, err := os.Lstat(filename)
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > maxArchiveSize {
 		return nil, errors.New("archive must be a bounded regular file")
@@ -90,7 +109,7 @@ func archiveExecutable(filename string) ([]byte, error) {
 	limited := &io.LimitedReader{R: zipped, N: maxUnpackedSize + 1}
 	reader := tar.NewReader(limited)
 	seen := make(map[string]bool)
-	var executable []byte
+	contents := make(map[string][]byte)
 	for entries := 0; ; entries++ {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -116,16 +135,24 @@ func archiveExecutable(filename string) ([]byte, error) {
 		if header.Size < 0 || header.Size > maxUnpackedSize || (header.Typeflag == tar.TypeDir && header.Size != 0) {
 			return nil, errors.New("archive member has an invalid size")
 		}
-		if name != "cw" {
+		if header.Typeflag == tar.TypeDir {
+			if header.Mode != 0o755 || name == "cw" {
+				return nil, errors.New("archive has an invalid directory mode or executable")
+			}
+			contents[name] = nil
 			continue
 		}
-		if header.Typeflag != tar.TypeReg || header.Size <= 0 || header.Size > maxExecutableSize || header.Mode != 0o755 {
+		if name == "cw" && (header.Typeflag != tar.TypeReg || header.Size <= 0 || header.Size > maxExecutableSize || header.Mode != 0o755) {
 			return nil, errors.New("archive has an invalid cw executable")
 		}
-		executable, err = io.ReadAll(io.LimitReader(reader, header.Size+1))
-		if err != nil || int64(len(executable)) != header.Size {
-			return nil, errors.Join(errors.New("archive executable size differs"), err)
+		if name != "cw" && header.Mode != 0o644 {
+			return nil, errors.New("archive has an invalid notice mode")
 		}
+		data, err := io.ReadAll(io.LimitReader(reader, header.Size+1))
+		if err != nil || int64(len(data)) != header.Size {
+			return nil, errors.Join(errors.New("archive file size differs"), err)
+		}
+		contents[name] = data
 	}
 	// Reading through the gzip trailer checks its checksum and remaining bytes;
 	// tar permits its usual zero padding, but no additional tar payload.
@@ -136,8 +163,8 @@ func archiveExecutable(filename string) ([]byte, error) {
 	if len(bytes.Trim(trailing, "\x00")) != 0 {
 		return nil, errors.New("archive has trailing tar payload")
 	}
-	if executable == nil {
+	if contents["cw"] == nil {
 		return nil, errors.New("archive is missing its cw executable")
 	}
-	return executable, nil
+	return contents, nil
 }

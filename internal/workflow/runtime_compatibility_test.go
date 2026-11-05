@@ -68,12 +68,12 @@ func TestV7RuntimeSetupUpgradeAndRollback(t *testing.T) {
 	installerUnchanged(t, fixture.base, before)
 	installer.Apply = true
 	if _, err := installer.Setup(true); err != nil {
-		t.Fatalf("v7 to v9 activation: %v", err)
+		t.Fatalf("v7 to v10 activation: %v", err)
 	}
-	assertManagerProtocol(t, installer, "cw-manager-v9")
+	assertManagerProtocol(t, installer, "cw-manager-v10")
 	state, err := installer.state(true)
 	if err != nil || state["release"] != second || object(object(state["manager"])["runtime"])["revision"] != second {
-		t.Fatalf("v9 activation state: %v, %v", state, err)
+		t.Fatalf("v10 activation state: %v, %v", state, err)
 	}
 	manager := clone(object(state["manager"]))
 	if _, err := installer.Rollback(); err != nil {
@@ -81,9 +81,9 @@ func TestV7RuntimeSetupUpgradeAndRollback(t *testing.T) {
 	}
 	state, err = installer.state(true)
 	if err != nil || state["release"] != fixture.first || !equal(state["manager"], manager) {
-		t.Fatalf("skill rollback changed the v9 manager: %v, %v", state, err)
+		t.Fatalf("skill rollback changed the v10 manager: %v, %v", state, err)
 	}
-	assertManagerProtocol(t, installer, "cw-manager-v9")
+	assertManagerProtocol(t, installer, "cw-manager-v10")
 	if got := installerRead(t, filepath.Join(old.runtimeDir(fixture.first), "receipt.json")); got != oldReceipt {
 		t.Fatal("upgrade or rollback rewrote the immutable v7 receipt")
 	}
@@ -184,7 +184,7 @@ func TestV7RuntimeInterruptedJournalRecovery(t *testing.T) {
 }
 
 func TestProductionHistoricalRecoveryRuntimeReceiptsRemainReadable(test *testing.T) {
-	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8"} {
+	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9"} {
 		test.Run(protocol, func(test *testing.T) {
 			fixture := newInstallerFixture(test)
 			fixture.seedUserFiles(test)
@@ -213,7 +213,7 @@ func TestProductionHistoricalRecoveryRuntimeReceiptsRemainReadable(test *testing
 	}
 }
 
-func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV9Manager(test *testing.T) {
+func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV10Manager(test *testing.T) {
 	fixture := newInstallerFixture(test)
 	originals := fixture.seedUserFiles(test)
 	old := sealedV7RuntimeFixture(test, fixture)
@@ -234,10 +234,10 @@ func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV9Manager(test *testing.T
 	if _, err := installer.Setup(true); err != nil {
 		test.Fatal(err)
 	}
-	assertManagerProtocol(test, installer, "cw-manager-v9")
+	assertManagerProtocol(test, installer, "cw-manager-v10")
 	state, err := installer.state(true)
 	if err != nil || state["release"] != second || object(object(state["manager"])["runtime"])["revision"] != second {
-		test.Fatalf("v8 to v9 activation state: %v, %v", state, err)
+		test.Fatalf("v8 to v10 activation state: %v, %v", state, err)
 	}
 	manager := clone(object(state["manager"]))
 	if _, err := installer.Rollback(); err != nil {
@@ -247,7 +247,7 @@ func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV9Manager(test *testing.T
 	if err != nil || state["release"] != fixture.first || !equal(state["manager"], manager) {
 		test.Fatalf("skill rollback replaced the current manager: %v, %v", state, err)
 	}
-	assertManagerProtocol(test, installer, "cw-manager-v9")
+	assertManagerProtocol(test, installer, "cw-manager-v10")
 	if got := installerRead(test, receiptPath); got != oldReceipt {
 		test.Fatal("upgrade or rollback rewrote the immutable v8 receipt")
 	}
@@ -261,21 +261,21 @@ func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV9Manager(test *testing.T
 }
 
 func TestProductionReadableManagerProtocolBoundary(test *testing.T) {
-	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9"} {
+	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10"} {
 		if !readableManagerProtocol(protocol) {
 			test.Errorf("supported receipt protocol rejected: %q", protocol)
 		}
 	}
-	for _, protocol := range []string{"", "unknown", "cw-manager-v1", "cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v10", "cw-manager-v90", "cw-manager-v9\n"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v1", "cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v11", "cw-manager-v90", "cw-manager-v9\n"} {
 		if readableManagerProtocol(protocol) {
 			test.Errorf("unsupported receipt protocol accepted: %q", protocol)
 		}
 	}
 }
 
-func TestProductionRuntimeCandidatesRequireV9BeforeMutation(t *testing.T) {
+func TestProductionRuntimeCandidatesRequireV10BeforeMutation(t *testing.T) {
 	t.Parallel()
-	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v10"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			for _, operation := range []string{"setup", "prepare", "stage"} {
@@ -306,7 +306,7 @@ func TestProductionRuntimeCandidatesRequireV9BeforeMutation(t *testing.T) {
 
 func TestRuntimeReceiptRejectsUnsupportedProtocols(t *testing.T) {
 	t.Parallel()
-	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v10"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
@@ -326,7 +326,7 @@ func TestRuntimeReceiptRejectsUnsupportedProtocols(t *testing.T) {
 
 func TestRecoveryRuntimeRejectsUnsupportedExecutableProtocols(t *testing.T) {
 	t.Parallel()
-	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v10"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v10", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
@@ -358,7 +358,7 @@ func TestRecoveryRuntimeRejectsUnsupportedExecutableProtocols(t *testing.T) {
 
 func TestRecoveryRuntimeRequiresReceiptProtocolMatch(t *testing.T) {
 	t.Parallel()
-	for _, receiptProtocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9"} {
+	for _, receiptProtocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10"} {
 		t.Run(receiptProtocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)

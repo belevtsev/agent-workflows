@@ -245,6 +245,13 @@ func (i *Installer) registrationChanges(s, m Object, rollback bool, roots ...str
 }
 
 func (i *Installer) Setup(enroll bool) (Object, error) {
+	if i.Bundle != nil {
+		command := "setup"
+		if !enroll {
+			command = "install"
+		}
+		return i.standaloneApply(command, true)
+	}
 	if err := i.Context.Err(); err != nil {
 		return nil, err
 	}
@@ -484,6 +491,13 @@ func (i *Installer) Status() (Object, error) {
 		report["manager"] = manager
 		report["manager_command"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
 	}
+	if integer(s["version"]) == 4 {
+		prefs, _, err := i.readPreferences()
+		if err != nil {
+			return nil, err
+		}
+		report["config_dir"], report["preferences"], report["generation"], report["base_identity"], report["effective_digest"] = i.ConfigDir, prefs, s["integrity_sha256"], s["base"], strings.TrimPrefix(text(s["release"]), "effective-")
+	}
 	return report, nil
 }
 func (i *Installer) allowedOrigin() error {
@@ -500,6 +514,9 @@ func (i *Installer) allowedOrigin() error {
 	return errors.New("origin must be the belevtsev/agent-workflows GitHub repository")
 }
 func (i *Installer) Update() (Object, error) {
+	if i.Bundle != nil {
+		return i.standaloneApply("update", true)
+	}
 	if i.AdoptPersonalSkills {
 		return nil, errors.New("personal skill adoption is available only for install and setup")
 	}
@@ -662,6 +679,9 @@ func (i *Installer) Update() (Object, error) {
 	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "changed": len(ops) > 0}, nil
 }
 func (i *Installer) Rollback() (Object, error) {
+	if i.Bundle != nil {
+		return i.standaloneRollback()
+	}
 	if err := i.Context.Err(); err != nil {
 		return nil, err
 	}

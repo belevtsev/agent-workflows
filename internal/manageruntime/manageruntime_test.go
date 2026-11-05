@@ -249,6 +249,7 @@ func TestPrepareMissingReleaseAndCompilerDoesNotPublish(t *testing.T) {
 	gitFixture(t, source, "config", "user.name", "Fixture")
 	gitFixture(t, source, "config", "user.email", "fixture@example.test")
 	writeFixture(t, filepath.Join(source, "go.mod"), "module example.test/fixture\n\ngo 1.27.1\n", 0644)
+	legacyBuildResourceFixture(t, source)
 	gitFixture(t, source, "add", ".")
 	gitFixture(t, source, "commit", "--quiet", "-m", "fixture")
 	revision := gitFixture(t, source, "rev-parse", "HEAD")
@@ -269,8 +270,11 @@ func TestPrepareMissingReleaseAndCompilerDoesNotPublish(t *testing.T) {
 	state := filepath.Join(root, "state")
 	acquirer := Acquirer{Client: server.Client(), APIBase: server.URL, DownloadBase: server.URL}
 	_, err = acquirer.Prepare(t.Context(), source, revision, state)
-	if err == nil || !strings.Contains(err.Error(), "build exact manager source (Go 1.27.1 required)") || !strings.Contains(err.Error(), `"go"`) {
-		t.Fatalf("missing compiler error lost: %v", err)
+	// R-DEV / bootstrap-native-v4: preserve the missing compiler identity;
+	// Go 1.27.1 remains pinned separately by the compiler-environment fixture.
+	var compilerError *exec.Error
+	if !errors.Is(err, exec.ErrNotFound) || !errors.As(err, &compilerError) || compilerError.Name != "go" {
+		t.Fatalf("missing go compiler error identity lost: %v", err)
 	}
 	if got := gitFixture(t, source, "rev-parse", "HEAD"); got != revision {
 		t.Fatal("failed fallback moved source HEAD")
@@ -336,7 +340,7 @@ func TestPrepareSupportedManager(t *testing.T) {
 				t.Fatalf("supported manager acquisition: %+v %v", candidate, err)
 			}
 			output, err := exec.CommandContext(t.Context(), candidate.Path, "--manager-protocol").Output()
-			if err != nil || string(output) != "cw-manager-v9\n" {
+			if err != nil || string(output) != "cw-manager-v10\n" {
 				t.Fatalf("acquired manager lost its protocol: %q %v", output, err)
 			}
 			if (origin == "cached" && requests.Load() != 0) || (origin != "cached" && requests.Load() == 0) || (origin == "built" && builds != 1) || (origin != "built" && builds != 0) {
@@ -446,6 +450,30 @@ func gitFixture(t *testing.T, root string, args ...string) string {
 	}
 	return strings.TrimSpace(string(data))
 }
+
+// R-DEV: this deliberately synthetic resource set supplies the manifest3 build
+// inputs and the approved embedding ABI. It is not a standalone retention test.
+func legacyBuildResourceFixture(t *testing.T, source string) {
+	t.Helper()
+	files := map[string]string{
+		"skills-manifest.json":         `{"version":3,"registrations":{"demo":"skills/demo"},"global_instructions":"global/AGENTS.md","model_policy":"skills/demo/policy.yaml","claude_model_policy":"skills/demo/claude.yaml","adoption_catalog":"global/adoption.json","required_licenses":["licenses/demo.txt"]}` + "\n",
+		"skills/demo/SKILL.md":         "synthetic developer fixture skill\n",
+		"skills/demo/policy.yaml":      "synthetic model policy\n",
+		"skills/demo/claude.yaml":      "synthetic claude policy\n",
+		"global/AGENTS.md":             "synthetic developer fixture instructions\n",
+		"global/adoption.json":         "synthetic adoption text\n",
+		"licenses/demo.txt":            "synthetic license text\n",
+		"internal/bundled/embedded.go": "package bundled\n\nvar embeddedRaw []byte\n",
+	}
+	for name, contents := range files {
+		path := filepath.Join(source, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		writeFixture(t, path, contents, 0644)
+	}
+}
+
 func TestGoFallbackBuildsExactSnapshotWithoutMovingHEAD(t *testing.T) {
 	root := realTemp(t)
 	source := filepath.Join(root, "source with spaces")
@@ -456,6 +484,7 @@ func TestGoFallbackBuildsExactSnapshotWithoutMovingHEAD(t *testing.T) {
 	gitFixture(t, source, "config", "user.name", "Fixture")
 	gitFixture(t, source, "config", "user.email", "fixture@example.test")
 	writeFixture(t, filepath.Join(source, "go.mod"), "module example.test/fixture\n\ngo 1.27.1\n", 0644)
+	legacyBuildResourceFixture(t, source)
 	writeFixture(t, filepath.Join(source, "snapshot"), "target", 0644)
 	gitFixture(t, source, "add", ".")
 	gitFixture(t, source, "commit", "--quiet", "-m", "target")
@@ -475,6 +504,9 @@ set -eu
 [ "$GOTOOLCHAIN" = go1.27.1 ]
 [ "$CGO_ENABLED" = 0 ]
 [ "$(cat snapshot)" = target ]
+[ -f skills-manifest.json ]
+[ -f skills/demo/SKILL.md ]
+[ -f internal/bundled/embedded.go ]
 printf '%s\n' "$@" > "$CW_BUILD_RECORD"
 next=false
 output=
@@ -492,6 +524,9 @@ printf '%s\n' fixture > "$output"
 	}
 	if got := gitFixture(t, source, "rev-parse", "HEAD"); got != head {
 		t.Fatal("build moved source HEAD")
+	}
+	if dirty := gitFixture(t, source, "status", "--porcelain"); dirty != "" {
+		t.Fatalf("disposable build changed the original source: %s", dirty)
 	}
 	argv, err := os.ReadFile(record)
 	if err != nil {
@@ -646,5 +681,72 @@ func TestResolveSealedV2LocatorAndRejectChangedRoots(t *testing.T) {
 		if err := os.Remove(descriptor); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// R-DEV: a compiler that writes a partial output and fails cannot publish a
+// candidate or activate a runtime, and the immutable source stays unchanged.
+func TestGoFallbackCompilerFailureDoesNotPublishOrActivate(t *testing.T) {
+	root := realTemp(t)
+	source := filepath.Join(root, "compiler failure source")
+	if err := os.Mkdir(source, 0755); err != nil {
+		t.Fatal(err)
+	}
+	gitFixture(t, source, "init", "--quiet")
+	gitFixture(t, source, "config", "user.name", "Fixture")
+	gitFixture(t, source, "config", "user.email", "fixture@example.test")
+	writeFixture(t, filepath.Join(source, "go.mod"), "module example.test/fixture\n\ngo 1.27.1\n", 0644)
+	legacyBuildResourceFixture(t, source)
+	gitFixture(t, source, "add", ".")
+	gitFixture(t, source, "commit", "--quiet", "-m", "compiler failure fixture")
+	revision := gitFixture(t, source, "rev-parse", "HEAD")
+	mockBin := filepath.Join(root, "compiler-bin")
+	if err := os.Mkdir(mockBin, 0755); err != nil {
+		t.Fatal(err)
+	}
+	record := filepath.Join(root, "compiler-record")
+	writeFixture(t, filepath.Join(mockBin, "go"), `#!/bin/sh
+set -eu
+[ "$GOWORK" = off ]
+[ "$GOTOOLCHAIN" = go1.27.1 ]
+[ "$CGO_ENABLED" = 0 ]
+printf '%s\n' "$@" > "$CW_BUILD_RECORD"
+next=false
+output=
+for argument in "$@"; do
+ if "$next"; then output=$argument; next=false; continue; fi
+ if [ "$argument" = -o ]; then next=true; fi
+done
+[ -n "$output" ]
+printf '%s\n' 'partial compiler output' > "$output"
+exit 23
+`, 0755)
+	t.Setenv("PATH", mockBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("CW_BUILD_RECORD", record)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, `[]`) }))
+	defer server.Close()
+	state := filepath.Join(root, "state")
+	_, err := (Acquirer{Client: server.Client(), APIBase: server.URL, DownloadBase: server.URL}).Prepare(t.Context(), source, revision, state)
+	if err == nil {
+		t.Fatal("compiler failure reported success")
+	}
+	argv, readErr := os.ReadFile(record)
+	if readErr != nil || !strings.Contains(string(argv), "-X main.revision="+revision) {
+		t.Fatalf("compiler was not reached for the exact revision: %s %v", argv, readErr)
+	}
+	if got := gitFixture(t, source, "rev-parse", "HEAD"); got != revision {
+		t.Fatal("compiler failure moved source HEAD")
+	}
+	if dirty := gitFixture(t, source, "status", "--porcelain"); dirty != "" {
+		t.Fatalf("compiler failure changed original source: %s", dirty)
+	}
+	for _, path := range []string{filepath.Join(state, "runtime", "candidates", revision, "cw"), filepath.Join(state, "runtime", "current")} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("compiler failure published or activated %s: %v", path, err)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(state, "runtime", "candidates"))
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("compiler failure left staged candidates: %v %v", entries, err)
 	}
 }

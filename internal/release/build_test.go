@@ -12,8 +12,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/bundled"
 )
 
+// R-R1: retain deterministic archives, exact notices, executable mode and timestamp normalization.
 func TestArchiveIsDeterministicAndIncludesNotices(t *testing.T) {
 	root := t.TempDir()
 	stage := filepath.Join(root, "stage")
@@ -65,6 +68,7 @@ func TestArchiveIsDeterministicAndIncludesNotices(t *testing.T) {
 	}
 }
 
+// R-R1: an exact clean source revision remains mandatory.
 func TestSourceIdentityRejectsDifferentOrDirtyRevision(t *testing.T) {
 	fixture := newPublicationFixture(t)
 	if _, _, err := SourceIdentity(t.Context(), fixture.options.Source, "0000000000000000000000000000000000000000", true); err == nil {
@@ -76,18 +80,24 @@ func TestSourceIdentityRejectsDifferentOrDirtyRevision(t *testing.T) {
 	}
 }
 
+// R-R1, R-R2, R-R3: all four real builds retain committed compiler, embed,
+// standalone payload and notice bytes across a worktree mutation barrier.
 func TestBuildPinsBinariesAndNoticesWhenWorktreeChanges(t *testing.T) {
-	root := t.TempDir()
+	root := standaloneFixtureDirectory(t)
 	source := filepath.Join(root, "source")
 	main := `package main
 import (
   "fmt"
   _ "embed"
+  "github.com/belevtsev/agent-workflows/internal/bundled"
 )
 var version, revision, builtAt, releaseIdentity string
 //go:embed proof.txt
 var proof string
-func main() { fmt.Print(version, revision, builtAt, releaseIdentity, "ORIGINAL_BUILD_INPUT", proof) }
+func main() {
+  payload, marker := bundled.FixtureResources()
+  fmt.Print(version, revision, builtAt, releaseIdentity, "ORIGINAL_BUILD_INPUT", proof, string(payload), marker)
+}
 `
 	inputs := map[string]string{
 		"go.mod":                  "module github.com/belevtsev/agent-workflows\n\ngo 1.27.1\n",
@@ -98,10 +108,15 @@ func main() { fmt.Print(version, revision, builtAt, releaseIdentity, "ORIGINAL_B
 		"THIRD_PARTY.md":          "ORIGINAL_THIRD_PARTY\n",
 		"licenses/dependency.txt": "ORIGINAL_DEPENDENCY_LICENSE\n",
 	}
+	writeStandaloneFixtureSource(t, source)
 	for name, data := range inputs {
 		writeTest(t, filepath.Join(source, name), []byte(data))
 	}
 	revision := commitSourceFixture(t, source)
+	payload, err := bundled.Build(source, "v9.8.7", revision)
+	if err != nil {
+		t.Fatal(err)
+	}
 	writeTest(t, filepath.Join(source, ".git", "info", "attributes"), []byte("cmd/cw/proof.txt export-ignore\nlicenses/dependency.txt export-ignore\n"))
 	realGo, err := exec.LookPath("go")
 	if err != nil {
@@ -144,10 +159,18 @@ exec "$CW_RELEASE_TEST_REAL_GO" "$@"
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range ArchiveNames {
+	for _, name := range []string{"cw_darwin_arm64.tar.gz", "cw_darwin_amd64.tar.gz", "cw_linux_arm64.tar.gz", "cw_linux_amd64.tar.gz"} {
 		executable, err := archiveExecutable(filepath.Join(result.Directory, name))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if count := bytes.Count(executable, payload); count != 1 {
+			t.Fatalf("%s contains the exact committed standalone payload %d times, want once", name, count)
+		}
+		identity, err := bundled.InspectBinary(executable)
+		target := strings.Split(strings.TrimSuffix(strings.TrimPrefix(name, "cw_"), ".tar.gz"), "_")
+		if err != nil || identity.Version != options.Version || identity.Revision != revision || identity.OS != target[0] || identity.Arch != target[1] {
+			t.Fatalf("%s standalone marker is not bound to the exact release: %+v, %v", name, identity, err)
 		}
 		for _, marker := range []string{"ORIGINAL_BUILD_INPUT", inputs["cmd/cw/proof.txt"]} {
 			if !bytes.Contains(executable, []byte(marker)) {
@@ -166,6 +189,7 @@ exec "$CW_RELEASE_TEST_REAL_GO" "$@"
 			}
 		}
 	}
+	assertStandaloneFixtureCheckout(t, source, revision)
 	if dirty := gitTest(t, source, "status", "--porcelain"); dirty == "" {
 		t.Fatal("mutation barrier did not change the original worktree")
 	}
@@ -183,6 +207,10 @@ exec "$CW_RELEASE_TEST_REAL_GO" "$@"
 	repeated, err := Build(t.Context(), options)
 	if err != nil {
 		t.Fatal(err)
+	}
+	assertStandaloneFixtureCheckout(t, source, revision)
+	if dirty := gitTest(t, source, "status", "--porcelain"); dirty != "" {
+		t.Fatalf("repeated build modified the restored source checkout: %s", dirty)
 	}
 	for name, digest := range result.Digests {
 		if repeated.Digests[name] != digest {

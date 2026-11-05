@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/belevtsev/agent-workflows/internal/bundled"
 )
 
 const startMarker = "<!-- agent-workflows-start -->"
@@ -27,12 +29,20 @@ type Options struct {
 	Hosts               []string
 	Forget              bool
 	// Getenv reads the caller's environment; nil means the process environment.
-	Getenv func(string) string
+	Getenv             func(string) string
+	Bundle             bundled.Provider
+	ConfigDir          string
+	Selection          *ConfigurationSelection
+	Configure          ConfigurationSelector
+	AdmitLegacy        func(context.Context, []string, string) error
+	ExpectedGeneration *string
+	ExpectedBundle     *bundled.Identity
 }
 type Installer struct {
 	Options
 	current, statePath, journalPath, agents, config, skills string
 	runtimeProtocol                                         string
+	bundleIdentity                                          bundled.Identity
 }
 
 func NewInstaller(options Options) *Installer {
@@ -43,9 +53,14 @@ func NewInstaller(options Options) *Installer {
 		options.Getenv = os.Getenv
 	}
 	p := options.Paths
-	p.Source = Normalize(p.Source)
+	if p.Source != "" || options.Bundle == nil {
+		p.Source = Normalize(p.Source)
+	}
 	p.Home = Normalize(p.Home)
 	p.Codex = Normalize(p.Codex)
+	if options.Bundle != nil && p.Claude == "" {
+		p.Claude = filepath.Join(p.Home, ".claude")
+	}
 	if p.Claude != "" {
 		p.Claude = Normalize(p.Claude)
 	}
@@ -106,6 +121,9 @@ func (i *Installer) state(required bool) (Object, error) {
 	if e = verifySeal(s); e != nil {
 		return nil, e
 	}
+	if integer(s["version"]) == 4 {
+		return s, i.validateStandaloneState(s)
+	}
 	if integer(s["version"]) != 3 || !commitSHA.MatchString(text(s["release"])) || s["home"] != i.Home || s["state_dir"] != i.State || object(s["hosts"]) == nil || object(s["manifest_registrations"]) == nil || sequence(s["history"]) == nil {
 		return nil, errors.New("unsupported or corrupt installation ownership state or roots")
 	}
@@ -116,6 +134,9 @@ func (i *Installer) state(required bool) (Object, error) {
 }
 
 func (i *Installer) validateStateStructure(s Object) error {
+	if integer(s["version"]) == 4 {
+		return i.validateStandaloneState(s)
+	}
 	if _, err := decodeOwnership(s); err != nil {
 		return err
 	}
@@ -265,6 +286,9 @@ func (i *Installer) preview(sha string) (string, Object, func(), error) {
 	return dir, m, cleanup, nil
 }
 func (i *Installer) release(sha string) (string, Object, error) {
+	if effectivePattern.MatchString(sha) {
+		return i.effectiveRelease(sha)
+	}
 	if !commitSHA.MatchString(sha) {
 		return "", nil, errors.New("invalid release SHA")
 	}
@@ -411,6 +435,9 @@ func (i *Installer) duplicates(h hostTarget, registrations Object) error {
 	return nil
 }
 func (i *Installer) verifyOwned(s Object) error {
+	if err := i.verifyPreferences(s); err != nil {
+		return err
+	}
 	pointer, e := observe(i.current)
 	if e != nil {
 		return e

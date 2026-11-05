@@ -200,14 +200,18 @@ func stateFromObservation(ob Object) (Object, error) {
 }
 
 func (i *Installer) verifyRecoveryRuntime(identity RuntimeIdentity) error {
-	receipt, err := i.verifiedRuntimeReceipt(identity.Revision)
+	key, err := i.recoveryRuntimeKey(identity)
+	if err != nil {
+		return err
+	}
+	receipt, err := i.verifiedRuntimeReceipt(key)
 	if err != nil {
 		return err
 	}
 	if receipt.Identity != identity {
 		return errors.New("recovery runtime identity differs from its immutable receipt")
 	}
-	protocol, err := i.inspectRuntimeProtocol(filepath.Join(i.runtimeDir(identity.Revision), "cw"))
+	protocol, err := i.inspectRuntimeProtocol(filepath.Join(i.runtimeDir(key), "cw"))
 	if err != nil || protocol != receipt.ManagerProtocol {
 		return errors.New("staged recovery runtime does not support the manager protocol")
 	}

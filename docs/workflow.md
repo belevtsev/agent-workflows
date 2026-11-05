@@ -14,6 +14,13 @@ which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
 a running chat's model automatically.
 
+Standalone setup can retain release defaults or derive an immutable effective
+snapshot from per-field preferences. All host dispatch and native readers use that
+same effective policy; explicit values remain pinned while absent fields follow
+future releases. Recommended and Balanced are reset operations, and ordinary update
+keeps saved choices. No preset grants publication authority or relaxes substantive
+role scopes, independent authorship, adviser or review requirements.
+
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
 `claude-sonnet-5-5` at `medium`. Other roles use `claude-opus-5-5`, at `xhigh` for
 substantive and other bounded execution work and `high` for bounded evidence. See the
@@ -107,13 +114,12 @@ runs `gpt-6.1-sol`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
 continue rejecting configured Max for Sol models. The native validator enforces
-these rules. New manager candidates must support `cw-manager-v9` to validate the
-GitHub policy and both complete five-key/six-key shared-config generations.
-Existing sealed v7/v8 receipts remain readable with their original checks. An
-installed legacy manager needs the documented [v9 rebootstrap](development.md#distribution)
-from a published, verified latest release before using `cw update` to activate
-the new source. Older readers are not promised compatibility with new six-key
-journals, and skill rollback retains the compatible manager.
+these rules. New standalone candidates require `cw-manager-v10`, state/journal4
+and immutable base/effective receipts. Historical v7/v8/v9 sealed receipts remain
+readable with their original checks. Existing installations need the documented
+[v10 download rebootstrap](development.md#distribution) before an old installed
+manager can use the new release flow. New records are not promised readable by
+old managers. Rollback retains the capable manager and current preferences.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
 control context. Pass exact source revisions, ownership, constraints, and the

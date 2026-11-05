@@ -145,42 +145,37 @@ version/creation ordering governs overlapping releases.
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
 defines 33 registrations and 78 entrypoints; model defaults come from its
-validated policies. `cw-manager-v9` is the bootstrap and new-candidate protocol:
-`install.sh` and workflow preparation/staging require this exact capability, including
-for cached candidates. It adds exact historical five-key and current six-key shared
-config readers to the GitHub worker model policy, manifest version 3, sealed
-runtimes, version 3 state and journals, and the required three-adviser policy.
-Bump it for any change a released manager cannot read. Existing sealed v7/v8 runtime
-receipts remain readable for status, upgrades, rollback, recovery and uninstall,
-with the same seal, content hash, locator, identity and ownership checks. Recovery
-verifies the existing executable against the protocol in its own immutable receipt;
-it does not require a preserved historical runtime to report v9. Skill rollback
-retains the active manager instead of reinstalling an older reader.
+validated policies. `cw-manager-v10` adds self-contained resource payloads,
+per-field preferences, sealed configuration roots, state/journal4 and version3
+standalone runtime receipts. Existing sealed v7/v8/v9 receipts and state3 remain
+readable without rewriting their identity or seals. Recovery verifies the exact
+protocol in each historical receipt; rollback retains the capable installed
+manager and derives an effective snapshot from cached base + current preferences.
 
-The lower-level exact-revision acquirer identifies and returns candidates without
-activating them; workflow capability validation remains mandatory afterward.
+Release builds export an exact immutable source revision, create a deterministic
+allowlisted payload, and inject it only into that disposable export. Generated
+payload files never belong in the maintained worktree. Release preflight recomputes
+the expected payload identity from the same source. CWRELEASE1 and version JSON
+remain compatible; the independent CWBUNDLE1 marker binds the embedded base digest.
+Archive checksums bind complete executable bytes. Developer builds without generated
+payload still support offline help/version but cannot silently install from cwd.
 
-Publish and verify v9 binaries and checksums for all supported release platforms
-before bootstrapping v9 source. The bootstrap uses `releases/latest`, so those
-latest assets must report `cw-manager-v9`; publishing a future tag alone is
-insufficient. `install.sh` has no build fallback and rejects cached or downloaded
-v7/v8 candidates. Once that release exists, update the same clean enrolled source
-checkout and rebootstrap through setup before running an active `cw update`:
+Publish and verify all four v10 archives and SHA256SUMS before using the new installer.
+The existing release workflow owns version assignment. Once available, rebootstrap
+existing v7/v8/v9 installations through the download helper rather than asking an old
+manager to parse the new schema or use its old checkout-driven `cw update`:
 
 ```sh
-git pull --ff-only
-./install.sh setup --dry-run
-./install.sh setup
+curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh
 cw status
 ```
 
-With only a v7/v8 cache, the bootstrap dry run reports deferred validation without
-downloading; the applied setup acquires v9 before activating the new source.
-Rebootstrapping avoids asking an installed legacy manager to parse newer policy,
-shared ownership or journals before it can acquire its replacement. Compatibility
-regression fixtures simulate sealed historical layouts with protocol-only
-executables and run the current Go lifecycle; they do not execute archived manager
-binaries. New six-key journals are not promised readable by older managers.
+Use `--migrate-from /absolute/installed/cw` or explicit recorded roots when needed.
+The new installer leaves legacy source checkouts untouched. Pending legacy journals
+require separate explicit recovery. GitHub compare requests use BASE=old active
+and retained-runtime source SHA and HEAD=pinned target; only ahead/identical admits.
+Normal updates reject older stable versions and equal-version conflicting identities,
+including after skill rollback. Prepared cache artifacts alone are not authority.
 
 Consultation records evolve separately: version three requires all three providers;
 historical version-one pair and version-two optional records remain readable offline.
@@ -216,3 +211,21 @@ Keep render output outside the immutable package. Archify's managed update helpe
 must make no HTTP requests, cache writes, or installed-file changes. Hash/runtime
 closure and preserved licenses are covered by the shared import provenance and
 native suite checks; installed prerequisites are never provisioned by the manager.
+
+## Isolated binary acceptance
+
+`cwdev sandbox test --source /clean/snapshot --backend docker --output /private/report.json`
+builds two exact-source fixture releases outside the container, then passes only
+those artifacts and the independently authored probe into a disposable test home.
+The minimal image has no Git/Go and no host repository, HOME, credentials or Docker
+socket mount. Synthetic keys and a loopback test service stay inside the test.
+
+`--backend sbx` explicitly selects standalone Docker Sandboxes and the checked-in
+`testing/sandbox/sbxenv.yaml` shell environment. It uses no workspace mounts, host
+hooks, shared secret injection or MCP services. Its outer shell template may contain
+development tools; the probe restricts child tools/PATH separately. Missing engine,
+SBX executable or authentication is unavailable coverage with a nonzero result;
+there is no backend fallback. Resources have unique owned names and cleanup removes
+only those created by the run. Reports distinguish availability, probe results and
+cleanup failure. Live host model smokes and personal installation activation remain
+separately authorized work outside CI.

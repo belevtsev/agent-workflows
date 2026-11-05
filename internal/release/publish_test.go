@@ -45,9 +45,15 @@ type publicationFixture struct {
 }
 
 const fixtureMain = `package main
-import "fmt"
+import (
+  "fmt"
+  "github.com/belevtsev/agent-workflows/internal/bundled"
+)
 var version, revision, builtAt, releaseIdentity string
-func main() { fmt.Print(version, revision, builtAt, releaseIdentity) }
+func main() {
+  payload, marker := bundled.FixtureResources()
+  fmt.Print(version, revision, builtAt, releaseIdentity, string(payload), marker)
+}
 `
 
 type compiledFixture struct {
@@ -61,7 +67,10 @@ var fixtureCompile sync.Once
 
 func newPublicationFixture(t *testing.T) *publicationFixture {
 	t.Helper()
-	source := t.TempDir()
+	source := standaloneFixtureDirectory(t)
+	writeStandaloneFixtureSource(t, source)
+	writeTest(t, filepath.Join(source, "LICENSE"), []byte("Synthetic publication fixture license\n"))
+	writeTest(t, filepath.Join(source, "THIRD_PARTY.md"), []byte("Synthetic publication fixture provenance\n"))
 	writeTest(t, filepath.Join(source, ".gitignore"), []byte("dist/\n"))
 	writeTest(t, filepath.Join(source, "README.md"), []byte("Release fixture\n"))
 	writeTest(t, filepath.Join(source, "go.mod"), []byte("module github.com/belevtsev/agent-workflows\n\ngo 1.27.1\n"))
@@ -95,6 +104,10 @@ func newPublicationFixture(t *testing.T) *publicationFixture {
 		})
 	})
 	compiled := compiledArchives()
+	assertStandaloneFixtureCheckout(t, source, revision)
+	if dirty := gitTest(t, source, "status", "--porcelain"); dirty != "" {
+		t.Fatalf("native fixture build modified its original checkout: %s", dirty)
+	}
 	if compiled.err != nil || compiled.revision != revision {
 		t.Fatalf("native publication fixture: %v, revision %s != %s", compiled.err, compiled.revision, revision)
 	}
@@ -275,6 +288,7 @@ func (fixture *publicationFixture) verify(t *testing.T) {
 	}
 }
 
+// R-R1: publication and uncertain-write reconciliation preserve one write per mutation.
 func TestPublishFreshAndUncertainOutcomes(t *testing.T) {
 	for _, uncertain := range []string{"", "tag.create", "release.create", "asset.upload:cw_darwin_arm64.tar.gz", "release.publish"} {
 		t.Run("uncertain_"+uncertain, func(t *testing.T) {
@@ -304,6 +318,7 @@ func TestPublishFreshAndUncertainOutcomes(t *testing.T) {
 	}
 }
 
+// R-R1: delayed visibility must never repeat writes.
 func TestPublishDelayedVisibilityDoesNotRepeatWrites(t *testing.T) {
 	for _, uncertain := range []string{"", "release.create", "asset.upload:cw_darwin_arm64.tar.gz", "release.publish"} {
 		t.Run("uncertain_"+uncertain, func(t *testing.T) {
@@ -330,6 +345,7 @@ func TestPublishDelayedVisibilityDoesNotRepeatWrites(t *testing.T) {
 	}
 }
 
+// R-R1: cancellation and authorization failures remain terminal during readback.
 func TestPublishReadbackCancellationAndAuthorizationFailure(t *testing.T) {
 	t.Run("cancelled draft visibility", func(t *testing.T) {
 		fixture := newPublicationFixture(t)
@@ -356,6 +372,7 @@ func TestPublishReadbackCancellationAndAuthorizationFailure(t *testing.T) {
 	})
 }
 
+// R-R1: authenticated pagination finds exact drafts and rejects duplicate identities.
 func TestReadReleaseFindsDraftThroughAuthenticatedPagination(t *testing.T) {
 	for _, duplicate := range []bool{false, true} {
 		t.Run(fmt.Sprintf("duplicate_%v", duplicate), func(t *testing.T) {
@@ -398,6 +415,7 @@ func TestReadReleaseFindsDraftThroughAuthenticatedPagination(t *testing.T) {
 	}
 }
 
+// R-R1, R-R4: malformed local assets fail before any GitHub read or write.
 func TestPublishLocalPreflightNeverContactsGitHub(t *testing.T) {
 	for _, malformed := range []string{"missing-archive", "missing-manifest", "checksum-mismatch", "duplicate-entry", "unknown-entry", "extra-archive", "symlink-archive", "symlink-manifest"} {
 		t.Run(malformed, func(t *testing.T) {
@@ -452,6 +470,7 @@ func TestPublishLocalPreflightNeverContactsGitHub(t *testing.T) {
 	}
 }
 
+// R-R1: an exact published release is a verified no-op.
 func TestPublishExactReleaseHasZeroWrites(t *testing.T) {
 	fixture := newPublicationFixture(t)
 	fixture.seed(t, false)
@@ -467,6 +486,7 @@ func TestPublishExactReleaseHasZeroWrites(t *testing.T) {
 	}
 }
 
+// R-R1: resume only missing draft work.
 func TestPublishResumesPendingDraftWithMissingTagAndAsset(t *testing.T) {
 	fixture := newPublicationFixture(t)
 	fixture.seed(t, true)
@@ -482,6 +502,7 @@ func TestPublishResumesPendingDraftWithMissingTagAndAsset(t *testing.T) {
 	}
 }
 
+// R-R1: conflicts and exhausted uncertainty never authorize retries or success.
 func TestPublishConflictsAndIncompleteUploads(t *testing.T) {
 	for _, scenario := range []string{"tag-conflict", "asset-conflict", "partial-asset-conflict", "upload-not-completed", "published-incomplete"} {
 		t.Run(scenario, func(t *testing.T) {
@@ -526,6 +547,7 @@ func TestPublishConflictsAndIncompleteUploads(t *testing.T) {
 	}
 }
 
+// R-R1: failed reads never authorize remote mutation.
 func TestPublishReadErrorsNeverAuthorizeMutation(t *testing.T) {
 	for _, path := range []string{"/git/ref", "/releases"} {
 		for _, status := range []int{http.StatusForbidden, http.StatusInternalServerError} {
