@@ -1025,3 +1025,19 @@ func TestR_B3_BuildRejectsSpecialFiles(test *testing.T) {
 		test.Fatal("Build accepted an included socket special file")
 	}
 }
+
+// R1.4: a plain source build carries no payload, and asking for it names the
+// release build instead of failing obscurely or returning an empty bundle.
+func TestR_B4_EmbeddedWithoutPayloadNamesTheReleaseBuild(test *testing.T) {
+	bundle, err := bundled.Embedded(test.Context())
+	if err == nil && bundle != nil {
+		test.Skip("this test binary carries a release payload")
+	}
+	if err == nil {
+		test.Fatal("Embedded returned neither a bundle nor an error")
+	}
+	const want = "this developer binary has no embedded workflow payload; build a release with cwdev release build"
+	if err.Error() != want || bundle != nil {
+		test.Fatalf("Embedded without a payload: %v, %v; want %q", bundle, err, want)
+	}
+}

@@ -256,7 +256,7 @@ func ResolveConfigDir(home, explicit, recorded string, getenv func(string) strin
 }
 
 func (i *Installer) configurationView(command, root string, manifest Object, state Object, prefs Preferences, identity bundled.Identity) (ConfigurationView, error) {
-	view := ConfigurationView{Command: command, Installed: state != nil, Migrating: state != nil && integer(state["version"]) == 3, Generation: text(state["integrity_sha256"]), ConfigDir: i.ConfigDir, Target: identity, Preferences: prefs}
+	view := ConfigurationView{Command: command, Installed: state != nil, Generation: text(state["integrity_sha256"]), ConfigDir: i.ConfigDir, Target: identity, Preferences: prefs}
 	shared, err := suiteModelPolicy(filepath.Join(root, text(manifest["model_policy"])))
 	if err != nil {
 		return view, err

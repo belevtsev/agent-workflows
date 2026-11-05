@@ -60,61 +60,51 @@ func taskArtifactNames(t *testing.T, directory string) []string {
 }
 
 func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *testing.T) {
-	for _, legacy := range []bool{false, true} {
-		t.Run(fmt.Sprintf("legacy_%t", legacy), func(t *testing.T) {
-			plan := Plan{Title: "Read source", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read the complete source", AllowNonExecution: true}}}
-			record, ref := fixtureTask(t, plan)
-			if legacy {
-				record.Version, record.Plan.CoordinatorID = LegacyVersion, ""
-				if err := os.WriteFile(filepath.Join(record.Directory, "record-000001.json"), mustJSON(t, record), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			initial, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			input := assessment(ref)
-			input.Requirements[0].NonExecutionReason = "Read the complete source; no executable change."
-			input.Decision.NonExecutionReason = input.Requirements[0].NonExecutionReason
-			record, err = Assess(t.Context(), record.Directory, input)
-			if err != nil {
-				t.Fatal(err)
-			}
-			record = extendTaskHistory(t, record, maxTaskRevisions-1)
-			if result, err := Verify(t.Context(), record.Directory); err != nil || !result.Complete {
-				t.Fatalf("last readable revision was refused: complete=%t err=%v", result.Complete, err)
-			}
-			lastPath := filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", maxTaskRevisions))
-			last, err := os.ReadFile(lastPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			names := taskArtifactNames(t, record.Directory)
-			if result, err := Verify(t.Context(), record.Directory); !errors.Is(err, errTaskRevisionLimit) || result.Complete {
-				t.Fatalf("exhausted verification claimed success: complete=%t err=%v", result.Complete, err)
-			}
-			called := false
-			if _, err := update(record.Directory, func(root *os.Root, _ *Record) error {
-				called = true
-				return writeNew(root, "unexpected-callback-artifact.json", []byte("{}"))
-			}); !errors.Is(err, errTaskRevisionLimit) || called {
-				t.Fatalf("exhausted history invoked callback: called=%t err=%v", called, err)
-			}
-			consultation := writeConsultation(t, record.Contexts["before"], nil)
-			if _, err := AttachConsultation(t.Context(), record.Directory, "before", consultation); !errors.Is(err, errTaskRevisionLimit) {
-				t.Fatalf("consultation copied despite exhausted history: %v", err)
-			}
-			stored, err := Load(record.Directory)
-			if err != nil || stored.Revision != maxTaskRevisions || stored.Version != record.Version || stored.Plan.CoordinatorID != record.Plan.CoordinatorID || stored.Verification == nil || !stored.Verification.Complete {
-				t.Fatalf("last native result was lost: revision=%d err=%v", stored.Revision, err)
-			}
-			currentInitial, initialErr := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
-			currentLast, lastErr := os.ReadFile(lastPath)
-			if initialErr != nil || lastErr != nil || !bytes.Equal(initial, currentInitial) || !bytes.Equal(last, currentLast) || !slices.Equal(names, taskArtifactNames(t, record.Directory)) {
-				t.Fatal("capacity refusal changed history or left an orphan artifact")
-			}
-		})
+	plan := Plan{Title: "Read source", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read the complete source", AllowNonExecution: true}}}
+	record, ref := fixtureTask(t, plan)
+	initial, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := assessment(ref)
+	input.Requirements[0].NonExecutionReason = "Read the complete source; no executable change."
+	input.Decision.NonExecutionReason = input.Requirements[0].NonExecutionReason
+	record, err = Assess(t.Context(), record.Directory, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record = extendTaskHistory(t, record, maxTaskRevisions-1)
+	if result, err := Verify(t.Context(), record.Directory); err != nil || !result.Complete {
+		t.Fatalf("last readable revision was refused: complete=%t err=%v", result.Complete, err)
+	}
+	lastPath := filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", maxTaskRevisions))
+	last, err := os.ReadFile(lastPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := taskArtifactNames(t, record.Directory)
+	if result, err := Verify(t.Context(), record.Directory); !errors.Is(err, errTaskRevisionLimit) || result.Complete {
+		t.Fatalf("exhausted verification claimed success: complete=%t err=%v", result.Complete, err)
+	}
+	called := false
+	if _, err := update(record.Directory, func(root *os.Root, _ *Record) error {
+		called = true
+		return writeNew(root, "unexpected-callback-artifact.json", []byte("{}"))
+	}); !errors.Is(err, errTaskRevisionLimit) || called {
+		t.Fatalf("exhausted history invoked callback: called=%t err=%v", called, err)
+	}
+	consultation := writeConsultation(t, record.Contexts["before"], nil)
+	if _, err := AttachConsultation(t.Context(), record.Directory, "before", consultation); !errors.Is(err, errTaskRevisionLimit) {
+		t.Fatalf("consultation copied despite exhausted history: %v", err)
+	}
+	stored, err := Load(record.Directory)
+	if err != nil || stored.Revision != maxTaskRevisions || stored.Version != Version || stored.Plan.CoordinatorID != record.Plan.CoordinatorID || stored.Verification == nil || !stored.Verification.Complete {
+		t.Fatalf("last native result was lost: revision=%d err=%v", stored.Revision, err)
+	}
+	currentInitial, initialErr := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
+	currentLast, lastErr := os.ReadFile(lastPath)
+	if initialErr != nil || lastErr != nil || !bytes.Equal(initial, currentInitial) || !bytes.Equal(last, currentLast) || !slices.Equal(names, taskArtifactNames(t, record.Directory)) {
+		t.Fatal("capacity refusal changed history or left an orphan artifact")
 	}
 }
 

@@ -750,8 +750,10 @@ func TestPrivateStorageAndInterruptedWritesPreserveOriginals(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(record.Directory, "record-000003.json"), []byte(`{"version":1`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(record.Directory); err == nil {
-		t.Fatal("truncated published revision ignored")
+	// The truncated bytes begin with a version-1 member but never decode, so
+	// this is malformed history rather than a version-1 record (R3.1).
+	if _, err := Load(record.Directory); err == nil || strings.Contains(err.Error(), legacyRecordMessage) {
+		t.Fatalf("truncated published revision ignored or misreported as version 1: %v", err)
 	}
 }
 

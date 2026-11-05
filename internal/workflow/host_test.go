@@ -117,18 +117,18 @@ func TestClaudeHostIgnoresUnrelatedCodexSkillRoots(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(f.paths.Codex, "skills")); err != nil {
 		t.Fatal(err)
 	}
-	origin := f.bareOrigin(t)
 	if _, err := f.hostInstaller(false, hostClaude).Setup(true); err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
 	if _, err := f.hostInstaller(true, hostClaude).Setup(true); err != nil {
 		t.Fatalf("install: %v", err)
 	}
-	f.newRelease(t)
-	f.git(t, "push", origin, "main")
-	f.git(t, "reset", "--hard", f.first)
+	second := f.newRelease(t)
 	if _, err := f.hostInstaller(true).Update(); err != nil {
 		t.Fatalf("update: %v", err)
+	}
+	if got := f.activeRevision(t); got != second {
+		t.Fatalf("update activated %s, want %s", got, second)
 	}
 	if _, err := f.hostInstaller(true).Uninstall(); err != nil {
 		t.Fatalf("uninstall: %v", err)
@@ -225,53 +225,60 @@ func TestHostsSharingASkillsDirectoryRefuseBeforeWrites(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// unsafe marks a home whose path has a symlink component: the unsafe
+	// directory refusal names that home and comes before the shared-skills check.
 	for _, test := range []struct {
-		name  string
-		roots func(*testing.T, *installerFixture)
+		name   string
+		roots  func(*testing.T, *installerFixture)
+		unsafe bool
 	}{
-		{"same home", func(_ *testing.T, f *installerFixture) { f.paths.Claude = f.paths.Codex }},
+		{"same home", func(_ *testing.T, f *installerFixture) { f.paths.Claude = f.paths.Codex }, false},
 		{"Claude in the default Codex home", func(_ *testing.T, f *installerFixture) {
 			f.paths.Codex = filepath.Join(f.base, "custom codex")
 			f.paths.Claude = filepath.Join(f.paths.Home, ".codex")
-		}},
-		{"Claude in the personal skills root", func(_ *testing.T, f *installerFixture) { f.paths.Claude = filepath.Join(f.paths.Home, ".agents") }},
+		}, false},
+		{"Claude in the personal skills root", func(_ *testing.T, f *installerFixture) { f.paths.Claude = filepath.Join(f.paths.Home, ".agents") }, false},
 		{"symlinked home", func(t *testing.T, f *installerFixture) {
 			mkdir(t, f.paths.Codex)
 			f.paths.Claude = filepath.Join(f.base, "linked claude")
 			if err := os.Symlink(f.paths.Codex, f.paths.Claude); err != nil {
 				t.Fatal(err)
 			}
-		}},
+		}, true},
 		{"data volume firmlink", func(t *testing.T, f *installerFixture) {
 			mkdir(t, f.paths.Codex)
 			f.paths.Claude = onDataVolume(f.paths.Codex)
 			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
-		}},
+		}, false},
 		{"data volume firmlink, neither created", func(t *testing.T, f *installerFixture) {
 			requireOneDirectory(t, f.base, onDataVolume(f.base))
 			f.paths.Codex = filepath.Join(f.base, "shared")
 			f.paths.Claude = onDataVolume(f.paths.Codex)
-		}},
+		}, false},
 		{"Unicode spelling", func(t *testing.T, f *installerFixture) {
 			f.paths.Codex = filepath.Join(f.base, "codéx")
 			f.paths.Claude = filepath.Join(f.base, "codéx")
 			mkdir(t, f.paths.Codex)
 			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
-		}},
+		}, false},
 		{"case spelling", func(t *testing.T, f *installerFixture) {
 			mkdir(t, f.paths.Codex)
 			f.paths.Claude = filepath.Join(filepath.Dir(f.paths.Codex), strings.ToUpper(filepath.Base(f.paths.Codex)))
 			requireOneDirectory(t, f.paths.Codex, f.paths.Claude)
-		}},
+		}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			f := claudeFixture(t)
 			test.roots(t, f)
+			want := "skills directory"
+			if test.unsafe {
+				want = "unsafe directory: " + f.paths.Claude
+			}
 			before := installerSnapshot(t, f.base)
 			for _, apply := range []bool{false, true} {
-				if _, err := f.hostInstaller(apply, hostCodex, hostClaude).Setup(true); err == nil || !strings.Contains(err.Error(), "skills directory") {
-					t.Fatalf("apply %t: %v", apply, err)
+				if _, err := f.hostInstaller(apply, hostCodex, hostClaude).Setup(true); err == nil || !strings.Contains(err.Error(), want) {
+					t.Fatalf("apply %t: %v; want %q", apply, err, want)
 				}
 			}
 			installerUnchanged(t, f.base, before)
@@ -614,7 +621,7 @@ func TestAddClaudeThenRemoveCodexKeepsClaudeWorking(t *testing.T) {
 			if err != nil || hostRecord(added, hostClaude) == nil || hostRecord(added, hostCodex) == nil {
 				t.Fatalf("host not added: %v", err)
 			}
-			if len(sequence(added["history"])) != 0 || added["release"] != state["release"] {
+			if !equal(added["history"], state["history"]) || added["release"] != state["release"] {
 				t.Fatal("adding a host changed the release or its history")
 			}
 			if got, _ := os.Readlink(i.current); got != pointer {
@@ -673,6 +680,9 @@ func assertLinks(t *testing.T, h hostTarget, names []string, want bool) {
 	}
 }
 
+// Only update activates a newer bundle; setup that adds a host keeps the
+// active release, whether the bundle is ahead of it or it was rolled back.
+// The checkout-only variant (TestAddingHostIgnoresTheCheckout) was deleted.
 func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -680,7 +690,7 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 		rolledBack bool
 		hosts      []string
 	}{
-		{"checkout ahead", false, []string{hostClaude}},
+		{"bundle ahead", false, []string{hostClaude}},
 		{"rolled back", true, []string{hostClaude}},
 		{"rolled back naming every host", true, []string{hostCodex, hostClaude}},
 	} {
@@ -692,8 +702,11 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 			}
 			second := addBackendFixtureRegistrations(t, f)
 			if test.rolledBack {
-				if _, err := f.hostInstaller(true).Setup(true); err != nil {
+				if _, err := f.hostInstaller(true).Update(); err != nil {
 					t.Fatal(err)
+				}
+				if got := f.activeRevision(t); got != second {
+					t.Fatalf("update activated %s, want %s", got, second)
 				}
 				if _, err := f.hostInstaller(true).Rollback(); err != nil {
 					t.Fatal(err)
@@ -704,22 +717,25 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if stateRevision(before) != f.first {
+				t.Fatalf("fixture did not start on the first release: %s", stateRevision(before))
+			}
 			pointer, _ := os.Readlink(i.current)
 			snapshot := installerSnapshot(t, f.base)
 			report, err := f.hostInstaller(false, test.hosts...).Setup(true)
-			if err != nil || report["release"] != f.first {
+			if err != nil || report["release"] == nil || report["release"] != before["release"] {
 				t.Fatalf("preview: %#v, %v", report, err)
 			}
 			installerUnchanged(t, f.base, snapshot)
 			report, err = i.Setup(true)
-			if err != nil || report["release"] != f.first || report["changed"] != true {
+			if err != nil || report["release"] != before["release"] || report["changed"] != true {
 				t.Fatalf("add: %#v, %v", report, err)
 			}
 			after, err := i.state(true)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if after["release"] != f.first || !equal(after["history"], before["history"]) || !equal(after["manifest_registrations"], before["manifest_registrations"]) {
+			if after["release"] != before["release"] || stateRevision(after) != f.first || !equal(after["history"], before["history"]) || !equal(after["manifest_registrations"], before["manifest_registrations"]) {
 				t.Fatalf("adding a host changed the release: %v, %v", after["release"], after["history"])
 			}
 			if got, _ := os.Readlink(i.current); got != pointer {
@@ -728,37 +744,17 @@ func TestAddingHostKeepsTheActiveRelease(t *testing.T) {
 			claude := i.host(hostClaude)
 			assertLinks(t, claude, keys(object(f.manifest["registrations"])), true)
 			assertLinks(t, claude, backendFixtureNames, false)
-			if _, err := f.hostInstaller(true, test.hosts...).Setup(true); err != nil {
+			if _, err := f.hostInstaller(true).Update(); err != nil {
 				t.Fatal(err)
 			}
 			moved, err := i.state(true)
-			if err != nil || moved["release"] != second {
-				t.Fatalf("install of recorded hosts stayed behind HEAD: %v, %v", moved["release"], err)
+			if err != nil || stateRevision(moved) != second {
+				t.Fatalf("update of recorded hosts stayed behind the bundle: %v, %v", moved["release"], err)
 			}
 			assertLinks(t, claude, backendFixtureNames, true)
 			assertLinks(t, i.host(hostCodex), backendFixtureNames, true)
 		})
 	}
-}
-
-func TestAddingHostIgnoresTheCheckout(t *testing.T) {
-	t.Parallel()
-	f := addHostFixture(t)
-	second := addBackendFixtureRegistrations(t, f)
-	if _, err := f.hostInstaller(true, hostCodex).Setup(true); err != nil {
-		t.Fatal(err)
-	}
-	f.git(t, "reset", "--hard", f.first)
-	installerWrite(t, filepath.Join(f.paths.Source, "uncommitted.txt"), "work in progress\n", 0o644)
-	i := f.hostInstaller(true, hostClaude)
-	if _, err := i.Setup(true); err != nil {
-		t.Fatalf("a dirty checkout behind the release blocked the host: %v", err)
-	}
-	state, err := i.state(true)
-	if err != nil || state["release"] != second {
-		t.Fatalf("release moved: %v, %v", state["release"], err)
-	}
-	assertLinks(t, i.host(hostClaude), backendFixtureNames, true)
 }
 
 func TestAddingHostLeavesTheManagerAlone(t *testing.T) {
@@ -809,10 +805,13 @@ func TestClaudeSettingsDriftIsReportedAndLeftAlone(t *testing.T) {
 	if !reflect.DeepEqual(drift, []string{"model"}) {
 		t.Fatalf("wrong drift: %#v", drift)
 	}
-	f.newRelease(t)
+	release := f.newRelease(t)
 	second := f.hostInstaller(true)
-	if _, err := second.Setup(true); err != nil {
+	if _, err := second.Update(); err != nil {
 		t.Fatalf("update refused a user model change: %v", err)
+	}
+	if got := f.activeRevision(t); got != release {
+		t.Fatalf("update activated %s, want %s", got, release)
 	}
 	if !strings.Contains(installerRead(t, h.settings), `"claude-fable-5-1"`) {
 		t.Fatal("update overwrote the user's model")
@@ -925,15 +924,42 @@ func TestClaudeSettingsRejectsUnsafePaths(t *testing.T) {
 	seedClaudeFiles(t, f)
 	i := f.hostInstaller(true, hostClaude)
 	h := i.host(hostClaude)
+	regular := installerRead(t, h.settings)
 	if err := os.Remove(h.settings); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(filepath.Join(f.base, "elsewhere.json"), h.settings); err != nil {
+	elsewhere := filepath.Join(f.base, "elsewhere.json")
+	if err := os.Symlink(elsewhere, h.settings); err != nil {
 		t.Fatal(err)
 	}
 	before := installerSnapshot(t, f.base)
-	if _, err := i.Setup(true); err == nil {
-		t.Fatal("setup followed a symlinked settings file")
+	for _, apply := range []bool{false, true} {
+		_, err := f.hostInstaller(apply, hostClaude).Setup(true)
+		if err == nil {
+			t.Fatalf("apply %t: setup followed a symlinked settings file", apply)
+		}
+		// The refusal names the settings file or its symlink, not some other
+		// precondition of the fixture.
+		if message := strings.ToLower(err.Error()); !strings.Contains(message, "settings") && !strings.Contains(message, "symlink") {
+			t.Fatalf("apply %t: refused for another reason: %v", apply, err)
+		}
+		installerUnchanged(t, f.base, before)
+		if exists(elsewhere) {
+			t.Fatal("setup wrote through the settings symlink")
+		}
+		if target, err := os.Readlink(h.settings); err != nil || target != elsewhere {
+			t.Fatalf("settings symlink changed: %q, %v", target, err)
+		}
 	}
-	installerUnchanged(t, f.base, before)
+	// The same installation succeeds once the settings file is regular.
+	if err := os.Remove(h.settings); err != nil {
+		t.Fatal(err)
+	}
+	installerWrite(t, h.settings, regular, 0o640)
+	if _, err := i.Setup(true); err != nil {
+		t.Fatalf("regular settings file: %v", err)
+	}
+	if settings := installerRead(t, h.settings); !strings.Contains(settings, `"theme": "dark"`) || !strings.Contains(settings, `"model": "claude-opus-5-5"`) {
+		t.Fatalf("regular settings were not managed: %s", settings)
+	}
 }

@@ -82,6 +82,103 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 }
 
+// R3.1: a task record chain whose revisions are version 1 is refused with the
+// restart guidance, and its record files stay byte-identical.
+func TestTaskCLIRefusesVersionOneRecordsWithoutWrites(t *testing.T) {
+	repo, home := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, out, _, _ := testConfig(t)
+	stderr := new(bytes.Buffer)
+	config.Err = stderr
+	config.HomeDir = func() (string, error) { return home, nil }
+	config.WorkingDir = func() (string, error) { return repo, nil }
+	config.In = strings.NewReader(`{"title":"Inspect source","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
+	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err != nil {
+		t.Fatal(err)
+	}
+	var record taskflow.Record
+	if err := json.Unmarshal(out.Bytes(), &record); err != nil {
+		t.Fatal(err)
+	}
+	revisions, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
+	if err != nil || len(revisions) == 0 {
+		t.Fatalf("no task revisions in %s: %v", record.Directory, err)
+	}
+	// Turn the stored chain into a version-1 chain without other changes.
+	for _, path := range revisions {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document map[string]any
+		if err := json.Unmarshal(data, &document); err != nil {
+			t.Fatal(err)
+		}
+		if document["version"] != float64(taskflow.Version) {
+			t.Fatalf("%s is not a current record: version %v", path, document["version"])
+		}
+		document["version"] = 1
+		if data, err = json.Marshal(document); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, info.Mode().Perm()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot := func() map[string]string {
+		t.Helper()
+		names, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		files := map[string]string{}
+		for _, name := range names {
+			data, err := os.ReadFile(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			files[filepath.Base(name)] = string(data)
+		}
+		return files
+	}
+	before := snapshot()
+	const refusal = "task record version 1 is no longer supported; start a new task with 'cw task start'"
+	for _, command := range []string{"show", "verify"} {
+		t.Run(command, func(t *testing.T) {
+			out.Reset()
+			stderr.Reset()
+			err := Execute(t.Context(), []string{"task", command, "--task", record.Directory}, config)
+			if err == nil {
+				t.Fatal("version-1 task record was loaded")
+			}
+			if !strings.Contains(err.Error()+out.String()+stderr.String(), refusal) {
+				t.Fatalf("missing version-1 guidance: %v stdout %q stderr %q", err, out, stderr)
+			}
+			after := snapshot()
+			if len(after) != len(before) {
+				t.Fatalf("task revisions changed: %d -> %d", len(before), len(after))
+			}
+			for name, data := range before {
+				if after[name] != data {
+					t.Fatalf("%s changed after refusal", name)
+				}
+			}
+		})
+	}
+}
+
 func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
 	for _, command := range []string{"start", "context", "run", "assess", "assign", "handoff", "accept", "consult", "verify"} {
 		t.Run(command, func(t *testing.T) {

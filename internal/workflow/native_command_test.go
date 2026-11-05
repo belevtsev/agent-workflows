@@ -3,28 +3,34 @@ package workflow
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
+// nativeFixtureInstaller is the standalone installer for one packed fixture
+// release: its bundle, its manager candidate and that release's identity.
 func nativeFixtureInstaller(t *testing.T, fixture *installerFixture, revision string, apply bool) *Installer {
 	t.Helper()
-	return nativeFixtureInstallerProtocol(t, fixture, revision, ManagerProtocol, apply)
+	fixture.env.Setenv("PATH", "/usr/bin:/bin")
+	installer := fixture.installerFor(t, revision, apply)
+	installer.Context = t.Context()
+	return installer
 }
 
+// nativeFixtureInstallerProtocol offers a manager candidate that reports
+// protocol for the release's exact bundle identity.
 func nativeFixtureInstallerProtocol(t *testing.T, fixture *installerFixture, revision, protocol string, apply bool) *Installer {
 	t.Helper()
-	fixture.env.Setenv("PATH", "/usr/bin:/bin")
-	candidate := filepath.Join(fixture.base, "native candidate "+revision)
-	installerWrite(t, candidate, "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' '"+protocol+"'; fi\n", 0o755)
-	installer := fixture.installer(apply)
-	installer.Context = t.Context()
+	installer := nativeFixtureInstaller(t, fixture, revision, apply)
+	if protocol == ManagerProtocol {
+		return installer
+	}
+	release := fixture.release(t, revision)
+	candidate := filepath.Join(fixture.base, "manager candidates", "protocol "+fixtureRevision(protocol, release.identity.Version)[:12], "cw")
+	installerWrite(t, candidate, fixtureManagerScript(t, protocol, release.identity), 0o755)
 	installer.RuntimeCandidate = candidate
-	installer.RuntimeIdentity = RuntimeIdentity{Revision: revision, Version: "test", OS: runtime.GOOS, Arch: runtime.GOARCH}
 	return installer
 }
 
@@ -32,6 +38,25 @@ func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
 	t.Parallel()
 	fixture := newInstallerFixture(t)
 	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
+	if _, err := installer.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	// The locator a standalone install writes is version 3; each case changes
+	// only its command path and reseals it.
+	data, err := os.ReadFile(installer.locatorPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded, err := readJSON(installer.locatorPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if integer(recorded["version"]) != 3 || recorded["command_path"] != installer.commandPath() {
+		t.Fatalf("installed locator is not the version-3 locator for this command: %#v", recorded)
+	}
+	if locator, err := installer.decodeRuntimeLocator(data); err != nil || locator.Version != 3 || locator.CommandPath != installer.commandPath() {
+		t.Fatalf("recorded locator: %#v, %v", locator, err)
+	}
 	for _, test := range []struct {
 		name  string
 		path  string
@@ -42,8 +67,9 @@ func TestNativeManagerLocatorCommandPathValidation(t *testing.T) {
 		{name: "empty", path: ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			locator := RuntimeLocator{Version: 2, Source: installer.Source, Home: installer.Home, State: installer.State, CommandPath: test.path}
-			_, err := installer.decodeRuntimeLocator(legacyJSON(seal(asObject(locator))))
+			locator := clone(recorded)
+			locator["command_path"] = test.path
+			_, err := installer.decodeRuntimeLocator(legacyJSON(seal(locator)))
 			if (err == nil) != test.valid {
 				t.Fatalf("valid=%t: %v", test.valid, err)
 			}
@@ -92,33 +118,27 @@ func TestCodexRootIsChosenWhenCodexEnrolls(t *testing.T) {
 	}
 }
 
+// Every standalone setup enrolls the manager, so the old variant that first
+// installed without a native manager no longer exists.
 func TestNativeManagerAlreadyOnPATHDoesNotAddProfile(t *testing.T) {
 	t.Parallel()
-	for _, legacy := range []bool{false, true} {
-		t.Run(fmt.Sprintf("legacy %t", legacy), func(t *testing.T) {
-			t.Parallel()
-			fixture := newInstallerFixture(t)
-			original := fixture.seedUserFiles(t)
-			if legacy {
-				fixture.execute(t, "setup")
-			}
-			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-			fixture.env.Setenv("PATH", filepath.Join(fixture.paths.Home, ".local", "bin")+":/usr/bin:/bin")
-			if _, err := installer.Setup(true); err != nil {
-				t.Fatal(err)
-			}
-			state, err := installer.state(true)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if object(state["manager"])["profile"] != nil {
-				t.Fatal("unnecessary PATH profile was added")
-			}
-			rc := filepath.Join(fixture.paths.Home, ".bashrc")
-			if got := installerRead(t, rc); got != original[rc] {
-				t.Fatalf("startup bytes changed: %q", got)
-			}
-		})
+	fixture := newInstallerFixture(t)
+	original := fixture.seedUserFiles(t)
+	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
+	fixture.env.Setenv("PATH", filepath.Join(fixture.paths.Home, ".local", "bin")+":/usr/bin:/bin")
+	if _, err := installer.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	state, err := installer.state(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if object(state["manager"]) == nil || object(state["manager"])["profile"] != nil {
+		t.Fatalf("unnecessary PATH profile was added: %#v", state["manager"])
+	}
+	rc := filepath.Join(fixture.paths.Home, ".bashrc")
+	if got := installerRead(t, rc); got != original[rc] {
+		t.Fatalf("startup bytes changed: %q", got)
 	}
 }
 
@@ -146,11 +166,10 @@ func TestNativeManagerRecoversEveryNativeBoundary(t *testing.T) {
 			original := fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
-			if _, err := installer.Setup(true); err == nil {
-				t.Fatal("fault did not interrupt native enrollment")
+			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
+				t.Fatalf("fault did not interrupt native enrollment: %v", err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			installer.Source = filepath.Join(fixture.base, "unavailable")
 			if _, err := installer.Recover(); err != nil {
 				t.Fatal(err)
 			}
@@ -205,16 +224,25 @@ func TestNativeManagerConflictAndPreparationFailureDoNotActivate(t *testing.T) {
 			if conflict == "command" {
 				installerWrite(t, installer.commandPath(), "user command", 0o755)
 			} else {
+				// The candidate cannot be prepared for the identity asked of it:
+				// it reports the bundle's revision, not this one.
 				installer.RuntimeIdentity.Revision = strings.Repeat("b", 40)
-				installer.PrepareRuntime = func(context.Context, string, string, string) (RuntimeCandidate, error) {
-					return RuntimeCandidate{}, errors.New("download failed")
-				}
 			}
 			before := installerSnapshot(t, fixture.base)
 			if _, err := installer.Setup(true); err == nil {
 				t.Fatal("invalid native preparation succeeded")
 			}
 			installerUnchanged(t, fixture.base, before)
+			// The same installation succeeds once the conflict is gone, so the
+			// refusal above came from the conflict.
+			if conflict == "command" {
+				if err := os.Remove(installer.commandPath()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := nativeFixtureInstaller(t, fixture, fixture.first, true).Setup(true); err != nil {
+				t.Fatalf("control installation: %v", err)
+			}
 		})
 	}
 }
@@ -227,8 +255,11 @@ func TestNativeManagerRejectsTamperedRuntime(t *testing.T) {
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
 	}
-	runtimePath := filepath.Join(installer.runtimeDir(fixture.first), "cw")
-	installerAppend(t, runtimePath, "# tampered\n")
+	if _, err := installer.Status(); err != nil {
+		t.Fatalf("untampered runtime: %v", err)
+	}
+	runtimePath := filepath.Join(fixtureRuntimeDir(t, fixture.paths.State, fixture.first), "cw")
+	fixtureRewrite(t, runtimePath, []byte(installerRead(t, runtimePath)+"# tampered\n"))
 	if _, err := installer.Status(); err == nil {
 		t.Fatal("modified executable accepted")
 	}
@@ -250,14 +281,13 @@ func TestNativeManagerUninstallRecoversEveryNativeBoundary(t *testing.T) {
 				t.Fatal(err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
-			if _, err = installer.Uninstall(); err == nil {
-				t.Fatal("fault did not interrupt native uninstall")
+			if _, err = installer.Uninstall(); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
+				t.Fatalf("fault did not interrupt native uninstall: %v", err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if _, err = installer.runtimeRelease(fixture.first); err != nil {
+			if err = installer.verifyRecoveryRuntime(installer.RuntimeIdentity); err != nil {
 				t.Fatalf("immutable recovery metadata unavailable: %v", err)
 			}
-			installer.Source = filepath.Join(fixture.base, "missing source during recovery")
 			if _, err = installer.Recover(); err != nil {
 				t.Fatalf("native uninstall recovery: %v", err)
 			}
@@ -284,28 +314,35 @@ func TestNativeManagerUnsafeRecoveryJournalRefusesAllReversals(t *testing.T) {
 			fixture.seedUserFiles(t)
 			installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
-			if _, err := installer.Setup(true); err == nil {
-				t.Fatal("fault did not interrupt native setup")
+			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at after-state") {
+				t.Fatalf("fault did not interrupt native setup: %v", err)
 			}
 			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
 			journal, err := readJSON(installer.journalPath)
 			if err != nil {
 				t.Fatal(err)
 			}
+			corrupted := false
 			for _, raw := range sequence(journal["operations"]) {
 				op := object(raw)
 				switch {
 				case corruption == "command-path" && op["path"] == installer.commandPath():
 					op["path"] = filepath.Join(fixture.base, "foreign command")
 				case corruption == "runtime-target" && op["path"] == installer.runtimeCurrent():
-					object(op["after"])["target"] = fixture.paths.Source
+					object(op["after"])["target"] = fixture.source
 				case corruption == "locator-roots" && op["path"] == installer.locatorPath():
-					object(op["after"])["data"] = encode(legacyJSON(RuntimeLocator{Source: fixture.paths.Source, Home: fixture.base, State: fixture.paths.State}))
+					object(op["after"])["data"] = encode(legacyJSON(seal(asObject(RuntimeLocator{Version: 3, Home: fixture.base, State: fixture.paths.State, CommandPath: installer.commandPath()}))))
 				case corruption == "profile-path" && op["kind"] == "command_profile":
 					op["path"] = filepath.Join(fixture.base, "foreign rc")
 				case corruption == "profile-content" && op["kind"] == "command_profile":
 					op["after_segment"] = "unowned content"
+				default:
+					continue
 				}
+				corrupted = true
+			}
+			if !corrupted {
+				t.Fatalf("journal has no operation to corrupt for %s", corruption)
 			}
 			installerWrite(t, installer.journalPath, string(legacyJSON(seal(journal))), 0o600)
 			before := installerSnapshot(t, fixture.base)
@@ -353,46 +390,6 @@ func TestInstallerContextCancellationLeavesInstallationUntouched(t *testing.T) {
 		t.Fatalf("cancelled setup: %v", err)
 	}
 	installerUnchanged(t, fixture.base, before)
-}
-
-func TestNativeUpdateNoCheckoutPreparesFetchedRuntime(t *testing.T) {
-	t.Parallel()
-	fixture := newInstallerFixture(t)
-	fixture.seedUserFiles(t)
-	origin := fixture.bareOrigin(t)
-	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-	if _, err := installer.Setup(true); err != nil {
-		t.Fatal(err)
-	}
-	second := fixture.newRelease(t)
-	fixture.git(t, "push", origin, "main")
-	fixture.git(t, "reset", "--hard", fixture.first)
-	candidate := nativeFixtureInstaller(t, fixture, second, true)
-	calls := 0
-	installer.NoCheckout = true
-	installer.PrepareRuntime = func(ctx context.Context, source, sha, root string) (RuntimeCandidate, error) {
-		calls++
-		if ctx != installer.Context || source != installer.Source || sha != second || root != installer.State {
-			t.Fatal("runtime preparation did not receive exact update inputs")
-		}
-		return RuntimeCandidate{Path: candidate.RuntimeCandidate, Identity: candidate.RuntimeIdentity}, nil
-	}
-	if _, err := installer.Update(); err != nil {
-		t.Fatal(err)
-	}
-	if calls != 1 {
-		t.Fatalf("runtime prepare calls = %d", calls)
-	}
-	if got := fixture.git(t, "rev-parse", "HEAD"); got != fixture.first {
-		t.Fatalf("no-checkout advanced source: %s", got)
-	}
-	state, err := installer.state(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state["release"] != second || object(object(state["manager"])["runtime"])["revision"] != second {
-		t.Fatal("no-checkout failed to update manager and skills")
-	}
 }
 
 func sharedConfigRuntimeFixture(t *testing.T, fixture *installerFixture) *Installer {

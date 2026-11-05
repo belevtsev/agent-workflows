@@ -179,7 +179,7 @@ bounded-worker fallback; the optional `github_unavailable: report_blocker`
 overrides profile fallbacks for the three GitHub execution roles on both hosts.
 Stop incompatible workers; never silently switch those roles to an expensive
 worker or lower a substantive effort or model family.
-Native `cw validate` checks consistency, not runtime availability or automatic
+Native policy validation checks consistency, not runtime availability or automatic
 dispatch. A role's profile gives its configured model and effort; an explicit user
 request can override that effort only with a value the profile lists in
 `user_requested_efforts`. Inspect the role's scope before using a profile for dispatch.

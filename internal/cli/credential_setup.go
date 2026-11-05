@@ -19,7 +19,12 @@ func credentialDirectory(root *cobra.Command, config Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// A legacy installation counts as no recorded installation here, so
+	// read-only commands keep working with the default roots.
 	installation, err := workflow.RecordedInstallation(workflow.Normalize(roots.state))
+	if errors.Is(err, workflow.ErrLegacyInstallation) {
+		installation, err = workflow.Installation{}, nil
+	}
 	if err != nil {
 		return "", err
 	}

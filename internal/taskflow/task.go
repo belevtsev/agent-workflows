@@ -322,29 +322,16 @@ func checkStoredRun(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 }
 
 func evidenceBinding(record Record) (string, error) {
-	if record.Version >= Version {
-		data, err := encode(struct {
-			Revision    int                        `json:"revision"`
-			Plan        Plan                       `json:"plan"`
-			Checks      []CheckRun                 `json:"checks"`
-			Assessments map[string]BoundAssessment `json:"assessments"`
-			Decision    *BoundDecision             `json:"decision"`
-			Assignments []WorkerAssignment         `json:"assignments"`
-			Results     []BoundWorkerResult        `json:"worker_results"`
-			Acceptances []BoundWorkerAcceptance    `json:"worker_acceptances"`
-		}{record.EvidenceRevision, record.Plan, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
-		if err != nil {
-			return "", err
-		}
-		return digest(data), nil
-	}
 	data, err := encode(struct {
 		Revision    int                        `json:"revision"`
 		Plan        Plan                       `json:"plan"`
 		Checks      []CheckRun                 `json:"checks"`
 		Assessments map[string]BoundAssessment `json:"assessments"`
 		Decision    *BoundDecision             `json:"decision"`
-	}{record.EvidenceRevision, record.Plan, record.Checks, record.Assessments, record.Decision})
+		Assignments []WorkerAssignment         `json:"assignments"`
+		Results     []BoundWorkerResult        `json:"worker_results"`
+		Acceptances []BoundWorkerAcceptance    `json:"worker_acceptances"`
+	}{record.EvidenceRevision, record.Plan, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
 	if err != nil {
 		return "", err
 	}
@@ -435,10 +422,8 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)
 		}
 		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: []string{"Source hashes, line ranges and record structure do not prove semantic correctness, complete requirements, test adequacy, or omitted facts.", "Approved checks execute local code without a sandbox; adviser credentials are removed from their environment. No adviser network calls are made by task commands."}}
-		if record.Version == Version {
-			result.Limitations = append(result.Limitations, "Worker and coordinator identities are declarations, not authenticated runtime identities. Ownership checks validate declared changes and scoped content freshness; they do not isolate processes or detect all undeclared edits. Closing a handoff does not stop worker processes.")
-			result.Limitations = append(result.Limitations, "Scoped worker freshness conservatively hashes all entries under owned subtrees, including generated files, and rejects symlinks or exceeded bounds. Exact source-file scopes or whole-project '.' scope avoid depending on unsupported generated subtrees.")
-		}
+		result.Limitations = append(result.Limitations, "Worker and coordinator identities are declarations, not authenticated runtime identities. Ownership checks validate declared changes and scoped content freshness; they do not isolate processes or detect all undeclared edits. Closing a handoff does not stop worker processes.")
+		result.Limitations = append(result.Limitations, "Scoped worker freshness conservatively hashes all entries under owned subtrees, including generated files, and rejects symlinks or exceeded bounds. Exact source-file scopes or whole-project '.' scope avoid depending on unsupported generated subtrees.")
 		problem := func(format string, args ...any) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}

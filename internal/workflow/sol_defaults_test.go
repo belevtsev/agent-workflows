@@ -113,6 +113,9 @@ func TestSolDefaultsSetup(t *testing.T) {
 	}
 }
 
+// The standalone manager has no plain, non-enrolling install: install enrolls
+// the root model like setup, keeps the personal comments and profiles beside
+// it, and uninstall restores the personal root byte for byte.
 func TestSolDefaultsPlainInstallPreservesPersonalRoot(t *testing.T) {
 	t.Parallel()
 	fixture := sharedInstallerFixture(t)
@@ -121,132 +124,114 @@ func TestSolDefaultsPlainInstallPreservesPersonalRoot(t *testing.T) {
 	if _, err := installer.Execute("install"); err != nil {
 		t.Fatal(err)
 	}
-	solDefaultsAssertRoot(t, fixture, "original", "high")
+	config := solDefaultsAssertRoot(t, fixture, "gpt-6.1-sol", "max")
+	if !strings.Contains(config, "# user model") || !strings.Contains(config, "[profiles.personal]\nmodel = 'profile'\n") {
+		t.Fatal("install changed personal comments or profile settings")
+	}
 	sharedInstallerAssertDefaults(t, fixture, "gpt-6.1-sol", "gpt-6.1-sol")
 	report, err := installer.Status()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if object(report["model_config"])["managed"] != false {
-		t.Fatal("plain install enrolled the personal root model")
+	if object(report["model_config"])["managed"] != true {
+		t.Fatalf("install did not enroll the root model: %#v", report["model_config"])
 	}
+	solDefaultsAssertStatus(t, report, "gpt-6.1-sol")
 	if _, err := installer.Uninstall(); err != nil {
 		t.Fatal(err)
 	}
 	solDefaultsAssertRestored(t, originals)
 }
 
+// The checkout and no-checkout variants were one standalone flow: update
+// activates the newer bundle without any source checkout.
 func TestAstraToSolLifecycle(t *testing.T) {
 	t.Parallel()
-	for _, test := range []struct {
-		name       string
-		noCheckout bool
-	}{{"checkout", false}, {"no-checkout", true}} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			fixture := sharedInstallerFixture(t)
-			originals := fixture.seedUserFiles(t)
-			configPath := filepath.Join(fixture.paths.Codex, "config.toml")
-			personalProfile := "\n[profiles.sol_defaults_personal]\nmodel = \"gpt-6-astra\"\nmodel_reasoning_effort = \"high\"\n"
-			originals[configPath] = "# Sol defaults personal comment\n" + sharedInstallerDeviceConfig + personalProfile
-			installerWrite(t, configPath, originals[configPath], 0o640)
-			commitModelPolicy(t, fixture, func(policy Object) {
-				policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6-astra"
-			}, "Historical Astra Max with GitHub profile")
-			fixture.first = sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6-astra", "gpt-6-astra"))
-			astraRevision := fixture.first
-			origin := fixture.bareOrigin(t)
-			branch := strings.TrimSpace(fixture.git(t, "symbolic-ref", "--short", "HEAD"))
-			newInstaller := func() *Installer {
-				installer := sharedLifecycleInstaller(t, fixture, true)
-				installer.NoCheckout = test.noCheckout
-				return installer
-			}
-			assertConfig := func(model string) string {
-				config := solDefaultsAssertRoot(t, fixture, model, "max")
-				sharedInstallerAssertDefaults(t, fixture, model, model)
-				if !strings.Contains(config, "# Sol defaults personal comment") || !strings.Contains(config, personalProfile) {
-					t.Fatal("lifecycle changed personal comments or profile settings")
-				}
-				info, err := os.Stat(configPath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if info.Mode().Perm() != 0o640 {
-					t.Fatalf("config mode = %o; want 640", info.Mode().Perm())
-				}
-				return config
-			}
-			installer := newInstaller()
-			if _, err := installer.Setup(true); err != nil {
-				t.Fatal(err)
-			}
-			astraConfig := assertConfig("gpt-6-astra")
-			ownership := solDefaultsOriginals(t, installer)
-			if ownership["model"] == nil || ownership["shared"] == nil {
-				t.Fatal("historical setup did not retain the personal root and shared originals")
-			}
-			astraStatus := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6-astra")
-			if astraStatus["release"] != astraRevision {
-				t.Fatalf("initial release = %#v; want Astra %s", astraStatus["release"], astraRevision)
-			}
-			commitModelPolicy(t, fixture, func(policy Object) {
-				policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6.1-sol"
-			}, "Maintained Sol Max with GitHub profile")
-			solRevision := sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
-			fixture.git(t, "push", origin, "HEAD:refs/heads/"+branch)
-			fixture.git(t, "reset", "--hard", astraRevision)
-			installer = newInstaller()
-			if got := strings.TrimSpace(fixture.git(t, "rev-parse", "HEAD")); got != astraRevision {
-				t.Fatalf("update started at HEAD %s; want historical Astra %s", got, astraRevision)
-			}
-			if _, err := installer.Update(); err != nil {
-				t.Fatal(err)
-			}
-			wantHEAD := solRevision
-			if test.noCheckout {
-				wantHEAD = astraRevision
-			}
-			if got := strings.TrimSpace(fixture.git(t, "rev-parse", "HEAD")); got != wantHEAD {
-				t.Fatalf("updated source HEAD = %s; want %s (NoCheckout=%t)", got, wantHEAD, test.noCheckout)
-			}
-			if got, want := assertConfig("gpt-6.1-sol"), solDefaultsReplaceManagedModels(t, astraConfig, "gpt-6-astra", "gpt-6.1-sol"); got != want {
-				t.Fatal("update changed config bytes beyond the three managed model values")
-			}
-			if !reflect.DeepEqual(solDefaultsOriginals(t, installer), ownership) {
-				t.Fatal("update replaced the original ownership values")
-			}
-			solStatus := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6.1-sol")
-			if solStatus["release"] != solRevision {
-				t.Fatalf("activated release = %#v; want exact Sol %s", solStatus["release"], solRevision)
-			}
-			if reflect.DeepEqual(solStatus["release"], astraStatus["release"]) {
-				t.Fatal("update did not select a new release")
-			}
-			installer = newInstaller()
-			if _, err := installer.Rollback(); err != nil {
-				t.Fatal(err)
-			}
-			if got := assertConfig("gpt-6-astra"); got != astraConfig {
-				t.Fatal("rollback did not restore the Astra config bytes")
-			}
-			if !reflect.DeepEqual(solDefaultsOriginals(t, installer), ownership) {
-				t.Fatal("rollback replaced the original ownership values")
-			}
-			rolledBack := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6-astra")
-			if rolledBack["release"] != astraRevision {
-				t.Fatalf("rollback release = %#v; want exact Astra %s", rolledBack["release"], astraRevision)
-			}
-			if !reflect.DeepEqual(rolledBack["release"], astraStatus["release"]) {
-				t.Fatal("rollback did not restore the historical release")
-			}
-			installer = newInstaller()
-			if _, err := installer.Uninstall(); err != nil {
-				t.Fatal(err)
-			}
-			solDefaultsAssertRestored(t, originals)
-		})
+	fixture := sharedInstallerFixture(t)
+	originals := fixture.seedUserFiles(t)
+	configPath := filepath.Join(fixture.paths.Codex, "config.toml")
+	personalProfile := "\n[profiles.sol_defaults_personal]\nmodel = \"gpt-6-astra\"\nmodel_reasoning_effort = \"high\"\n"
+	originals[configPath] = "# Sol defaults personal comment\n" + sharedInstallerDeviceConfig + personalProfile
+	installerWrite(t, configPath, originals[configPath], 0o640)
+	commitModelPolicy(t, fixture, func(policy Object) {
+		policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6-astra"
+	}, "Historical Astra Max with GitHub profile")
+	fixture.first = sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6-astra", "gpt-6-astra"))
+	astraRevision := fixture.first
+	newInstaller := func() *Installer {
+		return sharedLifecycleInstaller(t, fixture, true)
 	}
+	assertConfig := func(model string) string {
+		config := solDefaultsAssertRoot(t, fixture, model, "max")
+		sharedInstallerAssertDefaults(t, fixture, model, model)
+		if !strings.Contains(config, "# Sol defaults personal comment") || !strings.Contains(config, personalProfile) {
+			t.Fatal("lifecycle changed personal comments or profile settings")
+		}
+		info, err := os.Stat(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o640 {
+			t.Fatalf("config mode = %o; want 640", info.Mode().Perm())
+		}
+		return config
+	}
+	installer := newInstaller()
+	if _, err := installer.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	astraConfig := assertConfig("gpt-6-astra")
+	ownership := solDefaultsOriginals(t, installer)
+	if ownership["model"] == nil || ownership["shared"] == nil {
+		t.Fatal("historical setup did not retain the personal root and shared originals")
+	}
+	astraStatus := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6-astra")
+	if got := fixture.activeRevision(t); got != astraRevision {
+		t.Fatalf("initial release = %s; want Astra %s", got, astraRevision)
+	}
+	commitModelPolicy(t, fixture, func(policy Object) {
+		policy["profiles"].(Object)["sol"].(Object)["model"] = "gpt-6.1-sol"
+	}, "Maintained Sol Max with GitHub profile")
+	solRevision := sharedInstallerRelease(t, fixture, sharedInstallerResource("gpt-6.1-sol", "gpt-6.1-sol"))
+	installer = newInstaller()
+	if _, err := installer.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := assertConfig("gpt-6.1-sol"), solDefaultsReplaceManagedModels(t, astraConfig, "gpt-6-astra", "gpt-6.1-sol"); got != want {
+		t.Fatal("update changed config bytes beyond the three managed model values")
+	}
+	if !reflect.DeepEqual(solDefaultsOriginals(t, installer), ownership) {
+		t.Fatal("update replaced the original ownership values")
+	}
+	solStatus := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6.1-sol")
+	if got := fixture.activeRevision(t); got != solRevision {
+		t.Fatalf("activated release = %s; want exact Sol %s", got, solRevision)
+	}
+	if reflect.DeepEqual(solStatus["release"], astraStatus["release"]) {
+		t.Fatal("update did not select a new release")
+	}
+	installer = newInstaller()
+	if _, err := installer.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if got := assertConfig("gpt-6-astra"); got != astraConfig {
+		t.Fatal("rollback did not restore the Astra config bytes")
+	}
+	if !reflect.DeepEqual(solDefaultsOriginals(t, installer), ownership) {
+		t.Fatal("rollback replaced the original ownership values")
+	}
+	rolledBack := solDefaultsStatusWithoutSource(t, fixture, installer, "gpt-6-astra")
+	if got := fixture.activeRevision(t); got != astraRevision {
+		t.Fatalf("rollback release = %s; want exact Astra %s", got, astraRevision)
+	}
+	if !reflect.DeepEqual(rolledBack["release"], astraStatus["release"]) {
+		t.Fatal("rollback did not restore the historical release")
+	}
+	installer = newInstaller()
+	if _, err := installer.Uninstall(); err != nil {
+		t.Fatal(err)
+	}
+	solDefaultsAssertRestored(t, originals)
 }
 
 func solDefaultsSharedDefaults(model string) Object {
@@ -290,35 +275,23 @@ func solDefaultsAssertStatus(t *testing.T, report Object, model string) {
 	}
 }
 
+// solDefaultsStatusWithoutSource shows status reads only the installed
+// snapshot: hiding the source the fixture packs bundles from changes nothing.
 func solDefaultsStatusWithoutSource(t *testing.T, fixture *installerFixture, installer *Installer, model string) Object {
 	t.Helper()
 	available, err := installer.Status()
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources := []string{fixture.paths.Source}
-	fixtureSourceInfo, err := os.Stat(fixture.paths.Source)
-	if err != nil {
+	hidden := fixture.source + ".sol-defaults-unavailable"
+	if err := os.Rename(fixture.source, hidden); err != nil {
 		t.Fatal(err)
 	}
-	installerSourceInfo, err := os.Stat(installer.Source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !os.SameFile(fixtureSourceInfo, installerSourceInfo) {
-		sources = append(sources, installer.Source)
-	}
-	for _, source := range sources {
-		hidden := source + ".sol-defaults-unavailable"
-		if err := os.Rename(source, hidden); err != nil {
-			t.Fatal(err)
+	defer func() {
+		if err := os.Rename(hidden, fixture.source); err != nil {
+			t.Errorf("restore isolated fixture source: %v", err)
 		}
-		defer func() {
-			if err := os.Rename(hidden, source); err != nil {
-				t.Errorf("restore isolated fixture source: %v", err)
-			}
-		}()
-	}
+	}()
 	before := installerSnapshot(t, fixture.base)
 	report, err := installer.Status()
 	if err != nil {

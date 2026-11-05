@@ -59,18 +59,3 @@ func (i *Installer) recoveryRuntimeKey(identity RuntimeIdentity) (string, error)
 	}
 	return match, nil
 }
-
-func (i *Installer) standaloneJournalVersion(ops []Object) int {
-	for _, op := range ops {
-		if op["path"] != i.statePath {
-			continue
-		}
-		for _, side := range []string{"before", "after"} {
-			state, err := stateFromObservation(object(op[side]))
-			if err == nil && integer(state["version"]) == 4 {
-				return 4
-			}
-		}
-	}
-	return 3
-}

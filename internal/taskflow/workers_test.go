@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -487,76 +488,6 @@ func TestWorkerDeletionAndRetainedArtifactBindings(t *testing.T) {
 	}
 }
 
-func legacyWorkerFixture(t *testing.T, kind string) (Record, SourceRef) {
-	t.Helper()
-	record, ref := fixtureTask(t, helperPlan(t, kind, "pass"))
-	record.Version, record.Plan.CoordinatorID = LegacyVersion, ""
-	data, err := encode(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(record.Directory, "record-000001.json"), data, 0600); err != nil {
-		t.Fatal(err)
-	}
-	loaded, err := Load(record.Directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return loaded, ref
-}
-
-func TestLegacyTaskRetainsEvidenceHashAndNoRetroactiveWorkerReview(t *testing.T) {
-	record, ref := legacyWorkerFixture(t, "substantial")
-	if record.Plan.CoordinatorID != "" {
-		t.Fatal("legacy read inserted a coordinator")
-	}
-	old := struct {
-		Revision int `json:"revision"`
-		Plan     struct {
-			Title        string        `json:"title"`
-			Kind         string        `json:"kind"`
-			Requirements []Requirement `json:"requirements"`
-			Checks       []Check       `json:"checks"`
-		} `json:"plan"`
-		Checks      []CheckRun                 `json:"checks"`
-		Assessments map[string]BoundAssessment `json:"assessments"`
-		Decision    *BoundDecision             `json:"decision"`
-	}{Revision: record.EvidenceRevision, Checks: record.Checks, Assessments: record.Assessments, Decision: record.Decision}
-	old.Plan.Title, old.Plan.Kind, old.Plan.Requirements, old.Plan.Checks = record.Plan.Title, record.Plan.Kind, record.Plan.Requirements, record.Plan.Checks
-	data, err := encode(old)
-	if err != nil {
-		t.Fatal(err)
-	}
-	binding, err := evidenceBinding(record)
-	if err != nil || binding != digest(data) {
-		t.Fatal("version 1 evidence binding changed")
-	}
-	if _, err := AssignWorker(t.Context(), record.Directory, workerBrief("worker", "/root/worker", "review", []string{"."})); err == nil || !strings.Contains(err.Error(), "start a new task") {
-		t.Fatalf("legacy assignment guidance: %v", err)
-	}
-	if _, err := SubmitWorkerResult(t.Context(), record.Directory, WorkerResult{}); err == nil || !strings.Contains(err.Error(), "start a new task") {
-		t.Fatal("legacy handoff accepted")
-	}
-	if _, err := AcceptWorkerResult(t.Context(), record.Directory, WorkerAcceptance{}); err == nil || !strings.Contains(err.Error(), "start a new task") {
-		t.Fatal("legacy acceptance accepted")
-	}
-	if _, err := AttachConsultation(t.Context(), record.Directory, "before", writeConsultation(t, record.Contexts["before"], nil)); err != nil {
-		t.Fatal(err)
-	}
-	ref = changedWorkerSource(t, record)
-	mustAssess(t, record, ref)
-	final, err := PrepareContext(t.Context(), record.Directory, "final")
-	if err != nil {
-		t.Fatalf("retroactive worker review required: %v", err)
-	}
-	if _, err := AttachConsultation(t.Context(), record.Directory, "final", writeConsultation(t, final, nil)); err != nil {
-		t.Fatal(err)
-	}
-	if verified, err := Verify(t.Context(), record.Directory); err != nil || !verified.Complete {
-		t.Fatalf("legacy completion: %+v %v", verified, err)
-	}
-}
-
 func appendWorkerRevision(t *testing.T, record Record, mutate func(*Record)) {
 	t.Helper()
 	previous, err := os.ReadFile(filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", record.Revision)))
@@ -576,24 +507,58 @@ func appendWorkerRevision(t *testing.T, record Record, mutate func(*Record)) {
 	}
 }
 
+// rewriteInitialRevision replaces record-000001.json in place; later revisions
+// appended by appendWorkerRevision chain to the rewritten bytes.
+func rewriteInitialRevision(t *testing.T, record Record, mutate func(*Record)) Record {
+	t.Helper()
+	mutate(&record)
+	data, err := encode(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(record.Directory, "record-000001.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return record
+}
+
 func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testing.T) {
-	for _, legacy := range []bool{true, false} {
-		t.Run(fmt.Sprint("legacy_", legacy), func(t *testing.T) {
-			var record Record
-			if legacy {
-				record, _ = legacyWorkerFixture(t, "small")
-			} else {
-				record, _ = fixtureTask(t, helperPlan(t, "small", "pass"))
+	// R3.1: a version-1 revision anywhere in a chain is refused with the
+	// version-1 guidance rather than the generic version-switch error.
+	for _, test := range []struct {
+		name          string
+		first, second int
+		legacy        bool
+	}{{"v1_then_v2", 1, Version, true}, {"v2_then_v1", Version, 1, true}, {"v2_then_v3", Version, Version + 1, false}} {
+		t.Run(test.name, func(t *testing.T) {
+			record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
+			coordinator := func(version int) string {
+				if version == 1 {
+					return ""
+				}
+				return "/root"
+			}
+			if test.first != Version {
+				record = rewriteInitialRevision(t, record, func(first *Record) {
+					first.Version, first.Plan.CoordinatorID = test.first, coordinator(test.first)
+				})
 			}
 			appendWorkerRevision(t, record, func(next *Record) {
-				if legacy {
-					next.Version, next.Plan.CoordinatorID = Version, "/root"
-				} else {
-					next.Version, next.Plan.CoordinatorID = LegacyVersion, ""
-				}
+				next.Version, next.Plan.CoordinatorID = test.second, coordinator(test.second)
 			})
-			if _, err := Load(record.Directory); err == nil || !strings.Contains(err.Error(), "version cannot switch") {
-				t.Fatalf("mixed-version chain accepted: %v", err)
+			before := productionTaskBytes(t, record.Directory)
+			_, err := Load(record.Directory)
+			if err == nil {
+				t.Fatal("mixed-version chain accepted")
+			}
+			if test.legacy && (!strings.Contains(err.Error(), legacyRecordMessage) || strings.Contains(err.Error(), "cannot switch")) {
+				t.Fatalf("version-1 revision not refused with version-1 guidance: %v", err)
+			}
+			if !test.legacy && strings.Contains(err.Error(), legacyRecordMessage) {
+				t.Fatalf("non-legacy version misreported as version 1: %v", err)
+			}
+			if after := productionTaskBytes(t, record.Directory); !reflect.DeepEqual(after, before) {
+				t.Fatal("refused chain was rewritten")
 			}
 		})
 	}

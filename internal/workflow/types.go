@@ -26,13 +26,6 @@ type RuntimeIdentity struct {
 	Arch     string `json:"arch"`
 }
 
-type RuntimeCandidate struct {
-	Path     string
-	Identity RuntimeIdentity
-}
-
-type RuntimePreparer func(context.Context, string, string, string) (RuntimeCandidate, error)
-
 type Preset string
 
 const (
@@ -99,7 +92,6 @@ type HostConfiguration struct {
 type ConfigurationView struct {
 	Command         string              `json:"command"`
 	Installed       bool                `json:"installed"`
-	Migrating       bool                `json:"migrating"`
 	Generation      string              `json:"generation"`
 	ConfigDir       string              `json:"config_dir"`
 	Target          bundled.Identity    `json:"target"`

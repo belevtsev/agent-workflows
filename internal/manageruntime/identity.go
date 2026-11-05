@@ -1,5 +1,6 @@
-// Package manageruntime acquires and identifies native skill manager executables.
-// Acquisition never activates a release or changes installation ownership.
+// Package manageruntime identifies native skill manager executables and the
+// installation roots recorded next to them. It never activates a release or
+// changes installation ownership.
 package manageruntime
 
 import (
@@ -27,7 +28,11 @@ var versionToken = regexp.MustCompile(`^[A-Za-z0-9._+-]+$`)
 // inferred. Callers must supply explicit roots rather than falling back to cwd.
 var ErrLocatorMissing = errors.New("installed manager has no locator; provide the explicit recorded installation roots")
 
-// Candidate identifies a regular executable prepared for an exact revision.
+// ErrLegacyInstallation identifies a runtime installed by a cw that predates the
+// standalone manager (a version-2 locator). This release does not read it.
+var ErrLegacyInstallation = errors.New(`this installation was made by an older cw that this release no longer supports; run "cw uninstall" with your existing cw, then install again`)
+
+// Candidate identifies a regular manager executable and its build identity.
 type Candidate struct {
 	Path     string            `json:"-"`
 	Revision string            `json:"revision"`
@@ -41,6 +46,8 @@ type Candidate struct {
 }
 
 // Locator binds an installed manager to its installation independently of cwd.
+// Source is optional and only kept so that existing version-3 locators that
+// still carry it remain readable; nothing selects a checkout from it.
 type Locator struct {
 	Version     int    `json:"version"`
 	Source      string `json:"source"`
@@ -110,7 +117,7 @@ func Resolve(executable string) (Locator, error) {
 		return Locator{}, err
 	}
 	parent := filepath.Dir(resolved)
-	// Runtime layout is runtime/releases/<revision>/cw. Do not search arbitrary
+	// Runtime layout is runtime/releases/<key>/cw. Do not search arbitrary
 	// ancestors for a locator belonging to another checkout or installation.
 	if filepath.Base(filepath.Dir(parent)) != "releases" || filepath.Base(filepath.Dir(filepath.Dir(parent))) != "runtime" {
 		return Locator{}, os.ErrNotExist
@@ -141,32 +148,18 @@ func Resolve(executable string) (Locator, error) {
 	if err = json.Unmarshal(data, &locator, json.RejectUnknownMembers(true)); err != nil {
 		return Locator{}, fmt.Errorf("invalid installed manager locator: %w", err)
 	}
-	paths := []string{locator.Home, locator.State}
 	switch locator.Version {
-	case 2:
-		// Decode the old exact schema independently; adding optional v3 fields
-		// must never broaden what a sealed v2 locator is allowed to contain.
-		var legacy struct {
-			Version     int    `json:"version"`
-			Source      string `json:"source"`
-			Home        string `json:"home"`
-			State       string `json:"state"`
-			CommandPath string `json:"command_path"`
-			Integrity   string `json:"integrity_sha256,omitempty"`
-		}
-		if err := json.Unmarshal(data, &legacy, json.RejectUnknownMembers(true)); err != nil {
-			return Locator{}, fmt.Errorf("invalid legacy installed manager locator: %w", err)
-		}
-		paths = append(paths, locator.Source)
 	case 3:
-		paths = append(paths, locator.Config)
-		for _, optional := range []string{locator.Source, locator.Codex, locator.Claude} {
-			if optional != "" {
-				paths = append(paths, optional)
-			}
-		}
+	case 2:
+		return Locator{}, ErrLegacyInstallation
 	default:
 		return Locator{}, errors.New("unsupported installed manager locator version")
+	}
+	paths := []string{locator.Home, locator.State, locator.Config}
+	for _, optional := range []string{locator.Source, locator.Codex, locator.Claude} {
+		if optional != "" {
+			paths = append(paths, optional)
+		}
 	}
 	for _, p := range paths {
 		if p == "" || !filepath.IsAbs(p) || filepath.Clean(p) != p || strings.ContainsAny(p, "\x00\r\n") {
@@ -183,13 +176,9 @@ func Resolve(executable string) (Locator, error) {
 	if locator.State != stateRoot {
 		return Locator{}, errors.New("manager locator belongs to another runtime root")
 	}
-	key := filepath.Base(parent)
-	validKey := commitSHA.MatchString(key)
-	if locator.Version == 3 {
-		parts := strings.Split(key, "-")
-		validKey = len(parts) == 2 && commitSHA.MatchString(parts[0]) && standaloneDigest.MatchString(parts[1])
-	}
-	if !validKey {
+	// Standalone release directories are named <revision>-<bundle digest>.
+	parts := strings.Split(filepath.Base(parent), "-")
+	if len(parts) != 2 || !commitSHA.MatchString(parts[0]) || !standaloneDigest.MatchString(parts[1]) {
 		return Locator{}, errors.New("invalid installed manager release path")
 	}
 	return locator, nil

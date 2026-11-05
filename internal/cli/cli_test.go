@@ -6,21 +6,43 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/belevtsev/agent-workflows/internal/bundled"
+	"github.com/belevtsev/agent-workflows/internal/distribution"
 	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 const fixtureSHA = "0123456789012345678901234567890123456789"
 
+// errFixtureBundle identifies the injected payload provider. Lifecycle tests
+// fake the service, so the CLI only passes the provider through.
+var errFixtureBundle = errors.New("fixture bundle provider: CLI tests decode no payload")
+
+func fixtureBundle(context.Context) (*bundled.Bundle, error) { return nil, errFixtureBundle }
+
+// refusedNetwork fails the test on any HTTP request, so a lifecycle path that
+// reaches the release distribution never touches the network.
+type refusedNetwork struct{ t *testing.T }
+
+func (r refusedNetwork) RoundTrip(request *http.Request) (*http.Response, error) {
+	r.t.Errorf("network request attempted: %s %s", request.Method, request.URL.Redacted())
+	return nil, errors.New("network access is refused in CLI tests")
+}
+
 type fakeService struct {
-	action  string
-	pending bool
+	action      string
+	pending     bool
+	created     int
+	statusCalls int
 }
 
 func (f *fakeService) Execute(action string) (workflow.Object, error) {
@@ -28,26 +50,74 @@ func (f *fakeService) Execute(action string) (workflow.Object, error) {
 	return workflow.Object{"command": action, "pending": f.pending}, nil
 }
 func (f *fakeService) Status() (workflow.Object, error) {
+	f.statusCalls++
 	return workflow.Object{"installed": true}, nil
 }
+
+// untouched reports that no service was built or used.
+func (f *fakeService) untouched() bool {
+	return f.created == 0 && f.action == "" && f.statusCalls == 0
+}
+
+// testConfig isolates every root in a fresh temporary home, injects a fake
+// payload provider, a fake runtime inspection and a network-refusing
+// distribution client, and records the options the service receives.
 func testConfig(t *testing.T) (Config, *bytes.Buffer, *workflow.Options, *fakeService) {
 	t.Helper()
 	out := new(bytes.Buffer)
 	options := new(workflow.Options)
 	service := new(fakeService)
-	config := Config{Version: "v1.2.3", Revision: fixtureSHA, BuiltAt: "now", Out: out, Err: io.Discard, HomeDir: func() (string, error) { return "/fixture/home", nil }, WorkingDir: func() (string, error) { return "/fixture/cwd", nil }, Executable: func() (string, error) { return os.Executable() }, Getenv: func(string) string { return "" }, Resolve: func(string) (manageruntime.Locator, error) { return manageruntime.Locator{}, os.ErrNotExist }, Inspect: func(_ context.Context, path string) (manageruntime.Candidate, error) {
-		return manageruntime.Candidate{Path: path, Revision: fixtureSHA, Version: "v1.2.3", OS: "linux", Arch: "amd64"}, nil
-	}, NewService: func(o workflow.Options) Service { *options = o; return service }}
+	home := t.TempDir()
+	config := Config{
+		Version: "v1.2.3", Revision: fixtureSHA, BuiltAt: "now", Out: out, Err: io.Discard,
+		HomeDir:    func() (string, error) { return home, nil },
+		WorkingDir: func() (string, error) { return "/fixture/cwd", nil },
+		Executable: func() (string, error) { return os.Executable() },
+		Getenv:     func(string) string { return "" },
+		Resolve:    func(string) (manageruntime.Locator, error) { return manageruntime.Locator{}, os.ErrNotExist },
+		Inspect: func(_ context.Context, path string) (manageruntime.Candidate, error) {
+			return manageruntime.Candidate{Path: path, Revision: fixtureSHA, Version: "v1.2.3", OS: "linux", Arch: "amd64"}, nil
+		},
+		NewService:   func(o workflow.Options) Service { *options = o; service.created++; return service },
+		Bundle:       fixtureBundle,
+		Distribution: &distribution.Client{HTTP: &http.Client{Transport: refusedNetwork{t}}},
+	}
 	return config, out, options, service
 }
+
+func homeOf(t *testing.T, config Config) string {
+	t.Helper()
+	home, err := config.HomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return home
+}
+
+// samePath compares directories that may be reached through a symlinked
+// temporary root.
+func samePath(got, want string) bool {
+	if resolved, err := filepath.EvalSymlinks(got); err == nil {
+		got = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(want); err == nil {
+		want = resolved
+	}
+	return filepath.Clean(got) == filepath.Clean(want)
+}
+
 func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
-	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"help", "consult"}, {"help", "consult", "jev"}, {"help", "graphify", "query"}, {"consult", "--help"}, {"graphify", "build", "--help"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"setup", "--help"}, {"version"}, {"--manager-protocol"}, {"--release-identity"}} {
+	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"help", "consult"}, {"help", "graphify", "query"}, {"consult", "--help"}, {"graphify", "build", "--help"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"setup", "--help"}, {"version"}, {"--manager-protocol"}, {"--release-identity"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			config, out, _, _ := testConfig(t)
 			config.ReleaseIdentity = "release-identity-fixture"
 			config.Executable = func() (string, error) { t.Fatal("environment resolved for help/version"); return "", nil }
 			config.HomeDir = config.Executable
 			config.Getenv = func(string) string { t.Fatal("credentials queried for help/version/capabilities"); return "" }
+			config.Bundle = func(context.Context) (*bundled.Bundle, error) {
+				t.Fatal("help/version decoded the workflow payload")
+				return nil, nil
+			}
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)
 			}
@@ -76,34 +146,49 @@ func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
 		})
 	}
 }
+
+// R1.1: an installed manager takes its roots from the standalone locator,
+// never from the working directory or the caller's home.
 func TestInstalledCommandResolvesLocatorInsteadOfCWD(t *testing.T) {
 	config, out, options, service := testConfig(t)
+	owned := t.TempDir()
+	home, state := filepath.Join(owned, "home"), filepath.Join(owned, "state")
+	for _, directory := range []string{home, state} {
+		if err := os.Mkdir(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	config.Resolve = func(string) (manageruntime.Locator, error) {
-		return manageruntime.Locator{Source: "/owned/source", Home: "/owned/home", State: "/owned/state"}, nil
+		return manageruntime.Locator{Version: 3, Home: home, State: state, CommandPath: filepath.Join(home, ".local", "bin", "cw")}, nil
 	}
 	config.WorkingDir = func() (string, error) { t.Fatal("installed manager used cwd"); return "", nil }
 	if err := Execute(t.Context(), []string{"status"}, config); err != nil {
 		t.Fatal(err)
 	}
-	if options.Source != "/owned/source" || options.Home != "/owned/home" || options.State != "/owned/state" || service.action != "status" {
-		t.Fatalf("wrong installation options: %+v", options)
+	if !samePath(options.Home, home) || !samePath(options.State, state) {
+		t.Fatalf("locator roots not used: home %q state %q, want %q %q", options.Home, options.State, home, state)
 	}
-	var report resultReport
+	if service.action != "status" && service.statusCalls == 0 {
+		t.Fatal("status did not reach the service")
+	}
+	var report map[string]any
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
-		t.Fatal(err)
+		t.Fatalf("%v: %s", err, out)
 	}
-	if report.Action != "status" || report.Environment.Kind != "native_go" || report.Status["installed"] != true {
+	if report["action"] != "status" {
 		t.Fatalf("incompatible report: %+v", report)
 	}
 }
+
 func TestHostRootsPreferFlagsThenRecordsThenEnvironment(t *testing.T) {
 	config, _, _, _ := testConfig(t)
 	config.Getenv = func(key string) string { return "/env/" + key }
-	state := t.TempDir()
+	// Journal paths must already be normalized (macOS maps /var to /private/var).
+	state := workflow.Normalize(t.TempDir())
 	if codex, claude := hostRoots(config, "/home", state, "", ""); codex != "/env/CODEX_HOME" || claude != "/env/CLAUDE_CONFIG_DIR" {
 		t.Fatalf("unrecorded hosts: %q, %q", codex, claude)
 	}
-	journal := `{"version":3,"command":"setup","home":"/home","codex_home":"/recorded/codex","claude_home":"/recorded/claude","state_dir":"` + state + `","operations":[]}`
+	journal := `{"version":4,"command":"setup","home":"/home","codex_home":"/recorded/codex","claude_home":"/recorded/claude","state_dir":"` + state + `","config_dir":"/recorded/config","operations":[]}`
 	if err := os.WriteFile(filepath.Join(state, "journal.json"), []byte(journal), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -113,8 +198,21 @@ func TestHostRootsPreferFlagsThenRecordsThenEnvironment(t *testing.T) {
 	if codex, claude := hostRoots(config, "/home", state, "/flag/codex", "/flag/claude"); codex != "/flag/codex" || claude != "/flag/claude" {
 		t.Fatalf("explicit roots: %q, %q", codex, claude)
 	}
+	// R2.4/R2.5: a version-3 journal is a legacy installation, which read-only
+	// root resolution treats as no record at all.
+	legacy := workflow.Normalize(t.TempDir())
+	journal = `{"version":3,"command":"setup","home":"/home","codex_home":"/legacy/codex","claude_home":"/legacy/claude","state_dir":"` + legacy + `","operations":[]}`
+	if err := os.WriteFile(filepath.Join(legacy, "journal.json"), []byte(journal), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if codex, claude := hostRoots(config, "/home", legacy, "", ""); codex != "/env/CODEX_HOME" || claude != "/env/CLAUDE_CONFIG_DIR" {
+		t.Fatalf("legacy journal roots used: %q, %q", codex, claude)
+	}
 }
 
+// R1.5: status reports the exact credential_sources for the environment
+// without exposing keys and without the removed *_credential_present,
+// integrations and skill_prerequisites keys.
 func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 	cases := []struct {
 		name              string
@@ -132,6 +230,8 @@ func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			config, out, _, _ := testConfig(t)
+			service := new(registeredService)
+			config.NewService = func(workflow.Options) Service { service.created++; return service }
 			config.Getenv = func(name string) string {
 				switch {
 				case name == "TYPESAFE_API_KEY" && test.jev:
@@ -150,58 +250,100 @@ func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 			if strings.Contains(out.String(), "fixture-secret") {
 				t.Fatal("status exposed a decision credential")
 			}
-			var report workflow.Object
+			var report map[string]any
 			if err := json.Unmarshal(out.Bytes(), &report); err != nil {
-				t.Fatal(err)
+				t.Fatalf("%v: %s", err, out)
 			}
-			if report["jev_credential_present"] != test.jev || report["subq_credential_present"] != test.subq || report["openai_credential_present"] != test.openai {
-				t.Fatalf("incorrect credential presence: %+v", report)
+			if report["action"] != "status" {
+				t.Fatalf("not a lifecycle report: %+v", report)
 			}
-			integrations := report["integrations"].(workflow.Object)
-			if integrations["typesafe"].(workflow.Object)["credential_available"] != test.jev || integrations["subq"].(workflow.Object)["credential_available"] != test.subq || integrations["openai_decisions"].(workflow.Object)["credential_available"] != test.openai {
-				t.Fatalf("incorrect integration presence: %+v", integrations)
+			if found := removedReportKeys(report); len(found) != 0 {
+				t.Fatalf("status report kept removed keys %v: %s", found, out)
+			}
+			// R1.5 rev 3: the fresh home stores no key, so each source follows
+			// the environment alone.
+			if report["credential_storage_status"] != "inspected" {
+				t.Fatalf("credential store not inspected: %v", report["credential_storage_status"])
+			}
+			want := map[string]any{
+				"TYPESAFE_API_KEY": credentialSource(test.jev),
+				"SUBQ_API_KEY":     credentialSource(test.subq),
+				"OPENAI_API_KEY":   credentialSource(test.openai),
+			}
+			if got := report["credential_sources"]; !reflect.DeepEqual(got, want) {
+				t.Fatalf("credential_sources = %v, want %v", got, want)
 			}
 		})
 	}
 }
 
+// credentialSource is the R1.5 rev 3 report entry for a key that is not
+// stored and is or is not set in the environment.
+func credentialSource(environment bool) map[string]any {
+	source := "none"
+	if environment {
+		source = "environment"
+	}
+	return map[string]any{"environment": environment, "stored": false, "effective": environment, "source": source}
+}
+
 func TestInstallAliasAndDefaultEnroll(t *testing.T) {
-	for _, args := range [][]string{{}, {"install"}, {"setup"}, {"--home", "/custom", "install", "--shell", "none"}} {
-		config, _, options, service := testConfig(t)
-		if err := Execute(t.Context(), args, config); err != nil {
-			t.Fatal(err)
-		}
-		if service.action != "setup" || !options.Apply {
-			t.Fatalf("install must enroll by default: %s %+v", service.action, options)
-		}
+	for _, args := range [][]string{{}, {"install"}, {"setup"}, {"--home", "{custom}", "install", "--shell", "none"}, {"install", "--apply"}, {"--apply", "setup"}} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			config, _, options, service := testConfig(t)
+			args = slices.Clone(args)
+			if index := slices.Index(args, "{custom}"); index >= 0 {
+				args[index] = t.TempDir()
+			}
+			if err := Execute(t.Context(), args, config); err != nil {
+				t.Fatal(err)
+			}
+			if service.action != "setup" || !options.Apply {
+				t.Fatalf("install must enroll by default: %s %+v", service.action, options)
+			}
+			// R1.1: the standalone manager receives the binary's payload provider.
+			if options.Bundle == nil {
+				t.Fatal("install ran without the embedded bundle")
+			}
+			if _, err := options.Bundle(t.Context()); !errors.Is(err, errFixtureBundle) {
+				t.Fatalf("install received a different bundle provider: %v", err)
+			}
+		})
 	}
 }
-func TestDryRunAndLegacyFlagsPreserved(t *testing.T) {
-	config, _, options, _ := testConfig(t)
+
+func TestDryRunInstallDoesNotApply(t *testing.T) {
+	config, _, options, service := testConfig(t)
 	if err := Execute(t.Context(), []string{"install", "--dry-run"}, config); err != nil {
 		t.Fatal(err)
 	}
-	if options.Apply {
-		t.Fatalf("wrong flags: %+v", options)
-	}
-	config, _, options, _ = testConfig(t)
-	if err := Execute(t.Context(), []string{"install", "--bootstrap"}, config); err != nil {
-		t.Fatal(err)
-	}
-	if options.Apply {
-		t.Fatal("bootstrap compatibility must default read-only")
+	if options.Apply || service.action != "setup" {
+		t.Fatalf("wrong flags: %+v action=%s", options, service.action)
 	}
 }
+
 func TestUsageFailuresHaveExitCodeTwo(t *testing.T) {
-	for _, args := range [][]string{{"consult-jev"}, {"update", "--shell", "bash"}, {"install", "--shell", "fish"}, {"install", "--dry-run", "--apply"}, {"status", "extra"}, {"--missing"}, {"help", "unknown"}} {
-		config, _, _, service := testConfig(t)
-		err := Execute(t.Context(), args, config)
-		if err == nil || ExitCode(err) != 2 {
-			t.Fatalf("%v: %v code %d", args, err, ExitCode(err))
-		}
-		if service.action != "" {
-			t.Fatalf("%v mutated service", args)
-		}
+	for _, args := range [][]string{
+		{"consult-jev"}, {"update", "--shell", "bash"}, {"install", "--shell", "fish"}, {"install", "--dry-run", "--apply"}, {"status", "extra"}, {"--missing"}, {"help", "unknown"},
+		// R1.2: removed root flags and subcommands are unknown.
+		{"--source", "/checkout"}, {"install", "--source", "/checkout"}, {"status", "--source", "/checkout"},
+		{"--migrate-from", "/former"}, {"install", "--migrate-from", "/former"},
+		{"install", "--no-checkout"}, {"--no-checkout"},
+		{"install", "--bootstrap"}, {"--bootstrap"},
+		{"update", "--prepare-only"}, {"--prepare-only"},
+		{"validate"}, {"validate", "--json"},
+		{"consult", "jev"}, {"consult", "jev", "--request", "r", "--output", "o", "--dry-run"},
+	} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			config, _, _, service := testConfig(t)
+			err := Execute(t.Context(), args, config)
+			if err == nil || ExitCode(err) != 2 {
+				t.Fatalf("%v: %v code %d", args, err, ExitCode(err))
+			}
+			if !service.untouched() {
+				t.Fatalf("%v mutated service", args)
+			}
+		})
 	}
 }
 
@@ -221,12 +363,12 @@ func TestPersonalAdoptionIsAnExplicitInstallOption(t *testing.T) {
 			}
 		})
 	}
-	for _, action := range []string{"update", "status", "validate", "rollback", "recover", "uninstall"} {
+	for _, action := range []string{"update", "status", "rollback", "recover", "uninstall"} {
 		t.Run(action, func(t *testing.T) {
 			config, _, _, service := testConfig(t)
 			config.Executable = func() (string, error) { t.Fatal("resolved environment for an invalid flag"); return "", nil }
 			err := Execute(t.Context(), []string{action, "--adopt-personal-skills"}, config)
-			if err == nil || ExitCode(err) != 2 || service.action != "" {
+			if err == nil || ExitCode(err) != 2 || !service.untouched() {
 				t.Fatalf("unsupported adoption flag reached service: %v action=%s", err, service.action)
 			}
 		})
@@ -240,28 +382,8 @@ func TestCanceledContextReachesInstaller(t *testing.T) {
 	if err := Execute(ctx, []string{"status"}, config); err != nil {
 		t.Fatal(err)
 	}
-	if !errors.Is(options.Context.Err(), context.Canceled) || ExitCode(context.Canceled) != 130 {
+	if options.Context == nil || !errors.Is(options.Context.Err(), context.Canceled) || ExitCode(context.Canceled) != 130 {
 		t.Fatal("cancellation context lost")
-	}
-}
-func TestSourceBinaryBindsItsCheckout(t *testing.T) {
-	config, _, options, _ := testConfig(t)
-	root := t.TempDir()
-	bin := filepath.Join(root, ".bin")
-	if err := os.Mkdir(bin, 0755); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(bin, "cw")
-	if err := os.WriteFile(path, []byte("fixture"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	config.Executable = func() (string, error) { return path, nil }
-	config.WorkingDir = func() (string, error) { t.Fatal("source binary used cwd"); return "", nil }
-	if err := Execute(t.Context(), []string{"status"}, config); err != nil {
-		t.Fatal(err)
-	}
-	if options.Source != workflow.Normalize(root) {
-		t.Fatalf("source %q want %q", options.Source, workflow.Normalize(root))
 	}
 }
 
@@ -275,13 +397,7 @@ func TestOwnedLayoutMissingLocatorNeverGuessesDefaults(t *testing.T) {
 	if err := Execute(t.Context(), []string{"recover", "--home", "/explicit/home"}, config); !errors.Is(err, manageruntime.ErrLocatorMissing) {
 		t.Fatalf("missing locator silently defaulted: %v", err)
 	}
-	if service.action != "" {
+	if !service.untouched() {
 		t.Fatal("service executed with guessed roots")
-	}
-	if err := Execute(t.Context(), []string{"recover", "--source", "/explicit/source", "--home", "/explicit/home", "--codex-home", "/explicit/codex", "--state-dir", "/explicit/state"}, config); err != nil {
-		t.Fatal(err)
-	}
-	if service.action != "recover" {
-		t.Fatal("explicit roots not accepted")
 	}
 }

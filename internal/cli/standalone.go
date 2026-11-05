@@ -32,15 +32,12 @@ func standaloneRoots(config Config, o options) (workflow.Paths, string, error) {
 	if err != nil {
 		return workflow.Paths{}, "", err
 	}
-	if o.migrateFrom != "" {
-		executable = o.migrateFrom
-	}
+	// Resolve returns manageruntime.ErrLegacyInstallation for a runtime that an
+	// older cw installed, here or for the installed command below, so every
+	// lifecycle command refuses it before any write.
 	loc, err = config.Resolve(executable)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return workflow.Paths{}, "", err
-	}
-	if o.migrateFrom != "" && err != nil {
-		return workflow.Paths{}, "", errors.New("--migrate-from must identify a verified installed cw command")
 	}
 	if o.home == "" {
 		o.home = loc.Home
@@ -54,7 +51,7 @@ func standaloneRoots(config Config, o options) (workflow.Paths, string, error) {
 	o.home = workflow.Normalize(o.home)
 	// A downloaded bootstrap can discover the installed command at its normal
 	// location. A random checkout or current directory never supplies roots.
-	if loc.Home == "" && o.migrateFrom == "" {
+	if loc.Home == "" {
 		installed := filepath.Join(o.home, ".local", "bin", "cw")
 		if _, e := os.Lstat(installed); e == nil {
 			loc, err = config.Resolve(installed)
@@ -86,38 +83,12 @@ func standaloneRoots(config Config, o options) (workflow.Paths, string, error) {
 	return workflow.Paths{Home: o.home, State: o.state, Codex: workflow.Normalize(o.codex), Claude: workflow.Normalize(o.claude)}, loc.Config, nil
 }
 
-func executeStandalone(cmd *cobra.Command, config Config, o options, action string) error {
+// executeStandalone runs a lifecycle action whose options executeAction has
+// already validated.
+func executeStandalone(cmd *cobra.Command, config Config, o options, action string, hosts []string) error {
 	ctx := cmd.Context()
 	install := action == "install" || action == "setup"
 	configure := install || action == "update"
-	if o.dryRun && o.apply {
-		return usage(errors.New("--apply and --dry-run are mutually exclusive"))
-	}
-	if o.shell != "auto" && o.shell != "bash" && o.shell != "zsh" && o.shell != "none" {
-		return usage(errors.New("--shell must be auto, bash, zsh or none"))
-	}
-	if !install && (cmd.Flags().Changed("shell") || o.adoptPersonalSkills || o.prepareOnly) {
-		return usage(errors.New("shell, adoption and preparation options require install/setup"))
-	}
-	if o.preset != "" && o.settings != "" {
-		return usage(errors.New("--preset and --settings are mutually exclusive"))
-	}
-	if !configure && (o.preset != "" || o.settings != "" || o.migrateFrom != "" || o.handoff != "") {
-		return usage(errors.New("configuration selection requires install/setup or update"))
-	}
-	if o.noCheckout {
-		return usage(errors.New("--no-checkout requires an explicit --source developer checkout"))
-	}
-	hosts, err := selectedHosts(o.host)
-	if err != nil {
-		return usage(err)
-	}
-	if !install && action != "uninstall" && cmd.Flags().Changed("host") {
-		return usage(errors.New("--host requires install/setup or uninstall"))
-	}
-	if o.forget && (action != "uninstall" || len(hosts) == 0) {
-		return usage(errors.New("--forget requires uninstall with an explicit host"))
-	}
 	paths, recordedConfig, err := standaloneRoots(config, o)
 	if err != nil {
 		return err
@@ -140,7 +111,7 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 	if config.Distribution != nil {
 		client = *config.Distribution
 	}
-	apply := !o.dryRun && (!o.bootstrap || o.apply)
+	apply := !o.dryRun
 	var prepared *preparedHandoff
 	if o.handoff != "" {
 		h, e := readHandoff(o.handoff)
@@ -167,15 +138,12 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 		h := preparedHandoff{Version: 1, Home: paths.Home, Codex: paths.Codex, Claude: paths.Claude, State: paths.State, Config: configDir, Generation: installation.Generation, Target: *candidate.Bundle}
 		return handoffManager(ctx, cmd, config, o, candidate.Path, h)
 	}
-	options := workflow.Options{Paths: paths, ConfigDir: configDir, Bundle: config.Bundle, Context: ctx, Getenv: config.Getenv, Apply: apply, Shell: o.shell, Hosts: hosts, Forget: o.forget, AdoptPersonalSkills: o.adoptPersonalSkills, AdmitLegacy: client.LegacyLineage}
+	options := workflow.Options{Paths: paths, ConfigDir: configDir, Bundle: config.Bundle, Context: ctx, Getenv: config.Getenv, Apply: apply, Shell: o.shell, Hosts: hosts, Forget: o.forget, AdoptPersonalSkills: o.adoptPersonalSkills}
 	if prepared != nil {
 		options.ExpectedGeneration = &prepared.Generation
 		options.ExpectedBundle = &prepared.Target
 	}
 	if o.preset != "" {
-		if o.preset != string(workflow.PresetRecommended) && o.preset != string(workflow.PresetBalanced) {
-			return usage(errors.New("--preset must be recommended or balanced"))
-		}
 		options.Selection = &workflow.ConfigurationSelection{Hosts: hosts, Preset: workflow.Preset(o.preset)}
 	}
 	if o.settings != "" {
@@ -190,7 +158,7 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 		options.Selection = &workflow.ConfigurationSelection{Hosts: hosts, Preferences: &prefs}
 	}
 	wizard := newSetupWizard(config, o)
-	if configure && apply && !o.prepareOnly && !o.nonInteractive && !cmd.Flags().Changed("json") && terminalAvailable(config) {
+	if configure && apply && !o.nonInteractive && !cmd.Flags().Changed("json") && terminalAvailable(config) {
 		if options.Selection == nil {
 			if config.Configure != nil {
 				options.Configure = config.Configure
@@ -199,10 +167,7 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 			}
 		}
 	}
-	if action == "validate" {
-		return errors.New("standalone resources are validated by install/status; --source is required for developer suite validation")
-	}
-	if apply && configure && !(install && installation.Installed && installation.StateVersion == 4 && !o.prepareOnly) {
+	if apply && configure && !(install && installation.Installed) {
 		executable, e := config.Executable()
 		if e != nil {
 			return e
@@ -211,15 +176,12 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 		if e != nil {
 			return e
 		}
-		candidate, e := manageruntime.InspectStandalone(ctx, executable)
+		candidate, e := config.Inspect(ctx, executable)
 		if e != nil {
 			return e
 		}
 		options.RuntimeCandidate = candidate.Path
 		options.RuntimeIdentity = workflow.RuntimeIdentity{Revision: candidate.Revision, Version: candidate.Version, OS: candidate.OS, Arch: candidate.Arch}
-		if o.prepareOnly {
-			return writeJSON(cmd.OutOrStdout(), candidate)
-		}
 	}
 	service := config.NewService(options)
 	command := action

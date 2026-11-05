@@ -43,12 +43,6 @@ func validateBoundWorkerChecks(record Record, snapshot projectctx.Snapshot, chec
 }
 
 func validateWorkerRecord(record Record) error {
-	if record.Version == LegacyVersion {
-		if record.Plan.CoordinatorID != "" || len(record.Assignments) != 0 || len(record.WorkerResults) != 0 || len(record.WorkerAcceptances) != 0 {
-			return errors.New("legacy task cannot contain version 2 coordinator or worker fields; start a new task")
-		}
-		return nil
-	}
 	if record.Version != Version || !validAgentID(record.Plan.CoordinatorID) {
 		return errors.New("version 2 task needs a declared coordinator identity")
 	}
@@ -111,9 +105,6 @@ func validateWorkerRecord(record Record) error {
 func validateWorkerTransition(previous, current Record) error {
 	if previous.Version != current.Version {
 		return errors.New("task record version cannot switch or downgrade within a revision chain")
-	}
-	if current.Version != Version {
-		return nil
 	}
 	if len(current.Assignments) < len(previous.Assignments) || len(current.WorkerResults) < len(previous.WorkerResults) || len(current.WorkerAcceptances) < len(previous.WorkerAcceptances) {
 		return errors.New("worker history is append-only")

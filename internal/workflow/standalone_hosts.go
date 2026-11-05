@@ -8,7 +8,7 @@ import (
 )
 
 func cachedStandaloneConfiguration(command string, state Object) bool {
-	return integer(state["version"]) == 4 && (command == "setup" || command == "install")
+	return state != nil && (command == "setup" || command == "install")
 }
 
 func (i *Installer) activeStandaloneBase(state Object) (bundled.Identity, string, Object, error) {
@@ -25,7 +25,6 @@ func (i *Installer) activeStandaloneBase(state Object) (bundled.Identity, string
 func (i *Installer) reconfigurationInstaller() *Installer {
 	planner := *i
 	planner.RuntimeCandidate = ""
-	planner.PrepareRuntime = nil
 	planner.RuntimeIdentity = RuntimeIdentity{}
 	planner.bundleIdentity = bundled.Identity{}
 	planner.runtimeProtocol = ""

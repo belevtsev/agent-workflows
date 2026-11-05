@@ -115,11 +115,10 @@ permits a configured Max default when `configured_max_profiles` exactly lists ev
 Max-default profile. Older `explicit_user_request` policies remain readable and
 continue rejecting configured Max for Sol models. The native validator enforces
 these rules. New standalone candidates require `cw-manager-v10`, state/journal4
-and immutable base/effective receipts. Historical v7/v8/v9 sealed receipts remain
-readable with their original checks. Existing installations need the documented
-[v10 download rebootstrap](development.md#distribution) before an old installed
-manager can use the new release flow. New records are not promised readable by
-old managers. Rollback retains the capable manager and current preferences.
+and immutable base/effective receipts. An installation made before v2.0.58, or
+migrated by v2.0.58 from one, is refused before any write; run `cw uninstall` with the existing `cw`, then run
+install.sh. New records are not promised readable by old managers. Rollback
+retains the capable manager and current preferences.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
 control context. Pass exact source revisions, ownership, constraints, and the
@@ -129,8 +128,8 @@ token usage. See [model guidance](https://learn.chatgpt.com/docs/models) and
 [manual routing evaluations](skill-evaluation.md).
 
 A later edit to an owned value is a conflict. Malformed TOML and symlinked
-configuration are refused. Legacy installation records and original settings are
-preserved during migration; status/recovery/removal rely on installed snapshots.
+configuration are refused. Status, recovery and removal rely on installed
+snapshots and the recorded original settings.
 
 ## Production planning with OpenSpec
 
@@ -182,7 +181,6 @@ relative to that skill's root. Jev is TypeSafe's hosted System One model. The
 task-orchestration [consultation helper](../skills/task-orchestration/references/consultation-helper.md)
 requires Jev, SubQ Snap and OpenAI Decisions at equal standing; these advisers need no
 separate executable or SDK.
-The existing Jev-only helper remains supported unchanged.
 
 Use the official [quick start](https://docs.typesafe.ai/introduction/quickstart)
 and [Console API keys page](https://console.typesafe.ai/keys) to obtain a key.
@@ -190,18 +188,19 @@ Use the [SubQ authentication guide](https://docs.subq.ai/using-the-api/authentic
 and [API Console](https://console.subq.ai/) for its separate key. The README's
 [Jev](../README.md#set-up-jev), [SubQ Snap](../README.md#set-up-subq-snap) and
 [OpenAI Decisions](../README.md#set-up-openai-decisions) setup
-steps show masked terminal input, boolean presence checks, CLI inheritance, and
+steps show masked terminal input, presence checks, CLI inheritance, and
 desktop launch environments. Supply `TYPESAFE_API_KEY`, `SUBQ_API_KEY` and `OPENAI_API_KEY` through
 the process environment or a local secret manager; an export in another terminal
 does not update a running agent or integration-server process. Restart from the
 configured environment and open a fresh chat. Never commit key values, put them
 in prompts, or include them in logs or evidence shared with workers.
 
-`cw status` reports offline booleans `jev_credential_present` and
-`subq_credential_present`, plus `openai_credential_present`, for its own process,
-never credential values. Credentials
-are optional for installation, validation, and local status. These booleans do not
-establish key validity, service availability, or access from a different process.
+`cw status` reports `credential_sources`: for `TYPESAFE_API_KEY`, `SUBQ_API_KEY`
+and `OPENAI_API_KEY`, whether its own process has the key in the environment or
+the private stored file, never credential values. `credential_storage_status`
+says whether the stored file could be inspected. Credentials are optional for
+installation, validation, and local status. These offline checks do not establish
+key validity, service availability, or access from a different process.
 
 The task coordinator owns consultations, their scope, and reuse. Every substantial
 task requires all three advisers before implementation and again during final
@@ -218,7 +217,8 @@ Checkpoint timing is distributed agent guidance in the global instructions,
 orchestration entrypoint, and policy comments. The helper validates individual
 requests and records; it does not schedule or enforce task phases. Distributing
 phase instructions is separate from the manager's policy validation contract.
-The installed policy keeps version 2 and `consultation.model`, requires providers
+The installed policy keeps version 2 and `consultation.model`, which must equal
+`providers.jev` and anchors the Jev provider model. It requires providers
 `jev: jev-1.14.0`, `subq_snap: subq-snap-preview` and
 `openai_decisions: gpt-6-luna`, and retains
 `comparison: coordinator_evidence_and_verification`. Historical policies keep

@@ -98,39 +98,6 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Policy, "policy", "", "Validated model policy (defaults to the installed release's)")
 	flags.BoolVar(&withOpenAI, "with-openai", false, "Explicitly include OpenAI; required policies already include it")
 	flags.BoolVar(&withoutOpenAI, "without-openai", false, "Exclude OpenAI, only under historical optional policies")
-	var legacy consult.LegacyOptions
-	jev := &cobra.Command{
-		Use:   "jev",
-		Short: "Consult Jev alone for existing Jev-only integrations",
-		Long:  "Send one prepared request to Jev using the policy's consultation.model field. A Jev-only result does not provide three-provider coverage.",
-		Args:  noPositional,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if legacy.Request == "" || legacy.Output == "" {
-				return usage(errors.New("--request and --output are required"))
-			}
-			if legacy.Policy == "" {
-				policy, err := activePolicy(root, config)
-				if err != nil {
-					return err
-				}
-				legacy.Policy = policy
-			}
-			legacy.DryRun, _ = root.PersistentFlags().GetBool("dry-run")
-			legacy.Getenv, legacy.Stdout, legacy.Stderr = config.Getenv, cmd.OutOrStdout(), cmd.ErrOrStderr()
-			if !legacy.DryRun && config.Getenv("TYPESAFE_API_KEY") == "" {
-				getenv, err := credentialEnvironment(root, config)
-				if err != nil {
-					return err
-				}
-				legacy.Getenv = getenv
-			}
-			return finish(consult.RunLegacy(cmd.Context(), legacy))
-		},
-	}
-	jev.Flags().StringVar(&legacy.Request, "request", "", "Prepared request JSON file")
-	jev.Flags().StringVar(&legacy.Output, "output", "", "New private record path; an existing file is never replaced")
-	jev.Flags().StringVar(&legacy.Policy, "policy", "", "Validated model policy (defaults to the installed release's)")
-	command.AddCommand(jev)
 	root.AddCommand(command)
 }
 

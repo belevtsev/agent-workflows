@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
-	"slices"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/internal/bundled"
@@ -157,22 +155,6 @@ func (i *Installer) stageBase(root string, id bundled.Identity) error {
 		return err
 	}
 	return i.fault("after-base-publication")
-}
-
-func (i *Installer) legacyBase(sha string, publish bool) (bundled.Identity, string, Object, error) {
-	root, m, err := i.release(sha)
-	if err != nil {
-		return bundled.Identity{}, "", nil, err
-	}
-	contents, err := inventory(root)
-	if err != nil {
-		return bundled.Identity{}, "", nil, err
-	}
-	id := bundled.Identity{Revision: sha, Digest: hash(legacyJSON(contents)), OS: runtime.GOOS, Arch: runtime.GOARCH}
-	if publish {
-		err = i.stageBase(root, id)
-	}
-	return id, root, m, err
 }
 
 func compileEffective(root string, manifest Object, view ConfigurationView, prefs Preferences) error {
@@ -412,42 +394,25 @@ func (i *Installer) verifySnapshotBinding(state Object) error {
 		if _, _, err := i.baseRelease(id); err != nil {
 			return err
 		}
-		if commitSHA.MatchString(text(previous["release"])) {
-			root, _, err := i.release(text(previous["release"]))
-			if err != nil {
-				return err
-			}
-			contents, err := inventory(root)
-			if err != nil {
-				return err
-			}
-			if hash(legacyJSON(contents)) != id.Digest {
-				return errors.New("legacy rollback base differs from its retained release")
-			}
-		} else {
-			if _, _, err := i.effectiveRelease(text(previous["release"])); err != nil {
-				return err
-			}
-			previousReceipt, err := readJSON(filepath.Join(i.State, "releases", text(previous["release"])) + ".receipt.json")
-			if err != nil {
-				return err
-			}
-			if !equal(previousReceipt["base"], previous["base"]) {
-				return errors.New("rollback base differs from its retained effective snapshot")
-			}
+		if _, _, err := i.effectiveRelease(text(previous["release"])); err != nil {
+			return err
+		}
+		previousReceipt, err := readJSON(filepath.Join(i.State, "releases", text(previous["release"])) + ".receipt.json")
+		if err != nil {
+			return err
+		}
+		if !equal(previousReceipt["base"], previous["base"]) {
+			return errors.New("rollback base differs from its retained effective snapshot")
 		}
 	}
 	return nil
 }
 
 func validReleaseKey(key string) bool {
-	return commitSHA.MatchString(key) || effectivePattern.MatchString(key)
+	return effectivePattern.MatchString(key)
 }
 
 func runtimeKeyRevision(key string) string {
-	if commitSHA.MatchString(key) {
-		return key
-	}
 	if standaloneRuntimePattern.MatchString(key) {
 		return key[:40]
 	}
@@ -455,29 +420,13 @@ func runtimeKeyRevision(key string) string {
 }
 
 func (i *Installer) candidateRuntimeKey() string {
-	if validBaseIdentity(i.bundleIdentity) {
-		return i.RuntimeIdentity.Revision + "-" + i.bundleIdentity.Digest
-	}
-	return i.RuntimeIdentity.Revision
+	return i.RuntimeIdentity.Revision + "-" + i.bundleIdentity.Digest
 }
 
-func managerRuntimeKey(manager ManagerRecord) string {
-	if manager.RuntimeKey != "" {
-		return manager.RuntimeKey
-	}
-	return manager.Runtime.Revision
-}
-
-func legacyRuntimeProtocols() []string {
-	return []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9"}
-}
+func managerRuntimeKey(manager ManagerRecord) string { return manager.RuntimeKey }
 
 func supportedRuntimeKey(key string) bool { return runtimeKeyRevision(key) != "" }
 
 func readableReceiptFields(value Object, version int) bool {
-	fields := []string{"version", "identity", "sha256", "locator_sha256", "manager_protocol", "integrity_sha256"}
-	if version == 3 {
-		fields = append(fields, "base_digest")
-	}
-	return slices.Contains([]int{2, 3}, version) && exactFields(value, fields...)
+	return version == 3 && exactFields(value, "version", "identity", "sha256", "locator_sha256", "manager_protocol", "integrity_sha256", "base_digest")
 }

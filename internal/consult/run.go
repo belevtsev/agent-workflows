@@ -44,7 +44,6 @@ func (o Options) Check() error {
 
 // policy is the validated adviser portion of a model policy.
 type policy struct {
-	model        string
 	deadline     time.Duration
 	providers    map[string]string
 	optional     map[string]string
@@ -68,7 +67,6 @@ func loadPolicy(path string) (policy, error) {
 	consultation := value["consultation"].(workflow.Object)
 	_, hasProviders := consultation["providers"]
 	return policy{
-		model:        consultation["model"].(string),
 		deadline:     time.Duration(consultation["deadline_seconds"].(int)) * time.Second,
 		providers:    modelMap(consultation["providers"]),
 		optional:     modelMap(consultation["optional_providers"]),
@@ -284,61 +282,4 @@ func (o Options) execute(ctx context.Context, request *plan) (*object, error) {
 		return nil, err
 	}
 	return makeRecord(request.shared, request.prepared, raw, request.version)
-}
-
-// LegacyOptions selects the Jev-only helper retained for existing integrations.
-type LegacyOptions struct {
-	Request, Output, Policy string
-	DryRun                  bool
-	Getenv                  func(string) string
-	Stdout, Stderr          io.Writer
-	transport               *transport
-	deadline                time.Duration
-}
-
-// RunLegacy consults Jev alone, using the policy's consultation.model field. Its
-// result is not three-provider coverage. Exit statuses match Run.
-func RunLegacy(ctx context.Context, o LegacyOptions) (int, error) {
-	var prepared *object
-	selected, err := loadPolicy(o.Policy)
-	if err == nil {
-		var value any
-		if value, err = readJSON(o.Request); err == nil {
-			prepared, err = prepareRequest(value, selected.model)
-		}
-	}
-	var output *os.File
-	if err == nil {
-		output, err = reserve(o.Output)
-	}
-	if err != nil {
-		fmt.Fprintln(o.Stderr, "Consultation validation failed: "+err.Error())
-		return 1, nil
-	}
-	defer output.Close()
-	var record *object
-	status := 0
-	if o.DryRun {
-		record = newObject("status", "dry_run", "request", prepared, "requested_model", prepared.get("model"), "duration_seconds", 0.0)
-	} else {
-		sender := newTransport()
-		if o.transport != nil {
-			sender = *o.transport
-		}
-		deadline := selected.deadline
-		if o.deadline > 0 {
-			deadline = o.deadline
-		}
-		bounded, cancel := context.WithTimeout(ctx, deadline)
-		defer cancel()
-		record, status = sender.consultPinned(bounded, jevProvider, prepared, o.Getenv(credentialNames[jevProvider]))
-		if err := ctx.Err(); err != nil {
-			return 1, err
-		}
-	}
-	if err := writeRecord(output, record); err != nil {
-		return 1, err
-	}
-	fmt.Fprintln(o.Stdout, "Consultation "+record.get("status").(string))
-	return status, nil
 }

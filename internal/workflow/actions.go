@@ -83,7 +83,6 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 			ops = append(ops, change)
 		}
 	}
-	adding := false
 	if !rollback {
 		added, changes, e := i.addHosts(s, release, m, enroll)
 		if e != nil {
@@ -93,17 +92,8 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 			hosts[id] = record
 		}
 		ops = append(ops, changes...)
-		adding = len(added) > 0
 	}
 	after["hosts"] = hosts
-	if !rollback && !adding && i.nativeRequested() && i.RuntimeCandidate != "" {
-		manager, changes, e := i.managerPlan(s)
-		if e != nil {
-			return nil, e
-		}
-		after["manager"], after["source"] = manager, i.Source
-		ops = append(ops, changes...)
-	}
 	after = seal(after)
 	if !equal(after, s) {
 		ops = append(ops, pathOperation(i.statePath, expectedState(s), expectedState(after), "state"))
@@ -188,265 +178,18 @@ func (i *Installer) prepareClaudeConfig(h hostTarget, hs Object, release string,
 	return after, change, nil
 }
 
-func (i *Installer) fresh(sha, release string, m Object, enroll bool) ([]Object, Object, error) {
-	s, e := i.state(false)
-	if e != nil {
-		return nil, nil, e
-	}
-	if s != nil || exists(i.current) {
-		return nil, nil, errors.New("an installation already exists; use status or update")
-	}
-	hosts, changes, e := i.addHosts(nil, release, m, enroll)
-	if e != nil {
-		return nil, nil, e
-	}
-	s = i.newState(sha, m, hosts)
-	ops := append([]Object{pathOperation(i.current, Object{"kind": "absent"}, Object{"kind": "symlink", "target": release}, "pointer")}, changes...)
-	command := Object{"managed": false}
-	if i.nativeRequested() && (enroll || sharedConfigStateRequired(hostRecord(s, hostCodex))) {
-		if i.RuntimeCandidate != "" {
-			manager, changes, e := i.managerPlan(nil)
-			if e != nil {
-				return nil, nil, e
-			}
-			s["manager"] = manager
-			ops = append(ops, changes...)
-			command = Object{"managed": true, "kind": "native", "path": i.commandPath()}
-		} else {
-			command = Object{"managed": false, "kind": "native", "status": "deferred"}
-		}
-	}
-	s = seal(s)
-	ops = append(ops, pathOperation(i.statePath, Object{"kind": "absent"}, expectedState(s), "state"))
-	return ops, command, nil
-}
-
-// registrationChanges reports what each host would change, for dry runs and
-// activation reports. It adds no ownership.
-func (i *Installer) registrationChanges(s, m Object, rollback bool, roots ...string) ([]RegistrationChange, error) {
-	var hosts []hostTarget
-	var err error
-	if rollback {
-		hosts = i.recordedHosts(s)
-	} else if hosts, err = i.selectedHosts(s); err != nil {
-		return nil, err
-	} else if err = i.checkHomesOffRegistrations(hosts, object(m["registrations"])); err != nil {
-		return nil, err
-	}
-	changes := []RegistrationChange{}
-	for _, h := range hosts {
-		plan, err := i.registrationPlan(h, s, m, rollback, roots...)
-		if err != nil {
-			return nil, err
-		}
-		changes = append(changes, plan.Changes...)
-	}
-	return changes, nil
-}
-
 func (i *Installer) Setup(enroll bool) (Object, error) {
-	if i.Bundle != nil {
-		command := "setup"
-		if !enroll {
-			command = "install"
-		}
-		return i.standaloneApply(command, true)
-	}
-	if err := i.Context.Err(); err != nil {
-		return nil, err
-	}
-	if i.AdoptPersonalSkills && !i.nativeRequested() {
-		return nil, errors.New("personal skill adoption requires a native manager")
-	}
-	if exists(i.journalPath) {
-		return nil, errors.New("an unfinished mutation requires recover")
-	}
-	s, e := i.state(false)
-	if e != nil {
-		return nil, e
-	}
-	adding, e := i.addsHost(s)
-	if e != nil {
-		return nil, e
-	}
-	if adding && enroll {
-		return i.addHostsFromInstalled(s)
-	}
-	sha, e := cleanHeadContext(i.Context, i.Source)
-	if e != nil {
-		return nil, e
-	}
-	release, m, cleanup, e := i.preview(sha)
-	if e != nil {
-		return nil, e
-	}
-	defer cleanup()
-	changes, e := i.registrationChanges(s, m, false, release)
-	if e != nil {
-		return nil, e
-	}
-	// Plan destinations before runtime acquisition can write the state root.
-	// The native paths are reserved by preflight until its runtime is ready.
-	planner := *i
-	if !validRuntimeIdentity(i.RuntimeIdentity) || i.RuntimeIdentity.Revision != sha {
-		planner.RuntimeCandidate = ""
-	}
-	var ops []Object
-	var ar Object
-	if s == nil {
-		ops, ar, e = planner.fresh(sha, release, m, enroll)
-	} else {
-		if !enroll {
-			return nil, errors.New("an installation exists; use setup or update")
-		}
-		if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e == nil {
-			ops, e = planner.activation(s, sha, release, m, enroll, false)
-		}
-	}
-	if e != nil {
-		return nil, e
-	}
-	manager := enroll || ar["kind"] == "native"
-	if e = i.preflightMutationPaths(ops, s, manager); e != nil {
-		return nil, e
-	}
-	if e = i.prepareRuntimeFor(sha); e != nil {
-		return nil, e
-	}
-	if i.RuntimeCandidate != "" {
-		if s == nil {
-			ops, ar, e = i.fresh(sha, release, m, enroll)
-		} else {
-			ops, e = i.activation(s, sha, release, m, enroll, false)
-		}
-		if e != nil {
-			return nil, e
-		}
-		if e = i.preflightMutationPaths(ops, s, manager); e != nil {
-			return nil, e
-		}
-	}
-	report, e := i.setupReport(sha, release, m, changes, ops, ar, enroll)
-	if e != nil {
-		return nil, e
-	}
-	if !i.Apply {
-		return report, nil
-	}
-	unlock, e := lockRoot(i.State, false)
-	if e != nil {
-		return nil, e
-	}
-	defer unlock()
-	currentHead, e := cleanHeadContext(i.Context, i.Source)
-	if e != nil {
-		return nil, e
-	}
-	currentState, e := i.state(false)
-	if e != nil {
-		return nil, e
-	}
-	if currentHead != sha || !equal(s, currentState) {
-		return nil, errors.New("source HEAD or installation changed before setup")
-	}
-	if e = i.preflightMutationPaths(ops, s, manager); e != nil {
-		return nil, e
-	}
-	if i.RuntimeCandidate != "" {
-		if e = i.stageRuntime(); e != nil {
-			return nil, e
-		}
-		if _, _, e = i.managerPlan(s); e != nil {
-			return nil, e
-		}
-	}
-	release, m, e = i.stage(sha)
-	if e != nil {
-		return nil, e
-	}
-	if s == nil {
-		ops, ar, e = i.fresh(sha, release, m, enroll)
-	} else {
-		ops, e = i.activation(s, sha, release, m, enroll, false)
-	}
-	if e != nil {
-		return nil, e
-	}
-	head, e := cleanHeadContext(i.Context, i.Source)
-	if e != nil || head != sha {
-		return nil, errors.New("source HEAD changed during setup")
-	}
-	if len(ops) > 0 {
-		if e = i.transact(text(report["command"]), ops); e != nil {
-			return nil, e
-		}
-	}
-	report["changed"] = len(ops) > 0
-	report["manager_command"] = ar
-	return report, nil
-}
-
-// addHostsFromInstalled activates new hosts on the release already active, so
-// neither the checkout nor a newer manager can move what a rollback chose.
-func (i *Installer) addHostsFromInstalled(s Object) (Object, error) {
-	sha := text(s["release"])
-	release, m, e := i.release(sha)
-	if e != nil {
-		return nil, e
-	}
-	changes, e := i.registrationChanges(s, m, false, release)
-	if e != nil {
-		return nil, e
-	}
-	ops, e := i.activation(s, sha, release, m, true, false)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.preflightMutationPaths(ops, s, false); e != nil {
-		return nil, e
-	}
-	report, e := i.setupReport(sha, release, m, changes, ops, nil, true)
-	if e != nil || !i.Apply {
-		return report, e
-	}
-	unlock, e := lockRoot(i.State, false)
-	if e != nil {
-		return nil, e
-	}
-	defer unlock()
-	current, e := i.state(true)
-	if e != nil {
-		return nil, e
-	}
-	if !equal(current, s) {
-		return nil, errors.New("installation changed before setup")
-	}
-	if ops, e = i.activation(s, sha, release, m, true, false); e != nil {
-		return nil, e
-	}
-	if e = i.transact("setup", ops); e != nil {
-		return nil, e
-	}
-	report["changed"] = len(ops) > 0
-	return report, nil
-}
-
-func (i *Installer) setupReport(sha, release string, m Object, changes []RegistrationChange, ops []Object, manager Object, enroll bool) (Object, error) {
-	defaults, e := ModelDefaults(release, m)
-	if e != nil {
-		return nil, e
-	}
-	shared, e := SharedConfigDefaults(release)
-	if e != nil {
-		return nil, e
-	}
 	command := "setup"
 	if !enroll {
 		command = "install"
 	}
-	return Object{"command": command, "dry_run": !i.Apply, "release": sha, "registrations": keys(object(m["registrations"])), "registration_changes": changes, "changed": len(ops) > 0, "model_defaults": defaults, "manager_command": manager, "model_config": Object{"managed": enroll}, "shared_config": Object{"managed": shared != nil, "defaults": shared}}, nil
+	return i.standaloneApply(command, true)
 }
+
 func (i *Installer) Status() (Object, error) {
+	if err := legacyRecords(i.State); err != nil {
+		return nil, err
+	}
 	if exists(i.journalPath) {
 		return nil, errors.New("an unfinished mutation requires recover")
 	}
@@ -491,254 +234,22 @@ func (i *Installer) Status() (Object, error) {
 		report["manager"] = manager
 		report["manager_command"] = Object{"managed": true, "kind": "native", "path": i.commandPath()}
 	}
-	if integer(s["version"]) == 4 {
-		prefs, _, err := i.readPreferences()
-		if err != nil {
-			return nil, err
-		}
-		report["config_dir"], report["preferences"], report["generation"], report["base_identity"], report["effective_digest"] = i.ConfigDir, prefs, s["integrity_sha256"], s["base"], strings.TrimPrefix(text(s["release"]), "effective-")
+	prefs, _, err := i.readPreferences()
+	if err != nil {
+		return nil, err
 	}
+	report["config_dir"], report["preferences"], report["generation"], report["base_identity"], report["effective_digest"] = i.ConfigDir, prefs, s["integrity_sha256"], s["base"], strings.TrimPrefix(text(s["release"]), "effective-")
 	return report, nil
 }
-func (i *Installer) allowedOrigin() error {
-	url, e := gitContext(i.Context, i.Source, "config", "--get", "remote.origin.url")
-	if e != nil {
-		return e
-	}
-	value := strings.TrimSpace(string(url))
-	for _, base := range []string{"git@github.com:belevtsev/agent-workflows", "https://github.com/belevtsev/agent-workflows", "ssh://git@github.com/belevtsev/agent-workflows"} {
-		if value == base || value == base+".git" {
-			return nil
-		}
-	}
-	return errors.New("origin must be the belevtsev/agent-workflows GitHub repository")
-}
-func (i *Installer) Update() (Object, error) {
-	if i.Bundle != nil {
-		return i.standaloneApply("update", true)
-	}
-	if i.AdoptPersonalSkills {
-		return nil, errors.New("personal skill adoption is available only for install and setup")
-	}
-	if err := i.Context.Err(); err != nil {
-		return nil, err
-	}
-	s, e := i.state(true)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.verifyOwned(s); e != nil {
-		return nil, e
-	}
-	head, e := cleanHeadContext(i.Context, i.Source)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.allowedOrigin(); e != nil {
-		return nil, e
-	}
-	if !i.Apply {
-		if e = descendantContext(i.Context, i.Source, text(s["release"]), head); e != nil {
-			if e = descendantContext(i.Context, i.Source, head, text(s["release"])); e != nil {
-				return nil, e
-			}
-			// A no-checkout update can leave an older source snapshot. It is
-			// not a forward candidate; the remote candidate remains deferred.
-			return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": []RegistrationChange{}, "source_behind_active": true, "fetch": "origin/main only with apply"}, nil
-		}
-		release, m, cleanup, e := i.preview(head)
-		if e != nil {
-			return nil, e
-		}
-		defer cleanup()
-		changes, e := i.registrationChanges(s, m, false)
-		if e != nil {
-			return nil, e
-		}
-		shared, e := SharedConfigDefaults(release)
-		if e != nil {
-			return nil, e
-		}
-		if e = i.checkHostConfig(s, release, m); e != nil {
-			return nil, e
-		}
-		planner := *i
-		planner.RuntimeCandidate = ""
-		ops, e := planner.activation(s, head, release, m, false, false)
-		if e != nil {
-			return nil, e
-		}
-		if e = i.preflightMutationPaths(ops, s, true); e != nil {
-			return nil, e
-		}
-		return Object{"command": "update", "dry_run": true, "local_head": head, "active_release": s["release"], "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "fetch": "origin/main only with apply"}, nil
-	}
-	unlock, e := lockRoot(i.State, false)
-	if e != nil {
-		return nil, e
-	}
-	defer unlock()
-	s, e = i.state(true)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.verifyOwned(s); e != nil {
-		return nil, e
-	}
-	head, e = cleanHeadContext(i.Context, i.Source)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.allowedOrigin(); e != nil {
-		return nil, e
-	}
-	if _, e = gitContext(i.Context, i.Source, "fetch", "--no-tags", "origin", "main"); e != nil {
-		return nil, e
-	}
-	output, e := gitContext(i.Context, i.Source, "rev-parse", "FETCH_HEAD^{commit}")
-	if e != nil {
-		return nil, e
-	}
-	sha := strings.TrimSpace(string(output))
-	if e = descendantContext(i.Context, i.Source, head, sha); e != nil {
-		return nil, e
-	}
-	if e = descendantContext(i.Context, i.Source, text(s["release"]), sha); e != nil {
-		return nil, e
-	}
-	preview, m, cleanup, e := i.preview(sha)
-	if e != nil {
-		return nil, e
-	}
-	defer cleanup()
-	if _, e = i.registrationChanges(s, m, false); e != nil {
-		return nil, e
-	}
-	planner := *i
-	planner.RuntimeCandidate = ""
-	ops, e := planner.activation(s, sha, preview, m, false, false)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.preflightMutationPaths(ops, s, true); e != nil {
-		return nil, e
-	}
-	release, m, e := i.stage(sha)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.prepareRuntimeFor(sha); e != nil {
-		return nil, e
-	}
-	if i.RuntimeCandidate != "" {
-		if e = i.stageRuntime(); e != nil {
-			return nil, e
-		}
-		if _, _, e = i.managerPlan(s); e != nil {
-			return nil, e
-		}
-	}
-	if e = i.checkHostConfig(s, release, m); e != nil {
-		return nil, e
-	}
-	// Runtime preparation can take time while discovery roots remain mutable.
-	// Reject newly occupied additions before advancing the source checkout.
-	changes, e := i.registrationChanges(s, m, false)
-	if e != nil {
-		return nil, e
-	}
-	ops, e = i.activation(s, sha, release, m, false, false)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.preflightMutationPaths(ops, s, true); e != nil {
-		return nil, e
-	}
-	current, e := cleanHeadContext(i.Context, i.Source)
-	if e != nil || current != head {
-		return nil, errors.New("source HEAD changed during update")
-	}
-	if !i.NoCheckout && head != sha {
-		if _, e = gitContext(i.Context, i.Source, "merge", "--ff-only", sha); e != nil {
-			return nil, e
-		}
-	}
-	ops, e = i.activation(s, sha, release, m, false, false)
-	if e != nil {
-		return nil, e
-	}
-	if len(ops) > 0 {
-		if e = i.transact("update", ops); e != nil {
-			return nil, e
-		}
-	}
-	shared, e := SharedConfigDefaults(release)
-	if e != nil {
-		return nil, e
-	}
-	return Object{"command": "update", "dry_run": false, "release": sha, "registration_changes": changes, "shared_config": Object{"managed": shared != nil, "defaults": shared}, "changed": len(ops) > 0}, nil
-}
-func (i *Installer) Rollback() (Object, error) {
-	if i.Bundle != nil {
-		return i.standaloneRollback()
-	}
-	if err := i.Context.Err(); err != nil {
-		return nil, err
-	}
-	s, e := i.state(true)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.verifyOwned(s); e != nil {
-		return nil, e
-	}
-	history := sequence(s["history"])
-	if len(history) == 0 {
-		return nil, errors.New("no previous release is available")
-	}
-	previous := object(history[len(history)-1])
-	sha := text(previous["release"])
-	release, m, e := i.release(sha)
-	if e != nil {
-		return nil, e
-	}
-	changes, e := i.registrationChanges(s, m, true)
-	if e != nil {
-		return nil, e
-	}
-	ops, e := i.activation(s, sha, release, m, false, true)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.preflightMutationPaths(ops, s, false); e != nil {
-		return nil, e
-	}
-	if !i.Apply {
-		return Object{"command": "rollback", "dry_run": true, "release": sha, "registration_changes": changes}, nil
-	}
-	unlock, e := lockRoot(i.State, false)
-	if e != nil {
-		return nil, e
-	}
-	defer unlock()
-	current, e := i.state(true)
-	if e != nil {
-		return nil, e
-	}
-	if !equal(current, s) {
-		return nil, errors.New("installation changed before rollback")
-	}
-	ops, e = i.activation(s, sha, release, m, false, true)
-	if e != nil {
-		return nil, e
-	}
-	if e = i.transact("rollback", ops); e != nil {
-		return nil, e
-	}
-	return Object{"command": "rollback", "dry_run": false, "release": sha, "registration_changes": changes}, nil
-}
+func (i *Installer) Update() (Object, error) { return i.standaloneApply("update", true) }
+
+func (i *Installer) Rollback() (Object, error) { return i.standaloneRollback() }
+
 func (i *Installer) Uninstall() (Object, error) {
 	if err := i.Context.Err(); err != nil {
+		return nil, err
+	}
+	if err := legacyRecords(i.State); err != nil {
 		return nil, err
 	}
 	s, e := i.state(true)
@@ -899,17 +410,6 @@ func hostIDs(hosts []hostTarget) []string {
 		ids = append(ids, h.id)
 	}
 	return ids
-}
-
-// checkHostConfig confirms every recorded host can accept a candidate release
-// before an update advances the source checkout.
-func (i *Installer) checkHostConfig(s Object, release string, m Object) error {
-	for _, h := range i.recordedHosts(s) {
-		if _, _, err := i.prepareHostConfig(h, hostRecord(s, h.id), release, m, false); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (i *Installer) hostReports(s Object, release string, m Object) (Object, error) {

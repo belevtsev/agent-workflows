@@ -1,276 +1,51 @@
 package workflow
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// These fixtures simulate the v7 on-disk contract using the unchanged receipt,
-// locator and manager schemas. The executables are protocol-only shell fixtures,
-// not historical v7 manager binaries; the lifecycle operations run current Go.
-func rewriteRuntimeFixtureProtocol(t *testing.T, installer *Installer, revision, protocol string) {
+// Only cw-manager-v10 remains. Receipts and executables written by the
+// v7, v8 and v9 managers are unsupported, so the historical v7 fixtures and
+// their readable-protocol tests were deleted with that support.
+
+// A candidate that does not answer cw-manager-v10 lacks the capability the
+// standalone manager requires.
+const candidateCapabilityRefusal = "standalone manager lacks the required capability"
+
+// A sealed receipt that records any protocol but cw-manager-v10 no longer
+// names the runtime its path identifies.
+const receiptIdentityRefusal = "native runtime receipt identity differs from its path"
+
+// installedRuntimeFixture is a standalone installation of the first fixture
+// release whose sealed runtime the tests below change.
+func installedRuntimeFixture(t *testing.T, fixture *installerFixture) (*Installer, string) {
 	t.Helper()
-	dir := installer.runtimeDir(revision)
-	binary := "#!/bin/sh\nif [ \"${1-}\" = --manager-protocol ]; then printf '%s\\n' '" + protocol + "'; fi\n"
-	installerWrite(t, filepath.Join(dir, "cw"), binary, 0o755)
+	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
+	if _, err := installer.Setup(true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installer.Status(); err != nil {
+		t.Fatalf("unchanged runtime: %v", err)
+	}
+	return installer, fixtureRuntimeDir(t, fixture.paths.State, fixture.first)
+}
+
+// setRuntimeProtocols makes the sealed runtime's executable report one
+// protocol and its resealed receipt record another, keeping the receipt's
+// executable digest exact so only the protocols can disagree.
+func setRuntimeProtocols(t *testing.T, fixture *installerFixture, dir, receiptProtocol, executableProtocol string) {
+	t.Helper()
+	binary := fixtureManagerScript(t, executableProtocol, fixture.release(t, fixture.first).identity)
+	fixtureRewrite(t, filepath.Join(dir, "cw"), []byte(binary))
 	receiptPath := filepath.Join(dir, "receipt.json")
 	receipt, err := readJSON(receiptPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt["manager_protocol"], receipt["sha256"] = protocol, hash([]byte(binary))
-	installerWrite(t, receiptPath, string(legacyJSON(seal(receipt))), 0o600)
-}
-
-func sealedV7RuntimeFixture(t *testing.T, fixture *installerFixture) *Installer {
-	t.Helper()
-	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-	if _, err := installer.Setup(true); err != nil {
-		t.Fatal(err)
-	}
-	rewriteRuntimeFixtureProtocol(t, installer, fixture.first, "cw-manager-v7")
-	reader := fixture.installer(true)
-	reader.Context = t.Context()
-	return reader
-}
-
-func assertRuntimeFixtureRemoved(t *testing.T, installer *Installer, originals map[string]string) {
-	t.Helper()
-	for path, want := range originals {
-		if got := installerRead(t, path); got != want {
-			t.Fatalf("original bytes changed at %s: %q", path, got)
-		}
-	}
-	for _, path := range []string{installer.statePath, installer.journalPath, installer.current, installer.runtimeCurrent(), installer.commandPath(), installer.locatorPath()} {
-		if exists(path) {
-			t.Fatalf("owned path remains: %s", path)
-		}
-	}
-}
-
-func TestV7RuntimeSetupUpgradeAndRollback(t *testing.T) {
-	t.Parallel()
-	fixture := newInstallerFixture(t)
-	originals := fixture.seedUserFiles(t)
-	old := sealedV7RuntimeFixture(t, fixture)
-	oldReceipt := installerRead(t, filepath.Join(old.runtimeDir(fixture.first), "receipt.json"))
-	if report, err := old.Status(); err != nil || report["installed"] != true {
-		t.Fatalf("v7 status: %v, %v", report, err)
-	}
-	second := fixture.newRelease(t)
-	installer := nativeFixtureInstaller(t, fixture, second, false)
-	before := installerSnapshot(t, fixture.base)
-	if report, err := installer.Setup(true); err != nil || report["dry_run"] != true || report["release"] != second {
-		t.Fatalf("v7 setup preview: %v, %v", report, err)
-	}
-	installerUnchanged(t, fixture.base, before)
-	installer.Apply = true
-	if _, err := installer.Setup(true); err != nil {
-		t.Fatalf("v7 to v10 activation: %v", err)
-	}
-	assertManagerProtocol(t, installer, "cw-manager-v10")
-	state, err := installer.state(true)
-	if err != nil || state["release"] != second || object(object(state["manager"])["runtime"])["revision"] != second {
-		t.Fatalf("v10 activation state: %v, %v", state, err)
-	}
-	manager := clone(object(state["manager"]))
-	if _, err := installer.Rollback(); err != nil {
-		t.Fatal(err)
-	}
-	state, err = installer.state(true)
-	if err != nil || state["release"] != fixture.first || !equal(state["manager"], manager) {
-		t.Fatalf("skill rollback changed the v10 manager: %v, %v", state, err)
-	}
-	assertManagerProtocol(t, installer, "cw-manager-v10")
-	if got := installerRead(t, filepath.Join(old.runtimeDir(fixture.first), "receipt.json")); got != oldReceipt {
-		t.Fatal("upgrade or rollback rewrote the immutable v7 receipt")
-	}
-	if _, err := installer.Status(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := installer.Uninstall(); err != nil {
-		t.Fatal(err)
-	}
-	assertRuntimeFixtureRemoved(t, installer, originals)
-}
-
-func TestV7RuntimeRollbackAndUninstall(t *testing.T) {
-	t.Parallel()
-	fixture := newInstallerFixture(t)
-	originals := fixture.seedUserFiles(t)
-	installer := sealedV7RuntimeFixture(t, fixture)
-	fixture.newRelease(t)
-	// Without a newly acquired candidate, operations retain the existing manager.
-	if _, err := installer.Setup(true); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := installer.Rollback(); err != nil {
-		t.Fatalf("rollback with a v7 recovery runtime: %v", err)
-	}
-	assertManagerProtocol(t, installer, "cw-manager-v7")
-	if _, err := installer.Uninstall(); err != nil {
-		t.Fatalf("uninstall with a v7 recovery runtime: %v", err)
-	}
-	assertRuntimeFixtureRemoved(t, installer, originals)
-}
-
-func TestV7RuntimeInterruptedUpgradeRecovery(t *testing.T) {
-	t.Parallel()
-	for _, boundary := range []string{"after-manager-runtime", "after-state"} {
-		t.Run(boundary, func(t *testing.T) {
-			t.Parallel()
-			fixture := newInstallerFixture(t)
-			fixture.seedUserFiles(t)
-			old := sealedV7RuntimeFixture(t, fixture)
-			beforeState := installerRead(t, old.statePath)
-			second := fixture.newRelease(t)
-			installer := nativeFixtureInstaller(t, fixture, second, true)
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", boundary)
-			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), boundary) {
-				t.Fatalf("upgrade boundary did not interrupt: %v", err)
-			}
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if err := os.Rename(installer.Source, installer.Source+" unavailable"); err != nil {
-				t.Fatal(err)
-			}
-			recovery := fixture.installer(true)
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-manager-runtime")
-			if _, err := recovery.Recover(); err == nil || !strings.Contains(err.Error(), "after-recover-manager-runtime") {
-				t.Fatalf("runtime reversal did not interrupt: %v", err)
-			}
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			assertManagerProtocol(t, recovery, "cw-manager-v7")
-			if _, err := recovery.Recover(); err != nil {
-				t.Fatalf("resume recovery with old v7 manager state: %v", err)
-			}
-			if got := installerRead(t, recovery.statePath); got != beforeState {
-				t.Fatal("recovery did not restore exact v7 manager ownership state")
-			}
-			if _, err := recovery.Status(); err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
-}
-
-func TestV7RuntimeInterruptedJournalRecovery(t *testing.T) {
-	t.Parallel()
-	fixture := newInstallerFixture(t)
-	originals := fixture.seedUserFiles(t)
-	installer := nativeFixtureInstaller(t, fixture, fixture.first, true)
-	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-state")
-	if _, err := installer.Setup(true); err == nil {
-		t.Fatal("setup boundary did not interrupt")
-	}
-	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-	// The journal identity is unchanged; its sealed runtime now simulates the v7
-	// executable and receipt that an earlier manager left for recovery.
-	rewriteRuntimeFixtureProtocol(t, installer, fixture.first, "cw-manager-v7")
-	if err := os.Rename(installer.Source, installer.Source+" unavailable"); err != nil {
-		t.Fatal(err)
-	}
-	recovery := fixture.installer(true)
-	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "after-recover-manager-runtime")
-	if _, err := recovery.Recover(); err == nil || !strings.Contains(err.Error(), "after-recover-manager-runtime") {
-		t.Fatalf("v7 journal recovery did not reach the runtime reversal: %v", err)
-	}
-	fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-	if _, err := recovery.Recover(); err != nil {
-		t.Fatalf("resume v7 journal recovery: %v", err)
-	}
-	assertRuntimeFixtureRemoved(t, recovery, originals)
-}
-
-func TestProductionHistoricalRecoveryRuntimeReceiptsRemainReadable(test *testing.T) {
-	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9"} {
-		test.Run(protocol, func(test *testing.T) {
-			fixture := newInstallerFixture(test)
-			fixture.seedUserFiles(test)
-			installer := sealedV7RuntimeFixture(test, fixture)
-			if protocol != "cw-manager-v7" {
-				rewriteRuntimeFixtureProtocol(test, installer, fixture.first, protocol)
-			}
-			receiptPath := filepath.Join(installer.runtimeDir(fixture.first), "receipt.json")
-			receiptBefore := installerRead(test, receiptPath)
-			before := installerSnapshot(test, fixture.base)
-			if report, err := installer.Status(); err != nil || report["installed"] != true {
-				test.Fatalf("historical status: %v, %v", report, err)
-			}
-			identity, err := installer.runtimeRelease(fixture.first)
-			if err != nil {
-				test.Fatal(err)
-			}
-			if err := installer.verifyRecoveryRuntime(identity); err != nil {
-				test.Fatalf("matching historical recovery executable rejected: %v", err)
-			}
-			if got := installerRead(test, receiptPath); got != receiptBefore {
-				test.Fatal("reading a historical recovery runtime rewrote its receipt")
-			}
-			installerUnchanged(test, fixture.base, before)
-		})
-	}
-}
-
-func TestProductionV8RuntimeUpgradeAndSkillRollbackKeepV10Manager(test *testing.T) {
-	fixture := newInstallerFixture(test)
-	originals := fixture.seedUserFiles(test)
-	old := sealedV7RuntimeFixture(test, fixture)
-	rewriteRuntimeFixtureProtocol(test, old, fixture.first, "cw-manager-v8")
-	receiptPath := filepath.Join(old.runtimeDir(fixture.first), "receipt.json")
-	oldReceipt := installerRead(test, receiptPath)
-	if report, err := old.Status(); err != nil || report["installed"] != true {
-		test.Fatalf("v8 status: %v, %v", report, err)
-	}
-	second := fixture.newRelease(test)
-	installer := nativeFixtureInstaller(test, fixture, second, false)
-	before := installerSnapshot(test, fixture.base)
-	if report, err := installer.Setup(true); err != nil || report["dry_run"] != true || report["release"] != second {
-		test.Fatalf("v8 upgrade preview: %v, %v", report, err)
-	}
-	installerUnchanged(test, fixture.base, before)
-	installer.Apply = true
-	if _, err := installer.Setup(true); err != nil {
-		test.Fatal(err)
-	}
-	assertManagerProtocol(test, installer, "cw-manager-v10")
-	state, err := installer.state(true)
-	if err != nil || state["release"] != second || object(object(state["manager"])["runtime"])["revision"] != second {
-		test.Fatalf("v8 to v10 activation state: %v, %v", state, err)
-	}
-	manager := clone(object(state["manager"]))
-	if _, err := installer.Rollback(); err != nil {
-		test.Fatal(err)
-	}
-	state, err = installer.state(true)
-	if err != nil || state["release"] != fixture.first || !equal(state["manager"], manager) {
-		test.Fatalf("skill rollback replaced the current manager: %v, %v", state, err)
-	}
-	assertManagerProtocol(test, installer, "cw-manager-v10")
-	if got := installerRead(test, receiptPath); got != oldReceipt {
-		test.Fatal("upgrade or rollback rewrote the immutable v8 receipt")
-	}
-	if _, err := installer.Status(); err != nil {
-		test.Fatal(err)
-	}
-	if _, err := installer.Uninstall(); err != nil {
-		test.Fatal(err)
-	}
-	assertRuntimeFixtureRemoved(test, installer, originals)
-}
-
-func TestProductionReadableManagerProtocolBoundary(test *testing.T) {
-	for _, protocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10"} {
-		if !readableManagerProtocol(protocol) {
-			test.Errorf("supported receipt protocol rejected: %q", protocol)
-		}
-	}
-	for _, protocol := range []string{"", "unknown", "cw-manager-v1", "cw-manager-v2", "cw-manager-v3", "cw-manager-v4", "cw-manager-v5", "cw-manager-v6", "cw-manager-v11", "cw-manager-v90", "cw-manager-v9\n"} {
-		if readableManagerProtocol(protocol) {
-			test.Errorf("unsupported receipt protocol accepted: %q", protocol)
-		}
-	}
+	receipt["manager_protocol"], receipt["sha256"] = receiptProtocol, hash([]byte(binary))
+	fixtureRewrite(t, receiptPath, legacyJSON(seal(receipt)))
 }
 
 func TestProductionRuntimeCandidatesRequireV10BeforeMutation(t *testing.T) {
@@ -278,26 +53,36 @@ func TestProductionRuntimeCandidatesRequireV10BeforeMutation(t *testing.T) {
 	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
-			for _, operation := range []string{"setup", "prepare", "stage"} {
+			// stageRuntime is not called directly: the bundle identity it needs is
+			// loaded only inside setup, install and update.
+			for _, operation := range []string{"setup", "update"} {
 				t.Run(operation, func(t *testing.T) {
 					t.Parallel()
 					fixture := newInstallerFixture(t)
 					fixture.seedUserFiles(t)
-					installer := nativeFixtureInstallerProtocol(t, fixture, fixture.first, protocol, true)
+					revision := fixture.first
+					if operation == "update" {
+						if _, err := nativeFixtureInstaller(t, fixture, fixture.first, true).Setup(true); err != nil {
+							t.Fatal(err)
+						}
+						revision = fixture.newRelease(t)
+					}
+					installer := nativeFixtureInstallerProtocol(t, fixture, revision, protocol, true)
 					before := installerSnapshot(t, fixture.base)
 					var err error
 					switch operation {
 					case "setup":
 						_, err = installer.Setup(true)
-					case "prepare":
-						err = installer.prepareRuntimeFor(fixture.first)
-					case "stage":
-						err = installer.stageRuntime()
+					case "update":
+						_, err = installer.Update()
 					}
-					if err == nil || !strings.Contains(err.Error(), "does not support the manager protocol") {
+					if err == nil || !strings.Contains(err.Error(), candidateCapabilityRefusal) {
 						t.Fatalf("%s accepted candidate protocol %q: %v", operation, protocol, err)
 					}
 					installerUnchanged(t, fixture.base, before)
+					if operation == "update" && fixture.activeRevision(t) != fixture.first {
+						t.Fatal("refused update changed the active release")
+					}
 				})
 			}
 		})
@@ -306,18 +91,18 @@ func TestProductionRuntimeCandidatesRequireV10BeforeMutation(t *testing.T) {
 
 func TestRuntimeReceiptRejectsUnsupportedProtocols(t *testing.T) {
 	t.Parallel()
-	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v11"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
-			installer := sealedV7RuntimeFixture(t, fixture)
-			rewriteRuntimeFixtureProtocol(t, installer, fixture.first, protocol)
+			installer, dir := installedRuntimeFixture(t, fixture)
+			setRuntimeProtocols(t, fixture, dir, protocol, protocol)
 			before := installerSnapshot(t, fixture.base)
-			if _, err := installer.Status(); err == nil {
-				t.Fatalf("status accepted sealed receipt protocol %q", protocol)
+			if _, err := installer.Status(); err == nil || !strings.Contains(err.Error(), receiptIdentityRefusal) {
+				t.Fatalf("status accepted sealed receipt protocol %q: %v", protocol, err)
 			}
-			if _, err := installer.Uninstall(); err == nil {
-				t.Fatalf("uninstall accepted sealed receipt protocol %q", protocol)
+			if _, err := installer.Uninstall(); err == nil || !strings.Contains(err.Error(), receiptIdentityRefusal) {
+				t.Fatalf("uninstall accepted sealed receipt protocol %q: %v", protocol, err)
 			}
 			installerUnchanged(t, fixture.base, before)
 		})
@@ -326,29 +111,21 @@ func TestRuntimeReceiptRejectsUnsupportedProtocols(t *testing.T) {
 
 func TestRecoveryRuntimeRejectsUnsupportedExecutableProtocols(t *testing.T) {
 	t.Parallel()
-	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v10", "cw-manager-v11"} {
+	for _, protocol := range []string{"", "unknown", "cw-manager-v6", "cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10", "cw-manager-v11"} {
 		t.Run(protocol, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
-			installer := sealedV7RuntimeFixture(t, fixture)
-			dir := installer.runtimeDir(fixture.first)
-			binary := "#!/bin/sh\nprintf '%s\\n' '" + protocol + "'\n"
-			installerWrite(t, filepath.Join(dir, "cw"), binary, 0o755)
-			receiptPath := filepath.Join(dir, "receipt.json")
-			receipt, err := readJSON(receiptPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			// Preserve a supported, sealed receipt so the executable capability
+			installer, dir := installedRuntimeFixture(t, fixture)
+			// Keep a supported, sealed v10 receipt so the executable capability
 			// check is the boundary that rejects this recovery runtime.
-			receipt["sha256"] = hash([]byte(binary))
-			installerWrite(t, receiptPath, string(legacyJSON(seal(receipt))), 0o600)
-			identity, err := installer.runtimeRelease(fixture.first)
-			if err != nil {
-				t.Fatal(err)
-			}
+			setRuntimeProtocols(t, fixture, dir, ManagerProtocol, protocol)
 			before := installerSnapshot(t, fixture.base)
-			if err := installer.verifyRecoveryRuntime(identity); err == nil || !strings.Contains(err.Error(), "does not support the manager protocol") {
+			err := installer.verifyRecoveryRuntime(installer.RuntimeIdentity)
+			if protocol == ManagerProtocol {
+				if err != nil {
+					t.Fatalf("supported recovery executable rejected: %v", err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), "does not support the manager protocol") {
 				t.Fatalf("recovery accepted executable protocol %q: %v", protocol, err)
 			}
 			installerUnchanged(t, fixture.base, before)
@@ -358,117 +135,42 @@ func TestRecoveryRuntimeRejectsUnsupportedExecutableProtocols(t *testing.T) {
 
 func TestRecoveryRuntimeRequiresReceiptProtocolMatch(t *testing.T) {
 	t.Parallel()
-	for _, receiptProtocol := range []string{"cw-manager-v7", "cw-manager-v8", "cw-manager-v9", "cw-manager-v10"} {
-		t.Run(receiptProtocol, func(t *testing.T) {
+	for _, test := range []struct{ receipt, executable string }{
+		{ManagerProtocol, "cw-manager-v9"},
+		{ManagerProtocol, "cw-manager-v8"},
+		{"cw-manager-v7", ManagerProtocol},
+		{"cw-manager-v8", ManagerProtocol},
+		{"cw-manager-v9", ManagerProtocol},
+		{"cw-manager-v11", ManagerProtocol},
+		{ManagerProtocol, ManagerProtocol},
+	} {
+		t.Run("receipt "+test.receipt+" executable "+test.executable, func(t *testing.T) {
 			t.Parallel()
 			fixture := newInstallerFixture(t)
-			installer := sealedV7RuntimeFixture(t, fixture)
-			executableProtocol := "cw-manager-v8"
-			if receiptProtocol == executableProtocol {
-				executableProtocol = "cw-manager-v7"
-			}
-			rewriteRuntimeFixtureProtocol(t, installer, fixture.first, executableProtocol)
-			receiptPath := filepath.Join(installer.runtimeDir(fixture.first), "receipt.json")
-			receipt, err := readJSON(receiptPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			receipt["manager_protocol"] = receiptProtocol
-			installerWrite(t, receiptPath, string(legacyJSON(seal(receipt))), 0o600)
-			identity, err := installer.runtimeRelease(fixture.first)
-			if err != nil {
-				t.Fatal(err)
-			}
+			installer, dir := installedRuntimeFixture(t, fixture)
+			setRuntimeProtocols(t, fixture, dir, test.receipt, test.executable)
 			before := installerSnapshot(t, fixture.base)
-			if err := installer.verifyRecoveryRuntime(identity); err == nil || !strings.Contains(err.Error(), "does not support the manager protocol") {
-				t.Fatalf("recovery accepted receipt %s for executable %s: %v", receiptProtocol, executableProtocol, err)
+			err := installer.verifyRecoveryRuntime(installer.RuntimeIdentity)
+			switch {
+			case test.receipt == test.executable:
+				if err != nil {
+					t.Fatalf("matching v10 receipt and executable rejected: %v", err)
+				}
+				return
+			case test.receipt == ManagerProtocol:
+				// A supported receipt names the executable's protocol mismatch.
+				if err == nil || !strings.Contains(err.Error(), "does not support the manager protocol") {
+					t.Fatalf("recovery accepted receipt %s for executable %s: %v", test.receipt, test.executable, err)
+				}
+			default:
+				// An unsupported receipt protocol is refused whatever the
+				// executable reports.
+				if err == nil || !strings.Contains(err.Error(), receiptIdentityRefusal) {
+					t.Fatalf("recovery accepted receipt %s for executable %s: %v", test.receipt, test.executable, err)
+				}
 			}
 			if _, err := installer.Uninstall(); err == nil {
 				t.Fatal("uninstall accepted a mismatched recovery runtime")
-			}
-			installerUnchanged(t, fixture.base, before)
-		})
-	}
-}
-
-func TestV7RuntimeReceiptRetainsIntegrityAndOwnershipChecks(t *testing.T) {
-	t.Parallel()
-	for _, change := range []string{"seal", "binary", "binary-mode", "locator-seal", "locator-hash", "locator-roots", "locator-mode", "receipt-mode", "extra-file", "identity", "command-owner", "active-locator-owner"} {
-		t.Run(change, func(t *testing.T) {
-			t.Parallel()
-			fixture := newInstallerFixture(t)
-			installer := sealedV7RuntimeFixture(t, fixture)
-			dir := installer.runtimeDir(fixture.first)
-			receiptPath, locatorPath := filepath.Join(dir, "receipt.json"), filepath.Join(dir, "locator.json")
-			switch change {
-			case "seal":
-				receipt, err := readJSON(receiptPath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				receipt["manager_protocol"] = ManagerProtocol
-				installerWrite(t, receiptPath, string(legacyJSON(receipt)), 0o600)
-			case "binary":
-				installerAppend(t, filepath.Join(dir, "cw"), "# changed\n")
-			case "binary-mode", "locator-mode", "receipt-mode":
-				path := filepath.Join(dir, "cw")
-				if change == "locator-mode" {
-					path = locatorPath
-				} else if change == "receipt-mode" {
-					path = receiptPath
-				}
-				if err := os.Chmod(path, 0o644); err != nil {
-					t.Fatal(err)
-				}
-			case "locator-seal", "locator-hash", "locator-roots", "active-locator-owner":
-				path := locatorPath
-				if change == "active-locator-owner" {
-					path = installer.locatorPath()
-				}
-				locator, err := readJSON(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				locator["source"] = filepath.Join(fixture.base, "other source")
-				if change == "locator-roots" {
-					locator["home"] = filepath.Join(fixture.base, "other home")
-				}
-				if change != "locator-seal" {
-					locator = seal(locator)
-				}
-				data := legacyJSON(locator)
-				installerWrite(t, path, string(data), 0o600)
-				if change == "locator-roots" {
-					receipt, err := readJSON(receiptPath)
-					if err != nil {
-						t.Fatal(err)
-					}
-					receipt["locator_sha256"] = hash(data)
-					installerWrite(t, receiptPath, string(legacyJSON(seal(receipt))), 0o600)
-				}
-			case "extra-file":
-				installerWrite(t, filepath.Join(dir, "extra"), "unexpected", 0o600)
-			case "identity":
-				state, err := installer.state(true)
-				if err != nil {
-					t.Fatal(err)
-				}
-				object(object(state["manager"])["runtime"])["version"] = "different"
-				installerWrite(t, installer.statePath, string(legacyJSON(seal(state))), 0o600)
-			case "command-owner":
-				if err := os.Remove(installer.commandPath()); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Symlink(filepath.Join(fixture.base, "other command"), installer.commandPath()); err != nil {
-					t.Fatal(err)
-				}
-			}
-			before := installerSnapshot(t, fixture.base)
-			if _, err := installer.Status(); err == nil {
-				t.Fatalf("v7 status accepted changed %s", change)
-			}
-			if _, err := installer.Uninstall(); err == nil {
-				t.Fatalf("v7 uninstall accepted changed %s", change)
 			}
 			installerUnchanged(t, fixture.base, before)
 		})

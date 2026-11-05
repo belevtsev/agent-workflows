@@ -25,8 +25,8 @@ var standaloneDigest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 const standaloneProtocol = "cw-manager-v10"
 const maxStandaloneBinary = 128 << 20
 
-// InspectStandalone adds the new capability checks without changing the legacy
-// version JSON decoder. Static target identity is checked before execution.
+// InspectStandalone adds the standalone capability checks to the version
+// protocol that Inspect decodes. Static target identity is checked before execution.
 func InspectStandalone(ctx context.Context, path string) (Candidate, error) {
 	if !strings.HasPrefix(path, "/") {
 		return Candidate{}, errors.New("standalone candidate requires an absolute path")

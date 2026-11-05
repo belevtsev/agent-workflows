@@ -252,7 +252,13 @@ func assertInstalledModelPolicy(t *testing.T, installer *Installer, revision, so
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report["installed"] != true || report["release"] != revision || !reflect.DeepEqual(report["model_profiles"], policyProfiles(solModel, solEffort, executionEffort)) {
+	// Standalone release names are effective snapshots; the state records
+	// which bundle revision the active one was built from.
+	state, err := readJSON(installer.statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report["installed"] != true || report["release"] == nil || report["release"] != state["release"] || stateRevision(state) != revision || !reflect.DeepEqual(report["model_profiles"], policyProfiles(solModel, solEffort, executionEffort)) {
 		t.Fatalf("unexpected installed snapshot: %#v", report)
 	}
 	want := map[string]string{"model": solModel, "model_reasoning_effort": solEffort}
@@ -275,20 +281,17 @@ func assertInstalledModelPolicy(t *testing.T, installer *Installer, revision, so
 	installerUnchanged(t, installer.State, before)
 }
 
-func commitModelPolicy(t *testing.T, fixture *installerFixture, edit func(Object), message string) string {
+// commitModelPolicy packs the fixture source with an edited model policy as
+// the next release and returns its revision.
+func commitModelPolicy(t *testing.T, fixture *installerFixture, edit func(Object), _ string) string {
 	t.Helper()
-	editModelPolicy(t, filepath.Join(fixture.paths.Source, text(fixture.manifest["model_policy"])), edit)
-	fixture.git(t, "add", ".")
-	fixture.git(t, "commit", "-m", message)
-	return fixture.git(t, "rev-parse", "HEAD")
+	editModelPolicy(t, filepath.Join(fixture.source, text(fixture.manifest["model_policy"])), edit)
+	return fixture.commit(t)
 }
 
 func nativePolicyInstaller(t *testing.T, fixture *installerFixture, revision, protocol string) *Installer {
 	t.Helper()
-	installer := nativeFixtureInstaller(t, fixture, revision, true)
-	installer.RuntimeIdentity.Version = "fixture-" + protocol
-	installerWrite(t, installer.RuntimeCandidate, "#!/bin/sh\nif [ \"$1\" = --manager-protocol ]; then\n  printf '%s\\n' '"+protocol+"'\nfi\n", 0o755)
-	return installer
+	return nativeFixtureInstallerProtocol(t, fixture, revision, protocol, true)
 }
 
 func assertManagerProtocol(t *testing.T, installer *Installer, protocol string) {
@@ -304,7 +307,6 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	fixture := newInstallerFixture(t)
 	original := fixture.seedUserFiles(t)
 	legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
-	origin := fixture.bareOrigin(t)
 	installer := nativePolicyInstaller(t, fixture, legacy, ManagerProtocol)
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
@@ -314,12 +316,12 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	initialModelOrigin := object(initial["model_config"])["original"]
+	initialModelOrigin := object(hostRecord(initial, hostCodex)["model_config"])["original"]
+	if initialModelOrigin == nil {
+		t.Fatalf("setup recorded no original model ownership: %#v", hostRecord(initial, hostCodex)["model_config"])
+	}
 	maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
-	fixture.git(t, "push", origin, "main")
-	fixture.git(t, "reset", "--hard", legacy)
 	installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
-	installer.NoCheckout = true
 	installerAppend(t, installer.config, "# independent model comment\n")
 	if err := os.Chmod(installer.config, 0o604); err != nil {
 		t.Fatal(err)
@@ -327,25 +329,22 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if _, err := installer.Update(); err != nil {
 		t.Fatal(err)
 	}
-	if fixture.git(t, "rev-parse", "HEAD") != legacy {
-		t.Fatal("no-checkout model activation changed the source HEAD")
-	}
 	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	assertManagerProtocol(t, installer, ManagerProtocol)
 	activated, err := installer.state(true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !equal(object(activated["model_config"])["original"], initialModelOrigin) {
+	if !equal(object(hostRecord(activated, hostCodex)["model_config"])["original"], initialModelOrigin) {
 		t.Fatal("model activation replaced the original TOML ownership")
 	}
-	missingSource := fixture.paths.Source + " unavailable"
-	if err := os.Rename(fixture.paths.Source, missingSource); err != nil {
+	// The installed snapshot, not the pack source, carries the policy.
+	if err := os.Rename(fixture.source, fixture.source+" unavailable"); err != nil {
 		t.Fatal(err)
 	}
 	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	if _, err := installer.Rollback(); err != nil {
-		t.Fatalf("checkout-free policy rollback: %v", err)
+		t.Fatalf("policy rollback: %v", err)
 	}
 	assertInstalledModelPolicy(t, installer, legacy, "gpt-6.1-sol", "ultra", "max")
 	assertManagerProtocol(t, installer, ManagerProtocol)
@@ -353,20 +352,14 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !equal(rolledBack["manager"], activated["manager"]) || !equal(object(rolledBack["model_config"])["original"], initialModelOrigin) {
-		t.Fatal("skill rollback changed the v5 manager or original model ownership")
-	}
-	if err := os.Rename(missingSource, fixture.paths.Source); err != nil {
-		t.Fatal(err)
+	if !equal(rolledBack["manager"], activated["manager"]) || !equal(object(hostRecord(rolledBack, hostCodex)["model_config"])["original"], initialModelOrigin) {
+		t.Fatal("skill rollback changed the manager or original model ownership")
 	}
 	if _, err := installer.Update(); err != nil {
 		t.Fatal(err)
 	}
 	assertInstalledModelPolicy(t, installer, maxRevision, "gpt-6-astra", "max", "xhigh")
 	assertManagerProtocol(t, installer, ManagerProtocol)
-	if err := os.Rename(fixture.paths.Source, missingSource); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := installer.Uninstall(); err != nil {
 		t.Fatal(err)
 	}
@@ -386,60 +379,6 @@ func TestNativeModelPolicyUltraMaxUltraMaxActivationAndSelectiveUninstall(t *tes
 	}
 }
 
-func TestNativeModelPolicyRecoveryWithoutCheckoutPreservesHistoricalSnapshot(t *testing.T) {
-	t.Parallel()
-	for _, label := range []string{"after-model-config", "after-manager-runtime", "after-state"} {
-		t.Run(label, func(t *testing.T) {
-			t.Parallel()
-			fixture := newInstallerFixture(t)
-			fixture.seedUserFiles(t)
-			legacy := commitModelPolicy(t, fixture, historicalModelPolicy, "Historical Ultra policy")
-			installer := nativePolicyInstaller(t, fixture, legacy, ManagerProtocol)
-			if _, err := installer.Setup(true); err != nil {
-				t.Fatal(err)
-			}
-			before, err := installer.state(true)
-			if err != nil {
-				t.Fatal(err)
-			}
-			configBefore := installerRead(t, installer.config)
-			maxRevision := commitModelPolicy(t, fixture, configuredModelPolicy, "Configured Max policy")
-			installer = nativePolicyInstaller(t, fixture, maxRevision, ManagerProtocol)
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", label)
-			if _, err := installer.Setup(true); err == nil || !strings.Contains(err.Error(), "injected failure at "+label) {
-				t.Fatalf("policy activation fault: %v", err)
-			}
-			fixture.env.Setenv("AGENT_WORKFLOWS_FAULT", "")
-			if err := os.Rename(fixture.paths.Source, fixture.paths.Source+" unavailable"); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := installer.Status(); err == nil || !strings.Contains(err.Error(), "recover") {
-				t.Fatalf("interrupted policy status error = %v", err)
-			}
-			installerAppend(t, installer.config, "# after interrupted policy activation\n")
-			if err := os.Chmod(installer.config, 0o604); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := installer.Recover(); err != nil {
-				t.Fatalf("checkout-free policy recovery: %v", err)
-			}
-			state, err := installer.state(true)
-			if err != nil || !equal(state, before) {
-				t.Fatalf("historical ownership changed after recovery: %v", err)
-			}
-			assertInstalledModelPolicy(t, installer, legacy, "gpt-6.1-sol", "ultra", "max")
-			assertManagerProtocol(t, installer, ManagerProtocol)
-			if installerRead(t, installer.config) != configBefore+"# after interrupted policy activation\n" {
-				t.Fatal("policy recovery lost unrelated TOML bytes")
-			}
-			info, err := os.Stat(installer.config)
-			if err != nil || info.Mode().Perm() != 0o604 {
-				t.Fatalf("policy recovery changed independent mode: %v", err)
-			}
-		})
-	}
-}
-
 func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testing.T) {
 	t.Parallel()
 	fixture := newInstallerFixture(t)
@@ -451,7 +390,7 @@ func TestInstallerStatusProjectsAdditionalProfileFromImmutableSnapshot(t *testin
 	if _, err := installer.Setup(true); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.RemoveAll(fixture.paths.Source); err != nil {
+	if err := os.RemoveAll(fixture.source); err != nil {
 		t.Fatal(err)
 	}
 	report, err := installer.Status()
