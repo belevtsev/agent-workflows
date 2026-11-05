@@ -7,10 +7,15 @@ uses its embedded resources and never clones or builds a repository. `cw update`
 acquires one pinned stable release before handing off to its verified executable.
 
 In an interactive terminal the four-step setup chooses hosts, model preferences,
-optional private API keys, and a before/after review. Enter accepts the selection;
-Esc or Ctrl-C before apply leaves active configuration unchanged. `--plain` and
-`TERM=dumb`/`NO_COLOR` use the plain interface. Machine modes (`--json`, piped
-streams, `--non-interactive`) and dry runs do not prompt.
+optional private API keys, and a before/after review on the alternate screen.
+← or Backspace returns to the previous step with earlier answers kept; Esc asks
+before quitting and Ctrl-C quits at once. Quitting before apply prints
+"Setup cancelled", exits with status 130 and leaves active configuration
+unchanged. A review taller than the terminal scrolls with PgUp/PgDn. After a
+successful interactive apply, setup prints a short summary to stderr and no JSON;
+run `cw status` for the full report. `--plain` and `TERM=dumb`/`NO_COLOR` use the
+line-based interface. Machine modes (`--json`, piped streams, `--non-interactive`)
+and dry runs do not prompt and write the JSON report to stdout.
 
 ```sh
 cw install --host all --preset recommended --non-interactive
@@ -19,7 +24,13 @@ cw status
 ```
 
 Updates keep saved preferences by default. Recommended and Balanced replace saved
-overrides, including memory/context values, as explained before review. Advanced
+overrides, including memory/context values, as explained before review. They keep
+the GitHub worker choice: the models step shows one GitHub workers row per selected
+host, and selecting it sets one model and effort for `commit_execution`,
+`pr_authoring_routine` and `pr_submission`. Release default unpins all three. When
+those roles hold different values, the row shows "differs per role"; a preset
+keeps them, and picking a value replaces all three. A saved GitHub value that a
+newer release no longer offers gives way to the preset. Advanced
 lets each role and fallback inherit release values or pin model/effort fields
 independently. The Advanced menu edits individual fields; Enter keeps the shown
 value, while `default` clears a text override. `--settings FILE` accepts nonsecret preferences instead of a preset:

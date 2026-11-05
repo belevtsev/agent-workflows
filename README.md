@@ -18,11 +18,16 @@ macOS and Linux on ARM64 and AMD64. The small download helper uses `curl`, `tar`
 and `sha256sum` or macOS `shasum`; alternatively unpack your platform archive from
 the release page and run `./cw install`.
 
-In a terminal, setup opens a guided interface: choose hosts, keep the recommended
-models or select a preset, optionally save API keys, then review changes before
-applying. Enter accepts the selected default; Esc or Ctrl-C cancels before apply.
-Use `--plain` for a plain terminal interface. Updates default to keeping saved
-choices. Named presets explicitly replace existing overrides:
+In a terminal, setup opens a guided full-screen interface with four steps: hosts,
+models, optional API keys, and a review before anything is applied. Answered steps
+collapse to one line, and the review shows each host's models by role group.
+Keys: ↑/↓ move, Space toggles a checkbox, Enter continues, ← or Backspace goes
+back with your earlier answers kept, and Esc asks before quitting; Ctrl-C quits at
+once. Quitting before apply leaves your configuration unchanged. After applying,
+setup prints a short summary instead of the JSON report. Use `--plain` for a
+line-based interface (type a number, `b` to go back, `q` to quit). Updates
+default to keeping saved choices. Named presets explicitly replace existing
+overrides:
 
 | Choice | Codex substantive work | Claude substantive work |
 | --- | --- | --- |
@@ -30,11 +35,15 @@ choices. Named presets explicitly replace existing overrides:
 | Balanced | Sol 6.1 / xhigh | Opus 5.5 / high |
 | Advanced | Each role, fallback and memory/context field separately | Each role and fallback separately |
 
-Recommended and Balanced retain the cheap GitHub defaults: Luna/high and
-Sonnet 5.5/medium. Unset preference fields follow future release defaults;
+The models step also has a GitHub workers row for each selected host. It sets one
+model and reasoning effort for the commit, routine PR text and PR submission
+roles, which default to Luna/high on Codex and Sonnet 5.5/medium on Claude.
+Choosing a preset keeps the GitHub worker choice shown there, and choosing the
+release default unpins it. Scripts set these roles with `--settings`. Unset preference fields follow future release defaults;
 explicit fields remain pinned, including a value equal to today's default.
-Advanced opens a field menu so you can edit one role or memory setting directly;
-Enter keeps the displayed value, and `default` clears a text override.
+Advanced opens a menu so you can edit one role or memory setting directly; each
+row shows its current value. Clear a text field (or type `default` in the plain
+interface) to follow the release default again.
 
 For scripts, select hosts and preferences explicitly:
 
@@ -44,7 +53,7 @@ cw update --non-interactive
 ```
 
 `--json`, piped input/output, `--non-interactive` and dry runs never open the
-terminal interface. Prompts go to stderr; stdout remains JSON. Use
+terminal interface and always write the JSON report to stdout. Use
 `--settings FILE` instead of `--preset` to load nonsecret version-one preferences.
 
 This source requires a published `cw-manager-v10` release. Personal

@@ -301,7 +301,7 @@ func (i *Installer) configurationView(command, root string, manifest Object, sta
 			if id == hostClaude {
 				effort = text(profile["effort"])
 			}
-			r := RoleConfiguration{Role: role, Scope: text(profile["scope"]), Default: ModelSelection{Model: text(profile["model"]), Effort: effort}}
+			r := RoleConfiguration{Role: role, Profile: profileName, Scope: text(profile["scope"]), Default: ModelSelection{Model: text(profile["model"]), Effort: effort}}
 			if id == hostCodex {
 				for _, model := range slices.Sorted(maps.Keys(policyModelEfforts)) {
 					if model != "gpt-6-luna" || r.Scope != "substantive" {
