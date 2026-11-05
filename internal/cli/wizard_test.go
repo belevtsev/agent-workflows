@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -946,9 +947,32 @@ func TestWizardKeysOnlineCheckToggle(t *testing.T) {
 		"Keys TypeSafe environment · SubQ not set · OpenAI not set · online check after applying")
 }
 
+// R keys-one-screen (hidden input, revision 11) and R terminal-safety: hidden key
+// input refuses an *os.File that is not a terminal. A pipe reaches the key rows on
+// every platform; a regular file is refused at startup on Linux, and on macOS it is
+// read until a key row is chosen and refused. Cases that feed a regular file run
+// Select under a deadline, so a regression fails instead of hanging.
 func TestWizardHiddenInputRefusesNonTerminalFile(t *testing.T) {
 	t.Parallel()
-	requireRefused := func(t *testing.T, r wtResult) {
+	const visualInput, plainInput = "\r\r1\r", "\n\n1\n"
+
+	requireNothingStored := func(t *testing.T, f *wtFixture, r wtResult) {
+		t.Helper()
+		if stored := wtStoredKeys(t, f.view.ConfigDir); len(stored) != 0 {
+			names := make([]string, 0, len(stored))
+			for name := range stored {
+				names = append(names, name)
+			}
+			slices.Sort(names)
+			t.Fatalf("refused Select stored keys: %q", names)
+		}
+		if r.stdout != "" {
+			t.Fatalf("wizard wrote to config.Out: %q", r.stdout)
+		}
+	}
+	// R keys-one-screen: choosing a key row gives the hidden-input refusal, not a
+	// cancellation, and nothing is stored.
+	requireRefused := func(t *testing.T, f *wtFixture, r wtResult) {
 		t.Helper()
 		if r.err == nil || !strings.Contains(r.err.Error(), "hidden key input requires a terminal") {
 			t.Fatalf("Select error = %v, want hidden input refusal", r.err)
@@ -956,44 +980,118 @@ func TestWizardHiddenInputRefusesNonTerminalFile(t *testing.T) {
 		if errors.Is(r.err, context.Canceled) {
 			t.Fatal("refusal reported as cancellation")
 		}
+		requireNothingStored(t, f, r)
 	}
-
-	t.Run("visual temp file", func(t *testing.T) {
-		t.Parallel()
-		f := newWTFixture(t, false)
+	// R keys-one-screen (revision 10, Linux): a regular file is refused at once,
+	// before anything is written to config.Err.
+	requireUnavailable := func(t *testing.T, f *wtFixture, r wtResult) {
+		t.Helper()
+		if r.err == nil || !strings.Contains(r.err.Error(), "terminal input is unavailable") {
+			t.Fatalf("Select error = %v, want terminal input unavailable", r.err)
+		}
+		if errors.Is(r.err, context.Canceled) {
+			t.Fatal("startup refusal reported as cancellation")
+		}
+		if r.out != "" {
+			t.Fatalf("startup refusal wrote to config.Err: %q", wtTail(r.out))
+		}
+		requireNothingStored(t, f, r)
+	}
+	// pipeInput returns the read end of a pipe holding data. The write end is
+	// closed before Select reads, so the reader sees end of input after data and
+	// no writer can block (data is far below the pipe buffer) or leak.
+	pipeInput := func(t *testing.T, data string) *os.File {
+		t.Helper()
+		reader, writer, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = reader.Close() })
+		_, writeErr := writer.WriteString(data)
+		closeErr := writer.Close()
+		if writeErr != nil {
+			t.Fatal(writeErr)
+		}
+		if closeErr != nil {
+			t.Fatal(closeErr)
+		}
+		return reader
+	}
+	// fileInput returns a regular temp file holding data, closed on cleanup.
+	fileInput := func(t *testing.T, data string) *os.File {
+		t.Helper()
 		path := filepath.Join(t.TempDir(), "input")
-		if err := os.WriteFile(path, []byte("\r\r1\r"), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		file, err := os.Open(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer file.Close()
-		r := f.runContext(t.Context(), file)
-		requireRefused(t, r)
+		t.Cleanup(func() { _ = file.Close() })
+		return file
+	}
+
+	// R keys-one-screen + R terminal-safety: a pipe in visual mode reaches the key
+	// row on Linux and macOS, is refused, and the terminal is restored.
+	t.Run("visual pipe", func(t *testing.T) {
+		t.Parallel()
+		f := newWTFixture(t, false)
+		r := f.runContext(t.Context(), pipeInput(t, visualInput))
+		requireRefused(t, f, r)
 		wtRequireRestored(t, r.out)
 	})
 
+	// R keys-one-screen: a pipe in plain mode is refused the same way.
 	t.Run("plain pipe", func(t *testing.T) {
 		t.Parallel()
 		f := newWTFixture(t, false)
 		f.plain = true
-		reader, writer, err := os.Pipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer reader.Close()
-		if _, err := writer.WriteString("\n\n1\n"); err != nil {
-			t.Fatal(err)
-		}
-		if err := writer.Close(); err != nil {
-			t.Fatal(err)
-		}
-		r := f.runContext(t.Context(), reader)
-		requireRefused(t, r)
+		r := f.runContext(t.Context(), pipeInput(t, plainInput))
+		requireRefused(t, f, r)
 		wtRequireNoEscape(t, r.out)
 	})
+
+	// R keys-one-screen (revision 11): a regular file as config.In, per platform.
+	// Linux: startup refusal in either mode. macOS: Select waits on and reads the
+	// file; choosing the key row gives the hidden-input refusal, with R
+	// terminal-safety in visual mode. A regular file does not report end of input
+	// on macOS, so Select runs under a deadline of about 10 seconds derived from
+	// t.Context(): a regressed refusal then fails as a wrong (cancelled) result
+	// through the assertions below instead of hanging until the go test timeout.
+	// The end-of-file behaviour itself is not asserted.
+	for _, mode := range []struct {
+		name  string
+		plain bool
+		input string
+	}{
+		{"visual regular file", false, visualInput},
+		{"plain regular file", true, plainInput},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			t.Parallel()
+			switch runtime.GOOS {
+			case "linux", "darwin":
+			default:
+				t.Skipf("contract revision 11 defines regular-file input only on linux and darwin, not %s", runtime.GOOS)
+			}
+			f := newWTFixture(t, false)
+			f.plain = mode.plain
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			t.Cleanup(cancel)
+			r := f.runContext(ctx, fileInput(t, mode.input))
+			if runtime.GOOS == "linux" {
+				requireUnavailable(t, f, r)
+				return
+			}
+			requireRefused(t, f, r)
+			if mode.plain {
+				wtRequireNoEscape(t, r.out)
+			} else {
+				wtRequireRestored(t, r.out)
+			}
+		})
+	}
 }
 
 // ---------------------------------------------------------------------------
