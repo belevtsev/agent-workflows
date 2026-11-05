@@ -202,6 +202,9 @@ func newHarness(t *testing.T) *harness {
 		t.Fatal(err)
 	}
 	h.git(t, "init", "-q")
+	// Keep fixture repositories quiescent for whole-tree byte/mode snapshots.
+	h.git(t, "config", "--local", "maintenance.auto", "false")
+	h.git(t, "config", "--local", "gc.auto", "0")
 	h.git(t, "config", "user.name", "Fixture")
 	h.git(t, "config", "user.email", "fixture@example.invalid")
 	h.write(t, "go.mod", "module example.invalid/fixture\n\ngo 1.25\n")
