@@ -84,10 +84,14 @@ case $bundle_fields in "$tag $identified_revision $target_os $target_arch "*) bu
 rm -f "$temporary/$asset" "$temporary/SHA256SUMS"
 if [ -t 1 ] && [ -t 2 ] && ( : </dev/tty ) 2>/dev/null; then
     "$temporary/cw" "$@" </dev/tty &
+    child=$!
 else
-    "$temporary/cw" "$@" <&0 &
+    # Preserve stdin before the shell redirects an asynchronous command to null.
+    exec 3<&0
+    "$temporary/cw" "$@" <&3 3<&- &
+    child=$!
+    exec 3<&-
 fi
-child=$!
 status=0
 wait "$child" || status=$?
 child=
