@@ -1196,9 +1196,11 @@ func productionSharedAssertInstallerJournalUnion(test *testing.T, fixture *insta
 }
 
 func TestProductionSharedInstallerFiveSixRollbackRecoveryAndUninstall(test *testing.T) {
+	test.Parallel()
 	for _, originalExisted := range []bool{false, true} {
 		for _, boundary := range []string{"after-journal", "after-codex-config", "after-state"} {
 			test.Run(fmt.Sprintf("origin-%t/%s", originalExisted, boundary), func(test *testing.T) {
+				test.Parallel()
 				fixture := sharedInstallerFixture(test)
 				fixture.seedUserFiles(test)
 				path := sharedInstallerConfigPath(fixture)

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/belevtsev/agent-workflows/internal/bundled"
 	"github.com/pelletier/go-toml/v2"
@@ -17,6 +18,77 @@ import (
 var digestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var effectivePattern = regexp.MustCompile(`^effective-[0-9a-f]{64}$`)
 var standaloneRuntimePattern = regexp.MustCompile(`^[0-9a-f]{40}-[0-9a-f]{64}$`)
+
+// validatedSnapshots remembers immutable snapshots that passed suite
+// validation, keyed by root and the digest of the inventory the caller just
+// compared with the snapshot's receipt. A command reads the same snapshots
+// several times, and suite validation is the costliest part of each read.
+// Any changed entry, mode or link target changes the digest, so changed bytes
+// are always validated again. Failures, and validations during which the
+// snapshot changed, are never remembered.
+var validatedSnapshots = struct {
+	sync.Mutex
+	manifests map[string]Object
+}{manifests: map[string]Object{}}
+
+// validatedSnapshotLimit bounds the cache. cw runs one command per process, so
+// the limit only matters to long test processes; past it the cache restarts.
+const validatedSnapshotLimit = 1024
+
+// validatedSnapshot returns the manifest of a snapshot whose entries equal
+// contents, validating the suite unless these exact entries at this root
+// already passed. The caller must have computed contents from root itself.
+func validatedSnapshot(root string, contents Object) (Object, error) {
+	key := root + "\x00" + hash(legacyJSON(contents))
+	validatedSnapshots.Lock()
+	cached, ok := validatedSnapshots.manifests[key]
+	validatedSnapshots.Unlock()
+	if ok {
+		return copyObject(cached), nil
+	}
+	manifest, err := LoadManifestValidated(root)
+	if err != nil {
+		return nil, err
+	}
+	// Remember the result only if the snapshot did not change while it was
+	// being validated; otherwise this read stands alone, as without the cache.
+	after, err := inventory(root)
+	if err != nil || !equal(after, contents) {
+		return manifest, nil
+	}
+	validatedSnapshots.Lock()
+	if len(validatedSnapshots.manifests) >= validatedSnapshotLimit {
+		clear(validatedSnapshots.manifests)
+	}
+	validatedSnapshots.manifests[key] = copyObject(manifest)
+	validatedSnapshots.Unlock()
+	return manifest, nil
+}
+
+// copyObject deep-copies decoded JSON so no caller shares nested maps or
+// slices with the cache.
+func copyObject(value Object) Object {
+	out := make(Object, len(value))
+	for key, item := range value {
+		out[key] = copyValue(item)
+	}
+	return out
+}
+
+func copyValue(value any) any {
+	switch typed := value.(type) {
+	case Object:
+		return copyObject(typed)
+	case []any:
+		out := make([]any, len(typed))
+		for index, item := range typed {
+			out[index] = copyValue(item)
+		}
+		return out
+	default:
+		return typed
+	}
+}
 
 type snapshotReceipt struct {
 	Version           int              `json:"version"`
@@ -101,7 +173,7 @@ func (i *Installer) baseRelease(id bundled.Identity) (string, Object, error) {
 	if !equal(actual, receipt["inventory"]) {
 		return "", nil, errors.New("immutable base was modified")
 	}
-	m, err := LoadManifestValidated(root)
+	m, err := validatedSnapshot(root, actual)
 	return root, m, err
 }
 
@@ -314,7 +386,7 @@ func (i *Installer) effectiveRelease(name string) (string, Object, error) {
 	if !equal(contents, receipt.Inventory) || digest != receipt.EffectiveDigest {
 		return "", nil, errors.New("immutable effective snapshot was modified")
 	}
-	m, err := LoadManifestValidated(root)
+	m, err := validatedSnapshot(root, contents)
 	return root, m, err
 }
 
