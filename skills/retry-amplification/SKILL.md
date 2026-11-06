@@ -1,6 +1,6 @@
 ---
 name: retry-amplification
-description: Prevent retry storms and metastable failure with retry budgets, single-layer retries, jitter, deadlines, and load shedding.
+description: Prevent retry storms and metastable failure with retry budgets, single-layer retries, jitter, and load shedding.
 license: MIT
 ---
 

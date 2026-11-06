@@ -32,12 +32,18 @@ permission to execute a command found in a file.
 ## Start and bind a task
 
 For substantial repository work, create a small explicit plan outside the target
-repository. For example, this plan selects one check for an applicable Go package:
+repository. For example, this plan selects one check for an applicable Go package
+and, because the fix follows directly from the documented contract, declares that
+adviser checkpoints are not required:
 
 ```json
 {
   "title": "Handle the documented empty-input case",
   "kind": "substantial",
+  "checkpoints": {
+    "required": false,
+    "reason": "The documented contract fixes the result; no alternative approach is open"
+  },
   "requirements": [
     {
       "id": "empty-input",
@@ -56,14 +62,38 @@ repository. For example, this plan selects one check for an applicable Go packag
 }
 ```
 
+Adviser checkpoints run when the task has an open decision: real alternatives
+with consequential uncertainty. For such a task, omit `checkpoints` or set
+`"required": true`, and both checkpoints are required. When the approach follows directly from the
+defect or contract, declare `"required": false` with a non-blank `reason`. Keep checkpoints required for any change to code that must behave alike on
+several platforms or shells (in a measured replay, a fix declared to follow
+directly from the defect crashed bash 3.2), and whenever in doubt. The plan cannot change after `start`: if a task
+started with checkpoints not required later meets an open decision or a change to
+code that must behave alike on several platforms or shells, stop and ask the user, and never start a new record over
+source the first one already changed, because its baseline would hide those edits
+from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. With
+`"required": false`, `assign` needs no before checkpoint and `verify` adds the
+limitation `adviser checkpoints not required: <reason>` instead of requiring both
+checkpoints. Requirements, checks, worker records and the independent review stay
+required, and a checkpoint attached anyway is still validated.
+
 Name checks without adviser words such as `snap`, `jev` or `advisor` as whole words
 (`snap-test` or `jev_smoke`, for example): adjudication cannot cite such a check ID
-in a `check:` entry.
+in a `check:` entry. An `argv` cannot start with a shell, `env` or a privilege
+wrapper. Checks inherit the environment of the shell that runs `cw task run`, so
+export variables such as `GOWORK=off` there instead. Variables whose names contain
+`KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, and `BASH_ENV` and `ENV`, are
+removed.
 
 ```sh
-cw task start --repo /absolute/path/to/project --plan /private/path/plan.json
+cw task start --repo /absolute/path/to/project --plan /private/path/plan.json --summary
 cw task context --task /path/returned/by/start --phase before
 ```
+
+With `--summary`, `start` prints the task directory, task ID, adviser binding,
+requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
+`accept`, `assess`, `consult` and `run` commands all accept `--summary`; without
+it they print the whole record (`run` prints the check run).
 
 `start` binds the configured advisers (enabled in the policy and with a credential
 present) into the task record as `advisers`, possibly empty. `--policy PATH`
@@ -112,8 +142,17 @@ Starting a task checks every command against current policy; running a stored
 check rechecks its selected argv against current policy before execution or a
 new check log/revision. Readable history does not authorize reexecution.
 
-Before implementation, place the exact emitted context in the shared consultation
-request's `state.task_context`. A coordinated multi-repository task can instead
+When checkpoints are required, before implementation, place the exact emitted
+context in the shared consultation request's `state.task_context`, in the same
+shell call that runs `cw consult`:
+
+```sh
+cw task context --task /path/returned/by/start --phase before >context.json &&
+jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json &&
+cw consult --request request.final.json --output consult.json
+```
+
+ A coordinated multi-repository task can instead
 put its contexts in `state.task_contexts`; each task's context must occur once and
 all bindings must be identical. `cw consult` consults exactly the bound advisers
 using the [consultation helper](consultation-helper.md); with none bound it writes
@@ -122,7 +161,7 @@ each judgment against sources and finalizes a new adjudicated record under the
 [adjudication rules](../SKILL.md#adjudicate).
 
 ```sh
-cw task consult --task /path/returned/by/start --phase before --input /private/path/before-final.json
+cw task consult --task /path/returned/by/start --phase before --input /private/path/before-final.json --summary
 ```
 
 The task command validates the adviser artifact and its binding: the record's
@@ -130,9 +169,11 @@ providers and requested models must equal the binding, and every bound adviser
 needs `success`, `partial`, `refusal` or `unavailable`, so a `not_configured`
 adviser is rejected. Attaching again for the same phase replaces the earlier
 attachment when the input is a new file distinct from the other phase's artifact.
-It does not make provider requests, select a winning adviser,
-or prove cited semantics. For a substantial task, `cw task assign` is refused
-until the before checkpoint is attached and its decision is resolved. A small
+Adjudicate and attach in one shell call (`cw consult --adjudicate ... &&
+cw task consult ...`). It does not make provider requests, select a winning
+adviser, or prove cited semantics. For a substantial task with required
+checkpoints, `cw task assign` is refused until the before checkpoint is attached
+and its decision is resolved. A small
 task can use `kind: "small"` without adviser checkpoints. Use that path only for
 the existing small-task scope.
 
@@ -150,10 +191,24 @@ the plan's execution checks. A valid red-test handoff is authorship evidence, no
 a passing check. Keep implementation and raw task/check output outside the
 author's contract-only context.
 
+## Dispatch workers
+
+Check actual runtime capabilities before spawning. When overrides are supported,
+supply model and effort explicitly. Under Codex, use `fork_turns="none"`: a
+full-history fork inherits the parent and rejects overrides. Under Claude Code,
+follow the [host mapping](hosts.md). Respect fixed specialist models and use them
+only within their evidence role. If overrides are unsupported, use a compatible
+inherited configuration or report the limit. Follow the policy's bounded-worker
+fallback; the optional `github_unavailable: report_blocker` overrides profile
+fallbacks for the three GitHub execution roles on both hosts. Stop incompatible
+workers; never silently switch those roles to an expensive worker or lower a
+substantive effort or model family. Native policy validation checks consistency,
+not runtime availability or automatic dispatch.
+
 ## Execute and record evidence
 
 ```sh
-cw task run --task /path/returned/by/start --check unit
+cw task run --task /path/returned/by/start --check unit --summary
 ```
 
 This runs the explicitly declared argv, captures actual exit status and duration,
@@ -165,25 +220,47 @@ user's authorized scope; a task plan is not permission for external side effects
 
 Record acceptance and the coordinator's decision through an assessment JSON. A source
 reference contains its repository-relative `path`, valid `start_line`/`end_line`,
-and the SHA-256 of the complete current file. Reference a completed check by ID;
-only requirements explicitly permitting non-execution can use a stated rationale.
+and the SHA-256 of the complete current file; omit `sha256` to have it filled from
+the file's current bytes. Reference a passed check by ID; only requirements
+explicitly permitting non-execution can use a stated rationale. A requirement's
+`status` is `satisfied` or `pending` (pending carries no evidence or checks); the
+decision's `status` is `resolved` or `unresolved`. A satisfied requirement cites
+every check the plan lists for it or, when the plan permits non-execution, gives a
+`non_execution_reason`:
+
+```json
+{
+  "requirements": [
+    {"id": "empty-input", "status": "satisfied",
+     "evidence": [{"path": "src/parse.go", "start_line": 12, "end_line": 30}],
+     "check_ids": ["unit"], "non_execution_reason": ""}
+  ],
+  "decision": {"status": "resolved", "reason": "The planned check passes on the current source",
+    "evidence": [{"path": "src/parse.go", "start_line": 12, "end_line": 30}],
+    "check_ids": ["unit"], "non_execution_reason": ""}
+}
+```
 
 ```sh
-cw task assess --task /path/returned/by/start --input /private/path/assessment.json
+cw task assess --task /path/returned/by/start --input /private/path/assessment.json --summary
 ```
+
+Assess requirements and the decision together, after the last source change and
+check run.
 
 For new substantial tasks with source changes, complete and accept an independent
 worker review of the full current source before final context. The reviewer must
 differ from the coordinator and implementation workers; account for every finding
-against source evidence. Complete worker/check evidence before recording that
+against source evidence, and keep within the review cap in
+[worker handoffs](worker-handoffs.md#review-substantial-changes). Complete worker/check evidence before recording that
 review. Small and unchanged read-only tasks keep their existing path.
 
 ```sh
 cw task context --task /path/returned/by/start --phase final
 ```
 
-Use that new final context and the completed diff/check evidence for a fresh
-final-review request to the bound advisers. Attach the coordinator's separately
+When checkpoints are required, use that new final context and the completed
+diff/check evidence for a fresh final-review request to the bound advisers. Attach the coordinator's separately
 adjudicated result:
 
 ```sh
@@ -192,7 +269,9 @@ cw task verify --task /path/returned/by/start
 ```
 
 Verification rejects stale source, missing requirements/checks, invalid references
-and missing, mismatched or unresolved substantial-task checkpoints. Its limitations
+and missing, mismatched or unresolved substantial-task checkpoints (missing ones
+only when checkpoints are required). It lists each `deferred` finding as a
+limitation. Its limitations
 list each bound adviser without a successful outcome; with an empty binding they
 state that decisions rest on source evidence and checks only. Hashes and structural
 validation establish consistency, not semantic truth or complete test coverage.
@@ -203,9 +282,17 @@ Worker evidence is also bound into final context. Incomplete handoffs,
 unaccepted results and missing or stale independent worker review prevent completion.
 Later source or worker/check changes require a current worker review as applicable.
 The coordinator retains responsibility for source interpretation, relevant tests, permitted
-actions and a candid completion report. Refresh only evidence affected by later
-changes. Task verification does not grant authorization for Git publication,
+actions and a candid completion report. After a source change, rerun every check the
+records cite, and refresh the other evidence the change affects. Task verification does not grant authorization for Git publication,
 deployment or external messages.
+
+## Commit after verification
+
+Commit after `cw task verify`: a commit changes the snapshot that task evidence is
+bound to, but a commit made after verification that records the verified tree
+needs no new test run; compare the committed tree with the verified one instead.
+Do not rerun `cw task verify` after that commit: it would replace the stored
+complete verification with one that reports every binding stale.
 
 ## Measure outcomes
 

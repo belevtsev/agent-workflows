@@ -82,7 +82,9 @@ type BoundWorkerResult struct {
 // FindingDisposition records the coordinator's judgment. The reviewer has no
 // veto: a rejection needs source evidence and a reason, just as a resolution
 // does. An accepted finding remains acknowledged but unresolved, and cannot
-// satisfy completion until a later disposition resolves or rejects it.
+// satisfy completion until a later disposition resolves or rejects it. A
+// deferred finding also needs source evidence and a reason; it does not block
+// completion but verify lists it as a limitation.
 type FindingDisposition struct {
 	FindingID string      `json:"finding_id"`
 	Status    string      `json:"status"`
@@ -236,10 +238,12 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // AssignWorker records a brief at the actual current source. It does not launch
 // or authorize a process, and IDs are declarations rather than authentication.
 // A substantial task dispatches no worker before its before checkpoint is
-// attached with a resolved decision.
+// attached with a resolved decision, unless its plan declares checkpoints not
+// required; a before checkpoint attached anyway is still validated.
 func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
 	return update(taskPath, func(root *os.Root, record *Record) error {
-		if record.Plan.Kind == "substantial" {
+		_, attached := record.Consultations["before"]
+		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
 			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("adjudicate and attach the before checkpoint before dispatching workers: %w", err)
 			}
@@ -551,11 +555,14 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 		if findWorkerResult(*record, input.AssignmentID) != nil {
 			return errors.New("assignment already has an immutable terminal result; use a new assignment ID")
 		}
-		if err := validateResult(*record, *assigned, input); err != nil {
-			return err
-		}
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 		if err != nil {
+			return err
+		}
+		if input, err = completeWorkerResult(*record, *assigned, snapshot, input); err != nil {
+			return err
+		}
+		if err := validateResult(*record, *assigned, input); err != nil {
 			return err
 		}
 		if !equalSnapshot(snapshot, input.Snapshot) {
@@ -645,8 +652,8 @@ func validateAcceptance(record Record, result BoundWorkerResult, input WorkerAcc
 		if disposition.Evidence == nil {
 			return errors.New("finding disposition evidence must be an explicit array; use [] when empty")
 		}
-		if seen[disposition.FindingID] || !slices.ContainsFunc(result.Result.Findings, func(finding WorkerFinding) bool { return finding.ID == disposition.FindingID }) || !slices.Contains([]string{"accepted", "rejected", "resolved"}, disposition.Status) || !boundedText(disposition.Reason) {
-			return errors.New("finding dispositions need distinct known IDs, accepted/rejected/resolved status and reason")
+		if seen[disposition.FindingID] || !slices.ContainsFunc(result.Result.Findings, func(finding WorkerFinding) bool { return finding.ID == disposition.FindingID }) || !slices.Contains([]string{"accepted", "rejected", "resolved", "deferred"}, disposition.Status) || !boundedText(disposition.Reason) {
+			return errors.New("finding dispositions need distinct known IDs, accepted/rejected/resolved/deferred status and reason")
 		}
 		seen[disposition.FindingID] = true
 		if err := refsShape(disposition.Evidence, disposition.Status != "accepted"); err != nil {
@@ -695,15 +702,18 @@ func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAccept
 		if result == nil {
 			return errors.New("acceptance references a missing worker result; record a terminal handoff first")
 		}
+		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		if err != nil {
+			return err
+		}
+		if input, err = completeAcceptance(*record, *result, snapshot, input); err != nil {
+			return err
+		}
 		if err := validateAcceptance(*record, *result, input); err != nil {
 			return err
 		}
 		if len(record.WorkerAcceptances) >= 1024 {
 			return errors.New("task worker acceptance limit reached")
-		}
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
-		if err != nil {
-			return err
 		}
 		if input.Status == "accepted" {
 			assigned := findAssignment(*record, input.AssignmentID)
@@ -813,6 +823,26 @@ func findingSourceObsolete(snapshot projectctx.Snapshot, refs []SourceRef) bool 
 		}
 	}
 	return false
+}
+
+// deferredFindingLimitations lists every deferred disposition of each
+// assignment's latest acceptance. A deferral is a disclosed limitation, not a
+// problem; its evidence stays subject to the same freshness rule as a
+// resolution.
+func deferredFindingLimitations(record Record) []string {
+	limitations := []string{}
+	for _, assigned := range record.Assignments {
+		accepted := latestAcceptance(record, assigned.Brief.ID)
+		if accepted == nil {
+			continue
+		}
+		for _, disposition := range accepted.Acceptance.Findings {
+			if disposition.Status == "deferred" {
+				limitations = append(limitations, fmt.Sprintf("worker assignment %s finding %s deferred: %s", assigned.Brief.ID, disposition.FindingID, disposition.Reason))
+			}
+		}
+	}
+	return limitations
 }
 
 func workerEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Snapshot) []string {

@@ -1,6 +1,6 @@
 ---
 name: parse-dont-validate
-description: Move checks to input boundaries by returning narrower Go types, so invalid states stop spreading through services and storage code.
+description: Move checks to input boundaries by returning narrower Go types so invalid states stop spreading.
 license: MIT AND Apache-2.0
 ---
 

@@ -128,8 +128,8 @@ assignment, handoff and coordinator acceptance before claiming authorship comple
 Test-author dispatch alone does not make a small task substantial. Small native
 tasks retain their assignment/handoff/acceptance and selected execution checks,
 without adding substantial adviser or final-review gates solely for this dispatch.
-Substantial work retains both decision checkpoints and a distinct source-aware
-final reviewer who inspects implementation and tests. That reviewer differs from
+Substantial work retains its decision checkpoints, when required, and a distinct
+source-aware final reviewer who inspects implementation and tests. That reviewer differs from
 the coordinator, coder and test author; blind authorship does not replace review.
 
 Report contract coverage, actual checks and their limits. Do not retroactively

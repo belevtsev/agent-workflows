@@ -1,6 +1,6 @@
 ---
 name: codebase-design
-description: Design or deepen module interfaces, choosing seams and removing shallow layers so behavior stays testable through a small surface.
+description: Design or deepen module interfaces, choosing seams and removing shallow layers so behavior stays testable.
 license: MIT
 ---
 

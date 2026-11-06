@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review PRs or local diffs for concrete defects, tracing changed behavior and reporting exact evidence and verification limits.
+description: Review PRs or local diffs for concrete defects, tracing changed behavior with exact evidence and limits.
 ---
 
 # Evidence-based code review

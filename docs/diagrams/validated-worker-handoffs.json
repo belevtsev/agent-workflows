@@ -375,7 +375,7 @@
       "type": "security",
       "label": "16  Verify completion",
       "sublabel": "cw task verify · all evidence",
-      "tag": "Stale → refresh affected steps",
+      "tag": "Stale → rerun cited checks",
       "width": 168,
       "height": 80,
       "sources": [
@@ -602,7 +602,7 @@
       "items": [
         "The reviewer differs from the coordinator and implementation workers; every finding gets an evidence-backed disposition.",
         "Complete worker/check evidence before accepting final review. Source or worker/check changes can stale it.",
-        "Refresh only affected evidence, assign a new current review when needed, then refresh final adviser context."
+        "After a source change, rerun every check the records cite, assign a new current review when needed, then refresh final adviser context."
       ]
     },
     {

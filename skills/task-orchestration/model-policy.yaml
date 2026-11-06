@@ -82,9 +82,12 @@ fallbacks:
   sol_unavailable: compatible_coordinator_or_report_blocker
   advisers_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
 
-# Every activated substantial task keeps both checkpoints: before implementation
-# (or substantive drafting/review), and again during final review against the
-# completed work and current checks, before completion or publication. Advisers
+# An activated substantial task with an open decision keeps both checkpoints:
+# before implementation (or substantive drafting/review), and again during final
+# review against the completed work and current checks, before completion or
+# publication, and so does one changing code that must behave alike on several
+# platforms or shells. Otherwise its plan declares checkpoints not required,
+# with a reason; when in doubt, it keeps them. Advisers
 # take part only when configured: listed under providers below and with their
 # credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY). With none
 # configured, the coordinator still holds each checkpoint and decides on source

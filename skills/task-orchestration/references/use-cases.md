@@ -19,13 +19,18 @@ avoid duplicate investigation. Dependent integration stays with the coordinator.
 Resolve installed specialists from the current catalog. Repository commands,
 execution environments, and product conventions belong in repository instructions.
 
-Every substantial preset follows the entrypoint's [decision flow](../SKILL.md#follow-the-decision-flow):
-a before checkpoint ahead of implementation or substantive drafting/review, and a
-fresh final checkpoint on the completed deliverable and current evidence before
-completion or publication. Each checkpoint consults the task's configured advisers,
-if any, and needs a resolved adjudication; earlier advice cannot replace the final
-one. Record each checkpoint's disposition, including advisers that were not
-configured, unavailable or restricted.
+Every substantial preset follows the entrypoint's [decision flow](../SKILL.md#follow-the-decision-flow).
+When the task has an open decision (real alternatives with consequential
+uncertainty), it runs a before checkpoint ahead of implementation or substantive
+drafting/review, and a fresh final checkpoint on the completed deliverable and
+current evidence before completion or publication. Each checkpoint consults the
+task's configured advisers, if any, and needs a resolved adjudication; earlier
+advice cannot replace the final one. Record each checkpoint's disposition,
+including advisers that were not configured, unavailable or restricted. When the
+approach follows directly from the defect or contract and no changed code must
+behave alike on several platforms or shells, the plan declares
+`"checkpoints": {"required": false, "reason": "..."}` instead; when in doubt, keep
+them required.
 
 ## Implementation
 
@@ -44,8 +49,15 @@ others' changes. Integrate and run required checks in the repository environment
 fixing failures caused by the change. Substantial source changes require an
 independent substantive worker review of the completed source, recorded through
 the [worker handoff contract](worker-handoffs.md) before the final adviser checkpoint.
-The coordinator resolves or rejects each finding against evidence. Refresh the
-review when source changes; keep small and unchanged read-only tasks lightweight.
+The coordinator resolves, defers or rejects each finding against evidence; it defers only a finding that changes no
+behaviour, fails no gate and loses no rule, and never a defect in changed behaviour
+or a finding with a concrete failure scenario, unless the defect predates the
+change and the change neither causes, touches nor newly exposes it. Reviews
+are capped: one full review, at most one diff-scoped follow-up by a fresh reviewer
+after the fixes, and a further review only to re-bind a fix of a defect that
+follow-up found (see the
+[follow-up review](worker-handoffs.md#follow-up-review-after-a-fix-revision));
+keep small and unchanged read-only tasks lightweight.
 
 For a requested commit or routine PR creation/update, explicitly dispatch the
 [GitHub worker](github-worker.md), even for a small task. It drafts messages and

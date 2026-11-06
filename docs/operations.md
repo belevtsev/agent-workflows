@@ -98,8 +98,14 @@ Neither mode installs dependencies, changes watcher enrollment or calls advisers
 
 `cw task` keeps source-bound requirements, actual argv check execution, references,
 the adviser binding fixed at `cw task start`, two substantial-task decision
-checkpoints and the coordinator's decisions in a private
-external task directory, by default `STATE/workflow-tasks`. `cw metrics schema` describes the versioned observation format;
+checkpoints (unless the plan declares them not required, with a reason that
+verify lists) and the coordinator's decisions in a private
+external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
+`handoff`, `accept`, `assess`, `consult` and `run` commands accept `--summary` for a
+one-line result instead of the whole record (`run`: the whole check run), and
+`handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
+value (task, assignment hash, agent, current snapshot, result hash, coordinator
+and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. These commands do not alter installer ownership, receipt or
@@ -165,7 +171,8 @@ The instructions block is rendered from the same template as Codex, with the sam
 markers, into `<claude-home>/CLAUDE.md`.
 
 `settings.json` gets exactly two keys from the coordinator profile in
-`model-policy.claude.yaml`: `model` and `effortLevel`. The edit changes those
+`model-policy.claude.yaml`: `model` and `effortLevel` (`claude-opus-5-5` and
+`high` by default; `xhigh` remains for the decision roles). The edit changes those
 values' bytes and nothing else. Malformed JSON, a non-object document, or a
 symlinked file stops installation before anything changes.
 

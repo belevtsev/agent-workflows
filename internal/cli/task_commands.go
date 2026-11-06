@@ -52,6 +52,13 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		return nil
 	}
+	// --summary prints one compact line with the identifiers and hashes a
+	// coordinator needs next, instead of the whole record, which grows with
+	// every check and worker record.
+	var summary bool
+	summaryFlag := func(cmd *cobra.Command) {
+		cmd.Flags().BoolVar(&summary, "summary", false, "Print a one-line summary instead of the whole task record")
+	}
 	var repo, planFile, store, policy string
 	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: "Capture the selected project's baseline and an explicit JSON requirement/check plan in a new private task record. " +
 		"The record binds the advisers configured now: each provider the model policy enables whose credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys), mapped to its pinned model, possibly none. " +
@@ -99,12 +106,16 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, startSummary(record))
+		}
 		return output(cmd, record)
 	}}
 	start.Flags().StringVar(&repo, "repo", "", "Selected project directory (default: current working directory)")
 	start.Flags().StringVar(&planFile, "plan", "", "Explicit plan JSON file, or - for standard input")
 	start.Flags().StringVar(&store, "store", "", "Private task storage directory outside the target project")
 	start.Flags().StringVar(&policy, "policy", "", "Validated model policy whose enabled advisers are bound (defaults to the installed release's)")
+	summaryFlag(start)
 	task.AddCommand(start)
 	var contextTask, phase string
 	contextCommand := &cobra.Command{Use: "context", Short: "Emit the exact before/final source context, with the task's adviser binding, for shared adviser state", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -127,7 +138,11 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		value, err := taskflow.Run(cmd.Context(), runTask, check)
 		if value.ID != "" {
-			if outputErr := output(cmd, value); outputErr != nil {
+			var printed any = value
+			if summary {
+				printed = runSummary(runTask, value)
+			}
+			if outputErr := output(cmd, printed); outputErr != nil {
 				return outputErr
 			}
 		}
@@ -135,6 +150,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	}}
 	run.Flags().StringVar(&runTask, "task", "", "Task directory returned by start")
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan")
+	summaryFlag(run)
 	task.AddCommand(run)
 	var assessTask, assessmentFile string
 	assess := &cobra.Command{Use: "assess", Short: "Record acceptance and Coordinator decisions against actual source/check references", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -149,10 +165,14 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, assessSummary(value, input))
+		}
 		return output(cmd, value)
 	}}
 	assess.Flags().StringVar(&assessTask, "task", "", "Task directory returned by start")
 	assess.Flags().StringVar(&assessmentFile, "input", "", "Assessment JSON file, or - for standard input")
+	summaryFlag(assess)
 	task.AddCommand(assess)
 	var assignTask, briefFile string
 	assign := &cobra.Command{Use: "assign", Short: "Bind a worker brief and exclusive writer scope to the current source", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -167,10 +187,14 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, assignSummary(value, input.ID))
+		}
 		return output(cmd, value)
 	}}
 	assign.Flags().StringVar(&assignTask, "task", "", "Task directory returned by start")
 	assign.Flags().StringVar(&briefFile, "input", "", "Worker brief JSON file, or - for standard input")
+	summaryFlag(assign)
 	task.AddCommand(assign)
 	var handoffTask, resultFile string
 	handoff := &cobra.Command{Use: "handoff", Short: "Validate a worker result against its assignment, source and actual checks", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -185,10 +209,14 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, handoffSummary(value, input.AssignmentID))
+		}
 		return output(cmd, value)
 	}}
 	handoff.Flags().StringVar(&handoffTask, "task", "", "Task directory returned by start")
 	handoff.Flags().StringVar(&resultFile, "input", "", "Worker result JSON file, or - for standard input")
+	summaryFlag(handoff)
 	task.AddCommand(handoff)
 	var acceptTask, acceptanceFile string
 	accept := &cobra.Command{Use: "accept", Short: "Record the coordinator's source-backed disposition of an exact worker result", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -203,10 +231,14 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, acceptSummary(value, input.AssignmentID))
+		}
 		return output(cmd, value)
 	}}
 	accept.Flags().StringVar(&acceptTask, "task", "", "Task directory returned by start")
 	accept.Flags().StringVar(&acceptanceFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
+	summaryFlag(accept)
 	task.AddCommand(accept)
 	var consultTask, consultPhase, consultFile string
 	consult := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -220,11 +252,15 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err != nil {
 			return err
 		}
+		if summary {
+			return output(cmd, consultSummary(value, consultPhase))
+		}
 		return output(cmd, value)
 	}}
 	consult.Flags().StringVar(&consultTask, "task", "", "Task directory returned by start")
 	consult.Flags().StringVar(&consultPhase, "phase", "", "before or final")
 	consult.Flags().StringVar(&consultFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
+	summaryFlag(consult)
 	task.AddCommand(consult)
 	var verifyTask string
 	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {

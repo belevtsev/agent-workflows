@@ -1,6 +1,6 @@
 ---
 name: clocks-and-time
-description: Handle durations, timestamps, time zones, DST, and event ordering in Go without wall-clock, skew, or calendar bugs.
+description: Handle durations, timestamps, time zones, DST, and event ordering in Go without clock, skew, or calendar bugs.
 license: MIT
 ---
 

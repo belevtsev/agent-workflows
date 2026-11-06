@@ -1,17 +1,46 @@
 # Decision consultation helpers
 
-Read this before using `cw consult`.
+## Quick path
+
+A normal checkpoint needs only this section. `T` is the task directory, `P` the
+phase (`before` or `final`); use new file paths for each phase.
+
+1. If `adviser-terms-reviewed.md` in the state directory is missing, older than 30
+   days, or names another policy version or provider set, read the
+   [provider contracts](adviser-providers.md#provider-contracts) and update it.
+2. Write `request.json` with exactly `state` and `questions` under the
+   [authoring rules](../SKILL.md#author-questions): Choice only, at most 8
+   questions, 2 to 255 options with criteria, `insufficient_evidence` included,
+   untrusted text in `state.untrusted`.
+3. Embed the context and consult in one shell call:
+   `cw task context --task T --phase P >context.json && jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json && cw consult --request request.final.json --output consult.json`.
+   Exit `2` means partial coverage (disclose it) or a bound adviser without its key
+   (set it and consult again).
+4. Check every judgment against source and write `decision.json` in the
+   [decision shape](#adjudicate-without-network-access): entries are `source:`,
+   `check:` or `observation:` and never name an adviser; give a reason for each
+   differing adviser and a note for each differing one at confidence 0.7 or more.
+5. Adjudicate and attach in one shell call:
+   `cw consult --adjudicate consult.json --decision decision.json --output final.json && cw task consult --task T --phase P --input final.json --summary`.
+
+Read the rest of this file only for a case the quick path does not cover.
 It validates a prepared Choice-only request, sends the same shared input to every
 configured adviser concurrently, and records each result independently. It does
 not dispatch workers or decide which judgment is correct. The command is part of
 the native `cw` manager and needs no interpreter or package installation.
+Provider-specific details, data handling and the multilingual evaluation are in
+[adviser providers](adviser-providers.md); a checkpoint does not need them.
 
 ## Task checkpoints
 
 Substantial tasks follow the fixed flow in the [entrypoint](../SKILL.md#follow-the-decision-flow):
 classify, before checkpoint, implement and verify, fresh final checkpoint, and
-complete only when both checkpoints are resolved. No state is skipped. Prepare
-distinct requests and new output paths for the two checkpoints. The before request
+complete only when both checkpoints are resolved. Checkpoints are required when
+the task has an open decision; a plan whose approach follows directly from the
+defect or contract, with no changed code that must behave alike on several
+platforms or shells, declares `"checkpoints": {"required": false, "reason": "..."}`
+and skips them; when in doubt, keep them required. No required state is skipped. Prepare distinct requests and new
+output paths for the two checkpoints. The before request
 assesses the proposed approach and verification plan; the final request assesses
 the completed work and current checks before completion or authorized publication.
 Put the emitted task context in request state and retain adviser coverage and the
@@ -159,46 +188,6 @@ Exit codes:
 - `1`: an invalid input file (request, record, decision or policy) or an existing
   output path.
 
-### Jev version and capability boundaries
-
-When Jev is enabled, its policy entry must be an exact version, which keeps a run
-independent of moving aliases. As checked on 16 October 2026, TypeSafe's
-[model reference](https://docs.typesafe.ai/models) maps `jev-latest` to `jev-1.13.0`
-and `jev-preview` to `jev-1.14.0`; consult that reference for subsequent changes.
-The record retains the returned version, and a response that differs from the
-requested pin is rejected. The
-[1.13 jaggedness notes](https://docs.typesafe.ai/model-jaggedness/jev-1.13) apply to
-1.13 and do not establish 1.14 limitations or improvements.
-
-The [1.14 announcement](https://typesafe.ai/blog/jev-1-14) introduces experimental
-[images](https://docs.typesafe.ai/images) and
-[Box](https://docs.typesafe.ai/primitives/box) answers. They require
-`TypeSafe-Danger-Zone-Images: true`. Extended context requires the separate
-`TypeSafe-Danger-Zone-Long-Context: true` header; it raises the standard 64k request
-and 32k per-question token limits to 262k for both. This helper sends neither
-header, accepts no image assets and remains Choice-only for all advisers.
-
-### OpenAI Decisions
-
-The fixed endpoint is `POST https://api.openai.com/v1/decisions`. The adapter maps
-canonical shared state to deterministic JSON text in `input`, question IDs to
-`name`, and each criterion key/description to a `choices` value/description. It
-normalizes named answer arrays and probability arrays into the common record. The
-request keeps the shared evidence fingerprint; endpoint-specific encoding does not
-give an adviser different facts or question meanings.
-
-Read the current [guide](https://developers.openai.com/api/docs/guides/decisions),
-[create contract](https://developers.openai.com/api/reference/resources/decisions/methods/create)
-and applicable [data controls](https://developers.openai.com/api/docs/guides/your-data).
-OpenAI currently accepts at most 200 questions; an unsupported OpenAI request is
-recorded as `unavailable` without breaking the other advisers' results. OpenAI's
-predicate, score, image and other input features do not expand this shared contract.
-
-OpenAI can refuse an individual question while answering others. The record keeps
-those choices and marks the refused question as missing coverage; a refusal never
-becomes a negative choice. A mixed response is `partial`; an all-refused response
-is `refusal`.
-
 ## Adjudicate without network access
 
 The coordinator investigates and independently verifies each question against exact
@@ -309,9 +298,11 @@ input is a new file distinct from the other phase's artifact. Use this after
 resolving an unresolved decision: adjudicate again, or consult again with new
 evidence, then attach the new final record.
 
-For a substantial task, `cw task assign` is refused until the before checkpoint is
-attached and resolved. `cw task verify` requires both checkpoints resolved, and a
-before record never satisfies the final phase. With an empty binding, verify
+For a substantial task with required checkpoints, `cw task assign` is refused
+until the before checkpoint is attached and resolved, `cw task verify` requires
+both checkpoints resolved, and a before record never satisfies the final phase.
+With `"required": false`, verify lists the reason as a limitation, and an attached
+checkpoint is still validated. With an empty binding, verify
 reports that no advisers were configured when the task started, so decisions rest
 on source evidence and checks only. This release reads task record version 3 and
 consultation record version 4 only; task records and consultation records from
@@ -327,79 +318,5 @@ evidence. Keep sensitive records in the task's permitted storage. Saving outside
 agreed task location requires its own scope.
 
 Before configuring any adviser, confirm that sending source excerpts to that
-provider is permitted for the code and organization involved.
-
-- **SubQ:** SubQ [retains data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/).
-  Organization-level zero data retention is available and applies to Decisions. Its
-  documented per-request `store: false` setting covers Chat Completions and
-  Responses; the helper does not claim that setting for Decisions. Credentials are
-  described in the [SubQ authentication guide](https://docs.subq.ai/using-the-api/authentication/).
-- **TypeSafe (Jev):** TypeSafe is hosted in the US. Zero data retention is available
-  only to enterprise customers. Its privacy policy states that it does not train on
-  prompts.
-- **OpenAI:** keep request content within the account's
-  [data controls](https://developers.openai.com/api/docs/guides/your-data).
-
-## Multilingual evaluation
-
-`cwdev eval multilingual` provides a small synthetic baseline for the configured
-advisers. It is separate from task consultations, skill-discovery evaluations and
-native manager checks. The bundled corpus lives in `evals/multilingual` relative to
-the skill; `cwdev` is a maintainer tool that reads it from a source checkout,
-selected with `--source` (by default the current directory).
-
-The twelve neutral case IDs cover durable acknowledgement, tenant isolation,
-cancellation and release identity. Each family has supporting, contradictory and
-missing-evidence observations. English, Ukrainian and German variants preserve the
-facts, claim, instructions and option meanings. The stable choices are `supported`,
-`contradicted` and `insufficient_evidence`. The request builder uses only raw
-inputs. The separate oracle's per-case expected choice and evaluator rationale never
-enter a provider request.
-
-Run offline validation without network access, credential lookup or output files:
-
-```sh
-GOWORK=off go run ./cmd/cwdev eval multilingual
-```
-
-Run it from the editable checkout; do not edit installed snapshots. A hosted run
-requires `--live --output-dir PATH` and a new private directory outside source
-repositories and managed releases:
-
-```sh
-GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01
-```
-
-Only configured providers run. The report lists every known provider; one that is
-not configured is `not_run` with reason `not_configured`, which is not a failure.
-With no configured provider, a live run makes no network call, reports every
-provider as not run and exits `0`.
-
-Freeze the reviewed input and oracle hashes before the first hosted request. Each
-language forms one batch of twelve questions. The configured providers receive
-identical shared input concurrently; language batches run sequentially, so each
-configured provider gets at most three requests. The run uses the existing
-30-second batch budget and never retries.
-
-The private `report.json`, `summary.md` and safe per-language consultation records
-retain input/oracle/policy/runner provenance, runtime identity, requested and
-returned models, measured latency and token usage. Scores include correct, incorrect
-and missing counts per provider/language and overall. Accuracy uses valid answers as
-its denominator; coverage uses all expected answers. Also inspect correct/total and
-complete language-triplet consistency. Zero-denominator metrics remain unknown.
-Consistency can include consistently incorrect choices and is not accuracy.
-
-A valid `insufficient_evidence` choice is scored against the oracle normally.
-Refusals, malformed responses and unavailable providers remain missing coverage.
-Incorrect choices do not fail execution: a fully answered run exits `0`, incomplete
-coverage from a configured provider exits `2`, invalid inputs or output errors exit
-`1`, and an interruption exits `130` while preserving completed batches. Existing
-run directories are never overwritten. Credentials and raw transport exceptions are
-excluded from reports.
-
-The scorer does not choose an adviser or fill a task's `final_decision`. A fixture
-defect invalidates affected results; preserve the original run and correct the
-corpus as a separate version rather than changing labels to match answers. A small
-synthetic baseline does not establish calibrated confidence, production quality or
-a version improvement. Offline tests exercise the runner with fake transports;
-installation, source validation and native CI never invoke the hosted evaluation.
+provider is permitted for the code and organization involved. Each provider's data
+handling is summarized in [adviser providers](adviser-providers.md#data-handling).

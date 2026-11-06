@@ -1,6 +1,6 @@
 ---
 name: test-strategy
-description: Choose tests for changed behavior, including Go fuzzing, with meaningful oracles and repository verification gates.
+description: Choose tests for changed behavior, including Go fuzzing, with meaningful oracles and verification gates.
 ---
 
 # Testing changed behavior

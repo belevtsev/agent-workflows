@@ -224,6 +224,9 @@ func Assess(ctx context.Context, path string, input AssessmentInput) (Record, er
 		if err != nil {
 			return err
 		}
+		if input, err = completeAssessment(snapshot, input); err != nil {
+			return err
+		}
 		seen := map[string]bool{}
 		for _, assessment := range input.Requirements {
 			var requirement *Requirement
@@ -443,11 +446,20 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
+		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
 		if record.Plan.Kind == "substantial" {
 			if len(record.Advisers) == 0 {
 				result.Limitations = append(result.Limitations, noAdvisersLimitation)
 			}
+			required := checkpointsRequired(record.Plan)
+			if !required {
+				result.Limitations = append(result.Limitations, "adviser checkpoints not required: "+record.Plan.Checkpoints.Reason)
+			}
 			for _, phase := range []string{"before", "final"} {
+				// A checkpoint attached although not required is still validated.
+				if _, attached := record.Consultations[phase]; !required && !attached {
+					continue
+				}
 				expected := snapshot
 				if phase == "before" {
 					expected = record.Baseline

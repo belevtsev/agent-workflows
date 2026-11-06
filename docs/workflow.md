@@ -22,8 +22,8 @@ keeps saved choices. No preset grants publication authority or relaxes substanti
 role scopes, independent authorship, adviser or review requirements.
 
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
-`claude-sonnet-5-5` at `medium`. Other roles use `claude-opus-5-5`, at `xhigh` for
-substantive and other bounded execution work and `high` for bounded evidence. See the
+`claude-sonnet-5-5` at `medium`. Other roles use `claude-opus-5-5` at `high`, except
+the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 
 | Work | Default model | Effort |
@@ -85,7 +85,7 @@ In Claude Code `settings.json`:
 ```json
 {
   "model": "claude-opus-5-5",
-  "effortLevel": "xhigh"
+  "effortLevel": "high"
 }
 ```
 
@@ -226,9 +226,15 @@ as the [setup guidance](../README.md#optional-set-up-jev) shows.
 
 The task coordinator owns consultations, their scope and reuse. Substantial tasks
 follow a fixed flow: classify, before checkpoint, implement and verify, fresh final
-checkpoint, and complete only when both checkpoints are resolved. No state is
-skipped. `cw task assign` is refused until the before checkpoint is attached and
-resolved, and `cw task verify` requires both. For planning or review without
+checkpoint, and complete only when both checkpoints are resolved. No required state
+is skipped. The checkpoints are required when the task has an open decision: real
+alternatives with consequential uncertainty. Then `cw task assign` is refused until
+the before checkpoint is attached and resolved, and `cw task verify` requires both.
+When the approach follows directly from the defect or contract and no changed code
+must behave alike on several platforms or shells, the plan declares
+`"checkpoints": {"required": false, "reason": "..."}`; verify then lists the
+limitation `adviser checkpoints not required: <reason>`, and every other gate
+stays. When in doubt, keep them required. For planning or review without
 implementation, the before checkpoint precedes substantive drafting or review.
 Each checkpoint has a separate request and disposition; before advice cannot
 replace the final checkpoint. Reuse is limited to the same checkpoint with
