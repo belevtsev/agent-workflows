@@ -78,7 +78,7 @@ inspection proposals, preserving history, scope, and execution boundaries. When
 inspection commands are proposed, telemetry/completion suppression stays in each
 process environment and no update check is added. Every new case permits file
 reads and shell commands solely for reading/listing fixture files. It prohibits
-project code or CLI execution, tests, installs, initialization, Jev, services,
+project code or CLI execution, tests, installs, initialization, advisers, services,
 external APIs, artifact writes, apply, sync, archive, or task completion. Chat-only and
 no-adoption cases judge the output and scope semantically; harmless additional
 reference reads alone do not fail them.
@@ -100,7 +100,7 @@ reasoning without loading a specialist; `code-review` is not mandatory.
 Use this procedure only for an authorized, bounded hosted-model evaluation. Keep
 metrics, traces, errors, and run records in the agreed task artifact outside source.
 The evaluated tasks are synthetic and read-only: no tests, scanners, builds,
-linters, helpers, installs, Jev calls, services, credentials operations, or external
+linters, helpers, installs, adviser calls, services, credentials operations, or external
 writes. The harness may invoke the selected model; the task may not launch further
 network work. Set a fixed timeout and one attempt per case. Do not automatically
 retry failures or continue a contaminated session.

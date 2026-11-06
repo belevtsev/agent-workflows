@@ -196,14 +196,53 @@ func buildEvalRequest(inputs *object, language string) (*object, error) {
 		states.set(id, item.get("variants").(*object).get(language))
 		questions.set(id, newObject("type", "choice", "instructions", strings.ReplaceAll(instructions, "{case_id}", id), "criteria", options))
 	}
-	return sharedRequest(newObject("state", newObject("cases", states), "questions", questions))
+	// Twelve cases per batch exceed the consultation authoring limit by design.
+	return sharedContract(newObject("state", newObject("cases", states), "questions", questions))
 }
 
+// prepareEvalRequests prepares every adviser the policy enables, in fixed order.
 func prepareEvalRequests(shared *object, selected policy) (*object, error) {
-	if len(selected.providers) != len(providerOrder) || len(selected.optional) > 0 {
-		return nil, errors.New("evaluation requires all three configured advisers")
+	prepared := newObject()
+	for _, name := range providerOrder {
+		model, enabled := selected.providers[name]
+		if !enabled {
+			continue
+		}
+		value, err := prepareProvider(name, shared, model)
+		if err != nil {
+			return nil, err
+		}
+		prepared.set(name, value)
 	}
-	return selected.prepareAll(shared)
+	return prepared, nil
+}
+
+// policyModels lists the policy's enabled advisers and their pinned models.
+func policyModels(selected policy) *object {
+	models := newObject()
+	for _, name := range providerOrder {
+		if model, enabled := selected.providers[name]; enabled {
+			models.set(name, model)
+		}
+	}
+	return models
+}
+
+// configuredAdvisers lists, in fixed order, the enabled advisers whose
+// credential is set; only their credentials are returned.
+func (e Evaluation) configuredAdvisers(selected policy) ([]string, map[string]string) {
+	var names []string
+	credentials := map[string]string{}
+	for _, name := range providerOrder {
+		if _, enabled := selected.providers[name]; !enabled {
+			continue
+		}
+		if key := credential(e.Getenv, name); key != "" {
+			names = append(names, name)
+			credentials[name] = key
+		}
+	}
+	return names, credentials
 }
 
 func sha256Hex(data []byte) string {
@@ -332,8 +371,13 @@ func caseOutcome(stored *object, id, expected string) (*object, string) {
 	return newObject("id", id, "expected", expected, "choice", choice, "outcome", state), choice
 }
 
+// notRun is the scoring entry of an adviser that was not configured for a run.
+func notRun() *object { return newObject("status", "not_run", "reason", "not_configured") }
+
 // scoreRecords scores synthetic labels without adjudicating a consultation.
-func scoreRecords(inputs, oracle *object, records map[string]*object) (*object, error) {
+// Every known adviser is listed; one outside configured is not_run, which is
+// not a failure.
+func scoreRecords(inputs, oracle *object, records map[string]*object, configured []string) (*object, error) {
 	if _, err := validateInputs(inputs); err != nil {
 		return nil, err
 	}
@@ -343,6 +387,10 @@ func scoreRecords(inputs, oracle *object, records map[string]*object) (*object, 
 	labels := oracle.get("labels").(*object)
 	scored := newObject()
 	for _, provider := range providerOrder {
+		if !slices.Contains(configured, provider) {
+			scored.set(provider, notRun())
+			continue
+		}
 		languages := newObject()
 		var totals outcomeCounts
 		triplets := map[string][]string{}
@@ -547,12 +595,8 @@ func (e Evaluation) provenance(resources *evalResources) (*object, error) {
 		return nil, err
 	}
 	artifacts.set("runner", newObject("sha256", sha256Hex(data)))
-	models := newObject()
-	for _, name := range providerOrder {
-		models.set(name, resources.policy.providers[name])
-	}
 	return newObject("artifacts", artifacts, "runtime", newObject("implementation", "go", "version", runtime.Version(),
-		"executable", resolved, "platform", runtime.GOOS+"/"+runtime.GOARCH), "requested_models", models), nil
+		"executable", resolved, "platform", runtime.GOOS+"/"+runtime.GOARCH), "requested_models", policyModels(resources.policy)), nil
 }
 
 func percent(value any) string {
@@ -572,13 +616,21 @@ func summaryText(report *object) string {
 		"prove production quality, or resolve real workflow decisions. Consultation decisions remain pending.",
 		"", "| Adviser | Correct | Incorrect | Missing | Accuracy (valid answers) | Coverage | Correct / total |",
 		"|---|---:|---:|---:|---:|---:|---:|"}
+	var run []string
 	for _, provider := range providerOrder {
+		if scoring.get(provider).(*object).get("status") == "not_run" {
+			lines = append(lines, "| "+provider+" | not run (not configured) | | | | | |")
+		} else {
+			run = append(run, provider)
+		}
+	}
+	for _, provider := range run {
 		item := scoring.get(provider).(*object).get("totals").(*object)
 		lines = append(lines, fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s |", provider, item.count("correct"), item.count("incorrect"), item.count("missing"),
 			percent(item.get("accuracy")), percent(item.get("coverage")), percent(item.get("correct_over_total"))))
 	}
 	lines = append(lines, "", "| Adviser | Language | Correct | Incorrect | Missing | Accuracy | Coverage | Correct / total |", "|---|---|---:|---:|---:|---:|---:|---:|")
-	for _, provider := range providerOrder {
+	for _, provider := range run {
 		for _, language := range evalLanguages {
 			item := scoring.get(provider).(*object).get("languages").(*object).get(language).(*object)
 			lines = append(lines, fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |", provider, language, item.count("correct"), item.count("incorrect"), item.count("missing"),
@@ -586,14 +638,17 @@ func summaryText(report *object) string {
 		}
 	}
 	lines = append(lines, "", "| Adviser | Consistent / complete triplets | Incomplete triplets | Consistency |", "|---|---:|---:|---:|")
-	for _, provider := range providerOrder {
+	for _, provider := range run {
 		item := scoring.get(provider).(*object).get("consistency").(*object)
 		lines = append(lines, fmt.Sprintf("| %s | %s / %s | %s | %s |", provider, item.count("consistent_triplets"), item.count("complete_triplets"), item.count("incomplete_triplets"), percent(item.get("ratio"))))
 	}
 	lines = append(lines, "", "Case outcomes, requested/returned model identities, whole-batch timing,",
 		"provider timing and token usage are retained in report.json.",
-		"Consistency is agreement across translations, not correctness. Missing answers are not scored as labels.",
-		"Token usage is measured per provider batch; no per-case allocation is inferred.", "")
+		"Consistency is agreement across translations, not correctness. Missing answers are not scored as labels.")
+	if len(run) < len(providerOrder) {
+		lines = append(lines, "An adviser that is not configured (not enabled by the policy, or without a credential) is not run; that is not a failure.")
+	}
+	lines = append(lines, "Token usage is measured per provider batch; no per-case allocation is inferred.", "")
 	return strings.Join(lines, "\n")
 }
 
@@ -614,9 +669,10 @@ func batchSummary(record *object) *object {
 	return providers
 }
 
-// runBatches dispatches the sequential language batches. Everything completed
-// before a failure stays on disk and in the returned maps.
-func (e Evaluation) runBatches(ctx context.Context, resources *evalResources, directory string, metadata *object, records map[string]*object, batches *object, completed *[]any) error {
+// runBatches dispatches the sequential language batches to the configured
+// advisers only; with none configured it makes no network call. Everything
+// completed before a failure stays on disk and in the returned maps.
+func (e Evaluation) runBatches(ctx context.Context, resources *evalResources, credentials map[string]string, directory string, metadata *object, records map[string]*object, batches *object, completed *[]any) error {
 	for _, name := range evalResourceOrder {
 		if err := writePrivate(directory, name, resources.raw[name]); err != nil {
 			return err
@@ -628,14 +684,6 @@ func (e Evaluation) runBatches(ctx context.Context, resources *evalResources, di
 	}
 	if err := writePrivate(directory, "provenance.json", data); err != nil {
 		return err
-	}
-	credentials := map[string]string{}
-	for _, name := range providerOrder {
-		credentials[name] = e.Getenv(credentialNames[name])
-	}
-	collect := e.collect
-	if collect == nil {
-		collect = newTransport().collect
 	}
 	for _, language := range evalLanguages {
 		if err := ctx.Err(); err != nil {
@@ -650,12 +698,12 @@ func (e Evaluation) runBatches(ctx context.Context, resources *evalResources, di
 			return err
 		}
 		started := time.Now()
-		raw, err := collect(ctx, prepared, batch{credentials: credentials, deadline: resources.policy.deadline, required: providerOrder})
+		raw, err := gather(ctx, e.collect, prepared, batch{credentials: credentials, deadline: resources.policy.deadline})
 		if err != nil {
 			return err
 		}
 		duration := seconds(started)
-		record, err := makeRecord(shared, prepared, raw, 3)
+		record, err := makeRecord(shared, prepared, raw)
 		if err != nil {
 			return err
 		}
@@ -691,20 +739,21 @@ func (e Evaluation) runLive(ctx context.Context, resources *evalResources) (int,
 	}
 	completed := []any{}
 	state, code := "completed", 0
+	configured, credentials := e.configuredAdvisers(resources.policy)
 	// Filesystem errors and provider internals can contain credentials. Retain
 	// completed safe batches, never raw error text.
-	if err := e.runBatches(ctx, resources, directory, metadata, records, batches, &completed); err != nil {
+	if err := e.runBatches(ctx, resources, credentials, directory, metadata, records, batches, &completed); err != nil {
 		state, code = "error", 1
 		if errors.Is(err, context.Canceled) {
 			state, code = "interrupted", 130
 		}
 	}
-	scoring, err := scoreRecords(resources.inputs, resources.oracle, records)
+	scoring, err := scoreRecords(resources.inputs, resources.oracle, records, configured)
 	if err != nil {
 		return 1, err
 	}
 	if state == "completed" {
-		for _, provider := range scoring.names {
+		for _, provider := range configured {
 			if scoring.get(provider).(*object).get("totals").(*object).get("missing") != integer("0") {
 				state, code = "incomplete", 2
 			}
@@ -746,13 +795,9 @@ func (e Evaluation) offlinePlan(resources *evalResources) ([]byte, error) {
 	for _, name := range evalResourceOrder {
 		hashes.set(name, sha256Hex(resources.raw[name]))
 	}
-	models := newObject()
-	for _, name := range providerOrder {
-		models.set(name, resources.policy.providers[name])
-	}
 	return offlinePlanFormat.marshal(newObject("status", "offline_validated", "languages", stringList(evalLanguages), "cases_per_language", number(len(evalCaseIDs)),
 		"judgments_per_provider", number(evalJudgments), "max_network_requests", number(evalNetworkLimit), "network_requests_made", number(0),
-		"deadline_seconds_per_batch", number(int(resources.policy.deadline.Seconds())), "requested_models", models, "fixture_sha256", hashes))
+		"deadline_seconds_per_batch", number(int(resources.policy.deadline.Seconds())), "requested_models", policyModels(resources.policy), "fixture_sha256", hashes))
 }
 
 // Run validates the corpus, then runs the hosted baseline only when Live is set.

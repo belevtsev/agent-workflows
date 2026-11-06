@@ -1,43 +1,100 @@
 # Decision consultation helpers
 
 Read this before using `cw consult`.
-It validates a prepared Choice-only request, sends the same shared input to Jev,
-SubQ Snap, and OpenAI Decisions concurrently, and records each result independently. All three
-are required at equal standing. It does not dispatch
-workers or decide which judgment is correct. The command is part of the native `cw`
-manager and needs no interpreter or package installation.
+It validates a prepared Choice-only request, sends the same shared input to every
+configured adviser concurrently, and records each result independently. It does
+not dispatch workers or decide which judgment is correct. The command is part of
+the native `cw` manager and needs no interpreter or package installation.
 
-## Required task checkpoints
+## Task checkpoints
 
-For every substantial task using task-orchestration, the coordinator runs this three-adviser
-helper before implementation (or substantive drafting/review) and again during final
-review, following the [entrypoint](../SKILL.md). Prepare distinct requests and new
-output paths for the two checkpoints. The first request assesses the proposed approach
-and verification plan; the final request assesses the completed work and current checks
-before completion or authorized publication. Include the checkpoint in request state
-and retain its provider coverage and the coordinator disposition in the task record.
+Substantial tasks follow the fixed flow in the [entrypoint](../SKILL.md#follow-the-decision-flow):
+classify, before checkpoint, implement and verify, fresh final checkpoint, and
+complete only when both checkpoints are resolved. No state is skipped. Prepare
+distinct requests and new output paths for the two checkpoints. The before request
+assesses the proposed approach and verification plan; the final request assesses
+the completed work and current checks before completion or authorized publication.
+Put the emitted task context in request state and retain adviser coverage and the
+coordinator's disposition in the task record.
 
 Reuse is limited to the same checkpoint with applicable evidence, decisions, question
-meaning, and models. A pre-implementation record cannot satisfy final review. If calls
-are unavailable or sharing is restricted, record that checkpoint's limitation and
-follow the source-evidence fallback; do not bypass restrictions or add retries.
-The helper validates individual requests and records; the coordinator owns checkpoint
-timing. Installation, update, validation, and CI do not call hosted models.
+meaning and models. A before record cannot satisfy the final checkpoint. If sharing
+is restricted, record that limitation and follow the source-evidence fallback; do
+not bypass restrictions or add retries. Installation, update, validation and CI do
+not call hosted models.
+
+## Participation
+
+An adviser participates only when it is configured: enabled in the policy's
+`consultation.providers` with its pinned model, and with its credential set in the
+environment or saved credentials.
+
+| Provider ID | Pinned model | Credential |
+| --- | --- | --- |
+| `jev` | exact `jev-<major>.<minor>.<patch>`, such as `jev-1.14.0` | `TYPESAFE_API_KEY` |
+| `subq_snap` | `subq-snap-preview` | `SUBQ_API_KEY` |
+| `openai_decisions` | `gpt-6-luna` | `OPENAI_API_KEY` |
+
+The shipped policy enables `subq_snap` and `openai_decisions`; Jev is opt-in. Policy
+version 3 is required. Unknown provider IDs and aliases such as `jev-latest` are
+rejected.
+
+The participation set comes from one place:
+
+- **Task-bound request:** when `state.task_context` is present, it must hold the
+  `advisers` binding that `cw task start` recorded, and the participation set is
+  exactly that binding. With `state.task_contexts` (several repositories), every
+  context must carry an identical binding. A context without a binding is
+  rejected; regenerate it with this `cw task context`. A `state` holding both
+  `task_context` and `task_contexts` is rejected.
+- **Ad hoc request:** otherwise, the policy's enabled providers participate.
+
+`cw task start --policy PATH` and `cw consult --policy PATH` both default to the
+installed release's `skills/task-orchestration/model-policy.yaml`. `cw task start`
+binds the providers enabled in that policy whose credentials are present, read
+through the same environment-or-saved credentials as `cw consult`. If the policy
+cannot be read or is invalid, including an older version, `cw task start` fails
+before creating a task directory; it never binds an empty set silently. A valid
+policy whose enabled providers all lack credentials binds `{}`.
+
+### Opt in to Jev
+
+1. Copy the installed `model-policy.yaml` to a private location.
+2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy.
+3. Set `TYPESAFE_API_KEY`.
+4. Start the task with `cw task start --policy /path/to/copy.yaml`. Its checkpoints
+   then follow the task's binding automatically; `cw consult` needs no `--policy`
+   for task-bound requests.
+
+For ad hoc consultations, pass the copy with `cw consult --policy /path/to/copy.yaml`.
+
+A participating provider without its credential is recorded as `not_configured`
+and receives no request. When nothing participates, or every participant is
+`not_configured`, `cw consult` makes no network call and writes a record with status
+`no_advisers_configured`.
 
 ## Prepare and run a shared request
 
-The input is JSON with exactly `state` and `questions`. Include faithful text excerpts,
-the active source revision and locations, relevant constraints, and distinguishable
-assumptions in `state`. Each question must be a Choice with named options. Include
-`insufficient_evidence` when a material missing fact could prevent an answer. Participating
-providers receive the same state, instructions, and criteria; the helper supplies
-their policy-selected model IDs. This common workflow has no images or other
-primitives and must fit the participating providers' documented limits.
+The input is JSON with exactly `state` and `questions`. Follow the
+[authoring rules](../SKILL.md#author-questions) and the provider-neutral
+[question patterns](question-patterns.json). The helper enforces the structure:
+Choice questions only, at most 8 per request, and 2 to 255 named options each.
+Including `insufficient_evidence` is a documented rule, not a check.
+
+Mark text from untrusted sources in an optional `state.untrusted` array. When present
+it must be non-empty, and each entry needs non-blank `source` and `text`:
+
+```json
+"untrusted": [
+  {"source": "issue 412 comment", "text": "The cache is never invalidated after a deploy."}
+]
+```
 
 The coordinator verifies excerpts against their exact sources before sharing them.
 The helper can validate structure and compare returned choices; it cannot establish
-source truth or discover omitted evidence. Ask for a bounded judgment about the
-prepared evidence rather than code, findings, or explanations.
+source truth or discover omitted evidence. Every participating provider receives the
+same state, instructions and criteria; the helper supplies the pinned model IDs.
+The common workflow has no images or other primitives.
 
 Preview the request, then send it:
 
@@ -49,30 +106,67 @@ cw consult --request /path/to/request.json --output /path/to/new-record.json
 `--policy /path/to/model-policy.yaml` selects a validated policy instead of the
 installed release's. Without it, `cw consult` reads the policy and its questions from
 `current/skills/task-orchestration` in the manager's state directory. `--dry-run`
-validates the policy and input and writes a task record without network access.
-A real call uses separate `TYPESAFE_API_KEY` and `SUBQ_API_KEY` and `OPENAI_API_KEY`
-environment variables, and one attempt per required provider. A 30-second batch
-budget covers connecting, sending, and reading every complete response; a provider
-still running at the deadline is cancelled and recorded as a timeout, and it cannot
-extend the batch. It neither retries nor substitutes another model.
-Missing credentials, malformed responses, timeouts, and safe service failure
-categories are recorded independently, so one provider's failure preserves the
-other's result. Responses are validated for IDs, types, options, finite values,
-distributions, usage, and returned model.
+validates the policy and input and writes a preview without network access; it lists
+each participating provider with its `requested_model` and status `dry_run` or
+`not_configured`, resolving credentials only to report that status. A task-bound
+dry run whose bound adviser lacks its credential still writes the preview and
+exits `2` with the same message as a real run.
 
-The maintained model IDs are `jev-1.14.0`, `subq-snap-preview` and `gpt-6-luna`. Snap's documented
-public preview ID is not an immutable version pin; retain the requested and returned
-model and consult the current contract when reusing a result. Reuse only within the
-same checkpoint while the source revision, evidence, decisions, question meaning,
-and models remain applicable.
+A real call makes one attempt per configured provider. A 30-second batch budget
+covers connecting, sending and reading every complete response; a provider still
+running at the deadline is cancelled and recorded as a timeout. It neither retries
+nor substitutes another model. One provider's failure preserves the others' results.
+Responses are validated for IDs, types, options, finite values, distributions,
+usage and returned model.
+
+## Records
+
+A consultation record has version 4:
+`{"version": 4, "status", "request", "request_sha256", "providers", "comparison", "final_decision"}`.
+Any other version is rejected. `providers` holds exactly the participation set, in
+the order `jev`, `subq_snap`, `openai_decisions`. Each provider has one status:
+
+| Status | Meaning |
+| --- | --- |
+| `success` | Valid answers to every question |
+| `partial` | OpenAI answered some questions and refused others |
+| `refusal` | OpenAI refused every question |
+| `unavailable` | Attempted and failed: `timeout`, `http_error` (with `http_status`), `network_error`, `invalid_response`, `worker_error` or, for OpenAI, `unsupported_request` |
+| `not_configured` | Participating, but no credential; no request was made |
+
+The record `status` is `no_advisers_configured` when no provider was attempted;
+otherwise `success` when every attempted provider succeeded, `partial` when at least
+one answered, and `unavailable` when none answered. A dry run has status `dry_run`.
+
+Each question's comparison holds `status`, `choices` (each answering provider's
+choice) and `missing` (every other participating provider, with its status, or
+`refusal` for a refused question). The comparison status is `no_advisers` when
+nothing was attempted, `unavailable` when there is no choice, `agreement` when every
+attempted provider chose the same option, `disagreement` when every attempted
+provider chose and the choices differ, and `partial` otherwise. These states describe
+coverage and choice equality, not truth. `final_decision` starts as `pending`.
+
+Exit codes:
+
+- `0`: `success`, `no_advisers_configured`, `dry_run`, or a resolved adjudication.
+- `2`: `partial` or `unavailable` coverage, an unresolved adjudication, or a
+  task-bound request or dry run where a bound provider is `not_configured`. The
+  record or preview is still written, and stderr says:
+  `Adviser <id> is bound to this task but not configured; set <VAR> and consult again.`
+- `2`: a command-line usage error, as for every `cw` command: an unknown flag (such
+  as the removed `--with-openai` or `--without-openai`), or conflicting or missing
+  options. Usage errors are reported before any file is read.
+- `1`: an invalid input file (request, record, decision or policy) or an existing
+  output path.
 
 ### Jev version and capability boundaries
 
-The explicit `jev-1.14.0` ID keeps a run independent of moving aliases. As checked
-on 16 October 2026, TypeSafe's [model reference](https://docs.typesafe.ai/models)
-maps `jev-latest` to `jev-1.13.0` and `jev-preview` to `jev-1.14.0`; consult that
-reference for subsequent changes. Retain the returned version and reject a
-response that differs from the requested pin. The
+When Jev is enabled, its policy entry must be an exact version, which keeps a run
+independent of moving aliases. As checked on 16 October 2026, TypeSafe's
+[model reference](https://docs.typesafe.ai/models) maps `jev-latest` to `jev-1.13.0`
+and `jev-preview` to `jev-1.14.0`; consult that reference for subsequent changes.
+The record retains the returned version, and a response that differs from the
+requested pin is rejected. The
 [1.13 jaggedness notes](https://docs.typesafe.ai/model-jaggedness/jev-1.13) apply to
 1.13 and do not establish 1.14 limitations or improvements.
 
@@ -82,156 +176,185 @@ The [1.14 announcement](https://typesafe.ai/blog/jev-1-14) introduces experiment
 `TypeSafe-Danger-Zone-Images: true`. Extended context requires the separate
 `TypeSafe-Danger-Zone-Long-Context: true` header; it raises the standard 64k request
 and 32k per-question token limits to 262k for both. This helper sends neither
-header, accepts no image assets and remains Choice-only for all advisers. A model
-upgrade does not implicitly enable those features or authorize different evidence
-for one provider. Evaluate language-dependent judgment quality on labeled inputs;
-availability and provider agreement are separate evidence.
+header, accepts no image assets and remains Choice-only for all advisers.
 
-## Required OpenAI Decisions
-
-The maintained policy declares `openai_decisions: gpt-6-luna` under
-`consultation.providers` alongside required Jev and Snap. Every request includes
-all three without a participation flag. Missing `OPENAI_API_KEY` records
-`unavailable` required coverage; it never disables OpenAI or reports the remaining
-pair as full three-provider coverage. `--without-openai` is rejected before output
-creation or network access under this policy. `--with-openai` is a redundant
-explicit inclusion. Adjudication follows the saved record and uses no key or
-participation switch. Historical optional policies retain their existing flag
-behavior; they do not change the maintained requirements.
-
-The policy keeps version 2. `consultation.model` must equal
-`consultation.providers.jev` and anchors the Jev model.
-`consultation.comparison` is `coordinator_evidence_and_verification`; historical
-policies keep `codex_evidence_and_verification`, which stays valid.
+### OpenAI Decisions
 
 The fixed endpoint is `POST https://api.openai.com/v1/decisions`. The adapter maps
 canonical shared state to deterministic JSON text in `input`, question IDs to
 `name`, and each criterion key/description to a `choices` value/description. It
-normalizes named answer arrays and probability arrays into the common record.
-The request retains the shared evidence fingerprint; endpoint-specific encoding
-does not let an adviser receive different facts or question meanings.
+normalizes named answer arrays and probability arrays into the common record. The
+request keeps the shared evidence fingerprint; endpoint-specific encoding does not
+give an adviser different facts or question meanings.
 
 Read the current [guide](https://developers.openai.com/api/docs/guides/decisions),
-[create contract](https://developers.openai.com/api/reference/resources/decisions/methods/create),
+[create contract](https://developers.openai.com/api/reference/resources/decisions/methods/create)
 and applicable [data controls](https://developers.openai.com/api/docs/guides/your-data).
-The common integration remains text and Choice only. OpenAI currently accepts at
-most 200 questions; an unsupported OpenAI request is recorded without breaking
-the other advisers' results. OpenAI's predicate, score, image and other input features do
-not expand this shared contract. No extra SDK is required.
+OpenAI currently accepts at most 200 questions; an unsupported OpenAI request is
+recorded as `unavailable` without breaking the other advisers' results. OpenAI's
+predicate, score, image and other input features do not expand this shared contract.
 
-OpenAI can refuse an individual question while returning valid answers to others.
-The record keeps those choices and marks the refused question as missing coverage.
-It does not turn a refusal into a negative choice. A mixed response is `partial`;
-an all-refused response is `refusal`. Malformed responses, missing credentials,
-timeouts and safe service failures are recorded separately. The 30-second batch
-budget and one-attempt policy cover all required providers concurrently.
+OpenAI can refuse an individual question while answering others. The record keeps
+those choices and marks the refused question as missing coverage; a refusal never
+becomes a negative choice. A mixed response is `partial`; an all-refused response
+is `refusal`.
 
-Required-three policies write version-three records. All three providers must be
-present and none can be disabled; a missing, failed or refusing adviser leaves
-explicit partial or unavailable coverage, including each question's `missing` map.
-Offline adjudication rejects disabled required providers and validates every
-version's provider and field contract. Historical pair-only version-one and optional
-version-two records remain readable unchanged, including their original disabled
-semantics. Coverage states do not decide the claim.
+## Adjudicate without network access
 
-## Compare and retain evidence
-
-The record contains the shared prepared input, per-provider status and validated
-answers, and per-question `agreement`, `disagreement`, `partial`, or `unavailable`.
-These categories describe provider coverage and choice equality. They do not establish
-truth. `final_decision` starts as `pending`; no confidence comparison, vote, or
-automatic winner completes it.
-
-The coordinator investigates any disputed evidence and independently verifies the conclusion
-against exact sources and relevant tests or observations, including when the providers
-agree. In the agreed task record retain the final conclusion, evidence references and
-source revision, verification and its limits, rejected judgment and reason, unresolved
-facts, and partial or unavailable provider coverage. If a material fact remains missing
-or conflicting, retain an unresolved decision. An unavailable consultation alone does
-not prevent useful source work.
-
-## Finalize the coordinator's decision without network access
-
-Once the coordinator has done that investigation, write a decision JSON and validate it against
-the original consultation record:
+The coordinator investigates and independently verifies each question against exact
+sources and relevant checks, including when the advisers agree, then writes a
+decision JSON and validates it against the original consultation record:
 
 ```sh
-cw consult --adjudicate /path/to/consultation.json --decision /path/to/codex-decision.json --output /path/to/final.json
+cw consult --adjudicate /path/to/consultation.json --decision /path/to/decision.json --output /path/to/final.json
 ```
 
-`cw consult` exits `0` when the consultation is complete or the decision is resolved,
-`2` for partial or unavailable coverage or an unresolved decision, and `1` when input
-is invalid or the output path already exists.
-
 `--adjudicate` and `--request` are mutually exclusive. Adjudication makes no provider
-requests and uses no credentials. It writes a new record, preserving the consultation
-input and provider results. The decision must contain every question ID exactly once:
+requests and uses no credentials. It writes a new record, preserving the
+consultation input and provider results. The decision contains every question ID
+exactly once:
 
 ```json
 {
   "questions": {
-    "claim_support": {
+    "write_owner": {
       "status": "resolved",
-      "choice": "supported",
-      "reason": "The source establishes the claim for the stated conditions.",
-      "evidence": ["src/example.go:42 at <source revision>"],
-      "verification": ["Source inspection at <source revision>; focused test <result reference>"],
+      "choice": "single_writer",
+      "reason": "Only the store package writes the table; the handler reads through it.",
+      "evidence": ["source:internal/store/write.go:40-58@3f2a9c1"],
+      "verification": [
+        "check:unit",
+        "observation:rg finds no other INSERT into the table at 3f2a9c1"
+      ],
       "rejected_judgments": {
-        "subq_snap": "The contrasting choice overlooked the stated condition at src/example.go:42."
-      }
+        "subq_snap": "The cited migration runs once at deploy and does not write at runtime."
+      },
+      "investigations": {
+        "subq_snap": "Confidence 0.82; migrations/0042.sql:1-30 is deploy-only."
+      },
+      "agreement_not_independent": false
+    },
+    "retry_budget": {
+      "status": "unresolved",
+      "choice": null,
+      "reason": "No available source documents the upstream timeout.",
+      "evidence": [],
+      "verification": [],
+      "rejected_judgments": {},
+      "investigations": {},
+      "agreement_not_independent": false
     }
   }
 }
 ```
 
 This example is a shape to adapt, not evidence for a real decision. Each item has
-`status`, `choice`, `reason`, `evidence`, `verification`, and `rejected_judgments`.
-For `resolved`, the choice must be an allowed option; evidence and verification must
-be nonempty source/revision and check references. Give a rejection reason for every
-successful provider choosing a different option, using the provider IDs `jev`, `subq_snap`, and `openai_decisions`.
-A valid differing choice in a partially refused response still needs a rejection
-reason for that question; missing or refused judgments do not. Agreement still needs independent evidence and verification.
+exactly `status`, `choice`, `reason`, `evidence`, `verification`,
+`rejected_judgments`, `investigations` and `agreement_not_independent`. The rules:
 
-For `unresolved`, use `choice: null`, an empty rejection mapping, and a nonblank reason
-describing the material unknown; evidence and verification references may be empty. The final
-record is resolved only when every question is resolved. This structural validation
-checks that the coordinator recorded its decision obligations; it cannot prove the cited
-evidence or reasoning correct and never chooses a winning confidence score.
+- **Every item:** `reason` is non-blank and `agreement_not_independent` is a boolean.
+- **Resolved:** `choice` is an allowed option other than `insufficient_evidence`.
+  `evidence` and `verification` each have at least one entry, and every entry is
+  exactly one of:
+  - `source:<path>:<start>[-<end>]@<revision>`: a clean relative path, positive
+    lines with end at least start, and a revision of 7 to 64 lowercase hex
+    characters or `sha256:` plus 64 hex characters;
+  - `check:<check-id>[@<run-id>]`: non-blank IDs without whitespace that do not
+    name an adviser;
+  - `observation:<text>`: non-blank text that does not name an adviser.
+
+  "Names an adviser" means containing `jev`, `snap`, `subq`, `subq_snap`,
+  `openai_decisions`, `openai decisions`, `gpt-6-luna`, `typesafe`, `adviser`,
+  `advisers`, `advisor` or `advisors` as a whole word in any case. A word boundary
+  is the start or end of the text or any character other than a letter or digit,
+  so an underscore separates words. The rule covers check IDs, run IDs and
+  observation text: `check:subq_snap`, `check:jev@x`, `check:unit@openai_decisions`,
+  `check:jev_answer` and `check:subq_snap_choice` are rejected, while
+  `check:go-test-snapshot` and `check:snapshot-tests` are accepted. A planned check
+  whose ID contains an adviser word, such as `snap-test`, `advisor-lint` or
+  `jev_smoke`, cannot be cited, so name planned checks without those words. `source:` paths are exempt, because
+  they cite repository files such as `skills/typesafe-ai/SKILL.md`. Any other
+  entry, or one that names an adviser, is rejected: evidence and verification must
+  reference source, checks or observations, not adviser output.
+- **Rejected judgments:** keys are exactly the providers whose recorded choice
+  differs from `choice`, each with a non-blank reason. This applies to a `partial`
+  comparison whose recorded choices differ exactly as to `disagreement`. Missing
+  or refused judgments need none.
+- **Investigations:** keys are a subset of the differing providers and must include
+  every one whose answer confidence is 0.7 or higher, each with a non-blank note,
+  in a `partial` comparison as in `disagreement`. A missing note is rejected,
+  naming the provider and its confidence.
+- **Untrusted agreement:** when the request has `state.untrusted` and the question's
+  comparison is `agreement`, `agreement_not_independent` must be true. It may be
+  true on any other resolved item.
+- **Unresolved:** `choice` is null, `rejected_judgments` and `investigations` are
+  empty, `agreement_not_independent` is false, and `reason` names the material gap.
+  `evidence` and `verification` may be empty, but each listed entry must be valid.
+
+The final record is `resolved` only when every question is resolved. These rules
+apply in full to a `no_advisers` comparison. Structural validation checks that the
+coordinator recorded its obligations; it cannot prove the cited evidence or the
+reasoning correct.
+
+## Attach to the task
+
+`cw task consult --task DIR --phase before|final --input FINAL.json` revalidates the
+record, then requires its providers and requested models to equal the task's
+`advisers` binding. Every bound provider needs `success`, `partial`, `refusal` or
+`unavailable`; a `not_configured` provider is rejected and named. With an empty
+binding, the record status must be `no_advisers_configured`.
+
+Attaching again for the same phase replaces the earlier attachment, as long as the
+input is a new file distinct from the other phase's artifact. Use this after
+resolving an unresolved decision: adjudicate again, or consult again with new
+evidence, then attach the new final record.
+
+For a substantial task, `cw task assign` is refused until the before checkpoint is
+attached and resolved. `cw task verify` requires both checkpoints resolved, and a
+before record never satisfies the final phase. With an empty binding, verify
+reports that no advisers were configured when the task started, so decisions rest
+on source evidence and checks only. This release reads task record version 3 and
+consultation record version 4 only; task records and consultation records from
+earlier releases do not load, so restart such a task with `cw task start`.
 
 ## Sharing and recording
 
-The helper writes only to the supplied new output path. Its record excludes credentials,
-authorization headers, raw errors, and unknown response fields, but retains the prepared
-request verbatim. Sanitize inputs before sharing or recording them; the helper cannot
-remove credentials or sensitive material embedded in evidence. Keep sensitive records
-in the task's permitted storage. Saving outside the agreed task location requires its
-own scope.
+The helper writes only to the supplied new output path. Its record excludes
+credentials, authorization headers, raw errors and unknown response fields, but
+retains the prepared request verbatim. Sanitize inputs before sharing or recording
+them; the helper cannot remove credentials or sensitive material embedded in
+evidence. Keep sensitive records in the task's permitted storage. Saving outside the
+agreed task location requires its own scope.
 
-SubQ [retains data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/).
-Organization-level zero data retention is available and applies to Decisions. Its
-documented per-request `store: false` setting covers Chat Completions and Responses;
-the helper does not claim that setting for Decisions. Confirm that sharing and the
-organization's retention policy fit the authorized task before sending source evidence.
-Credentials and authentication are documented in the
-[SubQ authentication guide](https://docs.subq.ai/using-the-api/authentication/).
+Before configuring any adviser, confirm that sending source excerpts to that
+provider is permitted for the code and organization involved.
+
+- **SubQ:** SubQ [retains data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/).
+  Organization-level zero data retention is available and applies to Decisions. Its
+  documented per-request `store: false` setting covers Chat Completions and
+  Responses; the helper does not claim that setting for Decisions. Credentials are
+  described in the [SubQ authentication guide](https://docs.subq.ai/using-the-api/authentication/).
+- **TypeSafe (Jev):** TypeSafe is hosted in the US. Zero data retention is available
+  only to enterprise customers. Its privacy policy states that it does not train on
+  prompts.
+- **OpenAI:** keep request content within the account's
+  [data controls](https://developers.openai.com/api/docs/guides/your-data).
 
 ## Multilingual evaluation
 
-`cwdev eval multilingual` provides a small
-synthetic baseline using the current three-adviser policy. It is separate from
-task consultations, skill-discovery evaluations and native manager checks. The
-bundled corpus lives in `evals/multilingual` relative to the skill; `cwdev` is a
-maintainer tool that reads it from a source checkout, selected with `--source`
-(by default the current directory).
+`cwdev eval multilingual` provides a small synthetic baseline for the configured
+advisers. It is separate from task consultations, skill-discovery evaluations and
+native manager checks. The bundled corpus lives in `evals/multilingual` relative to
+the skill; `cwdev` is a maintainer tool that reads it from a source checkout,
+selected with `--source` (by default the current directory).
 
 The twelve neutral case IDs cover durable acknowledgement, tenant isolation,
 cancellation and release identity. Each family has supporting, contradictory and
-missing-evidence observations. English, Ukrainian and German variants preserve
-the facts, claim, instructions and option meanings. The stable choices are
-`supported`, `contradicted` and `insufficient_evidence`.
-The request builder uses only raw inputs. The separate oracle's per-case expected
-choice and evaluator rationale never enter a provider request. Allowed option
-definitions are part of each normal Choice request.
+missing-evidence observations. English, Ukrainian and German variants preserve the
+facts, claim, instructions and option meanings. The stable choices are `supported`,
+`contradicted` and `insufficient_evidence`. The request builder uses only raw
+inputs. The separate oracle's per-case expected choice and evaluator rationale never
+enter a provider request.
 
 Run offline validation without network access, credential lookup or output files:
 
@@ -240,43 +363,43 @@ GOWORK=off go run ./cmd/cwdev eval multilingual
 ```
 
 Run it from the editable checkout; do not edit installed snapshots. A hosted run
-requires `--live --output-dir PATH`, all three provider credentials in the
-environment, and a new private directory outside source repositories and managed
-releases:
+requires `--live --output-dir PATH` and a new private directory outside source
+repositories and managed releases:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01
 ```
 
+Only configured providers run. The report lists every known provider; one that is
+not configured is `not_run` with reason `not_configured`, which is not a failure.
+With no configured provider, a live run makes no network call, reports every
+provider as not run and exits `0`.
+
 Freeze the reviewed input and oracle hashes before the first hosted request. Each
-language forms one batch of twelve questions, with each question referring to its
-own case. The three providers receive identical shared input concurrently; language
-batches run sequentially. The full evaluation makes at most nine provider requests,
-uses the existing 30-second batch budget and never retries. Ordinary task planning
-and final-review consultations are separate from that evaluation budget.
+language forms one batch of twelve questions. The configured providers receive
+identical shared input concurrently; language batches run sequentially, so each
+configured provider gets at most three requests. The run uses the existing
+30-second batch budget and never retries.
 
 The private `report.json`, `summary.md` and safe per-language consultation records
 retain input/oracle/policy/runner provenance, runtime identity, requested and
-returned models, measured latency and token usage. Scores include correct,
-incorrect and missing counts per provider/language and overall. Accuracy uses valid
-answers as its denominator; coverage uses all expected answers. Also inspect
-correct/total and complete language-triplet consistency. Zero-denominator metrics
-remain unknown. Consistency can include consistently incorrect choices and is not
-accuracy. No per-case timing or token allocation is inferred from a batch.
+returned models, measured latency and token usage. Scores include correct, incorrect
+and missing counts per provider/language and overall. Accuracy uses valid answers as
+its denominator; coverage uses all expected answers. Also inspect correct/total and
+complete language-triplet consistency. Zero-denominator metrics remain unknown.
+Consistency can include consistently incorrect choices and is not accuracy.
 
 A valid `insufficient_evidence` choice is scored against the oracle normally.
 Refusals, malformed responses and unavailable providers remain missing coverage.
 Incorrect choices do not fail execution: a fully answered run exits `0`, incomplete
-provider coverage exits `2`, invalid inputs or output errors exit `1`, and an
-interruption exits `130` while preserving completed batches. Existing run
-directories are never overwritten. Credentials and raw transport exceptions are
+coverage from a configured provider exits `2`, invalid inputs or output errors exit
+`1`, and an interruption exits `130` while preserving completed batches. Existing
+run directories are never overwritten. Credentials and raw transport exceptions are
 excluded from reports.
 
-The scorer does not choose an adviser or fill a task's `final_decision`.
-Consultation records retain their pending decisions; evaluation scores are separate.
-The coordinator interprets errors against the frozen facts and labels. A fixture defect
-invalidates affected results; preserve the original run and correct the corpus as
-a separate version rather than changing labels to match answers. A small synthetic
-baseline does not establish calibrated confidence, production quality or a version
-improvement. Offline resource tests exercise the runner with fake transports;
+The scorer does not choose an adviser or fill a task's `final_decision`. A fixture
+defect invalidates affected results; preserve the original run and correct the
+corpus as a separate version rather than changing labels to match answers. A small
+synthetic baseline does not establish calibrated confidence, production quality or
+a version improvement. Offline tests exercise the runner with fake transports;
 installation, source validation and native CI never invoke the hosted evaluation.

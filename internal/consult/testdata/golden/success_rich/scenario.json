@@ -1,6 +1,5 @@
 {
-  "policy": "required",
-  "flags": [],
+  "policy": "all",
   "credentials": [
     "OPENAI_API_KEY",
     "SUBQ_API_KEY",

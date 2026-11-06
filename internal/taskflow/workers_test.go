@@ -114,7 +114,7 @@ func completeIndependentReview(t *testing.T, record Record, ref SourceRef, id st
 
 func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "substantial", "pass"))
-	if record.Version != 2 || record.Plan.CoordinatorID != "/root" {
+	if Version != 3 || record.Version != Version || record.Plan.CoordinatorID != "/root" {
 		t.Fatalf("new task version/default: %+v", record.Plan)
 	}
 	if _, err := AttachConsultation(t.Context(), record.Directory, "before", writeConsultation(t, record.Contexts["before"], nil)); err != nil {
@@ -428,7 +428,7 @@ func TestImplementationHandoffSurvivesUnrelatedNonGoSourceChanges(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(repo, "index.html"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan)
+	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,13 +523,12 @@ func rewriteInitialRevision(t *testing.T, record Record, mutate func(*Record)) R
 }
 
 func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testing.T) {
-	// R3.1: a version-1 revision anywhere in a chain is refused with the
-	// version-1 guidance rather than the generic version-switch error.
+	// D5: a revision of any other version anywhere in a chain is refused with
+	// the D5 message naming that version, not a generic version-switch error.
 	for _, test := range []struct {
 		name          string
 		first, second int
-		legacy        bool
-	}{{"v1_then_v2", 1, Version, true}, {"v2_then_v1", Version, 1, true}, {"v2_then_v3", Version, Version + 1, false}} {
+	}{{"v1_then_v3", 1, Version}, {"v2_then_v3", 2, Version}, {"v3_then_v2", Version, 2}, {"v3_then_v4", Version, Version + 1}} {
 		t.Run(test.name, func(t *testing.T) {
 			record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 			coordinator := func(version int) string {
@@ -551,11 +550,12 @@ func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testin
 			if err == nil {
 				t.Fatal("mixed-version chain accepted")
 			}
-			if test.legacy && (!strings.Contains(err.Error(), legacyRecordMessage) || strings.Contains(err.Error(), "cannot switch")) {
-				t.Fatalf("version-1 revision not refused with version-1 guidance: %v", err)
+			unsupported := test.first
+			if unsupported == Version {
+				unsupported = test.second
 			}
-			if !test.legacy && strings.Contains(err.Error(), legacyRecordMessage) {
-				t.Fatalf("non-legacy version misreported as version 1: %v", err)
+			if message := unsupportedTaskVersionMessage(unsupported); !strings.Contains(err.Error(), message) {
+				t.Fatalf("version %d revision not refused with %q: %v", unsupported, message, err)
 			}
 			if after := productionTaskBytes(t, record.Directory); !reflect.DeepEqual(after, before) {
 				t.Fatal("refused chain was rewritten")
@@ -598,7 +598,7 @@ func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testin
 	})
 }
 
-func TestVersionTwoEvidenceBindingIncludesWorkerRecords(t *testing.T) {
+func TestEvidenceBindingIncludesWorkerRecords(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	mustAssess(t, record, ref)
 	before, err := PrepareContext(t.Context(), record.Directory, "final")

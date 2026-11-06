@@ -38,7 +38,10 @@ func editModelPolicy(t *testing.T, path string, edit func(Object)) {
 }
 
 // Keep this historical input explicit. Maintained fixtures copy the current
-// policy; the older v2 contract still has Ultra and Luna execution Max defaults.
+// policy; this applies the earlier profile and effort defaults (Ultra Sol and
+// Luna execution Max) inside it. It changes only profiles, roles, fallbacks
+// for GitHub, effort policy and guidance, so the policy keeps its version-3
+// shape, consultation section and adviser fallback (D1).
 func historicalModelPolicy(policy Object) {
 	profiles := policy["profiles"].(Object)
 	delete(profiles, "github")

@@ -1,0 +1,9 @@
+{
+  "policy": "all",
+  "credentials": [],
+  "responses": {},
+  "exit": 0,
+  "stdout": null,
+  "stderr": null,
+  "stdout_contains": "no_advisers_configured"
+}

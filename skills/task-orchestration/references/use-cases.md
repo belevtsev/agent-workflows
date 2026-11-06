@@ -19,11 +19,13 @@ avoid duplicate investigation. Dependent integration stays with the coordinator.
 Resolve installed specialists from the current catalog. Repository commands,
 execution environments, and product conventions belong in repository instructions.
 
-Every substantial preset follows the entrypoint's mandatory paired consultations:
-before implementation or substantive drafting/review, and again during final review
-of the completed deliverable and current evidence before completion or publication.
-The final checkpoint uses a separate evidence batch; earlier advice cannot replace it.
-Record each checkpoint's disposition, including unavailable or restricted providers.
+Every substantial preset follows the entrypoint's [decision flow](../SKILL.md#follow-the-decision-flow):
+a before checkpoint ahead of implementation or substantive drafting/review, and a
+fresh final checkpoint on the completed deliverable and current evidence before
+completion or publication. Each checkpoint consults the task's configured advisers,
+if any, and needs a resolved adjudication; earlier advice cannot replace the final
+one. Record each checkpoint's disposition, including advisers that were not
+configured, unavailable or restricted.
 
 ## Implementation
 

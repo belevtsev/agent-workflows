@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "status": "success",
   "request": {
     "state": {
@@ -24,7 +24,7 @@
       "status": "success",
       "requested_model": "jev-1.14.0",
       "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
-      "duration_seconds": 0.000337,
+      "duration_seconds": 0.0,
       "resolved_model": "jev-1.14.0",
       "result": {
         "model": "jev-1.14.0",
@@ -54,7 +54,7 @@
       "status": "success",
       "requested_model": "subq-snap-preview",
       "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
-      "duration_seconds": 0.000325,
+      "duration_seconds": 0.0,
       "resolved_model": "subq-snap-preview",
       "result": {
         "model": "subq-snap-preview",
@@ -84,7 +84,7 @@
       "status": "success",
       "requested_model": "gpt-6-luna",
       "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
-      "duration_seconds": 0.000341,
+      "duration_seconds": 0.0,
       "resolved_model": "gpt-6-luna",
       "result": {
         "model": "gpt-6-luna",

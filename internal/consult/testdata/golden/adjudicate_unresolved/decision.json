@@ -3,10 +3,12 @@
     "claim": {
       "status": "unresolved",
       "choice": null,
-      "reason": "Storage durability is not established.",
+      "reason": "Durability of the stored write is not established.",
       "evidence": [],
       "verification": [],
-      "rejected_judgments": {}
+      "rejected_judgments": {},
+      "investigations": {},
+      "agreement_not_independent": false
     }
   }
 }

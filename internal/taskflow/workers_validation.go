@@ -43,8 +43,8 @@ func validateBoundWorkerChecks(record Record, snapshot projectctx.Snapshot, chec
 }
 
 func validateWorkerRecord(record Record) error {
-	if record.Version != Version || !validAgentID(record.Plan.CoordinatorID) {
-		return errors.New("version 2 task needs a declared coordinator identity")
+	if !validAgentID(record.Plan.CoordinatorID) {
+		return errors.New("task needs a declared coordinator identity")
 	}
 	if len(record.Assignments) > 256 || len(record.WorkerResults) > 256 || len(record.WorkerAcceptances) > 1024 {
 		return errors.New("stored worker collections exceed their bounds")
@@ -100,12 +100,9 @@ func validateWorkerRecord(record Record) error {
 }
 
 // Every revision is validated against its predecessor as well as in isolation.
-// This prevents rewritten briefs/results/acceptances and version switching even
-// when someone appends syntactically valid JSON with a valid previous hash.
+// This prevents rewritten briefs/results/acceptances even when someone appends
+// syntactically valid JSON with a valid previous hash.
 func validateWorkerTransition(previous, current Record) error {
-	if previous.Version != current.Version {
-		return errors.New("task record version cannot switch or downgrade within a revision chain")
-	}
 	if len(current.Assignments) < len(previous.Assignments) || len(current.WorkerResults) < len(previous.WorkerResults) || len(current.WorkerAcceptances) < len(previous.WorkerAcceptances) {
 		return errors.New("worker history is append-only")
 	}

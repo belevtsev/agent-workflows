@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Review"
   short_description: "Verify actionable findings against changed behavior"
-  default_prompt: "Use $code-review to inspect this change, consult Jev for consequential judgments, and report only verified, actionable findings with precise locations and validation limits."
+  default_prompt: "Use $code-review to inspect this change, use configured advisers via cw consult for consequential judgments when any are configured, and report only verified, actionable findings with precise locations and validation limits."

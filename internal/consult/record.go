@@ -5,23 +5,41 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
 	"slices"
 	"time"
 )
 
-var pairProviders = []string{jevProvider, snapProvider}
+// recordVersion is the only consultation record version this cw writes or reads.
+const recordVersion = 4
 
-var errorCategories = []string{"missing_credential", "deadline_unavailable", "timeout", "http_error", "network_error", "invalid_response", "worker_error"}
+const maxQuestions = 8
 
-var disabledReasons = []string{"missing_credential", "excluded"}
+var errorCategories = []string{"timeout", "http_error", "network_error", "invalid_response", "worker_error"}
 
 func pendingDecision() *object {
 	return newObject("status", "pending", "questions", newObject())
 }
 
-// sharedRequest applies the common contract every participating adviser accepts.
+// sharedRequest applies the common contract every participating adviser
+// accepts, plus the structural authoring checks: at most eight Choice
+// questions, a valid state.untrusted marking and a valid task adviser binding.
 func sharedRequest(value any) (*object, error) {
+	request, err := sharedContract(value)
+	if err != nil {
+		return nil, err
+	}
+	if questions := request.get("questions").(*object); questions.size() > maxQuestions {
+		return nil, fmt.Errorf("request has %d questions; at most %d are allowed", questions.size(), maxQuestions)
+	}
+	return request, nil
+}
+
+// sharedContract is sharedRequest without the question count limit, which
+// binds consultation requests but not the synthetic evaluation's fixed
+// twelve-case batches.
+func sharedContract(value any) (*object, error) {
 	request, ok := mapping(value)
 	if !ok || !request.exactly("state", "questions") {
 		return nil, errors.New("shared request requires only state and questions")
@@ -45,6 +63,12 @@ func sharedRequest(value any) (*object, error) {
 			return nil, errors.New("Choice exceeds the shared option limit")
 		}
 	}
+	if err := checkUntrusted(request.get("state")); err != nil {
+		return nil, err
+	}
+	if _, _, err := taskBinding(request.get("state")); err != nil {
+		return nil, err
+	}
 	return request, nil
 }
 
@@ -61,38 +85,20 @@ func unavailable(prepared *object, reason string, duration float64) *object {
 	return newObject("request", prepared, "requested_model", prepared.get("model"), "status", "unavailable", "error", category(reason), "duration_seconds", duration)
 }
 
-func disabled(prepared *object, reason string) *object {
-	return newObject("request", prepared, "requested_model", prepared.get("model"), "status", "disabled", "reason", reason, "duration_seconds", 0.0)
+// notConfigured is the raw record of a participating adviser that was not
+// attempted because its credential is empty.
+func notConfigured(prepared *object) *object {
+	return newObject("request", prepared, "requested_model", prepared.get("model"), "status", "not_configured", "duration_seconds", 0.0)
 }
 
 // batch describes one bounded evidence collection across its advisers.
 type batch struct {
 	credentials map[string]string
 	deadline    time.Duration
-	disabled    map[string]string
-	// required lists the providers that cannot be disabled; nil means all.
-	required []string
 }
 
+// collector gathers one raw provider record for each prepared adviser.
 type collector func(context.Context, *object, batch) (map[string]any, error)
-
-func (b batch) check(prepared *object) error {
-	required := b.required
-	if required == nil {
-		required = prepared.names
-	}
-	for _, name := range required {
-		if !prepared.has(name) {
-			return errors.New("required provider cannot be disabled")
-		}
-	}
-	for name := range b.disabled {
-		if !prepared.has(name) || slices.Contains(required, name) {
-			return errors.New("required provider cannot be disabled")
-		}
-	}
-	return nil
-}
 
 // consultWorker owns one provider attempt. A panic value can retain transport
 // details, so only its category survives and the other advisers are unaffected.
@@ -113,21 +119,18 @@ func (t transport) consultWorker(ctx context.Context, provider string, prepared 
 	return record
 }
 
-// collect runs one attempt per active adviser concurrently under a single
+// collect runs one attempt per configured adviser concurrently under a single
 // deadline. That deadline bounds connecting, sending and reading the complete
 // response. It returns at the deadline even if a provider has not yet stopped.
+// An adviser without a credential is recorded as not_configured and never
+// contacted; with none configured, collect makes no network call.
 func (t transport) collect(ctx context.Context, prepared *object, options batch) (map[string]any, error) {
-	if err := options.check(prepared); err != nil {
-		return nil, err
-	}
 	records := map[string]any{}
 	var active []string
 	for _, name := range prepared.names {
 		value := prepared.get(name).(*object)
-		if reason, excluded := options.disabled[name]; excluded {
-			records[name] = disabled(value, reason)
-		} else if options.credentials[name] == "" {
-			records[name] = unavailable(value, "missing_credential", 0.0)
+		if options.credentials[name] == "" {
+			records[name] = notConfigured(value)
 		} else if name == openAIProvider && !requestSupported(value) {
 			records[name] = unavailable(value, "unsupported_request", 0.0)
 		} else {
@@ -185,7 +188,7 @@ func validDuration(value any) bool {
 }
 
 // safeRecord keeps only the normalized fields of one provider's evidence.
-func safeRecord(raw any, prepared *object, digest, provider string, allowDisabled bool) (*object, error) {
+func safeRecord(raw any, prepared *object, digest, provider string) (*object, error) {
 	record, ok := mapping(raw)
 	if !ok {
 		return nil, errors.New("invalid provider record")
@@ -204,12 +207,10 @@ func safeRecord(raw any, prepared *object, digest, provider string, allowDisable
 	result := newObject("status", status, "requested_model", prepared.get("model"), "request_sha256", digest, "duration_seconds", duration)
 	isOpenAI := provider == openAIProvider
 	switch {
-	case status == "disabled":
-		reason, ok := text(record.get("reason"))
-		if !allowDisabled || !isOpenAI || !ok || !slices.Contains(disabledReasons, reason) || !equal(duration, integer("0")) {
-			return nil, errors.New("invalid disabled provider")
+	case status == "not_configured":
+		if !equal(duration, integer("0")) {
+			return nil, errors.New("invalid not_configured provider")
 		}
-		result.set("reason", reason)
 	case status == "success" || isOpenAI && (status == "partial" || status == "refusal"):
 		var validated *object
 		var err error
@@ -267,15 +268,23 @@ func validHTTPStatus(code integer) bool {
 	return !code.negative() && len(code) == 3 && code >= "100" && code <= "599"
 }
 
-func comparison(shared, providers *object) *object {
-	compared := newObject()
-	enabled := 0
+// attempted counts the participating advisers that were configured, and so
+// received the request.
+func attempted(providers *object) int {
+	count := 0
 	for _, name := range providers.names {
-		if providers.get(name).(*object).get("status") != "disabled" {
-			enabled++
+		if status, _ := providers.get(name).(*object).get("status").(string); AttemptedStatus(status) {
+			count++
 		}
 	}
-	extended := providers.has(openAIProvider)
+	return count
+}
+
+// comparison reports, per question, which attempted advisers chose which
+// option and why every other participating adviser has no choice.
+func comparison(shared, providers *object) *object {
+	compared := newObject()
+	tried := attempted(providers)
 	questions := shared.get("questions").(*object)
 	for _, id := range questions.names {
 		choices, missing := newObject(), newObject()
@@ -294,34 +303,33 @@ func comparison(shared, providers *object) *object {
 			}
 		}
 		status := "unavailable"
-		if choices.size() > 0 {
-			status = "partial"
-		}
-		if choices.size() > 0 && choices.size() == enabled {
+		switch {
+		case tried == 0:
+			status = "no_advisers"
+		case choices.size() == tried:
 			status = "agreement"
 			for _, name := range choices.names {
 				if choices.get(name) != choices.get(choices.names[0]) {
 					status = "disagreement"
 				}
 			}
+		case choices.size() > 0:
+			status = "partial"
 		}
-		item := newObject("status", status, "choices", choices)
-		if extended {
-			item.set("missing", missing)
-		}
-		compared.set(id, item)
+		compared.set(id, newObject("status", status, "choices", choices, "missing", missing))
 	}
 	return compared
 }
 
+// availability is the record status over the attempted advisers.
 func availability(providers *object) string {
-	enabled, succeeded, answered := 0, 0, 0
+	tried, succeeded, answered := 0, 0, 0
 	for _, name := range providers.names {
-		status := providers.get(name).(*object).get("status")
-		if status == "disabled" {
+		status, _ := providers.get(name).(*object).get("status").(string)
+		if !AttemptedStatus(status) {
 			continue
 		}
-		enabled++
+		tried++
 		if status == "success" {
 			succeeded++
 		}
@@ -330,7 +338,9 @@ func availability(providers *object) string {
 		}
 	}
 	switch {
-	case enabled > 0 && succeeded == enabled:
+	case tried == 0:
+		return "no_advisers_configured"
+	case succeeded == tried:
 		return "success"
 	case answered > 0:
 		return "partial"
@@ -339,26 +349,26 @@ func availability(providers *object) string {
 	}
 }
 
-func expectedProviders(version int) []string {
-	if version == 1 {
-		return pairProviders
+// fixedOrder reports whether names are distinct known advisers in the record's
+// fixed order.
+func fixedOrder(names []string) bool {
+	next := 0
+	for _, name := range names {
+		index := slices.Index(providerOrder, name)
+		if index < next {
+			return false
+		}
+		next = index + 1
 	}
-	return providerOrder
+	return true
 }
 
-// makeRecord builds the retained consultation record. A malformed provider
-// record becomes that provider's invalid_response and never affects another.
-func makeRecord(shared, prepared *object, raw map[string]any, version int) (*object, error) {
-	if version == 0 {
-		version = 1
-		if prepared.has(openAIProvider) {
-			version = 3
-		}
-	}
-	if version < 1 || version > 3 {
-		return nil, errors.New("invalid consultation record version")
-	}
-	if !prepared.exactly(expectedProviders(version)...) {
+// makeRecord builds the retained version 4 consultation record. prepared holds
+// every participating adviser, configured or not, and raw one provider record
+// for each. A malformed provider record becomes that provider's
+// invalid_response and never affects another.
+func makeRecord(shared, prepared *object, raw map[string]any) (*object, error) {
+	if !fixedOrder(prepared.names) {
 		return nil, errors.New("invalid prepared providers")
 	}
 	digest, err := fingerprint(shared)
@@ -368,16 +378,16 @@ func makeRecord(shared, prepared *object, raw map[string]any, version int) (*obj
 	providers := newObject()
 	for _, name := range prepared.names {
 		value := prepared.get(name).(*object)
-		record, err := safeRecord(raw[name], value, digest, name, version == 2)
+		record, err := safeRecord(raw[name], value, digest, name)
 		if err != nil {
-			record, err = safeRecord(unavailable(value, "invalid_response", 0.0), value, digest, name, false)
+			record, err = safeRecord(unavailable(value, "invalid_response", 0.0), value, digest, name)
 			if err != nil {
 				return nil, err
 			}
 		}
 		providers.set(name, record)
 	}
-	return newObject("version", number(version), "status", availability(providers), "request", shared, "request_sha256", digest,
+	return newObject("version", number(recordVersion), "status", availability(providers), "request", shared, "request_sha256", digest,
 		"providers", providers, "comparison", comparison(shared, providers), "final_decision", pendingDecision()), nil
 }
 
@@ -386,124 +396,93 @@ func textValue(value any) bool {
 	return ok && !blank(content)
 }
 
-func textList(value any) bool {
-	items, ok := value.([]any)
-	return ok && !slices.ContainsFunc(items, func(item any) bool { return !textValue(item) })
-}
-
-func recordVersion(value any) (int, bool) {
-	switch value {
-	case integer("1"):
-		return 1, true
-	case integer("2"):
-		return 2, true
-	case integer("3"):
-		return 3, true
+// checkVersion accepts only the integer 4.
+func checkVersion(value any) error {
+	if value == integer("4") {
+		return nil
 	}
-	return 0, false
+	shown := "missing"
+	if value != nil {
+		if data, err := wireFormat.marshal(value); err == nil {
+			shown = string(data)
+		}
+	}
+	return fmt.Errorf("consultation record version %s is not supported; this cw reads version %d", shown, recordVersion)
 }
 
 // verifyStored proves that retained provider evidence still normalizes to
-// exactly what is stored, independent of the policy now in force.
-func verifyStored(record, shared *object, digest string, version int) (*object, error) {
+// exactly what is stored, independent of the policy now in force, and that a
+// task-bound request recorded exactly its bound advisers.
+func verifyStored(record, shared *object, digest string) (*object, error) {
 	stored, ok := mapping(record.get("providers"))
-	if !ok || !stored.exactly(expectedProviders(version)...) {
+	if !ok {
 		return nil, errors.New("invalid recorded providers")
+	}
+	for _, name := range stored.names {
+		if !slices.Contains(providerOrder, name) {
+			return nil, fmt.Errorf("record names unknown adviser %q", name)
+		}
+	}
+	if !fixedOrder(stored.names) {
+		return nil, errors.New("recorded providers are not in the fixed adviser order")
+	}
+	binding, bound, err := taskBinding(shared.get("state"))
+	if err != nil {
+		return nil, err
 	}
 	providers := newObject()
 	for _, name := range stored.names {
 		item, ok := mapping(stored.get(name))
 		if !ok {
-			return nil, errors.New("invalid stored provider")
+			return nil, fmt.Errorf("invalid stored provider %s", name)
 		}
 		model, ok := text(item.get("requested_model"))
-		valid := ok && model == snapModel
-		if name == jevProvider {
-			valid = ok && pinnedJev.MatchString(model)
-		} else if name == openAIProvider {
-			valid = ok && model == openAIModel
+		if !ok || !validModel(name, model) {
+			return nil, fmt.Errorf("invalid stored model for provider %s", name)
 		}
-		if !valid {
-			return nil, errors.New("invalid stored provider model")
+		if bound && binding[name] != model {
+			return nil, fmt.Errorf("provider %s differs from the task's adviser binding", name)
 		}
 		if item.get("request_sha256") != digest {
-			return nil, errors.New("provider evidence fingerprint differs")
+			return nil, fmt.Errorf("provider %s evidence fingerprint differs", name)
 		}
 		prepared, err := prepareProvider(name, shared, model)
 		if err != nil {
 			return nil, err
 		}
-		safe, err := safeRecord(item.with("request", prepared), prepared, digest, name, version == 2)
+		safe, err := safeRecord(item.with("request", prepared), prepared, digest, name)
 		if err != nil {
 			return nil, err
 		}
 		if !equal(safe, item) {
-			return nil, errors.New("stored provider contains inconsistent fields")
+			return nil, fmt.Errorf("stored provider %s contains inconsistent fields", name)
 		}
 		providers.set(name, safe)
+	}
+	if bound && len(binding) != providers.size() {
+		return nil, errors.New("recorded providers differ from the task's adviser binding")
 	}
 	return providers, nil
 }
 
-func checkDecisionItem(value any, id string, shared, compared *object) (bool, error) {
-	item, ok := mapping(value)
-	if !ok || !item.exactly("status", "choice", "reason", "evidence", "verification", "rejected_judgments") {
-		return false, errors.New("invalid decision item")
-	}
-	status := item.get("status")
-	if status != "resolved" && status != "unresolved" {
-		return false, errors.New("invalid decision status")
-	}
-	if !textValue(item.get("reason")) {
-		return false, errors.New("decision needs a reason")
-	}
-	if !textList(item.get("evidence")) || !textList(item.get("verification")) {
-		return false, errors.New("invalid decision references")
-	}
-	rejected, ok := mapping(item.get("rejected_judgments"))
-	if !ok || slices.ContainsFunc(rejected.names, func(name string) bool { return !textValue(rejected.get(name)) }) {
-		return false, errors.New("invalid rejected judgment reasons")
-	}
-	if status != "resolved" {
-		if item.get("choice") != nil || rejected.size() > 0 {
-			return false, errors.New("unresolved decision must not choose or reject")
-		}
-		return false, nil
-	}
-	criteria := shared.get("questions").(*object).get(id).(*object).get("criteria").(*object)
-	choice, ok := text(item.get("choice"))
-	if !ok || !criteria.has(choice) {
-		return false, errors.New("decision choice is not an allowed option")
-	}
-	if choice == "insufficient_evidence" {
-		return false, errors.New("insufficient evidence remains unresolved")
-	}
-	if len(item.get("evidence").([]any)) == 0 || len(item.get("verification").([]any)) == 0 {
-		return false, errors.New("resolved decision needs evidence and verification")
-	}
-	choices := compared.get(id).(*object).get("choices").(*object)
-	var expected []string
-	for _, name := range choices.names {
-		if choices.get(name) != choice {
-			expected = append(expected, name)
-		}
-	}
-	if !rejected.exactly(expected...) {
-		return false, errors.New("decision must explain each rejected provider judgment")
-	}
-	return true, nil
+// checkedRecord is a version 4 record whose request, provider evidence,
+// comparison and availability have been revalidated.
+type checkedRecord struct {
+	record, shared, providers, compared *object
 }
 
-// adjudicate validates the coordinator's recorded disposition without hosted requests,
-// the current policy, or voting. The record must first prove itself unchanged.
-func adjudicate(recordValue, decisionValue any) (*object, error) {
-	record, ok := mapping(recordValue)
-	if !ok || !record.exactly("version", "status", "request", "request_sha256", "providers", "comparison", "final_decision") {
-		return nil, errors.New("invalid consultation record")
-	}
-	version, ok := recordVersion(record.get("version"))
+// checkRecord revalidates everything in a consultation record except its
+// final decision.
+func checkRecord(value any) (*checkedRecord, error) {
+	record, ok := mapping(value)
 	if !ok {
 		return nil, errors.New("invalid consultation record")
+	}
+	if err := checkVersion(record.get("version")); err != nil {
+		return nil, err
+	}
+	if !record.exactly("version", "status", "request", "request_sha256", "providers", "comparison", "final_decision") {
+		return nil, errors.New("consultation record fields differ from version 4")
 	}
 	shared, err := sharedRequest(record.get("request"))
 	if err != nil {
@@ -516,34 +495,16 @@ func adjudicate(recordValue, decisionValue any) (*object, error) {
 	if record.get("request_sha256") != digest {
 		return nil, errors.New("shared evidence fingerprint differs")
 	}
-	providers, err := verifyStored(record, shared, digest, version)
+	providers, err := verifyStored(record, shared, digest)
 	if err != nil {
 		return nil, err
 	}
 	compared := comparison(shared, providers)
-	if !equal(record.get("comparison"), compared) || record.get("status") != availability(providers) {
+	if !equal(record.get("comparison"), compared) {
 		return nil, errors.New("recorded comparison differs from provider answers")
 	}
-	if !equal(record.get("final_decision"), pendingDecision()) {
-		return nil, errors.New("consultation already has a decision")
+	if record.get("status") != availability(providers) {
+		return nil, errors.New("recorded status differs from provider availability")
 	}
-	decision, ok := mapping(decisionValue)
-	if !ok || !decision.exactly("questions") {
-		return nil, errors.New("invalid decision fields")
-	}
-	questions, ok := mapping(decision.get("questions"))
-	if !ok || !questions.sameNames(shared.get("questions").(*object)) {
-		return nil, errors.New("decision must cover every question")
-	}
-	status := "resolved"
-	for _, id := range questions.names {
-		resolved, err := checkDecisionItem(questions.get(id), id, shared, compared)
-		if err != nil {
-			return nil, err
-		}
-		if !resolved {
-			status = "unresolved"
-		}
-	}
-	return record.with("final_decision", newObject("status", status, "questions", questions)), nil
+	return &checkedRecord{record: record, shared: shared, providers: providers, compared: compared}, nil
 }

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"regexp"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ import (
 )
 
 const (
-	Version       = 2
+	Version       = 3
 	MaxInputBytes = 8 << 20
 	MaxLogBytes   = 128 << 10
 )
@@ -92,11 +93,19 @@ type BoundDecision struct {
 
 // Context is the exact object placed in request.state.task_context, or as one
 // member of request.state.task_contexts for a shared multi-project batch.
+// Advisers is the task's immutable adviser binding (provider -> pinned model,
+// possibly empty), so cw consult asks exactly the advisers bound at start.
 type Context struct {
 	TaskID         string              `json:"task_id"`
 	Phase          string              `json:"phase"`
 	Snapshot       projectctx.Snapshot `json:"snapshot"`
 	EvidenceSHA256 string              `json:"evidence_sha256"`
+	Advisers       map[string]string   `json:"advisers"`
+}
+
+// sameContext compares every emitted context field, including the binding.
+func sameContext(a, b Context) bool {
+	return a.TaskID == b.TaskID && a.Phase == b.Phase && a.Snapshot == b.Snapshot && a.EvidenceSHA256 == b.EvidenceSHA256 && maps.Equal(a.Advisers, b.Advisers)
 }
 
 type CheckRun struct {
@@ -147,6 +156,7 @@ type Record struct {
 	UpdatedAt         time.Time                  `json:"updated_at"`
 	Plan              Plan                       `json:"plan"`
 	Baseline          projectctx.Snapshot        `json:"baseline"`
+	Advisers          map[string]string          `json:"advisers"`
 	Contexts          map[string]Context         `json:"contexts"`
 	Checks            []CheckRun                 `json:"checks"`
 	Assessments       map[string]BoundAssessment `json:"assessments"`

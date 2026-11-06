@@ -35,9 +35,11 @@ var validatedSnapshots = struct {
 // the limit only matters to long test processes; past it the cache restarts.
 const validatedSnapshotLimit = 1024
 
-// validatedSnapshot returns the manifest of a snapshot whose entries equal
-// contents, validating the suite unless these exact entries at this root
-// already passed. The caller must have computed contents from root itself.
+// validatedSnapshot returns the manifest of an installed snapshot whose
+// entries equal contents, validating the suite unless these exact entries at
+// this root already passed. The caller must have computed contents from root
+// itself. A snapshot that ships an older model policy was installed by an
+// earlier cw and is reported as ErrLegacyInstallation.
 func validatedSnapshot(root string, contents Object) (Object, error) {
 	key := root + "\x00" + hash(legacyJSON(contents))
 	validatedSnapshots.Lock()
@@ -48,7 +50,7 @@ func validatedSnapshot(root string, contents Object) (Object, error) {
 	}
 	manifest, err := LoadManifestValidated(root)
 	if err != nil {
-		return nil, err
+		return nil, legacyPolicy(err)
 	}
 	// Remember the result only if the snapshot did not change while it was
 	// being validated; otherwise this read stands alone, as without the cache.

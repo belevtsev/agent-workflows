@@ -1,4 +1,4 @@
 interface:
   display_name: "Go Principal Engineer"
   short_description: "Close production Go design decisions"
-  default_prompt: "Use $go-principal-engineer to design this Go change with minimal, production-safe ownership and failure semantics, consulting Jev for consequential decisions."
+  default_prompt: "Use $go-principal-engineer to design this Go change with minimal, production-safe ownership and failure semantics, using configured advisers via cw consult for consequential decisions or source evidence alone when none are configured."

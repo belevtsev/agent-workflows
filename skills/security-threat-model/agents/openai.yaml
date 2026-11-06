@@ -1,4 +1,4 @@
 interface:
   display_name: "Security Threat Model"
   short_description: "Repo-grounded threat modeling and abuse-path analysis"
-  default_prompt: "Use $security-threat-model to create a repository-grounded threat model with prioritized abuse paths and mitigations, consulting Jev for consequential risk judgments."
+  default_prompt: "Use $security-threat-model to create a repository-grounded threat model with prioritized abuse paths and mitigations, using configured advisers via cw consult for consequential risk judgments or source evidence alone when none are configured."

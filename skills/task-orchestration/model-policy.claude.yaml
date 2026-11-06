@@ -1,9 +1,11 @@
 version: 1
 
-# Claude Code roles for the coordinator and its workers. Activation, adviser
-# consultation and publication rules stay in model-policy.yaml, which applies on
-# every host. Agent tool dispatch accepts aliases only, so references/hosts.md
-# maps these profiles to `model: opus` or `model: sonnet` with explicit effort.
+# Claude Code roles for the coordinator and its workers. Activation, consultation
+# and publication rules stay in model-policy.yaml, which applies on every host.
+# This file has no consultation section: which advisers take part follows the
+# shared policy's enabled providers and the credentials present. Agent tool
+# dispatch accepts aliases only, so references/hosts.md maps these profiles to
+# `model: opus` or `model: sonnet` with explicit effort.
 profiles:
   substantive:
     model: claude-opus-5-5

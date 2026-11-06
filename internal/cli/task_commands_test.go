@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	json "encoding/json/v2"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,15 +24,12 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	config, out, _, _ := testConfig(t)
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
-	config.Getenv = func(key string) string {
-		if key != "CODEX_HOME" && key != "CLAUDE_CONFIG_DIR" && key != "XDG_STATE_HOME" {
-			t.Fatal("task command queried adviser credentials")
-		}
-		return ""
-	}
+	// D5 / Revision 3: task start reads the credential environment to bind
+	// advisers; none is set here.
+	config.Getenv = func(string) string { return "" }
 	plan := `{"title":"Inspect real source","kind":"small","requirements":[{"id":"source","description":"Existing source inspected","check_ids":[],"allow_non_execution":true}],"checks":[]}`
 	config.In = strings.NewReader(plan)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	var record taskflow.Record
@@ -48,6 +46,9 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 	if record.Baseline.Root != canonicalRepo || !strings.HasPrefix(record.Directory, filepath.Join(canonicalHome, ".local", "state", "agent-workflows", "workflow-tasks")) {
 		t.Fatalf("wrong project/storage: %+v", record)
+	}
+	if len(record.Advisers) != 0 {
+		t.Fatalf("task start bound %v without credentials", record.Advisers)
 	}
 	out.Reset()
 	if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, config); err == nil {
@@ -82,98 +83,103 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 }
 
-// R3.1: a task record chain whose revisions are version 1 is refused with the
-// restart guidance, and its record files stay byte-identical.
-func TestTaskCLIRefusesVersionOneRecordsWithoutWrites(t *testing.T) {
-	repo, home := t.TempDir(), t.TempDir()
-	if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	config, out, _, _ := testConfig(t)
-	stderr := new(bytes.Buffer)
-	config.Err = stderr
-	config.HomeDir = func() (string, error) { return home, nil }
-	config.WorkingDir = func() (string, error) { return repo, nil }
-	config.In = strings.NewReader(`{"title":"Inspect source","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err != nil {
-		t.Fatal(err)
-	}
-	var record taskflow.Record
-	if err := json.Unmarshal(out.Bytes(), &record); err != nil {
-		t.Fatal(err)
-	}
-	revisions, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
-	if err != nil || len(revisions) == 0 {
-		t.Fatalf("no task revisions in %s: %v", record.Directory, err)
-	}
-	// Turn the stored chain into a version-1 chain without other changes.
-	for _, path := range revisions {
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var document map[string]any
-		if err := json.Unmarshal(data, &document); err != nil {
-			t.Fatal(err)
-		}
-		if document["version"] != float64(taskflow.Version) {
-			t.Fatalf("%s is not a current record: version %v", path, document["version"])
-		}
-		document["version"] = 1
-		if data, err = json.Marshal(document); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(path, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, data, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chmod(path, info.Mode().Perm()); err != nil {
-			t.Fatal(err)
-		}
-	}
-	snapshot := func() map[string]string {
-		t.Helper()
-		names, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		files := map[string]string{}
-		for _, name := range names {
-			data, err := os.ReadFile(name)
-			if err != nil {
+// D5 (task records, version 3): a task record chain whose revisions hold any
+// other version is refused with the restart guidance, and its record files
+// stay byte-identical.
+func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
+	for _, version := range []int{1, 2, 4} {
+		t.Run(fmt.Sprintf("version_%d", version), func(t *testing.T) {
+			repo, home := t.TempDir(), t.TempDir()
+			if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			files[filepath.Base(name)] = string(data)
-		}
-		return files
-	}
-	before := snapshot()
-	const refusal = "task record version 1 is no longer supported; start a new task with 'cw task start'"
-	for _, command := range []string{"show", "verify"} {
-		t.Run(command, func(t *testing.T) {
-			out.Reset()
-			stderr.Reset()
-			err := Execute(t.Context(), []string{"task", command, "--task", record.Directory}, config)
-			if err == nil {
-				t.Fatal("version-1 task record was loaded")
+			config, out, _, _ := testConfig(t)
+			stderr := new(bytes.Buffer)
+			config.Err = stderr
+			config.HomeDir = func() (string, error) { return home, nil }
+			config.WorkingDir = func() (string, error) { return repo, nil }
+			config.In = strings.NewReader(`{"title":"Inspect source","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
+			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+				t.Fatal(err)
 			}
-			if !strings.Contains(err.Error()+out.String()+stderr.String(), refusal) {
-				t.Fatalf("missing version-1 guidance: %v stdout %q stderr %q", err, out, stderr)
+			var record taskflow.Record
+			if err := json.Unmarshal(out.Bytes(), &record); err != nil {
+				t.Fatal(err)
 			}
-			after := snapshot()
-			if len(after) != len(before) {
-				t.Fatalf("task revisions changed: %d -> %d", len(before), len(after))
+			revisions, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
+			if err != nil || len(revisions) == 0 {
+				t.Fatalf("no task revisions in %s: %v", record.Directory, err)
 			}
-			for name, data := range before {
-				if after[name] != data {
-					t.Fatalf("%s changed after refusal", name)
+			// Change only the version of every stored revision.
+			for _, path := range revisions {
+				info, err := os.Stat(path)
+				if err != nil {
+					t.Fatal(err)
 				}
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var document map[string]any
+				if err := json.Unmarshal(data, &document); err != nil {
+					t.Fatal(err)
+				}
+				if document["version"] != float64(3) || taskflow.Version != 3 {
+					t.Fatalf("%s is not a version-3 record: version %v (taskflow.Version %d)", path, document["version"], taskflow.Version)
+				}
+				document["version"] = version
+				if data, err = json.Marshal(document); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, info.Mode().Perm()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			snapshot := func() map[string]string {
+				t.Helper()
+				names, err := filepath.Glob(filepath.Join(record.Directory, "record-*.json"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				files := map[string]string{}
+				for _, name := range names {
+					data, err := os.ReadFile(name)
+					if err != nil {
+						t.Fatal(err)
+					}
+					files[filepath.Base(name)] = string(data)
+				}
+				return files
+			}
+			before := snapshot()
+			refusal := fmt.Sprintf("task record version %d is not supported; this cw reads version 3 records; start a new task with 'cw task start'", version)
+			for _, command := range []string{"show", "verify"} {
+				t.Run(command, func(t *testing.T) {
+					out.Reset()
+					stderr.Reset()
+					err := Execute(t.Context(), []string{"task", command, "--task", record.Directory}, config)
+					if err == nil {
+						t.Fatalf("version-%d task record was loaded", version)
+					}
+					if !strings.Contains(err.Error()+out.String()+stderr.String(), refusal) {
+						t.Fatalf("missing restart guidance %q: %v stdout %q stderr %q", refusal, err, out, stderr)
+					}
+					after := snapshot()
+					if len(after) != len(before) {
+						t.Fatalf("task revisions changed: %d -> %d", len(before), len(after))
+					}
+					for name, data := range before {
+						if after[name] != data {
+							t.Fatalf("%s changed after refusal", name)
+						}
+					}
+				})
 			}
 		})
 	}
@@ -196,7 +202,7 @@ func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
 func TestTaskCLIRejectsUnknownPlanFields(t *testing.T) {
 	config, _, _, _ := testConfig(t)
 	config.In = strings.NewReader(`{"title":"x","kind":"small","commands_from_agents_md":true}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("unknown plan accepted: %v", err)
 	}
 }
@@ -240,24 +246,20 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 		t.Run(item.name, func(t *testing.T) {
 			config, out, _, _ := testConfig(t)
 			config.In = strings.NewReader(plan)
-			config.HomeDir = func() (string, error) {
-				if item.name == "explicit store beats profile" {
-					t.Fatal("explicit storage resolved a home")
-				}
-				return defaultHome, nil
-			}
+			// D5 / Revision 3: task start also resolves the credential
+			// environment (env-or-saved, like cw consult), so even an explicit
+			// store may read the home and the environment; only the store
+			// location is checked here.
+			config.HomeDir = func() (string, error) { return defaultHome, nil }
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.Getenv = func(key string) string {
-				if item.name == "explicit store beats profile" {
-					t.Fatal("explicit storage read environment")
-				}
 				if key == "XDG_STATE_HOME" {
 					return item.environment
 				}
 				return ""
 			}
 			config.Resolve = func(string) (manageruntime.Locator, error) { return manageruntime.Locator{}, os.ErrNotExist }
-			args := append([]string{"task", "start", "--plan", "-"}, item.flags...)
+			args := append([]string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, item.flags...)
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)
 			}
@@ -287,7 +289,7 @@ func TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository(t *testing.T) {
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
 	config.In = strings.NewReader(`{"title":"Inspect project source","kind":"small","requirements":[{"id":"source","description":"Inspect source","allow_non_execution":true}],"checks":[]}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	var record taskflow.Record
@@ -388,7 +390,7 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.Getenv = func(string) string { return "" }
 			config.In = strings.NewReader(`{"title":"Inspect selected project","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","allow_non_execution":true}],"checks":[]}`)
-			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-"}, config); err != nil {
+			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 				t.Fatal(err)
 			}
 			var record taskflow.Record
@@ -418,5 +420,52 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 				t.Fatalf("source change=%t, independent review required=%t: %v", changed, reviewRequired, result.Problems)
 			}
 		})
+	}
+}
+
+// D5 (flow enforcement): a substantial task rejects cw task assign until the
+// before checkpoint is attached and resolved, and stores no assignment; a
+// small task is not gated (see TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository).
+func TestSubstantialAssignRequiresResolvedBeforeCheckpoint(t *testing.T) {
+	repo, home := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "main.tf"), []byte("resource \"example\" \"checked\" {}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, out, _, _ := testConfig(t)
+	stderr := new(bytes.Buffer)
+	config.Err = stderr
+	config.HomeDir = func() (string, error) { return home, nil }
+	config.WorkingDir = func() (string, error) { return repo, nil }
+	config.Getenv = func(string) string { return "" }
+	config.In = strings.NewReader(`{"title":"Change project source","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","allow_non_execution":true}],"checks":[]}`)
+	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+		t.Fatal(err)
+	}
+	var record taskflow.Record
+	if err := json.Unmarshal(out.Bytes(), &record); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(taskflow.WorkerBrief{
+		ID: "inspect", AgentID: "/root/project_explorer", Role: "evidence",
+		Goal: "Inspect the selected Terraform source", OwnedPaths: []string{"main.tf"},
+		Constraints: []string{"Read source without changing it"}, CheckIDs: []string{},
+		StopCondition: "Return the source evidence and uncertainties",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.In = bytes.NewReader(encoded)
+	out.Reset()
+	err = Execute(t.Context(), []string{"task", "assign", "--task", record.Directory, "--input", "-"}, config)
+	if err == nil {
+		t.Fatal("a substantial task dispatched a worker before its before checkpoint")
+	}
+	const refusal = "adjudicate and attach the before checkpoint before dispatching workers"
+	if text := err.Error() + out.String() + stderr.String(); !strings.Contains(text, refusal) {
+		t.Fatalf("refusal does not say %q: %s", refusal, text)
+	}
+	stored, err := taskflow.Load(record.Directory)
+	if err != nil || len(stored.Assignments) != 0 {
+		t.Fatalf("rejected assignment changed the task: %v", err)
 	}
 }

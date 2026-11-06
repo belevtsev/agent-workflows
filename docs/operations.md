@@ -41,8 +41,9 @@ and regular nonlinked files. No key values appear in status, journals or JSON.
 Environment keys take precedence; a saved replacement remains shadowed while its
 environment key exists. Optional key checking sends only a tiny synthetic request,
 one attempt per available provider under a common30-second budget, and is off by
-default. Missing keys do not prevent installation. Adviser failure remains missing
-coverage; successful key checking does not prove model availability in a host.
+default. Missing keys do not prevent installation; an adviser without its key does
+not participate. Adviser failure remains missing coverage; successful key checking
+does not prove model availability in a host.
 
 If settings commit but credential saving or checking fails or is cancelled, the
 command reports a nonzero partial outcome. A post-rename storage-sync failure is
@@ -58,6 +59,15 @@ uses the active cached base and retains the manager and activation history;
 explicit preference edits derive a new effective snapshot of that same base.
 Updates select a newer base. Runtime locator host paths are initial hints; sealed state
 and journals own enrolled host roots, so adding a host can select its own root.
+
+This `cw` refuses setup/install, update, rollback, recover and uninstall, before any
+write, when the active release or any release it must read ships a model policy
+older than version 3. Run `cw uninstall` with the `cw` that made the installation,
+then install again. Until you reinstall, `cw doctor`, `cw consult` and
+`cw task start` keep working with the default roots. They read adviser keys only
+from the environment and the default config directory
+(`$XDG_CONFIG_HOME/agent-workflows` or `~/.config/agent-workflows`), not from a
+config directory that the older installation recorded.
 
 The download helper stages a private executable, verifies its exact pinned source
 tag, and leaves activation to the native transaction. It never overwrites the
@@ -76,7 +86,8 @@ Missing or unsupported tooling is qualified and retains normal source discovery.
 Neither mode installs dependencies, changes watcher enrollment or calls advisers.
 
 `cw task` keeps source-bound requirements, actual argv check execution, references,
-two substantial-task adviser checkpoints and the coordinator's decision in a private
+the adviser binding fixed at `cw task start`, two substantial-task decision
+checkpoints and the coordinator's decisions in a private
 external task directory, by default `STATE/workflow-tasks`. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 Unknown metrics remain unknown, and synthetic observations are never described as
@@ -238,9 +249,11 @@ made before rendering or during interrupted recovery survive the value merge.
 
 ## Consultation command
 
-`cw consult` runs the three adviser calls. It reads the active release's policy and
-question files, so it works from any directory and needs nothing but the provider
-keys in its environment:
+`cw consult` calls the configured advisers: the task's bound set for a task-bound
+request, otherwise the providers enabled in the active release's policy, each only
+with its key present. It reads the active release's policy and question files, so
+it works from any directory. With no adviser configured it writes a
+`no_advisers_configured` record without network access:
 
 ```sh
 cw consult --request /path/to/request.json --output /path/to/new-record.json --dry-run
@@ -298,23 +311,26 @@ runtime callers, interface implementations, or dependency-injection targets.
 Missing runtime or graph coverage leaves direct reads, `rg`, semantic search,
 and Go tooling available.
 
-## Required OpenAI adviser
+## Adviser keys
 
-The current policy declares `openai_decisions: gpt-6-luna` under
-`consultation.providers`, alongside Jev and SubQ Snap. Supply `OPENAI_API_KEY`
-together with `TYPESAFE_API_KEY` and `SUBQ_API_KEY`. Every consultation includes all
-three required advisers; a missing key records unavailable coverage and preserves
-the other results. Excluding OpenAI is rejected for this policy. Installation,
-local validation and status do not require credentials or make hosted requests.
+The shipped policy enables `subq_snap` and `openai_decisions`; `jev` is opt-in. An
+enabled adviser participates only with its key (`SUBQ_API_KEY`, `OPENAI_API_KEY` or
+`TYPESAFE_API_KEY`). `cw task start` binds the advisers configured at that moment.
+A bound adviser whose key is missing at consultation time is recorded as
+`not_configured`; `cw consult` still writes the record, exits `2` and names the
+variable, and `cw task consult` rejects that record. Supply the key and consult
+again. Installation, local validation and status
+do not require keys or make hosted requests.
 
-`cw status` reports in `credential_sources` whether `OPENAI_API_KEY` comes from
-its own environment or the private stored file, without calling OpenAI. A terminal export does not update an already running desktop app;
-use the [setup instructions](../README.md#set-up-openai-decisions) and a fresh
+`cw status` reports in `credential_sources` whether each key comes from its own
+environment or the private stored file, without calling a provider. A terminal
+export does not update an already running desktop app; use the
+[setup instructions](../README.md#make-keys-visible-to-the-agent) and a fresh
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
 
 See the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
-for unavailable/refused coverage and offline adjudication.
+for adviser statuses, offline adjudication and exit codes.
 
 ## Direct cw command
 

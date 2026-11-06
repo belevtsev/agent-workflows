@@ -1,0 +1,18 @@
+{
+  "questions": {
+    "claim": {
+      "status": "resolved",
+      "choice": "supported",
+      "reason": "The inspected source commits the write before it sends the acknowledgement.",
+      "evidence": [
+        "fixture/service.go:12 at fixture-revision"
+      ],
+      "verification": [
+        "check:go-test-store@run-42"
+      ],
+      "rejected_judgments": {},
+      "investigations": {},
+      "agreement_not_independent": false
+    }
+  }
+}

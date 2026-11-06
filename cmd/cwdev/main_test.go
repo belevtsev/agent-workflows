@@ -1,10 +1,13 @@
 package main
 
 import (
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -17,6 +20,7 @@ func TestDeveloperArgumentsRejectIncompleteOrUnknownCommands(t *testing.T) {
 	}
 }
 
+// D3 (cmd/cwdev): offline evaluation is unchanged and needs no provider.
 func TestEvalValidatesTheCheckedInCorpusOffline(t *testing.T) {
 	if err := run(t.Context(), []string{"eval", "multilingual", "--source", "../.."}); err != nil {
 		t.Fatal(err)
@@ -147,10 +151,106 @@ func TestEvalLiveTreatsLegacyInstallationLikeNoInstallation(t *testing.T) {
 	if legacy != baseline {
 		t.Fatalf("legacy installation changed the outcome: %s, without one: %s\nlegacy output: %s", legacy, baseline, legacyText)
 	}
-	if strings.Contains(legacyText, evaluationRefused) != strings.Contains(baselineText, evaluationRefused) {
-		t.Fatalf("legacy installation changed the refusal:\nlegacy: %s\nwithout one: %s", legacyText, baselineText)
+	// D3: with no configured provider a live evaluation is not a failure.
+	if baseline != "ok" {
+		t.Fatalf("live evaluation without configured providers failed: %s\noutput: %s", baseline, baselineText)
 	}
 	if strings.Contains(legacyText, "no longer supports") {
 		t.Fatalf("legacy installation was refused: %s", legacyText)
+	}
+}
+
+// evalTestNotRunEntry reports whether entry marks a provider as not run because it is
+// not configured.
+func evalTestNotRunEntry(entry map[string]any) bool {
+	return entry["status"] == "not_run" && entry["reason"] == "not_configured"
+}
+
+// evalTestReportsNotRun finds provider marked not_run/not_configured anywhere in a
+// decoded report, either keyed by the provider ID or naming it in a
+// provider, id or name member.
+func evalTestReportsNotRun(value any, provider string) bool {
+	switch item := value.(type) {
+	case map[string]any:
+		if entry, ok := item[provider].(map[string]any); ok && evalTestNotRunEntry(entry) {
+			return true
+		}
+		for _, key := range []string{"provider", "id", "name"} {
+			if item[key] == provider && evalTestNotRunEntry(item) {
+				return true
+			}
+		}
+		for _, child := range item {
+			if evalTestReportsNotRun(child, provider) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range item {
+			if evalTestReportsNotRun(child, provider) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// evalTestDecodedReports returns every JSON document the evaluation wrote below
+// output (.json files and .jsonl lines) and any JSON object it printed.
+func evalTestDecodedReports(t *testing.T, output, printed string) []any {
+	t.Helper()
+	var documents []any
+	decode := func(data []byte) {
+		var document any
+		if json.Unmarshal(data, &document) == nil {
+			documents = append(documents, document)
+		}
+	}
+	err := filepath.WalkDir(output, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		switch filepath.Ext(path) {
+		case ".json":
+			decode(data)
+		case ".jsonl":
+			for line := range strings.SplitSeq(string(data), "\n") {
+				decode([]byte(line))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decode([]byte(printed))
+	return documents
+}
+
+// D3 (cmd/cwdev multilingual eval): a live evaluation without any configured
+// provider makes no request, is not a failure, and reports every known
+// provider as not_run with reason not_configured.
+func TestEvalLiveWithoutConfiguredProvidersReportsEveryProviderNotRun(t *testing.T) {
+	isolateEnvironment(t)
+	output := filepath.Join(t.TempDir(), "evaluation")
+	var err error
+	text := captureOutput(t, func() {
+		err = run(t.Context(), []string{"eval", "multilingual", "--live", "--source", "../..", "--output-dir", output})
+	})
+	if err != nil {
+		t.Fatalf("live evaluation without configured providers failed: %v\noutput: %s", err, text)
+	}
+	documents := evalTestDecodedReports(t, output, text)
+	if len(documents) == 0 {
+		t.Fatalf("live evaluation wrote no JSON report below %s; output: %s", output, text)
+	}
+	for _, provider := range []string{"jev", "subq_snap", "openai_decisions"} {
+		if !slices.ContainsFunc(documents, func(document any) bool { return evalTestReportsNotRun(document, provider) }) {
+			t.Fatalf("report does not list %s as not_run/not_configured; output: %s", provider, text)
+		}
 	}
 }

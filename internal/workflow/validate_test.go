@@ -36,7 +36,9 @@ func newSuiteFixture(t *testing.T) *suiteFixture {
 	fixture.write(t, personalCatalogName, `{"skills":{},"version":1}`)
 	fixture.skill(t, "skills/example", "example", "")
 	fixture.skill(t, "skills/task-orchestration", "task-orchestration", "")
-	for _, name := range []string{"model-policy.yaml", "model-policy.claude.yaml", "references/jev-questions.json"} {
+	// D1: the version-3 policy reads its question patterns from
+	// references/question-patterns.json; jev-questions.json is gone.
+	for _, name := range []string{"model-policy.yaml", "model-policy.claude.yaml", "references/question-patterns.json"} {
 		data, err := os.ReadFile(filepath.Join("..", "..", "skills", "task-orchestration", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
@@ -234,7 +236,7 @@ func TestValidateManifestRejectsUnsafeInputs(t *testing.T) {
 			f.writeManifest(t)
 		}, "duplicate path"},
 		{"policy outside skill", func(t *testing.T, f *suiteFixture) {
-			f.write(t, "outside.yaml", "version: 2\n")
+			f.write(t, "outside.yaml", "version: 3\n")
 			f.manifest["model_policy"] = "outside.yaml"
 			f.writeManifest(t)
 		}, "inside a registered"},
@@ -512,11 +514,17 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 		{"unknown fallback evidence", func(p Object) { p["unknown_role_profile"] = "luna" }},
 		{"worker fallback evidence", func(p Object) { p["fallbacks"].(Object)["luna_unavailable"] = "luna" }},
 		{"unsafe unavailable Sol fallback", func(p Object) { p["fallbacks"].(Object)["sol_unavailable"] = "luna" }},
-		{"unsafe unavailable Jev fallback", func(p Object) { p["fallbacks"].(Object)["jev_unavailable_or_inconclusive"] = "automatic_escalation" }},
+		// D1: the adviser fallback is renamed and still cannot escalate.
+		{"unsafe unavailable adviser fallback", func(p Object) {
+			p["fallbacks"].(Object)["advisers_unavailable_or_inconclusive"] = "automatic_escalation"
+		}},
 		{"runtime specialist override", func(p Object) {
 			p["fixed_specialists"].(Object)["context_explorer"].(Object)["respect_runtime_model"] = false
 		}},
-		{"mutable Jev alias", func(p Object) { p["consultation"].(Object)["model"] = "jev-latest" }},
+		// D1: a mutable Jev alias is rejected wherever it is enabled.
+		{"mutable Jev alias", func(p Object) { p["consultation"].(Object)["providers"] = Object{"jev": "jev-latest"} }},
+		// D1: version 2 policies are no longer accepted.
+		{"version 2", func(p Object) { p["version"] = 2 }},
 		{"deadline float", func(p Object) { p["consultation"].(Object)["deadline_seconds"] = 30.5 }},
 		{"automatic retries", func(p Object) { p["consultation"].(Object)["automatic_retries"] = true }},
 		{"question escapes", func(p Object) { p["consultation"].(Object)["questions"] = "../../global/AGENTS.md" }},
@@ -559,20 +567,27 @@ func TestModelPolicyRejectsUnsafeRoutingAndSafeguards(t *testing.T) {
 	t.Run("duplicate policy key", func(t *testing.T) {
 		t.Parallel()
 		fixture := newSuiteFixture(t)
-		fixture.write(t, fixture.manifest["model_policy"].(string), "version: 2\nversion: 2\n")
+		fixture.write(t, fixture.manifest["model_policy"].(string), "version: 3\nversion: 3\n")
 		fixture.invalid(t, "duplicate mapping key")
 	})
+	// D1: question-patterns.json is parsed strictly and its examples are
+	// Choice questions.
 	t.Run("duplicate question keys", func(t *testing.T) {
 		t.Parallel()
 		fixture := newSuiteFixture(t)
-		fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":{"duplicate":{},"duplicate":{}}}`)
+		fixture.write(t, questionPatternsName, `{"version":1,"rules":["One decision per question."],"examples":{"duplicate":`+v3RolloutExample+`,"duplicate":`+v3OwnershipExample+`}}`)
 		fixture.invalid(t, "duplicate mapping key")
 	})
+	// D1 requires named options but fixes no wording: assert the rejection
+	// and that the error names the offending example.
 	t.Run("invalid choice", func(t *testing.T) {
 		t.Parallel()
 		fixture := newSuiteFixture(t)
-		fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":{"one":{"type":"choice","instructions":"text","criteria":{"only":"one"}}}}`)
-		fixture.invalid(t, "Choice needs at least two options")
+		fixture.write(t, questionPatternsName, v3QuestionPatterns(map[string]string{
+			"rollout":               v3RolloutExample,
+			"single_option_example": `{"type":"choice","instructions":"text","criteria":{"insufficient_evidence":"The evidence does not decide this."}}`,
+		}))
+		fixture.invalid(t, "single_option_example")
 	})
 }
 
@@ -587,159 +602,8 @@ func TestShippedPolicyUsesCurrentComparisonMarker(t *testing.T) {
 	}
 }
 
-func TestModelPolicyDecisionProviders(t *testing.T) {
-	t.Parallel()
-	dual := func(consultation Object) {
-		consultation["providers"] = Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview"}
-		consultation["comparison"] = "coordinator_evidence_and_verification"
-	}
-	optional := func(consultation Object) {
-		dual(consultation)
-		consultation["optional_providers"] = Object{"openai_decisions": "gpt-6-luna"}
-	}
-	required := func(consultation Object) {
-		dual(consultation)
-		consultation["providers"].(Object)["openai_decisions"] = "gpt-6-luna"
-	}
-	cases := []struct {
-		name  string
-		valid bool
-		edit  func(Object)
-	}{
-		{"legacy version 2", true, func(Object) {}},
-		{"dual providers", true, dual},
-		{"optional OpenAI adviser", true, optional},
-		{"required three advisers", true, required},
-		{"required three advisers matching pinned Jev", true, func(c Object) {
-			c["model"] = "jev-1.15.0"
-			required(c)
-		}},
-		{"matching pinned Jev version", true, func(c Object) {
-			c["model"] = "jev-1.14.0"
-			dual(c)
-		}},
-		{"providers only", false, func(c Object) {
-			dual(c)
-			delete(c, "comparison")
-		}},
-		{"comparison only", false, func(c Object) {
-			dual(c)
-			delete(c, "providers")
-		}},
-		{"null providers", false, func(c Object) { dual(c); c["providers"] = nil }},
-		{"provider sequence", false, func(c Object) { dual(c); c["providers"] = []any{"jev", "subq_snap"} }},
-		{"missing Jev", false, func(c Object) { dual(c); delete(c["providers"].(Object), "jev") }},
-		{"missing Snap", false, func(c Object) { dual(c); delete(c["providers"].(Object), "subq_snap") }},
-		{"unknown provider", false, func(c Object) { dual(c); c["providers"].(Object)["other"] = "other-model" }},
-		{"Jev model mismatch", false, func(c Object) { dual(c); c["providers"].(Object)["jev"] = "jev-1.12.0" }},
-		{"Jev model type", false, func(c Object) { dual(c); c["providers"].(Object)["jev"] = Object{"model": c["model"]} }},
-		{"Snap model alias", false, func(c Object) { dual(c); c["providers"].(Object)["subq_snap"] = "subq-latest" }},
-		{"Snap model type", false, func(c Object) { dual(c); c["providers"].(Object)["subq_snap"] = []any{"subq-snap-preview"} }},
-		{"comparison null", false, func(c Object) { dual(c); c["comparison"] = nil }},
-		{"comparison votes", false, func(c Object) { dual(c); c["comparison"] = "majority_vote" }},
-		{"historical comparison marker", true, func(c Object) { dual(c); c["comparison"] = "codex_evidence_and_verification" }},
-		{"unknown comparison marker", false, func(c Object) { dual(c); c["comparison"] = "claude_evidence_and_verification" }},
-		{"optional without required pair", false, func(c Object) { c["optional_providers"] = Object{"openai_decisions": "gpt-6-luna"} }},
-		{"optional without comparison", false, func(c Object) { optional(c); delete(c, "comparison") }},
-		{"optional without providers", false, func(c Object) { optional(c); delete(c, "providers") }},
-		{"null optional providers", false, func(c Object) { optional(c); c["optional_providers"] = nil }},
-		{"optional provider sequence", false, func(c Object) { optional(c); c["optional_providers"] = []any{"openai_decisions"} }},
-		{"empty optional providers", false, func(c Object) { optional(c); c["optional_providers"] = Object{} }},
-		{"unknown optional provider", false, func(c Object) { optional(c); c["optional_providers"] = Object{"other": "gpt-6-luna"} }},
-		{"extra optional provider", false, func(c Object) { optional(c); c["optional_providers"].(Object)["other"] = "gpt-6-luna" }},
-		{"OpenAI model alias", false, func(c Object) { optional(c); c["optional_providers"].(Object)["openai_decisions"] = "gpt-latest" }},
-		{"OpenAI different model", false, func(c Object) { optional(c); c["optional_providers"].(Object)["openai_decisions"] = "gpt-6.1-sol" }},
-		{"OpenAI null model", false, func(c Object) { optional(c); c["optional_providers"].(Object)["openai_decisions"] = nil }},
-		{"OpenAI boolean model", false, func(c Object) { optional(c); c["optional_providers"].(Object)["openai_decisions"] = true }},
-		{"OpenAI model mapping", false, func(c Object) {
-			optional(c)
-			c["optional_providers"].(Object)["openai_decisions"] = Object{"model": "gpt-6-luna"}
-		}},
-		{"OpenAI cannot replace required Snap", false, func(c Object) {
-			optional(c)
-			c["providers"] = Object{"jev": c["model"], "openai_decisions": "gpt-6-luna"}
-		}},
-		{"required triple without comparison", false, func(c Object) { required(c); delete(c, "comparison") }},
-		{"required triple missing Jev", false, func(c Object) { required(c); delete(c["providers"].(Object), "jev") }},
-		{"required triple missing Snap", false, func(c Object) { required(c); delete(c["providers"].(Object), "subq_snap") }},
-		{"required OpenAI model alias", false, func(c Object) { required(c); c["providers"].(Object)["openai_decisions"] = "gpt-latest" }},
-		{"required OpenAI wrong model", false, func(c Object) { required(c); c["providers"].(Object)["openai_decisions"] = "gpt-6.1-sol" }},
-		{"required OpenAI null model", false, func(c Object) { required(c); c["providers"].(Object)["openai_decisions"] = nil }},
-		{"required OpenAI boolean model", false, func(c Object) { required(c); c["providers"].(Object)["openai_decisions"] = true }},
-		{"required OpenAI model mapping", false, func(c Object) {
-			required(c)
-			c["providers"].(Object)["openai_decisions"] = Object{"model": "gpt-6-luna"}
-		}},
-		{"required OpenAI model sequence", false, func(c Object) { required(c); c["providers"].(Object)["openai_decisions"] = []any{"gpt-6-luna"} }},
-		{"unknown required provider", false, func(c Object) { required(c); c["providers"].(Object)["other"] = "other-model" }},
-		{"OpenAI required and optional", false, func(c Object) { optional(c); c["providers"].(Object)["openai_decisions"] = "gpt-6-luna" }},
-		{"required triple with null optional map", false, func(c Object) { required(c); c["optional_providers"] = nil }},
-		{"required triple with empty optional map", false, func(c Object) { required(c); c["optional_providers"] = Object{} }},
-		{"unknown legacy field", false, func(c Object) { c["unknown"] = true }},
-		{"unknown dual field", false, func(c Object) { dual(c); c["unknown"] = true }},
-		{"unknown optional field", false, func(c Object) { optional(c); c["unknown"] = true }},
-		{"unknown required triple field", false, func(c Object) { required(c); c["unknown"] = true }},
-	}
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			fixture := newSuiteFixture(t)
-			policyPath := filepath.Join(fixture.root, fixture.manifest["model_policy"].(string))
-			data, err := os.ReadFile(policyPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var policy Object
-			if err := yaml.Unmarshal(data, &policy); err != nil {
-				t.Fatal(err)
-			}
-			consultation := policy["consultation"].(Object)
-			delete(consultation, "providers")
-			delete(consultation, "comparison")
-			delete(consultation, "optional_providers")
-			test.edit(consultation)
-			data, err = yaml.Marshal(policy)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(policyPath, data, 0o600); err != nil {
-				t.Fatal(err)
-			}
-			if test.valid {
-				if _, err := ValidateSuite(fixture.root); err != nil {
-					t.Fatalf("valid consultation rejected: %v", err)
-				}
-				if _, err := ModelDefaults(fixture.root, fixture.manifest); err != nil {
-					t.Fatalf("valid model defaults rejected: %v", err)
-				}
-			} else {
-				fixture.invalid(t, "model policy is invalid")
-				if _, err := ModelDefaults(fixture.root, fixture.manifest); err == nil {
-					t.Fatal("model defaults accepted invalid consultation")
-				}
-			}
-		})
-	}
-}
-
 func shippedPolicy() string {
 	return filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml")
-}
-
-func TestValidateModelPolicyAcceptsTheShippedRequiredTriple(t *testing.T) {
-	t.Parallel()
-	policy, err := ValidateModelPolicy(shippedPolicy())
-	if err != nil {
-		t.Fatal(err)
-	}
-	consultation := policy["consultation"].(Object)
-	want := Object{"jev": consultation["model"], "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}
-	if !reflect.DeepEqual(consultation["providers"], want) {
-		t.Fatalf("providers = %v", consultation["providers"])
-	}
-	if _, present := consultation["optional_providers"]; present {
-		t.Fatal("the shipped policy must not keep an optional adviser")
-	}
 }
 
 func TestValidateModelPolicyFollowsAnInstalledCurrentSymlink(t *testing.T) {
@@ -773,18 +637,29 @@ func TestPolicyTreatsSeparatorControlCharactersAsBlank(t *testing.T) {
 			fixture.invalid(t, name)
 		})
 	}
-	for name, question := range map[string]string{
-		"invalid question ID":          `{"\u001e":{"type":"choice","instructions":"text","criteria":{"a":"x","b":"y"}}}`,
-		"invalid option ID":            `{"one":{"type":"choice","instructions":"text","criteria":{"\u001c":"x","b":"y"}}}`,
-		"empty or invalid description": `{"one":{"type":"choice","instructions":"\u001f","criteria":{"a":"x","b":"y"}}}`,
+	// D1: question-patterns.json examples are validated as Choice questions,
+	// and the error names the problem. D1 fixes no wording, so the blank
+	// instructions case asserts that the error names the offending example.
+	for name, test := range map[string]struct{ id, example, want string }{
+		"invalid option ID": {"one", `{"type":"choice","instructions":"text","criteria":{"\u001c":"x","b":"y","insufficient_evidence":"z"}}`, "invalid option ID"},
+		"empty or invalid description": {"blank_instructions_example", `{"type":"choice","instructions":"\u001f","criteria":{"a":"x","b":"y","insufficient_evidence":"z"}}`,
+			"blank_instructions_example"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			fixture := newSuiteFixture(t)
-			fixture.write(t, "skills/task-orchestration/references/jev-questions.json", `{"version":1,"questions":`+question+`}`)
-			fixture.invalid(t, name)
+			fixture.write(t, questionPatternsName, v3QuestionPatterns(map[string]string{"rollout": v3RolloutExample, test.id: test.example}))
+			fixture.invalid(t, test.want)
 		})
 	}
+	t.Run("invalid example ID", func(t *testing.T) {
+		t.Parallel()
+		fixture := newSuiteFixture(t)
+		fixture.write(t, questionPatternsName, v3QuestionPatterns(map[string]string{"rollout": v3RolloutExample, "\x1e": v3OwnershipExample}))
+		if _, err := ValidateSuite(fixture.root); err == nil {
+			t.Fatal("an example ID made of a separator control character was accepted")
+		}
+	})
 }
 
 func TestConfiguredMaxAcceptsEveryDeclaredMaxProfile(t *testing.T) {
@@ -841,17 +716,13 @@ func TestResolveWorkerFollowsRoutesAndExplicitOverrides(t *testing.T) {
 	}
 }
 
+// Historical profile and effort settings stay readable inside a version-3
+// policy; D1 changes only the version, the adviser fallback and consultation.
 func TestResolveWorkerKeepsHistoricalPoliciesReadable(t *testing.T) {
 	t.Parallel()
 	fixture := newSuiteFixture(t)
 	path := filepath.Join(fixture.root, text(fixture.manifest["model_policy"]))
-	editModelPolicy(t, path, func(policy Object) {
-		consultation := policy["consultation"].(Object)
-		delete(consultation, "providers")
-		delete(consultation, "comparison")
-		delete(consultation, "optional_providers")
-		historicalModelPolicy(policy)
-	})
+	editModelPolicy(t, path, historicalModelPolicy)
 	policy, err := ValidateModelPolicy(path)
 	if err != nil {
 		t.Fatal(err)

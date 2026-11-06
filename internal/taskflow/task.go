@@ -5,22 +5,37 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
+// noAdvisersLimitation is the verify limitation for a task bound to no advisers.
+const noAdvisersLimitation = "no advisers were configured when the task started; decisions rest on source evidence and checks only"
+
 // Start captures the immutable before-work baseline and creates private records
-// outside the selected project. No project files are written.
-func Start(ctx context.Context, repo, store string, plan Plan) (Record, error) {
+// outside the selected project. No project files are written. advisers is the
+// task's immutable adviser binding (provider -> pinned model, possibly empty):
+// the advisers configured when the task starts. Later policy or credential
+// changes never change it.
+func Start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
 	if err := ValidatePlan(&plan); err != nil {
+		return Record{}, err
+	}
+	advisers = maps.Clone(advisers)
+	if advisers == nil {
+		advisers = map[string]string{}
+	}
+	if err := consult.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
 	snapshot, err := projectctx.Capture(ctx, repo)
@@ -53,8 +68,8 @@ func Start(ctx context.Context, repo, store string, plan Plan) (Record, error) {
 	}
 	defer root.Close()
 	now := time.Now().UTC()
-	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
-	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot}
+	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
+	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
 		return Record{}, initializationError(err)
@@ -92,7 +107,7 @@ func PrepareContext(ctx context.Context, path, phase string) (Context, error) {
 				return fmt.Errorf("final context needs resolved before consultation: %w", err)
 			}
 		}
-		result = Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot}
+		result = Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot, Advisers: record.Advisers}
 		if phase == "final" {
 			if problems := localEvidenceProblems(root, *record, snapshot); len(problems) > 0 {
 				return fmt.Errorf("final context requires completed applicable evidence: %s", strings.Join(problems, "; "))
@@ -429,6 +444,9 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
 		if record.Plan.Kind == "substantial" {
+			if len(record.Advisers) == 0 {
+				result.Limitations = append(result.Limitations, noAdvisersLimitation)
+			}
 			for _, phase := range []string{"before", "final"} {
 				expected := snapshot
 				if phase == "before" {
@@ -439,10 +457,9 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 					problem("%s consultation: %v", phase, err)
 					continue
 				}
-				for _, provider := range adviserIDs {
-					value := consultation.Providers[provider]
-					if value.Status != "success" {
-						result.Limitations = append(result.Limitations, fmt.Sprintf("%s %s coverage is %s; Codex's recorded source/check decision supplies the fallback.", phase, provider, value.Status))
+				for _, provider := range slices.Sorted(maps.Keys(record.Advisers)) {
+					if status := consultation.Providers[provider].Status; status != "success" {
+						result.Limitations = append(result.Limitations, fmt.Sprintf("%s %s coverage is %s; the coordinator's recorded source/check decision supplies the fallback.", phase, provider, status))
 					}
 				}
 			}

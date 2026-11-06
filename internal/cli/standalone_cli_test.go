@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
@@ -229,8 +230,9 @@ func TestRemovedFlagsAndCommandsAreUnknown(t *testing.T) {
 		{[]string{"--prepare-only"}, "unknown flag: --prepare-only"},
 		{[]string{"validate"}, "validate"},
 		{[]string{"validate", "--json"}, "validate"},
-		{[]string{"consult", "jev"}, "jev"},
-		{[]string{"consult", "jev", "--request", "request.json", "--output", "record.json", "--dry-run"}, "jev"},
+		// D3 (Removed): the OpenAI participation flags are unknown.
+		{[]string{"consult", "--request", "request.json", "--output", "record.json", "--with-openai"}, "unknown flag: --with-openai"},
+		{[]string{"consult", "--request", "request.json", "--output", "record.json", "--without-openai"}, "unknown flag: --without-openai"},
 	} {
 		t.Run(argsName(test.args), func(t *testing.T) {
 			config, _, _, service := testConfig(t)
@@ -382,7 +384,8 @@ func legacyLocator(t *testing.T, config *Config, home, layout string) {
 
 // requireReadOnlyCommandsSucceed runs doctor, consult and task start with the
 // given leading root flags. R2.4 requires each to treat a legacy installation
-// as no recorded installation and fall back to the default roots.
+// as no recorded installation and fall back to the default roots. consult and
+// task start take the shipped policy explicitly (Revision 3).
 func requireReadOnlyCommandsSucceed(t *testing.T, config Config, out *bytes.Buffer, flags []string) {
 	t.Helper()
 	home := homeOf(t, config)
@@ -404,25 +407,38 @@ func requireReadOnlyCommandsSucceed(t *testing.T, config Config, out *bytes.Buff
 		t.Fatalf("doctor did not use the default Codex home or leaked a credential: %s", out)
 	}
 
+	// D3: without credentials the shipped version-3 policy yields a
+	// no_advisers_configured record and exit 0.
 	request, output := requestFile(t)
 	policy := filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml")
 	out.Reset()
 	stderr.Reset()
-	err := Execute(t.Context(), append(slices.Clone(flags), "consult", "--request", request, "--output", output, "--policy", policy), config)
-	if err == nil || ExitCode(err) != 2 || err.Error() != "" || out.String() != "Decision consultation unavailable; Coordinator decision pending\n" {
+	if err := Execute(t.Context(), append(slices.Clone(flags), "consult", "--request", request, "--output", output, "--policy", policy), config); err != nil {
 		t.Fatalf("consult on a legacy installation: %v (exit %d) stdout %q stderr %q", err, ExitCode(err), out, stderr)
+	}
+	data, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if consulted, err := consult.ValidateRecord(data); err != nil || consulted.Status != "no_advisers_configured" {
+		t.Fatalf("consult record on a legacy installation: %+v, %v", consulted, err)
 	}
 
 	config.In = strings.NewReader(`{"title":"Inspect source beside a legacy installation","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	out.Reset()
 	stderr.Reset()
-	if err := Execute(t.Context(), append(slices.Clone(flags), "task", "start", "--plan", "-"), config); err != nil {
+	// Revision 3: no installed policy is reachable here, so task start takes an
+	// explicit one; without credentials it binds no adviser.
+	if err := Execute(t.Context(), append(slices.Clone(flags), "task", "start", "--plan", "-", "--policy", policy), config); err != nil {
 		t.Fatalf("task start failed on a legacy installation: %v (stderr %q)", err, stderr)
 	}
 	var record taskflow.Record
 	if err := json.Unmarshal(out.Bytes(), &record); err != nil || record.Directory == "" {
 		t.Fatalf("task start record: %v: %s", err, out)
+	}
+	if len(record.Advisers) != 0 {
+		t.Fatalf("task start bound %v without credentials", record.Advisers)
 	}
 }
 
@@ -528,6 +544,72 @@ func TestLegacyStateRefusesLifecycleButNotReadOnlyCommands(t *testing.T) {
 					requireReadOnlyCommandsSucceed(t, config, out, flags)
 					if current, err := os.ReadFile(path); err != nil || !bytes.Equal(current, original) {
 						t.Fatalf("read-only command changed the legacy state: %v", err)
+					}
+				})
+			})
+		}
+	}
+}
+
+// releaseLinkOnly links, in the default or an explicit state directory below
+// home, an active release whose policy declares version, without any recorded
+// state or journal. It returns the root flags that select it and the state
+// directory.
+func releaseLinkOnly(t *testing.T, home string, version int, explicit bool) ([]string, string) {
+	t.Helper()
+	state := filepath.Join(home, ".local", "state", "agent-workflows")
+	var flags []string
+	if explicit {
+		state = filepath.Join(home, "recorded-state")
+		flags = []string{"--state-dir", state}
+	}
+	if err := os.MkdirAll(state, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	activeReleaseFixture(t, state, version, nil)
+	return flags, state
+}
+
+// D2 / Revision 3: detection follows the recorded installation, so a bare
+// current link without recorded state is not an installation and is not
+// refused, whatever policy version its release ships; read-only commands
+// with explicit policies succeed beside it and leave the release untouched.
+//
+// The refusal of a recorded installation whose active release ships an older
+// policy is not covered here: no CLI test fixture performs a real install
+// (lifecycle tests inject a fake service), so it is left to the workflow
+// tests.
+func TestBareReleaseLinkIsNotARecordedInstallation(t *testing.T) {
+	for _, version := range []int{1, 2, 3} {
+		for _, explicit := range []bool{false, true} {
+			name := fmt.Sprintf("policy_version_%d", version)
+			if explicit {
+				name += "_state_flag"
+			}
+			t.Run(name, func(t *testing.T) {
+				for _, args := range [][]string{{"status"}, {"install", "--dry-run"}} {
+					t.Run(argsName(args), func(t *testing.T) {
+						config, _, _, service := testConfig(t)
+						flags, _ := releaseLinkOnly(t, homeOf(t, config), version, explicit)
+						err := Execute(t.Context(), append(append([]string{}, flags...), args...), config)
+						if err != nil || service.untouched() {
+							t.Fatalf("a bare release link was treated as an installation: %v (exit %d)", err, ExitCode(err))
+						}
+					})
+				}
+				t.Run("read_only_commands", func(t *testing.T) {
+					config, out, _, _ := testConfig(t)
+					flags, state := releaseLinkOnly(t, homeOf(t, config), version, explicit)
+					releases := filepath.Join(state, "releases")
+					before := treeSnapshot(t, releases)
+					target, err := os.Readlink(filepath.Join(state, "current"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					requireReadOnlyCommandsSucceed(t, config, out, flags)
+					requireUnchanged(t, releases, before)
+					if current, err := os.Readlink(filepath.Join(state, "current")); err != nil || current != target {
+						t.Fatalf("read-only command moved the active release: %q, %v", current, err)
 					}
 				})
 			})

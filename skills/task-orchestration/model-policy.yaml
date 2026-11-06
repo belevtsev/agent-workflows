@@ -1,11 +1,12 @@
-version: 2
+version: 3
 
 # Read this file for each substantial task. It guides the coordinator; the host
 # does not load these settings natively or switch a running session's model.
 # On Codex these profiles apply directly. Claude Code uses model-policy.claude.yaml
 # for profiles and roles, and shares everything else here.
 # Authorized model/effort and role edits are validated against supported settings
-# and scope relationships. Consultation and publication safeguards stay mandatory.
+# and scope relationships. Consultation checkpoints and publication safeguards
+# stay mandatory; which advisers take part follows consultation.providers below.
 activation:
   any_of:
     - independent_workstreams
@@ -79,29 +80,39 @@ fallbacks:
   github_unavailable: report_blocker
   luna_unavailable: sol
   sol_unavailable: compatible_coordinator_or_report_blocker
-  jev_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
+  advisers_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
 
-# Mandatory for every activated substantial task: consult Jev, Snap and OpenAI before
-# implementation (or substantive drafting/review) and again during final review
-# against completed work and current checks, before completion or publication.
-# These are separate evidence batches; reuse is limited to the same checkpoint.
-# Record bounded attempts, restricted sharing, unavailable providers, and the
-# coordinator's disposition at each checkpoint. Keep the source-evidence fallback and no retries.
-# Checkpoint timing is skill instruction, not a new native manager policy field.
+# Every activated substantial task keeps both checkpoints: before implementation
+# (or substantive drafting/review), and again during final review against the
+# completed work and current checks, before completion or publication. Advisers
+# take part only when configured: listed under providers below and with their
+# credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY). With none
+# configured, the coordinator still holds each checkpoint and decides on source
+# evidence and checks under the same rules. Each checkpoint is a separate evidence
+# batch; reuse is limited to the same checkpoint. Record bounded attempts,
+# restricted sharing, unavailable providers, and the coordinator's disposition at
+# each checkpoint. No automatic retries. Checkpoint timing is skill instruction,
+# not a native manager policy field.
 consultation:
-  model: jev-1.14.0
   deadline_seconds: 30
   attempts_per_evidence_batch: 1
   automatic_retries: false
-  questions: references/jev-questions.json
+  questions: references/question-patterns.json
   ownership: task_coordinator
   reuse: unchanged_evidence_decisions_question_meaning_and_model
   sharing: minimal_evidence_within_task_authorization
+  comparison: coordinator_evidence_and_verification
+  # Enabled providers and their pinned models; an empty mapping ({}) enables none.
+  # Jev is opt-in. To enable it, add this line:
+  #   jev: jev-1.14.0
+  # It is off by default because of a measurement over 261 adjudicated
+  # consultations (587 resolved questions, 30 splits): Jev was the only adviser
+  # matching the verified decision in 0 of the 30 splits, was overruled 14 times
+  # and was unavailable 23 times. Snap matched 587/587, which suggests deference
+  # to Snap rather than independent verification.
   providers:
-    jev: jev-1.14.0
     subq_snap: subq-snap-preview
     openai_decisions: gpt-6-luna
-  comparison: coordinator_evidence_and_verification
 
 publication:
   authority: user_request_and_carried_authorization

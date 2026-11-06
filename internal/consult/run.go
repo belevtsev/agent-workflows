@@ -1,6 +1,12 @@
 // Package consult collects independent adviser judgments for a prepared Choice
 // request, then validates the coordinator's evidence-based decision. It never
 // decides which judgment is correct, and it records nothing about credentials.
+//
+// Advisers participate by configuration: a task-bound request uses the adviser
+// binding in state.task_context (or the identical bindings in
+// state.task_contexts), any other request uses the policy's enabled providers.
+// A participating adviser is attempted only when its credential is set; with
+// none attempted, no network call is made.
 package consult
 
 import (
@@ -10,19 +16,16 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 // Options selects one consultation or offline adjudication.
 type Options struct {
 	Request, Adjudicate, Decision, Output, Policy string
 	DryRun                                        bool
-	// UseOpenAI is nil unless --with-openai or --without-openai was supplied.
-	UseOpenAI *bool
-	Getenv    func(string) string
-	Stdout    io.Writer
-	Stderr    io.Writer
+	// Getenv resolves the credential variables; nil reads none.
+	Getenv func(string) string
+	Stdout io.Writer
+	Stderr io.Writer
 	// Unset outside package tests, which keeps the endpoints and budget fixed.
 	collect  collector
 	deadline time.Duration
@@ -36,81 +39,20 @@ func (o Options) Check() error {
 	if o.Output == "" {
 		return errors.New("--output is required")
 	}
-	if (o.Adjudicate != "") != (o.Decision != "") || o.Adjudicate != "" && (o.DryRun || o.UseOpenAI != nil) {
-		return errors.New("--decision requires --adjudicate; --dry-run and OpenAI flags are only for --request")
+	if (o.Adjudicate != "") != (o.Decision != "") || o.Adjudicate != "" && o.DryRun {
+		return errors.New("--decision requires --adjudicate; --dry-run is only for --request")
 	}
 	return nil
 }
 
-// policy is the validated adviser portion of a model policy.
-type policy struct {
-	deadline     time.Duration
-	providers    map[string]string
-	optional     map[string]string
-	hasProviders bool
-}
-
-func modelMap(value any) map[string]string {
-	models := map[string]string{}
-	configured, _ := value.(workflow.Object)
-	for name, model := range configured {
-		models[name], _ = model.(string)
-	}
-	return models
-}
-
-func loadPolicy(path string) (policy, error) {
-	value, err := workflow.ValidateModelPolicy(path)
-	if err != nil {
-		return policy{}, err
-	}
-	consultation := value["consultation"].(workflow.Object)
-	_, hasProviders := consultation["providers"]
-	return policy{
-		deadline:     time.Duration(consultation["deadline_seconds"].(int)) * time.Second,
-		providers:    modelMap(consultation["providers"]),
-		optional:     modelMap(consultation["optional_providers"]),
-		hasProviders: hasProviders,
-	}, nil
-}
-
-// prepareAll prepares every declared adviser in the record's fixed order.
-func (p policy) prepareAll(shared *object) (*object, error) {
-	prepared := newObject()
-	for _, name := range providerOrder {
-		model, required := p.providers[name]
-		if !required {
-			model, required = p.optional[name]
-		}
-		if !required {
-			continue
-		}
-		value, err := prepareProvider(name, shared, model)
-		if err != nil {
-			return nil, err
-		}
-		prepared.set(name, value)
-	}
-	return prepared, nil
-}
-
-func (p policy) requiredProviders() []string {
-	var names []string
-	for _, name := range providerOrder {
-		if _, required := p.providers[name]; required {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
 // plan is one validated request, ready to preview or send.
 type plan struct {
-	policy   policy
-	version  int
-	shared   *object
+	shared *object
+	// prepared holds every participating adviser in fixed order.
 	prepared *object
 	batch    batch
+	// bound is set when the participation set is a task's adviser binding.
+	bound bool
 }
 
 func readJSON(path string) (any, error) {
@@ -130,22 +72,6 @@ func (o Options) plan() (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !selected.hasProviders {
-		return nil, errors.New("policy does not configure adviser consultation")
-	}
-	_, requiredOpenAI := selected.providers[openAIProvider]
-	if requiredOpenAI && o.UseOpenAI != nil && !*o.UseOpenAI {
-		return nil, errors.New("required OpenAI adviser cannot be disabled")
-	}
-	if o.UseOpenAI != nil && !requiredOpenAI && len(selected.optional) == 0 {
-		return nil, errors.New("policy does not configure the OpenAI adviser")
-	}
-	version := 1
-	if requiredOpenAI {
-		version = 3
-	} else if len(selected.optional) > 0 {
-		version = 2
-	}
 	value, err := readJSON(o.Request)
 	if err != nil {
 		return nil, err
@@ -154,49 +80,59 @@ func (o Options) plan() (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := selected.prepareAll(shared)
+	participants, bound, err := taskBinding(shared.get("state"))
 	if err != nil {
 		return nil, err
 	}
-	credentials := map[string]string{}
-	for _, name := range prepared.names {
-		credentials[name] = o.Getenv(credentialNames[name])
+	if !bound {
+		participants = selected.providers
 	}
-	disabledProviders := map[string]string{}
-	if prepared.has(openAIProvider) && !requiredOpenAI {
-		if o.UseOpenAI != nil && !*o.UseOpenAI {
-			disabledProviders[openAIProvider] = "excluded"
-		} else if o.UseOpenAI == nil && credentials[openAIProvider] == "" {
-			disabledProviders[openAIProvider] = "missing_credential"
+	prepared := newObject()
+	credentials := map[string]string{}
+	for _, name := range providerOrder {
+		model, participating := participants[name]
+		if !participating {
+			continue
 		}
+		value, err := prepareProvider(name, shared, model)
+		if err != nil {
+			return nil, err
+		}
+		prepared.set(name, value)
+		credentials[name] = credential(o.Getenv, name)
 	}
 	deadline := selected.deadline
 	if o.deadline > 0 {
 		deadline = o.deadline
 	}
-	return &plan{policy: selected, version: version, shared: shared, prepared: prepared, batch: batch{
-		credentials: credentials, deadline: deadline, disabled: disabledProviders, required: selected.requiredProviders(),
-	}}, nil
+	return &plan{shared: shared, prepared: prepared, bound: bound, batch: batch{credentials: credentials, deadline: deadline}}, nil
+}
+
+// unconfigured lists the participating advisers without a credential.
+func (p *plan) unconfigured() []string {
+	var names []string
+	for _, name := range p.prepared.names {
+		if p.batch.credentials[name] == "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func (p *plan) preview() (*object, error) {
 	previews := newObject()
 	for _, name := range p.prepared.names {
-		previews.set(name, newObject("requested_model", p.prepared.get(name).(*object).get("model")))
-	}
-	if p.prepared.has(openAIProvider) {
-		preview := previews.get(openAIProvider).(*object)
-		preview.set("status", "dry_run")
-		if reason, excluded := p.batch.disabled[openAIProvider]; excluded {
-			preview.set("status", "disabled")
-			preview.set("reason", reason)
+		status := "dry_run"
+		if p.batch.credentials[name] == "" {
+			status = "not_configured"
 		}
+		previews.set(name, newObject("requested_model", p.prepared.get(name).(*object).get("model"), "status", status))
 	}
 	digest, err := fingerprint(p.shared)
 	if err != nil {
 		return nil, err
 	}
-	return newObject("version", number(p.version), "status", "dry_run", "request", p.shared, "request_sha256", digest,
+	return newObject("version", number(recordVersion), "status", "dry_run", "request", p.shared, "request_sha256", digest,
 		"providers", previews, "final_decision", pendingDecision()), nil
 }
 
@@ -219,9 +155,12 @@ func writeRecord(output *os.File, record *object) error {
 	return err
 }
 
-// Run executes one consultation or adjudication. A validation failure or an
-// incomplete result is a nonzero status with its output already reported; the
-// error is only for cancellation or a failed write of the reserved record.
+// Run executes one consultation or adjudication and returns the process
+// status: 0 for success, no_advisers_configured, dry_run or a resolved
+// decision; 2 for partial or unavailable coverage, an unresolved decision, or a
+// task-bound request whose bound adviser is not configured (the record is still
+// written); 1 for invalid input or an existing output path. The error is only
+// for cancellation or a failed write of the reserved record.
 func Run(ctx context.Context, o Options) (int, error) {
 	var record *object
 	var request *plan
@@ -263,23 +202,61 @@ func Run(ctx context.Context, o Options) (int, error) {
 	}
 	status := record.get("status").(string)
 	fmt.Fprintln(o.Stdout, "Decision consultation "+status+"; Coordinator decision pending")
-	if status != "success" && status != "dry_run" {
-		return 2, nil
+	code := 0
+	if status != "success" && status != "no_advisers_configured" && status != "dry_run" {
+		code = 2
 	}
-	return 0, nil
+	if request.bound {
+		for _, name := range request.unconfigured() {
+			fmt.Fprintf(o.Stderr, "Adviser %s is bound to this task but not configured; set %s and consult again.\n", name, credentialNames[name])
+			code = 2
+		}
+	}
+	return code, nil
 }
 
+// execute previews the plan, or sends it once to each configured adviser. The
+// collector is never called when no participating adviser is configured.
 func (o Options) execute(ctx context.Context, request *plan) (*object, error) {
 	if o.DryRun {
 		return request.preview()
 	}
-	collect := o.collect
-	if collect == nil {
-		collect = newTransport().collect
-	}
-	raw, err := collect(ctx, request.prepared, request.batch)
+	raw, err := gather(ctx, o.collect, request.prepared, request.batch)
 	if err != nil {
 		return nil, err
 	}
-	return makeRecord(request.shared, request.prepared, raw, request.version)
+	return makeRecord(request.shared, request.prepared, raw)
+}
+
+// gather passes only the configured advisers in prepared, with only their
+// credentials, to one collection, and records every other participant as
+// not_configured. It never calls collect when no adviser is configured. A nil
+// collect uses the fixed transport.
+func gather(ctx context.Context, collect collector, prepared *object, options batch) (map[string]any, error) {
+	raw := map[string]any{}
+	active := newObject()
+	credentials := map[string]string{}
+	for _, name := range prepared.names {
+		value := prepared.get(name).(*object)
+		if key := options.credentials[name]; key != "" {
+			active.set(name, value)
+			credentials[name] = key
+		} else {
+			raw[name] = notConfigured(value)
+		}
+	}
+	if active.size() == 0 {
+		return raw, nil
+	}
+	if collect == nil {
+		collect = newTransport().collect
+	}
+	collected, err := collect(ctx, active, batch{credentials: credentials, deadline: options.deadline})
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range active.names {
+		raw[name] = collected[name]
+	}
+	return raw, nil
 }

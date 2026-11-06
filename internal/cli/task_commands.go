@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -51,13 +52,31 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		return nil
 	}
-	var repo, planFile, store string
-	start := &cobra.Command{Use: "start", Short: "Capture a baseline and an explicit JSON requirement/check plan", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	var repo, planFile, store, policy string
+	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: "Capture the selected project's baseline and an explicit JSON requirement/check plan in a new private task record. " +
+		"The record binds the advisers configured now: each provider the model policy enables whose credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys), mapped to its pinned model, possibly none. " +
+		"The binding never changes for the task's lifetime; 'cw task context' carries it to 'cw consult'. An unreadable or invalid policy fails before any task is created.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
 		var plan taskflow.Plan
 		if err := read(cmd, planFile, &plan); err != nil {
+			return err
+		}
+		selectedPolicy := policy
+		if selectedPolicy == "" {
+			var err error
+			selectedPolicy, err = activePolicy(root, config)
+			if err != nil {
+				return err
+			}
+		}
+		getenv, err := credentialEnvironment(root, config)
+		if err != nil {
+			return err
+		}
+		advisers, err := consult.ConfiguredAdvisers(selectedPolicy, getenv)
+		if err != nil {
 			return err
 		}
 		selected := repo
@@ -76,7 +95,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 			}
 			chosenStore = filepath.Join(roots.state, "workflow-tasks")
 		}
-		record, err := taskflow.Start(cmd.Context(), selected, chosenStore, plan)
+		record, err := taskflow.Start(cmd.Context(), selected, chosenStore, plan, advisers)
 		if err != nil {
 			return err
 		}
@@ -85,9 +104,10 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	start.Flags().StringVar(&repo, "repo", "", "Selected project directory (default: current working directory)")
 	start.Flags().StringVar(&planFile, "plan", "", "Explicit plan JSON file, or - for standard input")
 	start.Flags().StringVar(&store, "store", "", "Private task storage directory outside the target project")
+	start.Flags().StringVar(&policy, "policy", "", "Validated model policy whose enabled advisers are bound (defaults to the installed release's)")
 	task.AddCommand(start)
 	var contextTask, phase string
-	contextCommand := &cobra.Command{Use: "context", Short: "Emit the exact before/final source context for shared adviser state", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	contextCommand := &cobra.Command{Use: "context", Short: "Emit the exact before/final source context, with the task's adviser binding, for shared adviser state", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
@@ -189,7 +209,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	accept.Flags().StringVar(&acceptanceFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
 	task.AddCommand(accept)
 	var consultTask, consultPhase, consultFile string
-	consult := &cobra.Command{Use: "consult", Short: "Preserve and validate a version-three raw/adjudicated adviser artifact", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	consult := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
@@ -204,7 +224,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	}}
 	consult.Flags().StringVar(&consultTask, "task", "", "Task directory returned by start")
 	consult.Flags().StringVar(&consultPhase, "phase", "", "before or final")
-	consult.Flags().StringVar(&consultFile, "input", "", "Original helper version-three consultation/adjudication JSON file")
+	consult.Flags().StringVar(&consultFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
 	task.AddCommand(consult)
 	var verifyTask string
 	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {

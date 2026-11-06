@@ -73,21 +73,24 @@ context/model settings cannot be supplied; do not fall back to an exposed worker
 
 ## Adviser questions
 
-`references/jev-questions.json` names options such as `luna_lookup`,
-`luna_execution` and `sol_judgment`. These identifiers are stable question
-content, not model selections. Resolve their scopes through the current host
-policy: bounded evidence, bounded execution (including `github` for the three
-GitHub roles), or substantive judgment. Both model and effort can differ.
+`references/question-patterns.json` holds provider-neutral authoring rules and
+generic examples, the same on both hosts. Option names in a request are question
+content, not model selections; resolve any worker scope through the current host
+policy. Both model and effort can differ.
 
 ## Advisers on either host
 
-Jev, SubQ Snap and OpenAI Decisions stay required at both checkpoints. They are
-plain HTTPS calls made by `cw consult`, so they behave the same on both hosts. The
-coordinator is never one of the advisers, and `gpt-6-luna` in
-`consultation.providers` is an adviser pin rather than a worker model, so it does
-not change under Claude Code.
+Advisers participate only when configured: enabled in `model-policy.yaml`
+`consultation.providers` and with a credential present. `cw task start` binds that
+set, and both checkpoints use the binding. Advisers are plain HTTPS calls made by
+`cw consult`, so they behave the same on both hosts. The coordinator is never one
+of the advisers, and `gpt-6-luna` in `consultation.providers` is an adviser pin
+rather than a worker model, so it does not change under Claude Code.
+`model-policy.claude.yaml` has no consultation section.
 
-Keys come from the process environment. A Claude Code session started from the
-desktop app inherits the app's launch environment, not your shell profile, so a
-key exported in a terminal may be missing there. Check with `cw status`. A missing
-key is recorded as unavailable coverage.
+Keys come from the process environment or saved credentials. A Claude Code
+session started from the desktop app inherits the app's launch environment, not
+your shell profile, so a key exported in a terminal may be missing there. Check
+with `cw status` before `cw task start`: a missing key at start leaves that adviser
+out of the binding, and a bound adviser whose key goes missing later is recorded
+as `not_configured`.

@@ -235,8 +235,15 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 
 // AssignWorker records a brief at the actual current source. It does not launch
 // or authorize a process, and IDs are declarations rather than authentication.
+// A substantial task dispatches no worker before its before checkpoint is
+// attached with a resolved decision.
 func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
-	return update(taskPath, func(_ *os.Root, record *Record) error {
+	return update(taskPath, func(root *os.Root, record *Record) error {
+		if record.Plan.Kind == "substantial" {
+			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
+				return fmt.Errorf("adjudicate and attach the before checkpoint before dispatching workers: %w", err)
+			}
+		}
 		if err := validateBrief(*record, brief); err != nil {
 			return err
 		}

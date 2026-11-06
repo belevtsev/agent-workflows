@@ -100,7 +100,8 @@ type OperationRecord struct {
 }
 
 // ErrLegacyInstallation reports ownership state or a journal written by a cw
-// that predates the standalone manager. This release reads neither.
+// that predates the standalone manager, or an installed release that ships a
+// model policy older than PolicyVersion. This release reads none of them.
 var ErrLegacyInstallation = errors.New(`this installation was made by an older cw that this release no longer supports; run "cw uninstall" with your existing cw, then install again`)
 
 // decodeOwnership is the boundary every strict state reader uses. Versions one
@@ -125,18 +126,63 @@ func decodeOwnership(value Object) (standaloneOwnershipRecord, error) {
 }
 
 // legacyRecords returns ErrLegacyInstallation when the state root holds a
-// journal or ownership state from an older cw. Lifecycle commands call it
-// before anything else so the refusal precedes every write. Other read
-// failures are not this check's to report: the strict reads that follow
-// return them.
+// journal or ownership state from an older cw, or when the ownership state
+// records an active or rollback release that ships an older model policy.
+// Lifecycle commands call it before anything else so the refusal precedes
+// every write. Other read failures are not this check's to report: the strict
+// reads that follow return them.
 func legacyRecords(stateDir string) error {
 	if _, err := readJournalRecord(filepath.Join(stateDir, "journal.json")); errors.Is(err, ErrLegacyInstallation) {
 		return err
 	}
-	if _, err := readOwnership(filepath.Join(stateDir, "state.json")); errors.Is(err, ErrLegacyInstallation) {
+	state, err := readOwnership(filepath.Join(stateDir, "state.json"))
+	if errors.Is(err, ErrLegacyInstallation) {
 		return err
 	}
+	if err != nil {
+		return nil
+	}
+	// decodeOwnership has checked that each name is an effective release key.
+	releases := []string{text(state["release"])}
+	for _, raw := range sequence(state["history"]) {
+		releases = append(releases, text(object(raw)["release"]))
+	}
+	for _, name := range releases {
+		if err := releasePolicy(filepath.Join(stateDir, "releases", name)); errors.Is(err, ErrLegacyInstallation) {
+			return err
+		}
+	}
 	return nil
+}
+
+// releasePolicy validates the model policy of the installed release at root,
+// reporting an older policy as ErrLegacyInstallation.
+func releasePolicy(root string) error {
+	root, err := suiteRoot(root, false)
+	if err != nil {
+		return err
+	}
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		return err
+	}
+	policyPath, err := suiteRelativePath(root, manifest["model_policy"], "model_policy")
+	if err != nil {
+		return err
+	}
+	_, err = ValidateModelPolicy(policyPath)
+	return legacyPolicy(err)
+}
+
+// legacyPolicy maps the version error of a policy an earlier cw shipped to
+// ErrLegacyInstallation and returns any other error unchanged. Only errors
+// from reading an installed release belong here: this cw's own bundle is
+// never legacy.
+func legacyPolicy(err error) error {
+	if version, ok := errors.AsType[*PolicyVersionError](err); ok && version.Older() {
+		return ErrLegacyInstallation
+	}
+	return err
 }
 
 func readOwnership(path string) (Object, error) {

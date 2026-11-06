@@ -38,15 +38,16 @@ OpenSpec owns artifact formats, dependencies, and paths; this skill owns enginee
 5. Map success and failure scenarios to appropriate verification and explain what the evidence can establish. Carry forward static-only, no-tests, platform, and access constraints. Derive test commands, toolchains, execution environments, and required gates from each scoped project's current instructions. An unavailable required environment is a blocker, not permission to substitute an unapproved environment.
 6. Define applicable delivery prerequisites, compatibility, observability, promotion criteria, stop conditions, rollback feasibility, and irreversible effects. Do not invent schema fields, SLOs, benchmark results, successful checks, deployed versions, or production qualification.
 
-## Consult Jev on consequential decisions
+## Consult configured advisers on consequential decisions
 
-For consequential design decisions or an explicit request, resolve `typesafe-ai`
-from the available skill catalog and read its development consultation guide from
-that skill's root. After grounding the context and sources, prepare candidate
-tradeoffs or claims about constraints and failure behavior for Jev's bounded typed
-judgment. The task coordinator owns requests and reuses applicable results across
-skills. Follow the shared guide's budget, validation, and fallback policy; routine
-changes do not require consultation. Independently verify consequential conclusions
+For consequential design decisions or an explicit request, use configured advisers
+via `cw consult` if any are configured; otherwise proceed on source evidence under
+the same [decision rules](../task-orchestration/SKILL.md#adjudicate). After
+grounding the context and sources, prepare candidate tradeoffs or claims about
+constraints and failure behavior for a bounded typed judgment. The task
+coordinator owns requests and reuses applicable results across skills. Follow the
+[consultation helper](../task-orchestration/references/consultation-helper.md)'s
+budget, validation, and fallback policy; routine changes do not require consultation. Independently verify consequential conclusions
 and record materially used advice or limitations without replacing the plan's
 evidence or the separate design challenge below.
 
