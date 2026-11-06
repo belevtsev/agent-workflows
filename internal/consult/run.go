@@ -5,8 +5,9 @@
 // Advisers participate by configuration: a task-bound request uses the adviser
 // binding in state.task_context (or the identical bindings in
 // state.task_contexts), any other request uses the policy's enabled providers.
-// A participating adviser is attempted only when its credential is set; with
-// none attempted, no network call is made.
+// A participating adviser is attempted only when its credential is set and,
+// for a request without a task binding, Options.Disabled does not list it;
+// with none attempted, no network call is made.
 package consult
 
 import (
@@ -15,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -24,8 +26,14 @@ type Options struct {
 	DryRun                                        bool
 	// Getenv resolves the credential variables; nil reads none.
 	Getenv func(string) string
-	Stdout io.Writer
-	Stderr io.Writer
+	// Disabled, when set, loads the provider IDs the user's preferences
+	// disable. It is called only for a request without a task binding, which
+	// treats each as having no credential: it is recorded as not_configured
+	// and never contacted. Its error fails the run before any output is
+	// written. A task-bound request keeps its binding and never calls it.
+	Disabled func() ([]string, error)
+	Stdout   io.Writer
+	Stderr   io.Writer
 	// Unset outside package tests, which keeps the endpoints and budget fixed.
 	collect  collector
 	deadline time.Duration
@@ -84,8 +92,14 @@ func (o Options) plan() (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
+	var disabled []string
 	if !bound {
 		participants = selected.providers
+		if o.Disabled != nil {
+			if disabled, err = o.Disabled(); err != nil {
+				return nil, err
+			}
+		}
 	}
 	prepared := newObject()
 	credentials := map[string]string{}
@@ -99,6 +113,10 @@ func (o Options) plan() (*plan, error) {
 			return nil, err
 		}
 		prepared.set(name, value)
+		if slices.Contains(disabled, name) {
+			credentials[name] = ""
+			continue
+		}
 		credentials[name] = credential(o.Getenv, name)
 	}
 	deadline := selected.deadline

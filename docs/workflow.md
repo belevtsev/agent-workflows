@@ -177,7 +177,10 @@ Advisers are optional hosted models that return typed Choice judgments at the tw
 decision checkpoints of a substantial task. They need no separate executable or
 SDK: `cw consult` makes plain HTTPS calls. An adviser participates only when it is
 configured: enabled in the policy's `consultation.providers` with its pinned model,
-and with its key present in the process environment or the saved credentials.
+with its key present in the process environment or the saved credentials, and not
+disabled in your preferences. To disable one and keep its key, clear its "Use at
+checkpoints" box in setup's Keys step, or list its provider ID under
+`advisers.disabled` in a `--settings` file; tasks started afterwards do not bind it.
 
 | Provider ID | Adviser | Pinned model | Key | Shipped default |
 | --- | --- | --- | --- | --- |
@@ -216,9 +219,11 @@ Policy changes require their own authorized change.
 `cw task start` binds the configured set into the task record as `advisers`, and
 `cw task context` emits it. A task-bound request consults exactly that set, so later
 policy or key changes do not alter a running task's checkpoints. A request without
-a task context uses the policy's enabled providers. `cw task start --policy PATH`
-and `cw consult --policy PATH` default to the installed release's policy; task start
-fails before creating a task when the policy cannot be read or is invalid. To opt
+a task context uses the policy's enabled providers, minus any disabled in the saved
+preferences. `cw task start --policy PATH` and `cw consult --policy PATH` default to
+the installed release's policy, and a `--policy` copy still honours
+`advisers.disabled`; task start fails before creating a task when the policy or the
+saved preferences cannot be read or are invalid. To opt
 in to Jev, start the task with a private policy copy that adds `jev: jev-1.14.0`,
 as the [setup guidance](../README.md#optional-set-up-jev) shows.
 

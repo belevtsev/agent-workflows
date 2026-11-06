@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/graphify"
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +56,24 @@ func activePolicy(root *cobra.Command, config Config) (string, error) {
 	return filepath.Join(roots.state, "current", "skills", "task-orchestration", "model-policy.yaml"), nil
 }
 
+// disabledAdvisers returns the providers that the saved preferences in the
+// configuration directory disable. A missing preferences file disables none;
+// an unreadable or invalid one is an error.
+func disabledAdvisers(root *cobra.Command, config Config) ([]string, error) {
+	directory, err := credentialDirectory(root, config)
+	if err != nil {
+		return nil, err
+	}
+	prefs, err := workflow.SavedPreferences(directory)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read saved preferences: %w", err)
+	}
+	if prefs.Advisers == nil {
+		return nil, nil
+	}
+	return prefs.Advisers.Disabled, nil
+}
+
 func addConsultCommand(root *cobra.Command, config Config) {
 	var options consult.Options
 	var summary bool
@@ -62,6 +82,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 		Short: "Collect independent adviser judgments, or validate a recorded decision offline",
 		Long: "With --request, validate a shared Choice request (at most 8 questions) and send it once to each configured adviser under the policy's batch deadline, writing a new private version 4 record. " +
 			"The participating advisers are the task's adviser binding when the request state holds task_context or task_contexts, and otherwise the policy's enabled providers. " +
+			"Without a task, an adviser disabled in your saved preferences (setup's Keys step, or advisers.disabled in a --settings file) is recorded as not_configured and never contacted, even with --policy; a task keeps its binding. " +
 			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. " +
 			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
 			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
@@ -89,6 +110,9 @@ func addConsultCommand(root *cobra.Command, config Config) {
 					return err
 				}
 				options.Getenv = getenv
+				// consult reads the saved disabled advisers only for a request
+				// without a task binding.
+				options.Disabled = func() ([]string, error) { return disabledAdvisers(root, config) }
 			}
 			if !summary {
 				return finish(consult.Run(cmd.Context(), options))

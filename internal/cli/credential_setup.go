@@ -148,23 +148,40 @@ func validKey(key string) string {
 }
 
 // keysStep lists every provider key on one screen. Choosing a key opens a
-// hidden field; the online check is a toggle; Continue moves on.
+// hidden field; the online check and each shipped adviser's "Use at
+// checkpoints" are toggles that change no key; Continue moves on.
 func (w *setupWizard) keysStep(ctx context.Context) (nav, error) {
 	if err := w.loadKeys(); err != nil {
 		return navQuit, err
 	}
 	for {
 		var items []menuItem
+		uses := map[string]*bool{}
 		for _, name := range credentials.Names {
 			items = append(items, menuItem{label: providerName(name), value: name, detail: w.keyStatus(name)})
+			// A shipped adviser's toggle follows its key row.
+			for _, id := range w.view.Advisers {
+				if variable, _ := consult.CredentialVariable(id); variable == name {
+					use := w.advisers[id]
+					uses[id] = &use
+					items = append(items, menuItem{label: "Use at checkpoints", value: "use:" + id, detail: providerCheckName(id), checked: &use})
+				}
+			}
 		}
 		check := w.checkKeys
 		items = append(items,
 			menuItem{label: "Check keys online", value: "check", detail: "after applying · may cost a little", checked: &check},
 			menuItem{label: "Continue", value: "continue"})
-		m := &menu{step: stepKeys, title: "Adviser keys", help: "Optional. Saved keys go to a private plaintext file in " + w.short(w.directory) + ". A key set in your environment takes precedence.", items: items, value: "continue", back: true}
+		intro := "Optional. Saved keys go to a private plaintext file in " + w.short(w.directory) + ". A key set in your environment takes precedence."
+		if len(uses) > 0 {
+			intro += " An unchecked adviser keeps its key and sits out tasks started afterwards."
+		}
+		m := &menu{step: stepKeys, title: "Adviser keys", help: intro, items: items, value: "continue", back: true}
 		value, n, err := w.pick(ctx, m)
 		w.checkKeys = check
+		for id, use := range uses {
+			w.advisers[id] = *use
+		}
 		if err != nil || n != navNext {
 			return n, err
 		}

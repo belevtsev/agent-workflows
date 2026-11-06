@@ -57,8 +57,12 @@ not call hosted models.
 ## Participation
 
 An adviser participates only when it is configured: enabled in the policy's
-`consultation.providers` with its pinned model, and with its credential set in the
-environment or saved credentials.
+`consultation.providers` with its pinned model, with its credential set in the
+environment or saved credentials, and not disabled in the user's preferences. To
+disable one and keep its key, clear its "Use at checkpoints" box in setup's Keys
+step, or list its provider ID under `advisers.disabled` in a `--settings` file. The
+installed policy then omits it, and `cw task start` and ad hoc `cw consult` skip it
+even with a `--policy` copy; started tasks keep their binding.
 
 | Provider ID | Pinned model | Credential |
 | --- | --- | --- |
@@ -78,26 +82,31 @@ The participation set comes from one place:
   context must carry an identical binding. A context without a binding is
   rejected; regenerate it with this `cw task context`. A `state` holding both
   `task_context` and `task_contexts` is rejected.
-- **Ad hoc request:** otherwise, the policy's enabled providers participate.
+- **Ad hoc request:** otherwise, the policy's enabled providers participate; one
+  disabled in the saved preferences is recorded as `not_configured` and never
+  contacted.
 
 `cw task start --policy PATH` and `cw consult --policy PATH` both default to the
 installed release's `skills/task-orchestration/model-policy.yaml`. `cw task start`
-binds the providers enabled in that policy whose credentials are present, read
-through the same environment-or-saved credentials as `cw consult`. If the policy
-cannot be read or is invalid, including an older version, `cw task start` fails
-before creating a task directory; it never binds an empty set silently. A valid
+binds the providers enabled in that policy whose credentials are present and that
+the saved preferences do not disable, read through the same environment-or-saved
+credentials as `cw consult`. If the policy or the saved preferences cannot be read
+or are invalid, including an older policy version, `cw task start` fails before
+creating a task directory; it never binds an empty set silently. A valid
 policy whose enabled providers all lack credentials binds `{}`.
 
 ### Opt in to Jev
 
 1. Copy the installed `model-policy.yaml` to a private location.
-2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy.
+2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy; if it reads
+   `providers: {}`, replace `{}` with that mapping.
 3. Set `TYPESAFE_API_KEY`.
 4. Start the task with `cw task start --policy /path/to/copy.yaml`. Its checkpoints
    then follow the task's binding automatically; `cw consult` needs no `--policy`
    for task-bound requests.
 
 For ad hoc consultations, pass the copy with `cw consult --policy /path/to/copy.yaml`.
+A copy still honours `advisers.disabled` in the saved preferences.
 
 A participating provider without its credential is recorded as `not_configured`
 and receives no request. When nothing participates, or every participant is

@@ -70,9 +70,10 @@ type editSpec struct {
 }
 
 type finishInfo struct {
-	version string
-	hosts   []string
-	first   bool
+	version  string
+	hosts    []string
+	advisers string // the disabled advisers, or "" when none are
+	first    bool
 }
 
 type setupWizard struct {
@@ -92,6 +93,7 @@ type setupWizard struct {
 	preset    string
 	prefs     *workflow.Preferences
 	github    map[string]map[string]workflow.ModelOverride // GitHub worker role values chosen in this session, by host
+	advisers  map[string]bool                              // "Use at checkpoints" toggles of the shipped advisers, by provider ID
 	finish    *finishInfo
 }
 
@@ -164,6 +166,10 @@ func (w *setupWizard) run(ctx context.Context, v workflow.ConfigurationView) (_ 
 	w.home = w.config.Getenv("HOME")
 	w.hostPicks = map[string]bool{}
 	w.github = map[string]map[string]workflow.ModelOverride{}
+	w.advisers = map[string]bool{}
+	for _, id := range v.Advisers {
+		w.advisers[id] = !adviserDisabled(v.Preferences, id)
+	}
 	for _, h := range v.Hosts {
 		if !h.Installed {
 			w.hostPicks[h.ID] = h.Selected
@@ -314,19 +320,49 @@ func (w *setupWizard) selectedHosts() []string {
 }
 
 // baseSelection is the chosen preset or edited preferences, before the GitHub
-// worker layer.
+// worker layer. The adviser toggles go in Advisers, or in the explicit
+// preferences when Advanced provides them.
 func (w *setupWizard) baseSelection() workflow.ConfigurationSelection {
-	s := workflow.ConfigurationSelection{Hosts: w.selectedHosts()}
+	s := workflow.ConfigurationSelection{Hosts: w.selectedHosts(), Advisers: w.adviserSelection()}
 	switch w.preset {
 	case "recommended", "balanced":
 		s.Preset = workflow.Preset(w.preset)
 	case "advanced":
 		if w.prefs != nil {
 			p := *w.prefs
+			p.Advisers, s.Advisers = s.Advisers, nil
 			s.Preferences = &p
 		}
 	}
 	return s
+}
+
+func adviserDisabled(p workflow.Preferences, id string) bool {
+	return p.Advisers != nil && slices.Contains(p.Advisers.Disabled, id)
+}
+
+// adviserSelection lists the unchecked advisers as disabled. A saved disabled
+// adviser that has no toggle stays disabled.
+func (w *setupWizard) adviserSelection() *workflow.AdviserPreferences {
+	a := &workflow.AdviserPreferences{}
+	for _, id := range workflow.ConsultationProviders() {
+		on, shown := w.advisers[id]
+		if shown && !on || !shown && adviserDisabled(w.view.Preferences, id) {
+			a.Disabled = append(a.Disabled, id)
+		}
+	}
+	return a
+}
+
+// advisersText names the advisers prefs disables, or is "" when none are.
+func advisersText(p workflow.Preferences) string {
+	var parts []string
+	for _, id := range workflow.ConsultationProviders() {
+		if adviserDisabled(p, id) {
+			parts = append(parts, providerCheckName(id)+" off")
+		}
+	}
+	return strings.Join(parts, " · ")
 }
 
 const githubProfile = "github"
@@ -1111,7 +1147,7 @@ func (w *setupWizard) reviewStep(ctx context.Context) (nav, error) {
 	}
 	switch value {
 	case "apply":
-		w.finish = &finishInfo{version: w.view.Target.Version, first: !w.view.Installed}
+		w.finish = &finishInfo{version: w.view.Target.Version, advisers: advisersText(prefs), first: !w.view.Installed}
 		for _, id := range hosts {
 			host := w.view.Hosts[slices.IndexFunc(w.view.Hosts, func(h workflow.HostConfiguration) bool { return h.ID == id })]
 			if row, ok := scopeRows(host, prefs.Hosts[id], false)["substantive"]; ok {
@@ -1336,6 +1372,9 @@ func (w *setupWizard) reviewText(p workflow.Preferences, hosts []string) string 
 	}
 	b.WriteString("\n")
 	line("Keys", w.keySummary(false))
+	if text := advisersText(p); text != "" {
+		line("Advisers", text)
+	}
 	line("Settings", w.short(w.view.ConfigDir))
 	return strings.TrimRight(b.String(), "\n")
 }
@@ -1463,6 +1502,9 @@ func (w *setupWizard) finishMessage(status, credentialResult workflow.Object) st
 		fmt.Fprintf(&b, "  %-12s %d registered\n", "Skills", len(regs))
 	case []string:
 		fmt.Fprintf(&b, "  %-12s %d registered\n", "Skills", len(regs))
+	}
+	if info.advisers != "" {
+		fmt.Fprintf(&b, "  %-12s %s\n", "Advisers", info.advisers)
 	}
 	if credentialResult["status"] == "saved" {
 		var saved []string
