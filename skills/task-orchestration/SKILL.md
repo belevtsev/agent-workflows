@@ -74,15 +74,19 @@ the independent review or `cw task` records.
   `consultation-helper.md` before a checkpoint, `github-worker.md` before
   publication, and `adviser-providers.md` only to change or evaluate providers or
   when the data-terms record below is missing or expired.
-- Pass `--summary` to `cw task start`, `assign`, `handoff`, `accept`, `assess`,
-  `consult` and `run`; without it the first six print the whole record, which grows
-  past 80 KB. Extract a stored value missing from the summary from `cw task show`.
+- Pass `--summary` to `cw doctor`, `cw status`, `cw consult`, `cw task start`,
+  `assign`, `handoff`, `accept`, `assess`, `consult`, `run` and `verify`; without it
+  the six recording `cw task` commands print the whole record, which grows past
+  80 KB. Read a stored value missing from a summary with
+  `cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`),
+  not the whole record.
 - Send long build and test output to a file and print only the exit status, result
   lines and failures; for Go,
   `go test ./... >log 2>&1; echo exit=$?; grep -E '^(FAIL|ok|panic)|--- FAIL|_test\.go:[0-9]+|\.go:[0-9]+:[0-9]+' log | head -60`
   keeps failing test names, assertion messages and compile errors.
-  `cw task run --summary` prints the status and log path; read the log only when
-  the check failed.
+  `cw task run --summary` prints the status and log path, plus failing test names
+  and the first error lines when the check failed; read the log only when those
+  are not enough.
 - Batch each step into as few requests as possible: record each assignment and
   dispatch its worker in the same turn, `assign` first; write the result and
   acceptance JSON and run `handoff && accept` in one shell call; embed the context

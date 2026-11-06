@@ -9,7 +9,7 @@ infrastructure changes.
 ## Inspect the selected workspace
 
 ```sh
-cw doctor --repo /absolute/path/to/project
+cw doctor --summary --repo /absolute/path/to/project
 cw doctor --repo /absolute/path/to/project --live
 ```
 
@@ -265,7 +265,7 @@ adjudicated result:
 
 ```sh
 cw task consult --task /path/returned/by/start --phase final --input /private/path/review-final.json
-cw task verify --task /path/returned/by/start
+cw task verify --task /path/returned/by/start --summary
 ```
 
 Verification rejects stale source, missing requirements/checks, invalid references
@@ -299,7 +299,24 @@ complete verification with one that reports every binding stale.
 ```sh
 cw metrics schema
 cw metrics summarize --input-root /private/path/observations run-a.json run-b.json
+cw metrics import --claude-transcript ~/.claude/projects/PROJECT/SESSION.jsonl [--prices prices.json]
+cw metrics import --codex-session ~/.codex/sessions/YYYY/MM/DD/rollout-ID.jsonl --prices prices.json
 ```
+
+`import` reads a session read-only and reports each agent (the main session and
+every subagent or child rollout) with requests, uncached input, cache writes (5-minute
+and 1-hour), cache reads, output and thinking tokens. Claude dollars are the
+transcript's recorded `cost-state`, per model and for the session, never allocated to
+agents; a model that `cost-state` lists but no transcript entry carries, such as
+background calls, is reported as unattributed. Codex rollouts record no cost. `--prices` adds
+per-agent estimates from a supplied table
+(`{"currency","evidence","models":{"MODEL":{"input_per_million","output_per_million","cache_write_5m_per_million","cache_write_1h_per_million","cache_read_per_million"}}}`),
+reported separately from recorded dollars; no price is built in. The report's
+`usage` (and `cost`, when recorded) can be copied into an observation; there
+`input_tokens` stays total input, and the optional breakdown counters must add up to
+it. When a model's transcript and recorded totals differ, for example a `cost-state`
+written before the session ended, the report shows the difference and leaves
+`usage` and `cost` out.
 
 Use the emitted version-one schema for measured observations. Include project and
 workload identity, source revision/fingerprint, environment, evidence and the

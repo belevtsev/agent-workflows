@@ -101,12 +101,17 @@ the adviser binding fixed at `cw task start`, two substantial-task decision
 checkpoints (unless the plan declares them not required, with a reason that
 verify lists) and the coordinator's decisions in a private
 external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
-`handoff`, `accept`, `assess`, `consult` and `run` commands accept `--summary` for a
-one-line result instead of the whole record (`run`: the whole check run), and
+`handoff`, `accept`, `assess`, `consult`, `run` and `verify` commands accept `--summary` for a
+one-line result instead of the whole record (`run`: the whole check run, plus failing
+test names and first error lines when it failed; `verify`: without its fixed
+limitations), `cw doctor`, `cw status` and `cw consult` accept it too, `cw task show
+--field <dotted.path>` prints only selected values, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
+`cw metrics import` reports per-agent tokens and dollars from a Claude Code transcript
+or a Codex rollout, without writing anything.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. These commands do not alter installer ownership, receipt or
 recovery formats. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
