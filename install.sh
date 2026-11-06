@@ -86,11 +86,14 @@ if [ -t 1 ] && [ -t 2 ] && ( : </dev/tty ) 2>/dev/null; then
     "$temporary/cw" "$@" </dev/tty &
     child=$!
 else
-    # Preserve stdin before the shell redirects an asynchronous command to null.
-    exec 3<&0
+    # Without job control, POSIX shells such as dash give an asynchronous command
+    # /dev/null as stdin before its own redirections, so pass the caller's stdin
+    # (or /dev/null when it is closed) on fd 3. Keep fd 3 open until the shell
+    # exits: closing this copy of the script's own input crashes macOS bash 3.2
+    # with SIGTRAP when the script arrives on stdin (curl ... | sh).
+    if (: 3<&0) 2>/dev/null; then exec 3<&0; else exec 3</dev/null; fi
     "$temporary/cw" "$@" <&3 3<&- &
     child=$!
-    exec 3<&-
 fi
 status=0
 wait "$child" || status=$?
