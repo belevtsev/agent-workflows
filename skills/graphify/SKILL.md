@@ -14,7 +14,7 @@ An unavailable graph must not stop useful source discovery.
 ## Build and query
 
 Use `cw graphify`. The guarded runner supports macOS and Linux; the optional
-external runtime, pinned to `graphifyy==0.9.91`, must already be provisioned for
+external runtime, pinned to `graphifyy==0.9.103`, must already be provisioned for
 this device. `cw` finds it in the dedicated Graphify environment, at `--runtime
 PATH`, or on `PATH`.
 If it is missing or incompatible, report that limitation and continue with source
@@ -39,7 +39,7 @@ The runner snapshots eligible tracked Go source and module metadata, excluding
 vendored and fixture trees such as `third_party`, `vendor`, `testdata`, and
 `fixtures`. Untracked source is outside this graph's coverage.
 
-The runner fixes local code-only extraction and disables LLM deduplication,
+The runner fixes local code-only extraction and disables LLM backends and deduplication,
 automatic refresh, and query logging. It launches the external CLI with a minimal
 environment and temporary `HOME` and XDG configuration/cache directories so the
 child does not load the user's provider configuration. Use this interface rather

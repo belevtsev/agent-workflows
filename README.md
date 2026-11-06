@@ -317,7 +317,7 @@ so use `/effort max` for a session.
 See [third-party notices](THIRD_PARTY.md). Skills keep their own optional
 dependencies. Archify requires Node.js 18+ and Chrome/Chromium for browser checks;
 Graphify needs a separately provisioned `graphify` executable from the pinned
-`graphifyy==0.9.91` Python package; Docker skills require the corresponding Docker
+`graphifyy==0.9.103` Python package; Docker skills require the corresponding Docker
 tools and platform support.
 `cw doctor --repo PATH` reports the optional `gopls`, `graphify` and `jbcontext`
 executables it detects as `gopls_cli`, `graphify_cli` and `jbcontext_cli`. Each

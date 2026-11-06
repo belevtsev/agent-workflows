@@ -22,6 +22,10 @@ const killWait = 5 * time.Second
 // injection, Graphify flags, logging or backends. Graphify reads
 // ~/.graphify/providers.json even in code-only mode, so a child gets a throwaway
 // home; the runner's own runtime and cache resolution stays on the real one.
+// The query-log and backend switches are fixed, never taken from the caller's
+// environment: graphs and queries must not depend on ambient Graphify settings,
+// and GRAPHIFY_BACKEND=none keeps every LLM backend off even if a future
+// release stops honouring --code-only for some input.
 func environment(runtime, output, childHome string) []string {
 	values := map[string]string{}
 	for _, name := range []string{"HOME", "USERPROFILE", "SYSTEMROOT", "WINDIR", "TMPDIR"} {
@@ -38,6 +42,7 @@ func environment(runtime, output, childHome string) []string {
 	values["PYTHONDONTWRITEBYTECODE"] = "1"
 	values["GRAPHIFY_NO_AUTO_REFRESH"] = "1"
 	values["GRAPHIFY_QUERY_LOG_DISABLE"] = "1"
+	values["GRAPHIFY_BACKEND"] = "none"
 	if output != "" {
 		values["GRAPHIFY_OUT"] = output
 	}

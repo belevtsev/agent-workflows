@@ -288,7 +288,7 @@ for request and record formats.
 ## Optional Graphify runtime
 
 The first-party [Graphify skill](../skills/graphify/SKILL.md) uses the external
-`graphifyy==0.9.91` package. Provision this optional runtime explicitly when
+`graphifyy==0.9.103` package. Provision this optional runtime explicitly when
 activating Graphify on a device. `cw graphify` supports macOS and Linux. That
 package is a Python tool, so this optional runtime is the one place the workflow
 touches Python, and it lives outside this repository. Python 3.14 with `venv` and
@@ -296,7 +296,7 @@ touches Python, and it lives outside this repository. Python 3.14 with `venv` an
 
 ```sh
 python3.14 -m venv "$HOME/.venvs/agent-graphify"
-"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
+"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.103'
 "$HOME/.venvs/agent-graphify/bin/python" -m pip check
 ```
 
@@ -317,8 +317,11 @@ cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the
 It finds `~/.venvs/agent-graphify/bin/graphify`, then `graphify` on PATH; `--runtime`
 names another executable. It snapshots eligible tracked Go source and module
 metadata, omitting vendored and fixture trees. It fixes local code-only flags,
-disables LLM deduplication, sets `GRAPHIFY_NO_AUTO_REFRESH=1` and
-`GRAPHIFY_QUERY_LOG_DISABLE=1`, and launches the CLI with a minimal environment.
+disables LLM deduplication, sets `GRAPHIFY_NO_AUTO_REFRESH=1`,
+`GRAPHIFY_QUERY_LOG_DISABLE=1` and `GRAPHIFY_BACKEND=none`, and launches the CLI
+with a minimal environment. These values are fixed; the caller's own `GRAPHIFY_*`
+settings are not forwarded. Queries pass `--depth 2` explicitly, so a repository
+`.graphifyrc` cannot change their traversal.
 Each CLI child also receives temporary `HOME` and XDG configuration/cache
 directories, keeping the user's global provider configuration out of that child.
 It adds no hooks, watch processes, cloud integration, MCP configuration, or memory

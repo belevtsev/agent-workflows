@@ -278,7 +278,7 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 		case "mcp":
 			output = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\"}}\n"
 		case "--version":
-			output = "graphify 0.9.91\n"
+			output = "graphify 0.9.103\n"
 		default:
 			t.Fatalf("unexpected probe: %+v", command)
 		}
@@ -298,6 +298,10 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 			t.Fatalf("%s: %+v", name, report.Checks[name])
 		}
 	}
+	// R3a
+	if detail := report.Checks["graphify_version"].Detail; detail != "Graphify reports 0.9.103; graph construction and cache freshness were not queried" {
+		t.Fatalf("graphify_version detail = %q", detail)
+	}
 	if report.Checks["jbcontext_retrieval"].Status != "unchecked" || report.Checks["gopls_dispatch"].Status != "unchecked" || len(calls) != 5 {
 		t.Fatal("live metadata overclaimed retrieval or dispatch")
 	}
@@ -308,6 +312,61 @@ func TestDoctorLiveEvidenceAndNoRepositoryWrites(t *testing.T) {
 	encoded, err := json.Marshal(report)
 	if err != nil || strings.Contains(string(encoded), "/other/private") || strings.Contains(string(encoded), "secret-") {
 		t.Fatal("raw probe metadata escaped into doctor output")
+	}
+}
+
+func TestDoctorGraphifyVersionPin(t *testing.T) {
+	for _, test := range []struct {
+		name, output, status, detail string
+	}{
+		// R3a
+		{"supported", "graphify 0.9.103\n", "verified", "Graphify reports 0.9.103; graph construction and cache freshness were not queried"},
+		// R3b
+		{"old pin", "graphify 0.9.91\n", "stale", "Graphify does not report the supported 0.9.103 version"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root, home := gitFixture(t), t.TempDir()
+			head, err := Capture(context.Background(), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			bin := filepath.Join(home, ".venvs/agent-graphify/bin")
+			writeFile(t, bin, "graphify", "fixture")
+			if err := os.Chmod(filepath.Join(bin, "graphify"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			probed := false
+			run := func(_ context.Context, command Command) (CommandResult, error) {
+				output := ""
+				switch strings.Join(command.Args, " ") {
+				case "status --json-output":
+					output = fmtStatus(head.Head)
+				case "watch status":
+					output = "Watch daemon running (pid 123)\n  fixture-id  " + root + "\n"
+				case "version":
+					output = "golang.org/x/tools/gopls v0.21.0"
+				case "mcp":
+					output = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2024-11-05\"}}\n"
+				case "--version":
+					probed = true
+					output = test.output
+				default:
+					t.Fatalf("unexpected probe: %+v", command)
+				}
+				return CommandResult{Stdout: []byte(output)}, nil
+			}
+			report, err := Doctor(context.Background(), DoctorOptions{Repo: root, Home: home, Live: true, Run: run, LookPath: func(name string) (string, error) { return "/fake/" + name, nil }, Getenv: func(string) string { return "" }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !probed {
+				t.Fatal("live doctor did not run graphify --version")
+			}
+			check := report.Checks["graphify_version"]
+			if check.Status != test.status || check.Detail != test.detail {
+				t.Fatalf("graphify_version = %+v, want status %q detail %q", check, test.status, test.detail)
+			}
+		})
 	}
 }
 
