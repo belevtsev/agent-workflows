@@ -142,8 +142,8 @@ in a local plaintext `credentials.json`, with an owner-only directory and file.
 Environment variables win per provider. Keys are read only by adviser calls,
 the optional synthetic online check, and explicitly hosted evaluation; they are
 not copied into host settings or unrelated subprocesses. Online checking is off
-by default. Missing keys do not block installation; an adviser without its key
-simply does not participate. See [configure advisers](#configure-advisers).
+by default. Missing keys do not block installation; an adviser without its key,
+or disabled in your preferences, simply does not participate. See [configure advisers](#configure-advisers).
 
 Preferences and credentials live under `$XDG_CONFIG_HOME/agent-workflows` or
 `~/.config/agent-workflows`; `--config-dir` selects a different initial directory.
@@ -239,7 +239,7 @@ checkpoint on both hosts. When the approach follows directly from the defect or
 contract and no changed code must behave alike on several platforms or shells, the
 plan declares `"checkpoints": {"required": false, "reason": "..."}`
 and `cw task verify` lists the reason; when in doubt, it keeps them. Advisers are optional: one takes part only when it is
-enabled in the shared policy's `consultation.providers` and its key is present.
+enabled in the shared policy's `consultation.providers`, its key is present, and it is not disabled in your preferences.
 
 | Adviser | Provider ID | Model | Enabled by default | Key |
 | --- | --- | --- | --- | --- |
@@ -457,7 +457,15 @@ decision checkpoints. An adviser participates only when it is configured:
 
 - it is enabled in `consultation.providers` of the active
   [model policy](skills/task-orchestration/model-policy.yaml) with its pinned model;
-- its key is present in the process environment or the saved credentials.
+- its key is present in the process environment or the saved credentials;
+- it is not disabled in your preferences.
+
+To turn an adviser off and keep its key, clear its "Use at checkpoints" box in
+setup's Keys step, or list its provider ID under `advisers.disabled` in a
+`--settings` file, such as
+`{"version":1,"advisers":{"disabled":["openai_decisions"]}}`. A `--settings` file
+replaces saved preferences, so one without `advisers` enables them all. The change
+applies to tasks started afterwards.
 
 The shipped policy (version 3) enables SubQ Snap and OpenAI Decisions. Jev is
 opt-in. An enabled adviser without its key receives no request and is recorded
@@ -549,15 +557,17 @@ To opt in:
 
 1. Copy the installed `model-policy.yaml` (from `current/skills/task-orchestration`
    in the manager's state directory) to a private location.
-2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy. Use an exact
-   version; aliases such as `jev-latest` are rejected.
+2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy; if it reads
+   `providers: {}`, replace `{}` with that mapping. Use an exact version; aliases
+   such as `jev-latest` are rejected.
 3. Set `TYPESAFE_API_KEY`, as shown below.
 4. Start the task with `cw task start --policy /path/to/copy.yaml`. The task binds
    Jev, and its checkpoints follow that binding automatically. For ad hoc
-   consultations, use `cw consult --policy /path/to/copy.yaml`.
+   consultations, use `cw consult --policy /path/to/copy.yaml`. A copy still
+   honours `advisers.disabled` in your preferences.
 
-`cw task start` fails before creating a task when the policy cannot be read or is
-invalid, including a policy older than version 3. Obtain a key from the official
+`cw task start` fails before creating a task when the policy or your saved
+preferences cannot be read or are invalid, including a policy older than version 3. Obtain a key from the official
 [TypeSafe Console](https://console.typesafe.ai/keys).
 
 Bash:

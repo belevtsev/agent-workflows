@@ -59,10 +59,17 @@ type SharedPreferences struct {
 	ConsolidationModel *string `json:"memories.consolidation_model,omitempty"`
 }
 
+// AdviserPreferences lists the consultation providers (by provider ID) that
+// tasks started afterwards do not bind, even when their keys are present.
+type AdviserPreferences struct {
+	Disabled []string `json:"disabled,omitempty"`
+}
+
 type Preferences struct {
-	Version int                        `json:"version"`
-	Hosts   map[string]HostPreferences `json:"hosts,omitempty"`
-	Shared  *SharedPreferences         `json:"shared,omitempty"`
+	Version  int                        `json:"version"`
+	Hosts    map[string]HostPreferences `json:"hosts,omitempty"`
+	Shared   *SharedPreferences         `json:"shared,omitempty"`
+	Advisers *AdviserPreferences        `json:"advisers,omitempty"`
 }
 
 type ModelChoice struct {
@@ -101,12 +108,19 @@ type ConfigurationView struct {
 	Preferences     Preferences         `json:"preferences"`
 	SharedDefaults  Object              `json:"shared_defaults"`
 	SharedEffective Object              `json:"shared_effective"`
+	// Advisers are the consultation providers the target release's shipped
+	// policy enables, in provider order.
+	Advisers []string `json:"advisers,omitempty"`
 }
 
+// ConfigurationSelection is one run's choice. A non-nil Advisers replaces the
+// saved adviser selection; nil keeps it, even under a preset. Advisers and
+// Preferences are mutually exclusive: explicit preferences carry their own.
 type ConfigurationSelection struct {
-	Hosts       []string     `json:"hosts,omitempty"`
-	Preset      Preset       `json:"preset,omitempty"`
-	Preferences *Preferences `json:"preferences,omitempty"`
+	Hosts       []string            `json:"hosts,omitempty"`
+	Preset      Preset              `json:"preset,omitempty"`
+	Preferences *Preferences        `json:"preferences,omitempty"`
+	Advisers    *AdviserPreferences `json:"advisers,omitempty"`
 }
 
 type ConfigurationSelector func(context.Context, ConfigurationView) (ConfigurationSelection, error)

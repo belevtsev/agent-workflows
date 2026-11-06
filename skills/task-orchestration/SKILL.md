@@ -152,7 +152,9 @@ questions instead of consulting.
 
 Advisers are optional. One participates only when configured: enabled in
 [model-policy.yaml](model-policy.yaml) `consultation.providers` with its pinned
-model, and with its credential present in the environment or saved credentials.
+model, with its credential present in the environment or saved credentials, and
+not disabled in the user's preferences (setup's Keys step, or `advisers.disabled`
+in a `--settings` file; this applies to tasks started afterwards).
 The shipped policy (version 3) enables SubQ Snap (`subq_snap`) and OpenAI
 Decisions (`openai_decisions`); TypeSafe Jev (`jev`) is opt-in
 ([why](references/adviser-providers.md#why-jev-is-opt-in),
@@ -165,7 +167,8 @@ lists pinned models and credentials; unknown providers and moving aliases such a
 for a task-bound request `cw consult` consults exactly that binding, which later
 policy or credential changes do not alter
 ([binding](references/global-workflow.md#start-and-bind-a-task)). Outside a task,
-`cw consult` uses the policy's enabled providers.
+`cw consult` uses the policy's enabled providers, minus any disabled in the saved
+preferences, even with `--policy`.
 
 A checkpoint is complete only when every bound adviser has `success`, `partial`,
 `refusal` or `unavailable` ([statuses](references/consultation-helper.md#records));

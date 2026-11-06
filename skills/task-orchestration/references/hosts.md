@@ -89,7 +89,9 @@ policy. Both model and effort can differ.
 ## Advisers on either host
 
 Advisers participate only when configured: enabled in `model-policy.yaml`
-`consultation.providers` and with a credential present. `cw task start` binds that
+`consultation.providers`, with a credential present, and not disabled in the user's
+preferences (setup's Keys step, or `advisers.disabled` in a `--settings` file; this
+applies to tasks started afterwards). `cw task start` binds that
 set, and both checkpoints use the binding. Advisers are plain HTTPS calls made by
 `cw consult`, so they behave the same on both hosts. The coordinator is never one
 of the advisers, and `gpt-6-luna` in `consultation.providers` is an adviser pin

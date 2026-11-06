@@ -52,8 +52,8 @@ and regular nonlinked files. No key values appear in status, journals or JSON.
 Environment keys take precedence; a saved replacement remains shadowed while its
 environment key exists. Optional key checking sends only a tiny synthetic request,
 one attempt per available provider under a common30-second budget, and is off by
-default. Missing keys do not prevent installation; an adviser without its key does
-not participate. Adviser failure remains missing coverage; successful key checking
+default. Missing keys do not prevent installation; an adviser without its key, or
+disabled in your preferences, does not participate. Adviser failure remains missing coverage; successful key checking
 does not prove model availability in a host.
 
 If settings commit but credential saving or checking fails or is cancelled, the
@@ -268,10 +268,11 @@ made before rendering or during interrupted recovery survive the value merge.
 ## Consultation command
 
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
-request, otherwise the providers enabled in the active release's policy, each only
-with its key present. It reads the active release's policy and question files, so
-it works from any directory. With no adviser configured it writes a
-`no_advisers_configured` record without network access:
+request, otherwise the providers enabled in the active release's policy and not
+disabled in your preferences, each only with its key present. It reads the active
+release's policy and question files, so it works from any directory. With no
+adviser configured it writes a `no_advisers_configured` record without network
+access:
 
 ```sh
 cw consult --request /path/to/request.json --output /path/to/new-record.json --dry-run
@@ -333,7 +334,11 @@ and Go tooling available.
 
 The shipped policy enables `subq_snap` and `openai_decisions`; `jev` is opt-in. An
 enabled adviser participates only with its key (`SUBQ_API_KEY`, `OPENAI_API_KEY` or
-`TYPESAFE_API_KEY`). `cw task start` binds the advisers configured at that moment.
+`TYPESAFE_API_KEY`) and when it is not disabled in your preferences. To disable one
+and keep its key, clear its "Use at checkpoints" box in setup's Keys step, or list
+its provider ID under `advisers.disabled` in a `--settings` file; the change applies
+to tasks started afterwards. `cw task start` binds the advisers configured at that
+moment.
 A bound adviser whose key is missing at consultation time is recorded as
 `not_configured`; `cw consult` still writes the record, exits `2` and names the
 variable, and `cw task consult` rejects that record. Supply the key and consult

@@ -321,6 +321,36 @@ func compileEffective(root string, manifest Object, view ConfigurationView, pref
 			return err
 		}
 	}
+	// Disabled advisers leave the shared policy's consultation providers
+	// whichever hosts are selected; disabling all of them leaves {}.
+	if prefs.Advisers != nil && len(prefs.Advisers.Disabled) != 0 {
+		path := filepath.Join(root, text(manifest["model_policy"]))
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		value, err := suiteYAML(data)
+		if err != nil {
+			return err
+		}
+		policy := object(value)
+		providers := object(object(policy["consultation"])["providers"])
+		removed := false
+		for _, id := range prefs.Advisers.Disabled {
+			if _, enabled := providers[id]; enabled {
+				delete(providers, id)
+				removed = true
+			}
+		}
+		if removed {
+			if data, err = yaml.Marshal(policy); err != nil {
+				return err
+			}
+			if err = atomicWrite(path, data, 0644); err != nil {
+				return err
+			}
+		}
+	}
 	if values := sharedPreferenceValues(prefs.Shared); len(values) != 0 {
 		path := filepath.Join(root, sharedConfigResource)
 		data, err := os.ReadFile(path)

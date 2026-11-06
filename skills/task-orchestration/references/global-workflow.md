@@ -95,11 +95,13 @@ requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
 `accept`, `assess`, `consult` and `run` commands all accept `--summary`; without
 it they print the whole record (`run` prints the check run).
 
-`start` binds the configured advisers (enabled in the policy and with a credential
-present) into the task record as `advisers`, possibly empty. `--policy PATH`
-selects the policy; the default is the installed release's, as for `cw consult`.
-If the policy cannot be read or is invalid, including an older version, `start`
-fails before creating a task directory. The binding is fixed for the task's
+`start` binds the configured advisers (enabled in the policy, with a credential
+present, and not disabled in the saved preferences) into the task record as
+`advisers`, possibly empty. `--policy PATH` selects the policy; the default is the
+installed release's, as for `cw consult`. A `--policy` copy still honours
+`advisers.disabled`. If the policy or the saved preferences cannot be read or are
+invalid, including an older policy version, `start` fails before creating a task
+directory. The binding is fixed for the task's
 lifetime: later policy or credential changes do not alter its checkpoints.
 `context` prints `{"task_id", "phase", "snapshot", "evidence_sha256", "advisers"}`.
 To opt in to Jev, pass a policy copy that enables it; see

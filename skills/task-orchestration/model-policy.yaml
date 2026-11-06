@@ -6,7 +6,8 @@ version: 3
 # for profiles and roles, and shares everything else here.
 # Authorized model/effort and role edits are validated against supported settings
 # and scope relationships. Consultation checkpoints and publication safeguards
-# stay mandatory; which advisers take part follows consultation.providers below.
+# stay mandatory; which advisers take part follows consultation.providers below,
+# for those not disabled in the user's preferences.
 activation:
   any_of:
     - independent_workstreams
@@ -88,8 +89,9 @@ fallbacks:
 # publication, and so does one changing code that must behave alike on several
 # platforms or shells. Otherwise its plan declares checkpoints not required,
 # with a reason; when in doubt, it keeps them. Advisers
-# take part only when configured: listed under providers below and with their
-# credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY). With none
+# take part only when configured: listed under providers below, with their
+# credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY), and not
+# disabled in the user's preferences. With none
 # configured, the coordinator still holds each checkpoint and decides on source
 # evidence and checks under the same rules. Each checkpoint is a separate evidence
 # batch; reuse is limited to the same checkpoint. Record bounded attempts,

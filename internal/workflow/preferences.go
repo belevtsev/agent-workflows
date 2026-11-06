@@ -69,6 +69,16 @@ func DecodePreferences(data []byte) (Preferences, error) {
 			}
 		}
 	}
+	if prefs.Advisers != nil {
+		for i, id := range prefs.Advisers.Disabled {
+			if !slices.Contains(ConsultationProviders(), id) {
+				return prefs, fmt.Errorf("unknown adviser %q in advisers.disabled", id)
+			}
+			if slices.Contains(prefs.Advisers.Disabled[:i], id) {
+				return prefs, fmt.Errorf("adviser %q is listed twice in advisers.disabled", id)
+			}
+		}
+	}
 	return normalizePreferences(prefs), nil
 }
 
@@ -100,6 +110,18 @@ func normalizePreferences(prefs Preferences) Preferences {
 	if prefs.Shared != nil && len(sharedPreferenceValues(prefs.Shared)) == 0 {
 		prefs.Shared = nil
 	}
+	if prefs.Advisers != nil {
+		var disabled []string
+		for _, id := range ConsultationProviders() {
+			if slices.Contains(prefs.Advisers.Disabled, id) {
+				disabled = append(disabled, id)
+			}
+		}
+		prefs.Advisers = nil
+		if len(disabled) > 0 {
+			prefs.Advisers = &AdviserPreferences{Disabled: disabled}
+		}
+	}
 	return prefs
 }
 
@@ -130,10 +152,15 @@ func sharedPreferenceValues(p *SharedPreferences) Object {
 }
 
 // PreferencesForSelection is the same pure preset/override compiler used by
-// activation. A named preset intentionally replaces all saved overrides.
+// activation. A named preset intentionally replaces all saved model and shared
+// overrides; the saved adviser selection stays unless selection.Advisers
+// replaces it.
 func PreferencesForSelection(view ConfigurationView, selection ConfigurationSelection) (Preferences, error) {
 	if selection.Preset != "" && selection.Preferences != nil {
 		return Preferences{}, errors.New("preset and explicit preferences are mutually exclusive")
+	}
+	if selection.Advisers != nil && selection.Preferences != nil {
+		return Preferences{}, errors.New("adviser selection and explicit preferences are mutually exclusive")
 	}
 	for _, id := range selection.Hosts {
 		if !slices.ContainsFunc(view.Hosts, func(h HostConfiguration) bool { return h.ID == id }) {
@@ -165,6 +192,12 @@ func PreferencesForSelection(view ConfigurationView, selection ConfigurationSele
 		}
 	default:
 		return Preferences{}, fmt.Errorf("unknown preset %q", selection.Preset)
+	}
+	if selection.Preset != "" {
+		prefs.Advisers = view.Preferences.Advisers
+	}
+	if selection.Advisers != nil {
+		prefs.Advisers = selection.Advisers
 	}
 	if prefs.Version == 0 && len(prefs.Hosts) == 0 && prefs.Shared == nil {
 		prefs.Version = 1
@@ -200,6 +233,19 @@ func PreferencesForSelection(view ConfigurationView, selection ConfigurationSele
 		}
 	}
 	return copy, nil
+}
+
+// SavedPreferences reads <configDir>/preferences.json. A missing file, or a
+// missing directory, yields version-one defaults without checking the
+// directory. An existing file is read under the installer's private-directory
+// rules, and an unsafe, unreadable or invalid file is an error.
+func SavedPreferences(configDir string) (Preferences, error) {
+	i := &Installer{Options: Options{ConfigDir: configDir}}
+	if _, err := os.Lstat(i.preferencesPath()); errors.Is(err, os.ErrNotExist) {
+		return Preferences{Version: 1}, nil
+	}
+	prefs, _, err := i.readPreferences()
+	return prefs, err
 }
 
 func selectedModel(role RoleConfiguration, override ModelOverride) (ModelSelection, error) {
@@ -344,6 +390,12 @@ func (i *Installer) configurationView(command, root string, manifest Object, sta
 		}
 		host.Fallback = makeRole("substantive_fallback", text(policy["unknown_role_profile"]))
 		view.Hosts = append(view.Hosts, host)
+	}
+	providers := object(object(shared["consultation"])["providers"])
+	for _, id := range ConsultationProviders() {
+		if _, enabled := providers[id]; enabled {
+			view.Advisers = append(view.Advisers, id)
+		}
 	}
 	view.SharedDefaults, err = SharedConfigDefaults(root)
 	if err != nil {
