@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/belevtsev/agent-workflows/internal/credentials"
+	graphifyrunner "github.com/belevtsev/agent-workflows/internal/graphify"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -238,10 +239,10 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			version := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(result.Stdout)), "graphify"))
 			if probeErr != nil || version == "" {
 				put("graphify_version", "degraded", "Bounded Graphify version probe was unavailable", "live_version_probe")
-			} else if version != "0.9.91" {
-				put("graphify_version", "stale", "Graphify does not report the supported 0.9.91 version", "live_version_probe")
+			} else if version != graphifyrunner.Version {
+				put("graphify_version", "stale", "Graphify does not report the supported "+graphifyrunner.Version+" version", "live_version_probe")
 			} else {
-				put("graphify_version", "verified", "Graphify reports 0.9.91; graph construction and cache freshness were not queried", "live_version_probe")
+				put("graphify_version", "verified", "Graphify reports "+graphifyrunner.Version+"; graph construction and cache freshness were not queried", "live_version_probe")
 			}
 		}
 	}

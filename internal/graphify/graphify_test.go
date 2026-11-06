@@ -414,12 +414,98 @@ func TestExclusionsAndUntrackedFilesNeverEnterSnapshot(t *testing.T) {
 	}
 }
 
+// unsetParentEnv removes name from the test process environment and restores it
+// when the test ends.
+func unsetParentEnv(t *testing.T, name string) {
+	t.Helper()
+	t.Setenv(name, "")
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// assertFixedGraphifyModes checks that every runtime child (version probe,
+// extract and query) received the fixed Graphify modes, whatever the parent set.
+func assertFixedGraphifyModes(t *testing.T, calls []fakeCall) {
+	t.Helper()
+	seen := map[string]bool{}
+	for _, call := range calls {
+		kind := call.Args[0]
+		seen[kind] = true
+		for name, want := range map[string]string{"GRAPHIFY_BACKEND": "none", "GRAPHIFY_QUERY_LOG_DISABLE": "1"} {
+			value, present := call.Env[name]
+			if !present || value != want {
+				t.Fatalf("%s child: %s = %q (present %v), want %q", kind, name, value, present, want)
+			}
+		}
+	}
+	for _, kind := range []string{"--version", "extract", "query"} {
+		if !seen[kind] {
+			t.Fatalf("no %s runtime child was observed: %v", kind, calls)
+		}
+	}
+}
+
+func TestVersionPinIsCurrentRelease(t *testing.T) {
+	// R1a
+	if Version != "0.9.103" {
+		t.Fatalf("Version = %q, want 0.9.103", Version)
+	}
+}
+
+// TestGuardedModesAndQueryDepthAcrossParentAndRcStates shares one harness
+// across two phases so every child kind is observed under each parent state.
+func TestGuardedModesAndQueryDepthAcrossParentAndRcStates(t *testing.T) {
+	h := newHarness(t)
+	budgets := []int{2000, 500}
+
+	// Phase 1 (R2a, R4a, R4b untracked): the parent does not set the modes and
+	// the repository holds an untracked .graphifyrc asking for depth 6.
+	unsetParentEnv(t, "GRAPHIFY_BACKEND")
+	unsetParentEnv(t, "GRAPHIFY_QUERY_LOG_DISABLE")
+	h.write(t, ".graphifyrc", "query_depth=6\n")
+	if _, err := Build(t.Context(), h.options()); err != nil {
+		t.Fatal(err)
+	}
+	options := h.options()
+	options.Budget = budgets[0]
+	if _, err := Query(t.Context(), options); err != nil {
+		t.Fatal(err)
+	}
+	unset := h.calls(t)
+	assertFixedGraphifyModes(t, unset)
+
+	// Phase 2 (R2b, R4a, R4b tracked): the parent sets a case variant of the
+	// backend and an empty log switch; .graphifyrc is now tracked. A tracked Go
+	// change is committed with it so this Build must extract again.
+	t.Setenv("GRAPHIFY_BACKEND", "None")
+	t.Setenv("GRAPHIFY_QUERY_LOG_DISABLE", "")
+	h.write(t, "other.go", "package main\nfunc other() { _ = 1 }\n")
+	h.git(t, "add", ".graphifyrc", "other.go")
+	h.git(t, "commit", "-qm", "graphify defaults")
+	if _, err := Build(t.Context(), h.options()); err != nil {
+		t.Fatal(err)
+	}
+	options.Budget = budgets[1]
+	if _, err := Query(t.Context(), options); err != nil {
+		t.Fatal(err)
+	}
+	all := h.calls(t)
+	assertFixedGraphifyModes(t, all[len(unset):])
+
+	// R4a/R4b across both phases; R4c: only query children are checked.
+	assertQueryDepthPinned(t, all, budgets)
+}
+
 func TestMinimalEnvironmentBlocksCredentialsAndInheritedModes(t *testing.T) {
 	h := newHarness(t)
 	blocked := []string{"OPENAI_API_KEY", "TYPESAFE_API_KEY", "SUBQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "PYTHONPATH", "GRAPHIFY_QUERY_LOG", "GRAPHIFY_QUERY_LOG_ENABLE", "GRAPHIFY_OUT"}
 	for _, name := range blocked {
 		t.Setenv(name, "do-not-forward")
 	}
+	// R2b: inherited mode values must be replaced, not forwarded.
+	t.Setenv("GRAPHIFY_BACKEND", "claude")
+	t.Setenv("GRAPHIFY_QUERY_LOG_DISABLE", "0")
 	if _, err := Build(t.Context(), h.options()); err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +526,7 @@ func TestMinimalEnvironmentBlocksCredentialsAndInheritedModes(t *testing.T) {
 				t.Fatalf("%s was forwarded", name)
 			}
 		}
-		for name, value := range map[string]string{"GRAPHIFY_NO_AUTO_REFRESH": "1", "GRAPHIFY_QUERY_LOG_DISABLE": "1", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONHASHSEED": "0"} {
+		for name, value := range map[string]string{"GRAPHIFY_NO_AUTO_REFRESH": "1", "GRAPHIFY_QUERY_LOG_DISABLE": "1", "GRAPHIFY_BACKEND": "none", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONHASHSEED": "0"} {
 			if call.Env[name] != value {
 				t.Fatalf("%s = %q", name, call.Env[name])
 			}
@@ -461,15 +547,30 @@ func TestMissingAndWrongRuntimeFailBeforeExtraction(t *testing.T) {
 	options.Runtime = filepath.Join(h.root, "missing")
 	_, err := Build(t.Context(), options)
 	wantCode(t, err, "runtime_missing")
-	if !strings.Contains(err.Error(), "Install graphifyy==0.9.91") {
+	// R1b
+	if !strings.Contains(err.Error(), "Install graphifyy==0.9.103") {
 		t.Fatalf("message = %v", err)
 	}
-	h.config.Version = "0.0.1"
-	h.install(t)
-	_, err = Build(t.Context(), h.options())
-	wantCode(t, err, "runtime_version")
-	if !strings.Contains(err.Error(), "requires graphifyy") || h.extractions(t) != 0 {
-		t.Fatalf("message = %v, %d extractions", err, h.extractions(t))
+	// R1c: the old pin and an unrelated version are both refused before
+	// extraction. One harness is reused; each case must add version probes only.
+	for _, reported := range []string{"0.9.91", "0.0.1"} {
+		before := len(h.calls(t))
+		h.config.Version = reported
+		h.install(t)
+		_, err := Build(t.Context(), h.options())
+		wantCode(t, err, "runtime_version")
+		if !strings.Contains(err.Error(), "requires graphifyy") || !strings.Contains(err.Error(), "graphifyy==0.9.103") || h.extractions(t) != 0 {
+			t.Fatalf("%s: message = %v, %d extractions", reported, err, h.extractions(t))
+		}
+		calls := h.calls(t)
+		if len(calls) == before {
+			t.Fatalf("%s: version probe did not run", reported)
+		}
+		for _, call := range calls[before:] {
+			if !slices.Equal(call.Args, []string{"--version"}) {
+				t.Fatalf("%s: runtime started beyond the version probe: %v", reported, call.Args)
+			}
+		}
 	}
 }
 
@@ -696,6 +797,56 @@ func TestAmbiguousNoMatchAndOutputBudgetRemainExplicit(t *testing.T) {
 	}
 	if !result.Truncated || result.ContextChars > 300 || result.TruncationNotice == nil || !strings.Contains(*result.TruncationNotice, "unknown") {
 		t.Fatalf("result = %+v", result)
+	}
+}
+
+// argAfter returns the argument that immediately follows flag, if any.
+func argAfter(args []string, flag string) (string, bool) {
+	index := slices.Index(args, flag)
+	if index < 0 || index+1 >= len(args) {
+		return "", false
+	}
+	return args[index+1], true
+}
+
+// assertQueryDepthPinned checks that every query child received --depth 2
+// alongside --budget and --graph. Other children are not checked (R4c).
+func assertQueryDepthPinned(t *testing.T, calls []fakeCall, budgets []int) {
+	t.Helper()
+	var queries [][]string
+	for _, call := range calls {
+		if call.Args[0] == "query" {
+			queries = append(queries, call.Args)
+		}
+	}
+	if len(queries) != len(budgets) {
+		t.Fatalf("%d query children, want %d: %v", len(queries), len(budgets), calls)
+	}
+	for index, args := range queries {
+		// R4a: --depth immediately followed by 2, and never another depth value.
+		depths := 0
+		for position, arg := range args {
+			if strings.HasPrefix(arg, "--depth=") {
+				t.Fatalf("query child used inline depth %q: %v", arg, args)
+			}
+			if arg != "--depth" {
+				continue
+			}
+			depths++
+			if position+1 >= len(args) || args[position+1] != "2" {
+				t.Fatalf("query child --depth is not followed by 2: %v", args)
+			}
+		}
+		if depths == 0 {
+			t.Fatalf("query child lacks --depth 2: %v", args)
+		}
+		// R4a: the existing budget and graph arguments are still passed.
+		if budget, ok := argAfter(args, "--budget"); !ok || budget != strconv.Itoa(budgets[index]) {
+			t.Fatalf("query child --budget = %q (%v), want %d: %v", budget, ok, budgets[index], args)
+		}
+		if graph, ok := argAfter(args, "--graph"); !ok || graph == "" || strings.HasPrefix(graph, "--") {
+			t.Fatalf("query child --graph = %q (%v): %v", graph, ok, args)
+		}
 	}
 }
 
