@@ -1,6 +1,6 @@
 ---
 name: graphify
-description: Explore tracked Go source with an optional local structural graph when package relationships or candidate related symbols would help a repository investigation.
+description: Explore tracked Go source with an optional local structural graph of package relationships and related symbols.
 ---
 
 # Graphify
@@ -65,6 +65,6 @@ Ground the answer in verified file and line references. State graph coverage and
 unresolved relationships when material, including excluded or untracked code and
 dynamic wiring the map cannot establish. A structural graph does not replace
 tests, runtime evidence, or required review and consultation checkpoints. For
-substantial work, preserve the before and final decision checkpoints, with any
-configured advisers; the coordinator makes the decision from source evidence and
+substantial work whose checkpoints are required, preserve the before and final
+decision checkpoints, with any configured advisers; the coordinator makes the decision from source evidence and
 verification.

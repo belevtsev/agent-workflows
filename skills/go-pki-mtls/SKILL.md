@@ -1,6 +1,6 @@
 ---
 name: go-pki-mtls
-description: Design, implement, or review Go enrollment, certificate identity, mTLS authorization, and credential or trust rotation.
+description: Design or review Go enrollment, certificate identity, mTLS authorization, and credential or trust rotation.
 ---
 
 # Go PKI and mTLS

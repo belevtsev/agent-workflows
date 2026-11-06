@@ -1,6 +1,6 @@
 interface:
   display_name: "Task orchestration"
   short_description: "Coordinate workers, evidence, and revisable assumptions"
-  default_prompt: "Use $task-orchestration to coordinate this substantial task with the configured workers, follow the decision flow with resolved before and final checkpoints using any configured advisers, and make the coordinator's final decision against current source evidence and checks."
+  default_prompt: "Use $task-orchestration to coordinate this substantial task with the configured workers, follow the decision flow, resolving the before and final checkpoints when the plan requires them with any configured advisers, and make the coordinator's final decision against current source evidence and checks."
 policy:
   allow_implicit_invocation: true

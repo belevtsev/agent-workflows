@@ -5,20 +5,32 @@ in the policy's `consultation.providers` with its pinned model, and with its key
 present. The shipped policy enables SubQ Snap `subq-snap-preview` and OpenAI
 Decisions `gpt-6-luna`; TypeSafe Jev is opt-in with an exact version such as
 `jev-1.14.0`. `cw task start` binds the configured set, and both checkpoints use
-that binding. Configured advisers receive the same permitted evidence and
+that binding. Checkpoints run when the task has an open decision: real
+alternatives with consequential uncertainty. When the approach follows directly
+from the defect or contract and no changed code must behave alike on several platforms or shells,
+the plan declares
+`"checkpoints": {"required": false, "reason": "..."}`, the flow goes from
+classification to implementation and from review to `cw task verify`, and verify
+lists the reason as a limitation. When in doubt, keep them required. If a task
+started with checkpoints not required later meets an open decision or a change to such
+cross-platform or cross-shell code, the coordinator stops and asks the user; a task started with them required does
+not stop. Configured advisers receive the same permitted evidence and
 questions. The coordinator checks their judgments against sources and verification
 and makes the final decision; agreement, confidence and voting do not establish
 truth.
 
 ## Task flow and rework
 
-This diagram covers substantial tasks. Small edits and direct factual answers
+This diagram covers substantial tasks: independent workstreams, cross-component
+changes (including code that must behave alike on several platforms or shells) or
+consequential uncertainty, and any task when unsure. Small edits and direct factual answers
 retain the lightweight path, including relevant verification and user authorization.
-No state is skipped, and an unresolved decision blocks the next state.
+No required state is skipped, and an unresolved decision blocks the next state.
 
 ```mermaid
 flowchart TD
     Classify[Classify the task<br/>cw task start binds configured advisers]
+    Open{Open decision, code that must behave<br/>alike across platforms or shells, or in doubt?}
     Before[Before checkpoint<br/>consult configured advisers, adjudicate, attach]
     BeforeOK{Before adjudication}
     Mode{What work did the user authorize?}
@@ -31,14 +43,17 @@ flowchart TD
     Rework[Revise within scope and recheck<br/>Refresh affected evidence and advice]
     Gap[Investigate the material gap<br/>Adjudicate again or consult with new evidence]
 
-    Classify --> Before --> BeforeOK
+    Classify --> Open
+    Open -->|Yes| Before --> BeforeOK
+    Open -->|No: checkpoints not required| Mode
     BeforeOK -->|Unresolved| Gap
     BeforeOK -->|Resolved| Mode
     Mode -->|Changes authorized| Build
     Mode -->|Plan or review only| Draft
     Build --> Check
     Draft --> Check
-    Check --> Final --> FinalOK
+    Check -->|Checkpoints required| Final --> FinalOK
+    Check -->|Not required| Ready
     FinalOK -->|Resolved| Ready
     FinalOK -->|Unresolved| Gap
     FinalOK -->|Needs revision| Rework
@@ -47,11 +62,11 @@ flowchart TD
     Gap -->|Final| Final
 ```
 
-The before checkpoint precedes implementation, or substantive drafting or review
-for a task without implementation, and `cw task assign` is refused until it is
-attached and resolved. It cannot substitute for the final checkpoint. Rework
-refreshes affected checks and consultations when the evidence, revision or question
-meaning changes. Reuse remains within the same applicable checkpoint. Adviser
+When required, the before checkpoint precedes implementation, or substantive
+drafting or review for a task without implementation, and `cw task assign` is
+refused until it is attached and resolved. It cannot substitute for the final checkpoint. Rework
+reruns every check the records cite after a source change, and refreshes affected
+consultations when the evidence, revision or question meaning changes. Reuse remains within the same applicable checkpoint. Adviser
 judgments grant no implementation or publication permission.
 
 ## Decision forks inside each checkpoint

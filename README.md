@@ -31,8 +31,8 @@ overrides:
 
 | Choice | Codex substantive work | Claude substantive work |
 | --- | --- | --- |
-| Recommended | Sol 6.1 / max | Opus 5.5 / xhigh |
-| Balanced | Sol 6.1 / xhigh | Opus 5.5 / high |
+| Recommended | Sol 6.1 / max | Opus 5.5 / high; xhigh for planning, architecture and diagnosis |
+| Balanced | Sol 6.1 / xhigh | Opus 5.5 / high for every substantive role |
 | Advanced | Each role, fallback and memory/context field separately | Each role and fallback separately |
 
 The models step also has a GitHub workers row for each selected host. It sets one
@@ -76,7 +76,7 @@ The Claude Code defaults come from the coordinator profile in
 ```json
 {
   "model": "claude-opus-5-5",
-  "effortLevel": "xhigh"
+  "effortLevel": "high"
 }
 ```
 
@@ -227,13 +227,18 @@ Codex and Claude Code keep separate roles, and the rest of the policy is shared.
 
 | Role | Codex | Claude Code |
 | --- | --- | --- |
-| Coordination, substantive work, review, and final verification | `gpt-6.1-sol` at `max` | `claude-opus-5-5` at `xhigh` |
+| Coordination, substantive work, review, and final verification | `gpt-6.1-sol` at `max` | `claude-opus-5-5` at `high` |
+| Planning, architecture and diagnosis (`decision`) | `gpt-6.1-sol` at `max` | `claude-opus-5-5` at `xhigh` |
 | Routine commit, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` at `high` | `claude-sonnet-5-5` at `medium` |
-| Other bounded execution profiles | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
+| Other bounded execution profiles | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `high` |
 | Bounded evidence gathering | `gpt-6-luna` at `high` | `claude-opus-5-5` at `high` |
 
-Activated substantial work has a before-implementation and a final-review
-checkpoint on both hosts. Advisers are optional: one takes part only when it is
+Activated substantial work with an open decision (real alternatives with
+consequential uncertainty) has a before-implementation and a final-review
+checkpoint on both hosts. When the approach follows directly from the defect or
+contract and no changed code must behave alike on several platforms or shells, the
+plan declares `"checkpoints": {"required": false, "reason": "..."}`
+and `cw task verify` lists the reason; when in doubt, it keeps them. Advisers are optional: one takes part only when it is
 enabled in the shared policy's `consultation.providers` and its key is present.
 
 | Adviser | Provider ID | Model | Enabled by default | Key |
@@ -266,8 +271,9 @@ expensive worker. Codex dispatch uses explicit model/effort and no forked histor
 Claude uses Agent `model: sonnet`, `effort: medium` on 2.1.292 or newer. Verify the
 effective runtime metadata because aliases and environment overrides can change it.
 
-`settings.json` rejects `max`, so `xhigh` is the highest persisted Claude Code
-effort. Use `/effort max` for a session.
+The persisted Claude Code `effortLevel` follows the coordinator profile, `high` by
+default; `xhigh` remains for the decision roles. `settings.json` rejects `max`,
+so use `/effort max` for a session.
 
 ## Included skills
 
@@ -349,11 +355,17 @@ Graphify and gopls apply to supported Go work.
 
 For substantial repository work, `cw task` retains requirements, actual check
 results, worker assignments and handoffs, current-source references, the adviser
-binding and both source-bound decision checkpoints in a private directory outside
-project source. Workers cannot be assigned until the before checkpoint is resolved.
+binding and the source-bound decision checkpoints in a private directory outside
+project source. When checkpoints are required, workers cannot be assigned until the
+before checkpoint is resolved; a plan without an open decision, and with no changed
+code that must behave alike on several platforms or shells, declares them not
+required, with a reason that verify reports; when in doubt, it keeps them.
 `cw task verify` checks evidence against the current worktree. New substantial-change
 tasks also require an accepted independent worker review of the completed source
-before final consultation.
+before final consultation: one full review, then at most one diff-scoped follow-up by a fresh reviewer, and a
+further review only to re-bind a fix of a defect that follow-up found. Findings are
+`resolved`, `rejected` against evidence, or `deferred` only when they change no
+behaviour, fail no gate and lose no rule.
 Small and unchanged read-only tasks retain the lightweight path. The coordinator
 verifies the meaning of the evidence and makes the final decision. The
 [worker handoff guide](skills/task-orchestration/references/worker-handoffs.md)
@@ -380,11 +392,11 @@ flowchart TD
     Doctor --> Size{Substantial repository work?}
     Size -->|No| Small[Direct work and relevant checks]
     Size -->|Yes| Record[cw task start: requirements, source identity, adviser binding]
-    Record --> Before[Before checkpoint: configured advisers, resolved adjudication]
+    Record --> Before[Before checkpoint when required: configured advisers, resolved adjudication]
     Before --> Work[Coordinator and workers work against source evidence]
     Work --> Checks[Run the selected project checks]
     Checks --> Review[Independent worker review and finding dispositions]
-    Review --> Final[Fresh final checkpoint: configured advisers, resolved adjudication]
+    Review --> Final[Fresh final checkpoint when required: configured advisers, resolved adjudication]
     Final --> Verify[cw task verify]
     Verify --> Complete{Evidence complete and current?}
     Complete -->|No| Work
@@ -431,8 +443,8 @@ including `EXTRACTED` and `INFERRED` relationships, are qualified discovery hint
 See [runtime setup and commands](docs/operations.md#optional-graphify-runtime).
 `cw install`, update and status do not provision Graphify or build its cache.
 
-Substantial work still passes the before and final decision checkpoints, with any
-configured advisers. The coordinator decides from verified evidence and current checks.
+Substantial work with an open decision still passes the before and final decision
+checkpoints, with any configured advisers. The coordinator decides from verified evidence and current checks.
 
 Repository commands, product details, and operational constraints belong in the
 owning repository's instructions and docs. Skill selection does not grant
@@ -460,7 +472,7 @@ the coordinator adjudicates each checkpoint on source evidence under the same ru
 Before configuring any adviser, confirm that sending source excerpts to that
 provider is permitted for the code and organization involved. Each provider's
 data handling is summarized in its section below and in the
-[helper contract](skills/task-orchestration/references/consultation-helper.md#sharing-and-recording).
+[helper contract](skills/task-orchestration/references/adviser-providers.md#data-handling).
 Installation and offline validation work without keys. Never paste a key into
 chat or commit it.
 
@@ -617,9 +629,14 @@ before `cw task start`, because the task binds only the advisers configured then
 
 ## Consult advisers and let the coordinator decide
 
-Substantial work follows a fixed flow, and no state is skipped: classify the task,
-resolve the before checkpoint, implement and verify, resolve a fresh final
-checkpoint, and complete only when both are resolved. Tasks without implementation
+Substantial work follows a fixed flow, and no required state is skipped: classify
+the task, resolve the before checkpoint, implement and verify, resolve a fresh
+final checkpoint, and complete only when both are resolved. The checkpoints are
+required when the task has an open decision: real alternatives with consequential
+uncertainty. When the approach follows directly from the defect or contract and no
+changed code must behave alike on several platforms or shells, the plan declares `"checkpoints": {"required": false, "reason": "..."}`, and
+`cw task verify` lists that reason instead of requiring the checkpoints; when in
+doubt, it keeps them. Tasks without implementation
 use the before checkpoint ahead of substantive drafting or review. Small edits and
 direct factual answers remain lightweight.
 
@@ -690,7 +707,7 @@ details and source links.
 
 ### Evaluate multilingual judgments
 
-The bundled [multilingual evaluation](skills/task-orchestration/references/consultation-helper.md#multilingual-evaluation)
+The bundled [multilingual evaluation](skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation)
 uses 12 synthetic scenarios translated into English, Ukrainian and German.
 Expected answers stay with the local scorer. Each adviser is scored independently;
 agreement and confidence do not choose the correct answer.

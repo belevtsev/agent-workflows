@@ -1,6 +1,6 @@
 ---
 name: go-principal-engineer
-description: Resolve consequential Go ownership, lifecycle, durability, or rollout decisions with explicit failure behavior and verification.
+description: Resolve consequential Go ownership, lifecycle, durability, or rollout decisions with failure behavior and checks.
 ---
 
 # Production Go decisions

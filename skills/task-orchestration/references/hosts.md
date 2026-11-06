@@ -19,13 +19,16 @@ have `CLAUDECODE=1`.
 
 ## Dispatching workers under Claude Code
 
-Substantive roles keep Opus 5.5. The three routine GitHub roles use the cheaper
-Sonnet 5.5 profile; resolve the current policy before dispatch.
+Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
+`architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
+three routine GitHub roles use the cheaper Sonnet 5.5 profile; resolve the current
+policy before dispatch.
 
 | Profile | Agent tool `model` | Agent tool `effort` |
 | --- | --- | --- |
-| `substantive` | `opus` | `xhigh` |
-| `bounded_execution` | `opus` | `xhigh` |
+| `substantive` | `opus` | `high` |
+| `decision` | `opus` | `xhigh` |
+| `bounded_execution` | `opus` | `high` |
 | `github` | `sonnet` | `medium` |
 | `bounded_evidence` | `opus` | `high` |
 
@@ -46,8 +49,13 @@ Sonnet 5.5 profile; resolve the current policy before dispatch.
   [GitHub worker contract](github-worker.md) covers the shared fallback precedence.
 - Standard subagents start with a fresh context. This matches the Codex rule of
   dispatching with no forked history.
-- The settings default stops at `xhigh` because `settings.json` rejects `max`. Use
-  `/effort max` for a session when the user asks for it.
+- In a non-interactive `claude -p` session, dispatch workers in the foreground
+  (without `run_in_background`) and wait for their results. The process exits when
+  the coordinator's turn ends, and a background worker is lost with it: in one
+  measured replay that discarded a 36-request review.
+- The installer writes the coordinator profile's effort, `high` by default, as
+  `effortLevel`. `settings.json` rejects `max`; use `/effort max` or `/effort xhigh`
+  for a session when the user asks for it.
 
 ## Independent test authors on either host
 

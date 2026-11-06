@@ -1,6 +1,6 @@
 ---
 name: software-architecture
-description: Design or assess component ownership, dependencies, and interface evolution for substantial changes across packages or repositories.
+description: Design or assess component ownership, dependencies, and interface evolution across packages or repositories.
 ---
 
 # Software architecture

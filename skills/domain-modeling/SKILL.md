@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: Sharpen a project's domain language with a glossary and scenario probing, and record only the decisions that are costly to reverse.
+description: Sharpen a project's domain language with a glossary and scenarios; record only costly-to-reverse decisions.
 license: MIT
 ---
 

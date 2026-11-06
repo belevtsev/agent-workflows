@@ -1,6 +1,6 @@
 ---
 name: "security-threat-model"
-description: "Build a requested repository threat model with source-backed boundaries, realistic abuse paths, and prioritized mitigations."
+description: Build a requested repository threat model with source-backed boundaries, abuse paths, and mitigations.
 ---
 
 # Repository threat model

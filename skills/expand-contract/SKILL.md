@@ -1,6 +1,6 @@
 ---
 name: expand-contract
-description: Plan zero-downtime schema, API, and event changes as expand, migrate, and contract steps that stay compatible during rolling deploys.
+description: Plan zero-downtime schema, API, and event changes as expand, migrate, and contract steps for rolling deploys.
 license: MIT
 ---
 

@@ -273,7 +273,7 @@ func (home *artifactProbeHome) artifactProbeVerify(manager, base map[string]any,
 	if err != nil {
 		return err
 	}
-	codexEffort, claudeEffort, window, enabled := "max", "xhigh", int64(512000), true
+	codexEffort, claudeEffort, window, enabled := "max", "high", int64(512000), true
 	if pinned {
 		codexEffort, claudeEffort, window, enabled = "xhigh", "high", 384000, false
 	}
@@ -299,6 +299,18 @@ func (home *artifactProbeHome) artifactProbeVerify(manager, base map[string]any,
 			profile := artifactProbeMap(profiles[artifactProbeString(roles[role])])
 			if profile["model"] != model || profile[host.effortKey] != effort || artifactProbeString(profile["scope"]) == "" {
 				return errors.New("policy-role")
+			}
+		}
+		if host.effortKey == "effort" && !pinned {
+			// The shipped (unpinned) Claude policy keeps xhigh only for the
+			// decision roles; this distinguishes it from the pinned preset now
+			// that both use high for the coordinator.
+			for _, role := range []string{"planning", "architecture", "diagnosis"} {
+				name := artifactProbeString(roles[role])
+				profile := artifactProbeMap(profiles[name])
+				if name != "decision" || profile["model"] != "claude-opus-5-5" || profile["effort"] != "xhigh" || artifactProbeString(profile["scope"]) != "substantive" {
+					return errors.New("policy-role")
+				}
 			}
 		}
 	}

@@ -513,7 +513,7 @@ func (w *setupWizard) hostsStep(ctx context.Context) (nav, error) {
 
 var presetDetails = map[string]string{
 	"keep":        "your saved choices",
-	"recommended": "Sol 6.1/max + Opus 5.5/xhigh",
+	"recommended": "Sol 6.1/max + Opus 5.5/high, xhigh",
 	"balanced":    "Sol 6.1/xhigh + Opus 5.5/high",
 	"advanced":    "choose each role and memory setting",
 }

@@ -34,6 +34,38 @@ type Plan struct {
 	CoordinatorID string        `json:"coordinator_id,omitempty"`
 	Requirements  []Requirement `json:"requirements"`
 	Checks        []Check       `json:"checks"`
+	// Checkpoints is nil for records written before the field existed and for
+	// plans that omit it; both mean adviser checkpoints are required.
+	Checkpoints *CheckpointPolicy `json:"checkpoints,omitempty"`
+}
+
+// CheckpointPolicy lets a substantial plan declare, with a reason, that the
+// before and final adviser checkpoints are not required.
+type CheckpointPolicy struct {
+	Required bool   `json:"required"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+// UnmarshalJSON requires an explicit required member: an object that omits it
+// would otherwise decode as not required and silently skip the checkpoints.
+func (p *CheckpointPolicy) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Required *bool  `json:"required"`
+		Reason   string `json:"reason,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw, json.RejectUnknownMembers(true)); err != nil {
+		return err
+	}
+	if raw.Required == nil {
+		return errors.New("plan checkpoints needs an explicit required member")
+	}
+	*p = CheckpointPolicy{Required: *raw.Required, Reason: raw.Reason}
+	return nil
+}
+
+// checkpointsRequired reports whether the plan requires adviser checkpoints.
+func checkpointsRequired(plan Plan) bool {
+	return plan.Checkpoints == nil || plan.Checkpoints.Required
 }
 
 type Requirement struct {
@@ -233,6 +265,14 @@ func validateRecordedPlan(plan Plan) error {
 	}
 	if !nonblank(plan.Title) || len(plan.Title) > 4096 || (plan.Kind != "small" && plan.Kind != "substantial") {
 		return errors.New("plan needs a title and kind small or substantial")
+	}
+	if plan.Checkpoints != nil {
+		if plan.Kind != "substantial" {
+			return errors.New("plan checkpoints apply only to substantial tasks")
+		}
+		if (!plan.Checkpoints.Required || plan.Checkpoints.Reason != "") && !boundedText(plan.Checkpoints.Reason) {
+			return errors.New("plan checkpoints reason must be bounded and nonblank, and required false needs one")
+		}
 	}
 	if len(plan.Requirements) == 0 || len(plan.Requirements) > 256 || len(plan.Checks) > 256 {
 		return errors.New("plan needs 1..256 requirements and at most 256 checks")

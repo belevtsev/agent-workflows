@@ -184,7 +184,7 @@ func (home *standaloneSmokeHome) standaloneSmokeVerify() error {
 	if err != nil {
 		return err
 	}
-	if codex["model"] != "gpt-6.1-sol" || codex["model_reasoning_effort"] != "max" || codex["model_context_window"] != int64(512000) || claude["model"] != "claude-opus-5-5" || claude["effortLevel"] != "xhigh" {
+	if codex["model"] != "gpt-6.1-sol" || codex["model_reasoning_effort"] != "max" || codex["model_context_window"] != int64(512000) || claude["model"] != "claude-opus-5-5" || claude["effortLevel"] != "high" {
 		return errors.New("native-defaults")
 	}
 	memories := standaloneSmokeMap(codex["memories"])
@@ -203,7 +203,7 @@ func (home *standaloneSmokeHome) standaloneSmokeVerify() error {
 	if err != nil || info.Mode()&os.ModeSymlink == 0 {
 		return errors.New("active-symlink")
 	}
-	for _, host := range []struct{ file, model, effort, boundedModel, boundedEffort, effortKey string }{{"model-policy.yaml", "gpt-6.1-sol", "max", "gpt-6-luna", "high", "reasoning_effort"}, {"model-policy.claude.yaml", "claude-opus-5-5", "xhigh", "claude-sonnet-5-5", "medium", "effort"}} {
+	for _, host := range []struct{ file, model, effort, boundedModel, boundedEffort, effortKey string }{{"model-policy.yaml", "gpt-6.1-sol", "max", "gpt-6-luna", "high", "reasoning_effort"}, {"model-policy.claude.yaml", "claude-opus-5-5", "high", "claude-sonnet-5-5", "medium", "effort"}} {
 		data, readErr := os.ReadFile(filepath.Join(current, "skills", "task-orchestration", host.file))
 		var policy map[string]any
 		if readErr != nil || yaml.Unmarshal(data, &policy) != nil {
@@ -219,6 +219,16 @@ func (home *standaloneSmokeHome) standaloneSmokeVerify() error {
 			}
 			if profile["model"] != model || profile[host.effortKey] != effort {
 				return errors.New("policy-role")
+			}
+		}
+		if host.effortKey == "effort" {
+			// The shipped Claude policy keeps xhigh only for the decision roles.
+			for _, role := range []string{"planning", "architecture", "diagnosis"} {
+				name, _ := roles[role].(string)
+				profile := standaloneSmokeMap(profiles[name])
+				if name != "decision" || profile["model"] != "claude-opus-5-5" || profile["effort"] != "xhigh" || profile["scope"] != "substantive" {
+					return errors.New("policy-role")
+				}
 			}
 		}
 	}

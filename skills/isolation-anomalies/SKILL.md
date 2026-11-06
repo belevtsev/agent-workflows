@@ -1,6 +1,6 @@
 ---
 name: isolation-anomalies
-description: Find and fix concurrency anomalies such as write skew and lost updates by reasoning from what each transaction isolation level permits.
+description: Find and fix concurrency anomalies such as write skew and lost updates from transaction isolation levels.
 license: MIT
 ---
 

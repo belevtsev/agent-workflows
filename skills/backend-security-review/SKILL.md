@@ -1,6 +1,6 @@
 ---
 name: backend-security-review
-description: Review backend attack paths and dependency risks with scoped source evidence; use code-review for ordinary correctness.
+description: Review backend attack paths and dependency risks with source evidence; use code-review for ordinary correctness.
 ---
 
 # Backend security review

@@ -24,10 +24,39 @@ func TestClaudeGitHubWorkerRouting(t *testing.T) {
 			t.Fatalf("%s has unexpected GitHub profile: %v", role, profile)
 		}
 	}
+	// E1: planning, architecture and diagnosis use the xhigh decision profile;
+	// every other substantive role uses the high substantive profile.
+	decisionRoles := map[string]bool{"planning": true, "architecture": true, "diagnosis": true}
+	seenDecision := 0
 	for _, role := range policySubstantiveRoles {
-		profile := object(profiles[text(roles[role])])
-		if profile["model"] != "claude-opus-5-5" || profile["effort"] != "xhigh" || profile["scope"] != "substantive" {
-			t.Fatalf("%s substantive default changed: %v", role, profile)
+		name := text(roles[role])
+		wantName, wantEffort := "substantive", "high"
+		if decisionRoles[role] {
+			wantName, wantEffort = "decision", "xhigh"
+			seenDecision++
+		}
+		profile := object(profiles[name])
+		if name != wantName || profile["model"] != "claude-opus-5-5" || profile["effort"] != wantEffort || profile["scope"] != "substantive" {
+			t.Fatalf("%s substantive default changed: profile %q = %v; want %q with effort %q", role, name, profile, wantName, wantEffort)
+		}
+	}
+	if seenDecision != len(decisionRoles) {
+		t.Fatalf("decision roles missing from the substantive roles: saw %d of %d", seenDecision, len(decisionRoles))
+	}
+	for name, want := range map[string][3]string{
+		"substantive":       {"claude-opus-5-5", "high", "substantive"},
+		"decision":          {"claude-opus-5-5", "xhigh", "substantive"},
+		"bounded_execution": {"claude-opus-5-5", "high", ""},
+		"bounded_evidence":  {"claude-opus-5-5", "high", ""},
+	} {
+		profile := object(profiles[name])
+		if profile["model"] != want[0] || profile["effort"] != want[1] || (want[2] != "" && profile["scope"] != want[2]) {
+			t.Fatalf("profile %s = %v; want model %s effort %s", name, profile, want[0], want[1])
+		}
+	}
+	for _, role := range []string{"lookup", "summarization"} {
+		if roles[role] != "bounded_evidence" {
+			t.Fatalf("%s mapping changed: %v", role, roles[role])
 		}
 	}
 }
@@ -46,7 +75,7 @@ func TestClaudeHistoricalPolicyWithoutGitHubProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defaults, err := ClaudeModelDefaults(fixture.root, fixture.manifest)
-	if err != nil || defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "xhigh" {
+	if err != nil || defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "high" {
 		t.Fatalf("historical defaults: %v, %v", defaults, err)
 	}
 }
@@ -58,7 +87,7 @@ func TestClaudeModelDefaultsUseCoordinatorProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "xhigh" || len(defaults) != 2 {
+	if defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "high" || len(defaults) != 2 {
 		t.Fatalf("wrong Claude defaults: %v", defaults)
 	}
 }
@@ -90,5 +119,19 @@ func TestClaudeModelPolicyRejectsInvalidMappings(t *testing.T) {
 				t.Fatalf("ValidateSuite() error = %v; want containing %q", err, test.message)
 			}
 		})
+	}
+}
+
+// E2: the installer's Claude effortLevel follows the coordinator role's
+// profile rather than a fixed value.
+func TestClaudeModelDefaultsFollowCoordinatorRole(t *testing.T) {
+	t.Parallel()
+	fixture := newSuiteFixture(t)
+	editModelPolicy(t, filepath.Join(fixture.root, text(fixture.manifest["claude_model_policy"])), func(policy Object) {
+		object(policy["roles"])["coordinator"] = "decision"
+	})
+	defaults, err := ClaudeModelDefaults(fixture.root, fixture.manifest)
+	if err != nil || defaults["model"] != "claude-opus-5-5" || defaults["effortLevel"] != "xhigh" {
+		t.Fatalf("coordinator on the decision profile: %v, %v", defaults, err)
 	}
 }

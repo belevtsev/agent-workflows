@@ -52,7 +52,7 @@ func TestClaudeHostInstallAndUninstallRestoreUserFilesExactly(t *testing.T) {
 	}
 	h := i.host(hostClaude)
 	settings := installerRead(t, h.settings)
-	for _, want := range []string{`"theme": "dark"`, `"permissions": {"allow": ["Read"]}`, `"model": "claude-opus-5-5"`, `"effortLevel": "xhigh"`} {
+	for _, want := range []string{`"theme": "dark"`, `"permissions": {"allow": ["Read"]}`, `"model": "claude-opus-5-5"`, `"effortLevel": "high"`} {
 		if !strings.Contains(settings, want) {
 			t.Fatalf("settings lost %s: %s", want, settings)
 		}
