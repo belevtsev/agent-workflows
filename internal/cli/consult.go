@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"path/filepath"
 	"strings"
@@ -75,6 +76,7 @@ func disabledAdvisers(root *cobra.Command, config Config) ([]string, error) {
 
 func addConsultCommand(root *cobra.Command, config Config) {
 	var options consult.Options
+	var summary bool
 	command := &cobra.Command{
 		Use:   "consult",
 		Short: "Collect independent adviser judgments, or validate a recorded decision offline",
@@ -112,7 +114,24 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				// without a task binding.
 				options.Disabled = func() ([]string, error) { return disabledAdvisers(root, config) }
 			}
-			return finish(consult.Run(cmd.Context(), options))
+			if !summary {
+				return finish(consult.Run(cmd.Context(), options))
+			}
+			// The human status line is replaced by the one-line view of the
+			// record this run wrote; stderr and the exit status are unchanged.
+			options.Stdout = io.Discard
+			status, err := consult.Run(cmd.Context(), options)
+			if err != nil || status == 1 {
+				return finish(status, err)
+			}
+			view, err := options.View()
+			if err != nil {
+				return err
+			}
+			if err := writeJSON(cmd.OutOrStdout(), view); err != nil {
+				return err
+			}
+			return finish(status, nil)
 		},
 	}
 	flags := command.Flags()
@@ -121,6 +140,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Decision, "decision", "", "Coordinator decision JSON file, with --adjudicate")
 	flags.StringVar(&options.Output, "output", "", "New private record path; an existing file is never replaced")
 	flags.StringVar(&options.Policy, "policy", "", "Validated model policy (defaults to the installed release's)")
+	flags.BoolVar(&summary, "summary", false, "After writing the record, print a one-line JSON view of it (statuses, answers, comparison) without the request body")
 	root.AddCommand(command)
 }
 

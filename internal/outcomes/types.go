@@ -57,10 +57,19 @@ type Observation struct {
 	Quality       *Quality `json:"quality,omitempty"`
 }
 
+// Usage counters are actual provider counts; nil is unknown. InputTokens is
+// total input: uncached input plus cache writes plus cache reads. The optional
+// breakdown must sum to InputTokens when all of it is known, and thinking
+// tokens are a subset of OutputTokens.
 type Usage struct {
-	InputTokens  *int64 `json:"input_tokens,omitempty"`
-	OutputTokens *int64 `json:"output_tokens,omitempty"`
-	APIRequests  *int64 `json:"api_requests,omitempty"`
+	InputTokens         *int64 `json:"input_tokens,omitempty"`
+	OutputTokens        *int64 `json:"output_tokens,omitempty"`
+	APIRequests         *int64 `json:"api_requests,omitempty"`
+	UncachedInputTokens *int64 `json:"uncached_input_tokens,omitempty"`
+	CacheWrite5mTokens  *int64 `json:"cache_write_5m_tokens,omitempty"`
+	CacheWrite1hTokens  *int64 `json:"cache_write_1h_tokens,omitempty"`
+	CacheReadTokens     *int64 `json:"cache_read_tokens,omitempty"`
+	ThinkingTokens      *int64 `json:"thinking_tokens,omitempty"`
 }
 
 type Quality struct {
@@ -72,7 +81,7 @@ type Quality struct {
 }
 
 // Cost is either an actual billed amount with evidence, or a calculation from
-// complete actual usage and all three explicitly supplied rates. A zero request
+// complete actual usage and all explicitly supplied rates. A zero request
 // rate must be explicit; omitted prices and usage never become zero.
 type Cost struct {
 	Currency string   `json:"currency"`
@@ -81,11 +90,17 @@ type Cost struct {
 	Rates    *Rates   `json:"rates,omitempty"`
 }
 
+// Rates without cache rates price total input_tokens at InputPerMillion. When
+// any cache rate is present all three are required, InputPerMillion applies
+// to uncached input only, and the cache counters must be known.
 type Rates struct {
-	InputPerMillion  *float64 `json:"input_per_million"`
-	OutputPerMillion *float64 `json:"output_per_million"`
-	APIRequest       *float64 `json:"api_request"`
-	Evidence         string   `json:"evidence"`
+	InputPerMillion        *float64 `json:"input_per_million"`
+	OutputPerMillion       *float64 `json:"output_per_million"`
+	APIRequest             *float64 `json:"api_request"`
+	CacheWrite5mPerMillion *float64 `json:"cache_write_5m_per_million,omitempty"`
+	CacheWrite1hPerMillion *float64 `json:"cache_write_1h_per_million,omitempty"`
+	CacheReadPerMillion    *float64 `json:"cache_read_per_million,omitempty"`
+	Evidence               string   `json:"evidence"`
 }
 
 type Limits struct {

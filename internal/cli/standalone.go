@@ -235,7 +235,24 @@ func executeStandalone(cmd *cobra.Command, config Config, o options, action stri
 		}
 		return nil
 	}
-	return writeJSON(cmd.OutOrStdout(), workflow.Object{"action": action, "dry_run": !apply, "environment": environmentReport{"native_go", config.Version, config.Revision}, "result": report, "status": status, "credentials": credentialResult, "credential_sources": presence, "credential_storage_status": credentialStorage, "next_step": "Start a fresh agent session to use the selected settings"})
+	nextStep := "Start a fresh agent session to use the selected settings"
+	// Only the status command registers --summary.
+	if summary, _ := cmd.Flags().GetBool(statusSummaryFlag); summary && action == "status" {
+		return writeJSON(cmd.OutOrStdout(), summarizeStatus(status, presence, credentialStorage, nextStep))
+	}
+	return writeJSON(cmd.OutOrStdout(), workflow.Object{"action": action, "dry_run": !apply, "environment": environmentReport{"native_go", config.Version, config.Revision}, "result": report, "status": status, "credentials": credentialResult, "credential_sources": presence, "credential_storage_status": credentialStorage, "next_step": nextStep})
+}
+
+const statusSummaryFlag = "summary"
+
+// addStatusSummaryFlag registers --summary on the status command alone, so the
+// other lifecycle commands reject it as an unknown flag (a usage error).
+func addStatusSummaryFlag(root *cobra.Command) {
+	for _, command := range root.Commands() {
+		if command.Name() == "status" {
+			command.Flags().Bool(statusSummaryFlag, false, "Print one line: install state, short release identity, hosts, settings drift and missing credentials")
+		}
+	}
 }
 
 func readBoundedFile(path string, limit int64) ([]byte, error) {

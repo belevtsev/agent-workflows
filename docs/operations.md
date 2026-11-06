@@ -101,12 +101,17 @@ the adviser binding fixed at `cw task start`, two substantial-task decision
 checkpoints (unless the plan declares them not required, with a reason that
 verify lists) and the coordinator's decisions in a private
 external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
-`handoff`, `accept`, `assess`, `consult` and `run` commands accept `--summary` for a
-one-line result instead of the whole record (`run`: the whole check run), and
+`handoff`, `accept`, `assess`, `consult`, `run` and `verify` commands accept `--summary` for a
+one-line result instead of the whole record (`run`: the whole check run, plus failing
+test names and first error lines when it failed; `verify`: without its fixed
+limitations), `cw doctor`, `cw status` and `cw consult` accept it too, `cw task show
+--field <dotted.path>` prints only selected values, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
+`cw metrics import` reports per-agent tokens and dollars from a Claude Code transcript
+or a Codex rollout, without writing anything.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. These commands do not alter installer ownership, receipt or
 recovery formats. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
@@ -284,7 +289,7 @@ for request and record formats.
 ## Optional Graphify runtime
 
 The first-party [Graphify skill](../skills/graphify/SKILL.md) uses the external
-`graphifyy==0.9.91` package. Provision this optional runtime explicitly when
+`graphifyy==0.9.103` package. Provision this optional runtime explicitly when
 activating Graphify on a device. `cw graphify` supports macOS and Linux. That
 package is a Python tool, so this optional runtime is the one place the workflow
 touches Python, and it lives outside this repository. Python 3.14 with `venv` and
@@ -292,7 +297,7 @@ touches Python, and it lives outside this repository. Python 3.14 with `venv` an
 
 ```sh
 python3.14 -m venv "$HOME/.venvs/agent-graphify"
-"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.91'
+"$HOME/.venvs/agent-graphify/bin/python" -m pip install 'graphifyy==0.9.103'
 "$HOME/.venvs/agent-graphify/bin/python" -m pip check
 ```
 
@@ -313,8 +318,11 @@ cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the
 It finds `~/.venvs/agent-graphify/bin/graphify`, then `graphify` on PATH; `--runtime`
 names another executable. It snapshots eligible tracked Go source and module
 metadata, omitting vendored and fixture trees. It fixes local code-only flags,
-disables LLM deduplication, sets `GRAPHIFY_NO_AUTO_REFRESH=1` and
-`GRAPHIFY_QUERY_LOG_DISABLE=1`, and launches the CLI with a minimal environment.
+disables LLM deduplication, sets `GRAPHIFY_NO_AUTO_REFRESH=1`,
+`GRAPHIFY_QUERY_LOG_DISABLE=1` and `GRAPHIFY_BACKEND=none`, and launches the CLI
+with a minimal environment. These values are fixed; the caller's own `GRAPHIFY_*`
+settings are not forwarded. Queries pass `--depth 2` explicitly, so a repository
+`.graphifyrc` cannot change their traversal.
 Each CLI child also receives temporary `HOME` and XDG configuration/cache
 directories, keeping the user's global provider configuration out of that child.
 It adds no hooks, watch processes, cloud integration, MCP configuration, or memory

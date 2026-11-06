@@ -39,10 +39,23 @@ type taskRunSummary struct {
 	ExitCode *int   `json:"exit_code,omitempty"`
 	Failure  string `json:"failure,omitempty"`
 	Log      string `json:"log"`
+	// A failed or timed-out run also quotes bounded excerpts of its stored log.
+	FailingTests       []string `json:"failing_tests,omitempty"`
+	ErrorLines         []string `json:"error_lines,omitempty"`
+	LogTail            []string `json:"log_tail,omitempty"`
+	LogTruncated       bool     `json:"log_truncated,omitzero"`
+	ExcerptUnavailable string   `json:"excerpt_unavailable,omitempty"`
 }
 
 func runSummary(task string, run taskflow.CheckRun) taskRunSummary {
-	return taskRunSummary{CheckID: run.CheckID, RunID: run.ID, Status: run.Status, ExitCode: run.ExitCode, Failure: run.Failure, Log: filepath.Join(task, run.Log)}
+	value := taskRunSummary{CheckID: run.CheckID, RunID: run.ID, Status: run.Status, ExitCode: run.ExitCode, Failure: run.Failure, Log: filepath.Join(task, run.Log)}
+	if run.Status != "failed" && run.Status != "timed_out" {
+		return value
+	}
+	excerpt := excerptLog(task, run.Log)
+	value.FailingTests, value.ErrorLines, value.LogTail, value.ExcerptUnavailable = excerpt.FailingTests, excerpt.ErrorLines, excerpt.Tail, excerpt.Unavailable
+	value.LogTruncated = run.Truncated
+	return value
 }
 
 type taskAssessSummary struct {

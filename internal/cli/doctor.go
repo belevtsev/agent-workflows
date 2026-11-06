@@ -10,7 +10,7 @@ import (
 
 func addDoctorCommand(root *cobra.Command, config Config, o options) {
 	var repo, skillsHome string
-	var live bool
+	var live, summary bool
 	var timeout time.Duration
 	command := &cobra.Command{
 		Use:   "doctor",
@@ -46,6 +46,9 @@ func addDoctorCommand(root *cobra.Command, config Config, o options) {
 			if err != nil {
 				return err
 			}
+			if summary {
+				return writeJSON(cmd.OutOrStdout(), summarizeDoctor(report))
+			}
 			return writeJSON(cmd.OutOrStdout(), report)
 		},
 	}
@@ -53,5 +56,6 @@ func addDoctorCommand(root *cobra.Command, config Config, o options) {
 	command.Flags().StringVar(&skillsHome, "skills-home", "", "Skill entrypoint directory (defaults to the Codex and Claude Code skill roots)")
 	command.Flags().BoolVar(&live, "live", false, "Run bounded optional local status, protocol and package-version probes")
 	command.Flags().DurationVar(&timeout, "timeout", 15*time.Second, "Complete inspection deadline (100ms to 1m)")
+	command.Flags().BoolVar(&summary, "summary", false, "Print one line: snapshot essentials, contract paths and only the checks that are missing, degraded or stale")
 	root.AddCommand(command)
 }

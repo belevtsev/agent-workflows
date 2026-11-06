@@ -277,22 +277,41 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		}
 		value, err := taskflow.Verify(cmd.Context(), verifyTask)
 		if value.TaskID != "" {
-			if outputErr := output(cmd, value); outputErr != nil {
+			var printed any = value
+			if summary {
+				printed = summarizeVerification(value)
+			}
+			if outputErr := output(cmd, printed); outputErr != nil {
 				return outputErr
 			}
 		}
 		return err
 	}}
 	verify.Flags().StringVar(&verifyTask, "task", "", "Task directory returned by start")
+	verify.Flags().BoolVar(&summary, "summary", false, "Print one line with every problem and only the task-specific limitations")
 	task.AddCommand(verify)
 	var showTask string
+	var fields []string
 	show := &cobra.Command{Use: "show", Short: "Read a task and validate its immutable revision chain", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		for _, path := range fields {
+			if !validFieldPath(path) {
+				return usage(fmt.Errorf("--field %q must be a nonempty dotted path without empty segments", path))
+			}
+		}
 		value, err := taskflow.Load(showTask)
 		if err != nil {
 			return err
 		}
+		if len(fields) > 0 {
+			selected, err := selectFields(value, fields)
+			if err != nil {
+				return err
+			}
+			return output(cmd, selected)
+		}
 		return output(cmd, value)
 	}}
 	show.Flags().StringVar(&showTask, "task", "", "Task directory returned by start")
+	show.Flags().StringArrayVar(&fields, "field", nil, "Print only this dotted path of the record (repeatable); a numeric segment indexes an array, any other selects the latest element with that id, assignment id or check id")
 	task.AddCommand(show)
 }

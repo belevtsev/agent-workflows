@@ -27,7 +27,7 @@ import (
 )
 
 // Version pins the external graphifyy release this runner was assessed against.
-const Version = "0.9.91"
+const Version = "0.9.103"
 
 const (
 	schema         = 1
@@ -36,7 +36,9 @@ const (
 	maxGraphBytes  = 128 * 1024 * 1024
 	gitTimeout     = 15 * time.Second
 	versionTimeout = 15 * time.Second
-	qualification  = "Undirected structural discovery only. EXTRACTED/INFERRED/AMBIGUOUS are upstream " +
+	// queryDepth is Graphify's built-in BFS depth, pinned against .graphifyrc.
+	queryDepth    = 2
+	qualification = "Undirected structural discovery only. EXTRACTED/INFERRED/AMBIGUOUS are upstream " +
 		"extraction labels, not verified correctness; even EXTRACTED call targets can " +
 		"be wrong for same-named functions. Verify call direction, interfaces, " +
 		"factories and dynamic dispatch against current source/gopls. Missing results do " +
@@ -1025,7 +1027,10 @@ func Query(ctx context.Context, o Options) (QueryResult, error) {
 	}
 	graph := graphPath(entry)
 	started := time.Now()
-	code, stdout, _, err := graphifyProcess(ctx, runtime, []string{"query", o.Question, "--budget", strconv.Itoa(o.Budget), "--graph", graph}, entry, filepath.Dir(graph), o.Timeout)
+	// Graphify reads query defaults from .graphifyrc in the graph's source root,
+	// which is the user's worktree and outside the snapshot and cache key, so
+	// both settings it reads (budget and depth) are passed explicitly.
+	code, stdout, _, err := graphifyProcess(ctx, runtime, []string{"query", o.Question, "--budget", strconv.Itoa(o.Budget), "--depth", strconv.Itoa(queryDepth), "--graph", graph}, entry, filepath.Dir(graph), o.Timeout)
 	if err != nil {
 		return result, err
 	}

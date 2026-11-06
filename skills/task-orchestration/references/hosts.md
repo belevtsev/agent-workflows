@@ -101,6 +101,6 @@ rather than a worker model, so it does not change under Claude Code.
 Keys come from the process environment or saved credentials. A Claude Code
 session started from the desktop app inherits the app's launch environment, not
 your shell profile, so a key exported in a terminal may be missing there. Check
-with `cw status` before `cw task start`: a missing key at start leaves that adviser
+with `cw status --summary` before `cw task start`: a missing key at start leaves that adviser
 out of the binding, and a bound adviser whose key goes missing later is recorded
 as `not_configured`.

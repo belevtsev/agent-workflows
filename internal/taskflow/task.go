@@ -19,6 +19,20 @@ import (
 // noAdvisersLimitation is the verify limitation for a task bound to no advisers.
 const noAdvisersLimitation = "no advisers were configured when the task started; decisions rest on source evidence and checks only"
 
+// fixedVerifyLimitations open every verification, in this order, whatever the
+// task holds.
+var fixedVerifyLimitations = [...]string{
+	"Source hashes, line ranges and record structure do not prove semantic correctness, complete requirements, test adequacy, or omitted facts.",
+	"Approved checks execute local code without a sandbox; adviser credentials are removed from their environment. No adviser network calls are made by task commands.",
+	"Worker and coordinator identities are declarations, not authenticated runtime identities. Ownership checks validate declared changes and scoped content freshness; they do not isolate processes or detect all undeclared edits. Closing a handoff does not stop worker processes.",
+	"Scoped worker freshness conservatively hashes all entries under owned subtrees, including generated files, and rejects symlinks or exceeded bounds. Exact source-file scopes or whole-project '.' scope avoid depending on unsupported generated subtrees.",
+}
+
+// FixedVerifyLimitations returns a copy of the limitations that Verify reports
+// first for every task, in order. Callers that print a compact view can drop
+// these exact strings and keep only the task-specific limitations.
+func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitations[:]) }
+
 // Start captures the immutable before-work baseline and creates private records
 // outside the selected project. No project files are written. advisers is the
 // task's immutable adviser binding (provider -> pinned model, possibly empty):
@@ -439,9 +453,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		if err != nil {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: []string{"Source hashes, line ranges and record structure do not prove semantic correctness, complete requirements, test adequacy, or omitted facts.", "Approved checks execute local code without a sandbox; adviser credentials are removed from their environment. No adviser network calls are made by task commands."}}
-		result.Limitations = append(result.Limitations, "Worker and coordinator identities are declarations, not authenticated runtime identities. Ownership checks validate declared changes and scoped content freshness; they do not isolate processes or detect all undeclared edits. Closing a handoff does not stop worker processes.")
-		result.Limitations = append(result.Limitations, "Scoped worker freshness conservatively hashes all entries under owned subtrees, including generated files, and rejects symlinks or exceeded bounds. Exact source-file scopes or whole-project '.' scope avoid depending on unsupported generated subtrees.")
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: FixedVerifyLimitations()}
 		problem := func(format string, args ...any) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}

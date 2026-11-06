@@ -13,7 +13,9 @@ phase (`before` or `final`); use new file paths for each phase.
    questions, 2 to 255 options with criteria, `insufficient_evidence` included,
    untrusted text in `state.untrusted`.
 3. Embed the context and consult in one shell call:
-   `cw task context --task T --phase P >context.json && jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json && cw consult --request request.final.json --output consult.json`.
+   `cw task context --task T --phase P >context.json && jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json && cw consult --request request.final.json --output consult.json --summary`.
+   The summary prints each adviser's answers and the comparison and names the
+   request file instead of repeating it; read `consult.json` only for a field it omits.
    Exit `2` means partial coverage (disclose it) or a bound adviser without its key
    (set it and consult again).
 4. Check every judgment against source and write `decision.json` in the

@@ -308,6 +308,28 @@ func (e *entry) validate() {
 	if q := o.Quality; q != nil && q.CheckedReferences != nil && q.IncorrectReferences != nil && *q.IncorrectReferences > *q.CheckedReferences {
 		e.problems = append(e.problems, "incorrect_references cannot exceed checked_references")
 	}
+	if u := o.Usage; u != nil {
+		if u.InputTokens != nil {
+			// Known breakdown counters can never exceed total input; all four
+			// known must equal it exactly.
+			known, sum := 0, int64(0)
+			for _, part := range []*int64{u.UncachedInputTokens, u.CacheWrite5mTokens, u.CacheWrite1hTokens, u.CacheReadTokens} {
+				if part != nil {
+					known++
+					sum += *part
+				}
+			}
+			switch {
+			case known == 4 && sum != *u.InputTokens:
+				e.problems = append(e.problems, "uncached_input_tokens, cache_write_5m_tokens, cache_write_1h_tokens and cache_read_tokens must sum to input_tokens when all are known")
+			case known > 0 && known < 4 && sum > *u.InputTokens:
+				e.problems = append(e.problems, "the known input-breakdown counters (uncached_input_tokens, cache_write_5m_tokens, cache_write_1h_tokens, cache_read_tokens) must not sum to more than input_tokens")
+			}
+		}
+		if u.ThinkingTokens != nil && u.OutputTokens != nil && *u.ThinkingTokens > *u.OutputTokens {
+			e.problems = append(e.problems, "thinking_tokens cannot exceed output_tokens")
+		}
+	}
 	e.validateCost()
 	slices.Sort(e.problems)
 }
@@ -338,6 +360,10 @@ func (e *entry) validateCost() {
 		e.problems = append(e.problems, "derived cost requires rates.evidence only, identifying the reliable supplied rate source")
 		return
 	}
+	if rates.CacheWrite5mPerMillion != nil || rates.CacheWrite1hPerMillion != nil || rates.CacheReadPerMillion != nil {
+		e.validateCacheRatedCost()
+		return
+	}
 	if o.Usage == nil || o.Usage.InputTokens == nil || o.Usage.OutputTokens == nil || o.Usage.APIRequests == nil || rates.InputPerMillion == nil || rates.OutputPerMillion == nil || rates.APIRequest == nil {
 		e.problems = append(e.problems, "derived cost requires all three actual usage counters and all three explicit rates")
 		return
@@ -349,6 +375,37 @@ func (e *entry) validateCost() {
 		}
 	}
 	amount := float64(*o.Usage.InputTokens)/1e6**rates.InputPerMillion + float64(*o.Usage.OutputTokens)/1e6**rates.OutputPerMillion + float64(*o.Usage.APIRequests)**rates.APIRequest
+	if !validNumber(amount) {
+		e.problems = append(e.problems, "derived cost exceeds the finite nonnegative metric limit")
+		return
+	}
+	e.cost, e.derivedCost = &amount, true
+}
+
+// validateCacheRatedCost prices uncached input, both cache-write classes and
+// cache reads separately. Every rate and its usage counter must be explicit.
+func (e *entry) validateCacheRatedCost() {
+	u, rates := e.observation.Usage, e.observation.Cost.Rates
+	if u == nil || u.UncachedInputTokens == nil || u.CacheWrite5mTokens == nil || u.CacheWrite1hTokens == nil || u.CacheReadTokens == nil || u.OutputTokens == nil || u.APIRequests == nil {
+		e.problems = append(e.problems, "derived cost with cache rates requires uncached_input_tokens, cache_write_5m_tokens, cache_write_1h_tokens, cache_read_tokens, output_tokens and api_requests")
+		return
+	}
+	all := []*float64{rates.InputPerMillion, rates.OutputPerMillion, rates.APIRequest, rates.CacheWrite5mPerMillion, rates.CacheWrite1hPerMillion, rates.CacheReadPerMillion}
+	for _, rate := range all {
+		if rate == nil {
+			e.problems = append(e.problems, "derived cost with any cache rate requires all six explicit rates")
+			return
+		}
+	}
+	for _, rate := range all {
+		if !validNumber(*rate) {
+			e.problems = append(e.problems, "cost rates must be finite, nonnegative and within the metric limit")
+			return
+		}
+	}
+	amount := float64(*u.UncachedInputTokens)/1e6**rates.InputPerMillion + float64(*u.CacheWrite5mTokens)/1e6**rates.CacheWrite5mPerMillion +
+		float64(*u.CacheWrite1hTokens)/1e6**rates.CacheWrite1hPerMillion + float64(*u.CacheReadTokens)/1e6**rates.CacheReadPerMillion +
+		float64(*u.OutputTokens)/1e6**rates.OutputPerMillion + float64(*u.APIRequests)**rates.APIRequest
 	if !validNumber(amount) {
 		e.problems = append(e.problems, "derived cost exceeds the finite nonnegative metric limit")
 		return
