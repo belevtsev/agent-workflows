@@ -1,9 +1,6 @@
-version: 2
+version: 3
 
-# Read this file for each substantial task. It guides the coordinator; Codex
-# does not load these settings natively or switch a running session's model.
-# Authorized model/effort and role edits are validated against supported settings
-# and scope relationships. Consultation and publication safeguards stay mandatory.
+# Test fixture authored from the version 3 policy contract (design D1).
 activation:
   any_of:
     - independent_workstreams
@@ -67,29 +64,23 @@ fixed_specialists:
 fallbacks:
   luna_unavailable: sol
   sol_unavailable: compatible_coordinator_or_report_blocker
-  jev_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
+  advisers_unavailable_or_inconclusive: continue_with_source_evidence_and_conservative_routing
 
-# Mandatory for every activated substantial task: consult Jev, Snap and OpenAI before
-# implementation (or substantive drafting/review) and again during final review
-# against completed work and current checks, before completion or publication.
-# These are separate evidence batches; reuse is limited to the same checkpoint.
-# Record bounded attempts, restricted sharing, unavailable providers, and Codex's
-# disposition at each checkpoint. Keep the source-evidence fallback and no retries.
-# Checkpoint timing is skill instruction, not a new native manager policy field.
+# Consult the enabled advisers whose credentials are present; with none, decide
+# on source evidence and checks under the same decision rules.
 consultation:
-  model: jev-1.14.0
   deadline_seconds: 30
   attempts_per_evidence_batch: 1
   automatic_retries: false
-  questions: references/jev-questions.json
+  questions: references/question-patterns.json
   ownership: task_coordinator
   reuse: unchanged_evidence_decisions_question_meaning_and_model
   sharing: minimal_evidence_within_task_authorization
+  comparison: coordinator_evidence_and_verification
   providers:
     jev: jev-1.14.0
     subq_snap: subq-snap-preview
     openai_decisions: gpt-6-luna
-  comparison: coordinator_evidence_and_verification
 
 publication:
   authority: user_request_and_carried_authorization

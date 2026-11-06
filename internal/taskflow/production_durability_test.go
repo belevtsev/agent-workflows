@@ -217,7 +217,7 @@ func TestProductionNestedStoreStartReadRemove(test *testing.T) {
 					test.Fatalf("nested privateStore = %q, %v", resolved, err)
 				}
 			}
-			record, err := Start(test.Context(), repository, store, productionBasePlan())
+			record, err := Start(test.Context(), repository, store, productionBasePlan(), fixtureBinding())
 			if err != nil {
 				test.Fatal(err)
 			}
@@ -228,7 +228,7 @@ func TestProductionNestedStoreStartReadRemove(test *testing.T) {
 				}
 			}
 			loaded, err := Load(record.Directory)
-			if err != nil || loaded.ID != record.ID || !reflect.DeepEqual(loaded.Plan, record.Plan) {
+			if err != nil || loaded.ID != record.ID || !reflect.DeepEqual(loaded.Plan, record.Plan) || !reflect.DeepEqual(loaded.Advisers, fixtureBinding()) {
 				test.Fatalf("nested task unreadable: %v", err)
 			}
 			if err := os.RemoveAll(record.Directory); err != nil {
@@ -285,7 +285,7 @@ func TestProductionStorePathGuards(test *testing.T) {
 			if _, err := privateStore(store, repository); err == nil {
 				test.Fatal("privateStore accepted unsafe path")
 			}
-			if _, err := Start(test.Context(), repository, store, productionBasePlan()); err == nil {
+			if _, err := Start(test.Context(), repository, store, productionBasePlan(), fixtureBinding()); err == nil {
 				test.Fatal("Start accepted unsafe store path")
 			}
 			if !reflect.DeepEqual(productionTaskBytes(test, target), targetBefore) || !reflect.DeepEqual(productionTaskBytes(test, repository), repoBefore) {

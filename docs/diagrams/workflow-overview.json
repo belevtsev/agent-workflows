@@ -94,7 +94,7 @@
       "col": 3,
       "type": "cloud",
       "label": "04  Consult: before",
-      "sublabel": "Jev / Snap / OpenAI",
+      "sublabel": "Configured advisers, if any",
       "tag": "Same evidence; parallel calls",
       "width": 168,
       "height": 74,
@@ -171,7 +171,7 @@
       "col": 2,
       "type": "cloud",
       "label": "08  Consult: final",
-      "sublabel": "Jev / Snap / OpenAI",
+      "sublabel": "Configured advisers, if any",
       "tag": "Fresh diff + check evidence",
       "width": 168,
       "height": 74,
@@ -364,7 +364,7 @@
       "dot": "violet",
       "title": "Advice supports the decision",
       "items": [
-        "All three advisers receive the same permitted evidence.",
+        "Configured advisers, if any, receive the same permitted evidence.",
         "Unavailable advice is recorded; source investigation continues.",
         "Codex verifies meaning. Task records verify consistency."
       ]

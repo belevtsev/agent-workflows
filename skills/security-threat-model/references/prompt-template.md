@@ -190,8 +190,8 @@ Use the following questions to guide the in-scope analysis and include the relev
      * runtime vs CI/dev separation
      * user clarifications (or explicit non-responses)
      * assumptions and open questions
-     * when Jev influenced a conclusion: request/evidence provenance, resolved model, advisory answer/probabilities and confidence when supplied, agent disposition, and independent verification; identify unavailable or inconclusive consultation and the evidence-based fallback
-   - Keep consultation advice distinct from validated controls, executed tests, CI, and deployed behavior. Jev confidence cannot establish exploitability or authorize action.
+     * when a configured adviser influenced a conclusion: request/evidence provenance, resolved model, advisory answer/probabilities and confidence when supplied, agent disposition, and independent verification; identify unavailable or inconclusive consultation and the evidence-based fallback
+   - Keep consultation advice distinct from validated controls, executed tests, CI, and deployed behavior. Adviser confidence cannot establish exploitability or authorize action.
 
 ## Suggested report structure
 Adapt the report to the requested scope and output. Include material assumptions and open questions without requiring an approval round when the evidence supports useful conclusions.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Strategy"
   short_description: "Choose tests that prove the changed behavior"
-  default_prompt: "Use $test-strategy to identify the behavior at risk, consult Jev for consequential verification decisions, implement meaningful regression coverage, and complete the relevant repository checks."
+  default_prompt: "Use $test-strategy to identify the behavior at risk, use configured advisers via cw consult for consequential verification decisions when any are configured, implement meaningful regression coverage, and complete the relevant repository checks."

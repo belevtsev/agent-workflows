@@ -2475,8 +2475,8 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "07357820307b989e43695585904301393052930248899cce8010711e24ba7e5c",
-          "imported_sha256": "884ba21dd29ab73033f831b01282dd20e247ab0a37a53f909fc3405053e353d9",
-          "adaptation": "Shortened frontmatter discovery description; added project-owned OpenSpec routing and scoped planning delivery while preserving skill metadata."
+          "imported_sha256": "fd4d0fa4e260f91131755cb89f6df3c5e05a96c22ad31722cffa0eb489c255d6",
+          "adaptation": "Shortened frontmatter discovery description; added project-owned OpenSpec routing and scoped planning delivery while preserving skill metadata; consultation uses configured advisers through cw consult, or source evidence when none are configured."
         },
         {
           "path": "agents/openai.yaml",
@@ -2494,8 +2494,8 @@
           "path": "references/plan-standard.md",
           "mode": 420,
           "source_sha256": "32e35c206088474d66cf77c60904507aae7807f468f71b8d3d18ea61276f9c6f",
-          "imported_sha256": "854cb44890823abb1dcd46634db3e26b2187454edb019240e4ae872a2d12084c",
-          "adaptation": "Align canonical planning artifacts and delivery modes with the optional OpenSpec integration; distinguish planning completion from implementation completion."
+          "imported_sha256": "549f9065fad6b5587c786100e79eba434de038052bd25c8ce2b40b57e45c8f48",
+          "adaptation": "Align canonical planning artifacts and delivery modes with the optional OpenSpec integration; distinguish planning completion from implementation completion; consultation uses configured advisers through cw consult, or source evidence when none are configured."
         }
       ],
       "excluded_source_files": []

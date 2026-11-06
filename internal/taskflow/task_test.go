@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
 	"strings"
@@ -139,14 +140,21 @@ func helperPlan(t *testing.T, kind string, args ...string) Plan {
 	return Plan{Title: "Source-bound example", Kind: kind, Requirements: []Requirement{{ID: "behavior", Description: "Verified source behavior", CheckIDs: []string{"focused"}}}, Checks: []Check{{ID: "focused", Argv: argv, TimeoutSeconds: 10}}}
 }
 
+// fixtureTask starts a task bound to the shipped default advisers (D5).
 func fixtureTask(t *testing.T, plan Plan) (Record, SourceRef) {
+	t.Helper()
+	return fixtureTaskBound(t, plan, fixtureBinding())
+}
+
+// fixtureTaskBound starts a task with an explicit adviser binding (D5).
+func fixtureTaskBound(t *testing.T, plan Plan, advisers map[string]string) (Record, SourceRef) {
 	t.Helper()
 	repo := t.TempDir()
 	data := []byte("first line\nsecond line\n")
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan)
+	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, advisers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +237,7 @@ func TestCheckOutcomesNeverBecomePasses(t *testing.T) {
 				// accepts a runtime argv override.
 				plan.Checks[0].Argv = append(plan.Checks[0].Argv, filepath.Join(record.Baseline.Root, "source.txt"))
 				var err error
-				record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan)
+				record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -312,45 +320,6 @@ func TestInvalidEvidenceCannotBeMarkedSatisfied(t *testing.T) {
 	}
 }
 
-func writeConsultation(t *testing.T, context Context, mutate func(*Consultation, *SharedRequest)) string {
-	t.Helper()
-	request := SharedRequest{State: mustJSON(t, map[string]any{"task_context": context, "note": "дані 👩 & <source>"}), Questions: map[string]Question{"supported": {Type: "choice", Instructions: jsontext.Value(`"Assess the prepared source"`), Criteria: map[string]jsontext.Value{"yes": jsontext.Value(`"Supported"`), "no": jsontext.Value(`"Unsupported"`)}}}}
-	zero := 0.0
-	choice := "yes"
-	record := Consultation{Version: 3, Status: "unavailable", Providers: map[string]Provider{}, Comparison: map[string]Comparison{"supported": {Status: "unavailable", Choices: map[string]string{}, Missing: map[string]string{"jev": "unavailable", "subq_snap": "unavailable", "openai_decisions": "unavailable"}}}, FinalDecision: FinalDecision{Status: "resolved", Questions: map[string]QuestionDecision{"supported": {Status: "resolved", Choice: &choice, Reason: "Codex verified the prepared source and focused check independently.", Evidence: []string{"source.txt:1 at exact snapshot"}, Verification: []string{"focused check at exact snapshot"}, RejectedJudgments: map[string]string{}}}}}
-	for _, name := range adviserIDs {
-		model := map[string]string{"jev": "jev-1.14.0", "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}[name]
-		record.Providers[name] = Provider{Status: "unavailable", RequestedModel: model, DurationSeconds: &zero, Error: &ProviderError{Category: "missing_credential"}}
-	}
-	if mutate != nil {
-		mutate(&record, &request)
-	}
-	record.Request = mustJSON(t, request)
-	canonical, err := canonicalJSON(record.Request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	record.RequestSHA256 = digest(canonical)
-	for name, provider := range record.Providers {
-		provider.RequestSHA256 = record.RequestSHA256
-		record.Providers[name] = provider
-	}
-	path := filepath.Join(t.TempDir(), "consultation.json")
-	if err := os.WriteFile(path, mustJSON(t, record), 0600); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-func mustJSON(t *testing.T, value any) jsontext.Value {
-	t.Helper()
-	data, err := encode(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return data
-}
-
 func TestSubstantialTaskNeedsTwoSourceBoundAdjudications(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	before, err := PrepareContext(t.Context(), record.Directory, "before")
@@ -396,8 +365,14 @@ func TestSubstantialTaskNeedsTwoSourceBoundAdjudications(t *testing.T) {
 		t.Fatal(err)
 	}
 	verified, err := Verify(t.Context(), record.Directory)
-	if err != nil || !verified.Complete || len(verified.Limitations) < 8 {
+	if err != nil || !verified.Complete {
 		t.Fatalf("unavailability fallback: %+v %v", verified, err)
+	}
+	// D5 verify limitations: every bound provider was unavailable at both checkpoints.
+	for _, provider := range []string{"subq_snap", "openai_decisions"} {
+		if !limitationNaming(verified.Limitations, provider, "unavailable") {
+			t.Fatalf("limitations omit %s unavailability: %q", provider, verified.Limitations)
+		}
 	}
 }
 
@@ -460,7 +435,7 @@ func TestFinalCheckpointBindsCompletedEvidenceAtUnchangedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Contexts["before"] != before || stored.Consultations["before"].Context != before {
+	if !reflect.DeepEqual(stored.Contexts["before"], before) || !reflect.DeepEqual(stored.Consultations["before"].Context, before) {
 		t.Fatal("later evidence invalidated immutable before binding")
 	}
 }
@@ -571,152 +546,159 @@ func TestOlderNonterminalRunCannotBeHiddenByLatestPass(t *testing.T) {
 	}
 }
 
-func TestConsultationRejectsDisabledMismatchedAndPendingRecords(t *testing.T) {
-	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
+// D3/D4 via consult.ValidateRecord at attach: removed v3 formats and forged
+// records are rejected; valid v4 records bound to another task, phase or
+// source are rejected by the context binding; a pending record attaches but
+// cannot open the final context.
+func TestConsultationRejectsRemovedForgedAndCrossBoundRecords(t *testing.T) {
+	record, ref := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	bound := record.Contexts["before"]
-	cases := map[string]func(*Consultation, *SharedRequest){
-		"missing provider": func(record *Consultation, _ *SharedRequest) { delete(record.Providers, "jev") },
-		"disabled provider": func(record *Consultation, _ *SharedRequest) {
-			value := record.Providers["openai_decisions"]
-			value.Status = "disabled"
-			record.Providers["openai_decisions"] = value
-		},
-		"unsupported model": func(record *Consultation, _ *SharedRequest) {
-			value := record.Providers["openai_decisions"]
-			value.RequestedModel = "gpt-unknown"
-			record.Providers["openai_decisions"] = value
-		},
-		"cross task": func(_ *Consultation, request *SharedRequest) {
-			context := bound
-			context.TaskID = "different"
-			request.State = mustJSON(t, map[string]any{"task_context": context})
-		},
-		"cross phase": func(_ *Consultation, request *SharedRequest) {
-			context := bound
-			context.Phase = "final"
-			request.State = mustJSON(t, map[string]any{"task_context": context})
-		},
-		"stale source": func(_ *Consultation, request *SharedRequest) {
-			context := bound
-			context.Snapshot.Fingerprint = "different"
-			request.State = mustJSON(t, map[string]any{"task_context": context})
-		},
-		"forged comparison": func(record *Consultation, _ *SharedRequest) { record.Status = "success" },
+	forge := func(edit func(*testing.T, *fixtureObject)) func(*checkpointDraft) {
+		return func(draft *checkpointDraft) { draft.Forge = edit }
 	}
-	for name, change := range cases {
+	invalid := map[string]func(*checkpointDraft){
+		"disabled_status": forge(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "providers", "subq_snap").set("status", "disabled")
+		}),
+		"missing_credential_category": withOutcomes(map[string]adviserOutcome{"subq_snap": {Status: "unavailable", Category: "missing_credential"}, "openai_decisions": {Status: "unavailable"}}),
+		"version_3_record":            forge(func(_ *testing.T, record *fixtureObject) { record.set("version", 3) }),
+		"forged_record_status":        forge(func(_ *testing.T, record *fixtureObject) { record.set("status", "success") }),
+		"forged_comparison": forge(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "comparison", "claim").set("status", "agreement")
+		}),
+		"request_changed_after_fingerprint": forge(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "request", "questions", "claim").set("instructions", "Does the bound source refute the claim?")
+		}),
+		"unsupported_model": withOutcomes(map[string]adviserOutcome{"subq_snap": {Status: "unavailable"}, "openai_decisions": {Status: "unavailable", Model: "gpt-unknown"}}),
+	}
+	for name, mutate := range invalid {
 		t.Run(name, func(t *testing.T) {
-			path := writeConsultation(t, bound, change)
+			path, verr := writeUncheckedConsultation(t, bound, mutate)
+			if verr == nil {
+				t.Errorf("consult.ValidateRecord accepted %s", name)
+			}
+			if name == "version_3_record" && (verr == nil || !strings.Contains(verr.Error(), "consultation record version 3 is not supported; this cw reads version 4")) {
+				t.Errorf("version 3 record not refused with the D3 message: %v", verr)
+			}
 			if _, err := AttachConsultation(t.Context(), record.Directory, "before", path); err == nil {
 				t.Fatal("invalid consultation accepted")
 			}
 		})
 	}
-	pending := writeConsultation(t, bound, func(record *Consultation, _ *SharedRequest) {
-		record.FinalDecision = FinalDecision{Status: "pending", Questions: map[string]QuestionDecision{}}
-	})
+	crossBound := map[string]func(Context) Context{
+		"cross_task":   func(context Context) Context { context.TaskID = "different"; return context },
+		"cross_phase":  func(context Context) Context { context.Phase = "final"; return context },
+		"stale_source": func(context Context) Context { context.Snapshot.Fingerprint = "different"; return context },
+	}
+	for name, change := range crossBound {
+		t.Run(name, func(t *testing.T) {
+			path := writeConsultation(t, change(bound), nil)
+			if _, err := AttachConsultation(t.Context(), record.Directory, "before", path); err == nil {
+				t.Fatal("record bound to another context accepted")
+			}
+		})
+	}
+	pending := writeConsultation(t, bound, func(draft *checkpointDraft) { draft.Pending = true })
 	if _, err := AttachConsultation(t.Context(), record.Directory, "before", pending); err != nil {
 		t.Fatal(err)
 	}
+	mustAssess(t, record, ref)
 	if _, err := PrepareContext(t.Context(), record.Directory, "final"); err == nil {
 		t.Fatal("pending before decision accepted")
 	}
 }
 
+// Revision 2: a batched request attaches only when exactly one context matches
+// the task and every context carries the same adviser binding.
 func TestMultiContextBatchHasExactlyOneMatchingBinding(t *testing.T) {
 	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	bound := record.Contexts["before"]
 	other := bound
 	other.TaskID = "another-task"
-	for _, duplicate := range []bool{false, true} {
-		input := writeConsultation(t, bound, func(_ *Consultation, request *SharedRequest) {
-			contexts := []Context{other, bound}
-			if duplicate {
-				contexts = append(contexts, bound)
-			}
-			request.State = mustJSON(t, map[string]any{"task_contexts": contexts})
-		})
-		_, err := AttachConsultation(t.Context(), record.Directory, "before", input)
-		if duplicate && err == nil {
-			t.Fatal("duplicate context accepted")
+	batch := func(contexts ...map[string]jsontext.Value) func(*checkpointDraft) {
+		items := make([]any, 0, len(contexts))
+		for _, context := range contexts {
+			items = append(items, context)
 		}
-		if !duplicate && err != nil {
-			t.Fatal(err)
-		}
+		return func(draft *checkpointDraft) { draft.State = fixtureObj("task_contexts", items) }
 	}
+	differentBinding := fixtureContextFields(t, other)
+	differentBinding["advisers"] = fixtureMarshal(t, map[string]string{"jev": "jev-1.14.0"})
+	unbound := fixtureContextFields(t, other)
+	delete(unbound, "advisers")
+	rejected := map[string]func(*checkpointDraft){
+		"duplicate_matching_context": batch(fixtureContextFields(t, other), fixtureContextFields(t, bound), fixtureContextFields(t, bound)),
+		"different_bindings":         batch(differentBinding, fixtureContextFields(t, bound)),
+		"context_without_binding":    batch(unbound, fixtureContextFields(t, bound)),
+		"no_matching_context":        batch(fixtureContextFields(t, other)),
+	}
+	for name, mutate := range rejected {
+		t.Run(name, func(t *testing.T) {
+			path, _ := writeUncheckedConsultation(t, bound, mutate)
+			if _, err := AttachConsultation(t.Context(), record.Directory, "before", path); err == nil {
+				t.Fatal("invalid batch accepted")
+			}
+		})
+	}
+	// Accepted last, so no refusal above is explained by an attached checkpoint.
+	attachCheckpoint(t, record, "before", bound, batch(fixtureContextFields(t, other), fixtureContextFields(t, bound)))
 }
 
-func TestIndependentSuccessPartialAndRejectedJudgments(t *testing.T) {
+// D3/D4 via consult.ValidateRecord: an answered record (success with a
+// disagreement, OpenAI partial with a refused question) attaches only when
+// provider details, comparison and the decision's judgments all revalidate.
+func TestAttachRevalidatesAnsweredRecords(t *testing.T) {
 	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	bound := record.Contexts["before"]
-	build := func(invalid string) string {
-		return writeConsultation(t, bound, func(record *Consultation, request *SharedRequest) {
-			request.Questions["second"] = request.Questions["supported"]
-			yes, no := 0.9, 0.1
-			confidence := 0.9
-			for _, name := range adviserIDs {
-				provider := record.Providers[name]
-				provider.Status = "success"
-				provider.Error = nil
-				provider.ResolvedModel = provider.RequestedModel
-				choice := "yes"
-				probabilities := map[string]float64{"yes": yes, "no": no}
-				if name == "subq_snap" {
-					choice = "no"
-					probabilities = map[string]float64{"yes": no, "no": yes}
-				}
-				answer := Answer{Type: "choice", Choice: choice, Probabilities: probabilities, Confidence: &confidence}
-				usage := jsontext.Value(`{"input_tokens":1,"output_tokens":1}`)
-				if name == "openai_decisions" {
-					usage = jsontext.Value(`{"input_tokens":1,"output_tokens":1,"total_tokens":2,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}`)
-				}
-				provider.Usage = usage
-				provider.Result = &ProviderResult{Model: provider.RequestedModel, Answers: map[string]Answer{"supported": answer, "second": answer}, Usage: usage}
-				if name == "openai_decisions" {
-					provider.Status = "partial"
-					provider.Result.Answers["second"] = Answer{Type: "refusal"}
-				}
-				record.Providers[name] = provider
+	answered := func(forge func(*testing.T, *fixtureObject), item func(*decisionItem)) func(*checkpointDraft) {
+		return func(draft *checkpointDraft) {
+			draft.Questions = []string{"claim", "other"}
+			draft.Outcomes = map[string]adviserOutcome{
+				"subq_snap":        {Status: "success", Choices: map[string]string{"claim": "contradicted", "other": "supported"}},
+				"openai_decisions": {Status: "partial", Choices: map[string]string{"claim": "supported"}},
 			}
-			record.Status = "partial"
-			record.Comparison = map[string]Comparison{
-				"supported": {Status: "disagreement", Choices: map[string]string{"jev": "yes", "subq_snap": "no", "openai_decisions": "yes"}, Missing: map[string]string{}},
-				"second":    {Status: "partial", Choices: map[string]string{"jev": "yes", "subq_snap": "no"}, Missing: map[string]string{"openai_decisions": "refusal"}},
+			claim := fixtureResolvedItem()
+			claim.Rejected = map[string]string{"subq_snap": "The contrasting choice omits the storage step on line 1."}
+			claim.Investigations = map[string]string{"subq_snap": "Re-read lines 1-2; storage precedes the acknowledgement."}
+			if item != nil {
+				item(&claim)
 			}
-			decision := record.FinalDecision.Questions["supported"]
-			decision.RejectedJudgments = map[string]string{"subq_snap": "The contrasting choice omits the verified source condition."}
-			record.FinalDecision.Questions["supported"] = decision
-			record.FinalDecision.Questions["second"] = decision
-			switch invalid {
-			case "rejection":
-				decision.RejectedJudgments = map[string]string{}
-				record.FinalDecision.Questions["second"] = decision
-			case "resolved-model":
-				provider := record.Providers["jev"]
-				provider.ResolvedModel = "jev-9.9.9"
-				record.Providers["jev"] = provider
-			case "distribution":
-				provider := record.Providers["jev"]
-				answer := provider.Result.Answers["supported"]
-				answer.Probabilities = map[string]float64{"yes": 0.5, "no": 0.1}
-				provider.Result.Answers["supported"] = answer
-				record.Providers["jev"] = provider
-			case "refusal-choice":
-				provider := record.Providers["openai_decisions"]
-				provider.Result.Answers["second"] = Answer{Type: "refusal", Choice: "no"}
-				record.Providers["openai_decisions"] = provider
+			draft.Items = map[string]decisionItem{"claim": claim, "other": fixtureResolvedItem()}
+			draft.Forge = forge
+		}
+	}
+	invalid := map[string]func(*checkpointDraft){
+		"missing_rejection": answered(nil, func(item *decisionItem) {
+			item.Rejected = map[string]string{}
+			item.Investigations = map[string]string{}
+		}),
+		"missing_investigation": answered(nil, func(item *decisionItem) { item.Investigations = map[string]string{} }),
+		"resolved_model": answered(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "providers", "subq_snap").set("resolved_model", "subq-snap-other")
+		}, nil),
+		"distribution": answered(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "providers", "subq_snap", "result", "answers", "claim").set("probabilities", fixtureObj("supported", 0.5, "contradicted", 0.1, "insufficient_evidence", 0))
+		}, nil),
+		"refusal_with_choice": answered(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "providers", "openai_decisions", "result", "answers").set("other", fixtureObj("type", "refusal", "choice", "supported"))
+		}, nil),
+		"forged_comparison": answered(func(t *testing.T, record *fixtureObject) {
+			record.object(t, "comparison", "claim").set("status", "agreement")
+		}, nil),
+		"forged_status": answered(func(_ *testing.T, record *fixtureObject) { record.set("status", "success") }, nil),
+	}
+	for name, mutate := range invalid {
+		t.Run(name, func(t *testing.T) {
+			path, verr := writeUncheckedConsultation(t, bound, mutate)
+			if verr == nil {
+				t.Errorf("consult.ValidateRecord accepted %s", name)
+			}
+			if _, err := AttachConsultation(t.Context(), record.Directory, "before", path); err == nil {
+				t.Fatalf("invalid %s accepted", name)
 			}
 		})
 	}
-	for _, invalid := range []string{"", "rejection", "resolved-model", "distribution", "refusal-choice"} {
-		path := build(invalid)
-		_, err := AttachConsultation(t.Context(), record.Directory, "before", path)
-		if invalid == "" && err != nil {
-			t.Fatal(err)
-		}
-		if invalid != "" && err == nil {
-			t.Fatalf("invalid %s accepted", invalid)
-		}
-	}
+	attachCheckpoint(t, record, "before", bound, answered(nil, nil))
 }
 
 func TestPrivateStorageAndInterruptedWritesPreserveOriginals(t *testing.T) {
@@ -751,9 +733,9 @@ func TestPrivateStorageAndInterruptedWritesPreserveOriginals(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The truncated bytes begin with a version-1 member but never decode, so
-	// this is malformed history rather than a version-1 record (R3.1).
-	if _, err := Load(record.Directory); err == nil || strings.Contains(err.Error(), legacyRecordMessage) {
-		t.Fatalf("truncated published revision ignored or misreported as version 1: %v", err)
+	// this is malformed history rather than an unsupported version (D5).
+	if _, err := Load(record.Directory); err == nil || strings.Contains(err.Error(), "this cw reads version 3 records") {
+		t.Fatalf("truncated published revision ignored or misreported as an unsupported version: %v", err)
 	}
 }
 
@@ -795,7 +777,7 @@ func TestTerminalPublicationWaitsForShortMetadataWriter(t *testing.T) {
 func TestStorageRejectsRepoAndSymlinkEscapes(t *testing.T) {
 	plan := helperPlan(t, "small", "pass")
 	repo := t.TempDir()
-	if _, err := Start(t.Context(), repo, filepath.Join(repo, "records"), plan); err == nil {
+	if _, err := Start(t.Context(), repo, filepath.Join(repo, "records"), plan, fixtureBinding()); err == nil {
 		t.Fatal("in-repo storage accepted")
 	}
 	parent := t.TempDir()
@@ -804,7 +786,7 @@ func TestStorageRejectsRepoAndSymlinkEscapes(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Skip(err)
 	}
-	if _, err := Start(t.Context(), repo, link, plan); err == nil {
+	if _, err := Start(t.Context(), repo, link, plan, fixtureBinding()); err == nil {
 		t.Fatal("symlink storage accepted")
 	}
 	record, _ := fixtureTask(t, plan)
@@ -828,7 +810,7 @@ func TestInitialRevisionNeverPublishesAboveReadableLimit(t *testing.T) {
 		plan.Checks = append(plan.Checks, Check{ID: fmt.Sprintf("check%d", i), Argv: []string{"go", "test", strings.Repeat("x", 65500)}, TimeoutSeconds: 1})
 	}
 	store := filepath.Join(t.TempDir(), "tasks")
-	if _, err := Start(t.Context(), t.TempDir(), store, plan); err == nil || !strings.Contains(err.Error(), "initial task revision exceeds") {
+	if _, err := Start(t.Context(), t.TempDir(), store, plan, fixtureBinding()); err == nil || !strings.Contains(err.Error(), "initial task revision exceeds") {
 		t.Fatalf("oversized initial revision accepted: %v", err)
 	}
 	entries, err := os.ReadDir(store)
@@ -906,7 +888,7 @@ func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
 	git("add", ".")
 	git("commit", "-qm", "baseline")
 	var err error
-	record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan)
+	record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers)
 	if err != nil {
 		t.Fatal(err)
 	}

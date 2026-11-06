@@ -9,18 +9,17 @@ import (
 	"math/big"
 	"net"
 	"net/http"
-	"regexp"
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 const (
 	jevEndpoint      = "https://api.typesafe.ai/v1/systemone"
 	snapEndpoint     = "https://api.subq.ai/v1/systemone"
 	openAIEndpoint   = "https://api.openai.com/v1/decisions"
-	openAIModel      = "gpt-6-luna"
-	snapModel        = "subq-snap-preview"
 	sharedJevModel   = "jev-1.14.0"
 	maxResponseBytes = 1024 * 1024
 	sumTolerance     = 1e-6
@@ -35,9 +34,16 @@ const (
 	openAIProvider = "openai_decisions"
 )
 
-// providerOrder is the record's adviser order. Only these fixed services and
-// these credential variables can ever receive evidence or be read.
-var providerOrder = []string{jevProvider, snapProvider, openAIProvider}
+// providerOrder is the record's adviser order, the known provider IDs of the
+// policy pin rules. Only these fixed services and these credential variables
+// can ever receive evidence or be read.
+var providerOrder = workflow.ConsultationProviders()
+
+// The single pinned models come from the policy pin rules in internal/workflow.
+var (
+	snapModel, _   = workflow.PinnedConsultationModel(snapProvider)
+	openAIModel, _ = workflow.PinnedConsultationModel(openAIProvider)
+)
 
 var credentialNames = map[string]string{
 	jevProvider:    "TYPESAFE_API_KEY",
@@ -50,8 +56,6 @@ var fixedEndpoints = map[string]string{
 	snapProvider:   snapEndpoint,
 	openAIProvider: openAIEndpoint,
 }
-
-var pinnedJev = regexp.MustCompile(`^jev-[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // transport makes one bounded attempt per provider. Its endpoints are fixed
 // outside package tests; no flag, policy or environment value can redirect them.
@@ -596,13 +600,11 @@ func skipped(record *object, name string) (*object, int) {
 }
 
 // consultPinned sends the prepared request to Jev or Snap, which share a wire
-// contract. Only the explicitly supplied credential reaches the fixed endpoint.
+// contract. Only the explicitly supplied credential reaches the fixed endpoint;
+// collect never calls it without one.
 func (t transport) consultPinned(ctx context.Context, provider string, prepared *object, credential string) (*object, int) {
 	started := time.Now()
 	record := newObject("request", prepared, "requested_model", prepared.get("model"))
-	if credential == "" {
-		return skipped(record, "missing_credential")
-	}
 	payload, err := wireFormat.marshal(prepared)
 	if err != nil {
 		return finishUnavailable(record, category("invalid_response"), started)
@@ -626,9 +628,6 @@ func (t transport) consultPinned(ctx context.Context, provider string, prepared 
 func (t transport) consultOpenAI(ctx context.Context, prepared *object, credential string) (*object, int) {
 	started := time.Now()
 	record := newObject("request", prepared, "requested_model", prepared.get("model"))
-	if credential == "" {
-		return skipped(record, "missing_credential")
-	}
 	if !requestSupported(prepared) {
 		return skipped(record, "unsupported_request")
 	}

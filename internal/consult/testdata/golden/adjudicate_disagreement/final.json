@@ -1,0 +1,167 @@
+{
+  "version": 4,
+  "status": "success",
+  "request": {
+    "state": {
+      "evidence": "The service acknowledges work only after storing it.",
+      "claim": "Acknowledgement follows storage."
+    },
+    "questions": {
+      "claim": {
+        "type": "choice",
+        "instructions": "Does the evidence support the claim?",
+        "criteria": {
+          "supported": "The evidence establishes the claim.",
+          "contradicted": "The evidence establishes an incompatible claim.",
+          "insufficient_evidence": "A necessary fact is missing."
+        }
+      }
+    }
+  },
+  "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+  "providers": {
+    "jev": {
+      "status": "success",
+      "requested_model": "jev-1.14.0",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "resolved_model": "jev-1.14.0",
+      "result": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "claim": {
+            "type": "choice",
+            "choice": "supported",
+            "probabilities": {
+              "supported": 1,
+              "contradicted": 0,
+              "insufficient_evidence": 0
+            },
+            "confidence": 1
+          }
+        },
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 3
+        }
+      },
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 3
+      }
+    },
+    "subq_snap": {
+      "status": "success",
+      "requested_model": "subq-snap-preview",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "resolved_model": "subq-snap-preview",
+      "result": {
+        "model": "subq-snap-preview",
+        "answers": {
+          "claim": {
+            "type": "choice",
+            "choice": "contradicted",
+            "probabilities": {
+              "supported": 0,
+              "contradicted": 1,
+              "insufficient_evidence": 0
+            },
+            "confidence": 1
+          }
+        },
+        "usage": {
+          "input_tokens": 20,
+          "output_tokens": 3
+        }
+      },
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 3
+      }
+    },
+    "openai_decisions": {
+      "status": "success",
+      "requested_model": "gpt-6-luna",
+      "request_sha256": "9cbde4a76e716b876eca243a8b43bdad60bae597a6d65ebbddc488ed003d95cd",
+      "duration_seconds": 0.0,
+      "resolved_model": "gpt-6-luna",
+      "result": {
+        "model": "gpt-6-luna",
+        "answers": {
+          "claim": {
+            "type": "choice",
+            "choice": "insufficient_evidence",
+            "probabilities": {
+              "insufficient_evidence": 0.5,
+              "contradicted": 0.25,
+              "supported": 0.25
+            },
+            "confidence": 0.7
+          }
+        },
+        "usage": {
+          "input_tokens": 23,
+          "output_tokens": 5,
+          "total_tokens": 28,
+          "input_tokens_details": {
+            "cached_tokens": 1,
+            "cache_write_tokens": 2
+          },
+          "output_tokens_details": {
+            "reasoning_tokens": 3
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 23,
+        "output_tokens": 5,
+        "total_tokens": 28,
+        "input_tokens_details": {
+          "cached_tokens": 1,
+          "cache_write_tokens": 2
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 3
+        }
+      }
+    }
+  },
+  "comparison": {
+    "claim": {
+      "status": "disagreement",
+      "choices": {
+        "jev": "supported",
+        "subq_snap": "contradicted",
+        "openai_decisions": "insufficient_evidence"
+      },
+      "missing": {}
+    }
+  },
+  "final_decision": {
+    "status": "resolved",
+    "questions": {
+      "claim": {
+        "status": "resolved",
+        "choice": "supported",
+        "reason": "The inspected source commits the write before it sends the acknowledgement.",
+        "evidence": [
+          "source:internal/store/store.go:40-52@3f2a9c1d",
+          "observation:the acknowledgement is sent after the commit returns"
+        ],
+        "verification": [
+          "check:go-test-store@run-42"
+        ],
+        "rejected_judgments": {
+          "subq_snap": "The commit precedes the acknowledgement in the inspected source.",
+          "openai_decisions": "The source and the passing check supply the ordering evidence."
+        },
+        "investigations": {
+          "subq_snap": "Re-read the write path; the acknowledgement is sent only after commit returns.",
+          "openai_decisions": "Ran the ordering check; it establishes the order the claim states."
+        },
+        "agreement_not_independent": false
+      }
+    }
+  }
+}

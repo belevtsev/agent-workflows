@@ -55,19 +55,18 @@ func activePolicy(root *cobra.Command, config Config) (string, error) {
 
 func addConsultCommand(root *cobra.Command, config Config) {
 	var options consult.Options
-	var withOpenAI, withoutOpenAI bool
 	command := &cobra.Command{
 		Use:   "consult",
 		Short: "Collect independent adviser judgments, or validate a recorded decision offline",
-		Long:  "With --request, validate a shared Choice request and send it once to each configured adviser under the policy's batch deadline, writing a new private record. Credentials come only from TYPESAFE_API_KEY, SUBQ_API_KEY and OPENAI_API_KEY. --dry-run writes the same validated preview without network access. With --adjudicate and --decision, validate the coordinator's decision against a saved record, using no network, credentials or policy.\n\nExits 0 when complete, 2 when coverage or the decision is incomplete, and 1 when input is invalid or the output path already exists.",
-		Args:  noPositional,
+		Long: "With --request, validate a shared Choice request (at most 8 questions) and send it once to each configured adviser under the policy's batch deadline, writing a new private version 4 record. " +
+			"The participating advisers are the task's adviser binding when the request state holds task_context or task_contexts, and otherwise the policy's enabled providers. " +
+			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. " +
+			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
+			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
+			"With --adjudicate and --decision, validate the coordinator's decision against a saved version 4 record, using no network, credentials or policy.\n\n" +
+			"Exits 0 when complete (including no_advisers_configured and dry runs), 2 when coverage or the decision is incomplete or a task-bound adviser is not configured (the record is still written, and stderr names the variable to set), and 1 when input is invalid or the output path already exists.",
+		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if withOpenAI && withoutOpenAI {
-				return usage(errors.New("--with-openai and --without-openai are mutually exclusive"))
-			}
-			if withOpenAI || withoutOpenAI {
-				options.UseOpenAI = new(withOpenAI)
-			}
 			options.DryRun, _ = root.PersistentFlags().GetBool("dry-run")
 			if err := options.Check(); err != nil {
 				return usage(err)
@@ -80,7 +79,9 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				options.Policy = policy
 			}
 			options.Getenv, options.Stdout, options.Stderr = config.Getenv, cmd.OutOrStdout(), cmd.ErrOrStderr()
-			if options.Request != "" && !options.DryRun {
+			// A dry run also resolves credentials, only to report which advisers
+			// are configured; no credential value is written or sent.
+			if options.Request != "" {
 				getenv, err := credentialEnvironment(root, config)
 				if err != nil {
 					return err
@@ -96,8 +97,6 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Decision, "decision", "", "Coordinator decision JSON file, with --adjudicate")
 	flags.StringVar(&options.Output, "output", "", "New private record path; an existing file is never replaced")
 	flags.StringVar(&options.Policy, "policy", "", "Validated model policy (defaults to the installed release's)")
-	flags.BoolVar(&withOpenAI, "with-openai", false, "Explicitly include OpenAI; required policies already include it")
-	flags.BoolVar(&withoutOpenAI, "without-openai", false, "Exclude OpenAI, only under historical optional policies")
 	root.AddCommand(command)
 }
 

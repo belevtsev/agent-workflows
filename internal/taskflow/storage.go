@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/consult"
 )
 
 const maxTaskRevisions = 4096
@@ -281,18 +285,29 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if err != nil {
 			return Record{}, "", err
 		}
+		// Read the version alone first, so a record in another format is
+		// refused by its version rather than by its unknown or missing fields.
+		var stored struct {
+			Version int `json:"version"`
+		}
+		if err := json.Unmarshal(data, &stored); err != nil {
+			return Record{}, "", fmt.Errorf("invalid task JSON: %w", err)
+		}
+		if stored.Version != Version {
+			return Record{}, "", fmt.Errorf("task record version %d is not supported; this cw reads version %d records; start a new task with 'cw task start'", stored.Version, Version)
+		}
 		var current Record
 		if err := decodeBytes(data, &current); err != nil {
 			return Record{}, "", err
 		}
-		if current.Version == 1 {
-			return Record{}, "", errors.New("task record version 1 is no longer supported; start a new task with 'cw task start'")
-		}
-		if current.Version != Version || current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
+		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
 		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline) {
 			return Record{}, "", errors.New("immutable task baseline changed")
+		}
+		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {
+			return Record{}, "", errors.New("immutable task adviser binding changed")
 		}
 		if err := validateRecord(current); err != nil {
 			return Record{}, "", err
@@ -323,18 +338,21 @@ func validateRecord(record Record) error {
 	if err := validateWorkerRecord(record); err != nil {
 		return err
 	}
-	if len(record.ID) != 32 || record.EvidenceRevision < 0 || record.CreatedAt.IsZero() || record.UpdatedAt.Before(record.CreatedAt) || record.Contexts == nil || record.Assessments == nil || record.Consultations == nil || record.Checks == nil || !filepath.IsAbs(record.Baseline.Root) || !filepath.IsAbs(record.Baseline.SelectedPath) {
+	if len(record.ID) != 32 || record.EvidenceRevision < 0 || record.CreatedAt.IsZero() || record.UpdatedAt.Before(record.CreatedAt) || record.Advisers == nil || record.Contexts == nil || record.Assessments == nil || record.Consultations == nil || record.Checks == nil || !filepath.IsAbs(record.Baseline.Root) || !filepath.IsAbs(record.Baseline.SelectedPath) {
 		return errors.New("task record is missing required identity or collection fields")
 	}
 	if _, err := hex.DecodeString(record.ID); err != nil {
 		return errors.New("invalid task ID")
+	}
+	if err := consult.ValidateBinding(record.Advisers); err != nil {
+		return err
 	}
 	baseline, ok := record.Contexts["before"]
 	if !ok || baseline.TaskID != record.ID || baseline.Phase != "before" || baseline.EvidenceSHA256 != "" || !equalSnapshot(baseline.Snapshot, record.Baseline) {
 		return errors.New("immutable before context is missing or changed")
 	}
 	for phase, context := range record.Contexts {
-		if !phaseValid(phase) || context.Phase != phase || context.TaskID != record.ID || context.Snapshot.Fingerprint == "" || phase == "final" && !validSHA256(context.EvidenceSHA256) {
+		if !phaseValid(phase) || context.Phase != phase || context.TaskID != record.ID || context.Snapshot.Fingerprint == "" || phase == "final" && !validSHA256(context.EvidenceSHA256) || !maps.Equal(context.Advisers, record.Advisers) {
 			return errors.New("invalid stored task context")
 		}
 	}
@@ -363,7 +381,7 @@ func validateRecord(record Record) error {
 		}
 	}
 	for phase, attachment := range record.Consultations {
-		if !phaseValid(phase) || attachment.Phase != phase || attachment.Context.TaskID != record.ID || attachment.Context.Phase != phase {
+		if !phaseValid(phase) || attachment.Phase != phase || attachment.Context.TaskID != record.ID || attachment.Context.Phase != phase || !maps.Equal(attachment.Context.Advisers, record.Advisers) || !sameKeys(attachment.ProviderStatuses, slices.Collect(maps.Keys(record.Advisers))) {
 			return errors.New("invalid stored consultation attachment")
 		}
 	}

@@ -48,21 +48,24 @@ expected decisions. Model evaluations and fresh discovery are separate from nati
 test assertions; CI does not call hosted models or receive service credentials.
 
 `cw consult` lives in internal/consult. Its tests use local HTTP servers and synthetic
-records to check three-adviser requests, deadlines, partial failures, and
-evidence-bound finalization without service keys:
+records to check configured participation (including `not_configured` and
+`no_advisers_configured`), deadlines, partial failures, and evidence-bound
+adjudication without service keys:
 
 ```sh
 GOWORK=off go test ./internal/consult
 ```
 
-internal/consult/testdata holds goldens captured from the original helpers, covering
-records, wire requests, digests and validation messages. They freeze the
-retained-record contract, so a change there is a compatibility change: new behavior
-needs new goldens rather than edits to these. Keep historical record versions readable.
+internal/consult/testdata holds goldens for version-4 records, wire requests,
+digests and validation messages. They freeze the current record contract, so a
+change there is a format change. Only the current version is readable; earlier
+record versions are rejected with an error that names version 4.
 
 The multilingual corpus is a managed skill resource, and `cwdev eval multilingual`
 is its runner. Offline tests check complete translations, withheld expected answers,
-deterministic scoring and safe bounded execution using synthetic transports. Run the
+deterministic scoring and safe bounded execution using synthetic transports. Live
+runs call only configured providers and report the others as `not_run` with reason
+`not_configured`. Run the
 explicit hosted evaluation separately, following the
 [evaluation guide](../skills/task-orchestration/references/consultation-helper.md#multilingual-evaluation).
 Keep its reports outside source and immutable releases, freeze corpus/oracle hashes
@@ -80,8 +83,9 @@ checks never invoke optional tools or hosted providers. Real-project read-only
 diagnostics, synthetic acceptance pilots and productivity comparisons are separate
 evidence; preserve that distinction in reports.
 
-Task records use version two for typed worker assignments, results and coordinator
-acceptance. An older task record is refused with guidance to start a new task;
+Task records use version 3 for the adviser binding, typed worker assignments,
+results and coordinator acceptance. An older task record is refused with guidance
+to start a new task;
 never silently upgrade an old task or permit a version change inside its chain.
 Tests must cover wrong task/brief/agent bindings, ownership overlap and unsafe
 paths, false check claims, incomplete or cancelled work, finding dispositions,
@@ -163,10 +167,13 @@ payload still support offline help/version but cannot silently install from cwd.
 Normal updates reject older stable versions and equal-version conflicting identities,
 including after skill rollback. Prepared cache artifacts alone are not authority.
 
-Consultation records evolve separately: version three requires all three providers;
-historical version-one pair and version-two optional records remain readable offline.
-Tests must reject disabled required coverage and opt-outs, preserve historical
-adjudication, and distinguish unavailable, partially refused and all-refused advice.
+Consultation records evolve separately and have one current format, version 4,
+whose providers are exactly the configured participation set. Model policies must
+be version 3. Tests must distinguish `not_configured`, unavailable, partially
+refused and all-refused advice, cover `no_advisers_configured` without network
+access, and reject task checkpoints that differ from the task's adviser binding.
+They must also enforce the adjudication rules for typed evidence, investigations
+and untrusted agreement.
 
 To try an unreleased committed revision, build its release archives with the
 pinned Go toolchain, extract `cw` from the archive for your platform, and run it

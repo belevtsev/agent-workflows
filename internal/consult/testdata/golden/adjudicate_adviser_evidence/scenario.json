@@ -1,0 +1,6 @@
+{
+  "exit": 1,
+  "stdout": "",
+  "stderr": null,
+  "stderr_contains": "evidence and verification must reference source, checks or observations, not adviser output"
+}

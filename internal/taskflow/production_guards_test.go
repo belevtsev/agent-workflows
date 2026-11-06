@@ -518,7 +518,7 @@ func TestProductionStartRejectsDeniedBeforeArtifacts(test *testing.T) {
 			}
 			plan := productionBasePlan()
 			plan.Checks[0].Argv = slices.Clone(argv)
-			if _, err := Start(test.Context(), repository, store, plan); err == nil {
+			if _, err := Start(test.Context(), repository, store, plan, fixtureBinding()); err == nil {
 				test.Fatal("new Start admitted denied inspection command")
 			}
 			if err := filepath.WalkDir(store, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -552,7 +552,9 @@ func productionIntegrityFixture(test *testing.T) Record {
 }
 
 func TestProductionLoadRetainsStrictHistoryIntegrity(test *testing.T) {
-	for _, mutation := range []string{"unknown-json", "duplicate-json", "trailing-json", "chain", "immutable-plan", "immutable-baseline", "terminal-argv", "stored-timeout-zero", "missing-v2-coordinator"} {
+	// immutable-advisers: D5 binds advisers once at start, immutable for the
+	// task's lifetime, like the plan and baseline.
+	for _, mutation := range []string{"unknown-json", "duplicate-json", "trailing-json", "chain", "immutable-plan", "immutable-baseline", "immutable-advisers", "terminal-argv", "stored-timeout-zero", "missing-coordinator"} {
 		test.Run(mutation, func(test *testing.T) {
 			record := productionIntegrityFixture(test)
 			tail := filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", record.Revision))
@@ -569,7 +571,7 @@ func TestProductionLoadRetainsStrictHistoryIntegrity(test *testing.T) {
 				}
 				productionTaskWrite(test, tail, data)
 			case "duplicate-json":
-				productionTaskWrite(test, tail, bytes.Replace(productionTaskRead(test, tail), []byte("{"), []byte(`{"version":2,`), 1))
+				productionTaskWrite(test, tail, bytes.Replace(productionTaskRead(test, tail), []byte("{"), []byte(fmt.Sprintf(`{"version":%d,`, Version)), 1))
 			case "trailing-json":
 				productionTaskWrite(test, tail, append(productionTaskRead(test, tail), []byte("\n{}\n")...))
 			case "chain":
@@ -594,6 +596,12 @@ func TestProductionLoadRetainsStrictHistoryIntegrity(test *testing.T) {
 						historical.Baseline = other.Baseline
 					}
 				})
+			case "immutable-advisers":
+				productionRewriteHistory(test, record, func(revision int, historical *Record) {
+					if revision == record.Revision {
+						historical.Advisers = map[string]string{"jev": "jev-1.14.0"}
+					}
+				})
 			case "terminal-argv":
 				productionRewriteHistory(test, record, func(revision int, historical *Record) {
 					if revision == record.Revision {
@@ -607,7 +615,7 @@ func TestProductionLoadRetainsStrictHistoryIntegrity(test *testing.T) {
 				productionRewriteHistory(test, record, func(revision int, historical *Record) {
 					historical.Plan.Checks[0].TimeoutSeconds = 0
 				})
-			case "missing-v2-coordinator":
+			case "missing-coordinator":
 				productionRewriteHistory(test, record, func(revision int, historical *Record) {
 					historical.Plan.CoordinatorID = ""
 				})

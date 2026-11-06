@@ -1,0 +1,19 @@
+{
+  "questions": {
+    "claim": {
+      "status": "resolved",
+      "choice": "supported",
+      "reason": "The inspected source commits the write before it sends the acknowledgement.",
+      "evidence": [
+        "source:internal/store/store.go:40-52@3f2a9c1d",
+        "observation:the acknowledgement is sent after the commit returns"
+      ],
+      "verification": [
+        "check:go-test-store@run-42"
+      ],
+      "rejected_judgments": {},
+      "investigations": {},
+      "agreement_not_independent": false
+    }
+  }
+}

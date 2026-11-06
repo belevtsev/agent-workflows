@@ -69,8 +69,15 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 	input := assessment(ref)
 	input.Requirements[0].NonExecutionReason = "Read the complete source; no executable change."
 	input.Decision.NonExecutionReason = input.Requirements[0].NonExecutionReason
-	record, err = Assess(t.Context(), record.Directory, input)
+	if _, err = Assess(t.Context(), record.Directory, input); err != nil {
+		t.Fatal(err)
+	}
+	// A bound context (D5 "advisers") for the refused consultation below.
+	beforeContext, err := PrepareContext(t.Context(), record.Directory, "before")
 	if err != nil {
+		t.Fatal(err)
+	}
+	if record, err = Load(record.Directory); err != nil {
 		t.Fatal(err)
 	}
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
@@ -93,7 +100,7 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 	}); !errors.Is(err, errTaskRevisionLimit) || called {
 		t.Fatalf("exhausted history invoked callback: called=%t err=%v", called, err)
 	}
-	consultation := writeConsultation(t, record.Contexts["before"], nil)
+	consultation := writeConsultation(t, beforeContext, nil)
 	if _, err := AttachConsultation(t.Context(), record.Directory, "before", consultation); !errors.Is(err, errTaskRevisionLimit) {
 		t.Fatalf("consultation copied despite exhausted history: %v", err)
 	}

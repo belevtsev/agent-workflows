@@ -142,7 +142,8 @@ in a local plaintext `credentials.json`, with an owner-only directory and file.
 Environment variables win per provider. Keys are read only by adviser calls,
 the optional synthetic online check, and explicitly hosted evaluation; they are
 not copied into host settings or unrelated subprocesses. Online checking is off
-by default. Missing keys do not block installation.
+by default. Missing keys do not block installation; an adviser without its key
+simply does not participate. See [configure advisers](#configure-advisers).
 
 Preferences and credentials live under `$XDG_CONFIG_HOME/agent-workflows` or
 `~/.config/agent-workflows`; `--config-dir` selects a different initial directory.
@@ -203,6 +204,23 @@ curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/inst
 Old task records and rollback history do not carry over; start new tasks with
 `cw task start`.
 
+### Compatibility with earlier releases
+
+This release keeps one current format for each file and does not convert older ones:
+
+- Task records and consultation records from earlier releases do not load. This
+  release reads only task record version 3 and consultation record version 4.
+  Restart in-flight tasks with `cw task start`.
+- Model policies older than version 3 are rejected.
+- `cw consult` no longer accepts `--with-openai` or `--without-openai`; adviser
+  participation follows [configuration](#configure-advisers).
+- On an installation made by an older `cw`, this `cw` refuses install, update,
+  rollback, recover and uninstall before any change. Run `cw uninstall` with your
+  existing `cw`, then install again as shown above. Until you reinstall,
+  `cw consult` and `cw task start` keep working, but they read adviser keys only
+  from the environment and the default config directory, not from a config
+  directory that the older installation recorded.
+
 ## Current model policy
 
 Codex and Claude Code keep separate roles, and the rest of the policy is shared.
@@ -214,22 +232,28 @@ Codex and Claude Code keep separate roles, and the rest of the policy is shared.
 | Other bounded execution profiles | `gpt-6-luna` at `xhigh` | `claude-opus-5-5` at `xhigh` |
 | Bounded evidence gathering | `gpt-6-luna` at `high` | `claude-opus-5-5` at `high` |
 
-For activated substantial work, three independent advisers are required on both
-hosts at the before-implementation and final-review checkpoints:
+Activated substantial work has a before-implementation and a final-review
+checkpoint on both hosts. Advisers are optional: one takes part only when it is
+enabled in the shared policy's `consultation.providers` and its key is present.
 
-| Adviser | Model | Reasoning effort |
-| --- | --- | --- |
-| TypeSafe | `jev-1.14.0` | Provider managed |
-| SubQ | `subq-snap-preview` | Provider managed |
-| OpenAI Decisions | `gpt-6-luna` | Decisions API managed |
+| Adviser | Provider ID | Model | Enabled by default | Key |
+| --- | --- | --- | --- | --- |
+| SubQ Snap | `subq_snap` | `subq-snap-preview` | Yes | `SUBQ_API_KEY` |
+| OpenAI Decisions | `openai_decisions` | `gpt-6-luna` | Yes | `OPENAI_API_KEY` |
+| TypeSafe Jev | `jev` | exact version, such as `jev-1.14.0` | No (opt-in) | `TYPESAFE_API_KEY` |
+
+Reasoning effort is managed by each provider. `cw task start` binds the advisers
+configured at that moment, so later policy or key changes do not alter a running
+task. With none configured, each checkpoint is still adjudicated, on source
+evidence and checks alone.
 
 The editable [Codex policy](skills/task-orchestration/model-policy.yaml) and
 [Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) define
-dispatch roles. [Host mapping](skills/task-orchestration/references/hosts.md) covers
+dispatch roles; advisers come from the shared policy. [Host mapping](skills/task-orchestration/references/hosts.md) covers
 what differs in practice. The coordinator checks actual runtime model metadata; a
 saved policy does not switch an existing chat or prove account availability. It
-makes the final decision from source evidence and verification after considering
-all three required advisers at equal standing.
+makes the final decision from source evidence and verification, considering the
+configured advisers at equal standing.
 
 Requested commits and routine PR creation/update explicitly use the
 [`github` worker](skills/task-orchestration/references/github-worker.md), including
@@ -300,7 +324,7 @@ Codex uses `$name`:
 ```text
 /production-plan Plan this change against the current repository contracts.
 /code-review Review this diff for concrete correctness and compatibility defects.
-/task-orchestration Implement this workflow, consult Jev, Snap and OpenAI Decisions at both checkpoints, and verify the result.
+/task-orchestration Implement this workflow, resolve the before and final checkpoints with the configured advisers, and verify the result.
 ```
 
 ## Global project workflow
@@ -324,8 +348,9 @@ call hosted models. Go, Terraform, Roblox, Node and Python markers can coexist;
 Graphify and gopls apply to supported Go work.
 
 For substantial repository work, `cw task` retains requirements, actual check
-results, worker assignments and handoffs, current-source references and both
-source-bound adviser checkpoints in a private directory outside project source.
+results, worker assignments and handoffs, current-source references, the adviser
+binding and both source-bound decision checkpoints in a private directory outside
+project source. Workers cannot be assigned until the before checkpoint is resolved.
 `cw task verify` checks evidence against the current worktree. New substantial-change
 tasks also require an accepted independent worker review of the completed source
 before final consultation.
@@ -354,12 +379,12 @@ flowchart TD
     Task[Project task] --> Doctor[cw doctor: health and project contracts]
     Doctor --> Size{Substantial repository work?}
     Size -->|No| Small[Direct work and relevant checks]
-    Size -->|Yes| Record[cw task: requirements and source identity]
-    Record --> Before[Jev, Snap and OpenAI: before checkpoint]
-    Before --> Work[Coordinator works against source evidence]
+    Size -->|Yes| Record[cw task start: requirements, source identity, adviser binding]
+    Record --> Before[Before checkpoint: configured advisers, resolved adjudication]
+    Before --> Work[Coordinator and workers work against source evidence]
     Work --> Checks[Run the selected project checks]
     Checks --> Review[Independent worker review and finding dispositions]
-    Review --> Final[Jev, Snap and OpenAI: fresh final review]
+    Review --> Final[Fresh final checkpoint: configured advisers, resolved adjudication]
     Final --> Verify[cw task verify]
     Verify --> Complete{Evidence complete and current?}
     Complete -->|No| Work
@@ -406,68 +431,46 @@ including `EXTRACTED` and `INFERRED` relationships, are qualified discovery hint
 See [runtime setup and commands](docs/operations.md#optional-graphify-runtime).
 `cw install`, update and status do not provision Graphify or build its cache.
 
-Substantial work still requires all three advisers before implementation and at
-final review. The coordinator decides from verified evidence and current checks.
+Substantial work still passes the before and final decision checkpoints, with any
+configured advisers. The coordinator decides from verified evidence and current checks.
 
 Repository commands, product details, and operational constraints belong in the
 owning repository's instructions and docs. Skill selection does not grant
 permission for publication, credential changes, or infrastructure operations.
 
-## Set up Jev
+## Configure advisers
 
-Jev is hosted by TypeSafe. Obtain a key from the official
-[TypeSafe Console](https://console.typesafe.ai/keys) and store it in your local
-secret manager. Installation and offline validation work without service keys.
-Never paste a key into chat or commit it.
+Advisers are optional hosted models that return typed Choice judgments at the two
+decision checkpoints. An adviser participates only when it is configured:
 
-For a temporary terminal session, enter the key using the masked prompt for
-your shell. Keep tracing disabled.
+- it is enabled in `consultation.providers` of the active
+  [model policy](skills/task-orchestration/model-policy.yaml) with its pinned model;
+- its key is present in the process environment or the saved credentials.
 
-Bash:
+The shipped policy (version 3) enables SubQ Snap and OpenAI Decisions. Jev is
+opt-in. An enabled adviser without its key receives no request and is recorded
+as `not_configured`, distinct from `unavailable` (attempted and failed) and
+`refusal`. `cw task start` binds the advisers configured at that moment into the
+task record, and later policy or key changes do not alter that task's
+checkpoints; a bound adviser whose key goes missing must be consulted again with
+its key before the checkpoint can be attached. With no adviser configured,
+`cw consult` writes a `no_advisers_configured` record without network access, and
+the coordinator adjudicates each checkpoint on source evidence under the same rules.
 
-```bash
-set +x
-IFS= read -r -s -p 'TypeSafe API key: ' TYPESAFE_API_KEY
-printf '\n'
-export TYPESAFE_API_KEY
-```
+Before configuring any adviser, confirm that sending source excerpts to that
+provider is permitted for the code and organization involved. Each provider's
+data handling is summarized in its section below and in the
+[helper contract](skills/task-orchestration/references/consultation-helper.md#sharing-and-recording).
+Installation and offline validation work without keys. Never paste a key into
+chat or commit it.
 
-zsh:
+### Set up SubQ Snap
 
-```zsh
-set +x
-read -r -s 'TYPESAFE_API_KEY?TypeSafe API key: '
-printf '\n'
-export TYPESAFE_API_KEY
-```
-
-The installed [TypeSafe skill](third_party/typesafe-ai/SKILL.md) and its
-[development consultation guide](third_party/typesafe-ai/references/development-consultations.md)
-describe the API contract. The workflow uses the pinned `jev-1.14.0` model.
-
-The explicit version keeps adviser results comparable when TypeSafe changes its
-moving aliases. As checked on 16 October 2026, the official
-[model reference](https://docs.typesafe.ai/models) maps `jev-latest` to
-`jev-1.13.0` and `jev-preview` to `jev-1.14.0`. Those mappings can change;
-neither alias replaces this workflow's pin. The linked
-[1.13 limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13) describe
-that version, rather than a verified list of 1.14 limitations.
-
-The [Jev 1.14 announcement](https://typesafe.ai/blog/jev-1-14) also describes
-opt-in capabilities. [Images](https://docs.typesafe.ai/images) and
-[bounding-box answers](https://docs.typesafe.ai/primitives/box) require
-`TypeSafe-Danger-Zone-Images: true` and are experimental. The optional
-`TypeSafe-Danger-Zone-Long-Context: true` header raises Jev's normal 64k-token
-request and 32k-token per-question limits to 262k for both. The shared adviser
-helper sends neither header: it retains the same text and Choice questions for
-all three providers. These features are separate from using the 1.14 model.
-
-## Set up SubQ Snap
-
-Obtain a separate key from the official [SubQ API Console](https://console.subq.ai/)
+Obtain a key from the official [SubQ API Console](https://console.subq.ai/)
 using its [authentication guide](https://docs.subq.ai/using-the-api/authentication/).
-Store it outside the source tree in your local secret manager. Snap uses
-`SUBQ_API_KEY`; Jev uses `TYPESAFE_API_KEY`.
+Store it outside the source tree in your local secret manager. For a temporary
+terminal session, enter it with the masked prompt for your shell and keep tracing
+disabled.
 
 Bash:
 
@@ -487,49 +490,17 @@ printf '\n'
 export SUBQ_API_KEY
 ```
 
-Run `cw status` and check `credential_sources`. For `TYPESAFE_API_KEY` and
-`SUBQ_API_KEY` it shows whether the key comes from that process's environment or
-the private stored file. These are offline checks; they do not validate keys or
-prove availability in another process. Start the CLI from the same terminal to
-inherit the exported keys:
-
-```sh
-claude
-```
-
-```sh
-codex
-```
-
-Desktop apps start from your login session, not your shell profile. Supply both
-variables through your local secret manager or the app's launch environment. On
-macOS, after setting both variables in the terminal, a session-only option is:
-
-```sh
-set +x
-launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"
-launchctl setenv SUBQ_API_KEY "$SUBQ_API_KEY"
-```
-
-Fully quit and relaunch the app, then open a fresh session and verify key presence
-without displaying values. This launch environment applies to subsequently
-started GUI processes in the current login session; it is not persistent secret
-storage. Existing processes retain their startup environment.
-
 Snap's documented model is [`subq-snap-preview`](https://docs.subq.ai/using-the-api/models/),
 a public preview alias. Records retain the requested and returned model IDs.
 SubQ [retains request data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/);
-organization-level zero data retention is available for Decisions. Confirm
-permitted sharing and retention before sending source evidence to a provider.
+organization-level zero data retention is available for Decisions.
 
-## Set up OpenAI Decisions
+### Set up OpenAI Decisions
 
 Obtain an API key from the [OpenAI Platform](https://platform.openai.com/api-keys)
-and store it in your local secret manager. The required adviser uses
+and store it in your local secret manager. The adviser uses
 [`gpt-6-luna` through the Decisions API](https://developers.openai.com/api/docs/guides/decisions).
 This API call is separate from dispatching a Luna worker with a reasoning profile.
-
-Enter the key with the masked prompt for your shell:
 
 Bash:
 
@@ -549,88 +520,173 @@ printf '\n'
 export OPENAI_API_KEY
 ```
 
-Supply `OPENAI_API_KEY` alongside `TYPESAFE_API_KEY` and `SUBQ_API_KEY`.
-The installed workflow requires all three advisers on every consultation request.
-A missing key records unavailable coverage and preserves the other advisers'
-results. The helper rejects attempts to exclude required OpenAI advice.
+Keep request content within the task's permitted sharing and the account's
+[OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
 
-`cw status` reports `OPENAI_API_KEY` in `credential_sources` the same way,
-offline and for its own process. For a macOS desktop app, set the launch
-environment from the configured terminal:
+### Optional: set up Jev
+
+Jev is hosted by TypeSafe and is not enabled by default. The shipped policy's
+comment shows the line that enables it (`jev: jev-1.14.0` under
+`consultation.providers`) and the measurement behind the default: across 261
+adjudicated consultations and 587 resolved questions, Jev was the only adviser
+matching the verified decision in none of 30 splits, was overruled 14 times and
+was unavailable 23 times. Snap matched all 587, which suggests deference to Snap
+rather than independent verification.
+
+To opt in:
+
+1. Copy the installed `model-policy.yaml` (from `current/skills/task-orchestration`
+   in the manager's state directory) to a private location.
+2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy. Use an exact
+   version; aliases such as `jev-latest` are rejected.
+3. Set `TYPESAFE_API_KEY`, as shown below.
+4. Start the task with `cw task start --policy /path/to/copy.yaml`. The task binds
+   Jev, and its checkpoints follow that binding automatically. For ad hoc
+   consultations, use `cw consult --policy /path/to/copy.yaml`.
+
+`cw task start` fails before creating a task when the policy cannot be read or is
+invalid, including a policy older than version 3. Obtain a key from the official
+[TypeSafe Console](https://console.typesafe.ai/keys).
+
+Bash:
+
+```bash
+set +x
+IFS= read -r -s -p 'TypeSafe API key: ' TYPESAFE_API_KEY
+printf '\n'
+export TYPESAFE_API_KEY
+```
+
+zsh:
+
+```zsh
+set +x
+read -r -s 'TYPESAFE_API_KEY?TypeSafe API key: '
+printf '\n'
+export TYPESAFE_API_KEY
+```
+
+TypeSafe is hosted in the US. Zero data retention is available only to enterprise
+customers, and its privacy policy states that it does not train on prompts.
+The installed [TypeSafe skill](third_party/typesafe-ai/SKILL.md) and its
+[development consultation guide](third_party/typesafe-ai/references/development-consultations.md)
+describe the API contract.
+
+An exact version keeps results comparable when TypeSafe changes its moving
+aliases. As checked on 16 October 2026, the official
+[model reference](https://docs.typesafe.ai/models) maps `jev-latest` to
+`jev-1.13.0` and `jev-preview` to `jev-1.14.0`. The linked
+[1.13 limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13) describe
+that version, rather than a verified list of 1.14 limitations. The
+[Jev 1.14 announcement](https://typesafe.ai/blog/jev-1-14) also describes opt-in
+[images](https://docs.typesafe.ai/images),
+[bounding-box answers](https://docs.typesafe.ai/primitives/box) and a long-context
+header. The shared helper sends none of these headers and keeps the same text and
+Choice questions for every adviser.
+
+### Make keys visible to the agent
+
+Run `cw status` and check `credential_sources`. For each key it shows whether the
+key comes from that process's environment or the private stored file. These are
+offline checks; they do not validate keys or prove availability in another
+process. Start the CLI from the same terminal to inherit exported keys:
+
+```sh
+claude
+```
+
+```sh
+codex
+```
+
+Desktop apps start from your login session, not your shell profile. Supply the
+keys through your local secret manager or the app's launch environment. On macOS,
+after setting them in the terminal, a session-only option is:
 
 ```sh
 set +x
+launchctl setenv SUBQ_API_KEY "$SUBQ_API_KEY"
 launchctl setenv OPENAI_API_KEY "$OPENAI_API_KEY"
 ```
 
-Use a fresh app process and session to inherit that environment and updated skill
-instructions. Keep request content within the task's permitted sharing and the
-account's [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
+Add `TYPESAFE_API_KEY` the same way if you opted in to Jev. Fully quit and
+relaunch the app, then open a fresh session and verify key presence without
+displaying values. This launch environment applies to GUI processes started later
+in the current login session; it is not persistent secret storage. Check keys
+before `cw task start`, because the task binds only the advisers configured then.
 
 ## Consult advisers and let the coordinator decide
 
-For substantial work, the coordinator consults Jev, Snap and OpenAI Decisions before implementation,
-and again after integration and current checks, before completion or authorized
-publication, within the task's permitted sharing. Tasks without implementation use the first checkpoint before
-substantive drafting or review. Small edits and direct factual answers remain
-lightweight.
+Substantial work follows a fixed flow, and no state is skipped: classify the task,
+resolve the before checkpoint, implement and verify, resolve a fresh final
+checkpoint, and complete only when both are resolved. Tasks without implementation
+use the before checkpoint ahead of substantive drafting or review. Small edits and
+direct factual answers remain lightweight.
 
-Participating advisers receive the same permitted evidence, questions, and neutral
+Configured advisers receive the same permitted evidence, questions and neutral
 Choice options. The [consultation helper](skills/task-orchestration/references/consultation-helper.md)
-uses one attempt per provider, a 30-second batch budget, and no automatic retries.
-It validates each response independently and records unavailable coverage. The
-coordinator records sharing restrictions, checks advice against exact sources
-and tests, records reasons for rejecting differing advice, and leaves missing
-material facts unresolved.
-Confidence and voting do not choose the result.
+makes one attempt per adviser within a 30-second batch budget, with no automatic
+retries, and validates each response independently. Each adviser ends as
+`success`, `partial` or `refusal` (OpenAI refusals), `unavailable` (attempted and
+failed) or `not_configured` (no key; no request made). Confidence and voting never
+choose the result.
 
-See the [decision diagrams](docs/decision-flow.md) for the task checkpoints,
-the three adviser branches, disagreement and missing coverage, and the
-coordinator's resolved/unresolved decisions.
+See the [decision diagrams](docs/decision-flow.md) for the flow, the adviser
+branches, missing coverage, and the coordinator's resolved and unresolved decisions.
 
-Prepare a request containing `{state,
-questions}` as described in the [helper contract](skills/task-orchestration/references/consultation-helper.md).
-Keep credentials outside requests, records, and shared evidence. The following
-commands use different output paths because the helper refuses overwrites:
+Prepare a request containing `{state, questions}` following the
+[authoring rules](skills/task-orchestration/SKILL.md#author-questions). Keep
+credentials outside requests, records and shared evidence. The commands use
+different output paths because the helper refuses overwrites:
 
 ```sh
 cw consult --request /path/to/request.json --output /path/to/preview.json --dry-run
 cw consult --request /path/to/request.json --output /path/to/advice.json
 ```
 
-The dry run validates and writes a record without network access. A live call can
-incur usage with participating providers. It records their independent results and leaves
-`final_decision` pending. After checking the evidence, the coordinator writes a
-decision and finalizes a separate record offline:
+The dry run validates and writes a preview without network access. A live call
+can incur usage with configured advisers and leaves `final_decision` pending.
+After checking the evidence, the coordinator writes a decision and finalizes a
+separate record offline:
 
 ```sh
 cw consult --adjudicate /path/to/advice.json --decision /path/to/decision.json --output /path/to/final.json
 ```
 
-An unavailable or refusing provider preserves the other results while the
-coordinator continues source verification and reports the coverage limit. A successful API response
-proves access for that request; it does not prove judgment accuracy or
-implementation correctness.
+Adjudication enforces the [rules](skills/task-orchestration/SKILL.md#adjudicate)
+structurally. A resolved question needs typed `source:`, `check:` or `observation:`
+evidence and verification, never adviser output: check IDs, run IDs and
+observations cannot name an adviser (including `gpt-6-luna`), while `source:`
+paths are exempt. It also needs a reason for every differing adviser and an
+investigation note for differing advisers with confidence of 0.7 or higher, in
+`partial` as in `disagreement` comparisons; and `agreement_not_independent: true`
+when advisers agree on a request that marks untrusted text in `state.untrusted`.
+An unresolved decision blocks completion. `cw consult` exits `0` for success, no
+configured advisers, a dry run or a resolved adjudication; `2` for partial or
+unavailable coverage, an unresolved adjudication, a task-bound adviser without
+its key (also in a dry run), or a command-line usage error such as an unknown
+flag (including the removed `--with-openai`) or conflicting or missing options,
+reported before any file is read; and `1` for an invalid request, record,
+decision or policy file or an existing output path. Attaching a new
+record for the same phase with `cw task consult` replaces the earlier one, as
+long as the record is a new file distinct from the other phase's.
 
-Every request uses the three required models. OpenAI refusals are recorded per
-question, preserving other valid answers and identifying missing
-coverage. They do not become choices against a claim.
+A successful API response proves access for that request; it does not prove
+judgment accuracy or implementation correctness.
 
-To verify all three integrations from a fresh agent session, use:
+To check the configured integrations from a fresh agent session, use:
 
 ```text
-Use the installed task-orchestration workflow to check TYPESAFE_API_KEY and
-SUBQ_API_KEY and OPENAI_API_KEY presence without showing values. Make one Choice
-request using only synthetic public text, jev-1.14.0,
-subq-snap-preview and OpenAI Decisions gpt-6-luna, with the
-30-second batch budget and no retries. Validate requested and returned models
-and report each provider's result or safe failure category. Compare the results
-with the supplied evidence and record the coordinator's final decision. Never print keys
-or authorization headers.
+Use the installed task-orchestration workflow to report which advisers are
+configured, checking key presence without showing values. If any are configured,
+make one Choice request with cw consult using only synthetic public text, and
+report each adviser's status or safe failure category and its requested and
+returned model. Compare the results with the supplied evidence and record the
+coordinator's final decision. Never print keys or authorization headers.
 ```
 
-See [workflow and integrations](docs/workflow.md#typesafe-jev-and-subq-snap) for
-policy details and source links.
+See [workflow and integrations](docs/workflow.md#decision-advisers) for policy
+details and source links.
 
 ### Evaluate multilingual judgments
 
@@ -645,21 +701,23 @@ From the editable checkout, validate the corpus offline:
 GOWORK=off go run ./cmd/cwdev eval multilingual
 ```
 
-For an explicit hosted run, supply the three provider keys through the process
-environment and choose a new private output directory outside repositories and
-managed releases:
+For an explicit hosted run, supply the keys of the advisers you want evaluated
+through the process environment and choose a new private output directory outside
+repositories and managed releases:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.local/state/agent-workflows/audits/multilingual-baseline-01
 ```
 
-The live run makes at most nine provider requests without retries and writes
-`report.json`, `summary.md` and safe consultation records. Read accuracy together
-with coverage and per-case errors. A valid `insufficient_evidence` judgment is an
-answer; a refusal or unavailable provider is missing coverage. This small labeled
-baseline measures performance on its frozen cases. It does not establish
-calibration, production readiness or improvement over another model version.
-Installation, source validation and CI never run the hosted evaluation.
+Only configured advisers run; the report lists the others as `not_run` with reason
+`not_configured`, which is not a failure. The live run makes at most three
+requests per configured adviser without retries and writes `report.json`,
+`summary.md` and safe consultation records. Read accuracy together with coverage
+and per-case errors. A valid `insufficient_evidence` judgment is an answer; a
+refusal or unavailable adviser is missing coverage. This small labeled baseline
+measures performance on its frozen cases. It does not establish calibration,
+production readiness or improvement over another model version. Installation,
+source validation and CI never run the hosted evaluation.
 
 ## Maintain the installation
 

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"math/big"
 	"net/url"
@@ -59,12 +60,16 @@ func suiteMapping(value any, name string, fields ...string) (Object, error) {
 		return nil, fmt.Errorf("%s must be a mapping", name)
 	}
 	if len(fields) > 0 {
-		if len(object) != len(fields) {
-			return nil, fmt.Errorf("%s has invalid fields", name)
-		}
 		for _, field := range fields {
 			if _, ok := object[field]; !ok {
-				return nil, fmt.Errorf("%s has invalid fields", name)
+				return nil, fmt.Errorf("%s has invalid fields: missing %q", name, field)
+			}
+		}
+		if len(object) != len(fields) {
+			for _, field := range slices.Sorted(maps.Keys(object)) {
+				if !slices.Contains(fields, field) {
+					return nil, fmt.Errorf("%s has invalid fields: unexpected %q", name, field)
+				}
 			}
 		}
 	}
@@ -1034,6 +1039,98 @@ func policyDescription(value any) bool {
 	}
 }
 
+// PolicyVersion is the only model policy schema version this cw reads.
+const PolicyVersion = 3
+
+// PolicyVersionError reports a model policy whose schema version this cw does
+// not read. Version is the value the policy declares, or nil when it has none.
+type PolicyVersionError struct{ Version any }
+
+func (e *PolicyVersionError) Error() string {
+	if e.Version == nil {
+		return fmt.Sprintf("model policy has no version; this cw requires version %d", PolicyVersion)
+	}
+	// Show a non-integer version as written, so 3.0 or "3" never reads as 3.
+	version := fmt.Sprint(e.Version)
+	switch value := e.Version.(type) {
+	case string:
+		version = strconv.Quote(value)
+	case float64:
+		version = strconv.FormatFloat(value, 'f', -1, 64)
+		if !strings.ContainsAny(version, ".IN") {
+			version += ".0"
+		}
+	}
+	return fmt.Sprintf("model policy version %s is not supported; this cw requires version %d", version, PolicyVersion)
+}
+
+// Older reports whether the policy declares an integer version below
+// PolicyVersion, which only an earlier cw wrote.
+func (e *PolicyVersionError) Older() bool {
+	version, ok := e.Version.(int)
+	return ok && version >= 1 && version < PolicyVersion
+}
+
+// policyPinnedModels holds the one accepted model of each consultation
+// provider other than Jev, which accepts any exact jev-X.Y.Z release.
+var policyPinnedModels = map[string]string{"subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}
+
+// ConsultationProviders returns the known consultation provider IDs (jev,
+// subq_snap, openai_decisions) in their fixed record order. These are the
+// only IDs a policy, a task binding or a consultation record may name. The
+// result is a new slice on every call.
+func ConsultationProviders() []string {
+	return []string{"jev", "subq_snap", "openai_decisions"}
+}
+
+// PinnedConsultationModel returns the one accepted model of a consultation
+// provider that pins a single model: subq-snap-preview for subq_snap and
+// gpt-6-luna for openai_decisions. ok is false for jev, which accepts any
+// exact jev-X.Y.Z release, and for an unknown provider ID.
+func PinnedConsultationModel(provider string) (model string, ok bool) {
+	model, ok = policyPinnedModels[provider]
+	return model, ok
+}
+
+// ValidConsultationModel applies the policy pin rules: it reports whether
+// model is accepted for the known consultation provider, an exact jev-X.Y.Z
+// release for jev (aliases such as jev-latest are refused) or the provider's
+// one pinned model otherwise. It is false for an unknown provider ID.
+func ValidConsultationModel(provider, model string) bool {
+	if provider == "jev" {
+		return policyJev.MatchString(model)
+	}
+	pinned, known := policyPinnedModels[provider]
+	return known && model == pinned
+}
+
+// policyProviders checks the enabled consultation providers: a mapping,
+// possibly empty, from a known provider ID to its pinned model.
+func policyProviders(value any) error {
+	providers, err := suiteMapping(value, "consultation providers")
+	if err != nil {
+		return err
+	}
+	for _, name := range slices.Sorted(maps.Keys(providers)) {
+		raw := providers[name]
+		pinned, known := PinnedConsultationModel(name)
+		if !slices.Contains(ConsultationProviders(), name) {
+			return fmt.Errorf("unknown consultation provider %q", name)
+		}
+		model, ok := raw.(string)
+		if !ok {
+			return fmt.Errorf("consultation provider %q model must be a string", name)
+		}
+		if name == "jev" && !ValidConsultationModel(name, model) {
+			return fmt.Errorf("consultation provider \"jev\" model %q is an alias or unpinned; use an exact jev-X.Y.Z release", model)
+		}
+		if known && model != pinned {
+			return fmt.Errorf("consultation provider %q model %q is not supported; use %s", name, model, pinned)
+		}
+	}
+	return nil
+}
+
 func policyQuestions(policyPath string, reference any) error {
 	if !suiteText(reference) {
 		return errors.New("invalid question reference")
@@ -1055,41 +1152,61 @@ func policyQuestions(policyPath string, reference any) error {
 	if err != nil {
 		return err
 	}
-	questions, err := suiteMapping(value, "question reference")
+	questions, err := suiteMapping(value, "question reference", "version", "rules", "examples")
 	if err != nil {
 		return err
 	}
 	if !suiteInteger(questions["version"], 1) {
-		return errors.New("question reference version has an invalid value")
+		return errors.New("question reference version must be 1")
 	}
-	templates, err := suiteMapping(questions["questions"], "question templates")
-	if err != nil || len(templates) == 0 {
-		return errors.New("question templates are empty or invalid")
+	rules, ok := questions["rules"].([]any)
+	if !ok || len(rules) == 0 {
+		return errors.New("question reference rules must be a nonempty list")
 	}
-	for name, value := range templates {
-		if policyBlank(name) {
-			return errors.New("invalid question ID")
+	for _, rule := range rules {
+		if !suiteText(rule) {
+			return errors.New("question reference rules must be nonempty text")
 		}
-		question, err := suiteMapping(value, "question", "type", "instructions", "criteria")
+	}
+	examples, err := suiteMapping(questions["examples"], "question examples")
+	if err != nil {
+		return err
+	}
+	if len(examples) < 2 || len(examples) > 3 {
+		return errors.New("question reference needs 2 or 3 examples")
+	}
+	for _, name := range slices.Sorted(maps.Keys(examples)) {
+		value := examples[name]
+		if policyBlank(name) {
+			return errors.New("invalid question example ID")
+		}
+		question, err := suiteMapping(value, fmt.Sprintf("question example %q", name), "type", "instructions", "criteria")
 		if err != nil {
 			return err
 		}
 		if question["type"] != "choice" {
-			return errors.New("only Choice questions are supported")
+			return fmt.Errorf("question example %q must be a Choice question", name)
 		}
 		if !policyDescription(question["instructions"]) {
-			return errors.New("empty or invalid description")
+			return fmt.Errorf("question example %q has empty or invalid instructions", name)
 		}
-		criteria, err := suiteMapping(question["criteria"], "criteria")
-		if err != nil || len(criteria) < 2 {
-			return errors.New("Choice needs at least two options")
+		criteria, err := suiteMapping(question["criteria"], fmt.Sprintf("question example %q criteria", name))
+		if err != nil {
+			return err
 		}
-		for option, description := range criteria {
+		if len(criteria) < 2 {
+			return fmt.Errorf("question example %q needs at least two named options", name)
+		}
+		if _, present := criteria["insufficient_evidence"]; !present {
+			return fmt.Errorf("question example %q must offer insufficient_evidence", name)
+		}
+		for _, option := range slices.Sorted(maps.Keys(criteria)) {
+			description := criteria[option]
 			if policyBlank(option) {
-				return errors.New("invalid option ID")
+				return fmt.Errorf("question example %q has an invalid option ID", name)
 			}
 			if !policyDescription(description) {
-				return errors.New("empty or invalid description")
+				return fmt.Errorf("question example %q option %q has an empty or invalid description", name, option)
 			}
 		}
 	}
@@ -1208,12 +1325,18 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	policy, err := suiteMapping(value, "policy", "version", "activation", "profiles", "effort_policy", "effort_guidance", "roles", "lookup_boundary", "unknown_role_profile", "fixed_specialists", "fallbacks", "consultation", "publication")
+	policy, err := suiteMapping(value, "policy")
 	if err != nil {
 		return nil, err
 	}
-	if !suiteInteger(policy["version"], 2) {
-		return nil, errors.New("policy version has an invalid value")
+	// The version is checked before the field set, so a policy from an older
+	// cw is reported as such whatever fields its schema had.
+	if !suiteInteger(policy["version"], PolicyVersion) {
+		return nil, &PolicyVersionError{Version: policy["version"]}
+	}
+	policy, err = suiteMapping(policy, "policy", "version", "activation", "profiles", "effort_policy", "effort_guidance", "roles", "lookup_boundary", "unknown_role_profile", "fixed_specialists", "fallbacks", "consultation", "publication")
+	if err != nil {
+		return nil, err
 	}
 	activation, err := suiteMapping(policy["activation"], "activation", "any_of", "bypass")
 	if err != nil {
@@ -1315,7 +1438,7 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	fallbackFields := []string{"luna_unavailable", "sol_unavailable", "jev_unavailable_or_inconclusive"}
+	fallbackFields := []string{"luna_unavailable", "sol_unavailable", "advisers_unavailable_or_inconclusive"}
 	if value, present := fallbacks["github_unavailable"]; present {
 		if value != "report_blocker" {
 			return nil, errors.New("GitHub worker unavailability must report a blocker")
@@ -1330,75 +1453,18 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 	if err != nil || fallback["scope"] != "substantive" {
 		return nil, errors.New("worker fallback must be substantive")
 	}
-	if fallbacks["sol_unavailable"] != "compatible_coordinator_or_report_blocker" || fallbacks["jev_unavailable_or_inconclusive"] != "continue_with_source_evidence_and_conservative_routing" {
+	if fallbacks["sol_unavailable"] != "compatible_coordinator_or_report_blocker" || fallbacks["advisers_unavailable_or_inconclusive"] != "continue_with_source_evidence_and_conservative_routing" {
 		return nil, errors.New("invalid fallback routing")
 	}
-	consultation, err := suiteMapping(policy["consultation"], "consultation")
+	consultation, err := suiteMapping(policy["consultation"], "consultation", "deadline_seconds", "attempts_per_evidence_batch", "automatic_retries", "questions", "ownership", "reuse", "sharing", "comparison", "providers")
 	if err != nil {
 		return nil, err
 	}
-	consultationFields := []string{"model", "deadline_seconds", "attempts_per_evidence_batch", "automatic_retries", "questions", "ownership", "reuse", "sharing"}
-	_, hasProviders := consultation["providers"]
-	_, hasComparison := consultation["comparison"]
-	_, hasOptionalProviders := consultation["optional_providers"]
-	if hasProviders != hasComparison {
-		return nil, errors.New("consultation providers and comparison must be configured together")
-	}
-	if hasOptionalProviders && !hasProviders {
-		return nil, errors.New("optional consultation providers require paired providers and comparison")
-	}
-	if hasProviders {
-		consultationFields = append(consultationFields, "providers", "comparison")
-	}
-	if hasOptionalProviders {
-		consultationFields = append(consultationFields, "optional_providers")
-	}
-	consultation, err = suiteMapping(consultation, "consultation", consultationFields...)
-	if err != nil {
+	if err := policyProviders(consultation["providers"]); err != nil {
 		return nil, err
 	}
-	model, ok := consultation["model"].(string)
-	if !ok || !policyJev.MatchString(model) {
-		return nil, errors.New("consultation model must be an exact versioned Jev ID")
-	}
-	if hasProviders {
-		providers, err := suiteMapping(consultation["providers"], "consultation providers")
-		if err != nil {
-			return nil, err
-		}
-		providerFields := []string{"jev", "subq_snap"}
-		_, hasRequiredOpenAI := providers["openai_decisions"]
-		if hasRequiredOpenAI {
-			providerFields = append(providerFields, "openai_decisions")
-		}
-		providers, err = suiteMapping(providers, "consultation providers", providerFields...)
-		if err != nil {
-			return nil, err
-		}
-		if providers["jev"] != model || providers["subq_snap"] != "subq-snap-preview" {
-			return nil, errors.New("consultation providers must match the Jev model and use subq-snap-preview")
-		}
-		// Policies from before the coordinator rename keep their original marker.
-		if comparison := consultation["comparison"]; comparison != "coordinator_evidence_and_verification" && comparison != "codex_evidence_and_verification" {
-			return nil, errors.New("consultation comparison must use coordinator evidence and verification")
-		}
-		if hasRequiredOpenAI {
-			if providers["openai_decisions"] != "gpt-6-luna" {
-				return nil, errors.New("required OpenAI consultation provider must use gpt-6-luna")
-			}
-			if hasOptionalProviders {
-				return nil, errors.New("OpenAI consultation provider cannot be both required and optional")
-			}
-		}
-	}
-	if hasOptionalProviders {
-		providers, err := suiteMapping(consultation["optional_providers"], "optional consultation providers", "openai_decisions")
-		if err != nil {
-			return nil, err
-		}
-		if providers["openai_decisions"] != "gpt-6-luna" {
-			return nil, errors.New("optional consultation provider must use gpt-6-luna")
-		}
+	if consultation["comparison"] != "coordinator_evidence_and_verification" {
+		return nil, errors.New("consultation comparison must use coordinator evidence and verification")
 	}
 	if !suiteInteger(consultation["deadline_seconds"], 30) || !suiteInteger(consultation["attempts_per_evidence_batch"], 1) {
 		return nil, errors.New("invalid consultation deadline or attempts")
@@ -1423,7 +1489,7 @@ func suiteModelPolicy(policyPath string) (Object, error) {
 }
 
 // modelSettings projects defaults and profiles from the same validated policy
-// snapshot, including historical policies stored with an installed release.
+// snapshot, whether a source tree or an installed release.
 func modelSettings(root string, manifest Object) (map[string]string, Object, error) {
 	root, err := suiteRoot(root, false)
 	if err != nil {

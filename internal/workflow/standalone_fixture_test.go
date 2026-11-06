@@ -345,7 +345,7 @@ func installerBuildSource(maintained, destination string) error {
 	for _, relative := range []string{
 		".gitignore", "install.sh",
 		text(manifest["global_instructions"]), text(manifest["model_policy"]), text(manifest["claude_model_policy"]),
-		filepath.ToSlash(filepath.Join(filepath.Dir(text(manifest["model_policy"])), "references", "jev-questions.json")),
+		filepath.ToSlash(filepath.Join(filepath.Dir(text(manifest["model_policy"])), "references", "question-patterns.json")),
 	} {
 		if err := copyFile(relative); err != nil {
 			return err

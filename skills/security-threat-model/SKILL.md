@@ -25,9 +25,9 @@ assumptions that materially affect each priority. Distinguish evidenced controls
 control gaps, and proposed mitigations; tie fixes and manual-review paths to the
 actual owner and code.
 
-For consequential prioritization or an explicit request, resolve installed
-`typesafe-ai` and read its entrypoint and development consultation guide from that
-skill's root. Supply grounded candidate paths and risk judgments to the coordinator,
+For consequential prioritization or an explicit request, use configured advisers
+via `cw consult` if any are configured; otherwise proceed on source evidence under
+the same [decision rules](../task-orchestration/SKILL.md#adjudicate). Supply grounded candidate paths and risk judgments to the coordinator,
 which owns calls, batching, and reuse. Routine work needs no consultation. Typed
 advice is not exploit proof, validated controls, or authorization; verify conclusions
 independently. Record unavailable/inconclusive consultation and continue with source

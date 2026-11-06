@@ -124,6 +124,7 @@ func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
 			if len(out.Bytes()) == 0 {
 				t.Fatal("empty output")
 			}
+			// D2 / Revision 3: the manager protocol stays cw-manager-v10.
 			if args[0] == "--manager-protocol" && out.String() != "cw-manager-v10\n" {
 				t.Fatalf("wrong bootstrap protocol: %q", out.String())
 			}
@@ -222,7 +223,7 @@ func TestStatusReportsDecisionCredentialsWithoutExposingKeys(t *testing.T) {
 		{"Jev only", true, false, false},
 		{"SubQ only", false, true, false},
 		{"OpenAI only", false, false, true},
-		{"required pair", true, true, false},
+		{"Jev and SubQ", true, true, false},
 		{"Jev and OpenAI", true, false, true},
 		{"SubQ and OpenAI", false, true, true},
 		{"all", true, true, true},
@@ -332,7 +333,8 @@ func TestUsageFailuresHaveExitCodeTwo(t *testing.T) {
 		{"install", "--bootstrap"}, {"--bootstrap"},
 		{"update", "--prepare-only"}, {"--prepare-only"},
 		{"validate"}, {"validate", "--json"},
-		{"consult", "jev"}, {"consult", "jev", "--request", "r", "--output", "o", "--dry-run"},
+		// D3 (Removed): the OpenAI participation flags are unknown.
+		{"consult", "--request", "r", "--output", "o", "--with-openai"}, {"consult", "--request", "r", "--output", "o", "--without-openai"},
 	} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			config, _, _, service := testConfig(t)

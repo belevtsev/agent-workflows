@@ -56,10 +56,24 @@ repository. For example, this plan selects one check for an applicable Go packag
 }
 ```
 
+Name checks without adviser words such as `snap`, `jev` or `advisor` as whole words
+(`snap-test` or `jev_smoke`, for example): adjudication cannot cite such a check ID
+in a `check:` entry.
+
 ```sh
 cw task start --repo /absolute/path/to/project --plan /private/path/plan.json
 cw task context --task /path/returned/by/start --phase before
 ```
+
+`start` binds the configured advisers (enabled in the policy and with a credential
+present) into the task record as `advisers`, possibly empty. `--policy PATH`
+selects the policy; the default is the installed release's, as for `cw consult`.
+If the policy cannot be read or is invalid, including an older version, `start`
+fails before creating a task directory. The binding is fixed for the task's
+lifetime: later policy or credential changes do not alter its checkpoints.
+`context` prints `{"task_id", "phase", "snapshot", "evidence_sha256", "advisers"}`.
+To opt in to Jev, pass a policy copy that enables it; see
+[opt in to Jev](consultation-helper.md#opt-in-to-jev).
 
 Use the task directory returned by `start`. Its private append-only records and
 check logs belong outside project source and immutable managed releases. The
@@ -100,23 +114,30 @@ new check log/revision. Readable history does not authorize reexecution.
 
 Before implementation, place the exact emitted context in the shared consultation
 request's `state.task_context`. A coordinated multi-repository task can instead
-put its contexts in `state.task_contexts`; each task's context must occur once.
-Give Jev, Snap and OpenAI the same permitted evidence and questions using the
-[consultation helper](consultation-helper.md). The coordinator checks each judgment against
-sources and finalizes a new adjudicated record with explicit rejection reasons.
+put its contexts in `state.task_contexts`; each task's context must occur once and
+all bindings must be identical. `cw consult` consults exactly the bound advisers
+using the [consultation helper](consultation-helper.md); with none bound it writes
+a `no_advisers_configured` record without network access. The coordinator checks
+each judgment against sources and finalizes a new adjudicated record under the
+[adjudication rules](../SKILL.md#adjudicate).
 
 ```sh
 cw task consult --task /path/returned/by/start --phase before --input /private/path/before-final.json
 ```
 
-The task command validates the adviser artifact and its binding. It does not make
-provider requests, select a winning adviser, or prove cited semantics. Required
-unavailable coverage is recorded rather than invented; unresolved material the coordinator
-decisions remain unresolved. A small task can use `kind: "small"` without adviser
-checkpoints. Use that path only for the existing small-task scope.
+The task command validates the adviser artifact and its binding: the record's
+providers and requested models must equal the binding, and every bound adviser
+needs `success`, `partial`, `refusal` or `unavailable`, so a `not_configured`
+adviser is rejected. Attaching again for the same phase replaces the earlier
+attachment when the input is a new file distinct from the other phase's artifact.
+It does not make provider requests, select a winning adviser,
+or prove cited semantics. For a substantial task, `cw task assign` is refused
+until the before checkpoint is attached and its decision is resolved. A small
+task can use `kind: "small"` without adviser checkpoints. Use that path only for
+the existing small-task scope.
 
-Task records use version two; an older task record is refused, so start a new
-task. Set the plan's `coordinator_id` when the coordinating agent differs from the
+Task records use version 3; a record from an earlier release is refused, so start
+a new task. Set the plan's `coordinator_id` when the coordinating agent differs from the
 `/root` default. For delegated work, record the [worker brief, handoff and
 coordinator acceptance](worker-handoffs.md) through `cw task assign`, `cw task
 handoff` and `cw task accept` before relying on its output. These commands
@@ -162,7 +183,8 @@ cw task context --task /path/returned/by/start --phase final
 ```
 
 Use that new final context and the completed diff/check evidence for a fresh
-three-adviser final-review request. Attach the coordinator's separately adjudicated result:
+final-review request to the bound advisers. Attach the coordinator's separately
+adjudicated result:
 
 ```sh
 cw task consult --task /path/returned/by/start --phase final --input /private/path/review-final.json
@@ -170,12 +192,14 @@ cw task verify --task /path/returned/by/start
 ```
 
 Verification rejects stale source, missing requirements/checks, invalid references
-and missing or mismatched substantial-task checkpoints. Hashes and structural
+and missing, mismatched or unresolved substantial-task checkpoints. Its limitations
+list each bound adviser without a successful outcome; with an empty binding they
+state that decisions rest on source evidence and checks only. Hashes and structural
 validation establish consistency, not semantic truth or complete test coverage.
 The final context also binds completed checks, acceptance and the coordinator's decision;
 changing those facts requires a fresh final context and adviser review even when source
 bytes stay unchanged. An outstanding owned check cannot complete the task.
-Version-two worker evidence is also bound into final context. Incomplete handoffs,
+Worker evidence is also bound into final context. Incomplete handoffs,
 unaccepted results and missing or stale independent worker review prevent completion.
 Later source or worker/check changes require a current worker review as applicable.
 The coordinator retains responsibility for source interpretation, relevant tests, permitted

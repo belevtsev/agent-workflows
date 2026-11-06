@@ -98,7 +98,7 @@
       "col": 3,
       "type": "cloud",
       "label": "04  Before advice",
-      "sublabel": "Jev / Snap / OpenAI",
+      "sublabel": "Configured advisers, if any",
       "tag": "Same permitted evidence",
       "width": 168,
       "height": 80,
@@ -121,8 +121,8 @@
       "col": 4,
       "type": "backend",
       "label": "05  Codex decides",
-      "sublabel": "Judge advice against sources",
-      "tag": "Coordinator keeps authority",
+      "sublabel": "Resolved adjudication",
+      "tag": "Gates worker assignment",
       "width": 168,
       "height": 80,
       "sources": [
@@ -328,7 +328,7 @@
       "col": 3,
       "type": "cloud",
       "label": "14  Final advice",
-      "sublabel": "Jev / Snap / OpenAI",
+      "sublabel": "Configured advisers, if any",
       "tag": "Fresh completed evidence",
       "width": 168,
       "height": 80,
@@ -351,8 +351,8 @@
       "col": 4,
       "type": "backend",
       "label": "15  Codex decides",
-      "sublabel": "Assess advice and remaining gaps",
-      "tag": "Reasons tied to sources",
+      "sublabel": "Resolved final adjudication",
+      "tag": "Typed source and check evidence",
       "width": 168,
       "height": 80,
       "sources": [
@@ -610,8 +610,8 @@
       "title": "Global workflow, proportionate gates",
       "items": [
         "Delegation is optional: direct Codex work skips steps 06–09. Each project supplies its checks; small and unchanged read-only tasks keep their lighter path.",
-        "Advisers receive the same permitted evidence. Unavailable coverage is recorded; Codex decides against sources.",
-        "New v2 records enforce these gates. V1 records keep their rules; declarations grant no process isolation or extra permission."
+        "Configured advisers, if any, receive the same permitted evidence; missing coverage is recorded. Codex adjudicates against sources, and unresolved decisions block progress.",
+        "Version 3 task records enforce these gates; earlier records do not load. Declarations grant no process isolation or extra permission."
       ]
     }
   ],

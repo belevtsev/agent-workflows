@@ -9,8 +9,8 @@ agents, authenticate identities, isolate permissions or authorize external actio
 
 ## Assign before dispatch
 
-Start the task and, for substantial work, complete its before consultation. A
-small task's mandatory [test-author dispatch](test-author.md) alone adds neither
+Start the task and, for substantial work, attach a resolved before checkpoint:
+`cw task assign` refuses a substantial task until then. A small task's mandatory [test-author dispatch](test-author.md) alone adds neither
 substantial adviser checkpoints nor the substantial final-review gate; it still
 retains native assignment, handoff, acceptance and selected execution checks. Set the plan's
 `coordinator_id` to the actual coordinating agent; new tasks default to `/root`.
@@ -122,8 +122,9 @@ handoff shape with no changes; record the result and coordinator dispositions.
 Complete implementation handoffs, acceptance and selected checks before recording
 final review. Review and check execution can overlap while source is stable, but
 accepted review must bind completed check and worker state. Then prepare
-`cw task context --phase final`, perform the fresh three-adviser consultation and
-run `cw task verify`, following [Global workflow](global-workflow.md).
+`cw task context --phase final`, perform the fresh final consultation with the
+task's bound advisers (or record that none are configured), adjudicate it and run
+`cw task verify`, following [Global workflow](global-workflow.md).
 
 Source changes require a new current review. Later worker/check mutations can
 also invalidate review and final adviser context. Use a new immutable review ID
@@ -138,8 +139,8 @@ edits never occurred or establish operating-system isolation.
 
 ## Compatibility and proportion
 
-Task records use version two. An older task record is refused; start a new task
-with `cw task start`. No old record is silently upgraded. Small and unchanged
+Task records use version 3. A record from an earlier release is refused; start a
+new task with `cw task start`. No old record is silently upgraded. Small and unchanged
 read-only tasks gain no mandatory review, but delegated work still needs complete
 acceptance or explicit closure as unused.
 

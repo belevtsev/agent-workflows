@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // R2.2: an installation written by a removed cw is refused, with one exact
@@ -319,6 +321,133 @@ func TestLegacyStateBesideAValidJournalRefusesRecovery(t *testing.T) {
 			f.execute(t, "recover")
 			if exists(journalPath) || f.activeRevision(t) != f.first || f.statusRevision(t) != f.first {
 				t.Fatal("recovery with the valid state did not return to the first release")
+			}
+		})
+	}
+}
+
+// D2: the new cw refuses an installation whose active release ships a policy
+// older than version 3, with the #18 refusal, before any write.
+
+// activeReleasePolicy returns the model policy inside the active immutable
+// release, located the way tamperActiveRelease locates a skill file there.
+func activeReleasePolicy(t *testing.T, f *installerFixture) string {
+	t.Helper()
+	registration := text(object(f.manifest["registrations"])["task-orchestration"])
+	policy := text(f.manifest["model_policy"])
+	relative, found := strings.CutPrefix(policy, registration+"/")
+	if registration == "" || !found {
+		t.Fatalf("model policy %q is not inside the task-orchestration registration %q", policy, registration)
+	}
+	path := filepath.Join(f.installer(false).target(registration), filepath.FromSlash(relative))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("active release policy: %v", err)
+	}
+	var recorded Object
+	if err := yaml.Unmarshal(data, &recorded); err != nil || recorded["version"] != 3 {
+		t.Fatalf("active release policy %s is not the version-3 policy: %v, %v", path, recorded["version"], err)
+	}
+	return path
+}
+
+// version2PolicyBytes is the version-2 policy the previous release shipped.
+func version2PolicyBytes(t *testing.T) []byte {
+	t.Helper()
+	policy := v3Policy(t)
+	version2Policy(policy)
+	data, err := yaml.Marshal(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+// installVersion2PolicyRelease leaves an installation whose active release
+// ships the version-2 policy and returns the policy path and its version-3
+// bytes, so a control can restore them.
+//
+// SEAM (open question to the coordinator): a release written by the previous
+// cw cannot be packed or installed by this cw's fixtures, so this rewrites
+// the policy inside the active release in place. That matches a real old
+// installation only if the refusal is decided before, or independently of,
+// any release-integrity check. If that does not hold, replace this helper
+// with a fixture that produces an integrity-consistent installation of a
+// version-2 release.
+func installVersion2PolicyRelease(t *testing.T, f *installerFixture, journal bool) (string, []byte) {
+	t.Helper()
+	if journal {
+		interruptAfterJournal(t, f, "update")
+	} else {
+		f.execute(t, "setup")
+	}
+	path := activeReleasePolicy(t, f)
+	current, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureRewrite(t, path, version2PolicyBytes(t))
+	return path, current
+}
+
+func TestVersion2PolicyInstallationIsRefusedBeforeAnyWrite(t *testing.T) {
+	t.Parallel()
+	for _, journal := range []bool{false, true} {
+		t.Run(fmt.Sprintf("journal %t", journal), func(t *testing.T) {
+			t.Parallel()
+			f := newInstallerFixture(t)
+			f.seedUserFiles(t)
+			path, current := installVersion2PolicyRelease(t, f, journal)
+			before := standaloneTrees(t, f)
+			// The same lifecycle commands #18 refuses for a legacy
+			// installation, previewed and applied.
+			for _, command := range []string{"setup", "install", "update", "status", "rollback", "uninstall"} {
+				for _, apply := range []bool{false, true} {
+					_, err := f.installer(apply).Execute(command)
+					assertLegacyRefusal(t, err, fmt.Sprintf("%s (apply %t)", command, apply))
+					assertTreesUnchanged(t, before)
+				}
+			}
+			// As in #18, the refusal precedes the missing-bundle error.
+			for _, command := range []string{"setup", "install", "update"} {
+				for _, apply := range []bool{false, true} {
+					i := f.installer(apply)
+					i.Bundle = nil
+					_, err := i.Execute(command)
+					assertLegacyRefusal(t, err, fmt.Sprintf("%s without a bundle (apply %t)", command, apply))
+					assertTreesUnchanged(t, before)
+				}
+			}
+			// Recovery must read the release it returns to, so a pending
+			// journal is refused. Without a journal, #18 reports nothing
+			// pending; either answer must leave the installation untouched.
+			for _, apply := range []bool{false, true} {
+				report, err := f.installer(apply).Execute("recover")
+				switch {
+				case journal:
+					assertLegacyRefusal(t, err, fmt.Sprintf("recover (apply %t)", apply))
+				case err != nil:
+					assertLegacyRefusal(t, err, fmt.Sprintf("recover without a journal (apply %t)", apply))
+				case report["pending"] != false:
+					t.Fatalf("recover without a journal (apply %t): %#v", apply, report)
+				}
+				assertTreesUnchanged(t, before)
+			}
+			// Read-only: the recorded Codex home stays readable from the
+			// valid version-4 state, as #18 keeps it for uninstalling with
+			// the existing cw.
+			if codex, _ := RecordedHomes(f.paths.State); codex != f.paths.Codex {
+				t.Fatalf("RecordedHomes codex = %q; want %q", codex, f.paths.Codex)
+			}
+			assertTreesUnchanged(t, before)
+			// Control: with the version-3 policy back, the same installation
+			// is accepted, so the refusal came from the policy version alone.
+			fixtureRewrite(t, path, current)
+			if journal {
+				f.execute(t, "recover")
+			}
+			if revision := f.statusRevision(t); revision != f.first {
+				t.Fatalf("status after restoring the version-3 policy = %s; want %s", revision, f.first)
 			}
 		})
 	}

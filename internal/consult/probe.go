@@ -6,26 +6,40 @@ import (
 	"time"
 )
 
-// CheckCredentials sends only a fixed synthetic Choice request. It reuses the
-// pinned models, validated responses, no-retry transport and common deadline.
+// probeModels are the pinned models each credential is checked against.
+var probeModels = map[string]string{jevProvider: sharedJevModel, snapProvider: snapModel, openAIProvider: openAIModel}
+
+// CheckCredentials sends only a fixed synthetic Choice request, once to each
+// adviser whose credential is set, against that adviser's pinned model. It
+// reuses the validated responses, no-retry transport and common deadline. The
+// result maps every adviser to verified, unavailable or missing (credential
+// unset, never contacted); with no credential set it makes no network call.
 // No request, raw response or credential is written to disk or returned.
 func CheckCredentials(ctx context.Context, getenv func(string) string) (map[string]string, error) {
 	shared, err := sharedRequest(newObject("state", newObject("evidence", "The marker is blue."), "questions", newObject("marker", newObject("type", "choice", "instructions", "What color is the marker?", "criteria", newObject("blue", "The evidence says blue.", "other", "The evidence says another color.")))))
 	if err != nil {
 		return nil, errors.New("credential check could not prepare synthetic request")
 	}
-	p := policy{providers: map[string]string{jevProvider: sharedJevModel, snapProvider: snapModel, openAIProvider: openAIModel}}
-	prepared, err := p.prepareAll(shared)
-	if err != nil {
-		return nil, errors.New("credential check could not prepare pinned providers")
-	}
+	prepared := newObject()
 	keys := map[string]string{}
 	for _, name := range providerOrder {
-		keys[name] = getenv(credentialNames[name])
+		key := credential(getenv, name)
+		if key == "" {
+			continue
+		}
+		value, err := prepareProvider(name, shared, probeModels[name])
+		if err != nil {
+			return nil, errors.New("credential check could not prepare pinned providers")
+		}
+		prepared.set(name, value)
+		keys[name] = key
 	}
-	raw, err := newTransport().collect(ctx, prepared, batch{credentials: keys, deadline: 30 * time.Second})
-	if err != nil {
-		return nil, err
+	raw := map[string]any{}
+	if prepared.size() > 0 {
+		raw, err = newTransport().collect(ctx, prepared, batch{credentials: keys, deadline: 30 * time.Second})
+		if err != nil {
+			return nil, err
+		}
 	}
 	result := map[string]string{}
 	failed := false
