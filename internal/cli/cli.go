@@ -243,6 +243,7 @@ func NewCommand(config Config) *cobra.Command {
 	}, RunE: func(cmd *cobra.Command, _ []string) error {
 		return writeJSON(cmd.OutOrStdout(), versionReport{Arch: runtime.GOARCH, BuiltAt: config.BuiltAt, OS: runtime.GOOS, Revision: config.Revision, Version: config.Version})
 	}})
+	addStatusSummaryFlag(root)
 	addDoctorCommand(root, config, o)
 	addTaskCommands(root, config, o)
 	addMetricsCommand(root, config, o)

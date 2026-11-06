@@ -8,16 +8,21 @@ import (
 
 var metricNames = []string{
 	"duration_ms", "input_tokens", "output_tokens", "api_requests",
+	"uncached_input_tokens", "cache_write_5m_tokens", "cache_write_1h_tokens", "cache_read_tokens", "thinking_tokens",
 	"checked_references", "incorrect_references", "defects_found", "defects_missed", "rework",
 }
 
 func counters(o Observation) map[string]*int64 {
 	values := map[string]*int64{
 		"input_tokens": nil, "output_tokens": nil, "api_requests": nil,
+		"uncached_input_tokens": nil, "cache_write_5m_tokens": nil, "cache_write_1h_tokens": nil, "cache_read_tokens": nil, "thinking_tokens": nil,
 		"checked_references": nil, "incorrect_references": nil, "defects_found": nil, "defects_missed": nil, "rework": nil,
 	}
 	if o.Usage != nil {
-		values["input_tokens"], values["output_tokens"], values["api_requests"] = o.Usage.InputTokens, o.Usage.OutputTokens, o.Usage.APIRequests
+		u := o.Usage
+		values["input_tokens"], values["output_tokens"], values["api_requests"] = u.InputTokens, u.OutputTokens, u.APIRequests
+		values["uncached_input_tokens"], values["cache_write_5m_tokens"], values["cache_write_1h_tokens"] = u.UncachedInputTokens, u.CacheWrite5mTokens, u.CacheWrite1hTokens
+		values["cache_read_tokens"], values["thinking_tokens"] = u.CacheReadTokens, u.ThinkingTokens
 	}
 	if o.Quality != nil {
 		q := o.Quality
