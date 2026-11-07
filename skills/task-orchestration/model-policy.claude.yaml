@@ -22,6 +22,12 @@ profiles:
     model: claude-opus-5-5
     effort: high
     scope: bounded_execution
+  # Every review after a task's first full independent review: the diff-scoped
+  # follow-up, a review scoped to a fix and a confirmation pass.
+  review_followup:
+    model: claude-sonnet-5-5
+    effort: high
+    scope: substantive
   github:
     model: claude-sonnet-5-5
     effort: medium
@@ -38,6 +44,7 @@ roles:
   planning: decision
   architecture: decision
   review: substantive
+  review_followup: review_followup
   diagnosis: decision
   documentation: substantive
   issue_management: substantive
