@@ -1,6 +1,6 @@
 //go:build unix
 
-package devcheck
+package skillcheck
 
 import (
 	"archive/tar"

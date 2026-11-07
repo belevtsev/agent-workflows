@@ -1,4 +1,4 @@
-package devcheck
+package skillcheck
 
 import (
 	"os"

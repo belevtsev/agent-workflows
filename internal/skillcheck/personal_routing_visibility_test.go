@@ -1,4 +1,4 @@
-package devcheck
+package skillcheck
 
 // Tests for contract WP4-visibility revision 1, requirements R1 and R2: the
 // personal routing corpus may only expect implicit routing to skills that both
