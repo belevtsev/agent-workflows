@@ -293,10 +293,10 @@ const unparsableGOFLAGS = "<redacted: unparsable GOFLAGS>"
 // RedactGOFLAGS returns GOFLAGS for storage: each field keeps its flag name
 // and value, except that the value of ldflags, gcflags, asmflags and
 // gccgoflags becomes <redacted>, whether inline (-ldflags=v) or in the next
-// field (-ldflags v), and so does every following field that does not start
-// with - (-ldflags=-X main.token=v). Those flags earn no credit, so
-// redaction never changes the rule's result. Fields are re-joined with
-// spaces, and a field
+// field (-ldflags v), and so does every later field that does not start with
+// - (-ldflags=-X main.token=v, -gcflags=-N -l secret). Such fields are never
+// valid GOFLAGS flags and those flags earn no credit, so redaction never
+// changes the rule's result. Fields are re-joined with spaces, and a field
 // holding a space or quote is wrapped in quotes, so credited reads the result
 // as it would the original. GOFLAGS that cannot be split, or holding a field
 // with both quote kinds that cannot be re-quoted, is stored as
@@ -307,8 +307,8 @@ func RedactGOFLAGS(goflags string) string {
 		return unparsableGOFLAGS
 	}
 	joined := make([]string, 0, len(fields))
-	// redactNext marks the bare value of a redacted flag; redacting marks the
-	// non-flag fields that follow a redacted flag.
+	// redactNext marks the bare value of a redacted flag; redacting is set
+	// once a redacted flag is seen and redacts every later non-flag field.
 	redactNext, redacting := false, false
 	for _, field := range fields {
 		name, _, inline := parseFlag(field)
@@ -324,8 +324,6 @@ func RedactGOFLAGS(goflags string) string {
 			} else {
 				redactNext = true
 			}
-		default:
-			redacting = false
 		}
 		switch {
 		case !strings.ContainsAny(field, " \t\n\r'\""):
