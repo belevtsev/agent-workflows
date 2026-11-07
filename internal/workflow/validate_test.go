@@ -153,7 +153,7 @@ func TestValidateSourceTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report["registrations"].(Object)) != 37 || report["skill_count"].(int) != 82 {
+	if len(report["registrations"].(Object)) != 36 || report["skill_count"].(int) != 81 {
 		t.Fatalf("unexpected maintained suite report: %#v", report)
 	}
 	manifest, err := LoadManifest(root)
@@ -369,6 +369,55 @@ func TestValidateSuiteRejectsPrivateArtifactsAndSymlinks(t *testing.T) {
 		if _, err := LoadManifest(fixture.root); err == nil || !strings.Contains(err.Error(), "escapes") {
 			t.Fatalf("error = %v", err)
 		}
+	})
+}
+
+func TestValidateSuiteAllowsOnlyTheCodexCatalogUnderAgents(t *testing.T) {
+	t.Parallel()
+	t.Run("root catalog accepted", func(t *testing.T) {
+		t.Parallel()
+		fixture := newSuiteFixture(t)
+		fixture.write(t, ".agents/plugins/marketplace.json", `{"name":"fixture","plugins":[]}`)
+		if _, err := ValidateSuite(fixture.root); err != nil {
+			t.Fatalf("ValidateSuite() rejected the Codex marketplace catalog: %v", err)
+		}
+		if err := ValidateAutomation(fixture.root); err != nil {
+			t.Fatalf("ValidateAutomation() rejected the Codex marketplace catalog: %v", err)
+		}
+	})
+	for name, want := range map[string]string{
+		".agents/skills/x/SKILL.md":                       ".agents/skills",
+		".agents/plugins/other.json":                      ".agents/plugins/other.json",
+		".agents/README.md":                               ".agents/README.md",
+		".agents/plugins/marketplace.json/nested.json":    ".agents/plugins/marketplace.json",
+		"skills/example/.agents/plugins/marketplace.json": "skills/example/.agents",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			fixture := newSuiteFixture(t)
+			if !strings.HasPrefix(name, ".agents/plugins/marketplace.json/") {
+				fixture.write(t, ".agents/plugins/marketplace.json", `{"name":"fixture","plugins":[]}`)
+			}
+			fixture.write(t, name, "fixture-secret")
+			fixture.invalid(t, "private or generated directory: "+want)
+		})
+	}
+	t.Run("empty directory beside the catalog", func(t *testing.T) {
+		t.Parallel()
+		fixture := newSuiteFixture(t)
+		fixture.write(t, ".agents/plugins/marketplace.json", `{"name":"fixture","plugins":[]}`)
+		if err := os.Mkdir(filepath.Join(fixture.root, ".agents", "other"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		fixture.invalid(t, "private or generated directory: .agents/other")
+	})
+	t.Run("registration path still rejected", func(t *testing.T) {
+		t.Parallel()
+		fixture := newSuiteFixture(t)
+		fixture.write(t, ".agents/plugins/marketplace.json", `{"name":"fixture","plugins":[]}`)
+		fixture.manifest["registrations"].(Object)["example"] = ".agents/plugins"
+		fixture.writeManifest(t)
+		fixture.invalid(t, "must not reference a private or generated directory")
 	})
 }
 

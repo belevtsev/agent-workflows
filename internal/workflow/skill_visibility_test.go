@@ -414,12 +414,11 @@ func TestSkillVisibilityShippedContent(t *testing.T) {
 	} {
 		hidden["third_party/cc-skills-golang/skills/"+name+"/SKILL.md"] = true
 	}
-	hidden["third_party/db-postgres/SKILL.md"] = true
 	for _, name := range []string{"principal-engineer", "observability", "performance"} {
 		hidden["skills/"+name+"/SKILL.md"] = true
 	}
-	if len(hidden) != 27 {
-		t.Fatalf("expected hidden set has %d entries; want 27", len(hidden))
+	if len(hidden) != 26 {
+		t.Fatalf("expected hidden set has %d entries; want 26", len(hidden))
 	}
 
 	entrypoints := visShippedEntrypoints(t, repo)
@@ -441,8 +440,8 @@ func TestSkillVisibilityShippedContent(t *testing.T) {
 			t.Errorf("V6 expected hidden entrypoint %s is not a registered SKILL.md", entrypoint)
 		}
 	}
-	if hiddenCount != 27 {
-		t.Errorf("V6 hidden entrypoints = %d; want 27", hiddenCount)
+	if hiddenCount != 26 {
+		t.Errorf("V6 hidden entrypoints = %d; want 26", hiddenCount)
 	}
 	// Named listed skills (V6 and V4) must exist and be listed on both hosts.
 	for _, entrypoint := range []string{

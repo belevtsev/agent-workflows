@@ -1,0 +1,18 @@
+{
+  "name": "agent-workflows",
+  "interface": { "displayName": "Agent Workflows" },
+  "plugins": [
+    {
+      "name": "agent-workflows",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "cc-skills-golang",
+      "source": { "source": "local", "path": "./third_party/cc-skills-golang" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
+    }
+  ]
+}

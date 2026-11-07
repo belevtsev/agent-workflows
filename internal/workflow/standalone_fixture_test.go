@@ -307,7 +307,7 @@ func installerBuildSource(maintained, destination string) error {
 	// registrations are added to the maintained suite.
 	manifest = clone(manifest)
 	registrations := Object{}
-	for _, name := range []string{"cc-skills-golang", "db-postgres", "go-principal-engineer", "backend-security-review", "protobuf-contracts", "go-pki-mtls", "software-architecture", "code-review", "test-strategy", "security-threat-model", "task-orchestration", "typesafe-ai"} {
+	for _, name := range []string{"cc-skills-golang", "codebase-design", "go-principal-engineer", "backend-security-review", "protobuf-contracts", "go-pki-mtls", "software-architecture", "code-review", "test-strategy", "security-threat-model", "task-orchestration", "typesafe-ai"} {
 		registrations[name] = object(manifest["registrations"])[name]
 	}
 	manifest["registrations"] = registrations

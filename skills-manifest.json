@@ -2,7 +2,6 @@
   "version": 3,
   "registrations": {
     "cc-skills-golang": "third_party/cc-skills-golang",
-    "db-postgres": "third_party/db-postgres",
     "go-principal-engineer": "skills/go-principal-engineer",
     "backend-security-review": "skills/backend-security-review",
     "protobuf-contracts": "skills/protobuf-contracts",
@@ -47,7 +46,6 @@
   },
   "required_licenses": [
     "third_party/cc-skills-golang/LICENSE",
-    "third_party/db-postgres/LICENSE",
     "skills/security-threat-model/LICENSE.txt",
     "third_party/typesafe-ai/LICENSE",
     "licenses/go-toml-LICENSE",

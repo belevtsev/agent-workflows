@@ -49,6 +49,11 @@ var suitePrivateDirectories = map[string]bool{
 	".pytest_cache": true, ".mypy_cache": true, ".ruff_cache": true, ".venv": true, "node_modules": true,
 }
 
+// Codex reads a repository's plugin marketplace catalog from this path. It is
+// the only .agents content a source tree may carry: anything else under
+// .agents is a personal Codex skills home that must not enter a snapshot.
+const suiteCodexCatalog = ".agents/plugins/marketplace.json"
+
 var suiteProjectDocuments = map[string]bool{
 	"LICENSE": true, "LICENSE.md": true, "LICENSE.txt": true, "CONTRIBUTING.md": true,
 	"CODE_OF_CONDUCT.md": true, "CHANGELOG.md": true, "SECURITY.md": true, "README.md": true,
@@ -411,6 +416,18 @@ func suiteInspectTree(root string) ([]string, error) {
 				return filepath.SkipDir
 			}
 			return nil
+		}
+		if display == ".agents" || strings.HasPrefix(display, ".agents/") {
+			catalog := display == suiteCodexCatalog
+			if entry.IsDir() {
+				catalog = strings.HasPrefix(suiteCodexCatalog, display+"/")
+			}
+			if !catalog {
+				return fmt.Errorf("private or generated directory: %s", display)
+			}
+			if entry.IsDir() {
+				return nil
+			}
 		}
 		if entry.IsDir() {
 			releaseStage := strings.HasPrefix(name, ".cw-release-")
