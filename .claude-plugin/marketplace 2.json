@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "agent-workflows",
+  "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
+  "metadata": {
+    "description": "Engineering workflow for Claude Code: evidence-based review, independent test authors, a verify gate, and curated Go skills.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "agent-workflows",
+      "source": "./",
+      "description": "Workflow skills, worker agents and the task-orchestration flow for substantial changes.",
+      "category": "development"
+    },
+    {
+      "name": "cc-skills-golang",
+      "source": "./third_party/cc-skills-golang",
+      "description": "Curated Go skill pack: a fork of samber/cc-skills-golang with rewritten entrypoints and no tool pre-approval.",
+      "category": "development"
+    }
+  ]
+}
