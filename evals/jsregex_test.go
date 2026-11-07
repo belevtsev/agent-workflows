@@ -16,19 +16,25 @@ import (
 // never matches, and a repeat count above RE2's limit of 1000 an open repeat,
 // so the syntax is still checked but matches are not.
 //
-// Otherwise matches are exact for the text the validator matches, JSON tool
-// input that is ASCII or BMP text, apart from these known differences:
+// Otherwise matches are exact apart from these known differences, none of
+// which affects an ASCII pattern without \P{...} matched against printable
+// ASCII text such as the JSON tool input the validator matches:
 //   - Go matches by code point where JavaScript without u matches by UTF-16
 //     unit, so ., negated classes and repeats differ on astral characters.
 //   - JavaScript's extra line terminators (U+2028, U+2029 and \r for . and
-//     for ^ and $ with m) are not modelled.
-//   - With flag i and without u, JavaScript does not fold the Kelvin sign,
-//     the long s and the Angstrom sign onto k, s and å as Go does.
+//     for ^ and $ with m).
+//   - Case-insensitive matching: without u, JavaScript canonicalizes with
+//     toUpperCase and never maps a non-ASCII character onto ASCII, where Go
+//     uses simple case folding, so letters such as the Kelvin, Ohm and
+//     Angstrom signs, long s, ß and several Greek letters differ; with u,
+//     JavaScript complements \P{...} before folding case and Go after, and
+//     \b around long s or the Kelvin sign differs too.
 //
 // Valid JavaScript that RE2 cannot express is rejected with an error naming
 // the pattern, never passed silently: v-mode set notation, \p{...} binary
-// properties, long category names, script aliases and Script_Extensions, and
-// repeats nested beyond 1000.
+// properties, long category names, script aliases and Script_Extensions,
+// class ranges bounded by a character beyond U+FFFF without u, and repeats
+// nested beyond 1000.
 type jsRegex struct {
 	*regexp.Regexp
 	approximate bool
@@ -67,7 +73,9 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 		case ch == '\\':
 			goForm, width, approx, err := syntax.escape(pattern[i:], inClass)
 			if err == nil && inClass {
-				err = ranges.item(syntax, syntax.classEscape(pattern[i:]))
+				// Without u a surrogate pair escape is two UTF-16 units.
+				pair := !syntax.unicode && width == len(`\uD83D\uDE00`) && pattern[i+1] == 'u'
+				err = ranges.item(syntax, syntax.classEscape(pattern[i:]), pair)
 			}
 			if err != nil {
 				return nil, fmt.Errorf("does not compile: %w", err)
@@ -95,8 +103,18 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 				out.WriteString(goForm)
 				continue
 			}
+			if ch >= utf8.RuneSelf {
+				// One class member per character, not per UTF-8 byte.
+				r, width := utf8.DecodeRuneInString(pattern[i:])
+				if err := ranges.item(syntax, false, r > 0xFFFF); err != nil {
+					return nil, fmt.Errorf("does not compile: %w", err)
+				}
+				out.WriteString(pattern[i : i+width])
+				i += width - 1
+				continue
+			}
 			if ch != ']' {
-				if err := ranges.item(syntax, false); err != nil {
+				if err := ranges.item(syntax, false, false); err != nil {
 					return nil, fmt.Errorf("does not compile: %w", err)
 				}
 			}
@@ -350,21 +368,29 @@ func (js jsSyntax) classEscape(s string) bool {
 // unescaped - to form a range and reserves -- for set subtraction, which RE2
 // lacks.
 type classRanges struct {
-	start      bool // the last item can start a range
-	startClass bool // the last item is a class escape
-	open       bool // a - waits for the range's end
+	start       bool // the last item can start a range
+	startClass  bool // the last item is a class escape
+	startAstral bool // the last item is an astral character
+	open        bool // a - waits for the range's end
 }
 
 // item records one class member; classEscape is true for \d, \w, \s or \p.
-func (r *classRanges) item(js jsSyntax, classEscape bool) error {
+// astral is true for a character beyond U+FFFF, which JavaScript without u
+// reads as two UTF-16 units.
+func (r *classRanges) item(js jsSyntax, classEscape, astral bool) error {
 	if r.open {
 		r.open, r.start = false, false
 		if js.unicode && (r.startClass || classEscape) {
 			return errors.New("a class escape cannot bound a range in Unicode mode")
 		}
+		if !js.unicode && !r.startClass && !classEscape && (r.startAstral || astral) {
+			// The range would join one of its UTF-16 units, which RE2 cannot
+			// express and which is often out of order.
+			return errors.New("a range bounded by a character beyond U+FFFF needs flag u")
+		}
 		return nil
 	}
-	r.start, r.startClass = true, classEscape
+	r.start, r.startClass, r.startAstral = true, classEscape, astral
 	return nil
 }
 
@@ -386,7 +412,7 @@ func (r *classRanges) dash(js jsSyntax, rest string) (string, error) {
 	if js.vMode && !r.open {
 		return "", errors.New("an unescaped - in a v-mode class must form a range")
 	}
-	return `\x{2D}`, r.item(js, false) // a literal -
+	return `\x{2D}`, r.item(js, false, false) // a literal -
 }
 
 // jsSpace lists JavaScript's \s, which RE2's \s narrows to ASCII without \v:

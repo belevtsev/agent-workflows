@@ -33,6 +33,12 @@ func authored2RegexCases() []authored2RegexCase {
 	loneLo := bs + "uDE00"              // a low surrogate with no partner
 	grin := string(rune(0x1F600))
 	alpha := string(rune(0x03B1)) // Greek small alpha
+	eAcute := string(rune(0x00E9))
+	eCirc := string(rune(0x00EA))
+	yUml := string(rune(0x00FF))
+	cyrA := string(rune(0x0430))
+	cyrYa := string(rune(0x044F))
+	cyrIe := string(rune(0x0435))
 	ctl := func(r rune) string { return string(r) }
 	rows := []authored2RegexCase{
 		// E1: \uXXXX is the code point; outside Unicode mode a short \u is the letter u.
@@ -281,7 +287,84 @@ func authored2RegexCases() []authored2RegexCase {
 		)
 	}
 	rows = append(rows, authored2RegexCase{req: "E29", pattern: `^[\sa]$`, flags: "u", ok: true, match: []string{ctl(0x1680), "a"}, noMatch: []string{"b"}})
+
+	rows = append(rows,
+		// E33: a non-ASCII class member is one character, whatever its UTF-8 length.
+		authored2RegexCase{req: "E33", pattern: "[a-" + eAcute + "-z]", flags: "v", errSub: bad},
+		authored2RegexCase{req: "E33", pattern: "[a-" + eAcute + `-\d]`, flags: "u", ok: true, match: []string{"-", "5", "c", eAcute}, noMatch: []string{eCirc}},
+		authored2RegexCase{req: "E33", pattern: "[" + cyrA + "-" + cyrYa + `-\d]`, flags: "u", ok: true, match: []string{"-", "5", cyrIe}, noMatch: []string{"a"}},
+		authored2RegexCase{req: "E33", pattern: `^[\d-` + eAcute + "-" + yUml + "]$", ok: true, match: []string{"-", "5", eAcute, yUml}, noMatch: []string{eCirc, "a"}},
+
+		// E34: a class range bounded by a character beyond U+FFFF.
+		authored2RegexCase{req: "E34", pattern: "[" + grin + "-" + grin + "]", errSub: bad},
+		authored2RegexCase{req: "E34", pattern: "[" + pair + "-" + pair + "]", errSub: bad},
+		authored2RegexCase{req: "E34", pattern: "[a-" + grin + "]", errSub: bad}, // unsupported
+		authored2RegexCase{req: "E34", pattern: "[" + grin + "-" + grin + "]", flags: "u", ok: true, match: []string{grin}, noMatch: []string{"a"}},
+		authored2RegexCase{req: "E34", pattern: "[" + pair + "-" + pair + "]", flags: "u", ok: true, match: []string{grin}, noMatch: []string{"a"}},
+		authored2RegexCase{req: "E34", pattern: "[" + grin + `-\d]`, ok: true, match: []string{"-", "5"}, noMatch: []string{"a"}},
+
+		// E35: each class starts fresh.
+		authored2RegexCase{req: "E35", pattern: `^[\w][-a]$`, flags: "u", ok: true, match: []string{"a-", "aa"}, noMatch: []string{"ab", "-a"}},
+		authored2RegexCase{req: "E35", pattern: `[a][-b]`, flags: "v", errSub: bad},
+	)
 	return rows
+}
+
+// authored2JSSpace reports whether r is in JavaScript's \s set.
+func authored2JSSpace(r rune) bool {
+	switch {
+	case r >= 0x09 && r <= 0x0D, r >= 0x2000 && r <= 0x200A:
+		return true
+	}
+	switch r {
+	case 0x20, 0xA0, 0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF:
+		return true
+	}
+	return false
+}
+
+// TestAuthored2JSWhitespaceExhaustive covers E36.
+func TestAuthored2JSWhitespaceExhaustive(t *testing.T) {
+	count := 0
+	for r := rune(0); r <= 0x10FFFF; r++ {
+		if authored2JSSpace(r) {
+			count++
+		}
+	}
+	if count != 25 {
+		t.Fatalf("authored2JSSpace holds %d code points, want 25", count)
+	}
+	type pat struct {
+		src   string
+		space bool // true: matches exactly the set; false: exactly its complement
+		re    *jsRegex
+	}
+	pats := []*pat{{src: `^\s$`, space: true}, {src: `^\S$`}, {src: `^[\S]$`}, {src: `^[^\s]$`}}
+	for _, p := range pats {
+		re, err := compileJS(p.src, "u")
+		if err != nil {
+			t.Fatalf("compileJS(%q, \"u\"): %v", p.src, err)
+		}
+		p.re = re
+	}
+	failures := 0
+	for r := rune(0); r <= 0x10FFFF; r++ {
+		if r >= 0xD800 && r <= 0xDFFF {
+			continue
+		}
+		s := string(r)
+		in := authored2JSSpace(r)
+		for _, p := range pats {
+			want := in == p.space
+			if got := p.re.MatchString(s); got != want {
+				t.Errorf("%s with flag u on U+%04X: match = %v, want %v", p.src, r, got, want)
+				failures++
+				if failures >= 5 {
+					t.Fatalf("stopping after %d mismatches", failures)
+				}
+			}
+		}
+	}
 }
 
 // TestAuthored2ValidFlags covers E31.
@@ -298,7 +381,7 @@ func TestAuthored2ValidFlags(t *testing.T) {
 	}
 }
 
-// TestAuthored2CompileJSEscapes covers E1-E30 and E32.
+// TestAuthored2CompileJSEscapes covers E1-E30 and E32-E35.
 func TestAuthored2CompileJSEscapes(t *testing.T) {
 	for _, tc := range authored2RegexCases() {
 		name := tc.req + "/" + tc.pattern + "/" + tc.flags
