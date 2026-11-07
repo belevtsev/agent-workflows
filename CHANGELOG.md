@@ -34,10 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- The commit gate stays shut while any open substantial record for the repository lacks a passing `cw task verify`; a newer record no longer hides an older open one, and the deny reason names every gating record with its verify and abandon commands. A verified record is finished, and stops gating, once another record starts, after that verification, from exactly the bytes it was verified on.
+- The commit gate stays shut while any open substantial record for the repository lacks a passing `cw task verify`; a newer record no longer hides an older open one, and the deny reason names every gating record with its verify and abandon commands. A verified record is finished, and stops gating, once another open substantial record starts, after that verification, from exactly the bytes it was verified on.
 - The commit gate ages records by their latest revision instead of their start, so a task worked on for more than 14 days keeps gating.
 - From a linked worktree of a record's checkout, the commit gate compares the linked worktree's source with the verified digest instead of the main checkout's.
-- The commit gate's hook runs for every Bash command that names git (`Bash(*git*)`) and recognises `git -C DIR`, `command [-p] git`, `env [options] git` (following `env -C DIR`), `sudo`, `timeout`/`nice`/`stdbuf` wrappers, `$(...)` substitutions before git, `sh -c '...'`, `eval` and `\git`.
+- The commit gate's hook runs for every Bash command that names git (`Bash(*git*)`) and recognises `git -C DIR`, `command [-p] git`, `env [options] git` (following `env -C DIR`), `sudo`, `timeout`/`nice`/`stdbuf` wrappers, `$(...)` and backtick substitutions (checked from the directory in effect), `sh -c '...'`, `eval` and `\git`.
 - The session-start hook says that the verify gate is inactive when `cw` is not on `PATH`.
 
 ### Removed

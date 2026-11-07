@@ -766,17 +766,19 @@ func TestFindOpenFinishedRecords(t *testing.T) {
 			want:      func(_, b Record) []foWant { return []foWant{foGating(b)} },
 		},
 		{
-			// F10: B's kind does not matter.
-			name: "small B finishes drifted A",
+			// F10b (rev 6): a small B does not govern, so it does not finish
+			// A; A gates and B is not returned.
+			name: "small B does not finish drifted A",
 			b: func(t *testing.T, store, repo string, at time.Time) Record {
 				return foStartAt(t, store, repo, "B small", "small", at)
 			},
 			aComplete: true,
-			want:      func(_, _ Record) []foWant { return nil },
+			want:      func(a, _ Record) []foWant { return []foWant{foGating(a)} },
 		},
 		{
-			// F10: B's abandonment does not matter.
-			name: "abandoned B finishes drifted A",
+			// F10b (rev 6): an abandoned B does not govern, so it does not
+			// finish A; A gates and B is not returned.
+			name: "abandoned B does not finish drifted A",
 			b: func(t *testing.T, store, repo string, at time.Time) Record {
 				b := foStartAt(t, store, repo, "B abandoned", "substantial", at)
 				if _, err := Abandon(b.Directory, "abandoned for the test"); err != nil {
@@ -785,18 +787,33 @@ func TestFindOpenFinishedRecords(t *testing.T) {
 				return b
 			},
 			aComplete: true,
-			want:      func(_, _ Record) []foWant { return nil },
+			want:      func(a, _ Record) []foWant { return []foWant{foGating(a)} },
 		},
 		{
-			// F10, F10a: B's age does not matter; A was verified 50 days ago,
-			// before stale B was created 30 days ago, so B finishes A.
-			name: "B older than MaxOpenAge finishes drifted A",
+			// F10b (rev 6): a B whose latest revision is older than
+			// MaxOpenAge does not govern, so it does not finish A, although
+			// it was created after A's CheckedAt (A verified 50 days ago, B
+			// created 30 days ago; F10a alone would let it finish A). A
+			// gates and B is not returned.
+			name: "B older than MaxOpenAge does not finish drifted A",
 			b: func(t *testing.T, store, repo string, at time.Time) Record {
 				return foStartAt(t, store, repo, "B stale", "substantial", at.Add(-30*day))
 			},
 			aComplete:    true,
 			aVerifiedAgo: 50 * day,
-			want:         func(_, _ Record) []foWant { return nil },
+			want:         func(a, _ Record) []foWant { return []foWant{foGating(a)} },
+		},
+		{
+			// F10b (rev 6) control for the stale case: the same A beside a
+			// governing (substantial, unabandoned, in-window) B created after
+			// A's CheckedAt is finished.
+			name: "in-window B finishes drifted A verified long ago",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B in window", "substantial", at)
+			},
+			aComplete:    true,
+			aVerifiedAgo: 50 * day,
+			want:         func(_, b Record) []foWant { return []foWant{foGating(b)} },
 		},
 		{
 			// F10a: B created before A's CheckedAt does not finish A, even
@@ -1005,19 +1022,32 @@ func TestFindOpenIdentifyOncePerWorktree(t *testing.T) {
 
 func TestFindOpenOrderTieBreak(t *testing.T) {
 	// Result order: newest UpdatedAt first; equal UpdatedAt orders by record
-	// ID ascending.
+	// ID ascending. F12 (rev 6): with twenty-four tied records and the order
+	// asserted over twenty FindOpen calls, an order that does not use the ID
+	// tie-break passes only by chance (at most 1/24! per call if the order
+	// comes from map iteration), so removing the tie-break fails with
+	// negligible probability of passing. Twenty-four records also take an
+	// unstable sort past its stable insertion-sort range for small inputs.
+	const tiedCount, calls = 24, 20
 	store, repo := foFixture(t)
 	now := time.Now()
 	at := now.Add(-time.Hour)
-	first := foStartAt(t, store, repo, "tie one", "substantial", at)
-	second := foStartAt(t, store, repo, "tie two", "substantial", at)
-	third := foStartAt(t, store, repo, "tie three", "substantial", at)
-	newest := foStartAt(t, store, repo, "newest", "substantial", now.Add(-time.Minute))
-	tied := []Record{first, second, third}
-	slices.SortFunc(tied, func(x, y Record) int { return strings.Compare(x.ID, y.ID) })
-	if !first.UpdatedAt.Equal(second.UpdatedAt) || !first.UpdatedAt.Equal(third.UpdatedAt) {
-		t.Fatalf("fixture updated_at values differ: %v %v %v", first.UpdatedAt, second.UpdatedAt, third.UpdatedAt)
+	tied := make([]Record, 0, tiedCount)
+	for i := range tiedCount {
+		tied = append(tied, foStartAt(t, store, repo, fmt.Sprintf("tie %02d", i), "substantial", at))
 	}
-	foExpect(t, foFind(t, store, foAtRoot(first.Baseline.Root), now, (&foStub{}).identify()),
-		foGating(newest), foGating(tied[0]), foGating(tied[1]), foGating(tied[2]))
+	newest := foStartAt(t, store, repo, "newest", "substantial", now.Add(-time.Minute))
+	for _, record := range tied {
+		if !record.UpdatedAt.Equal(tied[0].UpdatedAt) {
+			t.Fatalf("fixture updated_at values differ: %v and %v", record.UpdatedAt, tied[0].UpdatedAt)
+		}
+	}
+	slices.SortFunc(tied, func(x, y Record) int { return strings.Compare(x.ID, y.ID) })
+	want := []foWant{foGating(newest)}
+	for _, record := range tied {
+		want = append(want, foGating(record))
+	}
+	for range calls {
+		foExpect(t, foFind(t, store, foAtRoot(newest.Baseline.Root), now, (&foStub{}).identify()), want...)
+	}
 }

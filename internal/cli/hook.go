@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -258,56 +259,74 @@ type publication struct {
 
 // gitPublications returns every git commit or push in a shell command line,
 // with the directory it runs in resolved from cwd through any preceding
-// `cd DIR` or `pushd DIR` and git's own -C DIR options, without duplicates
-// and in command order. The split is deliberately simple: simple commands
-// are separated by `;`, `|`, `&`, newlines, parentheses and backticks, and
-// words by whitespace with surrounding quotes removed, so the words of a
-// quoted `sh -c '...'` or `eval "..."` string are read as the command they
-// run. A `$(...)` without nested parentheses stands for one word of the
-// command around it, and the command inside it is read on its own from cwd.
-// A directory change inside parentheses or backticks ends with them, as in
-// a subshell. After a directory change the hook cannot follow (`cd` with
-// options, `cd -`, `~`, `$VAR`, quoted paths with spaces, `popd`), the
-// directory is unknown and later git commands are not checked until an
-// absolute `cd` or -C, since the hook fails open. Redirections on a cd
-// (`cd DIR >/dev/null 2>&1`) are ignored, and `cd "$(pwd)"` or
-// `cd "$(git rev-parse --show-toplevel)"` stays in the same repository.
+// `cd DIR` or `pushd DIR`, a wrapper's `env -C DIR` or `sudo -D DIR` and
+// git's own -C DIR options, without duplicates and in command order. The
+// split is deliberately simple: simple commands are separated by `;`, `|`,
+// `&`, newlines and parentheses, and words by whitespace with surrounding
+// quotes removed, so the words of a quoted `sh -c '...'` or `eval "..."`
+// string are read as the command they run. A `$(...)` or backtick
+// substitution without nested parentheses or backticks stands for one word
+// of the command around it, and the command inside it is read on its own
+// from the directory in effect there. A directory change inside parentheses
+// or a substitution ends with them, as in a subshell. After a directory
+// change the hook cannot follow (`cd` with options, `cd -`, `~`, `$VAR`,
+// quoted paths with spaces, `popd`), the directory is unknown and later git
+// commands are not checked until an absolute `cd` or -C, since the hook
+// fails open. Redirections on a cd (`cd DIR >/dev/null 2>&1`) are ignored,
+// and `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` stays in the same
+// repository.
 func gitPublications(command, cwd string) []publication {
+	command = backtickSubstitution.ReplaceAllString(command, "$$($1)")
 	command = toplevelSubstitution.ReplaceAllString(command, ".")
-	var substituted []string
+	var substitutions []string
 	for {
 		next := commandSubstitution.ReplaceAllStringFunc(command, func(match string) string {
-			substituted = append(substituted, match[2:len(match)-1])
-			return "_"
+			substitutions = append(substitutions, match[2:len(match)-1])
+			return substitutionMarker(len(substitutions) - 1)
 		})
 		if next == command {
 			break
 		}
 		command = next
 	}
-	found := simpleGitPublications(command, cwd)
-	for _, inner := range substituted {
-		for _, publication := range simpleGitPublications(inner, cwd) {
-			if !slices.Contains(found, publication) {
-				found = append(found, publication)
-			}
-		}
-	}
-	return found
+	scanner := publicationScanner{substitutions: substitutions}
+	scanner.scan(command, cwd)
+	return scanner.found
 }
+
+// backtickSubstitution matches a backtick substitution without nested
+// backticks; it is rewritten to the equivalent `$(...)`.
+var backtickSubstitution = regexp.MustCompile("`([^`]*)`")
 
 // commandSubstitution matches a `$(...)` without nested parentheses.
 var commandSubstitution = regexp.MustCompile(`\$\([^()]*\)`)
 
-// simpleGitPublications is gitPublications for a command line whose `$(...)`
-// substitutions are already replaced.
-func simpleGitPublications(command, cwd string) []publication {
+// substitutionReference matches the marker that stands for a substitution's
+// word; NUL cannot occur in a shell command line.
+var substitutionReference = regexp.MustCompile("\x00([0-9]+)\x00")
+
+func substitutionMarker(index int) string { return "\x00" + strconv.Itoa(index) + "\x00" }
+
+// publicationScanner collects the publications of a command line whose
+// substitutions are replaced by markers indexing substitutions.
+type publicationScanner struct {
+	substitutions []string
+	found         []publication
+}
+
+// scan reads command from cwd. Each substitution referenced by a simple
+// command is read, in its own scope, from the directory in effect for that
+// simple command before the command is.
+func (s *publicationScanner) scan(command, cwd string) {
 	dir := cwd
 	var scopes []string
-	inBacktick := false
-	var found []publication
 	visit := func(segment string) {
-		words, chdirs := commandWords(segment)
+		for _, match := range substitutionReference.FindAllStringSubmatch(segment, -1) {
+			if index, err := strconv.Atoi(match[1]); err == nil && index < len(s.substitutions) {
+				s.scan(s.substitutions[index], dir)
+			}
+		}
+		words, chdirs := commandWords(substitutionReference.ReplaceAllString(segment, "_"))
 		if len(words) > 0 && (words[0] == "cd" || words[0] == "pushd" || words[0] == "popd") {
 			words = withoutRedirections(words)
 			if len(words) == 2 && words[0] != "popd" && followablePath(words[1]) {
@@ -329,8 +348,8 @@ func simpleGitPublications(command, cwd string) []publication {
 			return
 		}
 		next := publication{dir: target, push: subcommand == "push", all: subcommand == "commit" && commitsAll(arguments)}
-		if !slices.Contains(found, next) {
-			found = append(found, next)
+		if !slices.Contains(s.found, next) {
+			s.found = append(s.found, next)
 		}
 	}
 	start := 0
@@ -342,21 +361,17 @@ func simpleGitPublications(command, cwd string) []publication {
 		}
 		visit(command[start:i])
 		start = i + 1
-		opening := r == '(' || (r == '`' && !inBacktick)
-		closing := r == ')' || (r == '`' && inBacktick)
-		if r == '`' {
-			inBacktick = !inBacktick
-		}
-		if opening {
+		switch r {
+		case '(':
 			scopes = append(scopes, dir)
-		}
-		if closing && len(scopes) > 0 {
-			dir = scopes[len(scopes)-1]
-			scopes = scopes[:len(scopes)-1]
+		case ')':
+			if len(scopes) > 0 {
+				dir = scopes[len(scopes)-1]
+				scopes = scopes[:len(scopes)-1]
+			}
 		}
 	}
 	visit(command[start:])
-	return found
 }
 
 // commitsAll reports whether git commit arguments include -a or --all,
@@ -431,15 +446,14 @@ func commandWords(segment string) ([]string, []string) {
 	}
 	for len(words) > 0 {
 		word := strings.TrimPrefix(words[0], `\`)
-		options, wrapper := wrapperArgumentOptions[word]
+		_, wrapper := wrapperArgumentOptions[word]
 		switch {
 		case shellPrefixWords[word] || (strings.Contains(word, "=") && !strings.HasPrefix(word, "-")):
 			words = words[1:]
 		case wrapper:
-			if chdir, ok := wrapperDirectory(word, words[1:]); ok {
-				chdirs = append(chdirs, chdir)
-			}
-			words = withoutOptions(words[1:], options)
+			var moves []string
+			words, moves = wrapperOptions(word, words[1:])
+			chdirs = append(chdirs, moves...)
 			if word == "timeout" && len(words) > 0 {
 				words = words[1:] // the duration
 			}
@@ -453,46 +467,49 @@ func commandWords(segment string) ([]string, []string) {
 	return words, chdirs
 }
 
-// wrapperDirectory returns the directory a wrapper's leading options move
-// its command to: `env -C DIR` or `--chdir DIR`, `sudo -D DIR` or
-// `--chdir DIR`, also written `--chdir=DIR`.
-func wrapperDirectory(wrapper string, words []string) (string, bool) {
-	short := map[string]string{"env": "-C", "sudo": "-D"}[wrapper]
-	if short == "" {
-		return "", false
-	}
-	for i := 0; i < len(words); i++ {
-		option := words[i]
-		if !strings.HasPrefix(option, "-") || option == "-" || option == "--" {
-			break
-		}
-		if value, ok := strings.CutPrefix(option, "--chdir="); ok {
-			return value, true
-		}
-		if (option == short || option == "--chdir") && i+1 < len(words) {
-			return words[i+1], true
-		}
-		if slices.Contains(wrapperArgumentOptions[wrapper], option) {
-			i++ // skip this option's argument
-		}
-	}
-	return "", false
-}
-
-// withoutOptions drops leading options, and the separate argument of each
-// one listed in withArgument, up to and including a `--`.
-func withoutOptions(words, withArgument []string) []string {
+// wrapperOptions drops a wrapper's leading options, with the argument of
+// each one listed in wrapperArgumentOptions, up to and including a `--`. A
+// short option's argument may be attached (`-oL`, `-C/dir`) or follow a
+// cluster (`-iC /dir`). It returns the remaining words and, in order, the
+// directories `env -C`/`--chdir` or `sudo -D`/`--chdir` move the command to.
+func wrapperOptions(wrapper string, words []string) ([]string, []string) {
+	takes := wrapperArgumentOptions[wrapper]
+	chdir := map[string]string{"env": "-C", "sudo": "-D"}[wrapper]
+	var chdirs []string
 	for len(words) > 0 && strings.HasPrefix(words[0], "-") && words[0] != "-" {
 		option := words[0]
 		words = words[1:]
 		if option == "--" {
 			break
 		}
-		if slices.Contains(withArgument, option) && len(words) > 0 {
-			words = words[1:]
+		if strings.HasPrefix(option, "--") {
+			name, value, attached := strings.Cut(option, "=")
+			if !attached && slices.Contains(takes, name) && len(words) > 0 {
+				value, attached = words[0], true
+				words = words[1:]
+			}
+			if name == "--chdir" && attached && chdir != "" {
+				chdirs = append(chdirs, value)
+			}
+			continue
+		}
+		for i := 1; i < len(option); i++ {
+			letter := "-" + option[i:i+1]
+			if !slices.Contains(takes, letter) {
+				continue
+			}
+			value := option[i+1:]
+			if value == "" && len(words) > 0 {
+				value = words[0]
+				words = words[1:]
+			}
+			if letter == chdir {
+				chdirs = append(chdirs, value)
+			}
+			break // the rest of the cluster is this option's argument
 		}
 	}
-	return words
+	return words, chdirs
 }
 
 // commandStringOption reports whether a shell option cluster such as -c,

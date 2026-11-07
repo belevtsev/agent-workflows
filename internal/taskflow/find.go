@@ -86,13 +86,14 @@ func (o OpenRecord) Gates() bool { return o.Problem != "" }
 // for the record's selected path. identify runs at most once per worktree,
 // since a Git source digest covers the whole worktree.
 //
-// A record whose verification passed on bytes that another record for the
-// repository, started after that verification, started from (its
-// baseline_manifest.sha256) is finished, and is not returned however the
-// source changed since: the later record covers those changes. A record
-// started over changed, unverified source therefore never finishes an older
-// one, and two records started on the same bytes before either was verified
-// do not finish each other.
+// A record whose verification passed on bytes that another governing record
+// (substantial, unabandoned, within the age window), started after that
+// verification, started from (its baseline_manifest.sha256) is finished,
+// and is not returned however the source changed since: the later record
+// gates those changes itself. A record started over changed, unverified
+// source therefore never finishes an older one; neither does a small,
+// abandoned or stale record, and two records started on the same bytes
+// before either was verified do not finish each other.
 //
 // A store that does not exist is empty. A task directory whose record does
 // not load, and a verified record whose current source identity cannot be
@@ -137,11 +138,12 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 	finished := func(record Record) bool {
 		verified := record.Verification.SourceSHA256
 		for directory, peeked := range heads {
-			if peeked.baseline != verified {
+			if peeked.baseline != verified || !peeked.governs(repo.Roots, now) {
 				continue
 			}
 			successor, err := Load(directory)
-			if err == nil && successor.ID != record.ID && successor.BaselineManifest != nil && successor.BaselineManifest.SHA256 == verified &&
+			if err == nil && successor.ID != record.ID && headOf(successor).governs(repo.Roots, now) &&
+				successor.BaselineManifest != nil && successor.BaselineManifest.SHA256 == verified &&
 				successor.CreatedAt.After(record.Verification.CheckedAt) {
 				return true
 			}

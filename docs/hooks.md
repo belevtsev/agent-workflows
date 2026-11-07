@@ -31,18 +31,19 @@ without output, when there is none.
 ### Recognised commands
 
 The hook splits the command into simple commands at `;`, `&&`, `||`, `|`, `&`,
-newlines, parentheses and backticks, and finds git:
+newlines and parentheses, and finds git:
 
 - after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
   `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
   and `noglob`;
 - after the wrappers `command`, `env`, `sudo`, `time`, `nice`, `timeout` and
   `stdbuf` with their own options (`command -p`, `env -i`, `env -u NAME`,
-  `sudo -u USER`, `nice -n 5`, `timeout 30`, `stdbuf -oL`); `env -C DIR`,
-  `env --chdir=DIR` and `sudo -D DIR` move the command to `DIR`;
-- around a `$(...)` substitution in the same command
-  (`GIT_COMMITTER_DATE="$(date -R)" git commit`), whose own command is checked
-  too (from the session's directory);
+  `sudo -u USER`, `nice -n 5`, `timeout 30`, `stdbuf -oL`); `env -C DIR`
+  (also `-CDIR` or in a cluster such as `-iC DIR`), `env --chdir=DIR` and
+  `sudo -D DIR` move the command to `DIR`, and repeated ones chain;
+- around a `$(...)` or backtick substitution in the same command
+  (`GIT_COMMITTER_DATE="$(date -R)" git commit`); the command inside a
+  substitution is checked too, from the directory in effect where it appears;
 - inside a command string given to `sh`, `bash`, `zsh`, `dash` or `ksh` with
   `-c` (also `-lc` and similar), or to `eval`;
 - written as a path (`/usr/bin/git`), quoted (`"git"`, `'commit'`) or with a
@@ -52,7 +53,7 @@ newlines, parentheses and backticks, and finds git:
 
 The directory starts as the session's working directory and moves with a
 preceding `cd DIR` or `pushd DIR` and with each `-C DIR`; a `cd` inside
-parentheses or backticks ends with them, as in a subshell; redirections on a
+parentheses or a substitution ends with them, as in a subshell; redirections on a
 `cd` are ignored, and `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` after
 `cd` or `-C` stays in the same repository. The split is deliberately simple and fails open: after a directory
 change the hook cannot follow (`cd` with options, `cd -`, `~`, `$VAR`, a quoted
@@ -83,9 +84,10 @@ and both ways out: `cw task verify --task <dir> --summary`, or
 or was given up. An abandoned record accepts no further revisions and never
 gates.
 
-A record is finished, and no longer governs, once another record for the
-repository was started, after that verification, from exactly the bytes it
-was verified on (the newer record's `baseline_manifest.sha256` equals the
+A record is finished, and no longer governs, once another governing record
+(substantial, not abandoned, written within the 14 days) for the repository
+was started, after that verification, from exactly the bytes it was verified
+on (the newer record's `baseline_manifest.sha256` equals the
 older one's `verification.source_sha256`). Two records started on the same
 bytes before either was verified do not finish each other. The usual sequence, verify task A, commit, start
 task B, therefore releases A, and B's own record then covers every later

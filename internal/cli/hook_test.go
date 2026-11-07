@@ -651,6 +651,22 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 		// H11 (rev 4): env -C to a non-repository directory from the
 		// repository runs the command outside it.
 		{"env -C out of the repository", repo, "env -C " + elsewhere + " git commit -m x", false},
+		// H16 (rev 6): a command inside $(...) or backticks runs in the
+		// directory in effect where the substitution appears.
+		{"substitution after cd into the repository", elsewhere, "cd " + repo + " && out=$(git commit -m x)", true},
+		{"quoted substitution after cd into the repository", elsewhere, "cd " + repo + ` && echo "$(git push)"`, true},
+		{"backticks after cd into the repository", elsewhere, "cd " + repo + " && x=`git push`", true},
+		{"substitution after cd out of the repository", repo, "cd " + elsewhere + " && x=$(git commit -m x)", false},
+		{"git -C backtick pwd from the repository", repo, "git -C `pwd` commit -m x", true},
+		// H17 (rev 6): attached and clustered wrapper options, from a
+		// non-repository cwd.
+		{"env -C attached", elsewhere, "env -C" + repo + " git commit -m x", true},
+		{"sudo -D attached", elsewhere, "sudo -D" + repo + " git commit -m x", true},
+		{"env -iC clustered", elsewhere, "env -iC " + repo + " git commit -m x", true},
+		{"env --chdir separate value", elsewhere, "env --chdir " + repo + " git push", true},
+		{"env -C chained", elsewhere, "env -C " + repo + " -C nested git commit -m x", true},
+		// H17 (rev 6): an attached option value is not the program.
+		{"stdbuf -oL from the repository", repo, "stdbuf -oL git push", true},
 		{"cd out of the repository", repo, "cd " + elsewhere + " && git commit -m x", false},
 		// R-CMD: relative and repeated moves.
 		{"relative cd", parent, "cd " + base + " && git commit -m x", true},
@@ -1370,6 +1386,15 @@ func TestHookPrePublishFinishedRecord(t *testing.T) {
 	a := h.start(t, repo, hkTitled("Finished A"))
 	h.assessAndVerify(t, a, source)
 	b := h.start(t, repo, hkTitled("Follow-up B"))
+	// F10a precondition: B was created strictly after A's passing
+	// verification, so B can finish A.
+	verifiedA, err := taskflow.Load(a.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verifiedA.Verification == nil || !b.CreatedAt.After(verifiedA.Verification.CheckedAt) {
+		t.Fatalf("fixture: B created at %v, not after A's verification %+v", b.CreatedAt, verifiedA.Verification)
+	}
 	// Control: before the edit, B gates and A is current.
 	hkExpectDenyOnly(t, h.prePublish(t, repo, "git commit -m x"), []taskflow.Record{b}, a)
 	hkWriteFile(t, repo, "source.txt", "edited source\n")
