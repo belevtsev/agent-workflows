@@ -12,6 +12,31 @@ This guide covers the [current release](https://github.com/belevtsev/agent-workf
 curl -fsSL https://raw.githubusercontent.com/belevtsev/agent-workflows/main/install.sh | sh
 ```
 
+### Install as a plugin
+
+Both hosts can install the skills and worker agents as a plugin instead of
+running `cw install`. The plugin does not set model defaults or write the
+managed instruction block; `cw` still does both, and provides the `cw task`,
+`cw doctor` and `cw graphify` commands the skills call.
+
+Claude Code:
+
+```text
+/plugin install agent-workflows --marketplace belevtsev/agent-workflows
+```
+
+Codex:
+
+```sh
+codex plugin marketplace add belevtsev/agent-workflows
+```
+
+then run `codex`, open `/plugins`, and install `agent-workflows`; start a new
+session afterwards. The Go skill pack is a second plugin, `cc-skills-golang`, in
+the same marketplace on both hosts. If an earlier `cw install` set up this
+machine, run `cw uninstall --host claude` or `cw uninstall --host codex` first
+so each skill is listed once.
+
 The installer downloads a verified binary with its workflow resources included.
 There is no repository clone, Go build or Git requirement. Releases support
 macOS and Linux on ARM64 and AMD64. The small download helper uses `curl`, `tar`,
@@ -60,7 +85,7 @@ This source requires a published `cw-manager-v10` release. Personal
 configuration is not updated by publishing a release. If a `cw` older than v2.0.58
 installed your skills, see [moving from an older install](#moving-from-an-older-install).
 
-Installation registers 37 skills with 82 entrypoints on each selected host, and
+Installation registers 36 skills with 81 entrypoints on each selected host, and
 adds the same managed instructions to both:
 
 | | Codex | Claude Code |
@@ -307,7 +332,6 @@ so use `/effort max` for a session.
 | protobuf-contracts | Review binary, generated API, and ProtoJSON evolution and peer compatibility |
 | go-pki-mtls | Review reusable certificate, trust, and service identity lifecycles |
 | cc-skills-golang | Go specialist skills |
-| db-postgres | Diagnose PostgreSQL against actual evidence |
 | archify | Render portable, inspectable architecture and workflow diagrams |
 | graphify | Explore tracked Go source with a local structural graph |
 | typesafe-ai | Use TypeSafe and Jev for scoped judgments |
@@ -346,12 +370,11 @@ Codex uses `$name`:
 ### Skills you call by name
 
 Every skill in the automatic listing costs tokens on each request, in every
-subagent. These 27 skills are left out of that listing on both hosts, so the
+subagent. These 26 skills are left out of that listing on both hosts, so the
 agent cannot load them from the listing on its own:
 
 - ten `docker-*` skills: every one except `docker-destructive-guardrails`, which
   stays listed so it can catch unnamed cleanup and prune requests;
-- `db-postgres`;
 - from `cc-skills-golang`: the seven `golang-samber-*` skills, `golang-uber-fx`,
   `golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql`
   and `golang-spf13-viper`;
@@ -410,8 +433,8 @@ code that must behave alike on several platforms or shells, declares them not
 required, with a reason that verify reports; when in doubt, it keeps them.
 `cw task verify` checks evidence against the current worktree. New substantial-change
 tasks also require an accepted independent worker review of the completed source
-before final consultation: one full review, then at most one diff-scoped follow-up by a fresh reviewer, and a
-further review only to re-bind a fix of a defect that follow-up found. Each review
+before final consultation; the review cap is defined in
+[worker-handoffs](skills/task-orchestration/references/worker-handoffs.md). Each review
 assignment carries a bundle from `cw task bundle`, whose reach rows say how every
 changed file is called, invoked, run on which platforms and consumed. A Go test
 author's contract comes from `cw task contract-extract`, which verify re-checks
@@ -423,17 +446,13 @@ verifies the meaning of the evidence and makes the final decision. The
 [worker handoff guide](skills/task-orchestration/references/worker-handoffs.md)
 describes the reusable contract; project instructions still select their own checks.
 
-Interactive workflow diagrams:
+Workflow diagram sources (render them with the `archify` skill):
 
-- [Validated worker handoffs and independent review](docs/diagrams/validated-worker-handoffs.html)
-  shows the current path for substantial changes with delegated workers, including
-  coordinator acceptance, review findings and rework.
-  [Editable source](docs/diagrams/validated-worker-handoffs.json).
-- [Earlier workflow overview](docs/diagrams/workflow-overview.html) preserves the
+- [Validated worker handoffs and independent review](docs/diagrams/validated-worker-handoffs.json)
+  describes the current path for substantial changes with delegated workers,
+  including coordinator acceptance, review findings and rework.
+- [Earlier workflow overview](docs/diagrams/workflow-overview.json) preserves the
   overview from before the worker handoff and independent review gates were added.
-  [Editable source](docs/diagrams/workflow-overview.json).
-
-Download an HTML file and open it in a browser; GitHub displays its source.
 Each diagram is self-contained and cites a pinned source revision. The adjacent
 JSON files retain the editable specifications. Local delivery and browser-check
 receipts are excluded from version control.

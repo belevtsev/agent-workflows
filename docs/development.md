@@ -186,7 +186,7 @@ version/creation ordering governs overlapping releases.
 
 Keep credentials, machine state, backups, evaluations, and audit outputs outside
 source. Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest
-defines 37 registrations and 82 entrypoints; model defaults come from its
+defines 36 registrations and 81 entrypoints; model defaults come from its
 validated policies. `cw-manager-v10` uses self-contained resource payloads,
 per-field preferences, sealed configuration roots, state/journal4 and version3
 standalone runtime receipts. Installations made before v2.0.58 (source-checkout

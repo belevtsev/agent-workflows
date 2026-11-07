@@ -3,13 +3,14 @@ name: Validate portable workflow suite
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Validate obsolete PR heads only once. Main commits each produce a release.
+# Validate obsolete PR heads only once. Pushed v* tags each produce a release.
 concurrency:
   group: workflow-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -41,13 +42,13 @@ jobs:
         run: exec go build -mod=mod -trimpath -o .bin/cwdev ./cmd/cwdev
       - name: Verify native implementation and prepare main release in parallel
         env:
-          RELEASE_VERSION: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux' && format('v2.0.{0}', github.run_number) || '' }}
+          RELEASE_VERSION: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux' && github.ref_name || '' }}
           SOURCE_REVISION: ${{ github.sha }}
           # Race checks run once, on Linux, where they cover every package.
           RACE_CHECKS: ${{ runner.os == 'Linux' }}
         run: exec .bin/cwdev check --race="$RACE_CHECKS" --source . --revision "$SOURCE_REVISION" --release-version "$RELEASE_VERSION"
       - name: Retain exact validated release archives
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && runner.os == 'Linux'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cw-release-${{ github.sha }}
@@ -58,9 +59,9 @@ jobs:
           retention-days: 7
 
   release:
-    name: Publish native release for main commit
+    name: Publish native release for pushed tag
     needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -87,6 +88,6 @@ jobs:
       - name: Publish or reconcile the exact release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: v2.0.${{ github.run_number }}
+          VERSION: ${{ github.ref_name }}
           REVISION: ${{ github.sha }}
         run: exec go run ./cmd/cwdev release publish --source . --version "$VERSION" --revision "$REVISION" --dist dist

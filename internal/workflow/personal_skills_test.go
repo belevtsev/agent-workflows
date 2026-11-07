@@ -113,7 +113,7 @@ func TestPersonalSkillsFreshRepeatedRestoreCustomRootsAndDryRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	state, err := i.state(true)
-	if err != nil || integer(state["version"]) != 4 || state["release"] != report["release"] || len(object(hostRecord(state, hostCodex)["registrations"])) != 37 {
+	if err != nil || integer(state["version"]) != 4 || state["release"] != report["release"] || len(object(hostRecord(state, hostCodex)["registrations"])) != 36 {
 		t.Fatalf("version-four installed state: %#v, %v", state, err)
 	}
 	for name := range originals {
@@ -348,8 +348,8 @@ func TestPersonalSkillsAdditiveAbsentOriginRollbackAndAdoptedRemovalRefusal(t *t
 					t.Fatal(err)
 				}
 				state := mustRegistrationState(t, i)
-				if len(object(hostRecord(state, hostCodex)["registrations"])) != 37 || integer(state["version"]) != 4 || stateRevision(state) != sha {
-					t.Fatal("additive update did not activate 37 v4 registrations")
+				if len(object(hostRecord(state, hostCodex)["registrations"])) != 36 || integer(state["version"]) != 4 || stateRevision(state) != sha {
+					t.Fatal("additive update did not activate 36 v4 registrations")
 				}
 				for name, raw := range object(hostRecord(prior, hostCodex)["registrations"]) {
 					if !equal(object(raw)["original"], object(object(hostRecord(state, hostCodex)["registrations"])[name])["original"]) {
