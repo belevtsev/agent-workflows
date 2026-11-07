@@ -5,16 +5,108 @@ description: Resolve consequential Go ownership, lifecycle, durability, or rollo
 
 # Production Go decisions
 
-Establish the observable outcome and invariant at risk. Use the existing repository ownership model; load a focused technical reference only when it resolves a real uncertainty. A routine local change does not need a separate architecture exercise.
+This is the Go extension of `principal-engineer`. First read `../principal-engineer/SKILL.md`, next to this skill. It holds the language-neutral judgment: failure modes, ownership and lifecycle, durability, rollout and rollback, compatibility, consultation and verification. This file adds only what Go changes about applying it. A routine local change needs neither.
 
-For a consequential change, identify who owns mutable state, work, cancellation, and external effects. Trace relevant timeout, duplicate, partial-success, restart, and rollback paths. Name compatibility boundaries that actually change: API, protobuf, storage, configuration, metrics, or operator behavior.
+## Goroutines and cancellation
 
-For consequential ownership, lifecycle, or recovery decisions, or an explicit user request, use configured advisers via `cw consult` if any are configured; otherwise proceed on source evidence under the same [decision rules](../task-orchestration/SKILL.md#adjudicate). Give the coordinator grounded choices and focused claims about constraints and failure behavior; it owns calls, batching, and reuse across skills. Routine work needs no consultation. Advisers supply typed advice, not generated conclusions, proof, execution results, or authorization. Independently verify material claims even at high confidence. If consultation is unavailable or inconclusive, state the limit and continue with source evidence.
+Every goroutine has an owner that waits for it and receives its error. A `go` statement with nothing waiting is fire-and-forget: it leaks on shutdown and drops its failure.
 
-Prefer the smallest design that gives each invariant one authority. A new layer, interface, goroutine, queue, retry loop, cache, dependency, or persisted field should solve a concrete problem with a named owner. Keep irreversible effects behind the appropriate admission/durability boundary. Fence work when persisted state can no longer describe an externally visible effect. Bound concurrency, queues, retries, memory, and shutdown waits; keep slow work off liveness-critical paths unless ordering requires it.
+```go
+// run starts the workers and the server, and returns when all of them have
+// stopped. Cancelling ctx stops everything; the first error cancels the rest.
+func run(ctx context.Context, srv *http.Server, jobs <-chan Job) error {
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 
-For agents and daemons, examine crash consistency, offline recovery, disk failure, clock changes, and usable readiness when relevant. Trusted-host assumptions do not remove crash recovery or sensitive-data handling. A diagram or boundedness argument may clarify a design; throughput and latency claims require measurements under stated conditions.
+	var wg sync.WaitGroup
+	for range 4 { // bounded: four workers, never one per job
+		wg.Go(func() {
+			if err := work(ctx, jobs); err != nil {
+				cancel(err)
+			}
+		})
+	}
+	wg.Go(func() {
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			cancel(err)
+		}
+	})
+	var shutdownErr error // written by one goroutine, read after wg.Wait
+	wg.Go(func() {
+		<-ctx.Done()
+		shutdownCtx, done := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer done()
+		// ctx is already cancelled here, so cancel(err) would be ignored:
+		// keep the error and return it.
+		shutdownErr = srv.Shutdown(shutdownCtx)
+	})
+	wg.Wait()
+	cause := context.Cause(ctx)
+	if errors.Is(cause, context.Canceled) {
+		cause = nil // a normal stop, not a failure
+	}
+	return errors.Join(cause, shutdownErr)
+}
+```
+
+- Pass `context.Context` as the first argument. Never store it in a struct. Every blocking call in the goroutine selects on `ctx.Done()` or takes `ctx` (`golang-context`).
+- Use `signal.NotifyContext` in `main` to turn SIGINT and SIGTERM into cancellation, and bound shutdown with its own timeout derived through `context.WithoutCancel`.
+- The sender closes a channel, and only one sender does. Stop every `time.Ticker`, and `Stop` a `time.Timer` whose result you no longer need.
+- Bound fan-out with a fixed worker count or a semaphore; a goroutine per request item is unbounded memory (`golang-concurrency`).
+
+## Resources and errors
+
+- `defer f.Close()` is right for files you only read. For a file you wrote, check the `Close` error: a write can fail there. Join it into the returned error with `errors.Join`, not a log line (`golang-error-handling`).
+- `rows.Close`, `resp.Body.Close` and `tx.Rollback` belong to the function that opened them, in a `defer` right after the error check. Check `rows.Err()` after the loop (`golang-database`).
+- Open input-derived paths through `os.Root` (Go 1.24+), which refuses `..` and symlinks that leave the directory. `filepath.IsLocal` only checks the text of the path, so it stops `..` but not a symlink inside the directory that points out of it.
+
+## Durable writes
+
+The neutral rule is temp file, flush, rename, flush the directory. In Go:
+
+```go
+// writeFileAtomic replaces path with data so that a crash leaves either the
+// old file or the new one, never a partial write.
+func writeFileAtomic(path string, data []byte, perm os.FileMode) (err error) {
+	dir := filepath.Dir(path)
+	f, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	renamed := false
+	defer func() {
+		if err != nil && !renamed { // after the rename, the temp name is gone
+			err = errors.Join(err, os.Remove(f.Name()))
+		}
+	}()
+	if _, err := f.Write(data); err != nil {
+		return errors.Join(err, f.Close())
+	}
+	if err := f.Chmod(perm); err != nil {
+		return errors.Join(err, f.Close())
+	}
+	if err := f.Sync(); err != nil {
+		return errors.Join(err, f.Close())
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(f.Name(), path); err != nil {
+		return err
+	}
+	renamed = true
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	return errors.Join(d.Sync(), d.Close())
+}
+```
+
+`os.WriteFile` truncates in place and is not crash-safe for state you must keep.
+
+## References
 
 When a change crosses service, persistence, schema, or authority boundaries, read [backend ownership boundaries](references/backend-boundaries.md). When durable state and external effects can diverge under duplicate work, timeouts, crashes, or ownership transfer, read [distributed workflows](references/distributed-workflows.md). When work can be retried or redelivered, read [idempotency keys](references/idempotency.md). When a pool, queue, or timeout needs a number, read [capacity and tail latency](references/capacity-and-latency.md). Load these references only for the affected decision.
 
-Verify the dangerous boundary through the repository's appropriate checks. Prefer deterministic event gates over sleeps. Complete required gates once for the final relevant state; do not require a full test campaign for every design question or minor edit. Respect review-only and no-tests scope. Report concrete findings, the chosen owner and failure behavior, evidence, and residual risk; stop when the requested change is complete rather than extending it into unrelated cleanup.
+Verify Go concurrency changes with `go test -race`, and prefer channels or hooks that signal an event over `time.Sleep` in tests (`golang-testing`).

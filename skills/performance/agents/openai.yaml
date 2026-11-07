@@ -1,0 +1,6 @@
+interface:
+  display_name: "Performance"
+  short_description: "Measure first, avoid hot-path hazards, compare before and after"
+  default_prompt: "Use $performance to find hot-path hazards in this change and plan a comparable before/after measurement."
+policy:
+  allow_implicit_invocation: false

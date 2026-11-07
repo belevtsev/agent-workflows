@@ -1,9 +1,10 @@
 # Skill discovery and bounded evaluation
 
-The suite has 33 registrations and 78 entrypoints. Discovery metadata
+The suite has 37 registrations and 82 entrypoints. Discovery metadata
 is concise; entrypoints retain scope and essential safeguards, with detailed
-references loaded only for the current question. Twenty-four rarely used skills stay
-out of the automatic listing on both hosts and run only when invoked by name; see
+references loaded only for the current question. Twenty-seven skills (rarely used
+library skills and the language-neutral principal-engineer, observability and
+performance) stay out of the automatic listing on both hosts and run only when invoked by name; see
 [skills you call by name](../README.md#skills-you-call-by-name). Model/effort defaults are
 validated policy, not claims of improved quality, token savings, or elapsed time.
 Measure those outcomes on equivalent work.
@@ -12,7 +13,7 @@ Measure those outcomes on equivalent work.
 
 The historical fifteen scenarios under
 `internal/devcheck/testdata/backend-skills` remain unchanged. They exercise supplied
-skills and synthetic decision evidence. Fresh discovery is a separate ten-case
+skills and synthetic decision evidence. Fresh discovery is a separate twelve-case
 corpus under `internal/devcheck/testdata/skill-routing`: raw case inputs are in
 `inputs/`; evaluator-only rubrics and canned observations are outside that tree.
 
@@ -28,6 +29,8 @@ corpus under `internal/devcheck/testdata/skill-routing`: raw case inputs are in
 | `pki-implicit` | Trust reload evidence assessment without a skill name |
 | `pki-adjacent` | HTTPS response status review with unchanged transport |
 | `go-fuzz-implicit` | Fuzz design with a weak oracle and an invalid input exclusion |
+| `shell-portability-implicit` | Pre-release review of a `curl \| sh` installer without a skill name |
+| `shell-portability-adjacent` | Error wrapping around a Go `exec.Command` call with no shell |
 
 Existing `go test`/`cwdev check` gates validate raw/oracle separation, local paths,
 required references, discovery modes, and deterministic canned scoring. Canned
@@ -116,7 +119,7 @@ retry failures or continue a contaminated session.
    use `--ignore-user-config`. Never copy, display, or log auth files/tokens. Do not
    change the user's real skill registrations or installation.
 2. Build a sanitized catalog containing only the pinned snapshot's `skills/` and
-   `third_party/` resources. Link the 33 registrations in the disposable
+   `third_party/` resources. Link the 37 registrations in the disposable
    task home to that catalog. Do not expose the complete snapshot or checkout:
    those also contain evaluator files. Record catalog identity and registrations.
    This copy is an evaluation fixture, not a suite upgrade or live activation.

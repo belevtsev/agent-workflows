@@ -391,8 +391,10 @@ func visShippedEntrypoints(t *testing.T, repo string) []string {
 	return entrypoints
 }
 
-// V6: the shipped suite hides exactly the agreed 24 skills on both hosts and
-// lists every other entrypoint on both hosts.
+// V6: the shipped suite hides exactly the agreed 27 skills on both hosts and
+// lists every other entrypoint on both hosts. Of the skills added with
+// shell-portability, principal-engineer, observability and performance are
+// hidden; shell-portability stays listed.
 func TestSkillVisibilityShippedContent(t *testing.T) {
 	t.Parallel()
 	repo := filepath.Join("..", "..")
@@ -413,8 +415,11 @@ func TestSkillVisibilityShippedContent(t *testing.T) {
 		hidden["third_party/cc-skills-golang/skills/"+name+"/SKILL.md"] = true
 	}
 	hidden["third_party/db-postgres/SKILL.md"] = true
-	if len(hidden) != 24 {
-		t.Fatalf("expected hidden set has %d entries; want 24", len(hidden))
+	for _, name := range []string{"principal-engineer", "observability", "performance"} {
+		hidden["skills/"+name+"/SKILL.md"] = true
+	}
+	if len(hidden) != 27 {
+		t.Fatalf("expected hidden set has %d entries; want 27", len(hidden))
 	}
 
 	entrypoints := visShippedEntrypoints(t, repo)
@@ -436,8 +441,8 @@ func TestSkillVisibilityShippedContent(t *testing.T) {
 			t.Errorf("V6 expected hidden entrypoint %s is not a registered SKILL.md", entrypoint)
 		}
 	}
-	if hiddenCount != 24 {
-		t.Errorf("V6 hidden entrypoints = %d; want 24", hiddenCount)
+	if hiddenCount != 27 {
+		t.Errorf("V6 hidden entrypoints = %d; want 27", hiddenCount)
 	}
 	// Named listed skills (V6 and V4) must exist and be listed on both hosts.
 	for _, entrypoint := range []string{
@@ -445,6 +450,7 @@ func TestSkillVisibilityShippedContent(t *testing.T) {
 		"third_party/docker-skills/docker-destructive-guardrails/SKILL.md",
 		"skills/code-review/SKILL.md", "skills/graphify/SKILL.md",
 		"skills/task-orchestration/SKILL.md", "skills/test-strategy/SKILL.md",
+		"skills/shell-portability/SKILL.md",
 	} {
 		if !seen[entrypoint] {
 			t.Errorf("V6 listed entrypoint %s is not a registered SKILL.md", entrypoint)

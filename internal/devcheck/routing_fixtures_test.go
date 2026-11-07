@@ -276,7 +276,7 @@ func TestSkillRoutingFixtureStructure(t *testing.T) {
 	for _, item := range fixtures.Cases {
 		modes[item.Mode]++
 	}
-	if len(fixtures.Cases) != 10 || modes["explicit"] != 3 || modes["implicit"] != 4 || modes["adjacent-negative"] != 3 {
+	if len(fixtures.Cases) != 12 || modes["explicit"] != 3 || modes["implicit"] != 5 || modes["adjacent-negative"] != 4 {
 		t.Fatalf("routing coverage differs: %v", modes)
 	}
 	legacy, err := decodeRoutingFixture[map[string]any](filepath.Join("testdata", "backend-skills", "scenarios.json"))

@@ -33,7 +33,11 @@
     "expand-contract": "skills/expand-contract",
     "isolation-anomalies": "skills/isolation-anomalies",
     "retry-amplification": "skills/retry-amplification",
-    "clocks-and-time": "skills/clocks-and-time"
+    "clocks-and-time": "skills/clocks-and-time",
+    "shell-portability": "skills/shell-portability",
+    "principal-engineer": "skills/principal-engineer",
+    "observability": "skills/observability",
+    "performance": "skills/performance"
   },
   "global_instructions": "global/AGENTS.md",
   "claude_agents": {

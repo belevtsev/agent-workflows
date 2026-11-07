@@ -60,7 +60,7 @@ This source requires a published `cw-manager-v10` release. Personal
 configuration is not updated by publishing a release. If a `cw` older than v2.0.58
 installed your skills, see [moving from an older install](#moving-from-an-older-install).
 
-Installation registers 33 skills with 78 entrypoints on each selected host, and
+Installation registers 37 skills with 82 entrypoints on each selected host, and
 adds the same managed instructions to both:
 
 | | Codex | Claude Code |
@@ -288,6 +288,7 @@ so use `/effort max` for a session.
 | task-orchestration | Coordinate substantial work, models, assumptions, and evidence |
 | production-plan | Build context-grounded implementation plans with independent design challenges |
 | code-review | Review correctness and compatibility risks |
+| principal-engineer | Decide failure modes, ownership, durability, and rollout in any language (by name) |
 | go-principal-engineer | Resolve production Go ownership and lifecycle decisions |
 | software-architecture | Assess boundaries and interface evolution |
 | codebase-design | Design deep modules with small interfaces and real seams |
@@ -297,6 +298,9 @@ so use `/effort max` for a session.
 | isolation-anomalies | Find write skew and lost updates in transactions |
 | retry-amplification | Prevent retry storms and failures that outlive their cause |
 | clocks-and-time | Avoid wall-clock, skew, time zone, and DST bugs |
+| shell-portability | Write and run scripts that work under sh, dash, BusyBox, bash 3.2, and curl \| sh |
+| observability | Actionable errors, logs, and metrics at boundaries (by name) |
+| performance | Measure before optimizing and avoid hot-path hazards (by name) |
 | test-strategy | Choose verification for changed behavior |
 | security-threat-model | Build a repository-grounded threat model |
 | backend-security-review | Scope backend security checks and verify findings against reachable paths |
@@ -342,15 +346,20 @@ Codex uses `$name`:
 ### Skills you call by name
 
 Every skill in the automatic listing costs tokens on each request, in every
-subagent. These 24 rarely used skills are left out of that listing on both
-hosts, so the agent cannot load them from the listing on its own:
+subagent. These 27 skills are left out of that listing on both hosts, so the
+agent cannot load them from the listing on its own:
 
 - ten `docker-*` skills: every one except `docker-destructive-guardrails`, which
   stays listed so it can catch unnamed cleanup and prune requests;
 - `db-postgres`;
 - from `cc-skills-golang`: the seven `golang-samber-*` skills, `golang-uber-fx`,
   `golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql`
-  and `golang-spf13-viper`.
+  and `golang-spf13-viper`;
+- the language-neutral `principal-engineer`, `observability` and `performance`.
+  The listed Go skills cover Go work: `go-principal-engineer` reads
+  `principal-engineer` from its sibling directory, and the general skills point
+  to `golang-observability`, `golang-performance` and `golang-benchmark` for Go
+  idioms.
 
 They stay installed. To use one, name it with the host's syntax at the start of
 your message. A plain mention such as "use the docker-build-strategies skill"
