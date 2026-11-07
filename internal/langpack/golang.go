@@ -200,7 +200,7 @@ func allowedValue(name, value string) bool {
 // cleaned. Import paths and Windows-style .\pkg patterns are not credited.
 // GOFLAGS set through `go env -w` rather than the environment is not seen.
 //
-// The flag sets assume the go version recorded for the module (go 1.27). A
+// The flag sets target go 1.27, the version this repository targets. A
 // local toolchain that does not know an allowlisted flag ends the package
 // list at it, so a flag before the patterns makes go test only ".": such a
 // run is still credited.
@@ -292,10 +292,11 @@ const unparsableGOFLAGS = "<redacted: unparsable GOFLAGS>"
 
 // RedactGOFLAGS returns GOFLAGS for storage: each field keeps its flag name
 // and value, except that the value of ldflags, gcflags, asmflags and
-// gccgoflags becomes <redacted>, whether inline (-ldflags=v) or in the next
-// field (-ldflags v), and so does every later field that does not start with
-// - (-ldflags=-X main.token=v, -gcflags=-N -l secret). Such fields are never
-// valid GOFLAGS flags and those flags earn no credit, so redaction never
+// gccgoflags, with or without a test. prefix, becomes <redacted>, whether
+// inline (-ldflags=v) or in the next field (-ldflags v). After the first such
+// flag, every later field that is not an allowedFlags flag becomes <redacted>
+// as well (-ldflags=-X main.token=v, -ldflags=-s -X=main.k=v). Redacted
+// flags and fields earn no credit before or after redaction, so it never
 // changes the rule's result. Fields are re-joined with spaces, and a field
 // holding a space or quote is wrapped in quotes, so credited reads the result
 // as it would the original. GOFLAGS that cannot be split, or holding a field
@@ -308,22 +309,25 @@ func RedactGOFLAGS(goflags string) string {
 	}
 	joined := make([]string, 0, len(fields))
 	// redactNext marks the bare value of a redacted flag; redacting is set
-	// once a redacted flag is seen and redacts every later non-flag field.
+	// once a redacted flag is seen and redacts every later field that is not
+	// an allowlisted flag.
 	redactNext, redacting := false, false
 	for _, field := range fields {
-		name, _, inline := parseFlag(field)
+		raw, _, inline := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(field, "-"), "-"), "=")
+		name, _, _ := parseFlag(field)
+		_, allowed := allowedFlags[name]
 		switch {
 		case redactNext:
 			field, redactNext = "<redacted>", false
-		case redacting && !strings.HasPrefix(field, "-"):
-			field = "<redacted>"
-		case strings.HasPrefix(field, "-") && slices.Contains(redactedFlags, name):
+		case strings.HasPrefix(field, "-") && slices.Contains(redactedFlags, strings.TrimPrefix(raw, "test.")):
 			redacting = true
 			if inline {
 				field = field[:strings.IndexByte(field, '=')+1] + "<redacted>"
 			} else {
 				redactNext = true
 			}
+		case redacting && !(strings.HasPrefix(field, "-") && allowed):
+			field = "<redacted>"
 		}
 		switch {
 		case !strings.ContainsAny(field, " \t\n\r'\""):
