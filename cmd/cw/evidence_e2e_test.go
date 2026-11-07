@@ -684,12 +684,14 @@ func TestEvidenceE2EReviewSeverityAndRejectedBlocker(t *testing.T) {
 
 const allowlistPlan = `{"title":"Strict flags","kind":"substantial",
  "checkpoints":{"required":false,"reason":"contract test fixture"},
- "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","beta-args","beta-zero"],"allow_non_execution":false}],
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","beta-args","beta-zero","split","both"],"allow_non_execution":false}],
  "checks":[
   {"id":"alpha","argv":["go","test","-count=1","./alpha"],"timeout_seconds":300},
   {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
   {"id":"beta-args","argv":["go","test","-count=1","./beta","-args","-test.run=^$"],"timeout_seconds":300},
-  {"id":"beta-zero","argv":["go","test","-count=0","./beta"],"timeout_seconds":300}]}`
+  {"id":"beta-zero","argv":["go","test","-count=0","./beta"],"timeout_seconds":300},
+  {"id":"split","argv":["go","test","-count=1","./alpha","-v","./beta"],"timeout_seconds":300},
+  {"id":"both","argv":["go","test","./alpha","./beta","-count=1","-v"],"timeout_seconds":300}]}`
 
 func (e *evidenceE2E) expectProblems(step string, want, unwanted []string) {
 	e.t.Helper()
@@ -813,11 +815,11 @@ func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
 	e.runExpect(true, "beta", "GOFLAGS='-run=^$'")
 	e.expectProblems("after a later quoted -run GOFLAGS", []string{beta}, []string{anyRun, alpha})
 
-	// Build-flag values are redacted in the stored record; the redacted form
-	// still earns credit.
+	// Build-flag values are redacted in the stored record; a run using
+	// ldflags or gcflags earns no credit.
 	const secret = "hunter2-evidence-secret"
 	e.runExpect(true, "beta", "GOFLAGS='-ldflags=-X main.secret="+secret+"' -gcflags=-N -count=1")
-	e.expectProblems("after a run with ldflags and gcflags in GOFLAGS", nil, []string{anyRun, beta, alpha})
+	e.expectProblems("after a run with ldflags and gcflags in GOFLAGS", []string{beta}, []string{anyRun, alpha})
 	stored := e.latestCheckRun("beta").GOFLAGS
 	if !strings.Contains(stored, "<redacted>") || strings.Contains(stored, secret) || strings.Contains(stored, "-N") || !strings.Contains(stored, "-count=1") {
 		t.Errorf("stored GOFLAGS %q, want ldflags and gcflags values redacted and -count=1 kept", stored)
@@ -825,6 +827,18 @@ func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
 	if holding := e.recordFilesContain(secret); len(holding) != 0 {
 		t.Errorf("record files %q hold the ldflags value", holding)
 	}
+
+	// The bare form keeps the value in the following field, which is not
+	// stored verbatim either (cmd/go refuses this GOFLAGS, so the run fails).
+	const bareSecret = "bare-evidence-secret"
+	e.run("beta", "GOFLAGS=-ldflags -X=main.k="+bareSecret+" -count=1")
+	if got := e.latestCheckRun("beta").GOFLAGS; strings.Contains(got, bareSecret) {
+		t.Errorf("stored GOFLAGS %q holds the bare ldflags value", got)
+	}
+	if holding := e.recordFilesContain(bareSecret); len(holding) != 0 {
+		t.Errorf("record files %q hold the bare ldflags value", holding)
+	}
+	e.expectProblems("after a bare -ldflags GOFLAGS run", []string{beta}, []string{alpha})
 
 	// A run whose environment sets an empty GOFLAGS encodes no goflags member.
 	runs := e.storedRunMembers("beta-args")
@@ -874,4 +888,30 @@ func TestEvidenceE2EAssetMapsToAncestorPackage(t *testing.T) {
 	e.expectProblems("new nested asset", []string{anyRun, beta}, []string{alpha})
 	e.runExpect(true, "beta")
 	e.expectProblems("new nested asset, beta run", nil, []string{anyRun, beta, alpha})
+}
+
+// Like cmd/go, a non-flag argument after a flag that follows a package
+// pattern ends the package list: go test ./alpha -v ./beta passes running only
+// alpha and earns no credit for either package.
+func TestEvidenceE2EPackageListEnds(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("alpha/alpha.go", alphaSource+"\nfunc Upper() string { return \"ALPHA\" }\n")
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, alpha, beta}, nil)
+
+	e.runExpect(true, "split")
+	e.expectProblems("after go test ./alpha -v ./beta", []string{alpha, beta}, []string{anyRun})
+
+	e.runExpect(true, "both")
+	e.expectProblems("after go test ./alpha ./beta -count=1 -v", nil, []string{anyRun, alpha, beta})
 }

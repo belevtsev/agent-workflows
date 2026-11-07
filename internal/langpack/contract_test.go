@@ -496,8 +496,7 @@ var contractValueFlags = map[string]string{
 	"shuffle": "on", "count": "1", "timeout": "10m", "covermode": "atomic",
 	"coverpkg": "./...", "coverprofile": "c.out", "outputdir": "out",
 	"cpu": "1,2", "p": "4", "parallel": "4", "tags": "integration",
-	"mod": "mod", "ldflags": "-s -w", "gcflags": "all=-N -l",
-	"asmflags": "all=-trimpath=x", "pgo": "off", "bench": ".",
+	"mod": "mod", "pgo": "off", "bench": ".",
 	"benchtime": "1x", "cpuprofile": "cpu.out", "memprofile": "mem.out",
 	"memprofilerate": "1", "blockprofile": "block.out",
 	"blockprofilerate": "1", "mutexprofile": "mutex.out",
@@ -506,10 +505,10 @@ var contractValueFlags = map[string]string{
 
 // Every allowlisted flag earns credit in each of its spellings: boolean flags
 // take no value, so the next argument is the pattern; value flags consume
-// exactly their value, even one starting with a dash.
+// exactly their value.
 func TestContractAllowlistedFlagsCredit(t *testing.T) {
 	const pkg = "./internal/taskflow"
-	booleans := []string{"v", "race", "msan", "asan", "failfast", "json", "cover", "short", "trimpath", "benchmem", "x", "work", "fullpath", "artifacts"}
+	booleans := []string{"v", "race", "msan", "asan", "failfast", "json", "cover", "short", "trimpath", "benchmem", "x", "work", "fullpath", "artifacts", "modcacherw", "a"}
 	var cases [][]string
 	for _, flag := range booleans {
 		cases = append(cases,
@@ -597,6 +596,15 @@ func TestContractFlagsOutsideAllowlistDeny(t *testing.T) {
 		{"-test.fuzz", contractArgv("-test.fuzz", "FuzzX", pkg)},
 		{"-C", contractArgv("-C", ".", pkg)},
 		{"-C=", contractArgv("-C=.", "./...")},
+		// ldflags, gcflags and asmflags are off the allowlist in every form.
+		{"-ldflags=", contractArgv("-ldflags=-s -w", pkg)},
+		{"-ldflags value", contractArgv("-ldflags", "-X main.v=1", pkg)},
+		{"--ldflags", contractArgv("--ldflags=-s", pkg)},
+		{"-gcflags=", contractArgv("-gcflags=all=-N -l", pkg)},
+		{"-gcflags value", contractArgv("-gcflags", "-N", pkg)},
+		{"-asmflags=", contractArgv("-asmflags=all=-trimpath=x", pkg)},
+		{"-asmflags value", contractArgv("-asmflags", "-I", "x", pkg)},
+		{"-ldflags after the pattern", contractArgv(pkg, "-ldflags=-s")},
 		{"unknown flag", contractArgv("-frobnicate", pkg)},
 		{"unknown flag with a value", contractArgv("-frobnicate=1", pkg)},
 		{"unknown test. flag", contractArgv("-test.frobnicate", pkg)},
@@ -671,12 +679,29 @@ func TestContractGOFLAGSAllowlist(t *testing.T) {
 		{"-test.count=1", true},
 		{"--v --count=1", true},
 		{"-tags=integration -mod=mod -trimpath", true},
+		{"-modcacherw", true},
+		{"-a", true},
+		{"-modcacherw -a -count=1", true},
 		{"'-tags=a b' -count=1", true},
 		{`"-tags=a b"`, true},
-		// The rule reads GOFLAGS as cw records it, with these values redacted.
-		{"-ldflags=<redacted>", true},
-		{"-ldflags=<redacted> -gcflags=<redacted> -asmflags=<redacted> -count=1", true},
-		{"'-ldflags=<redacted>' -count=1", true},
+		// ldflags, gcflags and asmflags earn no credit, redacted or not.
+		{"-ldflags=<redacted>", false},
+		{"-ldflags=<redacted> -gcflags=<redacted> -asmflags=<redacted> -count=1", false},
+		{"'-ldflags=<redacted>' -count=1", false},
+		{"-ldflags=-s", false},
+		{"'-ldflags=-s -w' -count=1", false},
+		{"-gcflags=all=-N", false},
+		{"-asmflags=x -v", false},
+		// A value flag needs its value inline, and every field is a flag.
+		{"-tags integration", false},
+		{"-timeout 10m", false},
+		{"-tags", false},
+		{"-count", false},
+		{"-v -count", false},
+		{"count=1", false},
+		{"v", false},
+		{"./...", false},
+		{"-v ./internal/taskflow", false},
 
 		{"'-run=^$'", false},
 		{`"-run=^$"`, false},
@@ -827,27 +852,38 @@ func TestContractNonGoFileNearestAncestorPackage(t *testing.T) {
 	}
 }
 
-// RedactGOFLAGS keeps flag names and other values, replaces the values of
-// ldflags, gcflags, asmflags and gccgoflags with <redacted>, and its result
-// earns exactly the credit the original would.
+// RedactGOFLAGS keeps flag names and other fields, replaces the values of
+// ldflags, gcflags, asmflags and gccgoflags (inline or in the following
+// field) with <redacted>, and its result earns exactly the credit the
+// original would: none for a run using those flags.
 func TestContractRedactGOFLAGS(t *testing.T) {
 	const secret = "s3cr3t-value"
 	for _, tc := range []struct {
-		goflags string
-		covered bool
+		goflags  string
+		redacted bool     // the stored form holds <redacted>
+		kept     []string // fields the stored form keeps verbatim
+		covered  bool
 	}{
-		{"", true},
-		{"-count=1 -v", true},
-		{"-ldflags=-X=main.v=" + secret, true},
-		{"'-ldflags=-X main.v=" + secret + "' -count=1", true},
-		{`"-gcflags=all=-N -l ` + secret + `" -v`, true},
-		{"-asmflags=" + secret + " -race", true},
-		{"--ldflags=" + secret, true},
-		{"-gccgoflags=" + secret, false},
-		{"'-ldflags=-X main.v=" + secret + "' '-run=^$'", false},
-		{"-gcflags=" + secret + " -count=0", false},
-		{"-ldflags=" + secret + " -frobnicate", false},
-		{"'-ldflags=" + secret, false}, // unbalanced quote: cannot be split
+		{"", false, nil, true},
+		{"-count=1 -v", false, []string{"-count=1", "-v"}, true},
+		{"'-tags=a b' -count=1", false, []string{"-count=1"}, true},
+		{`"-tags=a b"`, false, nil, true},
+		{"-modcacherw -a -count=1", false, []string{"-modcacherw", "-a", "-count=1"}, true},
+		{"-ldflags=-X=main.v=" + secret, true, nil, false},
+		{"'-ldflags=-X main.v=" + secret + "' -count=1", true, []string{"-count=1"}, false},
+		{`"-gcflags=all=-N -l ` + secret + `" -v`, true, []string{"-v"}, false},
+		{"-asmflags=" + secret + " -race", true, []string{"-race"}, false},
+		{"--ldflags=" + secret, true, nil, false},
+		{"-gccgoflags=" + secret, true, nil, false},
+		{"-tags=a -ldflags=" + secret, true, []string{"-tags=a"}, false},
+		{"'-ldflags=-X main.v=" + secret + "' '-run=^$'", true, nil, false},
+		// Bare form: the value is the following field, which must not be
+		// stored verbatim.
+		{"-ldflags -X=main.k=" + secret + " -count=1", false, nil, false},
+		{"-gcflags " + secret, false, nil, false},
+		{"--asmflags " + secret + " -v", false, nil, false},
+		{"-gccgoflags " + secret, false, nil, false},
+		{"'-ldflags=" + secret, false, nil, false}, // unbalanced quote: cannot be split
 	} {
 		t.Run(tc.goflags, func(t *testing.T) {
 			stored := langpack.RedactGOFLAGS(tc.goflags)
@@ -857,17 +893,63 @@ func TestContractRedactGOFLAGS(t *testing.T) {
 			if tc.goflags == "" && stored != "" {
 				t.Errorf("RedactGOFLAGS(\"\") = %q, want empty", stored)
 			}
-			if strings.Contains(tc.goflags, "flags=") && tc.covered && !strings.Contains(stored, "<redacted>") {
+			if tc.redacted && !strings.Contains(stored, "<redacted>") {
 				t.Errorf("RedactGOFLAGS(%q) = %q has no <redacted> value", tc.goflags, stored)
 			}
-			for _, kept := range []string{"-count=1", "-v", "-race"} {
-				if slices.Contains(strings.Fields(tc.goflags), kept) && tc.covered && !slices.Contains(strings.Fields(stored), kept) {
+			for _, kept := range tc.kept {
+				if !slices.Contains(strings.Fields(stored), kept) {
 					t.Errorf("RedactGOFLAGS(%q) = %q drops %s", tc.goflags, stored, kept)
 				}
 			}
-			if got := contractCovers(t, langpack.Run{Argv: contractArgv("./internal/taskflow"), GOFLAGS: stored}); got != tc.covered {
-				t.Errorf("stored GOFLAGS %q (from %q): covered = %v, want %v", stored, tc.goflags, got, tc.covered)
+			for _, argv := range [][]string{contractArgv("./internal/taskflow"), contractArgv("-count=1", "./...")} {
+				if got := contractCovers(t, langpack.Run{Argv: argv, GOFLAGS: stored}); got != tc.covered {
+					t.Errorf("argv %q with stored GOFLAGS %q (from %q): covered = %v, want %v", argv, stored, tc.goflags, got, tc.covered)
+				}
 			}
 		})
+	}
+}
+
+// Like cmd/go, once a flag follows a package pattern, a later non-flag
+// argument ends the package list and goes to the test binary: such a run
+// earns no credit for any package. A flag's value is not such an argument.
+func TestContractPackageListEnds(t *testing.T) {
+	const (
+		taskflow = "internal/taskflow/taskflow.go"
+		pkgFile  = "pkg/a.go"
+	)
+	changed := []string{taskflow, pkgFile}
+	for _, tc := range []struct {
+		name    string
+		argv    []string
+		covered bool
+	}{
+		{"flag between patterns", contractArgv("./internal/taskflow", "-v", "./pkg"), false},
+		{"value flag between patterns", contractArgv("./internal/taskflow", "-count=1", "./pkg"), false},
+		{"-race between patterns", contractArgv("./pkg", "-race", "./internal/taskflow"), false},
+		{"separate value flag between patterns", contractArgv("./internal/taskflow", "-count", "1", "./pkg"), false},
+		{"./... then a flag then a pattern", contractArgv("./...", "-v", "./pkg"), false},
+		{"leading flag, then split", contractArgv("-v", "./internal/taskflow", "-race", "./pkg"), false},
+		{"non-pattern word after a flag", contractArgv("./internal/taskflow", "./pkg", "-v", "extra"), false},
+		{"flags after both patterns", contractArgv("./internal/taskflow", "./pkg", "-v"), true},
+		{"flags before both patterns", contractArgv("-v", "./internal/taskflow", "./pkg"), true},
+		{"flags around both patterns", contractArgv("-race", "./internal/taskflow", "./pkg", "-count=1", "-v"), true},
+		{"separate values after the patterns", contractArgv("./internal/taskflow", "./pkg", "-timeout", "10m", "-count", "1"), true},
+		{"-bench . after the patterns", contractArgv("./internal/taskflow", "./pkg", "-bench", ".", "-benchtime", "1x"), true},
+		{"./... with trailing flags", contractArgv("./...", "-count=1", "-shuffle", "on"), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			problems := contractGoProblems(t, changed, tc.argv)
+			if tc.covered && len(problems) != 0 {
+				t.Fatalf("argv %q should cover both packages; problems %q", tc.argv, problems)
+			}
+			if !tc.covered && (!contractProblemFor(problems, "internal/taskflow") || !contractProblemFor(problems, "pkg") || len(problems) != 2) {
+				t.Fatalf("argv %q should cover neither package; problems %q", tc.argv, problems)
+			}
+		})
+	}
+	// A split ./... run does not satisfy a module-file change.
+	if problems := contractGoProblems(t, []string{"go.mod"}, contractArgv("./...", "-v", "./pkg")); !slices.Contains(problems, contractModuleProblem("go.mod")) {
+		t.Errorf("a go.mod change is satisfied by a split ./... run: problems %q", problems)
 	}
 }
