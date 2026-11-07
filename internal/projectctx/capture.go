@@ -13,8 +13,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -28,8 +30,16 @@ const (
 type captured struct {
 	snapshot Snapshot
 	paths    []string
+	files    []FileState
 	warnings []string
 	partial  bool
+}
+
+// FileState is one eligible source file at capture time.
+type FileState struct {
+	Path   string `json:"path"`   // slash-separated, relative to Snapshot.Root; see manifestPath for \\ and \xNN
+	Mode   string `json:"mode"`   // "100644", "100755" (owner-executable) or "120000" (symlink)
+	SHA256 string `json:"sha256"` // SHA-256 of the file bytes, or of the symlink target text
 }
 
 type gitEntry struct {
@@ -47,6 +57,78 @@ func Capture(ctx context.Context, repo string) (Snapshot, error) {
 		return Snapshot{}, errors.New("project source identity is incomplete: " + strings.Join(got.warnings, "; "))
 	}
 	return got.snapshot, nil
+}
+
+// manifestPath spells a relative path as valid UTF-8 so it can be stored as
+// JSON. A valid path without a backslash, the usual case, is unchanged.
+// Otherwise each backslash becomes \\ and each byte of an invalid sequence
+// \xNN, so distinct paths keep distinct spellings. A spelling only names the
+// file; it is not opened.
+func manifestPath(rel string) string {
+	rel = filepath.ToSlash(rel)
+	if utf8.ValidString(rel) && !strings.Contains(rel, `\`) {
+		return rel
+	}
+	var out strings.Builder
+	for i := 0; i < len(rel); {
+		r, size := utf8.DecodeRuneInString(rel[i:])
+		switch {
+		case r == utf8.RuneError && size == 1:
+			fmt.Fprintf(&out, `\x%02x`, rel[i])
+		case r == '\\':
+			out.WriteString(`\\`)
+		default:
+			out.WriteString(rel[i : i+size])
+		}
+		i += size
+	}
+	return out.String()
+}
+
+// ManifestRawPath reverses manifestPath: it returns the on-disk relative path
+// (slash-separated) that a manifest spelling names, so the file can be opened
+// or searched for. A spelling that manifestPath left unchanged is returned as is.
+func ManifestRawPath(spelled string) string {
+	if !strings.Contains(spelled, `\`) {
+		return spelled
+	}
+	var out []byte
+	for i := 0; i < len(spelled); i++ {
+		if spelled[i] == '\\' && i+1 < len(spelled) {
+			if spelled[i+1] == '\\' {
+				out = append(out, '\\')
+				i++
+				continue
+			}
+			if spelled[i+1] == 'x' && i+3 < len(spelled) {
+				if value, err := strconv.ParseUint(spelled[i+2:i+4], 16, 8); err == nil {
+					out = append(out, byte(value))
+					i += 3
+					continue
+				}
+			}
+		}
+		out = append(out, spelled[i])
+	}
+	return string(out)
+}
+
+// CaptureManifest returns the snapshot Capture returns for the same source and
+// one FileState per eligible file, sorted by path, from the same single read.
+// A tracked file missing from disk is omitted. It fails exactly when Capture
+// fails.
+func CaptureManifest(ctx context.Context, repo string) (Snapshot, []FileState, error) {
+	got, err := capture(ctx, repo)
+	if err != nil {
+		return Snapshot{}, nil, err
+	}
+	if got.partial {
+		return Snapshot{}, nil, errors.New("project source identity is incomplete: " + strings.Join(got.warnings, "; "))
+	}
+	// Capture walks raw paths in byte order; an escaped spelling can sort
+	// differently, so order by the spelling the manifest stores.
+	slices.SortFunc(got.files, func(a, b FileState) int { return strings.Compare(a.Path, b.Path) })
+	return got.snapshot, got.files, nil
 }
 
 func canonicalDirectory(path string) (string, error) {
@@ -251,6 +333,8 @@ func capture(ctx context.Context, repo string) (captured, error) {
 				continue
 			}
 			fmt.Fprintf(hash, "symlink:%d:%s\x00", len(target), target)
+			targetHash := sha256.Sum256([]byte(target))
+			got.files = append(got.files, FileState{Path: manifestPath(rel), Mode: "120000", SHA256: hex.EncodeToString(targetHash[:])})
 			if indexed, ok := tracked[rel]; ok {
 				object := gitBlobHash(indexed.oid, int64(len(target)))
 				io.WriteString(object, target)
@@ -301,7 +385,13 @@ func capture(ctx context.Context, repo string) (captured, error) {
 				got.snapshot.Dirty = true
 			}
 		}
-		fmt.Fprintf(hash, "bytes:%d:%x\x00", read, fileHash.Sum(nil))
+		fileSum := fileHash.Sum(nil)
+		fmt.Fprintf(hash, "bytes:%d:%x\x00", read, fileSum)
+		fileMode := "100644"
+		if info.Mode().Perm()&0100 != 0 {
+			fileMode = "100755"
+		}
+		got.files = append(got.files, FileState{Path: manifestPath(rel), Mode: fileMode, SHA256: hex.EncodeToString(fileSum)})
 		got.snapshot.FileCount++
 	}
 	fmt.Fprintf(hash, "dirty:%t\x00", got.snapshot.Dirty)

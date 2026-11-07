@@ -21,8 +21,14 @@ func workerBrief(id, agent, role string, owned []string, checks ...string) Worke
 	return WorkerBrief{ID: id, AgentID: agent, Role: role, Goal: "Complete the bounded assigned work.", OwnedPaths: owned, Constraints: []string{"Preserve other workers' edits."}, CheckIDs: checks, StopCondition: "Return a terminal source-bound handoff with actual evidence."}
 }
 
+// mustAssignWorker assigns the brief. A review brief without a bundle in a
+// record that has a baseline manifest gets a generated bundle whose facets
+// are all "n/a: test fixture" (see fixtureReviewBundle in bundle_test.go).
 func mustAssignWorker(t *testing.T, record Record, brief WorkerBrief) Record {
 	t.Helper()
+	if brief.Role == "review" && brief.Bundle == nil && record.BaselineManifest != nil {
+		brief.Bundle = fixtureReviewBundle(t, record, brief.ID)
+	}
 	updated, err := AssignWorker(t.Context(), record.Directory, brief)
 	if err != nil {
 		t.Fatal(err)

@@ -303,7 +303,7 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
-		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline) {
+		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest)) {
 			return Record{}, "", errors.New("immutable task baseline changed")
 		}
 		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {
@@ -343,6 +343,9 @@ func validateRecord(record Record) error {
 	}
 	if _, err := hex.DecodeString(record.ID); err != nil {
 		return errors.New("invalid task ID")
+	}
+	if manifest := record.BaselineManifest; manifest != nil && (manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0) {
+		return errors.New("invalid stored baseline manifest reference")
 	}
 	if err := consult.ValidateBinding(record.Advisers); err != nil {
 		return err

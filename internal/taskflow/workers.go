@@ -30,6 +30,9 @@ type WorkerBrief struct {
 	Constraints   []string `json:"constraints"`
 	CheckIDs      []string `json:"check_ids"`
 	StopCondition string   `json:"stop_condition"`
+	// Bundle names the filled reviewer bundle; a review assignment in a record
+	// with a baseline manifest requires it, and no other role may carry one.
+	Bundle *BundleRef `json:"bundle,omitempty"`
 }
 
 type WorkerAssignment struct {
@@ -38,6 +41,9 @@ type WorkerAssignment struct {
 	Snapshot   projectctx.Snapshot `json:"snapshot"`
 	SHA256     string              `json:"sha256"`
 	AssignedAt time.Time           `json:"assigned_at"`
+	// BundleFile is the immutable copy of the brief's bundle in the task
+	// directory; its bytes hash to Brief.Bundle.SHA256.
+	BundleFile string `json:"bundle_file,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -172,6 +178,9 @@ func validateBrief(record Record, brief WorkerBrief) error {
 			}
 		}
 	}
+	if brief.Bundle != nil && (brief.Role != "review" || !filepath.IsAbs(brief.Bundle.Path) || filepath.Clean(brief.Bundle.Path) != brief.Bundle.Path || len(brief.Bundle.Path) > 4096 || strings.ContainsFunc(brief.Bundle.Path, unicode.IsControl) || !validSHA256(brief.Bundle.SHA256)) {
+		return errors.New("only a review brief carries a bundle, with a clean absolute path and its SHA-256")
+	}
 	if !uniqueIDs(brief.CheckIDs) || len(brief.CheckIDs) > 256 {
 		return errors.New("worker check_ids must be distinct planned check IDs")
 	}
@@ -278,6 +287,11 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 		}
 		if err := validateWorkerOwnership(*record, after, brief); err != nil {
 			return err
+		}
+		if record.BaselineManifest != nil && brief.Role == "review" || brief.Bundle != nil {
+			if assignment.BundleFile, err = storeReviewBundle(ctx, root, *record, brief, after); err != nil {
+				return err
+			}
 		}
 		record.Assignments = append(record.Assignments, assignment)
 		record.EvidenceRevision++
@@ -908,6 +922,11 @@ func workerEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sn
 		for _, id := range accepted.CheckRuns {
 			if err := workerCheckArtifact(root, record, id); err != nil {
 				problems = append(problems, fmt.Sprintf("worker acceptance %s: %v", assigned.Brief.ID, err))
+			}
+		}
+		if assigned.BundleFile != "" {
+			if err := reviewBundleArtifact(root, assigned); err != nil {
+				problems = append(problems, fmt.Sprintf("worker assignment %s: %v", assigned.Brief.ID, err))
 			}
 		}
 		if assigned.Brief.Role == "review" && !unresolved && len(assigned.Brief.OwnedPaths) == 1 && assigned.Brief.OwnedPaths[0] == "." && independentReviewer(record, assigned) && fresh == nil {

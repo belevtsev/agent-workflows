@@ -62,6 +62,9 @@ func validateWorkerRecord(record Record) error {
 		if err != nil || !validSHA256(assigned.SHA256) || hash != assigned.SHA256 {
 			return errors.New("stored worker assignment hash differs")
 		}
+		if (assigned.BundleFile != "") != (assigned.Brief.Bundle != nil) || assigned.BundleFile != "" && !bundleFileName.MatchString(assigned.BundleFile) {
+			return errors.New("stored review assignment bundle binding is invalid")
+		}
 	}
 	results := map[string]bool{}
 	for _, bound := range record.WorkerResults {
@@ -115,6 +118,9 @@ func validateWorkerTransition(previous, current Record) error {
 	}
 	if len(current.Assignments) > len(previous.Assignments) {
 		assigned := current.Assignments[len(previous.Assignments)]
+		if current.BaselineManifest != nil && assigned.Brief.Role == "review" && assigned.BundleFile == "" {
+			return errors.New("stored review assignment lacks its reviewer bundle")
+		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {
 				if other.Brief.Role != "implementation" || findWorkerResult(previous, other.Brief.ID) != nil {

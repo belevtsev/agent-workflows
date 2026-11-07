@@ -52,9 +52,16 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	if err := consult.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
-	snapshot, err := projectctx.Capture(ctx, repo)
+	snapshot, files, err := projectctx.CaptureManifest(ctx, repo)
 	if err != nil {
 		return Record{}, fmt.Errorf("capture complete task baseline: %w", err)
+	}
+	manifest, err := encode(files)
+	if err != nil {
+		return Record{}, err
+	}
+	if len(manifest) > MaxInputBytes {
+		return Record{}, errors.New("baseline manifest exceeds the 8 MiB limit")
 	}
 	store, err = privateStore(store, snapshot.Root)
 	if err != nil {
@@ -82,7 +89,7 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	}
 	defer root.Close()
 	now := time.Now().UTC()
-	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
+	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -90,6 +97,9 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	}
 	if len(data) > MaxInputBytes {
 		return Record{}, initializationError(errors.New("initial task revision exceeds size limit"))
+	}
+	if err := writeNew(root, baselineManifestFile, manifest); err != nil {
+		return Record{}, initializationError(err)
 	}
 	if err := writeNew(root, "record-000001.json", data); err != nil {
 		return Record{}, initializationError(err)
