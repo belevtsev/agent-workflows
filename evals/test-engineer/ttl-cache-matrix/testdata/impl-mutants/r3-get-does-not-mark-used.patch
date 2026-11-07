@@ -1,0 +1,12 @@
+Breaks R3: Get returns a live entry without marking it most recently used.
+
+--- a/cache.go
++++ b/cache.go
+@@ -84,7 +84,6 @@
+ 		delete(c.items, key)
+ 		return zero, false
+ 	}
+-	c.order.MoveToFront(e)
+ 	return it.value, true
+ }
+ 
