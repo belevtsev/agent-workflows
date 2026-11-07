@@ -276,6 +276,9 @@ type publication struct {
 // and `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` stays in the same
 // repository.
 func gitPublications(command, cwd string) []publication {
+	// NUL is reserved for substitution markers; a command that carries one
+	// could otherwise make a substitution reference itself.
+	command = strings.ReplaceAll(command, "\x00", "")
 	command = backtickSubstitution.ReplaceAllString(command, "$$($1)")
 	command = toplevelSubstitution.ReplaceAllString(command, ".")
 	var substitutions []string
@@ -302,7 +305,7 @@ var backtickSubstitution = regexp.MustCompile("`([^`]*)`")
 var commandSubstitution = regexp.MustCompile(`\$\([^()]*\)`)
 
 // substitutionReference matches the marker that stands for a substitution's
-// word; NUL cannot occur in a shell command line.
+// word; gitPublications removes any NUL from the command first.
 var substitutionReference = regexp.MustCompile("\x00([0-9]+)\x00")
 
 func substitutionMarker(index int) string { return "\x00" + strconv.Itoa(index) + "\x00" }
@@ -436,7 +439,8 @@ func followablePath(path string) bool {
 // its program: NAME=value assignments, shell prefix words, wrappers with
 // their options (`env -i`, `nice -n 5`, `timeout 30`, `sudo -u x`), `sh -c`
 // and a backslash that bypasses an alias. It also returns, in order, the
-// directories `env -C DIR` and `sudo -D DIR` move the command to.
+// directories `env -C DIR` and `sudo -D DIR` move the command to, one per
+// wrapper (`env -C a env -C b` runs in a/b).
 func commandWords(segment string) ([]string, []string) {
 	var words, chdirs []string
 	for _, word := range strings.Fields(segment) {
@@ -470,8 +474,10 @@ func commandWords(segment string) ([]string, []string) {
 // wrapperOptions drops a wrapper's leading options, with the argument of
 // each one listed in wrapperArgumentOptions, up to and including a `--`. A
 // short option's argument may be attached (`-oL`, `-C/dir`) or follow a
-// cluster (`-iC /dir`). It returns the remaining words and, in order, the
-// directories `env -C`/`--chdir` or `sudo -D`/`--chdir` move the command to.
+// cluster (`-iC /dir`). It returns the remaining words and the directory
+// `env -C`/`--chdir` or `sudo -D`/`--chdir` moves the command to, if any;
+// as in env and sudo, the last one wins and a relative one is resolved from
+// the directory the wrapper runs in.
 func wrapperOptions(wrapper string, words []string) ([]string, []string) {
 	takes := wrapperArgumentOptions[wrapper]
 	chdir := map[string]string{"env": "-C", "sudo": "-D"}[wrapper]
@@ -489,7 +495,7 @@ func wrapperOptions(wrapper string, words []string) ([]string, []string) {
 				words = words[1:]
 			}
 			if name == "--chdir" && attached && chdir != "" {
-				chdirs = append(chdirs, value)
+				chdirs = []string{value}
 			}
 			continue
 		}
@@ -504,7 +510,7 @@ func wrapperOptions(wrapper string, words []string) ([]string, []string) {
 				words = words[1:]
 			}
 			if letter == chdir {
-				chdirs = append(chdirs, value)
+				chdirs = []string{value}
 			}
 			break // the rest of the cluster is this option's argument
 		}

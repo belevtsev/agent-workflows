@@ -31,7 +31,7 @@ without output, when there is none.
 ### Recognised commands
 
 The hook splits the command into simple commands at `;`, `&&`, `||`, `|`, `&`,
-newlines and parentheses, and finds git:
+newlines, parentheses and any unpaired backtick, and finds git:
 
 - after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
   `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
@@ -40,7 +40,9 @@ newlines and parentheses, and finds git:
   `stdbuf` with their own options (`command -p`, `env -i`, `env -u NAME`,
   `sudo -u USER`, `nice -n 5`, `timeout 30`, `stdbuf -oL`); `env -C DIR`
   (also `-CDIR` or in a cluster such as `-iC DIR`), `env --chdir=DIR` and
-  `sudo -D DIR` move the command to `DIR`, and repeated ones chain;
+  `sudo -D DIR` move the command to `DIR` (within one wrapper the last
+  one wins, as in `env` and `sudo`; nested wrappers such as
+  `env -C a env -C b` move it to `a/b`);
 - around a `$(...)` or backtick substitution in the same command
   (`GIT_COMMITTER_DATE="$(date -R)" git commit`); the command inside a
   substitution is checked too, from the directory in effect where it appears;

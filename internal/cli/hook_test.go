@@ -625,6 +625,11 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	elsewhere := hkCanonicalTempDir(t)
+	// H17 (rev 7): a non-repository directory with the same relative name
+	// as the repository's subdirectory.
+	if err := os.Mkdir(filepath.Join(elsewhere, "nested"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	parent, base := filepath.Dir(repo), filepath.Base(repo)
 	h := newHKHarness(t)
 	record := h.start(t, repo, hkSubstantialPlan)
@@ -664,7 +669,21 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 		{"sudo -D attached", elsewhere, "sudo -D" + repo + " git commit -m x", true},
 		{"env -iC clustered", elsewhere, "env -iC " + repo + " git commit -m x", true},
 		{"env --chdir separate value", elsewhere, "env --chdir " + repo + " git push", true},
-		{"env -C chained", elsewhere, "env -C " + repo + " -C nested git commit -m x", true},
+		// H17 (rev 7, supersedes the rev 6 chained case): within one
+		// wrapper a repeated -C/--chdir (env) or -D/--chdir (sudo) is
+		// last-wins, each value resolved from the directory in effect (the
+		// cwd), not from the earlier option. elsewhere/nested exists and is
+		// not a repository, so chaining and last-wins give different results.
+		{"env -C repeated, last is the repository", elsewhere, "env -C " + elsewhere + " -C " + repo + " git commit -m x", true},
+		{"env -C repeated, last is outside the repository", elsewhere, "env -C " + repo + " -C " + elsewhere + " git commit -m x", false},
+		{"env -C repeated, last is relative from the repository", repo, "env -C " + elsewhere + " -C nested git commit -m x", true},
+		{"env -C repeated, last is relative from a non-repository cwd", elsewhere, "env -C " + repo + " -C nested git commit -m x", false},
+		{"env --chdir= then -C, last is the repository", elsewhere, "env --chdir=" + elsewhere + " -C " + repo + " git commit -m x", true},
+		{"env -C then --chdir, last is outside the repository", elsewhere, "env -C " + repo + " --chdir " + elsewhere + " git push", false},
+		{"sudo -D repeated, last is the repository", elsewhere, "sudo -D " + elsewhere + " -D " + repo + " git commit -m x", true},
+		{"sudo -D repeated, last is outside the repository", elsewhere, "sudo -D " + repo + " -D " + elsewhere + " git commit -m x", false},
+		// H17 (rev 7): separate nested wrappers still chain.
+		{"nested env -C wrappers chain", elsewhere, "env -C " + repo + " env -C nested git commit -m x", true},
 		// H17 (rev 6): an attached option value is not the program.
 		{"stdbuf -oL from the repository", repo, "stdbuf -oL git push", true},
 		{"cd out of the repository", repo, "cd " + elsewhere + " && git commit -m x", false},
@@ -890,6 +909,66 @@ func TestHookPrePublishFailsOpenOnBadInput(t *testing.T) {
 			hkExpectAllow(t, h.runPrePublish(t, test.stdin))
 		})
 	}
+}
+
+func TestHookPrePublishFailsOpenOnNUL(t *testing.T) {
+	// H18 (rev 7): a Bash command holding NUL characters (JSON \u0000)
+	// never crashes the hook: Execute returns nil without panicking, and
+	// any output is one valid decision line (deny or no output are both
+	// acceptable while the repository has an open record).
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	record := h.start(t, repo, hkSubstantialPlan)
+	h.config.WorkingDir = func() (string, error) { return repo, nil }
+	// Control: the same repository and record deny a plain commit.
+	hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), record)
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		// The two H18 examples: `echo $(echo \u00000\u0000 git commit -m x)`
+		// and NUL characters around `git commit -m x`.
+		{"NUL inside a substitution", "echo $(echo \x00" + "0\x00 git commit -m x)"},
+		{"NUL around a commit", "\x00\x00\x00git commit -m x\x00\x00\x00"},
+		// Further NUL placements.
+		{"NUL separated from a commit by spaces", "\x00 git commit -m x \x00"},
+		{"NUL only", "\x00"},
+		{"NUL between git and commit", "git\x00commit -m x"},
+		{"NUL in a commit message", "git commit -m x\x00y"},
+		{"NUL in a cd target", "cd \x00 && git commit -m x"},
+		{"NUL in a git -C target", "git -C " + repo + "\x00 commit -m x"},
+		{"NUL in an env -C target", "env -C \x00" + repo + " git push"},
+		{"NUL in backticks", "x=`\x00git push`"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stdin := hkPrePublishInput(t, repo, test.command)
+			if !bytes.Contains(stdin, []byte(`\u0000`)) {
+				t.Fatalf("payload %q does not carry the NUL as \\u0000", stdin)
+			}
+			got := hkRunPrePublishNoPanic(t, h, stdin)
+			if got == "" {
+				return
+			}
+			if decision, reason := hkDecision(t, got); decision != "deny" && decision != "ask" {
+				t.Fatalf("permissionDecision %q, want deny or ask; reason %q", decision, reason)
+			}
+		})
+	}
+}
+
+// hkRunPrePublishNoPanic is runPrePublish (which already requires a nil
+// error) that reports a panic in the hook as a test failure instead of
+// crashing the test binary (H18).
+func hkRunPrePublishNoPanic(t *testing.T, h *hkHarness, stdin []byte) (got string) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("hook pre-publish panicked: %v", r)
+		}
+	}()
+	return h.runPrePublish(t, stdin)
 }
 
 func TestHookPrePublishTaskStoreSelection(t *testing.T) {
