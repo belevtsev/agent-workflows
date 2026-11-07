@@ -334,7 +334,7 @@ again. Installation and local validation do not require keys or make hosted
 requests.
 
 A terminal export does not update an already running desktop app; use the
-[setup instructions](../README.md#make-keys-visible-to-the-agent) and a fresh
+[setup instructions](advisers.md#make-keys-visible-to-the-agent) and a fresh
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
 
