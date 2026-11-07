@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -401,16 +402,47 @@ func TestDoctorLiveFailureOversizeAndCancellationAreQualified(t *testing.T) {
 			}
 		})
 	}
+	// The first probe cancels the caller's context. Everything Doctor does
+	// before that (project inspection, Git) is excluded from the checks below,
+	// which rest on counts and context state rather than elapsed time.
 	ctx, cancel := context.WithCancel(context.Background())
-	run := func(ctx context.Context, _ Command) (CommandResult, error) {
+	var calls, callsAfterCancel atomic.Int32
+	var probeSawCancel atomic.Bool
+	var canceledAt atomic.Int64
+	run := func(probeCtx context.Context, _ Command) (CommandResult, error) {
+		calls.Add(1)
+		if ctx.Err() != nil {
+			callsAfterCancel.Add(1)
+			return CommandResult{}, probeCtx.Err()
+		}
+		canceledAt.Store(time.Now().UnixNano())
 		cancel()
-		<-ctx.Done()
-		return CommandResult{}, ctx.Err()
+		// Cancellation reaches derived contexts synchronously, so a probe
+		// context derived from the caller's is already done here.
+		probeSawCancel.Store(probeCtx.Err() != nil)
+		return CommandResult{}, probeCtx.Err()
 	}
-	started := time.Now()
-	_, err := Doctor(ctx, DoctorOptions{Repo: root, Home: t.TempDir(), Live: true, Run: run, LookPath: func(name string) (string, error) { return name, nil }})
-	if !errors.Is(err, context.Canceled) || time.Since(started) > time.Second {
-		t.Fatalf("cancellation was not propagated promptly: %v", err)
+	// The largest accepted Timeout keeps a slow fixture from expiring the
+	// doctor's own deadline before the first probe runs.
+	_, err := Doctor(ctx, DoctorOptions{Repo: root, Home: t.TempDir(), Live: true, Timeout: time.Minute, Run: run, LookPath: func(name string) (string, error) { return name, nil }})
+	returned := time.Now()
+	if calls.Load() == 0 {
+		t.Fatalf("live doctor ran no probe, so cancellation was never exercised: %v", err)
+	}
+	if !probeSawCancel.Load() {
+		t.Fatal("running probe context was not derived from the caller's context")
+	}
+	if n := callsAfterCancel.Load(); n != 0 {
+		t.Fatalf("doctor started %d probes after cancellation", n)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation was not reported: %v", err)
+	}
+	// Backstop for non-probe work after cancellation, such as waiting out the
+	// one-minute Timeout. Only in-memory work remains after the canceling
+	// probe, so this bound is far above what a loaded runner needs.
+	if elapsed := returned.Sub(time.Unix(0, canceledAt.Load())); elapsed > 10*time.Second {
+		t.Fatalf("doctor returned %v after cancellation", elapsed)
 	}
 }
 

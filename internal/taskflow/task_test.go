@@ -59,17 +59,15 @@ func TestCheckSubprocess(t *testing.T) {
 		if err != nil || !lifetimeDeadline.After(time.Now()) {
 			os.Exit(25)
 		}
-		dialer := net.Dialer{Timeout: 10 * time.Second, Deadline: lifetimeDeadline}
+		// Every barrier step is bounded by the parent test's lifetime only, matching
+		// checkBarrierIODeadline; a fixed budget is a race-runner timing assumption.
+		dialer := net.Dialer{Deadline: lifetimeDeadline}
 		connection, err := dialer.Dial("tcp", args[1])
 		if err != nil {
 			os.Exit(21)
 		}
 		defer connection.Close()
-		readinessDeadline := time.Now().Add(15 * time.Second)
-		if lifetimeDeadline.Before(readinessDeadline) {
-			readinessDeadline = lifetimeDeadline
-		}
-		if err := connection.SetWriteDeadline(readinessDeadline); err != nil {
+		if err := connection.SetWriteDeadline(lifetimeDeadline); err != nil {
 			connection.Close()
 			os.Exit(22)
 		}
