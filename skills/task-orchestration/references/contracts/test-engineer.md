@@ -56,6 +56,8 @@ guards it. That reference's independence rules apply unchanged.
 - Unit tests cover each requirement's decision logic; integration tests
   exercise the real boundary at risk (filesystem, process, network, database);
   end-to-end tests run the built artefact and assert what users observe.
+  Match the layer to the block: decisions by table or property, adapters
+  against a real local stand-in, compositions end to end.
 - Property or fuzz tests cover any rule stated over a whole input domain.
 - Concurrency cases coordinate events deterministically, never with sleeps.
   Idempotency cases repeat the operation and compare state. Security cases

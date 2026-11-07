@@ -1,0 +1,36 @@
+{
+  "description": "agent-workflows: load the working conventions at session start and gate git commit and push on a passing cw task verify",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"${CLAUDE_PLUGIN_ROOT}/global/AGENTS.md\"; if command -v cw >/dev/null 2>&1 && out=$(cw hook session-start --instructions \"$f\" --cache \"${CLAUDE_PLUGIN_DATA}\" 2>/dev/null) && [ -n \"$out\" ]; then printf '%s\\n' \"$out\"; else cat \"$f\"; fi",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit *)",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(git push *)",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

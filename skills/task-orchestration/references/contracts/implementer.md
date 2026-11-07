@@ -44,6 +44,12 @@ same contract.
 The change is the smallest one that satisfies every requirement ID in the
 brief. Before handing off, answer each item in `self-review.md`:
 
+- **Reuse before writing.** You searched for an existing block that does the
+  job and reused or extended it; each new block names why nothing fitted.
+- **Building blocks.** Decisions are separate from I/O; dependencies arrive as
+  parameters or constructor arguments, never globals or `init`; each new block
+  is testable through its own interface
+  ([building blocks](../../../codebase-design/references/building-blocks.md)).
 - **Parse, don't validate.** Input is checked once at the boundary and carried
   on as a narrower type; no later code re-checks what the type guarantees.
 - **Explicit error contract.** Every error the contract names is produced

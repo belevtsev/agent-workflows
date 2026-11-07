@@ -459,11 +459,15 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 func Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
 	_, err := update(path, func(root *os.Root, record *Record) error {
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: FixedVerifyLimitations()}
+		manifest, err := encode(files)
+		if err != nil {
+			return err
+		}
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: FixedVerifyLimitations()}
 		problem := func(format string, args ...any) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}

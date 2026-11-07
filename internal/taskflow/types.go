@@ -172,9 +172,13 @@ type Verification struct {
 	TaskID          string              `json:"task_id"`
 	Complete        bool                `json:"complete"`
 	CurrentSnapshot projectctx.Snapshot `json:"current_snapshot"`
-	Problems        []string            `json:"problems"`
-	Limitations     []string            `json:"limitations"`
-	CheckedAt       time.Time           `json:"checked_at"`
+	// SourceSHA256 is SourceDigest of the verified source: the content identity
+	// a publication gate compares, unaffected by later staging or commits.
+	// Records verified before it existed omit it.
+	SourceSHA256 string    `json:"source_sha256,omitempty"`
+	Problems     []string  `json:"problems"`
+	Limitations  []string  `json:"limitations"`
+	CheckedAt    time.Time `json:"checked_at"`
 }
 
 type Record struct {

@@ -54,6 +54,10 @@ Write exactly these files in the artefact directory:
 - The decision is the smallest change that meets the request. A new
   abstraction, service, queue, cache or dependency names its benefit and owner.
 - Boundaries encode distinct failure or durability semantics; do not merge them.
+- Components are building blocks: name the existing blocks the change reuses,
+  each new block with its kind (value, decision, adapter, composition) and seam,
+  and where they are wired
+  ([building blocks](../../../codebase-design/references/building-blocks.md)).
 - Failure behaviour is stated per boundary, not as "errors are handled".
 - Each requirement is testable from the public interface alone. If a requirement
   can only be observed through implementation internals, redesign the interface
