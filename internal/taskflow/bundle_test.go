@@ -503,8 +503,8 @@ func TestBundleReachHintsAndIdentity(t *testing.T) {
 // latest acceptance that lists them, else pending.
 func TestBundlePriorFindingsUseLatestDisposition(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
-	first := WorkerFinding{ID: "f1", Summary: "First concern about the source.", Evidence: []SourceRef{ref}}
-	second := WorkerFinding{ID: "f2", Summary: "Second concern about the source.", Evidence: []SourceRef{ref}}
+	first := WorkerFinding{ID: "f1", Summary: "First concern about the source.", Severity: "major", Evidence: []SourceRef{ref}}
+	second := WorkerFinding{ID: "f2", Summary: "Second concern about the source.", Severity: "major", Evidence: []SourceRef{ref}}
 	record = bundleTestSubmitReview(t, record, "review1", "completed", []WorkerFinding{first, second})
 	record = bundleTestAccept(t, record, "review1", "accepted", []FindingDisposition{
 		{FindingID: "f1", Status: "accepted", Reason: "Acknowledged f1 at first.", Evidence: []SourceRef{}},
@@ -514,14 +514,14 @@ func TestBundlePriorFindingsUseLatestDisposition(t *testing.T) {
 		{FindingID: "f1", Status: "rejected", Reason: "Source contradicts f1.", Evidence: []SourceRef{ref}},
 		{FindingID: "f2", Status: "accepted", Reason: "Acknowledged f2 again.", Evidence: []SourceRef{}},
 	})
-	pending := WorkerFinding{ID: "g1", Summary: "Concern awaiting adjudication.", Evidence: []SourceRef{ref}}
+	pending := WorkerFinding{ID: "g1", Summary: "Concern awaiting adjudication.", Severity: "major", Evidence: []SourceRef{ref}}
 	record = bundleTestSubmitReview(t, record, "review2", "completed", []WorkerFinding{pending})
 
 	bundle := mustBuildBundle(t, record, "review3")
 	want := []BundleFinding{
-		{AssignmentID: "review1", FindingID: "f1", Summary: first.Summary, Evidence: []SourceRef{ref}, Disposition: "rejected", Reason: "Source contradicts f1."},
-		{AssignmentID: "review1", FindingID: "f2", Summary: second.Summary, Evidence: []SourceRef{ref}, Disposition: "accepted", Reason: "Acknowledged f2 again."},
-		{AssignmentID: "review2", FindingID: "g1", Summary: pending.Summary, Evidence: []SourceRef{ref}, Disposition: "pending", Reason: ""},
+		{AssignmentID: "review1", FindingID: "f1", Summary: first.Summary, Severity: "major", Evidence: []SourceRef{ref}, Disposition: "rejected", Reason: "Source contradicts f1."},
+		{AssignmentID: "review1", FindingID: "f2", Summary: second.Summary, Severity: "major", Evidence: []SourceRef{ref}, Disposition: "accepted", Reason: "Acknowledged f2 again."},
+		{AssignmentID: "review2", FindingID: "g1", Summary: pending.Summary, Severity: "major", Evidence: []SourceRef{ref}, Disposition: "pending", Reason: ""},
 	}
 	if !reflect.DeepEqual(bundle.PriorFindings, want) {
 		t.Fatalf("prior_findings:\n got %+v\nwant %+v", bundle.PriorFindings, want)
@@ -624,7 +624,7 @@ func bundleTestAssignFixture(t *testing.T) (Record, Bundle) {
 	repo := bundleTestRepo(t, map[string]string{"source.txt": "first line\nsecond line\n", "tool.sh": "#!/bin/sh\necho one\n"}, false)
 	record := bundleTestStart(t, repo, helperPlan(t, "small", "pass"))
 	ref := bundleTestRef(t, record, "source.txt")
-	finding := WorkerFinding{ID: "f1", Summary: "Quoting concern in the script.", Evidence: []SourceRef{ref}}
+	finding := WorkerFinding{ID: "f1", Summary: "Quoting concern in the script.", Severity: "major", Evidence: []SourceRef{ref}}
 	record = bundleTestSubmitReview(t, record, "first", "completed", []WorkerFinding{finding})
 	record = bundleTestAccept(t, record, "first", "accepted", []FindingDisposition{{FindingID: "f1", Status: "accepted", Reason: "Acknowledged for follow-up.", Evidence: []SourceRef{}}})
 	bundleTestWrite(t, repo, "tool.sh", "#!/bin/sh\necho two\n")

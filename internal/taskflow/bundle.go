@@ -70,6 +70,7 @@ type BundleFinding struct {
 	AssignmentID string      `json:"assignment_id"`
 	FindingID    string      `json:"finding_id"`
 	Summary      string      `json:"summary"`
+	Severity     string      `json:"severity"`
 	Evidence     []SourceRef `json:"evidence"`
 	Disposition  string      `json:"disposition"`
 	Reason       string      `json:"reason"`
@@ -333,7 +334,7 @@ func priorFindings(record Record) []BundleFinding {
 	for _, bound := range record.WorkerResults {
 		id := bound.Result.AssignmentID
 		for _, finding := range bound.Result.Findings {
-			entry := BundleFinding{AssignmentID: id, FindingID: finding.ID, Summary: finding.Summary, Evidence: finding.Evidence, Disposition: "pending"}
+			entry := BundleFinding{AssignmentID: id, FindingID: finding.ID, Summary: finding.Summary, Severity: finding.severity(), Evidence: finding.Evidence, Disposition: "pending"}
 			if entry.Evidence == nil {
 				entry.Evidence = []SourceRef{}
 			}

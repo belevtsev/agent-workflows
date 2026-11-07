@@ -304,7 +304,7 @@ func TestHooksEndToEnd(t *testing.T) {
 	})
 
 	plan := filepath.Join(hooksCanonicalTempDir(t), "plan.json")
-	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`), 0600); err != nil {
+	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	start := exec.CommandContext(t.Context(), binary, "task", "start", "--repo", repo, "--plan", plan,

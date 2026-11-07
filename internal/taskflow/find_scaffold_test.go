@@ -13,12 +13,15 @@ import (
 // few lines. They are approved test-only seams; production code never uses
 // them.
 
-// openPlan is a minimal substantial plan with no checks and no required
-// adviser checkpoints. kind is "small" or "substantial".
+// openPlan is a minimal plan whose requirement allows non-execution, with no
+// required adviser checkpoints. kind is "small" or "substantial"; a
+// substantial plan binds one check, which it never needs to run.
 func openPlan(title, kind string) Plan {
 	plan := Plan{Title: title, Kind: kind, Requirements: []Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{}, AllowNonExecution: true}}, Checks: []Check{}}
 	if kind == "substantial" {
 		plan.Checkpoints = &CheckpointPolicy{Required: false, Reason: "scaffold"}
+		plan.Requirements[0].CheckIDs = []string{"unit"}
+		plan.Checks = []Check{{ID: "unit", Argv: []string{"go", "test", "./..."}}}
 	}
 	return plan
 }

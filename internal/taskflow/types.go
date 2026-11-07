@@ -12,6 +12,7 @@ import (
 	"io"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -256,6 +257,12 @@ func ValidatePlan(plan *Plan) error {
 	}
 	if err := validateRecordedPlan(*plan); err != nil {
 		return err
+	}
+	// A substantial plan must be able to execute something: completion of a
+	// changed substantial task needs a passed run (see executionProblems).
+	// Applied only to new plans so that recorded tasks still load.
+	if plan.Kind == "substantial" && !slices.ContainsFunc(plan.Requirements, func(r Requirement) bool { return len(r.CheckIDs) > 0 }) {
+		return errors.New("a substantial plan needs at least one check bound to a requirement")
 	}
 	for _, check := range plan.Checks {
 		if err := validateCommand(check.Argv); err != nil {

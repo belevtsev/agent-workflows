@@ -2,6 +2,7 @@ package taskflow
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -1014,5 +1016,219 @@ func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
 	git("checkout", "-qb", "different")
 	if result, err := Verify(t.Context(), record.Directory); err == nil || result.Complete {
 		t.Fatalf("branch drift accepted: %+v %v", result, err)
+	}
+}
+
+// fakeGo writes an executable named go that ignores its arguments and exits
+// with code, so a check is a `go test` invocation without building anything.
+func fakeGo(t *testing.T, code int) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake go tool is a shell script")
+	}
+	path := filepath.Join(t.TempDir(), "go")
+	if err := os.WriteFile(path, fmt.Appendf(nil, "#!/bin/sh\nexit %d\n", code), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// executionPlan is a substantial plan without required checkpoints whose one
+// requirement is bound to the check "unit" running argv.
+func executionPlan(argv []string) Plan {
+	return Plan{Title: "Change source", Kind: "substantial", Checkpoints: &CheckpointPolicy{Required: false, Reason: "execution rule test"},
+		Requirements: []Requirement{{ID: "behavior", Description: "Verified source behavior", CheckIDs: []string{"unit"}}},
+		Checks:       []Check{{ID: "unit", Argv: argv, TimeoutSeconds: 10}}}
+}
+
+// mustVerifyReport runs Verify and returns its report whether or not the task
+// is complete.
+func mustVerifyReport(t *testing.T, record Record) Verification {
+	t.Helper()
+	verified, err := Verify(t.Context(), record.Directory)
+	if verified.TaskID == "" {
+		t.Fatalf("verify produced no report: %v", err)
+	}
+	return verified
+}
+
+// Verify asks the language-pack registry for the evidence rules of a changed
+// substantial task, given paths relative to the selected path: in a Go module a
+// changed package needs a passed go test run covering it. The rules themselves
+// are tested in internal/langpack.
+func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
+	const problem = "changed package internal/pkg has no passed go test run at the current source"
+	for _, tc := range []struct {
+		name    string
+		module  string // the selected path inside the Git repository
+		pattern string
+		exit    int
+		want    []string // every "changed package" problem expected
+	}{
+		{"run covers another package only", ".", "./internal/other", 0, []string{problem}},
+		{"run covers the whole module", ".", "./...", 0, nil},
+		{"only a failed run covers it", ".", "./...", 1, []string{problem}},
+		{"module below the repository root, uncovered", "svc", "./internal/other", 0, []string{problem}},
+		{"module below the repository root, covered", "svc", "./internal/pkg", 0, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string{"go.mod": "module example.test\n", "internal/pkg/pkg.go": "package pkg\n", "internal/other/other.go": "package other\n"}
+			module := map[string]string{}
+			for name, data := range files {
+				module[path.Join(tc.module, name)] = data
+			}
+			repo := bundleTestRepo(t, module, true)
+			record := bundleTestStart(t, filepath.Join(repo, tc.module), executionPlan([]string{fakeGo(t, tc.exit), "test", "-count=1", tc.pattern}))
+			bundleTestWrite(t, repo, path.Join(tc.module, "internal/pkg/pkg.go"), "package pkg\n\nconst Changed = true\n")
+			run, _ := Run(t.Context(), record.Directory, "unit")
+			if want := map[int]string{0: "passed", 1: "failed"}[tc.exit]; run.Status != want {
+				t.Fatalf("check run status %q, want %q", run.Status, want)
+			}
+			verified := mustVerifyReport(t, record)
+			var got []string
+			for _, reported := range verified.Problems {
+				if strings.HasPrefix(reported, "changed package ") {
+					got = append(got, reported)
+				}
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("package problems %q, want %q (all problems %q)", got, tc.want, verified.Problems)
+			}
+		})
+	}
+}
+
+// A changed substantial task needs at least one passed run at the current
+// source; outside a Go module any passed run satisfies it. Small tasks and
+// unchanged source are unaffected.
+func TestVerifyRequiresAPassedRunForChangedSubstantialSource(t *testing.T) {
+	const problem = "changed substantial task has no passed check run at the current source"
+	for _, tc := range []struct {
+		name    string
+		kind    string
+		mode    string // helper mode of the check, or "" to run nothing
+		change  bool
+		problem bool
+	}{
+		{"changed with a passed run", "substantial", "pass", true, false},
+		{"changed without a run", "substantial", "", true, true},
+		{"changed with only a failed run", "substantial", "fail", true, true},
+		{"unchanged without a run", "substantial", "", false, false},
+		{"small changed without a run", "small", "", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			plan := helperPlan(t, tc.kind, cmp.Or(tc.mode, "pass"))
+			if tc.kind == "substantial" {
+				plan.Checkpoints = &CheckpointPolicy{Required: false, Reason: "execution rule test"}
+			}
+			record, _ := fixtureTask(t, plan)
+			if tc.change {
+				changedWorkerSource(t, record)
+			}
+			if tc.mode != "" {
+				Run(t.Context(), record.Directory, "focused")
+			}
+			verified := mustVerifyReport(t, record)
+			if got := slices.Contains(verified.Problems, problem); got != tc.problem {
+				t.Fatalf("execution problem present=%v, want %v: %q", got, tc.problem, verified.Problems)
+			}
+			for _, reported := range verified.Problems {
+				if strings.HasPrefix(reported, "changed package ") {
+					t.Fatalf("a project without go.mod reported a package problem: %q", reported)
+				}
+			}
+		})
+	}
+}
+
+// A review handoff must give every finding a valid severity; other roles may
+// omit it but may not give an invalid one.
+func TestHandoffFindingSeverity(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		role     string
+		owned    string
+		severity string
+		refused  bool
+	}{
+		{"review without severity", "review", ".", "", true},
+		{"review with unknown severity", "review", ".", "critical", true},
+		{"review with severity", "review", ".", "minor", false},
+		{"evidence without severity", "evidence", "source.txt", "", false},
+		{"evidence with unknown severity", "evidence", "source.txt", "critical", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
+			record = mustAssignWorker(t, record, workerBrief("worker", "/root/worker", tc.role, []string{tc.owned}))
+			result := workerResult(t, record, "worker", "completed", ref)
+			result.Findings = []WorkerFinding{{ID: "f1", Summary: "Concern about the source.", Severity: tc.severity, Evidence: []SourceRef{ref}}}
+			_, err := SubmitWorkerResult(t.Context(), record.Directory, result)
+			if tc.refused != (err != nil) {
+				t.Fatalf("handoff refused=%v, want %v: %v", err != nil, tc.refused, err)
+			}
+			if tc.refused && !strings.Contains(err.Error(), "severity") {
+				t.Fatalf("refusal does not name severity: %v", err)
+			}
+		})
+	}
+}
+
+// Every rejected blocker or major finding is a limitation. A rejected blocker
+// is also a problem until a later accepted independent review, whose bundle
+// lists the rejection, completes without re-raising the finding's ID.
+func TestVerifyRejectedFindingsBySeverity(t *testing.T) {
+	const reason = "Source contradicts the finding."
+	const problem = "rejected blocker finding f1 of worker assignment review1 needs a later accepted independent review whose bundle lists it as rejected and whose result does not re-raise it (same finding id)"
+	for _, tc := range []struct {
+		name       string
+		severity   string
+		rebind     string // "", "clean", "reraise" or "before_rejection"
+		limitation bool
+		problem    bool
+	}{
+		{"rejected minor", "minor", "", false, false},
+		{"rejected major", "major", "", true, false},
+		{"rejected blocker without a later review", "blocker", "", true, true},
+		{"rejected blocker with a re-bind review", "blocker", "clean", true, false},
+		{"rejected blocker re-raised by the later review", "blocker", "reraise", true, true},
+		{"rejected blocker after the later review was assigned", "blocker", "before_rejection", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
+			finding := WorkerFinding{ID: "f1", Summary: "Concern about the source.", Severity: tc.severity, Evidence: []SourceRef{ref}}
+			record = bundleTestSubmitReview(t, record, "review1", "completed", []WorkerFinding{finding})
+			status := "accepted"
+			if tc.rebind == "before_rejection" {
+				// review2's bundle lists f1 as pending: its reviewer never saw
+				// the rejection. review1 is now stale against review2, so it
+				// closes as unused, still rejecting f1.
+				record = bundleTestSubmitReview(t, record, "review2", "completed", nil)
+				record = bundleTestAccept(t, record, "review2", "accepted", nil)
+				status = "unused"
+			}
+			record = bundleTestAccept(t, record, "review1", status, []FindingDisposition{{FindingID: "f1", Status: "rejected", Reason: reason, Evidence: []SourceRef{ref}}})
+			switch tc.rebind {
+			case "clean":
+				record = bundleTestSubmitReview(t, record, "review2", "completed", nil)
+				record = bundleTestAccept(t, record, "review2", "accepted", nil)
+			case "reraise":
+				record = bundleTestSubmitReview(t, record, "review2", "completed", []WorkerFinding{finding})
+				record = bundleTestAccept(t, record, "review2", "accepted", []FindingDisposition{{FindingID: "f1", Status: "resolved", Reason: "Checked against source.", Evidence: []SourceRef{ref}}})
+			}
+			if _, err := Assess(t.Context(), record.Directory, assessment(ref, "focused")); err != nil {
+				t.Fatal(err)
+			}
+			verified := mustVerifyReport(t, record)
+			limitation := fmt.Sprintf("rejected finding f1 (%s) of worker assignment review1: %s", tc.severity, reason)
+			if got := slices.Contains(verified.Limitations, limitation); got != tc.limitation {
+				t.Fatalf("limitation present=%v, want %v: %q", got, tc.limitation, verified.Limitations)
+			}
+			if got := slices.Contains(verified.Problems, problem); got != tc.problem {
+				t.Fatalf("problem present=%v, want %v: %q", got, tc.problem, verified.Problems)
+			}
+			if verified.Complete == tc.problem {
+				t.Fatalf("complete=%v with problems %q", verified.Complete, verified.Problems)
+			}
+		})
 	}
 }

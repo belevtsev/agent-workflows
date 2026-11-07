@@ -20,9 +20,9 @@ import (
 // Tests for `cw hook pre-publish` (R-PRE, R-CMD) and `cw hook session-start`
 // (R-SESSION), driven through Execute.
 
-// hkSubstantialPlan is a substantial plan whose verify can pass without checks
-// or adviser checkpoints.
-const hkSubstantialPlan = `{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`
+// hkSubstantialPlan is a substantial plan whose verify can pass at unchanged
+// source without running its check or adviser checkpoints.
+const hkSubstantialPlan = `{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`
 
 // hkSmallPlan is the same plan with kind small.
 const hkSmallPlan = `{"title":"S","kind":"small","requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`
@@ -204,8 +204,8 @@ func hkSubstantialRecord(t *testing.T, repo, store, title string) taskflow.Recor
 		Title:        title,
 		Kind:         "substantial",
 		Checkpoints:  &taskflow.CheckpointPolicy{Required: false, Reason: "test"},
-		Requirements: []taskflow.Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{}, AllowNonExecution: true}},
-		Checks:       []taskflow.Check{},
+		Requirements: []taskflow.Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{"unit"}, AllowNonExecution: true}},
+		Checks:       []taskflow.Check{{ID: "unit", Argv: []string{"go", "test", "./..."}}},
 	}
 	record, err := taskflow.Start(t.Context(), repo, store, plan, nil)
 	if err != nil {

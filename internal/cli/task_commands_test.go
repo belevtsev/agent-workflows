@@ -389,7 +389,7 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 			config.HomeDir = func() (string, error) { return home, nil }
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.Getenv = func(string) string { return "" }
-			config.In = strings.NewReader(`{"title":"Inspect selected project","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","allow_non_execution":true}],"checks":[]}`)
+			config.In = strings.NewReader(`{"title":"Inspect selected project","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`)
 			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 				t.Fatal(err)
 			}
@@ -437,7 +437,7 @@ func TestSubstantialAssignRequiresResolvedBeforeCheckpoint(t *testing.T) {
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
-	config.In = strings.NewReader(`{"title":"Change project source","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","allow_non_execution":true}],"checks":[]}`)
+	config.In = strings.NewReader(`{"title":"Change project source","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`)
 	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
