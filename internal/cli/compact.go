@@ -188,15 +188,19 @@ func listValue(value any) []any {
 }
 
 type verifySummary struct {
-	TaskID                  string   `json:"task_id"`
-	Complete                bool     `json:"complete"`
+	TaskID   string `json:"task_id"`
+	Complete bool   `json:"complete"`
+	// RejectedFindings holds the limitations that report a rejected blocker
+	// or major finding, ahead of everything else; Limitations omits them.
+	RejectedFindings        []string `json:"rejected_findings,omitempty"`
 	Problems                []string `json:"problems"`
 	Limitations             []string `json:"limitations"`
 	OmittedFixedLimitations int      `json:"omitted_fixed_limitations"`
 }
 
 // summarizeVerification drops the fixed limitations, matched by exact text,
-// and keeps every problem and every task-specific limitation in order.
+// moves rejected-finding limitations to RejectedFindings, and keeps every
+// problem and every other task-specific limitation in order.
 func summarizeVerification(value taskflow.Verification) verifySummary {
 	result := verifySummary{TaskID: value.TaskID, Complete: value.Complete, Problems: value.Problems, Limitations: []string{}}
 	if result.Problems == nil {
@@ -207,6 +211,10 @@ func summarizeVerification(value taskflow.Verification) verifySummary {
 		if index := slices.Index(fixed, limitation); index >= 0 {
 			fixed = slices.Delete(fixed, index, index+1)
 			result.OmittedFixedLimitations++
+			continue
+		}
+		if taskflow.IsRejectedFindingLimitation(limitation) {
+			result.RejectedFindings = append(result.RejectedFindings, limitation)
 			continue
 		}
 		result.Limitations = append(result.Limitations, limitation)

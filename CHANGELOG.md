@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `cw task start` refuses a substantial plan without a check bound to a requirement. `cw task verify` on a changed substantial task needs a passed check run at the current source and, when the selected path holds `go.mod`, a passed `go test` run whose `./...`, `./pkg` or `./dir/...` pattern covers each changed non-test package. The rules live in the language-neutral registry `internal/langpack`, with Go as its first pack. Open substantial tasks whose plan has no checks cannot meet this and must be restarted.
+- Worker findings carry `severity` (`blocker`, `major` or `minor`), required in review handoffs; findings recorded earlier read as `major`. `cw task verify` lists every rejected blocker or major finding as a limitation (first, as `rejected_findings`, with `--summary`), and a rejected blocker is a problem until a later accepted independent review, whose bundle lists the rejection, completes without re-raising it.
 - Worker agent types are namespaced under the plugin (`agent-workflows:cw-reviewer` and friends); the task-orchestration skill carries a `Plugin root:` line so briefs can name absolute skill paths.
 - The always-on instruction block (`global/AGENTS.md`, 7,865 to 2,176 bytes) and the `task-orchestration` skill core (`SKILL.md`, 21,293 to 5,473 bytes) carry only the substantial-task threshold and the decision flow; every rule lives in one reference file, test authors and the GitHub worker are dispatched for substantial tasks or on request, and `docs/workflow.md` links the references instead of repeating them.
 - Releases are published from pushed `v*` tags instead of on every push to main.

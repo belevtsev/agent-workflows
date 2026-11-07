@@ -34,7 +34,7 @@ func TestWorkerPathsRejectIntermediateSymlinkAliases(t *testing.T) {
 		t.Fatalf("intermediate evidence alias accepted: %v", err)
 	}
 	result.Evidence = []SourceRef{ref}
-	result.Findings = []WorkerFinding{{ID: "alias", Summary: "Aliased finding evidence.", Evidence: []SourceRef{aliasRef}}}
+	result.Findings = []WorkerFinding{{ID: "alias", Summary: "Aliased finding evidence.", Severity: "major", Evidence: []SourceRef{aliasRef}}}
 	if _, err := SubmitWorkerResult(t.Context(), record.Directory, result); err == nil {
 		t.Fatal("intermediate finding alias accepted")
 	}

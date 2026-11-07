@@ -264,6 +264,31 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	}
 }
 
+// The verify summary lists rejected blocker and major findings ahead of the
+// problems, in their own member, and keeps the other limitations.
+func TestCompactVerifySummaryListsRejectedFindingsFirst(t *testing.T) {
+	rejected := "rejected finding f1 (blocker) of worker assignment review1: Source contradicts it."
+	other := "worker assignment review1 finding f2 deferred: Later."
+	value := taskflow.Verification{TaskID: "task", Problems: []string{"a problem"}, Limitations: append(taskflow.FixedVerifyLimitations(), other, rejected)}
+	data, err := jsonv2.Marshal(summarizeVerification(value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var line map[string]any
+	if err := json.Unmarshal(data, &line); err != nil {
+		t.Fatal(err)
+	}
+	if got := compactStrings(t, line["rejected_findings"]); !slices.Equal(got, []string{rejected}) {
+		t.Fatalf("rejected_findings = %q, want only %q", got, rejected)
+	}
+	if got := compactStrings(t, line["limitations"]); !slices.Equal(got, []string{other}) {
+		t.Fatalf("limitations = %q, want only %q", got, other)
+	}
+	if strings.Index(string(data), `"rejected_findings"`) > strings.Index(string(data), `"problems"`) {
+		t.Fatalf("rejected_findings is not printed before problems: %s", data)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // SHOW-FIELD and DEF-UNCHANGED (show).
 

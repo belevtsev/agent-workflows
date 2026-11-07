@@ -81,7 +81,7 @@ The result JSON contains:
 | `evidence` | Source references with `path`, `start_line`, `end_line` and full-file `sha256` |
 | `changed_files` | Declared changes with `path` and `sha256`, or `deleted: true`; empty for read-only roles |
 | `check_ids` | Actual task check records cited by the worker |
-| `findings` | Each finding's `id`, `summary` and source `evidence`; `[]` records none |
+| `findings` | Each finding's `id`, `summary`, `severity` (`blocker`, `major` or `minor`; required in a review) and source `evidence`; `[]` records none |
 | `uncertainties` | Remaining unknowns; `[]` records none |
 | `reach_runs` | Review only: how each reach-row mode was [run](#run-every-reach-row-mode) |
 
@@ -103,7 +103,10 @@ when addressed, `rejected` against evidence, or `deferred` when it changes no
 behaviour, fails no gate and loses no rule (`cw task verify` lists it as a
 limitation; never defer a defect in changed behaviour or any finding with a
 concrete failure scenario, unless the defect predates the change and the change neither causes,
-touches nor newly exposes it). An `accepted` disposition
+touches nor newly exposes it). `verify` lists each rejected `blocker` or `major`
+finding as a limitation; a rejected `blocker` also needs a later accepted
+independent review whose bundle lists the rejection and whose result does not
+re-raise its `id`. An `accepted` disposition
 acknowledges an unresolved finding and blocks completion. Reviewer agreement is not
 a veto or permission. When the source stays as reviewed, write the result and
 acceptance JSON and record both in one shell call:

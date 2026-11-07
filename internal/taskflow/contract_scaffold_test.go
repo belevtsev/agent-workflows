@@ -54,7 +54,7 @@ func scaffoldTask(t *testing.T, files map[string]string) (repo, task string) {
 		scaffoldWrite(t, repo, path, data)
 	}
 	var plan taskflow.Plan
-	const planJSON = `{"title":"contract scaffold","kind":"substantial","checkpoints":{"required":false,"reason":"scaffold"},"requirements":[{"id":"r","description":"scaffold requirement","check_ids":[],"allow_non_execution":true}],"checks":[]}`
+	const planJSON = `{"title":"contract scaffold","kind":"substantial","checkpoints":{"required":false,"reason":"scaffold"},"requirements":[{"id":"r","description":"scaffold requirement","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`
 	if err := taskflow.Decode(strings.NewReader(planJSON), &plan); err != nil {
 		t.Fatal(err)
 	}

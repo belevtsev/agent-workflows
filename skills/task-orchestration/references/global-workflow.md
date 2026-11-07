@@ -84,6 +84,11 @@ adviser checkpoints are not required:
 }
 ```
 
+A substantial plan binds at least one check to a requirement. Once its source
+changes, `verify` needs a passed run at the current source and, when the selected
+path holds `go.mod`, for each changed non-test package a passed `go test` run
+naming `./...`, the package (`./pkg`) or a parent (`./dir/...`).
+
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set
 `"required": true`, and both checkpoints are required. When the approach follows directly from the

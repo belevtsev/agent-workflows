@@ -23,7 +23,7 @@ func deferredTestInspection(t *testing.T, assess bool, findings ...string) (Reco
 	}
 	input := workerResult(t, record, "inspect", "completed", ref)
 	for _, id := range findings {
-		input.Findings = append(input.Findings, WorkerFinding{ID: id, Summary: "Finding " + id + " in the inspected source.", Evidence: []SourceRef{ref}})
+		input.Findings = append(input.Findings, WorkerFinding{ID: id, Summary: "Finding " + id + " in the inspected source.", Severity: "minor", Evidence: []SourceRef{ref}})
 	}
 	mustSubmitWorker(t, record, input)
 	return autofillTestLoad(t, record.Directory), ref
@@ -169,7 +169,7 @@ func TestDeferredFindingsSatisfyIndependentReviewGate(t *testing.T) {
 			result := workerResult(t, record, "review", "completed", ref)
 			ids := []string{"first", "second", "third"}
 			for _, id := range ids {
-				result.Findings = append(result.Findings, WorkerFinding{ID: id, Summary: "Review concern " + id + ".", Evidence: []SourceRef{ref}})
+				result.Findings = append(result.Findings, WorkerFinding{ID: id, Summary: "Review concern " + id + ".", Severity: "major", Evidence: []SourceRef{ref}})
 			}
 			record = mustSubmitWorker(t, record, result)
 			acceptance := workerAcceptance(t, record, "review", "accepted", ref)
@@ -306,7 +306,7 @@ func TestDeferredEvidenceFreshnessMatchesResolved(t *testing.T) {
 			record = mustAssignWorker(t, record, workerBrief("inspect", "/root/project_explorer", "evidence", []string{"other.txt"}))
 			mustAssess(t, record, otherRef)
 			result := workerResult(t, record, "inspect", "completed", otherRef)
-			result.Findings = []WorkerFinding{{ID: "concern", Summary: "Finding about the inspected source.", Evidence: []SourceRef{otherRef}}}
+			result.Findings = []WorkerFinding{{ID: "concern", Summary: "Finding about the inspected source.", Severity: "major", Evidence: []SourceRef{otherRef}}}
 			record = mustSubmitWorker(t, record, result)
 			cited := otherRef
 			if test.citeChanged {
