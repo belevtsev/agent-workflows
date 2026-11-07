@@ -2,9 +2,9 @@
 
 Advisers are optional. An adviser participates only when it is configured: enabled
 in the policy's `consultation.providers` with its pinned model, with its key
-present, and not disabled in your preferences (setup's Keys step, or
-`advisers.disabled` in a `--settings` file; this applies to tasks started
-afterwards). The shipped policy enables SubQ Snap `subq-snap-preview` and OpenAI
+present, and not disabled in your preferences (`advisers.disabled` in
+`preferences.json` in the configuration directory, edited by hand; this applies to
+tasks started afterwards). The shipped policy enables SubQ Snap `subq-snap-preview` and OpenAI
 Decisions `gpt-6-luna`; TypeSafe Jev is opt-in with an exact version such as
 `jev-1.14.0`. `cw task start` binds the configured set, and both checkpoints use
 that binding. Checkpoints run when the task has an open decision: real

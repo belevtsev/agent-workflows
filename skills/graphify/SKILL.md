@@ -25,7 +25,7 @@ The guarded interface is:
 
 ```sh
 cw graphify build --repo /path/to/repo
-cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the installation transaction?' --budget 2000
+cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the consultation record?' --budget 2000
 ```
 
 Both print one JSON object. When no current graph is available they report
@@ -45,7 +45,7 @@ environment and temporary `HOME` and XDG configuration/cache directories so the
 child does not load the user's provider configuration. Use this interface rather
 than adding upstream modes, hooks, watch processes, cloud services, or MCP servers.
 
-Caches belong outside the repository and immutable skill release. Their identity
+Caches belong outside the repository and the installed skills. Their identity
 includes the worktree, HEAD, tracked source content, extraction scope, and tool.
 Cache child components and entries must not redirect through symlinks. Queries
 refuse missing, stale, or incomplete snapshots. Rebuild after relevant tracked
