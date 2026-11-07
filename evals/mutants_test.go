@@ -412,9 +412,21 @@ func goTest(ctx context.Context, dir string) runOutcome {
 	return runOutcome{Passed: err == nil, Output: string(out)}
 }
 
+// nestedGo admits one nested go command at a time. Run in parallel, the
+// nested builds took every core of CI's three-core macOS runner beside
+// go test ./..., and other packages' time-bounded Git probes timed out.
+var nestedGo = make(chan struct{}, 1)
+
 // goCommand runs the go tool that built this test in dir, as a standalone
-// module that may fetch the authored tests' dependencies.
+// module that may fetch the authored tests' dependencies. It waits for any
+// other nested go command to finish, and builds one package at a time.
 func goCommand(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	select {
+	case nestedGo <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() { <-nestedGo }()
 	goBin := filepath.Join(runtime.GOROOT(), "bin", "go")
 	cmd := exec.CommandContext(ctx, goBin, args...)
 	cmd.Dir = dir
@@ -423,7 +435,7 @@ func goCommand(ctx context.Context, dir string, args ...string) ([]byte, error) 
 		return name == "GOWORK" || name == "GOFLAGS" || name == "GOTOOLCHAIN" || name == "PATH"
 	})
 	cmd.Env = append(env,
-		"GOWORK=off", "GOFLAGS=-mod=mod", "GOTOOLCHAIN=local",
+		"GOWORK=off", "GOFLAGS=-mod=mod -p=1", "GOTOOLCHAIN=local",
 		// End-to-end tests build their binary with the go on PATH.
 		"PATH="+filepath.Dir(goBin)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return cmd.CombinedOutput()

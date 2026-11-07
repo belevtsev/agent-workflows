@@ -64,7 +64,7 @@ mkdir -p /tmp/evals-run
 TMPDIR=/tmp/evals-run claude plugin eval . --tag test-engineer --ablation none \
   --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
   --max-cost-usd 20 --no-publish
-EVAL_ARTEFACTS_DIR=/tmp/evals-run go test ./evals/ -run '^TestMutantGate$' -v
+EVAL_ARTEFACTS_DIR=/tmp/evals-run go test ./evals/ -run '^TestMutantGate$' -timeout=120m -v
 ```
 
 The gate finds a workspace by its copy of the case's interface contract, so it

@@ -176,4 +176,6 @@ jobs:
         if: always() && matrix.suite == 'test-engineer' && steps.run.outcome == 'success'
         env:
           EVAL_ARTEFACTS_DIR: ${{ runner.temp }}/eval-out/workspaces
-        run: go test ./evals/ -run '^TestMutantGate$' -count=1 -v
+        # Nested go commands run one at a time, so the gate's total is the sum
+        # of every workspace's runs; go test's default 10 minutes is too short.
+        run: go test ./evals/ -run '^TestMutantGate$' -count=1 -timeout=120m -v
