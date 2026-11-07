@@ -92,9 +92,16 @@ func newEvidenceE2E(t *testing.T) *evidenceE2E {
 // cw runs the binary and returns exit code, stdout and stderr.
 func (e *evidenceE2E) cw(arguments ...string) (int, string, string) {
 	e.t.Helper()
+	return e.cwEnv(nil, arguments...)
+}
+
+// cwEnv runs the binary with extra environment entries, which override the
+// fixture's.
+func (e *evidenceE2E) cwEnv(extra []string, arguments ...string) (int, string, string) {
+	e.t.Helper()
 	command := exec.CommandContext(e.t.Context(), e.binary, arguments...)
 	command.Dir = e.files
-	command.Env = e.env
+	command.Env = append(slices.Clone(e.env), extra...)
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err := command.Run()
@@ -186,10 +193,20 @@ func (e *evidenceE2E) verify() taskflow.Verification {
 	return verification
 }
 
-func (e *evidenceE2E) run(check string) {
+func (e *evidenceE2E) run(check string, extraEnv ...string) {
 	e.t.Helper()
 	// A failed check exits non-zero; the verification decides what counts.
-	e.cw("task", "run", "--task", e.task, "--check", check, "--summary")
+	// Checks inherit cw's environment, so extraEnv reaches the check.
+	e.cwEnv(extraEnv, "task", "run", "--task", e.task, "--check", check, "--summary")
+}
+
+// runExpect runs check and requires cw to report it passed (exit 0) or not.
+func (e *evidenceE2E) runExpect(passed bool, check string, extraEnv ...string) {
+	e.t.Helper()
+	code, stdout, stderr := e.cwEnv(extraEnv, "task", "run", "--task", e.task, "--check", check, "--summary")
+	if (code == 0) != passed {
+		e.t.Fatalf("check %s with %q: exit %d, want passed=%v\nstdout %s\nstderr %s", check, extraEnv, code, passed, stdout, stderr)
+	}
 }
 
 const evidenceModuleGo = "module example.com/evidence\n\ngo 1.21\n"
@@ -198,16 +215,19 @@ const (
 	alphaSource = "package alpha\n\nfunc Name() string { return \"alpha\" }\n"
 	alphaTest   = "package alpha\n\nimport \"testing\"\n\nfunc TestName(t *testing.T) {\n\tif Name() != \"alpha\" {\n\t\tt.Fatal(Name())\n\t}\n}\n"
 	betaSource  = "package beta\n\nfunc Value() int { return 1 }\n"
-	betaTest    = "package beta\n\nimport \"testing\"\n\nfunc TestValue(t *testing.T) {\n\tif Value() < 1 {\n\t\tt.Fatal(Value())\n\t}\n}\n"
+	// betaTest fails when BETA_FAIL is set, so the same source can give a
+	// passed and then a failed run of the same check.
+	betaTest = "package beta\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestValue(t *testing.T) {\n\tif Value() < 1 || os.Getenv(\"BETA_FAIL\") != \"\" {\n\t\tt.Fatal(Value())\n\t}\n}\n"
 )
 
 const evidencePlan = `{"title":"Executed evidence","kind":"substantial",
  "checkpoints":{"required":false,"reason":"contract test fixture"},
- "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","vet"],"allow_non_execution":false}],
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","vet","all"],"allow_non_execution":false}],
  "checks":[
   {"id":"alpha","argv":["go","test","-count=1","./alpha"],"timeout_seconds":300},
   {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
-  {"id":"vet","argv":["go","vet","./..."],"timeout_seconds":300}]}`
+  {"id":"vet","argv":["go","vet","./..."],"timeout_seconds":300},
+  {"id":"all","argv":["go","test","-count=1","./..."],"timeout_seconds":300}]}`
 
 func (e *evidenceE2E) setUpModule() {
 	e.t.Helper()
@@ -323,44 +343,87 @@ func TestEvidenceE2EGoPackagesNeedCoveringPassedRuns(t *testing.T) {
 	// Unchanged source: no executed-evidence problem yet.
 	expect("unchanged source", nil, []string{anyRun, beta, alpha})
 
-	// beta changes in a non-test file; alpha only in its test.
+	// beta changes in a non-test file; alpha only in its test, which still
+	// changes the alpha package.
 	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
 	e.write("alpha/alpha_test.go", alphaTest+"\nfunc TestMore(t *testing.T) {}\n")
-	expect("changed, nothing run", []string{anyRun, beta}, []string{alpha})
+	expect("changed, nothing run", []string{anyRun, beta, alpha}, nil)
 
 	// go vet passes: some check passed, but it is not go test.
 	e.run("vet")
-	expect("after go vet", []string{beta}, []string{anyRun, alpha})
+	expect("after go vet", []string{beta, alpha}, []string{anyRun})
 
-	// go test ./alpha passes but does not cover beta.
+	// go test ./alpha passes and covers alpha, but not beta.
 	e.run("alpha")
 	expect("after go test ./alpha", []string{beta}, []string{anyRun, alpha})
 
-	// beta now fails its test: the covering run fails and does not count.
+	// beta now fails its test: the source changed, so the earlier passes no
+	// longer count, and the failed covering run does not count either.
 	e.write("beta/beta.go", "package beta\n\nfunc Value() int { return 0 }\n")
 	e.run("beta")
-	expect("after a failed go test ./beta", []string{beta}, []string{alpha})
+	expect("after a failed go test ./beta", []string{anyRun, beta, alpha}, nil)
 
-	// Fixing beta changes the source again: the passed alpha and vet runs
-	// were at an older source, so nothing has passed at the current source.
+	// Fixing beta changes the source again; only alpha is rerun.
 	e.write("beta/beta.go", betaSource+"\nfunc Triple() int { return 3 * Value() }\n")
-	expect("fixed, not rerun", []string{anyRun, beta}, []string{alpha})
+	expect("fixed, not rerun", []string{anyRun, beta, alpha}, nil)
+	e.run("alpha")
+	expect("fixed, alpha rerun", []string{beta}, []string{anyRun, alpha})
+
+	// A covering run filtered through GOFLAGS passes but gives no credit.
+	e.runExpect(true, "beta", "GOFLAGS=-run=^$")
+	expect("after go test ./beta with GOFLAGS=-run=^$", []string{beta}, []string{anyRun, alpha})
 
 	// A passed covering run at the current source clears the package problem.
 	e.run("beta")
 	expect("after a passed go test ./beta", nil, []string{anyRun, beta, alpha})
 
-	// Any further change to beta needs a new run.
-	e.write("beta/beta.go", betaSource+"\nfunc Triple() int { return 3 * Value() }\n\nfunc Four() int { return 4 }\n")
-	expect("changed after the pass", []string{anyRun, beta}, []string{alpha})
-
-	// A non-test change to alpha now needs its own run as well.
+	// Only the latest run of a check at the current source counts: a later
+	// failed run of the same check at the same source withdraws the credit.
+	e.runExpect(false, "beta", "BETA_FAIL=1")
+	expect("pass then fail at the same source", []string{beta}, []string{anyRun, alpha})
 	e.run("beta")
-	e.write("alpha/alpha.go", alphaSource+"\nfunc Other() string { return \"other\" }\n")
-	expect("alpha changed after beta passed", []string{anyRun, alpha, beta}, nil)
+	expect("fail then pass at the same source", nil, []string{anyRun, beta, alpha})
+
+	// So does a later filtered run of the same check.
+	e.runExpect(true, "beta", "GOFLAGS=-run=^$")
+	expect("pass then filtered pass at the same source", []string{beta}, []string{anyRun, alpha})
+	e.run("beta")
+	expect("filtered then plain pass at the same source", nil, []string{anyRun, beta, alpha})
+
+	// Any further change to beta needs a new run, and so does alpha.
+	e.write("beta/beta.go", betaSource+"\nfunc Triple() int { return 3 * Value() }\n\nfunc Four() int { return 4 }\n")
+	expect("changed after the pass", []string{anyRun, beta, alpha}, nil)
 	e.run("alpha")
 	e.run("beta")
 	expect("both rerun", nil, []string{anyRun, alpha, beta})
+
+	// A go.mod change needs a passed ./... run; per-package runs do not do.
+	module := moduleFileProblems(t)
+	e.write("go.mod", evidenceModuleGo+"\n// contract test edit\n")
+	e.run("alpha")
+	e.run("beta")
+	expect("go.mod changed, packages rerun", module, []string{anyRun, alpha, beta})
+	e.runExpect(true, "all", "GOFLAGS=-run=^$")
+	expect("go.mod changed, filtered ./... run", module, []string{anyRun})
+	e.run("all")
+	expect("go.mod changed, ./... passed", nil, append([]string{anyRun, alpha, beta}, module...))
+}
+
+// moduleFileProblems returns the problems GoTests reports for a go.mod change
+// in a module without a root package once every package has its own passed
+// run: exactly the module-file rule's problems.
+func moduleFileProblems(t *testing.T) []string {
+	t.Helper()
+	source := langpack.Source{
+		Current: []string{"go.mod", "alpha/alpha.go", "alpha/alpha_test.go", "beta/beta.go", "beta/beta_test.go"},
+		Changed: []string{"go.mod"},
+	}
+	problems := (langpack.GoTests{}).Problems(source, []langpack.Run{{Argv: []string{"go", "test", "./alpha"}}, {Argv: []string{"go", "test", "./beta"}}})
+	want := []string{"changed go.mod has no passed go test ./... run at the current source"}
+	if !slices.Equal(problems, want) {
+		t.Errorf("GoTests problems for a go.mod change with per-package runs %q, want %q", problems, want)
+	}
+	return want
 }
 
 // --- severity through the CLI handoff path ---
@@ -615,4 +678,277 @@ func TestEvidenceE2EReviewSeverityAndRejectedBlocker(t *testing.T) {
 	if got := rejectedLimitations(verification, blocker); len(got) == 0 {
 		t.Errorf("the rejected blocker is no longer a limitation\nlimitations: %q", verification.Limitations)
 	}
+}
+
+// --- strict go test flag allowlist through the real cw binary ---
+
+const allowlistPlan = `{"title":"Strict flags","kind":"substantial",
+ "checkpoints":{"required":false,"reason":"contract test fixture"},
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","beta-args","beta-zero","split","both"],"allow_non_execution":false}],
+ "checks":[
+  {"id":"alpha","argv":["go","test","-count=1","./alpha"],"timeout_seconds":300},
+  {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
+  {"id":"beta-args","argv":["go","test","-count=1","./beta","-args","-test.run=^$"],"timeout_seconds":300},
+  {"id":"beta-zero","argv":["go","test","-count=0","./beta"],"timeout_seconds":300},
+  {"id":"split","argv":["go","test","-count=1","./alpha","-v","./beta"],"timeout_seconds":300},
+  {"id":"both","argv":["go","test","./alpha","./beta","-count=1","-v"],"timeout_seconds":300}]}`
+
+func (e *evidenceE2E) expectProblems(step string, want, unwanted []string) {
+	e.t.Helper()
+	verification := e.verify()
+	for _, problem := range want {
+		if !slices.Contains(verification.Problems, problem) {
+			e.t.Errorf("%s: problems lack %q\nproblems: %q", step, problem, verification.Problems)
+		}
+	}
+	for _, problem := range unwanted {
+		if slices.Contains(verification.Problems, problem) {
+			e.t.Errorf("%s: problems include %q\nproblems: %q", step, problem, verification.Problems)
+		}
+	}
+}
+
+// latestCheckRun returns the latest stored run of check.
+func (e *evidenceE2E) latestCheckRun(check string) taskflow.CheckRun {
+	e.t.Helper()
+	record, err := taskflow.Load(e.task)
+	if err != nil {
+		e.t.Fatalf("load task: %v", err)
+	}
+	for index := len(record.Checks) - 1; index >= 0; index-- {
+		if record.Checks[index].CheckID == check {
+			return record.Checks[index]
+		}
+	}
+	e.t.Fatalf("no stored run of check %s", check)
+	return taskflow.CheckRun{}
+}
+
+// storedRunMembers returns, for each stored run of check in the newest record
+// file, the JSON members it was encoded with.
+func (e *evidenceE2E) storedRunMembers(check string) []map[string]any {
+	e.t.Helper()
+	files, err := filepath.Glob(filepath.Join(e.task, "record-*.json"))
+	if err != nil || len(files) == 0 {
+		e.t.Fatalf("no record files in %s: %v", e.task, err)
+	}
+	slices.Sort(files)
+	data, err := os.ReadFile(files[len(files)-1])
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	var stored struct {
+		Checks []map[string]any `json:"checks"`
+	}
+	if err := json.Unmarshal(data, &stored); err != nil {
+		e.t.Fatalf("decode %s: %v", files[len(files)-1], err)
+	}
+	var found []map[string]any
+	for _, run := range stored.Checks {
+		if run["check_id"] == check {
+			found = append(found, run)
+		}
+	}
+	return found
+}
+
+// recordFilesContain reports whether any stored record file holds fragment.
+func (e *evidenceE2E) recordFilesContain(fragment string) []string {
+	e.t.Helper()
+	files, err := filepath.Glob(filepath.Join(e.task, "record-*.json"))
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	var holding []string
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			e.t.Fatal(err)
+		}
+		if bytes.Contains(data, []byte(fragment)) {
+			holding = append(holding, filepath.Base(file))
+		}
+	}
+	return holding
+}
+
+// A covering run that passes but runs no tests, or runs under a GOFLAGS the
+// allowlist refuses, earns no credit; GOFLAGS is split like cmd/go splits it
+// and recorded with build-flag values redacted.
+func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, beta}, []string{alpha})
+
+	// go test ./beta -args -test.run=^$ passes without running a test.
+	e.runExpect(true, "beta-args")
+	e.expectProblems("after -args -test.run=^$", []string{beta}, []string{anyRun, alpha})
+
+	// go test -count=0 ./beta passes without running a test.
+	e.runExpect(true, "beta-zero")
+	e.expectProblems("after -count=0", []string{beta}, []string{anyRun, alpha})
+
+	// Quoted GOFLAGS fields are split like cmd/go: still a filter.
+	for _, goflags := range []string{"GOFLAGS='-run=^$'", `GOFLAGS="-test.skip=."`, "GOFLAGS=-count=1 '-skip=.'", "GOFLAGS=-count=0"} {
+		e.runExpect(true, "beta", goflags)
+		e.expectProblems("after go test ./beta with "+goflags, []string{beta}, []string{anyRun, alpha})
+	}
+
+	// An allowlisted GOFLAGS keeps the credit.
+	e.runExpect(true, "beta", "GOFLAGS=-count=1 -v")
+	e.expectProblems("after go test ./beta with GOFLAGS=-count=1 -v", nil, []string{anyRun, beta, alpha})
+	if got := e.latestCheckRun("beta").GOFLAGS; got != "-count=1 -v" {
+		t.Errorf("stored GOFLAGS %q, want %q", got, "-count=1 -v")
+	}
+
+	// A filtered run then withdraws it again.
+	e.runExpect(true, "beta", "GOFLAGS='-run=^$'")
+	e.expectProblems("after a later quoted -run GOFLAGS", []string{beta}, []string{anyRun, alpha})
+
+	// Build-flag values are redacted in the stored record; a run using
+	// ldflags or gcflags earns no credit.
+	const secret = "hunter2-evidence-secret"
+	e.runExpect(true, "beta", "GOFLAGS='-ldflags=-X main.secret="+secret+"' -gcflags=-N -count=1")
+	e.expectProblems("after a run with ldflags and gcflags in GOFLAGS", []string{beta}, []string{anyRun, alpha})
+	stored := e.latestCheckRun("beta").GOFLAGS
+	if !strings.Contains(stored, "<redacted>") || strings.Contains(stored, secret) || strings.Contains(stored, "-N") || !strings.Contains(stored, "-count=1") {
+		t.Errorf("stored GOFLAGS %q, want ldflags and gcflags values redacted and -count=1 kept", stored)
+	}
+	if holding := e.recordFilesContain(secret); len(holding) != 0 {
+		t.Errorf("record files %q hold the ldflags value", holding)
+	}
+
+	// The bare form keeps the value in the following field, which is not
+	// stored verbatim either (cmd/go refuses this GOFLAGS, so the run fails).
+	const bareSecret = "bare-evidence-secret"
+	e.run("beta", "GOFLAGS=-ldflags -X=main.k="+bareSecret+" -count=1")
+	if got := e.latestCheckRun("beta").GOFLAGS; strings.Contains(got, bareSecret) {
+		t.Errorf("stored GOFLAGS %q holds the bare ldflags value", got)
+	}
+	if holding := e.recordFilesContain(bareSecret); len(holding) != 0 {
+		t.Errorf("record files %q hold the bare ldflags value", holding)
+	}
+	e.expectProblems("after a bare -ldflags GOFLAGS run", []string{beta}, []string{alpha})
+
+	// A run whose environment sets an empty GOFLAGS encodes no goflags member.
+	runs := e.storedRunMembers("beta-args")
+	if len(runs) == 0 {
+		t.Fatal("no stored beta-args run")
+	}
+	for _, run := range runs {
+		if value, ok := run["goflags"]; ok {
+			t.Errorf("a run with empty GOFLAGS stored goflags %q", value)
+		}
+	}
+	redacted := false
+	for _, run := range e.storedRunMembers("beta") {
+		if value, ok := run["goflags"].(string); ok && strings.Contains(value, "<redacted>") {
+			redacted = true
+		}
+	}
+	if !redacted {
+		t.Error("no stored beta run has a redacted goflags member")
+	}
+}
+
+// A changed asset in a directory without Go files belongs to the nearest
+// ancestor package.
+func TestEvidenceE2EAssetMapsToAncestorPackage(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.write("beta/static/index.html", "<p>beta</p>\n")
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("beta/static/index.html", "<p>beta, changed</p>\n")
+	e.expectProblems("asset changed", []string{anyRun, beta}, []string{alpha})
+	e.runExpect(true, "alpha")
+	e.expectProblems("asset changed, alpha run", []string{beta}, []string{anyRun, alpha})
+	e.runExpect(true, "beta")
+	e.expectProblems("asset changed, beta run", nil, []string{anyRun, beta, alpha})
+
+	// A new file in a new asset directory below the package does too.
+	e.write("beta/static/css/site.css", "p { color: red }\n")
+	e.expectProblems("new nested asset", []string{anyRun, beta}, []string{alpha})
+	e.runExpect(true, "beta")
+	e.expectProblems("new nested asset, beta run", nil, []string{anyRun, beta, alpha})
+}
+
+// Like cmd/go, a non-flag argument after a flag that follows a package
+// pattern ends the package list: go test ./alpha -v ./beta passes running only
+// alpha and earns no credit for either package.
+func TestEvidenceE2EPackageListEnds(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("alpha/alpha.go", alphaSource+"\nfunc Upper() string { return \"ALPHA\" }\n")
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, alpha, beta}, nil)
+
+	e.runExpect(true, "split")
+	e.expectProblems("after go test ./alpha -v ./beta", []string{alpha, beta}, []string{anyRun})
+
+	e.runExpect(true, "both")
+	e.expectProblems("after go test ./alpha ./beta -count=1 -v", nil, []string{anyRun, alpha, beta})
+}
+
+const testPrefixPlan = `{"title":"test. prefix","kind":"substantial",
+ "checkpoints":{"required":false,"reason":"contract test fixture"},
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["beta","race-first","race-last"],"allow_non_execution":false}],
+ "checks":[
+  {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
+  {"id":"race-first","argv":["go","test","-count=1","-test.race","./beta"],"timeout_seconds":300},
+  {"id":"race-last","argv":["go","test","-count=1","./beta","-test.race"],"timeout_seconds":300}]}`
+
+// -test.race is not a flag cmd/go passes to the test binary under that name:
+// go test -test.race ./beta hands ./beta to the binary as the flag's value and
+// tests the module root instead. Both runs below pass, because the fixture's
+// test binaries define a test.race flag, and neither covers beta.
+func TestEvidenceE2ETestPrefixedBuildFlag(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.write("root_test.go", "package evidence\n\nimport (\n\t\"flag\"\n\t\"testing\"\n)\n\nvar _ = flag.String(\"test.race\", \"\", \"\")\n\nfunc TestRoot(t *testing.T) {}\n")
+	e.write("beta/flag_test.go", "package beta\n\nimport \"flag\"\n\nvar _ = flag.Bool(\"test.race\", false, \"\")\n")
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", testPrefixPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, beta}, nil)
+
+	e.runExpect(true, "race-first")
+	e.expectProblems("after go test -test.race ./beta", []string{beta}, []string{anyRun})
+	e.runExpect(true, "race-last")
+	e.expectProblems("after go test ./beta -test.race", []string{beta}, []string{anyRun})
+
+	e.runExpect(true, "beta")
+	e.expectProblems("after go test ./beta", nil, []string{anyRun, beta})
 }
