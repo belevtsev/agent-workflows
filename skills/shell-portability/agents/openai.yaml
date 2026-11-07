@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shell Portability"
+  short_description: "Write and run scripts that work under sh, dash, BusyBox, bash 3.2 and curl | sh"
+  default_prompt: "Use $shell-portability to check this script against its target shells and invocation modes, then run it under each one."

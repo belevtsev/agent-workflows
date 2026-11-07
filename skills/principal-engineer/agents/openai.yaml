@@ -1,0 +1,6 @@
+interface:
+  display_name: "Principal Engineer"
+  short_description: "Decide failure behavior, ownership, durability and rollout for any language"
+  default_prompt: "Use $principal-engineer to state this change's failure modes, resource owners, durability, rollout and rollback, and compatibility before coding."
+policy:
+  allow_implicit_invocation: false

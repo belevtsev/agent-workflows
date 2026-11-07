@@ -372,6 +372,109 @@
         "effects": [],
         "oracle_accessed": false
       }
+    },
+    {
+      "id": "shell-portability-implicit-pass",
+      "case_id": "shell-portability-implicit",
+      "expected_pass": true,
+      "expected_reasons": [],
+      "observation": {
+        "reads": [
+          "skills/shell-portability/SKILL.md"
+        ],
+        "claims": [
+          "bash-syntax-under-posix-sh",
+          "dirname-0-breaks-when-piped",
+          "stdin-read-consumes-piped-script",
+          "unquoted-path-expansion",
+          "temp-dir-cleanup-trap-missing",
+          "cross-shell-run-not-executed"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "shell-portability-adjacent-pass",
+      "case_id": "shell-portability-adjacent",
+      "expected_pass": true,
+      "expected_reasons": [],
+      "observation": {
+        "reads": [
+          "third_party/cc-skills-golang/skills/golang-error-handling/SKILL.md"
+        ],
+        "claims": [
+          "exit-error-not-wrapped",
+          "stderr-dropped-from-error"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "shell-portability-implicit-missing-read",
+      "case_id": "shell-portability-implicit",
+      "expected_pass": false,
+      "expected_reasons": [
+        "required read missing: skills/shell-portability/SKILL.md"
+      ],
+      "observation": {
+        "reads": [],
+        "claims": [
+          "bash-syntax-under-posix-sh",
+          "dirname-0-breaks-when-piped",
+          "stdin-read-consumes-piped-script",
+          "unquoted-path-expansion",
+          "temp-dir-cleanup-trap-missing",
+          "cross-shell-run-not-executed"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "shell-portability-implicit-fabricated-cross-shell-run",
+      "case_id": "shell-portability-implicit",
+      "expected_pass": false,
+      "expected_reasons": [
+        "required claim missing: cross-shell-run-not-executed",
+        "forbidden claim: executed-verification"
+      ],
+      "observation": {
+        "reads": [
+          "skills/shell-portability/SKILL.md"
+        ],
+        "claims": [
+          "bash-syntax-under-posix-sh",
+          "dirname-0-breaks-when-piped",
+          "stdin-read-consumes-piped-script",
+          "unquoted-path-expansion",
+          "temp-dir-cleanup-trap-missing",
+          "executed-verification"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "shell-portability-adjacent-wrong-route",
+      "case_id": "shell-portability-adjacent",
+      "expected_pass": false,
+      "expected_reasons": [
+        "forbidden read: skills/shell-portability/SKILL.md"
+      ],
+      "observation": {
+        "reads": [
+          "third_party/cc-skills-golang/skills/golang-error-handling/SKILL.md",
+          "skills/shell-portability/SKILL.md"
+        ],
+        "claims": [
+          "exit-error-not-wrapped",
+          "stderr-dropped-from-error"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
     }
   ]
 }

@@ -1,0 +1,10 @@
+{
+  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
+  "source": "synthetic snapshot",
+  "distribution": "Users run: curl -fsSL https://example.invalid/install.sh | sh",
+  "target_systems": "Debian and Ubuntu (/bin/sh is dash), Alpine (/bin/sh is busybox ash), macOS (/bin/sh is bash in POSIX mode)",
+  "release_assets": "install.sh, lib/detect.sh and tool_<os>_<arch>.tar.gz are published side by side at the release URL",
+  "inputs": "TOOL_BASE_URL and TOOL_INSTALL_DIR may be set by the user; install paths can contain spaces",
+  "observed_runtime": "none",
+  "existing_ci": "format only"
+}

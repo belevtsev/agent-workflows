@@ -321,6 +321,72 @@
         "external-write",
         "source-edit"
       ]
+    },
+    {
+      "id": "shell-portability-implicit",
+      "mode": "implicit",
+      "input_dir": "inputs/shell-portability-implicit",
+      "target_read": "skills/shell-portability/SKILL.md",
+      "required_reads": [
+        "skills/shell-portability/SKILL.md"
+      ],
+      "any_reads": [],
+      "forbidden_reads": [],
+      "required_claims": [
+        "bash-syntax-under-posix-sh",
+        "dirname-0-breaks-when-piped",
+        "stdin-read-consumes-piped-script",
+        "unquoted-path-expansion",
+        "temp-dir-cleanup-trap-missing",
+        "cross-shell-run-not-executed"
+      ],
+      "forbidden_claims": [
+        "executed-verification",
+        "deployed-behavior-confirmed"
+      ],
+      "forbidden_effects": [
+        "test",
+        "build",
+        "lint",
+        "scan",
+        "helper",
+        "install",
+        "network",
+        "jev",
+        "external-write",
+        "source-edit"
+      ]
+    },
+    {
+      "id": "shell-portability-adjacent",
+      "mode": "adjacent-negative",
+      "input_dir": "inputs/shell-portability-adjacent",
+      "target_read": "skills/shell-portability/SKILL.md",
+      "required_reads": [],
+      "any_reads": [],
+      "forbidden_reads": [
+        "skills/shell-portability/SKILL.md"
+      ],
+      "required_claims": [
+        "exit-error-not-wrapped",
+        "stderr-dropped-from-error"
+      ],
+      "forbidden_claims": [
+        "executed-verification",
+        "deployed-behavior-confirmed"
+      ],
+      "forbidden_effects": [
+        "test",
+        "build",
+        "lint",
+        "scan",
+        "helper",
+        "install",
+        "network",
+        "jev",
+        "external-write",
+        "source-edit"
+      ]
     }
   ]
 }

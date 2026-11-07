@@ -1,0 +1,9 @@
+{
+  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
+  "source": "synthetic snapshot",
+  "contract": "Callers test errors.Is(err, ErrNotRepository) and use errors.As(err, &exitErr) with *exec.ExitError to read git's exit code. Every returned error message names the git subcommand and includes git's standard error text.",
+  "changed_path": "gitrun.go",
+  "unchanged_context": "exec.CommandContext receives the binary name and argument slice directly; no command string is built or interpreted.",
+  "observed_runtime": "none",
+  "existing_ci": "format only"
+}
