@@ -153,12 +153,25 @@ var allowedFlags = map[string]bool{
 	"trace": true, "vet": true,
 }
 
-// parseFlag splits a flag argument ("-name", "--name", "-name=value", with an
-// optional test. prefix on the name) into its name, inline value and whether
-// it has one.
+// testPrefixed are the flags go test also accepts with a test. prefix: its
+// passFlagToTest set (cmd/go/internal/test/flagdefs.go, go 1.27). Any other
+// -test.X is unknown to go test, so it ends the package list.
+var testPrefixed = []string{
+	"artifacts", "bench", "benchmem", "benchtime", "blockprofile", "blockprofilerate", "count", "coverprofile",
+	"cpu", "cpuprofile", "failfast", "fullpath", "fuzz", "fuzzminimizetime", "fuzztime", "list", "memprofile",
+	"memprofilerate", "mutexprofile", "mutexprofilefraction", "outputdir", "parallel", "run", "short", "shuffle",
+	"skip", "timeout", "trace", "v",
+}
+
+// parseFlag splits a flag argument ("-name", "--name", "-name=value") into its
+// name, inline value and whether it has one. A test. prefix is removed only
+// from a name in testPrefixed; otherwise it stays, so the name is unknown.
 func parseFlag(arg string) (name, value string, inline bool) {
 	name, value, inline = strings.Cut(strings.TrimPrefix(strings.TrimPrefix(arg, "-"), "-"), "=")
-	return strings.TrimPrefix(name, "test."), value, inline
+	if bare, ok := strings.CutPrefix(name, "test."); ok && slices.Contains(testPrefixed, bare) {
+		name = bare
+	}
+	return name, value, inline
 }
 
 // allowedValue reports whether an allowlisted flag's value is acceptable.
@@ -178,8 +191,7 @@ func allowedValue(name, value string) bool {
 //   - argv has no -args, since flags after it reach the test binary;
 //   - no non-flag argument follows a flag that itself followed a non-flag
 //     argument: cmd/go ends the package list there and hands the rest to the
-//     test binary, so `go test ./a -v ./b` tests only ./a (an older go that
-//     does not know a flag ends the list the same way);
+//     test binary, so `go test ./a -v ./b` tests only ./a;
 //   - every flag in argv and every field of its GOFLAGS (split like cmd/go,
 //     see splitQuoted; a field must be a flag with any value inline) is in
 //     allowedFlags with an acceptable value.
@@ -187,6 +199,11 @@ func allowedValue(name, value string) bool {
 // Patterns are the non-flag arguments that are "." or start with "./",
 // cleaned. Import paths and Windows-style .\pkg patterns are not credited.
 // GOFLAGS set through `go env -w` rather than the environment is not seen.
+//
+// The flag sets assume the go version recorded for the module (go 1.27). A
+// local toolchain that does not know an allowlisted flag ends the package
+// list at it, so a flag before the patterns makes go test only ".": such a
+// run is still credited.
 func credited(run Run) []string {
 	argv := run.Argv
 	if len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
@@ -276,8 +293,10 @@ const unparsableGOFLAGS = "<redacted: unparsable GOFLAGS>"
 // RedactGOFLAGS returns GOFLAGS for storage: each field keeps its flag name
 // and value, except that the value of ldflags, gcflags, asmflags and
 // gccgoflags becomes <redacted>, whether inline (-ldflags=v) or in the next
-// field (-ldflags v). Those flags earn no credit either way, so redaction never
-// changes the rule's result. Fields are re-joined with spaces, and a field
+// field (-ldflags v), and so does every following field that does not start
+// with - (-ldflags=-X main.token=v). Those flags earn no credit, so
+// redaction never changes the rule's result. Fields are re-joined with
+// spaces, and a field
 // holding a space or quote is wrapped in quotes, so credited reads the result
 // as it would the original. GOFLAGS that cannot be split, or holding a field
 // with both quote kinds that cannot be re-quoted, is stored as
@@ -288,18 +307,25 @@ func RedactGOFLAGS(goflags string) string {
 		return unparsableGOFLAGS
 	}
 	joined := make([]string, 0, len(fields))
-	redactNext := false
+	// redactNext marks the bare value of a redacted flag; redacting marks the
+	// non-flag fields that follow a redacted flag.
+	redactNext, redacting := false, false
 	for _, field := range fields {
 		name, _, inline := parseFlag(field)
 		switch {
 		case redactNext:
 			field, redactNext = "<redacted>", false
+		case redacting && !strings.HasPrefix(field, "-"):
+			field = "<redacted>"
 		case strings.HasPrefix(field, "-") && slices.Contains(redactedFlags, name):
+			redacting = true
 			if inline {
 				field = field[:strings.IndexByte(field, '=')+1] + "<redacted>"
 			} else {
 				redactNext = true
 			}
+		default:
+			redacting = false
 		}
 		switch {
 		case !strings.ContainsAny(field, " \t\n\r'\""):
