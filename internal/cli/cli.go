@@ -249,6 +249,7 @@ func NewCommand(config Config) *cobra.Command {
 	addMetricsCommand(root, config, o)
 	addConsultCommand(root, config)
 	addKeysCommand(root, config)
+	addHookCommands(root, config)
 	addGraphifyCommands(root, config)
 	// Cobra's help path stays independent of state, payload and downloads.
 	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", RunE: func(_ *cobra.Command, args []string) error {
