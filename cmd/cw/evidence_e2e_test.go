@@ -679,3 +679,199 @@ func TestEvidenceE2EReviewSeverityAndRejectedBlocker(t *testing.T) {
 		t.Errorf("the rejected blocker is no longer a limitation\nlimitations: %q", verification.Limitations)
 	}
 }
+
+// --- strict go test flag allowlist through the real cw binary ---
+
+const allowlistPlan = `{"title":"Strict flags","kind":"substantial",
+ "checkpoints":{"required":false,"reason":"contract test fixture"},
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["alpha","beta","beta-args","beta-zero"],"allow_non_execution":false}],
+ "checks":[
+  {"id":"alpha","argv":["go","test","-count=1","./alpha"],"timeout_seconds":300},
+  {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
+  {"id":"beta-args","argv":["go","test","-count=1","./beta","-args","-test.run=^$"],"timeout_seconds":300},
+  {"id":"beta-zero","argv":["go","test","-count=0","./beta"],"timeout_seconds":300}]}`
+
+func (e *evidenceE2E) expectProblems(step string, want, unwanted []string) {
+	e.t.Helper()
+	verification := e.verify()
+	for _, problem := range want {
+		if !slices.Contains(verification.Problems, problem) {
+			e.t.Errorf("%s: problems lack %q\nproblems: %q", step, problem, verification.Problems)
+		}
+	}
+	for _, problem := range unwanted {
+		if slices.Contains(verification.Problems, problem) {
+			e.t.Errorf("%s: problems include %q\nproblems: %q", step, problem, verification.Problems)
+		}
+	}
+}
+
+// latestCheckRun returns the latest stored run of check.
+func (e *evidenceE2E) latestCheckRun(check string) taskflow.CheckRun {
+	e.t.Helper()
+	record, err := taskflow.Load(e.task)
+	if err != nil {
+		e.t.Fatalf("load task: %v", err)
+	}
+	for index := len(record.Checks) - 1; index >= 0; index-- {
+		if record.Checks[index].CheckID == check {
+			return record.Checks[index]
+		}
+	}
+	e.t.Fatalf("no stored run of check %s", check)
+	return taskflow.CheckRun{}
+}
+
+// storedRunMembers returns, for each stored run of check in the newest record
+// file, the JSON members it was encoded with.
+func (e *evidenceE2E) storedRunMembers(check string) []map[string]any {
+	e.t.Helper()
+	files, err := filepath.Glob(filepath.Join(e.task, "record-*.json"))
+	if err != nil || len(files) == 0 {
+		e.t.Fatalf("no record files in %s: %v", e.task, err)
+	}
+	slices.Sort(files)
+	data, err := os.ReadFile(files[len(files)-1])
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	var stored struct {
+		Checks []map[string]any `json:"checks"`
+	}
+	if err := json.Unmarshal(data, &stored); err != nil {
+		e.t.Fatalf("decode %s: %v", files[len(files)-1], err)
+	}
+	var found []map[string]any
+	for _, run := range stored.Checks {
+		if run["check_id"] == check {
+			found = append(found, run)
+		}
+	}
+	return found
+}
+
+// recordFilesContain reports whether any stored record file holds fragment.
+func (e *evidenceE2E) recordFilesContain(fragment string) []string {
+	e.t.Helper()
+	files, err := filepath.Glob(filepath.Join(e.task, "record-*.json"))
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	var holding []string
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			e.t.Fatal(err)
+		}
+		if bytes.Contains(data, []byte(fragment)) {
+			holding = append(holding, filepath.Base(file))
+		}
+	}
+	return holding
+}
+
+// A covering run that passes but runs no tests, or runs under a GOFLAGS the
+// allowlist refuses, earns no credit; GOFLAGS is split like cmd/go splits it
+// and recorded with build-flag values redacted.
+func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, beta}, []string{alpha})
+
+	// go test ./beta -args -test.run=^$ passes without running a test.
+	e.runExpect(true, "beta-args")
+	e.expectProblems("after -args -test.run=^$", []string{beta}, []string{anyRun, alpha})
+
+	// go test -count=0 ./beta passes without running a test.
+	e.runExpect(true, "beta-zero")
+	e.expectProblems("after -count=0", []string{beta}, []string{anyRun, alpha})
+
+	// Quoted GOFLAGS fields are split like cmd/go: still a filter.
+	for _, goflags := range []string{"GOFLAGS='-run=^$'", `GOFLAGS="-test.skip=."`, "GOFLAGS=-count=1 '-skip=.'", "GOFLAGS=-count=0"} {
+		e.runExpect(true, "beta", goflags)
+		e.expectProblems("after go test ./beta with "+goflags, []string{beta}, []string{anyRun, alpha})
+	}
+
+	// An allowlisted GOFLAGS keeps the credit.
+	e.runExpect(true, "beta", "GOFLAGS=-count=1 -v")
+	e.expectProblems("after go test ./beta with GOFLAGS=-count=1 -v", nil, []string{anyRun, beta, alpha})
+	if got := e.latestCheckRun("beta").GOFLAGS; got != "-count=1 -v" {
+		t.Errorf("stored GOFLAGS %q, want %q", got, "-count=1 -v")
+	}
+
+	// A filtered run then withdraws it again.
+	e.runExpect(true, "beta", "GOFLAGS='-run=^$'")
+	e.expectProblems("after a later quoted -run GOFLAGS", []string{beta}, []string{anyRun, alpha})
+
+	// Build-flag values are redacted in the stored record; the redacted form
+	// still earns credit.
+	const secret = "hunter2-evidence-secret"
+	e.runExpect(true, "beta", "GOFLAGS='-ldflags=-X main.secret="+secret+"' -gcflags=-N -count=1")
+	e.expectProblems("after a run with ldflags and gcflags in GOFLAGS", nil, []string{anyRun, beta, alpha})
+	stored := e.latestCheckRun("beta").GOFLAGS
+	if !strings.Contains(stored, "<redacted>") || strings.Contains(stored, secret) || strings.Contains(stored, "-N") || !strings.Contains(stored, "-count=1") {
+		t.Errorf("stored GOFLAGS %q, want ldflags and gcflags values redacted and -count=1 kept", stored)
+	}
+	if holding := e.recordFilesContain(secret); len(holding) != 0 {
+		t.Errorf("record files %q hold the ldflags value", holding)
+	}
+
+	// A run whose environment sets an empty GOFLAGS encodes no goflags member.
+	runs := e.storedRunMembers("beta-args")
+	if len(runs) == 0 {
+		t.Fatal("no stored beta-args run")
+	}
+	for _, run := range runs {
+		if value, ok := run["goflags"]; ok {
+			t.Errorf("a run with empty GOFLAGS stored goflags %q", value)
+		}
+	}
+	redacted := false
+	for _, run := range e.storedRunMembers("beta") {
+		if value, ok := run["goflags"].(string); ok && strings.Contains(value, "<redacted>") {
+			redacted = true
+		}
+	}
+	if !redacted {
+		t.Error("no stored beta run has a redacted goflags member")
+	}
+}
+
+// A changed asset in a directory without Go files belongs to the nearest
+// ancestor package.
+func TestEvidenceE2EAssetMapsToAncestorPackage(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.write("beta/static/index.html", "<p>beta</p>\n")
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+	alpha := packageProblem(t, "alpha")
+
+	e.write("beta/static/index.html", "<p>beta, changed</p>\n")
+	e.expectProblems("asset changed", []string{anyRun, beta}, []string{alpha})
+	e.runExpect(true, "alpha")
+	e.expectProblems("asset changed, alpha run", []string{beta}, []string{anyRun, alpha})
+	e.runExpect(true, "beta")
+	e.expectProblems("asset changed, beta run", nil, []string{anyRun, beta, alpha})
+
+	// A new file in a new asset directory below the package does too.
+	e.write("beta/static/css/site.css", "p { color: red }\n")
+	e.expectProblems("new nested asset", []string{anyRun, beta}, []string{alpha})
+	e.runExpect(true, "beta")
+	e.expectProblems("new nested asset, beta run", nil, []string{anyRun, beta, alpha})
+}

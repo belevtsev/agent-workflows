@@ -23,9 +23,15 @@ import (
 //     directories and fully deleted packages are not changed packages;
 //   - a change to go.mod, go.sum, go.work or go.work.sum needs a passed
 //     `./...` run;
-//   - arguments after -args are not patterns, nor are values of value-taking
-//     flags in either `-flag value` or `-flag=value` form;
-//   - a run using -c, -list, -exec, -run or -skip gives no package credit.
+//   - values of value-taking flags are never patterns, in either
+//     `-flag value` or `-flag=value` form;
+//   - a run earns package credit only when every flag in its argv and in its
+//     GOFLAGS (split like cmd/go, quotes included; `-`, `--` and `test.`
+//     prefixes normalised) is on the allowlist, -count is an integer >= 1,
+//     and neither -args nor --args appears;
+//   - a changed non-Go file in a directory without Go files belongs to the
+//     nearest ancestor package of the same module; a nested module stops the
+//     walk, and no such package means no package change.
 
 // contractModule is the current source of a module with a root package, a
 // package and its sibling-prefixed neighbour, a nested package, ignored
@@ -179,7 +185,8 @@ func TestContractChangedPackages(t *testing.T) {
 		{"directory below testdata belongs to the package", []string{"internal/taskflow/testdata/deep/deep.go"}, []string{"internal/taskflow"}},
 		{"non-Go file in a package directory", []string{"pkg/data.json"}, []string{"pkg"}},
 		{"non-Go file in the root package directory", []string{"README.md"}, []string{"."}},
-		{"non-Go file in a directory without Go files", []string{"docs/guide.txt"}, nil},
+		// docs holds no Go file: its nearest ancestor package is the root.
+		{"non-Go file in a directory without Go files", []string{"docs/guide.txt"}, []string{"."}},
 		{"vendor", []string{"vendor/example.com/dep/dep.go"}, nil},
 		{"underscore directory at the top", []string{"_tools/tool.go"}, nil},
 		{"underscore directory below a package", []string{"internal/_gen/gen.go"}, nil},
@@ -189,7 +196,11 @@ func TestContractChangedPackages(t *testing.T) {
 		{"package inside a nested module", []string{"nested/inner/inner.go"}, nil},
 		{"nested go.mod itself", []string{"nested/go.mod"}, nil},
 		{"deleted package", []string{"internal/gone/gone.go", "internal/gone/gone_test.go"}, nil},
-		{"deleted package keeping a non-Go file", []string{"internal/gone2/gone2.go", "internal/gone2/notes.md"}, nil},
+		// The deleted Go file changes no package; the remaining notes.md is a
+		// non-Go file in a directory without Go files, so it belongs to the
+		// nearest ancestor package: internal holds no Go file, so the root.
+		{"deleted package, its Go files only", []string{"internal/gone2/gone2.go"}, nil},
+		{"deleted package keeping a non-Go file", []string{"internal/gone2/gone2.go", "internal/gone2/notes.md"}, []string{"."}},
 		{"deleted file of a surviving package", []string{"pkg/c.go"}, []string{"pkg"}},
 		{"mixed", []string{"pkg/a.go", "internal/task/task_test.go", "vendor/example.com/dep/dep.go", "nested/nested.go", "main.go", "_tools/tool.go"}, []string{".", "pkg", "internal/task"}},
 	} {
@@ -241,7 +252,7 @@ func TestContractPatternCoverage(t *testing.T) {
 		{"-coverpkg ./... covers its pattern", taskflow, []string{"go", "test", "-coverpkg", "./...", "./internal/taskflow"}, true},
 		{"-bench . covers its pattern", taskflow, []string{"go", "test", "-bench", ".", "./internal/taskflow"}, true},
 		{"one of several patterns", task, []string{"go", "test", "./pkg", "./internal/task"}, true},
-		{"pattern before -args", taskflow, []string{"go", "test", "./internal/taskflow", "-args", "-v"}, true},
+		{"-v after the pattern", taskflow, []string{"go", "test", "./internal/taskflow", "-v"}, true},
 
 		// Non-covering patterns.
 		// Values of value-taking flags are not patterns.
@@ -275,6 +286,8 @@ func TestContractPatternCoverage(t *testing.T) {
 		{"child ... does not cover parent", taskflow, []string{"go", "test", "./internal/taskflow/sub/..."}, false},
 		{"exact package does not cover a nested package", sub, []string{"go", "test", "./internal/taskflow"}, false},
 		{". does not cover a subpackage", taskflow, []string{"go", "test", "."}, false},
+		// Any -args gives no credit, even after a covering pattern.
+		{"pattern before -args", taskflow, []string{"go", "test", "./internal/taskflow", "-args", "-v"}, false},
 		{"pattern only after -args", taskflow, []string{"go", "test", "-args", "./internal/taskflow"}, false},
 		{"./... only after -args", taskflow, []string{"go", "test", "./pkg", "-args", "./..."}, false},
 		{"go vet is not go test", taskflow, []string{"go", "vet", "./..."}, false},
@@ -444,5 +457,417 @@ func TestContractGOFLAGS(t *testing.T) {
 	)
 	if len(problems) != 0 {
 		t.Errorf("an unfiltered covering run beside a filtered one leaves problems %q", problems)
+	}
+}
+
+// contractCovers reports whether a passed run covers the changed package
+// internal/taskflow of contractModule, and fails the test when the problems
+// are neither empty nor exactly that package's problem.
+func contractCovers(t *testing.T, run langpack.Run) bool {
+	t.Helper()
+	problems := contractGoRunProblems(t, []string{"internal/taskflow/taskflow.go"}, run)
+	if len(problems) == 0 {
+		return true
+	}
+	if len(problems) != 1 || !contractProblemFor(problems, "internal/taskflow") {
+		t.Fatalf("run %q GOFLAGS %q: problems %q, want none or the internal/taskflow problem", run.Argv, run.GOFLAGS, problems)
+	}
+	return false
+}
+
+func contractArgv(flags ...string) []string {
+	return append([]string{"go", "test"}, flags...)
+}
+
+// contractTestBinaryFlags are the allowlisted flags the test binary also
+// accepts as -test.<flag>; the contract normalises that prefix.
+var contractTestBinaryFlags = map[string]bool{
+	"v": true, "failfast": true, "short": true, "benchmem": true, "fullpath": true,
+	"artifacts": true, "count": true, "timeout": true, "cpu": true, "parallel": true,
+	"bench": true, "benchtime": true, "coverprofile": true, "cpuprofile": true,
+	"memprofile": true, "memprofilerate": true, "blockprofile": true,
+	"blockprofilerate": true, "mutexprofile": true, "mutexprofilefraction": true,
+	"trace": true, "outputdir": true, "shuffle": true,
+}
+
+// contractValueFlags maps each allowlisted value-taking flag to a value that
+// earns credit.
+var contractValueFlags = map[string]string{
+	"shuffle": "on", "count": "1", "timeout": "10m", "covermode": "atomic",
+	"coverpkg": "./...", "coverprofile": "c.out", "outputdir": "out",
+	"cpu": "1,2", "p": "4", "parallel": "4", "tags": "integration",
+	"mod": "mod", "ldflags": "-s -w", "gcflags": "all=-N -l",
+	"asmflags": "all=-trimpath=x", "pgo": "off", "bench": ".",
+	"benchtime": "1x", "cpuprofile": "cpu.out", "memprofile": "mem.out",
+	"memprofilerate": "1", "blockprofile": "block.out",
+	"blockprofilerate": "1", "mutexprofile": "mutex.out",
+	"mutexprofilefraction": "1", "trace": "trace.out", "vet": "off",
+}
+
+// Every allowlisted flag earns credit in each of its spellings: boolean flags
+// take no value, so the next argument is the pattern; value flags consume
+// exactly their value, even one starting with a dash.
+func TestContractAllowlistedFlagsCredit(t *testing.T) {
+	const pkg = "./internal/taskflow"
+	booleans := []string{"v", "race", "msan", "asan", "failfast", "json", "cover", "short", "trimpath", "benchmem", "x", "work", "fullpath", "artifacts"}
+	var cases [][]string
+	for _, flag := range booleans {
+		cases = append(cases,
+			contractArgv("-"+flag, pkg),
+			contractArgv("--"+flag, pkg),
+			contractArgv("-"+flag+"=true", pkg),
+			contractArgv(pkg, "-"+flag),
+		)
+		if contractTestBinaryFlags[flag] {
+			cases = append(cases, contractArgv("-test."+flag, pkg))
+		}
+	}
+	for flag, value := range contractValueFlags {
+		cases = append(cases,
+			contractArgv("-"+flag, value, pkg),
+			contractArgv("-"+flag+"="+value, pkg),
+			contractArgv("--"+flag+"="+value, pkg),
+			contractArgv(pkg, "-"+flag, value),
+		)
+		if contractTestBinaryFlags[flag] {
+			cases = append(cases, contractArgv("-test."+flag, value, pkg), contractArgv("-test."+flag+"="+value, pkg))
+		}
+	}
+	cases = append(cases,
+		contractArgv("-buildvcs=false", pkg),
+		contractArgv("-count", "3", pkg),
+		contractArgv("-shuffle", "12345", pkg),
+		contractArgv("-shuffle=off", pkg),
+	)
+	for _, argv := range cases {
+		if !contractCovers(t, langpack.Run{Argv: argv}) {
+			t.Errorf("allowlisted argv %q earns no credit", argv)
+		}
+	}
+}
+
+// Contract item 6: false-denial guards named by the contract.
+func TestContractFalseDenialGuards(t *testing.T) {
+	for _, argv := range [][]string{
+		contractArgv("-test.v", "./internal/taskflow"),
+		contractArgv("-test.count=1", "./internal/taskflow"),
+		contractArgv("-artifacts", "./internal/taskflow"),
+		contractArgv("-race", "-shuffle=on", "-count=1", "./..."),
+		contractArgv("-v", "-race", "-count=1", "-timeout=20m", "-coverprofile=cover.out", "-covermode=atomic", "-coverpkg=./...", "./..."),
+	} {
+		if !contractCovers(t, langpack.Run{Argv: argv}) {
+			t.Errorf("argv %q earns no credit", argv)
+		}
+	}
+	// The module-file rule credits the same plain ./... runs.
+	for _, argv := range [][]string{
+		contractArgv("-race", "-shuffle=on", "-count=1", "./..."),
+		contractArgv("-test.v", "./..."),
+	} {
+		if problems := contractGoProblems(t, []string{"go.mod"}, argv); len(problems) != 0 {
+			t.Errorf("a go.mod change with %q gives problems %q", argv, problems)
+		}
+	}
+}
+
+// Every flag off the allowlist, a non-positive or non-integer -count and any
+// -args withdraw the credit of a run that would otherwise cover.
+func TestContractFlagsOutsideAllowlistDeny(t *testing.T) {
+	const pkg = "./internal/taskflow"
+	for _, tc := range []struct {
+		name string
+		argv []string
+	}{
+		{"-run", contractArgv("-run", "X", pkg)},
+		{"-test.run", contractArgv("-test.run=X", pkg)},
+		{"--run", contractArgv("--run=X", pkg)},
+		{"--test.run", contractArgv("--test.run", "X", pkg)},
+		{"-skip", contractArgv("-skip=X", pkg)},
+		{"-test.skip", contractArgv("-test.skip", ".", pkg)},
+		{"-list", contractArgv("-list", ".", pkg)},
+		{"--test.list", contractArgv("--test.list=.", pkg)},
+		{"-c", contractArgv("-c", pkg)},
+		{"-n", contractArgv("-n", pkg)},
+		{"-exec", contractArgv("-exec", "true", pkg)},
+		{"-toolexec", contractArgv("-toolexec", "true", pkg)},
+		{"-toolexec=", contractArgv("-toolexec=true", pkg)},
+		{"-overlay", contractArgv("-overlay=overlay.json", pkg)},
+		{"-modfile", contractArgv("-modfile", "alt.mod", pkg)},
+		{"-fuzz", contractArgv("-fuzz=FuzzX", pkg)},
+		{"-test.fuzz", contractArgv("-test.fuzz", "FuzzX", pkg)},
+		{"-C", contractArgv("-C", ".", pkg)},
+		{"-C=", contractArgv("-C=.", "./...")},
+		{"unknown flag", contractArgv("-frobnicate", pkg)},
+		{"unknown flag with a value", contractArgv("-frobnicate=1", pkg)},
+		{"unknown test. flag", contractArgv("-test.frobnicate", pkg)},
+		{"unknown flag after the pattern", contractArgv(pkg, "-frobnicate")},
+		{"allowlisted flags beside a denied one", contractArgv("-v", "-race", "-count=1", "-run=X", pkg)},
+		// -count must be an integer >= 1.
+		{"-count=0", contractArgv("-count=0", pkg)},
+		{"-count 0", contractArgv("-count", "0", pkg)},
+		{"-test.count=0", contractArgv("-test.count=0", pkg)},
+		{"--count=0", contractArgv("--count=0", pkg)},
+		{"-count=0 with ./...", contractArgv("-count=0", "./...")},
+		{"-count=-1", contractArgv("-count=-1", pkg)},
+		{"-count=x", contractArgv("-count=x", pkg)},
+		{"-count=1.5", contractArgv("-count=1.5", pkg)},
+		{"-count= empty", contractArgv("-count=", pkg)},
+		{"a later -count=0", contractArgv("-count=1", "-count=0", pkg)},
+		// Any -args or --args.
+		{"-args -test.run=^$", contractArgv(pkg, "-args", "-test.run=^$")},
+		{"-args -test.count=0", contractArgv(pkg, "-args", "-test.count=0")},
+		{"-args -test.skip=.", contractArgv(pkg, "-args", "-test.skip=.")},
+		{"-args -test.v", contractArgv(pkg, "-args", "-test.v")},
+		{"bare trailing -args", contractArgv(pkg, "-args")},
+		{"--args", contractArgv(pkg, "--args", "-test.run=^$")},
+		{"-args with ./...", contractArgv("-count=1", "./...", "-args", "-test.list=.")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if contractCovers(t, langpack.Run{Argv: tc.argv}) {
+				t.Errorf("argv %q earns credit", tc.argv)
+			}
+		})
+	}
+}
+
+// Values of value-taking flags are never patterns, whatever they look like,
+// in either spelling.
+func TestContractFlagValuesAreNotPatterns(t *testing.T) {
+	for flag := range contractValueFlags {
+		argvs := [][]string{
+			contractArgv("-"+flag, "./internal/taskflow", "./pkg"),
+			contractArgv("-"+flag+"=./internal/taskflow", "./pkg"),
+			contractArgv("-"+flag, "./...", "./pkg"),
+			contractArgv("-"+flag+"=./...", "./pkg"),
+			contractArgv("--"+flag, "./...", "./pkg"),
+		}
+		if contractTestBinaryFlags[flag] {
+			argvs = append(argvs, contractArgv("-test."+flag, "./...", "./pkg"))
+		}
+		for _, argv := range argvs {
+			if contractCovers(t, langpack.Run{Argv: argv}) {
+				t.Errorf("argv %q credits internal/taskflow through a flag value", argv)
+			}
+		}
+		// A value of "." does not cover the root package.
+		argv := contractArgv("-"+flag, ".", "./pkg")
+		if problems := contractGoProblems(t, []string{"main.go"}, argv); !contractProblemFor(problems, ".") {
+			t.Errorf("argv %q credits the root package through a flag value; problems %q", argv, problems)
+		}
+	}
+}
+
+// GOFLAGS is split like cmd/go splits it, with quoted fields, and each field
+// meets the same allowlist as argv.
+func TestContractGOFLAGSAllowlist(t *testing.T) {
+	for _, tc := range []struct {
+		goflags string
+		covered bool
+	}{
+		{"-count=1 -v", true},
+		{"  -count=1\t-v  ", true},
+		{"-race -shuffle=on", true},
+		{"-test.v", true},
+		{"-test.count=1", true},
+		{"--v --count=1", true},
+		{"-tags=integration -mod=mod -trimpath", true},
+		{"'-tags=a b' -count=1", true},
+		{`"-tags=a b"`, true},
+		// The rule reads GOFLAGS as cw records it, with these values redacted.
+		{"-ldflags=<redacted>", true},
+		{"-ldflags=<redacted> -gcflags=<redacted> -asmflags=<redacted> -count=1", true},
+		{"'-ldflags=<redacted>' -count=1", true},
+
+		{"'-run=^$'", false},
+		{`"-run=^$"`, false},
+		{`"-test.skip=."`, false},
+		{"'-test.run=X'", false},
+		{"-v '-skip=X'", false},
+		{`-count=1 "-list=."`, false},
+		{"-frobnicate", false},
+		{"-frobnicate=1", false},
+		{"-v -frobnicate -count=1", false},
+		{"-count=0", false},
+		{"-test.count=0", false},
+		{"-v -count=0", false},
+		{"'-count=0'", false},
+		{"-toolexec=true", false},
+		{"-overlay=o.json", false},
+		{"-modfile=alt.mod", false},
+		{"-fuzz=FuzzX", false},
+		{"-exec=true", false},
+	} {
+		t.Run("GOFLAGS="+tc.goflags, func(t *testing.T) {
+			for _, argv := range [][]string{contractArgv("./internal/taskflow"), contractArgv("-count=1", "./...")} {
+				if got := contractCovers(t, langpack.Run{Argv: argv, GOFLAGS: tc.goflags}); got != tc.covered {
+					t.Errorf("argv %q with GOFLAGS %q: covered = %v, want %v", argv, tc.goflags, got, tc.covered)
+				}
+			}
+		})
+	}
+	// GOFLAGS that withdraws package credit also withdraws module-file credit.
+	for _, goflags := range []string{"'-run=^$'", "-count=0", "-frobnicate"} {
+		run := langpack.Run{Argv: contractArgv("./..."), GOFLAGS: goflags}
+		if problems := contractGoRunProblems(t, []string{"go.mod"}, run); !slices.Contains(problems, contractModuleProblem("go.mod")) {
+			t.Errorf("a go.mod change is satisfied by ./... with GOFLAGS %q: problems %q", goflags, problems)
+		}
+	}
+}
+
+// Module-file changes: the plain ./... run must also meet the allowlist.
+func TestContractModuleFilesAllowlist(t *testing.T) {
+	want := contractModuleProblem("go.sum")
+	for _, argv := range [][]string{
+		contractArgv("-count=0", "./..."),
+		contractArgv("./...", "-args", "-test.run=^$"),
+		contractArgv("./...", "--args"),
+		contractArgv("-toolexec=true", "./..."),
+		contractArgv("-frobnicate", "./..."),
+	} {
+		if problems := contractGoProblems(t, []string{"go.sum"}, argv); !slices.Contains(problems, want) {
+			t.Errorf("a go.sum change is satisfied by %q: problems %q", argv, problems)
+		}
+	}
+}
+
+// assetModule has packages with asset subdirectories that hold no Go files,
+// and nested modules with their own asset directories.
+var assetModule = []string{
+	"go.mod",
+	"main.go",
+	"pkg/a.go",
+	"pkg/static/index.html",
+	"pkg/static/css/site.css",
+	"pkg/sub/sub.go",
+	"pkg/sub/assets/logo.png",
+	"pkg/testdata/golden.txt",
+	"docs/guide.txt",
+	"nested/go.mod",
+	"nested/n.go",
+	"nested/web/app.js",
+	"nested/deep/er/x.txt",
+	"tools/nested2/go.mod",
+	"tools/nested2/README.md",
+}
+
+func assetProblems(t *testing.T, current, changed []string, passed ...[]string) []string {
+	t.Helper()
+	runs := []langpack.Run{}
+	for _, argv := range passed {
+		runs = append(runs, langpack.Run{Argv: argv})
+	}
+	source := langpack.Source{Current: current, Changed: changed}
+	if !(langpack.GoTests{}).Applies(source) {
+		t.Fatal("GoTests does not apply")
+	}
+	return (langpack.GoTests{}).Problems(source, runs)
+}
+
+// A changed non-Go file in a directory without Go files belongs to the
+// nearest ancestor package within the same module.
+func TestContractNonGoFileNearestAncestorPackage(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		changed string
+		want    string // "" when no package changes
+	}{
+		{"asset directory of a package", "pkg/static/index.html", "pkg"},
+		{"two levels below a package", "pkg/static/css/site.css", "pkg"},
+		{"asset directory of a nested package", "pkg/sub/assets/logo.png", "pkg/sub"},
+		{"testdata stays with its package", "pkg/testdata/golden.txt", "pkg"},
+		{"top-level directory without Go files", "docs/guide.txt", "."},
+		{"nested module asset", "nested/web/app.js", ""},
+		{"nested module deep asset", "nested/deep/er/x.txt", ""},
+		{"nested module without packages", "tools/nested2/README.md", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			problems := assetProblems(t, assetModule, []string{tc.changed})
+			if tc.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("changed %s: problems %q, want none", tc.changed, problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !contractProblemFor(problems, tc.want) {
+				t.Fatalf("changed %s: problems %q, want only package %s", tc.changed, problems, tc.want)
+			}
+		})
+	}
+
+	// The owning package's run covers the asset; a pattern naming the asset
+	// directory, a sibling or the root package does not.
+	const asset = "pkg/static/css/site.css"
+	for _, tc := range []struct {
+		argv    []string
+		covered bool
+	}{
+		{contractArgv("./pkg"), true},
+		{contractArgv("./pkg/..."), true},
+		{contractArgv("./..."), true},
+		{contractArgv("./pkg/static/..."), false},
+		{contractArgv("./pkg/static"), false},
+		{contractArgv("./pkg/sub"), false},
+		{contractArgv("."), false},
+	} {
+		problems := assetProblems(t, assetModule, []string{asset}, tc.argv)
+		if tc.covered && len(problems) != 0 {
+			t.Errorf("changed %s with %q: problems %q", asset, tc.argv, problems)
+		}
+		if !tc.covered && !contractProblemFor(problems, "pkg") {
+			t.Errorf("changed %s is covered by %q; problems %q", asset, tc.argv, problems)
+		}
+	}
+
+	// Without an ancestor package there is no package change.
+	noRoot := []string{"go.mod", "cmd/tool/main.go", "docs/guide.txt", "assets/logo.png", "README.md"}
+	for _, changed := range []string{"docs/guide.txt", "assets/logo.png", "README.md"} {
+		if problems := assetProblems(t, noRoot, []string{changed}); len(problems) != 0 {
+			t.Errorf("changed %s in a module without a root package: problems %q", changed, problems)
+		}
+	}
+}
+
+// RedactGOFLAGS keeps flag names and other values, replaces the values of
+// ldflags, gcflags, asmflags and gccgoflags with <redacted>, and its result
+// earns exactly the credit the original would.
+func TestContractRedactGOFLAGS(t *testing.T) {
+	const secret = "s3cr3t-value"
+	for _, tc := range []struct {
+		goflags string
+		covered bool
+	}{
+		{"", true},
+		{"-count=1 -v", true},
+		{"-ldflags=-X=main.v=" + secret, true},
+		{"'-ldflags=-X main.v=" + secret + "' -count=1", true},
+		{`"-gcflags=all=-N -l ` + secret + `" -v`, true},
+		{"-asmflags=" + secret + " -race", true},
+		{"--ldflags=" + secret, true},
+		{"-gccgoflags=" + secret, false},
+		{"'-ldflags=-X main.v=" + secret + "' '-run=^$'", false},
+		{"-gcflags=" + secret + " -count=0", false},
+		{"-ldflags=" + secret + " -frobnicate", false},
+		{"'-ldflags=" + secret, false}, // unbalanced quote: cannot be split
+	} {
+		t.Run(tc.goflags, func(t *testing.T) {
+			stored := langpack.RedactGOFLAGS(tc.goflags)
+			if strings.Contains(stored, secret) {
+				t.Errorf("RedactGOFLAGS(%q) = %q keeps the value", tc.goflags, stored)
+			}
+			if tc.goflags == "" && stored != "" {
+				t.Errorf("RedactGOFLAGS(\"\") = %q, want empty", stored)
+			}
+			if strings.Contains(tc.goflags, "flags=") && tc.covered && !strings.Contains(stored, "<redacted>") {
+				t.Errorf("RedactGOFLAGS(%q) = %q has no <redacted> value", tc.goflags, stored)
+			}
+			for _, kept := range []string{"-count=1", "-v", "-race"} {
+				if slices.Contains(strings.Fields(tc.goflags), kept) && tc.covered && !slices.Contains(strings.Fields(stored), kept) {
+					t.Errorf("RedactGOFLAGS(%q) = %q drops %s", tc.goflags, stored, kept)
+				}
+			}
+			if got := contractCovers(t, langpack.Run{Argv: contractArgv("./internal/taskflow"), GOFLAGS: stored}); got != tc.covered {
+				t.Errorf("stored GOFLAGS %q (from %q): covered = %v, want %v", stored, tc.goflags, got, tc.covered)
+			}
+		})
 	}
 }
