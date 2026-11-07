@@ -163,6 +163,10 @@ func runWithOutputLimit(ctx context.Context, arguments []string, directory strin
 			// joins the copiers; never abandon a goroutine writing our buffers.
 			<-done
 		}
+		// One group kill can miss a member that a dying process was forking at
+		// that moment (seen on macOS). Kill the group again once the leader is
+		// joined, as taskflow does for a cancelled check.
+		killGroup(command)
 		return 0, "", "", interrupted
 	}
 	// Completion transfers no descendant lifetime to the caller. Wait may

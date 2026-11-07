@@ -87,9 +87,13 @@ func Check(ctx context.Context, options Options) error {
 	if _, err := workflow.ValidateSuite(options.Source); err != nil {
 		return err
 	}
-	// The timeout turns a hung test into a failure with goroutine dumps, well
-	// inside the CI job's limit.
-	testArgs := []string{"test", "-count=1", "-timeout=5m"}
+	// The timeout turns a hung test into a failure with goroutine dumps inside
+	// the CI job's 10-minute limit, which also covers about a minute of setup,
+	// vet, validation and smoke. 8m is twice internal/workflow's slowest race
+	// time in CI (up to 240s); with graphify and taskflow no longer paying the
+	// race runtime's exit delay per helper child, workflow is the slowest
+	// package locally. Recheck after CI runs this.
+	testArgs := []string{"test", "-count=1", "-timeout=8m"}
 	if options.Race {
 		testArgs = append(testArgs, "-race")
 	}

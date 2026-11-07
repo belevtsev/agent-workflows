@@ -60,6 +60,7 @@ func taskArtifactNames(t *testing.T, directory string) []string {
 }
 
 func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *testing.T) {
+	t.Parallel()
 	plan := Plan{Title: "Read source", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read the complete source", AllowNonExecution: true}}}
 	record, ref := fixtureTask(t, plan)
 	initial, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
@@ -116,6 +117,7 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 }
 
 func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
+	t.Parallel()
 	marker := filepath.Join(t.TempDir(), "must-not-execute")
 	record, _ := fixtureTask(t, helperPlan(t, "small", "mutate", marker))
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
@@ -134,6 +136,7 @@ func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
 }
 
 func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
+	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -248,6 +251,7 @@ func awaitCheckOutcome(t *testing.T, lifetime context.Context, done <-chan check
 }
 
 func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
+	t.Parallel()
 	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
@@ -317,6 +321,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 }
 
 func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
+	t.Parallel()
 	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
@@ -341,6 +346,7 @@ func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
 }
 
 func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing.T) {
+	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	runID := strings.Repeat("a", 32)
 	record, err := updateWithCapacity(record.Directory, 2, "", func(_ *os.Root, record *Record) error {
