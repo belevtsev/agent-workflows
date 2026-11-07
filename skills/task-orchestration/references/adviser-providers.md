@@ -96,7 +96,7 @@ is `refusal`.
 
 `cwdev eval multilingual` provides a small synthetic baseline for the configured
 advisers. It is separate from task consultations, skill-discovery evaluations and
-native manager checks. The bundled corpus lives in `evals/multilingual` relative to
+the repository checks. The bundled corpus lives in `evals/multilingual` relative to
 the skill; `cwdev` is a maintainer tool that reads it from a source checkout,
 selected with `--source` (by default the current directory).
 
@@ -114,9 +114,8 @@ Run offline validation without network access, credential lookup or output files
 GOWORK=off go run ./cmd/cwdev eval multilingual
 ```
 
-Run it from the editable checkout; do not edit installed snapshots. A hosted run
-requires `--live --output-dir PATH` and a new private directory outside source
-repositories and managed releases:
+Run it from a source checkout. A hosted run requires `--live --output-dir PATH`
+and a new private directory outside source repositories:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.codex/workflow-audits/multilingual-baseline-01

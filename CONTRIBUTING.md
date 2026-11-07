@@ -5,21 +5,14 @@ Thanks for helping improve agent-workflows. This file explains how to build, tes
 ## Build and test
 
 ```sh
-GOWORK=off go build ./...
-GOWORK=off go test -count=1 ./...
+GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
-The full developer check, which CI also runs, is:
-
-```sh
-GOWORK=off go run ./cmd/cwdev check --race --snapshot --source "$PWD"
-```
-
-See `docs/development.md` for details.
+`GOWORK=off go test ./internal/skillcheck` checks skill metadata, Markdown links, manifests and plugin paths on its own. CI runs gofmt, vet and the tests on Linux and macOS, and validates the plugin manifests. See `docs/development.md` for details.
 
 ## Go-only automation
 
-First-party automation must be written in Go. The validator rejects `.sh` and `.py` files outside `skills/`, `third_party/` and `install.sh`. If you need a helper, add it to the `cw` or `cwdev` commands.
+First-party automation must be written in Go. The repository check (`internal/skillcheck`) rejects `.sh` and `.py` files outside `skills/` and `third_party/`. If you need a helper, add it to the `cw` command, or to `cwdev` for maintainer-only evaluation.
 
 ## Proposing or changing a skill
 
@@ -40,7 +33,7 @@ For a new skill, you can open a skill proposal issue first to discuss scope.
 - Behaviour changes need tests.
 - Add an entry under `## [Unreleased]` in `CHANGELOG.md`.
 - Update docs when commands, skills or install behaviour change.
-- Run the full developer check before requesting review.
+- Run the build, vet and test commands above before requesting review.
 
 Releases are published when a `v*` tag is pushed. Maintainers create tags; contributors do not need to.
 

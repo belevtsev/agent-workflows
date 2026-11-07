@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"maps"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -34,31 +32,5 @@ func TestDefaultModelPolicyIsShippedPolicy(t *testing.T) {
 	want := map[string]string{"subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}
 	if !maps.Equal(policy.Providers, want) {
 		t.Errorf("Providers = %v; want %v", policy.Providers, want)
-	}
-}
-
-// RT-2: the carved-out runtime packages do not depend on internal/workflow.
-func TestRuntimePackagesDoNotImportWorkflow(t *testing.T) {
-	goTool, err := exec.LookPath("go")
-	if err != nil {
-		t.Skip("go is not on PATH")
-	}
-	cmd := exec.Command(goTool, "list", "-deps",
-		"./internal/taskflow", "./internal/consult", "./internal/projectctx",
-		"./internal/credentials", "./internal/modelpolicy", "./internal/userconfig")
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("go list -deps failed: %v\n%s", err, stderr.String())
-	}
-	if strings.TrimSpace(stdout.String()) == "" {
-		t.Fatal("go list -deps printed no packages")
-	}
-	for _, line := range strings.Split(stdout.String(), "\n") {
-		if strings.Contains(line, "internal/workflow") {
-			t.Errorf("dependency %q is internal/workflow", line)
-		}
 	}
 }

@@ -24,8 +24,7 @@ nor a clean transcript prove that every possible read was prevented.
 ## Prepare the contract before dispatch
 
 The coordinator owns requirements, source discovery, implementation inspection and
-the execution environment. Prepare a bounded packet outside source and managed
-releases. Identify its contract ID, revision, content digest and applicable
+the execution environment. Prepare a bounded packet outside source. Identify its contract ID, revision, content digest and applicable
 project/source snapshot. Refresh the packet and assignment when the contract or
 interfaces materially change; a repository HEAD alone does not version a dirty
 contract or its inputs.
@@ -77,7 +76,7 @@ extract to the author over every test path the stale one owned; source files tha
 changed while every declaration stayed the same are listed as a limitation only.
 
 Start the author with fresh context: Codex uses `fork_turns: "none"`; Claude uses
-a fresh Agent invocation of the `agent-workflows:cw-test-author` type (`cw-test-author` under `cw install`), which has no Skill tool.
+a fresh Agent invocation of the `agent-workflows:cw-test-author` type, which has no Skill tool.
 List the `SKILL.md` path of any skill the author should apply among the approved
 inputs. Never reuse a coder or source-aware reviewer as the author. Do not include
 implementation conversations, source excerpts, diffs, Git history, implementation
@@ -173,4 +172,4 @@ Report contract coverage, actual checks and their limits. Do not retroactively
 label existing source-aware tests as independently authored, claim that policy
 YAML launches a worker, or infer measured quality improvement from role separation
 alone. Host smokes are synthetic acceptance evidence; keep live model calls out
-of CI and preserve the normal release/update and publication boundaries.
+of CI and preserve the normal release and publication boundaries.

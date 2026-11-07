@@ -5,7 +5,7 @@
 | [Agents](agents.md) | See which worker agents exist, what each produces and which contract it follows |
 | [Workflow and local integrations](workflow.md) | Understand how the coordinator, workers, model policy and records fit together |
 | [Decision flow](decision-flow.md) | Follow the states a substantial task goes through, from classification to completion |
-| [Operations](operations.md) | Install, inspect, update or remove what `cw` manages, and find its state and config paths |
+| [Operations](operations.md) | Install or remove the Codex skills, move from v2, and find `cw` state and config paths |
 | [Development](development.md) | Build, test and release `cw` itself |
 | [Skill evaluation](skill-evaluation.md) | Measure whether a skill or agent change helps, with routing fixtures and evals |
 | [Diagrams](diagrams/) | Edit the workflow diagram specifications (render them with the `archify` skill) |

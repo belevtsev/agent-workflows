@@ -4,7 +4,7 @@
 
 ## How verified
 
-Commands run and results, for example `GOWORK=off go run ./cmd/cwdev check --race --snapshot --source "$PWD"`.
+Commands run and results, for example `GOWORK=off go test -race -count=1 ./...`.
 
 ## Checklist
 

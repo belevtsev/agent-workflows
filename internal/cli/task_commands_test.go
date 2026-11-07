@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
 )
 
@@ -21,7 +20,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	// D5 / Revision 3: task start reads the credential environment to bind
@@ -93,7 +92,7 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			config, out, _, _ := testConfig(t)
+			config, out := testConfig(t)
 			stderr := new(bytes.Buffer)
 			config.Err = stderr
 			config.HomeDir = func() (string, error) { return home, nil }
@@ -188,7 +187,7 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
 	for _, command := range []string{"start", "context", "run", "assess", "assign", "handoff", "accept", "consult", "verify"} {
 		t.Run(command, func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			config.HomeDir = func() (string, error) { t.Fatal("dry-run accessed storage"); return "", nil }
 			config.WorkingDir = config.HomeDir
 			err := Execute(t.Context(), []string{"--dry-run", "task", command}, config)
@@ -200,7 +199,7 @@ func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
 }
 
 func TestTaskCLIRejectsUnknownPlanFields(t *testing.T) {
-	config, _, _, _ := testConfig(t)
+	config, _ := testConfig(t)
 	config.In = strings.NewReader(`{"title":"x","kind":"small","commands_from_agents_md":true}`)
 	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("unknown plan accepted: %v", err)
@@ -210,7 +209,7 @@ func TestTaskCLIRejectsUnknownPlanFields(t *testing.T) {
 func TestTaskUnexpectedArgumentsUseUsageExitCode(t *testing.T) {
 	for _, args := range [][]string{{"task", "unknown"}, {"task", "start", "unexpected"}, {"task", "assign", "unexpected"}, {"task", "handoff", "unexpected"}, {"task", "accept", "unexpected"}, {"task", "show", "unexpected"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			config.HomeDir = func() (string, error) { t.Fatal("invalid arguments reached task execution"); return "", nil }
 			config.WorkingDir = config.HomeDir
 			if err := Execute(t.Context(), args, config); err == nil || ExitCode(err) != 2 {
@@ -244,7 +243,7 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 	}
 	for _, item := range cases {
 		t.Run(item.name, func(t *testing.T) {
-			config, out, _, _ := testConfig(t)
+			config, out := testConfig(t)
 			config.In = strings.NewReader(plan)
 			// D5 / Revision 3: task start also resolves the credential
 			// environment (env-or-saved, like cw consult), so even an explicit
@@ -258,7 +257,6 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 				}
 				return ""
 			}
-			config.Resolve = func(string) (manageruntime.Locator, error) { return manageruntime.Locator{}, os.ErrNotExist }
 			args := append([]string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, item.flags...)
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)
@@ -284,7 +282,7 @@ func TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "main.tf"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
@@ -361,7 +359,7 @@ func TestWorkerCLIRejectsUnknownAndDuplicateFields(t *testing.T) {
 	for _, command := range []string{"assign", "handoff", "accept"} {
 		for _, input := range []string{`{"unrecognized":true}`, `{"task_id":"first","task_id":"second"}`} {
 			t.Run(command+input, func(t *testing.T) {
-				config, _, _, _ := testConfig(t)
+				config, _ := testConfig(t)
 				config.In = strings.NewReader(input)
 				if err := Execute(t.Context(), []string{"task", command, "--task", "/missing/task", "--input", "-"}, config); err == nil {
 					t.Fatal("invalid worker input was accepted")
@@ -385,7 +383,7 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 			if err := os.WriteFile(file, []byte("enabled: false\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			config, out, _, _ := testConfig(t)
+			config, out := testConfig(t)
 			config.HomeDir = func() (string, error) { return home, nil }
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.Getenv = func(string) string { return "" }
@@ -431,7 +429,7 @@ func TestSubstantialAssignRequiresResolvedBeforeCheckpoint(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "main.tf"), []byte("resource \"example\" \"checked\" {}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	stderr := new(bytes.Buffer)
 	config.Err = stderr
 	config.HomeDir = func() (string, error) { return home, nil }

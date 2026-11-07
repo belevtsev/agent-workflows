@@ -5,7 +5,7 @@ description: Coordinate substantial work with bounded workers; dispatch independ
 
 # Task orchestration
 
-Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty under `cw install`; see the
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty outside the Claude Code plugin; see the
 [host mapping](references/hosts.md#worker-agent-types) for paths and agent types).
 
 The coordinator owns the outcome, consultation, dispatch, integration and final

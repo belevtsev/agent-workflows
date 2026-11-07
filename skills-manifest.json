@@ -70,6 +70,5 @@
     "skills/clocks-and-time/LICENSE"
   ],
   "model_policy": "skills/task-orchestration/model-policy.yaml",
-  "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml",
-  "adoption_catalog": "personal-skill-origins.json"
+  "claude_model_policy": "skills/task-orchestration/model-policy.claude.yaml"
 }

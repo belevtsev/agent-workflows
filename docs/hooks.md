@@ -3,7 +3,8 @@
 `hooks/hooks.json` registers two Claude Code hooks for the agent-workflows
 plugin. Both run `cw`; when `cw` is not on `PATH` they degrade to printing the
 conventions file or doing nothing. No hook uses a script file: every command is
-inline, which keeps `cwdev check`'s first-party automation policy satisfied.
+inline, which keeps the repository's automation policy (`go test ./internal/skillcheck`)
+satisfied.
 
 ## Session start
 

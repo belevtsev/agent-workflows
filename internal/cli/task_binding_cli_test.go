@@ -37,7 +37,7 @@ type bindingFixture struct {
 // keeps the shipped providers).
 func newBindingFixture(t *testing.T, release int, pins []fixturePin, environment map[string]string) *bindingFixture {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	home, repo := t.TempDir(), t.TempDir()
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("verified source\n"), 0o600); err != nil {
 		t.Fatal(err)

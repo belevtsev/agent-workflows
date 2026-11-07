@@ -1,5 +1,4 @@
-// Package taskflow records source-bound task evidence independently of the
-// installer's frozen ownership, receipt and transaction formats.
+// Package taskflow records source-bound task evidence.
 package taskflow
 
 import (

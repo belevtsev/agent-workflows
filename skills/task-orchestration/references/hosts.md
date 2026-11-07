@@ -87,41 +87,37 @@ current policy before dispatch. A saved `review` pin does not apply to
   (without `run_in_background`) and wait for their results. The process exits when
   the coordinator's turn ends, and a background worker is lost with it: in one
   measured replay that discarded a 36-request review.
-- The installer writes the coordinator profile's effort, `high` by default, as
-  `effortLevel`. `settings.json` rejects `max`; use `/effort max` or `/effort xhigh`
-  for a session when the user asks for it.
+- The coordinator profile's effort is `high` by default; `settings.json`
+  `effortLevel` is the user's to set. `settings.json` rejects `max`; use
+  `/effort max` or `/effort xhigh` for a session when the user asks for it.
 
 ### Worker agent types
 
-Six Claude agent definitions ship with the `agent-workflows` plugin; `cw
-install --host claude` links the first three into `agents/` of the Claude config
-directory. They have no Skill tool, so the worker starts without the skill listing
-(about 6K fewer input tokens on its first request). Dispatch these roles with
-`subagent_type`; under the plugin the type is namespaced, under `cw install` it is
-bare. Try the namespaced name first and fall back to the bare one:
+Six Claude agent definitions ship with the `agent-workflows` plugin. They have no
+Skill tool, so the worker starts without the skill listing (about 6K fewer input
+tokens on its first request). Dispatch these roles with the namespaced
+`subagent_type`:
 
-| Role | Plugin `subagent_type` | `cw install` `subagent_type` |
-| --- | --- | --- |
-| `review`, `review_followup` | `agent-workflows:cw-reviewer` | `cw-reviewer` |
-| `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` | `cw-test-author` |
-| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` | `cw-github-worker` |
-| `architect` | `agent-workflows:architect` | not installed; `general-purpose` with the contract |
-| `implementer` | `agent-workflows:implementer` | not installed; `general-purpose` with the contract |
-| `test_engineer` | `agent-workflows:test-engineer` | not installed; `general-purpose` with the contract |
+| Role | `subagent_type` |
+| --- | --- |
+| `review`, `review_followup` | `agent-workflows:cw-reviewer` |
+| `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` |
+| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` |
+| `architect` | `agent-workflows:architect` |
+| `implementer` | `agent-workflows:implementer` |
+| `test_engineer` | `agent-workflows:test-engineer` |
 
-- The last three ship in the plugin's `agents/` directory, so their names carry
-  the plugin prefix and cw does not install them. Each reads its
+- The last three ship in the plugin's `agents/` directory. Each reads its
   [role contract](contracts/README.md) from the path the brief gives, or from the
   plugin root when the brief gives none.
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
 - These workers cannot load skills by name. When a worker needs one, such as
   `code-review` for a reviewer, put the absolute path of its `SKILL.md` in the brief
-  (under the plugin, `<plugin root>/skills/<name>/SKILL.md`, where the plugin root
-  is the line `Plugin root:` in the task-orchestration `SKILL.md`; under `cw
-  install`, `skills/<name>/` of the Claude config directory); for a
-  test author, list it among the approved inputs.
-- If the type is unavailable, for example on an install older than these
-  definitions, dispatch `general-purpose` with the same model, effort and brief and
+  (`<plugin root>/skills/<name>/SKILL.md`, where the plugin root is the line
+  `Plugin root:` in the task-orchestration `SKILL.md`); for a test author, list it
+  among the approved inputs.
+- If the type is unavailable, for example when the plugin is not installed,
+  dispatch `general-purpose` with the same model, effort and brief and
   note it in the assignment. Only the token cost differs.
 - The runtime agent type appears in transcript metadata as
   `agent:custom:<name>`; check it with the model and effort.
@@ -138,7 +134,7 @@ the `test_engineer` role instead. Preserve configured model/effort overrides and
 verify the effective settings.
 
 On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
-and `reasoning_effort`. On Claude, use a fresh `cw-test-author` Agent invocation
+and `reasoning_effort`. On Claude, use a fresh `agent-workflows:cw-test-author` Agent invocation
 with the resolved model alias and explicit `effort`, accounting for the overrides
 above. Do not resume a coder, coordinator or source-aware reviewer as the author.
 Inspect initial injected context and automatic project instructions as well as the
@@ -163,8 +159,8 @@ selections; resolve any worker scope through the current host policy.
 
 Advisers participate only when configured: enabled in `model-policy.yaml`
 `consultation.providers`, with a credential present, and not disabled in the user's
-preferences (setup's Keys step, or `advisers.disabled` in a `--settings` file; this
-applies to tasks started afterwards). `cw task start` binds that
+preferences (`advisers.disabled` in `preferences.json` in the configuration
+directory; this applies to tasks started afterwards). `cw task start` binds that
 set, and both checkpoints use the binding. Advisers are plain HTTPS calls made by
 `cw consult`, so they behave the same on both hosts. The coordinator is never one
 of the advisers, and `gpt-6-luna` in `consultation.providers` is an adviser pin
@@ -174,6 +170,6 @@ rather than a worker model, so it does not change under Claude Code.
 Keys come from the process environment or saved credentials. A Claude Code
 session started from the desktop app inherits the app's launch environment, not
 your shell profile, so a key exported in a terminal may be missing there. Check
-with `cw status --summary` before `cw task start`: a missing key at start leaves that adviser
+with `cw keys status` before `cw task start`: a missing key at start leaves that adviser
 out of the binding, and a bound adviser whose key goes missing later is recorded
 as `not_configured`.
