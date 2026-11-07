@@ -2,6 +2,10 @@ package langpack_test
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -939,6 +943,14 @@ func TestContractRedactGOFLAGS(t *testing.T) {
 		{"-asmflags=-I x " + secret + " -race", true, []string{"-race"}, false},
 		{"-gccgoflags=-O2 " + secret + " -count=1", true, []string{"-count=1"}, false},
 		{"-tags=a -ldflags -X main.k=" + secret + " -v", false, []string{"-tags=a", "-v"}, false},
+		// test.-prefixed compiler and linker flags are redacted alike.
+		{"-test.gcflags " + secret, false, nil, false},
+		{"--test.ldflags=-X main.k=" + secret, false, nil, false},
+		{"-test.asmflags=x " + secret, false, nil, false},
+		// Once redaction starts, a later field whose flag is not allowlisted
+		// is redacted too; allowlisted flags are kept.
+		{"-ldflags=-s '-X main.k=" + secret + "' -count=1", true, []string{"-count=1"}, false},
+		{"-ldflags=-s -X=main.k=" + secret + " -v", true, []string{"-v"}, false},
 		{"'-ldflags=" + secret, false, nil, false}, // unbalanced quote: cannot be split
 	} {
 		t.Run(tc.goflags, func(t *testing.T) {
@@ -1007,5 +1019,72 @@ func TestContractPackageListEnds(t *testing.T) {
 	// A split ./... run does not satisfy a module-file change.
 	if problems := contractGoProblems(t, []string{"go.mod"}, contractArgv("./...", "-v", "./pkg")); !slices.Contains(problems, contractModuleProblem("go.mod")) {
 		t.Errorf("a go.mod change is satisfied by a split ./... run: problems %q", problems)
+	}
+}
+
+// contractAllowlist is every flag name the contract allowlists, with a value
+// that earns credit ("" for a boolean flag).
+var contractAllowlist = map[string]string{
+	"v": "", "race": "", "msan": "", "asan": "", "failfast": "", "json": "",
+	"cover": "", "short": "", "trimpath": "", "benchmem": "", "x": "",
+	"work": "", "fullpath": "", "artifacts": "", "modcacherw": "", "a": "",
+	"buildvcs": "false", "shuffle": "on", "count": "1", "timeout": "10m", "covermode": "atomic",
+	"coverpkg": "./...", "coverprofile": "c.out", "outputdir": "out",
+	"cpu": "1,2", "p": "4", "parallel": "4", "tags": "integration",
+	"mod": "mod", "pgo": "off", "bench": ".", "benchtime": "1x",
+	"cpuprofile": "cpu.out", "memprofile": "mem.out", "memprofilerate": "1",
+	"blockprofile": "block.out", "blockprofilerate": "1",
+	"mutexprofile": "mutex.out", "mutexprofilefraction": "1",
+	"trace": "trace.out", "vet": "off",
+}
+
+// Drift guard: the flags that keep credit as -test.<flag> are exactly the
+// allowlisted flags the installed go command passes to the test binary, as
+// listed by passFlagToTest in cmd/go/internal/test/flagdefs.go.
+func TestContractTestPrefixMatchesFlagdefs(t *testing.T) {
+	goTool, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("no go command on PATH")
+	}
+	output, err := exec.CommandContext(t.Context(), goTool, "env", "GOROOT").Output()
+	if err != nil {
+		t.Skipf("go env GOROOT: %v", err)
+	}
+	path := filepath.Join(strings.TrimSpace(string(output)), "src", "cmd", "go", "internal", "test", "flagdefs.go")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Skipf("no flagdefs.go to compare with: %v", err)
+	}
+	block := regexp.MustCompile(`(?s)var passFlagToTest = map\[string\]bool\{(.*?)\n\}`).FindSubmatch(data)
+	if block == nil {
+		t.Fatalf("%s has no passFlagToTest map", path)
+	}
+	passed := map[string]bool{}
+	for _, match := range regexp.MustCompile(`"([a-z]+)":\s*true`).FindAllSubmatch(block[1], -1) {
+		passed[string(match[1])] = true
+	}
+	if len(passed) == 0 {
+		t.Fatalf("parsed no names from passFlagToTest in %s", path)
+	}
+	for name, value := range contractAllowlist {
+		flag, plain := "-test."+name, "-"+name
+		if value != "" {
+			flag += "=" + value
+			plain += "=" + value
+		}
+		got := contractCovers(t, langpack.Run{Argv: contractArgv(flag, "./internal/taskflow")})
+		if want := passed[name]; got != want {
+			t.Errorf("%s ./internal/taskflow: covered = %v, want %v (passFlagToTest holds %s: %v)", flag, got, want, name, want)
+		}
+		// The plain spelling of every allowlisted flag credits.
+		if !contractCovers(t, langpack.Run{Argv: contractArgv(plain, "./internal/taskflow")}) {
+			t.Errorf("allowlisted %s earns no credit", plain)
+		}
+	}
+	// The contract's own list of test-binary flags agrees with flagdefs.
+	for name := range contractTestBinaryFlags {
+		if !passed[name] {
+			t.Errorf("contractTestBinaryFlags names %s, which passFlagToTest does not", name)
+		}
 	}
 }
