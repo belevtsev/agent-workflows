@@ -915,3 +915,40 @@ func TestEvidenceE2EPackageListEnds(t *testing.T) {
 	e.runExpect(true, "both")
 	e.expectProblems("after go test ./alpha ./beta -count=1 -v", nil, []string{anyRun, alpha, beta})
 }
+
+const testPrefixPlan = `{"title":"test. prefix","kind":"substantial",
+ "checkpoints":{"required":false,"reason":"contract test fixture"},
+ "requirements":[{"id":"behaviour","description":"Packages keep their behaviour","check_ids":["beta","race-first","race-last"],"allow_non_execution":false}],
+ "checks":[
+  {"id":"beta","argv":["go","test","-count=1","./beta"],"timeout_seconds":300},
+  {"id":"race-first","argv":["go","test","-count=1","-test.race","./beta"],"timeout_seconds":300},
+  {"id":"race-last","argv":["go","test","-count=1","./beta","-test.race"],"timeout_seconds":300}]}`
+
+// -test.race is not a flag cmd/go passes to the test binary under that name:
+// go test -test.race ./beta hands ./beta to the binary as the flag's value and
+// tests the module root instead. Both runs below pass, because the fixture's
+// test binaries define a test.race flag, and neither covers beta.
+func TestEvidenceE2ETestPrefixedBuildFlag(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.write("root_test.go", "package evidence\n\nimport (\n\t\"flag\"\n\t\"testing\"\n)\n\nvar _ = flag.String(\"test.race\", \"\", \"\")\n\nfunc TestRoot(t *testing.T) {}\n")
+	e.write("beta/flag_test.go", "package beta\n\nimport \"flag\"\n\nvar _ = flag.Bool(\"test.race\", false, \"\")\n")
+	e.setUpModule()
+	task, code, output := e.start(e.store, "plan.json", testPrefixPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	anyRun := anyRunProblem(t)
+	beta := packageProblem(t, "beta")
+
+	e.write("beta/beta.go", betaSource+"\nfunc Double() int { return 2 * Value() }\n")
+	e.expectProblems("changed, nothing run", []string{anyRun, beta}, nil)
+
+	e.runExpect(true, "race-first")
+	e.expectProblems("after go test -test.race ./beta", []string{beta}, []string{anyRun})
+	e.runExpect(true, "race-last")
+	e.expectProblems("after go test ./beta -test.race", []string{beta}, []string{anyRun})
+
+	e.runExpect(true, "beta")
+	e.expectProblems("after go test ./beta", nil, []string{anyRun, beta})
+}

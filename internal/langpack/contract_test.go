@@ -479,8 +479,8 @@ func contractArgv(flags ...string) []string {
 	return append([]string{"go", "test"}, flags...)
 }
 
-// contractTestBinaryFlags are the allowlisted flags the test binary also
-// accepts as -test.<flag>; the contract normalises that prefix.
+// contractTestBinaryFlags are the allowlisted flags cmd/go passes to the test
+// binary; only these keep their credit when spelled -test.<flag>.
 var contractTestBinaryFlags = map[string]bool{
 	"v": true, "failfast": true, "short": true, "benchmem": true, "fullpath": true,
 	"artifacts": true, "count": true, "timeout": true, "cpu": true, "parallel": true,
@@ -595,6 +595,17 @@ func TestContractFlagsOutsideAllowlistDeny(t *testing.T) {
 		{"-fuzz", contractArgv("-fuzz=FuzzX", pkg)},
 		{"-test.fuzz", contractArgv("-test.fuzz", "FuzzX", pkg)},
 		{"-C", contractArgv("-C", ".", pkg)},
+		// The test. prefix is accepted only for flags cmd/go passes to the
+		// test binary: go test -test.race ./pkg hands ./pkg to the binary as
+		// the value of -test.race and tests the current directory instead.
+		{"-test.race", contractArgv("-test.race", pkg)},
+		{"-test.race after the pattern", contractArgv(pkg, "-test.race")},
+		{"-test.tags=x", contractArgv("-test.tags=x", pkg)},
+		{"-test.a", contractArgv("-test.a", pkg)},
+		{"-test.p=4", contractArgv("-test.p=4", pkg)},
+		{"--test.trimpath", contractArgv("--test.trimpath", pkg)},
+		{"-test.json", contractArgv("-test.json", pkg)},
+		{"-test.cover", contractArgv("-test.cover", pkg)},
 		{"-C=", contractArgv("-C=.", "./...")},
 		// ldflags, gcflags and asmflags are off the allowlist in every form.
 		{"-ldflags=", contractArgv("-ldflags=-s -w", pkg)},
@@ -635,6 +646,32 @@ func TestContractFlagsOutsideAllowlistDeny(t *testing.T) {
 				t.Errorf("argv %q earns credit", tc.argv)
 			}
 		})
+	}
+}
+
+// The test. prefix keeps credit only for flags cmd/go passes to the test
+// binary; every other allowlisted flag spelled with it earns none, in argv
+// and in GOFLAGS.
+func TestContractTestPrefixOnlyForTestBinaryFlags(t *testing.T) {
+	const pkg = "./internal/taskflow"
+	booleans := []string{"v", "race", "msan", "asan", "failfast", "json", "cover", "short", "trimpath", "benchmem", "x", "work", "fullpath", "artifacts", "modcacherw", "a"}
+	check := func(argv []string, goflags string, want bool) {
+		t.Helper()
+		if got := contractCovers(t, langpack.Run{Argv: argv, GOFLAGS: goflags}); got != want {
+			t.Errorf("argv %q GOFLAGS %q: covered = %v, want %v", argv, goflags, got, want)
+		}
+	}
+	for _, flag := range booleans {
+		want := contractTestBinaryFlags[flag]
+		check(contractArgv("-test."+flag, pkg), "", want)
+		check(contractArgv("--test."+flag, pkg), "", want)
+		check(contractArgv(pkg), "-test."+flag, want)
+	}
+	for flag, value := range contractValueFlags {
+		want := contractTestBinaryFlags[flag]
+		check(contractArgv("-test."+flag+"="+value, pkg), "", want)
+		check(contractArgv("--test."+flag+"="+value, pkg), "", want)
+		check(contractArgv(pkg), "'-test."+flag+"="+value+"'", want)
 	}
 }
 
@@ -682,6 +719,16 @@ func TestContractGOFLAGSAllowlist(t *testing.T) {
 		{"-modcacherw", true},
 		{"-a", true},
 		{"-modcacherw -a -count=1", true},
+		{"-test.v -test.count=1", true},
+		// test. only for flags cmd/go passes to the test binary.
+		{"-test.race", false},
+		{"-test.tags=x", false},
+		{"-test.a", false},
+		{"-test.p=4", false},
+		{"--test.trimpath", false},
+		{"-test.json", false},
+		{"-test.cover", false},
+		{"-count=1 -test.modcacherw", false},
 		{"'-tags=a b' -count=1", true},
 		{`"-tags=a b"`, true},
 		// ldflags, gcflags and asmflags earn no credit, redacted or not.
@@ -883,6 +930,12 @@ func TestContractRedactGOFLAGS(t *testing.T) {
 		{"-gcflags " + secret, false, nil, false},
 		{"--asmflags " + secret + " -v", false, nil, false},
 		{"-gccgoflags " + secret, false, nil, false},
+		// Every non-dash field after such a field is redacted too.
+		{"-ldflags=-X main.token=" + secret + " -count=1", true, []string{"-count=1"}, false},
+		{"-gcflags=-N -l " + secret + " -v", true, []string{"-v"}, false},
+		{"-asmflags=-I x " + secret + " -race", true, []string{"-race"}, false},
+		{"-gccgoflags=-O2 " + secret + " -count=1", true, []string{"-count=1"}, false},
+		{"-tags=a -ldflags -X main.k=" + secret + " -v", false, []string{"-tags=a", "-v"}, false},
 		{"'-ldflags=" + secret, false, nil, false}, // unbalanced quote: cannot be split
 	} {
 		t.Run(tc.goflags, func(t *testing.T) {
