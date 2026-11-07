@@ -12,10 +12,12 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 
 ### Added
 
+- `cw task abandon --task DIR --reason TEXT` writes a terminal `abandonment` revision; an abandoned record accepts no further revisions and never gates `git commit` or `git push`. `cw` releases before this one cannot read an abandoned record.
+- The commit gate asks (`permissionDecision: "ask"`) before a commit or push with no task record whose change has two of: more than 300 changed lines, more than one top-level directory, code changed without tests; the plugin option `small_task_prompt=false` turns this off. It also asks before a push of a verified repository whose working tree has uncommitted tracked changes.
 - `codebase-design` reference "building blocks": reuse before writing, four kinds of block (value, decision, adapter, composition) with the test layer for each; the architect, implementer and test-engineer contracts now check for it.
 - Folder guides: `skills/README.md` (catalog kept in sync with each SKILL.md by `catalog_test.go`), `docs/README.md` (index), `docs/agents.md` (agent roster and contracts), `third_party/README.md` (vendored packs and the Go fork); `.github/CODEOWNERS`, Dependabot for Actions and Go modules, `.editorconfig`.
 - The architect, implementer and test-engineer agents under `agents/`, with role contracts in `skills/task-orchestration/references/contracts/`, an end-to-end testing reference in `skills/test-strategy/references/e2e.md`, the policy roles `architect`, `implementer` and `test_engineer`, and eval suites under `evals/`.
-- `cw hook pre-publish` and `cw hook session-start` with `hooks/hooks.json`: the Claude Code plugin loads `global/AGENTS.md` at session start (optionally with a cached `cw doctor --summary`) and denies `git commit` and `git push` while the repository's newest substantial task record has no passing `cw task verify` on the current source bytes; `cw task verify` now records that content digest as `verification.source_sha256`, which `cw` releases before this one cannot read, so hosts that share a task store need the same `cw`. The gate fails open and the plugin option `enforce_verify=false` disables it. See `docs/hooks.md`.
+- `cw hook pre-publish` and `cw hook session-start` with `hooks/hooks.json`: the Claude Code plugin loads `global/AGENTS.md` at session start (optionally with a cached `cw doctor --summary`) and denies `git commit` and `git push` while an open substantial task record for the repository has no passing `cw task verify` on the current source bytes; `cw task verify` now records that content digest as `verification.source_sha256`, which `cw` releases before this one cannot read, so hosts that share a task store need the same `cw`. The gate fails open and the plugin option `enforce_verify=false` disables it. See `docs/hooks.md`.
 - Root MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` and GitHub issue and pull request templates.
 - Plugin manifests for both hosts: `.claude-plugin/` (Claude Code marketplace and plugin) and `.codex-plugin/` plus `.agents/plugins/marketplace.json` (Codex). Install with `claude plugin marketplace add belevtsev/agent-workflows` and `claude plugin install agent-workflows@agent-workflows` in Claude Code, or `codex plugin marketplace add belevtsev/agent-workflows` and `/plugins` in Codex; the Go pack is the `cc-skills-golang` plugin in the same marketplace.
 - `third_party/cc-skills-golang/UPSTREAM` records the fork's upstream version and commit and how to refresh it.
@@ -41,6 +43,15 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 - The configuration directory of the runtime commands is `--config-dir`, then `$XDG_CONFIG_HOME/agent-workflows`, then `~/.config/agent-workflows` (`internal/userconfig`); a recorded installation's directory is no longer consulted. `preferences.json` is read for `advisers.disabled` only, and a top-level member other than `version`, `hosts`, `shared` and `advisers` is refused.
 - `cw task`, `cw consult`, `cw doctor`, `cw graphify` and `cw metrics` no longer depend on `internal/workflow`.
 
+### Fixed
+
+- The commit gate stays shut while any open substantial record for the repository lacks a passing `cw task verify`; a newer record no longer hides an older open one, and the deny reason names every gating record with its verify and abandon commands. A verified record is finished, and stops gating, once another open substantial record starts, after that verification, from exactly the bytes it was verified on.
+- The commit gate ages records by their latest revision instead of their start, so a task worked on for more than 14 days keeps gating.
+- From a linked worktree of a record's checkout, the commit gate compares the linked worktree's source with the verified digest instead of the main checkout's.
+- The commit gate's hook runs for every Bash command that names git (`Bash(*git*)`) and recognises `git -C DIR`, `command [-p] git`, `env [options] git` (following `env -C DIR`), `sudo`, `timeout`/`nice`/`stdbuf` wrappers, `$(...)` and backtick substitutions (checked from the directory in effect), `sh -c '...'`, `eval` and `\git`.
+- The session-start hook says that the verify gate is inactive when `cw` is not on `PATH`.
+- `TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit` no longer fails intermittently under `-race`: the check-barrier helpers wait for the test's own lifetime instead of a fixed 15-second accept deadline, and report a check that exits before its barrier instead of timing out.
+
 ### Removed
 
 - The v2 installer engine: `install.sh`, the setup wizard (terminal and plain interfaces, presets, `--settings`, `--shell`, `--adopt-personal-skills`), `cw status`, `cw update`, `cw rollback`, `cw recover`, and `cw install`/`cw uninstall` for Claude Code.
@@ -48,10 +59,6 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 - `cwdev check`, `cwdev release` and `cwdev sandbox`, and `testing/sandbox`; `cwdev eval multilingual` is the only `cwdev` command left.
 - `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
-
-### Fixed
-
-- `TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit` no longer fails intermittently under `-race`: the check-barrier helpers wait for the test's own lifetime instead of a fixed 15-second accept deadline, and report a check that exits before its barrier instead of timing out.
 
 ## [2.0.96] - 2026-11-07
 

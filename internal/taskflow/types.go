@@ -211,6 +211,8 @@ type Record struct {
 	Assignments       []WorkerAssignment         `json:"assignments,omitempty"`
 	WorkerResults     []BoundWorkerResult        `json:"worker_results,omitempty"`
 	WorkerAcceptances []BoundWorkerAcceptance    `json:"worker_acceptances,omitempty"`
+	// Abandonment, once set, is the record's terminal revision (abandon.go).
+	Abandonment *Abandonment `json:"abandonment,omitempty"`
 }
 
 // Decode rejects unknown members, duplicate members, trailing JSON and partial
