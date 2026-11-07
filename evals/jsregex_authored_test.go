@@ -33,6 +33,8 @@ func authored2RegexCases() []authored2RegexCase {
 	loneLo := bs + "uDE00"              // a low surrogate with no partner
 	grin := string(rune(0x1F600))
 	alpha := string(rune(0x03B1)) // Greek small alpha
+	grin2 := string(rune(0x1F601))
+	lone := bs + "uD83D" // a high surrogate not followed by a low one
 	eAcute := string(rune(0x00E9))
 	eCirc := string(rune(0x00EA))
 	yUml := string(rune(0x00FF))
@@ -306,6 +308,25 @@ func authored2RegexCases() []authored2RegexCase {
 		// E35: each class starts fresh.
 		authored2RegexCase{req: "E35", pattern: `^[\w][-a]$`, flags: "u", ok: true, match: []string{"a-", "aa"}, noMatch: []string{"ab", "-a"}},
 		authored2RegexCase{req: "E35", pattern: `[a][-b]`, flags: "v", errSub: bad},
+
+		// E37: a letter after a range is an ordinary member, not a class escape.
+		authored2RegexCase{req: "E37", pattern: `[a-xd]`, ok: true, match: []string{"b", "d", "x"}, noMatch: []string{"-", "y"}},
+		authored2RegexCase{req: "E37", pattern: `[a-xd]`, flags: "i", ok: true, match: []string{"B", "D"}, noMatch: []string{"-", "Y"}},
+		authored2RegexCase{req: "E37", pattern: `^[a-zs]+$`, ok: true, match: []string{"abc", "s"}, noMatch: []string{"ab1", "-"}},
+		authored2RegexCase{req: "E37", pattern: `[A-Zd]`, ok: true, match: []string{"Q", "d"}, noMatch: []string{"-", "e"}},
+		authored2RegexCase{req: "E37", pattern: `[0-9S]`, ok: true, match: []string{"5", "S"}, noMatch: []string{"-", "s"}},
+		authored2RegexCase{req: "E37", pattern: `[a-zw]`, ok: true, match: []string{"m", "w"}, noMatch: []string{"-"}},
+		authored2RegexCase{req: "E37", pattern: `[z-ad]`, errSub: bad},
+
+		// E38: an identity-escaped character beyond U+FFFF as a range end, no flags.
+		authored2RegexCase{req: "E38", pattern: "[" + bs + grin + "-" + bs + grin2 + "]", errSub: bad},
+		authored2RegexCase{req: "E38", pattern: "[" + bs + grin + "-" + bs + grin + "]", errSub: bad},
+
+		// E39: lone surrogate escapes; inside a class they are unsupported.
+		authored2RegexCase{req: "E39", pattern: "[" + lone + "x-z]", errSub: bad},
+		authored2RegexCase{req: "E39", pattern: "[" + lone + "]", flags: "u", errSub: bad},
+		authored2RegexCase{req: "E39", pattern: "[^" + lone + "]", errSub: bad},
+		authored2RegexCase{req: "E39", pattern: "^" + lone + "$", flags: "u", ok: true, approx: true, noMatch: []string{"a"}},
 	)
 	return rows
 }
@@ -381,7 +402,7 @@ func TestAuthored2ValidFlags(t *testing.T) {
 	}
 }
 
-// TestAuthored2CompileJSEscapes covers E1-E30 and E32-E35.
+// TestAuthored2CompileJSEscapes covers E1-E30, E32-E35 and E37-E39.
 func TestAuthored2CompileJSEscapes(t *testing.T) {
 	for _, tc := range authored2RegexCases() {
 		name := tc.req + "/" + tc.pattern + "/" + tc.flags

@@ -33,8 +33,8 @@ import (
 // Valid JavaScript that RE2 cannot express is rejected with an error naming
 // the pattern, never passed silently: v-mode set notation, \p{...} binary
 // properties, long category names, script aliases and Script_Extensions,
-// class ranges bounded by a character beyond U+FFFF without u, and repeats
-// nested beyond 1000.
+// class ranges bounded by a character beyond U+FFFF without u, lone
+// surrogates inside a class, and repeats nested beyond 1000.
 type jsRegex struct {
 	*regexp.Regexp
 	approximate bool
@@ -72,9 +72,16 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 		switch {
 		case ch == '\\':
 			goForm, width, approx, err := syntax.escape(pattern[i:], inClass)
+			if err == nil && inClass && approx && pattern[i+1] == 'u' {
+				// RE2 has no member for a lone surrogate, which no Go string holds.
+				err = errors.New("a lone surrogate inside a character class is not supported")
+			}
 			if err == nil && inClass {
-				// Without u a surrogate pair escape is two UTF-16 units.
+				// Without u a surrogate pair, escaped or not, is two UTF-16 units.
 				pair := !syntax.unicode && width == len(`\uD83D\uDE00`) && pattern[i+1] == 'u'
+				if r, _ := utf8.DecodeRuneInString(pattern[i+1:]); !syntax.unicode && r > 0xFFFF {
+					pair = true
+				}
 				err = ranges.item(syntax, syntax.classEscape(pattern[i:]), pair)
 			}
 			if err != nil {
@@ -359,7 +366,7 @@ func (js jsSyntax) escape(s string, inClass bool) (string, int, bool, error) {
 // classEscape reports whether the escape at the start of s stands for a set of
 // characters (\d, \w, \s, and \p in Unicode mode) rather than one character.
 func (js jsSyntax) classEscape(s string) bool {
-	return len(s) >= 2 && (strings.IndexByte("dDwWsS", s[1]) >= 0 || js.unicode && (s[1] == 'p' || s[1] == 'P'))
+	return len(s) >= 2 && s[0] == '\\' && (strings.IndexByte("dDwWsS", s[1]) >= 0 || js.unicode && (s[1] == 'p' || s[1] == 'P'))
 }
 
 // classRanges follows the items of one character class to check its ranges.
