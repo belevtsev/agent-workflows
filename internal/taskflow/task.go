@@ -469,6 +469,9 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
 		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
+		contractIssues, contractNotes := contractProblems(root, *record)
+		result.Problems = append(result.Problems, contractIssues...)
+		result.Limitations = append(result.Limitations, contractNotes...)
 		if record.Plan.Kind == "substantial" {
 			if len(record.Advisers) == 0 {
 				result.Limitations = append(result.Limitations, noAdvisersLimitation)

@@ -106,7 +106,9 @@ one-line result instead of the whole record (`run`: the whole check run, plus fa
 test names and first error lines when it failed; `verify`: without its fixed
 limitations), `cw doctor`, `cw status` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task bundle` writes the
-reviewer bundle a review assignment must carry (one reach row per changed file), and
+reviewer bundle a review assignment must carry (one reach row per changed file),
+`cw task contract-extract` prints requested Go declarations without bodies for a
+test author's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
