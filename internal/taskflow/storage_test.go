@@ -175,6 +175,22 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	}
 }
 
+// checkBarrierLifetime bounds a barrier test by the go test deadline, leaving a
+// margin so a slow run fails with its own message before the test binary
+// panics. Fixture setup can take tens of seconds under -race on a busy
+// runner, so a fixed budget started before setup is not used.
+func checkBarrierLifetime(t *testing.T) (context.Context, context.CancelFunc) {
+	t.Helper()
+	const margin, fallback = 30 * time.Second, 4 * time.Minute
+	deadline, ok := t.Deadline()
+	if !ok || time.Until(deadline) > fallback+margin {
+		deadline = time.Now().Add(fallback)
+	} else {
+		deadline = deadline.Add(-margin)
+	}
+	return context.WithDeadline(t.Context(), deadline)
+}
+
 func checkBarrier(t *testing.T, lifetime context.Context) *net.TCPListener {
 	t.Helper()
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
@@ -280,7 +296,7 @@ func awaitCheckOutcome(t *testing.T, lifetime context.Context, done <-chan check
 
 func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 	t.Parallel()
-	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
+	lifetime, cancelLifetime := checkBarrierLifetime(t)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
 	deadlineArg := deadline.Format(time.RFC3339Nano)
@@ -350,7 +366,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 
 func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
 	t.Parallel()
-	lifetime, cancelLifetime := context.WithTimeout(t.Context(), 2*time.Minute)
+	lifetime, cancelLifetime := checkBarrierLifetime(t)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
 	listener := checkBarrier(t, lifetime)
