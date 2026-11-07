@@ -31,6 +31,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
 
+### Fixed
+
+- `TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit` no longer fails intermittently under `-race`: the check-barrier helpers wait for the test's own lifetime instead of a fixed 15-second accept deadline, and report a check that exits before its barrier instead of timing out.
+
 ## [2.0.96] - 2026-11-07
 
 Last release published automatically from main.
