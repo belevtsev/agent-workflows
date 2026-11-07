@@ -189,29 +189,57 @@ func checkBarrier(t *testing.T, lifetime context.Context) *net.TCPListener {
 	return listener
 }
 
-func checkBarrierIODeadline(lifetime context.Context) time.Time {
-	ioDeadline := time.Now().Add(15 * time.Second)
-	if deadline, ok := lifetime.Deadline(); ok && deadline.Before(ioDeadline) {
-		return deadline
+// checkBarrierIODeadline bounds barrier I/O by the test's own lifetime only.
+// A shorter fixed budget is a timing assumption: under -race on a loaded
+// runner, Run's locked revision write plus the instrumented child's startup can
+// outlast any small constant before the child dials back.
+func checkBarrierIODeadline(t *testing.T, lifetime context.Context) time.Time {
+	t.Helper()
+	deadline, ok := lifetime.Deadline()
+	if !ok {
+		t.Fatal("check barrier lifetime has no deadline")
 	}
-	return ioDeadline
+	return deadline
 }
 
-func acceptCheckBarrier(t *testing.T, lifetime context.Context, listener *net.TCPListener, id string) net.Conn {
+type acceptedBarrier struct {
+	connection net.Conn
+	err        error
+}
+
+// acceptCheckBarrier waits until check id's child reaches its execution
+// barrier. If Run returns first, it fails with that outcome at once, so a check
+// that never spawns or loses its child cannot hide behind an accept timeout.
+func acceptCheckBarrier(t *testing.T, lifetime context.Context, listener *net.TCPListener, id string, done <-chan checkOutcome) net.Conn {
 	t.Helper()
-	if err := listener.SetDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+	if err := listener.SetDeadline(checkBarrierIODeadline(t, lifetime)); err != nil {
 		t.Fatal(err)
 	}
-	connection, err := listener.Accept()
-	if err != nil {
-		t.Fatal(err)
+	accepted := make(chan acceptedBarrier, 1)
+	go func() {
+		connection, err := listener.Accept()
+		accepted <- acceptedBarrier{connection: connection, err: err}
+	}()
+	var connection net.Conn
+	select {
+	case result := <-accepted:
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		connection = result.connection
+	case outcome := <-done:
+		listener.Close()
+		if result := <-accepted; result.connection != nil {
+			result.connection.Close()
+		}
+		t.Fatalf("check %q finished before reaching its execution barrier: status=%q err=%v", id, outcome.run.Status, outcome.err)
 	}
 	stopClosing := context.AfterFunc(lifetime, func() { connection.Close() })
 	t.Cleanup(func() {
 		stopClosing()
 		connection.Close()
 	})
-	if err := connection.SetReadDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+	if err := connection.SetReadDeadline(checkBarrierIODeadline(t, lifetime)); err != nil {
 		t.Fatal(err)
 	}
 	ready := make([]byte, len(id))
@@ -269,9 +297,9 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 	record, _ := fixtureTask(t, plan)
 	record = extendTaskHistory(t, record, maxTaskRevisions-4)
 	firstDone := startBarrierCheck(t, lifetime, record, "first")
-	first := acceptCheckBarrier(t, lifetime, listener, "first")
+	first := acceptCheckBarrier(t, lifetime, listener, "first", firstDone)
 	secondDone := startBarrierCheck(t, lifetime, record, "second")
-	secondConnection := acceptCheckBarrier(t, lifetime, listener, "second")
+	secondConnection := acceptCheckBarrier(t, lifetime, listener, "second", secondDone)
 	refuseCompetingUpdates := func() {
 		t.Helper()
 		names := taskArtifactNames(t, record.Directory)
@@ -287,7 +315,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		}
 	}
 	refuseCompetingUpdates()
-	if err := first.SetWriteDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+	if err := first.SetWriteDeadline(checkBarrierIODeadline(t, lifetime)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := first.Write([]byte{1}); err != nil {
@@ -297,7 +325,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		t.Fatalf("first terminal reservation lost: status=%q err=%v", outcome.run.Status, outcome.err)
 	}
 	refuseCompetingUpdates()
-	if err := secondConnection.SetWriteDeadline(checkBarrierIODeadline(lifetime)); err != nil {
+	if err := secondConnection.SetWriteDeadline(checkBarrierIODeadline(t, lifetime)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := secondConnection.Write([]byte{1}); err != nil {
@@ -333,7 +361,7 @@ func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
 	ctx, cancel := context.WithCancel(lifetime)
 	defer cancel()
 	done := startBarrierCheck(t, ctx, record, "focused")
-	acceptCheckBarrier(t, lifetime, listener, "focused")
+	acceptCheckBarrier(t, lifetime, listener, "focused", done)
 	cancel()
 	outcome := awaitCheckOutcome(t, lifetime, done)
 	if !errors.Is(outcome.err, context.Canceled) || outcome.run.Status != "cancelled" {
