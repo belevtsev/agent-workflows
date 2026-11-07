@@ -74,7 +74,10 @@ func inRootModule(dir string, modules map[string]bool) bool {
 // invocation (argv[0] named go, argv[1] test): each later argument before
 // -args that is "." or starts with "./", cleaned. Other arguments, such as
 // flags, flag values and import-path patterns, are ignored, so they never
-// cover a package. Shell text is never parsed.
+// cover a package. Shell text is never parsed. A run that changes directory
+// with -C (or --C, -C=dir) covers nothing: its patterns would be relative to
+// another directory, which may lie outside the module or in a nested one.
+// `go -C dir test` covers nothing either, since argv[1] is then not test.
 func patterns(argv []string) []string {
 	if len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
 		return nil
@@ -83,6 +86,9 @@ func patterns(argv []string) []string {
 	for _, arg := range argv[2:] {
 		if arg == "-args" || arg == "--args" {
 			break
+		}
+		if name, _, _ := strings.Cut(arg, "="); name == "-C" || name == "--C" {
+			return nil
 		}
 		if arg == "." || strings.HasPrefix(arg, "./") {
 			found = append(found, path.Clean(arg))
