@@ -1,6 +1,8 @@
 # Connected evidence and requested writes
 
-Read this guide when a task uses Jira, Confluence, GitHub, or repository documentation.
+Read this guide when a task uses Jira, Confluence, GitHub, or repository documentation
+as evidence or for requested writes. Fetch the linked evidence the decision needs;
+unrelated services are not prerequisites for local work.
 Discover the current connector and tool schemas from the available catalog; use the
 actual tools rather than obsolete names or examples from another installation.
 
@@ -99,8 +101,9 @@ Read enough paginated results to establish completeness for the current question
 - Draft PR titles and descriptions around the final diff, observable behavior, and relevant
   validation. Drafting does not authorize commits, pushes, PR creation, merge, or comments.
   Perform already requested publication without repeating an approval request.
-- Explicitly dispatch the [GitHub worker](github-worker.md) for requested commits
-  and routine PR creation/update, including small tasks. Its `commit_execution`,
+- Dispatch the [GitHub worker](github-worker.md) to publish a substantial task or
+  when the user asks for a bounded worker; a small task commits and pushes
+  directly under the user's authorization. Its `commit_execution`,
   `pr_authoring_routine` and `pr_submission` roles use the `github` profile. It
   drafts messages and PR text from fixed independently verified facts and executes
   the scoped authorized commit/push and `gh` PR writes, following the brief,

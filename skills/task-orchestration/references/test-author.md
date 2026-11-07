@@ -1,10 +1,13 @@
 # Independent test authors
 
-Whenever behavioral tests are added or materially changed, dispatch a distinct
-`test_author`, including for small fixes and tests-only tasks. This includes test
-helpers, fixtures, golden data, fuzz seeds, tolerances, removal and disabling.
-Pure formatting or documentation work does not require new tests. Explicit user
-scope and no-tests instructions still apply.
+Dispatch a distinct `test_author` when the task is substantial and adds or
+materially changes behavioral tests, including test helpers, fixtures, golden
+data, fuzz seeds, tolerances, removal and disabling, or when the user asks for
+one. For a small task the coder writes the tests and the reviewer checks each
+against the Code Review Rules. Pure formatting or documentation work does not
+require new tests. Explicit user scope and no-tests instructions still apply.
+The author is distinct from the coordinator, coder and final reviewer and never
+receives implementation source or history.
 
 `test_author` is a worker identity, not a new policy or native task role. Resolve
 the existing `testing` profile on the current host, preserve configured overrides,

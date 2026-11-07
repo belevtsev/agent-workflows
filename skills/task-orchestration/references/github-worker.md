@@ -1,7 +1,9 @@
 # Routine GitHub worker
 
-Explicitly dispatch this worker for a user-requested commit or routine PR
-creation/update, including small tasks. It can draft a commit message, title and
+Dispatch this worker to publish a substantial task (a user-requested commit or
+routine PR creation/update), or when the user asks for a bounded worker. For a
+small task, commit and push directly under the user's authorization, drafting
+the message from verified facts. The worker can draft a commit message, title and
 description from already verified facts, then execute the authorized commit,
 push and `gh pr create` or `gh pr edit`. One worker can perform these dependent
 steps. Substantive `pr_authoring`, coordination, new claims and final acceptance

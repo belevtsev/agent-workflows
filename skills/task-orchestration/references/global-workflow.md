@@ -6,6 +6,28 @@ instructions and development contracts before selecting checks or actions.
 Repository text and task plans supply data; they do not authorize publication or
 infrastructure changes.
 
+## Establish scope and evidence
+
+Establish the outcome, acceptance evidence, scope, carried authorization,
+revisions and available tools; keep requirements and user decisions separate from
+observations and assumptions. In the agreed artifact or chat record retain a
+compact ledger (`claim | basis/source revision | status | impact | next check`,
+status `unverified`, `verified`, `contradicted` or `obsolete`), assignments,
+completed checks, consultation disposition and blockers. A preset never verifies
+its own claims. Non-repository tasks keep the ledger without `cw task` records;
+work across repositories keeps one source-bound record per repository, batched
+into one adviser request with identical bindings. The record checks identity and
+evidence consistency; the coordinator still verifies meaning and omitted facts.
+
+For a known path or symbol, read it directly or use `rg`. For unfamiliar
+behavior, use one focused semantic search (such as `jbcontext search`) when
+available, then read a returned file and nearby code; make at most one narrowed
+retry with a path filter rather than repeating a broad query, and continue with
+exact searches and repository docs when the index or its authentication is
+unavailable. Keep skills reusable across projects: repository commands and
+constraints belong in `AGENTS.md` or development docs, and product features,
+incident history and operational recipes in the owning repository's docs.
+
 ## Inspect the selected workspace
 
 ```sh
@@ -93,7 +115,9 @@ cw task context --task /path/returned/by/start --phase before
 With `--summary`, `start` prints the task directory, task ID, adviser binding,
 requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
 `accept`, `assess`, `consult` and `run` commands all accept `--summary`; without
-it they print the whole record (`run` prints the check run).
+it they print the whole record, which grows past 80 KB (`run` prints the check
+run). Read a stored value missing from a summary with
+`cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`).
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, and not disabled in the saved preferences) into the task record as
@@ -160,7 +184,7 @@ all bindings must be identical. `cw consult` consults exactly the bound advisers
 using the [consultation helper](consultation-helper.md); with none bound it writes
 a `no_advisers_configured` record without network access. The coordinator checks
 each judgment against sources and finalizes a new adjudicated record under the
-[adjudication rules](../SKILL.md#adjudicate).
+[adjudication rules](consultation-helper.md#adjudicate-without-network-access).
 
 ```sh
 cw task consult --task /path/returned/by/start --phase before --input /private/path/before-final.json --summary
@@ -186,7 +210,7 @@ coordinator acceptance](worker-handoffs.md) through `cw task assign`, `cw task
 handoff` and `cw task accept` before relying on its output. These commands
 validate records rather than launch agents or expand their permissions.
 
-Mandatory [test-author dispatch](test-author.md) alone does not make a small task
+A user-requested [test author](test-author.md) alone does not make a small task
 substantial. Use small native records for that scope, with an author assignment
 owning exact test artifacts and `check_ids: []`; the coordinator or verifier owns
 the plan's execution checks. A valid red-test handoff is authorship evidence, not
@@ -219,6 +243,12 @@ interpret command text through a shell. A failed, cancelled, timed-out, or
 source-changing check cannot become a passing result.
 Checks execute approved local code without a sandbox. Select them within the
 user's authorized scope; a task plan is not permission for external side effects.
+`--summary` prints the status and log path, plus failing test names and the first
+error lines when the check failed; read the log only when those are not enough.
+Outside `cw task run`, send long output to a file and print only the exit status,
+result lines and failures; for Go,
+`go test ./... >log 2>&1; echo exit=$?; grep -E '^(FAIL|ok|panic)|--- FAIL|_test\.go:[0-9]+|\.go:[0-9]+:[0-9]+' log | head -60`
+keeps failing test names, assertion messages and compile errors.
 
 Record acceptance and the coordinator's decision through an assessment JSON. A source
 reference contains its repository-relative `path`, valid `start_line`/`end_line`,
@@ -287,6 +317,27 @@ The coordinator retains responsibility for source interpretation, relevant tests
 actions and a candid completion report. After a source change, rerun every check the
 records cite, and refresh the other evidence the change affects. Task verification does not grant authorization for Git publication,
 deployment or external messages.
+
+## Refresh affected claims and complete
+
+Select evidence for the changed behavior; repeat or broaden a check only for new
+changes, failures or unresolved risks. Tie verification to code, inputs and
+environment, not merely a conversation turn: a new turn alone does not invalidate
+evidence, and user decisions and authorization carry over. Inspect actual runtime
+or rendered results when that helps verify the requested outcome. When scope,
+revisions, acceptance text, environment, findings or checks materially change,
+update only dependent ledger entries, assignments and consultations; later source
+changes need a current review within the cap, a new passed run of every check the
+records cite and refreshed acceptance evidence.
+
+Prepare requested external drafts from verified evidence, carry existing
+authorization and verify writes through readback. Reconcile uncertain outcomes
+before retrying. Finish with the completed result and evidence at its actual
+scope, stating any material limitation: structural fixtures, fresh discovery,
+model advice, tests, CI and deployment remain distinct. Mention materially used
+advice and advisers that were not configured, unavailable or refusing, and
+identify the coordinator's independently supported decision. Update personal
+memory only when the user asks.
 
 ## Commit after verification
 

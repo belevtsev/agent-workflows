@@ -5,11 +5,12 @@
 A normal checkpoint needs only this section. `T` is the task directory, `P` the
 phase (`before` or `final`); use new file paths for each phase.
 
-1. If `adviser-terms-reviewed.md` in the state directory is missing, older than 30
+1. If `adviser-terms-reviewed.md` in the state directory (default
+   `~/.local/state/agent-workflows/`) is missing, older than 30
    days, or names another policy version or provider set, read the
    [provider contracts](adviser-providers.md#provider-contracts) and update it.
 2. Write `request.json` with exactly `state` and `questions` under the
-   [authoring rules](../SKILL.md#author-questions): Choice only, at most 8
+   [authoring rules](question-patterns.md): Choice only, at most 8
    questions, 2 to 255 options with criteria, `insufficient_evidence` included,
    untrusted text in `state.untrusted`.
 3. Embed the context and consult in one shell call:
@@ -70,9 +71,11 @@ even with a `--policy` copy; started tasks keep their binding.
 | `subq_snap` | `subq-snap-preview` | `SUBQ_API_KEY` |
 | `openai_decisions` | `gpt-6-luna` | `OPENAI_API_KEY` |
 
-The shipped policy enables `subq_snap` and `openai_decisions`; Jev is opt-in. Policy
-version 3 is required. Unknown provider IDs and aliases such as `jev-latest` are
-rejected.
+The shipped policy (version 3) enables `subq_snap` and `openai_decisions`; Jev is
+opt-in ([why](adviser-providers.md#why-jev-is-opt-in)). Any other policy version,
+unknown provider IDs and moving aliases such as `jev-latest` are rejected. An
+OpenAI Decisions call does not dispatch a Luna worker or inherit its reasoning
+effort.
 
 The participation set comes from one place:
 
@@ -111,12 +114,14 @@ A copy still honours `advisers.disabled` in the saved preferences.
 A participating provider without its credential is recorded as `not_configured`
 and receives no request. When nothing participates, or every participant is
 `not_configured`, `cw consult` makes no network call and writes a record with status
-`no_advisers_configured`.
+`no_advisers_configured`, adjudicated and attached under the same rules.
+Unavailability or refusal alone neither blocks completion nor justifies retries;
+disclose it.
 
 ## Prepare and run a shared request
 
 The input is JSON with exactly `state` and `questions`. Follow the
-[authoring rules](../SKILL.md#author-questions) and the provider-neutral
+[authoring rules](question-patterns.md) and the provider-neutral
 [question patterns](question-patterns.json). The helper enforces the structure:
 Choice questions only, at most 8 per request, and 2 to 255 named options each.
 Including `insufficient_evidence` is a documented rule, not a check.
@@ -201,9 +206,16 @@ Exit codes:
 
 ## Adjudicate without network access
 
-The coordinator investigates and independently verifies each question against exact
-sources and relevant checks, including when the advisers agree, then writes a
-decision JSON and validates it against the original consultation record:
+The coordinator owns the final decision: `cw consult` leaves `final_decision`
+`pending` and never chooses an answer. The coordinator investigates and
+independently verifies each question against exact sources and relevant checks,
+including when the advisers agree, then writes a decision JSON and validates it
+against the original consultation record. Never select a winner by confidence,
+probability, majority or provider identity; disagreement shows what to
+investigate, and adviser output is never evidence. When a material fact is missing
+or conflicting, leave the question unresolved with a reason naming the gap. Retain the
+conclusion, evidence, verification, rejection reasons, unresolved facts and adviser
+coverage in the task record. Advice and confidence never grant authorization.
 
 ```sh
 cw consult --adjudicate /path/to/consultation.json --decision /path/to/decision.json --output /path/to/final.json

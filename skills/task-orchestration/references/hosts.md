@@ -17,6 +17,36 @@ have `CLAUDECODE=1`.
 | Explicit skill invocation | `$skill-name` | `/skill-name` |
 | Project instructions | `AGENTS.md` | `CLAUDE.md`, or `AGENTS.md` when no `CLAUDE.md` applies |
 
+## Profiles and policy
+
+The YAML is configurable dispatch policy, not native host configuration: neither
+host loads it as settings or changes a running chat's model. Read
+[model-policy.yaml](../model-policy.yaml) and, under Claude Code,
+[model-policy.claude.yaml](../model-policy.claude.yaml), which replaces its
+profiles and roles (read Sol and Luna below as its matching profiles). Codex
+defaults: Sol 6.1 `max` substantive, Luna `high` bounded evidence and `github`,
+Luna `xhigh` other bounded execution; Claude `github`: Sonnet 5.5 `medium`.
+
+Before dispatch, resolve each role's profile (model and effort) and scope from the
+current policy, preserving explicit user choices; a user request can override
+effort only with a value the profile lists in `user_requested_efforts`. Sol `max`
+may be configured or explicitly requested; Sol `ultra` needs an explicit user
+request the profile allows. Never escalate automatically; a saved policy cannot
+switch an active session. Verify model and effort from runtime metadata and
+disclose a mismatch. Without an explicit user override, substantive coordination
+and final verification require a compatible main worker; if unavailable, retain
+the brief and evidence, name the required fresh-session configuration and continue
+only bounded evidence gathering. A compatible subworker does not repair the main
+worker's mismatch.
+
+Substantive coding, testing, planning, review, diagnosis, documentation, new
+acceptance claims and final verification use the configured non-Luna substantive
+profile. Routine execution requires fixed files, revision, verified facts, action
+bounds and authorization from the coordinator; routine GitHub wording can be
+drafted from fixed verified facts under the [GitHub worker contract](github-worker.md).
+New claims, ambiguous scope, conflicts or uncertain verification return to
+substantive ownership. Model selection never relaxes a role's action bounds.
+
 ## Dispatching workers under Claude Code
 
 Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
@@ -87,8 +117,9 @@ directory. They have no Skill tool, so the worker starts without the skill listi
 
 ## Independent test authors on either host
 
-The [test-author contract](test-author.md) applies whenever behavioral tests or
-their helpers/data are authored, changed, removed or disabled. `test_author` is
+The [test-author contract](test-author.md) applies when a substantial task
+authors, changes, removes or disables behavioral tests or their helpers/data, or
+when the user asks for an independent author. `test_author` is
 the dispatch identity; resolve the existing `testing` profile rather than adding
 a host policy role or selecting a cheaper publication profile. Preserve configured
 model/effort overrides and verify the effective settings.
@@ -111,10 +142,9 @@ context/model settings cannot be supplied; do not fall back to an exposed worker
 
 ## Adviser questions
 
-`references/question-patterns.json` holds provider-neutral authoring rules and
-generic examples, the same on both hosts. Option names in a request are question
-content, not model selections; resolve any worker scope through the current host
-policy. Both model and effort can differ.
+[Question patterns](question-patterns.md) and `question-patterns.json` are the
+same on both hosts. Option names in a request are question content, not model
+selections; resolve any worker scope through the current host policy.
 
 ## Advisers on either host
 
