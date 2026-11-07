@@ -85,9 +85,14 @@ adviser checkpoints are not required:
 ```
 
 A substantial plan binds at least one check to a requirement. Once its source
-changes, `verify` needs a passed run at the current source and, when the selected
-path holds `go.mod`, for each changed non-test package a passed `go test` run
-naming `./...`, the package (`./pkg`) or a parent (`./dir/...`).
+changes, `verify` needs the latest run of some check passed at the current source.
+When the selected path holds `go.mod`, each changed package (any file in its
+directory or its `testdata/`) also needs a check whose argv is a direct `go test`
+naming `./...`, the package (`./pkg`) or a parent (`./dir/...`); a changed `go.mod`,
+`go.sum`, `go.work` or `go.work.sum` needs `./...`. Runs through wrappers (`make`,
+scripts), runs using `-c`, `-n`, `-list`, `-exec`, `-run`, `-skip`, `-C` or an
+unknown flag (in argv or `GOFLAGS`), `GO.EXE` and Windows-style `.\pkg` patterns
+earn no credit.
 
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set
