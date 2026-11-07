@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/belevtsev/agent-workflows/internal/procgroup"
 )
 
 func configureCheckProcess(command *exec.Cmd) {
@@ -15,6 +17,8 @@ func configureCheckProcess(command *exec.Cmd) {
 		if command.Process == nil {
 			return os.ErrProcessDone
 		}
+		// One kill makes the leader exit so Wait can return; cleanupCheckProcess
+		// then stops whatever that kill missed.
 		err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
 		if errors.Is(err, syscall.ESRCH) {
 			return os.ErrProcessDone
@@ -23,10 +27,13 @@ func configureCheckProcess(command *exec.Cmd) {
 	}
 }
 
-func cleanupCheckProcess(command *exec.Cmd) {
-	// A normally exiting wrapper can leave redirected descendants in its owned
-	// process group. Stop that group before recording a terminal check result.
-	if command.Process != nil {
-		_ = syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
+// cleanupCheckProcess stops the owned process group before a terminal check
+// result is recorded. A normally exiting wrapper can leave redirected
+// descendants in the group, and one kill can miss a member that another member
+// was forking at that moment (seen on macOS), so kill until it is empty.
+func cleanupCheckProcess(command *exec.Cmd) error {
+	if command.Process == nil {
+		return nil
 	}
+	return procgroup.Kill(command.Process.Pid)
 }

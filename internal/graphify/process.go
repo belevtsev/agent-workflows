@@ -163,19 +163,29 @@ func runWithOutputLimit(ctx context.Context, arguments []string, directory strin
 			// joins the copiers; never abandon a goroutine writing our buffers.
 			<-done
 		}
-		// One group kill can miss a member that a dying process was forking at
-		// that moment (seen on macOS). Kill the group again once the leader is
-		// joined, as taskflow does for a cancelled check.
-		killGroup(command)
+		// One group kill can miss a member that another member was forking at
+		// that moment (seen on macOS), and that member need not be the leader.
+		// With the leader joined, kill until the group has no live member.
+		if err := stopGroup(command); err != nil {
+			return 0, "", "", errors.Join(interrupted, cleanupFailed(err))
+		}
 		return 0, "", "", interrupted
 	}
 	// Completion transfers no descendant lifetime to the caller. Wait may
 	// retain ExitError over a copier timeout, and redirected descendants can
 	// outlive even a successful, fully joined leader.
-	killGroup(command)
+	if err := stopGroup(command); err != nil {
+		return 0, "", "", cleanupFailed(err)
+	}
 	if _, exited := errors.AsType[*exec.ExitError](waitErr); waitErr != nil && !exited {
 		return 0, "", "", waitErr
 	}
 	// Invalid bytes become replacement characters, one per byte.
 	return command.ProcessState.ExitCode(), string([]rune(output.stdout.String())), string([]rune(output.stderr.String())), nil
+}
+
+// cleanupFailed reports a tool process that survived the group kill, so a
+// leaked descendant never passes as a clean result.
+func cleanupFailed(err error) error {
+	return refuse("process_cleanup", "A Graphify tool process could not be stopped: "+err.Error())
 }
