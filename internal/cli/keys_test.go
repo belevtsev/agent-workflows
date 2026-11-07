@@ -43,7 +43,7 @@ func carveoutKeysDir(t *testing.T) string {
 // carveoutKeysConfig returns a test Config whose environment serves env.
 func carveoutKeysConfig(t *testing.T, env map[string]string) Config {
 	t.Helper()
-	config, _, _, _ := testConfig(t)
+	config, _ := testConfig(t)
 	if env == nil {
 		env = map[string]string{}
 	}

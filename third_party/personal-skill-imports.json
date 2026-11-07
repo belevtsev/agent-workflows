@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "adoption_catalog": "personal-skill-origins.json",
   "inventory_digest_format": "SHA-256 of compact UTF-8 JSON of the complete inventory array, sorted by relative path; fields ordered path, kind, mode, sha256; directories omit sha256; no trailing newline.",
   "imports": {
     "archify": {

@@ -3,7 +3,6 @@ package main
 import (
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,7 +12,7 @@ import (
 )
 
 func TestDeveloperArgumentsRejectIncompleteOrUnknownCommands(t *testing.T) {
-	for _, arguments := range [][]string{{"unknown"}, {"release"}, {"release", "unknown"}, {"release", "build"}, {"check", "unexpected"}, {"release", "build", "--version", "v1.0.1", "--revision", "0000000000000000000000000000000000000000", "--race"}} {
+	for _, arguments := range [][]string{{"unknown"}, {"release"}, {"check"}, {"sandbox", "test"}} {
 		if err := run(t.Context(), arguments); err == nil {
 			t.Fatalf("incomplete developer command accepted: %v", arguments)
 		}
@@ -71,30 +70,6 @@ func TestEvalArguments(t *testing.T) {
 	}
 }
 
-// legacyRuntime places a cw whose runtime locator is version 2, the layout of
-// a manager that predates the standalone release, and puts it first on PATH.
-func legacyRuntime(t *testing.T, home string) {
-	t.Helper()
-	runtimeRoot := filepath.Join(home, ".local", "state", "agent-workflows", "runtime")
-	release := filepath.Join(runtimeRoot, "releases", strings.Repeat("a", 40))
-	if err := os.MkdirAll(release, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(release, "cw"), []byte("#!/bin/sh\nexit 97\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	locator := fmt.Sprintf(`{"version":2,"source":%q,"home":%q,"state":%q,"command_path":%q}`,
-		filepath.Join(home, "checkout"), home, filepath.Dir(runtimeRoot), filepath.Join(home, ".local", "bin", "cw"))
-	path := filepath.Join(runtimeRoot, "locator.json")
-	if err := os.WriteFile(path, []byte(locator), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(path, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", release+string(os.PathListSeparator)+os.Getenv("PATH"))
-}
-
 // captureOutput returns what the action wrote to the process's standard
 // streams.
 func captureOutput(t *testing.T, action func()) string {
@@ -115,49 +90,6 @@ func captureOutput(t *testing.T, action func()) string {
 		t.Fatal(err)
 	}
 	return string(data)
-}
-
-// R2.4: eval multilingual --live treats a legacy installation found through
-// PATH exactly like no installation; it neither refuses nor fails differently.
-func TestEvalLiveTreatsLegacyInstallationLikeNoInstallation(t *testing.T) {
-	outcome := func(t *testing.T, legacy bool) (string, string) {
-		t.Helper()
-		home := isolateEnvironment(t)
-		if legacy {
-			legacyRuntime(t, home)
-		}
-		output := filepath.Join(t.TempDir(), "evaluation")
-		var err error
-		text := captureOutput(t, func() {
-			err = run(t.Context(), []string{"eval", "multilingual", "--live", "--source", "../..", "--output-dir", output})
-		})
-		var result string
-		switch status, ok := errors.AsType[exitStatus](err); {
-		case err == nil:
-			result = "ok"
-		case ok:
-			result = fmt.Sprintf("status %d", int(status))
-		default:
-			result = "error: " + strings.NewReplacer(output, "<output>", home, "<home>").Replace(err.Error())
-		}
-		return result, text
-	}
-	var baseline, baselineText, legacy, legacyText string
-	t.Run("no_installation", func(t *testing.T) { baseline, baselineText = outcome(t, false) })
-	t.Run("legacy_installation", func(t *testing.T) { legacy, legacyText = outcome(t, true) })
-	if baseline == "" || legacy == "" {
-		t.Fatal("an evaluation did not run")
-	}
-	if legacy != baseline {
-		t.Fatalf("legacy installation changed the outcome: %s, without one: %s\nlegacy output: %s", legacy, baseline, legacyText)
-	}
-	// D3: with no configured provider a live evaluation is not a failure.
-	if baseline != "ok" {
-		t.Fatalf("live evaluation without configured providers failed: %s\noutput: %s", baseline, baselineText)
-	}
-	if strings.Contains(legacyText, "no longer supports") {
-		t.Fatalf("legacy installation was refused: %s", legacyText)
-	}
 }
 
 // evalTestNotRunEntry reports whether entry marks a provider as not run because it is

@@ -16,10 +16,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/belevtsev/agent-workflows/internal/credentials"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
-	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 // The compact views below are one JSON line each. They keep the facts a
@@ -97,94 +95,6 @@ func summarizeDoctor(report projectctx.DoctorReport) doctorSummary {
 		value.Status = "attention"
 	}
 	return value
-}
-
-type releaseSummary struct {
-	Version   string `json:"version,omitempty"`
-	Revision  string `json:"revision,omitempty"`
-	Effective string `json:"effective,omitempty"`
-}
-
-type statusSummary struct {
-	Status                  string           `json:"status"`
-	Installed               bool             `json:"installed"`
-	Release                 *releaseSummary  `json:"release,omitempty"`
-	Hosts                   []string         `json:"hosts"`
-	SettingsDrift           map[string][]any `json:"settings_drift,omitempty"`
-	MissingCredentials      []string         `json:"missing_credentials,omitempty"`
-	CredentialStorageStatus string           `json:"credential_storage_status,omitempty"`
-	NextStep                string           `json:"next_step,omitempty"`
-}
-
-// shortIdentity keeps the leading characters of a revision or digest.
-func shortIdentity(value string) string {
-	if len(value) > 12 {
-		return value[:12]
-	}
-	return value
-}
-
-// summarizeStatus reads the report of Installer.Status and the credential
-// presence that cw status prints, without model profiles or preferences.
-func summarizeStatus(status workflow.Object, presence map[string]credentials.Presence, storage, nextStep string) statusSummary {
-	value := statusSummary{Status: "ok", Hosts: []string{}, NextStep: nextStep}
-	value.Installed, _ = status["installed"].(bool)
-	if base, ok := status["base_identity"].(map[string]any); ok {
-		release := releaseSummary{}
-		release.Version, _ = base["version"].(string)
-		revision, _ := base["revision"].(string)
-		release.Revision = shortIdentity(revision)
-		effective, _ := status["effective_digest"].(string)
-		release.Effective = shortIdentity(effective)
-		value.Release = &release
-	} else if effective, ok := status["effective_digest"].(string); ok && effective != "" {
-		value.Release = &releaseSummary{Effective: shortIdentity(effective)}
-	}
-	hosts := objectValue(status["hosts"])
-	for _, id := range slices.Sorted(maps.Keys(hosts)) {
-		value.Hosts = append(value.Hosts, id)
-		host := objectValue(hosts[id])
-		if drift := listValue(host["settings_drift"]); len(drift) > 0 {
-			if value.SettingsDrift == nil {
-				value.SettingsDrift = map[string][]any{}
-			}
-			value.SettingsDrift[id] = drift
-		}
-	}
-	for _, name := range slices.Sorted(maps.Keys(presence)) {
-		if !presence[name].Effective {
-			value.MissingCredentials = append(value.MissingCredentials, name)
-		}
-	}
-	if storage != "inspected" {
-		value.CredentialStorageStatus = storage
-	}
-	switch {
-	case !value.Installed:
-		value.Status = "not_installed"
-	case len(value.SettingsDrift) > 0 || len(value.MissingCredentials) > 0 || value.CredentialStorageStatus != "":
-		value.Status = "attention"
-	}
-	return value
-}
-
-func objectValue(value any) workflow.Object {
-	item, _ := value.(workflow.Object)
-	return item
-}
-
-func listValue(value any) []any {
-	switch item := value.(type) {
-	case []any:
-		return item
-	case []string:
-		result := make([]any, len(item))
-		for i, entry := range item {
-			result[i] = entry
-		}
-		return result
-	}
-	return nil
 }
 
 type verifySummary struct {
