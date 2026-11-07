@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+This is the v3.0.0 breaking change: the v2 installer is removed, and Claude Code
+and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
+`cw` before installing the plugins; see "Moving from v2" in `docs/operations.md`.
+
 ### Added
 
 - `codebase-design` reference "building blocks": reuse before writing, four kinds of block (value, decision, adapter, composition) with the test layer for each; the architect, implementer and test-engineer contracts now check for it.
@@ -13,14 +17,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The architect, implementer and test-engineer agents under `agents/`, with role contracts in `skills/task-orchestration/references/contracts/`, an end-to-end testing reference in `skills/test-strategy/references/e2e.md`, the policy roles `architect`, `implementer` and `test_engineer`, and eval suites under `evals/`.
 - `cw hook pre-publish` and `cw hook session-start` with `hooks/hooks.json`: the Claude Code plugin loads `global/AGENTS.md` at session start (optionally with a cached `cw doctor --summary`) and denies `git commit` and `git push` while the repository's newest substantial task record has no passing `cw task verify` on the current source bytes; `cw task verify` now records that content digest as `verification.source_sha256`, which `cw` releases before this one cannot read, so hosts that share a task store need the same `cw`. The gate fails open and the plugin option `enforce_verify=false` disables it. See `docs/hooks.md`.
 - Root MIT `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` and GitHub issue and pull request templates.
-- Plugin manifests for both hosts: `.claude-plugin/` (Claude Code marketplace and plugin) and `.codex-plugin/` plus `.agents/plugins/marketplace.json` (Codex). Install with `/plugin install agent-workflows --marketplace belevtsev/agent-workflows` in Claude Code or `codex plugin marketplace add belevtsev/agent-workflows` in Codex; the Go pack is the `cc-skills-golang` plugin in the same marketplace.
+- Plugin manifests for both hosts: `.claude-plugin/` (Claude Code marketplace and plugin) and `.codex-plugin/` plus `.agents/plugins/marketplace.json` (Codex). Install with `claude plugin marketplace add belevtsev/agent-workflows` and `claude plugin install agent-workflows@agent-workflows` in Claude Code, or `codex plugin marketplace add belevtsev/agent-workflows` and `/plugins` in Codex; the Go pack is the `cc-skills-golang` plugin in the same marketplace.
 - `third_party/cc-skills-golang/UPSTREAM` records the fork's upstream version and commit and how to refresh it.
 - `cw keys set NAME | unset NAME | status` saves, removes and reports the adviser keys (`TYPESAFE_API_KEY`, `SUBQ_API_KEY`, `OPENAI_API_KEY`); `set` reads the value from standard input or `--from-env VAR`, never from the command line.
+- `cw install --host codex [--from DIR]` links every `skills-manifest.json` registration from a checkout (default `$XDG_DATA_HOME/agent-workflows/src`) into `~/.agents/skills/<name>`, writes the `global/AGENTS.md` block between `<!-- agent-workflows-start -->` and `<!-- agent-workflows-end -->` in `$CODEX_HOME/AGENTS.md`, and prints the recommended `config.toml` settings from `global/codex-defaults.toml` without editing that file. Re-run it after `git pull` to update. `cw uninstall --host codex` removes the links and the block, also after the checkout is deleted. There is no state, journal, snapshot or rollback.
+- `cw migrate-v2 [--dry-run]` removes a v2 installation: the symlinks in `~/.claude/skills/`, `~/.claude/agents/cw-*.md`, `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory, the managed block in `~/.claude/CLAUDE.md` and `$CODEX_HOME/AGENTS.md` (and in the host homes v2 recorded) while v2's `state.json` or `journal.json` remains, and `current`, `releases`, `bases`, `runtime`, `state.json` and `journal.json` in the state directory. It keeps `workflow-tasks/` and does not touch the model keys v2 wrote into `settings.json` or `config.toml`, or the `PATH` line in a shell profile. A `--state-dir` without any v2 entry has nothing to migrate, and one with release entries but neither `state.json` nor `journal.json` must be named `agent-workflows`.
+- Release archives `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64, with `SHA256SUMS`, built by goreleaser (`.goreleaser.yaml`); `go install github.com/belevtsev/agent-workflows/cmd/cw@main` builds from source (not `@latest`, which resolves to an old v1 tag because the module path has no major-version suffix).
 
 ### Changed
 
 - `cw task start` refuses a substantial plan without a check bound to a requirement. `cw task verify` on a changed substantial task needs a passed check run at the current source and, when the selected path holds `go.mod`, a passed `go test` run whose `./...`, `./pkg` or `./dir/...` pattern covers each changed non-test package. The rules live in the language-neutral registry `internal/langpack`, with Go as its first pack. Open substantial tasks whose plan has no checks cannot meet this and must be restarted.
 - Worker findings carry `severity` (`blocker`, `major` or `minor`), required in review handoffs; findings recorded earlier read as `major`. `cw task verify` lists every rejected blocker or major finding as a limitation (first, as `rejected_findings`, with `--summary`), and a rejected blocker is a problem until a later accepted independent review, whose bundle lists the rejection, completes without re-raising it.
+- Claude Code gets the skills and the worker agents only from the `agent-workflows` plugin, and worker briefs use only the namespaced agent types (`agent-workflows:cw-reviewer` and friends). `cw install --host claude` is a usage error that points at the plugin.
+- Nothing writes the hosts' model settings any more: `model` and `effortLevel` in `settings.json`, and `model` and `model_reasoning_effort` in `config.toml`, are the user's to set. The README documents the policy defaults.
+- Adviser keys are saved with `cw keys set NAME` and checked with `cw keys status`; an adviser is disabled by editing `advisers.disabled` in `preferences.json` in the configuration directory by hand.
+- CI (`.github/workflows/ci.yml`) runs gofmt, `go vet` and `go test` on Linux and macOS and validates the plugin manifests; repository content checks moved to `go test ./internal/skillcheck`.
 - Worker agent types are namespaced under the plugin (`agent-workflows:cw-reviewer` and friends); the task-orchestration skill carries a `Plugin root:` line so briefs can name absolute skill paths.
 - The always-on instruction block (`global/AGENTS.md`, 7,865 to 2,176 bytes) and the `task-orchestration` skill core (`SKILL.md`, 21,293 to 5,473 bytes) carry only the substantial-task threshold and the decision flow; every rule lives in one reference file, test authors and the GitHub worker are dispatched for substantial tasks or on request, and `docs/workflow.md` links the references instead of repeating them.
 - Releases are published from pushed `v*` tags instead of on every push to main.
@@ -32,6 +43,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Removed
 
+- The v2 installer engine: `install.sh`, the setup wizard (terminal and plain interfaces, presets, `--settings`, `--shell`, `--adopt-personal-skills`), `cw status`, `cw update`, `cw rollback`, `cw recover`, and `cw install`/`cw uninstall` for Claude Code.
+- Immutable release snapshots under `~/.local/state/agent-workflows/{current,releases,bases,runtime}`, `state.json` and `journal.json`, release-tag verification, the manager runtime, and `personal-skill-origins.json`. `cw migrate-v2` removes what a v2 installation left behind.
+- `cwdev check`, `cwdev release` and `cwdev sandbox`, and `testing/sandbox`; `cwdev eval multilingual` is the only `cwdev` command left.
+- `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
 
 ### Fixed

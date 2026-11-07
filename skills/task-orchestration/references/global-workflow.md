@@ -126,8 +126,10 @@ run). Read a stored value missing from a summary with
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, and not disabled in the saved preferences) into the task record as
-`advisers`, possibly empty. `--policy PATH` selects the policy; the default is the
-installed release's, as for `cw consult`. A `--policy` copy still honours
+`advisers`, possibly empty. `--policy PATH` selects the policy; without it, as for
+`cw consult`, the default is `$CW_MODEL_POLICY`, then
+`~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the
+policy embedded in `cw`. A `--policy` copy still honours
 `advisers.disabled`. If the policy or the saved preferences cannot be read or are
 invalid, including an older policy version, `start` fails before creating a task
 directory. The binding is fixed for the task's
@@ -137,7 +139,7 @@ To opt in to Jev, pass a policy copy that enables it; see
 [opt in to Jev](consultation-helper.md#opt-in-to-jev).
 
 Use the task directory returned by `start`. Its private append-only records and
-check logs belong outside project source and immutable managed releases. The
+check logs belong outside project source. The
 baseline identifies the selected worktree, revision and current source content,
 including relevant dirty and untracked files. Do not edit old revision files.
 
@@ -356,9 +358,9 @@ A project's full check may require a clean checkout at an exact commit, so it ca
 never pass before the commit. Do not move it to a scratch clone or leave it out of
 the plan. Bind a mode that runs the same gates on a committed copy of the working
 tree and prints that copy's tree hash. Name the project's command for it from its
-development docs. In agent-workflows it is
-`["go", "run", "./cmd/cwdev", "check", "--race", "--snapshot", "--source", "/absolute/repo"]`;
-export `GOWORK=off` in the shell that runs `cw task run`. Give the check a timeout
+development docs. agent-workflows needs no such mode: its full check,
+`["go", "test", "-race", "-count=1", "./..."]` with `GOWORK=off` exported in the
+shell that runs `cw task run`, runs on the working tree. Give the check a timeout
 that covers the whole suite. `cw task run` binds the result to the live working
 tree, the same as any other check, so `cw task verify` can complete before the
 commit. After the authorized commit, compare `git rev-parse HEAD^{tree}` with the

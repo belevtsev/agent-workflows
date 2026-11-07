@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/credentials"
-	"github.com/belevtsev/agent-workflows/internal/manageruntime"
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/userconfig"
 )
 
 // exitStatus is the process status of a command that reported its own result.
@@ -47,25 +45,7 @@ func evaluate(ctx context.Context, arguments []string) error {
 		if e != nil {
 			return e
 		}
-		recorded := ""
-		if command, e := os.Executable(); e == nil {
-			if locator, e := manageruntime.Resolve(command); e == nil {
-				recorded = locator.Config
-			}
-		}
-		if recorded == "" {
-			if command, e := exec.LookPath("cw"); e == nil {
-				// A legacy installation counts as no recorded configuration.
-				locator, e := manageruntime.Resolve(command)
-				if e != nil && !errors.Is(e, os.ErrNotExist) && !errors.Is(e, manageruntime.ErrLegacyInstallation) {
-					return e
-				}
-				if e == nil {
-					recorded = locator.Config
-				}
-			}
-		}
-		directory, e := workflow.ResolveConfigDir(workflow.Normalize(home), *configDir, recorded, os.Getenv)
+		directory, e := userconfig.Dir(filepath.Clean(home), *configDir, os.Getenv)
 		if e != nil {
 			return e
 		}

@@ -164,9 +164,8 @@ func personalPolicyFixture(t *testing.T, home string, version int, pins []fixtur
 	return writePolicyFixture(t, filepath.Join(home, ".agents", "skills", "task-orchestration"), version, pins)
 }
 
-// activeReleaseFixture installs a release that ships the given policy behind
-// state/current, the installed-release layout the installer tests model, and
-// returns the policy path. Consult and task start no longer read it.
+// activeReleaseFixture lays out a v2 release that ships the given policy behind
+// state/current and returns the policy path. Consult and task start no longer read it.
 func activeReleaseFixture(t *testing.T, state string, version int, pins []fixturePin) string {
 	t.Helper()
 	release := filepath.Join(state, "releases", "fixture-policy-v"+strconv.Itoa(version))
@@ -225,14 +224,11 @@ func (o consultOutcome) text() string {
 
 func executeConsult(t *testing.T, getenv func(string) string, args ...string) consultOutcome {
 	t.Helper()
-	config, out, _, service := testConfig(t)
+	config, out := testConfig(t)
 	stderr := new(bytes.Buffer)
 	config.Err = stderr
 	config.Getenv = getenv
 	err := Execute(t.Context(), append([]string{"consult"}, args...), config)
-	if !service.untouched() {
-		t.Fatal("consult reached the lifecycle service")
-	}
 	return consultOutcome{err: err, stdout: out.String(), stderr: stderr.String()}
 }
 

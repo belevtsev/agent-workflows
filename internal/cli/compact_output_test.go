@@ -22,7 +22,6 @@ import (
 	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
-	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 // Contract: contract-compact-output revision 1. Requirement IDs: DEF-UNCHANGED, DOC-SUMMARY,
@@ -777,254 +776,6 @@ func TestCompactRunSummaryOfPassedRunHasNoExcerpts(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// STATUS-SUMMARY and DEF-UNCHANGED (status).
-
-type compactStatusService struct {
-	object workflow.Object
-	calls  int
-}
-
-func (s *compactStatusService) Execute(string) (workflow.Object, error) {
-	s.calls++
-	return maps.Clone(s.object), nil
-}
-
-func (s *compactStatusService) Status() (workflow.Object, error) {
-	s.calls++
-	return maps.Clone(s.object), nil
-}
-
-const (
-	compactProfileMarker      = "compact-model-profile-marker"
-	compactPreferenceMarker   = "compact-preference-marker"
-	compactSharedConfigMarker = "compact-shared-config-marker"
-	// Revision 2 identity fixtures: a 40-hex revision, a 64-hex effective digest and a 64-hex base digest.
-	compactBaseRevision    = "0123456789abcdef0123456789abcdef01234567"
-	compactEffectiveDigest = "fedcba98fedcba98fedcba98fedcba98fedcba98fedcba98fedcba98fedcba98"
-	compactBaseDigest      = "abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd"
-)
-
-// compactStatusObject is the r2 installer report shape: release is a string, the identity lives in
-// base_identity and effective_digest, claude carries settings_drift and codex has no such member.
-// A nil base omits base_identity.
-func compactStatusObject(installed bool, claudeDrift []any, base map[string]any) workflow.Object {
-	if claudeDrift == nil {
-		claudeDrift = []any{}
-	}
-	object := workflow.Object{
-		"installed":        installed,
-		"release":          "effective-" + compactEffectiveDigest,
-		"effective_digest": compactEffectiveDigest,
-		"hosts": map[string]any{
-			"claude": map[string]any{
-				"home": "/fixture/claude", "instructions": "managed", "settings": "managed", "skills": []any{"task-orchestration"},
-				"model_defaults": map[string]any{"model": "fixture-default-model"}, "settings_drift": claudeDrift,
-			},
-			"codex": map[string]any{"home": "/fixture/codex", "instructions": "managed", "settings": "managed", "skills": []any{"task-orchestration"}},
-		},
-		"model_profiles": map[string]any{"testing": map[string]any{"model": compactProfileMarker}},
-		"preferences":    map[string]any{"note": compactPreferenceMarker},
-		"shared_config":  map[string]any{"note": compactSharedConfigMarker},
-	}
-	if base != nil {
-		object["base_identity"] = base
-	}
-	return object
-}
-
-func compactBaseIdentity(revision string) map[string]any {
-	return map[string]any{"version": "v2.0.66", "revision": revision, "base_digest": compactBaseDigest, "os": "darwin", "arch": "arm64"}
-}
-
-func compactInstalledStatus(claudeDrift []any) workflow.Object {
-	return compactStatusObject(true, claudeDrift, compactBaseIdentity(compactBaseRevision))
-}
-
-var compactCredentialNames = []string{"OPENAI_API_KEY", "SUBQ_API_KEY", "TYPESAFE_API_KEY"}
-
-func compactAllCredentials() map[string]string {
-	return map[string]string{
-		"TYPESAFE_API_KEY": "fixture-secret-jev", "SUBQ_API_KEY": "fixture-secret-subq", "OPENAI_API_KEY": "fixture-secret-openai",
-	}
-}
-
-func compactStatus(t *testing.T, object workflow.Object, env map[string]string, args ...string) (compactOutcome, *compactStatusService) {
-	t.Helper()
-	config, out, _, _ := testConfig(t)
-	stderr := new(bytes.Buffer)
-	config.Err = stderr
-	service := &compactStatusService{object: object}
-	config.NewService = func(workflow.Options) Service { return service }
-	config.Getenv = fixtureEnvironment(env)
-	err := Execute(t.Context(), append([]string{"status"}, args...), config)
-	return compactOutcome{err: err, stdout: out.String(), stderr: stderr.String()}, service
-}
-
-var compactStatusAllowed = []string{"status", "installed", "release", "hosts", "missing_credentials", "settings_drift", "credential_storage_status", "next_step"}
-
-func compactStatusLine(t *testing.T, outcome compactOutcome) map[string]json.RawMessage {
-	t.Helper()
-	if outcome.err != nil {
-		t.Fatalf("status --summary: %v: %s", outcome.err, outcome.text())
-	}
-	line := compactLine(t, "status --summary", []byte(outcome.stdout))
-	compactRequireKeys(t, "status --summary", line, []string{"status", "installed", "release", "hosts"}, compactStatusAllowed)
-	for _, marker := range []string{compactProfileMarker, compactPreferenceMarker, compactSharedConfigMarker, compactBaseDigest, "base_digest", "fixture-secret"} {
-		if strings.Contains(outcome.stdout, marker) {
-			t.Fatalf("status --summary printed %q: %s", marker, outcome.stdout)
-		}
-	}
-	var release map[string]any
-	compactDecode(t, line["release"], &release)
-	for key := range release {
-		if !slices.Contains([]string{"version", "revision", "effective"}, key) {
-			t.Fatalf("status --summary release has member %q beyond version, revision and effective: %v", key, release)
-		}
-	}
-	return line
-}
-
-func compactStatusValue(t *testing.T, line map[string]json.RawMessage) string {
-	t.Helper()
-	var status string
-	compactDecode(t, line["status"], &status)
-	return status
-}
-
-func TestCompactStatusSummary(t *testing.T) {
-	t.Run("ok_with_credentials_and_no_drift", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactInstalledStatus(nil), compactAllCredentials(), "--summary")
-		line := compactStatusLine(t, outcome)
-		if got := compactStatusValue(t, line); got != "ok" {
-			t.Fatalf("status = %q, want ok: %s", got, outcome.stdout)
-		}
-		for _, member := range []string{"missing_credentials", "settings_drift"} {
-			if _, ok := line[member]; ok {
-				t.Fatalf("status --summary printed %q without cause: %s", member, outcome.stdout)
-			}
-		}
-		var installed bool
-		compactDecode(t, line["installed"], &installed)
-		if !installed {
-			t.Fatal("installed = false, want true")
-		}
-	})
-	t.Run("missing_credentials_need_attention", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactInstalledStatus(nil), nil, "--summary")
-		line := compactStatusLine(t, outcome)
-		if got := compactStatusValue(t, line); got != "attention" {
-			t.Fatalf("status = %q, want attention with missing credentials", got)
-		}
-		var missing []string
-		compactDecode(t, line["missing_credentials"], &missing)
-		if len(missing) == 0 || !slices.IsSorted(missing) {
-			t.Fatalf("missing_credentials = %q, want a sorted non-empty list", missing)
-		}
-		for _, name := range missing {
-			if !slices.Contains(compactCredentialNames, name) {
-				t.Fatalf("missing_credentials holds unknown key %q", name)
-			}
-		}
-	})
-	t.Run("set_credential_is_not_missing", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactInstalledStatus(nil), map[string]string{"OPENAI_API_KEY": "fixture-secret-openai"}, "--summary")
-		line := compactStatusLine(t, outcome)
-		if raw, ok := line["missing_credentials"]; ok {
-			var missing []string
-			compactDecode(t, raw, &missing)
-			if slices.Contains(missing, "OPENAI_API_KEY") {
-				t.Fatalf("missing_credentials %q lists the set OPENAI_API_KEY", missing)
-			}
-		}
-	})
-	t.Run("settings_drift_needs_attention", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactInstalledStatus([]any{"model_reasoning_effort"}), compactAllCredentials(), "--summary")
-		line := compactStatusLine(t, outcome)
-		if got := compactStatusValue(t, line); got != "attention" {
-			t.Fatalf("status = %q, want attention with settings drift", got)
-		}
-		var printed map[string]any
-		compactDecode(t, line["settings_drift"], &printed)
-		want := map[string]any{"claude": []any{"model_reasoning_effort"}}
-		if !reflect.DeepEqual(printed, want) {
-			t.Fatalf("settings_drift = %v, want only the drifting host %v", printed, want)
-		}
-	})
-	t.Run("not_installed_takes_precedence", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactStatusObject(false, []any{"model"}, compactBaseIdentity(compactBaseRevision)), nil, "--summary")
-		line := compactStatusLine(t, outcome)
-		if got := compactStatusValue(t, line); got != "not_installed" {
-			t.Fatalf("status = %q, want not_installed", got)
-		}
-		var installed bool
-		compactDecode(t, line["installed"], &installed)
-		if installed {
-			t.Fatal("installed = true, want false")
-		}
-	})
-	for _, test := range []struct {
-		name string
-		base map[string]any
-		want map[string]any
-	}{
-		{"release_from_base_identity", compactBaseIdentity(compactBaseRevision),
-			map[string]any{"version": "v2.0.66", "revision": compactBaseRevision[:12], "effective": compactEffectiveDigest[:12]}},
-		{"short_revision_kept_whole", compactBaseIdentity("abc123"),
-			map[string]any{"version": "v2.0.66", "revision": "abc123", "effective": compactEffectiveDigest[:12]}},
-		{"release_without_base_identity", nil, map[string]any{"effective": compactEffectiveDigest[:12]}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			outcome, _ := compactStatus(t, compactStatusObject(true, nil, test.base), compactAllCredentials(), "--summary")
-			line := compactStatusLine(t, outcome)
-			var release map[string]any
-			compactDecode(t, line["release"], &release)
-			if !reflect.DeepEqual(release, test.want) {
-				t.Fatalf("release = %v, want %v", release, test.want)
-			}
-			if strings.Contains(outcome.stdout, compactEffectiveDigest) || strings.Contains(outcome.stdout, compactBaseRevision) {
-				t.Fatalf("status --summary printed a full digest or revision: %s", outcome.stdout)
-			}
-		})
-	}
-	t.Run("default_output_unchanged", func(t *testing.T) {
-		outcome, _ := compactStatus(t, compactInstalledStatus(nil), compactAllCredentials())
-		if outcome.err != nil {
-			t.Fatalf("status: %v: %s", outcome.err, outcome.text())
-		}
-		var report map[string]any
-		if err := json.Unmarshal([]byte(outcome.stdout), &report); err != nil {
-			t.Fatalf("status did not print one JSON object: %v: %q", err, outcome.stdout)
-		}
-		if report["action"] != "status" || report["credential_sources"] == nil {
-			t.Fatalf("status report lost its lifecycle members: %v", report)
-		}
-		for _, marker := range []string{compactProfileMarker, compactPreferenceMarker, compactSharedConfigMarker, compactBaseDigest} {
-			if !strings.Contains(outcome.stdout, marker) {
-				t.Fatalf("status without --summary dropped %q", marker)
-			}
-		}
-		if _, ok := report["missing_credentials"]; ok {
-			t.Fatal("status without --summary printed missing_credentials")
-		}
-	})
-}
-
-func TestCompactSummaryFlagIsUsageErrorOnOtherLifecycleCommands(t *testing.T) {
-	for _, action := range []string{"install", "update", "uninstall", "rollback", "recover"} {
-		t.Run(action, func(t *testing.T) {
-			config, _, _, service := testConfig(t)
-			err := Execute(t.Context(), []string{action, "--summary"}, config)
-			if ExitCode(err) != 2 {
-				t.Fatalf("%s --summary is not a usage error: %v (exit %d)", action, err, ExitCode(err))
-			}
-			if !service.untouched() {
-				t.Fatalf("%s --summary touched the service", action)
-			}
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
 // DOC-SUMMARY and DEF-UNCHANGED (doctor).
 
 const compactDirtyCaveat = "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty"
@@ -1074,6 +825,8 @@ func (f compactDoctorFixture) run(t *testing.T, env map[string]string, extra ...
 }
 
 var compactHex64 = regexp.MustCompile(`[0-9a-f]{64}`)
+
+var compactCredentialNames = []string{"OPENAI_API_KEY", "SUBQ_API_KEY", "TYPESAFE_API_KEY"}
 
 func TestCompactDoctorSummary(t *testing.T) {
 	f := newCompactDoctorFixture(t)
@@ -1524,4 +1277,10 @@ func TestCompactConsultSummaryPrintsNothingOnInvalidInput(t *testing.T) {
 			t.Fatalf("existing adjudicate output --summary: exit %d stdout %q, want exit 1 and no stdout", ExitCode(outcome.err), outcome.stdout)
 		}
 	})
+}
+
+func compactAllCredentials() map[string]string {
+	return map[string]string{
+		"TYPESAFE_API_KEY": "fixture-secret-jev", "SUBQ_API_KEY": "fixture-secret-subq", "OPENAI_API_KEY": "fixture-secret-openai",
+	}
 }

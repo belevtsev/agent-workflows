@@ -9,7 +9,7 @@ license of every one, and of the files first-party skills adapt.
 | [cc-skills-golang](cc-skills-golang/) | 46 Go specialist skills | [samber/cc-skills-golang](https://github.com/samber/cc-skills-golang), MIT | Its own plugin in this marketplace |
 | [archify](archify/) | Architecture and workflow diagrams | [tt-a1i/archify](https://github.com/tt-a1i/archify), MIT | Part of the `agent-workflows` plugin |
 | [typesafe-ai](typesafe-ai/) | Typed AI judgments with TypeSafe | [typesafe-ai/skills](https://github.com/typesafe-ai/skills), MIT | Part of the `agent-workflows` plugin |
-| [docker-skills](docker-skills/) | Dockerfiles, Compose, Docker Agent and Sandboxes | [docker/skills](https://github.com/docker/skills), Apache-2.0 | Installed by `cw install`; Docker also publishes its own plugin |
+| [docker-skills](docker-skills/) | Dockerfiles, Compose, Docker Agent and Sandboxes | [docker/skills](https://github.com/docker/skills), Apache-2.0 | Linked for Codex by `cw install --host codex`; Docker also publishes its own plugin |
 
 ## The Go pack is a fork
 

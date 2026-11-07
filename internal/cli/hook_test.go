@@ -66,7 +66,7 @@ type hkHarness struct {
 
 func newHKHarness(t *testing.T) *hkHarness {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	harness := &hkHarness{out: out, home: hkCanonicalTempDir(t), env: map[string]string{}}
 	config.HomeDir = func() (string, error) { return harness.home, nil }
 	config.Getenv = func(name string) string { return harness.env[name] }

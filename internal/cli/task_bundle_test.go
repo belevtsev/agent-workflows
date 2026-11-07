@@ -71,7 +71,7 @@ func newTaskBundleHarness(t *testing.T) *taskBundleHarness {
 			t.Fatal(err)
 		}
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }

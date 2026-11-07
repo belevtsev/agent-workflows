@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in cw, the installer or a skill does not work as documented
+about: Something in cw, a plugin or a skill does not work as documented
 labels: bug
 ---
 

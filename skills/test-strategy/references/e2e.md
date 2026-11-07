@@ -54,21 +54,27 @@ first run, repeat run, failure and clean-up.
 - Run on every platform and shell the product supports, or say which the test
   could not cover.
 
-## Worked example: `cw` install smoke
+## Worked example: `cw` end-to-end tests
 
-`internal/devcheck/standalone_smoke.go` runs after `cwdev check` has built
-the release binary. It creates a temporary root with directories such as
-`home with spaces`; seeds a Codex `config.toml`, a Claude `settings.json` and a
-`.bashrc` with sentinel lines; and puts `git` and `go` stubs that record and
-exit 93 ahead of `/usr/bin` and `/bin` on `PATH`. Each `cw` invocation gets only those paths in its environment, an empty
-trust store as `SSL_CERT_FILE`, `TERM=dumb`, `LC_ALL=C`, empty stdin, a 90
-second deadline with process-group kill, a 1 MiB output cap and a check for
-escape bytes. The cases are `version`, a `--dry-run` install (snapshots before
-and after must match), install then repeat install, `status` through the built
-and the installed binary, a refused install over a user-edited Codex `config.toml`
-(nothing changes), `recover` with nothing pending, and `uninstall` (only
-managed files go). After install, repeat install and recover it checks that
-every registered skill is a symlink into the active release and that unmanaged
-files and the seeded settings' unrelated keys survive. Each
-failure is a short requirement ID such as `R-N1/dry-run/dry-run-persistent-write`,
-so a red run names the broken promise.
+The tests in `cmd/cw` build the real binary once with a plain `go build` and
+drive it as a user or a host would, through its process boundary only.
+
+- `cmd/cw/hooks_test.go` runs each command in the plugin's `hooks/hooks.json`
+  through `sh -c` with a clean environment (`PATH`, `HOME`, `CW_TASK_STORE`,
+  `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`), a temporary Git repository and
+  the hook's JSON on stdin. It covers `cw` on `PATH`, a missing `cw` and a stub
+  older than the hook command, and asserts the exit status and the exact stdout
+  the host reads.
+- `cmd/cw/hostfiles_e2e_test.go` runs `cw install --host codex`, a repeat
+  install, `cw uninstall --host codex` and `cw migrate-v2 --dry-run` against
+  temporary `HOME`, `CODEX_HOME` and XDG directories and a fixture checkout. It
+  snapshots the trees before and after, so a repeat install or a dry run that
+  writes anything fails, and checks usage errors (exit 2) leave `HOME` empty.
+- `cmd/cw/task_e2e_test.go` drives `cw task start`, `run`, `assess` and `verify`
+  in a temporary repository and state directory, and asserts `verify`'s exit
+  code and summary: complete after passing evidence, and incomplete with the
+  named problem before assessment, after a failed check, and after the source
+  changes.
+
+Each case is named after the requirement it guards, so a red run names the broken
+promise.
