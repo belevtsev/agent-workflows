@@ -300,7 +300,7 @@ completed review. Small and unchanged read-only tasks stay lightweight. Reviews 
 capped at one full independent review plus, after the fixes, at most one
 diff-scoped follow-up by a fresh reviewer, and a further review only to re-bind a
 fix of a defect that follow-up found, scoped to that fix; re-binding a review of
-unchanged source does not count. The cap never excuses a defect: fix what the last allowed review finds. A fix that
+unchanged source, or completing its missing reach-row runs, does not count. The cap never excuses a defect: fix what the last allowed review finds. A fix that
 changes executable code or a gate's behaviour gets one review scoped to it. Verify a
 prose-only fix yourself (diff readback, the checks it cites, the reviewer's failure
 scenario rechecked against the new text), then have a fresh reviewer re-bind with a

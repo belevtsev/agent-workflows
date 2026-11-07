@@ -28,7 +28,9 @@ import (
 // record and source it was assigned at.
 
 const (
-	bundleVersion        = 1
+	// bundleVersion 2 adds the reviewer's duty to answer each reach row in the
+	// review result's reach_runs; version 1 bundles never asked for it.
+	bundleVersion        = 2
 	baselineManifestFile = "baseline-manifest.json"
 	maxReferences        = 10
 	maxReferenceText     = 240
@@ -467,7 +469,7 @@ func bundleInstructions(bundle Bundle, diffable bool) []string {
 	instructions := []string{
 		"This bundle orients the review and never narrows it: read any source and run any experiment you judge necessary, such as focused tests or platform and shell probes.",
 		"Reach facets: callers = who calls, sources or imports the file and its entry points; invocation_modes = every documented way it is run (piped, sourced, executed, flags, CI); platforms = every operating system, shell and version it must work on (the shebang names the interpreter); consumers = what reads the state, files, output or formats it writes.",
-		"For each reach row, check the changed hunks on every caller, invocation mode and platform listed and for every consumer, and report a defect on any of them.",
+		"For each reach row, run the changed file in a scratch copy in every invocation mode and on every platform and shell the row names (for example piped as curl | sh under macOS /bin/sh, which is bash 3.2), check its callers and consumers, and report a defect on any of them. Reading the code, running under another shell, or running an extracted fragment or a stand-in is not running the file that way. Record each mode in the result's reach_runs: status ran with the command and what you observed, or not_run with why it cannot run here, such as no Windows host.",
 	}
 	if diffable {
 		instructions = append(instructions, "Full diff since the task started: git diff "+bundle.BaselineHead+" in "+bundle.Snapshot.Root+", plus the untracked files in changed_files; the checks list gives each run's log.")

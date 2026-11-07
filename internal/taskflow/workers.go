@@ -74,6 +74,24 @@ type WorkerResult struct {
 	CheckIDs         []string            `json:"check_ids"`
 	Findings         []WorkerFinding     `json:"findings"`
 	Uncertainties    []string            `json:"uncertainties"`
+	// ReachRuns answers the reach rows of a review's stored bundle: how the
+	// reviewer ran each changed file in the modes its row names, or why it
+	// could not. A completed review with a bundle needs at least one entry per
+	// row of a file that still exists; results recorded before this field
+	// existed have none.
+	ReachRuns []ReachRun `json:"reach_runs,omitempty"`
+}
+
+// ReachRun is one mode of one reach row as a reviewer ran it, or did not.
+// "ran" needs the command and what was observed; "not_run" needs the reason,
+// such as a missing host or tool.
+type ReachRun struct {
+	Path     string `json:"path"`
+	Mode     string `json:"mode"`
+	Status   string `json:"status"`
+	Command  string `json:"command,omitempty"`
+	Observed string `json:"observed,omitempty"`
+	Reason   string `json:"reason,omitempty"`
 }
 
 type BoundWorkerResult struct {
@@ -356,6 +374,9 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 			return fmt.Errorf("changed file %s is outside worker ownership", changed.Path)
 		}
 	}
+	if err := reachRunsShape(assigned.Brief.Role, result.ReachRuns); err != nil {
+		return err
+	}
 	if len(result.Findings) > 256 {
 		return errors.New("worker result has too many findings")
 	}
@@ -367,6 +388,68 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 		seen[finding.ID] = true
 		if err := refsShape(finding.Evidence, true); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func reachRunsShape(role string, runs []ReachRun) error {
+	if len(runs) == 0 {
+		return nil
+	}
+	if role != "review" || len(runs) > 1024 {
+		return errors.New("only a review result carries reach_runs (at most 1024)")
+	}
+	for _, run := range runs {
+		if !nonblank(run.Path) || len(run.Path) > 4096 || !boundedText(run.Mode) {
+			return errors.New("each reach run needs its reach row path and the mode it answers")
+		}
+		switch run.Status {
+		case "ran":
+			if !boundedText(run.Command) || !boundedText(run.Observed) || run.Reason != "" {
+				return fmt.Errorf("reach run %s (%s): status ran needs the command and what was observed, and no reason", run.Path, run.Mode)
+			}
+		case "not_run":
+			if !boundedText(run.Reason) || run.Command != "" || run.Observed != "" {
+				return fmt.Errorf("reach run %s (%s): status not_run needs the reason it could not be run, and no command or observation", run.Path, run.Mode)
+			}
+		default:
+			return fmt.Errorf("reach run %s: status must be ran or not_run", run.Path)
+		}
+	}
+	return nil
+}
+
+// reachRunCoverage requires a completed review that carries a bundle to answer
+// every reach row of a file that still exists, and to name no other path. It
+// runs only when the result is submitted: records written before reach_runs
+// existed still load, and a review assigned with a version 1 bundle, which
+// never asked for runs, needs none.
+func reachRunCoverage(root *os.Root, assigned WorkerAssignment, result WorkerResult) error {
+	if assigned.Brief.Role != "review" || result.Status != "completed" || assigned.BundleFile == "" {
+		return nil
+	}
+	bundle, err := readStoredBundle(root, assigned)
+	if err != nil {
+		return err
+	}
+	if bundle.Version < 2 {
+		return nil
+	}
+	rows := map[string]bool{}
+	for _, row := range bundle.Reach {
+		rows[row.Path] = row.Deleted
+	}
+	answered := map[string]bool{}
+	for _, run := range result.ReachRuns {
+		if _, ok := rows[run.Path]; !ok {
+			return fmt.Errorf("reach run names %s, which has no reach row in the review's bundle", run.Path)
+		}
+		answered[run.Path] = true
+	}
+	for _, row := range bundle.Reach {
+		if !row.Deleted && !answered[row.Path] {
+			return fmt.Errorf("completed review result has no reach_runs entry for reach row %s: run the file in each mode and on each platform its row names, or give status not_run with the reason", row.Path)
 		}
 	}
 	return nil
@@ -586,6 +669,9 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 			if err := validateWorkerOwnership(*record, snapshot, assigned.Brief); err != nil {
 				return err
 			}
+		}
+		if err := reachRunCoverage(root, *assigned, input); err != nil {
+			return err
 		}
 		if err := validateLiveWorkerRefs(snapshot, input); err != nil {
 			return err

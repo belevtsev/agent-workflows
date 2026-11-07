@@ -301,12 +301,20 @@ func TestTaskAssignAcceptsBundleMemberAndFollowUpBundle(t *testing.T) {
 
 	source := []byte("changed source\n")
 	ref := taskflow.SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: taskBundleSum(source)}
+	// RR5b: the completed review answers every non-deleted reach row of the
+	// bundle it was assigned with.
+	reachRuns := []taskflow.ReachRun{}
+	for _, row := range bundle.Reach {
+		if !row.Deleted {
+			reachRuns = append(reachRuns, taskflow.ReachRun{Path: row.Path, Mode: "read as a data file", Status: "ran", Command: "cat " + row.Path, Observed: "printed the changed source"})
+		}
+	}
 	result, err := json.Marshal(taskflow.WorkerResult{
 		TaskID: h.record.ID, AssignmentID: "review1", AssignmentSHA256: assignment.SHA256,
 		AgentID: "/root/reviewer", Snapshot: assignment.Snapshot, Status: "completed",
 		Summary: "Reviewed the changed source", Evidence: []taskflow.SourceRef{ref},
 		ChangedFiles: []taskflow.WorkerChangedFile{}, CheckIDs: []string{},
-		Findings: []taskflow.WorkerFinding{}, Uncertainties: []string{},
+		Findings: []taskflow.WorkerFinding{}, Uncertainties: []string{}, ReachRuns: reachRuns,
 	})
 	if err != nil {
 		t.Fatal(err)
