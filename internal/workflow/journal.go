@@ -267,7 +267,7 @@ func (i *Installer) loadJournal() (Object, error) {
 			return nil, errors.New("settings files require a keyed journal operation")
 		}
 		preferences := path == i.preferencesPath()
-		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) && !preferences {
+		if path != i.current && path != i.statePath && !i.isInstructions(path) && !i.isSkillLink(path) && !i.isAgentLink(path) && !preferences {
 			return nil, errors.New("unsafe path in mutation journal")
 		}
 		for _, side := range []string{"before", "after"} {
@@ -291,6 +291,9 @@ func (i *Installer) loadJournal() (Object, error) {
 			}
 			if i.isSkillLink(path) && ob["kind"] != "absent" && ob["kind"] != "symlink" {
 				return nil, errors.New("unsafe registration observation")
+			}
+			if i.isAgentLink(path) && ob["kind"] != "absent" && ob["kind"] != "symlink" {
+				return nil, errors.New("unsafe agent definition observation")
 			}
 			if path == i.current && ob["kind"] == "symlink" {
 				release := text(ob["target"])

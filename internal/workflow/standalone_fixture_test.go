@@ -365,6 +365,13 @@ func installerBuildSource(maintained, destination string) error {
 			return err
 		}
 	}
+	// Claude agent definitions ship as released files; the fixture manifest
+	// keeps the key, so every named definition must be present.
+	for _, relative := range object(manifest["claude_agents"]) {
+		if err := copyFile(text(relative)); err != nil {
+			return err
+		}
+	}
 	for name, relative := range object(manifest["registrations"]) {
 		metadata := "---\nname: " + name + "\ndescription: Isolated installer lifecycle fixture.\n---\n\n# Fixture skill\n"
 		if err := write(filepath.ToSlash(filepath.Join(text(relative), "SKILL.md")), []byte(metadata), 0o644); err != nil {

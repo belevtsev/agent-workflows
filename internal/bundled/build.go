@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,6 +21,7 @@ type resourceManifest struct {
 	Version            int               `json:"version"`
 	Registrations      map[string]string `json:"registrations"`
 	GlobalInstructions string            `json:"global_instructions"`
+	ClaudeAgents       map[string]string `json:"claude_agents,omitempty"`
 	RequiredLicenses   []string          `json:"required_licenses"`
 	ModelPolicy        string            `json:"model_policy"`
 	ClaudeModelPolicy  string            `json:"claude_model_policy"`
@@ -51,6 +53,20 @@ func decodeManifest(data []byte) (resourceManifest, error) {
 		}
 		roots = append(roots, root)
 	}
+	var fields map[string]any
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return manifest, fmt.Errorf("invalid bundle resource manifest: %w", err)
+	}
+	if raw, present := fields["claude_agents"]; present {
+		if agents, ok := raw.(map[string]any); !ok || len(agents) == 0 {
+			return manifest, errors.New("bundle manifest Claude agent definitions must be a nonempty mapping")
+		}
+	}
+	for name, file := range manifest.ClaudeAgents {
+		if len(name) > 64 || !registrationPattern.MatchString(name) || file != "global/claude-agents/"+name+".md" {
+			return manifest, errors.New("bundle manifest contains an unsafe Claude agent definition")
+		}
+	}
 	for _, name := range manifest.requiredFiles() {
 		if !safeName(name) || excluded(name) {
 			return manifest, errors.New("bundle manifest contains an unsafe required resource")
@@ -61,6 +77,9 @@ func decodeManifest(data []byte) (resourceManifest, error) {
 
 func (manifest resourceManifest) requiredFiles() []string {
 	files := []string{"skills-manifest.json", manifest.GlobalInstructions, manifest.ModelPolicy, manifest.ClaudeModelPolicy, manifest.AdoptionCatalog}
+	for _, name := range slices.Sorted(maps.Keys(manifest.ClaudeAgents)) {
+		files = append(files, manifest.ClaudeAgents[name])
+	}
 	return append(files, manifest.RequiredLicenses...)
 }
 

@@ -173,6 +173,22 @@ because it carries `.claude-plugin/plugin.json`, so its skills appear as
 `cc-skills-golang:<skill>`. A name already present in `skills/` is a conflict.
 Personal skill adoption applies only to Codex.
 
+Agent definitions link `<claude-home>/agents/<name>.md` to the files the release
+manifest names under `claude_agents` (`global/claude-agents/`), through the
+`current` pointer like skill links. They are `cw-reviewer`, `cw-test-author` and
+`cw-github-worker`, each with `disallowedTools: Skill` and no model or effort, so
+the coordinator's dispatch sets both. The released files are read-only, so a write
+through the link, for example from Claude Code's agent editor, fails. Like a skill
+file, a definition replaced inside the release makes the next command report the
+snapshot as modified. An existing file of the same name is a conflict; other files
+in `agents/` are left alone. When the release names definitions or cw owns some,
+`agents/` must be a real directory, not a symlink, as `skills/` must; move a
+symlinked directory's files into a real one before updating. Update and rollback
+add and remove links to match the target release, and uninstall removes them. A
+changed or deleted owned link stops the next command; restore it with
+`ln -sfn STATE/current/global/claude-agents/NAME.md <claude-home>/agents/NAME.md`.
+Codex hosts get none.
+
 The instructions block is rendered from the same template as Codex, with the same
 markers, into `<claude-home>/CLAUDE.md`.
 
@@ -503,6 +519,11 @@ STATE/runtime/releases/RECOVERY_RUNTIME_KEY/cw recover
 
 Verify `cw-manager-v10` before recovering a version4 journal. The cached executable
 uses its sealed locator and journal roots.
+
+A journal can name paths that an older `cw` of the same protocol does not know,
+such as Claude agent links, and that `cw` then refuses it as unsafe. If `cw recover`
+fails that way after an interrupted update, use the runtime named by
+`recovery_runtime_key` as above.
 
 The download-only `install.sh recover` is another option. It can run from any
 directory; pass the explicit recorded roots if the installed command is

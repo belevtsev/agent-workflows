@@ -74,6 +74,14 @@ func (i *Installer) activation(s Object, sha, release string, m Object, enroll, 
 		}
 	}
 	for _, h := range recorded {
+		agents, agentOps, e := i.agentPlan(h, hostRecord(s, h.id), m)
+		if e != nil {
+			return nil, e
+		}
+		setAgentRecords(object(hosts[h.id]), agents)
+		ops = append(ops, agentOps...)
+	}
+	for _, h := range recorded {
 		updated, change, e := i.prepareHostConfig(h, object(hosts[h.id]), release, m, enroll)
 		if e != nil {
 			return nil, e
@@ -356,6 +364,7 @@ func (i *Installer) hostRemoval(h hostTarget, s Object) ([]Object, error) {
 		}
 		ops = append(ops, pathOperation(filepath.Join(h.skills, name), Object{"kind": "symlink", "target": item["target"]}, original, hostLabel(h, "registration:"+name)))
 	}
+	ops = append(ops, i.agentRemoval(h, hs)...)
 	contents, e := i.readInstructions(h)
 	if e != nil {
 		return nil, e
@@ -417,6 +426,7 @@ func (i *Installer) hostReports(s Object, release string, m Object) (Object, err
 	for _, h := range i.recordedHosts(s) {
 		report := Object{"home": h.root, "skills": h.skills, "instructions": h.instructions, "settings": h.settings}
 		if h.id == hostClaude {
+			report["agents_dir"], report["agents"] = h.agentDir, keys(object(hostRecord(s, h.id)["agents"]))
 			defaults, err := ClaudeModelDefaults(release, m)
 			if err != nil {
 				return nil, err

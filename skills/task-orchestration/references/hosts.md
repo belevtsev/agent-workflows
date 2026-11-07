@@ -36,7 +36,8 @@ current policy before dispatch. A saved `review` pin does not apply to
 | `bounded_evidence` | `opus` | `high` |
 
 - Pass `model` and `effort` on every dispatch, including built-in agents such as
-  `Explore`, which otherwise use their own default model.
+  `Explore`, which otherwise use their own default model, and the cw worker agents
+  below, whose definitions set neither.
 - Agent accepts model aliases, not full IDs: `claude-opus-5-5` maps to `opus`,
   and `claude-sonnet-5-5` to `sonnet`. An alias can resolve to another release.
   Per-invocation `effort` requires Claude Code 2.1.292 or newer.
@@ -60,6 +61,30 @@ current policy before dispatch. A saved `review` pin does not apply to
   `effortLevel`. `settings.json` rejects `max`; use `/effort max` or `/effort xhigh`
   for a session when the user asks for it.
 
+### Worker agent types
+
+cw installs three Claude agent definitions in `agents/` of the Claude config
+directory. They have no Skill tool, so the worker starts without the skill listing
+(about 6K fewer input tokens on its first request). Dispatch these roles with
+`subagent_type`:
+
+| Role | `subagent_type` |
+| --- | --- |
+| `review`, `review_followup` | `cw-reviewer` |
+| `test_author` (the `testing` profile) | `cw-test-author` |
+| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `cw-github-worker` |
+
+- Other roles keep `general-purpose` or a built-in type such as `Explore`.
+- These workers cannot load skills by name. When a worker needs one, such as
+  `code-review` for a reviewer, put the absolute path of its `SKILL.md` in the brief
+  (personal skills live in `skills/<name>/` of the Claude config directory); for a
+  test author, list it among the approved inputs.
+- If the type is unavailable, for example on an install older than these
+  definitions, dispatch `general-purpose` with the same model, effort and brief and
+  note it in the assignment. Only the token cost differs.
+- The runtime agent type appears in transcript metadata as
+  `agent:custom:<name>`; check it with the model and effort.
+
 ## Independent test authors on either host
 
 The [test-author contract](test-author.md) applies whenever behavioral tests or
@@ -69,11 +94,11 @@ a host policy role or selecting a cheaper publication profile. Preserve configur
 model/effort overrides and verify the effective settings.
 
 On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
-and `reasoning_effort`. On Claude, use a fresh Agent invocation with the resolved
-model alias and explicit `effort`, accounting for the overrides above. Do not
-resume a coder, coordinator or source-aware reviewer as the author. Inspect initial
-injected context and automatic project instructions as well as the handoff; a
-fresh conversation alone does not establish an unexposed context.
+and `reasoning_effort`. On Claude, use a fresh `cw-test-author` Agent invocation
+with the resolved model alias and explicit `effort`, accounting for the overrides
+above. Do not resume a coder, coordinator or source-aware reviewer as the author.
+Inspect initial injected context and automatic project instructions as well as the
+handoff; a fresh conversation alone does not establish an unexposed context.
 
 Give only approved contract/interface/scaffold inputs and exact test-output paths.
 The coordinator retains implementation discovery and raw execution diagnostics.
