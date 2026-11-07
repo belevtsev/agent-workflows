@@ -232,6 +232,39 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	bundle.Flags().StringVar(&bundleReview, "review-id", "", "Assignment ID the review will use")
 	bundle.Flags().StringVar(&bundleOutput, "output", "", "New file for the bundle, outside the project source")
 	task.AddCommand(bundle)
+	var contractPath, contractSymbols string
+	contractExtract := &cobra.Command{Use: "contract-extract", Short: "Print requested Go declarations, without bodies, as a test-author contract extract", Long: "Print the requested declarations of the Go package in --path as JSON: each function or method (Type.Method) signature, type (with struct fields and interface methods), const and var, with its doc comment and path:line, and the SHA-256 of every source file a printed declaration comes from. " +
+		"Function bodies, function literal bodies and the comments inside them are never printed, and only the requested symbols are. An unknown symbol, a directory without non-test Go source or a parse error fails with nothing printed. " +
+		"Save the output outside the project source, review it, and give its path and sha256 as the test-author brief's contract; 'cw task assign' refuses an extract that differs from what the current source yields. Other languages keep a prose contract. The task record is not changed.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if contractPath == "" || contractSymbols == "" {
+			return usage(errors.New("contract-extract needs --path and --symbols"))
+		}
+		symbols, err := taskflow.ParseContractSymbols(contractSymbols)
+		if err != nil {
+			return usage(err)
+		}
+		dir := contractPath
+		if !filepath.IsAbs(dir) {
+			working, err := config.WorkingDir()
+			if err != nil {
+				return err
+			}
+			dir = filepath.Join(working, dir)
+		}
+		contract, err := taskflow.ExtractContract(dir, symbols)
+		if err != nil {
+			return err
+		}
+		data, err := taskflow.EncodeContract(contract)
+		if err != nil {
+			return err
+		}
+		_, err = cmd.OutOrStdout().Write(data)
+		return err
+	}}
+	contractExtract.Flags().StringVar(&contractPath, "path", "", "Directory of the Go package")
+	contractExtract.Flags().StringVar(&contractSymbols, "symbols", "", "Comma-separated symbols: Name or Type.Method")
+	task.AddCommand(contractExtract)
 	var assignTask, briefFile string
 	assign := &cobra.Command{Use: "assign", Short: "Bind a worker brief and exclusive writer scope to the current source", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {

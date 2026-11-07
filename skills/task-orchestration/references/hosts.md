@@ -100,7 +100,9 @@ above. Do not resume a coder, coordinator or source-aware reviewer as the author
 Inspect initial injected context and automatic project instructions as well as the
 handoff; a fresh conversation alone does not establish an unexposed context.
 
-Give only approved contract/interface/scaffold inputs and exact test-output paths.
+Give only approved contract/interface/scaffold inputs and exact test-output paths;
+on either host, Go contracts start from the
+[declaration extract](test-author.md#extract-go-declarations).
 The coordinator retains implementation discovery and raw execution diagnostics.
 Inspect available tool transcripts for boundary violations; neither host dispatch
 nor native task ownership is a filesystem sandbox. If the author is exposed, stop

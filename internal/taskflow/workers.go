@@ -33,6 +33,9 @@ type WorkerBrief struct {
 	// Bundle names the filled reviewer bundle; a review assignment in a record
 	// with a baseline manifest requires it, and no other role may carry one.
 	Bundle *BundleRef `json:"bundle,omitempty"`
+	// Contract names the saved Go contract extract a test-author brief
+	// carries; only an implementation brief may carry one.
+	Contract *ContractRef `json:"contract,omitempty"`
 }
 
 type WorkerAssignment struct {
@@ -44,6 +47,9 @@ type WorkerAssignment struct {
 	// BundleFile is the immutable copy of the brief's bundle in the task
 	// directory; its bytes hash to Brief.Bundle.SHA256.
 	BundleFile string `json:"bundle_file,omitempty"`
+	// ContractFile is the immutable copy of the brief's contract extract in
+	// the task directory; its bytes hash to Brief.Contract.SHA256.
+	ContractFile string `json:"contract_file,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -181,6 +187,9 @@ func validateBrief(record Record, brief WorkerBrief) error {
 	if brief.Bundle != nil && (brief.Role != "review" || !filepath.IsAbs(brief.Bundle.Path) || filepath.Clean(brief.Bundle.Path) != brief.Bundle.Path || len(brief.Bundle.Path) > 4096 || strings.ContainsFunc(brief.Bundle.Path, unicode.IsControl) || !validSHA256(brief.Bundle.SHA256)) {
 		return errors.New("only a review brief carries a bundle, with a clean absolute path and its SHA-256")
 	}
+	if brief.Contract != nil && (brief.Role != "implementation" || !filepath.IsAbs(brief.Contract.Path) || filepath.Clean(brief.Contract.Path) != brief.Contract.Path || len(brief.Contract.Path) > 4096 || strings.ContainsFunc(brief.Contract.Path, unicode.IsControl) || !validSHA256(brief.Contract.SHA256)) {
+		return errors.New("only an implementation (test-author) brief carries a contract, with a clean absolute path and its SHA-256")
+	}
 	if !uniqueIDs(brief.CheckIDs) || len(brief.CheckIDs) > 256 {
 		return errors.New("worker check_ids must be distinct planned check IDs")
 	}
@@ -290,6 +299,11 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 		}
 		if record.BaselineManifest != nil && brief.Role == "review" || brief.Bundle != nil {
 			if assignment.BundleFile, err = storeReviewBundle(ctx, root, *record, brief, after); err != nil {
+				return err
+			}
+		}
+		if brief.Contract != nil {
+			if assignment.ContractFile, err = storeContract(root, *record, brief); err != nil {
 				return err
 			}
 		}
