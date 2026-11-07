@@ -12,6 +12,7 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 
 ### Added
 
+- The spec-writer and spec-reviewer agents under `agents/`, with role contracts that write and review OpenSpec-compatible change folders (`openspec/changes/<change-id>/` with `proposal.md`, spec deltas and `tasks.md`), the policy roles `spec_writer` and `spec_reviewer`, eval suites under `evals/`, and the seven-role flow (spec writer → spec reviewer → architect → interface contract → implementer ∥ test engineer → reviewer → `cw task verify` → commit) in `skills/task-orchestration/SKILL.md` and `references/contracts/README.md`.
 - `codebase-design` reference "building blocks": reuse before writing, four kinds of block (value, decision, adapter, composition) with the test layer for each; the architect, implementer and test-engineer contracts now check for it.
 - Folder guides: `skills/README.md` (catalog kept in sync with each SKILL.md by `catalog_test.go`), `docs/README.md` (index), `docs/agents.md` (agent roster and contracts), `third_party/README.md` (vendored packs and the Go fork); `.github/CODEOWNERS`, Dependabot for Actions and Go modules, `.editorconfig`.
 - The architect, implementer and test-engineer agents under `agents/`, with role contracts in `skills/task-orchestration/references/contracts/`, an end-to-end testing reference in `skills/test-strategy/references/e2e.md`, the policy roles `architect`, `implementer` and `test_engineer`, and eval suites under `evals/`.

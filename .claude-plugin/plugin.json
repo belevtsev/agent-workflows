@@ -26,6 +26,8 @@
     "./global/claude-agents/cw-reviewer.md",
     "./global/claude-agents/cw-test-author.md",
     "./global/claude-agents/cw-github-worker.md",
+    "./agents/spec-writer.md",
+    "./agents/spec-reviewer.md",
     "./agents/architect.md",
     "./agents/implementer.md",
     "./agents/test-engineer.md"

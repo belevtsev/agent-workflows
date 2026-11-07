@@ -57,7 +57,9 @@ roles:
   testing: sol
   planning: sol
   architecture: sol
-  # Contract roles for the five-role flow (references/contracts/README.md).
+  # Contract roles for the seven-role flow (references/contracts/README.md).
+  spec_writer: sol
+  spec_reviewer: sol
   architect: sol
   implementer: sol
   test_engineer: sol

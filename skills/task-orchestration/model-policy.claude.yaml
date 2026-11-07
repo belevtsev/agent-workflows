@@ -43,7 +43,9 @@ roles:
   testing: substantive
   planning: decision
   architecture: decision
-  # Contract roles for the five-role flow (references/contracts/README.md).
+  # Contract roles for the seven-role flow (references/contracts/README.md).
+  spec_writer: substantive
+  spec_reviewer: substantive
   architect: decision
   implementer: substantive
   test_engineer: substantive
