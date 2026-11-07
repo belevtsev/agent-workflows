@@ -77,7 +77,7 @@ extract to the author over every test path the stale one owned; source files tha
 changed while every declaration stayed the same are listed as a limitation only.
 
 Start the author with fresh context: Codex uses `fork_turns: "none"`; Claude uses
-a fresh Agent invocation of the `cw-test-author` type, which has no Skill tool.
+a fresh Agent invocation of the `agent-workflows:cw-test-author` type (`cw-test-author` under `cw install`), which has no Skill tool.
 List the `SKILL.md` path of any skill the author should apply among the approved
 inputs. Never reuse a coder or source-aware reviewer as the author. Do not include
 implementation conversations, source excerpts, diffs, Git history, implementation

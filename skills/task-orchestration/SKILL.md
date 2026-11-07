@@ -5,6 +5,9 @@ description: Coordinate substantial work with bounded workers; dispatch independ
 
 # Task orchestration
 
+Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty under `cw install`; see the
+[host mapping](references/hosts.md#worker-agent-types) for paths and agent types).
+
 The coordinator owns the outcome, consultation, dispatch, integration and final
 verification. Use this skill when a task is substantial: two or more of changes
 in more than one package or component, behaviour that must match across

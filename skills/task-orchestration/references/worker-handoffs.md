@@ -136,7 +136,7 @@ substantive reviewer, distinct from the coordinator and implementation workers,
 before final adviser context (or completion when checkpoints are not required).
 Its brief uses `role: "review"` and `owned_paths: ["."]` for the full resulting
 source; it returns the same handoff shape with no changes.
-Under Claude Code, dispatch every review with the `cw-reviewer` agent type and the
+Under Claude Code, dispatch every review with the `agent-workflows:cw-reviewer` agent type (`cw-reviewer` under `cw install`) and the
 role's model and effort ([host mapping](hosts.md#worker-agent-types)); give the
 `SKILL.md` path of any skill the review should apply, such as `code-review`.
 Adviser checkpoints do not replace review, and missing independent review cannot
