@@ -3,4 +3,4 @@ interface:
   short_description: "Manage Docker Sandbox lifecycles and workspaces"
   default_prompt: "Use $docker-sandboxes-lifecycle to create, run, reattach to, or remove a Docker Sandbox."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

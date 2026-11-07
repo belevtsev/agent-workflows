@@ -3,4 +3,4 @@ interface:
   short_description: "Define declarative Docker Sandbox environments"
   default_prompt: "Use $docker-sandboxes-env to author, plan, or run an sbxenv.yaml environment."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

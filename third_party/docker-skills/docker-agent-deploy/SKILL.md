@@ -3,6 +3,7 @@ name: docker-agent-deploy
 description: Serve, share, or evaluate Docker Agents through MCP, HTTP, A2A, chat APIs, OCI registries, and CI.
 license: Apache-2.0
 compatibility: Requires the docker-agent CLI plugin (Docker Desktop 4.63+, or standalone). `docker agent eval` additionally requires a Docker-compatible container runtime (Docker Desktop/Engine, or Podman via `--container-runtime`). Verified against docker-agent as shipped with Docker CLI 29.7.2.
+disable-model-invocation: true
 ---
 
 # Docker Agent: Serving, Sharing, and Evaluating

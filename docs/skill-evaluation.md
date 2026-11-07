@@ -2,7 +2,9 @@
 
 The suite has 33 registrations and 78 entrypoints. Discovery metadata
 is concise; entrypoints retain scope and essential safeguards, with detailed
-references loaded only for the current question. Model/effort defaults are
+references loaded only for the current question. Twenty-four rarely used skills stay
+out of the automatic listing on both hosts and run only when invoked by name; see
+[skills you call by name](../README.md#skills-you-call-by-name). Model/effort defaults are
 validated policy, not claims of improved quality, token savings, or elapsed time.
 Measure those outcomes on equivalent work.
 
@@ -35,16 +37,19 @@ access. This checks the fixture/scorer contract; it neither calls a hosted model
 nor demonstrates that discovery or reasoning passed. CI receives no service
 credentials. There is no separate `cwdev eval` command.
 
-The personal corpus has twelve implicit cases under
-`internal/devcheck/testdata/personal-skill-routing/inputs`. The original production
-planning, Dockerfile review, and diagram preparation inputs and expectations are
-unchanged. Nine additional cases exercise the planning skill's conditional OpenSpec
-workflow. Their evaluator-only oracles live outside the input tree.
+The personal corpus has twelve cases under
+`internal/devcheck/testdata/personal-skill-routing/inputs`: eleven implicit and one
+explicit. The original production planning and diagram preparation inputs and
+expectations are unchanged. The Dockerfile review now names `$docker-build-strategies`,
+because that Docker skill is left out of the automatic listing and run only when
+invoked by name; its expected reads, claims and limits are unchanged. Nine
+additional cases exercise the planning skill's conditional OpenSpec workflow.
+Their evaluator-only oracles live outside the input tree.
 
 | Raw case ID | Coverage |
 | --- | --- |
 | `planning` | Ordinary production plan in chat, retaining accepted decisions |
-| `docker` | Dockerfile review with unexecuted build/runtime limits |
+| `docker` | Named Dockerfile review skill with unexecuted build/runtime limits |
 | `diagram` | Explorable diagram preparation with unexecuted rendering limits |
 | `openspec-initialized` | Automatic routing from project-owned initialization |
 | `openspec-chat-only` | Explicit chat-only deliverable in an initialized project |

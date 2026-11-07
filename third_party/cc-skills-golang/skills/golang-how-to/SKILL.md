@@ -32,4 +32,6 @@ Use this entrypoint when the relevant Go workflow is unclear or two specialists 
 - For choosing local code intelligence, published package documentation, or vulnerability analysis, read [tool selection](references/tool-selection.md).
 - Only when the user requests agent-configuration work, read [project configuration](references/project-config.md).
 
+Library skills (`golang-samber-*`, `golang-uber-fx`, `golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql`, `golang-spf13-viper`) are not in the automatic skill listing. When one applies, read its `SKILL.md` from the sibling directory `../<name>/SKILL.md` next to this skill instead of invoking it as a skill.
+
 Keep the selection small. Read a second specialist only when a concrete part of the task needs its expertise. Library skills apply to a dependency already in use or an explicitly requested evaluation. No routing action changes project configuration, installs a tool, or creates an external issue.

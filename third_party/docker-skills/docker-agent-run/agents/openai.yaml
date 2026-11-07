@@ -3,4 +3,4 @@ interface:
   short_description: "Run Docker Agents with suitable approval modes"
   default_prompt: "Use $docker-agent-run to run or troubleshoot a Docker Agent."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

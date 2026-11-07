@@ -3,6 +3,7 @@ name: docker-sandboxes-kits
 description: Author, validate, package, sign, or compose Docker Sandbox kits with the experimental spec.yaml schema.
 license: Apache-2.0
 compatibility: Requires standalone sbx with sbx kit support and kit-spec schemaVersion "2", not the legacy docker sandbox wrapper. Verified against docker/sandboxes df5c96ba60484fa2c375469dbac912c205da6c37; installed-help version and provenance are in references/sources.md. docker_help does not cover standalone sbx.
+disable-model-invocation: true
 ---
 
 # Docker Sandboxes: Kits (spec.yaml)

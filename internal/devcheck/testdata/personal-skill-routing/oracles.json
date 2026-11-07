@@ -11,7 +11,7 @@
       "forbidden_effects": ["tests", "services", "installation", "implementation", "publication"]
     },
     {
-      "id": "docker", "mode": "implicit", "input_dir": "inputs/docker",
+      "id": "docker", "mode": "explicit", "input_dir": "inputs/docker",
       "target_read": "third_party/docker-skills/docker-build-strategies/SKILL.md",
       "required_reads": ["third_party/docker-skills/docker-build-strategies/SKILL.md"],
       "required_claims": ["dependency layer follows complete source copy", "single stage includes build toolchain", "runtime privilege and required files need verification", "no executed build evidence"],

@@ -3,4 +3,4 @@ interface:
   short_description: "Serve, share, and evaluate Docker Agents"
   default_prompt: "Use $docker-agent-deploy to serve, share, or evaluate a Docker Agent."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

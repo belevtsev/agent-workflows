@@ -51,6 +51,7 @@ metadata:
     paths:
     - '**/*.go'
     allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs AskUserQuestion Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
+disable-model-invocation: true
 ---
 
 # samber/slog-\*\*\*\* — Structured Logging Pipeline for Go

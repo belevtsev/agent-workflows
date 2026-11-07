@@ -699,53 +699,136 @@ func suiteYAMLKeys(node *yaml.Node, active map[*yaml.Node]bool, budget *int) (ma
 	return keys, nil
 }
 
-func suiteFrontmatter(root, target string) (string, error) {
+// suiteListedSkills must stay in both hosts' automatic skill listings: the
+// workflow entrypoints and the primary diagram skill are never opt-in.
+var suiteListedSkills = []string{"archify", "code-review", "graphify", "task-orchestration", "test-strategy"}
+
+// suiteFrontmatter returns the skill name and whether Claude Code hides the
+// skill from its listing (disable-model-invocation: true).
+func suiteFrontmatter(root, target string) (string, bool, error) {
 	relative, _ := filepath.Rel(root, target)
 	display := filepath.ToSlash(relative)
 	data, err := suiteRead(target, display)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
 	if len(lines) == 0 || lines[0] != "---" {
-		return "", fmt.Errorf("missing skill frontmatter: %s", display)
+		return "", false, fmt.Errorf("missing skill frontmatter: %s", display)
 	}
 	end := slices.Index(lines[1:], "---")
 	if end < 0 {
-		return "", fmt.Errorf("unterminated skill frontmatter: %s", display)
+		return "", false, fmt.Errorf("unterminated skill frontmatter: %s", display)
 	}
-	value, err := suiteYAML([]byte(strings.Join(lines[1:end+1], "\n")))
+	frontmatter := []byte(strings.Join(lines[1:end+1], "\n"))
+	value, err := suiteYAML(frontmatter)
 	if err != nil {
-		return "", fmt.Errorf("invalid skill frontmatter: %s (%w)", display, err)
+		return "", false, fmt.Errorf("invalid skill frontmatter: %s (%w)", display, err)
 	}
 	fields, err := suiteMapping(value, "skill frontmatter")
 	if err != nil {
-		return "", fmt.Errorf("invalid skill frontmatter fields: %s", display)
+		return "", false, fmt.Errorf("invalid skill frontmatter fields: %s", display)
 	}
-	allowed := []string{"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+	allowed := []string{"name", "description", "license", "compatibility", "metadata", "allowed-tools", "disable-model-invocation"}
 	for key := range fields {
 		if !slices.Contains(allowed, key) {
-			return "", fmt.Errorf("invalid skill frontmatter fields: %s", display)
+			return "", false, fmt.Errorf("invalid skill frontmatter fields: %s", display)
 		}
 	}
 	name, ok := fields["name"].(string)
 	if !ok || len(name) > 64 || !suiteName.MatchString(name) {
-		return "", fmt.Errorf("invalid skill name: %s", display)
+		return "", false, fmt.Errorf("invalid skill name: %s", display)
 	}
 	if !suiteText(fields["description"]) {
-		return "", fmt.Errorf("invalid skill description: %s", display)
+		return "", false, fmt.Errorf("invalid skill description: %s", display)
 	}
 	for _, field := range []string{"license", "compatibility", "allowed-tools"} {
 		if value, present := fields[field]; present && !suiteText(value) {
-			return "", fmt.Errorf("invalid skill %s: %s", field, display)
+			return "", false, fmt.Errorf("invalid skill %s: %s", field, display)
 		}
 	}
 	if value, present := fields["metadata"]; present {
 		if _, err := suiteMapping(value, "skill metadata"); err != nil {
-			return "", fmt.Errorf("invalid skill metadata: %s", display)
+			return "", false, fmt.Errorf("invalid skill metadata: %s", display)
 		}
 	}
-	return name, nil
+	hidden := false
+	if value, present := fields["disable-model-invocation"]; present {
+		flag, ok := value.(bool)
+		if !ok || !suiteCoreBool(frontmatter, "disable-model-invocation") {
+			return "", false, fmt.Errorf("invalid skill disable-model-invocation: %s", display)
+		}
+		hidden = flag
+	}
+	return name, hidden, nil
+}
+
+// suiteImplicitInvocation reads the Codex policy in agents/openai.yaml next to
+// a skill entrypoint. Without the file or the field, Codex invokes implicitly.
+func suiteImplicitInvocation(root, entrypoint string, files []string) (bool, error) {
+	target := filepath.Join(filepath.Dir(entrypoint), "agents", "openai.yaml")
+	if !slices.Contains(files, target) {
+		return true, nil
+	}
+	relative, _ := filepath.Rel(root, target)
+	display := filepath.ToSlash(relative)
+	data, err := suiteRead(target, display)
+	if err != nil {
+		return false, err
+	}
+	value, err := suiteYAML(data)
+	if err != nil {
+		return false, fmt.Errorf("invalid Codex skill metadata: %s (%w)", display, err)
+	}
+	fields, err := suiteMapping(value, "Codex skill metadata")
+	if err != nil {
+		return false, fmt.Errorf("invalid Codex skill metadata: %s", display)
+	}
+	policy, present := fields["policy"]
+	if !present {
+		return true, nil
+	}
+	policyFields, err := suiteMapping(policy, "Codex skill policy")
+	if err != nil {
+		return false, fmt.Errorf("invalid Codex skill policy: %s", display)
+	}
+	implicit, present := policyFields["allow_implicit_invocation"]
+	if !present {
+		return true, nil
+	}
+	allowed, ok := implicit.(bool)
+	if !ok || !suiteCoreBool(data, "policy", "allow_implicit_invocation") {
+		return false, fmt.Errorf("invalid Codex skill policy: %s", display)
+	}
+	return allowed, nil
+}
+
+// suiteCoreBool reports whether the value at the key path is a plain YAML 1.2
+// boolean. suiteYAML also reads YAML 1.1 words such as yes and off as
+// booleans, but the hosts read them as strings, so a visibility flag spelled
+// that way would hide a skill on one side only.
+func suiteCoreBool(data []byte, keys ...string) bool {
+	var document yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil || document.Kind != yaml.DocumentNode || len(document.Content) != 1 {
+		return false
+	}
+	node := document.Content[0]
+	for _, key := range keys {
+		if node.Kind != yaml.MappingNode {
+			return false
+		}
+		var next *yaml.Node
+		for index := 0; index+1 < len(node.Content); index += 2 {
+			if name := node.Content[index]; name.Kind == yaml.ScalarNode && name.ShortTag() == "!!str" && name.Value == key {
+				next = node.Content[index+1]
+			}
+		}
+		if next == nil {
+			return false
+		}
+		node = next
+	}
+	return node.Kind == yaml.ScalarNode && node.Style == 0 && node.ShortTag() == "!!bool"
 }
 
 func suiteProse(text string) string {
@@ -1561,9 +1644,19 @@ func ValidateSuite(root string) (Object, error) {
 				continue
 			}
 			entrypoints++
-			name, err := suiteFrontmatter(root, target)
+			name, hidden, err := suiteFrontmatter(root, target)
 			if err != nil {
 				return nil, err
+			}
+			implicit, err := suiteImplicitInvocation(root, target, files)
+			if err != nil {
+				return nil, err
+			}
+			if hidden == implicit {
+				return nil, fmt.Errorf("skill listing differs between hosts: %s", name)
+			}
+			if hidden && slices.Contains(suiteListedSkills, name) {
+				return nil, fmt.Errorf("skill must stay listed: %s", name)
 			}
 			if names[name] {
 				return nil, errors.New("duplicate skill name")

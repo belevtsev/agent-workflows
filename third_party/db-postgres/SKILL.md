@@ -5,6 +5,7 @@ license: MIT
 metadata:
   author: https://github.com/Jeffallan
   upstream-version: "1.1.0"
+disable-model-invocation: true
 ---
 
 # PostgreSQL diagnosis

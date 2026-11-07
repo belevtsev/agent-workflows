@@ -3,4 +3,4 @@ interface:
   short_description: "Configure sandbox network access and credentials"
   default_prompt: "Use $docker-sandboxes-network-credentials to configure sandbox network access or credentials."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false
