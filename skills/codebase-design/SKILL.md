@@ -90,6 +90,7 @@ The most reliable way to deepen a module is to reduce the ways it can fail. `os.
 
 ## Going further
 
+- When writing new code, read [building blocks](references/building-blocks.md). It covers reuse before writing, the four kinds of block (value, decision, adapter, composition), how each is tested, and when to extract one.
 - To deepen an existing cluster of shallow modules, read [deepening](references/deepening.md). It covers dependency categories, seam discipline, and which tests to replace.
 - To compare genuinely different interfaces before committing to one, read [design it twice](references/design-it-twice.md).
 
