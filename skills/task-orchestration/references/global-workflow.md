@@ -296,6 +296,19 @@ needs no new test run; compare the committed tree with the verified one instead.
 Do not rerun `cw task verify` after that commit: it would replace the stored
 complete verification with one that reports every binding stale.
 
+A project's full check may require a clean checkout at an exact commit, so it can
+never pass before the commit. Do not move it to a scratch clone or leave it out of
+the plan. Bind a mode that runs the same gates on a committed copy of the working
+tree and prints that copy's tree hash. Name the project's command for it from its
+development docs. In agent-workflows it is
+`["go", "run", "./cmd/cwdev", "check", "--race", "--snapshot", "--source", "/absolute/repo"]`;
+export `GOWORK=off` in the shell that runs `cw task run`. Give the check a timeout
+that covers the whole suite. `cw task run` binds the result to the live working
+tree, the same as any other check, so `cw task verify` can complete before the
+commit. After the authorized commit, compare `git rev-parse HEAD^{tree}` with the
+tree hash in that check's log. If they differ, the commit is not the verified tree:
+find the difference and verify again.
+
 ## Measure outcomes
 
 ```sh

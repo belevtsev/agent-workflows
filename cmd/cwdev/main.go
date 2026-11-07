@@ -20,7 +20,7 @@ import (
 
 func run(ctx context.Context, arguments []string) error {
 	if len(arguments) == 0 || arguments[0] == "help" || arguments[0] == "--help" || arguments[0] == "-h" {
-		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n  cwdev eval multilingual [--source PATH] [--live --output-dir PATH]\n  cwdev sandbox test --source PATH --backend docker|sbx [--output FILE]\n\nRelease builds require a clean exact source revision. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets. Evaluation\nvalidates its corpus offline unless --live explicitly allows one hosted baseline.")
+		fmt.Println("cwdev — developer automation\n\nUsage:\n  cwdev check [--source PATH] [--binary PATH] [--race] [--snapshot]\n              [--release-version v1.0.N --revision SHA --dist PATH]\n  cwdev release build|publish --version v1.0.N --revision SHA\n              [--source PATH] [--dist PATH]\n  cwdev eval multilingual [--source PATH] [--live --output-dir PATH]\n  cwdev sandbox test --source PATH --backend docker|sbx [--output FILE]\n\nRelease builds require a clean exact source revision. check --snapshot runs the\nsame gates in a disposable commit of the working tree (tracked and unignored\nfiles) and prints its tree hash; compare it with git rev-parse HEAD^{tree} after\ncommitting. It cannot prepare release assets. Publication reads GH_TOKEN\nand reconciles uncertain writes without overwriting tags or assets. Evaluation\nvalidates its corpus offline unless --live explicitly allows one hosted baseline.")
 		return nil
 	}
 	action := arguments[0]
@@ -47,6 +47,7 @@ func run(ctx context.Context, arguments []string) error {
 	revision := flags.String("revision", "", "exact source commit SHA")
 	binary := flags.String("binary", "", "native check executable")
 	race := flags.Bool("race", false, "run native race checks")
+	snapshot := flags.Bool("snapshot", false, "verify a disposable commit of the working tree instead of requiring a clean checkout")
 	releaseVersion := flags.String("release-version", "", "prepare release assets concurrently with verification")
 	if err := flags.Parse(arguments); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -75,13 +76,19 @@ func run(ctx context.Context, arguments []string) error {
 		if *version != "" {
 			return errors.New("--version applies to release; check uses --release-version")
 		}
-		return devcheck.Check(ctx, devcheck.Options{Source: absSource, Binary: resolve(*binary, filepath.Join(".bin", "cw")), Race: *race, ReleaseVersion: *releaseVersion, Revision: *revision, Dist: absDist})
+		// An empty binary defaults inside the verified tree, which is the copy
+		// under --snapshot.
+		binaryPath := ""
+		if *binary != "" {
+			binaryPath = resolve(*binary, "")
+		}
+		return devcheck.Check(ctx, devcheck.Options{Source: absSource, Binary: binaryPath, Race: *race, ReleaseVersion: *releaseVersion, Revision: *revision, Dist: absDist, Snapshot: *snapshot})
 	}
 	if *version == "" || *revision == "" {
 		return errors.New("release requires --version and --revision")
 	}
-	if *race || *releaseVersion != "" || *binary != "" {
-		return errors.New("verification options apply only to check")
+	if *race || *snapshot || *releaseVersion != "" || *binary != "" {
+		return errors.New("verification options --race, --snapshot, --release-version and --binary apply only to check")
 	}
 	if action == "release-build" {
 		assets, err := release.Build(ctx, release.BuildOptions{Source: absSource, Version: *version, Revision: *revision, Dist: absDist})
