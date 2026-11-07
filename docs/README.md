@@ -12,8 +12,8 @@
 
 Elsewhere in the repository:
 
-- [skills/](../skills/README.md): the catalog of first-party skills.
-- [agents/](../agents/): the worker agent definitions (guide: [agents](agents.md)).
-- [third_party/](../third_party/README.md): vendored skills and how they are maintained.
-- [evals/](../evals/README.md): eval suites for the agents.
-- [CONTRIBUTING](../CONTRIBUTING.md), [SECURITY](../SECURITY.md), [CHANGELOG](../CHANGELOG.md).
+- [skills/](https://github.com/belevtsev/agent-workflows/blob/main/skills/README.md): the catalog of first-party skills.
+- [agents/](https://github.com/belevtsev/agent-workflows/tree/main/agents): the worker agent definitions (guide: [agents](agents.md)).
+- [third_party/](https://github.com/belevtsev/agent-workflows/blob/main/third_party/README.md): vendored skills and how they are maintained.
+- [evals/](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md): eval suites for the agents.
+- [CONTRIBUTING](https://github.com/belevtsev/agent-workflows/blob/main/CONTRIBUTING.md), [SECURITY](https://github.com/belevtsev/agent-workflows/blob/main/SECURITY.md), [CHANGELOG](https://github.com/belevtsev/agent-workflows/blob/main/CHANGELOG.md).
