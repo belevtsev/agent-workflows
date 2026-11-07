@@ -18,11 +18,11 @@ on:
         description: Space-separated suite directories under evals/ (empty runs all)
         default: ''
       model:
-        description: Model for the coordinating session (the plugin's agents pin their own)
-        default: claude-sonnet-5
+        description: Model for the agent under test (--model); the default is the Opus model the agents pin (model opus), so a run uses Opus whether the runner applies --model to the dispatched agent or to the dispatching session
+        default: claude-opus-5-5
       judge_model:
-        description: Model for llm graders
-        default: claude-haiku-4-5
+        description: Model for llm graders (--judge-model)
+        default: claude-haiku-5-5
       claude_code_version:
         description: npm version of @anthropic-ai/claude-code
         default: 2.1.316
@@ -40,8 +40,8 @@ concurrency:
 env:
   PASS_FLOOR: ${{ inputs.pass_floor || '0.8' }}
   MAX_COST_USD: ${{ inputs.max_cost_usd || '5' }}
-  EVAL_MODEL: ${{ inputs.model || 'claude-sonnet-5' }}
-  JUDGE_MODEL: ${{ inputs.judge_model || 'claude-haiku-4-5' }}
+  EVAL_MODEL: ${{ inputs.model || 'claude-opus-5-5' }}
+  JUDGE_MODEL: ${{ inputs.judge_model || 'claude-haiku-5-5' }}
   CLAUDE_CODE_VERSION: ${{ inputs.claude_code_version || '2.1.316' }}
 
 jobs:

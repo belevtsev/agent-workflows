@@ -94,5 +94,10 @@ defaults to 0.8: every case's score (the share of its graders that passed)
 must reach it. The job uploads `result.json`, the runner's stderr and the run
 workspaces as the `eval-<suite>-<run id>` artifact, prints a per-case summary
 (`TestEvalResult`), fails on any non-zero runner exit, and for `test-engineer`
-then runs the mutant gate on those workspaces. Dispatch inputs override the
+then runs the mutant gate on those workspaces. `--model`, the model for the
+agent under test, defaults to `claude-opus-5-5`, the model the architect,
+implementer and test-engineer agents pin in their frontmatter (`model: opus`),
+so the run uses Opus whether the runner applies `--model` to the dispatched
+agent or only to the session that dispatches it. `--judge-model`, the model for
+`llm` graders, defaults to `claude-haiku-5-5`. Dispatch inputs override the
 floor, the ceiling, the suites, both models and the Claude Code version.

@@ -40,42 +40,18 @@ func TestMutantGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if only := os.Getenv("EVAL_CASES"); only != "" {
-		var names []string
-		for name := range strings.SplitSeq(only, ",") {
-			if name = strings.TrimSpace(name); name != "" && !slices.Contains(names, name) {
-				names = append(names, name)
-			}
-		}
-		if len(names) == 0 {
-			t.Fatalf("EVAL_CASES %q names no case; unset it to gate every case", only)
-		}
-		for _, name := range names {
-			if !slices.ContainsFunc(cases, func(c mutantCase) bool { return c.Name == name }) {
-				t.Fatalf("EVAL_CASES names %q, which is not a case with testdata/impl-mutants", name)
-			}
-		}
-		cases = slices.DeleteFunc(cases, func(c mutantCase) bool { return !slices.Contains(names, c.Name) })
-	}
-	workspaces, err := findWorkspaces(root, cases)
+	targets, err := planGate(cases, root, os.Getenv("EVAL_CASES"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range cases {
-		t.Run(c.Name, func(t *testing.T) {
+	for _, target := range targets {
+		t.Run(target.Case.Name, func(t *testing.T) {
 			t.Parallel()
-			if len(workspaces[c.Name]) == 0 {
-				t.Fatalf("no workspace for case %s under %s: the run kept none, or the case did not run", c.Name, root)
-			}
-			for i, workspace := range workspaces[c.Name] {
+			for i, workspace := range target.Workspaces {
 				t.Run(strconv.Itoa(i+1), func(t *testing.T) {
-					testFile, err := os.ReadFile(filepath.Join(workspace, filepath.FromSlash(c.TestPath)))
+					report, err := gateWorkspace(t.Context(), target.Case, workspace, t.TempDir())
 					if err != nil {
-						t.Fatalf("workspace %s: the agent wrote no test at its owned path %s: %v", workspace, c.TestPath, err)
-					}
-					report, err := runMutants(t.Context(), c, testFile, t.TempDir())
-					if err != nil {
-						t.Fatalf("workspace %s: %v", workspace, err)
+						t.Fatal(err)
 					}
 					t.Log(report.describe())
 					if err := report.err(); err != nil {
@@ -85,6 +61,67 @@ func TestMutantGate(t *testing.T) {
 			}
 		})
 	}
+}
+
+type gateTarget struct {
+	Case       mutantCase
+	Workspaces []string // sorted, non-empty
+}
+
+// planGate selects the cases to gate and finds their workspaces under root.
+// only is EVAL_CASES: comma-separated case names, trimmed, with empty entries
+// and duplicates ignored; empty selects every case. It fails when only names
+// no case or an unknown one, or when a selected case has no workspace, so a
+// gate that would check nothing never passes.
+func planGate(cases []mutantCase, root, only string) ([]gateTarget, error) {
+	if only != "" {
+		var names []string
+		for name := range strings.SplitSeq(only, ",") {
+			if name = strings.TrimSpace(name); name != "" && !slices.Contains(names, name) {
+				names = append(names, name)
+			}
+		}
+		if len(names) == 0 {
+			return nil, fmt.Errorf("EVAL_CASES %q names no case; unset it to gate every case", only)
+		}
+		for _, name := range names {
+			if !slices.ContainsFunc(cases, func(c mutantCase) bool { return c.Name == name }) {
+				return nil, fmt.Errorf("EVAL_CASES names %q, which is not a case with testdata/impl-mutants", name)
+			}
+		}
+		cases = slices.DeleteFunc(slices.Clone(cases), func(c mutantCase) bool { return !slices.Contains(names, c.Name) })
+	}
+	workspaces, err := findWorkspaces(root, cases)
+	if err != nil {
+		return nil, err
+	}
+	var targets []gateTarget
+	var missing []string
+	for _, c := range cases {
+		if len(workspaces[c.Name]) == 0 {
+			missing = append(missing, c.Name)
+			continue
+		}
+		targets = append(targets, gateTarget{Case: c, Workspaces: workspaces[c.Name]})
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("no workspace for case %s under %s: the run kept none, or the case did not run", strings.Join(missing, ", "), root)
+	}
+	return targets, nil
+}
+
+// gateWorkspace runs the test the agent wrote at its owned path in workspace
+// against c's fixture and mutants, in workDir.
+func gateWorkspace(ctx context.Context, c mutantCase, workspace, workDir string) (mutantReport, error) {
+	testFile, err := os.ReadFile(filepath.Join(workspace, filepath.FromSlash(c.TestPath)))
+	if err != nil {
+		return mutantReport{Case: c.Name}, fmt.Errorf("workspace %s: the agent wrote no test at its owned path %s: %w", workspace, c.TestPath, err)
+	}
+	report, err := runMutants(ctx, c, testFile, workDir)
+	if err != nil {
+		return report, fmt.Errorf("workspace %s: %w", workspace, err)
+	}
+	return report, nil
 }
 
 // TestMutantFixtures keeps the mutants in step with their fixtures: each
