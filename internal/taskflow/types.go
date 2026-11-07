@@ -160,6 +160,7 @@ type CheckRun struct {
 	// GOFLAGS is the GOFLAGS of the check's environment, recorded for the Go
 	// evidence rule with compiler and linker flag values redacted
 	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
+	// Argv, unlike GOFLAGS, is stored verbatim.
 	GOFLAGS string `json:"goflags,omitempty"`
 }
 

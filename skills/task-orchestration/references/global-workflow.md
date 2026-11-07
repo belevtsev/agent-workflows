@@ -93,10 +93,14 @@ holding its `testdata/`); a non-Go file in a directory without Go files belongs 
 the nearest ancestor package. A changed `go.mod`, `go.sum`, `go.work` or
 `go.work.sum` needs `./...`. Only runs whose every flag, in argv and in `GOFLAGS`,
 is on the allowlist (`v`, `race`, `count` of at least 1, `timeout`, `cover*`,
-`tags`, `ldflags` and the other flags in `internal/langpack/golang.go` that cannot
-skip or replace tests) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
-`-toolexec`, `-overlay`, `-C`, unknown flags, wrappers (`make`, scripts), `GO.EXE`
-and Windows-style `.\pkg` patterns earn none.
+`tags` and the other flags in `internal/langpack/golang.go` that cannot skip or
+replace tests) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
+`-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-C`, unknown flags,
+a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` hands
+`./b` to the test binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style
+`.\pkg` patterns earn none. The run records `GOFLAGS` with compiler and linker
+flag values redacted, but stores the check's argv verbatim: keep secrets out of
+check argv.
 
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set

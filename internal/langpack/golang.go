@@ -135,19 +135,22 @@ func inRootModule(dir string, modules map[string]bool) bool {
 // build) that cannot skip, filter or replace the tests a run executes, mapped
 // to whether they take a value. A run using any other flag earns no credit:
 // among them run, skip, list, c, n, o, exec, toolexec, overlay, modfile,
-// fuzz, fuzztime, fuzzminimizetime, C, and every flag this list does not know.
-// count must be an integer of at least 1, since -count=0 runs nothing.
+// fuzz, fuzztime, fuzzminimizetime, C, every flag this list does not know,
+// and ldflags, gcflags and asmflags, whose arguments can replace the test
+// binary (for example -ldflags='-linkmode=external -extld=/fake'). a and
+// modcacherw only force rebuilds or change module cache permissions. count
+// must be an integer of at least 1, since -count=0 runs nothing.
 var allowedFlags = map[string]bool{
 	// Flags without a value.
 	"v": false, "race": false, "msan": false, "asan": false, "failfast": false, "json": false, "cover": false,
 	"short": false, "trimpath": false, "buildvcs": false, "benchmem": false, "artifacts": false, "fullpath": false,
-	"x": false, "work": false,
+	"x": false, "work": false, "a": false, "modcacherw": false,
 	// Flags with a value.
 	"shuffle": true, "count": true, "timeout": true, "covermode": true, "coverpkg": true, "coverprofile": true,
-	"outputdir": true, "cpu": true, "p": true, "parallel": true, "tags": true, "mod": true, "ldflags": true,
-	"gcflags": true, "asmflags": true, "pgo": true, "bench": true, "benchtime": true, "cpuprofile": true,
-	"memprofile": true, "memprofilerate": true, "blockprofile": true, "blockprofilerate": true,
-	"mutexprofile": true, "mutexprofilefraction": true, "trace": true, "vet": true,
+	"outputdir": true, "cpu": true, "p": true, "parallel": true, "tags": true, "mod": true, "pgo": true,
+	"bench": true, "benchtime": true, "cpuprofile": true, "memprofile": true, "memprofilerate": true,
+	"blockprofile": true, "blockprofilerate": true, "mutexprofile": true, "mutexprofilefraction": true,
+	"trace": true, "vet": true,
 }
 
 // parseFlag splits a flag argument ("-name", "--name", "-name=value", with an
@@ -173,13 +176,17 @@ func allowedValue(name, value string) bool {
 //   - argv[0] is named go or go.exe (not GO.EXE) and argv[1] is test, so
 //     wrappers such as make or scripts are not credited;
 //   - argv has no -args, since flags after it reach the test binary;
+//   - no non-flag argument follows a flag that itself followed a non-flag
+//     argument: cmd/go ends the package list there and hands the rest to the
+//     test binary, so `go test ./a -v ./b` tests only ./a (an older go that
+//     does not know a flag ends the list the same way);
 //   - every flag in argv and every field of its GOFLAGS (split like cmd/go,
 //     see splitQuoted; a field must be a flag with any value inline) is in
 //     allowedFlags with an acceptable value.
 //
-// Patterns are the other arguments that are "." or start with "./", cleaned.
-// Import paths and Windows-style .\pkg patterns are not credited. GOFLAGS set
-// through `go env -w` rather than the environment is not seen.
+// Patterns are the non-flag arguments that are "." or start with "./",
+// cleaned. Import paths and Windows-style .\pkg patterns are not credited.
+// GOFLAGS set through `go env -w` rather than the environment is not seen.
 func credited(run Run) []string {
 	argv := run.Argv
 	if len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
@@ -197,18 +204,24 @@ func credited(run Run) []string {
 		}
 	}
 	found := []string{}
+	positional, flagAfterPositional := false, false
 	for i := 2; i < len(argv); i++ {
 		arg := argv[i]
 		if !strings.HasPrefix(arg, "-") {
+			if flagAfterPositional {
+				return nil
+			}
+			positional = true
 			if arg == "." || strings.HasPrefix(arg, "./") {
 				found = append(found, path.Clean(arg))
 			}
 			continue
 		}
+		flagAfterPositional = positional
 		name, value, inline := parseFlag(arg)
 		takesValue, known := allowedFlags[name]
 		if !known {
-			return nil // includes args, run, skip and unknown flags
+			return nil // includes args, run, skip, ldflags and unknown flags
 		}
 		if takesValue && !inline {
 			if i++; i >= len(argv) {
@@ -262,7 +275,9 @@ const unparsableGOFLAGS = "<redacted: unparsable GOFLAGS>"
 
 // RedactGOFLAGS returns GOFLAGS for storage: each field keeps its flag name
 // and value, except that the value of ldflags, gcflags, asmflags and
-// gccgoflags becomes <redacted>. Fields are re-joined with spaces, and a field
+// gccgoflags becomes <redacted>, whether inline (-ldflags=v) or in the next
+// field (-ldflags v). Those flags earn no credit either way, so redaction never
+// changes the rule's result. Fields are re-joined with spaces, and a field
 // holding a space or quote is wrapped in quotes, so credited reads the result
 // as it would the original. GOFLAGS that cannot be split, or holding a field
 // with both quote kinds that cannot be re-quoted, is stored as
@@ -273,9 +288,18 @@ func RedactGOFLAGS(goflags string) string {
 		return unparsableGOFLAGS
 	}
 	joined := make([]string, 0, len(fields))
+	redactNext := false
 	for _, field := range fields {
-		if name, _, inline := parseFlag(field); strings.HasPrefix(field, "-") && inline && slices.Contains(redactedFlags, name) {
-			field = field[:strings.IndexByte(field, '=')+1] + "<redacted>"
+		name, _, inline := parseFlag(field)
+		switch {
+		case redactNext:
+			field, redactNext = "<redacted>", false
+		case strings.HasPrefix(field, "-") && slices.Contains(redactedFlags, name):
+			if inline {
+				field = field[:strings.IndexByte(field, '=')+1] + "<redacted>"
+			} else {
+				redactNext = true
+			}
 		}
 		switch {
 		case !strings.ContainsAny(field, " \t\n\r'\""):
