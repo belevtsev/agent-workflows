@@ -1204,8 +1204,13 @@ type productionProcessOutcome struct {
 	Err    error
 }
 
+// productionHelperEnvironment is the whole environment of a helper started
+// through productionRun. The race runtime option stops a successful helper
+// exit from sleeping about a second; the helpers read no other variable.
+var productionHelperEnvironment = []string{"GORACE=atexit_sleep_ms=0"}
+
 func productionRun(ctx context.Context, arguments []string, timeout time.Duration, limit int) productionProcessOutcome {
-	code, stdout, stderr, err := runWithOutputLimit(ctx, arguments, "", []string{}, timeout, limit)
+	code, stdout, stderr, err := runWithOutputLimit(ctx, arguments, "", slices.Clone(productionHelperEnvironment), timeout, limit)
 	return productionProcessOutcome{Code: code, Stdout: stdout, Stderr: stderr, Err: err}
 }
 

@@ -19,14 +19,16 @@ import (
 	"time"
 )
 
+// TestCheckSubprocess acts as the check helper only in a re-executed helper
+// child, whose arguments hold "--" followed by a mode. TestMain sets
+// CW_TASKFLOW_HELPER for the whole test process, so in a normal test run (no
+// "--") the variable alone must not turn this test into the helper.
 func TestCheckSubprocess(t *testing.T) {
-	if os.Getenv("CW_TASKFLOW_HELPER") != "1" {
+	separator := slices.Index(os.Args, "--")
+	if os.Getenv("CW_TASKFLOW_HELPER") != "1" || separator < 0 || separator+1 >= len(os.Args) {
 		return
 	}
-	args := os.Args[slices.Index(os.Args, "--")+1:]
-	if len(args) == 0 {
-		os.Exit(12)
-	}
+	args := os.Args[separator+1:]
 	switch args[0] {
 	case "pass":
 		fmt.Print(strings.Join(args[1:], "|"))
@@ -129,9 +131,10 @@ func TestCheckSubprocess(t *testing.T) {
 	os.Exit(0)
 }
 
+// helperPlan needs no per-test environment: TestMain sets the helper
+// variables once for the whole test process, so parallel tests may use it.
 func helperPlan(t *testing.T, kind string, args ...string) Plan {
 	t.Helper()
-	t.Setenv("CW_TASKFLOW_HELPER", "1")
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

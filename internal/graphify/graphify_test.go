@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -30,7 +31,49 @@ type fakeConfig struct {
 	Repo               string `json:"repo"`
 	ProductionGate     string `json:"production_gate,omitempty"`
 	ProductionDeadline string `json:"production_deadline,omitempty"`
+	// Running is created by an owned descendant once it is running.
+	Running string `json:"running,omitempty"`
+	// Delay is the delayed descendant's wait in seconds before it writes Late.
+	Delay string `json:"delay,omitempty"`
+	// Returned is created by the test after Build has returned; Markers is
+	// where a fork-storm descendant that outlived Build reports itself.
+	Returned string `json:"returned,omitempty"`
+	Markers  string `json:"markers,omitempty"`
 }
+
+// fakeForwardedGORACE carries, from the runtime script to logCall, whether
+// and how the product forwarded GORACE before the script set its own value.
+const fakeForwardedGORACE = "CW_FAKE_FORWARDED_GORACE"
+
+const (
+	// delayedDescendantScript runs as an owned descendant: it creates $1 once
+	// running, waits $3 seconds and then writes $2. Only a kill stops the write.
+	delayedDescendantScript = `: > "$1"; sleep "$3"; echo late > "$2"`
+	// fakeHold bounds a kill-test extraction that is never killed; it then
+	// fails on its own without publishing a graph.
+	fakeHold = 8 * time.Second
+
+	// stormDescendantScript is one short-lived fork-storm descendant. If its
+	// forking leader ($1) is still alive after a short wait it exits at once.
+	// Otherwise it waits up to three seconds for the test to report that Build
+	// returned ($2) and then creates its unique marker ($3). Only a process
+	// that outlived the return of Build can create a marker.
+	stormDescendantScript = `sleep 0.2
+kill -0 "$1" 2>/dev/null && exit 0
+i=0
+while [ "$i" -lt 30 ]; do
+	if [ -e "$2" ]; then : > "$3"; exit 0; fi
+	sleep 0.1
+	i=$((i + 1))
+done`
+	// The storm is bounded: at most stormForks descendants, at most
+	// stormConcurrency alive at once, forking for at most stormDuration.
+	stormForks       = 1000
+	stormConcurrency = 64
+	stormDuration    = 3 * time.Second
+	// stormRunningAfter descendants started confirm the storm is running.
+	stormRunningAfter = 8
+)
 
 type fakeCall struct {
 	Args []string          `json:"args"`
@@ -50,6 +93,15 @@ func logCall(config fakeConfig, args []string) {
 		name, value, _ := strings.Cut(item, "=")
 		env[name] = value
 	}
+	// Log the environment the product forwarded, not the race option the
+	// runtime script added for the fake's own exit.
+	if forwarded, recorded := env[fakeForwardedGORACE]; recorded {
+		delete(env, fakeForwardedGORACE)
+		delete(env, "GORACE")
+		if value, set := strings.CutPrefix(forwarded, "set:"); set {
+			env["GORACE"] = value
+		}
+	}
 	data, _ := json.Marshal(fakeCall{args, env})
 	log, err := os.OpenFile(config.Log, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err == nil {
@@ -65,11 +117,10 @@ func fakeExtract(config fakeConfig, args []string) int {
 	switch config.Mode {
 	case "fail":
 		return 9
-	case "timeout":
-		// A delayed descendant proves the whole process group is stopped.
-		child := exec.Command("/bin/sh", "-c", "sleep 0.7; echo late > '"+config.Late+"'")
-		_ = child.Start()
-		time.Sleep(5 * time.Second)
+	case "delayed-descendant":
+		return fakeDelayedDescendant(config)
+	case "fork-storm":
+		return fakeForkStorm(config)
 	}
 	var files []string
 	_ = filepath.WalkDir(args[1], func(path string, _ fs.DirEntry, err error) error {
@@ -111,6 +162,52 @@ func fakeExtract(config fakeConfig, args []string) int {
 		_ = os.WriteFile(filepath.Join(config.Repo, "main.go"), []byte("package main\nfunc changed(){}\n"), 0o600)
 	}
 	return 0
+}
+
+// fakeDelayedDescendant starts one owned descendant that reports itself
+// running and writes config.Late after config.Delay seconds, then holds the
+// extraction open so only a kill of the whole group can stop that write.
+func fakeDelayedDescendant(config fakeConfig) int {
+	child := exec.Command("/bin/sh", "-c", delayedDescendantScript, "sh", config.Running, config.Late, config.Delay)
+	if err := child.Start(); err != nil {
+		return 27
+	}
+	time.Sleep(fakeHold)
+	return 27
+}
+
+// fakeForkStorm keeps forking short-lived descendants within fixed bounds, so
+// a cancellation is likely to arrive while a fork is in progress. It reports
+// itself running after stormRunningAfter descendants have started. Left
+// alone it stops forking after stormDuration, reaps every descendant and
+// fails without publishing a graph.
+func fakeForkStorm(config fakeConfig) int {
+	leader := strconv.Itoa(os.Getpid())
+	slots := make(chan struct{}, stormConcurrency)
+	var running sync.WaitGroup
+	defer running.Wait()
+	stop := time.Now().Add(stormDuration)
+	for index := 0; index < stormForks && time.Now().Before(stop); index++ {
+		slots <- struct{}{}
+		marker := filepath.Join(config.Markers, fmt.Sprintf("survivor-%s-%d", leader, index))
+		child := exec.Command("/bin/sh", "-c", stormDescendantScript, "sh", leader, config.Returned, marker)
+		if err := child.Start(); err != nil {
+			<-slots
+			break
+		}
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			_ = child.Wait()
+			<-slots
+		}()
+		if index+1 == stormRunningAfter {
+			if err := os.WriteFile(config.Running, []byte("forking\n"), 0o600); err != nil {
+				return 29
+			}
+		}
+	}
+	return 28
 }
 
 func productionExtractionGate(config fakeConfig) bool {
@@ -231,7 +328,16 @@ func (h *harness) install(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := fmt.Sprintf("#!/bin/sh\nexec '%s' fake-graphify '%s' \"$@\"\n", binary, configPath)
+	// The product does not forward GORACE, so the script sets the race option
+	// that stops the fake's successful exits from sleeping about a second. It
+	// first records whether the product forwarded GORACE, and how, so logCall
+	// can log exactly the environment the product passed.
+	script := fmt.Sprintf("#!/bin/sh\n"+
+		"if [ \"${GORACE+set}\" = set ]; then %[1]s=\"set:$GORACE\"; else %[1]s=unset; fi\n"+
+		"export %[1]s\n"+
+		"GORACE=atexit_sleep_ms=0\n"+
+		"export GORACE\n"+
+		"exec '%[2]s' fake-graphify '%[3]s' \"$@\"\n", fakeForwardedGORACE, binary, configPath)
 	if err := os.WriteFile(h.runtime, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -735,38 +841,216 @@ func TestFailedPartialForeignAndBadLineBuildsNeverPublishReady(t *testing.T) {
 	}
 }
 
+type buildAttempt struct {
+	err error
+}
+
+// startBuild runs Build in the background under a cancellable child of the
+// test context. Cleanup cancels it and joins the build.
+func startBuild(t *testing.T, options Options) (<-chan buildAttempt, context.CancelFunc) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan buildAttempt, 1)
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		_, err := Build(ctx, options)
+		done <- buildAttempt{err: err}
+	}()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-finished:
+		case <-time.After(15 * time.Second):
+			t.Error("background build did not return after the test context ended")
+		}
+	})
+	return done, cancel
+}
+
+func awaitBuild(t *testing.T, done <-chan buildAttempt, limit time.Duration) buildAttempt {
+	t.Helper()
+	select {
+	case attempt := <-done:
+		return attempt
+	case <-time.After(limit):
+		t.Fatalf("build did not return within %v", limit)
+		return buildAttempt{}
+	}
+}
+
+// awaitRunning polls for the readiness file a fake extraction or its
+// descendant creates, and returns when it was first observed. It fails the
+// test if the build returns first or the bounded deadline passes, so a test
+// cannot pass without the owned processes having started.
+func awaitRunning(t *testing.T, path string, done <-chan buildAttempt, limit time.Duration) time.Time {
+	t.Helper()
+	deadline := time.After(limit)
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return time.Now()
+		} else if !errors.Is(err, os.ErrNotExist) {
+			t.Fatal(err)
+		}
+		select {
+		case attempt := <-done:
+			t.Fatalf("build returned before %s appeared: %v", filepath.Base(path), attempt.err)
+		case <-deadline:
+			t.Fatalf("%s did not appear within %v", filepath.Base(path), limit)
+		case <-tick.C:
+		}
+	}
+}
+
+func secondsArg(duration time.Duration) string {
+	return strconv.FormatFloat(duration.Seconds(), 'f', -1, 64)
+}
+
+// requireDelayedDescendantScript runs the delayed descendant unkilled with no
+// delay, proving it can report both running and its late write.
+func requireDelayedDescendantScript(t *testing.T, root string) {
+	t.Helper()
+	running, late := filepath.Join(root, "control-running"), filepath.Join(root, "control-late")
+	if err := exec.Command("/bin/sh", "-c", delayedDescendantScript, "sh", running, late, "0").Run(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{running, late} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("unkilled delayed descendant did not write %s: %v", filepath.Base(path), err)
+		}
+	}
+}
+
+// requireNoLateWrite waits until the observation window ends and then checks
+// that the delayed descendant never wrote its late marker.
+func requireNoLateWrite(t *testing.T, late string, until time.Time, message string) {
+	t.Helper()
+	time.Sleep(time.Until(until))
+	if _, err := os.Stat(late); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("%s: %v", message, err)
+	}
+}
+
 func TestTimeoutKillsOwnedDelayedChildAndLeavesNoActiveGraph(t *testing.T) {
+	// The descendant's delay exceeds the timeout, so only a kill stops it.
+	const timeout, delay, margin = 2 * time.Second, 3 * time.Second, time.Second
 	h := newHarness(t)
-	h.config.Mode = "timeout"
+	requireDelayedDescendantScript(t, h.root)
+	h.config.Mode, h.config.Running, h.config.Delay = "delayed-descendant", filepath.Join(h.root, "descendant-running"), secondsArg(delay)
 	h.install(t)
 	options := h.options()
-	options.Timeout = 150 * time.Millisecond
-	_, err := Build(t.Context(), options)
-	wantCode(t, err, "timeout")
-	time.Sleep(900 * time.Millisecond)
-	if _, err := os.Stat(h.config.Late); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("delayed child survived the timeout")
+	options.Timeout = timeout
+	started := time.Now()
+	done, _ := startBuild(t, options)
+	running := awaitRunning(t, h.config.Running, done, 15*time.Second)
+	// The timeout clock starts no earlier than Build, so this proves the
+	// descendant was running before the timeout fired.
+	if elapsed := running.Sub(started); elapsed >= timeout {
+		t.Fatalf("descendant first observed %v after Build started, not before the %v timeout", elapsed, timeout)
 	}
+	attempt := awaitBuild(t, done, 10*time.Second)
+	wantCode(t, attempt.err, "timeout")
+	requireNoLateWrite(t, h.config.Late, running.Add(delay+margin), "delayed child survived the timeout")
 	if len(globCache(t, h, "ready.json")) != 0 {
 		t.Fatal("timed out build activated a graph")
 	}
 }
 
 func TestCancellationKillsTheRuntimeGroup(t *testing.T) {
+	const delay, margin = 2 * time.Second, time.Second
 	h := newHarness(t)
-	h.config.Mode = "timeout"
+	requireDelayedDescendantScript(t, h.root)
+	h.config.Mode, h.config.Running, h.config.Delay = "delayed-descendant", filepath.Join(h.root, "descendant-running"), secondsArg(delay)
 	h.install(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	go func() {
-		time.Sleep(150 * time.Millisecond)
-		cancel()
-	}()
-	if _, err := Build(ctx, h.options()); !errors.Is(err, context.Canceled) {
-		t.Fatalf("error = %v", err)
+	done, cancel := startBuild(t, h.options())
+	running := awaitRunning(t, h.config.Running, done, 15*time.Second)
+	cancel()
+	if attempt := awaitBuild(t, done, 10*time.Second); !errors.Is(attempt.err, context.Canceled) {
+		t.Fatalf("error = %v", attempt.err)
 	}
-	time.Sleep(900 * time.Millisecond)
-	if _, err := os.Stat(h.config.Late); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("delayed child survived cancellation")
+	requireNoLateWrite(t, h.config.Late, running.Add(delay+margin), "delayed child survived cancellation")
+}
+
+// requireStormDescendantScript proves the storm descendant reports a
+// survivor whose leader is gone once Build has returned, and stays silent
+// while its leader is alive.
+func requireStormDescendantScript(t *testing.T, root string) {
+	t.Helper()
+	gone := exec.Command("/bin/sh", "-c", "exit 0")
+	if err := gone.Run(); err != nil {
+		t.Fatal(err)
+	}
+	returned := filepath.Join(root, "control-returned")
+	if err := os.WriteFile(returned, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	survivor, owned := filepath.Join(root, "control-survivor"), filepath.Join(root, "control-owned")
+	orphan := exec.Command("/bin/sh", "-c", stormDescendantScript, "sh", strconv.Itoa(gone.ProcessState.Pid()), returned, survivor)
+	live := exec.Command("/bin/sh", "-c", stormDescendantScript, "sh", strconv.Itoa(os.Getpid()), returned, owned)
+	for _, command := range []*exec.Cmd{orphan, live} {
+		if err := command.Start(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, command := range []*exec.Cmd{orphan, live} {
+		if err := command.Wait(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.Stat(survivor); err != nil {
+		t.Fatalf("storm descendant cannot report a survivor: %v", err)
+	}
+	if _, err := os.Stat(owned); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("storm descendant reported a survivor while its leader was alive: %v", err)
+	}
+}
+
+// TestCancellationDuringForkStormLeavesNoSurvivor cancels while the fake
+// extraction is forking continuously. On macOS one group kill can miss a child
+// being forked at that moment. Measured against a runner that kills only once,
+// about 11-14% of trials leave a survivor; at 12% such a runner survives all
+// trials with probability 0.88^26 < 4% (0.89^26 < 5% at 11%).
+func TestCancellationDuringForkStormLeavesNoSurvivor(t *testing.T) {
+	const trials, observation = 26, 1500 * time.Millisecond
+	h := newHarness(t)
+	requireStormDescendantScript(t, h.root)
+	markers := filepath.Join(h.root, "storm-survivors")
+	if err := os.Mkdir(markers, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	h.config.Mode, h.config.Markers = "fork-storm", markers
+	for trial := range trials {
+		h.config.Running = filepath.Join(h.root, fmt.Sprintf("storm-running-%d", trial))
+		h.config.Returned = filepath.Join(h.root, fmt.Sprintf("storm-returned-%d", trial))
+		h.install(t)
+		done, cancel := startBuild(t, h.options())
+		awaitRunning(t, h.config.Running, done, 15*time.Second)
+		// Vary the phase of the fork loop the cancellation lands in.
+		time.Sleep(time.Duration(trial%4) * 2 * time.Millisecond)
+		cancel()
+		attempt := awaitBuild(t, done, 10*time.Second)
+		// From here on, any descendant of this trial still running outlived Build.
+		if err := os.WriteFile(h.config.Returned, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if !errors.Is(attempt.err, context.Canceled) {
+			t.Fatalf("trial %d: error = %v", trial, attempt.err)
+		}
+	}
+	// A survivor reports within about 0.3 s of its trial's return marker.
+	time.Sleep(observation)
+	survivors, err := os.ReadDir(markers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(survivors) != 0 {
+		names := make([]string, 0, len(survivors))
+		for _, survivor := range survivors {
+			names = append(names, survivor.Name())
+		}
+		t.Fatalf("%d storm descendants outlived the cancelled Build: %v", len(names), names)
 	}
 }
 
