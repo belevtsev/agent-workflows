@@ -932,7 +932,10 @@ func TestContractRedactGOFLAGS(t *testing.T) {
 		{"-gccgoflags " + secret, false, nil, false},
 		// Every non-dash field after such a field is redacted too.
 		{"-ldflags=-X main.token=" + secret + " -count=1", true, []string{"-count=1"}, false},
+		// A dash field such as -l or a second -X does not end the spill: an
+		// unquoted multi -X ldflags must not store the later value.
 		{"-gcflags=-N -l " + secret + " -v", true, []string{"-v"}, false},
+		{"-ldflags=-X main.a=1 -X main.token=" + secret + " -count=1", true, []string{"-count=1"}, false},
 		{"-asmflags=-I x " + secret + " -race", true, []string{"-race"}, false},
 		{"-gccgoflags=-O2 " + secret + " -count=1", true, []string{"-count=1"}, false},
 		{"-tags=a -ldflags -X main.k=" + secret + " -v", false, []string{"-tags=a", "-v"}, false},
