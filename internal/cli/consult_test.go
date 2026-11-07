@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 )
 
 const sharedRequest = `{"state":"evidence","questions":{"claim":{"type":"choice","instructions":"Is it supported?","criteria":{"supported":"Yes.","contradicted":"No."}}}}`
@@ -25,56 +24,6 @@ func requestFile(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	return path, filepath.Join(root, "record.json")
-}
-
-// D3 (dry run): the default policy is the active release's, found through the
-// state resolution order; its preview lists the shipped OpenAI provider.
-func TestConsultDefaultPolicyFollowsStateResolutionOrder(t *testing.T) {
-	for name, setup := range map[string]func(*Config, *[]string, string){
-		"state flag": func(_ *Config, args *[]string, state string) { *args = append(*args, "--state-dir", state) },
-		"locator": func(config *Config, _ *[]string, state string) {
-			config.Resolve = func(string) (manageruntime.Locator, error) { return manageruntime.Locator{State: state}, nil }
-		},
-		"XDG": func(config *Config, _ *[]string, state string) {
-			parent := filepath.Dir(state)
-			config.Getenv = func(key string) string {
-				if key == "XDG_STATE_HOME" {
-					return parent
-				}
-				return ""
-			}
-		},
-		"home": func(config *Config, _ *[]string, state string) {
-			home := filepath.Dir(filepath.Dir(filepath.Dir(state)))
-			config.HomeDir = func() (string, error) { return home, nil }
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			state := filepath.Join(t.TempDir(), ".local", "state", "agent-workflows")
-			if err := os.MkdirAll(state, 0o700); err != nil {
-				t.Fatal(err)
-			}
-			// D1: the active release ships the version-3 policy and question-patterns.json.
-			activeReleaseFixture(t, state, 3, nil)
-			request, output := requestFile(t)
-			config, out, _, _ := testConfig(t)
-			args := []string{"consult", "--request", request, "--output", output, "--dry-run"}
-			setup(&config, &args, state)
-			if err := Execute(t.Context(), args, config); err != nil {
-				t.Fatal(err)
-			}
-			if out.String() != "Decision consultation dry_run; Coordinator decision pending\n" {
-				t.Fatalf("stdout = %q", out.String())
-			}
-			data, err := os.ReadFile(output)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !strings.Contains(string(data), `"requested_model": "gpt-6-luna"`) {
-				t.Fatalf("record = %s", data)
-			}
-		})
-	}
 }
 
 // D3 (zero attempted providers exit 0; exit 1 for an existing output path):

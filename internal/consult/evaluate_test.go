@@ -43,7 +43,7 @@ func fxEvalSource(t *testing.T, root, policy string) string {
 		t.Fatal(err)
 	}
 	if policy != "" {
-		fxWrite(t, filepath.Join(root, "skills", "task-orchestration", "model-policy.yaml"), fxRead(t, fxPolicy(policy)))
+		fxWrite(t, filepath.Join(root, "skills", "task-orchestration", "model-policy.yaml"), fxRead(t, fxPolicyPath(policy)))
 	}
 	return root
 }

@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 const (
@@ -37,12 +37,12 @@ const (
 // providerOrder is the record's adviser order, the known provider IDs of the
 // policy pin rules. Only these fixed services and these credential variables
 // can ever receive evidence or be read.
-var providerOrder = workflow.ConsultationProviders()
+var providerOrder = modelpolicy.Providers()
 
-// The single pinned models come from the policy pin rules in internal/workflow.
+// The single pinned models come from the policy pin rules in internal/modelpolicy.
 var (
-	snapModel, _   = workflow.PinnedConsultationModel(snapProvider)
-	openAIModel, _ = workflow.PinnedConsultationModel(openAIProvider)
+	snapModel, _   = modelpolicy.PinnedModel(snapProvider)
+	openAIModel, _ = modelpolicy.PinnedModel(openAIProvider)
 )
 
 var credentialNames = map[string]string{

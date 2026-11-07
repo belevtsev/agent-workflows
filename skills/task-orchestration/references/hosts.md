@@ -93,19 +93,21 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 ### Worker agent types
 
-cw installs three Claude agent definitions in `agents/` of the Claude config
+Six Claude agent definitions ship with the `agent-workflows` plugin; `cw
+install --host claude` links the first three into `agents/` of the Claude config
 directory. They have no Skill tool, so the worker starts without the skill listing
 (about 6K fewer input tokens on its first request). Dispatch these roles with
-`subagent_type`:
+`subagent_type`; under the plugin the type is namespaced, under `cw install` it is
+bare. Try the namespaced name first and fall back to the bare one:
 
-| Role | `subagent_type` |
-| --- | --- |
-| `review`, `review_followup` | `cw-reviewer` |
-| `test_author` (the `testing` profile) | `cw-test-author` |
-| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `cw-github-worker` |
-| `architect` | `agent-workflows:architect` |
-| `implementer` | `agent-workflows:implementer` |
-| `test_engineer` | `agent-workflows:test-engineer` |
+| Role | Plugin `subagent_type` | `cw install` `subagent_type` |
+| --- | --- | --- |
+| `review`, `review_followup` | `agent-workflows:cw-reviewer` | `cw-reviewer` |
+| `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` | `cw-test-author` |
+| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` | `cw-github-worker` |
+| `architect` | `agent-workflows:architect` | not installed; `general-purpose` with the contract |
+| `implementer` | `agent-workflows:implementer` | not installed; `general-purpose` with the contract |
+| `test_engineer` | `agent-workflows:test-engineer` | not installed; `general-purpose` with the contract |
 
 - The last three ship in the plugin's `agents/` directory, so their names carry
   the plugin prefix and cw does not install them. Each reads its
@@ -114,7 +116,9 @@ directory. They have no Skill tool, so the worker starts without the skill listi
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
 - These workers cannot load skills by name. When a worker needs one, such as
   `code-review` for a reviewer, put the absolute path of its `SKILL.md` in the brief
-  (personal skills live in `skills/<name>/` of the Claude config directory); for a
+  (under the plugin, `<plugin root>/skills/<name>/SKILL.md`, where the plugin root
+  is the line `Plugin root:` in the task-orchestration `SKILL.md`; under `cw
+  install`, `skills/<name>/` of the Claude config directory); for a
   test author, list it among the approved inputs.
 - If the type is unavailable, for example on an install older than these
   definitions, dispatch `general-purpose` with the same model, effort and brief and

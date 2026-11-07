@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 var (
@@ -291,7 +293,7 @@ func (e Evaluation) load() (*evalResources, error) {
 	if err != nil {
 		return nil, err
 	}
-	selected, err := loadPolicy(policyPath)
+	selected, err := loadPolicy(modelpolicy.Source{Path: policyPath})
 	if err != nil {
 		return nil, err
 	}

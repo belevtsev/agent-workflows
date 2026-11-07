@@ -21,6 +21,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 // Tests in this package are written from the design contract (D1, D3, D4 and
@@ -482,7 +484,10 @@ func fxRun(t *testing.T, options Options) fxResult {
 	return fxResult{code: code, stdout: stdout.String(), stderr: stderr.String()}
 }
 
-func fxPolicy(name string) string { return filepath.Join("testdata", "policy", name+".yaml") }
+func fxPolicyPath(name string) string { return filepath.Join("testdata", "policy", name+".yaml") }
+
+// fxPolicy selects one testdata policy file.
+func fxPolicy(name string) modelpolicy.Source { return modelpolicy.Source{Path: fxPolicyPath(name)} }
 
 // fxEnv is a credential environment holding a fake value for each named provider.
 func fxEnv(providers ...string) func(string) string {
@@ -933,7 +938,7 @@ func TestConfiguredAdvisers(t *testing.T) {
 			t.Fatalf("%s policy accepted", policy)
 		}
 	}
-	if _, err := ConfiguredAdvisers(filepath.Join(t.TempDir(), "missing.yaml"), fxEnv(fxProviders...)); err == nil {
+	if _, err := ConfiguredAdvisers(modelpolicy.Source{Path: filepath.Join(t.TempDir(), "missing.yaml")}, fxEnv(fxProviders...)); err == nil {
 		t.Fatal("missing policy accepted")
 	}
 }

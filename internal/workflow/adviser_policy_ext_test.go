@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
@@ -27,7 +28,7 @@ func TestAdviserConfiguredAdvisersSkipDisabledProviders(t *testing.T) {
 		t.Run(strings.Join(disabled, "+"), func(t *testing.T) {
 			effective, shipped := workflow.AdviserInstallForConsult(t, disabled...)
 
-			all, err := consult.ConfiguredAdvisers(shipped, getenv)
+			all, err := consult.ConfiguredAdvisers(modelpolicy.Source{Path: shipped}, getenv)
 			if err != nil {
 				t.Fatalf("ConfiguredAdvisers(shipped): %v", err)
 			}
@@ -37,7 +38,7 @@ func TestAdviserConfiguredAdvisersSkipDisabledProviders(t *testing.T) {
 				}
 			}
 
-			got, err := consult.ConfiguredAdvisers(effective, getenv)
+			got, err := consult.ConfiguredAdvisers(modelpolicy.Source{Path: effective}, getenv)
 			if err != nil {
 				t.Fatalf("ConfiguredAdvisers(effective): %v", err)
 			}

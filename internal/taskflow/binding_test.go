@@ -18,6 +18,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 // Consultation fixtures (D3, D4, Revision 2). Records are hand-built version-4
@@ -853,7 +854,7 @@ func runFixtureConsult(t *testing.T, context Context, policy string) []byte {
 	var stdout, stderr bytes.Buffer
 	code, err := consult.Run(t.Context(), consult.Options{
 		Request: request,
-		Policy:  policy,
+		Policy:  modelpolicy.Source{Path: policy},
 		Output:  output,
 		Getenv:  func(string) string { return "" },
 		Stdout:  &stdout,
