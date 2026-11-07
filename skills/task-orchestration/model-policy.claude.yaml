@@ -43,6 +43,10 @@ roles:
   testing: substantive
   planning: decision
   architecture: decision
+  # Contract roles for the five-role flow (references/contracts/README.md).
+  architect: decision
+  implementer: substantive
+  test_engineer: substantive
   review: substantive
   review_followup: review_followup
   diagnosis: decision

@@ -93,8 +93,8 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 ### Worker agent types
 
-Three Claude agent definitions ship with the `agent-workflows` plugin, and `cw
-install --host claude` links the same files into `agents/` of the Claude config
+Six Claude agent definitions ship with the `agent-workflows` plugin; `cw
+install --host claude` links the first three into `agents/` of the Claude config
 directory. They have no Skill tool, so the worker starts without the skill listing
 (about 6K fewer input tokens on its first request). Dispatch these roles with
 `subagent_type`; under the plugin the type is namespaced, under `cw install` it is
@@ -105,7 +105,14 @@ bare. Try the namespaced name first and fall back to the bare one:
 | `review`, `review_followup` | `agent-workflows:cw-reviewer` | `cw-reviewer` |
 | `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` | `cw-test-author` |
 | `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` | `cw-github-worker` |
+| `architect` | `agent-workflows:architect` | not installed; `general-purpose` with the contract |
+| `implementer` | `agent-workflows:implementer` | not installed; `general-purpose` with the contract |
+| `test_engineer` | `agent-workflows:test-engineer` | not installed; `general-purpose` with the contract |
 
+- The last three ship in the plugin's `agents/` directory, so their names carry
+  the plugin prefix and cw does not install them. Each reads its
+  [role contract](contracts/README.md) from the path the brief gives, or from the
+  plugin root when the brief gives none.
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
 - These workers cannot load skills by name. When a worker needs one, such as
   `code-review` for a reviewer, put the absolute path of its `SKILL.md` in the brief
@@ -125,8 +132,10 @@ The [test-author contract](test-author.md) applies when a substantial task
 authors, changes, removes or disables behavioral tests or their helpers/data, or
 when the user asks for an independent author. `test_author` is
 the dispatch identity; resolve the existing `testing` profile rather than adding
-a host policy role or selecting a cheaper publication profile. Preserve configured
-model/effort overrides and verify the effective settings.
+a host policy role or selecting a cheaper publication profile. In the five-role
+flow the [test engineer](contracts/test-engineer.md) is that identity and resolves
+the `test_engineer` role instead. Preserve configured model/effort overrides and
+verify the effective settings.
 
 On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
 and `reasoning_effort`. On Claude, use a fresh `cw-test-author` Agent invocation

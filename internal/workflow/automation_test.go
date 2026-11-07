@@ -8,7 +8,7 @@ import (
 
 func TestAutomationRejectsFirstPartyScripts(t *testing.T) {
 	t.Parallel()
-	for _, file := range []string{"scripts/setup.py", "skills/example/scripts/helper.py", "tests/smoke.sh", "tools/check.bash", "requirements-dev.txt", "run"} {
+	for _, file := range []string{"scripts/setup.py", "skills/example/scripts/helper.py", "tests/smoke.sh", "tools/check.bash", "requirements-dev.txt", "run", "evals/example/case/helper.sh", "scaffold.sh"} {
 		t.Run(file, func(t *testing.T) {
 			root := t.TempDir()
 			path := filepath.Join(root, filepath.FromSlash(file))
@@ -28,7 +28,7 @@ func TestAutomationRejectsFirstPartyScripts(t *testing.T) {
 func TestAutomationPreservesSkillResourcesAndBootstrap(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	for _, file := range []string{"install.sh", "skills/example/scripts/helper.sh", "third_party/example/helper.py", "third_party/example/helper.sh", "cmd/cw/main.go"} {
+	for _, file := range []string{"install.sh", "skills/example/scripts/helper.sh", "third_party/example/helper.py", "third_party/example/helper.sh", "cmd/cw/main.go", "evals/example/case/scaffold.sh"} {
 		path := filepath.Join(root, filepath.FromSlash(file))
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			t.Fatal(err)

@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: gateway
+          env:
+            - name: REDIS_ADDR
+              value: redis:6379

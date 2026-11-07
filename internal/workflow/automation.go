@@ -33,6 +33,12 @@ func ValidateAutomation(root string) error {
 			continue
 		}
 		base := strings.ToLower(filepath.Base(name))
+		// An eval case's scaffold is a fixture for `claude plugin eval`, which
+		// runs only a Bash script to seed a case's workspace. It is a resource
+		// of the eval suite, like a skill's scripts, not repository tooling.
+		if base == "scaffold.sh" && strings.HasPrefix(name, "evals/") {
+			continue
+		}
 		if extension == ".py" || extension == ".sh" || extension == ".bash" || extension == ".zsh" ||
 			(strings.HasPrefix(base, "requirements") && extension == ".txt") {
 			return fmt.Errorf("first-party automation must use Go: %s", name)
