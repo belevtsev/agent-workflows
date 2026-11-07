@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/internal/langpack"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
@@ -201,6 +202,17 @@ func checkEnvironment() []string {
 	return environment
 }
 
+// environmentValue returns the value of key in an os.Environ-style list, or
+// "" when it is unset.
+func environmentValue(environment []string, key string) string {
+	for _, entry := range environment {
+		if name, value, ok := strings.Cut(entry, "="); ok && name == key {
+			return value
+		}
+	}
+	return ""
+}
+
 type logCapture struct {
 	mu      sync.Mutex
 	file    *os.File
@@ -266,7 +278,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log"}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(), "GOFLAGS"))}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err

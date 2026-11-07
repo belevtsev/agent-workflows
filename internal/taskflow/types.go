@@ -156,6 +156,11 @@ type CheckRun struct {
 	OutputBytes  int64                `json:"output_bytes"`
 	Truncated    bool                 `json:"truncated"`
 	Failure      string               `json:"failure,omitempty"`
+	// GOFLAGS is the GOFLAGS of the check's environment, recorded for the Go
+	// evidence rule with compiler and linker flag values redacted
+	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
+	// Argv, unlike GOFLAGS, is stored verbatim.
+	GOFLAGS string `json:"goflags,omitempty"`
 }
 
 type Attachment struct {

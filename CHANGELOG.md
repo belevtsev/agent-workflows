@@ -28,7 +28,7 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 
 ### Changed
 
-- `cw task start` refuses a substantial plan without a check bound to a requirement. `cw task verify` on a changed substantial task needs a passed check run at the current source and, when the selected path holds `go.mod`, a passed `go test` run whose `./...`, `./pkg` or `./dir/...` pattern covers each changed non-test package. The rules live in the language-neutral registry `internal/langpack`, with Go as its first pack. Open substantial tasks whose plan has no checks cannot meet this and must be restarted.
+- `cw task start` refuses a substantial plan without a check bound to a requirement. `cw task verify` on a changed substantial task needs the latest run of some check passed at the current source and, when the selected path holds `go.mod`, a passed direct `go test` run whose `./...`, `./pkg` or `./dir/...` pattern covers each changed package (any file in its directory or `testdata/`; a non-Go file in a directory without Go files belongs to the nearest ancestor package); a changed `go.mod`, `go.sum`, `go.work` or `go.work.sum` needs `./...`. A run earns credit only when every flag in its argv and its `GOFLAGS` (split like cmd/go, recorded with compiler and linker flag values redacted) is on an allowlist of flags that cannot skip or replace tests, with `-count` at least 1 and a `test.` prefix only on flags go test passes to the test binary; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`, `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-C`, unknown flags, a pattern after a flag that follows a pattern (`go test ./a -v ./b` tests only `./a`), wrappers (`make`, scripts), `GO.EXE` and Windows-style `.\pkg` patterns earn none. A check's argv is stored verbatim, so keep secrets out of it. The rules live in the language-neutral registry `internal/langpack`, with Go as its first pack. Open substantial tasks whose plan has no checks, or, in a Go module, whose checks run tests only through wrappers or with flags off the allowlist, cannot meet this: add a direct `go test` check and restart them.
 - Worker findings carry `severity` (`blocker`, `major` or `minor`), required in review handoffs; findings recorded earlier read as `major`. `cw task verify` lists every rejected blocker or major finding as a limitation (first, as `rejected_findings`, with `--summary`), and a rejected blocker is a problem until a later accepted independent review, whose bundle lists the rejection, completes without re-raising it.
 - Claude Code gets the skills and the worker agents only from the `agent-workflows` plugin, and worker briefs use only the namespaced agent types (`agent-workflows:cw-reviewer` and friends). `cw install --host claude` is a usage error that points at the plugin.
 - Nothing writes the hosts' model settings any more: `model` and `effortLevel` in `settings.json`, and `model` and `model_reasoning_effort` in `config.toml`, are the user's to set. The README documents the policy defaults.
@@ -50,6 +50,7 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 - From a linked worktree of a record's checkout, the commit gate compares the linked worktree's source with the verified digest instead of the main checkout's.
 - The commit gate's hook runs for every Bash command that names git (`Bash(*git*)`) and recognises `git -C DIR`, `command [-p] git`, `env [options] git` (following `env -C DIR`), `sudo`, `timeout`/`nice`/`stdbuf` wrappers, `$(...)` and backtick substitutions (checked from the directory in effect), `sh -c '...'`, `eval` and `\git`.
 - The session-start hook says that the verify gate is inactive when `cw` is not on `PATH`.
+- `TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit` no longer fails intermittently under `-race`: the check-barrier helpers wait for the test's own lifetime instead of a fixed 15-second accept deadline, and report a check that exits before its barrier instead of timing out.
 
 ### Removed
 
@@ -58,10 +59,6 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 - `cwdev check`, `cwdev release` and `cwdev sandbox`, and `testing/sandbox`; `cwdev eval multilingual` is the only `cwdev` command left.
 - `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
-
-### Fixed
-
-- `TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit` no longer fails intermittently under `-race`: the check-barrier helpers wait for the test's own lifetime instead of a fixed 15-second accept deadline, and report a check that exits before its barrier instead of timing out.
 
 ## [2.0.96] - 2026-11-07
 
