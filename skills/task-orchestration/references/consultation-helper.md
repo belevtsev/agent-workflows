@@ -30,7 +30,7 @@ Read the rest of this file only for a case the quick path does not cover.
 It validates a prepared Choice-only request, sends the same shared input to every
 configured adviser concurrently, and records each result independently. It does
 not dispatch workers or decide which judgment is correct. The command is part of
-the native `cw` manager and needs no interpreter or package installation.
+the native `cw` command and needs no interpreter or package installation.
 Provider-specific details, data handling and the multilingual evaluation are in
 [adviser providers](adviser-providers.md); a checkpoint does not need them.
 
@@ -52,17 +52,17 @@ coordinator's disposition in the task record.
 Reuse is limited to the same checkpoint with applicable evidence, decisions, question
 meaning and models. A before record cannot satisfy the final checkpoint. If sharing
 is restricted, record that limitation and follow the source-evidence fallback; do
-not bypass restrictions or add retries. Installation, update, validation and CI do
-not call hosted models.
+not bypass restrictions or add retries. Installation, validation and CI do not
+call hosted models.
 
 ## Participation
 
 An adviser participates only when it is configured: enabled in the policy's
 `consultation.providers` with its pinned model, with its credential set in the
 environment or saved credentials, and not disabled in the user's preferences. To
-disable one and keep its key, clear its "Use at checkpoints" box in setup's Keys
-step, or list its provider ID under `advisers.disabled` in a `--settings` file. The
-installed policy then omits it, and `cw task start` and ad hoc `cw consult` skip it
+disable one and keep its key, list its provider ID under `advisers.disabled` in
+`preferences.json` in the configuration directory, edited by hand. The selected
+policy then omits it, and `cw task start` and ad hoc `cw consult` skip it
 even with a `--policy` copy; started tasks keep their binding.
 
 | Provider ID | Pinned model | Credential |
@@ -89,8 +89,9 @@ The participation set comes from one place:
   disabled in the saved preferences is recorded as `not_configured` and never
   contacted.
 
-`cw task start --policy PATH` and `cw consult --policy PATH` both default to the
-installed release's `skills/task-orchestration/model-policy.yaml`. `cw task start`
+Without `--policy PATH`, `cw task start` and `cw consult` use `$CW_MODEL_POLICY`,
+then `~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the
+policy embedded in `cw`. `cw task start`
 binds the providers enabled in that policy whose credentials are present and that
 the saved preferences do not disable, read through the same environment-or-saved
 credentials as `cw consult`. If the policy or the saved preferences cannot be read
@@ -100,7 +101,8 @@ policy whose enabled providers all lack credentials binds `{}`.
 
 ### Opt in to Jev
 
-1. Copy the installed `model-policy.yaml` to a private location.
+1. Copy `skills/task-orchestration/model-policy.yaml` from the repository to a
+   private location.
 2. Add `jev: jev-1.14.0` under `consultation.providers` in the copy; if it reads
    `providers: {}`, replace `{}` with that mapping.
 3. Set `TYPESAFE_API_KEY`.
@@ -148,9 +150,10 @@ cw consult --request /path/to/request.json --output /path/to/preview.json --dry-
 cw consult --request /path/to/request.json --output /path/to/new-record.json
 ```
 
-`--policy /path/to/model-policy.yaml` selects a validated policy instead of the
-installed release's. Without it, `cw consult` reads the policy and its questions from
-`current/skills/task-orchestration` in the manager's state directory. `--dry-run`
+`--policy /path/to/model-policy.yaml` selects a validated policy. Without it,
+`cw consult` uses `$CW_MODEL_POLICY`, then
+`~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the
+policy embedded in `cw`. `--dry-run`
 validates the policy and input and writes a preview without network access; it lists
 each participating provider with its `requested_model` and status `dry_run` or
 `not_configured`, resolving credentials only to report that status. A task-bound

@@ -1,9 +1,0 @@
-# Explicitly named by the runner. No host workspace, hooks, credentials, MCP,
-# ports, or user base environment is imported. Only prepared artifacts are copied.
-schemaVersion: "1"
-agent: shell
-sandboxOptions:
-  cpus: 2
-  memory: 2g
-env:
-  CW_ARTIFACT_ACCEPTANCE: "1"

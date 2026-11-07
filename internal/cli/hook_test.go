@@ -20,9 +20,9 @@ import (
 // Tests for `cw hook pre-publish` (R-PRE, R-CMD) and `cw hook session-start`
 // (R-SESSION), driven through Execute.
 
-// hkSubstantialPlan is a substantial plan whose verify can pass without checks
-// or adviser checkpoints.
-const hkSubstantialPlan = `{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`
+// hkSubstantialPlan is a substantial plan whose verify can pass at unchanged
+// source without running its check or adviser checkpoints.
+const hkSubstantialPlan = `{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`
 
 // hkSmallPlan is the same plan with kind small.
 const hkSmallPlan = `{"title":"S","kind":"small","requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`
@@ -66,7 +66,7 @@ type hkHarness struct {
 
 func newHKHarness(t *testing.T) *hkHarness {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	harness := &hkHarness{out: out, home: hkCanonicalTempDir(t), env: map[string]string{}}
 	config.HomeDir = func() (string, error) { return harness.home, nil }
 	config.Getenv = func(name string) string { return harness.env[name] }
@@ -141,25 +141,100 @@ func hkExpectAllow(t *testing.T, got string) {
 	}
 }
 
-// hkExpectDeny requires exactly one line holding the deny decision for record.
-func hkExpectDeny(t *testing.T, got string, record taskflow.Record) {
+// hkDecision requires exactly one newline-terminated JSON line of the shape
+// {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":D,
+// "permissionDecisionReason":R}} and returns D and R.
+func hkDecision(t *testing.T, got string) (decision, reason string) {
 	t.Helper()
 	if !strings.HasSuffix(got, "\n") || strings.Count(got, "\n") != 1 {
 		t.Fatalf("hook wrote %q, want exactly one newline-terminated line", got)
 	}
 	var decoded map[string]any
 	if err := json.Unmarshal([]byte(got), &decoded); err != nil {
-		t.Fatalf("deny line %q is not JSON: %v", got, err)
+		t.Fatalf("decision line %q is not JSON: %v", got, err)
 	}
-	reason := fmt.Sprintf("agent-workflows: task %s (%s) for this repository has no passing cw task verify on the current source; run `cw task verify --task %s --summary` and retry, or set enforce_verify=false in the plugin config", record.ID, record.Plan.Title, record.Directory)
-	want := map[string]any{"hookSpecificOutput": map[string]any{
-		"hookEventName":            "PreToolUse",
-		"permissionDecision":       "deny",
-		"permissionDecisionReason": reason,
-	}}
-	if !reflect.DeepEqual(decoded, want) {
-		t.Fatalf("deny decision\n got: %v\nwant: %v", decoded, want)
+	output, ok := decoded["hookSpecificOutput"].(map[string]any)
+	if len(decoded) != 1 || !ok || len(output) != 3 {
+		t.Fatalf("decision %v, want only hookSpecificOutput with three members", decoded)
 	}
+	if output["hookEventName"] != "PreToolUse" {
+		t.Fatalf("hookEventName %v, want PreToolUse", output["hookEventName"])
+	}
+	decision, okDecision := output["permissionDecision"].(string)
+	reason, okReason := output["permissionDecisionReason"].(string)
+	if !okDecision || !okReason {
+		t.Fatalf("decision %v has a non-string permissionDecision or permissionDecisionReason", output)
+	}
+	return decision, reason
+}
+
+// hkExpectDeny requires a deny whose reason names every record in gating:
+// its ID, its plan title and both the verify and the abandon command for its
+// directory (H1).
+func hkExpectDeny(t *testing.T, got string, gating ...taskflow.Record) string {
+	t.Helper()
+	if len(gating) == 0 {
+		t.Fatal("hkExpectDeny needs at least one gating record")
+	}
+	decision, reason := hkDecision(t, got)
+	if decision != "deny" {
+		t.Fatalf("permissionDecision %q, want deny; reason %q", decision, reason)
+	}
+	// H1 wording (rev 5): the reason says to close a finished task with
+	// cw task abandon.
+	if !strings.Contains(reason, hkFinishedPhrase) {
+		t.Fatalf("deny reason %q does not contain %q", reason, hkFinishedPhrase)
+	}
+	for _, record := range gating {
+		for _, want := range []string{
+			record.ID,
+			record.Plan.Title,
+			fmt.Sprintf("cw task verify --task %s --summary", record.Directory),
+			fmt.Sprintf("cw task abandon --task %s", record.Directory),
+		} {
+			if !strings.Contains(reason, want) {
+				t.Fatalf("deny reason %q does not contain %q", reason, want)
+			}
+		}
+	}
+	return reason
+}
+
+// hkExpectDenyOnly is hkExpectDeny that also requires the reason not to name
+// any record in current (H1: non-gating records are not named).
+func hkExpectDenyOnly(t *testing.T, got string, gating []taskflow.Record, current ...taskflow.Record) string {
+	t.Helper()
+	reason := hkExpectDeny(t, got, gating...)
+	for _, record := range current {
+		if strings.Contains(reason, record.ID) {
+			t.Fatalf("deny reason %q names the non-gating record %s", reason, record.ID)
+		}
+	}
+	return reason
+}
+
+// hkFinishedPhrase is the exact H1 wording (rev 5) every deny reason holds.
+const hkFinishedPhrase = "if it is finished or was given up"
+
+// H15 (rev 4): the commit and push ask reason wording.
+const (
+	hkCommitAskWording = "this commit looks like"
+	hkPushAskWording   = "the commits being pushed look like"
+)
+
+// hkExpectAsk requires an ask whose reason contains every string in contains.
+func hkExpectAsk(t *testing.T, got string, contains ...string) string {
+	t.Helper()
+	decision, reason := hkDecision(t, got)
+	if decision != "ask" {
+		t.Fatalf("permissionDecision %q, want ask; reason %q", decision, reason)
+	}
+	for _, want := range contains {
+		if !strings.Contains(reason, want) {
+			t.Fatalf("ask reason %q does not contain %q", reason, want)
+		}
+	}
+	return reason
 }
 
 // hkSourceRef is the evidence reference for the whole one-line source.txt.
@@ -171,6 +246,14 @@ func hkSourceRef(data []byte) taskflow.SourceRef {
 // assessAndVerify records a satisfying assessment and requires a passing
 // `cw task verify`.
 func (h *hkHarness) assessAndVerify(t *testing.T, record taskflow.Record, source []byte) {
+	t.Helper()
+	h.assess(t, record, source)
+	h.verify(t, record)
+}
+
+// assess records a satisfying assessment citing source.txt with content
+// source, without verifying.
+func (h *hkHarness) assess(t *testing.T, record taskflow.Record, source []byte) {
 	t.Helper()
 	ref := hkSourceRef(source)
 	reason := "Read-only source inspection; no executable behavior changed."
@@ -187,6 +270,11 @@ func (h *hkHarness) assessAndVerify(t *testing.T, record taskflow.Record, source
 	if err := Execute(t.Context(), []string{"task", "assess", "--task", record.Directory, "--input", "-"}, h.config); err != nil {
 		t.Fatalf("task assess: %v\n%s", err, h.out.String())
 	}
+}
+
+// verify requires a passing `cw task verify` of record.
+func (h *hkHarness) verify(t *testing.T, record taskflow.Record) {
+	t.Helper()
 	h.out.Reset()
 	if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, h.config); err != nil {
 		t.Fatalf("task verify: %v\n%s", err, h.out.String())
@@ -204,8 +292,8 @@ func hkSubstantialRecord(t *testing.T, repo, store, title string) taskflow.Recor
 		Title:        title,
 		Kind:         "substantial",
 		Checkpoints:  &taskflow.CheckpointPolicy{Required: false, Reason: "test"},
-		Requirements: []taskflow.Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{}, AllowNonExecution: true}},
-		Checks:       []taskflow.Check{},
+		Requirements: []taskflow.Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{"unit"}, AllowNonExecution: true}},
+		Checks:       []taskflow.Check{{ID: "unit", Argv: []string{"go", "test", "./..."}}},
 	}
 	record, err := taskflow.Start(t.Context(), repo, store, plan, nil)
 	if err != nil {
@@ -282,32 +370,74 @@ func TestHookPrePublishFollowsTaskVerification(t *testing.T) {
 	})
 }
 
-func TestHookPrePublishNewestRecordDecides(t *testing.T) {
-	t.Run("deny names the newest open record", func(t *testing.T) {
-		// R-PRE: with two open records the deny reason names the newest.
+// hkTitled is hkSubstantialPlan with another title.
+func hkTitled(title string) string {
+	return strings.Replace(hkSubstantialPlan, `"title":"T"`, `"title":"`+title+`"`, 1)
+}
+
+// abandon runs `cw task abandon --task DIR --reason REASON` and requires success.
+func (h *hkHarness) abandon(t *testing.T, record taskflow.Record, reason string) {
+	t.Helper()
+	h.out.Reset()
+	if err := Execute(t.Context(), []string{"task", "abandon", "--task", record.Directory, "--reason", reason}, h.config); err != nil {
+		t.Fatalf("task abandon: %v\n%s", err, h.out.String())
+	}
+}
+
+func TestHookPrePublishEveryOpenRecordGates(t *testing.T) {
+	t.Run("deny names every open record", func(t *testing.T) {
+		// H1: with two open records the deny reason names both, each with
+		// its verify and abandon command.
 		repo := hkRepo(t)
 		h := newHKHarness(t)
-		older := h.start(t, repo, hkSubstantialPlan)
-		newer := h.start(t, repo, strings.Replace(hkSubstantialPlan, `"title":"T"`, `"title":"Newer"`, 1))
-		if !newer.CreatedAt.After(older.CreatedAt) {
-			t.Fatalf("second record created %v, not after the first %v", newer.CreatedAt, older.CreatedAt)
-		}
-		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), newer)
+		older := h.start(t, repo, hkTitled("Older"))
+		newer := h.start(t, repo, hkTitled("Newer"))
+		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), older, newer)
+		hkExpectDeny(t, h.prePublish(t, repo, "git push origin main"), older, newer)
 	})
 
-	t.Run("newer verified record hides an older open one", func(t *testing.T) {
-		// R-PRE, R-FIND: older records never decide, so a passing verify on
-		// the newest record allows although an older record is open.
+	t.Run("older open record beside a newer verified one", func(t *testing.T) {
+		// H2, H1: a newer verified record no longer hides an older open one;
+		// the deny names the older record and not the verified one. H3: after
+		// `cw task abandon` of the older record the command is allowed.
 		repo := hkRepo(t)
 		source := []byte("verified source\n")
 		if err := os.WriteFile(filepath.Join(repo, "source.txt"), source, 0600); err != nil {
 			t.Fatal(err)
 		}
 		h := newHKHarness(t)
-		h.start(t, repo, hkSubstantialPlan)
-		newer := h.start(t, repo, strings.Replace(hkSubstantialPlan, `"title":"T"`, `"title":"Newer"`, 1))
-		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), newer)
+		older := h.start(t, repo, hkTitled("Older"))
+		newer := h.start(t, repo, hkTitled("Newer"))
+		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), older, newer)
 		h.assessAndVerify(t, newer, source)
+		hkExpectDenyOnly(t, h.prePublish(t, repo, "git commit -m x"), []taskflow.Record{older}, newer)
+
+		h.abandon(t, older, "x")
+		hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
+	})
+
+	t.Run("newer open record beside an older verified one", func(t *testing.T) {
+		// H1: the deny names the newer open record and not the older
+		// verified one.
+		repo := hkRepo(t)
+		source := []byte("verified source\n")
+		if err := os.WriteFile(filepath.Join(repo, "source.txt"), source, 0600); err != nil {
+			t.Fatal(err)
+		}
+		h := newHKHarness(t)
+		older := h.start(t, repo, hkTitled("Older"))
+		h.assessAndVerify(t, older, source)
+		newer := h.start(t, repo, hkTitled("Newer"))
+		hkExpectDenyOnly(t, h.prePublish(t, repo, "git commit -m x"), []taskflow.Record{newer}, older)
+	})
+
+	t.Run("abandoning the only open record allows", func(t *testing.T) {
+		// H3: an abandoned record no longer gates.
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		record := h.start(t, repo, hkSubstantialPlan)
+		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), record)
+		h.abandon(t, record, "superseded")
 		hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
 	})
 }
@@ -362,12 +492,49 @@ func TestHookPrePublishCommandRecognition(t *testing.T) {
 	// The repository is created by the top-level test so its path holds no
 	// spaces or shell separators from subtest names.
 	repo := hkRepo(t)
+	if err := os.Mkdir(filepath.Join(repo, "sub"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	h := newHKHarness(t)
 	record := h.start(t, repo, hkSubstantialPlan)
 	tests := []struct {
 		command string
 		deny    bool
 	}{
+		// H4 (F8a): wrapper and launcher forms that run git commit or push
+		// (`command git push` is also listed below under R-PRE).
+		{"env X=y git commit -m x", true},
+		{"env -i git commit -m x", true},
+		{"env -u HOME git push", true},
+		{`\git commit -m x`, true},
+		{"timeout 30 git push", true},
+		{"nice git commit -m x", true},
+		{"nice -n 5 git push", true},
+		{"stdbuf -oL git push", true},
+		{"noglob git push", true},
+		{"sh -c 'git commit -m x'", true},
+		{`bash -c "git push origin main"`, true},
+		{"bash -lc 'git push'", true},
+		{`eval "git commit -m x"`, true},
+		{"zsh -c 'cd sub && git commit -m x'", true},
+		// H4 (F8a): forms that must stay allowed.
+		{"command -v git", false},
+		{"sh -c 'git status'", false},
+		{"bash script.sh", false},
+		{"env -i git status", false},
+		{"timeout 30 git fetch", false},
+		// H11 (rev 4): command substitutions before git, launchers and the
+		// command inside a substitution.
+		{`GIT_COMMITTER_DATE="$(date -R)" git commit -m x`, true},
+		{`env FOO="$(id -u)" git push`, true},
+		{`git -C "$(pwd)" commit -m x`, true},
+		{`git -c core.hooksPath="$(mktemp -d)" commit -m x`, true},
+		{`echo "$(git push)"`, true},
+		{"command -p git push", true},
+		{"sudo git push", true},
+		{"sudo -u root git commit -m x", true},
+		// H11 (rev 4): must stay allowed.
+		{`echo "$(date)"`, false},
 		// R-PRE required non-publish commands.
 		{"git status", false},
 		{"echo git commit", false},
@@ -458,6 +625,11 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	elsewhere := hkCanonicalTempDir(t)
+	// H17 (rev 7): a non-repository directory with the same relative name
+	// as the repository's subdirectory.
+	if err := os.Mkdir(filepath.Join(elsewhere, "nested"), 0700); err != nil {
+		t.Fatal(err)
+	}
 	parent, base := filepath.Dir(repo), filepath.Base(repo)
 	h := newHKHarness(t)
 	record := h.start(t, repo, hkSubstantialPlan)
@@ -470,6 +642,50 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 		// R-PRE required cases.
 		{"cd into the repository from a non-git cwd", elsewhere, "cd " + repo + " && git commit -m x", true},
 		{"git -C the repository from a non-git cwd", elsewhere, "git -C " + repo + " push", true},
+		// H4 (F8a): git -C REPO commit from an unrelated non-repository cwd,
+		// and git -C SUB commit from the repository root.
+		{"git -C the repository commit from a non-git cwd", elsewhere, "git -C " + repo + " commit -m x", true},
+		{"git -C a subdirectory commit from the repository root", repo, "git -C nested commit -m x", true},
+		// H11 (rev 4): env -C/--chdir and sudo -D move the target from a
+		// non-repository cwd.
+		{"env -C the repository", elsewhere, "env -C " + repo + " git commit -m x", true},
+		{"env --chdir= the repository", elsewhere, "env --chdir=" + repo + " git commit -m x", true},
+		{"env -u HOME -C the repository", elsewhere, "env -u HOME -C " + repo + " git push", true},
+		{"sudo -D the repository", elsewhere, "sudo -D " + repo + " git commit -m x", true},
+		{"cd the repository then env -C a subdirectory", elsewhere, "cd " + repo + " && env -C nested git commit -m x", true},
+		// H11 (rev 4): env -C to a non-repository directory from the
+		// repository runs the command outside it.
+		{"env -C out of the repository", repo, "env -C " + elsewhere + " git commit -m x", false},
+		// H16 (rev 6): a command inside $(...) or backticks runs in the
+		// directory in effect where the substitution appears.
+		{"substitution after cd into the repository", elsewhere, "cd " + repo + " && out=$(git commit -m x)", true},
+		{"quoted substitution after cd into the repository", elsewhere, "cd " + repo + ` && echo "$(git push)"`, true},
+		{"backticks after cd into the repository", elsewhere, "cd " + repo + " && x=`git push`", true},
+		{"substitution after cd out of the repository", repo, "cd " + elsewhere + " && x=$(git commit -m x)", false},
+		{"git -C backtick pwd from the repository", repo, "git -C `pwd` commit -m x", true},
+		// H17 (rev 6): attached and clustered wrapper options, from a
+		// non-repository cwd.
+		{"env -C attached", elsewhere, "env -C" + repo + " git commit -m x", true},
+		{"sudo -D attached", elsewhere, "sudo -D" + repo + " git commit -m x", true},
+		{"env -iC clustered", elsewhere, "env -iC " + repo + " git commit -m x", true},
+		{"env --chdir separate value", elsewhere, "env --chdir " + repo + " git push", true},
+		// H17 (rev 7, supersedes the rev 6 chained case): within one
+		// wrapper a repeated -C/--chdir (env) or -D/--chdir (sudo) is
+		// last-wins, each value resolved from the directory in effect (the
+		// cwd), not from the earlier option. elsewhere/nested exists and is
+		// not a repository, so chaining and last-wins give different results.
+		{"env -C repeated, last is the repository", elsewhere, "env -C " + elsewhere + " -C " + repo + " git commit -m x", true},
+		{"env -C repeated, last is outside the repository", elsewhere, "env -C " + repo + " -C " + elsewhere + " git commit -m x", false},
+		{"env -C repeated, last is relative from the repository", repo, "env -C " + elsewhere + " -C nested git commit -m x", true},
+		{"env -C repeated, last is relative from a non-repository cwd", elsewhere, "env -C " + repo + " -C nested git commit -m x", false},
+		{"env --chdir= then -C, last is the repository", elsewhere, "env --chdir=" + elsewhere + " -C " + repo + " git commit -m x", true},
+		{"env -C then --chdir, last is outside the repository", elsewhere, "env -C " + repo + " --chdir " + elsewhere + " git push", false},
+		{"sudo -D repeated, last is the repository", elsewhere, "sudo -D " + elsewhere + " -D " + repo + " git commit -m x", true},
+		{"sudo -D repeated, last is outside the repository", elsewhere, "sudo -D " + repo + " -D " + elsewhere + " git commit -m x", false},
+		// H17 (rev 7): separate nested wrappers still chain.
+		{"nested env -C wrappers chain", elsewhere, "env -C " + repo + " env -C nested git commit -m x", true},
+		// H17 (rev 6): an attached option value is not the program.
+		{"stdbuf -oL from the repository", repo, "stdbuf -oL git push", true},
 		{"cd out of the repository", repo, "cd " + elsewhere + " && git commit -m x", false},
 		// R-CMD: relative and repeated moves.
 		{"relative cd", parent, "cd " + base + " && git commit -m x", true},
@@ -695,6 +911,66 @@ func TestHookPrePublishFailsOpenOnBadInput(t *testing.T) {
 	}
 }
 
+func TestHookPrePublishFailsOpenOnNUL(t *testing.T) {
+	// H18 (rev 7): a Bash command holding NUL characters (JSON \u0000)
+	// never crashes the hook: Execute returns nil without panicking, and
+	// any output is one valid decision line (deny or no output are both
+	// acceptable while the repository has an open record).
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	record := h.start(t, repo, hkSubstantialPlan)
+	h.config.WorkingDir = func() (string, error) { return repo, nil }
+	// Control: the same repository and record deny a plain commit.
+	hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), record)
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		// The two H18 examples: `echo $(echo \u00000\u0000 git commit -m x)`
+		// and NUL characters around `git commit -m x`.
+		{"NUL inside a substitution", "echo $(echo \x00" + "0\x00 git commit -m x)"},
+		{"NUL around a commit", "\x00\x00\x00git commit -m x\x00\x00\x00"},
+		// Further NUL placements.
+		{"NUL separated from a commit by spaces", "\x00 git commit -m x \x00"},
+		{"NUL only", "\x00"},
+		{"NUL between git and commit", "git\x00commit -m x"},
+		{"NUL in a commit message", "git commit -m x\x00y"},
+		{"NUL in a cd target", "cd \x00 && git commit -m x"},
+		{"NUL in a git -C target", "git -C " + repo + "\x00 commit -m x"},
+		{"NUL in an env -C target", "env -C \x00" + repo + " git push"},
+		{"NUL in backticks", "x=`\x00git push`"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stdin := hkPrePublishInput(t, repo, test.command)
+			if !bytes.Contains(stdin, []byte(`\u0000`)) {
+				t.Fatalf("payload %q does not carry the NUL as \\u0000", stdin)
+			}
+			got := hkRunPrePublishNoPanic(t, h, stdin)
+			if got == "" {
+				return
+			}
+			if decision, reason := hkDecision(t, got); decision != "deny" && decision != "ask" {
+				t.Fatalf("permissionDecision %q, want deny or ask; reason %q", decision, reason)
+			}
+		})
+	}
+}
+
+// hkRunPrePublishNoPanic is runPrePublish (which already requires a nil
+// error) that reports a panic in the hook as a test failure instead of
+// crashing the test binary (H18).
+func hkRunPrePublishNoPanic(t *testing.T, h *hkHarness, stdin []byte) (got string) {
+	t.Helper()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("hook pre-publish panicked: %v", r)
+		}
+	}()
+	return h.runPrePublish(t, stdin)
+}
+
 func TestHookPrePublishTaskStoreSelection(t *testing.T) {
 	t.Run("CW_TASK_STORE with an open record denies", func(t *testing.T) {
 		// R-PRE: CW_TASK_STORE names the store; the default store is empty.
@@ -721,6 +997,17 @@ func TestHookPrePublishTaskStoreSelection(t *testing.T) {
 		}
 		h.env["CW_TASK_STORE"] = empty
 		hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
+	})
+
+	t.Run("missing CW_TASK_STORE fails open", func(t *testing.T) {
+		// H10: a store that does not exist writes nothing, even while the
+		// default store has an open record for the repository.
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.start(t, repo, hkSubstantialPlan)
+		h.env["CW_TASK_STORE"] = filepath.Join(hkCanonicalTempDir(t), "missing")
+		hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
+		hkExpectAllow(t, h.prePublish(t, repo, "git push origin main"))
 	})
 
 	t.Run("XDG_STATE_HOME selects the store", func(t *testing.T) {
@@ -757,6 +1044,440 @@ func TestHookPrePublishLinkedWorktree(t *testing.T) {
 		t.Fatalf("record root %q, want main worktree %q", record.Baseline.Root, main)
 	}
 	hkExpectDeny(t, h.prePublish(t, linked, "git commit -m x"), record)
+}
+
+// hkLinkedWorktree adds a linked worktree of main (which needs a commit) in a
+// fresh directory and returns its canonical path.
+func hkLinkedWorktree(t *testing.T, main string) string {
+	t.Helper()
+	linked := filepath.Join(hkCanonicalTempDir(t), "linked")
+	hkGit(t, main, "worktree", "add", "-q", linked)
+	t.Cleanup(func() {
+		command := exec.Command("git", "-C", main, "worktree", "remove", "--force", linked)
+		command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Errorf("git worktree remove: %v\n%s", err, output)
+		}
+	})
+	return linked
+}
+
+// hkWriteFile writes content to dir/rel, creating parent directories.
+func hkWriteFile(t *testing.T, dir, rel, content string) {
+	t.Helper()
+	path := filepath.Join(dir, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHookPrePublishLinkedWorktreeDigest(t *testing.T) {
+	// H9 (F8c): a record started and verified in the main checkout gates a
+	// commit from a linked worktree whose bytes differ, naming the linked
+	// worktree, and stops gating once the bytes are identical.
+	main := hkRepo(t)
+	source := []byte("verified source\n")
+	hkWriteFile(t, main, "source.txt", string(source))
+	hkGit(t, main, "add", "source.txt")
+	hkGit(t, main, "commit", "-q", "-m", "initial")
+	linked := hkLinkedWorktree(t, main)
+	// Untracked, non-ignored bytes present only in the main checkout.
+	hkWriteFile(t, main, "extra.txt", "only in main\n")
+	h := newHKHarness(t)
+	record := h.start(t, main, hkSubstantialPlan)
+	if record.Baseline.Root != main {
+		t.Fatalf("record root %q, want main worktree %q", record.Baseline.Root, main)
+	}
+	h.assessAndVerify(t, record, source)
+
+	// Control: the verified record allows in the main checkout.
+	hkExpectAllow(t, h.prePublish(t, main, "git commit -m x"))
+
+	reason := hkExpectDeny(t, h.prePublish(t, linked, "git commit -m x"), record)
+	if !strings.Contains(reason, linked) {
+		t.Fatalf("deny reason %q does not name the linked worktree %s", reason, linked)
+	}
+
+	hkWriteFile(t, linked, "extra.txt", "only in main\n")
+	hkExpectAllow(t, h.prePublish(t, linked, "git commit -m x"))
+}
+
+// hkLines returns n distinct newline-terminated lines.
+func hkLines(n int) string {
+	var b strings.Builder
+	for i := range n {
+		fmt.Fprintf(&b, "line %d\n", i)
+	}
+	return b.String()
+}
+
+// hkEmptyStore returns an existing, empty, private task store.
+func hkEmptyStore(t *testing.T) string {
+	t.Helper()
+	store := filepath.Join(hkCanonicalTempDir(t), "store")
+	if err := os.Mkdir(store, 0700); err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
+// hkCommittedRepo creates a repository whose one initial commit holds files
+// (an empty commit when files is empty).
+func hkCommittedRepo(t *testing.T, files map[string]string) string {
+	t.Helper()
+	repo := hkRepo(t)
+	for rel, content := range files {
+		hkWriteFile(t, repo, rel, content)
+	}
+	hkGit(t, repo, "add", "-A")
+	hkGit(t, repo, "commit", "-q", "--allow-empty", "-m", "initial")
+	return repo
+}
+
+// hkNoRecordHarness is a harness whose task store exists and is empty, so the
+// repository has no record at all.
+func hkNoRecordHarness(t *testing.T) *hkHarness {
+	t.Helper()
+	h := newHKHarness(t)
+	h.env["CW_TASK_STORE"] = hkEmptyStore(t)
+	return h
+}
+
+func TestHookPrePublishSmallTaskPrompt(t *testing.T) {
+	// H5 (F7): with no record for the repository, `git commit -m x` asks when
+	// the staged diff meets at least two of (a) more than 300 changed lines,
+	// (b) files under more than one top-level directory, (c) a non-test code
+	// file changed and no test file changed; otherwise it writes nothing.
+	small := hkLines(5)
+	type promptCase struct {
+		name      string
+		committed map[string]string // in the initial commit
+		staged    map[string]string // written and staged with git add
+		removed   []string          // removed with git rm
+		unstaged  map[string]string // written over tracked files, not staged
+		ask       bool
+	}
+	tests := []promptCase{
+		// H5 required cases.
+		{name: "301+ lines in two directories, code, no tests (a+b+c)", staged: map[string]string{"a/x.go": hkLines(200), "b/y.go": hkLines(200)}, ask: true},
+		{name: "301+ lines in one code file, no tests (a+c)", staged: map[string]string{"a/x.go": hkLines(400)}, ask: true},
+		{name: "301+ lines of docs in two directories (a+b)", staged: map[string]string{"a/x.md": hkLines(200), "b/y.md": hkLines(200)}, ask: true},
+		{name: "small code change in two directories, no tests (b+c)", staged: map[string]string{"a/x.go": small, "b/y.go": small}, ask: true},
+		{name: "small code change with its test (none)", staged: map[string]string{"a/x.go": small, "a/x_test.go": small}},
+		{name: "301+ lines with a test in one directory (a only)", staged: map[string]string{"a/x.go": hkLines(400), "a/x_test.go": small}},
+		{name: "exactly 300 lines in one code file (c only)", staged: map[string]string{"a/x.go": hkLines(300)}},
+		{name: "301 lines in one code file (a+c)", staged: map[string]string{"a/x.go": hkLines(301)}, ask: true},
+		{name: "nothing staged"},
+		{name: "unstaged large edits in two directories", committed: map[string]string{"a/x.go": small, "b/y.go": small}, unstaged: map[string]string{"a/x.go": small + hkLines(200), "b/y.go": small + hkLines(200)}},
+		// H5: deleted lines count toward (a).
+		{name: "301+ deleted lines of docs in two directories (a+b)", committed: map[string]string{"a/x.md": hkLines(200), "b/y.md": hkLines(200)}, removed: []string{"a/x.md", "b/y.md"}, ask: true},
+		// H5: root-level files count for no top-level directory.
+		{name: "root-level code file and one directory (c only)", staged: map[string]string{"x.go": small, "a/y.go": small}},
+		{name: "small docs change in two directories (b only)", staged: map[string]string{"a/x.md": small, "b/y.md": small}},
+	}
+	// H5 test-file patterns: each beside a small code change in another
+	// directory meets only (b), so nothing is written.
+	for _, test := range []string{
+		"b/y_test.go", "b/test_y.py", "b/y_test.py", "b/y.test.ts", "b/y.spec.js",
+		"b/test/y.go", "b/tests/y.py", "b/testdata/y.go", "b/__tests__/y.js", "b/spec/y.rb",
+	} {
+		tests = append(tests, promptCase{name: "code change beside test file " + test + " (b only)", staged: map[string]string{"a/x.go": small, test: small}})
+	}
+	// H14 (rev 4): Swift, JVM and .NET test names and a capitalised Tests/
+	// directory count as test files; beside a small Swift change in another
+	// top-level directory each meets only (b).
+	for _, test := range []string{"Tests/AppTests/AppTests.swift", "src/FooTests.swift", "src/FooTest.kt", "src/FooTests.cs"} {
+		tests = append(tests, promptCase{name: "Swift change beside test file " + test + " (b only)", staged: map[string]string{"Sources/App/App.swift": small, test: small}})
+	}
+	// H14 control: a non-test Swift file in the second directory asks (b+c).
+	tests = append(tests, promptCase{name: "Swift change beside non-test src/Foo.swift (b+c)", staged: map[string]string{"Sources/App/App.swift": small, "src/Foo.swift": small}, ask: true})
+	// H5 code-file extensions: each beside a small docs change in another
+	// directory meets (b) and (c), so the hook asks.
+	for _, ext := range []string{".go", ".py", ".js", ".ts", ".tsx", ".jsx", ".rs", ".java", ".kt", ".c", ".h", ".cc", ".cpp", ".rb", ".swift", ".sh"} {
+		tests = append(tests, promptCase{name: "code file a/x" + ext + " beside docs (b+c)", staged: map[string]string{"a/x" + ext: small, "b/y.md": small}, ask: true})
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := hkCommittedRepo(t, test.committed)
+			for rel, content := range test.staged {
+				hkWriteFile(t, repo, rel, content)
+				hkGit(t, repo, "add", rel)
+			}
+			for _, rel := range test.removed {
+				hkGit(t, repo, "rm", "-q", rel)
+			}
+			for rel, content := range test.unstaged {
+				hkWriteFile(t, repo, rel, content)
+			}
+			h := hkNoRecordHarness(t)
+			got := h.prePublish(t, repo, "git commit -m x")
+			if test.ask {
+				hkExpectAsk(t, got, "cw task start", hkCommitAskWording)
+			} else {
+				hkExpectAllow(t, got)
+			}
+		})
+	}
+
+	t.Run("commit -am includes modified tracked files", func(t *testing.T) {
+		// H5: large unstaged edits to tracked files in two directories write
+		// nothing for `git commit -m x` but ask for `git commit -am x`.
+		repo := hkCommittedRepo(t, map[string]string{"a/x.go": small, "b/y.go": small})
+		hkWriteFile(t, repo, "a/x.go", small+hkLines(200))
+		hkWriteFile(t, repo, "b/y.go", small+hkLines(200))
+		h := hkNoRecordHarness(t)
+		hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
+		hkExpectAsk(t, h.prePublish(t, repo, "git commit -am x"), "cw task start", hkCommitAskWording)
+	})
+}
+
+func TestHookPrePublishPromptOptions(t *testing.T) {
+	// hkAskRepo is a repository with no record whose staged diff meets all
+	// three H5 conditions.
+	hkAskRepo := func(t *testing.T) string {
+		t.Helper()
+		repo := hkCommittedRepo(t, nil)
+		hkWriteFile(t, repo, "a/x.go", hkLines(200))
+		hkWriteFile(t, repo, "b/y.go", hkLines(200))
+		hkGit(t, repo, "add", "-A")
+		return repo
+	}
+
+	t.Run("small_task_prompt toggles the ask", func(t *testing.T) {
+		// H6: SMALL_TASK_PROMPT=false turns the ask into no output; "true"
+		// and unset keep it.
+		tests := []struct {
+			value string
+			set   bool
+			ask   bool
+		}{
+			{"", false, true},
+			{"true", true, true},
+			{"false", true, false},
+		}
+		for _, test := range tests {
+			t.Run(fmt.Sprintf("value %q set %v", test.value, test.set), func(t *testing.T) {
+				repo := hkAskRepo(t)
+				h := hkNoRecordHarness(t)
+				if test.set {
+					h.env["CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT"] = test.value
+				}
+				got := h.prePublish(t, repo, "git commit -m x")
+				if test.ask {
+					hkExpectAsk(t, got, "cw task start", hkCommitAskWording)
+				} else {
+					hkExpectAllow(t, got)
+				}
+			})
+		}
+	})
+
+	t.Run("small_task_prompt=false does not affect deny", func(t *testing.T) {
+		// H6: an open record still denies with SMALL_TASK_PROMPT=false.
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		record := h.start(t, repo, hkSubstantialPlan)
+		h.env["CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT"] = "false"
+		hkExpectDeny(t, h.prePublish(t, repo, "git commit -m x"), record)
+	})
+
+	t.Run("enforce_verify=false does not disable the ask", func(t *testing.T) {
+		// H6: ENFORCE_VERIFY=false keeps the H5 ask.
+		repo := hkAskRepo(t)
+		h := hkNoRecordHarness(t)
+		h.env["CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY"] = "false"
+		hkExpectAsk(t, h.prePublish(t, repo, "git commit -m x"), "cw task start", hkCommitAskWording)
+	})
+}
+
+func TestHookPrePushSmallTaskPrompt(t *testing.T) {
+	// H7 (F7): with no record, `git push` compares HEAD with @{upstream}
+	// (merge-base, three-dot), else with refs/remotes/origin/HEAD, else
+	// writes nothing. origin is a local bare repository.
+	commitLocally := func(t *testing.T, repo string, files map[string]string) {
+		t.Helper()
+		for rel, content := range files {
+			hkWriteFile(t, repo, rel, content)
+		}
+		hkGit(t, repo, "add", "-A")
+		hkGit(t, repo, "commit", "-q", "-m", "local change")
+	}
+	// large meets all three H5 signs (a, b, c).
+	large := map[string]string{"a/x.go": hkLines(200), "b/y.go": hkLines(200)}
+	// Below the thresholds (contract rev 2): fewer than two H5 signs hold.
+	// smallWithTest is a few lines of code and its test in one directory (no
+	// sign); smallDocs is a few lines of docs in one directory (no sign).
+	smallWithTest := map[string]string{"a/x.go": hkLines(5), "a/x_test.go": hkLines(5)}
+	smallDocs := map[string]string{"a/x.md": hkLines(5)}
+	// pushRepo creates a repository with an initial commit pushed to a bare
+	// origin: with -u (upstream), with origin/HEAD set (originHead), or plain.
+	pushRepo := func(t *testing.T, upstream, originHead bool) string {
+		t.Helper()
+		origin := hkCanonicalTempDir(t)
+		hkGit(t, origin, "init", "-q", "--bare")
+		repo := hkCommittedRepo(t, map[string]string{"README.md": "readme\n"})
+		hkGit(t, repo, "remote", "add", "origin", origin)
+		if upstream {
+			hkGit(t, repo, "push", "-q", "-u", "origin", "main")
+		} else {
+			hkGit(t, repo, "push", "-q", "origin", "main")
+		}
+		if originHead {
+			hkGit(t, repo, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+		}
+		return repo
+	}
+	tests := []struct {
+		name       string
+		upstream   bool
+		originHead bool
+		change     map[string]string
+		ask        bool
+	}{
+		{"upstream, large two-directory change", true, false, large, true},
+		// H7 rev 2: below the thresholds.
+		{"upstream, small code change with its test in one directory", true, false, smallWithTest, false},
+		{"upstream, few lines of docs in one directory", true, false, smallDocs, false},
+		{"origin/HEAD without upstream, large two-directory change", false, true, large, true},
+		// H7 rev 2: below the thresholds.
+		{"origin/HEAD without upstream, small code change with its test in one directory", false, true, smallWithTest, false},
+		{"origin/HEAD without upstream, few lines of docs in one directory", false, true, smallDocs, false},
+		{"neither upstream nor origin/HEAD, large change", false, false, large, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := pushRepo(t, test.upstream, test.originHead)
+			commitLocally(t, repo, test.change)
+			h := hkNoRecordHarness(t)
+			got := h.prePublish(t, repo, "git push")
+			if test.ask {
+				hkExpectAsk(t, got, hkPushAskWording)
+			} else {
+				hkExpectAllow(t, got)
+			}
+		})
+	}
+
+	t.Run("upstream changes since the merge base are not counted", func(t *testing.T) {
+		// H7: the comparison is merge-base three-dot, so a large change that
+		// exists only upstream does not count toward the local small change.
+		repo := pushRepo(t, true, false)
+		hkGit(t, repo, "checkout", "-q", "-b", "elsewhere")
+		hkWriteFile(t, repo, "c/z.go", hkLines(200))
+		hkWriteFile(t, repo, "d/w.go", hkLines(200))
+		hkGit(t, repo, "add", "-A")
+		hkGit(t, repo, "commit", "-q", "-m", "upstream change")
+		hkGit(t, repo, "push", "-q", "origin", "elsewhere:main")
+		hkGit(t, repo, "checkout", "-q", "main")
+		hkWriteFile(t, repo, "a/x.md", hkLines(5))
+		hkGit(t, repo, "add", "-A")
+		hkGit(t, repo, "commit", "-q", "-m", "local small change")
+		h := hkNoRecordHarness(t)
+		hkExpectAllow(t, h.prePublish(t, repo, "git push"))
+	})
+}
+
+func TestHookPrePushUncommittedWithVerifiedRecord(t *testing.T) {
+	// H8 (F8e, contract rev 2): with only verified, current records, `git
+	// push` asks while a tracked file has uncommitted changes; `git commit -m
+	// x` with nothing staged is not affected; after committing the push is
+	// allowed. The tracked file is
+	// modified before `cw task start`, so the baseline already holds the
+	// modification and no source changes after start.
+	repo, h := hkDirtyPushState(t)
+
+	hkExpectAsk(t, h.prePublish(t, repo, "git push"), "uncommitted")
+	hkExpectAllow(t, h.prePublish(t, repo, "git commit -m x"))
+
+	// Control (contract rev 3): commit everything and nothing else. The
+	// source bytes, and so the verified digest, are unchanged, so the record
+	// stays verified and the tree is clean.
+	hkGit(t, repo, "commit", "-q", "-am", "x")
+	hkExpectAllow(t, h.prePublish(t, repo, "git push"))
+}
+
+// hkDirtyPushState builds the H8 state: a committed source.txt modified
+// without committing before `cw task start`, then assessed and verified, so
+// the only record is verified and current while the tree is dirty.
+func hkDirtyPushState(t *testing.T) (string, *hkHarness) {
+	t.Helper()
+	repo := hkRepo(t)
+	hkWriteFile(t, repo, "source.txt", "committed source\n")
+	hkGit(t, repo, "add", "source.txt")
+	hkGit(t, repo, "commit", "-q", "-m", "initial")
+	edited := []byte("edited source\n")
+	hkWriteFile(t, repo, "source.txt", string(edited))
+	h := newHKHarness(t)
+	record := h.start(t, repo, hkSubstantialPlan)
+	h.assessAndVerify(t, record, edited)
+	return repo, h
+}
+
+func TestHookPrePushUncommittedEnforceVerifyOff(t *testing.T) {
+	// H13 (rev 4): ENFORCE_VERIFY=false silences the H8 dirty-push ask.
+	repo, h := hkDirtyPushState(t)
+	// Control: the same state asks with the option unset.
+	hkExpectAsk(t, h.prePublish(t, repo, "git push"), "uncommitted")
+	h.env["CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY"] = "false"
+	hkExpectAllow(t, h.prePublish(t, repo, "git push"))
+}
+
+func TestHookPrePublishDenyBeatsAsk(t *testing.T) {
+	// H12 (rev 4): one Bash input publishing to A (open unverified record)
+	// and B (no record, staged change meeting the ask thresholds) denies,
+	// naming A's record, in either order.
+	gated := hkRepo(t)
+	h := newHKHarness(t)
+	record := h.start(t, gated, hkSubstantialPlan)
+	ungated := hkCommittedRepo(t, nil)
+	hkWriteFile(t, ungated, "a/x.go", hkLines(200))
+	hkWriteFile(t, ungated, "b/y.go", hkLines(200))
+	hkGit(t, ungated, "add", "-A")
+	cwd := hkCanonicalTempDir(t)
+	// Controls: each publication alone.
+	hkExpectAsk(t, h.prePublish(t, cwd, "git -C "+ungated+" commit -m x"), "cw task start", hkCommitAskWording)
+	hkExpectDeny(t, h.prePublish(t, cwd, "git -C "+gated+" commit -m x"), record)
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{"gated first", "git -C " + gated + " commit -m x; git -C " + ungated + " commit -m x"},
+		{"ungated first", "git -C " + ungated + " commit -m x; git -C " + gated + " commit -m x"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			hkExpectDeny(t, h.prePublish(t, cwd, test.command), record)
+		})
+	}
+}
+
+func TestHookPrePublishFinishedRecord(t *testing.T) {
+	// H1 wording and F10 through the hook (rev 4): record A verified on the
+	// current bytes, record B started on the same bytes, then a file edited:
+	// the deny names B and not A, and still offers `cw task abandon`.
+	repo := hkRepo(t)
+	source := []byte("verified source\n")
+	hkWriteFile(t, repo, "source.txt", string(source))
+	h := newHKHarness(t)
+	a := h.start(t, repo, hkTitled("Finished A"))
+	h.assessAndVerify(t, a, source)
+	b := h.start(t, repo, hkTitled("Follow-up B"))
+	// F10a precondition: B was created strictly after A's passing
+	// verification, so B can finish A.
+	verifiedA, err := taskflow.Load(a.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verifiedA.Verification == nil || !b.CreatedAt.After(verifiedA.Verification.CheckedAt) {
+		t.Fatalf("fixture: B created at %v, not after A's verification %+v", b.CreatedAt, verifiedA.Verification)
+	}
+	// Control: before the edit, B gates and A is current.
+	hkExpectDenyOnly(t, h.prePublish(t, repo, "git commit -m x"), []taskflow.Record{b}, a)
+	hkWriteFile(t, repo, "source.txt", "edited source\n")
+	hkExpectDenyOnly(t, h.prePublish(t, repo, "git commit -m x"), []taskflow.Record{b}, a)
 }
 
 // runSessionStart runs `cw hook session-start` with args after the command.

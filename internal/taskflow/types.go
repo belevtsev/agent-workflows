@@ -1,5 +1,4 @@
-// Package taskflow records source-bound task evidence independently of the
-// installer's frozen ownership, receipt and transaction formats.
+// Package taskflow records source-bound task evidence.
 package taskflow
 
 import (
@@ -12,6 +11,7 @@ import (
 	"io"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -156,6 +156,11 @@ type CheckRun struct {
 	OutputBytes  int64                `json:"output_bytes"`
 	Truncated    bool                 `json:"truncated"`
 	Failure      string               `json:"failure,omitempty"`
+	// GOFLAGS is the GOFLAGS of the check's environment, recorded for the Go
+	// evidence rule with compiler and linker flag values redacted
+	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
+	// Argv, unlike GOFLAGS, is stored verbatim.
+	GOFLAGS string `json:"goflags,omitempty"`
 }
 
 type Attachment struct {
@@ -206,6 +211,8 @@ type Record struct {
 	Assignments       []WorkerAssignment         `json:"assignments,omitempty"`
 	WorkerResults     []BoundWorkerResult        `json:"worker_results,omitempty"`
 	WorkerAcceptances []BoundWorkerAcceptance    `json:"worker_acceptances,omitempty"`
+	// Abandonment, once set, is the record's terminal revision (abandon.go).
+	Abandonment *Abandonment `json:"abandonment,omitempty"`
 }
 
 // Decode rejects unknown members, duplicate members, trailing JSON and partial
@@ -256,6 +263,12 @@ func ValidatePlan(plan *Plan) error {
 	}
 	if err := validateRecordedPlan(*plan); err != nil {
 		return err
+	}
+	// A substantial plan must be able to execute something: completion of a
+	// changed substantial task needs a passed run (see executionProblems).
+	// Applied only to new plans so that recorded tasks still load.
+	if plan.Kind == "substantial" && !slices.ContainsFunc(plan.Requirements, func(r Requirement) bool { return len(r.CheckIDs) > 0 }) {
+		return errors.New("a substantial plan needs at least one check bound to a requirement")
 	}
 	for _, check := range plan.Checks {
 		if err := validateCommand(check.Argv); err != nil {

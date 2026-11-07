@@ -13,12 +13,15 @@ import (
 // few lines. They are approved test-only seams; production code never uses
 // them.
 
-// openPlan is a minimal substantial plan with no checks and no required
-// adviser checkpoints. kind is "small" or "substantial".
+// openPlan is a minimal plan whose requirement allows non-execution, with no
+// required adviser checkpoints. kind is "small" or "substantial"; a
+// substantial plan binds one check, which it never needs to run.
 func openPlan(title, kind string) Plan {
 	plan := Plan{Title: title, Kind: kind, Requirements: []Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{}, AllowNonExecution: true}}, Checks: []Check{}}
 	if kind == "substantial" {
 		plan.Checkpoints = &CheckpointPolicy{Required: false, Reason: "scaffold"}
+		plan.Requirements[0].CheckIDs = []string{"unit"}
+		plan.Checks = []Check{{ID: "unit", Argv: []string{"go", "test", "./..."}}}
 	}
 	return plan
 }
@@ -41,6 +44,20 @@ func startIn(t *testing.T, store, repo, title, kind string) Record {
 // created_at, plan, baseline, advisers) must stay unchanged.
 func appendRevision(t *testing.T, record Record, mutate func(*Record)) Record {
 	t.Helper()
+	writeNextRevision(t, record, mutate)
+	loaded, err := Load(record.Directory)
+	if err != nil {
+		t.Fatalf("appended revision does not load: %v", err)
+	}
+	return loaded
+}
+
+// writeNextRevision writes the next revision of record's chain with mutate
+// applied, chained to record's revision by its digest, without loading it
+// back. A test uses it to hand-write a revision that Load may reject, for
+// example one appended after an abandoned revision.
+func writeNextRevision(t *testing.T, record Record, mutate func(*Record)) {
+	t.Helper()
 	previous, err := os.ReadFile(filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", record.Revision)))
 	if err != nil {
 		t.Fatal(err)
@@ -56,11 +73,6 @@ func appendRevision(t *testing.T, record Record, mutate func(*Record)) Record {
 	if err := os.WriteFile(filepath.Join(record.Directory, fmt.Sprintf("record-%06d.json", next.Revision)), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := Load(record.Directory)
-	if err != nil {
-		t.Fatalf("appended revision does not load: %v", err)
-	}
-	return loaded
 }
 
 // rewriteFirstRevision replaces revision 1 of a single-revision record with

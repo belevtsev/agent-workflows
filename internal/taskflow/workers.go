@@ -62,8 +62,12 @@ type WorkerChangedFile struct {
 }
 
 type WorkerFinding struct {
-	ID       string      `json:"id"`
-	Summary  string      `json:"summary"`
+	ID      string `json:"id"`
+	Summary string `json:"summary"`
+	// Severity is blocker, major or minor. A review handoff must set it;
+	// other roles may omit it. Findings recorded before it existed, and
+	// non-review findings without it, read as major (see severity).
+	Severity string      `json:"severity,omitempty"`
 	Evidence []SourceRef `json:"evidence"`
 }
 
@@ -399,6 +403,9 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 		if !identifier.MatchString(finding.ID) || seen[finding.ID] || !boundedText(finding.Summary) {
 			return errors.New("worker findings need distinct identifiers and bounded summaries")
 		}
+		if finding.Severity != "" && !slices.Contains(findingSeverities, finding.Severity) {
+			return fmt.Errorf("worker finding %s severity must be blocker, major or minor", finding.ID)
+		}
 		seen[finding.ID] = true
 		if err := refsShape(finding.Evidence, true); err != nil {
 			return err
@@ -674,6 +681,9 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 			return err
 		}
 		if err := validateResult(*record, *assigned, input); err != nil {
+			return err
+		}
+		if err := reviewSeverities(assigned.Brief.Role, input.Findings); err != nil {
 			return err
 		}
 		if !equalSnapshot(snapshot, input.Snapshot) {

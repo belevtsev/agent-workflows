@@ -12,9 +12,9 @@ import (
 
 // jsRegex is a JavaScript pattern compiled with Go's regexp. approximate is
 // true when the Go form cannot decide matches exactly: lookarounds become
-// plain groups, backreferences empty groups, a lone surrogate a class that
-// never matches, and a repeat count above RE2's limit of 1000 an open repeat,
-// so the syntax is still checked but matches are not.
+// plain groups, backreferences empty groups, a lone surrogate outside a class
+// a class that never matches, and a repeat count above RE2's limit of 1000 an
+// open repeat, so the syntax is still checked but matches are not.
 //
 // Otherwise matches are exact apart from these known differences, none of
 // which affects an ASCII pattern without \P{...} matched against printable

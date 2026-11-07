@@ -3,7 +3,7 @@ name: Agent evals
 # Runs the paid `claude plugin eval` suites under evals/, one job per suite, and
 # gates on a pass-rate floor and, for test-engineer, on the mutant gate. See
 # evals/README.md. Offline validation of the case files runs with every other
-# Go test in the validation workflow.
+# Go test in the CI workflow (ci.yml).
 
 on:
   workflow_dispatch:
@@ -98,7 +98,6 @@ jobs:
         suite: ${{ fromJSON(needs.plan.outputs.suites) }}
     env:
       GOWORK: 'off'
-      GOFLAGS: '-mod=mod'
       SUITE: ${{ matrix.suite }}
     steps:
       - name: Check out exact source

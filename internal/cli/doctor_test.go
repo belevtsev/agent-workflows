@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/manageruntime"
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 	"github.com/spf13/cobra"
 )
@@ -18,14 +17,13 @@ import (
 func doctorFixture(t *testing.T, config Config) (*cobra.Command, *bytes.Buffer) {
 	t.Helper()
 	config = defaults(config)
-	var o options
 	root := &cobra.Command{Use: "cw", SilenceUsage: true, SilenceErrors: true}
-	root.PersistentFlags().StringVar(&o.home, "home", "", "home")
-	root.PersistentFlags().StringVar(&o.codex, "codex-home", "", "codex home")
+	root.PersistentFlags().String("home", "", "home")
+	root.PersistentFlags().String("codex-home", "", "codex home")
 	out := &bytes.Buffer{}
 	root.SetOut(out)
 	root.SetErr(out)
-	addDoctorCommand(root, config, o)
+	addDoctorCommand(root, config)
 	return root, out
 }
 
@@ -45,10 +43,7 @@ func TestDoctorTargetsCwdIndependentlyOfInstallerSource(t *testing.T) {
 	doctorWrite(t, target, "package.json", "{}")
 	doctorWrite(t, source, "go.mod", "module wrong.example/source\n")
 	doctorWrite(t, home, ".codex/config.toml", "[shell_environment_policy.set]\nOPENAI_API_KEY = 'secret-value'\n")
-	// A version-3 locator may still carry a source; nothing selects a checkout from it.
-	root, out := doctorFixture(t, Config{WorkingDir: func() (string, error) { return target, nil }, HomeDir: func() (string, error) { return "", errors.New("--home was ignored") }, Getenv: func(string) string { return "" }, Resolve: func(string) (manageruntime.Locator, error) {
-		return manageruntime.Locator{Version: 3, Source: source}, nil
-	}})
+	root, out := doctorFixture(t, Config{WorkingDir: func() (string, error) { return target, nil }, HomeDir: func() (string, error) { return "", errors.New("--home was ignored") }, Getenv: func(string) string { return "" }})
 	root.SetArgs([]string{"doctor", "--home", home})
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)

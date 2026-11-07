@@ -15,7 +15,7 @@ import (
 
 const (
 	bindingSmallPlan       = `{"title":"Inspect source with bound advisers","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`
-	bindingSubstantialPlan = `{"title":"Decide with bound advisers","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","allow_non_execution":true}],"checks":[]}`
+	bindingSubstantialPlan = `{"title":"Decide with bound advisers","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`
 )
 
 // taskContextArgs runs cw task context for the before checkpoint (Revision 3).
@@ -37,7 +37,7 @@ type bindingFixture struct {
 // keeps the shipped providers).
 func newBindingFixture(t *testing.T, release int, pins []fixturePin, environment map[string]string) *bindingFixture {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	home, repo := t.TempDir(), t.TempDir()
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("verified source\n"), 0o600); err != nil {
 		t.Fatal(err)

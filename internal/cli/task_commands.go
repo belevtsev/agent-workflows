@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addTaskCommands(root *cobra.Command, config Config, _ options) {
+func addTaskCommands(root *cobra.Command, config Config) {
 	noArgs := func(cmd *cobra.Command, args []string) error {
 		if err := cobra.NoArgs(cmd, args); err != nil {
 			return usage(err)

@@ -144,7 +144,7 @@ func TestAutofillFillsBlankWorkerSourceRefHashes(t *testing.T) {
 			t.Fatalf("fixture digest mismatch: %s != %s", want, ref.SHA256)
 		}
 		input := workerResult(t, record, "inspect", "completed", blank)
-		input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Evidence: []SourceRef{blank}}}
+		input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Severity: "major", Evidence: []SourceRef{blank}}}
 		mustSubmitWorker(t, record, input)
 		bound := findWorkerResult(autofillTestLoad(t, record.Directory), "inspect")
 		if bound == nil {
@@ -290,7 +290,7 @@ func TestAutofillStillValidatesExplicitBindingValues(t *testing.T) {
 		{"snapshot", func(input *WorkerResult) { input.Snapshot.Fingerprint = "sha256:" + autofillTestWrongHash }},
 		{"evidence sha256", func(input *WorkerResult) { input.Evidence = []SourceRef{wrongRef} }},
 		{"finding evidence sha256", func(input *WorkerResult) {
-			input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Evidence: []SourceRef{wrongRef}}}
+			input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Severity: "major", Evidence: []SourceRef{wrongRef}}}
 		}},
 	}
 	for _, tc := range resultCases {
@@ -494,7 +494,7 @@ func TestAutofillReviewSatisfiesCompletionGateLikeExplicitReview(t *testing.T) {
 func TestAutofillFindingDispositionEvidenceHash(t *testing.T) {
 	record, ref := autofillTestInspection(t, helperPlan(t, "small", "pass"))
 	input := workerResult(t, record, "inspect", "completed", ref)
-	input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Evidence: []SourceRef{ref}}}
+	input.Findings = []WorkerFinding{{ID: "first-line", Summary: "The first line names the inspected source.", Severity: "major", Evidence: []SourceRef{ref}}}
 	mustSubmitWorker(t, record, input)
 	record = autofillTestLoad(t, record.Directory)
 	disposition := func(sha string) []FindingDisposition {

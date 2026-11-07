@@ -194,7 +194,7 @@ var (
 
 func executeImport(t *testing.T, args ...string) (string, error) {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.Err = new(bytes.Buffer)
 	err := Execute(t.Context(), append([]string{"metrics", "import"}, args...), config)
 	return out.String(), err

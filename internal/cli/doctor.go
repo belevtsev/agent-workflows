@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addDoctorCommand(root *cobra.Command, config Config, o options) {
+func addDoctorCommand(root *cobra.Command, config Config) {
 	var repo, skillsHome string
 	var live, summary bool
 	var timeout time.Duration

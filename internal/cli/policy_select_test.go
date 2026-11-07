@@ -210,7 +210,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			env := carveoutWithCredentials(map[string]string{})
 			config.Getenv = fixtureEnvironment(env)
 			root, flags := tc.setup(t, homeOf(t, config), env)
@@ -252,7 +252,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			config.Getenv = fixtureEnvironment(carveoutWithCredentials(map[string]string{}))
 			tc.setup(t, homeOf(t, config))
 			result := carveoutRunConsult(t, config, nil)
@@ -269,7 +269,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 	}
 
 	t.Run("d embedded default without credentials", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		result := carveoutRunConsult(t, config, nil)
 		if result.err != nil {
 			t.Fatalf("consult error = %v; stderr: %s", result.err, result.stderr)
@@ -292,7 +292,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 // PR-2: an unreadable selected policy fails the command.
 func TestCarveoutConsultUnreadablePolicy(t *testing.T) {
 	t.Run("environment names a missing file", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		env := carveoutWithCredentials(map[string]string{
 			"CW_MODEL_POLICY": filepath.Join(t.TempDir(), "missing.yaml"),
 		})
@@ -309,7 +309,7 @@ func TestCarveoutConsultUnreadablePolicy(t *testing.T) {
 		}
 	})
 	t.Run("personal file with version 2", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		config.Getenv = fixtureEnvironment(carveoutWithCredentials(map[string]string{}))
 		personalPolicyFixture(t, homeOf(t, config), 2, nil)
 		result := carveoutRunConsult(t, config, nil)
@@ -369,7 +369,7 @@ func carveoutTaskStartAdvisers(t *testing.T, config Config) map[string]string {
 // PR-3: `cw task start` binds advisers from the selected policy.
 func TestCarveoutTaskStartPolicySelection(t *testing.T) {
 	t.Run("embedded default", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		config.Getenv = fixtureEnvironment(carveoutWithCredentials(map[string]string{}))
 		got := carveoutTaskStartAdvisers(t, config)
 		want := map[string]string{"subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}
@@ -378,7 +378,7 @@ func TestCarveoutTaskStartPolicySelection(t *testing.T) {
 		}
 	})
 	t.Run("environment policy", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		env := carveoutWithCredentials(map[string]string{})
 		env["CW_MODEL_POLICY"] = writePolicyFixture(t, t.TempDir(), 3, []fixturePin{pinJev})
 		config.Getenv = fixtureEnvironment(env)
@@ -389,7 +389,7 @@ func TestCarveoutTaskStartPolicySelection(t *testing.T) {
 		}
 	})
 	t.Run("personal policy", func(t *testing.T) {
-		config, _, _, _ := testConfig(t)
+		config, _ := testConfig(t)
 		config.Getenv = fixtureEnvironment(carveoutWithCredentials(map[string]string{}))
 		personalPolicyFixture(t, homeOf(t, config), 3, []fixturePin{pinSnap})
 		got := carveoutTaskStartAdvisers(t, config)

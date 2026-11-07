@@ -384,7 +384,7 @@ func TestUnusedObsoleteReviewCanCloseWithoutInventingFindingResolution(t *testin
 	}
 	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
 	result := workerResult(t, record, "review", "completed", ref)
-	result.Findings = []WorkerFinding{{ID: "old_concern", Summary: "Finding tied to these source bytes.", Evidence: []SourceRef{ref}}}
+	result.Findings = []WorkerFinding{{ID: "old_concern", Summary: "Finding tied to these source bytes.", Severity: "major", Evidence: []SourceRef{ref}}}
 	record = mustSubmitWorker(t, record, result)
 	acceptance := workerAcceptance(t, record, "review", "unused")
 	acceptance.CheckIDs = []string{}
@@ -425,7 +425,7 @@ func TestReviewRequiresIndependentIdentityFullScopeAndResolvedFindings(t *testin
 	}
 	record = mustAssignWorker(t, record, workerBrief("independent", "/root/reviewer", "review", []string{"."}, "focused"))
 	result := workerResult(t, record, "independent", "completed", ref)
-	result.Findings = []WorkerFinding{{ID: "concern", Summary: "Potential source behavior needs adjudication.", Evidence: []SourceRef{ref}}}
+	result.Findings = []WorkerFinding{{ID: "concern", Summary: "Potential source behavior needs adjudication.", Severity: "major", Evidence: []SourceRef{ref}}}
 	record = mustSubmitWorker(t, record, result)
 	acceptance := workerAcceptance(t, record, "independent", "accepted", ref)
 	if _, err := AcceptWorkerResult(t.Context(), record.Directory, acceptance); err == nil {

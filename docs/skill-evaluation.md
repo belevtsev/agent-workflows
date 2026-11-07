@@ -12,9 +12,9 @@ Measure those outcomes on equivalent work.
 ## Credential-free fixture gates
 
 The historical fifteen scenarios under
-`internal/devcheck/testdata/backend-skills` remain unchanged. They exercise supplied
+`internal/skillcheck/testdata/backend-skills` remain unchanged. They exercise supplied
 skills and synthetic decision evidence. Fresh discovery is a separate twelve-case
-corpus under `internal/devcheck/testdata/skill-routing`: raw case inputs are in
+corpus under `internal/skillcheck/testdata/skill-routing`: raw case inputs are in
 `inputs/`; evaluator-only rubrics and canned observations are outside that tree.
 
 | Raw case ID | Discovery condition |
@@ -32,16 +32,17 @@ corpus under `internal/devcheck/testdata/skill-routing`: raw case inputs are in
 | `shell-portability-implicit` | Pre-release review of a `curl \| sh` installer without a skill name |
 | `shell-portability-adjacent` | Error wrapping around a Go `exec.Command` call with no shell |
 
-Existing `go test`/`cwdev check` gates validate raw/oracle separation, local paths,
+The `go test ./internal/skillcheck` gates validate raw/oracle separation, local paths,
 required references, discovery modes, and deterministic canned scoring. Canned
 records include accepted decisions and rejection examples for missing reads,
 misrouting, invented execution, effects, weak oracles, missing depth, and oracle
 access. This checks the fixture/scorer contract; it neither calls a hosted model
-nor demonstrates that discovery or reasoning passed. CI receives no service
-credentials. There is no separate `cwdev eval` command.
+nor demonstrates that discovery or reasoning passed. Pull request CI (`ci.yml`)
+receives no service credentials. These cases have no `cwdev` runner; `cwdev eval multilingual` covers
+only the adviser corpus.
 
 The personal corpus has twelve cases under
-`internal/devcheck/testdata/personal-skill-routing/inputs`: eleven implicit and one
+`internal/skillcheck/testdata/personal-skill-routing/inputs`: eleven implicit and one
 explicit. The original production planning and diagram preparation inputs and
 expectations are unchanged. The Dockerfile review now names `$docker-build-strategies`,
 because that Docker skill is left out of the automatic listing and run only when
@@ -113,15 +114,15 @@ writes. The harness may invoke the selected model; the task may not launch furth
 network work. Set a fixed timeout and one attempt per case. Do not automatically
 retry failures or continue a contaminated session.
 
-1. Pin and validate the exact committed suite SHA and installed snapshot identity.
+1. Pin and validate the exact committed suite SHA.
    Record the CLI version and applicable help. Use an isolated disposable task home
    for skill discovery; preserve the existing `CODEX_HOME` for authentication and
    use `--ignore-user-config`. Never copy, display, or log auth files/tokens. Do not
    change the user's real skill registrations or installation.
-2. Build a sanitized catalog containing only the pinned snapshot's `skills/` and
+2. Build a sanitized catalog containing only the pinned commit's `skills/` and
    `third_party/` resources. Link the 36 registrations in the disposable
-   task home to that catalog. Do not expose the complete snapshot or checkout:
-   those also contain evaluator files. Record catalog identity and registrations.
+   task home to that catalog. Do not expose the complete checkout:
+   it also contains evaluator files. Record catalog identity and registrations.
    This copy is an evaluation fixture, not a suite upgrade or live activation.
 3. Copy exactly one raw case's prompt and artifacts into an opaque isolated input
    directory. Supply only that directory and the sanitized discoverable catalog.
@@ -164,7 +165,7 @@ side effect invalidates the evaluation. Read-only sandboxing controls writes but
 does not by itself prove that withheld files were unread; inspect the trace. Keep
 invalid/failed attempts in the record without converting them into passes.
 
-For each attempt record: case ID; source SHA and snapshot/catalog identity; raw
+For each attempt record: case ID; source SHA and catalog identity; raw
 input and prompt SHA256; CLI version; configured and observed model/effort;
 actual skill/reference reads; semantic claim judgments with evidence; effects;
 exit status and errors; timeout/budget; elapsed time; input/output/total tokens

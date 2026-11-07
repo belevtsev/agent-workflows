@@ -222,7 +222,7 @@ func bindChecks(record Record, snapshot projectctx.Snapshot, ids []string) ([]st
 	runs := []string{}
 	for _, id := range ids {
 		run := latestRun(record, id)
-		if run == nil || run.Status != "passed" || run.ExitCode == nil || *run.ExitCode != 0 || run.After == nil || !equalSnapshot(run.Before, *run.After) || !equalSnapshot(snapshot, *run.After) {
+		if run == nil || !passedAt(*run, snapshot) {
 			return nil, fmt.Errorf("check %s lacks a passed run at the current source snapshot", id)
 		}
 		runs = append(runs, run.ID)
@@ -473,10 +473,18 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
 		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
+		findingIssues, findingNotes := rejectedFindingReport(root, *record)
+		result.Problems = append(result.Problems, findingIssues...)
+		result.Limitations = append(result.Limitations, findingNotes...)
 		contractIssues, contractNotes := contractProblems(root, *record)
 		result.Problems = append(result.Problems, contractIssues...)
 		result.Limitations = append(result.Limitations, contractNotes...)
 		if record.Plan.Kind == "substantial" {
+			if !equalSnapshot(record.Baseline, snapshot) {
+				executionIssues, executionNotes := executionProblems(root, *record, snapshot, files)
+				result.Problems = append(result.Problems, executionIssues...)
+				result.Limitations = append(result.Limitations, executionNotes...)
+			}
 			if len(record.Advisers) == 0 {
 				result.Limitations = append(result.Limitations, noAdvisersLimitation)
 			}

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -125,10 +126,11 @@ func TestHooksJSONShape(t *testing.T) {
 	})
 
 	t.Run("events matchers and conditions", func(t *testing.T) {
-		// R-JSON: SessionStart matcher startup|resume|clear|compact; PreToolUse
-		// matcher Bash with if conditions exactly Bash(git commit *) and
-		// Bash(git push *); commands call cw hook and reference the plugin
-		// root and data directory.
+		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
+		// PreToolUse has one Bash group with exactly one handler whose if is
+		// Bash(*git*) and whose command is the agreed inline command;
+		// SessionStart calls cw hook and references the plugin root and data
+		// directory.
 		events := make([]string, 0, len(file.Hooks))
 		for event := range file.Hooks {
 			events = append(events, event)
@@ -151,19 +153,27 @@ func TestHooksJSONShape(t *testing.T) {
 		if len(pre) != 1 || pre[0].Matcher != "Bash" {
 			t.Fatalf("PreToolUse groups %+v", pre)
 		}
-		var conditions []string
-		for _, entry := range pre[0].Hooks {
-			conditions = append(conditions, entry.If)
-			if !strings.Contains(entry.Command, "cw hook pre-publish") {
-				t.Errorf("PreToolUse command %q does not run cw hook pre-publish", entry.Command)
-			}
+		if len(pre[0].Hooks) != 1 {
+			t.Fatalf("PreToolUse has %d handlers, want exactly one: %+v", len(pre[0].Hooks), pre[0].Hooks)
 		}
-		slices.Sort(conditions)
-		if !slices.Equal(conditions, []string{"Bash(git commit *)", "Bash(git push *)"}) {
-			t.Fatalf("PreToolUse if conditions %v", conditions)
+		entry := pre[0].Hooks[0]
+		if entry.If != preToolUseIf {
+			t.Fatalf("PreToolUse if %q, want %q", entry.If, preToolUseIf)
+		}
+		if entry.Command != preToolUseCommand {
+			t.Fatalf("PreToolUse command %q, want %q", entry.Command, preToolUseCommand)
 		}
 	})
 }
+
+// The agreed PreToolUse handler (E1).
+const (
+	preToolUseIf      = "Bash(*git*)"
+	preToolUseCommand = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
+)
+
+// gateInactiveLine is the line SessionStart appends when cw is not on PATH (E4).
+const gateInactiveLine = "agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH."
 
 // hooksCanonicalTempDir returns a fresh temporary directory in canonical form.
 func hooksCanonicalTempDir(t *testing.T) string {
@@ -214,6 +224,67 @@ const hooksOldCW = "#!/bin/sh\necho \"agent-workflows: unknown command: hook\" >
 // hooksSilentCW prints nothing and succeeds.
 const hooksSilentCW = "#!/bin/sh\nexit 0\n"
 
+// hooksGit runs git in dir with HOME set to home and no global or system
+// configuration.
+func hooksGit(t *testing.T, home, dir string, args ...string) {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), "git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "init.defaultBranch=main"}, args...)...)
+	command.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1"}
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, output)
+	}
+}
+
+// hooksLines returns n distinct newline-terminated lines.
+func hooksLines(n int) string {
+	var b strings.Builder
+	for i := range n {
+		b.WriteString("line ")
+		b.WriteString(strconv.Itoa(i))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// hooksWriteFile writes content to dir/rel, creating parent directories.
+func hooksWriteFile(t *testing.T, dir, rel, content string) {
+	t.Helper()
+	path := filepath.Join(dir, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// hooksDecision is the PreToolUse decision a hook prints.
+type hooksDecision struct {
+	HookSpecificOutput struct {
+		HookEventName            string `json:"hookEventName"`
+		PermissionDecision       string `json:"permissionDecision"`
+		PermissionDecisionReason string `json:"permissionDecisionReason"`
+	} `json:"hookSpecificOutput"`
+}
+
+// hooksExpectDecision requires one newline-terminated PreToolUse JSON line
+// with the wanted permissionDecision and returns its reason.
+func hooksExpectDecision(t *testing.T, stdout, want string) string {
+	t.Helper()
+	if !strings.HasSuffix(stdout, "\n") || strings.Count(stdout, "\n") != 1 {
+		t.Fatalf("stdout %q is not one JSON line", stdout)
+	}
+	var decision hooksDecision
+	if err := json.Unmarshal([]byte(stdout), &decision); err != nil {
+		t.Fatalf("stdout %q is not the decision JSON: %v", stdout, err)
+	}
+	output := decision.HookSpecificOutput
+	if output.HookEventName != "PreToolUse" || output.PermissionDecision != want {
+		t.Fatalf("decision %+v, want a PreToolUse %s", output, want)
+	}
+	return output.PermissionDecisionReason
+}
+
 func TestHooksEndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds cmd/cw")
@@ -239,14 +310,12 @@ func TestHooksEndToEnd(t *testing.T) {
 	data := hooksCanonicalTempDir(t)
 	store := filepath.Join(hooksCanonicalTempDir(t), "store")
 	repo := hooksCanonicalTempDir(t)
-	initRepo := exec.CommandContext(t.Context(), "git", "-c", "init.defaultBranch=main", "init", "-q", repo)
-	initRepo.Env = []string{"HOME=" + home, "PATH=" + withoutCW, "GIT_CONFIG_NOSYSTEM=1"}
-	if output, err := initRepo.CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v\n%s", err, output)
-	}
+	hooksGit(t, home, repo, "init", "-q")
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	// A directory outside any repository, used as the hook's cwd for E2.
+	outside := hooksCanonicalTempDir(t)
 
 	env := func(path string, extra ...string) []string {
 		return append([]string{
@@ -258,53 +327,54 @@ func TestHooksEndToEnd(t *testing.T) {
 		}, extra...)
 	}
 
-	// Each PreToolUse entry runs with the Bash command its condition matches.
-	type preHook struct {
-		name    string
-		command string
-		stdin   []byte
+	pre := file.Hooks["PreToolUse"]
+	if len(pre) != 1 || len(pre[0].Hooks) != 1 {
+		t.Fatalf("PreToolUse groups %+v, want one group with one handler", pre)
 	}
-	var pre []preHook
-	for _, group := range file.Hooks["PreToolUse"] {
-		for _, entry := range group.Hooks {
-			bash := "git commit -m x"
-			if strings.Contains(entry.If, "push") {
-				bash = "git push origin main"
-			}
-			stdin, err := json.Marshal(map[string]any{
-				"session_id":      "s",
-				"hook_event_name": "PreToolUse",
-				"tool_name":       "Bash",
-				"cwd":             repo,
-				"tool_input":      map[string]any{"command": bash},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			pre = append(pre, preHook{name: entry.If, command: entry.Command, stdin: stdin})
-		}
-	}
-	if len(pre) != 2 {
-		t.Fatalf("found %d PreToolUse entries, want 2", len(pre))
-	}
-
-	expectAllow := func(t *testing.T, hook preHook, environment []string) {
+	preCommand := pre[0].Hooks[0].Command
+	// preStdin is a PreToolUse payload for a Bash command run in cwd.
+	preStdin := func(t *testing.T, cwd, bash string) []byte {
 		t.Helper()
-		code, stdout, stderr := hooksSh(t, hook.command, hook.stdin, environment)
-		if code != 0 || stdout != "" {
-			t.Fatalf("%s: exit %d stdout %q stderr %q; want exit 0 and no output", hook.name, code, stdout, stderr)
+		stdin, err := json.Marshal(map[string]any{
+			"session_id":      "s",
+			"hook_event_name": "PreToolUse",
+			"tool_name":       "Bash",
+			"cwd":             cwd,
+			"tool_input":      map[string]any{"command": bash},
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
+		return stdin
+	}
+	// The publish commands every pre-publish case runs from the repository.
+	publish := []string{"git commit -m x", "git push origin main"}
+
+	expectAllow := func(t *testing.T, stdin []byte, environment []string) {
+		t.Helper()
+		code, stdout, stderr := hooksSh(t, preCommand, stdin, environment)
+		if code != 0 || stdout != "" {
+			t.Fatalf("exit %d stdout %q stderr %q; want exit 0 and no output", code, stdout, stderr)
+		}
+	}
+	expectDecision := func(t *testing.T, stdin []byte, environment []string, want string) string {
+		t.Helper()
+		code, stdout, stderr := hooksSh(t, preCommand, stdin, environment)
+		if code != 0 {
+			t.Fatalf("exit %d stderr %q", code, stderr)
+		}
+		return hooksExpectDecision(t, stdout, want)
 	}
 
 	t.Run("pre-publish allows without a record", func(t *testing.T) {
-		// R-E2E: no record, exit 0 and empty stdout.
-		for _, hook := range pre {
-			expectAllow(t, hook, env(withCW))
+		// R-E2E: no record and nothing staged, exit 0 and empty stdout.
+		for _, bash := range publish {
+			expectAllow(t, preStdin(t, repo, bash), env(withCW))
 		}
 	})
 
 	plan := filepath.Join(hooksCanonicalTempDir(t), "plan.json")
-	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":[],"allow_non_execution":true}],"checks":[]}`), 0600); err != nil {
+	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	start := exec.CommandContext(t.Context(), binary, "task", "start", "--repo", repo, "--plan", plan,
@@ -325,39 +395,35 @@ func TestHooksEndToEnd(t *testing.T) {
 
 	t.Run("pre-publish denies with an open record", func(t *testing.T) {
 		// R-E2E: an open record yields exit 0 and the deny JSON naming the task.
-		for _, hook := range pre {
-			code, stdout, stderr := hooksSh(t, hook.command, hook.stdin, env(withCW))
-			if code != 0 {
-				t.Fatalf("%s: exit %d stderr %q", hook.name, code, stderr)
-			}
-			var decision struct {
-				HookSpecificOutput struct {
-					HookEventName            string `json:"hookEventName"`
-					PermissionDecision       string `json:"permissionDecision"`
-					PermissionDecisionReason string `json:"permissionDecisionReason"`
-				} `json:"hookSpecificOutput"`
-			}
-			if err := json.Unmarshal([]byte(stdout), &decision); err != nil {
-				t.Fatalf("%s: stdout %q is not the deny JSON: %v", hook.name, stdout, err)
-			}
-			output := decision.HookSpecificOutput
-			if output.HookEventName != "PreToolUse" || output.PermissionDecision != "deny" || !strings.Contains(output.PermissionDecisionReason, record.ID) {
-				t.Fatalf("%s: decision %+v, want a PreToolUse deny naming task %s", hook.name, output, record.ID)
+		for _, bash := range publish {
+			reason := expectDecision(t, preStdin(t, repo, bash), env(withCW), "deny")
+			if !strings.Contains(reason, record.ID) {
+				t.Fatalf("%s: deny reason %q does not name task %s", bash, reason, record.ID)
 			}
 		}
 	})
 
+	t.Run("pre-publish denies git -C from outside any repository", func(t *testing.T) {
+		// E2: `git -C <repo> commit -m x` with a non-repository cwd is denied.
+		reason := expectDecision(t, preStdin(t, outside, "git -C "+repo+" commit -m x"), env(withCW), "deny")
+		if !strings.Contains(reason, record.ID) {
+			t.Fatalf("deny reason %q does not name task %s", reason, record.ID)
+		}
+		// Control: the same cwd without -C is allowed.
+		expectAllow(t, preStdin(t, outside, "git commit -m x"), env(withCW))
+	})
+
 	t.Run("pre-publish honours enforce_verify=false", func(t *testing.T) {
 		// R-E2E: CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false allows.
-		for _, hook := range pre {
-			expectAllow(t, hook, env(withCW, "CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false"))
+		for _, bash := range publish {
+			expectAllow(t, preStdin(t, repo, bash), env(withCW, "CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false"))
 		}
 	})
 
 	t.Run("pre-publish allows without cw on PATH", func(t *testing.T) {
 		// R-E2E: without cw the command exits 0 with no output.
-		for _, hook := range pre {
-			expectAllow(t, hook, env(withoutCW))
+		for _, bash := range publish {
+			expectAllow(t, preStdin(t, repo, bash), env(withoutCW))
 		}
 	})
 
@@ -367,9 +433,22 @@ func TestHooksEndToEnd(t *testing.T) {
 	t.Run("pre-publish allows with a cw that has no hook command", func(t *testing.T) {
 		// R-E2E: a cw that exits 2 (older than the hook subcommand) gives
 		// exit 0 and no output.
-		for _, hook := range pre {
-			expectAllow(t, hook, env(withOldCW))
+		for _, bash := range publish {
+			expectAllow(t, preStdin(t, repo, bash), env(withOldCW))
 		}
+	})
+
+	t.Run("pre-publish asks for a large unrecorded staged diff", func(t *testing.T) {
+		// E3: a repository with no record whose staged diff meets the
+		// thresholds (more than 300 lines of code in two top-level
+		// directories, no tests) gets one ask line.
+		other := hooksCanonicalTempDir(t)
+		hooksGit(t, home, other, "init", "-q")
+		hooksGit(t, home, other, "commit", "-q", "--allow-empty", "-m", "initial")
+		hooksWriteFile(t, other, "a/x.go", hooksLines(200))
+		hooksWriteFile(t, other, "b/y.go", hooksLines(200))
+		hooksGit(t, home, other, "add", "-A")
+		expectDecision(t, preStdin(t, other, "git commit -m x"), env(withCW), "ask")
 	})
 
 	session := file.Hooks["SessionStart"]
@@ -413,14 +492,27 @@ func TestHooksEndToEnd(t *testing.T) {
 		}
 	})
 
+	t.Run("session-start without cw adds the inactive-gate line", func(t *testing.T) {
+		// E4: without cw on PATH, the raw file verbatim followed by exactly
+		// one line saying the gate is inactive, newline-terminated.
+		if !strings.HasSuffix(string(agents), "\n") {
+			t.Fatal("global/AGENTS.md does not end with a newline; the expected output below assumes it does")
+		}
+		want := string(agents) + gateInactiveLine + "\n"
+		code, stdout, stderr := hooksSh(t, sessionCommand, sessionStdin, env(withoutCW))
+		if code != 0 || stdout != want {
+			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and the %d-byte file followed by %q", code, stderr, stdout, len(agents), gateInactiveLine+"\n")
+		}
+	})
+
 	t.Run("session-start falls back to the raw file", func(t *testing.T) {
-		// R-E2E: without cw on PATH, with a cw that exits 2, and with a cw
-		// that prints nothing, the command exits 0 and prints the raw file.
+		// E4, R-E2E: with a cw that exits 2 and with a cw that prints
+		// nothing, the command exits 0 and prints the raw file verbatim, with
+		// no extra line.
 		tests := []struct {
 			name string
 			path string
 		}{
-			{"cw absent from PATH", withoutCW},
 			{"cw exits 2", withOldCW},
 			{"cw prints nothing", withSilentCW},
 		}

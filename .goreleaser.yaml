@@ -1,0 +1,44 @@
+# Release archives for cw, built by .github/workflows/release.yml on v* tags.
+version: 2
+
+project_name: cw
+
+builds:
+  - id: cw
+    main: ./cmd/cw
+    binary: cw
+    env:
+      - CGO_ENABLED=0
+      - GOWORK=off
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Tag }} -X main.revision={{ .FullCommit }} -X main.builtAt={{ .CommitDate }}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: cw
+    formats: [tar.gz]
+    name_template: '{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - LICENSE
+      - THIRD_PARTY.md
+      - licenses/*
+
+checksum:
+  name_template: SHA256SUMS
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  draft: false
+  prerelease: auto
