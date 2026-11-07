@@ -25,6 +25,42 @@ decision models, or require service credentials. Real Bash/zsh execution verifie
 Use `go test` with a focused package or test filter while developing; the complete
 developer check runs the release verification gates once.
 
+The check needs a clean checkout at an exact commit, because it builds the smoke
+binary from that commit. To verify uncommitted work, add `--snapshot`:
+
+```sh
+GOWORK=off go run ./cmd/cwdev check --race --snapshot --source "$PWD"
+```
+
+It copies the tracked and Git-unignored untracked files, which `git add -A` would
+commit, into a new repository under the temporary directory. It commits them there
+with a fixed identity and isolated Git configuration and runs the same gates in that
+copy. The source is left untouched, unless an explicit `--binary` names a path
+inside it; by default the binary is built inside the copy. The output includes a line
+`Snapshot tree: <hash> (...)` before the gates run, and a passing run ends with
+`Verified snapshot tree: <hash>`. After committing the same work, compare:
+
+```sh
+git rev-parse HEAD^{tree}
+```
+
+The two hashes are equal when the commit contains exactly the verified files.
+A difference means the commit left out or added something, such as an ignored file
+the gates needed or a file staged only in part. It can also come from the source's
+own Git configuration, such as `core.fileMode=false`, a clean filter or
+`core.autocrlf`, which the copy does not use. In either case, rerun the check.
+
+The copy is removed when the gates pass, fail or are interrupted. Each copy holds a
+lock for its lifetime. A run killed outright, for example when `cw task run` times
+out a check, leaves its copy behind. The next `--snapshot` run removes it, or, if the
+run died before taking its lock, removes it once the copy is an hour old. It prints
+a warning for any leftover copy it cannot remove. Concurrent runs never touch a copy
+whose owner is alive. Submodules, nested repositories, unmerged paths, sparse-checkout
+(skip-worktree) and assume-unchanged entries, and tracked paths replaced by special
+files are refused. Git does not list untracked special files, so the copy leaves
+them out. `--snapshot` cannot prepare release assets: `--release-version`,
+`--revision` and `cwdev release` still require a clean exact checkout.
+
 First-party automation must use Go. Only install.sh is allowed as a bootstrap;
 script resources supplied by skills are explicitly exempt. Do not add Python
 installer tests, environment preparation, or functional release shell scripts.

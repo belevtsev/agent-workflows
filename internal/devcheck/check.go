@@ -25,14 +25,46 @@ type Options struct {
 	Revision       string
 	Dist           string
 	Output         io.Writer
+	// Snapshot runs the gates in a disposable committed copy of Source's
+	// working tree, so uncommitted work can be verified. Binary then defaults
+	// inside the copy.
+	Snapshot bool
 }
 
 // Check runs formatting, vet, maintained-source validation, native tests, and a
 // fresh isolated installation. On main it overlaps cross-builds with checks and
 // reuses the native release executable for smoke instead of building it twice.
-func Check(ctx context.Context, options Options) error {
+// With Snapshot it runs the same gates in a committed copy of the working tree
+// and prints the copy's tree hash; release preparation still needs a clean
+// exact checkout.
+func Check(ctx context.Context, options Options) (err error) {
 	if options.Output == nil {
 		options.Output = os.Stdout
+	}
+	tree := ""
+	if options.Snapshot {
+		if options.ReleaseVersion != "" || options.Revision != "" {
+			return errors.New("--snapshot verifies uncommitted work; --release-version and --revision need a clean exact checkout without it")
+		}
+		snapshot, snapshotErr := NewSnapshot(ctx, options.Source)
+		if snapshotErr != nil {
+			return snapshotErr
+		}
+		// Assigns the named result, so a failed removal is never dropped.
+		defer func() { err = errors.Join(err, snapshot.Remove()) }()
+		tree = snapshot.Tree
+		if _, err := fmt.Fprintf(options.Output, "Snapshot tree: %s (%d files from %s)\n", tree, snapshot.Files, options.Source); err != nil {
+			return err
+		}
+		if snapshot.Leftovers != nil {
+			if _, err := fmt.Fprintf(options.Output, "Warning: leftover snapshot copies could not be removed: %v\n", snapshot.Leftovers); err != nil {
+				return err
+			}
+		}
+		options.Source = snapshot.Dir
+	}
+	if options.Binary == "" {
+		options.Binary = filepath.Join(options.Source, ".bin", "cw")
 	}
 	if err := workflow.ValidateAutomation(options.Source); err != nil {
 		return err
@@ -116,7 +148,12 @@ func Check(ctx context.Context, options Options) error {
 	if err := StandaloneNativeSmoke(ctx, options.Source, options.Binary, options.Output); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(options.Output, "Native formatting, vet, source validation, tests and installation smoke passed.")
+	if _, err := fmt.Fprintln(options.Output, "Native formatting, vet, source validation, tests and installation smoke passed."); err != nil {
+		return err
+	}
+	if tree != "" {
+		_, err = fmt.Fprintf(options.Output, "Verified snapshot tree: %s\n", tree)
+	}
 	return err
 }
 
