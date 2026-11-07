@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/graphify"
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/userconfig"
 	"github.com/spf13/cobra"
 )
 
@@ -47,15 +46,6 @@ func selectedHome(root *cobra.Command, config Config) (string, error) {
 	return config.HomeDir()
 }
 
-// activePolicy locates the policy of the release that is currently installed.
-func activePolicy(root *cobra.Command, config Config) (string, error) {
-	roots, err := resolveRoots(root, config)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(roots.state, "current", "skills", "task-orchestration", "model-policy.yaml"), nil
-}
-
 // disabledAdvisers returns the providers that the saved preferences in the
 // configuration directory disable. A missing preferences file disables none;
 // an unreadable or invalid one is an error.
@@ -64,25 +54,23 @@ func disabledAdvisers(root *cobra.Command, config Config) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	prefs, err := workflow.SavedPreferences(directory)
+	disabled, err := userconfig.DisabledAdvisers(directory)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read saved preferences: %w", err)
 	}
-	if prefs.Advisers == nil {
-		return nil, nil
-	}
-	return prefs.Advisers.Disabled, nil
+	return disabled, nil
 }
 
 func addConsultCommand(root *cobra.Command, config Config) {
 	var options consult.Options
+	var policy string
 	var summary bool
 	command := &cobra.Command{
 		Use:   "consult",
 		Short: "Collect independent adviser judgments, or validate a recorded decision offline",
 		Long: "With --request, validate a shared Choice request (at most 8 questions) and send it once to each configured adviser under the policy's batch deadline, writing a new private version 4 record. " +
 			"The participating advisers are the task's adviser binding when the request state holds task_context or task_contexts, and otherwise the policy's enabled providers. " +
-			"Without a task, an adviser disabled in your saved preferences (setup's Keys step, or advisers.disabled in a --settings file) is recorded as not_configured and never contacted, even with --policy; a task keeps its binding. " +
+			"Without a task, an adviser disabled in your saved preferences (advisers.disabled in preferences.json of the configuration directory) is recorded as not_configured and never contacted, even with --policy; a task keeps its binding. " +
 			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. " +
 			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
 			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
@@ -94,12 +82,12 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			if err := options.Check(); err != nil {
 				return usage(err)
 			}
-			if options.Policy == "" && options.Request != "" {
-				policy, err := activePolicy(root, config)
+			if options.Request != "" {
+				selected, err := selectPolicy(root, config, policy)
 				if err != nil {
 					return err
 				}
-				options.Policy = policy
+				options.Policy = selected
 			}
 			options.Getenv, options.Stdout, options.Stderr = config.Getenv, cmd.OutOrStdout(), cmd.ErrOrStderr()
 			// A dry run also resolves credentials, only to report which advisers
@@ -139,7 +127,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Adjudicate, "adjudicate", "", "Saved consultation record to finalize offline")
 	flags.StringVar(&options.Decision, "decision", "", "Coordinator decision JSON file, with --adjudicate")
 	flags.StringVar(&options.Output, "output", "", "New private record path; an existing file is never replaced")
-	flags.StringVar(&options.Policy, "policy", "", "Validated model policy (defaults to the installed release's)")
+	flags.StringVar(&policy, "policy", "", policyFlagHelp)
 	flags.BoolVar(&summary, "summary", false, "After writing the record, print a one-line JSON view of it (statuses, answers, comparison) without the request body")
 	root.AddCommand(command)
 }
