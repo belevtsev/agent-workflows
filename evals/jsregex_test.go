@@ -6,23 +6,29 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
 // jsRegex is a JavaScript pattern compiled with Go's regexp. approximate is
-// true when the Go form cannot decide matches exactly: lookarounds,
-// backreferences, lone surrogates and repeat counts above RE2's limit become
-// plain groups or open repeats, so the syntax is still checked but matches are
-// not.
+// true when the Go form cannot decide matches exactly: lookarounds become
+// plain groups, backreferences empty groups, a lone surrogate a class that
+// never matches, and a repeat count above RE2's limit of 1000 an open repeat,
+// so the syntax is still checked but matches are not.
 //
-// Matching is exact only for the text the validator matches, JSON tool input
-// that is ASCII or BMP text: Go matches by code point where JavaScript without
-// u matches by UTF-16 unit (., negated classes and repeats of astral
-// characters differ), and JavaScript's extra line terminators are not modelled.
-// Some valid JavaScript is rejected because RE2 cannot express it (v-mode set
-// notation, \p{Script=...}, class ranges bounded by a class escape, nested
-// repeats beyond 1000); the rejection names the pattern, so it never passes
-// silently.
+// Otherwise matches are exact for the text the validator matches, JSON tool
+// input that is ASCII or BMP text, apart from these known differences:
+//   - Go matches by code point where JavaScript without u matches by UTF-16
+//     unit, so ., negated classes and repeats differ on astral characters.
+//   - JavaScript's extra line terminators (U+2028, U+2029 and \r for . and
+//     for ^ and $ with m) are not modelled.
+//   - With flag i and without u, JavaScript does not fold the Kelvin sign,
+//     the long s and the Angstrom sign onto k, s and å as Go does.
+//
+// Valid JavaScript that RE2 cannot express is rejected with an error naming
+// the pattern, never passed silently: v-mode set notation, \p{...} binary
+// properties, long category names, script aliases and Script_Extensions, and
+// repeats nested beyond 1000.
 type jsRegex struct {
 	*regexp.Regexp
 	approximate bool
@@ -54,11 +60,15 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 	var out strings.Builder
 	approximate := false
 	inClass := false
+	var ranges classRanges
 	for i := 0; i < len(pattern); i++ {
 		ch := pattern[i]
 		switch {
 		case ch == '\\':
 			goForm, width, approx, err := syntax.escape(pattern[i:], inClass)
+			if err == nil && inClass {
+				err = ranges.item(syntax, syntax.classEscape(pattern[i:]))
+			}
 			if err != nil {
 				return nil, fmt.Errorf("does not compile: %w", err)
 			}
@@ -72,6 +82,23 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 				// v-mode classes reserve these and allow nested set notation,
 				// which RE2 cannot express.
 				return nil, fmt.Errorf("does not compile: unescaped %q in a v-mode character class", ch)
+			} else if syntax.vMode && ch == '&' && strings.HasPrefix(pattern[i:], "&&") {
+				return nil, errors.New("does not compile: set intersection (&&) in a v-mode class is not supported")
+			} else if syntax.vMode && strings.IndexByte("!#$%*+,.:;<=>?@^`~", ch) >= 0 && i+1 < len(pattern) && pattern[i+1] == ch {
+				return nil, fmt.Errorf("does not compile: %c%c is reserved in a v-mode character class", ch, ch)
+			}
+			if ch == '-' {
+				goForm, err := ranges.dash(syntax, pattern[i+1:])
+				if err != nil {
+					return nil, fmt.Errorf("does not compile: %w", err)
+				}
+				out.WriteString(goForm)
+				continue
+			}
+			if ch != ']' {
+				if err := ranges.item(syntax, false); err != nil {
+					return nil, fmt.Errorf("does not compile: %w", err)
+				}
 			}
 			if ch == '[' {
 				// A literal [ in JavaScript; RE2 would read [: as a POSIX class.
@@ -89,6 +116,7 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 			i += len("[]") - 1
 		case ch == '[':
 			inClass = true
+			ranges = classRanges{}
 			out.WriteByte(ch)
 			if strings.HasPrefix(pattern[i+1:], "^") {
 				out.WriteByte('^')
@@ -284,8 +312,11 @@ func (js jsSyntax) escape(s string, inClass bool) (string, int, bool, error) {
 		if !strings.HasPrefix(s[2:], "{") || end < 0 {
 			return "", 0, false, fmt.Errorf(`\%c needs {property} in Unicode mode`, c)
 		}
-		return s[:end+1], end + 1, false, nil // RE2 checks the property name
-	case strings.IndexByte("dDwWsSbBfnrtv", c) >= 0:
+		goForm, err := propertyEscape(c, s[3:end])
+		return goForm, end + 1, false, err
+	case c == 's' || c == 'S':
+		return whitespaceEscape(c == 'S', inClass), 2, false, nil
+	case strings.IndexByte("dDwWbBfnrtv", c) >= 0:
 		return s[:2], 2, false, nil
 	case c < utf8.RuneSelf && (isASCIILetter(c) || c >= '0' && c <= '9'):
 		if js.unicode {
@@ -305,6 +336,110 @@ func (js jsSyntax) escape(s string, inClass bool) (string, int, bool, error) {
 		return "", 0, false, fmt.Errorf(`escape \%c is not allowed in Unicode mode`, r)
 	}
 	return regexp.QuoteMeta(string(r)), 1 + width, false, nil
+}
+
+// classEscape reports whether the escape at the start of s stands for a set of
+// characters (\d, \w, \s, and \p in Unicode mode) rather than one character.
+func (js jsSyntax) classEscape(s string) bool {
+	return len(s) >= 2 && (strings.IndexByte("dDwWsS", s[1]) >= 0 || js.unicode && (s[1] == 'p' || s[1] == 'P'))
+}
+
+// classRanges follows the items of one character class to check its ranges.
+// Unicode mode forbids a class escape such as \d as a range end; Annex B reads
+// that - as a literal, which RE2 would reject. v mode also requires every
+// unescaped - to form a range and reserves -- for set subtraction, which RE2
+// lacks.
+type classRanges struct {
+	start      bool // the last item can start a range
+	startClass bool // the last item is a class escape
+	open       bool // a - waits for the range's end
+}
+
+// item records one class member; classEscape is true for \d, \w, \s or \p.
+func (r *classRanges) item(js jsSyntax, classEscape bool) error {
+	if r.open {
+		r.open, r.start = false, false
+		if js.unicode && (r.startClass || classEscape) {
+			return errors.New("a class escape cannot bound a range in Unicode mode")
+		}
+		return nil
+	}
+	r.start, r.startClass = true, classEscape
+	return nil
+}
+
+// dash records an unescaped -, whose pattern rest follows it, and returns its
+// RE2 form.
+func (r *classRanges) dash(js jsSyntax, rest string) (string, error) {
+	if r.start && !r.open && rest != "" && rest[0] != ']' {
+		if js.vMode && rest[0] == '-' {
+			return "", errors.New("set subtraction (--) in a v-mode class is not supported")
+		}
+		r.open = true
+		if !js.unicode && (r.startClass || js.classEscape(rest)) {
+			// Annex B: a class escape at either end makes the - a literal,
+			// and the item after it still ends the would-be range.
+			return `\x{2D}`, nil
+		}
+		return "-", nil
+	}
+	if js.vMode && !r.open {
+		return "", errors.New("an unescaped - in a v-mode class must form a range")
+	}
+	return `\x{2D}`, r.item(js, false) // a literal -
+}
+
+// jsSpace lists JavaScript's \s, which RE2's \s narrows to ASCII without \v:
+// WhiteSpace and LineTerminator code points.
+const jsSpace = `\t\n\v\f\r\x{20}\x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}`
+
+// jsNonSpace is the complement of jsSpace, for \S inside a class.
+const jsNonSpace = `\x{0}-\x{8}\x{E}-\x{1F}\x{21}-\x{9F}\x{A1}-\x{167F}\x{1681}-\x{1FFF}\x{200B}-\x{2027}\x{202A}-\x{202E}\x{2030}-\x{205E}\x{2060}-\x{2FFF}\x{3001}-\x{FEFE}\x{FF00}-\x{10FFFF}`
+
+// whitespaceEscape returns the RE2 form of \s, or of \S when negated.
+func whitespaceEscape(negated, inClass bool) string {
+	switch {
+	case inClass && negated:
+		return jsNonSpace
+	case inClass:
+		return jsSpace
+	case negated:
+		return "[^" + jsSpace + "]"
+	default:
+		return "[" + jsSpace + "]"
+	}
+}
+
+// jsPropertyName matches a property name or value in \p{...}.
+var jsPropertyName = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
+
+// propertyEscape returns the RE2 form of \p{body} or \P{body} in Unicode mode.
+// JavaScript names a script as Script=Name (or sc=, or Script_Extensions=)
+// and a category bare or as General_Category=Value; RE2 spells both bare.
+// Names RE2 does not know, such as binary properties, fail when RE2 compiles.
+func propertyEscape(c byte, body string) (string, error) {
+	name, value, keyed := strings.Cut(body, "=")
+	if !jsPropertyName.MatchString(name) || keyed && !jsPropertyName.MatchString(value) {
+		return "", fmt.Errorf(`\%c{%s} is not a property name`, c, body)
+	}
+	switch {
+	case !keyed:
+		if _, script := unicode.Scripts[name]; script && unicode.Categories[name] == nil {
+			return "", fmt.Errorf(`\%c{%s} names a script, which JavaScript spells \%c{Script=%s}`, c, body, c, name)
+		}
+		value = name
+	case name == "Script" || name == "sc":
+		if unicode.Scripts[value] == nil {
+			return "", fmt.Errorf(`\%c{%s}: RE2 knows no script %s`, c, body, value)
+		}
+	case name == "General_Category" || name == "gc":
+		if unicode.Categories[value] == nil {
+			return "", fmt.Errorf(`\%c{%s}: RE2 knows no general category %s`, c, body, value)
+		}
+	default:
+		return "", fmt.Errorf(`\%c{%s}: RE2 does not support the %s property`, c, body, name)
+	}
+	return `\` + string(c) + "{" + value + "}", nil
 }
 
 // identityEscape reports whether Unicode mode allows c after a backslash.

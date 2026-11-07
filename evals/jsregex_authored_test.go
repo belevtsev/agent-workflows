@@ -32,8 +32,9 @@ func authored2RegexCases() []authored2RegexCase {
 	loneHi := bs + "uD800"              // a high surrogate with no partner
 	loneLo := bs + "uDE00"              // a low surrogate with no partner
 	grin := string(rune(0x1F600))
+	alpha := string(rune(0x03B1)) // Greek small alpha
 	ctl := func(r rune) string { return string(r) }
-	return []authored2RegexCase{
+	rows := []authored2RegexCase{
 		// E1: \uXXXX is the code point; outside Unicode mode a short \u is the letter u.
 		{req: "E1", pattern: uA, ok: true, match: []string{"A", "xAx"}, noMatch: []string{"B", "u0041", ""}},
 		{req: "E1", pattern: uA, flags: "u", ok: true, match: []string{"A"}, noMatch: []string{"B", "u0041"}},
@@ -220,10 +221,84 @@ func authored2RegexCases() []authored2RegexCase {
 		// E25: [\&] is valid only with flag v.
 		{req: "E25", pattern: `[\&]`, flags: "v", ok: true, match: []string{"&"}, noMatch: []string{"a", `\`}},
 		{req: "E25", pattern: `[\&]`, flags: "u", errSub: bad},
+
+		// E26: a class escape as a range end.
+		{req: "E26", pattern: `[\w-a]`, flags: "u", errSub: bad},
+		{req: "E26", pattern: `[a-\d]`, flags: "u", errSub: bad},
+		{req: "E26", pattern: `[\s-\w]`, flags: "u", errSub: bad},
+		{req: "E26", pattern: `[\p{L}-z]`, flags: "u", errSub: bad},
+		{req: "E26", pattern: `[\w-a]`, ok: true, match: []string{"-", "b", "a"}, noMatch: []string{"!"}},
+		{req: "E26", pattern: `[a-\d]`, ok: true, match: []string{"-", "a", "5"}, noMatch: []string{"b"}},
+		{req: "E26", pattern: `[a-z-\w]`, flags: "u", ok: true, match: []string{"-", "_", "m"}, noMatch: []string{"!"}},
+		{req: "E26", pattern: `[\w-]`, flags: "u", ok: true, match: []string{"-", "a"}, noMatch: []string{"!"}},
+		{req: "E26", pattern: `[-\w]`, flags: "u", ok: true, match: []string{"-", "a"}, noMatch: []string{"!"}},
+
+		// E27: with flag v an unescaped - must form a range.
+		{req: "E27", pattern: `[-]`, flags: "v", errSub: bad},
+		{req: "E27", pattern: `[a-]`, flags: "v", errSub: bad},
+		{req: "E27", pattern: `[-a]`, flags: "v", errSub: bad},
+		{req: "E27", pattern: `[+--]`, flags: "v", errSub: bad},
+		{req: "E27", pattern: `[a--b]`, flags: "v", errSub: bad}, // unsupported: set subtraction
+		{req: "E27", pattern: `[a-c]`, flags: "v", ok: true, match: []string{"b"}, noMatch: []string{"d"}},
+		{req: "E27", pattern: `[\-]`, flags: "v", ok: true, match: []string{"-"}, noMatch: []string{"a"}},
+		{req: "E27", pattern: `[-]`, flags: "u", ok: true, match: []string{"-"}, noMatch: []string{"a"}},
+
+		// E28: doubled punctuators in a v-mode class.
+		{req: "E28", pattern: `[a!!b]`, flags: "v", errSub: bad},
+		{req: "E28", pattern: `[..]`, flags: "v", errSub: bad},
+		{req: "E28", pattern: `[a&&b]`, flags: "v", errSub: bad}, // unsupported: set intersection
+		{req: "E28", pattern: `[a&b]`, flags: "v", ok: true, match: []string{"&", "a"}, noMatch: []string{"c"}},
+		{req: "E28", pattern: `[a&&b]`, flags: "u", ok: true, match: []string{"&", "a"}, noMatch: []string{"c"}},
+
+		// E30: property escapes with flag u.
+		{req: "E30", pattern: `\p{Script=Greek}`, flags: "u", ok: true, match: []string{alpha}, noMatch: []string{"a"}},
+		{req: "E30", pattern: `\p{sc=Greek}`, flags: "u", ok: true, match: []string{alpha}, noMatch: []string{"a"}},
+		{req: "E30", pattern: `\P{Script=Greek}`, flags: "u", ok: true, match: []string{"a"}, noMatch: []string{alpha}},
+		{req: "E30", pattern: `\p{gc=Lu}`, flags: "u", ok: true, match: []string{"A"}, noMatch: []string{"a"}},
+		{req: "E30", pattern: `\p{General_Category=Lu}`, flags: "u", ok: true, match: []string{"A"}, noMatch: []string{"a"}},
+		{req: "E30", pattern: `^[\p{Script=Greek}a]$`, flags: "u", ok: true, match: []string{alpha, "a"}, noMatch: []string{"b"}},
+		{req: "E30", pattern: `\p{L}`, flags: "u", ok: true, match: []string{"a"}, noMatch: []string{"1"}},
+		{req: "E30", pattern: `\p{Greek}`, flags: "u", errSub: bad},
+		{req: "E30", pattern: `\p{^Greek}`, flags: "u", errSub: bad},
+		{req: "E30", pattern: `\p{Script=}`, flags: "u", errSub: bad},
+		{req: "E30", pattern: `\p{=Greek}`, flags: "u", errSub: bad},
+		{req: "E30", pattern: `\p{Foo=Bar}`, flags: "u", errSub: bad},
+
+		// E32: an open repeat beyond RE2's limit.
+		{req: "E32", pattern: `^a{5,2000}$`, ok: true, approx: true, match: []string{"aaaaa", strings.Repeat("a", 6)}, noMatch: []string{"aaaa"}},
+	}
+
+	// E29: \s and \S use JavaScript's whitespace set, with and without u.
+	jsSpace := []string{ctl(0x0B), ctl(0xA0), ctl(0xFEFF), ctl(0x3000), ctl(0x2028), ctl(0x1680), " "}
+	zwsp := ctl(0x200B)
+	for _, f := range []string{"", "u"} {
+		rows = append(rows,
+			authored2RegexCase{req: "E29", pattern: `^\s$`, flags: f, ok: true, match: jsSpace, noMatch: []string{"a", zwsp}},
+			authored2RegexCase{req: "E29", pattern: `^\S$`, flags: f, ok: true, match: []string{zwsp, "a"}, noMatch: []string{ctl(0xA0), ctl(0x0B)}},
+			authored2RegexCase{req: "E29", pattern: `^[\S]$`, flags: f, ok: true, match: []string{zwsp, "a"}, noMatch: []string{ctl(0xA0), ctl(0x0B)}},
+			authored2RegexCase{req: "E29", pattern: `^[^\s]$`, flags: f, ok: true, match: []string{zwsp, "a"}, noMatch: []string{ctl(0xA0), ctl(0x0B)}},
+			authored2RegexCase{req: "E29", pattern: `^[^\S]$`, flags: f, ok: true, match: []string{ctl(0xA0), ctl(0x0B)}, noMatch: []string{zwsp, "a"}},
+		)
+	}
+	rows = append(rows, authored2RegexCase{req: "E29", pattern: `^[\sa]$`, flags: "u", ok: true, match: []string{ctl(0x1680), "a"}, noMatch: []string{"b"}})
+	return rows
+}
+
+// TestAuthored2ValidFlags covers E31.
+func TestAuthored2ValidFlags(t *testing.T) {
+	for _, f := range []string{"", "gi", "u", "v", "dgimsuy", "dgimsvy"} {
+		if !validFlags(f) {
+			t.Errorf("validFlags(%q) = false, want true", f)
+		}
+	}
+	for _, f := range []string{"uv", "vu", "gg", "x"} {
+		if validFlags(f) {
+			t.Errorf("validFlags(%q) = true, want false", f)
+		}
 	}
 }
 
-// TestAuthored2CompileJSEscapes covers E1-E25.
+// TestAuthored2CompileJSEscapes covers E1-E30 and E32.
 func TestAuthored2CompileJSEscapes(t *testing.T) {
 	for _, tc := range authored2RegexCases() {
 		name := tc.req + "/" + tc.pattern + "/" + tc.flags

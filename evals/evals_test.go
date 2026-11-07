@@ -438,7 +438,7 @@ func (c *caseCheck) checkGrader(file string, fields map[string]any, hasBody bool
 		if v, ok := fields["flags"]; ok {
 			s, isString := v.(string)
 			if !isString || !validFlags(s) {
-				c.fail(file, "flags %#v must be distinct JavaScript regex flags from dgimsuyv", v)
+				c.fail(file, "flags %#v must be distinct JavaScript regex flags from dgimsuyv, not both u and v", v)
 			}
 			flags = s
 		}
@@ -677,13 +677,15 @@ func ownedPaths(body string) []string {
 	return owned
 }
 
+// validFlags reports whether flags is a valid JavaScript flags string: known
+// flags, none repeated, and not both u and v.
 func validFlags(flags string) bool {
 	for i, f := range flags {
 		if !strings.ContainsRune("dgimsuyv", f) || strings.ContainsRune(flags[:i], f) {
 			return false
 		}
 	}
-	return true
+	return !strings.ContainsRune(flags, 'u') || !strings.ContainsRune(flags, 'v')
 }
 
 // splitFrontmatter splits a Markdown file into its YAML frontmatter (between
