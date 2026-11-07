@@ -111,7 +111,8 @@ value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 `cw metrics import` reports per-agent tokens and dollars from a Claude Code transcript
-or a Codex rollout, without writing anything.
+or a Codex rollout, without writing anything; with `--composition` and `--prices` it also
+attributes each agent's input to its sources (Claude transcripts only).
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. These commands do not alter installer ownership, receipt or
 recovery formats. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).

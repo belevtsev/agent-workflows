@@ -148,7 +148,7 @@ func metaText(value jsontext.Value) string {
 	return text
 }
 
-func importClaude(ctx context.Context, path string, prices *PriceTable) (Report, error) {
+func importClaude(ctx context.Context, path string, prices *PriceTable, composition bool) (Report, error) {
 	report := newReport(SourceClaude)
 	absolute, err := filepath.Abs(path)
 	if err != nil {
@@ -210,16 +210,24 @@ func importClaude(ctx context.Context, path string, prices *PriceTable) (Report,
 		files = append(files, agentFile{newAgentState(agent), filepath.Join(subagents, name)})
 	}
 
+	var comp *composer
+	if composition {
+		comp = newComposer(prices, sessionID)
+	}
 	var lastCost *costState
 	costStates := 0
 	var matchingEntries, otherEntries int64
 	r := newReader(MaxLineBytes)
 	for index, file := range files {
 		s.agents = append(s.agents, file.state)
+		main := index == 0
+		var compAgent *compAgent
+		if comp != nil {
+			compAgent = comp.addAgent(file.state.agent, main)
+		}
 		if r.exhausted {
 			continue
 		}
-		main := index == 0
 		stats, err := r.eachLine(ctx, file.path, &report.Skipped, func(line []byte) {
 			var head claudeHead
 			if json.Unmarshal(line, &head, lenient) != nil {
@@ -251,31 +259,56 @@ func importClaude(ctx context.Context, path string, prices *PriceTable) (Report,
 					report.Skipped.InvalidEntries++
 					return
 				}
+				key := entry.RequestID
+				if key == "" && entry.Message != nil && entry.Message.ID != "" {
+					key = "message:" + entry.Message.ID
+				}
+				// Lines that are not requests (synthetic, no usage, another
+				// session's copied history) are still context for the composer.
+				context := func(history bool) {
+					if compAgent != nil {
+						comp.assistant(compAgent, line, key, "", request{}, false, history)
+					}
+				}
 				if entry.Message != nil && entry.Message.Model == "<synthetic>" {
 					report.Skipped.SyntheticEntries++
+					context(false)
 					return
 				}
 				if entry.Message == nil || entry.Message.Usage == nil {
 					report.Skipped.NoUsageEntries++
+					context(false)
 					return
 				}
 				if entry.SessionID != sessionID {
 					report.Skipped.OtherSessionEntries++
+					context(true)
 					return
 				}
 				req, ok := claudeRequest(entry.Message.Usage, &report)
 				if !ok {
 					report.Skipped.InvalidEntries++
+					context(false)
 					return
 				}
-				key := entry.RequestID
-				if key == "" && entry.Message.ID != "" {
-					key = "message:" + entry.Message.ID
-				}
-				before := s.requests
-				s.record(file.state, key, entry.Message.Model, req)
-				if effort := metaText(entry.Effort); s.requests > before && effort != "" {
+				recorded := s.record(file.state, key, entry.Message.Model, req)
+				if effort := metaText(entry.Effort); recorded && effort != "" {
 					file.state.efforts[effort] = true
+				}
+				if compAgent != nil {
+					comp.assistant(compAgent, line, key, entry.Message.Model, req, recorded, false)
+				}
+			case "user":
+				if compAgent != nil {
+					comp.user(compAgent, line)
+				}
+			case "attachment":
+				if compAgent != nil {
+					comp.attachment(compAgent, line)
+				}
+			case "system":
+				if compAgent != nil {
+					comp.system(compAgent, line)
 				}
 			}
 		})
@@ -303,6 +336,9 @@ func importClaude(ctx context.Context, path string, prices *PriceTable) (Report,
 	s.finish(prices)
 	applyClaudeDollars(&report, lastCost, costStates, prices)
 	finishReport(&report, lastCost)
+	if comp != nil {
+		report.Composition = comp.build(&report, lastCost)
+	}
 	return report, nil
 }
 

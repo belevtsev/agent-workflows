@@ -19,6 +19,8 @@ type Options struct {
 	CodexSession      string
 	CodexSessionsRoot string
 	Prices            *PriceTable
+	// Composition adds the context-composition report; it needs Prices.
+	Composition bool
 }
 
 // Import reads the selected transcript read-only and returns the report. It
@@ -31,10 +33,16 @@ func Import(ctx context.Context, options Options) (Report, error) {
 		return Report{}, fmt.Errorf("%w: supply exactly one of a Claude transcript or a Codex session", ErrInvalidOptions)
 	case options.ClaudeTranscript != "" && options.CodexSessionsRoot != "":
 		return Report{}, fmt.Errorf("%w: a Codex sessions root applies only to a Codex session", ErrInvalidOptions)
+	case options.Composition && options.Prices == nil:
+		return Report{}, fmt.Errorf("%w: a composition needs a price table to reconcile with the recorded cost", ErrInvalidOptions)
 	case options.ClaudeTranscript != "":
-		return importClaude(ctx, options.ClaudeTranscript, options.Prices)
+		return importClaude(ctx, options.ClaudeTranscript, options.Prices, options.Composition)
 	default:
-		return importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices)
+		report, err := importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices)
+		if err == nil && options.Composition {
+			report.Composition = unsupportedComposition(report)
+		}
+		return report, err
 	}
 }
 
