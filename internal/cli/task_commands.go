@@ -63,7 +63,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	var repo, planFile, store, policy string
 	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: "Capture the selected project's baseline and an explicit JSON requirement/check plan in a new private task record. " +
 		"The record binds the advisers configured now: each provider the model policy enables whose credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys), mapped to its pinned model, possibly none. " +
-		"An adviser disabled in your saved preferences (setup's Keys step, or advisers.disabled in a --settings file) is never bound, even with --policy; an unreadable or invalid preferences file fails before any task is created. " +
+		"An adviser disabled in your saved preferences (advisers.disabled in preferences.json of the configuration directory) is never bound, even with --policy; an unreadable or invalid preferences file fails before any task is created. " +
 		"The binding never changes for the task's lifetime; 'cw task context' carries it to 'cw consult'. An unreadable or invalid policy fails before any task is created.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
@@ -72,13 +72,9 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 		if err := read(cmd, planFile, &plan); err != nil {
 			return err
 		}
-		selectedPolicy := policy
-		if selectedPolicy == "" {
-			var err error
-			selectedPolicy, err = activePolicy(root, config)
-			if err != nil {
-				return err
-			}
+		selectedPolicy, err := selectPolicy(root, config, policy)
+		if err != nil {
+			return err
 		}
 		getenv, err := credentialEnvironment(root, config)
 		if err != nil {
@@ -123,7 +119,7 @@ func addTaskCommands(root *cobra.Command, config Config, _ options) {
 	start.Flags().StringVar(&repo, "repo", "", "Selected project directory (default: current working directory)")
 	start.Flags().StringVar(&planFile, "plan", "", "Explicit plan JSON file, or - for standard input")
 	start.Flags().StringVar(&store, "store", "", "Private task storage directory outside the target project")
-	start.Flags().StringVar(&policy, "policy", "", "Validated model policy whose enabled advisers are bound (defaults to the installed release's)")
+	start.Flags().StringVar(&policy, "policy", "", "Model policy whose enabled advisers are bound; "+policyFlagHelp)
 	summaryFlag(start)
 	task.AddCommand(start)
 	var contextTask, phase string

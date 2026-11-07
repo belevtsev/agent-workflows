@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 // investigationConfidence is the answer confidence at or above which a
@@ -35,7 +35,7 @@ func adviserNamePattern() *regexp.Regexp {
 	names := []string{"jev", "snap", "subq", `openai\s+decisions`, "typesafe", "advisers?", "advisors?"}
 	for _, provider := range providerOrder {
 		names = append(names, regexp.QuoteMeta(provider))
-		if model, pinned := workflow.PinnedConsultationModel(provider); pinned {
+		if model, pinned := modelpolicy.PinnedModel(provider); pinned {
 			names = append(names, regexp.QuoteMeta(model))
 		}
 	}

@@ -27,14 +27,14 @@ type bindingFixture struct {
 	config      Config
 	out, stderr *bytes.Buffer
 	home        string
-	policy      string // the active release's policy, if one is installed
+	policy      string // the personal skill's policy, if one is written
 	environment map[string]string
 }
 
 // newBindingFixture isolates a home and serves environment as the credential
-// environment. When release is non-zero, the default state directory holds an
-// active release whose policy declares that version, with pins (nil keeps the
-// shipped providers).
+// environment. When release is non-zero, the personal task-orchestration skill
+// under the home holds a policy that declares that version, with pins (nil
+// keeps the shipped providers).
 func newBindingFixture(t *testing.T, release int, pins []fixturePin, environment map[string]string) *bindingFixture {
 	t.Helper()
 	config, out, _, _ := testConfig(t)
@@ -44,11 +44,7 @@ func newBindingFixture(t *testing.T, release int, pins []fixturePin, environment
 	}
 	fixture := &bindingFixture{out: out, stderr: new(bytes.Buffer), home: home, environment: environment}
 	if release != 0 {
-		state := filepath.Join(home, ".local", "state", "agent-workflows")
-		if err := os.MkdirAll(state, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		fixture.policy = activeReleaseFixture(t, state, release, pins)
+		fixture.policy = personalPolicyFixture(t, home, release, pins)
 	}
 	config.Err = fixture.stderr
 	config.HomeDir = func() (string, error) { return home, nil }
@@ -122,13 +118,13 @@ func requireAdviserBinding(t *testing.T, label string, got any, want map[string]
 
 // D5 (binding at start), D3 (configured = in the policy's providers and
 // credentialed) and Revision 3 (task start --policy, defaulting to the
-// installed release's policy): cw task start binds the providers of the
+// personal skill's policy): cw task start binds the providers of the
 // selected policy whose credential is present, stores the binding and emits
 // it.
 func TestTaskStartBindsConfiguredAdvisersFromPolicy(t *testing.T) {
 	for _, test := range []struct {
 		name        string
-		pins        []fixturePin // the active release's providers; nil keeps the shipped ones
+		pins        []fixturePin // the personal policy's providers; nil keeps the shipped ones
 		explicit    []fixturePin // non-nil passes --policy with these providers
 		credentials map[string]string
 		want        map[string]string
@@ -139,7 +135,7 @@ func TestTaskStartBindsConfiguredAdvisersFromPolicy(t *testing.T) {
 		{"every_credential_jev_not_enabled", nil, nil, fixtureCredentials("jev", "subq_snap", "openai_decisions"), map[string]string{"subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}},
 		{"jev_enabled_and_credentialed", []fixturePin{pinJev, pinSnap}, nil, fixtureCredentials("jev", "openai_decisions"), map[string]string{"jev": "jev-1.14.0"}},
 		{"no_enabled_providers", []fixturePin{}, nil, fixtureCredentials("jev", "subq_snap", "openai_decisions"), map[string]string{}},
-		{"explicit_policy_overrides_installed", nil, []fixturePin{pinJev}, fixtureCredentials("jev", "subq_snap", "openai_decisions"), map[string]string{"jev": "jev-1.14.0"}},
+		{"explicit_policy_overrides_personal", nil, []fixturePin{pinJev}, fixtureCredentials("jev", "subq_snap", "openai_decisions"), map[string]string{"jev": "jev-1.14.0"}},
 		{"explicit_policy_without_credentials", nil, []fixturePin{pinJev, pinSnap, pinOpenAI}, nil, map[string]string{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -166,17 +162,17 @@ func TestTaskStartBindsConfiguredAdvisersFromPolicy(t *testing.T) {
 
 // Revision 3 with D1: when the selected policy cannot be read or is invalid,
 // including an older version, task start fails before creating any task
-// directory and never binds an empty set silently.
+// directory and never binds an empty set silently. With no personal policy
+// the embedded default applies, which the policy resolution tests cover.
 func TestTaskStartRefusesUnusablePolicyBeforeCreatingATask(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		release  int // 0 installs no release
+		release  int // 0 writes no personal policy
 		explicit int // 0 passes no --policy; -1 passes a missing path
 		message  string
 	}{
-		{"no_installed_policy", 0, 0, ""},
-		{"installed_policy_version_2", 2, 0, "model policy version 2 is not supported; this cw requires version 3"},
-		{"installed_policy_version_1", 1, 0, "model policy version 1 is not supported; this cw requires version 3"},
+		{"personal_policy_version_2", 2, 0, "model policy version 2 is not supported; this cw requires version 3"},
+		{"personal_policy_version_1", 1, 0, "model policy version 1 is not supported; this cw requires version 3"},
 		{"explicit_policy_version_2", 3, 2, "model policy version 2 is not supported; this cw requires version 3"},
 		{"explicit_policy_missing", 3, -1, ""},
 	} {

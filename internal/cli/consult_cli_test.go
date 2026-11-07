@@ -155,9 +155,18 @@ func writePolicyFixture(t *testing.T, dir string, version int, pins []fixturePin
 	return policy
 }
 
+// personalPolicyFixture writes the given policy as the personal
+// task-orchestration skill's, <home>/.agents/skills/task-orchestration/model-policy.yaml,
+// which consult and task start read when no policy is selected, and returns
+// the policy path.
+func personalPolicyFixture(t *testing.T, home string, version int, pins []fixturePin) string {
+	t.Helper()
+	return writePolicyFixture(t, filepath.Join(home, ".agents", "skills", "task-orchestration"), version, pins)
+}
+
 // activeReleaseFixture installs a release that ships the given policy behind
-// state/current, the installed-release layout of the existing consult tests,
-// and returns the policy path.
+// state/current, the installed-release layout the installer tests model, and
+// returns the policy path. Consult and task start no longer read it.
 func activeReleaseFixture(t *testing.T, state string, version int, pins []fixturePin) string {
 	t.Helper()
 	release := filepath.Join(state, "releases", "fixture-policy-v"+strconv.Itoa(version))

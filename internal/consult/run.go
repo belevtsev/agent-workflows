@@ -18,12 +18,17 @@ import (
 	"os"
 	"slices"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
 // Options selects one consultation or offline adjudication.
 type Options struct {
-	Request, Adjudicate, Decision, Output, Policy string
-	DryRun                                        bool
+	Request, Adjudicate, Decision, Output string
+	// Policy is the model policy a request runs under: a file, or the shipped
+	// document embedded in cw. Adjudication reads none.
+	Policy modelpolicy.Source
+	DryRun bool
 	// Getenv resolves the credential variables; nil reads none.
 	Getenv func(string) string
 	// Disabled, when set, loads the provider IDs the user's preferences

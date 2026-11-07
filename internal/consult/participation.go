@@ -7,14 +7,15 @@ import (
 	"slices"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/workflow"
+	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
 )
 
-// validModel applies the policy pin rules of internal/workflow: a versioned
-// Jev ID, the one Snap preview, and the one documented OpenAI Decisions model.
+// validModel applies the policy pin rules of internal/modelpolicy: a
+// versioned Jev ID, the one Snap preview, and the one documented OpenAI
+// Decisions model.
 func validModel(provider string, model any) bool {
 	name, ok := model.(string)
-	return ok && workflow.ValidConsultationModel(provider, name)
+	return ok && modelpolicy.ValidModel(provider, name)
 }
 
 // knownProvider reports whether name is a known adviser ID under the policy
@@ -32,7 +33,7 @@ func AttemptedStatus(status string) bool {
 	return false
 }
 
-// ValidateBinding applies the policy pin rules (internal/workflow) to an
+// ValidateBinding applies the policy pin rules (internal/modelpolicy) to an
 // adviser binding (provider ID -> model): every ID must be a known adviser
 // (jev, subq_snap, openai_decisions), jev must be a versioned Jev ID
 // (jev-X.Y.Z; aliases such as jev-latest are refused), subq_snap must be
@@ -66,60 +67,32 @@ type policy struct {
 	providers map[string]string
 }
 
-func loadPolicy(path string) (policy, error) {
-	value, err := workflow.ValidateModelPolicy(path)
+// loadPolicy reads the adviser portion of the selected policy. Its errors
+// are the validation failures of internal/modelpolicy.
+func loadPolicy(source modelpolicy.Source) (policy, error) {
+	selected, err := source.Load()
 	if err != nil {
 		return policy{}, err
 	}
-	consultation, ok := value["consultation"].(workflow.Object)
-	if !ok {
-		return policy{}, errors.New("policy does not configure adviser consultation")
-	}
-	var seconds int
-	switch item := consultation["deadline_seconds"].(type) {
-	case int:
-		seconds = item
-	case int64:
-		seconds = int(item)
-	}
-	if seconds <= 0 {
-		return policy{}, errors.New("policy consultation deadline is invalid")
-	}
-	providers := map[string]string{}
-	if configured := consultation["providers"]; configured != nil {
-		listed, ok := configured.(workflow.Object)
-		if !ok {
-			return policy{}, errors.New("policy consultation providers must be a mapping")
-		}
-		for name, model := range listed {
-			if !knownProvider(name) {
-				return policy{}, fmt.Errorf("policy names unknown adviser %q", name)
-			}
-			if !validModel(name, model) {
-				return policy{}, fmt.Errorf("policy adviser %s has an invalid pinned model", name)
-			}
-			providers[name] = model.(string)
-		}
-	}
-	return policy{deadline: time.Duration(seconds) * time.Second, providers: providers}, nil
+	return policy{deadline: selected.Deadline, providers: selected.Providers}, nil
 }
 
 // ConfiguredAdvisers returns the advisers that a consultation run under the
-// model policy at policyPath would attempt: each provider the policy enables
+// selected model policy would attempt: each provider the policy enables
 // whose credential variable (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY)
 // is non-empty under getenv. The result maps provider ID to its pinned model,
 // is never nil, and is empty when nothing is configured. Only the credential
 // variables of enabled providers are read, and no credential value is
 // returned. A nil getenv reads no credentials. The error is the policy
 // validation failure, if any.
-func ConfiguredAdvisers(policyPath string, getenv func(string) string) (map[string]string, error) {
-	selected, err := loadPolicy(policyPath)
+func ConfiguredAdvisers(selected modelpolicy.Source, getenv func(string) string) (map[string]string, error) {
+	loaded, err := loadPolicy(selected)
 	if err != nil {
 		return nil, err
 	}
 	configured := map[string]string{}
 	for _, name := range providerOrder {
-		model, enabled := selected.providers[name]
+		model, enabled := loaded.providers[name]
 		if enabled && credential(getenv, name) != "" {
 			configured[name] = model
 		}

@@ -4,32 +4,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/belevtsev/agent-workflows/internal/consult"
 	"github.com/belevtsev/agent-workflows/internal/credentials"
+	"github.com/belevtsev/agent-workflows/internal/userconfig"
 	"github.com/belevtsev/agent-workflows/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
-func credentialDirectory(root *cobra.Command, config Config) (string, error) {
+// userHome is the home directory the runtime commands read personal files
+// from: --home, else the home recorded for the running executable, else the
+// user's home, made absolute and clean so a relative value or a trailing
+// separator resolves the same way an installation did.
+func userHome(root *cobra.Command, config Config) (string, error) {
 	roots, err := resolveRoots(root, config)
 	if err != nil {
 		return "", err
 	}
-	// A legacy installation counts as no recorded installation here, so
-	// read-only commands keep working with the default roots.
-	installation, err := workflow.RecordedInstallation(workflow.Normalize(roots.state))
-	if errors.Is(err, workflow.ErrLegacyInstallation) {
-		installation, err = workflow.Installation{}, nil
+	home, err := filepath.Abs(roots.home)
+	if err != nil {
+		return "", errors.New("resolve home directory")
 	}
+	return home, nil
+}
+
+// credentialDirectory is the private configuration directory that holds the
+// saved keys and preferences: --config-dir, else $XDG_CONFIG_HOME/agent-workflows,
+// else ~/.config/agent-workflows under the selected home.
+func credentialDirectory(root *cobra.Command, config Config) (string, error) {
+	home, err := userHome(root, config)
 	if err != nil {
 		return "", err
 	}
 	explicit, _ := root.PersistentFlags().GetString("config-dir")
-	return workflow.ResolveConfigDir(workflow.Normalize(roots.home), explicit, installation.ConfigDir, config.Getenv)
+	return userconfig.Dir(home, explicit, config.Getenv)
 }
 
 func credentialEnvironment(root *cobra.Command, config Config) (func(string) string, error) {
