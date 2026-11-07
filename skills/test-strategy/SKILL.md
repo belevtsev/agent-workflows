@@ -24,6 +24,7 @@ Prefer the smallest test that exercises the real boundary at risk:
 | API or generated contract compatibility | Producer/consumer and representative serialization checks under supported versions |
 | Claimed performance improvement | Comparable before/after workloads, repeated samples, profiling, and a stated metric |
 
+For tests that run the built binary or service, read [end-to-end tests](references/e2e.md).
 For a Go fuzz target or bounded campaign, read [Go fuzzing](references/go-fuzzing.md)
 for input domains, meaningful oracles, seed evidence, isolation, and exact failure
 reproduction. Other tasks need not load that reference.

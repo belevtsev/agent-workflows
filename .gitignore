@@ -35,3 +35,6 @@ dist/
 docs/diagrams/*.delivery.json
 docs/diagrams/*.html
 .openidea/
+
+# Eval run output
+evals/**/results/
