@@ -246,6 +246,7 @@ func NewCommand(config Config) *cobra.Command {
 	addStatusSummaryFlag(root)
 	addDoctorCommand(root, config, o)
 	addTaskCommands(root, config, o)
+	addTaskAbandonCommand(root)
 	addMetricsCommand(root, config, o)
 	addConsultCommand(root, config)
 	addKeysCommand(root, config)

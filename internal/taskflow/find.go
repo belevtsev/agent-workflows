@@ -3,6 +3,7 @@ package taskflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,15 +16,16 @@ import (
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
-// MaxOpenAge bounds how long a substantial record without a current passing
-// verification keeps gating publication. Older records are treated as
-// abandoned so a forgotten task cannot block a repository indefinitely.
+// MaxOpenAge bounds how long a substantial record keeps governing
+// publication after its latest revision. A record nobody has touched for
+// longer is treated as forgotten, so it cannot block a repository forever;
+// `cw task abandon` closes one explicitly.
 const MaxOpenAge = 14 * 24 * time.Hour
 
-// SourceIdentifier returns the content identity of a selected path now, as
+// SourceIdentifier returns the content identity of a path now, as
 // SourceDigest computes it. It is called only for a record whose stored
 // verification passed, so the caller keeps the capture out of the common
-// no-record path.
+// unverified path.
 type SourceIdentifier func(ctx context.Context, selectedPath string) (string, error)
 
 // SourceDigest identifies the eligible source bytes under path: the SHA-256
@@ -31,7 +33,9 @@ type SourceIdentifier func(ctx context.Context, selectedPath string) (string, er
 // Verify stores as source_sha256. Unlike the snapshot fingerprint it ignores
 // HEAD, the branch, the index and the dirty flag, so staging or committing
 // the verified bytes leaves it unchanged. It equals a record's
-// baseline_manifest.sha256 while the source is as it was at start.
+// baseline_manifest.sha256 while the source is as it was at start. In a Git
+// repository the manifest covers the whole worktree, whichever directory
+// inside it path names.
 func SourceDigest(ctx context.Context, path string) (string, error) {
 	_, files, err := projectctx.CaptureManifest(ctx, path)
 	if err != nil {
@@ -44,24 +48,57 @@ func SourceDigest(ctx context.Context, path string) (string, error) {
 	return digest(manifest), nil
 }
 
-// FindOpen returns the record that gates publication for a repository whose
-// worktree roots are roots: the newest substantial record in store that was
-// created within MaxOpenAge of now and whose baseline root is one of roots,
-// when that record is open. It returns nil when no such record exists or the
-// newest one is closed; older records are superseded by the newest.
+// Repository locates a publication: where the command runs and which
+// records govern it.
+type Repository struct {
+	// Worktree is the canonical Git toplevel of the directory the command
+	// runs in.
+	Worktree string
+	// Roots are the baseline roots whose records govern the command:
+	// Worktree and, for a linked worktree, the main worktree's root.
+	Roots []string
+}
+
+// OpenRecord is a record that still governs publication for a repository.
+type OpenRecord struct {
+	Record Record
+	// Problem is empty when the record's passing verification matches the
+	// source the command would publish; otherwise it says why the record
+	// gates.
+	Problem string
+}
+
+// Gates reports whether the record blocks publication.
+func (o OpenRecord) Gates() bool { return o.Problem != "" }
+
+// FindOpen returns every record in store that governs publication from
+// repo, newest latest revision first: each substantial, unabandoned,
+// unfinished record whose baseline root is one of repo.Roots and whose
+// latest revision was written within MaxOpenAge of now (a revision dated
+// after now is skipped). Starting a new record does not hide an older one:
+// the older one stays open until it is verified, finished, abandoned or
+// ages out.
 //
-// A record is closed when its verification passed on the source bytes its
-// selected path holds now: Verification.Complete with a source_sha256 equal
-// to what identify reports. A record without a complete verification, one
-// verified before source digests were recorded, or one whose verified bytes
-// have since changed is open.
+// A returned record gates unless its verification passed on the source the
+// command would publish: Verification.Complete with a source_sha256 equal
+// to what identify reports for repo.Worktree when that differs from the
+// record's baseline root (a linked worktree of the record's checkout), else
+// for the record's selected path. identify runs at most once per worktree,
+// since a Git source digest covers the whole worktree.
 //
-// A store that does not exist is empty. A task directory whose latest record
-// cannot be read, or whose record chain does not load, is skipped and the
-// next newest candidate decides. A current identity that cannot be captured
-// also skips its record: the hook that calls this fails open and must never
+// A record whose verification passed on bytes that another record for the
+// repository, started after that verification, started from (its
+// baseline_manifest.sha256) is finished, and is not returned however the
+// source changed since: the later record covers those changes. A record
+// started over changed, unverified source therefore never finishes an older
+// one, and two records started on the same bytes before either was verified
+// do not finish each other.
+//
+// A store that does not exist is empty. A task directory whose record does
+// not load, and a verified record whose current source identity cannot be
+// captured, are skipped: the hook that calls this fails open and must never
 // block on a damaged or unreadable record.
-func FindOpen(ctx context.Context, store string, roots []string, now time.Time, identify SourceIdentifier) (*Record, error) {
+func FindOpen(ctx context.Context, store string, repo Repository, now time.Time, identify SourceIdentifier) ([]OpenRecord, error) {
 	if identify == nil {
 		return nil, errors.New("a source identifier is required")
 	}
@@ -72,64 +109,154 @@ func FindOpen(ctx context.Context, store string, roots []string, now time.Time, 
 	if err != nil {
 		return nil, err
 	}
-	// Peek at the latest revision's identifying members first; loading a
-	// whole revision chain is only worth it for the newest candidate.
-	type candidate struct {
-		directory string
-		createdAt time.Time
+	type capture struct {
+		digest string
+		ok     bool
 	}
-	var candidates []candidate
+	captured := map[string]capture{}
+	digestOf := func(worktree, path string) (string, bool) {
+		if previous, ok := captured[worktree]; ok {
+			return previous.digest, previous.ok
+		}
+		value, err := identify(ctx, path)
+		captured[worktree] = capture{value, err == nil}
+		return value, err == nil
+	}
+	// Peek at every latest revision first; loading and checking a whole
+	// revision chain is only worth it for a candidate or a successor.
+	heads := map[string]head{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		directory := filepath.Join(store, entry.Name())
-		head, ok := peekLatest(directory)
-		if !ok || head.Plan.Kind != "substantial" || !slices.Contains(roots, head.Baseline.Root) {
-			continue
+		if peeked, ok := peekLatest(directory); ok && slices.Contains(repo.Roots, peeked.root) {
+			heads[directory] = peeked
 		}
-		if age := now.Sub(head.CreatedAt); age < 0 || age > MaxOpenAge {
-			continue
-		}
-		candidates = append(candidates, candidate{directory, head.CreatedAt})
 	}
-	slices.SortStableFunc(candidates, func(a, b candidate) int { return b.createdAt.Compare(a.createdAt) })
-	for _, next := range candidates {
-		record, err := Load(next.directory)
-		if err != nil || record.Plan.Kind != "substantial" || !slices.Contains(roots, record.Baseline.Root) {
-			continue
-		}
-		if record.Verification != nil && record.Verification.Complete && record.Verification.SourceSHA256 != "" {
-			current, err := identify(ctx, record.Baseline.SelectedPath)
-			if err != nil {
+	finished := func(record Record) bool {
+		verified := record.Verification.SourceSHA256
+		for directory, peeked := range heads {
+			if peeked.baseline != verified {
 				continue
 			}
-			if current == record.Verification.SourceSHA256 {
-				return nil, nil
+			successor, err := Load(directory)
+			if err == nil && successor.ID != record.ID && successor.BaselineManifest != nil && successor.BaselineManifest.SHA256 == verified &&
+				successor.CreatedAt.After(record.Verification.CheckedAt) {
+				return true
 			}
 		}
-		return &record, nil
+		return false
 	}
-	return nil, nil
+	var open []OpenRecord
+	for directory, peeked := range heads {
+		if !peeked.governs(repo.Roots, now) {
+			continue
+		}
+		record, err := Load(directory)
+		if err != nil || !headOf(record).governs(repo.Roots, now) {
+			continue
+		}
+		problem, ok := verificationProblem(record, repo.Worktree, digestOf)
+		if !ok {
+			continue
+		}
+		if problem != "" && verifiedDigest(record) && finished(record) {
+			continue
+		}
+		open = append(open, OpenRecord{Record: record, Problem: problem})
+	}
+	slices.SortStableFunc(open, func(a, b OpenRecord) int {
+		if order := b.Record.UpdatedAt.Compare(a.Record.UpdatedAt); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Record.ID, b.Record.ID)
+	})
+	return open, nil
 }
 
-// peekHead is the part of a record that selects candidates.
-type peekHead struct {
-	CreatedAt time.Time `json:"created_at"`
+// verifiedDigest reports whether record's verification passed and recorded
+// the digest of the source it passed on.
+func verifiedDigest(record Record) bool {
+	return record.Verification != nil && record.Verification.Complete && record.Verification.SourceSHA256 != ""
+}
+
+// verificationProblem says why record gates a publication from worktree,
+// or "" when its passing verification covers the source there. It reports
+// false when the current source identity cannot be captured.
+func verificationProblem(record Record, worktree string, digestOf func(worktree, path string) (string, bool)) (string, bool) {
+	verification := record.Verification
+	switch {
+	case verification == nil || !verification.Complete:
+		return "it has no passing cw task verify", true
+	case verification.SourceSHA256 == "":
+		return "it was verified by a cw that did not record source digests; verify it again", true
+	}
+	key, path := record.Baseline.Root, record.Baseline.SelectedPath
+	linked := worktree != "" && worktree != record.Baseline.Root
+	if linked {
+		key, path = worktree, worktree
+	}
+	current, ok := digestOf(key, path)
+	switch {
+	case !ok:
+		return "", false
+	case current == verification.SourceSHA256:
+		return "", true
+	case linked:
+		return fmt.Sprintf("it was verified on the source in %s, but this command runs in the linked worktree %s, whose source differs", record.Baseline.Root, worktree), true
+	default:
+		return "its source changed after the last passing cw task verify", true
+	}
+}
+
+// head is the part of a record that selects candidates and successors.
+type head struct {
+	updatedAt time.Time
+	kind      string
+	root      string
+	abandoned bool
+	// baseline is baseline_manifest.sha256, the digest of the source the
+	// record started from ("" for records without a manifest).
+	baseline string
+}
+
+func headOf(record Record) head {
+	value := head{updatedAt: record.UpdatedAt, kind: record.Plan.Kind, root: record.Baseline.Root, abandoned: record.Abandonment != nil}
+	if record.BaselineManifest != nil {
+		value.baseline = record.BaselineManifest.SHA256
+	}
+	return value
+}
+
+// governs reports whether a record with this head governs publication for
+// roots at now.
+func (h head) governs(roots []string, now time.Time) bool {
+	age := now.Sub(h.updatedAt)
+	return h.kind == "substantial" && !h.abandoned && slices.Contains(roots, h.root) && age >= 0 && age <= MaxOpenAge
+}
+
+// storedHead is the JSON shape of head inside a revision file.
+type storedHead struct {
+	UpdatedAt time.Time `json:"updated_at"`
 	Plan      struct {
 		Kind string `json:"kind"`
 	} `json:"plan"`
 	Baseline struct {
 		Root string `json:"root"`
 	} `json:"baseline"`
+	BaselineManifest *struct {
+		SHA256 string `json:"sha256"`
+	} `json:"baseline_manifest"`
+	Abandonment *struct{} `json:"abandonment"`
 }
 
 // peekLatest decodes the selecting members of the highest revision file in
 // directory without validating the chain.
-func peekLatest(directory string) (peekHead, bool) {
+func peekLatest(directory string) (head, bool) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return peekHead{}, false
+		return head{}, false
 	}
 	latest := ""
 	for _, entry := range entries {
@@ -138,16 +265,20 @@ func peekLatest(directory string) (peekHead, bool) {
 		}
 	}
 	if latest == "" {
-		return peekHead{}, false
+		return head{}, false
 	}
 	file, err := os.Open(filepath.Join(directory, latest))
 	if err != nil {
-		return peekHead{}, false
+		return head{}, false
 	}
 	defer file.Close()
-	var head peekHead
-	if err := json.UnmarshalRead(io.LimitReader(file, MaxInputBytes), &head); err != nil {
-		return peekHead{}, false
+	var stored storedHead
+	if err := json.UnmarshalRead(io.LimitReader(file, MaxInputBytes), &stored); err != nil {
+		return head{}, false
 	}
-	return head, true
+	value := head{updatedAt: stored.UpdatedAt, kind: stored.Plan.Kind, root: stored.Baseline.Root, abandoned: stored.Abandonment != nil}
+	if stored.BaselineManifest != nil {
+		value.baseline = stored.BaselineManifest.SHA256
+	}
+	return value, true
 }

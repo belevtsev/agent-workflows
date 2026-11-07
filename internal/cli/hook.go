@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,12 +29,13 @@ import (
 // error, exits 0 without output, so a damaged record, an unreadable store or a
 // missing git never blocks the user's own commands.
 const (
-	hookInputLimit      = 1 << 20
-	hookGitTimeout      = 5 * time.Second
-	hookDoctorTimeout   = 5 * time.Second
-	hookDoctorCacheAge  = time.Hour
-	enforceVerifyOption = "CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY"
-	sessionDoctorOption = "CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR"
+	hookInputLimit        = 1 << 20
+	hookGitTimeout        = 5 * time.Second
+	hookDoctorTimeout     = 5 * time.Second
+	hookDoctorCacheAge    = time.Hour
+	enforceVerifyOption   = "CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY"
+	sessionDoctorOption   = "CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR"
+	smallTaskPromptOption = "CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT"
 )
 
 type hookInput struct {
@@ -59,11 +61,14 @@ func addHookCommands(root *cobra.Command, config Config) {
 	root.AddCommand(hook)
 	hook.AddCommand(&cobra.Command{
 		Use:   "pre-publish",
-		Short: "PreToolUse hook: deny git commit and push while the newest substantial task record for the repository lacks a passing cw task verify on the current source",
-		Long: "Reads the PreToolUse JSON from stdin. When the Bash command is a git commit or git push, the directory is inside a Git repository, " +
-			"and the task store holds a substantial record for that repository started within 14 days whose verification has not passed on the current source, " +
-			"it prints a deny decision. Every other case, including any internal error, exits 0 without output. " +
-			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate.",
+		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",
+		Long: "Reads the PreToolUse JSON from stdin. When the Bash command runs git commit or git push inside a Git repository and the task store holds " +
+			"substantial, unabandoned records for that repository written within 14 days, it prints a deny decision naming every one whose verification has not passed " +
+			"on the source being published, and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
+			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
+			"code changed without tests). Every other case, including any internal error, exits 0 without output. " +
+			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
+			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			decision, ok := prePublishDecision(cmd.Context(), root, config)
@@ -94,37 +99,107 @@ func addHookCommands(root *cobra.Command, config Config) {
 	hook.AddCommand(sessionStart)
 }
 
-// prePublishDecision returns the deny decision for the hook input on stdin,
-// or false when the command may proceed silently.
+// prePublishDecision returns the deny or ask decision for the hook input on
+// stdin, or false when the command may proceed silently. A deny for any
+// publication in the command wins over an ask for another.
 func prePublishDecision(ctx context.Context, root *cobra.Command, config Config) (hookOutput, bool) {
-	if config.Getenv(enforceVerifyOption) == "false" {
+	enforce := config.Getenv(enforceVerifyOption) != "false"
+	prompt := config.Getenv(smallTaskPromptOption) != "false"
+	if !enforce && !prompt {
 		return hookOutput{}, false
 	}
 	input, err := readHookInput(config.In)
 	if err != nil {
 		return hookOutput{}, false
 	}
-	targets := gitPublishDirs(input.ToolInput.Command, input.CWD)
-	if len(targets) == 0 {
+	publications := gitPublications(input.ToolInput.Command, input.CWD)
+	if len(publications) == 0 {
 		return hookOutput{}, false
 	}
 	store, err := hookTaskStore(root, config)
 	if err != nil {
 		return hookOutput{}, false
 	}
-	for _, target := range targets {
-		roots, err := repositoryRoots(ctx, target)
+	var gating []taskflow.OpenRecord
+	var asks []string
+	// `git commit && git push` publishes from one worktree twice; find its
+	// records, and digest its source, once.
+	found := map[string][]taskflow.OpenRecord{}
+	for _, publication := range publications {
+		repo, err := repositoryOf(ctx, publication.dir)
 		if err != nil {
 			continue
 		}
-		open, err := taskflow.FindOpen(ctx, store, roots, time.Now(), taskflow.SourceDigest)
-		if err != nil || open == nil {
-			continue
+		open, seen := found[repo.Worktree]
+		if !seen {
+			if open, err = taskflow.FindOpen(ctx, store, repo, time.Now(), taskflow.SourceDigest); err != nil {
+				continue
+			}
+			found[repo.Worktree] = open
 		}
-		reason := fmt.Sprintf("agent-workflows: task %s (%s) for this repository has no passing cw task verify on the current source; run `cw task verify --task %s --summary` and retry, or set enforce_verify=false in the plugin config", open.ID, open.Plan.Title, open.Directory)
-		return hookOutput{hookSpecificOutput{HookEventName: "PreToolUse", PermissionDecision: "deny", PermissionDecisionReason: reason}}, true
+		blocked := false
+		for _, record := range open {
+			if record.Gates() {
+				blocked = true
+				if !slices.ContainsFunc(gating, func(seen taskflow.OpenRecord) bool { return seen.Record.ID == record.Record.ID }) {
+					gating = append(gating, record)
+				}
+			}
+		}
+		var ask string
+		switch {
+		case blocked:
+		case len(open) > 0:
+			if enforce && publication.push && uncommittedTrackedChanges(ctx, repo.Worktree) {
+				ask = uncommittedReason(open)
+			}
+		case prompt:
+			if signs := substantialChangeSigns(ctx, repo.Worktree, publication); len(signs) >= 2 {
+				ask = unrecordedChangeReason(repo.Worktree, publication, signs)
+			}
+		}
+		if ask != "" && !slices.Contains(asks, ask) {
+			asks = append(asks, ask)
+		}
+	}
+	switch {
+	case enforce && len(gating) > 0:
+		return preToolUseDecision("deny", denyReason(gating)), true
+	case len(asks) > 0:
+		return preToolUseDecision("ask", strings.Join(asks, " ")), true
 	}
 	return hookOutput{}, false
+}
+
+func preToolUseDecision(decision, reason string) hookOutput {
+	return hookOutput{hookSpecificOutput{HookEventName: "PreToolUse", PermissionDecision: decision, PermissionDecisionReason: reason}}
+}
+
+// denyReason names every gating record, why it gates, and how to verify or
+// abandon it.
+func denyReason(gating []taskflow.OpenRecord) string {
+	var reason strings.Builder
+	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
+	for _, open := range gating {
+		record := open.Record
+		fmt.Fprintf(&reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
+	}
+	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")
+	return reason.String()
+}
+
+// uncommittedReason explains the ask for a push whose verified records may
+// not cover what is pushed.
+func uncommittedReason(open []taskflow.OpenRecord) string {
+	tasks := make([]string, 0, len(open))
+	for _, record := range open {
+		tasks = append(tasks, fmt.Sprintf("%s (%s)", record.Record.ID, record.Record.Plan.Title))
+	}
+	subject := "task"
+	if len(tasks) > 1 {
+		subject = "tasks"
+	}
+	return fmt.Sprintf("agent-workflows: %s %s passed cw task verify on the working tree, but the working tree has uncommitted changes to tracked files, so the pushed commits may not hold the verified source. Commit the changes and verify again, or confirm to push anyway.", subject, strings.Join(tasks, ", "))
 }
 
 func readHookInput(reader io.Reader) (hookInput, error) {
@@ -149,32 +224,90 @@ func readHookInput(reader io.Reader) (hookInput, error) {
 }
 
 // shellPrefixWords are words that may precede a simple command without being
-// its program: shell keywords that open a compound command and the common
-// command prefixes. Claude Code's own `Bash(git commit *)` rule decides
-// whether the hook runs; the hook still has to find git inside such forms.
-var shellPrefixWords = map[string]bool{"if": true, "then": true, "else": true, "elif": true, "while": true, "until": true, "do": true, "{": true, "!": true, "time": true, "command": true, "exec": true, "env": true, "nohup": true, "builtin": true}
+// its program and take no argument of their own: shell keywords that open a
+// compound command and the common command prefixes.
+var shellPrefixWords = map[string]bool{"if": true, "then": true, "else": true, "elif": true, "while": true, "until": true, "do": true, "{": true, "!": true, "exec": true, "builtin": true, "nohup": true, "noglob": true, "eval": true}
 
-// gitPublishDirs returns the working directory of every git commit or push
-// in a shell command line, resolved from cwd through any preceding `cd DIR`
-// or `pushd DIR` and git's own -C DIR options, without duplicates and in
-// command order. The split is deliberately simple: simple commands are
-// separated by `;`, `|`, `&`, newlines, parentheses and backticks, and words
-// by whitespace with surrounding quotes removed. A directory change inside
-// parentheses or backticks ends with them, as in a subshell. After a
-// directory change the hook cannot follow (`cd` with options, `cd -`, `~`,
-// `$VAR`, quoted paths with spaces, `popd`), the directory is unknown and
-// later git commands are not checked until an absolute `cd` or -C, since the
-// hook fails open. Redirections on a cd (`cd DIR >/dev/null 2>&1`) are
-// ignored, and `cd "$(git rev-parse --show-toplevel)"` stays in the same
-// repository.
-func gitPublishDirs(command, cwd string) []string {
+// wrapperArgumentOptions lists the wrappers that run their remaining words
+// as a command after options of their own, with the options that take a
+// separate argument. `timeout` also takes a duration before the command.
+// `command -v git` stays a lookup: git without a subcommand publishes
+// nothing.
+var wrapperArgumentOptions = map[string][]string{
+	"command": {},
+	"env":     {"-u", "--unset", "-C", "--chdir", "-P"},
+	"time":    {"-f", "--format", "-o", "--output"},
+	"nice":    {"-n", "--adjustment"},
+	"timeout": {"-s", "--signal", "-k", "--kill-after"},
+	"stdbuf":  {"-i", "-o", "-e", "--input", "--output", "--error"},
+	"sudo":    {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-U", "--other-user", "-r", "--role", "-t", "--type", "-C", "--close-from", "-D", "--chdir", "-R", "--chroot", "-T", "--command-timeout"},
+}
+
+// shells run a command string given with -c; its words follow on the same
+// line, so the hook reads them as the command.
+var shells = map[string]bool{"sh": true, "bash": true, "zsh": true, "dash": true, "ksh": true}
+
+// publication is one git commit or git push in a command line.
+type publication struct {
+	dir  string
+	push bool
+	// all is a commit with -a or --all, which also commits modified tracked
+	// files that are not staged.
+	all bool
+}
+
+// gitPublications returns every git commit or push in a shell command line,
+// with the directory it runs in resolved from cwd through any preceding
+// `cd DIR` or `pushd DIR` and git's own -C DIR options, without duplicates
+// and in command order. The split is deliberately simple: simple commands
+// are separated by `;`, `|`, `&`, newlines, parentheses and backticks, and
+// words by whitespace with surrounding quotes removed, so the words of a
+// quoted `sh -c '...'` or `eval "..."` string are read as the command they
+// run. A `$(...)` without nested parentheses stands for one word of the
+// command around it, and the command inside it is read on its own from cwd.
+// A directory change inside parentheses or backticks ends with them, as in
+// a subshell. After a directory change the hook cannot follow (`cd` with
+// options, `cd -`, `~`, `$VAR`, quoted paths with spaces, `popd`), the
+// directory is unknown and later git commands are not checked until an
+// absolute `cd` or -C, since the hook fails open. Redirections on a cd
+// (`cd DIR >/dev/null 2>&1`) are ignored, and `cd "$(pwd)"` or
+// `cd "$(git rev-parse --show-toplevel)"` stays in the same repository.
+func gitPublications(command, cwd string) []publication {
 	command = toplevelSubstitution.ReplaceAllString(command, ".")
+	var substituted []string
+	for {
+		next := commandSubstitution.ReplaceAllStringFunc(command, func(match string) string {
+			substituted = append(substituted, match[2:len(match)-1])
+			return "_"
+		})
+		if next == command {
+			break
+		}
+		command = next
+	}
+	found := simpleGitPublications(command, cwd)
+	for _, inner := range substituted {
+		for _, publication := range simpleGitPublications(inner, cwd) {
+			if !slices.Contains(found, publication) {
+				found = append(found, publication)
+			}
+		}
+	}
+	return found
+}
+
+// commandSubstitution matches a `$(...)` without nested parentheses.
+var commandSubstitution = regexp.MustCompile(`\$\([^()]*\)`)
+
+// simpleGitPublications is gitPublications for a command line whose `$(...)`
+// substitutions are already replaced.
+func simpleGitPublications(command, cwd string) []publication {
 	dir := cwd
 	var scopes []string
 	inBacktick := false
-	var dirs []string
+	var found []publication
 	visit := func(segment string) {
-		words := commandWords(segment)
+		words, chdirs := commandWords(segment)
 		if len(words) > 0 && (words[0] == "cd" || words[0] == "pushd" || words[0] == "popd") {
 			words = withoutRedirections(words)
 			if len(words) == 2 && words[0] != "popd" && followablePath(words[1]) {
@@ -184,9 +317,20 @@ func gitPublishDirs(command, cwd string) []string {
 			}
 			return
 		}
-		target, subcommand := gitInvocation(words, dir)
-		if target != "" && (subcommand == "commit" || subcommand == "push") && !containsString(dirs, target) {
-			dirs = append(dirs, target)
+		runs := dir
+		for _, chdir := range chdirs {
+			if !followablePath(chdir) {
+				return
+			}
+			runs = resolveDir(runs, chdir)
+		}
+		target, subcommand, arguments := gitInvocation(words, runs)
+		if target == "" || (subcommand != "commit" && subcommand != "push") {
+			return
+		}
+		next := publication{dir: target, push: subcommand == "push", all: subcommand == "commit" && commitsAll(arguments)}
+		if !slices.Contains(found, next) {
+			found = append(found, next)
 		}
 	}
 	start := 0
@@ -212,13 +356,39 @@ func gitPublishDirs(command, cwd string) []string {
 		}
 	}
 	visit(command[start:])
-	return dirs
+	return found
+}
+
+// commitsAll reports whether git commit arguments include -a or --all,
+// alone or in a cluster of short options such as -am, before an option
+// that takes a value.
+func commitsAll(arguments []string) bool {
+	for _, argument := range arguments {
+		switch {
+		case argument == "--":
+			return false
+		case argument == "--all":
+			return true
+		case strings.HasPrefix(argument, "--") || !strings.HasPrefix(argument, "-"):
+			continue
+		}
+		for _, option := range argument[1:] {
+			if option == 'a' {
+				return true
+			}
+			if strings.ContainsRune("mFcCt", option) {
+				break // the rest of the cluster is this option's value
+			}
+		}
+	}
+	return false
 }
 
 // toplevelSubstitution matches a command substitution that names the
-// current repository's top level. A cd into it stays in the same repository,
-// so it is rewritten to `.` before the command is split.
-var toplevelSubstitution = regexp.MustCompile(`"?\$\(\s*git\s+rev-parse\s+--show-toplevel\s*\)"?`)
+// current directory or repository's top level. A cd or -C into it stays in
+// the same repository, so it is rewritten to `.` before the command is
+// split.
+var toplevelSubstitution = regexp.MustCompile(`"?\$\(\s*(git\s+rev-parse\s+--show-toplevel|pwd)\s*\)"?`)
 
 // withoutRedirections drops redirection words (`>FILE`, `2>FILE`, `>>FILE`,
 // `<FILE`, or the operator alone followed by its target word) from a simple
@@ -246,44 +416,103 @@ func followablePath(path string) bool {
 	return path != "" && !strings.HasPrefix(path, "-") && !strings.ContainsAny(path, "~$*?[{")
 }
 
-// commandWords splits a simple command into words, drops leading NAME=value
-// assignments and shell prefix words, and removes one pair of surrounding
-// quotes from each word.
-func commandWords(segment string) []string {
-	var words []string
+// commandWords splits a simple command into words with surrounding quotes
+// removed (a word that was only quotes is dropped), then drops what precedes
+// its program: NAME=value assignments, shell prefix words, wrappers with
+// their options (`env -i`, `nice -n 5`, `timeout 30`, `sudo -u x`), `sh -c`
+// and a backslash that bypasses an alias. It also returns, in order, the
+// directories `env -C DIR` and `sudo -D DIR` move the command to.
+func commandWords(segment string) ([]string, []string) {
+	var words, chdirs []string
 	for _, word := range strings.Fields(segment) {
-		words = append(words, unquote(word))
+		if word = strings.Trim(word, `'"`); word != "" {
+			words = append(words, word)
+		}
 	}
 	for len(words) > 0 {
-		word := words[0]
-		if shellPrefixWords[word] || (strings.Contains(word, "=") && !strings.HasPrefix(word, "-")) {
+		word := strings.TrimPrefix(words[0], `\`)
+		options, wrapper := wrapperArgumentOptions[word]
+		switch {
+		case shellPrefixWords[word] || (strings.Contains(word, "=") && !strings.HasPrefix(word, "-")):
 			words = words[1:]
-			continue
+		case wrapper:
+			if chdir, ok := wrapperDirectory(word, words[1:]); ok {
+				chdirs = append(chdirs, chdir)
+			}
+			words = withoutOptions(words[1:], options)
+			if word == "timeout" && len(words) > 0 {
+				words = words[1:] // the duration
+			}
+		case shells[word] && len(words) > 1 && commandStringOption(words[1]):
+			words = words[2:]
+		default:
+			words[0] = word
+			return words, chdirs
 		}
-		break
+	}
+	return words, chdirs
+}
+
+// wrapperDirectory returns the directory a wrapper's leading options move
+// its command to: `env -C DIR` or `--chdir DIR`, `sudo -D DIR` or
+// `--chdir DIR`, also written `--chdir=DIR`.
+func wrapperDirectory(wrapper string, words []string) (string, bool) {
+	short := map[string]string{"env": "-C", "sudo": "-D"}[wrapper]
+	if short == "" {
+		return "", false
+	}
+	for i := 0; i < len(words); i++ {
+		option := words[i]
+		if !strings.HasPrefix(option, "-") || option == "-" || option == "--" {
+			break
+		}
+		if value, ok := strings.CutPrefix(option, "--chdir="); ok {
+			return value, true
+		}
+		if (option == short || option == "--chdir") && i+1 < len(words) {
+			return words[i+1], true
+		}
+		if slices.Contains(wrapperArgumentOptions[wrapper], option) {
+			i++ // skip this option's argument
+		}
+	}
+	return "", false
+}
+
+// withoutOptions drops leading options, and the separate argument of each
+// one listed in withArgument, up to and including a `--`.
+func withoutOptions(words, withArgument []string) []string {
+	for len(words) > 0 && strings.HasPrefix(words[0], "-") && words[0] != "-" {
+		option := words[0]
+		words = words[1:]
+		if option == "--" {
+			break
+		}
+		if slices.Contains(withArgument, option) && len(words) > 0 {
+			words = words[1:]
+		}
 	}
 	return words
 }
 
-func unquote(word string) string {
-	if len(word) >= 2 && (word[0] == '"' || word[0] == '\'') && word[len(word)-1] == word[0] {
-		return word[1 : len(word)-1]
-	}
-	return word
+// commandStringOption reports whether a shell option cluster such as -c,
+// -lc or -ec makes the shell read its command from the next argument.
+func commandStringOption(word string) bool {
+	return len(word) > 1 && word[0] == '-' && word[1] != '-' && strings.ContainsRune(word[1:], 'c')
 }
 
-// gitInvocation returns the directory git runs in and its subcommand when
-// words invoke git, or "" when they do not. git's global options are skipped;
-// the ones that take a separate argument consume it, and each -C DIR moves
-// the directory like git does.
-func gitInvocation(words []string, dir string) (string, string) {
+// gitInvocation returns the directory git runs in, its subcommand and the
+// subcommand's arguments when words invoke git, or "" when they do not.
+// git's global options are skipped; the ones that take a separate argument
+// consume it, and each -C DIR moves the directory like git does.
+func gitInvocation(words []string, dir string) (string, string, []string) {
 	if len(words) == 0 || filepath.Base(words[0]) != "git" {
-		return "", ""
+		return "", "", nil
 	}
 	for i := 1; i < len(words); i++ {
 		word := words[i]
 		if !strings.HasPrefix(word, "-") {
-			return dir, word
+			return dir, word, words[i+1:]
 		}
 		switch word {
 		case "-C":
@@ -295,7 +524,7 @@ func gitInvocation(words []string, dir string) (string, string) {
 			i++
 		}
 	}
-	return "", ""
+	return "", "", nil
 }
 
 // resolveDir follows a cd-like path change from dir. A relative path from
@@ -312,23 +541,24 @@ func resolveDir(dir, path string) string {
 	return filepath.Join(dir, path)
 }
 
-// repositoryRoots returns the canonical worktree root of the repository that
-// contains dir and, for a linked worktree, the main worktree's root as well,
-// so a record started in either location gates both.
-func repositoryRoots(ctx context.Context, dir string) ([]string, error) {
+// repositoryOf returns where a command in dir publishes from: the canonical
+// root of the worktree that contains dir and, for a linked worktree, the
+// main worktree's root as well, so a record started in either location
+// gates both.
+func repositoryOf(ctx context.Context, dir string) (taskflow.Repository, error) {
 	toplevel, err := gitOutput(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return nil, err
+		return taskflow.Repository{}, err
 	}
 	roots := []string{}
 	add := func(path string) {
-		if canonical, err := filepath.EvalSymlinks(path); err == nil && !containsString(roots, canonical) {
+		if canonical, err := filepath.EvalSymlinks(path); err == nil && !slices.Contains(roots, canonical) {
 			roots = append(roots, canonical)
 		}
 	}
 	add(toplevel)
 	if len(roots) == 0 {
-		return nil, errors.New("worktree root is unavailable")
+		return taskflow.Repository{}, errors.New("worktree root is unavailable")
 	}
 	common, err := gitOutput(ctx, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
@@ -343,32 +573,32 @@ func repositoryRoots(ctx context.Context, dir string) ([]string, error) {
 			add(filepath.Dir(common))
 		}
 	}
-	return roots, nil
+	return taskflow.Repository{Worktree: roots[0], Roots: roots}, nil
 }
 
-func containsString(values []string, value string) bool {
-	for _, candidate := range values {
-		if candidate == value {
-			return true
-		}
-	}
-	return false
-}
-
+// gitOutput runs git in dir and returns its output without trailing line
+// ends; empty output is an error.
 func gitOutput(ctx context.Context, dir string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, hookGitTimeout)
-	defer cancel()
-	command := exec.CommandContext(ctx, "git", append([]string{"-c", "core.fsmonitor=false", "-C", dir}, args...)...)
-	command.Stderr = io.Discard
-	output, err := command.Output()
+	output, err := gitRun(ctx, dir, args...)
 	if err != nil {
 		return "", err
 	}
-	value := strings.TrimRight(string(output), "\r\n")
+	value := strings.TrimRight(output, "\r\n")
 	if value == "" {
 		return "", errors.New("git printed nothing")
 	}
 	return value, nil
+}
+
+// gitRun runs git in dir, with the file system monitor off, without
+// optional index writes and with a deadline, and returns its raw output.
+func gitRun(ctx context.Context, dir string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, hookGitTimeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, "git", append([]string{"--no-optional-locks", "-c", "core.fsmonitor=false", "-C", dir}, args...)...)
+	command.Stderr = io.Discard
+	output, err := command.Output()
+	return string(output), err
 }
 
 // hookTaskStore returns $CW_TASK_STORE, a hook-only override that
