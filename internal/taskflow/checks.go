@@ -294,7 +294,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	command.WaitDelay = 2 * time.Second
 	configureCheckProcess(command)
 	runErr := command.Run()
-	cleanupCheckProcess(command)
+	cleanupErr := cleanupCheckProcess(command)
 	syncErr := logFile.Sync()
 	closeErr := logFile.Close()
 	finished := time.Now().UTC()
@@ -314,6 +314,8 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	case errors.Is(runCtx.Err(), context.DeadlineExceeded):
 		run.Status = "timed_out"
 		run.Failure = "timeout"
+	case cleanupErr != nil:
+		run.Status = "failed"
 	case runErr != nil:
 		run.Status = "failed"
 		run.Failure = "command_failed"
@@ -322,6 +324,11 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		run.Failure = "log_write_failed"
 	default:
 		run.Status = "passed"
+	}
+	if cleanupErr != nil {
+		// A check process outlived the group kill; keep a cancelled or timed-out
+		// status, but never let the leak go unrecorded.
+		run.Failure = "process_cleanup_failed"
 	}
 	// A cancelled request still needs a terminal source/run record. This bounded
 	// cleanup context never executes another command from the task plan.

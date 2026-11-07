@@ -14,7 +14,9 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -125,10 +127,125 @@ func TestCheckSubprocess(t *testing.T) {
 		if err := os.WriteFile(args[1], []byte("escaped check descendant"), 0600); err != nil {
 			os.Exit(20)
 		}
+	case "storm-leader":
+		os.Exit(pgStormLeader(args[1:]))
+	case "storm-forker":
+		os.Exit(pgStormForker(args[1:]))
 	default:
 		os.Exit(14)
 	}
 	os.Exit(0)
+}
+
+const (
+	// pgStormDescendantScript is one short-lived storm-forker descendant. If
+	// its forker ($1) is still alive after a short wait it exits at once.
+	// Otherwise it waits up to three seconds for the test to report that Run
+	// returned ($2) and then creates its unique marker ($3). Only a process
+	// that outlived the return of Run can create a marker.
+	pgStormDescendantScript = `sleep 0.2
+kill -0 "$1" 2>/dev/null && exit 0
+i=0
+while [ "$i" -lt 30 ]; do
+	if [ -e "$2" ]; then : > "$3"; exit 0; fi
+	sleep 0.1
+	i=$((i + 1))
+done`
+	// The storm is bounded: at most pgStormForks descendants, at most
+	// pgStormConcurrency alive at once, forking for at most pgStormDuration.
+	pgStormForks       = 1000
+	pgStormConcurrency = 64
+	pgStormDuration    = 3 * time.Second
+	// pgStormRunningAfter descendants started confirm the storm is running.
+	pgStormRunningAfter = 8
+	// pgStormReadiness bounds how long the leader waits for the forker.
+	pgStormReadiness = 8 * time.Second
+)
+
+// pgStormLeader is the check command of a storm trial. Its arguments are the
+// trial directory and the survivor-marker directory. It records its pid in
+// the trial directory, starts one storm forker in the background with all
+// standard streams on /dev/null, waits until the forker reports it is forking
+// and exits 0 while the forker keeps forking.
+func pgStormLeader(args []string) int {
+	if len(args) != 2 {
+		return 30
+	}
+	trial, survivors := args[0], args[1]
+	if err := os.WriteFile(filepath.Join(trial, "leader-pid"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		return 31
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return 32
+	}
+	null, err := os.OpenFile(os.DevNull, os.O_RDWR, 0)
+	if err != nil {
+		return 33
+	}
+	defer null.Close()
+	forker := exec.Command(executable, "-test.run=^TestCheckSubprocess$", "--", "storm-forker", trial, survivors)
+	forker.Env = os.Environ()
+	forker.Stdin = null
+	forker.Stdout = null
+	forker.Stderr = null
+	if err := forker.Start(); err != nil {
+		return 34
+	}
+	forker.Process.Release()
+	running := filepath.Join(trial, "running")
+	deadline := time.Now().Add(pgStormReadiness)
+	for {
+		if _, err := os.Stat(running); err == nil {
+			return 0
+		}
+		if time.Now().After(deadline) {
+			return 35
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// pgStormForker keeps forking short-lived descendants within fixed bounds, so
+// the end of its check is likely to arrive while a fork is in progress. It
+// reports itself running after pgStormRunningAfter descendants have started.
+// Left alone it stops forking after pgStormDuration and reaps every
+// descendant.
+func pgStormForker(args []string) int {
+	if len(args) != 2 {
+		return 36
+	}
+	trial, survivors := args[0], args[1]
+	self := strconv.Itoa(os.Getpid())
+	returned := filepath.Join(trial, "returned")
+	// The check environment may omit PATH; the descendant script needs sleep.
+	env := append(os.Environ(), "PATH=/usr/bin:/bin")
+	slots := make(chan struct{}, pgStormConcurrency)
+	var running sync.WaitGroup
+	defer running.Wait()
+	stop := time.Now().Add(pgStormDuration)
+	for index := 0; index < pgStormForks && time.Now().Before(stop); index++ {
+		slots <- struct{}{}
+		marker := filepath.Join(survivors, fmt.Sprintf("%s-%d", filepath.Base(trial), index))
+		child := exec.Command("/bin/sh", "-c", pgStormDescendantScript, "sh", self, returned, marker)
+		child.Env = env
+		if err := child.Start(); err != nil {
+			<-slots
+			break
+		}
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			_ = child.Wait()
+			<-slots
+		}()
+		if index+1 == pgStormRunningAfter {
+			if err := os.WriteFile(filepath.Join(trial, "running"), []byte("forking\n"), 0600); err != nil {
+				return 37
+			}
+		}
+	}
+	return 0
 }
 
 // helperPlan needs no per-test environment: TestMain sets the helper

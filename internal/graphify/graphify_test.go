@@ -121,6 +121,8 @@ func fakeExtract(config fakeConfig, args []string) int {
 		return fakeDelayedDescendant(config)
 	case "fork-storm":
 		return fakeForkStorm(config)
+	case "fork-swarm":
+		return fakeForkSwarm(config)
 	}
 	var files []string
 	_ = filepath.WalkDir(args[1], func(path string, _ fs.DirEntry, err error) error {
@@ -203,6 +205,77 @@ func fakeForkStorm(config fakeConfig) int {
 		}()
 		if index+1 == stormRunningAfter {
 			if err := os.WriteFile(config.Running, []byte("forking\n"), 0o600); err != nil {
+				return 29
+			}
+		}
+	}
+	return 28
+}
+
+const (
+	// pgSwarmDescendantScript is one fork-swarm descendant. Its stdin is a
+	// pipe whose only writer is its forker. A forker that is alive writes "x"
+	// right after starting it, and the descendant exits at once, so it lives
+	// only a few milliseconds. End of input without "x" means the forker died
+	// while starting it; the descendant then waits up to three seconds for the
+	// test to report that the call returned ($1) and creates its unique marker
+	// ($2). Only a process that outlived the return can create a marker.
+	pgSwarmDescendantScript = `IFS= read -r line
+if [ "$line" = x ]; then exit 0; fi
+i=0
+while [ "$i" -lt 30 ]; do
+	if [ -e "$1" ]; then : > "$2"; exit 0; fi
+	sleep 0.1
+	i=$((i + 1))
+done`
+	// The swarm forker is bounded: at most pgSwarmForks descendants, at most
+	// pgSwarmConcurrency alive at once, forking for at most stormDuration.
+	// Descendants are short-lived, so a forker forks almost continuously with
+	// few live processes.
+	pgSwarmForks       = 4000
+	pgSwarmConcurrency = 12
+)
+
+// fakeForkSwarm is one of several forkers that are not the group leader. Like
+// fakeForkStorm it forks continuously, but its descendants exit as soon as
+// it releases them, which keeps the number of live processes small while
+// forks are almost always in progress. After stormRunningAfter descendants it
+// creates a file named after its pid in the config.Running directory. Left
+// alone it stops after stormDuration, reaps every descendant and fails
+// without publishing a graph.
+func fakeForkSwarm(config fakeConfig) int {
+	self := strconv.Itoa(os.Getpid())
+	slots := make(chan struct{}, pgSwarmConcurrency)
+	var running sync.WaitGroup
+	defer running.Wait()
+	stop := time.Now().Add(stormDuration)
+	for index := 0; index < pgSwarmForks && time.Now().Before(stop); index++ {
+		slots <- struct{}{}
+		reader, writer, err := os.Pipe()
+		if err != nil {
+			<-slots
+			break
+		}
+		marker := filepath.Join(config.Markers, fmt.Sprintf("swarm-survivor-%s-%d", self, index))
+		child := exec.Command("/bin/sh", "-c", pgSwarmDescendantScript, "sh", config.Returned, marker)
+		child.Stdin = reader
+		err = child.Start()
+		reader.Close()
+		if err != nil {
+			writer.Close()
+			<-slots
+			break
+		}
+		_, _ = writer.Write([]byte("x\n"))
+		writer.Close()
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			_ = child.Wait()
+			<-slots
+		}()
+		if index+1 == stormRunningAfter {
+			if err := os.WriteFile(filepath.Join(config.Running, self), []byte("forking\n"), 0o600); err != nil {
 				return 29
 			}
 		}
