@@ -25,7 +25,10 @@
   "agents": [
     "./global/claude-agents/cw-reviewer.md",
     "./global/claude-agents/cw-test-author.md",
-    "./global/claude-agents/cw-github-worker.md"
+    "./global/claude-agents/cw-github-worker.md",
+    "./agents/architect.md",
+    "./agents/implementer.md",
+    "./agents/test-engineer.md"
   ],
   "userConfig": {
     "enforce_verify": {
