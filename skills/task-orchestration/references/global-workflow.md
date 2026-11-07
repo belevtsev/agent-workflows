@@ -303,6 +303,7 @@ cw metrics schema
 cw metrics summarize --input-root /private/path/observations run-a.json run-b.json
 cw metrics import --claude-transcript ~/.claude/projects/PROJECT/SESSION.jsonl [--prices prices.json]
 cw metrics import --codex-session ~/.codex/sessions/YYYY/MM/DD/rollout-ID.jsonl --prices prices.json
+cw metrics import --claude-transcript SESSION.jsonl --prices prices.json --composition [--summary]
 ```
 
 `import` reads a session read-only and reports each agent (the main session and
@@ -319,6 +320,33 @@ reported separately from recorded dollars; no price is built in. The report's
 it. When a model's transcript and recorded totals differ, for example a `cost-state`
 written before the session ended, the report shows the difference and leaves
 `usage` and `cost` out.
+
+`--composition` (it needs `--prices`) adds where each agent's input came from. Each
+agent is mapped to a role from the `cw task assign` brief whose assignment id its Agent
+prompt names, else from its Agent description or agent type; unmapped agents count as
+`other`, and the role coverage is reported.
+Each request's new input, its total input minus the previous request's, is assigned
+to the blocks appended in between: the previous output gets its output tokens
+(all of the new input when that is smaller), and the rest is split by byte share across tool output (by tool), `cw`
+command output, Skill loads, reference reads, Agent handoffs, user turns and other
+context. New input with no visible block is `unrecorded`. The first request is split
+into its visible blocks, estimated at the agent's measured bytes per token, and
+`system_and_tools`, the remainder. That remainder, the skill listing and the
+CLAUDE.md/AGENTS.md instructions form the fixed prefix. Per source the report gives
+input tokens, input share, input dollars and re-read cost (tokens × later requests ×
+cache-read rate). Input dollars allocate each request's priced input in context order:
+cache reads first, then cache writes, then uncached input. It also lists repeated
+identical tool calls (same tool and input hash). For an agent that ran
+`cw task start`, `cw task consult`, a review `cw task assign` or `cw task verify` (as
+commands, including after `if`, `do`, `env`, `nohup`, `sudo` or `timeout`; not text in
+a heredoc, a comment or a quoted string, nor history copied into a resumed session), it
+gives the stale-phase re-read: earlier-phase blocks, other than the initial context,
+re-read in a later phase, beside an estimate for re-sending the initial context at
+each boundary. The composition is reported only when the price-table total is within
+1% of the recorded `cost-state` and the transcript has no tokens the recorded cost
+lacks; otherwise it is withheld with a reason. Codex rollouts record no cost, so
+their composition is reported as unsupported. `--summary` prints a short table
+instead of JSON.
 
 Use the emitted version-one schema for measured observations. Include project and
 workload identity, source revision/fingerprint, environment, evidence and the

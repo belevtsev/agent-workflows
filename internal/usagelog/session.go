@@ -88,9 +88,9 @@ func newSession(report *Report, source string) *session {
 
 func (s *session) hit(limit string) { s.limitsHit[limit] = true }
 
-// record adds a request unless its key was already seen. An empty key cannot
-// be de-duplicated and is included and counted.
-func (s *session) record(agent *agentState, key, model string, r request) {
+// record adds a request unless its key was already seen and reports whether
+// it did. An empty key cannot be de-duplicated and is included and counted.
+func (s *session) record(agent *agentState, key, model string, r request) bool {
 	if key == "" {
 		s.report.Anomalies.EntriesWithoutRequestID++
 	} else if previous, ok := s.seen[key]; ok {
@@ -98,11 +98,11 @@ func (s *session) record(agent *agentState, key, model string, r request) {
 		if previous != r.snapshot() {
 			s.report.Anomalies.ConflictingDuplicates++
 		}
-		return
+		return false
 	}
 	if s.requests >= MaxRequests {
 		s.hit("max_requests")
-		return
+		return false
 	}
 	if key != "" {
 		s.seen[key] = r.snapshot()
@@ -118,6 +118,7 @@ func (s *session) record(agent *agentState, key, model string, r request) {
 		agent.models[model] = tokens
 	}
 	tokens.add(r)
+	return true
 }
 
 // finish computes agent, model and session totals plus price-table dollars.

@@ -60,8 +60,9 @@ func addMetricsCommand(root *cobra.Command, config Config, _ options) {
 // under the sessions root) and never writes.
 func importCommand(config Config) *cobra.Command {
 	var claudeTranscript, codexSession, codexRoot, pricesPath string
+	var composition, summary bool
 	command := &cobra.Command{
-		Use:   "import (--claude-transcript FILE | --codex-session FILE) [--prices FILE] [--codex-sessions-root DIR]",
+		Use:   "import (--claude-transcript FILE | --codex-session FILE) [--prices FILE] [--codex-sessions-root DIR] [--composition [--summary]]",
 		Short: "Report per-agent token usage and dollars from a Claude transcript or Codex rollout as JSON",
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) != 0 {
@@ -76,6 +77,12 @@ func importCommand(config Config) *cobra.Command {
 			if codexRoot != "" && codexSession == "" {
 				return usage(errors.New("--codex-sessions-root applies only with --codex-session"))
 			}
+			if composition && pricesPath == "" {
+				return usage(errors.New("--composition requires --prices: its totals are reconciled with the recorded cost"))
+			}
+			if summary && !composition {
+				return usage(errors.New("--summary applies only with --composition"))
+			}
 			// Relative paths resolve against the configured working directory.
 			paths := []*string{&claudeTranscript, &codexSession, &codexRoot, &pricesPath}
 			for _, path := range paths {
@@ -87,7 +94,7 @@ func importCommand(config Config) *cobra.Command {
 					*path = filepath.Join(dir, *path)
 				}
 			}
-			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, CodexSessionsRoot: codexRoot}
+			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, CodexSessionsRoot: codexRoot, Composition: composition}
 			if pricesPath != "" {
 				table, err := usagelog.LoadPriceTable(pricesPath)
 				if err != nil {
@@ -102,6 +109,9 @@ func importCommand(config Config) *cobra.Command {
 				}
 				return err
 			}
+			if summary {
+				return usagelog.WriteCompositionSummary(command.OutOrStdout(), report)
+			}
 			return writeJSON(command.OutOrStdout(), report)
 		},
 	}
@@ -109,5 +119,7 @@ func importCommand(config Config) *cobra.Command {
 	command.Flags().StringVar(&codexSession, "codex-session", "", "Codex root rollout (rollout-*.jsonl); descendant agent rollouts are discovered under the sessions root")
 	command.Flags().StringVar(&codexRoot, "codex-sessions-root", "", "Directory scanned for Codex child rollouts (defaults to the nearest ancestor named sessions)")
 	command.Flags().StringVar(&pricesPath, "prices", "", "Price table JSON with per-million-token USD rates and evidence; dollars from it are reported as estimates")
+	command.Flags().BoolVar(&composition, "composition", false, "Add per-agent context composition (input by source, re-read cost, repeated calls, stale-phase re-read); needs --prices and is withheld unless it reconciles with the recorded cost within 1%")
+	command.Flags().BoolVar(&summary, "summary", false, "With --composition, print a plain-text table instead of JSON")
 	return command
 }
