@@ -402,7 +402,9 @@ required, with a reason that verify reports; when in doubt, it keeps them.
 `cw task verify` checks evidence against the current worktree. New substantial-change
 tasks also require an accepted independent worker review of the completed source
 before final consultation: one full review, then at most one diff-scoped follow-up by a fresh reviewer, and a
-further review only to re-bind a fix of a defect that follow-up found. Findings are
+further review only to re-bind a fix of a defect that follow-up found. Each review
+assignment carries a bundle from `cw task bundle`, whose reach rows say how every
+changed file is called, invoked, run on which platforms and consumed. Findings are
 `resolved`, `rejected` against evidence, or `deferred` only when they change no
 behaviour, fail no gate and lose no rule.
 Small and unchanged read-only tasks retain the lightweight path. The coordinator

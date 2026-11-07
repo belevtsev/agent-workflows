@@ -290,10 +290,11 @@ binding and result contract.
 
 Substantial source changes require an independent substantive worker review, by an
 agent other than the coordinator and implementation workers, before the final
-adviser checkpoint, or before completion when checkpoints are not required. Point
-its brief at one [reviewer bundle](references/worker-handoffs.md#review-substantial-changes)
-file, which orients the reviewer and never narrows what it may read or test, and
-record each finding's evidence-backed disposition. Adviser checkpoints do
+adviser checkpoint, or before completion when checkpoints are not required. Build
+its [reviewer bundle](references/worker-handoffs.md#review-substantial-changes) with
+`cw task bundle`, fill each changed file's reach row, and point the brief at it; the
+bundle orients and never narrows what the reviewer may read or test. Record each
+finding's evidence-backed disposition. Adviser checkpoints do
 not replace review, and missing independent review cannot be presented as
 completed review. Small and unchanged read-only tasks stay lightweight. Reviews are
 capped at one full independent review plus, after the fixes, at most one

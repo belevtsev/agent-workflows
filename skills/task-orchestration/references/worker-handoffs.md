@@ -122,11 +122,48 @@ role's model and effort ([host mapping](hosts.md#worker-agent-types)); give the
 
 The bundle orients and never narrows: a full review still reads any source and runs
 any experiment it judges necessary, such as focused tests or platform and shell
-probes. Point the brief at one reviewer bundle file outside the source, so the reviewer
-starts there instead of exploring (measured reviews spent about 49% of their
-requests on orientation reads): the diff, the requirements, the changed contracts
-with their callers and consumers as paths, and the check results, so the reviewer
-does not repeat them.
+probes. Build it right before each review assignment, outside the source, so the
+reviewer starts there instead of exploring (measured reviews spent about 49% of their
+requests on orientation reads):
+
+```sh
+cw task bundle --task /private/task --review-id review-1 --output /private/review-1-bundle.json
+```
+
+From the record and current source it writes the requirements, prior findings with
+their dispositions, each check's latest run with its log path, the files changed
+since the task started (a manifest of path, mode and SHA-256, bound by
+`manifest_sha256`), and one reach row per file changed since the previous reviewed
+source: the latest review with a completed handoff that was not rejected, or the
+task start for the first review. A row's hints give the file's shebang and up to 10
+lines of docs and scripts that name it, invocations first. Fill all four facets from
+source, or write `n/a: <reason>`:
+
+| Facet | Answer from source |
+| --- | --- |
+| `callers` | Who calls, sources or imports the file; its entry points |
+| `invocation_modes` | Every documented way it runs: piped (`curl … \| sh`), sourced, executed, flags, CI |
+| `platforms` | Every operating system, shell and version it must work on |
+| `consumers` | What reads the state, files, output or formats it writes |
+
+Hints are leads, not answers: read them and the file. In a measured replay all four
+reviewers missed a crash of `curl … | sh` under macOS `/bin/sh`, which is bash 3.2,
+because no brief asked how the changed installer runs. Give the filled file's path
+and SHA-256 (`shasum -a 256`) as the brief's `bundle`:
+
+```json
+{"id": "review-1", "agent_id": "/root/reviewer", "role": "review",
+ "goal": "Review the change against the requirements", "owned_paths": ["."],
+ "constraints": [], "check_ids": [],
+ "stop_condition": "Return findings with source evidence and what was not reviewed",
+ "bundle": {"path": "/private/review-1-bundle.json", "sha256": "<sha256 of the filled file>"}}
+```
+
+`assign` regenerates the bundle and refuses a missing row, an empty facet or a bare
+`n/a`, and any other difference, including a check run or record added after
+`bundle`; it keeps an immutable copy for the next bundle. Tasks started by an older
+cw take no bundle. The brief points at the bundle and adds only the effort bound and
+what the bundle cannot hold.
 
 Reviews are capped: one full independent review; after the fixes, at most one
 diff-scoped follow-up by a fresh reviewer; a further review only to re-bind a fix
@@ -163,17 +200,12 @@ for every review. Resolve the role from the current host policy. Record each
 follow-up like any review: a new assignment ID, task-record role `review`,
 `owned_paths: ["."]` and its own handoff and acceptance. The accepted final review
 always binds the whole current source; the gate does not measure how much the
-reviewer read. The follow-up's bundle holds:
-
-- the earlier findings, with dispositions and source evidence;
-- the diff from the last reviewed source, and checks already run on the current
-  source;
-- the questions: is each finding resolved, are the changed hunks correct, and do
-  they hold on every path that reaches them (callers, documented invocation modes,
-  supported platforms) and for every consumer of state, data formats, files or
-  contracts the hunks change;
-- a bound on its effort, permission to report anything outside the diff, and a
-  request to state what it did not re-review.
+reviewer read. Its bundle is a follow-up of the previous reviewed source: its rows
+cover only the files changed since, and it lists the earlier findings with their
+dispositions. Its brief asks whether each finding is resolved, whether the changed
+hunks are correct, and whether they hold on every caller, invocation mode and
+platform in the rows and for every consumer; it bounds the effort, permits reporting
+anything outside the diff, and asks what was not re-reviewed.
 
 Use a fresh reviewer: in a measured replay, the first full review missed the defect
 that mattered and a fresh reviewer of the revised hunk caught it. Continue an
@@ -193,7 +225,8 @@ against the cap. Record the follow-up's other findings as `resolved`,
    changed (verify reports its scope stale otherwise), and the earlier review, with
    dispositions that cite the fixed source as `resolved` or give the evidence for
    `rejected` (an `unused` acceptance may give `[]` for `evidence` and `check_ids`).
-4. Assign the follow-up review, and record its handoff and acceptance last.
+4. Build the follow-up's bundle, assign the review, and record its handoff and
+   acceptance last.
 
 The gate checks structure, bindings, current source, actual check records and
 declared identity separation; the coordinator still verifies that the reviewer

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"path/filepath"
 
 	"github.com/belevtsev/agent-workflows/internal/taskflow"
@@ -153,4 +155,20 @@ func consultSummary(record taskflow.Record, phase string) taskConsultSummary {
 		value.Providers = map[string]string{}
 	}
 	return value
+}
+
+type taskBundleSummary struct {
+	Bundle       string `json:"bundle"`
+	SHA256       string `json:"sha256"`
+	ReviewID     string `json:"review_id"`
+	Kind         string `json:"kind"`
+	Rows         int    `json:"rows"`
+	ChangedFiles int    `json:"changed_files"`
+}
+
+// bundleSummary names the written bundle and its hash; the coordinator fills
+// the rows, so the brief needs the hash of the filled file, not this one.
+func bundleSummary(path string, data []byte, bundle taskflow.Bundle) taskBundleSummary {
+	sum := sha256.Sum256(data)
+	return taskBundleSummary{Bundle: path, SHA256: hex.EncodeToString(sum[:]), ReviewID: bundle.ReviewID, Kind: bundle.Kind, Rows: len(bundle.Reach), ChangedFiles: len(bundle.ChangedFiles)}
 }
