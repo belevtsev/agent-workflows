@@ -481,7 +481,7 @@ func TestBundleReachHintsAndIdentity(t *testing.T) {
 			t.Errorf("reach[%d]:\n got %+v\nwant %+v", index, got, expected)
 		}
 	}
-	if bundle.Version != 1 || bundle.TaskID != record.ID || bundle.ReviewID != "review" {
+	if bundle.Version != 2 || bundle.TaskID != record.ID || bundle.ReviewID != "review" {
 		t.Fatalf("identity: version %d task %q review %q", bundle.Version, bundle.TaskID, bundle.ReviewID)
 	}
 	if record.Baseline.Head == "" || bundle.BaselineHead != record.Baseline.Head {

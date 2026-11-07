@@ -64,6 +64,7 @@ The result JSON contains:
 | `check_ids` | Actual task check records cited by the worker |
 | `findings` | Each finding's `id`, `summary` and source `evidence`; `[]` records none |
 | `uncertainties` | Remaining unknowns; `[]` records none |
+| `reach_runs` | Review only: how each reach-row mode was [run](#run-every-reach-row-mode) |
 
 The result must match actual source at submission: never invent a fingerprint or
 copy the original baseline after edits. `cw task` fills omitted single-valued
@@ -165,6 +166,43 @@ and SHA-256 (`shasum -a 256`) as the brief's `bundle`:
 cw take no bundle. The brief points at the bundle and adds only the effort bound and
 what the bundle cannot hold.
 
+### Run every reach-row mode
+
+The reviewer runs each changed file, in a scratch copy, in every invocation mode and
+on every platform and shell its reach row names: piped as `curl … | sh`, sourced,
+with each documented flag, under macOS `/bin/sh` (bash 3.2), dash or zsh, and
+observes the result. Reading the code, probing a different shell, or running an
+extracted fragment, a stand-in or a test that starts the file another way does not
+run it that way. Where a mode cannot run on this host, the reviewer says why for that
+mode, for example "no Windows host"; "looks safe" or "out of scope" is not a reason.
+The result's `reach_runs` holds one entry per mode:
+
+```json
+[{"path": "install.sh", "mode": "curl | sh under macOS /bin/sh (bash 3.2.57)", "status": "ran",
+  "command": "cat install.sh | /bin/sh -s -- version", "observed": "exit 0, printed the version"},
+ {"path": "install.sh", "mode": "Linux dash", "status": "not_run", "reason": "no Docker or Linux host"}]
+```
+
+`cw task handoff` refuses a completed review that carries a bundle unless each row
+of a file that still exists has an entry and each entry names a row; a `ran` entry
+needs `command` and `observed` and no `reason`, a `not_run` entry `reason` and
+neither of the others. A review assigned with a bundle from an older cw (`version`
+1), which never asked for runs, needs none. Whether the entries cover every mode is
+the coordinator's check before `accepted`: compare each row's `invocation_modes` and
+`platforms` with its entries, and count a `ran` entry only when its command runs the
+changed file itself in that mode. When a named mode has neither, do not accept.
+In this order: record the review `rejected` with the missing modes as the reason (and
+its findings' dispositions), so it no longer counts as reviewed source; build a new
+bundle, whose rows return; assign it to the same reviewer, continued, under a new
+review ID on the unchanged source; close the rejected review `unused` (verify needs
+it closed, and a close after the continuation's handoff would make that stale); then
+record the continuation's handoff and acceptance. That completes the same review and
+does not count against the cap. In measured replays, six reviewers given a correctly filled
+`install.sh` row (`curl | sh`; macOS `/bin/sh` is bash 3.2.57) probed under dash or
+reasoned about the mode and none caught the crash. With this rule one of three ran
+the file piped into macOS `/bin/sh` and caught it; the other two piped a fragment or
+a stand-in, and after this acceptance check both ran the file and caught it.
+
 Reviews are capped: one full independent review; after the fixes, at most one
 diff-scoped follow-up by a fresh reviewer; a further review only to re-bind a fix
 of a defect that follow-up found, scoped to that fix. The cap never excuses a defect: fix what the last allowed review finds. A fix that
@@ -203,15 +241,16 @@ always binds the whole current source; the gate does not measure how much the
 reviewer read. Its bundle is a follow-up of the previous reviewed source: its rows
 cover only the files changed since, and it lists the earlier findings with their
 dispositions. Its brief asks whether each finding is resolved, whether the changed
-hunks are correct, and whether they hold on every caller, invocation mode and
-platform in the rows and for every consumer; it bounds the effort, permits reporting
-anything outside the diff, and asks what was not re-reviewed.
+hunks are correct, and whether they hold for every caller and consumer in the rows
+and when [run in every mode the rows name](#run-every-reach-row-mode); it bounds the
+effort, permits reporting anything outside the diff, and asks what was not
+re-reviewed.
 
 Use a fresh reviewer: in a measured replay, the first full review missed the defect
 that mattered and a fresh reviewer of the revised hunk caught it. Continue an
 earlier reviewer only to re-bind a review whose source did not change, such as
-after a later check run; that re-binding reads no new source and does not count
-against the cap. Record the follow-up's other findings as `resolved`,
+after a later check run, or to [run the modes](#run-every-reach-row-mode) its review
+missed; neither counts against the cap. Record the follow-up's other findings as `resolved`,
 `deferred` or `rejected`. Order the records so the follow-up stays current:
 
 1. Record the earlier review's handoff as soon as it returns, before changing

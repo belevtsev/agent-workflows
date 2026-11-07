@@ -54,7 +54,27 @@ func workerResult(t *testing.T, record Record, id, status string, refs ...Source
 	if assigned == nil {
 		t.Fatal("assignment missing")
 	}
-	return WorkerResult{TaskID: record.ID, AssignmentID: id, AssignmentSHA256: assigned.SHA256, AgentID: assigned.Brief.AgentID, Snapshot: currentWorkerSnapshot(t, record), Status: status, Summary: "Inspected the assigned source and actual task evidence.", Evidence: refs, CheckIDs: assigned.Brief.CheckIDs, ChangedFiles: []WorkerChangedFile{}, Findings: []WorkerFinding{}, Uncertainties: []string{}}
+	result := WorkerResult{TaskID: record.ID, AssignmentID: id, AssignmentSHA256: assigned.SHA256, AgentID: assigned.Brief.AgentID, Snapshot: currentWorkerSnapshot(t, record), Status: status, Summary: "Inspected the assigned source and actual task evidence.", Evidence: refs, CheckIDs: assigned.Brief.CheckIDs, ChangedFiles: []WorkerChangedFile{}, Findings: []WorkerFinding{}, Uncertainties: []string{}}
+	// RR5: a completed review of an assignment with a stored bundle answers
+	// every non-deleted reach row with one fixture "ran" entry.
+	if assigned.Brief.Role == "review" && assigned.BundleFile != "" && status == "completed" {
+		root, err := os.OpenRoot(record.Directory)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer root.Close()
+		bundle, err := readStoredBundle(root, *assigned)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, row := range bundle.Reach {
+			if row.Deleted {
+				continue
+			}
+			result.ReachRuns = append(result.ReachRuns, ReachRun{Path: row.Path, Mode: "test fixture mode", Status: "ran", Command: "fixture command", Observed: "fixture observed output"})
+		}
+	}
+	return result
 }
 
 func workerAcceptance(t *testing.T, record Record, id, status string, refs ...SourceRef) WorkerAcceptance {
