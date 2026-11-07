@@ -567,13 +567,17 @@ func storeReviewBundle(ctx context.Context, root *os.Root, record Record, brief 
 	return name, nil
 }
 
-func readBundleInput(path string) ([]byte, error) {
+func readBundleInput(path string) ([]byte, error) { return readInputFile("reviewer bundle", path) }
+
+// readInputFile reads a coordinator-supplied regular file, refusing a symlink
+// or a file replaced while opening, up to MaxInputBytes.
+func readInputFile(label, path string) ([]byte, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return nil, fmt.Errorf("reviewer bundle: %w", err)
+		return nil, fmt.Errorf("%s: %w", label, err)
 	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("reviewer bundle must be a regular file, not a symlink")
+		return nil, fmt.Errorf("%s must be a regular file, not a symlink", label)
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -582,14 +586,14 @@ func readBundleInput(path string) ([]byte, error) {
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(info, opened) {
-		return nil, errors.New("reviewer bundle changed while opening")
+		return nil, fmt.Errorf("%s changed while opening", label)
 	}
 	data, err := io.ReadAll(io.LimitReader(file, MaxInputBytes+1))
 	if err != nil {
 		return nil, err
 	}
 	if len(data) > MaxInputBytes {
-		return nil, errors.New("reviewer bundle exceeds the 8 MiB limit")
+		return nil, fmt.Errorf("%s exceeds the 8 MiB limit", label)
 	}
 	return data, nil
 }

@@ -35,11 +35,43 @@ Include only the following inputs:
 - Minimal interface/type/schema extracts and approved dependency API references.
   If declarations share a file with implementation, provide an extract rather
   than permission to read the whole file. Do not include implementation bodies.
+  For Go, build the extract with `cw task contract-extract` as described below;
+  for other languages, write it by hand.
 - Approved test scaffolding, dependencies, toolchain and runner instructions.
   Inspect helper bodies and their dependencies before including them; a fixture
   or helper can disclose the implementation or bake in its expected answers.
 - Exact allowed input files and exclusive test-artifact output paths, permitted
   actions, the result contract, and unresolved facts that require escalation.
+
+### Extract Go declarations
+
+For Go, copy declarations from the source with the extractor rather than write
+them from memory; contracts written from memory carried wrong signatures and
+shapes that cost extra author rounds:
+
+```sh
+cw task contract-extract --path internal/pkg --symbols Parse,Options,Client.Do >/private/packet/contract-r1.json
+shasum -a 256 /private/packet/contract-r1.json
+```
+
+`--path` is one package directory (only its non-test `.go` files are read) and
+`--symbols` names functions, types, consts, vars and methods (`Type.Method`).
+The JSON holds each declaration's doc comment and text with every function body,
+function literal body and comment inside a body stripped, its `path:line`, and
+the SHA-256 of each file a declaration comes from. Only the requested symbols are
+printed; an unknown symbol fails with nothing printed. Request only what the tests
+need, and read the extract before sending it: doc comments, var values and const
+expressions can still describe the implementation. Remove nothing by hand; drop
+the symbol and extract again instead, because assign compares the file.
+
+Give the extract's path and SHA-256 as the author brief's `contract`
+(`{"path": ..., "sha256": ...}`, implementation role only), saved outside project
+source. `cw task assign` refuses an extract that differs in any byte from what the
+current source yields, so a source edit after extraction means extracting again.
+`cw task verify` re-extracts each current contract: changed, added or missing
+declarations make the task incomplete until a correction round assigns a fresh
+extract to the author over every test path the stale one owned; source files that
+changed while every declaration stayed the same are listed as a limitation only.
 
 Start the author with fresh context: Codex uses `fork_turns: "none"`; Claude uses
 a fresh Agent invocation of the `cw-test-author` type, which has no Skill tool.

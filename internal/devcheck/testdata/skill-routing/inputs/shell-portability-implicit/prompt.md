@@ -1,0 +1,3 @@
+Review install.sh before we publish the release. Users run it with `curl -fsSL https://example.invalid/install.sh | sh` on Debian, Ubuntu, Alpine and macOS. The file install-script.md holds the exact install.sh text users will fetch. Report each defect that would break that install path with the exact line, why it breaks, and what evidence would show the fix works.
+
+Use only the supplied synthetic artifacts and installed skill files needed for this request. Work read-only and report in chat. Do not run tests, builds, linters, scanners, helpers, installs, network calls, Jev, or external writes. Distinguish source evidence from execution and deployment.

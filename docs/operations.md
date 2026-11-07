@@ -106,7 +106,9 @@ one-line result instead of the whole record (`run`: the whole check run, plus fa
 test names and first error lines when it failed; `verify`: without its fixed
 limitations), `cw doctor`, `cw status` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task bundle` writes the
-reviewer bundle a review assignment must carry (one reach row per changed file), and
+reviewer bundle a review assignment must carry (one reach row per changed file),
+`cw task contract-extract` prints requested Go declarations without bodies for a
+test author's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
@@ -156,7 +158,7 @@ Skill registrations resolve through current; installed snapshots are never edite
 directly. The manager version and active skill revision are distinct, especially
 after rollback.
 
-The current manifest manages 33 registrations with 78 entrypoints on each host, a
+The current manifest manages 37 registrations with 82 entrypoints on each host, a
 marked block in that host's global instructions, its model defaults, and one
 enrolled command/PATH registration. It preserves unrelated content, comments,
 modes, credentials, and repository instructions. Original settings and adopted

@@ -65,6 +65,9 @@ func validateWorkerRecord(record Record) error {
 		if (assigned.BundleFile != "") != (assigned.Brief.Bundle != nil) || assigned.BundleFile != "" && !bundleFileName.MatchString(assigned.BundleFile) {
 			return errors.New("stored review assignment bundle binding is invalid")
 		}
+		if (assigned.ContractFile != "") != (assigned.Brief.Contract != nil) || assigned.ContractFile != "" && !contractFileName.MatchString(assigned.ContractFile) {
+			return errors.New("stored assignment contract binding is invalid")
+		}
 	}
 	results := map[string]bool{}
 	for _, bound := range record.WorkerResults {
