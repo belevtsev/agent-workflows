@@ -31,8 +31,8 @@ overrides:
 
 | Choice | Codex substantive work | Claude substantive work |
 | --- | --- | --- |
-| Recommended | Sol 6.1 / max | Opus 5.5 / high; xhigh for planning, architecture and diagnosis |
-| Balanced | Sol 6.1 / xhigh | Opus 5.5 / high for every substantive role |
+| Recommended | Sol 6.1 / max | Opus 5.5 / high; xhigh for planning, architecture and diagnosis; follow-up reviews on Sonnet 5.5 / high |
+| Balanced | Sol 6.1 / xhigh | Opus 5.5 / high for every Opus role; follow-up reviews stay on Sonnet 5.5 / high |
 | Advanced | Each role, fallback and memory/context field separately | Each role and fallback separately |
 
 The models step also has a GitHub workers row for each selected host. It sets one

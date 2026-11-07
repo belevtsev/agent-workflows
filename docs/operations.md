@@ -457,7 +457,10 @@ cw rollback
 ```
 
 Rollback restores the previous skills and owned instruction/model defaults, while
-keeping a compatible manager. It does not change Git or GitHub.
+keeping a compatible manager. It does not change Git or GitHub. It keeps saved
+preferences and refuses when they pin a role the previous release lacks, such as
+the Claude `review_followup` role; clear that pin in setup first (Advanced, then
+`Release default` for that role's model and effort).
 Status then reports the restored model profiles. Hosts are not part of a release,
 so rollback never adds or removes one, and a host you removed stays removed.
 Shared settings follow the previous snapshot's resource. A six-to-five-key

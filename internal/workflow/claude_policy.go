@@ -3,7 +3,6 @@ package workflow
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 )
 
@@ -12,8 +11,14 @@ var claudePolicyModels = []string{"claude-opus-5-5", "claude-sonnet-5-5"}
 // settings.json rejects max, so the policy cannot persist it as a default.
 var claudePolicyEfforts = []string{"low", "medium", "high", "xhigh"}
 
+// claudeOnlyRoles are the roles the Claude policy may add to the shared roles.
+// Follow-up reviews run on a cheaper model under Claude Code; Codex keeps every
+// review on the review role, so its saved pins and older releases are unaffected.
+var claudeOnlyRoles = []string{"review_followup"}
+
 // suiteClaudeModelPolicy validates the Claude Code role mapping. Its roles must
-// match the shared policy so a role can never exist on only one host.
+// match the shared policy, apart from claudeOnlyRoles, so no other role can exist
+// on only one host.
 func suiteClaudeModelPolicy(policyPath string, shared Object) (Object, error) {
 	data, err := suiteRead(policyPath, "Claude model policy")
 	if err != nil {
@@ -54,8 +59,15 @@ func suiteClaudeModelPolicy(policyPath string, shared Object) (Object, error) {
 		return nil, err
 	}
 	sharedRoles := object(shared["roles"])
-	if !slices.Equal(slices.Sorted(maps.Keys(roles)), slices.Sorted(maps.Keys(sharedRoles))) {
-		return nil, errors.New("Claude policy roles must match the shared policy")
+	for role := range sharedRoles {
+		if _, ok := roles[role]; !ok {
+			return nil, errors.New("Claude policy roles must match the shared policy")
+		}
+	}
+	for role := range roles {
+		if _, ok := sharedRoles[role]; !ok && !slices.Contains(claudeOnlyRoles, role) {
+			return nil, errors.New("Claude policy roles must match the shared policy")
+		}
 	}
 	for role, raw := range roles {
 		profile := object(profiles[text(raw)])

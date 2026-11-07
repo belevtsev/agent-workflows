@@ -153,7 +153,11 @@ retain scoped evidence after unrelated edits.
 
 ### Follow-up review after a fix revision
 
-Record each follow-up like any review: a new assignment ID, role `review`,
+Dispatch the first full review with the `review` role. Under Claude Code, dispatch
+every later review (the diff-scoped follow-up, a review scoped to a fix, a
+confirmation pass) with the Claude-only `review_followup` role; Codex uses `review`
+for every review. Resolve the role from the current host policy. Record each
+follow-up like any review: a new assignment ID, task-record role `review`,
 `owned_paths: ["."]` and its own handoff and acceptance. The accepted final review
 always binds the whole current source; the gate does not measure how much the
 reviewer read. The follow-up's bundle holds:

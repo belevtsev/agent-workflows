@@ -184,7 +184,9 @@ func PreferencesForSelection(view ConfigurationView, selection ConfigurationSele
 			}
 			hp := HostPreferences{Roles: map[string]ModelOverride{}, Fallback: &ModelOverride{Model: &model, Effort: &effort}}
 			for _, role := range host.Roles {
-				if role.Scope == "substantive" {
+				// Claude roles that default to a cheaper model, such as follow-up
+				// reviews on Sonnet, keep that default.
+				if role.Scope == "substantive" && (host.ID != hostClaude || role.Default.Model == model) {
 					hp.Roles[role.Role] = ModelOverride{Model: &model, Effort: &effort}
 				}
 			}

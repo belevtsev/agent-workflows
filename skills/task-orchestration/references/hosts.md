@@ -21,14 +21,17 @@ have `CLAUDECODE=1`.
 
 Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
 `architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
-three routine GitHub roles use the cheaper Sonnet 5.5 profile; resolve the current
-policy before dispatch.
+Claude-only `review_followup` role (every review after a task's first full review)
+and the three routine GitHub roles use cheaper Sonnet 5.5 profiles; resolve the
+current policy before dispatch. A saved `review` pin does not apply to
+`review_followup`; pin it separately.
 
 | Profile | Agent tool `model` | Agent tool `effort` |
 | --- | --- | --- |
 | `substantive` | `opus` | `high` |
 | `decision` | `opus` | `xhigh` |
 | `bounded_execution` | `opus` | `high` |
+| `review_followup` | `sonnet` | `high` |
 | `github` | `sonnet` | `medium` |
 | `bounded_evidence` | `opus` | `high` |
 

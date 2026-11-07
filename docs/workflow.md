@@ -22,7 +22,9 @@ keeps saved choices. No preset grants publication authority or relaxes substanti
 role scopes, independent authorship, adviser or review requirements.
 
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
-`claude-sonnet-5-5` at `medium`. Other roles use `claude-opus-5-5` at `high`, except
+`claude-sonnet-5-5` at `medium`, and the Claude-only `review_followup` role (every
+review after a task's first full review) uses it at `high`; Codex keeps every review
+on `review`. Other roles use `claude-opus-5-5` at `high`, except
 the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 

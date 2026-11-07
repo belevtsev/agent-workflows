@@ -255,7 +255,9 @@ and adviser coverage. Advice and confidence never grant authorization.
 
 Substantive coding, testing, planning, review, diagnosis, documentation, new
 acceptance claims and final verification use the configured non-Luna substantive
-profile. Routine execution requires fixed files, revision, verified facts, action
+profile; under Claude Code, reviews after a task's first full review use the
+[`review_followup` role](references/worker-handoffs.md#follow-up-review-after-a-fix-revision).
+Routine execution requires fixed files, revision, verified facts, action
 bounds and authorization from the coordinator; routine GitHub wording can be
 drafted from fixed verified facts under the [GitHub worker contract](references/github-worker.md).
 New claims, ambiguous scope, conflicts or uncertain verification return to
