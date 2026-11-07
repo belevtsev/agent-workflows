@@ -3,6 +3,7 @@ name: docker-build-strategies
 description: Write, review, or optimize Dockerfiles and image builds for cache efficiency, security, and maintainability.
 license: Apache-2.0
 compatibility: Requires Docker 23.0+ (BuildKit default). On Docker 20.10–22.x, set DOCKER_BUILDKIT=1 before building.
+disable-model-invocation: true
 ---
 
 # Docker Build Strategies

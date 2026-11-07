@@ -3,6 +3,7 @@ name: docker-agent-config
 description: Create or edit Docker Agent configurations for agents, models, providers, toolsets, and multi-agent teams.
 license: Apache-2.0
 compatibility: Requires the docker-agent CLI plugin (Docker Desktop 4.63+, or standalone via Homebrew/GitHub releases). Verified against docker-agent as shipped with Docker CLI 29.7.2. Config directories still use the legacy `cagent` name (`~/.config/cagent`, `~/.cagent`).
+disable-model-invocation: true
 ---
 
 # Docker Agent Configuration

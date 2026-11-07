@@ -3,4 +3,4 @@ interface:
   short_description: "Configure Docker Agents and their toolsets"
   default_prompt: "Use $docker-agent-config to create or edit a Docker Agent configuration."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

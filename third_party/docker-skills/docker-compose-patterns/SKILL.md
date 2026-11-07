@@ -3,6 +3,7 @@ name: docker-compose-patterns
 description: Create, modify, or troubleshoot Docker Compose configurations for local and multi-service applications.
 license: Apache-2.0
 compatibility: Requires Docker Compose v2 (compose.yaml format).
+disable-model-invocation: true
 ---
 
 # Docker Compose Patterns

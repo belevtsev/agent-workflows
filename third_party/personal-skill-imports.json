@@ -1694,17 +1694,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "10ae4116f690fda75a0f36e7d0f8ce6df7bdcc93e67416af63a09334e5a2917c",
-          "imported_sha256": "118c6f3c4ae73bc91139bbda4699dc62de1a494b72da0a5358dada54a3cf1062",
+          "imported_sha256": "2c4c2021ae70c59aeac5f7148f42829cec0037c5e5dc1634e1e0f9b7c21323ab",
           "source_git_blob": "bd4ec9826b06b53e5255ab4945541c4c375ce872",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "7f241ddcb91f10f15c8ce9f63daddbc4435f299a8a907613f6e3e4a4e927d44b",
-          "imported_sha256": "068602c75f7f4e2001451d86db1992e1b9fd8713f8db795b2c2f4b83c47134d4",
+          "imported_sha256": "8afd5b630ae4cd98d04042aaf3043c318a01efd8581d87a49f3970917d1ea0bb",
           "source_git_blob": "81a8cd8a9af56ccbc04ba4a8ce1ec92a51db1d25",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/team-agent.yaml",
@@ -1762,17 +1762,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "f52287752b3edb2898afd508417bbbd7bbfe563ce82d5b6c23452ded5c6ea99c",
-          "imported_sha256": "e117c7bd961c51e713df305fdcef5f34b0aeb22fbbee8ad0a1e27ba13b197823",
+          "imported_sha256": "c563b8dc23d130749a445f68f5adbc9f9ca36891e590d0b9a002be6d44252913",
           "source_git_blob": "b655a9c4da82769a1d15e00b6058bd1bdcd6ba53",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "5cf06cf791c3863b4aeedd870092bf29adb1fe1e96a62a548cfe42abc8248a8e",
-          "imported_sha256": "adc59eba6dab25e53a90dbac278391eb446b07e72318f25c2d53cb8b27c74c01",
+          "imported_sha256": "76083ac2eb39592c91c81acc1ad8158769823f49776ffd73cde66430abc22d42",
           "source_git_blob": "1fcb8125d13e402fb001d639b7ad467aa40fb9a1",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/eval-session-example.json",
@@ -1830,17 +1830,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "3df420806fe795d98309cb5c260ad76c306e5f7ea05a2d223e43138634bebd80",
-          "imported_sha256": "5f65f8a4676e1fa255482461ffbd944495630f16f2eec9a7c08681b331b8ade5",
+          "imported_sha256": "617eec0e7ad761e85a12c1b226db2a50f5fc749bfdb4442c1e959829028c54a7",
           "source_git_blob": "2253af330b5f0eb95ae7ad940f6dd836f400cd06",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "a9b4b79ae64d60b610fd331049c8691ea7b4204558183f4079fb4aa1fdac0302",
-          "imported_sha256": "a4a4f0392defc8ebd160a2a89c8d3d325f04aa3f95d21a0b328ddb4a83129510",
+          "imported_sha256": "95d545b6c530dda76c824aceff64d51b35584ea68448786def7ffc300a2ed70f",
           "source_git_blob": "df4ff15fe4490c1c8fdd5281905985d4802fabcf",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "checks/verification.md",
@@ -1891,17 +1891,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "53b1643e4f6df6200aef9bf2a5344acc69ec844658486b68b7b23bc7e699b078",
-          "imported_sha256": "d731b8af9434707045d46e1328923c579f7055f4c199e5f261d00eb469428f80",
+          "imported_sha256": "1812a5e994139af65f46a1edf0464b76ccf43219fd0ee53b3b3d96aa19ae15cd",
           "source_git_blob": "8f8619fbcc2eaa301a9172625e07deaf8b9caded",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "9fc985ee4a18fefaf4e50e078f3469f80f60713ae87698303a2a9d95f3b91176",
-          "imported_sha256": "58459073c524580dafa444f231a25126240af6ab6c1782fe5b57aeed80fe28e5",
+          "imported_sha256": "b0baa4f7da56d202e82ee1394a722ea72ab52f2a1e7dab46e1fe890ce1067b74",
           "source_git_blob": "d459e95a425f43c8d107ece0aaeb8d209ab53a66",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/Dockerfile.go",
@@ -1987,17 +1987,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "754dbbc66f29c1c9f8b5bb6d06b28af6e82c9b7d251e34a542260c9bfaae8f57",
-          "imported_sha256": "de59aba3173647921f08f2a16ac85144ecabc4923947b2db8d40965addfc3f4f",
+          "imported_sha256": "9f249b89f42478389c26ea26bf8cd65109d7d48c89a29611fbbb2b3def074319",
           "source_git_blob": "cfd69bf75f5ed2a52ac053cf1d6ce884f17cf8ff",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "aec9d1df3cb1ce775e36d499da60ee728ad079516e26865a59007af276e1a424",
-          "imported_sha256": "68e98840fbabd699b879939ccbd0d62c2f45176a6afe67368d4518b7f751842f",
+          "imported_sha256": "b3a65acb7a3a77feec9882e94ba2bef8a8544809e2f3e42f67faf116ab3854c8",
           "source_git_blob": "366d0290dedf1052c67d6550e60d383653cd2410",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/bad-vs-good.md",
@@ -2137,17 +2137,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "68e19cc50687085fd0ce255867182425fa43e2bec07fa44ed47612d1cd564245",
-          "imported_sha256": "eac29dd438712c6b864db53bd871569ad1fdbaef38662fbbeee852eb255149d2",
+          "imported_sha256": "395e7ea7ed9adcbcdd5ae0d660f1bd8e87130ee683ff41c26c7d4a109c56d942",
           "source_git_blob": "10aa2aafd1d8c464b763d291db0acedeb5eec6a3",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "53926c60bab62fff24885d5e86c0210c332273b56f2cdd91de065de1b8e1327b",
-          "imported_sha256": "01f55d2270057138d9a2019dd1a11fbb62649cec05a3203c4f94bcee50fc9497",
+          "imported_sha256": "f98c3aaa7d66445250f0eae96d6d41f235b1ab4d8afa5489f070b43c04fc488d",
           "source_git_blob": "c1a58c2cc59d9a13d30fc4d1e718245dd9741d71",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/Dockerfile.simple",
@@ -2219,17 +2219,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "82fd5f04eabe66cd7215c646801727b3e00d42191870741d20789b53d44fcc58",
-          "imported_sha256": "8df18d00528085c19d9d46118d7d7266f08a008762c106cc9e5c1c52e603649a",
+          "imported_sha256": "30f4105a7b9cfb9ee0447fc48c1c26814f69fba3bafecdce9856b7860011168d",
           "source_git_blob": "cfbc6f6ef4b05ce3e8fac7008eb4f43d2fdf068c",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "073fd1857e8c766e2e48e0196b34c7748b861238fb615a2e5084ef204d35572c",
-          "imported_sha256": "e397eea8e437793b84794314a70bbd75e6fcff93485eeb3e454903221d839883",
+          "imported_sha256": "c3443681da7cf0090276474d0bfc942be6eb381a61eb32c1f8f901d22fb99c6d",
           "source_git_blob": "0dd9fdf5119087c799286a16cfe54afa8eeb3073",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/sbxenv.yaml",
@@ -2287,17 +2287,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "a213f91829ba95acd521c72d73429efbbbcc6f80b681820a7f3b93e199d6b3a1",
-          "imported_sha256": "82296bfadc14fe39d207c9d3935c4870ce822a855490c6f70b820d42ba7e7f3f",
+          "imported_sha256": "8d0131b04083eb456093fbc410a1e00f7330a6ae6fccc870c5db6241aabb3133",
           "source_git_blob": "26fc829d9778a0367f5d125fdba9a2fac661f4e4",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "1ffe3f39733ee351362b0001b302577a919551275277f79808f5095da69e21d6",
-          "imported_sha256": "9042578d70f4be7a875ddb09256019a3868e12badaaf21dfb6235fd3abb4684c",
+          "imported_sha256": "97048141aae18f26431312122e10e1d74ca85c17271708e83816f9593f376927",
           "source_git_blob": "bea9dba35e40dabf37cdea5cf5bc17ce64e699d5",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "assets/spec-mixin.yaml",
@@ -2369,17 +2369,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "60a40b304b18dacba901e0013cca9ae5ad3c00b226373e813abedb5efbd5c492",
-          "imported_sha256": "b69eaf7238d7873a14b85c795012688678dba44d8c1693d7a99f53d91d2c5771",
+          "imported_sha256": "4a1209177dc77d2520e11eca9e130fdbacbfa377fbe89cdd52d3ef51ac44434a",
           "source_git_blob": "4d79514b2f82a85e74a0054004aac27329942578",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "7504f9cb364cf7c7324b3989fa1c28e783b4ac1f2acd36169061ecb83ebac5a6",
-          "imported_sha256": "e7e2d6290db991429fd1856a05c307e60faf988adc22bbd2425bf5a22a7676c0",
+          "imported_sha256": "b590626c8bba66ae36af909204d155585835ba0002c4d8ccde2f8ed7672ea9e3",
           "source_git_blob": "70425e924dfd4da6cbeda4420ceef1aaaa60fc92",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "checks/verification.md",
@@ -2423,17 +2423,17 @@
           "path": "SKILL.md",
           "mode": 420,
           "source_sha256": "84018e1d691a9c634b06fc485527d3542d09efe4e8455d859094db73e6a1be76",
-          "imported_sha256": "47ac7f572cf82623a0a53cebdcd5b20ff6a5edb377af74f804227c0cb4b5c148",
+          "imported_sha256": "ac533c922d8c09de253b2cd61ca536a02e43ac36503136a69fb0cbed393cfa89",
           "source_git_blob": "0d8d8d1dbef50eaadd6a91e7843c17313f5025e8",
-          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged."
+          "adaptation": "Shortened frontmatter discovery description; instruction body unchanged; added disable-model-invocation: true so Claude Code lists the skill only when invoked by name."
         },
         {
           "path": "agents/openai.yaml",
           "mode": 420,
           "source_sha256": "3c404432406886ca13675ecbebf886f538ed82918d15df9dcc8d91ead0673527",
-          "imported_sha256": "9944275566d1ff3c351a152b61cc54e9b545c28feb11092fe8f65fcd6dc476e2",
+          "imported_sha256": "3f3dbc853c5c1190d2c9b94302f1a1eb7d47bdb14510e8830e58ad88dcac4465",
           "source_git_blob": "56e678ae99f08f48ab10507b977dc9b40030e258",
-          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; automatic discovery retained."
+          "adaptation": "Shortened UI description; quoted strings consistently; named the invoked skill in the default prompt; implicit invocation disabled so Codex runs the skill only when invoked by name."
         },
         {
           "path": "checks/verification.md",

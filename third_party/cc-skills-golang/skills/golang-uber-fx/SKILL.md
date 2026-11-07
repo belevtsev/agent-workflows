@@ -19,6 +19,7 @@ metadata:
     paths:
     - '**/*.go'
     allowed-tools: Read Edit Write Glob Grep Bash(go:*) Bash(golangci-lint:*) Bash(git:*) Agent WebFetch mcp__context7__resolve-library-id mcp__context7__query-docs Bash(godig:*) Bash(gopls:*) LSP mcp__gopls__*
+disable-model-invocation: true
 ---
 
 # Using uber-go/fx for Application Wiring in Go

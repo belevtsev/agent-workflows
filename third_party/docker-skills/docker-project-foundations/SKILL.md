@@ -3,6 +3,7 @@ name: docker-project-foundations
 description: Set up or Dockerize a project with Dockerfiles, Compose services, ignore rules, and containerized local development.
 license: Apache-2.0
 compatibility: Requires Docker 20.10+ and Docker Compose v2.
+disable-model-invocation: true
 ---
 
 # Docker Project Foundations

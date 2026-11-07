@@ -3,6 +3,7 @@ name: docker-agent-run
 description: Run and troubleshoot Docker Agents, choosing approval modes, sandbox isolation, aliases, and worktrees.
 license: Apache-2.0
 compatibility: Requires the docker-agent CLI plugin (Docker Desktop 4.63+, or standalone via Homebrew/GitHub releases). Sandbox mode (`--sandbox`) additionally requires the `sbx` CLI. Verified against docker-agent as shipped with Docker CLI 29.7.2.
+disable-model-invocation: true
 ---
 
 # Docker Agent: Running and Operating Agents

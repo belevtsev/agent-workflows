@@ -3,6 +3,7 @@ name: docker-sandboxes-lifecycle
 description: Create, run, reattach to, or remove Docker Sandboxes, choosing workspace mounts or isolated clones.
 license: Apache-2.0
 compatibility: Standalone `sbx` CLI (not the legacy `docker sandbox` plugin wrapper). Source-verified against docker/sandboxes (github.com/docker/sandboxes) @ commit df5c96ba60484fa2c375469dbac912c205da6c37. Cross-checked against an installed sbx v0.42.0-503-g951b7f6d7 (commit 951b7f6d7f6bb260fac15077b607109ffe8ae012, older than the pinned source); one source-only behavior change is called out explicitly below (`sbx prune --filter`). `docker_help` does not cover standalone `sbx` syntax.
+disable-model-invocation: true
 ---
 
 # Docker Sandboxes: Local Lifecycle & Workspace Isolation

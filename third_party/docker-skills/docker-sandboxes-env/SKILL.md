@@ -3,6 +3,7 @@ name: docker-sandboxes-env
 description: Author, plan, or run declarative sbxenv.yaml environments for Docker Sandboxes, including host hooks and approvals.
 license: Apache-2.0
 compatibility: Requires standalone sbx with sbx env support and sbxenv.yaml schemaVersion "1", not the legacy docker sandbox wrapper. Verified against docker/sandboxes df5c96ba60484fa2c375469dbac912c205da6c37; installed-help version and provenance are in references/sources.md. docker_help does not cover standalone sbx.
+disable-model-invocation: true
 ---
 
 # Docker Sandboxes: Declarative sbxenv.yaml Environments

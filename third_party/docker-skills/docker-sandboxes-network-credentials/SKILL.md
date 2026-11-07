@@ -3,6 +3,7 @@ name: docker-sandboxes-network-credentials
 description: Configure Docker Sandbox network policies and service or registry credentials through proxy injection.
 license: Apache-2.0
 compatibility: Standalone `sbx` CLI (not the legacy `docker sandbox` plugin wrapper). Source-verified against repository docker/sandboxes (github.com/docker/sandboxes) @ commit df5c96ba60484fa2c375469dbac912c205da6c37. Cross-checked against an installed sbx v0.42.0-503-g951b7f6d7 (commit 951b7f6d7f6bb260fac15077b607109ffe8ae012, older than the pinned source); no source-only differences were found for the commands this skill covers. `docker_help` does not cover standalone `sbx` syntax.
+disable-model-invocation: true
 ---
 
 # Docker Sandboxes: Network Policy & Credentials

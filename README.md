@@ -333,6 +333,39 @@ Codex uses `$name`:
 /task-orchestration Implement this workflow, resolve the before and final checkpoints with the configured advisers, and verify the result.
 ```
 
+### Skills you call by name
+
+Every skill in the automatic listing costs tokens on each request, in every
+subagent. These 24 rarely used skills are left out of that listing on both
+hosts, so the agent cannot load them from the listing on its own:
+
+- ten `docker-*` skills: every one except `docker-destructive-guardrails`, which
+  stays listed so it can catch unnamed cleanup and prune requests;
+- `db-postgres`;
+- from `cc-skills-golang`: the seven `golang-samber-*` skills, `golang-uber-fx`,
+  `golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql`
+  and `golang-spf13-viper`.
+
+They stay installed. To use one, name it with the host's syntax at the start of
+your message. A plain mention such as "use the docker-build-strategies skill"
+is not enough: the agent cannot load the skill through its skill tool and may not
+find the file.
+
+```text
+/docker-build-strategies Review this Dockerfile for cache behavior.          (Claude Code)
+/cc-skills-golang:golang-samber-do Wire these services with samber/do.        (Claude Code)
+$docker-build-strategies Review this Dockerfile for cache behavior.          (Codex)
+$cc-skills-golang:golang-samber-do Wire these services with samber/do.        (Codex)
+```
+
+Use the full `cc-skills-golang:` name for the Go skills on both hosts.
+
+Claude Code hides a skill whose `SKILL.md` frontmatter sets
+`disable-model-invocation: true`; Codex hides one whose `agents/openai.yaml` sets
+`policy.allow_implicit_invocation: false`. `cw` validation requires the two to
+agree for every skill, and refuses either setting on `archify`, `code-review`,
+`graphify`, `task-orchestration` and `test-strategy`.
+
 ## Global project workflow
 
 The same installed workflow serves every project. `--repo` selects the target

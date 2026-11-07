@@ -27,7 +27,7 @@ The security threat-model adaptation narrows its trigger, updates the invocation
 prompt, and asks for clarification only when missing context materially affects
 the requested result. The PostgreSQL adaptation resolves resources
 relative to the installed skill and applies task-scoped evidence and completion
-guidance. TypeSafe consultation guidance is retained with its vendored skill.
+guidance, and it runs only when invoked by name. TypeSafe consultation guidance is retained with its vendored skill.
 
 The Go testing adaptation adds an optional catalog-resolved route to this suite's
 original `test-strategy` Go fuzzing reference, with a source-relative fallback.
@@ -38,11 +38,19 @@ maintained adaptations of the retained material, not new upstream revisions.
 
 The Go bundle's upstream `allowed-tools` lists are kept under `metadata.upstream`
 rather than as live frontmatter, so Claude Code does not pre-approve those tools.
+Thirteen library-specific Go skills (`golang-samber-*`, `golang-uber-fx`,
+`golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql` and
+`golang-spf13-viper`) add `disable-model-invocation: true` and an
+`agents/openai.yaml` that disables implicit invocation, so they run only when
+invoked by name.
 
 The 82 original Docker skill files were verified against their exact upstream
 Git blobs at the recorded commit. Local adaptations shorten discovery and UI
 descriptions, quote UI strings consistently, and identify the invoked skill in
-default prompts. Automatic discovery remains enabled. Skill bodies, references,
+default prompts. All but `docker-destructive-guardrails` also disable implicit
+invocation on both hosts (`disable-model-invocation: true` in `SKILL.md`,
+`policy.allow_implicit_invocation: false` in `agents/openai.yaml`), so they run
+only when invoked by name; the guardrails skill keeps automatic discovery. Skill bodies, references,
 verification guidance, helpers, assets, and `skill.yaml` files remain unchanged.
 The Apache license is copied in full from that same commit.
 

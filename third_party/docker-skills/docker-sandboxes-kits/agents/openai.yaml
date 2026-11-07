@@ -3,4 +3,4 @@ interface:
   short_description: "Author and package reusable Docker Sandbox kits"
   default_prompt: "Use $docker-sandboxes-kits to author, validate, or package a Docker Sandbox kit."
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false
