@@ -86,13 +86,17 @@ adviser checkpoints are not required:
 
 A substantial plan binds at least one check to a requirement. Once its source
 changes, `verify` needs the latest run of some check passed at the current source.
-When the selected path holds `go.mod`, each changed package (any file in its
-directory or its `testdata/`) also needs a check whose argv is a direct `go test`
-naming `./...`, the package (`./pkg`) or a parent (`./dir/...`); a changed `go.mod`,
-`go.sum`, `go.work` or `go.work.sum` needs `./...`. Runs through wrappers (`make`,
-scripts), runs using `-c`, `-n`, `-list`, `-exec`, `-run`, `-skip`, `-C` or an
-unknown flag (in argv or `GOFLAGS`), `GO.EXE` and Windows-style `.\pkg` patterns
-earn no credit.
+When the selected path holds `go.mod`, each changed package also needs a check
+whose argv is a direct `go test` naming `./...`, the package (`./pkg`) or a parent
+(`./dir/...`). A file belongs to the package of its directory (or of the directory
+holding its `testdata/`); a non-Go file in a directory without Go files belongs to
+the nearest ancestor package. A changed `go.mod`, `go.sum`, `go.work` or
+`go.work.sum` needs `./...`. Only runs whose every flag, in argv and in `GOFLAGS`,
+is on the allowlist (`v`, `race`, `count` of at least 1, `timeout`, `cover*`,
+`tags`, `ldflags` and the other flags in `internal/langpack/golang.go` that cannot
+skip or replace tests) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
+`-toolexec`, `-overlay`, `-C`, unknown flags, wrappers (`make`, scripts), `GO.EXE`
+and Windows-style `.\pkg` patterns earn none.
 
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set

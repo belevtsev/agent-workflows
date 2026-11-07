@@ -158,7 +158,8 @@ type CheckRun struct {
 	Truncated    bool                 `json:"truncated"`
 	Failure      string               `json:"failure,omitempty"`
 	// GOFLAGS is the GOFLAGS of the check's environment, recorded for the Go
-	// evidence rule; runs recorded before it existed omit it.
+	// evidence rule with compiler and linker flag values redacted
+	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
 	GOFLAGS string `json:"goflags,omitempty"`
 }
 

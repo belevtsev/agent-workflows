@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -15,12 +16,9 @@ import (
 //
 //   - go.mod, go.sum, go.work or go.work.sum at the module root needs a run
 //     with the pattern ./... ;
-//   - any other file belongs to the package of its directory or, under a
-//     testdata directory, to the package holding that testdata. This includes
-//     _test.go files and non-Go files such as embedded assets, .s and .c. It
-//     counts when that package still holds a .go file and ./... at the module
-//     root matches it: vendor, nested modules and directories named with a
-//     leading _ or . are skipped, as are deleted packages.
+//   - any other file belongs to a package (see packageOf). This includes
+//     _test.go files, files under testdata, and non-Go files such as embedded
+//     assets, .s and .c.
 type GoTests struct{}
 
 func (GoTests) Applies(source Source) bool { return slices.Contains(source.Current, "go.mod") }
@@ -72,7 +70,7 @@ func changedWork(source Source) (packages, moduleFiles []string) {
 			moduleFiles = append(moduleFiles, name)
 			continue
 		}
-		if pkg := owner(name); sources[pkg] && inRootModule(pkg, modules) {
+		if pkg, ok := packageOf(name, modules, sources); ok {
 			found[pkg] = true
 		}
 	}
@@ -80,8 +78,33 @@ func changedWork(source Source) (packages, moduleFiles []string) {
 	return slices.Sorted(maps.Keys(found)), moduleFiles
 }
 
-// owner returns the package directory a file belongs to: its own directory,
-// or the directory holding the first testdata directory on its path.
+// packageOf returns the package a changed file belongs to. The file's
+// directory, or for a file under testdata the directory holding that
+// testdata, must be matched by ./... at the module root: vendor, nested
+// modules and directories named with a leading _ or . belong to no package.
+// A .go file belongs to that directory when it still holds a .go file, so a
+// fully deleted package is no change. Any other file belongs to the nearest
+// directory, from there up to the module root, that holds a .go file, so an
+// asset in pkg/static belongs to pkg; with none it belongs to no package.
+func packageOf(name string, modules, sources map[string]bool) (string, bool) {
+	dir := owner(name)
+	if !inRootModule(dir, modules) {
+		return "", false
+	}
+	if strings.HasSuffix(name, ".go") {
+		return dir, sources[dir]
+	}
+	for !sources[dir] {
+		if dir == "." {
+			return "", false
+		}
+		dir = path.Dir(dir)
+	}
+	return dir, true
+}
+
+// owner returns a file's directory, or the directory holding the first
+// testdata directory on its path.
 func owner(name string) string {
 	parts := strings.Split(path.Dir(name), "/")
 	if index := slices.Index(parts, "testdata"); index >= 0 {
@@ -108,33 +131,40 @@ func inRootModule(dir string, modules map[string]bool) bool {
 	return true
 }
 
-// Flags of go test (go help testflag) and of the build (go help build), by
-// whether they take a value. The test. prefix go test also accepts is removed
-// before lookup.
-var (
-	// uncreditedFlags skip, filter or relocate the tests, so a run using any
-	// of them proves nothing about a package: -c and -n build or print without
-	// testing, -list lists, -exec runs another program, -run and -skip filter,
-	// and -C changes the directory its patterns are relative to.
-	uncreditedFlags = []string{"c", "n", "list", "exec", "run", "skip", "C"}
-	valueFlags      = []string{
-		"bench", "benchtime", "blockprofile", "blockprofilerate", "count", "coverpkg", "covermode", "coverprofile",
-		"cpu", "cpuprofile", "fuzz", "fuzzminimizetime", "fuzztime", "memprofile", "memprofilerate", "mutexprofile",
-		"mutexprofilefraction", "o", "outputdir", "parallel", "shuffle", "timeout", "trace", "vet",
-		"asmflags", "buildmode", "compiler", "debug-actiongraph", "debug-runtime-trace", "debug-trace", "gccgoflags",
-		"gcflags", "installsuffix", "ldflags", "mod", "modfile", "overlay", "p", "pgo", "pkgdir", "tags", "toolexec",
-	}
-	boolFlags = []string{
-		"a", "asan", "benchmem", "buildvcs", "cover", "failfast", "fullpath", "json", "linkshared", "modcacherw",
-		"msan", "race", "short", "trimpath", "v", "work", "x",
-	}
-)
+// allowedFlags are the go test and build flags (go help testflag, go help
+// build) that cannot skip, filter or replace the tests a run executes, mapped
+// to whether they take a value. A run using any other flag earns no credit:
+// among them run, skip, list, c, n, o, exec, toolexec, overlay, modfile,
+// fuzz, fuzztime, fuzzminimizetime, C, and every flag this list does not know.
+// count must be an integer of at least 1, since -count=0 runs nothing.
+var allowedFlags = map[string]bool{
+	// Flags without a value.
+	"v": false, "race": false, "msan": false, "asan": false, "failfast": false, "json": false, "cover": false,
+	"short": false, "trimpath": false, "buildvcs": false, "benchmem": false, "artifacts": false, "fullpath": false,
+	"x": false, "work": false,
+	// Flags with a value.
+	"shuffle": true, "count": true, "timeout": true, "covermode": true, "coverpkg": true, "coverprofile": true,
+	"outputdir": true, "cpu": true, "p": true, "parallel": true, "tags": true, "mod": true, "ldflags": true,
+	"gcflags": true, "asmflags": true, "pgo": true, "bench": true, "benchtime": true, "cpuprofile": true,
+	"memprofile": true, "memprofilerate": true, "blockprofile": true, "blockprofilerate": true,
+	"mutexprofile": true, "mutexprofilefraction": true, "trace": true, "vet": true,
+}
 
-// flagName returns the name of a flag argument ("-name", "--name",
-// "-name=value") without any test. prefix, and whether it carries its value.
-func flagName(arg string) (string, bool) {
-	name, _, inline := strings.Cut(strings.TrimLeft(arg, "-"), "=")
-	return strings.TrimPrefix(name, "test."), inline
+// parseFlag splits a flag argument ("-name", "--name", "-name=value", with an
+// optional test. prefix on the name) into its name, inline value and whether
+// it has one.
+func parseFlag(arg string) (name, value string, inline bool) {
+	name, value, inline = strings.Cut(strings.TrimPrefix(strings.TrimPrefix(arg, "-"), "-"), "=")
+	return strings.TrimPrefix(name, "test."), value, inline
+}
+
+// allowedValue reports whether an allowlisted flag's value is acceptable.
+func allowedValue(name, value string) bool {
+	if name != "count" {
+		return true
+	}
+	count, err := strconv.Atoi(value)
+	return err == nil && count >= 1
 }
 
 // credited returns the package patterns a passed run proves, or nil when it
@@ -142,48 +172,123 @@ func flagName(arg string) (string, bool) {
 //
 //   - argv[0] is named go or go.exe (not GO.EXE) and argv[1] is test, so
 //     wrappers such as make or scripts are not credited;
-//   - neither argv nor the run's GOFLAGS uses an uncredited flag; and
-//   - every flag in argv is known, so its value is never read as a pattern.
+//   - argv has no -args, since flags after it reach the test binary;
+//   - every flag in argv and every field of its GOFLAGS (split like cmd/go,
+//     see splitQuoted; a field must be a flag with any value inline) is in
+//     allowedFlags with an acceptable value.
 //
-// Patterns are the other arguments before -args that are "." or start with
-// "./", cleaned. Import paths and Windows-style .\pkg patterns are not
-// credited. GOFLAGS set through `go env -w` rather than the environment is
-// not seen.
+// Patterns are the other arguments that are "." or start with "./", cleaned.
+// Import paths and Windows-style .\pkg patterns are not credited. GOFLAGS set
+// through `go env -w` rather than the environment is not seen.
 func credited(run Run) []string {
 	argv := run.Argv
 	if len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
 		return nil
 	}
-	for _, field := range strings.Fields(run.GOFLAGS) {
-		if name, _ := flagName(field); strings.HasPrefix(field, "-") && slices.Contains(uncreditedFlags, name) {
+	fields, err := splitQuoted(run.GOFLAGS)
+	if err != nil {
+		return nil
+	}
+	for _, field := range fields {
+		name, value, inline := parseFlag(field)
+		takesValue, known := allowedFlags[name]
+		if !strings.HasPrefix(field, "-") || !known || takesValue && !inline || !allowedValue(name, value) {
 			return nil
 		}
 	}
 	found := []string{}
 	for i := 2; i < len(argv); i++ {
 		arg := argv[i]
-		if arg == "-args" || arg == "--args" {
-			break
-		}
 		if !strings.HasPrefix(arg, "-") {
 			if arg == "." || strings.HasPrefix(arg, "./") {
 				found = append(found, path.Clean(arg))
 			}
 			continue
 		}
-		name, inline := flagName(arg)
-		switch {
-		case slices.Contains(valueFlags, name):
-			if !inline {
-				i++
+		name, value, inline := parseFlag(arg)
+		takesValue, known := allowedFlags[name]
+		if !known {
+			return nil // includes args, run, skip and unknown flags
+		}
+		if takesValue && !inline {
+			if i++; i >= len(argv) {
+				return nil
 			}
-		case slices.Contains(boolFlags, name):
-		default:
-			// Uncredited, or unknown and so of unknown arity.
+			value = argv[i]
+		}
+		if !allowedValue(name, value) {
 			return nil
 		}
 	}
 	return found
+}
+
+// splitQuoted splits s into fields like cmd/go splits GOFLAGS
+// (cmd/internal/quoted.Split): fields are separated by spaces, tabs and
+// newlines, and a field may be wrapped in single or double quotes, with no
+// unescaping inside. An unterminated quote is an error.
+func splitQuoted(s string) ([]string, error) {
+	var fields []string
+	for {
+		s = strings.TrimLeft(s, " \t\n\r")
+		if s == "" {
+			return fields, nil
+		}
+		if quote := s[0]; quote == '"' || quote == '\'' {
+			end := strings.IndexByte(s[1:], quote)
+			if end < 0 {
+				return nil, fmt.Errorf("unterminated %c string", quote)
+			}
+			fields = append(fields, s[1:1+end])
+			s = s[2+end:]
+			continue
+		}
+		end := strings.IndexAny(s, " \t\n\r")
+		if end < 0 {
+			end = len(s)
+		}
+		fields = append(fields, s[:end])
+		s = s[end:]
+	}
+}
+
+// redactedFlags carry compiler and linker arguments, such as -X values,
+// that may hold secrets.
+var redactedFlags = []string{"ldflags", "gcflags", "asmflags", "gccgoflags"}
+
+// unparsableGOFLAGS replaces GOFLAGS that RedactGOFLAGS cannot rewrite; its
+// fields are not flags, so it earns no credit.
+const unparsableGOFLAGS = "<redacted: unparsable GOFLAGS>"
+
+// RedactGOFLAGS returns GOFLAGS for storage: each field keeps its flag name
+// and value, except that the value of ldflags, gcflags, asmflags and
+// gccgoflags becomes <redacted>. Fields are re-joined with spaces, and a field
+// holding a space or quote is wrapped in quotes, so credited reads the result
+// as it would the original. GOFLAGS that cannot be split, or holding a field
+// with both quote kinds that cannot be re-quoted, is stored as
+// unparsableGOFLAGS, which earns no credit.
+func RedactGOFLAGS(goflags string) string {
+	fields, err := splitQuoted(goflags)
+	if err != nil {
+		return unparsableGOFLAGS
+	}
+	joined := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if name, _, inline := parseFlag(field); strings.HasPrefix(field, "-") && inline && slices.Contains(redactedFlags, name) {
+			field = field[:strings.IndexByte(field, '=')+1] + "<redacted>"
+		}
+		switch {
+		case !strings.ContainsAny(field, " \t\n\r'\""):
+		case !strings.Contains(field, "'"):
+			field = "'" + field + "'"
+		case !strings.Contains(field, `"`):
+			field = `"` + field + `"`
+		default:
+			return unparsableGOFLAGS
+		}
+		joined = append(joined, field)
+	}
+	return strings.Join(joined, " ")
 }
 
 // covers reports whether a cleaned relative pattern ("...", ".", "a/b" or
