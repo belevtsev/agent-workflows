@@ -247,9 +247,18 @@ func LoadManifest(root string) (Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot read valid skills-manifest.json: %w", err)
 	}
-	manifest, err := suiteMapping(value, "manifest", "version", "registrations", "global_instructions", "required_licenses", "model_policy", "claude_model_policy", "adoption_catalog")
+	fields := []string{"version", "registrations", "global_instructions", "required_licenses", "model_policy", "claude_model_policy", "adoption_catalog"}
+	if mapping, ok := value.(map[string]any); ok && mapping[claudeAgentsKey] != nil {
+		fields = append(fields, claudeAgentsKey)
+	}
+	manifest, err := suiteMapping(value, "manifest", fields...)
 	if err != nil {
 		return nil, err
+	}
+	if agents, present := manifest[claudeAgentsKey]; present {
+		if err := suiteClaudeAgents(root, agents); err != nil {
+			return nil, err
+		}
 	}
 	if !suiteInteger(manifest["version"], 3) {
 		return nil, errors.New("manifest version must be 3")
@@ -1698,5 +1707,6 @@ func ValidateSuite(root string) (Object, error) {
 		"claude_model_policy": manifest["claude_model_policy"],
 		"skill_count":         len(names), "markdown_files_checked": markdown,
 		"required_licenses": len(manifest["required_licenses"].([]any)),
+		"claude_agents":     len(object(manifest[claudeAgentsKey])),
 	}, nil
 }

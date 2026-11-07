@@ -13,14 +13,15 @@ const (
 )
 
 // hostTarget names where one agent host discovers skills, global instructions
-// and settings. Everything else about an installation is shared between hosts.
+// and settings, and for Claude Code its agent definitions. Everything else
+// about an installation is shared between hosts.
 type hostTarget struct {
-	id, root, instructions, settings, skills string
+	id, root, instructions, settings, skills, agentDir string
 }
 
 func (i *Installer) host(id string) hostTarget {
 	if id == hostClaude {
-		return hostTarget{id: hostClaude, root: i.Claude, instructions: filepath.Join(i.Claude, "CLAUDE.md"), settings: filepath.Join(i.Claude, "settings.json"), skills: filepath.Join(i.Claude, "skills")}
+		return hostTarget{id: hostClaude, root: i.Claude, instructions: filepath.Join(i.Claude, "CLAUDE.md"), settings: filepath.Join(i.Claude, "settings.json"), skills: filepath.Join(i.Claude, "skills"), agentDir: filepath.Join(i.Claude, "agents")}
 	}
 	return hostTarget{id: hostCodex, root: i.Codex, instructions: i.agents, settings: i.config, skills: i.skills}
 }

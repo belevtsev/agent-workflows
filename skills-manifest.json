@@ -36,6 +36,11 @@
     "clocks-and-time": "skills/clocks-and-time"
   },
   "global_instructions": "global/AGENTS.md",
+  "claude_agents": {
+    "cw-reviewer": "global/claude-agents/cw-reviewer.md",
+    "cw-test-author": "global/claude-agents/cw-test-author.md",
+    "cw-github-worker": "global/claude-agents/cw-github-worker.md"
+  },
   "required_licenses": [
     "third_party/cc-skills-golang/LICENSE",
     "third_party/db-postgres/LICENSE",

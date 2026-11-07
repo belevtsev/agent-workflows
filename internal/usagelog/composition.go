@@ -1802,6 +1802,12 @@ func describedRole(description, agentType string) roleChoice {
 		return roleChoice{"evidence", "agent_type"}
 	case "Plan":
 		return roleChoice{"planning", "agent_type"}
+	case "cw-reviewer":
+		return roleChoice{"review", "agent_type"}
+	case "cw-test-author":
+		return roleChoice{"test_author", "agent_type"}
+	case "cw-github-worker":
+		return roleChoice{"github", "agent_type"}
 	}
 	return roleChoice{"other", "none"}
 }

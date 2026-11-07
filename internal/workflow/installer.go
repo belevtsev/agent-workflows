@@ -173,6 +173,9 @@ func (i *Installer) validateHostStructure(h hostTarget, hs, manifest Object) err
 	if _, err := decode(hs["global_segment"]); err != nil {
 		return err
 	}
+	if err := i.validateAgentStructure(h, hs); err != nil {
+		return err
+	}
 	registrations := object(hs["registrations"])
 	if registrations == nil || len(registrations) != len(manifest) {
 		return errors.New("corrupt registration ownership")
@@ -293,6 +296,9 @@ func (i *Installer) verifyOwned(s Object) error {
 			continue
 		}
 		if e = i.verifyHost(h, s, template); e != nil {
+			return e
+		}
+		if e = i.verifyAgents(h, hostRecord(s, h.id), m); e != nil {
 			return e
 		}
 	}
@@ -458,8 +464,13 @@ func (i *Installer) installHost(h hostTarget, s Object, release string, m Object
 	if e != nil {
 		return nil, nil, nil, e
 	}
+	agents, agentOps, e := i.agentPlan(h, nil, m)
+	if e != nil {
+		return nil, nil, nil, e
+	}
 	record := Object{"home": h.root, "registrations": plan.Records, "global_origin": origin, "global_segment": encode(segment)}
-	return record, append(plan.Operations, op), plan.Changes, nil
+	setAgentRecords(record, agents)
+	return record, append(append(plan.Operations, agentOps...), op), plan.Changes, nil
 }
 func (i *Installer) expectedPointer(s Object) Object {
 	return Object{"kind": "symlink", "target": filepath.Join(i.State, "releases", text(s["release"]))}

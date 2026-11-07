@@ -72,7 +72,9 @@ publication outcomes, on each host.
 Host coverage must keep Codex-only and Claude-only installs free of each other's
 files, restore user `CLAUDE.md` and `settings.json` byte for byte, leave drifted
 settings keys alone in status, update, rollback, uninstall and recovery, and keep
-the remaining host working after a single-host uninstall. Additive registration
+the remaining host working after a single-host uninstall. Claude agent
+definitions are Claude-only owned links: cover occupied destinations, update and
+rollback reconciliation, uninstall, recovery and unrelated files in `agents/`. Additive registration
 scenarios verify additions, pre-merge conflicts, rollback removal of only
 absent-origin records, and source-independent recovery. Bootstrap fixtures cover
 refusal of older release protocols, fresh acquisition, dry runs, and acquisition

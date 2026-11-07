@@ -30,6 +30,7 @@ type HostRecord struct {
 	SharedConfig         *ModelMetadataRecord          `json:"shared_config,omitempty"`
 	ConfigOriginalExists *bool                         `json:"config_original_exists,omitempty"`
 	Settings             *ModelMetadataRecord          `json:"settings,omitempty"`
+	Agents               map[string]RegistrationRecord `json:"agents,omitempty"`
 }
 
 type RegistrationRecord struct {

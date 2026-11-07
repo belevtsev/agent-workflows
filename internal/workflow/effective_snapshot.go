@@ -376,6 +376,9 @@ func compileEffective(root string, manifest Object, view ConfigurationView, pref
 			return err
 		}
 	}
+	if err := protectClaudeAgents(root, manifest); err != nil {
+		return err
+	}
 	_, err := LoadManifestValidated(root)
 	return err
 }

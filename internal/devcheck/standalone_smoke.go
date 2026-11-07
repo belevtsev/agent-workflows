@@ -25,6 +25,7 @@ type standaloneSmokeHome struct {
 	root, home, codex, claude, state, config, work, tools string
 	originalCodex, originalClaude                         []byte
 	registrations                                         map[string]string
+	agents                                                map[string]string
 }
 type standaloneSmokeCapture struct {
 	mutex          sync.Mutex
@@ -164,6 +165,12 @@ func (home *standaloneSmokeHome) standaloneSmokePreserved(original bool) error {
 			return errors.New("unmanaged-preservation")
 		}
 	}
+	agentPath := filepath.Join(home.claude, "agents", "unmanaged-smoke.md")
+	agentData, agentErr := os.ReadFile(agentPath)
+	agentInfo, agentStatErr := os.Lstat(agentPath)
+	if agentErr != nil || agentStatErr != nil || !agentInfo.Mode().IsRegular() || agentInfo.Mode().Perm() != 0600 || string(agentData) != "unmanaged smoke\n" {
+		return errors.New("unmanaged-agent-preservation")
+	}
 	data, err := os.ReadFile(filepath.Join(home.home, ".bashrc"))
 	info, statErr := os.Stat(filepath.Join(home.home, ".bashrc"))
 	if err != nil || statErr != nil || info.Mode().Perm() != 0600 || !bytes.Contains(data, []byte(": standalone-smoke-sentinel\n")) {
@@ -246,6 +253,9 @@ func (home *standaloneSmokeHome) standaloneSmokeVerify() error {
 	if err := home.standaloneSmokeInventory(); err != nil {
 		return err
 	}
+	if err := home.standaloneSmokeAgentInventory(); err != nil {
+		return err
+	}
 	return home.standaloneSmokePreserved(false)
 }
 func (home *standaloneSmokeHome) standaloneSmokeSnapshot() (map[string]string, error) {
@@ -303,6 +313,60 @@ func standaloneSmokeRegistrations(source string) (map[string]string, error) {
 		return nil, errors.New("skill-manifest-fixture-collision")
 	}
 	return manifest.Registrations, nil
+}
+
+// standaloneSmokeAgents reads the subject's optional Claude agent definitions.
+func standaloneSmokeAgents(source string) (map[string]string, error) {
+	data, err := os.ReadFile(filepath.Join(source, "skills-manifest.json"))
+	if err != nil {
+		return nil, errors.New("agent-manifest-read")
+	}
+	var manifest struct {
+		Agents map[string]string `json:"claude_agents"`
+	}
+	if json.Unmarshal(data, &manifest) != nil {
+		return nil, errors.New("agent-manifest-schema")
+	}
+	for name, relative := range manifest.Agents {
+		if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || relative != "global/claude-agents/"+name+".md" {
+			return nil, errors.New("agent-manifest-definition")
+		}
+	}
+	if _, conflict := manifest.Agents["unmanaged-smoke"]; conflict {
+		return nil, errors.New("agent-manifest-fixture-collision")
+	}
+	return manifest.Agents, nil
+}
+
+// standaloneSmokeAgentInventory checks that every subject agent definition is
+// linked into the Claude agents directory and resolves to its release file.
+func (home *standaloneSmokeHome) standaloneSmokeAgentInventory() error {
+	physicalCurrent, err := filepath.EvalSymlinks(filepath.Join(home.state, "current"))
+	if err != nil {
+		return errors.New("agent-inventory-current")
+	}
+	for name, relative := range home.agents {
+		path := filepath.Join(home.claude, "agents", name+".md")
+		link, linkErr := os.Lstat(path)
+		if os.IsNotExist(linkErr) {
+			return errors.New("agent-inventory-missing")
+		}
+		if linkErr != nil || link.Mode()&os.ModeSymlink == 0 {
+			return errors.New("agent-inventory-link")
+		}
+		resolved, resolveErr := filepath.EvalSymlinks(path)
+		if resolveErr != nil {
+			return errors.New("agent-inventory-broken")
+		}
+		info, statErr := os.Lstat(resolved)
+		if statErr != nil || !info.Mode().IsRegular() {
+			return errors.New("agent-inventory-broken")
+		}
+		if resolved != filepath.Join(physicalCurrent, filepath.FromSlash(relative)) {
+			return errors.New("agent-inventory-destination")
+		}
+	}
+	return nil
 }
 func standaloneSmokeWithin(root, path string) bool {
 	relative, err := filepath.Rel(root, path)
@@ -390,7 +454,11 @@ func StandaloneNativeSmoke(ctx context.Context, source, binary string, output io
 	if err != nil {
 		return fmt.Errorf("R-N1/%s", err.Error())
 	}
-	home := &standaloneSmokeHome{registrations: registrations, root: root, home: filepath.Join(root, "home with spaces"), codex: filepath.Join(root, "codex with spaces"), claude: filepath.Join(root, "claude with spaces"), state: filepath.Join(root, "state with spaces"), config: filepath.Join(root, "config with spaces"), work: filepath.Join(root, "unrelated cwd"), tools: filepath.Join(root, "tools")}
+	agents, err := standaloneSmokeAgents(source)
+	if err != nil {
+		return fmt.Errorf("R-N1/%s", err.Error())
+	}
+	home := &standaloneSmokeHome{registrations: registrations, agents: agents, root: root, home: filepath.Join(root, "home with spaces"), codex: filepath.Join(root, "codex with spaces"), claude: filepath.Join(root, "claude with spaces"), state: filepath.Join(root, "state with spaces"), config: filepath.Join(root, "config with spaces"), work: filepath.Join(root, "unrelated cwd"), tools: filepath.Join(root, "tools")}
 	home.originalCodex = []byte("unrelated = \"smoke  sentinel\"\nmodel = \"original-smoke\"\nmodel_reasoning_effort = \"low\"\n")
 	home.originalClaude = []byte("{\n  \"model\": \"original-smoke\",\n  \"effortLevel\": \"low\",\n  \"smoke_unrelated\": { \"spacing\" : \"keep\" }\n}\n")
 	for _, directory := range []string{home.home, home.codex, home.claude, home.work, home.tools, filepath.Join(root, "tmp")} {
@@ -402,7 +470,7 @@ func StandaloneNativeSmoke(ctx context.Context, source, binary string, output io
 		path string
 		data []byte
 		mode os.FileMode
-	}{{filepath.Join(home.codex, "config.toml"), home.originalCodex, 0640}, {filepath.Join(home.claude, "settings.json"), home.originalClaude, 0640}, {filepath.Join(home.home, ".bashrc"), []byte(": standalone-smoke-sentinel\n"), 0600}, {filepath.Join(home.home, ".agents", "skills", "unmanaged-smoke", "SKILL.md"), []byte("unmanaged smoke\n"), 0600}, {filepath.Join(home.claude, "skills", "unmanaged-smoke", "SKILL.md"), []byte("unmanaged smoke\n"), 0600}, {filepath.Join(root, "no-network-ca.pem"), []byte("synthetic empty trust store: network not permitted\n"), 0600}} {
+	}{{filepath.Join(home.codex, "config.toml"), home.originalCodex, 0640}, {filepath.Join(home.claude, "settings.json"), home.originalClaude, 0640}, {filepath.Join(home.home, ".bashrc"), []byte(": standalone-smoke-sentinel\n"), 0600}, {filepath.Join(home.home, ".agents", "skills", "unmanaged-smoke", "SKILL.md"), []byte("unmanaged smoke\n"), 0600}, {filepath.Join(home.claude, "skills", "unmanaged-smoke", "SKILL.md"), []byte("unmanaged smoke\n"), 0600}, {filepath.Join(home.claude, "agents", "unmanaged-smoke.md"), []byte("unmanaged smoke\n"), 0600}, {filepath.Join(root, "no-network-ca.pem"), []byte("synthetic empty trust store: network not permitted\n"), 0600}} {
 		if err := standaloneSmokeWrite(fixture.path, fixture.data, fixture.mode); err != nil {
 			return errors.New("R-N1/fixture-write")
 		}
@@ -569,6 +637,11 @@ func StandaloneNativeSmoke(ctx context.Context, source, binary string, output io
 					if _, err := os.Lstat(filepath.Join(directory, skill)); !os.IsNotExist(err) {
 						return errors.New("registered-skill-remains")
 					}
+				}
+			}
+			for name := range home.agents {
+				if _, err := os.Lstat(filepath.Join(home.claude, "agents", name+".md")); !os.IsNotExist(err) {
+					return errors.New("managed-agent-remains")
 				}
 			}
 			return nil

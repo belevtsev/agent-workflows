@@ -68,6 +68,7 @@ adds the same managed instructions to both:
 | Skills | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
 | Instructions | Managed block in `$CODEX_HOME/AGENTS.md` | Managed block in `~/.claude/CLAUDE.md` |
 | Settings | `model`, `model_reasoning_effort`, `model_context_window` and five memory keys in `config.toml` | `model` and `effortLevel` in `settings.json` |
+| Worker agents | None | `~/.claude/agents/cw-reviewer.md`, `cw-test-author.md`, `cw-github-worker.md` |
 | Custom location | `--codex-home` or `CODEX_HOME` | `--claude-home` or `CLAUDE_CONFIG_DIR` |
 
 The Claude Code defaults come from the coordinator profile in
@@ -98,6 +99,11 @@ use_memories = true
 extract_model = "gpt-6.1-sol"
 consolidation_model = "gpt-6.1-sol"
 ```
+
+The Claude Code worker agents have no Skill tool, so reviewers, test authors and
+GitHub workers start without the skill listing: about 6.1K fewer input tokens on
+each worker's first request. They read a skill by its `SKILL.md` path when the brief
+names one. Model and effort still come from the policy on every dispatch.
 
 Unrelated settings, permissions and local content are preserved on both hosts.
 `settings.json` edits change only those two keys and keep every other byte. If you
