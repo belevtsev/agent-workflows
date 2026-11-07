@@ -41,7 +41,7 @@ func newSummaryCLIHarness(t *testing.T) *summaryCLIHarness {
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.HomeDir = func() (string, error) { return home, nil }
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }

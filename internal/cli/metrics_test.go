@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/internal/outcomes"
-	"github.com/belevtsev/agent-workflows/internal/workflow"
 )
 
 func metricsConfig(t *testing.T, root string) (Config, *bytes.Buffer) {
@@ -20,8 +19,7 @@ func metricsConfig(t *testing.T, root string) (Config, *bytes.Buffer) {
 	return Config{
 		Out: out, Err: new(bytes.Buffer), WorkingDir: func() (string, error) { return root, nil },
 		HomeDir: forbidden, Executable: forbidden,
-		Getenv:     func(string) string { t.Fatal("metrics queried credentials or configuration"); return "" },
-		NewService: func(workflow.Options) Service { t.Fatal("metrics created a manager service"); return nil },
+		Getenv: func(string) string { t.Fatal("metrics queried credentials or configuration"); return "" },
 	}, out
 }
 
@@ -64,7 +62,7 @@ func TestMetricsSummarizeIsReadOnlyAndUsesWorkingDirectory(t *testing.T) {
 	before := metricsFixture(t, root, file)
 	state := filepath.Join(t.TempDir(), "must-not-be-created")
 	config, out := metricsConfig(t, root)
-	if err := Execute(t.Context(), []string{"--state-dir", state, "--apply", "metrics", "summarize", file}, config); err != nil {
+	if err := Execute(t.Context(), []string{"--state-dir", state, "metrics", "summarize", file}, config); err != nil {
 		t.Fatal(err)
 	}
 	var report outcomes.Report

@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addMetricsCommand(root *cobra.Command, config Config, _ options) {
+func addMetricsCommand(root *cobra.Command, config Config) {
 	metrics := &cobra.Command{Use: "metrics", Short: "Summarize explicit local workflow observations without writes", Args: func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return usage(fmt.Errorf("unknown metrics command: %s", args[0]))

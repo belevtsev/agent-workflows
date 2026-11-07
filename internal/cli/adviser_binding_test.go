@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -725,5 +726,22 @@ func TestAdviserBindingAdHocConsultFailsOnUnusablePreferences(t *testing.T) {
 				t.Fatalf("failed consult left output %s (stat error %v)", output, err)
 			}
 		})
+	}
+}
+
+func wtStoreKeys(t *testing.T, dir string, keys map[string]string) {
+	t.Helper()
+	store := credentials.Store{Directory: dir}
+	snapshot, err := store.Read()
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("read credential store: %v", err)
+	}
+	generation := snapshot.Generation
+	changes := make(map[string]*string, len(keys))
+	for name, value := range keys {
+		changes[name] = &value
+	}
+	if _, err := store.Save(t.Context(), changes, &generation); err != nil {
+		t.Fatalf("seed credential store: %v", err)
 	}
 }

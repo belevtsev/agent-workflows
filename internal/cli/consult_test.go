@@ -33,7 +33,7 @@ func requestFile(t *testing.T) (string, string) {
 func TestConsultExplicitPolicyAndExitStatuses(t *testing.T) {
 	policy := filepath.Join("..", "..", "skills", "task-orchestration", "model-policy.yaml")
 	request, output := requestFile(t)
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	stderr := new(bytes.Buffer)
 	config.Err = stderr
 	config.Getenv = func(string) string { return "" }
@@ -80,7 +80,7 @@ func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 		{"graphify", "query", "--repo", "r", strings.Repeat("x", 8001)},
 	} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			config.Getenv = func(string) string { t.Fatal("rejected arguments read the environment"); return "" }
 			if err := Execute(t.Context(), args, config); ExitCode(err) != 2 {
 				t.Fatalf("error = %v, exit %d", err, ExitCode(err))
@@ -92,7 +92,7 @@ func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 func TestGraphifyBuildRejectsInheritedDryRunBeforeWrites(t *testing.T) {
 	for _, args := range [][]string{{"--dry-run", "graphify", "build"}, {"graphify", "build", "--dry-run"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
-			config, _, _, _ := testConfig(t)
+			config, _ := testConfig(t)
 			config.HomeDir = func() (string, error) { t.Fatal("dry-run accessed storage"); return "", nil }
 			directory := t.TempDir()
 			marker, cache := filepath.Join(directory, "ran"), filepath.Join(directory, "cache")
@@ -117,7 +117,7 @@ func TestGraphifyReportsUnavailableAsStructuredOutput(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is required")
 	}
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	missing := filepath.Join(t.TempDir(), "missing")
 	err := Execute(t.Context(), []string{"graphify", "build", "--repo", missing}, config)
 	if ExitCode(err) != 2 || err.Error() != "" {

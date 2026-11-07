@@ -13,7 +13,7 @@ import (
 // command's error. Standard error is discarded.
 func scaffoldContractExtract(t *testing.T, args ...string) (string, error) {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	err := Execute(t.Context(), append([]string{"task"}, args...), config)
 	return out.String(), err
 }
@@ -23,7 +23,7 @@ func scaffoldContractExtract(t *testing.T, args ...string) (string, error) {
 // working directory is not changed.
 func scaffoldContractExtractIn(t *testing.T, workingDir string, args ...string) (string, error) {
 	t.Helper()
-	config, out, _, _ := testConfig(t)
+	config, out := testConfig(t)
 	config.WorkingDir = func() (string, error) { return workingDir, nil }
 	err := Execute(t.Context(), append([]string{"task"}, args...), config)
 	return out.String(), err

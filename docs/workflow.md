@@ -19,12 +19,11 @@ a running chat's model automatically. How the coordinator resolves profiles,
 overrides and mismatches is in
 [profiles and policy](../skills/task-orchestration/references/hosts.md#profiles-and-policy).
 
-Standalone setup can retain release defaults or derive an immutable effective
-snapshot from per-field preferences. All host dispatch and native readers use that
-same effective policy; explicit values remain pinned while absent fields follow
-future releases. Recommended and Balanced are reset operations, and ordinary update
-keeps saved choices. No preset grants publication authority or relaxes substantive
-role scopes, independent authorship, adviser or review requirements.
+The skill reads the routing from the policy files it ships with; `cw` reads only
+the consultation part of a policy (see [model policy](operations.md#model-policy)).
+No policy edit grants
+publication authority or relaxes substantive role scopes, independent authorship,
+adviser or review requirements.
 
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
 `claude-sonnet-5-5` at `medium`, and the Claude-only `review_followup` role (every
@@ -68,8 +67,9 @@ says how to start one on each host.
 
 ## Local configuration
 
-`./install.sh` enrolls two settings for each selected host, using its validated
-coordinator policy. In Codex `config.toml`:
+Neither the plugins nor `cw install --host codex` edit a host's model settings.
+The coordinator profiles in the policies correspond to these values, which you set
+yourself if you want them. In Codex `config.toml`:
 
 ```toml
 model = "gpt-6.1-sol"
@@ -85,36 +85,19 @@ In Claude Code `settings.json`:
 }
 ```
 
-Paths, trusted projects, plugins, MCP settings, permissions, and authentication
-remain local decisions. The Go manager preserves unrelated configuration, comments,
-and permissions. On each host it owns the two model keys, global instruction block,
-and 37 skill registrations, plus one enrolled direct command/PATH registration. It
-records original values once and restores them on uninstall. A Claude Code settings
-key you have since changed stays yours; see
-[operations](operations.md#claude-code-host).
+`cw install --host codex` prints the further recommended Codex settings from
+[`global/codex-defaults.toml`](../global/codex-defaults.toml) without editing
+`config.toml`. Paths, trusted projects, plugins, MCP settings, permissions, and
+authentication remain local decisions. A running session keeps its existing
+settings.
 
-cw is a direct executable link on PATH. It uses recorded installation roots from
-any directory; no shell command wrapper is involved. Install selects Bash/zsh for
-optional PATH enrollment; --shell none leaves enrollment to the user. Help/version
-are offline. Updates and rollbacks apply the selected skill snapshot's model
-defaults, while a running session keeps its existing settings.
-
-`cw status` includes `model_profiles`, a map of profile names to `model`,
-`reasoning_effort`, and `scope`, read from the validated active snapshot. This
-reports configured routing, not live model availability or the current chat's
-model. Historical snapshots retain their own profile settings.
-
-The policy remains version 2. Its `sol` profile, `sol_unavailable` fallback and
+The shared policy is version 3. Its `sol` profile, `sol_unavailable` fallback and
 `max_for_sol` rule keep their names as schema identifiers; the `sol` profile now
 runs `gpt-6.1-sol`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile. Older `explicit_user_request` policies remain readable and
-continue rejecting configured Max for Sol models. The native validator enforces
-these rules. New standalone candidates require `cw-manager-v10`, state/journal4
-and immutable base/effective receipts. An installation made before v2.0.58, or
-migrated by v2.0.58 from one, is refused before any write; run `cw uninstall` with the existing `cw`, then run
-install.sh. New records are not promised readable by old managers. Rollback
-retains the capable manager and current preferences.
+continue rejecting configured Max for Sol models. The repository check
+(`go test ./internal/skillcheck`) loads the policies.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
 control context. Pass exact source revisions, ownership, constraints, and the
@@ -122,10 +105,6 @@ required evidence rather than the whole conversation. Effort labels alone do not
 prove savings; compare equivalent tasks using quality, elapsed time, and actual
 token usage. See [model guidance](https://learn.chatgpt.com/docs/models) and
 [manual routing evaluations](skill-evaluation.md).
-
-A later edit to an owned value is a conflict. Malformed TOML and symlinked
-configuration are refused. Status, recovery and removal rely on installed
-snapshots and the recorded original settings.
 
 ## Production planning with OpenSpec
 
@@ -174,9 +153,9 @@ decision checkpoints of a substantial task. They need no separate executable or
 SDK: `cw consult` makes plain HTTPS calls. An adviser participates only when it is
 configured: enabled in the policy's `consultation.providers` with its pinned model,
 with its key present in the process environment or the saved credentials, and not
-disabled in your preferences. To disable one and keep its key, clear its "Use at
-checkpoints" box in setup's Keys step, or list its provider ID under
-`advisers.disabled` in a `--settings` file; tasks started afterwards do not bind it.
+disabled in your preferences. To disable one and keep its key, list its provider
+ID under `advisers.disabled` in `preferences.json` in the configuration directory,
+edited by hand; tasks started afterwards do not bind it.
 
 | Provider ID | Adviser | Pinned model | Key | Shipped default |
 | --- | --- | --- | --- | --- |
@@ -190,11 +169,11 @@ in another terminal does not update a running agent or integration-server proces
 restart from the configured environment and open a fresh chat. Never commit key
 values, put them in prompts, or include them in logs or evidence shared with workers.
 
-`cw status` reports `credential_sources`: for each key, whether its own process has
-it in the environment or the private stored file, never the value.
-`credential_storage_status` says whether the stored file could be inspected. Keys
-are optional for installation, validation and local status. These offline checks do
-not establish key validity, service availability, or access from a different process.
+`cw keys set NAME` saves a key read from standard input; `cw keys status` reports,
+for each key, whether its own process has it in the environment or the private
+saved file, never the value. Keys are optional for installation and validation.
+These offline checks do not establish key validity, service availability, or access
+from a different process.
 
 ### Policy and binding
 
@@ -257,7 +236,7 @@ customers, and states in its privacy policy that it does not train on prompts.
 Before configuring any adviser, confirm that sending source excerpts to that
 provider is permitted. The local record retains the prepared request verbatim, so
 sanitizing input is the coordinator's responsibility. No credential is written into
-snapshots or records.
+records.
 
 An optional live availability check requires an explicit request, uses only
 synthetic public text, and validates each requested model, expected question IDs,
@@ -274,11 +253,8 @@ decision shape and every rule it enforces are in
 [adjudicate without network access](../skills/task-orchestration/references/consultation-helper.md#adjudicate-without-network-access).
 
 Unavailable or refusing advisers are reported while source work continues; one
-adviser's failure preserves the other results. Installation, validation, CI, status
-and the installation verification prompt make no consultation requests. Use the
-editable checkout helper for verification; managed snapshot activation remains a
-separate authorized action after a clean committed change. Do not edit immutable
-installed releases in place.
+adviser's failure preserves the other results. Installation, validation, CI and
+`cw doctor` make no consultation requests.
 
 ## Connected services
 
