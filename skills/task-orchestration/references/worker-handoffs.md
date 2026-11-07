@@ -8,6 +8,25 @@ and verifies actual identity and returned work. Native commands only validate
 declarations and evidence: they never launch or stop agents, authenticate
 identities, isolate permissions or authorize external actions.
 
+## Brief and dispatch
+
+Split useful independent questions or owned components. Give each worker a
+self-contained brief (exact source revision and inputs, question or owned files,
+relevant decisions, constraints, permitted actions, output evidence, stopping
+condition) with only the context it needs and no duplicate investigation.
+Resolve its role's profile from the [host mapping](hosts.md#profiles-and-policy);
+under Claude Code, reviews after a task's first full review use the
+[`review_followup` role](#follow-up-review-after-a-fix-revision). Editing workers
+share the codebase and preserve others' changes; coordinate shared interfaces,
+respect concurrency limits and keep dependent integration with the coordinator.
+Workers return exact sources, observations, changes, checks and uncertainty, and
+return evidence and questions instead of consulting advisers; reconcile overlaps
+and verify conclusions independently, since agreement and confidence do not
+establish behavior. Preserve required design challenges and execution
+environments. Test authors receive only the agreed contract and approved
+scaffold ([boundary](test-author.md)); the coordinator or verifier inspects
+implementation and owns the execution gates.
+
 ## Assign before dispatch
 
 When the task's checkpoints are required, attach a resolved before checkpoint
@@ -120,6 +139,9 @@ source; it returns the same handoff shape with no changes.
 Under Claude Code, dispatch every review with the `cw-reviewer` agent type and the
 role's model and effort ([host mapping](hosts.md#worker-agent-types)); give the
 `SKILL.md` path of any skill the review should apply, such as `code-review`.
+Adviser checkpoints do not replace review, and missing independent review cannot
+be presented as completed review. Small and unchanged read-only tasks stay
+lightweight.
 
 The bundle orients and never narrows: a full review still reads any source and runs
 any experiment it judges necessary, such as focused tests or platform and shell
@@ -203,20 +225,22 @@ reasoned about the mode and none caught the crash. With this rule one of three r
 the file piped into macOS `/bin/sh` and caught it; the other two piped a fragment or
 a stand-in, and after this acceptance check both ran the file and caught it.
 
-Reviews are capped: one full independent review; after the fixes, at most one
-diff-scoped follow-up by a fresh reviewer; a further review only to re-bind a fix
-of a defect that follow-up found, scoped to that fix. The cap never excuses a defect: fix what the last allowed review finds. A fix that
-changes executable code or a gate's behaviour gets one review scoped to it. Verify a
-prose-only fix yourself (diff readback, the checks it cites, the reviewer's failure
-scenario rechecked against the new text), then have a fresh reviewer re-bind with a
-confirmation pass that reports only a fix that fails its finding, a defect in code or a gate, or a new
-contradiction or lost rule in the instructions a coordinator follows; that pass does not count against the cap. Report any extra review in the
-result. Findings that change no
-behaviour, fail no gate and lose no rule are `deferred` or `rejected` rather than
-reviewed again; a finding with a concrete failure scenario is never deferred
-unless the defect predates the change and the change neither causes,
-touches nor newly exposes it. When a revision changes the approach or touches components the
-last review did not cover, the follow-up reviews those components in full.
+Reviews are capped: one full independent review; after the fixes,
+at most one diff-scoped follow-up by a fresh reviewer; and a further review only
+to re-bind a fix of a defect that follow-up found, scoped to that fix. The cap
+never excuses a defect: fix what the last allowed review finds. A fix that
+changes executable code or a gate's behaviour gets one review scoped to it.
+Verify a prose-only fix yourself (diff readback, the checks it cites, the
+reviewer's failure scenario rechecked against the new text), then have a fresh
+reviewer re-bind with a confirmation pass that reports only a fix that fails its
+finding, a defect in code or a gate, or a new contradiction or lost rule in the
+instructions a coordinator follows; that pass does not count against the cap.
+Report any extra review in the result. Findings that change no behaviour, fail no
+gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
+finding with a concrete failure scenario is never deferred unless the defect
+predates the change and the change neither causes, touches nor newly exposes it.
+When a revision changes the approach or touches components the last review did
+not cover, the follow-up reviews those components in full.
 
 Complete implementation handoffs, acceptance and selected checks before recording
 the final review. Review and check execution can overlap while source is stable,

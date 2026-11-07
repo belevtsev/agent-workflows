@@ -1,8 +1,11 @@
 # Workflow and local integrations
 
-The global conventions keep user scope, authorization, source evidence, and
-verification consistent. Use the relevant skill when its workflow helps the
-request. A plan or review remains a plan or review until implementation is
+The [global conventions](../global/AGENTS.md) keep user scope, authorization,
+source evidence, and verification consistent, and say when a task is substantial.
+A substantial task follows the
+[task-orchestration](../skills/task-orchestration/SKILL.md) decision flow; each
+rule of that flow lives in one of its references, which this page links rather
+than repeats. A plan or review remains a plan or review until implementation is
 authorized. Publishing, messaging, committing, pushing, and infrastructure
 changes need authorization for that action.
 
@@ -12,7 +15,9 @@ Claude Code also
 [`model-policy.claude.yaml`](../skills/task-orchestration/model-policy.claude.yaml),
 which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
-a running chat's model automatically.
+a running chat's model automatically. How the coordinator resolves profiles,
+overrides and mismatches is in
+[profiles and policy](../skills/task-orchestration/references/hosts.md#profiles-and-policy).
 
 Standalone setup can retain release defaults or derive an immutable effective
 snapshot from per-field preferences. All host dispatch and native readers use that
@@ -40,37 +45,26 @@ fallbacks. Sol 6.1 `max` is configured; Sol `ultra` requires an explicit user re
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
-results do not prove correctness or grant permission. Ordinary commit and routine
-PR requests explicitly dispatch the [GitHub worker](../skills/task-orchestration/references/github-worker.md),
-including small tasks. Pass model and effort explicitly and verify effective host
-settings. `fallbacks.github_unavailable: report_blocker`, when present, overrides
+results do not prove correctness or grant permission. Publishing a substantial
+task, or a user request for a bounded worker, dispatches the
+[GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
+task commits and pushes directly under the user's authorization. Pass model and
+effort explicitly and verify effective host settings.
+`fallbacks.github_unavailable: report_blocker`, when present, overrides
 the general expensive fallback for these three roles on both hosts; historical
 policies without it retain their fallback behavior.
 
 ## Independent test authors
 
-Whenever behavioral tests are added or materially changed, including small fixes
-and tests-only tasks, the coordinator dispatches a fresh
+When a substantial task adds or materially changes behavioral tests, helpers,
+fixtures, golden data, fuzz seeds or tolerances, or when the user asks, the
+coordinator dispatches a fresh
 [test author](../skills/task-orchestration/references/test-author.md) under the
-existing `testing` model profile. Helpers, fixtures, golden data, fuzz seeds,
-tolerances and removing/disabling tests are part of that ownership. This does not
-require new tests for formatting or documentation-only work.
-
-The author gets a versioned requirements/interface packet and approved scaffolding,
-not implementation source, history or reasoning. The coordinator or a source-aware
-verifier runs integrated tests and gives contract-level results without raw source
-diagnostics. Missing behavior or a private test seam returns to the coordinator.
-Semantic assertion and fixture changes return to an unexposed author; preserve
-the authored patch identity. Implementation exposure requires stopping that
-assignment and using a fresh replacement.
-
-Native author assignments use the existing writable role with exact test-file
-ownership and no assigned execution checks. A correctly failing regression can
-complete authorship while actual passing checks remain separate. Small tasks keep
-small native handoffs without substantial checkpoints solely for author dispatch;
-substantial changes retain independent source-aware final review. This guidance
-does not provide a filesystem sandbox, change model defaults or grant publication
-authority. Existing tests are not retroactively claimed as blind-authored.
+existing `testing` model profile. For a small task the coder writes the tests and
+the reviewer checks each against the Code Review Rules. That reference holds the
+author's contract, input boundary, feedback, replacement and record rules; the
+[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-authors-on-either-host)
+says how to start one on each host.
 
 ## Local configuration
 
@@ -209,54 +203,24 @@ the deadline, attempt and retry settings, the
 [question patterns](../skills/task-orchestration/references/question-patterns.json)
 path, ownership, reuse, sharing, `comparison: coordinator_evidence_and_verification`,
 and `providers`: a possibly empty mapping of enabled provider IDs to pinned models.
-Unknown provider IDs, non-string models and moving aliases such as `jev-latest` are
-rejected. The shipped default enables `subq_snap` and `openai_decisions`; its
-comment shows the `jev: jev-1.14.0` line and the measurement behind leaving Jev out:
-across 261 adjudicated consultations, Jev was the only adviser matching the verified
-decision in none of 30 splits, was overruled 14 times and was unavailable 23 times,
-while Snap matched all 587 resolved questions. The Claude Code policy has no
-consultation section; participation follows the shared policy and the keys present.
-Policy changes require their own authorized change.
-
-`cw task start` binds the configured set into the task record as `advisers`, and
-`cw task context` emits it. A task-bound request consults exactly that set, so later
-policy or key changes do not alter a running task's checkpoints. A request without
-a task context uses the policy's enabled providers, minus any disabled in the saved
-preferences. `cw task start --policy PATH` and `cw consult --policy PATH` default to
-the installed release's policy, and a `--policy` copy still honours
-`advisers.disabled`; task start fails before creating a task when the policy or the
-saved preferences cannot be read or are invalid. To opt
-in to Jev, start the task with a private policy copy that adds `jev: jev-1.14.0`,
-as the [setup guidance](../README.md#optional-set-up-jev) shows.
+The Claude Code policy has no consultation section; participation follows the
+shared policy and the keys present. Policy changes require their own authorized
+change. Which advisers participate, how `cw task start` binds them, what
+`--policy` does and how to opt in to Jev are in
+[participation](../skills/task-orchestration/references/consultation-helper.md#participation);
+the measurement behind leaving Jev out is in
+[why Jev is opt-in](../skills/task-orchestration/references/adviser-providers.md#why-jev-is-opt-in).
 
 ### Flow and checkpoints
 
 The task coordinator owns consultations, their scope and reuse. Substantial tasks
-follow a fixed flow: classify, before checkpoint, implement and verify, fresh final
-checkpoint, and complete only when both checkpoints are resolved. No required state
-is skipped. The checkpoints are required when the task has an open decision: real
-alternatives with consequential uncertainty. Then `cw task assign` is refused until
-the before checkpoint is attached and resolved, and `cw task verify` requires both.
-When the approach follows directly from the defect or contract and no changed code
-must behave alike on several platforms or shells, the plan declares
-`"checkpoints": {"required": false, "reason": "..."}`; verify then lists the
-limitation `adviser checkpoints not required: <reason>`, and every other gate
-stays. When in doubt, keep them required. For planning or review without
-implementation, the before checkpoint precedes substantive drafting or review.
-Each checkpoint has a separate request and disposition; before advice cannot
-replace the final checkpoint. Reuse is limited to the same checkpoint with
-still-applicable evidence, decisions, question meaning and models. Small edits and
-direct factual answers keep their bypass.
-
-`cw consult` sends the same permitted minimal text state, questions and Choice
-options to every configured adviser concurrently, with one attempt per provider and
-a 30-second batch budget covering startup, requests and result transport, and no
-automatic retries. Record the source revision and verify excerpts against it before
-sending. A participating adviser without its key is `not_configured` and receives
-no request; `unavailable` is only for an attempted adviser that failed. With no
-adviser attempted, `cw consult` makes no network call and writes a
-`no_advisers_configured` record. Records use version 4; earlier versions are
-rejected.
+follow the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow):
+classify, before checkpoint, implement and verify, fresh final checkpoint, and
+complete only after `cw task verify`. When the checkpoints are required, how each
+request is prepared, sent, recorded and reused is in
+[task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
+and the sections after it; the plan shape that declares them not required is in
+[start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
 
 ### Provider notes
 
@@ -303,22 +267,11 @@ accuracy or implementation correctness.
 
 ### Adjudication
 
-The coordinator owns the final decision. The record holds each adviser's result and
-a per-question comparison (`agreement`, `disagreement`, `partial`, `unavailable` or
-`no_advisers`), leaving `final_decision` pending. The coordinator compares every
-judgment against exact sources and relevant checks, including unanimous ones;
-confidence, probabilities, voting and provider identity never select a winner.
-`--adjudicate` validates the coordinator's decision offline and writes a new
-record. A resolved item needs typed `source:`, `check:` or `observation:` evidence
-and verification, never adviser output (check IDs, run IDs and observations cannot
-name an adviser or `gpt-6-luna`; `source:` paths are exempt); a reason for each
-differing adviser and an investigation note for differing advisers with confidence
-of 0.7 or higher, in `partial` as in `disagreement` comparisons; and
-`agreement_not_independent: true` when advisers agree on a request whose
-`state.untrusted` marks untrusted text. Material missing facts keep a question
-unresolved, and an unresolved decision blocks completion. The same rules apply when
-no adviser answered. See the
-[request and decision contract](../skills/task-orchestration/references/consultation-helper.md).
+The coordinator owns the final decision: the record holds each adviser's result
+and a per-question comparison and leaves `final_decision` pending, and
+`cw consult --adjudicate` validates the coordinator's decision offline. The
+decision shape and every rule it enforces are in
+[adjudicate without network access](../skills/task-orchestration/references/consultation-helper.md#adjudicate-without-network-access).
 
 Unavailable or refusing advisers are reported while source work continues; one
 adviser's failure preserves the other results. Installation, validation, CI, status

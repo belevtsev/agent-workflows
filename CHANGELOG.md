@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The always-on instruction block (`global/AGENTS.md`, 7,865 to 2,176 bytes) and the `task-orchestration` skill core (`SKILL.md`, 21,293 to 5,473 bytes) carry only the substantial-task threshold and the decision flow; every rule lives in one reference file, test authors and the GitHub worker are dispatched for substantial tasks or on request, and `docs/workflow.md` links the references instead of repeating them.
 - Releases are published from pushed `v*` tags instead of on every push to main.
 - `.gitignore` no longer hides macOS Finder duplicate files (names with a ` 2` suffix).
 - Rendered diagram HTML is no longer tracked. The JSON specs remain.

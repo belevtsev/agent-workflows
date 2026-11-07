@@ -34,14 +34,16 @@ them required.
 
 ## Implementation
 
-For every new or materially changed behavioral test, including small fixes and
-tests-only work, dispatch the [independent test author](test-author.md). Agree the
+When a substantial task adds or materially changes behavioral tests, or the user
+asks, dispatch the [independent test author](test-author.md). Agree the
 versioned contract and interfaces first, then separate exact implementation and
 test-artifact ownership. Authors receive approved contracts/scaffolding only;
 source-aware coordination or verification owns execution and filtered feedback.
 A valid red-test handoff completes authorship, not verification. Return semantic
 assertion/fixture/helper/skip changes to an unexposed author and retain patch
-identity. Small author dispatch alone does not activate substantial checkpoints.
+identity. A user-requested author on a small task does not activate substantial
+checkpoints; otherwise the coder writes the tests and the reviewer checks each
+against the Code Review Rules.
 
 Establish behavior, interfaces, and observable acceptance. Give workers exclusive
 file ownership and agree shared interfaces before edits; workers must accommodate
@@ -49,18 +51,13 @@ others' changes. Integrate and run required checks in the repository environment
 fixing failures caused by the change. Substantial source changes require an
 independent substantive worker review of the completed source, recorded through
 the [worker handoff contract](worker-handoffs.md) before the final adviser checkpoint.
-The coordinator resolves, defers or rejects each finding against evidence; it defers only a finding that changes no
-behaviour, fails no gate and loses no rule, and never a defect in changed behaviour
-or a finding with a concrete failure scenario, unless the defect predates the
-change and the change neither causes, touches nor newly exposes it. Reviews
-are capped: one full review, at most one diff-scoped follow-up by a fresh reviewer
-after the fixes, and a further review only to re-bind a fix of a defect that
-follow-up found (see the
-[follow-up review](worker-handoffs.md#follow-up-review-after-a-fix-revision));
+The coordinator resolves, defers or rejects each finding against evidence and
+stays within the [review cap](worker-handoffs.md#review-substantial-changes);
 keep small and unchanged read-only tasks lightweight.
 
-For a requested commit or routine PR creation/update, explicitly dispatch the
-[GitHub worker](github-worker.md), even for a small task. It drafts messages and
+To publish a substantial task, or when the user asks for a bounded worker,
+dispatch the [GitHub worker](github-worker.md); a small task commits and pushes
+directly under the user's authorization. The worker drafts messages and
 PR text from fixed verified facts and performs scoped, authorized commit/push and
 `gh` PR writes with refresh and readback. Its three roles use the `github` profile;
 substantive `pr_authoring` stays with the substantive profile. New claims or changed
