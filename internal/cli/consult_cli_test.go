@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 )
 
 // fixtureSkillSource holds the shipped task-orchestration policy (D1) and its

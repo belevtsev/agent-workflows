@@ -55,12 +55,14 @@ See [agents](docs/agents.md) and the
 
 ## Quick start
 
-Install `cw`, which records tasks and runs checks (Go 1.27 or newer). Use
-`@main`, not `@latest`, or a [release archive](docs/operations.md#get-cw):
+Install `cw`, which records tasks and runs checks (Go 1.27 or newer), from
+`@main` or a [release archive](docs/operations.md#get-cw):
 
 ```sh
-go install github.com/belevtsev/agent-workflows/cmd/cw@main
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main
 ```
+
+`@latest` works once the first v3 release tag exists.
 
 **Claude Code.** Add the marketplace:
 

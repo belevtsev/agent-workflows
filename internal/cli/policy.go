@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	agentworkflows "github.com/belevtsev/agent-workflows"
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	agentworkflows "github.com/belevtsev/agent-workflows/v3"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 	"github.com/spf13/cobra"
 )
 

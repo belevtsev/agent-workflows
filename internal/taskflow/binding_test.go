@@ -17,8 +17,8 @@ import (
 	"testing"
 	"unicode/utf16"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // Consultation fixtures (D3, D4, Revision 2). Records are hand-built version-4

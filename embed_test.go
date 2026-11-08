@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	agentworkflows "github.com/belevtsev/agent-workflows"
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	agentworkflows "github.com/belevtsev/agent-workflows/v3"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // RT-1: the embedded default policy is the shipped policy.

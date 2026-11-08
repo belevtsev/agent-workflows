@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/codexinstall"
+	"github.com/belevtsev/agent-workflows/v3/internal/codexinstall"
 )
 
 // Options names the v2 installation's directories.

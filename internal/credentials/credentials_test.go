@@ -21,7 +21,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/belevtsev/agent-workflows/internal/credentials"
+	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
 )
 
 const (

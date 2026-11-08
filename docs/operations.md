@@ -47,12 +47,13 @@ Docker skills in `third_party/docker-skills` are in neither plugin; only
 With Go installed, build from the main branch:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/cmd/cw@main
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main
 ```
 
-Use `@main` or a commit, not `@latest` or a `v3` tag: the module path has no
-major-version suffix, so Go resolves `@latest` to an old v1 release and rejects
-`@v3.x.y`. `cw version` then shows a Go pseudo-version that names the commit.
+`@latest` works once the first v3 release tag exists. Until then use `@main` or
+a commit; `cw version` then shows a Go pseudo-version that names the commit. The
+old path without `/v3` gets no updates: its `@main` and `@latest` queries fail
+with a module path mismatch.
 
 Or download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
