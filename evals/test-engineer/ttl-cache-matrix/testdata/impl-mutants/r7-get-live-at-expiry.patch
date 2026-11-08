@@ -1,0 +1,13 @@
+Breaks R7: Get treats an entry as live when clock() equals its expiry.
+
+--- a/cache.go
++++ b/cache.go
+@@ -79,7 +79,7 @@
+ 		return zero, false
+ 	}
+ 	it := e.Value.(*entry[K, V])
+-	if !c.clock().Before(it.expires) {
++	if c.clock().After(it.expires) {
+ 		c.order.Remove(e)
+ 		delete(c.items, key)
+ 		return zero, false

@@ -1,0 +1,13 @@
+Breaks R5: a request or retry exactly 10 seconds old is no longer counted.
+
+--- a/budget.go
++++ b/budget.go
+@@ -42,7 +42,7 @@
+ // window old still counts (R5).
+ func prune(ts []time.Time, cutoff time.Time) []time.Time {
+ 	i := 0
+-	for i < len(ts) && ts[i].Before(cutoff) {
++	for i < len(ts) && !ts[i].After(cutoff) {
+ 		i++
+ 	}
+ 	return ts[i:]

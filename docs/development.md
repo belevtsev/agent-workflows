@@ -57,8 +57,9 @@ scripts.
 
 Backend decision fixtures live in `internal/skillcheck/testdata/backend-skills`;
 give evaluators raw inputs without their expected decisions. Model evaluations and
-fresh discovery are separate from native test assertions; CI does not call hosted
-models or receive service credentials.
+fresh discovery are separate from native test assertions; `ci.yml` does not call
+hosted models or receive service credentials. Only the separate agent-eval
+workflow does, as described under Continuous integration.
 
 ### Consultation
 
@@ -180,7 +181,12 @@ preserved licenses are covered by the import-provenance checks in
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 
 The race detector runs on Linux only. Only obsolete pull request runs are
-cancelled. CI makes no release and receives no service credentials.
+cancelled. `ci.yml` makes no release and receives no service credentials.
+
+`.github/workflows/evals.yml` is separate: it runs the paid `claude plugin eval`
+suites under `evals/` on demand and weekly, receives the `ANTHROPIC_API_KEY`
+secret, and skips with a notice when that secret is not set. It never runs on
+pushes or pull requests. See `evals/README.md`.
 
 ## Releases
 
