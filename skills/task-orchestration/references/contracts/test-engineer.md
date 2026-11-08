@@ -174,6 +174,17 @@ changing a test file.
   Order-dependent tests, change detectors and mirror assertions are defects.
 - Tests control clocks, randomness, ports and temp files, and clean up.
 
+Under Claude Code you start without the project's instruction files, so these
+project rules reach you here, quoted from the Code Review Rules and the working
+conventions; any other project constraint is quoted in your brief:
+
+- "Flag a test that couldn't fail for the defect it claims to prevent." As the
+  author, write none: a reviewer runs your tests against the stub and against
+  mutants.
+- "Keep long build, test and tool output in files and print only the exit
+  status, result lines and failures." This applies when you run your tests
+  against the approved stub.
+
 ## Separate authorship from execution
 
 The coordinator or a source-aware verifier integrates the authored patch and

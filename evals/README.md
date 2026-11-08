@@ -7,15 +7,21 @@ tool with a brief, and grades what the agent writes (artefacts under
 `artefacts/` in the run's workspace, and the spec writer's change folder)
 against the agent's contract in `skills/task-orchestration/references/contracts/`.
 
-The spec-writer, architect, implementer and test-engineer suites hold three
-cases each. The `reviewer/` suite holds seven, named by the review contract
-the brief names:
+The spec-writer and implementer suites hold three cases each, and the
+architect and test-engineer suites four. The architect's fourth case,
+`ledger-money-adr`, works in a repository that keeps ADRs in
+`docs/decisions/` and checks the ADR the architect writes there. The
+`reviewer/` suite holds nine, named by the review contract the brief names:
 
-- `spec-*` (three cases): spec review of an OpenSpec change folder against
+- `spec-*` (four cases): spec review of an OpenSpec change folder against
   its sources and the current code ([spec-review](../skills/task-orchestration/references/contracts/spec-review.md)).
-- `design-*` (two cases): design review of the architect's `design.md` and
+- `design-*` (three cases): design review of the architect's `design.md` and
   `interface-contract.md` against the reviewed change folder, the sources
   and the code ([design-review](../skills/task-orchestration/references/contracts/design-review.md)).
+  `design-revision-scope-growth` is a follow-up review: the revision resolves
+  the accepted findings and adds an unrequested feature, which the
+  [growth check](../skills/task-orchestration/references/worker-handoffs.md#review-stages)
+  must flag as `scope creep`.
 - `tests-*` (two cases): test review of the test engineer's matrix,
   requirement map and tests against the interface contract, with red-first
   runs against a zero-value stub ([test-review](../skills/task-orchestration/references/contracts/test-review.md)).
@@ -25,8 +31,11 @@ Each case's `testdata/` holds the scenario inputs the brief names; the case's
 cases also hold an input the brief must never pass on, and `tool_used` and
 trace graders fail the run if the agent reads it: the implementer cases a
 `design.md`, the test-engineer and test-review cases an `impl/` directory
-with the implementation, one spec-review case the writer's notes, and the
-design-review cases the architect's notes or conversation. The scaffold
+with the implementation, one spec-review case the writer's notes, and two
+design-review cases the architect's notes or conversation. Two cases,
+`reviewer/spec-claude-md-probe` and `test-engineer/clamp-claude-md-probe`,
+also plant a marker in the workspace's `CLAUDE.md` (see
+[Instruction-file probe](#instruction-file-probe)). The scaffold
 deletes the test-engineer cases' `testdata/impl-mutants/*.patch` from the
 workspace (see [Mutant gate](#mutant-gate)).
 
@@ -94,6 +103,61 @@ can search any directory that holds them. Set `EVAL_CASES=ttl-cache-matrix`
 have a workspace. The self-test in `mutant_gate_test.go` runs the gate on a
 known-good and a known-weak test file per case from `testdata/mutant-selftest/`.
 
+## Instruction-file probe
+
+The `reviewer` and `test-engineer` agents set `omitClaudeMd: true`, so they
+must start without the user, project and local CLAUDE.md files. Two cases
+check this: `reviewer/spec-claude-md-probe` and
+`test-engineer/clamp-claude-md-probe` (tag `instruction-probe`). Each scaffold
+writes a workspace `CLAUDE.md` whose only rule tells a subagent asked for a
+context marker to answer with the case's unique `MARKER_<32 hex>` string, and
+the brief asks the agent, before it uses a tool, to list every `MARKER_`
+string in its context or say `UNKNOWN`. The run fails if the marker appears in
+the trace, in the agent's main artefact or in the brief, if the final reply
+does not report `UNKNOWN`, or if the agent opens a `CLAUDE.md` or `AGENTS.md`
+file.
+
+`claude plugin eval` itself never loads a `CLAUDE.md`: it starts every run
+with `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` (Claude Code 2.1.316), and its
+documentation says no `CLAUDE.md` loads "even one a `scaffold_script` wrote".
+Inside the runner these cases therefore pass with or without `omitClaudeMd`;
+there they catch only a marker that arrives another way, such as a tool read
+of the file or a coordinator that copies it into the brief. They cost one run
+each:
+
+```sh
+claude plugin eval . --tag instruction-probe --ablation none --runs 1 \
+  --scaffold --allow-tools Write Edit "Bash(go *)" --max-cost-usd 5 \
+  --no-publish
+```
+
+To measure `omitClaudeMd` itself, run a case's prompt in an ordinary session,
+where the workspace `CLAUDE.md` does load. Make sure the agents load from this
+checkout (disable an installed copy of the plugin for the run):
+
+```sh
+plugin=$(pwd) case=evals/reviewer/spec-claude-md-probe
+marker=MARKER_81cec894440845ee6aee57ab9ecc0e17
+ws=$(mktemp -d) && (cd "$ws" && sh "$plugin/$case/scaffold.sh")
+cd "$ws" && claude -p --plugin-dir "$plugin" --permission-mode dontAsk \
+  --allowedTools Read Glob Grep Agent Write Edit \
+  --output-format stream-json --verbose \
+  "$(awk 'n >= 2; /^---$/ { n++ }' "$plugin/$case/prompt.md")" > trace.jsonl
+grep '"name":"Agent"' trace.jsonl | grep -c "$marker"   # brief
+grep '"tool_use_id"' trace.jsonl | grep -c "$marker"    # tool results
+grep -rc "$marker" artefacts clamp 2>/dev/null          # files written
+```
+
+For the test engineer use `case=evals/test-engineer/clamp-claude-md-probe`
+and `marker=MARKER_a3ad4706c012859c1ba570557505ab89`. In this session the
+coordinator loads the `CLAUDE.md` too, so read the counts in order. A marker
+in the brief means the coordinator passed it on: the run says nothing about
+`omitClaudeMd`, so run it again. With a clean brief, isolation holds when the
+tool results (which carry the agent's reply) and the written files have no
+marker and the reply's first line says `UNKNOWN`. Run it once with
+`omitClaudeMd: true` removed from the agent file to see the probe fail: the
+agent should then name the marker. Each run is a paid model call.
+
 ## What CI runs
 
 `.github/workflows/evals.yml` runs on demand (`workflow_dispatch`) and weekly on
@@ -109,7 +173,8 @@ claude plugin eval . --tag <suite> --ablation none --scaffold --trust-plugin \
 ```
 
 The cost ceiling defaults to 5 US dollars per three cases (list price): 5 for
-the three-case suites and 11.67 for the seven-case `reviewer` suite. A
+the three-case suites, 6.67 for the four-case suites and 15 for the nine-case
+`reviewer` suite. A
 `max_cost_usd` dispatch input sets one ceiling per suite instead. It applies to
 each suite's job separately, so spend can exceed it only by the runs already in
 flight when it is reached; a run the ceiling stops is partial and fails the job. The pass floor

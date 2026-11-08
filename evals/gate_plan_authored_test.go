@@ -307,10 +307,14 @@ func authored2TTLCase(t *testing.T) mutantCase {
 	for _, c := range cases {
 		names = append(names, c.Name)
 	}
-	if want := []string{"notes-init-e2e", "retry-budget-matrix", "ttl-cache-matrix"}; !reflect.DeepEqual(names, want) {
+	if want := []string{"clamp-claude-md-probe", "notes-init-e2e", "retry-budget-matrix", "ttl-cache-matrix"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("loadMutantCases names = %v, want %v", names, want)
 	}
-	c := cases[2]
+	// The names above are sorted, so ttl-cache-matrix is the last case.
+	c := cases[len(cases)-1]
+	if c.Name != "ttl-cache-matrix" {
+		t.Fatalf("last mutant case = %q, want ttl-cache-matrix", c.Name)
+	}
 	if c.TestPath != "cache/cache_test.go" {
 		t.Fatalf("ttl-cache-matrix TestPath = %q, want %q", c.TestPath, "cache/cache_test.go")
 	}
