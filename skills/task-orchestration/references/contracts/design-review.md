@@ -25,8 +25,15 @@ design cannot review it. Judge the artefacts as written.
   [connected sources](../connected-sources.md), and read access to the
   repository.
 - On a follow-up review, the previous findings with the coordinator's
-  dispositions and the artefacts' diff since that review; and an artefact
+  dispositions, the user's answers to the architect's open questions listed
+  with them, and the artefacts' diff since that review; and an artefact
   directory outside the source tree.
+- On a re-bind after a [contract amendment](README.md#contract-amendment),
+  the forwarded questions by requirement ID and the artefacts' diff, scoped
+  to the changed requirements, with the path of a separate checkout of the
+  source the design was read from. Read source only there: the working tree
+  holds implementation source and tests, which you never read, nor their
+  diffs.
 
 ## Inputs you must never receive
 
@@ -77,7 +84,9 @@ Findings go back to the architect; rounds and dispositions follow the
 Stop and return to the coordinator when:
 
 - an input cannot be read: name it and review the rest;
-- the architect's reasoning or adviser output reaches you;
+- the architect's reasoning or adviser output reaches you, or on an amendment
+  re-bind implementation source, tests written from the contract or their diffs
+  do: say so, and the coordinator replaces you with a fresh reviewer;
 - every section and requirement has been read and `design-review.md` is
   written.
 

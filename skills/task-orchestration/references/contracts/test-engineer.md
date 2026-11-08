@@ -132,6 +132,13 @@ by requirement ID; do not guess an oracle from current code or request broader
 source access. The coordinator decides whether a public boundary or an approved
 test-only seam can exercise the behaviour without needlessly widening the
 production API. Keep unaffected cases moving while a requirement is unresolved.
+A contract change comes back through the
+[contract amendment](README.md#contract-amendment) procedure: the contract's
+author revises it without implementation (the original architect, or for a
+requirement packet the coordinator, from the request and the user's answers),
+and you receive only the amended contract, for Go a fresh extract, the changed
+requirement IDs and, for a question answered without a change, the
+requirement it cites, in a refreshed assignment.
 
 You own test-only artefacts and never edit production code. The implementer and
 the test engineer proceed in parallel only after the contract and interfaces are
