@@ -21,6 +21,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 
 ### Added
 
+- Pack manifests: the built-in Go pack `packs/go/pack.yaml` (schema 1, `kind: language`), embedded in `cw` and checked by `internal/skillcheck`.
 - Eval suites are checked in CI and run on a schedule: `go test ./evals/...` validates every case's files, grader regexes, graded paths and dispatched agents offline; `.github/workflows/evals.yml` runs each suite weekly or on demand with a default ceiling of 5 dollars per three cases and a 0.8 pass floor when `ANTHROPIC_API_KEY` is set; and a mutant gate fails a test-engineer run whose authored tests pass with any of the case's `testdata/impl-mutants/*.patch` applied. See `evals/README.md`.
 - The spec-writer agent under `agents/` and the spec-writer and spec-review contracts, which write and review OpenSpec-compatible change folders (`openspec/changes/<change-id>/` with `proposal.md`, spec deltas and `tasks.md`), the policy roles `spec_writer` and `spec_review`, eval suites under `evals/`, and the flow in `skills/task-orchestration/SKILL.md` and `references/contracts/README.md` (see "Review loops at every stage" above).
 - `cw task abandon --task DIR --reason TEXT` writes a terminal `abandonment` revision; an abandoned record accepts no further revisions and never gates `git commit` or `git push`. `cw` releases before this one cannot read an abandoned record.
