@@ -77,12 +77,35 @@ adviser checkpoints are not required:
   "checks": [
     {
       "id": "unit",
-      "argv": ["go", "test", "./..."],
+      "argv": ["go", "test", "-covermode=atomic", "-coverpkg=./...", "-coverprofile=/private/path/cover.out", "./..."],
       "timeout_seconds": 120
     }
   ]
 }
 ```
+
+The `-covermode=atomic -coverpkg=./... -coverprofile=` flags give the
+[code review](contracts/code-review.md#uncovered-changed-blocks) the coverage
+profile of the final check run; they earn the same credit as a plain
+`go test`. `-coverpkg=./...` also counts statements that one package's tests
+run in another; an end-to-end test of a built binary still records none.
+Write the profile to an absolute path outside the source tree, such as the
+private directory that holds `plan.json` (the task directory does not exist
+yet when the plan is written). `cw task run` captures the source before and
+after a check, and that source includes untracked files the repository does
+not ignore: a profile written inside the tree changes the source during the
+run, so a passing run is recorded as `source_changed`, and the profile then
+shows up as a changed file in the reviewer bundle. Every run of the check
+overwrites the profile and `cw` does not hash it, so give the reviewer its
+path together with the ID of the run that wrote it. The profile is review
+evidence only: no coverage threshold applies and it gates nothing. Coverage
+changes how a test binary behaves: tests that run the test binary again as a
+child process and compare its exact output can fail under `-cover`, because
+the child warns on stderr that `GOCOVERDIR` is not set. When the full check
+has such tests, keep it without coverage and bind a second check that adds
+the flags and names the packages the plan expects to change, leaving those
+tests' packages out; a change inside them then has no profile, which the
+reviewer records under what was not reviewed.
 
 A substantial plan binds at least one check to a requirement. Once its source
 changes, `verify` needs the latest run of some check passed at the current source.
@@ -382,7 +405,12 @@ the plan. Bind a mode that runs the same gates on a committed copy of the workin
 tree and prints that copy's tree hash. Name the project's command for it from its
 development docs. agent-workflows needs no such mode: its full check,
 `["go", "test", "-race", "-count=1", "./..."]` with `GOWORK=off` exported in the
-shell that runs `cw task run`, runs on the working tree. Give the check a timeout
+shell that runs `cw task run`, runs on the working tree. It takes no coverage
+flags: the `internal/graphify` process tests run the test binary again and
+compare its output, and fail under `-cover` (with `GOCOVERDIR` set as well).
+For the code review's profile, bind a second check with the coverage flags
+that names the packages the plan expects to change, outside
+`internal/graphify`; a change inside `internal/graphify` gets no profile. Give the check a timeout
 that covers the whole suite. `cw task run` binds the result to the live working
 tree, the same as any other check, so `cw task verify` can complete before the
 commit. After the authorized commit, compare `git rev-parse HEAD^{tree}` with the

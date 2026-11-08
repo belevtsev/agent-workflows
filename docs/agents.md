@@ -9,7 +9,7 @@ reviewer never reviews its own work.
 | Agent | Model, effort | Does | Contract |
 |---|---|---|---|
 | [spec-writer](https://github.com/belevtsev/agent-workflows/blob/main/agents/spec-writer.md) | Opus, high | OpenSpec change folder from source documents: proposal, spec deltas with testable scenarios, sized tasks, open questions | [spec-writer](../skills/task-orchestration/references/contracts/spec-writer.md) |
-| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief | [architect](../skills/task-orchestration/references/contracts/architect.md) |
+| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
 | [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | Opus, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
 | [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | Opus, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | Opus, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
@@ -33,7 +33,10 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 Under the Claude Code plugin the agent types are namespaced, for example
 `agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md#worker-agent-types)
 maps each policy role to its type. The frontmatter model is a default: the
-coordinator passes the role's model and effort on every dispatch. Every agent
+coordinator passes the role's model and effort on every dispatch. The reviewer
+and the test engineer also set `omitClaudeMd: true`, so under Claude Code they
+start without the user's and the project's CLAUDE.md files; their contracts and
+briefs carry the project rules they apply. Codex has no such switch. Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.
@@ -69,8 +72,15 @@ Test review runs the tests against a stub first, so a test of non-trivial
 behaviour that passes against the stub is flagged
 ([test review](../skills/task-orchestration/references/contracts/test-review.md)).
 Code review, which does read the code, also flags a test that could not fail
-for the defect it claims to prevent. A known limit: an internal branch that no
-requirement names has no test asked for it.
+for the defect it claims to prevent. An internal branch that no requirement
+names and that leaves an unexecuted changed block is classified there: when
+the final check wrote a coverage profile, code review gives every unexecuted
+changed block one class, an untested
+requirement (sent to a fresh test engineer by requirement ID, contract-level
+inputs and expected outcome, never coverage), behaviour no requirement asks
+for, or an unreachable defence
+([uncovered changed blocks](../skills/task-orchestration/references/contracts/code-review.md#uncovered-changed-blocks)).
+The test engineer itself still never sees coverage.
 
 **Why doesn't the implementer write its own tests?** Code tested only by its
 author is one of the failures this project exists to prevent: the same
@@ -83,8 +93,11 @@ checks them.
 
 **Does the reviewer ever read the code?** Yes. Code review runs on the
 integrated source after the tests have run. It has the whole repository, a
-bundle that lists the files changed since the task started, and the
-requirements to check the change against
+bundle that lists the files changed since the task started, the interface
+contract, `design.md`, the test engineer's matrix and requirement map, and the
+final check's coverage profile when one exists; it checks the change against the requirements
+and the design, and backs each behaviour finding with a test that fails on the
+current source
 ([code review](../skills/task-orchestration/references/contracts/code-review.md#inputs-you-receive)).
 Only test review never sees the implementation, so it judges the tests by the
 contract alone.

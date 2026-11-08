@@ -164,12 +164,13 @@ func TestAuthoredFindWorkspaces(t *testing.T) {
 var authoredMutantCases = []struct {
 	name, module, testPath string
 }{
+	{"clamp-claude-md-probe", "example.com/clamp", "clamp/clamp_test.go"},
 	{"notes-init-e2e", "example.com/notes", "e2e/init_test.go"},
 	{"retry-budget-matrix", "example.com/retry", "retry/budget_test.go"},
 	{"ttl-cache-matrix", "example.com/cache", "cache/cache_test.go"},
 }
 
-// M3: the three test-engineer cases with their modules, test paths and mutants.
+// M3: the four test-engineer cases with their modules, test paths and mutants.
 func TestAuthoredLoadMutantCases(t *testing.T) {
 	root := authoredRealRoot(t)
 	got, err := loadMutantCases(root)
