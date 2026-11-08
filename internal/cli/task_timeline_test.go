@@ -207,8 +207,14 @@ func TestTaskTimelineTL8RuntimeErrors(t *testing.T) {
 			}
 			return path
 		}},
-		{"owner-only directory with corrupt files", func(t *testing.T, root string) string {
-			path := filepath.Join(root, "corrupt task")
+		// No revision file: these names are not record-NNNNNN.json, so the
+		// directory holds no revision at all. Requires the runtime error of a
+		// directory without a valid record: exit status 1, nothing on
+		// standard output and the directory unchanged. Fails if the command
+		// succeeds (for example with an empty timeline), exits with another
+		// status, prints anything, or changes a file.
+		{"owner-only directory with only non-revision names", func(t *testing.T, root string) string {
+			path := filepath.Join(root, "no revision task")
 			if err := os.Mkdir(path, 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -216,6 +222,42 @@ func TestTaskTimelineTL8RuntimeErrors(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(path, name), []byte("{not json"), 0o600); err != nil {
 					t.Fatal(err)
 				}
+			}
+			return path
+		}},
+		// Corrupt revision 1 (code review C1): record-000001.json, the sole
+		// revision, has a real revision name and owner-only mode, but its
+		// content is not JSON. Requires exit status 1, nothing on standard
+		// output and the directory unchanged. Fails if the command succeeds,
+		// exits with another status, prints anything, or rewrites or removes
+		// the undecodable file. A corrupt revision after a valid one is
+		// covered end to end by TestTimelineE2ECorruptRevisionAfterValid in
+		// cmd/cw/timeline_e2e_test.go.
+		{"owner-only directory with a corrupt revision 1 (invalid JSON)", func(t *testing.T, root string) string {
+			path := filepath.Join(root, "corrupt revision task")
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(path, "record-000001.json"), []byte("{not json"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return path
+		}},
+		// Corrupt revision 1: record-000001.json, the sole revision, is valid
+		// JSON but not a JSON object, so it cannot be decoded as a revision of
+		// the stored format. Requires exit status 1, nothing on standard
+		// output and the directory unchanged. Fails if the command succeeds,
+		// exits with another status, prints anything, or changes a file. A
+		// corrupt revision after a valid one is covered end to end by
+		// TestTimelineE2ECorruptRevisionAfterValid in
+		// cmd/cw/timeline_e2e_test.go.
+		{"owner-only directory with a corrupt revision 1 (JSON array, not an object)", func(t *testing.T, root string) string {
+			path := filepath.Join(root, "non-object revision task")
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(path, "record-000001.json"), []byte("[]\n"), 0o600); err != nil {
+				t.Fatal(err)
 			}
 			return path
 		}},

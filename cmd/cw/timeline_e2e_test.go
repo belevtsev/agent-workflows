@@ -715,6 +715,64 @@ func TestTimelineE2EVerifiedTask(t *testing.T) {
 	}
 }
 
+// TL-8, TL-9 (code review F1): a real task whose record-000001.json, written
+// by `cw task start`, is valid, followed by a corrupt next revision
+// record-000002.json (mode 0600). A record is valid only if every revision
+// file is valid, so the directory holds no valid task record: the command must
+// fail with exit status 1, print nothing on standard output, write an
+// "agent-workflows: <message>" line to standard error, and leave the task
+// directory's entries, modes and bytes unchanged, with and without --summary
+// and --dry-run. Fails if the loader drops or skips an undecodable revision
+// file when it lists the revisions and so loads revision 1 alone (printing a
+// timeline and exiting 0), or rewrites, repairs or removes the corrupt file.
+func TestTimelineE2ECorruptRevisionAfterValid(t *testing.T) {
+	env := tle2xSetup(t)
+	corruptions := []struct{ name, content string }{
+		{"invalid JSON", "{not json"},
+		{"JSON array, not an object", "[]\n"},
+	}
+	for i, corruption := range corruptions {
+		t.Run(corruption.name, func(t *testing.T) {
+			dir := env.startTask(t, fmt.Sprintf("plan-corrupt-%d.json", i))
+			first := filepath.Join(dir, "record-000001.json")
+			second := filepath.Join(dir, "record-000002.json")
+			// Preconditions from the storage format: start wrote revision 1
+			// and no revision 2, and the record loads before the corruption.
+			if info, err := os.Lstat(first); err != nil || !info.Mode().IsRegular() {
+				t.Fatalf("task start left no regular revision 1 at %s: %v", first, err)
+			}
+			if _, err := os.Lstat(second); !errors.Is(err, fs.ErrNotExist) {
+				t.Fatalf("revision 2 already exists after task start (%v); the case needs start to write revision 1 only", err)
+			}
+			env.show(t, dir)
+
+			if err := os.WriteFile(second, []byte(corruption.content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(second, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			before := tle2xSnapshot(t, env.root)
+			dirBefore := tle2xSnapshot(t, dir)
+			for _, args := range [][]string{
+				{"task", "timeline", "--task", dir},
+				{"task", "timeline", "--task", dir, "--summary"},
+				{"--dry-run", "task", "timeline", "--task", dir},
+				{"--dry-run", "task", "timeline", "--task", dir, "--summary"},
+			} {
+				label := fmt.Sprintf("corrupt revision 2 (%s): cw %v", corruption.name, args)
+				tle2xExpectError(t, label, env.run(t, nil, args...), 1, "")
+				if after := tle2xSnapshot(t, dir); after != dirBefore {
+					t.Errorf("%s changed the task directory (TL-9):\nbefore:\n%s\nafter:\n%s", label, dirBefore, after)
+				}
+			}
+			if after := tle2xSnapshot(t, env.root); after != before {
+				t.Errorf("failing timeline changed files under the test root (TL-9):\nbefore:\n%s\nafter:\n%s", before, after)
+			}
+		})
+	}
+}
+
 // TL-6, TL-7 (test review U2): an agent ID with `<`, `>`, `&`, non-ASCII
 // text, quotes and a backslash, assigned through `cw task assign`, is written
 // by the contract's encoder (encoding/json/v2, json.Deterministic(true)) in
