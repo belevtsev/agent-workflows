@@ -357,13 +357,16 @@ var splitTestSink shellCommand
 //
 // It is skipped under the race detector (splitTestRaceEnabled, set by the
 // build-constrained composition_split_race_test.go and
-// composition_split_norace_test.go): there the race runtime's own allocation,
-// which does not grow with nesting, dominates (about 3,300 bytes per input
-// byte at n = 4000 and 700 at n = 16000 for a linear splitter), so no
-// per-byte bound separates a linear splitter from a per-line copy.
+// composition_split_norace_test.go). There, in bytes per input byte, a linear
+// splitter allocates about 3,100-3,250 at n = 4000 and about 690-700 at
+// n = 16000, while a splitter that copies its whole nesting state per line
+// allocates about 4,500 at n = 4000 and about 6,150 at n = 16000. A bound at
+// n = 16000 alone would still separate them, but no single per-byte bound at
+// both sizes separates them with a safe margin: at n = 4000 the two are within
+// 1.5x.
 func TestSplitShellDeepNestingAllocations(t *testing.T) {
 	if splitTestRaceEnabled {
-		t.Skip("R4d allocation bound skipped under the race detector: the race runtime's own allocation dominates TotalAlloc, so no per-byte bound separates a linear splitter from a per-line copy of the nesting state")
+		t.Skip("R4d allocation bound skipped under the race detector: no single per-byte bound at both n = 4000 and n = 16000 separates a linear splitter from a per-line copy of the nesting state with a safe margin (at n = 4000 they are within 1.5x)")
 	}
 	const perByte = 400
 	for _, n := range []int{4000, 16000} {
