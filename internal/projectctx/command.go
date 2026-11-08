@@ -74,21 +74,41 @@ func executeBounded(ctx context.Context, command Command, limit int) (CommandRes
 	// Optional tools can echo keys or local configuration in failures. Neither
 	// stderr nor subprocess errors become doctor report data.
 	cmd.Stderr = io.Discard
-	var err error
-	if input == nil {
-		err = cmd.Run()
-	} else if err = cmd.Start(); err == nil {
-		written := make(chan error, 1)
-		go func() {
-			_, writeErr := io.WriteString(input, command.Stdin)
-			written <- writeErr
-		}()
+	err := cmd.Start()
+	if err == nil {
+		// Once the process exits, os/exec stops watching the context, and
+		// Wait can block for the whole WaitDelay while a child holds the
+		// output open. Killing the process group as soon as ctx ends closes
+		// those pipes, so the caller's deadline still bounds the probe.
+		killed := make(chan struct{})
+		stopKill := context.AfterFunc(ctx, func() {
+			defer close(killed)
+			_ = killProbeProcess(cmd)
+		})
+		var written chan error
+		if input != nil {
+			written = make(chan error, 1)
+			go func() {
+				_, writeErr := io.WriteString(input, command.Stdin)
+				written <- writeErr
+			}()
+		}
 		// Keep stdin open after the request. EOF means shutdown to asynchronous
 		// MCP servers, so only a response, process exit or deadline closes it.
 		err = cmd.Wait()
-		_ = input.Close()
-		if writeErr := <-written; err == nil {
-			err = writeErr
+		// The kill is stopped here, or has finished, before the cleanup
+		// below, so it never signals the group later than that cleanup does.
+		// While Wait waits for output after the process is reaped, a group
+		// member normally still holds the pipe, which keeps the group ID in
+		// use, so it cannot name a new process.
+		if !stopKill() {
+			<-killed
+		}
+		if input != nil {
+			_ = input.Close()
+			if writeErr := <-written; err == nil {
+				err = writeErr
+			}
 		}
 	}
 	// A successful parent can exit after detaching its stdio while children

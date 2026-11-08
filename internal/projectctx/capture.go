@@ -27,21 +27,23 @@ const (
 	maxFileBytes   = maxSourceBytes
 	maxGitOutput   = 8 << 20
 
-	// gitProbeBudget bounds one Git inspection command. Git exiting with a
-	// failure says the path is not a repository; Git running out of time
-	// says nothing about it, so capture stops with an error instead. Five
-	// seconds was exceeded on loaded machines (macOS CI runners, hosts at
-	// load averages far above their core count), so the budget only stops a
-	// hung Git. The caller's context bounds every probe as well, so a caller
-	// with a shorter deadline, such as a hook or cw doctor, keeps it.
+	// gitProbeBudget bounds one Git inspection command, including the time
+	// its output takes to arrive after Git exits. Git exiting with a failure
+	// says the path is not a repository; Git running out of time says
+	// nothing about it, so capture stops with an error instead. Five seconds
+	// was exceeded on loaded machines (macOS CI runners, hosts at load
+	// averages far above their core count), so the budget only stops a hung
+	// Git. The caller's context bounds every probe as well, so a caller with
+	// a shorter deadline, such as a hook or cw doctor, keeps it.
 	gitProbeBudget = 60 * time.Second
 
 	// gitProbeWaitDelay is how long a Git probe's output may still be
 	// copied after Git exits. Capture stops when a probe does not finish
 	// cleanly, and on a loaded host copying a large listing such as
 	// ls-tree -r can take far longer than the 100ms default, which made a
-	// complete probe fail with exec.ErrWaitDelay. A probe stopped by its
-	// deadline has its process group killed, so its pipes normally close at
+	// complete probe fail with exec.ErrWaitDelay. The grace never outlasts
+	// the probe budget or the caller's context: when either ends, the
+	// probe's process group is killed, which normally closes its pipes at
 	// once.
 	gitProbeWaitDelay = 10 * time.Second
 )
