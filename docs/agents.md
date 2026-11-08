@@ -9,7 +9,7 @@ reviewer never reviews its own work.
 | Agent | Model, effort | Does | Contract |
 |---|---|---|---|
 | [spec-writer](https://github.com/belevtsev/agent-workflows/blob/main/agents/spec-writer.md) | Opus, high | OpenSpec change folder from source documents: proposal, spec deltas with testable scenarios, sized tasks, open questions | [spec-writer](../skills/task-orchestration/references/contracts/spec-writer.md) |
-| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief | [architect](../skills/task-orchestration/references/contracts/architect.md) |
+| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
 | [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | Opus, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
 | [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | Opus, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | Opus, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
@@ -33,7 +33,10 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 Under the Claude Code plugin the agent types are namespaced, for example
 `agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md#worker-agent-types)
 maps each policy role to its type. The frontmatter model is a default: the
-coordinator passes the role's model and effort on every dispatch. Every agent
+coordinator passes the role's model and effort on every dispatch. The reviewer
+and the test engineer also set `omitClaudeMd: true`, so under Claude Code they
+start without the user's and the project's CLAUDE.md files; their contracts and
+briefs carry the project rules they apply. Codex has no such switch. Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.

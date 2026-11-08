@@ -29,6 +29,7 @@ type agentFrontmatter struct {
 	DisallowedTools any    `yaml:"disallowedTools"`
 	Model           string `yaml:"model"`
 	Effort          string `yaml:"effort"`
+	OmitClaudeMd    any    `yaml:"omitClaudeMd"`
 }
 
 // parseAgentFrontmatter decodes the YAML between the leading --- lines.
@@ -250,20 +251,79 @@ func removedAgentProblems(root string) []string {
 	return problems
 }
 
+// isolatedAgentNames are the agents A5 requires to set omitClaudeMd: true, so
+// that they start without the project's CLAUDE.md.
+var isolatedAgentNames = []string{"reviewer", "test-engineer"}
+
+// agentIsolationProblems checks A5: every listed agent named reviewer or
+// test-engineer sets omitClaudeMd to the YAML boolean true, no other listed
+// agent sets it to true, and both isolated agents are among the listed ones.
+// Unresolved entries and unparseable frontmatter are A1's and A2's concern;
+// an isolated agent hidden by them is reported as missing.
+func agentIsolationProblems(root string) []string {
+	listed, err := pluginAgents(root)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	var problems []string
+	seen := map[string]bool{}
+	for _, entry := range listed {
+		file, ok := listedAgentPath(entry)
+		if !ok {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+		if err != nil {
+			continue
+		}
+		fields, err := parseAgentFrontmatter(data)
+		if err != nil {
+			continue
+		}
+		omit, isBool := fields.OmitClaudeMd.(bool)
+		if slices.Contains(isolatedAgentNames, fields.Name) {
+			seen[fields.Name] = true
+			if !isBool || !omit {
+				problems = append(problems, fmt.Sprintf("%s: omitClaudeMd = %#v, want the YAML boolean true for agent %q", file, fields.OmitClaudeMd, fields.Name))
+			}
+		} else if isBool && omit {
+			problems = append(problems, fmt.Sprintf("%s: omitClaudeMd is true, but agent %q works to the project's instruction files", file, fields.Name))
+		}
+	}
+	for _, name := range isolatedAgentNames {
+		if !seen[name] {
+			problems = append(problems, fmt.Sprintf("%s: agent is missing from the listed agents in .claude-plugin/plugin.json, so omitClaudeMd cannot be checked", name))
+		}
+	}
+	return problems
+}
+
 // --- synthetic roots ---------------------------------------------------------
 
 func agentDoc(name, model, effort string) string {
-	return "---\nname: " + name + "\ndescription: Synthetic " + name + " agent.\nmodel: " + model +
-		"\neffort: " + effort + "\ndisallowedTools: Skill\n---\n\n# " + name + "\n"
+	return agentDocWith(name, model, effort)
 }
 
-// validAgentRoot builds a root whose roster satisfies A1 to A4.
+// agentDocWith is agentDoc with extra frontmatter lines such as
+// "omitClaudeMd: true".
+func agentDocWith(name, model, effort string, extra ...string) string {
+	var b strings.Builder
+	b.WriteString("---\nname: " + name + "\ndescription: Synthetic " + name + " agent.\nmodel: " + model +
+		"\neffort: " + effort + "\ndisallowedTools: Skill\n")
+	for _, line := range extra {
+		b.WriteString(line + "\n")
+	}
+	b.WriteString("---\n\n# " + name + "\n")
+	return b.String()
+}
+
+// validAgentRoot builds a root whose roster satisfies A1 to A5.
 func validAgentRoot(t *testing.T) (string, map[string]string) {
 	t.Helper()
 	files := map[string]string{
-		"agents/reviewer.md":      agentDoc("reviewer", "opus", "high"),
+		"agents/reviewer.md":      agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
 		"agents/github-worker.md": agentDoc("github-worker", "sonnet", "medium"),
-		"agents/test-engineer.md": agentDoc("test-engineer", "opus", "high"),
+		"agents/test-engineer.md": agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
 	}
 	return writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md"}, files), files
 }
@@ -304,6 +364,7 @@ func TestAgentRosterSyntheticBaselineIsClean(t *testing.T) {
 		"A2": listedAgentFrontmatterProblems,
 		"A3": agentPinProblems,
 		"A4": removedAgentProblems,
+		"A5": agentIsolationProblems,
 	} {
 		if problems := check(root); len(problems) != 0 {
 			t.Errorf("%s on a valid synthetic root: %q", name, problems)
@@ -526,4 +587,164 @@ func TestA4_SyntheticViolationsAreReported(t *testing.T) {
 		}
 		wantProblem(t, removedAgentProblems(root), "global/claude-agents")
 	})
+}
+
+// --- A5 ----------------------------------------------------------------------
+
+// fullAgentRoster returns the six-agent roster the plugin ships, listed in
+// plugin.json, with reviewer and test-engineer isolated and architect setting
+// omitClaudeMd: false explicitly (absent and false are both allowed).
+func fullAgentRoster() ([]string, map[string]string) {
+	files := map[string]string{
+		"agents/spec-writer.md":   agentDoc("spec-writer", "opus", "high"),
+		"agents/architect.md":     agentDocWith("architect", "opus", "high", "omitClaudeMd: false"),
+		"agents/implementer.md":   agentDoc("implementer", "opus", "high"),
+		"agents/test-engineer.md": agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
+		"agents/reviewer.md":      agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
+		"agents/github-worker.md": agentDoc("github-worker", "sonnet", "medium"),
+	}
+	listed := []string{
+		"./agents/spec-writer.md", "./agents/architect.md", "./agents/implementer.md",
+		"./agents/test-engineer.md", "./agents/reviewer.md", "./agents/github-worker.md",
+	}
+	return listed, files
+}
+
+// A5.1, A5.2, A5.3, A5.4: fails when the real reviewer or test-engineer does
+// not set omitClaudeMd: true, when another real agent sets it to true, or when
+// either isolated agent is not listed.
+func TestA5_IsolatedAgentsOmitClaudeMd(t *testing.T) {
+	listed, err := pluginAgents(repoRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) == 0 {
+		t.Fatal(".claude-plugin/plugin.json lists no agents")
+	}
+	for _, problem := range agentIsolationProblems(repoRoot) {
+		t.Errorf("A5: %s", problem)
+	}
+}
+
+// A5.5: a valid six-agent roster has no A5 problem (and stays valid for A1 to
+// A4, so the fixture itself is a real roster); fails when A5 rejects absent or
+// false on a non-isolated agent, or true on an isolated one.
+func TestA5_ValidRosterIsClean(t *testing.T) {
+	listed, files := fullAgentRoster()
+	root := writeAgentRoot(t, listed, files)
+	for name, check := range map[string]func(string) []string{
+		"A1": agentListingProblems,
+		"A2": listedAgentFrontmatterProblems,
+		"A3": agentPinProblems,
+		"A4": removedAgentProblems,
+		"A5": agentIsolationProblems,
+	} {
+		if problems := check(root); len(problems) != 0 {
+			t.Errorf("%s on the valid six-agent roster: %q", name, problems)
+		}
+	}
+}
+
+// A5.1, A5.5: fails when reviewer or test-engineer passes A5 with
+// omitClaudeMd missing, false, or anything other than the YAML boolean true,
+// or when the problem does not name the file and the field.
+func TestA5_IsolatedAgentWithoutBooleanTrueIsReported(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		extra []string // frontmatter lines; none means the key is missing
+	}{
+		{"missing", nil},
+		{"false", []string{"omitClaudeMd: false"}},
+		{"double-quoted string true", []string{`omitClaudeMd: "true"`}},
+		{"single-quoted string true", []string{`omitClaudeMd: 'true'`}},
+		{"quoted string yes", []string{`omitClaudeMd: "yes"`}},
+		{"plain yes, a string in YAML 1.2", []string{"omitClaudeMd: yes"}},
+		{"integer 1", []string{"omitClaudeMd: 1"}},
+		{"null", []string{"omitClaudeMd: null"}},
+		{"empty value", []string{"omitClaudeMd:"}},
+		{"list holding true", []string{"omitClaudeMd: [true]"}},
+	} {
+		for _, agent := range isolatedAgentNames {
+			t.Run(agent+"/"+test.name, func(t *testing.T) {
+				listed, files := fullAgentRoster()
+				file := "agents/" + agent + ".md"
+				files[file] = agentDocWith(agent, "opus", "high", test.extra...)
+				problems := agentIsolationProblems(writeAgentRoot(t, listed, files))
+				wantProblem(t, problems, file, "omitClaudeMd")
+				if len(problems) != 1 {
+					t.Errorf("problems = %q, want only the one for %s", problems, file)
+				}
+			})
+		}
+	}
+}
+
+// A5.2, A5.5: fails when a non-isolated agent may set omitClaudeMd: true, or
+// when the problem does not name the file and the field.
+func TestA5_OtherAgentWithTrueIsReported(t *testing.T) {
+	for _, agent := range []string{"spec-writer", "architect", "implementer", "github-worker"} {
+		t.Run(agent, func(t *testing.T) {
+			listed, files := fullAgentRoster()
+			file := "agents/" + agent + ".md"
+			model, effort := "opus", "high"
+			if agent == "github-worker" {
+				model, effort = "sonnet", "medium"
+			}
+			files[file] = agentDocWith(agent, model, effort, "omitClaudeMd: true")
+			problems := agentIsolationProblems(writeAgentRoot(t, listed, files))
+			wantProblem(t, problems, file, "omitClaudeMd")
+			if len(problems) != 1 {
+				t.Errorf("problems = %q, want only the one for %s", problems, file)
+			}
+		})
+	}
+}
+
+// A5.3, A5.5: fails when A5 passes silently although reviewer or
+// test-engineer is not among the listed agents: unlisted, absent, or listed
+// under a file whose frontmatter names another agent.
+func TestA5_MissingIsolatedAgentIsReported(t *testing.T) {
+	for _, agent := range isolatedAgentNames {
+		file := "agents/" + agent + ".md"
+		without := func(listed []string) []string {
+			return slices.DeleteFunc(slices.Clone(listed), func(entry string) bool { return entry == "./"+file })
+		}
+		t.Run(agent+"/unlisted file", func(t *testing.T) {
+			listed, files := fullAgentRoster()
+			problems := agentIsolationProblems(writeAgentRoot(t, without(listed), files))
+			wantProblem(t, problems, agent, "missing")
+		})
+		t.Run(agent+"/no file and unlisted", func(t *testing.T) {
+			listed, files := fullAgentRoster()
+			delete(files, file)
+			problems := agentIsolationProblems(writeAgentRoot(t, without(listed), files))
+			wantProblem(t, problems, agent, "missing")
+		})
+		t.Run(agent+"/listed file renamed in frontmatter", func(t *testing.T) {
+			listed, files := fullAgentRoster()
+			files[file] = agentDocWith("renamed-"+agent, "opus", "high", "omitClaudeMd: true")
+			problems := agentIsolationProblems(writeAgentRoot(t, listed, files))
+			wantProblem(t, problems, agent, "missing")
+		})
+	}
+	t.Run("both missing", func(t *testing.T) {
+		problems := agentIsolationProblems(writeAgentRoot(t, []string{"./agents/github-worker.md"},
+			map[string]string{"agents/github-worker.md": agentDoc("github-worker", "sonnet", "medium")}))
+		wantProblem(t, problems, "reviewer", "missing")
+		wantProblem(t, problems, "test-engineer", "missing")
+	})
+}
+
+// A5.4: on a root shaped like the repository before the change (both isolated
+// agents listed, neither setting the field) A5 fails and names both files.
+func TestA5_PreChangeShapeNamesBothFiles(t *testing.T) {
+	listed, files := fullAgentRoster()
+	files["agents/reviewer.md"] = agentDoc("reviewer", "opus", "high")
+	files["agents/test-engineer.md"] = agentDoc("test-engineer", "opus", "high")
+	problems := agentIsolationProblems(writeAgentRoot(t, listed, files))
+	wantProblem(t, problems, "agents/reviewer.md", "omitClaudeMd")
+	wantProblem(t, problems, "agents/test-engineer.md", "omitClaudeMd")
+	if len(problems) != 2 {
+		t.Errorf("problems = %q, want exactly the two isolated agent files", problems)
+	}
 }
