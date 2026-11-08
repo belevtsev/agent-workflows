@@ -49,6 +49,16 @@ the completed work and current checks before completion or authorized publicatio
 Put the emitted task context in request state and retain adviser coverage and the
 coordinator's disposition in the task record.
 
+A not-required reason must not claim that advisers are missing when the task binds
+any: `cw task start` refuses such a plan, and `cw task verify` reports it on a record
+an older `cw` created (see [Attach to the task](#attach-to-the-task)). Detection is a
+closed phrase heuristic with known false negatives and false positives; a reason
+about the task's own subject that matches, such as "the change touches no provider
+credentials", must be reworded. The binding (`cw task show --field advisers`, and
+`cw keys status` for the keys `cw` can use) says which advisers are available, not
+`cw doctor`'s `credentials_launcher` or `credentials_codex_shell` lines, which count
+other environments.
+
 Reuse is limited to the same checkpoint with applicable evidence, decisions, question
 meaning and models. A before record cannot satisfy the final checkpoint. If sharing
 is restricted, record that limitation and follow the source-evidence fallback; do
@@ -373,11 +383,26 @@ For a substantial task with required checkpoints, `cw task assign` is refused
 until the before checkpoint is attached and resolved, `cw task verify` requires
 both checkpoints resolved, and a before record never satisfies the final phase.
 With `"required": false`, verify lists the reason as a limitation, and an attached
-checkpoint is still validated. With an empty binding, verify
-reports that no advisers were configured when the task started, so decisions rest
-on source evidence and checks only. This release reads task record version 3 and
-consultation record version 4 only; task records and consultation records from
-earlier releases do not load, so restart such a task with `cw task start`.
+checkpoint is still validated. If that reason claims no advisers are configured while
+the task binds some, and the two checkpoints are not both attached, verify adds one
+problem, `plan checkpoints reason claims no advisers are configured, but this task
+binds <IDs>; ` followed by:
+
+- `attach the final checkpoint` when a usable before checkpoint is attached:
+  resolved and valid against the baseline, as the final context requires;
+- `attach the before and final checkpoints, or abandon this record and start a
+  corrected one` when there is no usable before checkpoint and the source is
+  unchanged since start;
+- `the source changed since start, so the before checkpoint can no longer be
+  attached and a new record must not start over the changed source: stop and ask
+  the user how to proceed` when there is no usable before checkpoint and the
+  source changed.
+
+With an empty binding, verify reports that no advisers were configured when the
+task started, so decisions rest on source evidence and checks only. This release
+reads task record version 3 and consultation record version 4 only; task records
+and consultation records from earlier releases do not load, so restart such a task
+with `cw task start`.
 
 ## Sharing and recording
 

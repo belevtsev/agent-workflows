@@ -134,7 +134,7 @@ directly from the defect crashed bash 3.2), and whenever in doubt. The plan cann
 started with checkpoints not required later meets an open decision or a change to
 code that must behave alike on several platforms or shells, stop and ask the user, and never start a new record over
 source the first one already changed, because its baseline would hide those edits
-from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. With
+from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. A not-required reason must not claim advisers are missing while the task binds any (the binding, `cw task show --field advisers`, and `cw keys status` say which are available; `cw doctor`'s launcher and Codex shell lines do not): `start` refuses it, and `verify` reports it on a record an older `cw` created; when that record's source changed and no usable before checkpoint is attached, stop and ask the user, for the same reason. With
 `"required": false`, `assign` needs no before checkpoint and `verify` adds the
 limitation `adviser checkpoints not required: <reason>` instead of requiring both
 checkpoints. Requirements, checks, worker records and the independent review stay
