@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	resyntax "regexp/syntax"
 	"strconv"
 	"strings"
 	"unicode"
@@ -14,7 +15,9 @@ import (
 // true when the Go form cannot decide matches exactly: lookarounds become
 // plain groups, backreferences empty groups, a lone surrogate outside a class
 // a class that never matches, and a repeat count above RE2's limit of 1000 an
-// open repeat, so the syntax is still checked but matches are not.
+// open repeat, so the syntax is still checked but matches are not. When
+// nested counted repeats multiply past that limit, every counted repeat in
+// the pattern becomes an open one (* or +), again approximate.
 //
 // Otherwise matches are exact apart from these known differences, none of
 // which affects an ASCII pattern without \P{...} matched against printable
@@ -33,8 +36,8 @@ import (
 // Valid JavaScript that RE2 cannot express is rejected with an error naming
 // the pattern, never passed silently: v-mode set notation, \p{...} binary
 // properties, long category names, script aliases and Script_Extensions,
-// class ranges bounded by a character beyond U+FFFF without u, lone
-// surrogates inside a class, and repeats nested beyond 1000.
+// class ranges bounded by a character beyond U+FFFF without u, and lone
+// surrogates inside a class.
 type jsRegex struct {
 	*regexp.Regexp
 	approximate bool
@@ -61,6 +64,13 @@ const maxRE2Repeat = 1000
 // pattern returns an error containing "does not compile"; an inline flag group
 // such as (?i), which the runner rejects, returns one containing "inline flag".
 func compileJS(pattern, flags string) (*jsRegex, error) {
+	return translateJS(pattern, flags, false)
+}
+
+// translateJS does compileJS's work. With openRepeats every counted repeat
+// becomes * or +, which compileJS asks for only when RE2 rejects the nested
+// counts of a pattern that is otherwise valid.
+func translateJS(pattern, flags string, openRepeats bool) (*jsRegex, error) {
 	syntax := jsSyntax{unicode: strings.ContainsAny(flags, "uv"), vMode: strings.Contains(flags, "v")}
 	syntax.names, syntax.groups = scanJSGroups(pattern)
 	var out strings.Builder
@@ -184,9 +194,16 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 			if m[3] != "" && high < low {
 				return nil, fmt.Errorf("does not compile: quantifier %s is out of order", m[0])
 			}
-			if low <= maxRE2Repeat && high <= maxRE2Repeat {
+			switch {
+			case openRepeats && low == 0:
+				out.WriteString("*")
+				approximate = true
+			case openRepeats:
+				out.WriteString("+")
+				approximate = true
+			case low <= maxRE2Repeat && high <= maxRE2Repeat:
 				out.WriteString(m[0])
-			} else {
+			default:
 				// RE2 caps repeat counts at 1000; JavaScript does not.
 				out.WriteString(fmt.Sprintf("{%d,}", min(low, maxRE2Repeat)))
 				approximate = true
@@ -212,6 +229,12 @@ func compileJS(pattern, flags string) (*jsRegex, error) {
 	}
 	re, err := regexp.Compile(prefix + out.String())
 	if err != nil {
+		var reErr *resyntax.Error
+		if !openRepeats && errors.As(err, &reErr) && reErr.Code == resyntax.ErrInvalidRepeatSize {
+			// RE2 also caps the product of nested repeat counts at 1000, as
+			// in (?:(?!#{2,4} )x){500}; JavaScript does not.
+			return translateJS(pattern, flags, true)
+		}
 		return nil, fmt.Errorf("does not compile: %w", err)
 	}
 	return &jsRegex{Regexp: re, approximate: approximate}, nil

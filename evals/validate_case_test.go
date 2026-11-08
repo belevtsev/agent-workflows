@@ -699,7 +699,7 @@ func TestAuthoredFindCases(t *testing.T) {
 	}
 }
 
-// authoredRealCases are the cases the repository ships today.
+// authoredRealCases are the 15 cases the repository ships today.
 var authoredRealCases = []string{
 	"architect/config-hot-reload",
 	"architect/outbox-publisher",
@@ -707,6 +707,12 @@ var authoredRealCases = []string{
 	"implementer/bounded-worker-pool",
 	"implementer/idempotency-claims",
 	"implementer/parse-limits-config",
+	"spec-reviewer/audit-export-tasks",
+	"spec-reviewer/invoice-reminders-review",
+	"spec-reviewer/team-invites-scope",
+	"spec-writer/avatar-upload-gaps",
+	"spec-writer/bookmark-export-brief",
+	"spec-writer/link-expiry-delta",
 	"test-engineer/notes-init-e2e",
 	"test-engineer/retry-budget-matrix",
 	"test-engineer/ttl-cache-matrix",
@@ -722,14 +728,20 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 	if p.Name != "agent-workflows" {
 		t.Fatalf("plugin Name = %q, want agent-workflows", p.Name)
 	}
-	want := authoredPlugin().Agents
-	if len(p.Agents) != len(want) {
-		t.Fatalf("plugin Agents = %v, want %v", p.Agents, want)
+	want := []string{
+		"architect", "implementer", "test-engineer", "spec-writer",
+		"spec-reviewer", "cw-github-worker", "cw-reviewer", "cw-test-author",
 	}
-	for a := range want {
+	if len(p.Agents) != len(want) {
+		t.Fatalf("plugin Agents = %v, want exactly %v", p.Agents, want)
+	}
+	for _, a := range want {
 		if !p.Agents[a] {
 			t.Fatalf("plugin Agents = %v, missing %q", p.Agents, a)
 		}
+	}
+	if len(authoredRealCases) != 15 {
+		t.Fatalf("authoredRealCases lists %d cases, want 15", len(authoredRealCases))
 	}
 
 	dirs, err := findCases(filepath.Join(root, "evals"))
@@ -751,6 +763,9 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		if !found[c] {
 			t.Errorf("findCases did not return %s; got %q", c, dirs)
 		}
+	}
+	if len(dirs) != len(authoredRealCases) {
+		t.Errorf("findCases returned %d cases, want the %d in authoredRealCases: %q", len(dirs), len(authoredRealCases), dirs)
 	}
 	for _, d := range dirs {
 		if errs := validateCase(root, d, p); len(errs) != 0 {

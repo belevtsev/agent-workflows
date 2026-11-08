@@ -146,6 +146,7 @@ var (
 	envKey       = regexp.MustCompile(`^EVAL_[A-Z0-9_]*$`)
 	dispatchRef  = regexp.MustCompile(`subagent_type\\?"?\s*:\s*\\?"([^"\\]+)\\?"`)
 	ownedBullet  = regexp.MustCompile(`^\s*-\s*Owned paths:`)
+	folderBullet = regexp.MustCompile("^\\s*-\\s*Change folder:\\s*`([^`]+)`")
 	backticked   = regexp.MustCompile("`([^`]+)`")
 	pathLike     = regexp.MustCompile(`/|\.[A-Za-z0-9]+$`)
 )
@@ -154,7 +155,10 @@ var (
 // offending file's slash path relative to the repository root.
 type caseCheck struct {
 	root, dir, suite string
-	errs             []error
+	// changeFolder is the folder the brief's "Change folder:" bullet names,
+	// with a trailing slash, or "" when it names none.
+	changeFolder string
+	errs         []error
 }
 
 func (c *caseCheck) rel(name string) string {
@@ -175,6 +179,7 @@ func validateCase(repoRoot, caseDir string, p pluginInfo) []error {
 	graderCount := c.checkCaseYAML()
 	body := c.checkPrompt()
 	owned := ownedPaths(body)
+	c.changeFolder = changeFolder(body)
 	dispatched := c.checkDispatch(body, p)
 
 	graderDir := filepath.Join(caseDir, "graders")
@@ -573,13 +578,16 @@ func (c *caseCheck) checkView(file, key string, v any, owned []string, inline bo
 	}
 }
 
-// checkOwned rejects a graded path the brief does not let the agent write:
-// one of the brief's owned paths, or anything under artefacts/ when the brief
-// names none.
+// checkOwned rejects a graded path the brief does not let the agent write: a
+// path under the brief's change folder, one of the brief's owned paths, or
+// anything under artefacts/ when the brief names no owned paths.
 func (c *caseCheck) checkOwned(file, graded string, owned []string) {
+	if c.changeFolder != "" && strings.HasPrefix(path.Clean(graded), c.changeFolder) {
+		return
+	}
 	if owned == nil {
 		if !strings.HasPrefix(graded, "artefacts/") {
-			c.fail(file, "path %q is not an owned path: the brief names no owned paths, so graded files must be under artefacts/", graded)
+			c.fail(file, "path %q is not an owned path: the brief names no owned paths, so graded files must be under artefacts/%s", graded, c.folderHint())
 		}
 		return
 	}
@@ -591,7 +599,15 @@ func (c *caseCheck) checkOwned(file, graded string, owned []string) {
 			return
 		}
 	}
-	c.fail(file, "path %q is not an owned path of the brief (%s)", graded, strings.Join(owned, ", "))
+	c.fail(file, "path %q is not an owned path of the brief (%s)%s", graded, strings.Join(owned, ", "), c.folderHint())
+}
+
+// folderHint names the change folder in a failure, when the brief has one.
+func (c *caseCheck) folderHint() string {
+	if c.changeFolder == "" {
+		return ""
+	}
+	return " or the change folder " + c.changeFolder
 }
 
 func (c *caseCheck) checkRegex(file, key string, v any, flags string) *jsRegex {
@@ -643,6 +659,24 @@ func matchesDispatch(re *jsRegex, dispatched []string) bool {
 		}
 	}
 	return false
+}
+
+// changeFolder returns the folder named by the brief's "- Change folder:"
+// bullet, the spec writer's output, cleaned and with a trailing slash; ""
+// when the brief has no such bullet or it names no relative folder.
+func changeFolder(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		m := folderBullet.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		dir := path.Clean(m[1])
+		if dir == "." || path.IsAbs(dir) || dir == ".." || strings.HasPrefix(dir, "../") {
+			return ""
+		}
+		return dir + "/"
+	}
+	return ""
 }
 
 // ownedPaths returns the paths in the brief's "Owned paths:" bullet, nil when
