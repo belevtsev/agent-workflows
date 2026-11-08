@@ -26,6 +26,8 @@
     "./global/claude-agents/cw-reviewer.md",
     "./global/claude-agents/cw-test-author.md",
     "./global/claude-agents/cw-github-worker.md",
+    "./agents/spec-writer.md",
+    "./agents/spec-reviewer.md",
     "./agents/architect.md",
     "./agents/implementer.md",
     "./agents/test-engineer.md"
@@ -35,6 +37,12 @@
       "type": "boolean",
       "title": "Gate git commit and push on cw task verify",
       "description": "When an open substantial cw task record exists for this repository, block commit and push until cw task verify has passed on the current source.",
+      "default": true
+    },
+    "small_task_prompt": {
+      "type": "boolean",
+      "title": "Ask before publishing a large unrecorded change",
+      "description": "With no open cw task record for the repository, ask before a commit or push whose change has two of: more than 300 changed lines, more than one top-level directory, code changed without tests.",
       "default": true
     },
     "session_doctor": {

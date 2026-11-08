@@ -3,6 +3,7 @@ package taskflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,13 +14,14 @@ import (
 	"time"
 )
 
-// Tests for FindOpen (requirement R-FIND) and SourceDigest (requirement
-// R-DIGEST). Records are created with the approved scaffold (startIn,
-// appendRevision, rewriteFirstRevision); identify is a counting stub so each
-// case can also assert when the content capture runs.
+// Tests for FindOpen (contract gate-tests-v1, requirements R-FIND F1-F9) and
+// SourceDigest (requirement R-DIGEST). Records are created with the approved
+// scaffold (startIn, appendRevision, rewriteFirstRevision) and abandoned with
+// Abandon; identify is a counting stub so each case can also assert which
+// paths the content capture ran for.
 
 // foStub is a counting SourceIdentifier that returns a fixed answer and
-// records every selected path it was asked about.
+// records every path it was asked about.
 type foStub struct {
 	digest string
 	err    error
@@ -27,8 +29,8 @@ type foStub struct {
 }
 
 func (s *foStub) identify() SourceIdentifier {
-	return func(_ context.Context, selectedPath string) (string, error) {
-		s.calls = append(s.calls, selectedPath)
+	return func(_ context.Context, path string) (string, error) {
+		s.calls = append(s.calls, path)
 		return s.digest, s.err
 	}
 }
@@ -57,21 +59,25 @@ func foCanonicalDir(t *testing.T) string {
 	return dir
 }
 
-// foAge rewrites the single revision of record so it was created at createdAt.
-func foAge(t *testing.T, record Record, createdAt time.Time) Record {
+// foAt rewrites the single revision of record so it was created at createdAt
+// and last updated at updatedAt (both set explicitly).
+func foAt(t *testing.T, record Record, createdAt, updatedAt time.Time) Record {
 	t.Helper()
-	return rewriteFirstRevision(t, record, func(next *Record) { next.CreatedAt = createdAt })
+	return rewriteFirstRevision(t, record, func(next *Record) {
+		next.CreatedAt = createdAt
+		next.UpdatedAt = updatedAt
+	})
 }
 
-// foStartAged starts a record and rewrites its creation time to createdAt, so
-// the order between records never depends on the wall clock.
-func foStartAged(t *testing.T, store, repo, title, kind string, createdAt time.Time) Record {
+// foStartAt starts a record and rewrites its creation and update time to at,
+// so the order between records never depends on the wall clock.
+func foStartAt(t *testing.T, store, repo, title, kind string, at time.Time) Record {
 	t.Helper()
-	return foAge(t, startIn(t, store, repo, title, kind), createdAt)
+	return foAt(t, startIn(t, store, repo, title, kind), at, at)
 }
 
 // foVerify appends a revision carrying a verification of record with the
-// given completeness and stored source digest.
+// given completeness and stored source digest. updated_at is unchanged.
 func foVerify(t *testing.T, record Record, complete bool, sourceSHA256 string) Record {
 	t.Helper()
 	return appendRevision(t, record, func(next *Record) {
@@ -79,7 +85,7 @@ func foVerify(t *testing.T, record Record, complete bool, sourceSHA256 string) R
 		if !complete {
 			problems = []string{"incomplete for the test"}
 		}
-		next.Verification = &Verification{TaskID: next.ID, Complete: complete, CurrentSnapshot: next.Baseline, SourceSHA256: sourceSHA256, Problems: problems, Limitations: []string{}, CheckedAt: next.CreatedAt}
+		next.Verification = &Verification{TaskID: next.ID, Complete: complete, CurrentSnapshot: next.Baseline, SourceSHA256: sourceSHA256, Problems: problems, Limitations: []string{}, CheckedAt: next.UpdatedAt}
 	})
 }
 
@@ -91,33 +97,75 @@ func foCorrupt(t *testing.T, record Record) {
 	}
 }
 
-// foBrokenChain starts an open substantial record created at createdAt and
-// appends a second revision without a verification, so the record would gate
-// if its chain were (wrongly) accepted after the caller breaks it.
-func foBrokenChain(t *testing.T, store, repo, title string, createdAt time.Time) Record {
+// foBrokenChain starts an open substantial record updated at at and appends a
+// second revision without a verification, so the record would gate if its
+// chain were (wrongly) accepted after the caller breaks it.
+func foBrokenChain(t *testing.T, store, repo, title string, at time.Time) Record {
 	t.Helper()
-	record := appendRevision(t, foStartAged(t, store, repo, title, "substantial", createdAt), func(*Record) {})
+	record := appendRevision(t, foStartAt(t, store, repo, title, "substantial", at), func(*Record) {})
 	if record.Revision != 2 || record.Verification != nil {
 		t.Fatalf("broken-chain fixture has revision %d, verification %v; want revision 2 and none", record.Revision, record.Verification)
 	}
 	return record
 }
 
-// foExpect runs FindOpen and requires no error and exactly the wanted record
-// (nil means no record).
-func foExpect(t *testing.T, store string, roots []string, now time.Time, identify SourceIdentifier, want *Record) {
+// foIn is the Repository of a command run in worktree whose baseline roots
+// are roots.
+func foIn(worktree string, roots ...string) Repository {
+	return Repository{Worktree: worktree, Roots: roots}
+}
+
+// foAtRoot is the Repository of a command run in root itself.
+func foAtRoot(root string) Repository {
+	return foIn(root, root)
+}
+
+// foFind runs FindOpen and requires no error.
+func foFind(t *testing.T, store string, repo Repository, now time.Time, identify SourceIdentifier) []OpenRecord {
 	t.Helper()
-	got, err := FindOpen(t.Context(), store, roots, now, identify)
+	got, err := FindOpen(t.Context(), store, repo, now, identify)
 	if err != nil {
 		t.Fatalf("FindOpen: %v", err)
 	}
-	switch {
-	case want == nil && got != nil:
-		t.Fatalf("FindOpen returned %s (%q), want nil", got.ID, got.Plan.Title)
-	case want != nil && got == nil:
-		t.Fatalf("FindOpen returned nil, want %s (%q)", want.ID, want.Plan.Title)
-	case want != nil && (got.ID != want.ID || got.Directory != want.Directory || got.Plan.Title != want.Plan.Title):
-		t.Fatalf("FindOpen returned %s (%q), want %s (%q)", got.ID, got.Plan.Title, want.ID, want.Plan.Title)
+	return got
+}
+
+// foWant is one expected FindOpen result: the record and whether it gates.
+type foWant struct {
+	record Record
+	gates  bool
+}
+
+func foGating(record Record) foWant  { return foWant{record: record, gates: true} }
+func foCurrent(record Record) foWant { return foWant{record: record, gates: false} }
+
+// foDescribe renders results for failure messages.
+func foDescribe(got []OpenRecord) string {
+	parts := make([]string, 0, len(got))
+	for _, open := range got {
+		parts = append(parts, fmt.Sprintf("%s (%q, updated %s, problem %q)", open.Record.ID, open.Record.Plan.Title, open.Record.UpdatedAt.Format(time.RFC3339Nano), open.Problem))
+	}
+	return "[" + strings.Join(parts, "; ") + "]"
+}
+
+// foExpect requires exactly the wanted results in order, each with the wanted
+// gating state; Gates() must agree with a non-empty Problem.
+func foExpect(t *testing.T, got []OpenRecord, want ...foWant) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("FindOpen returned %d records %s, want %d", len(got), foDescribe(got), len(want))
+	}
+	for i, w := range want {
+		open := got[i]
+		if open.Record.ID != w.record.ID || open.Record.Directory != w.record.Directory || open.Record.Plan.Title != w.record.Plan.Title {
+			t.Fatalf("FindOpen result %d is %s, want %s (%q); all results %s", i, open.Record.ID, w.record.ID, w.record.Plan.Title, foDescribe(got))
+		}
+		if open.Gates() != w.gates {
+			t.Fatalf("FindOpen result %d (%q) Gates() = %v, want %v; problem %q", i, open.Record.Plan.Title, open.Gates(), w.gates, open.Problem)
+		}
+		if (open.Problem != "") != w.gates {
+			t.Fatalf("FindOpen result %d (%q) has problem %q, inconsistent with gates %v", i, open.Record.Plan.Title, open.Problem, w.gates)
+		}
 	}
 }
 
@@ -129,203 +177,344 @@ func foExpectCalls(t *testing.T, stub *foStub, want ...string) {
 	}
 }
 
+// foExpectCallsAtMostOnce requires that identify was asked about path at most
+// once and about no other path.
+func foExpectCallsAtMostOnce(t *testing.T, stub *foStub, path string) {
+	t.Helper()
+	if len(stub.calls) > 1 {
+		t.Fatalf("identify calls %q, want at most one call for %q", stub.calls, path)
+	}
+	for _, call := range stub.calls {
+		if call != path {
+			t.Fatalf("identify calls %q, want only %q", stub.calls, path)
+		}
+	}
+}
+
 func TestFindOpen(t *testing.T) {
 	const day = 24 * time.Hour
 
 	t.Run("no store", func(t *testing.T) {
-		// R-FIND: a store that does not exist returns (nil, nil).
+		// F7: a store that does not exist returns no record and no error.
 		stub := &foStub{digest: foDigestA}
-		record, err := FindOpen(t.Context(), filepath.Join(t.TempDir(), "missing"), []string{foCanonicalDir(t)}, time.Now(), stub.identify())
-		if err != nil || record != nil {
-			t.Fatalf("FindOpen on a missing store = %v, %v; want nil, nil", record, err)
+		root := foCanonicalDir(t)
+		got, err := FindOpen(t.Context(), filepath.Join(t.TempDir(), "missing"), foAtRoot(root), time.Now(), stub.identify())
+		if err != nil || len(got) != 0 {
+			t.Fatalf("FindOpen on a missing store = %s, %v; want nothing and nil", foDescribe(got), err)
 		}
 		foExpectCalls(t, stub)
 	})
 
 	t.Run("empty store", func(t *testing.T) {
-		// R-FIND: an existing empty store returns nil.
+		// F7: an existing empty store returns no record.
 		store := filepath.Join(t.TempDir(), "tasks")
 		if err := os.Mkdir(store, 0700); err != nil {
 			t.Fatal(err)
 		}
 		stub := &foStub{digest: foDigestA}
-		foExpect(t, store, []string{foCanonicalDir(t)}, time.Now(), stub.identify(), nil)
+		foExpect(t, foFind(t, store, foAtRoot(foCanonicalDir(t)), time.Now(), stub.identify()))
 		foExpectCalls(t, stub)
 	})
 
 	t.Run("wrong root", func(t *testing.T) {
-		// R-FIND: only records whose Baseline.Root is one of roots are
-		// candidates.
+		// F7: only records whose Baseline.Root is in Roots are returned.
 		store, repo := foFixture(t)
 		now := time.Now()
-		record := foStartAged(t, store, repo, "wrong root", "substantial", now.Add(-time.Hour))
-		foExpect(t, store, []string{foCanonicalDir(t)}, now, (&foStub{}).identify(), nil)
+		record := foStartAt(t, store, repo, "wrong root", "substantial", now.Add(-time.Hour))
+		foExpect(t, foFind(t, store, foAtRoot(foCanonicalDir(t)), now, (&foStub{}).identify()))
 		// Positive control: the same record is found under its own root.
-		foExpect(t, store, []string{record.Baseline.Root}, now, (&foStub{}).identify(), &record)
+		foExpect(t, foFind(t, store, foAtRoot(record.Baseline.Root), now, (&foStub{}).identify()), foGating(record))
+	})
+
+	t.Run("multiple roots", func(t *testing.T) {
+		// F7: a record whose root is the second element of Roots is returned.
+		store, repo := foFixture(t)
+		now := time.Now()
+		record := foStartAt(t, store, repo, "second root", "substantial", now.Add(-time.Hour))
+		worktree := foCanonicalDir(t)
+		foExpect(t, foFind(t, store, foIn(worktree, worktree, record.Baseline.Root), now, (&foStub{}).identify()), foGating(record))
 	})
 
 	t.Run("non-substantial beside a substantial", func(t *testing.T) {
-		// R-FIND: a newer small record is not a candidate, so the older
-		// substantial record decides.
+		// F7: a newer small record is never returned; the substantial one is.
 		store, repo := foFixture(t)
 		now := time.Now()
-		substantial := foStartAged(t, store, repo, "substantial", "substantial", now.Add(-2*time.Hour))
-		small := foStartAged(t, store, repo, "small", "small", now.Add(-time.Hour))
+		substantial := foStartAt(t, store, repo, "substantial", "substantial", now.Add(-2*time.Hour))
+		small := foStartAt(t, store, repo, "small", "small", now.Add(-time.Hour))
 		if small.Plan.Kind != "small" {
 			t.Fatalf("scaffold plan kind %q", small.Plan.Kind)
 		}
-		stub := &foStub{}
-		foExpect(t, store, []string{substantial.Baseline.Root}, now, stub.identify(), &substantial)
-		foExpectCalls(t, stub)
+		foExpect(t, foFind(t, store, foAtRoot(substantial.Baseline.Root), now, (&foStub{}).identify()), foGating(substantial))
 	})
 
-	t.Run("stale beyond 14 days", func(t *testing.T) {
-		// R-FIND: an open record created 15 days ago is abandoned.
-		store, repo := foFixture(t)
-		now := time.Now()
-		stale := foStartAged(t, store, repo, "stale", "substantial", now.Add(-15*day))
-		foExpect(t, store, []string{stale.Baseline.Root}, now, (&foStub{}).identify(), nil)
+	t.Run("every candidate is returned newest updated_at first", func(t *testing.T) {
+		t.Run("older open beside newer verified and current", func(t *testing.T) {
+			// F1, F2, F3: there is no newest-decides rule; both records are
+			// returned, the newer verified one first and not gating, the older
+			// open one gating.
+			store, repo := foFixture(t)
+			now := time.Now()
+			older := foStartAt(t, store, repo, "older open", "substantial", now.Add(-2*time.Hour))
+			newer := foVerify(t, foStartAt(t, store, repo, "newer verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+			stub := &foStub{digest: foDigestA}
+			foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, stub.identify()), foCurrent(newer), foGating(older))
+			foExpectCalls(t, stub, newer.Baseline.SelectedPath)
+		})
+
+		t.Run("newer open beside older verified and current", func(t *testing.T) {
+			// F1: the older verified record is returned too, after the newer.
+			store, repo := foFixture(t)
+			now := time.Now()
+			older := foVerify(t, foStartAt(t, store, repo, "older verified", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
+			newer := foStartAt(t, store, repo, "newer open", "substantial", now.Add(-time.Hour))
+			foExpect(t, foFind(t, store, foAtRoot(newer.Baseline.Root), now, (&foStub{digest: foDigestA}).identify()), foGating(newer), foCurrent(older))
+		})
+
+		t.Run("three open records in updated_at order", func(t *testing.T) {
+			// F1: the order is by updated_at descending, whatever order the
+			// records were started in.
+			store, repo := foFixture(t)
+			now := time.Now()
+			newest := foStartAt(t, store, repo, "started first, newest", "substantial", now.Add(-time.Hour))
+			oldest := foStartAt(t, store, repo, "started second, oldest", "substantial", now.Add(-3*time.Hour))
+			middle := foStartAt(t, store, repo, "started third, middle", "substantial", now.Add(-2*time.Hour))
+			foExpect(t, foFind(t, store, foAtRoot(newest.Baseline.Root), now, (&foStub{}).identify()), foGating(newest), foGating(middle), foGating(oldest))
+		})
+
+		t.Run("updated_at orders, not created_at", func(t *testing.T) {
+			// F1, F5: a record created earlier but updated later comes first.
+			store, repo := foFixture(t)
+			now := time.Now()
+			createdEarly := foAt(t, startIn(t, store, repo, "created early, updated late", "substantial"), now.Add(-5*time.Hour), now.Add(-time.Hour))
+			createdLate := foStartAt(t, store, repo, "created late, updated early", "substantial", now.Add(-3*time.Hour))
+			foExpect(t, foFind(t, store, foAtRoot(createdEarly.Baseline.Root), now, (&foStub{}).identify()), foGating(createdEarly), foGating(createdLate))
+		})
 	})
 
-	t.Run("13 days still open", func(t *testing.T) {
-		// R-FIND: an open record created 13 days ago still gates.
+	t.Run("verified and current does not gate", func(t *testing.T) {
+		// F2, F6: a complete verification whose SourceSHA256 equals what
+		// identify reports is returned with an empty Problem; with Worktree
+		// equal to the record's root, identify is asked once, for the record's
+		// Baseline.SelectedPath.
 		store, repo := foFixture(t)
 		now := time.Now()
-		record := foStartAged(t, store, repo, "thirteen days", "substantial", now.Add(-13*day))
-		foExpect(t, store, []string{record.Baseline.Root}, now, (&foStub{}).identify(), &record)
+		verified := foVerify(t, foStartAt(t, store, repo, "verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+		stub := &foStub{digest: foDigestA}
+		foExpect(t, foFind(t, store, foAtRoot(verified.Baseline.Root), now, stub.identify()), foCurrent(verified))
+		foExpectCalls(t, stub, verified.Baseline.SelectedPath)
+	})
+
+	t.Run("records without a current passing verification gate", func(t *testing.T) {
+		// F3: no verification, an incomplete verification, a verification
+		// without SourceSHA256 (even when identify also reports ""), and a
+		// SourceSHA256 that differs from the current digest all gate.
+		tests := []struct {
+			name     string
+			verify   func(t *testing.T, record Record) Record
+			identify string
+		}{
+			{"no verification", func(_ *testing.T, record Record) Record { return record }, foDigestA},
+			{"incomplete verification", func(t *testing.T, record Record) Record { return foVerify(t, record, false, foDigestA) }, foDigestA},
+			{"complete without SourceSHA256", func(t *testing.T, record Record) Record { return foVerify(t, record, true, "") }, ""},
+			{"complete but drifted", func(t *testing.T, record Record) Record { return foVerify(t, record, true, foDigestA) }, foDigestB},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				store, repo := foFixture(t)
+				now := time.Now()
+				record := test.verify(t, foStartAt(t, store, repo, test.name, "substantial", now.Add(-time.Hour)))
+				stub := &foStub{digest: test.identify}
+				got := foFind(t, store, foAtRoot(record.Baseline.Root), now, stub.identify())
+				foExpect(t, got, foGating(record))
+				foExpectCallsAtMostOnce(t, stub, record.Baseline.SelectedPath)
+			})
+		}
+	})
+
+	t.Run("abandoned records are never returned", func(t *testing.T) {
+		// F4: a record abandoned with Abandon is not returned, whether it was
+		// open or verified; an open record beside it still is.
+		store, repo := foFixture(t)
+		now := time.Now()
+		open := foStartAt(t, store, repo, "still open", "substantial", now.Add(-3*time.Hour))
+		abandonedOpen := foStartAt(t, store, repo, "abandoned open", "substantial", now.Add(-2*time.Hour))
+		abandonedVerified := foVerify(t, foStartAt(t, store, repo, "abandoned verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+		for _, record := range []Record{abandonedOpen, abandonedVerified} {
+			if _, err := Abandon(record.Directory, "gave up for the test"); err != nil {
+				t.Fatalf("Abandon %q: %v", record.Plan.Title, err)
+			}
+		}
+		foExpect(t, foFind(t, store, foAtRoot(open.Baseline.Root), time.Now(), (&foStub{digest: foDigestA}).identify()), foGating(open))
+	})
+
+	t.Run("ageing by the latest revision's updated_at", func(t *testing.T) {
+		// F5 (F8b): created_at no longer decides age; the latest revision's
+		// updated_at does.
+		tests := []struct {
+			name   string
+			record func(t *testing.T, store, repo string, now time.Time) Record
+			open   bool
+		}{
+			{"created 20 days ago, updated an hour ago", func(t *testing.T, store, repo string, now time.Time) Record {
+				return foAt(t, startIn(t, store, repo, "old but active", "substantial"), now.Add(-20*day), now.Add(-time.Hour))
+			}, true},
+			{"created 20 days ago, latest revision updated an hour ago", func(t *testing.T, store, repo string, now time.Time) Record {
+				record := foStartAt(t, store, repo, "old with a recent revision", "substantial", now.Add(-20*day))
+				return appendRevision(t, record, func(next *Record) { next.UpdatedAt = now.Add(-time.Hour) })
+			}, true},
+			{"created and updated 15 days ago", func(t *testing.T, store, repo string, now time.Time) Record {
+				return foStartAt(t, store, repo, "stale", "substantial", now.Add(-15*day))
+			}, false},
+			{"created and updated 13 days ago", func(t *testing.T, store, repo string, now time.Time) Record {
+				return foStartAt(t, store, repo, "thirteen days", "substantial", now.Add(-13*day))
+			}, true},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				store, repo := foFixture(t)
+				now := time.Now()
+				record := test.record(t, store, repo, now)
+				var want []foWant
+				if test.open {
+					want = append(want, foGating(record))
+				}
+				foExpect(t, foFind(t, store, foAtRoot(record.Baseline.Root), now, (&foStub{}).identify()), want...)
+			})
+		}
 	})
 
 	t.Run("age window is inclusive at both ends", func(t *testing.T) {
-		// R-FIND: now - CreatedAt must lie within [0, MaxOpenAge]; a future
-		// CreatedAt is excluded.
+		// F5: now - UpdatedAt must lie within [0, MaxOpenAge]; a latest
+		// revision in the future is skipped. created_at lies far outside the
+		// window so only updated_at can decide.
 		if MaxOpenAge != 14*day {
 			t.Fatalf("MaxOpenAge = %v, want 14 days", MaxOpenAge)
 		}
 		store, repo := foFixture(t)
-		record := foStartAged(t, store, repo, "window", "substantial", time.Now().Add(-time.Hour))
-		roots := []string{record.Baseline.Root}
+		start := time.Now()
+		record := foAt(t, startIn(t, store, repo, "window", "substantial"), start.Add(-30*day), start.Add(-time.Hour))
 		tests := []struct {
 			name string
 			now  time.Time
 			open bool
 		}{
-			{"age zero", record.CreatedAt, true},
-			{"age exactly MaxOpenAge", record.CreatedAt.Add(MaxOpenAge), true},
-			{"one second past MaxOpenAge", record.CreatedAt.Add(MaxOpenAge + time.Second), false},
-			{"created one second in the future", record.CreatedAt.Add(-time.Second), false},
+			{"age zero", record.UpdatedAt, true},
+			{"age exactly MaxOpenAge", record.UpdatedAt.Add(MaxOpenAge), true},
+			{"one second past MaxOpenAge", record.UpdatedAt.Add(MaxOpenAge + time.Second), false},
+			{"updated one second in the future", record.UpdatedAt.Add(-time.Second), false},
 		}
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				var want *Record
+				var want []foWant
 				if test.open {
-					want = &record
+					want = append(want, foGating(record))
 				}
-				foExpect(t, store, roots, test.now, (&foStub{}).identify(), want)
+				foExpect(t, foFind(t, store, foAtRoot(record.Baseline.Root), test.now, (&foStub{}).identify()), want...)
 			})
 		}
 	})
 
 	t.Run("future record does not hide an older open one", func(t *testing.T) {
-		// R-FIND: a record created after now is not a candidate, so the
-		// newest candidate is the older open record.
+		// F5: a record updated after now is skipped; the older one is returned.
 		store, repo := foFixture(t)
 		now := time.Now()
-		older := foStartAged(t, store, repo, "older", "substantial", now.Add(-time.Hour))
-		foStartAged(t, store, repo, "future", "substantial", now.Add(time.Hour))
-		foExpect(t, store, []string{older.Baseline.Root}, now, (&foStub{}).identify(), &older)
+		older := foStartAt(t, store, repo, "older", "substantial", now.Add(-time.Hour))
+		foStartAt(t, store, repo, "future", "substantial", now.Add(time.Hour))
+		foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{}).identify()), foGating(older))
 	})
 
-	t.Run("completed and current", func(t *testing.T) {
-		// R-FIND: a complete verification whose source digest equals what
-		// identify reports closes the record; identify is asked exactly once,
-		// for the record's Baseline.SelectedPath.
+	t.Run("digested path", func(t *testing.T) {
+		// F6 (F8c): when Worktree differs from the record's Baseline.Root,
+		// identify is called with Worktree, once for all records.
+		tests := []struct {
+			name  string
+			found string
+			gates bool
+		}{
+			{"different digest at the linked worktree gates", foDigestB, true},
+			{"identical digest at the linked worktree does not gate", foDigestA, false},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				store, repo := foFixture(t)
+				now := time.Now()
+				first := foVerify(t, foStartAt(t, store, repo, "first verified", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
+				second := foVerify(t, foStartAt(t, store, repo, "second verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+				worktree := foCanonicalDir(t)
+				if worktree == first.Baseline.Root {
+					t.Fatal("fixture worktree equals the record root")
+				}
+				stub := &foStub{digest: test.found}
+				got := foFind(t, store, foIn(worktree, worktree, first.Baseline.Root), now, stub.identify())
+				foExpect(t, got, foWant{second, test.gates}, foWant{first, test.gates})
+				foExpectCalls(t, stub, worktree)
+				if test.gates {
+					for _, open := range got {
+						if !strings.Contains(open.Problem, open.Record.Baseline.Root) || !strings.Contains(open.Problem, worktree) {
+							t.Fatalf("problem %q does not name both the record root %s and the worktree %s", open.Problem, open.Record.Baseline.Root, worktree)
+						}
+					}
+				}
+			})
+		}
+	})
+
+	t.Run("identify runs at most once per path", func(t *testing.T) {
+		// F6: several verified records digested at the same path share one
+		// identify call.
 		store, repo := foFixture(t)
 		now := time.Now()
-		verified := foVerify(t, foStartAged(t, store, repo, "verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+		first := foVerify(t, foStartAt(t, store, repo, "first", "substantial", now.Add(-3*time.Hour)), true, foDigestA)
+		second := foVerify(t, foStartAt(t, store, repo, "second", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
+		third := foVerify(t, foStartAt(t, store, repo, "third", "substantial", now.Add(-time.Hour)), true, foDigestB)
 		stub := &foStub{digest: foDigestA}
-		foExpect(t, store, []string{verified.Baseline.Root}, now, stub.identify(), nil)
-		foExpectCalls(t, stub, verified.Baseline.SelectedPath)
+		foExpect(t, foFind(t, store, foAtRoot(first.Baseline.Root), now, stub.identify()), foGating(third), foCurrent(second), foCurrent(first))
+		foExpectCalls(t, stub, first.Baseline.SelectedPath)
 	})
 
-	t.Run("completed but drifted", func(t *testing.T) {
-		// R-FIND: a complete verification on bytes that changed since does
-		// not close the record.
-		store, repo := foFixture(t)
-		now := time.Now()
-		verified := foVerify(t, foStartAged(t, store, repo, "drifted", "substantial", now.Add(-time.Hour)), true, foDigestA)
-		stub := &foStub{digest: foDigestB}
-		foExpect(t, store, []string{verified.Baseline.Root}, now, stub.identify(), &verified)
-		foExpectCalls(t, stub, verified.Baseline.SelectedPath)
+	t.Run("linked worktree with real git", func(t *testing.T) {
+		// F6 (F8c) real-git variant: a record verified in the main checkout
+		// gates a linked worktree whose eligible bytes differ, and stops
+		// gating once they are identical.
+		store := filepath.Join(t.TempDir(), "tasks")
+		main := foCanonicalDir(t)
+		foGit(t, main, "init", "-q")
+		foWrite(t, main, "source.txt", "source\n")
+		foGit(t, main, "add", "source.txt")
+		foGit(t, main, "commit", "-q", "-m", "initial")
+		linked := filepath.Join(foCanonicalDir(t), "linked")
+		foGit(t, main, "worktree", "add", "-q", linked)
+		// Untracked, non-ignored bytes present only in the main checkout.
+		foWrite(t, main, "extra.txt", "only in main\n")
+
+		record := startIn(t, store, main, "verified in main", "substantial")
+		if record.Baseline.Root != main {
+			t.Fatalf("record root %q, want main checkout %q", record.Baseline.Root, main)
+		}
+		record = foVerify(t, record, true, foDigest(t, record.Baseline.SelectedPath))
+		repository := foIn(linked, linked, main)
+		// Control: in the main checkout the verified record does not gate.
+		foExpect(t, foFind(t, store, foAtRoot(main), time.Now(), SourceDigest), foCurrent(record))
+
+		got := foFind(t, store, repository, time.Now(), SourceDigest)
+		foExpect(t, got, foGating(record))
+		if problem := got[0].Problem; !strings.Contains(problem, main) || !strings.Contains(problem, linked) {
+			t.Fatalf("problem %q does not name both the record root %s and the linked worktree %s", problem, main, linked)
+		}
+
+		foWrite(t, linked, "extra.txt", "only in main\n")
+		foExpect(t, foFind(t, store, repository, time.Now(), SourceDigest), foCurrent(record))
 	})
 
-	t.Run("completed without SourceSHA256", func(t *testing.T) {
-		// R-FIND: a record verified by an older cw (Complete with an empty
-		// SourceSHA256) is open, and identify is not called.
-		store, repo := foFixture(t)
-		now := time.Now()
-		legacy := foVerify(t, foStartAged(t, store, repo, "legacy", "substantial", now.Add(-time.Hour)), true, "")
-		stub := &foStub{digest: ""}
-		foExpect(t, store, []string{legacy.Baseline.Root}, now, stub.identify(), &legacy)
-		foExpectCalls(t, stub)
-	})
-
-	t.Run("incomplete verification", func(t *testing.T) {
-		// R-FIND: identify is never called for a record without a complete
-		// verification, even when the stored digest would match.
-		store, repo := foFixture(t)
-		now := time.Now()
-		incomplete := foVerify(t, foStartAged(t, store, repo, "incomplete", "substantial", now.Add(-time.Hour)), false, foDigestA)
-		stub := &foStub{digest: foDigestA}
-		foExpect(t, store, []string{incomplete.Baseline.Root}, now, stub.identify(), &incomplete)
-		foExpectCalls(t, stub)
-	})
-
-	t.Run("newest decides", func(t *testing.T) {
-		t.Run("newer closed beside older open", func(t *testing.T) {
-			// R-FIND: older candidates never decide; a newer closed record
-			// yields nil although an older one is open.
-			store, repo := foFixture(t)
-			now := time.Now()
-			older := foStartAged(t, store, repo, "older open", "substantial", now.Add(-2*time.Hour))
-			newer := foVerify(t, foStartAged(t, store, repo, "newer closed", "substantial", now.Add(-time.Hour)), true, foDigestA)
-			stub := &foStub{digest: foDigestA}
-			foExpect(t, store, []string{older.Baseline.Root}, now, stub.identify(), nil)
-			foExpectCalls(t, stub, newer.Baseline.SelectedPath)
-		})
-
-		t.Run("newer open beside older closed", func(t *testing.T) {
-			// R-FIND: a newer open record is returned although an older one
-			// is closed; the older one is not consulted.
-			store, repo := foFixture(t)
-			now := time.Now()
-			foVerify(t, foStartAged(t, store, repo, "older closed", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
-			newer := foStartAged(t, store, repo, "newer open", "substantial", now.Add(-time.Hour))
-			stub := &foStub{digest: foDigestA}
-			foExpect(t, store, []string{newer.Baseline.Root}, now, stub.identify(), &newer)
-			foExpectCalls(t, stub)
-		})
-
-		t.Run("three open records give the newest by CreatedAt", func(t *testing.T) {
-			// R-FIND: the newest by CreatedAt wins, whatever order the
-			// records were started in.
-			store, repo := foFixture(t)
-			now := time.Now()
-			newest := foStartAged(t, store, repo, "started first, newest", "substantial", now.Add(-time.Hour))
-			foStartAged(t, store, repo, "started second, oldest", "substantial", now.Add(-3*time.Hour))
-			foStartAged(t, store, repo, "started third, middle", "substantial", now.Add(-2*time.Hour))
-			foExpect(t, store, []string{newest.Baseline.Root}, now, (&foStub{}).identify(), &newest)
-		})
-	})
-
-	t.Run("corrupt newest skipped", func(t *testing.T) {
-		// R-FIND: a task directory whose record cannot be loaded is skipped
-		// and the next newest candidate decides.
+	t.Run("unloadable task directories are skipped", func(t *testing.T) {
+		// F8: a task directory whose record cannot be loaded is skipped and
+		// the other records are still returned.
 		tests := []struct {
 			name    string
 			corrupt func(t *testing.T, store, repo string, now time.Time)
 		}{
 			{"garbage JSON", func(t *testing.T, store, repo string, now time.Time) {
-				foCorrupt(t, foStartAged(t, store, repo, "garbage", "substantial", now.Add(-time.Hour)))
+				foCorrupt(t, foStartAt(t, store, repo, "garbage", "substantial", now.Add(-time.Hour)))
 			}},
 			{"no revision files", func(t *testing.T, store, _ string, _ time.Time) {
 				if err := os.Mkdir(filepath.Join(store, "empty-task"), 0700); err != nil {
@@ -337,18 +526,16 @@ func TestFindOpen(t *testing.T) {
 					t.Fatal(err)
 				}
 			}},
-			// R-FIND rev 3: the newest candidate's highest revision decodes,
-			// but its revision chain has a sequence gap (revision 2 renamed to
-			// record-000003.json), so the chain does not load and it is skipped.
+			// The highest revision decodes, but the chain has a sequence gap
+			// (revision 2 renamed to record-000003.json).
 			{"revision chain with a sequence gap", func(t *testing.T, store, repo string, now time.Time) {
 				broken := foBrokenChain(t, store, repo, "gap", now.Add(-time.Hour))
 				if err := os.Rename(filepath.Join(broken.Directory, "record-000002.json"), filepath.Join(broken.Directory, "record-000003.json")); err != nil {
 					t.Fatal(err)
 				}
 			}},
-			// R-FIND rev 3: the newest candidate's highest revision decodes,
-			// but its first revision was replaced by a different valid record,
-			// so the chain does not load and it is skipped.
+			// The highest revision decodes, but the first revision was
+			// replaced by a different valid record.
 			{"revision chain with a replaced first revision", func(t *testing.T, store, repo string, now time.Time) {
 				broken := foBrokenChain(t, store, repo, "replaced", now.Add(-time.Hour))
 				other := startIn(t, filepath.Join(t.TempDir(), "other-tasks"), repo, "other", "substantial")
@@ -362,64 +549,60 @@ func TestFindOpen(t *testing.T) {
 			}},
 		}
 		for _, test := range tests {
-			t.Run(test.name+", next newest open", func(t *testing.T) {
+			t.Run(test.name+", open record still returned", func(t *testing.T) {
 				store, repo := foFixture(t)
 				now := time.Now()
-				good := foStartAged(t, store, repo, "good", "substantial", now.Add(-2*time.Hour))
+				good := foStartAt(t, store, repo, "good", "substantial", now.Add(-2*time.Hour))
 				test.corrupt(t, store, repo, now)
-				foExpect(t, store, []string{good.Baseline.Root}, now, (&foStub{}).identify(), &good)
+				foExpect(t, foFind(t, store, foAtRoot(good.Baseline.Root), now, (&foStub{}).identify()), foGating(good))
 			})
-			t.Run(test.name+", next newest closed", func(t *testing.T) {
+			t.Run(test.name+", verified record still returned", func(t *testing.T) {
 				store, repo := foFixture(t)
 				now := time.Now()
-				older := foStartAged(t, store, repo, "older open", "substantial", now.Add(-3*time.Hour))
-				foVerify(t, foStartAged(t, store, repo, "closed", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
+				older := foStartAt(t, store, repo, "older open", "substantial", now.Add(-3*time.Hour))
+				verified := foVerify(t, foStartAt(t, store, repo, "verified", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
 				test.corrupt(t, store, repo, now)
-				foExpect(t, store, []string{older.Baseline.Root}, now, (&foStub{digest: foDigestA}).identify(), nil)
+				foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{digest: foDigestA}).identify()), foCurrent(verified), foGating(older))
 			})
 		}
 	})
 
-	t.Run("identify error on the newest", func(t *testing.T) {
-		t.Run("next candidate decides", func(t *testing.T) {
-			// R-FIND: a verified record whose identify call fails is skipped
-			// and the next newest candidate decides.
+	t.Run("identify error fails open for that record", func(t *testing.T) {
+		t.Run("other records still returned", func(t *testing.T) {
+			// F9: a verified record whose identify call fails is skipped; an
+			// open record that needs no digest is still returned.
 			store, repo := foFixture(t)
 			now := time.Now()
-			older := foStartAged(t, store, repo, "older open", "substantial", now.Add(-2*time.Hour))
-			newer := foVerify(t, foStartAged(t, store, repo, "newer verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+			older := foStartAt(t, store, repo, "older open", "substantial", now.Add(-2*time.Hour))
+			newer := foVerify(t, foStartAt(t, store, repo, "newer verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
 			stub := &foStub{err: errors.New("capture failed")}
-			foExpect(t, store, []string{older.Baseline.Root}, now, stub.identify(), &older)
-			foExpectCalls(t, stub, newer.Baseline.SelectedPath)
+			foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, stub.identify()), foGating(older))
+			foExpectCallsAtMostOnce(t, stub, newer.Baseline.SelectedPath)
+			if len(stub.calls) != 1 {
+				t.Fatalf("identify calls %q, want one call for the verified record", stub.calls)
+			}
 		})
 
-		t.Run("no other candidate", func(t *testing.T) {
-			// R-FIND: with no other candidate the result is nil.
+		t.Run("no other record", func(t *testing.T) {
+			// F9: with no other record the result is empty and there is no
+			// error.
 			store, repo := foFixture(t)
 			now := time.Now()
-			only := foVerify(t, foStartAged(t, store, repo, "only verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
+			only := foVerify(t, foStartAt(t, store, repo, "only verified", "substantial", now.Add(-time.Hour)), true, foDigestA)
 			stub := &foStub{err: errors.New("capture failed")}
-			foExpect(t, store, []string{only.Baseline.Root}, now, stub.identify(), nil)
+			foExpect(t, foFind(t, store, foAtRoot(only.Baseline.Root), now, stub.identify()))
 			foExpectCalls(t, stub, only.Baseline.SelectedPath)
 		})
 	})
 
 	t.Run("nil identify errors", func(t *testing.T) {
-		// R-FIND: a nil identify is a caller error.
+		// F9: a nil identify is a caller error.
 		store, repo := foFixture(t)
 		now := time.Now()
-		record := foStartAged(t, store, repo, "open", "substantial", now.Add(-time.Hour))
-		if _, err := FindOpen(t.Context(), store, []string{record.Baseline.Root}, now, nil); err == nil {
+		record := foStartAt(t, store, repo, "open", "substantial", now.Add(-time.Hour))
+		if _, err := FindOpen(t.Context(), store, foAtRoot(record.Baseline.Root), now, nil); err == nil {
 			t.Fatal("FindOpen accepted a nil identify")
 		}
-	})
-
-	t.Run("multiple roots", func(t *testing.T) {
-		// R-FIND: a record whose root is the second element of roots is found.
-		store, repo := foFixture(t)
-		now := time.Now()
-		record := foStartAged(t, store, repo, "second root", "substantial", now.Add(-time.Hour))
-		foExpect(t, store, []string{foCanonicalDir(t), record.Baseline.Root}, now, (&foStub{}).identify(), &record)
 	})
 }
 
@@ -541,4 +724,330 @@ func TestSourceDigest(t *testing.T) {
 			t.Fatalf("Verification.SourceSHA256 = %q, want SourceDigest %s", verification.SourceSHA256, want)
 		}
 	})
+}
+
+// foManifest returns record's BaselineManifest.SHA256 and requires one.
+func foManifest(t *testing.T, record Record) string {
+	t.Helper()
+	if record.BaselineManifest == nil || record.BaselineManifest.SHA256 == "" {
+		t.Fatalf("record %q has no baseline manifest digest", record.Plan.Title)
+	}
+	return record.BaselineManifest.SHA256
+}
+
+func TestFindOpenFinishedRecords(t *testing.T) {
+	const day = 24 * time.Hour
+
+	// F10 with a stub identify: record A carries a complete verification
+	// whose SourceSHA256 D is record B's BaselineManifest.SHA256, and identify
+	// reports another digest, so A would gate as drifted unless B finishes it.
+	tests := []struct {
+		name string
+		// b starts record B in store for repo (or elsewhere) at time at.
+		b func(t *testing.T, store, repo string, at time.Time) Record
+		// aComplete is whether A's verification is complete.
+		aComplete bool
+		// aVerifiedAgo is how long before now A was created and verified
+		// (its Verification.CheckedAt); zero means two hours. A's latest
+		// revision is always updated two hours before now.
+		aVerifiedAgo time.Duration
+		// current is the digest identify reports; "" means foDigestB (drift).
+		current string
+		// want lists the expected results given A and B, newest first.
+		want func(a, b Record) []foWant
+	}{
+		{
+			// F10: an open substantial B in the same root finishes drifted A.
+			name: "substantial open B finishes drifted A",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B substantial", "substantial", at)
+			},
+			aComplete: true,
+			want:      func(_, b Record) []foWant { return []foWant{foGating(b)} },
+		},
+		{
+			// F10b (rev 6): a small B does not govern, so it does not finish
+			// A; A gates and B is not returned.
+			name: "small B does not finish drifted A",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B small", "small", at)
+			},
+			aComplete: true,
+			want:      func(a, _ Record) []foWant { return []foWant{foGating(a)} },
+		},
+		{
+			// F10b (rev 6): an abandoned B does not govern, so it does not
+			// finish A; A gates and B is not returned.
+			name: "abandoned B does not finish drifted A",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				b := foStartAt(t, store, repo, "B abandoned", "substantial", at)
+				if _, err := Abandon(b.Directory, "abandoned for the test"); err != nil {
+					t.Fatalf("Abandon B: %v", err)
+				}
+				return b
+			},
+			aComplete: true,
+			want:      func(a, _ Record) []foWant { return []foWant{foGating(a)} },
+		},
+		{
+			// F10b (rev 6): a B whose latest revision is older than
+			// MaxOpenAge does not govern, so it does not finish A, although
+			// it was created after A's CheckedAt (A verified 50 days ago, B
+			// created 30 days ago; F10a alone would let it finish A). A
+			// gates and B is not returned.
+			name: "B older than MaxOpenAge does not finish drifted A",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B stale", "substantial", at.Add(-30*day))
+			},
+			aComplete:    true,
+			aVerifiedAgo: 50 * day,
+			want:         func(a, _ Record) []foWant { return []foWant{foGating(a)} },
+		},
+		{
+			// F10b (rev 6) control for the stale case: the same A beside a
+			// governing (substantial, unabandoned, in-window) B created after
+			// A's CheckedAt is finished.
+			name: "in-window B finishes drifted A verified long ago",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B in window", "substantial", at)
+			},
+			aComplete:    true,
+			aVerifiedAgo: 50 * day,
+			want:         func(_, b Record) []foWant { return []foWant{foGating(b)} },
+		},
+		{
+			// F10a: B created before A's CheckedAt does not finish A, even
+			// with A's verified bytes as its baseline; both gate.
+			name: "B created before A's verification does not finish A",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B earlier", "substantial", at.Add(-2*time.Hour))
+			},
+			aComplete: true,
+			want:      func(a, b Record) []foWant { return []foWant{foGating(a), foGating(b)} },
+		},
+		{
+			// F10: B must have a root in repo.Roots; B of another root does
+			// not finish A, which gates as drifted.
+			name: "B of another root does not finish A",
+			b: func(t *testing.T, store, _ string, at time.Time) Record {
+				return foStartAt(t, store, t.TempDir(), "B other root", "substantial", at)
+			},
+			aComplete: true,
+			want:      func(a, _ Record) []foWant { return []foWant{foGating(a)} },
+		},
+		{
+			// F10: an unverified A (incomplete verification) is never
+			// finished.
+			name: "incomplete A is not finished",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B substantial", "substantial", at)
+			},
+			aComplete: false,
+			want:      func(a, b Record) []foWant { return []foWant{foGating(b), foGating(a)} },
+		},
+		{
+			// F2 with F10: an A whose current digest still equals D is not
+			// drifted, so it is returned and does not gate.
+			name: "current A is returned beside B",
+			b: func(t *testing.T, store, repo string, at time.Time) Record {
+				return foStartAt(t, store, repo, "B substantial", "substantial", at)
+			},
+			aComplete: true,
+			current:   "same as D",
+			want:      func(a, b Record) []foWant { return []foWant{foGating(b), foCurrent(a)} },
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store, repo := foFixture(t)
+			now := time.Now()
+			b := test.b(t, store, repo, now.Add(-time.Hour))
+			d := foManifest(t, b)
+			verifiedAgo := test.aVerifiedAgo
+			if verifiedAgo == 0 {
+				verifiedAgo = 2 * time.Hour
+			}
+			// foVerify sets CheckedAt to A's updated_at, here now-verifiedAgo.
+			a := foVerify(t, foStartAt(t, store, repo, "A verified", "substantial", now.Add(-verifiedAgo)), test.aComplete, d)
+			if verifiedAgo != 2*time.Hour {
+				a = appendRevision(t, a, func(next *Record) { next.UpdatedAt = now.Add(-2 * time.Hour) })
+			}
+			current := foDigestB
+			if test.current != "" {
+				current = d
+			}
+			got := foFind(t, store, foAtRoot(a.Baseline.Root), now, (&foStub{digest: current}).identify())
+			foExpect(t, got, test.want(a, b)...)
+		})
+	}
+
+	t.Run("no B leaves drifted A gating", func(t *testing.T) {
+		// F10: when no record started from A's verified bytes, A gates.
+		store, repo := foFixture(t)
+		now := time.Now()
+		other := foStartAt(t, store, repo, "B on other bytes", "substantial", now.Add(-time.Hour))
+		a := foVerify(t, foStartAt(t, store, repo, "A verified", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
+		if foManifest(t, other) == foDigestA {
+			t.Fatal("fixture manifest collides with the stub digest")
+		}
+		foExpect(t, foFind(t, store, foAtRoot(a.Baseline.Root), now, (&foStub{digest: foDigestB}).identify()), foGating(other), foGating(a))
+	})
+
+	t.Run("real git: B started on A's verified bytes finishes A", func(t *testing.T) {
+		// F10 real-git case: A started and verified on bytes X, B started on
+		// X with no edits between, then a file is edited: only B is returned,
+		// gating.
+		store := filepath.Join(t.TempDir(), "tasks")
+		repo := foCanonicalDir(t)
+		foGit(t, repo, "init", "-q")
+		foWrite(t, repo, "source.txt", "bytes X\n")
+		now := time.Now()
+		a := foAt(t, startIn(t, store, repo, "A", "substantial"), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+		x := foDigest(t, a.Baseline.SelectedPath)
+		a = foVerify(t, a, true, x)
+		b := foAt(t, startIn(t, store, repo, "B", "substantial"), now.Add(-time.Hour), now.Add(-time.Hour))
+		if foManifest(t, b) != x {
+			t.Fatalf("B baseline manifest %s, want A's verified digest %s", foManifest(t, b), x)
+		}
+		foWrite(t, repo, "source.txt", "edited\n")
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), SourceDigest), foGating(b))
+	})
+
+	t.Run("real git control: B started on changed bytes does not finish A", func(t *testing.T) {
+		// F10 real-git control: A verified on X, a file edited, then B
+		// started (baseline differs from X): both are returned and gate.
+		store := filepath.Join(t.TempDir(), "tasks")
+		repo := foCanonicalDir(t)
+		foGit(t, repo, "init", "-q")
+		foWrite(t, repo, "source.txt", "bytes X\n")
+		now := time.Now()
+		a := foAt(t, startIn(t, store, repo, "A", "substantial"), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+		x := foDigest(t, a.Baseline.SelectedPath)
+		a = foVerify(t, a, true, x)
+		foWrite(t, repo, "source.txt", "edited\n")
+		b := foAt(t, startIn(t, store, repo, "B", "substantial"), now.Add(-time.Hour), now.Add(-time.Hour))
+		if foManifest(t, b) == x {
+			t.Fatal("B baseline manifest equals A's verified digest after an edit")
+		}
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), SourceDigest), foGating(b), foGating(a))
+	})
+
+	t.Run("real git: records verified after both started do not finish each other", func(t *testing.T) {
+		// F10a real-git mutual case: A and B started on the same bytes X,
+		// both verified on X afterwards with no edits, then a file edited:
+		// both are returned and both gate.
+		store := filepath.Join(t.TempDir(), "tasks")
+		repo := foCanonicalDir(t)
+		foGit(t, repo, "init", "-q")
+		foWrite(t, repo, "source.txt", "bytes X\n")
+		now := time.Now()
+		a := foAt(t, startIn(t, store, repo, "A", "substantial"), now.Add(-3*time.Hour), now.Add(-3*time.Hour))
+		b := foAt(t, startIn(t, store, repo, "B", "substantial"), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+		x := foDigest(t, repo)
+		if foManifest(t, a) != x || foManifest(t, b) != x {
+			t.Fatalf("baseline manifests %s and %s, want both %s", foManifest(t, a), foManifest(t, b), x)
+		}
+		a = foVerifyAt(t, a, x, now.Add(-90*time.Minute))
+		b = foVerifyAt(t, b, x, now.Add(-time.Hour))
+		// Control: before the edit both are current.
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), SourceDigest), foCurrent(b), foCurrent(a))
+		foWrite(t, repo, "source.txt", "edited\n")
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), SourceDigest), foGating(b), foGating(a))
+	})
+}
+
+// foVerifyAt appends a revision updated at at that carries a complete
+// verification of record checked at at, with the given source digest.
+func foVerifyAt(t *testing.T, record Record, sourceSHA256 string, at time.Time) Record {
+	t.Helper()
+	return appendRevision(t, record, func(next *Record) {
+		next.UpdatedAt = at
+		next.Verification = &Verification{TaskID: next.ID, Complete: true, CurrentSnapshot: next.Baseline, SourceSHA256: sourceSHA256, Problems: []string{}, Limitations: []string{}, CheckedAt: at}
+	})
+}
+
+func TestFindOpenIdentifyOncePerWorktree(t *testing.T) {
+	// foSubdirRecords starts two records in a Git repository, one for the
+	// repository and one for its subdirectory sub, and requires the same
+	// Baseline.Root and different SelectedPaths.
+	foSubdirRecords := func(t *testing.T) (store, repo string, top, sub Record) {
+		t.Helper()
+		store = filepath.Join(t.TempDir(), "tasks")
+		repo = foCanonicalDir(t)
+		foGit(t, repo, "init", "-q")
+		foWrite(t, repo, "source.txt", "source\n")
+		if err := os.Mkdir(filepath.Join(repo, "sub"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		foWrite(t, filepath.Join(repo, "sub"), "inner.txt", "inner\n")
+		now := time.Now()
+		top = foAt(t, startIn(t, store, repo, "top", "substantial"), now.Add(-2*time.Hour), now.Add(-2*time.Hour))
+		sub = foAt(t, startIn(t, store, filepath.Join(repo, "sub"), "sub", "substantial"), now.Add(-time.Hour), now.Add(-time.Hour))
+		if top.Baseline.Root != sub.Baseline.Root || top.Baseline.Root != repo {
+			t.Fatalf("roots %q and %q, want both %q", top.Baseline.Root, sub.Baseline.Root, repo)
+		}
+		if top.Baseline.SelectedPath == sub.Baseline.SelectedPath {
+			t.Fatalf("both records select %q, want different selected paths", top.Baseline.SelectedPath)
+		}
+		return store, repo, top, sub
+	}
+
+	t.Run("one identify call for two selected paths", func(t *testing.T) {
+		// F11: two verified records with the same root and different
+		// SelectedPaths cause one identify call, with one of their
+		// SelectedPaths.
+		store, repo, top, sub := foSubdirRecords(t)
+		top = foVerify(t, top, true, foDigestA)
+		sub = foVerify(t, sub, true, foDigestA)
+		stub := &foStub{digest: foDigestA}
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), stub.identify()), foCurrent(sub), foCurrent(top))
+		if len(stub.calls) != 1 || (stub.calls[0] != top.Baseline.SelectedPath && stub.calls[0] != sub.Baseline.SelectedPath) {
+			t.Fatalf("identify calls %q, want one call for %q or %q", stub.calls, top.Baseline.SelectedPath, sub.Baseline.SelectedPath)
+		}
+	})
+
+	t.Run("real git digest covers the whole worktree", func(t *testing.T) {
+		// F11: either selected path gives the same Git digest, so both
+		// records verified on the worktree's digest are current.
+		store, repo, top, sub := foSubdirRecords(t)
+		if a, b := foDigest(t, top.Baseline.SelectedPath), foDigest(t, sub.Baseline.SelectedPath); a != b {
+			t.Fatalf("SourceDigest differs between %s (%s) and %s (%s)", top.Baseline.SelectedPath, a, sub.Baseline.SelectedPath, b)
+		}
+		digest := foDigest(t, repo)
+		top = foVerify(t, top, true, digest)
+		sub = foVerify(t, sub, true, digest)
+		foExpect(t, foFind(t, store, foAtRoot(repo), time.Now(), SourceDigest), foCurrent(sub), foCurrent(top))
+	})
+}
+
+func TestFindOpenOrderTieBreak(t *testing.T) {
+	// Result order: newest UpdatedAt first; equal UpdatedAt orders by record
+	// ID ascending. F12 (rev 6): with twenty-four tied records and the order
+	// asserted over twenty FindOpen calls, an order that does not use the ID
+	// tie-break passes only by chance (at most 1/24! per call if the order
+	// comes from map iteration), so removing the tie-break fails with
+	// negligible probability of passing. Twenty-four records also take an
+	// unstable sort past its stable insertion-sort range for small inputs.
+	const tiedCount, calls = 24, 20
+	store, repo := foFixture(t)
+	now := time.Now()
+	at := now.Add(-time.Hour)
+	tied := make([]Record, 0, tiedCount)
+	for i := range tiedCount {
+		tied = append(tied, foStartAt(t, store, repo, fmt.Sprintf("tie %02d", i), "substantial", at))
+	}
+	newest := foStartAt(t, store, repo, "newest", "substantial", now.Add(-time.Minute))
+	for _, record := range tied {
+		if !record.UpdatedAt.Equal(tied[0].UpdatedAt) {
+			t.Fatalf("fixture updated_at values differ: %v and %v", record.UpdatedAt, tied[0].UpdatedAt)
+		}
+	}
+	slices.SortFunc(tied, func(x, y Record) int { return strings.Compare(x.ID, y.ID) })
+	want := []foWant{foGating(newest)}
+	for _, record := range tied {
+		want = append(want, foGating(record))
+	}
+	for range calls {
+		foExpect(t, foFind(t, store, foAtRoot(newest.Baseline.Root), now, (&foStub{}).identify()), want...)
+	}
 }

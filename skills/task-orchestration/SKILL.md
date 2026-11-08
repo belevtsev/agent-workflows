@@ -44,9 +44,13 @@ satisfies a later state.
    approach, alternatives, risks and verification plan, consult with the `before`
    context, adjudicate and attach a resolved record before implementation edits
    or worker dispatch; without implementation, before substantive drafting or review.
-3. **Implement and verify.** Assign and dispatch workers, integrate, run the
-   selected checks and obtain the independent review within the
-   [review cap](references/worker-handoffs.md#review-substantial-changes).
+3. **Implement and verify.** Build new behaviour along the
+   [seven-role path](references/contracts/README.md#flow): spec writer → spec
+   reviewer → architect → interface contract → implementer ∥ test engineer
+   (isolated) → integrate and run the matrix → reviewer. The spec's scenarios
+   are test engineer requirements; that file says when to skip the spec step.
+   Assign and dispatch workers, integrate, run the selected checks and obtain
+   the independent review within the [review cap](references/worker-handoffs.md#review-substantial-changes).
 4. **Fresh final checkpoint** (when required). Consult with a new request from
    the completed work, current diff, check results and remaining limitations,
    using the `final` context; adjudicate and attach it.

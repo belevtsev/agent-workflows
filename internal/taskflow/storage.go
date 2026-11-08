@@ -309,6 +309,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {
 			return Record{}, "", errors.New("immutable task adviser binding changed")
 		}
+		if i > 0 && record.Abandonment != nil {
+			return Record{}, "", errors.New("a task revision follows the abandoned revision")
+		}
 		if err := validateRecord(current); err != nil {
 			return Record{}, "", err
 		}
@@ -336,6 +339,9 @@ func validateRecord(record Record) error {
 		return err
 	}
 	if err := validateWorkerRecord(record); err != nil {
+		return err
+	}
+	if err := validateAbandonment(record); err != nil {
 		return err
 	}
 	if len(record.ID) != 32 || record.EvidenceRevision < 0 || record.CreatedAt.IsZero() || record.UpdatedAt.Before(record.CreatedAt) || record.Advisers == nil || record.Contexts == nil || record.Assessments == nil || record.Consultations == nil || record.Checks == nil || !filepath.IsAbs(record.Baseline.Root) || !filepath.IsAbs(record.Baseline.SelectedPath) {
@@ -453,6 +459,9 @@ func updateWithCapacity(path string, additional int, completingRunID string, cha
 	record, previous, err := loadRoot(root, directory)
 	if err != nil {
 		return Record{}, err
+	}
+	if record.Abandonment != nil {
+		return Record{}, errAbandoned
 	}
 	if err := requireRevisionCapacity(record, additional, completingRunID); err != nil {
 		return Record{}, err

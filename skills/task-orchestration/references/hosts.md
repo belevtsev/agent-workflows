@@ -93,7 +93,7 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 ### Worker agent types
 
-Six Claude agent definitions ship with the `agent-workflows` plugin. They have no
+Eight Claude agent definitions ship with the `agent-workflows` plugin. They have no
 Skill tool, so the worker starts without the skill listing (about 6K fewer input
 tokens on its first request). Dispatch these roles with the namespaced
 `subagent_type`:
@@ -103,11 +103,13 @@ tokens on its first request). Dispatch these roles with the namespaced
 | `review`, `review_followup` | `agent-workflows:cw-reviewer` |
 | `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` |
 | `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` |
+| `spec_writer` | `agent-workflows:spec-writer` |
+| `spec_reviewer` | `agent-workflows:spec-reviewer` |
 | `architect` | `agent-workflows:architect` |
 | `implementer` | `agent-workflows:implementer` |
 | `test_engineer` | `agent-workflows:test-engineer` |
 
-- The last three ship in the plugin's `agents/` directory. Each reads its
+- The last five ship in the plugin's `agents/` directory. Each reads its
   [role contract](contracts/README.md) from the path the brief gives, or from the
   plugin root when the brief gives none.
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
@@ -128,7 +130,7 @@ The [test-author contract](test-author.md) applies when a substantial task
 authors, changes, removes or disables behavioral tests or their helpers/data, or
 when the user asks for an independent author. `test_author` is
 the dispatch identity; resolve the existing `testing` profile rather than adding
-a host policy role or selecting a cheaper publication profile. In the five-role
+a host policy role or selecting a cheaper publication profile. In the seven-role
 flow the [test engineer](contracts/test-engineer.md) is that identity and resolves
 the `test_engineer` role instead. Preserve configured model/effort overrides and
 verify the effective settings.
