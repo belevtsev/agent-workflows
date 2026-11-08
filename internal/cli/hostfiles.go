@@ -10,13 +10,12 @@ import (
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/codexinstall"
-	"github.com/belevtsev/agent-workflows/v3/internal/v2migrate"
 	"github.com/spf13/cobra"
 )
 
 const claudePluginHint = "Claude Code installs agent-workflows as a plugin: run /plugin marketplace add belevtsev/agent-workflows, then /plugin install agent-workflows@agent-workflows"
 
-// addHostCommands registers cw install, cw uninstall and cw migrate-v2.
+// addHostCommands registers cw install and cw uninstall.
 func addHostCommands(root *cobra.Command, config Config) {
 	for _, install := range []bool{true, false} {
 		var host, from string
@@ -76,38 +75,6 @@ func addHostCommands(root *cobra.Command, config Config) {
 		command.Flags().StringVar(&from, "from", "", "agent-workflows checkout (default $XDG_DATA_HOME/agent-workflows/src)")
 		root.AddCommand(command)
 	}
-	root.AddCommand(&cobra.Command{
-		Use:   "migrate-v2",
-		Short: "Remove a v2 installation, keeping the task store",
-		Long: "Remove the ~/.claude/skills, ~/.claude/agents/cw-*.md, ~/.agents/skills and ~/.local/bin/cw symlinks that point into the v2 state directory, " +
-			"the managed block in ~/.claude/CLAUDE.md and $CODEX_HOME/AGENTS.md (and in the host homes v2 recorded) while v2's state.json or journal.json remains, " +
-			"and the v2 releases, runtime and state files. workflow-tasks and everything else stays. --dry-run lists the actions without changing anything; " +
-			"pass --state-dir if v2 used a custom state directory.",
-		Args: noPositional,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			dirs, err := resolveRoots(root, config)
-			if err != nil {
-				return err
-			}
-			dryRun, _ := root.PersistentFlags().GetBool("dry-run")
-			actions, err := v2migrate.Run(v2migrate.Options{Home: dirs.home, ClaudeHome: dirs.claude, CodexHome: dirs.codex, StateDir: dirs.state, DryRun: dryRun})
-			out := cmd.OutOrStdout()
-			prefix := ""
-			if dryRun {
-				prefix = "would "
-			}
-			for _, action := range actions {
-				fmt.Fprintf(out, "%s%s %s\n", prefix, action.Kind, action.Path)
-			}
-			if err != nil {
-				return err
-			}
-			if len(actions) == 0 {
-				fmt.Fprintln(out, "nothing to migrate")
-			}
-			return nil
-		},
-	})
 }
 
 // defaultCheckout is $XDG_DATA_HOME/agent-workflows/src, else

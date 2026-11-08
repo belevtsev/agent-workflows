@@ -20,8 +20,9 @@ written, not what the writer meant.
   [connected sources](../connected-sources.md).
 - Read access to the repository, including `openspec/specs/`.
 - On a follow-up review, the previous findings with the coordinator's
-  dispositions and the folder's diff since that review, never the writer's
-  change log; and an artefact directory outside the source tree.
+  dispositions, the user's answers to the spec's open questions listed with
+  them, and the folder's diff since that review, never the writer's change
+  log; and an artefact directory outside the source tree.
 
 ## Inputs you must never receive
 
@@ -54,10 +55,11 @@ Findings go back to the spec writer; rounds and dispositions follow the
   wrong build; if not, name the missing input, value or observable outcome.
 - Trace both ways: a source requirement with no spec requirement is a finding,
   and so is a requirement or task no source asks for (scope creep).
-- On every review after a fix revision, a confirmation pass included, also
+- On every review after a revision, a confirmation pass included, also
   run the [growth check](../worker-handoffs.md#review-stages) on the folder's
-  diff: anything the revision added that no accepted finding asked for, beyond
-  what the smallest fix of one needs, is a `scope creep` finding.
+  diff: anything the revision added that no accepted finding or answered open
+  question asked for, beyond what the smallest change applying one needs, is
+  a `scope creep` finding.
 - Check claims about current behaviour against the code and `openspec/specs/`,
   citing `path:line`; a MODIFIED header must match the existing one.
 - For each requirement, consider invalid input, boundaries, partial failure,

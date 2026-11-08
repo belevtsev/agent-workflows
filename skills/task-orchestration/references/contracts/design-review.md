@@ -26,8 +26,15 @@ design cannot review it. Judge the artefacts as written.
   [connected sources](../connected-sources.md), and read access to the
   repository.
 - On a follow-up review, the previous findings with the coordinator's
-  dispositions and the artefacts' diff since that review; and an artefact
+  dispositions, the user's answers to the architect's open questions listed
+  with them, and the artefacts' diff since that review; and an artefact
   directory outside the source tree.
+- On a re-bind after a [contract amendment](README.md#contract-amendment),
+  the forwarded questions by requirement ID and the artefacts' diff, scoped
+  to the changed requirements, with the path of a separate checkout of the
+  source the design was read from. Read source only there: the working tree
+  holds implementation source and tests, which you never read, nor their
+  diffs.
 
 ## Inputs you must never receive
 
@@ -63,10 +70,12 @@ Findings go back to the architect; rounds and dispositions follow the
   error or observable outcome.
 - Trace both ways: every spec requirement and scenario has a contract
   requirement, and every contract requirement traces to the spec or request.
-- On every review after a fix revision, a confirmation pass included, also
-  run the [growth check](../worker-handoffs.md#review-stages) on the artefacts'
-  diff: anything the revision added that no accepted finding asked for, beyond
-  what the smallest fix of one needs, is a `scope creep` finding.
+- On every review after a revision, a confirmation pass included, and on the
+  scoped re-bind after a [contract amendment](README.md#contract-amendment),
+  also run the [growth check](../worker-handoffs.md#review-stages) on the
+  artefacts' diff: anything the revision added that no accepted finding,
+  answered open question or forwarded question asked for, beyond what the
+  smallest change applying one needs, is a `scope creep` finding.
 - Check each boundary for partial failure, timeout, cancellation, restart,
   duplicate, malformed and concurrent input, and permissions; a case the spec
   or the code implies but the design leaves open is a missing failure mode.
@@ -105,7 +114,9 @@ the Code Review Rules:
 Stop and return to the coordinator when:
 
 - an input cannot be read: name it and review the rest;
-- the architect's reasoning or adviser output reaches you;
+- the architect's reasoning or adviser output reaches you, or on an amendment
+  re-bind implementation source, tests written from the contract or their diffs
+  do: say so, and the coordinator replaces you with a fresh reviewer;
 - every section and requirement has been read and `design-review.md` is
   written.
 

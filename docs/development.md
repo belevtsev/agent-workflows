@@ -9,8 +9,8 @@ out of `cw`'s build and test package discovery.
 `cmd/cw` is a thin command entrypoint over `internal/cli`, which has injectable
 I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/projectctx`, `internal/graphify`, `internal/outcomes` and
-`internal/usagelog`; `internal/codexinstall` and `internal/v2migrate` implement
-`cw install --host codex` and `cw migrate-v2`. `cmd/cwdev` holds the maintainer
+`internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
+and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
 evaluation.
 
 ## Verification
