@@ -137,8 +137,7 @@ On Codex `cw lang` uses `internal/codexinstall`; then start a new session
 
 ## 7. Migration, alternatives, risks, steps
 
-**Migration.** `cw migrate-v2` selects `go` for upgraders. `cw doctor` prints
-"go.mod found, Go pack not selected".
+**Migration.** `cw doctor` prints "go.mod found, Go pack not selected".
 
 | Rejected | Why |
 | --- | --- |
@@ -166,7 +165,7 @@ set. Older `cw` ignores `languages.json` and uses the fallback.
 5. Applicability in `cw task start`, `Verify`, `cw doctor`. Tests: `go.mod`
    present or not × selected or not; unknown rule id falls back. Done: gate
    uses the start set.
-6. `cw install --lang`, `migrate-v2` default, setup skill. Test: temp `HOME`
+6. `cw install --lang`, setup skill. Test: temp `HOME`
    install. Done: both hosts reach the same set.
 7. README: "Choose languages", "Change languages", "Language packs",
    "Included skills" split core and Go, migration note, "Go diagnostics" moved

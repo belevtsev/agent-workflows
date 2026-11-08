@@ -185,10 +185,24 @@ Report any extra review in the result. Findings that change no behaviour, fail n
 gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
 finding with a concrete failure scenario is never deferred unless the defect
 predates the change and the change neither causes, touches nor newly exposes it.
-When a revision changes the approach or touches components the last review did
-not cover, the follow-up reviews those components in full. The coordinator
+A [contract amendment](contracts/README.md#contract-amendment) opens a cap of
+the same shape for each stage it reaches. When a revision changes the approach
+or touches components the last review did not cover, the follow-up reviews those components in full. The coordinator
 closes each superseded round's author and reviewer assignments as `unused`, with
 dispositions, before `cw task verify`.
+
+**Fast paths.** These follow from the rules above and change none of them:
+
+- A first review with no `blocker` or `major` finding needs no follow-up
+  unless a revision follows it (a fix, or answers to open questions), and that
+  revision gets only the review the cap gives it.
+- `minor` findings that change no behaviour, fail no gate and lose no rule are
+  `deferred` or `rejected` without another review.
+- Code review can overlap check runs while source is stable; record its
+  handoff after the last check run and worker record, since a later one makes
+  it stale (end of [run every reach-row mode](#run-every-reach-row-mode)).
+- Under Claude Code, every later review of a stage runs on the
+  [`review_followup` role](#follow-up-review-after-a-fix-revision).
 
 ## Review substantial changes
 

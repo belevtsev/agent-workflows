@@ -1,6 +1,5 @@
 // Package cli provides the cw command tree: the task, consult, doctor, metrics,
-// keys and graphify runtime, plus the thin Codex installer and the v2
-// migration.
+// keys and graphify runtime, plus the thin Codex installer.
 package cli
 
 import (

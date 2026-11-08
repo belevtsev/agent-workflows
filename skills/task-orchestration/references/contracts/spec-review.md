@@ -20,8 +20,9 @@ written, not what the writer meant.
   [connected sources](../connected-sources.md).
 - Read access to the repository, including `openspec/specs/`.
 - On a follow-up review, the previous findings with the coordinator's
-  dispositions and the folder's diff since that review, never the writer's
-  change log; and an artefact directory outside the source tree.
+  dispositions, the user's answers to the spec's open questions listed with
+  them, and the folder's diff since that review, never the writer's change
+  log; and an artefact directory outside the source tree.
 
 ## Inputs you must never receive
 
