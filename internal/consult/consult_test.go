@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // Tests in this package are written from the design contract (D1, D3, D4 and

@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 )
 
 const maxTaskRevisions = 4096

@@ -31,7 +31,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/v2migrate"
+	"github.com/belevtsev/agent-workflows/v3/internal/v2migrate"
 )
 
 const (

@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/credentials"
-	graphifyrunner "github.com/belevtsev/agent-workflows/internal/graphify"
+	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
+	graphifyrunner "github.com/belevtsev/agent-workflows/v3/internal/graphify"
 	"github.com/pelletier/go-toml/v2"
 )
 

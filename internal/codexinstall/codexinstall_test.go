@@ -37,7 +37,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/codexinstall"
+	"github.com/belevtsev/agent-workflows/v3/internal/codexinstall"
 )
 
 const (
