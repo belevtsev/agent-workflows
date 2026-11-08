@@ -134,7 +134,7 @@ directly from the defect crashed bash 3.2), and whenever in doubt. The plan cann
 started with checkpoints not required later meets an open decision or a change to
 code that must behave alike on several platforms or shells, stop and ask the user, and never start a new record over
 source the first one already changed, because its baseline would hide those edits
-from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. With
+from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. A not-required reason must not claim advisers are missing while the task binds any (the binding, `cw task show --field advisers`, and `cw keys status` say which are available; `cw doctor`'s launcher and Codex shell lines do not): `start` refuses it, and `verify` reports it on a record an older `cw` created; when that record's source changed and no usable before checkpoint is attached, stop and ask the user, for the same reason. With
 `"required": false`, `assign` needs no before checkpoint and `verify` adds the
 limitation `adviser checkpoints not required: <reason>` instead of requiring both
 checkpoints. Requirements, checks, worker records and the independent review stay
@@ -416,6 +416,8 @@ cw metrics summarize --input-root /private/path/observations run-a.json run-b.js
 cw metrics import --claude-transcript ~/.claude/projects/PROJECT/SESSION.jsonl [--prices prices.json]
 cw metrics import --codex-session ~/.codex/sessions/YYYY/MM/DD/rollout-ID.jsonl --prices prices.json
 cw metrics import --claude-transcript SESSION.jsonl --prices prices.json --composition [--summary]
+cw metrics import --claude-transcript SESSION.jsonl --append [--history FILE]
+cw metrics history [--history FILE] [--session ID] [--model M] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--prices prices.json]
 ```
 
 `import` reads a session read-only and reports each agent (the main session and
@@ -432,6 +434,16 @@ reported separately from recorded dollars; no price is built in. The report's
 it. When a model's transcript and recorded totals differ, for example a `cost-state`
 written before the session ended, the report shows the difference and leaves
 `usage` and `cost` out.
+
+`--append` (with `--claude-transcript` or `--codex-session`) keeps the counts after
+the transcript is deleted. It appends one record per de-duplicated request to the cost history,
+`<state>/metrics/history.jsonl` unless `--history` names another file, and prints what
+it appended instead of the report. A record holds token counts, IDs, timestamps, the
+model and agent labels, and no dollars. Requests already stored are skipped, so
+importing again never double-counts. `--append` rejects `--prices`, `--composition`,
+`--summary` and `--dry-run`. `cw metrics history` aggregates the history by model,
+UTC day and session, and recomputes dollars from `--prices`. `docs/operations.md`
+(Cost history) covers the schema, locking and damaged lines.
 
 `--composition` (it needs `--prices`) adds where each agent's input came from. Each
 agent is mapped to a role from the `cw task assign` brief whose assignment id its Agent

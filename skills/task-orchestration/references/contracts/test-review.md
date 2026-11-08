@@ -53,10 +53,11 @@ so; the coordinator replaces you with a fresh reviewer.
    describes, under the `evidence` role, with every finding in `findings` and
    `changed_files: []`.
 
-Findings go back to the test engineer through the coordinator's
-[feedback limits](test-engineer.md#separate-authorship-from-execution); rounds
-and dispositions follow the [review cap](../worker-handoffs.md#review-stages),
-counted for this stage alone.
+Findings go back to the test engineer through the coordinator's [feedback
+limits](test-engineer.md#separate-authorship-from-execution); review rounds and
+dispositions follow the [review cap](../worker-handoffs.md#review-stages),
+counted for this stage alone; returns to the test engineer also count against
+the task's [round budget](../worker-handoffs.md#review-stages).
 
 ## Quality bar
 
