@@ -229,10 +229,62 @@ value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 `cw metrics import` reports per-agent tokens and dollars from a Claude Code transcript
-or a Codex rollout, without writing anything; with `--composition` and `--prices` it also
+or a Codex rollout, without writing anything unless `--append` asks it to add the
+session to the [cost history](#cost-history); with `--composition` and `--prices` it also
 attributes each agent's input to its sources (Claude transcripts only).
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
+
+### Cost history
+
+Claude Code deletes transcripts after `cleanupPeriodDays`, and their token and cost
+data goes with them. To keep it, append each session to the cost history before
+the transcript expires, and read the history back at any time:
+
+```sh
+cw metrics import --claude-transcript ~/.claude/projects/<project>/<session-id>.jsonl --append
+cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
+```
+
+- **Where.** `--append` writes to `metrics/history.jsonl` under the state
+  directory (`--state-dir`, else `$XDG_STATE_HOME/agent-workflows`, else
+  `~/.local/state/agent-workflows`), or to `--history FILE`. A new file is created
+  with mode 0600 and a missing directory with 0700; an existing file or directory
+  keeps its mode, so check it when you point `--history` somewhere shared. A
+  symlink or other non-regular file there is refused. The file is limited to
+  1 GiB: an append that would pass it fails without writing, and you start a new
+  history by moving the old one aside (records in the old file then no longer
+  de-duplicate new imports). macOS and Linux only.
+- **What.** One JSON line per de-duplicated provider request: `v` (schema version
+  1), `kind` (`cw.metrics_request`), `source`, `session_id`, `request_id` (the
+  import's de-duplication key), `agent_id`, `agent_role`, `agent_type`, `model`,
+  `timestamp` (UTC), `imported_at`, and the token counts (uncached input, 5m, 1h
+  and unsplit cache writes, cache reads, output, thinking). It never stores prompt
+  or response text, tool inputs or results, file contents, agent descriptions or
+  the transcript path. Lines are at most 4096 bytes and text fields at most 256.
+- **Idempotent.** A record's identity is `(source, session_id, request_id)`.
+  Re-importing a session appends only requests the history does not hold, so
+  importing it again, or after it has grown, never double-counts. A stored record
+  whose counts differ from the transcript is kept and counted as `conflicting`.
+  Requests without a request or message id cannot be de-duplicated and are only
+  counted (`unkeyed`). `--append` prints these counts instead of the report.
+- **Prices.** The history stores token counts, not dollars. `cw metrics history
+  --prices FILE` prices every group with the table you pass, so a later price
+  change only needs a different table. The recorded cost-state total of a Claude
+  session is not stored; `cw metrics import` still reports it while the
+  transcript exists.
+- **Concurrency and damage.** Every writer takes an exclusive `flock` on the
+  sibling `<history>.lock` file (released if the process dies, never deleted,
+  and waited for at most 30 seconds), reads the stored
+  identities, and appends whole lines in one write; readers take a shared lock.
+  A torn final line from an interrupted write is terminated before the next
+  append. `cw metrics history` skips a damaged line, counts it in
+  `damaged_lines`, lists the first 100 with their line numbers and reasons, and
+  warns on stderr.
+- **Report.** `cw metrics history` filters by `--session`, `--model`, and an
+  inclusive UTC `--since`/`--until` date range, and prints totals and groups by
+  model, UTC day and session. Without `--prices` every amount is unknown, with a
+  reason.
 
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational

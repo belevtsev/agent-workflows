@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 )
 
@@ -122,7 +123,7 @@ type codexThread struct {
 	depth int
 }
 
-func importCodex(ctx context.Context, path, sessionsRoot string, prices *PriceTable) (Report, error) {
+func importCodex(ctx context.Context, path, sessionsRoot string, prices *PriceTable, collected *[]collectedRequest) (Report, error) {
 	report := newReport(SourceCodex)
 	absolute, err := filepath.Abs(path)
 	if err != nil {
@@ -146,6 +147,7 @@ func importCodex(ctx context.Context, path, sessionsRoot string, prices *PriceTa
 	}
 	report.SessionID = rootMeta.ID
 	s := newSession(&report, SourceCodex)
+	s.collected = collected
 
 	discovery := &ChildDiscovery{Status: "not_attempted"}
 	report.ChildDiscovery = discovery
@@ -277,8 +279,17 @@ func importCodex(ctx context.Context, path, sessionsRoot string, prices *PriceTa
 					if record.ResponseID != "" {
 						key = "response:" + record.ResponseID
 					}
+					timestamp := ""
+					if collected != nil {
+						var stamp struct {
+							Timestamp jsontext.Value `json:"timestamp"`
+						}
+						if json.Unmarshal(line, &stamp, lenient) == nil {
+							timestamp = metaText(stamp.Timestamp)
+						}
+					}
 					before := s.requests
-					s.record(state, key, model, req)
+					s.record(state, key, model, timestamp, req)
 					if s.requests > before && effort != "" {
 						state.efforts[effort] = true
 					}
