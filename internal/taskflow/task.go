@@ -39,6 +39,10 @@ func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitati
 // the advisers configured when the task starts. Later policy or credential
 // changes never change it.
 func Start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string) (Record, error) {
+	return start(ctx, repo, store, plan, advisers, nil)
+}
+
+func start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs *packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
@@ -58,6 +62,10 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	snapshot, files, err := projectctx.CaptureManifest(ctx, repo)
 	if err != nil {
 		return Record{}, fmt.Errorf("capture complete task baseline: %w", err)
+	}
+	packSet, err := packs.bind(snapshot, files)
+	if err != nil {
+		return Record{}, err
 	}
 	manifest, err := encode(files)
 	if err != nil {
@@ -93,6 +101,7 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	defer root.Close()
 	now := time.Now().UTC()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
+	record.Packs = packSet
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -484,7 +493,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		result.Limitations = append(result.Limitations, contractNotes...)
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
-				executionIssues, executionNotes := executionProblems(root, *record, snapshot, files)
+				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)
 				result.Problems = append(result.Problems, executionIssues...)
 				result.Limitations = append(result.Limitations, executionNotes...)
 			}
