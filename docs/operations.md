@@ -231,6 +231,28 @@ attributes each agent's input to its sources (Claude transcripts only).
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
 
+`cw task timeline --task DIR [--summary]` reports the wall time a task spent, from
+timestamps the record already stores, and is read-only: it loads the record with
+the same validation as `cw task show` and writes nothing, so `--dry-run` changes
+nothing. It prints one JSON object with `task`, `task_id`, `started_at` (the
+record's `created_at`), `updated_at`, `elapsed` and `entries`. `elapsed` runs from
+`started_at` to `updated_at`, the record's last stored revision, not to the current
+time, so it does not grow while the task sits idle. `entries` holds one entry per
+worker assignment (`kind` `assignment`, `id`, `stage` = the brief's role, `agent`,
+`state` = the latest acceptance's status, else the result's status, else
+`assigned`, `assigned_at`, `submitted_at`, `accepted_at`, `assign_to_handoff` and
+`handoff_to_accept`) and one per check run (`kind` `check`, `id`, `stage` = the
+plan check ID, `state` = the run's status, `started_at`, `finished_at` and
+`duration`), ordered by start time, with entries lacking a start last.
+Timestamps are UTC RFC 3339 with nanoseconds and durations are rounded to the
+millisecond (`250ms`, `1m2.003s`). A timestamp the record does not hold (no
+handoff yet, no acceptance, a check still running) is `n/a`, and so is every
+duration computed from one; a missing value is never shown as `0s`. `--summary`
+prints JSON Lines rather than a one-line result: one compact object for the task
+(`task_id`, `started_at`, `updated_at`, `elapsed`), then one per entry with its
+start under `start` and its durations, omitting `task`, `submitted_at`,
+`accepted_at` and `finished_at`.
+
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational
 rules. Native task commands execute only explicitly selected argv; repository text,
