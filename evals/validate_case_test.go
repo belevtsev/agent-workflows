@@ -842,9 +842,10 @@ func TestAuthoredFindCases(t *testing.T) {
 	}
 }
 
-// authoredRealCases are the 22 cases the repository ships today (D2).
+// authoredRealCases are the 26 cases the repository ships today (D2).
 var authoredRealCases = []string{
 	"architect/config-hot-reload",
+	"architect/ledger-money-adr",
 	"architect/outbox-publisher",
 	"architect/rate-limiter-boundary",
 	"implementer/bounded-worker-pool",
@@ -854,8 +855,10 @@ var authoredRealCases = []string{
 	"reviewer/code-upload-quota",
 	"reviewer/code-webhook-dispatch",
 	"reviewer/design-job-timeout-units",
+	"reviewer/design-revision-scope-growth",
 	"reviewer/design-webhook-retries",
 	"reviewer/spec-audit-export-tasks",
+	"reviewer/spec-claude-md-probe",
 	"reviewer/spec-invoice-reminders",
 	"reviewer/spec-team-invites-scope",
 	"reviewer/tests-rate-limiter",
@@ -863,6 +866,7 @@ var authoredRealCases = []string{
 	"spec-writer/avatar-upload-gaps",
 	"spec-writer/bookmark-export-brief",
 	"spec-writer/link-expiry-delta",
+	"test-engineer/clamp-claude-md-probe",
 	"test-engineer/notes-init-e2e",
 	"test-engineer/retry-budget-matrix",
 	"test-engineer/ttl-cache-matrix",
@@ -877,8 +881,8 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		t.Fatalf("loadPluginInfo(%s): %v", root, err)
 	}
 	authoredWantRoster(t, p) // D1
-	if len(authoredRealCases) != 22 {
-		t.Fatalf("authoredRealCases lists %d cases, want 22", len(authoredRealCases))
+	if len(authoredRealCases) != 26 {
+		t.Fatalf("authoredRealCases lists %d cases, want 26", len(authoredRealCases))
 	}
 
 	dirs, err := findCases(filepath.Join(root, "evals"))
@@ -889,12 +893,21 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		t.Fatalf("findCases result is not sorted: %q", dirs)
 	}
 	found := map[string]bool{}
+	var rels []string
 	for _, d := range dirs {
 		rel, err := filepath.Rel(filepath.Join(root, "evals"), d)
 		if err != nil {
 			t.Fatal(err)
 		}
 		found[filepath.ToSlash(rel)] = true
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	// D2: authoredRealCases is in the order findCases returns.
+	if !sort.StringsAreSorted(authoredRealCases) {
+		t.Errorf("authoredRealCases is not sorted: %q", authoredRealCases)
+	}
+	if strings.Join(rels, "\n") != strings.Join(authoredRealCases, "\n") {
+		t.Errorf("findCases order = %q, want authoredRealCases %q", rels, authoredRealCases)
 	}
 	for _, c := range authoredRealCases {
 		if !found[c] {

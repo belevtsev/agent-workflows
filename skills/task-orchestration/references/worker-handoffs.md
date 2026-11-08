@@ -27,6 +27,10 @@ establish behavior. Preserve required design challenges and execution
 environments. The test engineer receives only the agreed contract and approved
 scaffold ([boundary](contracts/test-engineer.md#author-only-from-the-contract));
 the coordinator or verifier inspects implementation and owns the execution gates.
+Under Claude Code the reviewer and the test engineer start without CLAUDE.md
+files ([host mapping](hosts.md#worker-agent-types)): their contracts carry the
+project rules they apply, and their briefs quote, word for word, any other
+project constraint the work must meet, such as a check command or a naming rule.
 
 ## Assign before dispatch
 
@@ -142,7 +146,7 @@ names:
 | Stage | Contract | Reviews | Findings go back to | Record role |
 | --- | --- | --- | --- | --- |
 | Spec review | [spec-review](contracts/spec-review.md) | the OpenSpec change folder | spec writer | `evidence` |
-| Design review | [design-review](contracts/design-review.md) | `design.md`, `interface-contract.md` | architect | `evidence` |
+| Design review | [design-review](contracts/design-review.md) | `design.md`, `interface-contract.md`, the ADR when one is written | architect | `evidence` |
 | Test review | [test-review](contracts/test-review.md) | test matrix, requirement map, tests | test engineer | `evidence` |
 | Code review | [code-review](contracts/code-review.md) | the integrated source against `interface-contract.md` and `design.md`, with the final check's coverage profile when one exists | implementer; a finding about a test goes to a fresh test engineer | `review` |
 
@@ -171,6 +175,25 @@ revision answers each one; the next round reviews the revision. Before rejecting
 a `blocker` or `major` finding at any stage, the coordinator consults the
 available advisers ([adviser points](consultation-helper.md#adviser-points-in-the-flow)).
 
+**Growth check.** Every time a spec or design is reviewed again after a
+revision (a diff-scoped follow-up, a review scoped to a fix, a confirmation
+pass, and the scoped design review of a
+[contract amendment](contracts/README.md#contract-amendment)), the reviewer
+checks what the revision added as well as whether each finding is resolved.
+Here an accepted finding also means a user's answer to an open question listed
+with the dispositions, and a question forwarded in an amendment. Every
+requirement, scenario, task, option, component, interface, dependency or
+behaviour that the diff adds and that no accepted finding asked for is a
+finding in the category `scope creep`, citing the added text and the findings
+it was checked against. The one exception is what the smallest change that
+resolves an accepted finding cannot do without, judged against that finding's
+"what would resolve it" (for an answer or a forwarded question, the smallest
+change that applies it), not against the revision's own claim that an addition
+serves it. Its severity follows the shared grading: an unrequested
+addition the next stage would build or test is at least `major`. The
+coordinator returns it to the author like any other finding, and an addition
+that the user or the sources do require is `rejected` with that evidence.
+
 **Review cap.** The cap applies to each stage separately: one full review; after
 the fixes, at most one diff-scoped follow-up by a fresh reviewer; and a further
 review only to re-bind a fix of a defect that follow-up found, scoped to that
@@ -179,8 +202,9 @@ fix that changes executable code or a gate's behaviour gets one review scoped to
 it. Verify a prose-only fix yourself (diff readback, the checks it cites, the
 reviewer's failure scenario rechecked against the new text), then have a fresh
 reviewer re-bind with a confirmation pass that reports only a fix that fails its
-finding, a defect in code or a gate, or a new contradiction or lost rule in the
-instructions a coordinator follows; that pass does not count against the cap.
+finding, a defect in code or a gate, a new contradiction or lost rule in the
+instructions a coordinator follows, or, for a spec or design, a `scope creep`
+finding from the growth check; that pass does not count against the cap.
 Report any extra review in the result. Findings that change no behaviour, fail no
 gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
 finding with a concrete failure scenario is never deferred unless the defect

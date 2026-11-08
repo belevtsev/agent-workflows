@@ -91,8 +91,9 @@ jobs:
     if: needs.plan.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     # Cases allow up to 30 minutes each and run one at a time; the largest suite
-    # (reviewer) has ten cases.
-    timeout-minutes: 330
+    # (reviewer) has twelve cases. 360 is the GitHub-hosted job maximum, so a
+    # reviewer run in which every case used its full 30 minutes would be cut off.
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -134,7 +135,7 @@ jobs:
         run: |
           mkdir -p "$TMPDIR" "$OUT"
           # Without a dispatch input the ceiling scales with the suite: 5 dollars
-          # per three cases, so a ten-case suite gets the same budget per case.
+          # per three cases, so a twelve-case suite gets the same budget per case.
           cases=$(find "evals/$SUITE" -mindepth 2 -maxdepth 2 -name prompt.md | wc -l)
           ceiling=${MAX_COST_USD:-$(awk -v n="$cases" 'BEGIN { printf "%.2f", n * 5 / 3 }')}
           echo "cost ceiling: $ceiling USD for $cases cases"

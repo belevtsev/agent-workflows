@@ -8,7 +8,7 @@ evidence.
 | --- | --- | --- | --- | --- |
 | Spec writer | `spec-writer` | [spec-writer.md](spec-writer.md) | sources, repository, review findings | OpenSpec change folder, `change-log.md` |
 | Spec review | `reviewer` | [spec-review.md](spec-review.md) | change folder, sources, repository | `spec-review.md` |
-| Architect | `architect` | [architect.md](architect.md) | request or reviewed change folder, repository | `design.md`, `interface-contract.md`, `implementation-brief.md` |
+| Architect | `architect` | [architect.md](architect.md) | request or reviewed change folder, repository | `design.md`, `interface-contract.md`, `implementation-brief.md`, an ADR when the repository keeps them |
 | Design review | `reviewer` | [design-review.md](design-review.md) | the architect's artefacts, spec, sources, repository | `design-review.md` |
 | Implementer | `implementer` | [implementer.md](implementer.md) | brief, interface contract, repository | the change, `self-review.md` |
 | Test engineer | `test-engineer` | [test-engineer.md](test-engineer.md) | interface contract, interface extract | tests, `test-matrix.md`, `requirement-map.md` |
@@ -49,6 +49,12 @@ below) and only when available; without them every step runs unchanged.
    diff
    ([design review inputs](design-review.md#inputs-you-receive)), which a
    revision answering them always gets.
+   When the target repository keeps ADRs (`docs/decisions/` or an existing
+   ADR folder), the brief names that folder among the architect's owned
+   paths; the architect writes an ADR there only for a choice that is costly
+   to reverse ([architect](architect.md#required-outputs), item 6), the design
+   review checks it against `design.md`, and it is committed with the change.
+   A repository without such a folder gets no ADR.
 3. **Contract.** The coordinator fixes `interface-contract.md`, extracts the
    public interface and hashes both before dispatch. For a later
    [contract amendment](#contract-amendment), it records whether the tree held
@@ -97,8 +103,8 @@ enough to be its own spec: every behaviour, input, output and failure stated
 with its values, and nothing left to settle. The architect then works from that
 spec, or from the request when there is none, and the design review still runs.
 
-Artefacts and records stay outside the source tree; the change folder is the
-one exception, under `openspec/changes/`. Model and effort come from the
+Artefacts and records stay outside the source tree; the exceptions are the
+change folder, under `openspec/changes/`, and an ADR (step 2). Model and effort come from the
 policy roles `spec_writer`, `spec_review`, `architect`, `design_review`,
 `implementer`, `test_engineer`, `test_review`, `review` and `review_followup`
 ([hosts](../hosts.md)).
