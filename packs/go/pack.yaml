@@ -1,0 +1,25 @@
+# Go language pack. cw embeds this file (docs/design/language-packs.md).
+schema: 1
+id: go
+kind: language
+detect: [go.mod, go.work]
+commands:
+  build: [go, build, ./...]
+  test: [go, test, ./...]
+  race: [go, test, -race, -shuffle=on, ./...]
+  lint: [go, vet, ./...]
+tests:
+  unit: {files: ["*_test.go"], argv: [go, test, ./...]}
+interface_extract: [cw, task, contract-extract]
+skills:
+  implement: [go-principal-engineer]
+  test: ["cc-skills-golang:golang-testing"]
+  security: [go-pki-mtls, "cc-skills-golang:golang-security"]
+review:
+  - Every goroutine has an owner that stops it, waits for it and receives its error.
+  - Changed concurrent code ran under the race command.
+  - No error is ignored, and no error is matched by its Error() text.
+  - Response bodies and sql.Rows are closed, and rows.Err() is checked.
+  - No sync.Mutex or other lock is copied.
+  - Reachable dependency vulnerabilities were checked with govulncheck.
+evidence_rule: go.package-test/v1

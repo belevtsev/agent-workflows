@@ -178,7 +178,9 @@ Global flags apply to every command:
 
 The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
-saved adviser keys (`credentials.json`) and `preferences.json`. `--dry-run` is a
+saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
+pack selection written by `cw pack add` and `cw pack remove`; absent means the
+default selection). `--dry-run` is a
 global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.

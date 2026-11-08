@@ -64,7 +64,8 @@ func addTaskCommands(root *cobra.Command, config Config) {
 	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: "Capture the selected project's baseline and an explicit JSON requirement/check plan in a new private task record. " +
 		"The record binds the advisers configured now: each provider the model policy enables whose credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys), mapped to its pinned model, possibly none. " +
 		"An adviser disabled in your saved preferences (advisers.disabled in preferences.json of the configuration directory) is never bound, even with --policy; an unreadable or invalid preferences file fails before any task is created. " +
-		"The binding never changes for the task's lifetime; 'cw task context' carries it to 'cw consult'. An unreadable or invalid policy fails before any task is created.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		"The binding never changes for the task's lifetime; 'cw task context' carries it to 'cw consult'. An unreadable or invalid policy fails before any task is created. " +
+		"The record also fixes the pack set: the selected packs ('cw pack list') whose detect file is at the top of the selected path now; an unreadable pack selection, or a selected pack not built into cw, fails before any task is created.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := guard(cmd); err != nil {
 			return err
 		}
@@ -91,6 +92,10 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		for _, id := range disabled {
 			delete(advisers, id)
 		}
+		packSelection, packs, err := startPacks(root, config)
+		if err != nil {
+			return err
+		}
 		selected := repo
 		if selected == "" {
 			var err error
@@ -107,7 +112,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 			}
 			chosenStore = filepath.Join(roots.state, "workflow-tasks")
 		}
-		record, err := taskflow.Start(cmd.Context(), selected, chosenStore, plan, advisers)
+		record, err := taskflow.StartWithPacks(cmd.Context(), selected, chosenStore, plan, advisers, packSelection, packs)
 		if err != nil {
 			return err
 		}

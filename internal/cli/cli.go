@@ -134,6 +134,7 @@ func NewCommand(config Config) *cobra.Command {
 	addHookCommands(root, config)
 	addGraphifyCommands(root, config)
 	addHostCommands(root, config)
+	addPackCommands(root, config)
 	// Cobra's help path stays independent of state and environment.
 	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", RunE: func(_ *cobra.Command, args []string) error {
 		target := root

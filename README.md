@@ -140,9 +140,19 @@ well. The coordinator runs it with your approval; the command never approves
 anything on its own. See the
 [publication reference](skills/task-orchestration/references/github-worker.md).
 
-In a Go module, verify also needs a passed direct `go test` run covering each
-changed package, with allowlisted flags only (no `-run` or `-skip`); see
+When a task applies the `go` pack, verify also needs a passed direct `go test`
+run covering each changed package, with allowlisted flags only (no `-run` or
+`-skip`); see
 [evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+The `go` pack is selected by default. A task records it when `go.mod` or
+`go.work` is at the top of the selected path at start, and the rule then checks
+packages whenever `go.mod` is at the top at verify. A task that started with
+neither file gets no Go rule, even if it creates `go.mod` later. `cw pack add`
+and `cw pack remove` affect only tasks started afterwards; an open task keeps
+the pack set it recorded. `cw pack list` shows the selection.
+`cw pack remove go` writes an explicit `packs.json`, which drops the Go rule for
+all of that user's repositories and leaves only the fallback rule (any passed
+check); `cw pack add go`, or deleting `packs.json`, restores it.
 
 **See why a commit is blocked.** The denial names each blocking task. This lists
 its problems, such as a missing review or an unmet requirement:

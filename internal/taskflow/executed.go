@@ -1,10 +1,8 @@
 package taskflow
 
 import (
-	"fmt"
+	"context"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
@@ -22,16 +20,10 @@ func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
 // run passed at the current snapshot, that run. files is the current manifest. Records started before the
 // baseline manifest existed cannot list changed files; that gap is returned as
 // a limitation.
-func executionProblems(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
-	module, err := filepath.Rel(snapshot.Root, snapshot.SelectedPath)
+func executionProblems(ctx context.Context, root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
+	relative, err := selectedRelative(snapshot)
 	if err != nil {
-		return []string{fmt.Sprintf("locate the selected path in its project: %v", err)}, nil
-	}
-	relative := func(name string) (string, bool) {
-		if module == "." {
-			return name, true
-		}
-		return strings.CutPrefix(name, filepath.ToSlash(module)+"/")
+		return []string{err.Error()}, nil
 	}
 	source := langpack.Source{Current: []string{}}
 	for _, file := range files {
@@ -61,8 +53,18 @@ func executionProblems(root *os.Root, record Record, snapshot projectctx.Snapsho
 			passed = append(passed, langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS})
 		}
 	}
-	for _, rule := range langpack.Rules(source) {
-		problems = append(problems, rule.Problems(source, passed)...)
+	if record.Packs == nil {
+		for _, rule := range langpack.Rules(source) {
+			problems = append(problems, rule.Problems(source, passed)...)
+		}
+		return problems, limitations
 	}
-	return problems, limitations
+	ruleIDs := []string{}
+	for _, pack := range record.Packs.Applied {
+		if pack.EvidenceRule != "" {
+			ruleIDs = append(ruleIDs, pack.EvidenceRule)
+		}
+	}
+	evidence := langpack.Evaluate(ctx, snapshot.SelectedPath, checkEnvironment(), ruleIDs, source, passed)
+	return append(problems, evidence.Problems...), append(limitations, evidence.Limitations...)
 }
