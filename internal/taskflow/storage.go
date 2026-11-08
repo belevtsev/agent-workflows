@@ -304,7 +304,7 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
-		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest)) {
+		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest) || !sameEncoded(current.Packs, record.Packs)) {
 			return Record{}, "", errors.New("immutable task baseline changed")
 		}
 		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {

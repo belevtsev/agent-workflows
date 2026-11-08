@@ -39,6 +39,10 @@ func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitati
 // the advisers configured when the task starts. Later policy or credential
 // changes never change it.
 func Start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string) (Record, error) {
+	return start(ctx, repo, store, plan, advisers, nil)
+}
+
+func start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs *packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
@@ -52,9 +56,16 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	if err := consult.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
+	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
+		return Record{}, errors.New(conflict + `; set "required": true and run the checkpoints, or, if checkpoints are truly unneeded, give the real reason`)
+	}
 	snapshot, files, err := projectctx.CaptureManifest(ctx, repo)
 	if err != nil {
 		return Record{}, fmt.Errorf("capture complete task baseline: %w", err)
+	}
+	packSet, err := packs.bind(snapshot, files)
+	if err != nil {
+		return Record{}, err
 	}
 	manifest, err := encode(files)
 	if err != nil {
@@ -90,6 +101,7 @@ func Start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	defer root.Close()
 	now := time.Now().UTC()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
+	record.Packs = packSet
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -484,7 +496,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		result.Limitations = append(result.Limitations, traceNotes...)
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
-				executionIssues, executionNotes := executionProblems(root, *record, snapshot, files)
+				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)
 				result.Problems = append(result.Problems, executionIssues...)
 				result.Limitations = append(result.Limitations, executionNotes...)
 			}
@@ -494,6 +506,21 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 			required := checkpointsRequired(record.Plan)
 			if !required {
 				result.Limitations = append(result.Limitations, "adviser checkpoints not required: "+record.Plan.Checkpoints.Reason)
+			}
+			_, beforeAttached := record.Consultations["before"]
+			_, finalAttached := record.Consultations["final"]
+			if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
+				// A usable before checkpoint is the one final-context preparation accepts.
+				_, beforeErr := readConsultation(root, *record, "before", record.Baseline)
+				switch {
+				case beforeErr == nil:
+					conflict += "; attach the final checkpoint"
+				case equalSnapshot(record.Baseline, snapshot):
+					conflict += "; attach the before and final checkpoints, or abandon this record and start a corrected one"
+				default:
+					conflict += "; the source changed since start, so the before checkpoint can no longer be attached and a new record must not start over the changed source: stop and ask the user how to proceed"
+				}
+				result.Problems = append(result.Problems, conflict)
 			}
 			for _, phase := range []string{"before", "final"} {
 				// A checkpoint attached although not required is still validated.

@@ -108,7 +108,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 	}
 	readCodexMetadata(ctx, options.CodexHome, &report)
 	readClaudeMetadata(options.ClaudeHome, &report)
-	credentialCheck := func(name, source string, values map[string]bool) {
+	credentialCheck := func(name, source, environment string, values map[string]bool) {
 		count := 0
 		for _, value := range values {
 			if value {
@@ -119,11 +119,11 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		if count > 0 {
 			status = "configured"
 		}
-		put(name, status, fmt.Sprintf("%d of %d provider credential variables present; authentication was not attempted", count, len(credentialKeys)), source)
+		put(name, status, fmt.Sprintf("%d of %d provider credential variables present in %s; cw keys status reports the keys cw can use; authentication was not attempted", count, len(credentialKeys), environment), source)
 	}
-	credentialCheck("credentials_environment", "current_process_environment", report.Credentials.Environment)
-	credentialCheck("credentials_launcher", "codex_mcp_literal_env", report.Credentials.Launcher)
-	credentialCheck("credentials_codex_shell", "codex_shell_environment_policy_set", report.Credentials.CodexShell)
+	credentialCheck("credentials_environment", "current_process_environment", "this process's environment (saved keys are not counted)", report.Credentials.Environment)
+	credentialCheck("credentials_launcher", "codex_mcp_literal_env", "the Codex MCP launcher environment, not cw's own", report.Credentials.Launcher)
+	credentialCheck("credentials_codex_shell", "codex_shell_environment_policy_set", "the Codex shell environment policy, not cw's own", report.Credentials.CodexShell)
 	skillCount := 0
 	for _, root := range skillRoots {
 		count := 0

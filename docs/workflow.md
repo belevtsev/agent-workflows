@@ -62,6 +62,15 @@ implementer → `cw task verify` → gated commit. One `reviewer` agent runs eve
 stage with the contract its brief names; findings go back to that stage's
 author; the severity grades and the per-stage review cap are in
 [review stages](../skills/task-orchestration/references/worker-handoffs.md#review-stages).
+The [code review](../skills/task-orchestration/references/contracts/code-review.md)
+reads the integrated source against `interface-contract.md` and `design.md`,
+with the final check's coverage profile when one exists: it classifies each
+unexecuted changed block, and each behaviour finding carries a test that fails
+on the current source. The test engineer never sees coverage; an untested
+requirement reaches a fresh one only as its requirement ID, contract-level
+inputs and expected outcome. Such a reproduction test stays as a regression
+test authored with source access: it is not requirement coverage and needs
+no test-engineer dispatch.
 A small task skips the flow, the spec and design stages included, and the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)
 says when a substantial task skips the spec stage. After the before checkpoint,

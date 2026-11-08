@@ -40,6 +40,8 @@ GOWORK=off go test ./internal/skillcheck
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
 - the model policy loads;
+- the pack manifests under `packs/` load, name only evidence rules built into
+  `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
   or `requirements*.txt` file and no `#!` script for `sh`, `bash`, `zsh` or
   Python, except each eval case's `evals/**/scaffold.sh` that `claude plugin eval`

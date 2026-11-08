@@ -206,7 +206,11 @@ type Record struct {
 	// BaselineManifest lists every eligible file at start. Records written
 	// before reviewer bundles existed omit it and are exempt from the bundle
 	// requirement on review assignments.
-	BaselineManifest  *ManifestRef               `json:"baseline_manifest,omitempty"`
+	BaselineManifest *ManifestRef `json:"baseline_manifest,omitempty"`
+	// Packs is the pack set fixed at start. It is nil for records started by
+	// Start or by a cw that predates packs; such records verify with the
+	// legacy rules.
+	Packs             *PackSet                   `json:"packs,omitempty"`
 	Advisers          map[string]string          `json:"advisers"`
 	Contexts          map[string]Context         `json:"contexts"`
 	Checks            []CheckRun                 `json:"checks"`

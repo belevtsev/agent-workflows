@@ -21,7 +21,8 @@ production code or tests.
 - On revision, the [design review](design-review.md) findings with the
   coordinator's dispositions and answers to your open questions.
 - On a [contract amendment](README.md#contract-amendment), the implementer's
-  and test engineer's questions by requirement ID, in contract terms, and the
+  and test engineer's questions, and any a code-review finding raised, by
+  requirement ID, in contract terms, and the
   path of a separate checkout of the source your design was read from. Read
   source only there, never at paths you used before: the working tree now
   holds the implementer's and test engineer's edits.

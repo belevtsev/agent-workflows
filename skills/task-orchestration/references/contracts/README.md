@@ -13,18 +13,20 @@ evidence.
 | Implementer | `implementer` | [implementer.md](implementer.md) | brief, interface contract, repository | the change, `self-review.md` |
 | Test engineer | `test-engineer` | [test-engineer.md](test-engineer.md) | interface contract, interface extract | tests, `test-matrix.md`, `requirement-map.md` |
 | Test review | `reviewer` | [test-review.md](test-review.md) | contract, extract, tests, stub | `test-review.md` |
-| Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle | findings |
+| Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle, interface contract, `design.md`, test matrix and requirement map, coverage profile | findings, a failing test per behaviour finding |
 | GitHub worker | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
 
 ## Flow
 
 Every stage that produces an artefact has a review loop: the reviewer's findings
 go back to that stage's author, who revises and answers each one, and the
-[review cap](../worker-handoffs.md#review-stages) bounds the rounds of each
-stage separately. After the task's before checkpoint, when its checkpoints are
-required, advisers join only at the
-[adviser points](../consultation-helper.md#adviser-points-in-the-flow) (a to d
-below) and only when available; without them every step runs unchanged.
+[review cap](../worker-handoffs.md#review-stages) bounds the reviews of each
+stage separately, while the round budget in the same section bounds spec,
+design, contract and test-engineer rounds across the whole task; implementer
+fixes never count. After the task's before checkpoint, when its checkpoints are
+required, advisers join only at the [adviser
+points](../consultation-helper.md#adviser-points-in-the-flow) (a to d below) and
+only when available; without them every step runs unchanged.
 
 1. **Spec writer ⇄ reviewer (spec).** The spec writer turns the source
    documents into an OpenSpec change folder; the reviewer grades findings
@@ -79,9 +81,14 @@ below) and only when available; without them every step runs unchanged.
    the implementation when it violates a requirement; return a test that
    contradicts the contract to an unexposed test engineer.
 7. **Reviewer (code) ⇄ implementer.** A further reviewer reviews the integrated
-   source against the requirements and the bundle under
+   source against the requirements, the interface contract and `design.md`,
+   with the bundle and the final check's coverage profile, under
    [code review](code-review.md); the implementer fixes accepted findings, and
-   a finding about a test goes to a fresh test engineer.
+   a finding about a test goes to a fresh test engineer by requirement ID,
+   contract-level inputs and expected outcome only. A finding that only
+   `design.md` supports reaches the implementer as a constraint in contract
+   terms; a rule the contract should carry goes through the
+   [contract amendment](#contract-amendment).
    Before rejecting a `blocker` or `major` finding at this or any earlier stage,
    the coordinator consults advisers (point c).
 8. **Final checkpoint** (point d, when checkpoints are required), then
@@ -107,17 +114,18 @@ policy roles `spec_writer`, `spec_review`, `architect`, `design_review`,
 ## Contract amendment
 
 The interface contract changes only through its author. When the implementer
-or the test engineer returns a question by requirement ID that the contract as
-written cannot answer (an ambiguous or conflicting requirement, missing
+or the test engineer returns a question by requirement ID, or a code-review
+finding raises one, that the contract as written cannot answer (an ambiguous or conflicting requirement, missing
 expected behaviour, unclear error semantics, a needed change to the public
 interface or a missing public seam), the coordinator does not answer it from
 the code. A question the contract already answers gets the quoted requirement
 and no amendment.
 
-1. **Batch.** Collect the open questions from both workers into one request,
-   each as its requirement ID and the gap in contract terms. Strip anything a
-   question carries from either worker's work: implementation source, tests,
-   diffs, logs and reasoning. Workers keep working on the requirements the
+1. **Batch.** Collect the open questions from both workers and the code
+   review into one request, each as its requirement ID and the gap in contract
+   terms. Strip anything a question carries from either worker's work or the
+   review's evidence: implementation source, tests, reproduction tests, diffs,
+   logs, coverage and reasoning. Workers keep working on the requirements the
    questions do not touch.
 2. **Forward to the architect, without implementation.** Continue the original
    architect with that request; when it cannot be continued, give a fresh

@@ -16,7 +16,7 @@ blocks the commit until `cw task verify` passes.
 
 ## How it works
 
-<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source and its changes) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
+<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
@@ -33,12 +33,13 @@ spec exists or the request states every behaviour.
 | architect | the reviewed spec or request | design, interface contract, implementation brief | Opus 5.5, xhigh |
 | implementer | brief and contract | the change, a self-review | Opus 5.5, high |
 | test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
-| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the requirements | graded findings with evidence | Opus 5.5, high |
+| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | Opus 5.5, high |
 | github-worker | verified facts, your approval | commit, push, PR | Sonnet 5.5, medium |
 
 The table is not a one-way pipeline: every review loops back to its stage's
 author, except that a code review finding about a test goes to a fresh test
-engineer; the implementer and the test engineer run in parallel from the same
+engineer, by requirement ID, contract-level inputs and expected outcome only;
+the implementer and the test engineer run in parallel from the same
 contract. Small tasks skip this staged flow: their author writes the tests and
 a reviewer checks them.
 
@@ -133,9 +134,19 @@ in a Bash command, in any form. Each open substantial task for the repository
 passes on the current source. Editing a verified file reopens the task. With no
 task at all, a large change gets a prompt suggesting `cw task start`.
 
-In a Go module, verify also needs a passed direct `go test` run covering each
-changed package, with allowlisted flags only (no `-run` or `-skip`); see
+When a task applies the `go` pack, verify also needs a passed direct `go test`
+run covering each changed package, with allowlisted flags only (no `-run` or
+`-skip`); see
 [evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+The `go` pack is selected by default. A task records it when `go.mod` or
+`go.work` is at the top of the selected path at start, and the rule then checks
+packages whenever `go.mod` is at the top at verify. A task that started with
+neither file gets no Go rule, even if it creates `go.mod` later. `cw pack add`
+and `cw pack remove` affect only tasks started afterwards; an open task keeps
+the pack set it recorded. `cw pack list` shows the selection.
+`cw pack remove go` writes an explicit `packs.json`, which drops the Go rule for
+all of that user's repositories and leaves only the fallback rule (any passed
+check); `cw pack add go`, or deleting `packs.json`, restores it.
 
 **See why a commit is blocked.** The denial names each blocking task. This lists
 its problems, such as a missing review or an unmet requirement:
