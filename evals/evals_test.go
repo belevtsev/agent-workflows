@@ -180,8 +180,8 @@ func validateCase(repoRoot, caseDir string, p pluginInfo) []error {
 	body := c.checkPrompt()
 	owned := ownedPaths(body)
 	dispatched := c.checkDispatch(body, p)
-	// Only the spec writer writes its change folder; the spec reviewer reads
-	// one and must never edit it.
+	// Only the spec writer writes its change folder; the reviewer (spec-review
+	// contract) reads one and must never edit it.
 	if slices.ContainsFunc(dispatched, func(d string) bool {
 		_, agent, namespaced := strings.Cut(d, ":")
 		return d == "spec-writer" || namespaced && agent == "spec-writer"

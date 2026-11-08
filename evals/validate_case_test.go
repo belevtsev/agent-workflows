@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,19 +27,87 @@ func authoredRealRoot(t *testing.T) string {
 	return root
 }
 
-// authoredPlugin mirrors the real plugin manifest without reading it.
+// authoredRoster is the plugin's agent roster: exactly these six agents (D1).
+var authoredRoster = []string{
+	"spec-writer", "architect", "implementer",
+	"test-engineer", "reviewer", "github-worker",
+}
+
+// authoredRemovedAgents were dropped from the roster and must not come back.
+var authoredRemovedAgents = []string{
+	"spec-reviewer", "cw-reviewer", "cw-test-author", "cw-github-worker",
+}
+
+// authoredPlugin mirrors the real plugin manifest without reading it (D3).
 func authoredPlugin() pluginInfo {
-	return pluginInfo{
-		Name: "agent-workflows",
-		Agents: map[string]bool{
-			"architect":        true,
-			"implementer":      true,
-			"test-engineer":    true,
-			"cw-reviewer":      true,
-			"cw-test-author":   true,
-			"cw-github-worker": true,
-		},
+	agents := map[string]bool{}
+	for _, a := range authoredRoster {
+		agents[a] = true
 	}
+	return pluginInfo{Name: "agent-workflows", Agents: agents}
+}
+
+// authoredRosterMismatch returns "" when p is the real plugin: name
+// agent-workflows and agents exactly authoredRoster, every one present and no
+// other key. Otherwise it describes the first difference (D1).
+func authoredRosterMismatch(p pluginInfo) string {
+	if p.Name != "agent-workflows" {
+		return fmt.Sprintf("plugin Name = %q, want agent-workflows", p.Name)
+	}
+	want := map[string]bool{}
+	for _, a := range authoredRoster {
+		want[a] = true
+		if !p.Agents[a] {
+			return fmt.Sprintf("plugin Agents = %v, missing %q", p.Agents, a)
+		}
+	}
+	var extra []string
+	for a := range p.Agents {
+		if !want[a] {
+			extra = append(extra, a)
+		}
+	}
+	sort.Strings(extra)
+	if len(extra) != 0 {
+		return fmt.Sprintf("plugin Agents = %v, unexpected %q; want exactly %v", p.Agents, extra, authoredRoster)
+	}
+	return ""
+}
+
+// authoredWantRoster fails t unless p is the real plugin roster (D1).
+func authoredWantRoster(t *testing.T, p pluginInfo) {
+	t.Helper()
+	if msg := authoredRosterMismatch(p); msg != "" {
+		t.Fatal(msg)
+	}
+}
+
+// authoredManifestRoot writes a temporary repository root whose
+// .claude-plugin/plugin.json is named name and lists ./agents/<a>.md for each
+// agent, with each agent file's frontmatter name equal to its stem.
+func authoredManifestRoot(t *testing.T, name string, agents []string) string {
+	t.Helper()
+	root := t.TempDir()
+	var paths []string
+	for _, a := range agents {
+		paths = append(paths, `"./agents/`+a+`.md"`)
+		p := filepath.Join(root, "agents", a+".md")
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("---\nname: "+a+"\ndescription: Demo agent.\n---\nBody.\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := filepath.Join(root, ".claude-plugin", "plugin.json")
+	if err := os.MkdirAll(filepath.Dir(manifest), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"name":"` + name + `","agents":[` + strings.Join(paths, ",") + `]}`
+	if err := os.WriteFile(manifest, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }
 
 // authoredBT turns ^ into a backtick so prompt bodies can sit in raw strings.
@@ -571,7 +640,7 @@ func TestAuthoredValidateDispatchedAgent(t *testing.T) {
 		authoredWantNoError(t, errs)
 	})
 	t.Run("two listed agents", func(t *testing.T) {
-		dispatch := `subagent_type: "agent-workflows:test-engineer"^, then (^subagent_type: "agent-workflows:cw-reviewer"`
+		dispatch := `subagent_type: "agent-workflows:test-engineer"^, then (^subagent_type: "agent-workflows:reviewer"`
 		errs := authoredValidate(t, authoredPlugin(), map[string]string{"prompt.md": authoredPrompt(dispatch, authoredBody)})
 		authoredWantNoError(t, errs)
 	})
@@ -580,6 +649,80 @@ func TestAuthoredValidateDispatchedAgent(t *testing.T) {
 		errs := authoredValidate(t, authoredPlugin(), map[string]string{"prompt.md": authoredPrompt(dispatch, authoredBody)})
 		authoredWantError(t, errs, "not listed in plugin.json", authoredCaseRel+"/prompt.md")
 	})
+}
+
+// D4: a removed agent is rejected like any unlisted agent, prefixed or bare.
+func TestAuthoredValidateRemovedAgentRejected(t *testing.T) {
+	for _, st := range []string{
+		"agent-workflows:spec-reviewer",
+		"agent-workflows:cw-reviewer",
+		"cw-test-author",
+		"agent-workflows:cw-github-worker",
+	} {
+		t.Run(st, func(t *testing.T) {
+			errs := authoredValidate(t, authoredPlugin(), map[string]string{"prompt.md": authoredPrompt(`subagent_type: "`+st+`"`, authoredBody)})
+			authoredWantError(t, errs, "not listed in plugin.json", authoredCaseRel+"/prompt.md")
+		})
+	}
+}
+
+// D3: the synthetic manifest lists exactly the roster and no removed agent.
+func TestAuthoredPluginFixtureMatchesRoster(t *testing.T) {
+	authoredWantRoster(t, authoredPlugin())
+	for _, a := range authoredRemovedAgents {
+		if authoredPlugin().Agents[a] {
+			t.Fatalf("authoredPlugin lists removed agent %q", a)
+		}
+	}
+}
+
+// D1: the roster check accepts the six-agent manifest and rejects the old
+// eight-agent manifest, another plugin name, a manifest missing one new agent
+// and one carrying an extra removed agent, each loaded from a temporary root.
+func TestAuthoredRosterCheckRejectsOtherManifests(t *testing.T) {
+	load := func(t *testing.T, name string, agents []string) pluginInfo {
+		t.Helper()
+		p, err := loadPluginInfo(authoredManifestRoot(t, name, agents))
+		if err != nil {
+			t.Fatalf("loadPluginInfo: %v", err)
+		}
+		return p
+	}
+	t.Run("six-agent control accepted", func(t *testing.T) {
+		if msg := authoredRosterMismatch(load(t, "agent-workflows", authoredRoster)); msg != "" {
+			t.Fatalf("want the six-agent manifest accepted; got %s", msg)
+		}
+	})
+	type manifest struct {
+		name, plugin string
+		agents       []string
+	}
+	bad := []manifest{
+		{"old eight-agent manifest", "agent-workflows", []string{
+			"architect", "implementer", "test-engineer", "spec-writer",
+			"spec-reviewer", "cw-github-worker", "cw-reviewer", "cw-test-author",
+		}},
+		{"other plugin name", "demo-plugin", authoredRoster},
+	}
+	for _, drop := range authoredRoster {
+		var rest []string
+		for _, a := range authoredRoster {
+			if a != drop {
+				rest = append(rest, a)
+			}
+		}
+		bad = append(bad, manifest{"missing " + drop, "agent-workflows", rest})
+	}
+	for _, a := range authoredRemovedAgents {
+		bad = append(bad, manifest{"extra " + a, "agent-workflows", append(append([]string{}, authoredRoster...), a)})
+	}
+	for _, tc := range bad {
+		t.Run(tc.name, func(t *testing.T) {
+			if msg := authoredRosterMismatch(load(t, tc.plugin, tc.agents)); msg == "" {
+				t.Fatalf("roster check accepted %s %v", tc.plugin, tc.agents)
+			}
+		})
+	}
 }
 
 // V8: the plugin name and agent set come from pluginInfo, not constants.
@@ -699,7 +842,7 @@ func TestAuthoredFindCases(t *testing.T) {
 	}
 }
 
-// authoredRealCases are the 15 cases the repository ships today.
+// authoredRealCases are the 19 cases the repository ships today (D2).
 var authoredRealCases = []string{
 	"architect/config-hot-reload",
 	"architect/outbox-publisher",
@@ -707,9 +850,13 @@ var authoredRealCases = []string{
 	"implementer/bounded-worker-pool",
 	"implementer/idempotency-claims",
 	"implementer/parse-limits-config",
-	"spec-reviewer/audit-export-tasks",
-	"spec-reviewer/invoice-reminders-review",
-	"spec-reviewer/team-invites-scope",
+	"reviewer/design-job-timeout-units",
+	"reviewer/design-webhook-retries",
+	"reviewer/spec-audit-export-tasks",
+	"reviewer/spec-invoice-reminders",
+	"reviewer/spec-team-invites-scope",
+	"reviewer/tests-rate-limiter",
+	"reviewer/tests-session-sweeper",
 	"spec-writer/avatar-upload-gaps",
 	"spec-writer/bookmark-export-brief",
 	"spec-writer/link-expiry-delta",
@@ -718,30 +865,17 @@ var authoredRealCases = []string{
 	"test-engineer/ttl-cache-matrix",
 }
 
-// V10: the real plugin manifest loads and every real case validates.
+// V10, D1, D2: the real plugin manifest loads with the six-agent roster and
+// every real case validates.
 func TestAuthoredRealCasesValidate(t *testing.T) {
 	root := authoredRealRoot(t)
 	p, err := loadPluginInfo(root)
 	if err != nil {
 		t.Fatalf("loadPluginInfo(%s): %v", root, err)
 	}
-	if p.Name != "agent-workflows" {
-		t.Fatalf("plugin Name = %q, want agent-workflows", p.Name)
-	}
-	want := []string{
-		"architect", "implementer", "test-engineer", "spec-writer",
-		"spec-reviewer", "cw-github-worker", "cw-reviewer", "cw-test-author",
-	}
-	if len(p.Agents) != len(want) {
-		t.Fatalf("plugin Agents = %v, want exactly %v", p.Agents, want)
-	}
-	for _, a := range want {
-		if !p.Agents[a] {
-			t.Fatalf("plugin Agents = %v, missing %q", p.Agents, a)
-		}
-	}
-	if len(authoredRealCases) != 15 {
-		t.Fatalf("authoredRealCases lists %d cases, want 15", len(authoredRealCases))
+	authoredWantRoster(t, p) // D1
+	if len(authoredRealCases) != 19 {
+		t.Fatalf("authoredRealCases lists %d cases, want 19", len(authoredRealCases))
 	}
 
 	dirs, err := findCases(filepath.Join(root, "evals"))
@@ -791,6 +925,9 @@ func TestAuthoredRealCaseCopiesValidate(t *testing.T) {
 			graders, err := filepath.Glob(filepath.Join(src, "graders", "*.md"))
 			if err != nil {
 				t.Fatal(err)
+			}
+			if len(graders) == 0 {
+				t.Fatalf("%s has no graders/*.md", c)
 			}
 			for _, g := range graders {
 				names = append(names, filepath.Join("graders", filepath.Base(g)))

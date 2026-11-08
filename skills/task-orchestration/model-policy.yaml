@@ -54,15 +54,18 @@ effort_guidance:
 roles:
   coordinator: sol
   coding: sol
-  testing: sol
   planning: sol
   architecture: sol
-  # Contract roles for the seven-role flow (references/contracts/README.md).
+  # Contract roles for the flow (references/contracts/README.md). Every review
+  # stage runs the reviewer agent: spec_review, design_review, test_review and
+  # review (code review).
   spec_writer: sol
-  spec_reviewer: sol
+  spec_review: sol
   architect: sol
+  design_review: sol
   implementer: sol
   test_engineer: sol
+  test_review: sol
   review: sol
   diagnosis: sol
   documentation: sol

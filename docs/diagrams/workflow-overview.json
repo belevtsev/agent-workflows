@@ -2,450 +2,93 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Our coding workflow: substantial tasks",
+    "title": "agent-workflows: a substantial change with review loops",
     "locale": "en",
     "quality_profile": "showcase",
-    "animation": "none",
-    "output": "docs/diagrams/workflow-overview.html",
-    "repository": {
-      "url": "https://github.com/belevtsev/agent-workflows.git",
-      "revision": "47cb360deb19e38950b883c6f0bca141d56db6be",
-      "provider": "github",
-      "link_mode": "web"
-    }
+    "legend": {
+      "entries": {
+        "external": { "label": "You" },
+        "frontend": { "label": "Author agent" },
+        "messagebus": { "label": "reviewer agent" },
+        "backend": { "label": "Coordinator" },
+        "security": { "label": "Verify gate" },
+        "cloud": { "label": "GitHub worker" },
+        "database": { "label": "Advisers: optional, if available, else 'no advisers configured'" }
+      }
+    },
+    "output": "docs/diagrams/workflow-overview.html"
   },
   "lanes": [
-    {
-      "id": "plan",
-      "label": "1. Scope, evidence and approach"
-    },
-    {
-      "id": "build",
-      "label": "2. Implement, check and review"
-    },
-    {
-      "id": "deliver",
-      "label": "3. Complete the authorized work"
-    }
+    { "id": "spec", "label": "Spec (skipped for a small task or a reviewed spec)" },
+    { "id": "design", "label": "Design (skipped for a small task)" },
+    { "id": "tests", "label": "Tests, in parallel with implementation" },
+    { "id": "build", "label": "Implementation" },
+    { "id": "integrate_lane", "label": "Integrate and run" },
+    { "id": "gate", "label": "Code review, verify and commit" },
+    { "id": "advice", "label": "Advisers via cw consult: optional; the coordinator decides" }
   ],
   "nodes": [
-    {
-      "id": "request",
-      "lane": "plan",
-      "col": 0,
-      "type": "external",
-      "label": "01  Your request",
-      "sublabel": "Outcome, scope, permission",
-      "tag": "User sets the goal",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 33,
-          "end_line": 38
-        },
-        {
-          "path": "skills/task-orchestration/model-policy.yaml",
-          "line": 94,
-          "end_line": 99
-        }
-      ]
-    },
-    {
-      "id": "discover",
-      "lane": "plan",
-      "col": 1,
-      "type": "database",
-      "label": "02  Discover",
-      "sublabel": "Repo rules, source and tools",
-      "tag": "cw doctor + direct evidence",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 9,
-          "end_line": 30
-        }
-      ]
-    },
-    {
-      "id": "bind",
-      "lane": "plan",
-      "col": 2,
-      "type": "database",
-      "label": "03  Bind evidence",
-      "sublabel": "Requirements + source revision",
-      "tag": "cw task + shared context",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 32,
-          "end_line": 74
-        }
-      ]
-    },
-    {
-      "id": "before",
-      "lane": "plan",
-      "col": 3,
-      "type": "cloud",
-      "label": "04  Consult: before",
-      "sublabel": "Configured advisers, if any",
-      "tag": "Same evidence; parallel calls",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 66,
-          "end_line": 90
-        },
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 104,
-          "end_line": 122
-        }
-      ]
-    },
-    {
-      "id": "decide",
-      "lane": "plan",
-      "col": 4,
-      "type": "backend",
-      "label": "05  Codex decides",
-      "sublabel": "Compare advice with sources",
-      "tag": "No vote or confidence winner",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 129,
-          "end_line": 144
-        }
-      ]
-    },
-    {
-      "id": "implement",
-      "lane": "build",
-      "col": 4,
-      "type": "backend",
-      "label": "06  Implement",
-      "sublabel": "Codex + bounded workers",
-      "tag": "Delegate when useful",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 146,
-          "end_line": 175
-        }
-      ]
-    },
-    {
-      "id": "checks",
-      "lane": "build",
-      "col": 3,
-      "type": "security",
-      "label": "07  Run checks",
-      "sublabel": "Selected tests + runtime checks",
-      "tag": "Actual results bound to source",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 86,
-          "end_line": 105
-        }
-      ]
-    },
-    {
-      "id": "final",
-      "lane": "build",
-      "col": 2,
-      "type": "cloud",
-      "label": "08  Consult: final",
-      "sublabel": "Configured advisers, if any",
-      "tag": "Fresh diff + check evidence",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 105,
-          "end_line": 114
-        },
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 73,
-          "end_line": 90
-        }
-      ]
-    },
-    {
-      "id": "review",
-      "lane": "build",
-      "col": 1,
-      "type": "backend",
-      "label": "09  Codex reviews",
-      "sublabel": "Assess result and remaining gaps",
-      "tag": "Final judgment stays with Codex",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 129,
-          "end_line": 144
-        },
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 117,
-          "end_line": 124
-        }
-      ]
-    },
-    {
-      "id": "verify",
-      "lane": "build",
-      "col": 0,
-      "type": "security",
-      "label": "10  Verify record",
-      "sublabel": "Source, checks, both checkpoints",
-      "tag": "cw task verify",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 109,
-          "end_line": 126
-        }
-      ]
-    },
-    {
-      "id": "delivery",
-      "lane": "deliver",
-      "col": 0,
-      "type": "messagebus",
-      "label": "11  Deliver result",
-      "sublabel": "Artifact / PR / deployment",
-      "tag": "External writes if authorized",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/references/global-workflow.md",
-          "line": 123,
-          "end_line": 126
-        },
-        {
-          "path": "skills/task-orchestration/model-policy.yaml",
-          "line": 94,
-          "end_line": 99
-        }
-      ]
-    },
-    {
-      "id": "report",
-      "lane": "deliver",
-      "col": 1,
-      "type": "frontend",
-      "label": "12  Report outcome",
-      "sublabel": "Result, checks and limitations",
-      "tag": "Read back external changes",
-      "width": 168,
-      "height": 74,
-      "sources": [
-        {
-          "path": "skills/task-orchestration/SKILL.md",
-          "line": 180,
-          "end_line": 191
-        },
-        {
-          "path": "skills/task-orchestration/model-policy.yaml",
-          "line": 94,
-          "end_line": 99
-        }
-      ]
-    }
+    { "id": "request", "lane": "spec", "col": 0, "type": "external", "label": "Your request", "sublabel": "substantial task" },
+    { "id": "spec_writer", "lane": "spec", "col": 1, "type": "frontend", "label": "spec-writer", "sublabel": "OpenSpec change" },
+    { "id": "spec_review", "lane": "spec", "col": 2, "type": "messagebus", "label": "reviewer", "sublabel": "spec review" },
+    { "id": "architect", "lane": "design", "col": 2, "type": "frontend", "label": "architect", "sublabel": "design + contract" },
+    { "id": "design_review", "lane": "design", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "design review" },
+    { "id": "test_engineer", "lane": "tests", "col": 3, "type": "frontend", "label": "test-engineer", "sublabel": "never sees code" },
+    { "id": "test_review", "lane": "tests", "col": 4, "type": "messagebus", "label": "reviewer", "sublabel": "test review" },
+    { "id": "implementer", "lane": "build", "col": 3, "type": "frontend", "label": "implementer", "sublabel": "the change" },
+    { "id": "integrate", "lane": "integrate_lane", "col": 3, "type": "backend", "label": "Integrate + run", "sublabel": "coordinator" },
+    { "id": "code_review", "lane": "gate", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "code review" },
+    { "id": "verify", "lane": "gate", "col": 4, "type": "security", "label": "cw task verify", "sublabel": "records current" },
+    { "id": "commit", "lane": "gate", "col": 5, "type": "cloud", "label": "github-worker", "sublabel": "gated commit" },
+    { "id": "adv_spec", "lane": "spec", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "open question" },
+    { "id": "adv_design", "lane": "design", "col": 1, "type": "database", "label": "advisers (optional)", "sublabel": "design choice" },
+    { "id": "adv_review", "lane": "advice", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "rejected blocker/major, any review" },
+    { "id": "adv_final", "lane": "advice", "col": 4, "type": "database", "label": "advisers (optional)", "sublabel": "final checkpoint" }
   ],
   "edges": [
-    {
-      "id": "scope-discover",
-      "from": "request",
-      "to": "discover",
-      "role": "main"
-    },
-    {
-      "id": "discover-bind",
-      "from": "discover",
-      "to": "bind",
-      "role": "main"
-    },
-    {
-      "id": "bind-before",
-      "from": "bind",
-      "to": "before",
-      "role": "main"
-    },
-    {
-      "id": "before-decide",
-      "from": "before",
-      "to": "decide",
-      "role": "main"
-    },
-    {
-      "id": "decide-implement",
-      "from": "decide",
-      "to": "implement",
-      "role": "main",
-      "label": "Chosen"
-    },
-    {
-      "id": "implement-checks",
-      "from": "implement",
-      "to": "checks",
-      "role": "main"
-    },
-    {
-      "id": "checks-final",
-      "from": "checks",
-      "to": "final",
-      "role": "main",
-      "label": "Checks complete"
-    },
-    {
-      "id": "final-review",
-      "from": "final",
-      "to": "review",
-      "role": "main"
-    },
-    {
-      "id": "review-verify",
-      "from": "review",
-      "to": "verify",
-      "role": "main",
-      "label": "Accepted"
-    },
-    {
-      "id": "verify-delivery",
-      "from": "verify",
-      "to": "delivery",
-      "role": "main",
-      "label": "Verified"
-    },
-    {
-      "id": "delivery-report",
-      "from": "delivery",
-      "to": "report",
-      "role": "main"
-    },
-    {
-      "id": "fix-loop",
-      "from": "checks",
-      "to": "implement",
-      "role": "error",
-      "variant": "security",
-      "label": "Failure: fix + rerun",
-      "fromSide": "bottom",
-      "toSide": "bottom",
-      "route": "bottom-channel"
-    }
+    { "id": "ask", "from": "request", "to": "spec_writer", "variant": "emphasis" },
+    { "id": "spec-to-review", "from": "spec_writer", "to": "spec_review", "label": "change" },
+    { "id": "spec-findings", "from": "spec_review", "to": "spec_writer", "label": "findings (capped)", "variant": "dashed", "role": "return" },
+    { "id": "reviewed-spec", "from": "spec_review", "to": "architect", "label": "reviewed spec", "variant": "emphasis" },
+    { "id": "design-to-review", "from": "architect", "to": "design_review", "label": "design" },
+    { "id": "design-findings", "from": "design_review", "to": "architect", "label": "findings (capped)", "variant": "dashed", "role": "return" },
+    { "id": "contract-to-tests", "from": "design_review", "to": "test_engineer", "label": "contract", "variant": "emphasis" },
+    { "id": "contract-to-implementer", "from": "design_review", "to": "implementer", "label": "contract", "variant": "emphasis", "role": "branch" },
+    { "id": "tests-to-review", "from": "test_engineer", "to": "test_review", "label": "tests" },
+    { "id": "test-findings", "from": "test_review", "to": "test_engineer", "label": "findings (capped)", "variant": "dashed", "role": "return" },
+    { "id": "reviewed-tests", "from": "test_review", "to": "integrate", "label": "reviewed tests" },
+    { "id": "change", "from": "implementer", "to": "integrate", "label": "change", "variant": "emphasis" },
+    { "id": "to-code-review", "from": "integrate", "to": "code_review", "label": "results", "variant": "emphasis" },
+    { "id": "code-findings", "from": "code_review", "to": "implementer", "label": "findings (capped)", "variant": "dashed", "role": "return" },
+    { "id": "accepted", "from": "code_review", "to": "verify", "label": "accepted", "variant": "emphasis" },
+    { "id": "verify-problems", "from": "verify", "to": "integrate", "label": "problems", "variant": "security", "role": "error" },
+    { "id": "passes", "from": "verify", "to": "commit", "label": "passes", "variant": "emphasis" },
+    { "id": "consult-spec", "from": "spec_review", "to": "adv_spec", "label": "open question", "variant": "dashed", "role": "async" },
+    { "id": "advice-spec", "from": "adv_spec", "to": "spec_review", "label": "advice", "variant": "dashed", "role": "return" },
+    { "id": "consult-design", "from": "architect", "to": "adv_design", "label": "real options", "variant": "dashed", "role": "async" },
+    { "id": "advice-design", "from": "adv_design", "to": "architect", "label": "advice", "variant": "dashed", "role": "return" },
+    { "id": "consult-review", "from": "code_review", "to": "adv_review", "label": "finding rejected", "variant": "dashed", "role": "async" },
+    { "id": "advice-review", "from": "adv_review", "to": "code_review", "label": "advice", "variant": "dashed", "role": "return" },
+    { "id": "consult-final", "from": "code_review", "to": "adv_final", "label": "final checkpoint", "variant": "dashed", "role": "async" },
+    { "id": "advice-final", "from": "adv_final", "to": "verify", "label": "advice", "variant": "dashed", "role": "return" }
   ],
   "cards": [
     {
-      "dot": "violet",
-      "title": "Advice supports the decision",
+      "dot": "rose",
+      "title": "Review loops",
       "items": [
-        "Configured advisers, if any, receive the same permitted evidence.",
-        "Unavailable advice is recorded; source investigation continues.",
-        "Codex verifies meaning. Task records verify consistency."
+        "Findings go back to the author of that stage",
+        "The review cap applies per stage",
+        "Test review runs before integration, without the code"
       ]
     },
     {
-      "dot": "emerald",
-      "title": "Small tasks stay lightweight",
+      "dot": "cyan",
+      "title": "Skips",
       "items": [
-        "Use the relevant source, do the work, and verify the result.",
-        "The full task record and adviser checkpoints apply to substantial work.",
-        "Changed evidence requires a fresh final review."
-      ]
-    },
-    {
-      "dot": "amber",
-      "title": "Proposed addition: Clairic",
-      "items": [
-        "Optional path: messy documents → typed extraction → check originals.",
-        "Validated facts could then join the shared evidence packet.",
-        "This is a proposal from our discussion; it is not installed."
+        "A small task skips the spec and design stages",
+        "A reviewed spec or a precise request skips the spec stage"
       ]
     }
-  ],
-  "semanticChecks": {
-    "allowedRoots": [
-      "request"
-    ],
-    "allowedTerminals": [
-      "report"
-    ],
-    "requiredEdges": [
-      {
-        "from": "request",
-        "to": "discover"
-      },
-      {
-        "from": "discover",
-        "to": "bind"
-      },
-      {
-        "from": "bind",
-        "to": "before"
-      },
-      {
-        "from": "before",
-        "to": "decide"
-      },
-      {
-        "from": "decide",
-        "to": "implement"
-      },
-      {
-        "from": "implement",
-        "to": "checks"
-      },
-      {
-        "from": "checks",
-        "to": "final"
-      },
-      {
-        "from": "final",
-        "to": "review"
-      },
-      {
-        "from": "review",
-        "to": "verify"
-      },
-      {
-        "from": "verify",
-        "to": "delivery"
-      },
-      {
-        "from": "delivery",
-        "to": "report"
-      }
-    ],
-    "requiredPaths": [
-      {
-        "from": "request",
-        "to": "report"
-      }
-    ]
-  }
+  ]
 }

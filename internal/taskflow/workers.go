@@ -33,7 +33,7 @@ type WorkerBrief struct {
 	// Bundle names the filled reviewer bundle; a review assignment in a record
 	// with a baseline manifest requires it, and no other role may carry one.
 	Bundle *BundleRef `json:"bundle,omitempty"`
-	// Contract names the saved Go contract extract a test-author brief
+	// Contract names the saved Go contract extract a test-engineer brief
 	// carries; only an implementation brief may carry one.
 	Contract *ContractRef `json:"contract,omitempty"`
 }
@@ -210,7 +210,7 @@ func validateBrief(record Record, brief WorkerBrief) error {
 		return errors.New("only a review brief carries a bundle, with a clean absolute path and its SHA-256")
 	}
 	if brief.Contract != nil && (brief.Role != "implementation" || !filepath.IsAbs(brief.Contract.Path) || filepath.Clean(brief.Contract.Path) != brief.Contract.Path || len(brief.Contract.Path) > 4096 || strings.ContainsFunc(brief.Contract.Path, unicode.IsControl) || !validSHA256(brief.Contract.SHA256)) {
-		return errors.New("only an implementation (test-author) brief carries a contract, with a clean absolute path and its SHA-256")
+		return errors.New("only an implementation (test-engineer) brief carries a contract, with a clean absolute path and its SHA-256")
 	}
 	if !uniqueIDs(brief.CheckIDs) || len(brief.CheckIDs) > 256 {
 		return errors.New("worker check_ids must be distinct planned check IDs")

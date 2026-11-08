@@ -15,7 +15,8 @@ self-contained brief (exact source revision and inputs, question or owned files,
 relevant decisions, constraints, permitted actions, output evidence, stopping
 condition) with only the context it needs and no duplicate investigation.
 Resolve its role's profile from the [host mapping](hosts.md#profiles-and-policy);
-under Claude Code, reviews after a task's first full review use the
+under Claude Code, every later review of a stage, after that stage's first full
+review, uses the
 [`review_followup` role](#follow-up-review-after-a-fix-revision). Editing workers
 share the codebase and preserve others' changes; coordinate shared interfaces,
 respect concurrency limits and keep dependent integration with the coordinator.
@@ -23,9 +24,9 @@ Workers return exact sources, observations, changes, checks and uncertainty, and
 return evidence and questions instead of consulting advisers; reconcile overlaps
 and verify conclusions independently, since agreement and confidence do not
 establish behavior. Preserve required design challenges and execution
-environments. Test authors receive only the agreed contract and approved
-scaffold ([boundary](test-author.md)); the coordinator or verifier inspects
-implementation and owns the execution gates.
+environments. The test engineer receives only the agreed contract and approved
+scaffold ([boundary](contracts/test-engineer.md#author-only-from-the-contract));
+the coordinator or verifier inspects implementation and owns the execution gates.
 
 ## Assign before dispatch
 
@@ -60,8 +61,8 @@ files or directory prefixes (`.` covers the whole project); active implementatio
 assignments cannot own overlapping paths, and shared-filesystem workers preserve
 others' edits. `check_ids` selects commands already in the immutable task plan.
 `cw task run` retains actual execution; a worker's assertion is not a pass. A
-`test_author` records as its [contract](test-author.md#record-and-complete) says:
-native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.
+test engineer records as its [contract](contracts/test-engineer.md#record-and-complete)
+says: native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.
 
 Use exact on-disk path spelling without symlink components. Ownership checks cover
 direct file aliases, not hardlinks beneath separate directory scopes. Scoped
@@ -132,19 +133,73 @@ it as `unused` with an explicit rationale; this neither satisfies requirements n
 counts as independent review. The worker must stop changing source before its
 assignment is closed; these commands do not stop the runtime process.
 
+## Review stages
+
+Every stage of the [flow](contracts/README.md#flow) that produces an artefact
+has an independent review, run by one reviewer agent with the contract the brief
+names:
+
+| Stage | Contract | Reviews | Findings go back to | Record role |
+| --- | --- | --- | --- | --- |
+| Spec review | [spec-review](contracts/spec-review.md) | the OpenSpec change folder | spec writer | `evidence` |
+| Design review | [design-review](contracts/design-review.md) | `design.md`, `interface-contract.md` | architect | `evidence` |
+| Test review | [test-review](contracts/test-review.md) | test matrix, requirement map, tests | test engineer | `evidence` |
+| Code review | [code-review](contracts/code-review.md) | the integrated source | implementer; a finding about a test goes to a fresh test engineer | `review` |
+
+Under Claude Code, dispatch each with the `agent-workflows:reviewer` agent type
+and the stage's role, model and effort ([host mapping](hosts.md#worker-agent-types)),
+and name the contract in the brief; give the `SKILL.md` path of any skill the
+review should apply, such as `code-review`. Each stage's independence rules are
+in its contract: a reviewer is never the author it reviews, and the test
+reviewer never sees implementation. Only the code review is the task record's
+`review` assignment that `cw task verify` requires; the earlier stages record as
+`evidence` assignments.
+
+**Severity.** Every finding at every stage carries one grade; a contract may say
+what a grade means for its artefact, never add another:
+
+- `blocker`: building, merging or relying on the artefact as written yields
+  wrong, unsafe or unverifiable behaviour;
+- `major`: the next stage cannot work correctly from the artefact as stated,
+  such as an untestable requirement, an unguarded requirement or a defect in
+  changed behaviour;
+- `minor`: clarity or quality that changes no test and no behaviour.
+
+**Findings loop.** The coordinator records a disposition for every finding
+(below) and returns the findings it accepts to that stage's author, whose
+revision answers each one; the next round reviews the revision. Before rejecting
+a `blocker` or `major` finding at any stage, the coordinator consults the
+available advisers ([adviser points](consultation-helper.md#adviser-points-in-the-flow)).
+
+**Review cap.** The cap applies to each stage separately: one full review; after
+the fixes, at most one diff-scoped follow-up by a fresh reviewer; and a further
+review only to re-bind a fix of a defect that follow-up found, scoped to that
+fix. The cap never excuses a defect: fix what the last allowed review finds. A
+fix that changes executable code or a gate's behaviour gets one review scoped to
+it. Verify a prose-only fix yourself (diff readback, the checks it cites, the
+reviewer's failure scenario rechecked against the new text), then have a fresh
+reviewer re-bind with a confirmation pass that reports only a fix that fails its
+finding, a defect in code or a gate, or a new contradiction or lost rule in the
+instructions a coordinator follows; that pass does not count against the cap.
+Report any extra review in the result. Findings that change no behaviour, fail no
+gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
+finding with a concrete failure scenario is never deferred unless the defect
+predates the change and the change neither causes, touches nor newly exposes it.
+When a revision changes the approach or touches components the last review did
+not cover, the follow-up reviews those components in full. The coordinator
+closes each superseded round's author and reviewer assignments as `unused`, with
+dispositions, before `cw task verify`.
+
 ## Review substantial changes
 
 New substantial tasks whose source differs from baseline require an independent
-substantive reviewer, distinct from the coordinator and implementation workers,
-before final adviser context (or completion when checkpoints are not required).
-Its brief uses `role: "review"` and `owned_paths: ["."]` for the full resulting
-source; it returns the same handoff shape with no changes.
-Under Claude Code, dispatch every review with the `agent-workflows:cw-reviewer` agent type and the
-role's model and effort ([host mapping](hosts.md#worker-agent-types)); give the
-`SKILL.md` path of any skill the review should apply, such as `code-review`.
-Adviser checkpoints do not replace review, and missing independent review cannot
-be presented as completed review. Small and unchanged read-only tasks stay
-lightweight.
+substantive code reviewer, distinct from the coordinator and implementation
+workers, before final adviser context (or completion when checkpoints are not
+required). Its brief uses `role: "review"`, the [code-review](contracts/code-review.md)
+contract and `owned_paths: ["."]` for the full resulting source; it returns the
+same handoff shape with no changes. Adviser checkpoints do not replace review,
+and missing independent review cannot be presented as completed review. Small
+and unchanged read-only tasks stay lightweight.
 
 The bundle orients and never narrows: a full review still reads any source and runs
 any experiment it judges necessary, such as focused tests or platform and shell
@@ -228,22 +283,7 @@ reasoned about the mode and none caught the crash. With this rule one of three r
 the file piped into macOS `/bin/sh` and caught it; the other two piped a fragment or
 a stand-in, and after this acceptance check both ran the file and caught it.
 
-Reviews are capped: one full independent review; after the fixes,
-at most one diff-scoped follow-up by a fresh reviewer; and a further review only
-to re-bind a fix of a defect that follow-up found, scoped to that fix. The cap
-never excuses a defect: fix what the last allowed review finds. A fix that
-changes executable code or a gate's behaviour gets one review scoped to it.
-Verify a prose-only fix yourself (diff readback, the checks it cites, the
-reviewer's failure scenario rechecked against the new text), then have a fresh
-reviewer re-bind with a confirmation pass that reports only a fix that fails its
-finding, a defect in code or a gate, or a new contradiction or lost rule in the
-instructions a coordinator follows; that pass does not count against the cap.
-Report any extra review in the result. Findings that change no behaviour, fail no
-gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
-finding with a concrete failure scenario is never deferred unless the defect
-predates the change and the change neither causes, touches nor newly exposes it.
-When a revision changes the approach or touches components the last review did
-not cover, the follow-up reviews those components in full.
+The [review cap](#review-stages) applies to code review as to every stage.
 
 Complete implementation handoffs, acceptance and selected checks before recording
 the final review. Review and check execution can overlap while source is stable,
@@ -258,13 +298,17 @@ retain scoped evidence after unrelated edits.
 
 ### Follow-up review after a fix revision
 
-Dispatch the first full review with the `review` role. Under Claude Code, dispatch
-every later review (the diff-scoped follow-up, a review scoped to a fix, a
-confirmation pass) with the Claude-only `review_followup` role; Codex uses `review`
-for every review. Resolve the role from the current host policy. Record each
-follow-up like any review: a new assignment ID, task-record role `review`,
-`owned_paths: ["."]` and its own handoff and acceptance. The accepted final review
-always binds the whole current source; the gate does not measure how much the
+Dispatch the first full review of each stage with that stage's role (`review`
+for code review). Under Claude Code, dispatch every later review of a stage (the
+diff-scoped follow-up, a review scoped to a fix, a confirmation pass) with the
+Claude-only `review_followup` role; Codex uses the stage's role for every review.
+Resolve the role from the current host policy. Record each follow-up with a new
+assignment ID and its own handoff and acceptance, under its stage's record role
+([review stages](#review-stages)): a spec, design or test review follow-up is an
+`evidence` assignment with no bundle, so a test reviewer never receives the
+implementation's changed paths. The rest of this section is about code review
+follow-ups, which use task-record role `review` and `owned_paths: ["."]`. The
+accepted final code review always binds the whole current source; the gate does not measure how much the
 reviewer read. Its bundle is a follow-up of the previous reviewed source: its rows
 cover only the files changed since, and it lists the earlier findings with their
 dispositions. Its brief asks whether each finding is resolved, whether the changed

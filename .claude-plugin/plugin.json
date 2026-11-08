@@ -1,7 +1,7 @@
 {
   "name": "agent-workflows",
   "version": "3.0.0-dev",
-  "description": "Evidence-based code review, independent test authors, a verify gate for substantial tasks, and Go-focused engineering skills for Claude Code.",
+  "description": "Evidence-based reviews at every stage, independent test engineers, a verify gate for substantial tasks, and Go-focused engineering skills for Claude Code.",
   "author": {
     "name": "Pavlo Belevtsev",
     "url": "https://github.com/belevtsev"
@@ -23,14 +23,12 @@
     "./third_party/typesafe-ai"
   ],
   "agents": [
-    "./global/claude-agents/cw-reviewer.md",
-    "./global/claude-agents/cw-test-author.md",
-    "./global/claude-agents/cw-github-worker.md",
     "./agents/spec-writer.md",
-    "./agents/spec-reviewer.md",
     "./agents/architect.md",
     "./agents/implementer.md",
-    "./agents/test-engineer.md"
+    "./agents/test-engineer.md",
+    "./agents/reviewer.md",
+    "./agents/github-worker.md"
   ],
   "userConfig": {
     "enforce_verify": {

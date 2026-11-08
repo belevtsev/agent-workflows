@@ -18,10 +18,10 @@ claude plugin install agent-workflows@agent-workflows
 Inside a session, `/plugin marketplace add belevtsev/agent-workflows` and
 `/plugin install agent-workflows@agent-workflows` do the same. The Go skill pack
 is a second plugin in the same marketplace, `cc-skills-golang@agent-workflows`.
-The plugin provides the skills and the worker agents
-(`agent-workflows:cw-reviewer`, `agent-workflows:cw-test-author`,
-`agent-workflows:cw-github-worker`, and the architect, implementer and
-test-engineer agents under `agents/`). It does not
+The plugin provides the skills and the six worker agents under `agents/`
+(`agent-workflows:spec-writer`, `agent-workflows:architect`,
+`agent-workflows:implementer`, `agent-workflows:test-engineer`,
+`agent-workflows:reviewer` and `agent-workflows:github-worker`). It does not
 edit `~/.claude/CLAUDE.md` or `settings.json`. `cw install --host claude` is
 refused with a pointer to the plugin.
 
@@ -133,7 +133,11 @@ cw migrate-v2
 The dry run lists each action without changing anything. `cw migrate-v2` removes:
 
 - the symlinks in `~/.claude/skills/`, `~/.claude/agents/cw-*.md`,
-  `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory;
+  `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory
+  (v3 renamed those agents: the plugin ships `agent-workflows:reviewer`,
+  `agent-workflows:test-engineer` and `agent-workflows:github-worker`; a
+  `cw-*.md` that is a regular file or points elsewhere is not v2's and stays, so
+  delete such a copy yourself);
 - while v2's `state.json` or `journal.json` is still in the state directory, the
   managed block in `~/.claude/CLAUDE.md` and `$CODEX_HOME/AGENTS.md`, and in the
   Claude and Codex homes v2 recorded there (the skill links under a recorded
@@ -219,7 +223,7 @@ limitations), `cw doctor` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file),
 `cw task contract-extract` prints requested Go declarations without bodies for a
-test author's contract, and
+test engineer's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;

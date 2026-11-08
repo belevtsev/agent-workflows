@@ -38,17 +38,10 @@ Communication quality:
 - Avoid restating large blocks of README/spec; summarize and point to evidence.
 
 Diagram requirements:
-- Produce a single compact Mermaid flowchart showing primary components and trust boundaries.
-- Mermaid must render cleanly. Use a conservative subset:
-  - Use `flowchart TD` or `flowchart LR` and only `-->` arrows.
-  - Use simple node IDs (letters/numbers/underscores only) and quoted labels (e.g., `A["Label"]`); avoid `A(Label)` shape syntax.
-  - Do not use Mermaid `title` lines or `style` directives.
-  - Keep edge labels to plain words/spaces only via `-->|label|`; avoid `{}`, `[]`, `()`, or quotes in edge labels (if needed, drop the label).
-  - Keep node labels short and readable: do not include file paths, URLs, or socket paths (put those details in prose outside the diagram).
-- Wrap the diagram in a Markdown fenced block:
-  ```mermaid
-  <mermaid syntax here>
-  ```
+- Produce a single compact architecture diagram with the archify skill, showing primary components and trust boundaries (one boundary group per trust zone).
+- Validate it with archify before delivery and inspect the rendered result.
+- Keep node labels short and readable: do not include file paths, URLs, or socket paths (put those details in prose outside the diagram).
+- Save the archify JSON spec next to the report and link its static SVG export from the report.
 ````
 
 ## Repository summary prompt
@@ -142,7 +135,7 @@ Use the following questions to guide the in-scope analysis and include the relev
         * data types crossing (e.g., credentials, PII, files, tokens, prompts)
         * channel/protocol (HTTP/gRPC/IPC/file/db)
         * security guarantees and validation (auth, mTLS, origin checks, schema validation, rate limits)
-   c. Provide a compact Mermaid diagram showing components and trust boundaries.
+   c. Provide a compact archify diagram showing components and trust boundaries.
 
 3) Assets and security objectives
    - List assets (data, credentials, integrity-critical state, availability-critical components, build artifacts).
@@ -216,7 +209,7 @@ Represent the system as a sequence of arrow-style bullets (e.g., Internet → AP
 	•	any input validation, normalization, or schema enforcement performed.
 
 #### Diagram
-- Include a single, compact Mermaid diagram (`flowchart TD` or `flowchart LR`) showing primary components and trust boundaries (e.g., separate trust zones via subgraphs). Keep it compact, use only `-->`, avoid `title`/`style`, keep node labels short (no paths/URLs), and keep edge labels to plain words only (avoid `{}`, `[]`, `()`, or quotes).
+- Include a single, compact archify diagram showing primary components and trust boundaries (separate trust zones as boundary groups). Keep node labels short (no paths/URLs); link its static SVG export and keep its JSON spec beside the report.
 
 
 ## Assets and security objectives

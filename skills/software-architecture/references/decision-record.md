@@ -4,7 +4,7 @@ Keep this record in the artifact or repository location agreed for the task. Pop
 
 - **Outcome and constraints:** observable behavior, scope, workload, supported deployment model, and assumptions that affect the design.
 - **Current evidence:** exact code or documentation references, relevant revisions, and any disagreement between specification and implementation.
-- **Ownership and interfaces:** components, authoritative state, dependencies, call/data direction, and affected consumers. Include a compact editable diagram when useful.
+- **Ownership and interfaces:** components, authoritative state, dependencies, call/data direction, and affected consumers. Include a compact editable `archify` diagram when useful.
 - **Decision:** the chosen change, why it meets the constraints, rejected alternatives that explain a real tradeoff, and consequences.
 - **Consultation, when used:** the configured advisers' focused question or request reference, evidence provenance, resolved model, advisory answer/probabilities and confidence when supplied, the agent's accepted or rejected disposition, and independent verification. Record unavailable or inconclusive consultation and the evidence-based fallback; advice is distinct from required review and verification results.
 - **Failure and compatibility:** partial success, retry/duplicate handling, restart recovery, bounded work, API/storage evolution, mixed-version requirements, and rollback where applicable.

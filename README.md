@@ -16,38 +16,25 @@ blocks the commit until `cw task verify` passes.
 
 ## How it works
 
-```mermaid
-flowchart TD
-    R([Your request]) --> SW[spec-writer]
-    SW --> SR{spec-reviewer}
-    SR -- findings --> SW
-    SR -- reviewed spec --> AR[architect]
-    AR --> C[/interface contract/]
-    C --> IM[implementer]
-    C --> TE[test-engineer]
-    IM --> RUN[integrate and run the tests]
-    TE --> RUN
-    RUN --> RV{reviewer}
-    RV -- findings --> IM
-    RV -- accepted --> V{cw task verify}
-    V -- problems --> RUN
-    V -- passes --> G([git commit: hook lets it through])
-```
+<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
-The full flow is for substantial tasks: at least two of more than one package or
-component changed, behaviour that must match across platforms or shells, more
-than about 300 changed lines, or a design choice with real alternatives. Smaller
-changes stay lightweight. The spec steps are skipped when a reviewed spec exists
-or the request already states every behaviour with its values.
+Each stage's review findings go back to its author, capped per stage. Advisers,
+when available, join only at four decision points after the before checkpoint;
+without them the loop runs unchanged, and the coordinator decides either way.
+The full flow is for substantial tasks: at least two of more than one package
+or component changed, behaviour that must match across platforms or shells,
+more than about 300 changed lines, or a design choice with real alternatives.
+Smaller changes stay lightweight. The spec stage is skipped when a reviewed
+spec exists or the request states every behaviour.
 
 | Agent | Gets | Produces | Claude Code model |
 | --- | --- | --- | --- |
-| spec-writer | source documents, the repository | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | Opus 5.5, high |
-| spec-reviewer | the change folder and its sources, not the writer's reasoning | severity-graded findings | Opus 5.5, high |
+| spec-writer | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | Opus 5.5, high |
 | architect | the reviewed spec or request | design, interface contract, implementation brief | Opus 5.5, xhigh |
-| implementer | the brief and the contract | the change, a self-review | Opus 5.5, high |
-| test-engineer | the contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
-| reviewer | the integrated source, a reviewer bundle | findings with evidence and severity | Opus 5.5, high |
+| implementer | brief and contract | the change, a self-review | Opus 5.5, high |
+| test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
+| reviewer | the spec, design, tests (never the code) or integrated source | graded findings with evidence | Opus 5.5, high |
+| github-worker | verified facts, your approval | commit, push, PR | Sonnet 5.5, medium |
 
 Codex uses [model-policy.yaml](skills/task-orchestration/model-policy.yaml).
 See [agents](docs/agents.md) and the
@@ -112,17 +99,18 @@ including the `cw` commands below; you can run them yourself to inspect a task.
    cw task start --repo /absolute/path/to/repo --plan plan.json --summary
    ```
 
-3. The spec writer and spec reviewer produce a change under
+3. The spec writer and a reviewer produce a change under
    `openspec/changes/`. The agent brings you the open questions.
-4. The architect fixes the interface contract. The implementer and the test
-   engineer work in parallel, isolated from each other.
+4. The architect's design passes a design review, then the implementer and the
+   test engineer work in parallel, isolated; a reviewer checks the tests
+   against the contract before integration.
 5. Checks run through `cw`, so the record holds the real result:
 
    ```sh
    cw task run --task <task-dir> --check unit --summary
    ```
 
-6. An independent reviewer reviews the change, then the agent runs the gate:
+6. An independent reviewer reviews the code, then the agent runs the gate:
 
    ```sh
    cw task verify --task <task-dir> --summary

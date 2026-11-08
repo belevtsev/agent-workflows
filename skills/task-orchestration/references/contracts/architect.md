@@ -18,6 +18,8 @@ production code or tests.
 - The paths of any skills to apply (for example `software-architecture`,
   `codebase-design`, `domain-modeling`, `production-plan`); read each `SKILL.md`.
 - The artefact directory where your outputs go, outside the source tree.
+- On revision, the [design review](design-review.md) findings with the
+  coordinator's dispositions and answers to your open questions.
 
 ## Inputs you must never receive
 
@@ -49,6 +51,15 @@ Write exactly these files in the artefact directory:
    assignment brief described in [worker handoffs](../worker-handoffs.md#assign-before-dispatch).
 4. The handoff result in that reference's shape, recorded under the `evidence`
    role with `changed_files: []`.
+5. On revision, `change-log.md` in the artefact directory answering every
+   design review finding by ID: what changed, or why nothing did.
+
+A reviewer that is not you checks these artefacts under the
+[design review](design-review.md) contract before the interface contract is
+fixed. When a diagram shows boundaries, call direction or ordering better than
+prose, draw it with the `archify` skill at the `SKILL.md` path the brief gives,
+as a JSON spec and a static SVG export in the artefact directory; no other
+diagram format.
 
 ## Quality bar
 

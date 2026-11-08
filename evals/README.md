@@ -1,19 +1,34 @@
 # Eval suites for the agent roster
 
-One suite per plugin agent, three scenario cases each, under `spec-writer/`,
-`spec-reviewer/`, `architect/`, `implementer/` and `test-engineer/`. Every
-case asks the coordinator to dispatch the plugin agent once through the Agent
+One suite per plugin agent that writes or reviews artefacts: `spec-writer/`,
+`reviewer/`, `architect/`, `implementer/` and `test-engineer/`. Every case
+asks the coordinator to dispatch the plugin agent once through the Agent
 tool with a brief, and grades what the agent writes (artefacts under
 `artefacts/` in the run's workspace, and the spec writer's change folder)
 against the agent's contract in `skills/task-orchestration/references/contracts/`.
 
+The spec-writer, architect, implementer and test-engineer suites hold three
+cases each. The `reviewer/` suite holds seven, named by the review contract
+the brief names:
+
+- `spec-*` (three cases): spec review of an OpenSpec change folder against
+  its sources and the current code ([spec-review](../skills/task-orchestration/references/contracts/spec-review.md)).
+- `design-*` (two cases): design review of the architect's `design.md` and
+  `interface-contract.md` against the reviewed change folder, the sources
+  and the code ([design-review](../skills/task-orchestration/references/contracts/design-review.md)).
+- `tests-*` (two cases): test review of the test engineer's matrix,
+  requirement map and tests against the interface contract, with red-first
+  runs against a zero-value stub ([test-review](../skills/task-orchestration/references/contracts/test-review.md)).
+
 Each case's `testdata/` holds the scenario inputs the brief names; the case's
-`scaffold.sh` copies it into the run's workspace, so pass `--scaffold`. The
-implementer cases also hold a `design.md`, the test-engineer cases an `impl/`
-directory and one spec-reviewer case the writer's notes, which the brief
-forbids passing on; `tool_used` graders fail the run if any is read. The
-scaffold deletes the test-engineer cases' `testdata/impl-mutants/*.patch` from
-the workspace (see [Mutant gate](#mutant-gate)).
+`scaffold.sh` copies it into the run's workspace, so pass `--scaffold`. Some
+cases also hold an input the brief must never pass on, and `tool_used` and
+trace graders fail the run if the agent reads it: the implementer cases a
+`design.md`, the test-engineer and test-review cases an `impl/` directory
+with the implementation, one spec-review case the writer's notes, and the
+design-review cases the architect's notes or conversation. The scaffold
+deletes the test-engineer cases' `testdata/impl-mutants/*.patch` from the
+workspace (see [Mutant gate](#mutant-gate)).
 
 ## Offline checks
 
@@ -41,13 +56,15 @@ claude plugin eval . --tag architect --ablation none --runs 1 --scaffold \
 ```
 
 Use `--tag implementer`, `--tag test-engineer`, `--tag spec-writer` or
-`--tag spec-reviewer` for the other suites and `--case <name>` for one case.
-The spec suites write Markdown only; add `"Bash(openspec *)"` to let them run
-`openspec validate` when the CLI is installed. Results land in
-`evals/results/`, which is ignored by Git. Go sources under `testdata/` are
-fixtures and are ignored by the Go toolchain. Every run is a real model call on
-your account; the ceiling is a list-price estimate checked before each run
-starts.
+`--tag reviewer` for the other suites, `--tag spec-review`, `--tag
+design-review` or `--tag test-review` for one review stage, and
+`--case <name>` for one case. The spec suites write Markdown only; add
+`"Bash(openspec *)"` to let them run `openspec validate` when the CLI is
+installed. The test-review cases need `"Bash(go *)"` for their red-first
+runs. Results land in `evals/results/`, which is ignored by Git. Go sources
+under `testdata/` are fixtures and are ignored by the Go toolchain. Every
+run is a real model call on your account; the ceiling is a list-price
+estimate checked before each run starts.
 
 ## Mutant gate
 
@@ -87,21 +104,24 @@ runs:
 ```sh
 claude plugin eval . --tag <suite> --ablation none --scaffold --trust-plugin \
   --keep-temp --no-publish --model <model> --judge-model <judge> \
-  --threshold <pass_floor> --max-cost-usd <max_cost_usd> \
+  --threshold <pass_floor> --max-cost-usd <ceiling> \
   --allow-tools Write Edit "Bash(go *)" --json result.json
 ```
 
-The cost ceiling defaults to 5 US dollars per suite (list price), applied to
+The cost ceiling defaults to 5 US dollars per three cases (list price): 5 for
+the three-case suites and 11.67 for the seven-case `reviewer` suite. A
+`max_cost_usd` dispatch input sets one ceiling per suite instead. It applies to
 each suite's job separately, so spend can exceed it only by the runs already in
 flight when it is reached; a run the ceiling stops is partial and fails the job. The pass floor
 defaults to 0.8: every case's score (the share of its graders that passed)
 must reach it. The job uploads `result.json`, the runner's stderr and the
-workspaces of runs whose case has an interface contract (the implementer and
-test-engineer suites) as the `eval-<suite>-<run id>` artifact, prints a per-case summary
+workspaces of runs that hold `testdata/contract/interface-contract.md` (the
+implementer and test-engineer suites and the `tests-*` reviewer cases) as the `eval-<suite>-<run id>` artifact, prints a per-case summary
 (`TestEvalResult`), fails on any non-zero runner exit, and for `test-engineer`
 then runs the mutant gate on those workspaces. `--model`, the model for the
-agent under test, defaults to `claude-opus-5-5`, the model every agent under
-`agents/` pins in its frontmatter (`model: opus`),
+agent under test, defaults to `claude-opus-5-5`, the model every agent these
+suites dispatch pins in its frontmatter (`model: opus`; only `github-worker`,
+which no suite dispatches, pins `sonnet`),
 so the run uses Opus whether the runner applies `--model` to the dispatched
 agent or only to the session that dispatches it. `--judge-model`, the model for
 `llm` graders, defaults to `claude-haiku-5-5`. Dispatch inputs override the

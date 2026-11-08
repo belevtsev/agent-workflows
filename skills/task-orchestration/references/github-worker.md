@@ -40,7 +40,7 @@ Give the worker a fresh, minimal context containing:
 Under Codex, explicitly pass `model: "gpt-6-luna"`,
 `reasoning_effort: "high"` and `fork_turns: "none"` for the default profile.
 Under Claude Code 2.1.292 or newer, use Agent with
-`subagent_type: "agent-workflows:cw-github-worker"`, `model: "sonnet"` and `effort: "medium"`;
+`subagent_type: "agent-workflows:github-worker"`, `model: "sonnet"` and `effort: "medium"`;
 standard subagents start fresh. Without that type, use `general-purpose` with the
 same model and effort, as the [host mapping](hosts.md#worker-agent-types)
 describes. Resolve edited policy values through the host mapping rather than

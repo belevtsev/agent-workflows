@@ -14,6 +14,16 @@ GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race
 
 First-party automation must be written in Go. The repository check (`internal/skillcheck`) rejects `.sh` and `.py` files outside `skills/` and `third_party/`. If you need a helper, add it to the `cw` command, or to `cwdev` for maintainer-only evaluation.
 
+## Diagrams
+
+[archify](third_party/archify/SKILL.md), vendored under `third_party/archify`, is the only diagram tool; do not add diagram sources in any other format. Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, which the docs embed because GitHub cannot run the interactive HTML. Edit the spec, never the SVG, then regenerate the SVG from the repository root (Node 18 or newer and Chrome):
+
+```sh
+node third_party/archify/bin/archify.mjs finalize workflow docs/diagrams/workflow-overview.json /tmp/workflow-overview.html --quality showcase
+```
+
+`finalize` validates the spec and checks the rendered page in a headless browser. Open the HTML it wrote, choose **Export → SVG · Auto** and save the file over `docs/diagrams/workflow-overview.svg`; that export carries both colour themes, so it reads in GitHub's light and dark modes. Pass the spec's own `meta.quality_profile` to `--quality` (`decision-flow.json` uses `standard`). Keep the HTML out of the repository.
+
 ## Proposing or changing a skill
 
 Skills live in `skills/<name>/SKILL.md`.

@@ -1822,8 +1822,10 @@ func (c *composer) roles(report *Report) []roleChoice {
 		}
 		link := c.links[a.stem]
 		description := agent.Description
+		agentType := agent.AgentType
 		if link != nil {
 			description = cmp.Or(description, link.description)
+			agentType = cmp.Or(agentType, link.subagentType)
 		}
 		if link != nil && link.brief != nil {
 			switch link.brief.role {
@@ -1844,15 +1846,11 @@ func (c *composer) roles(report *Report) []roleChoice {
 					continue
 				}
 				choices[i] = roleChoice{link.brief.role, "cw_task_assign"}
-				if link.brief.role == "implementation" && testAuthorPattern.MatchString(link.brief.text) {
+				if link.brief.role == "implementation" && (testAuthorPattern.MatchString(link.brief.text) || describedRole("", agentType).role == "test_author") {
 					choices[i].role = "test_author"
 				}
 				continue
 			}
-		}
-		agentType := agent.AgentType
-		if link != nil {
-			agentType = cmp.Or(agentType, link.subagentType)
 		}
 		choices[i] = describedRole(description, agentType)
 	}
@@ -1883,16 +1881,18 @@ func describedRole(description, agentType string) roleChoice {
 	case evidencePattern.MatchString(d):
 		return roleChoice{"evidence", "description"}
 	}
-	switch agentType {
+	// Plugin agents are dispatched by their namespaced type; transcripts from
+	// before v3 name the cw- types, which keep their roles.
+	switch strings.TrimPrefix(agentType, "agent-workflows:") {
 	case "Explore", "web-fetch", "claude-code-guide":
 		return roleChoice{"evidence", "agent_type"}
 	case "Plan":
 		return roleChoice{"planning", "agent_type"}
-	case "cw-reviewer":
+	case "reviewer", "cw-reviewer":
 		return roleChoice{"review", "agent_type"}
-	case "cw-test-author":
+	case "test-engineer", "cw-test-author":
 		return roleChoice{"test_author", "agent_type"}
-	case "cw-github-worker":
+	case "github-worker", "cw-github-worker":
 		return roleChoice{"github", "agent_type"}
 	}
 	return roleChoice{"other", "none"}

@@ -35,7 +35,7 @@ them required.
 ## Implementation
 
 When a substantial task adds or materially changes behavioral tests, or the user
-asks, dispatch the [independent test author](test-author.md). Agree the
+asks, dispatch the independent [test engineer](contracts/test-engineer.md). Agree the
 versioned contract and interfaces first, then separate exact implementation and
 test-artifact ownership. Authors receive approved contracts/scaffolding only;
 source-aware coordination or verification owns execution and filtered feedback.
@@ -52,7 +52,7 @@ fixing failures caused by the change. Substantial source changes require an
 independent substantive worker review of the completed source, recorded through
 the [worker handoff contract](worker-handoffs.md) before the final adviser checkpoint.
 The coordinator resolves, defers or rejects each finding against evidence and
-stays within the [review cap](worker-handoffs.md#review-substantial-changes);
+stays within the [review cap](worker-handoffs.md#review-stages);
 keep small and unchanged read-only tasks lightweight.
 
 To publish a substantial task, or when the user asks for a bounded worker,

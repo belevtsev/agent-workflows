@@ -17,7 +17,7 @@ func authored3Plugin() pluginInfo {
 		Name: "agent-workflows",
 		Agents: map[string]bool{
 			"spec-writer":   true,
-			"spec-reviewer": true,
+			"reviewer":      true,
 			"test-engineer": true,
 			"architect":     true,
 		},
@@ -34,7 +34,7 @@ input_match: '"subagent_type"\s*:\s*"(?:[\w-]+:)?spec-writer"'
 `
 
 // authored3ValidateAgent validates a case whose prompt dispatches subagentType
-// (for example "agent-workflows:spec-reviewer" or "architect") naming agent in
+// (for example "agent-workflows:reviewer" or "architect") naming agent in
 // its prose and its Agent grader.
 func authored3ValidateAgent(t *testing.T, subagentType, agent, body string, graders map[string]string) []error {
 	t.Helper()
@@ -380,7 +380,7 @@ func TestAuthored3FirstChangeFolderWins(t *testing.T) {
 // other agent the bullet is ignored entirely.
 func TestAuthored3ChangeFolderOnlyForSpecWriter(t *testing.T) {
 	others := []struct{ subagentType, agent string }{
-		{"agent-workflows:spec-reviewer", "spec-reviewer"},
+		{"agent-workflows:reviewer", "reviewer"},
 		{"architect", "architect"},
 		{"agent-workflows:architect", "architect"},
 	}

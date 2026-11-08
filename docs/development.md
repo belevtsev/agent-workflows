@@ -129,7 +129,7 @@ keep their existing path. Use project-neutral fixtures, including a non-Go
 project, for API and CLI coverage. Worker records remain separate from adviser
 records.
 
-Changes to the independent test-author workflow also need bounded Codex and
+Changes to the independent test-engineer workflow also need bounded Codex and
 Claude smokes outside CI: give fresh authors only an approved contract and test
 scaffold, retain their authored patch identity, then execute their tests against
 unseen correct and defective implementations. Inspect initial context, available
