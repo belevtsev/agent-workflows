@@ -12,6 +12,7 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 
 ### Added
 
+- The spec-writer and spec-reviewer agents under `agents/`, with role contracts that write and review OpenSpec-compatible change folders (`openspec/changes/<change-id>/` with `proposal.md`, spec deltas and `tasks.md`), the policy roles `spec_writer` and `spec_reviewer`, eval suites under `evals/`, and the seven-role flow (spec writer → spec reviewer → architect → interface contract → implementer ∥ test engineer → reviewer → `cw task verify` → commit) in `skills/task-orchestration/SKILL.md` and `references/contracts/README.md`.
 - `cw task abandon --task DIR --reason TEXT` writes a terminal `abandonment` revision; an abandoned record accepts no further revisions and never gates `git commit` or `git push`. `cw` releases before this one cannot read an abandoned record.
 - The commit gate asks (`permissionDecision: "ask"`) before a commit or push with no task record whose change has two of: more than 300 changed lines, more than one top-level directory, code changed without tests; the plugin option `small_task_prompt=false` turns this off. It also asks before a push of a verified repository whose working tree has uncommitted tracked changes.
 - `codebase-design` reference "building blocks": reuse before writing, four kinds of block (value, decision, adapter, composition) with the test layer for each; the architect, implementer and test-engineer contracts now check for it.

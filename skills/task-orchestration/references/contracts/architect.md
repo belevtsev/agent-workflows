@@ -9,7 +9,10 @@ production code or tests.
 
 ## Inputs you receive
 
-- The request, its constraints and any decisions the user has already made.
+- The request, its constraints and any decisions the user has already made;
+  with a spec, the reviewed change folder: each requirement you write names
+  the spec requirement it implements, and each scenario becomes a
+  sub-requirement (`R3.a`) with its WHEN and THEN.
 - Read access to the repository: source, tests, maintained docs, project
   instructions and existing decision records.
 - The paths of any skills to apply (for example `software-architecture`,
