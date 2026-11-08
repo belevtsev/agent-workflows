@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1006 1024" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 9.090s; width: 1006px; height: 1024px; min-width: 0px;" width="1006" height="1024" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 1017 1024" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 8.384s; width: 1017px; height: 1024px; min-width: 0px;" width="1017" height="1024" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -399,378 +399,378 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-ripple { 
   0% { r: 2px; opacity: var(--flow-peak, 0.6); }
-  8.251%, 100% { r: 20px; opacity: 0; }
+  8.946%, 100% { r: 20px; opacity: 0; }
 }
 @keyframes archify-relay-comet-0 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-0 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-1 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-1 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-2 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-2 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-3 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-3 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-4 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-4 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-5 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-5 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-6 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-6 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-7 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  16.502% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  18.262%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  13.715% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  15.623%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-7 { 
-  0%, 4.951% { opacity: 0; }
-  16.502% { opacity: var(--flow-peak, 0.3); }
-  26.404%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 4.114% { opacity: 0; }
+  13.715% { opacity: var(--flow-peak, 0.3); }
+  24.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-8 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  8.549% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.309%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  9.268% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.177%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-8 { 
-  0%, 2.565% { opacity: 0; }
-  8.549% { opacity: var(--flow-peak, 0.3); }
-  18.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.781% { opacity: 0; }
+  9.268% { opacity: var(--flow-peak, 0.3); }
+  20.004%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-9 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  7.644% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.405%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  8.748% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.657%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-9 { 
-  0%, 2.293% { opacity: 0; }
-  7.644% { opacity: var(--flow-peak, 0.3); }
-  17.546%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.624% { opacity: 0; }
+  8.748% { opacity: var(--flow-peak, 0.3); }
+  19.483%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-10 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  16.502% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  18.262%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  7.283% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.191%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-10 { 
-  0%, 4.951% { opacity: 0; }
-  16.502% { opacity: var(--flow-peak, 0.3); }
-  26.404%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.185% { opacity: 0; }
+  7.283% { opacity: var(--flow-peak, 0.3); }
+  18.018%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-11 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  8.549% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.309%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  9.268% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.177%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-11 { 
-  0%, 2.565% { opacity: 0; }
-  8.549% { opacity: var(--flow-peak, 0.3); }
-  18.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.781% { opacity: 0; }
+  9.268% { opacity: var(--flow-peak, 0.3); }
+  20.004%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-12 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  11.079% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  12.839%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  11.414% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  13.323%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-12 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  11.079% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  20.98%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  11.414% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  22.149%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-13 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-13 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-14 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-14 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-15 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  7.606% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.366%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  8.246% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.155%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-15 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.606% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  17.507%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.246% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.981%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-16 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-16 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-17 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-17 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-18 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  13.971% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  15.732%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  15.608% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  17.516%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-18 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  13.971% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  23.873%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  15.608% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.343%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-19 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-19 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-20 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  7.606% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.366%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  8.246% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.155%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-20 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.606% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  17.507%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.246% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.981%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-21 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-21 { 
-  0%, 1.386% { opacity: 0; }
-  4.621% { opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.503% { opacity: 0; }
+  5.01% { opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-22 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  7.606% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.366%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  8.706% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.615%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-22 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  7.606% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  17.507%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.706% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  19.441%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-23 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  0.924% { opacity: var(--flow-peak, 0.9); }
-  4.621% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.381%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.002% { opacity: var(--flow-peak, 0.9); }
+  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-23 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  4.621% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  14.522%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-24 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.32% { opacity: var(--flow-peak, 0.9); }
-  8.862% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.623%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.431% { opacity: var(--flow-peak, 0.9); }
+  10.069% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.977%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-24 { 
-  0%, 2.659% { opacity: 0; }
-  8.862% { opacity: var(--flow-peak, 0.3); }
-  18.764%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 3.021% { opacity: 0; }
+  10.069% { opacity: var(--flow-peak, 0.3); }
+  20.804%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-node-0 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  1.32%, 4.621% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  13.202% { filter: var(--ambient-node-base-filter, none); }
+  1.431%, 5.01% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  14.313% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-1 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  4.621% { filter: var(--ambient-node-base-filter, none); }
-  5.941%, 9.241% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  17.822% { filter: var(--ambient-node-base-filter, none); }
+  5.01% { filter: var(--ambient-node-base-filter, none); }
+  6.441%, 10.019% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  19.323% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-2 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  13.326% { filter: var(--ambient-node-base-filter, none); }
-  14.647%, 17.947% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  26.528% { filter: var(--ambient-node-base-filter, none); }
+  14.449% { filter: var(--ambient-node-base-filter, none); }
+  15.88%, 19.458% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  28.762% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-3 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  22.975% { filter: var(--ambient-node-base-filter, none); }
-  24.295%, 27.596% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  36.177% { filter: var(--ambient-node-base-filter, none); }
+  24.91% { filter: var(--ambient-node-base-filter, none); }
+  26.341%, 29.919% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  39.223% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-4 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  19.047% { filter: var(--ambient-node-base-filter, none); }
-  20.367%, 23.668% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  32.249% { filter: var(--ambient-node-base-filter, none); }
+  20.651% { filter: var(--ambient-node-base-filter, none); }
+  22.082%, 25.661% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  34.964% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-5 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  28.696% { filter: var(--ambient-node-base-filter, none); }
-  30.016%, 33.317% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  41.898% { filter: var(--ambient-node-base-filter, none); }
+  31.112% { filter: var(--ambient-node-base-filter, none); }
+  32.544%, 36.122% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  45.426% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-6 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  27.753% { filter: var(--ambient-node-base-filter, none); }
-  29.073%, 32.374% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  40.955% { filter: var(--ambient-node-base-filter, none); }
+  30.09% { filter: var(--ambient-node-base-filter, none); }
+  31.521%, 35.1% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  44.403% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-7 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  39.932% { filter: var(--ambient-node-base-filter, none); }
-  41.252%, 44.553% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  53.134% { filter: var(--ambient-node-base-filter, none); }
+  42.697% { filter: var(--ambient-node-base-filter, none); }
+  44.128%, 47.707% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  57.01% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-8 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  33.474% { filter: var(--ambient-node-base-filter, none); }
-  34.794%, 38.094% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  46.675% { filter: var(--ambient-node-base-filter, none); }
+  36.292% { filter: var(--ambient-node-base-filter, none); }
+  37.724%, 41.302% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  50.606% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-9 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  42.179% { filter: var(--ambient-node-base-filter, none); }
-  43.5%, 46.8% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  55.381% { filter: var(--ambient-node-base-filter, none); }
+  46.191% { filter: var(--ambient-node-base-filter, none); }
+  47.623%, 51.201% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  60.505% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-10 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  45.653% { filter: var(--ambient-node-base-filter, none); }
-  46.973%, 50.273% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  58.855% { filter: var(--ambient-node-base-filter, none); }
+  48.899% { filter: var(--ambient-node-base-filter, none); }
+  50.331%, 53.909% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  63.213% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-11 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  51.374% { filter: var(--ambient-node-base-filter, none); }
-  52.694%, 55.994% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  64.575% { filter: var(--ambient-node-base-filter, none); }
+  55.102% { filter: var(--ambient-node-base-filter, none); }
+  56.533%, 60.112% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  69.415% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-12 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  57.094% { filter: var(--ambient-node-base-filter, none); }
-  58.414%, 61.715% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  70.296% { filter: var(--ambient-node-base-filter, none); }
+  61.304% { filter: var(--ambient-node-base-filter, none); }
+  62.736%, 66.314% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  75.618% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-13 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  60.118% { filter: var(--ambient-node-base-filter, none); }
-  61.438%, 64.739% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  73.32% { filter: var(--ambient-node-base-filter, none); }
+  65.043% { filter: var(--ambient-node-base-filter, none); }
+  66.474%, 70.053% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  79.356% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-14 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  68.976% { filter: var(--ambient-node-base-filter, none); }
-  70.296%, 73.596% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  82.178% { filter: var(--ambient-node-base-filter, none); }
+  63.577% { filter: var(--ambient-node-base-filter, none); }
+  65.009%, 68.587% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  77.891% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-15 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  62.815% { filter: var(--ambient-node-base-filter, none); }
-  64.135%, 67.436% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  76.017% { filter: var(--ambient-node-base-filter, none); }
+  67.507% { filter: var(--ambient-node-base-filter, none); }
+  68.938%, 72.517% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  81.82% { filter: var(--ambient-node-base-filter, none); }
 }
 svg[data-node-ui] [data-node-id] &gt; rect:not(.c-mask) { stroke-width: 1.25px; }
 :is([data-theme="dark"] svg[data-node-ui], svg[data-node-ui][data-theme="dark"]) [data-node-id] &gt; rect:not(.c-mask).c-frontend { fill: color-mix(in srgb, var(--frontend-stroke) 13%, var(--mask)); stroke: color-mix(in srgb, var(--frontend-stroke) 72%, var(--mask)); }
@@ -796,7 +796,7 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
 svg[data-theme="light"] { --bg: #f4f5f7; --grid: #e9edf2; --canvas-dot: #e2e7ec; --text: #111827; --text-muted: #5b6474; --text-dim: #9aa3b2; --text-faint: #6b7280; --panel: #ffffff; --panel-border: #e5e7eb; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #64748b; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 svg[data-theme="dark"] { --bg: #020617; --grid: #1e293b; --canvas-dot: rgba(148, 163, 184, 0.16); --text: #ffffff; --text-muted: #94a3b8; --text-dim: #475569; --text-faint: #7d8da1; --panel: rgba(15, 23, 42, 0.5); --panel-border: #1e293b; --lane-fill: rgba(15, 23, 42, 0.22); --lane-stroke: #334155; --arrow: #94a3b8; --arrow-emphasis: #34d399; --mask: #0f172a; --frontend-fill: rgba(8, 51, 68, 0.4); --frontend-stroke: #22d3ee; --backend-fill: rgba(6, 78, 59, 0.4); --backend-stroke: #34d399; --database-fill: rgba(76, 29, 149, 0.4); --database-stroke: #a78bfa; --cloud-fill: rgba(120, 53, 15, 0.3); --cloud-stroke: #fbbf24; --security-fill: rgba(136, 19, 55, 0.4); --security-stroke: #fb7185; --messagebus-fill: rgba(251, 146, 60, 0.3); --messagebus-stroke: #fb923c; --external-fill: rgba(30, 41, 59, 0.5); --external-stroke: #94a3b8; --toolbar-bg: rgba(15, 23, 42, 0.8); --toolbar-border: #334155; --toolbar-text: #e2e8f0; --toolbar-hover: rgba(15, 23, 42, 0.95); --toolbar-menu-bg: #0f172a; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 rect.c-bg-rect { fill: var(--bg); }
-</style><rect x="0" y="0" width="1006" height="1024" class="c-bg-rect"/>
+</style><rect x="0" y="0" width="1017" height="1024" class="c-bg-rect"/>
         <title id="archify-diagram-title">agent-workflows: a substantial change with review loops</title>
         <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
         <!-- Definitions -->
@@ -843,25 +843,25 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect width="100%" height="100%" fill="url(#grid)"/>
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / Spec (skipped for a small task or a reviewed spec)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / Design (skipped for a small task)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Tests, in parallel with implementation</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="446" class="t-muted" font-size="10" font-weight="600">04 / Implementation</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="570" class="t-muted" font-size="10" font-weight="600">05 / Integrate and run</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="694" class="t-muted" font-size="10" font-weight="600">06 / Code review, verify and commit</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="950" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="818" class="t-muted" font-size="10" font-weight="600">07 / Advisers via cw consult: optional; the coordinator decides</text>
 
         <!-- Phase headers -->
@@ -871,31 +871,31 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="647.2,739;746.8000000000001,739" d="M 647.2 739 L 746.8000000000001 739" class="a-emphasis" data-animate="edge" style="--step: 0;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="701.2,739;757.6,739" d="M 701.2 739 L 757.6 739" class="a-emphasis" data-animate="edge" style="--step: 0;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="1" data-edge-id="advice-design" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="280,243;363.6,243" d="M 280 243 L 363.6 243" class="a-dashed" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-final" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="792.8000000000001,837;792.8000000000001,765" d="M 792.8000000000001 837 L 792.8000000000001 765" class="a-dashed" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-final" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="803.6,837;803.6,765" d="M 803.6 837 L 803.6 765" class="a-dashed" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-review" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="601.2,837;601.2,765" d="M 601.2 837 L 601.2 765" class="a-dashed" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="adv_spec" data-edge-to="spec_review" data-edge-label="advice" data-edge-key="4" data-edge-id="advice-spec" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="539.2,119;455.6,119" d="M 539.2 119 L 455.6 119" class="a-dashed" data-animate="edge" style="--step: 4;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="request" data-edge-to="spec_writer" data-edge-key="5" data-edge-id="ask" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="140,119;172,119" d="M 140 119 L 172 119" class="a-emphasis" data-animate="edge" style="--step: 5;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="6" data-edge-id="change" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,517;601.2,589" d="M 601.2 517 L 601.2 589" class="a-emphasis" data-animate="edge" style="--step: 6;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="7" data-edge-id="code-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="555.2,739;20,739;20,533;577.2,533;577.2,517" d="M 555.2 739 L 28 739 Q 20 739 20 731 L 20 541 Q 20 533 28 533 L 569.2 533 Q 577.2 533 577.2 525 L 577.2 517" class="a-dashed" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="7" data-edge-id="code-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="501.20000000000005,739;485.20000000000005,739;485.20000000000005,588;539.2,588;539.2,491;555.2,491" d="M 501.20000000000005 739 L 493.20000000000005 739 Q 485.20000000000005 739 485.20000000000005 731 L 485.20000000000005 596 Q 485.20000000000005 588 493.20000000000005 588 L 531.2 588 Q 539.2 588 539.2 580 L 539.2 499 Q 539.2 491 547.2 491 L 555.2 491" class="a-dashed" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="8" data-edge-id="consult-design" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="409.6,269;409.6,285;218,285;218,269" d="M 409.6 269 L 409.6 277 Q 409.6 285 401.6 285 L 226 285 Q 218 285 218 277 L 218 269" class="a-dashed" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="9" data-edge-id="consult-final" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="625.2,765;625.2,781;690,781;690,863;730.8000000000001,863" d="M 625.2 765 L 625.2 773 Q 625.2 781 633.2 781 L 682 781 Q 690 781 690 789 L 690 855 Q 690 863 698 863 L 730.8000000000001 863" class="a-dashed" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="10" data-edge-id="consult-review" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="577.2,765;577.2,781;20,781;20,863;515.2,863" d="M 577.2 765 L 577.2 773 Q 577.2 781 569.2 781 L 28 781 Q 20 781 20 789 L 20 855 Q 20 863 28 863 L 515.2 863" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="9" data-edge-id="consult-final" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="625.2,765;625.2,781;695.4000000000001,781;695.4000000000001,863;741.6,863" d="M 625.2 765 L 625.2 773 Q 625.2 781 633.2 781 L 687.4000000000001 781 Q 695.4000000000001 781 695.4000000000001 789 L 695.4000000000001 855 Q 695.4000000000001 863 703.4000000000001 863 L 741.6 863" class="a-dashed" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="10" data-edge-id="consult-review" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="565.2,765;565.2,786;499.20000000000005,786;499.20000000000005,863;515.2,863" d="M 565.2 765 L 565.2 778 Q 565.2 786 557.2 786 L 507.20000000000005 786 Q 499.20000000000005 786 499.20000000000005 794 L 499.20000000000005 855 Q 499.20000000000005 863 507.20000000000005 863 L 515.2 863" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="11" data-edge-id="consult-spec" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="409.6,93;409.6,77;601.2,77;601.2,93" d="M 409.6 93 L 409.6 85 Q 409.6 77 417.6 77 L 593.2 77 Q 601.2 77 601.2 85 L 601.2 93" class="a-dashed" data-animate="edge" style="--step: 11;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="12" data-edge-id="contract-to-implementer" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="555.2,251;531.2,251;531.2,491;555.2,491" d="M 555.2 251 L 539.2 251 Q 531.2 251 531.2 259 L 531.2 483 Q 531.2 491 539.2 491 L 555.2 491" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="12" data-edge-id="contract-to-implementer" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="577.2,269;577.2,285;547.2,285;547.2,449;601.2,449;601.2,465" d="M 577.2 269 L 577.2 277 Q 577.2 285 569.2 285 L 555.2 285 Q 547.2 285 547.2 293 L 547.2 441 Q 547.2 449 555.2 449 L 593.2 449 Q 601.2 449 601.2 457 L 601.2 465" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,269;601.2,341" d="M 601.2 269 L 601.2 341" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="14" data-edge-id="design-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="555.2,243;455.6,243" d="M 555.2 243 L 455.6 243" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="architect" data-edge-to="design_review" data-edge-label="design" data-edge-key="15" data-edge-id="design-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="433.6,217;433.6,201;601.2,201;601.2,217" d="M 433.6 217 L 433.6 209 Q 433.6 201 441.6 201 L 593.2 201 Q 601.2 201 601.2 209 L 601.2 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="verify" data-edge-to="commit" data-edge-label="passes" data-edge-key="16" data-edge-id="passes" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="838.8000000000001,739;885.6000000000001,739" d="M 838.8000000000001 739 L 885.6000000000001 739" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="verify" data-edge-to="commit" data-edge-label="passes" data-edge-key="16" data-edge-id="passes" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="849.6,739;896.4000000000001,739" d="M 849.6 739 L 896.4000000000001 739" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="17" data-edge-id="reviewed-spec" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="409.6,145;409.6,217" d="M 409.6 145 L 409.6 217" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="18" data-edge-id="reviewed-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="792.8000000000001,393;792.8000000000001,608;649.2,608" d="M 792.8000000000001 393 L 792.8000000000001 600 Q 792.8000000000001 608 784.8000000000001 608 L 649.2 608" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="18" data-edge-id="reviewed-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="803.6,393;803.6,608;649.2,608" d="M 803.6 393 L 803.6 600 Q 803.6 608 795.6 608 L 649.2 608" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="19" data-edge-id="spec-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="363.6,119;264,119" d="M 363.6 119 L 264 119" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="spec_writer" data-edge-to="spec_review" data-edge-label="change" data-edge-key="20" data-edge-id="spec-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="218,145;218,161;385.6,161;385.6,145" d="M 218 145 L 218 153 Q 218 161 226 161 L 377.6 161 Q 385.6 161 385.6 153 L 385.6 145" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="test-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="746.8000000000001,367;647.2,367" d="M 746.8000000000001 367 L 647.2 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="22" data-edge-id="tests-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,393;601.2,409;768.8000000000001,409;768.8000000000001,393" d="M 601.2 393 L 601.2 401 Q 601.2 409 609.2 409 L 760.8000000000001 409 Q 768.8000000000001 409 768.8000000000001 401 L 768.8000000000001 393" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="test-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="757.6,367;647.2,367" d="M 757.6 367 L 647.2 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="22" data-edge-id="tests-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,393;601.2,409;779.6,409;779.6,393" d="M 601.2 393 L 601.2 401 Q 601.2 409 609.2 409 L 771.6 409 Q 779.6 409 779.6 401 L 779.6 393" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <path data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="23" data-edge-id="to-code-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,641;601.2,713" d="M 601.2 641 L 601.2 713" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="24" data-edge-id="verify-problems" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="792.8000000000001,713;792.8000000000001,662;665.2,662;665.2,622;649.2,622" d="M 792.8000000000001 713 L 792.8000000000001 670 Q 792.8000000000001 662 784.8000000000001 662 L 673.2 662 Q 665.2 662 665.2 654 L 665.2 630 Q 665.2 622 657.2 622 L 649.2 622" class="a-security" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="24" data-edge-id="verify-problems" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="803.6,713;803.6,662;665.2,662;665.2,622;649.2,622" d="M 803.6 713 L 803.6 670 Q 803.6 662 795.6 662 L 673.2 662 Q 665.2 662 665.2 654 L 665.2 630 Q 665.2 622 657.2 622 L 649.2 622" class="a-security" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
 
         <!-- Nodes -->
         <g id="node-request" data-node-id="request" data-node-label="Your request" tabindex="0" role="button" aria-label="Focus Your request, substantial task, Spec (skipped for a small task or a reviewed spec)" aria-pressed="false" data-node-kind="external" data-node-sublabel="substantial task" data-node-context="Spec (skipped for a small task or a reviewed spec)">
@@ -1006,16 +1006,16 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <g id="node-test_review" data-node-id="test_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, test review, Tests, in parallel with implementation" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="test review" data-node-context="Tests, in parallel with implementation">
           <title>reviewer · test review · Tests, in parallel with implementation</title>
-          <rect x="746.8000000000001" y="341" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="746.8000000000001" y="341" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(752.8000000000001 347) scale(0.6875)">
+          <rect x="757.6" y="341" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="757.6" y="341" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(763.6 347) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="792.8000000000001" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="792.8000000000001" y="379" class="t-muted" font-size="8" text-anchor="middle">test review</text>
+          <text data-node-label="" x="803.6" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="803.6" y="379" class="t-muted" font-size="8" text-anchor="middle">test review</text>
         </g>
 
         <g id="node-implementer" data-node-id="implementer" data-node-label="implementer" tabindex="0" role="button" aria-label="Focus implementer, the change, Implementation" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="the change" data-node-context="Implementation">
@@ -1043,41 +1043,41 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="601.2" y="634.3" class="t-muted" font-size="8" text-anchor="middle">coordinator</text>
         </g>
 
-        <g id="node-code_review" data-node-id="code_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, code review, Code review, verify and commit" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="code review" data-node-context="Code review, verify and commit">
-          <title>reviewer · code review · Code review, verify and commit</title>
-          <rect x="555.2" y="713" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="555.2" y="713" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(561.2 719) scale(0.6875)">
+        <g id="node-code_review" data-node-id="code_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, code review: source + changes vs requirements, Code review, verify and commit" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="code review: source + changes vs requirements" data-node-context="Code review, verify and commit">
+          <title>reviewer · code review: source + changes vs requirements · Code review, verify and commit</title>
+          <rect x="501.20000000000005" y="713" width="200" height="52" rx="8" class="c-mask"/>
+          <rect x="501.20000000000005" y="713" width="200" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(507.20000000000005 719) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
           <text data-node-label="" x="601.2" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="601.2" y="751" class="t-muted" font-size="8" text-anchor="middle">code review</text>
+          <text x="601.2" y="751" class="t-muted" font-size="7.1" text-anchor="middle">code review: source + changes vs requirements</text>
         </g>
 
         <g id="node-verify" data-node-id="verify" data-node-label="cw task verify" tabindex="0" role="button" aria-label="Focus cw task verify, records current, Code review, verify and commit" aria-pressed="false" data-node-kind="security" data-node-sublabel="records current" data-node-context="Code review, verify and commit">
           <title>cw task verify · records current · Code review, verify and commit</title>
-          <rect x="746.8000000000001" y="713" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="746.8000000000001" y="713" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(752.8000000000001 719) scale(0.6875)">
+          <rect x="757.6" y="713" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="757.6" y="713" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(763.6 719) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" x="792.8000000000001" y="744" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">cw task verify</text>
-          <text x="792.8000000000001" y="758.6" class="t-muted" font-size="8" text-anchor="middle">records current</text>
+          <text data-node-label="" x="803.6" y="744" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">cw task verify</text>
+          <text x="803.6" y="758.6" class="t-muted" font-size="8" text-anchor="middle">records current</text>
         </g>
 
         <g id="node-commit" data-node-id="commit" data-node-label="github-worker" tabindex="0" role="button" aria-label="Focus github-worker, gated commit, Code review, verify and commit" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="gated commit" data-node-context="Code review, verify and commit">
           <title>github-worker · gated commit · Code review, verify and commit</title>
-          <rect x="885.6000000000001" y="713" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="885.6000000000001" y="713" width="92" height="52" rx="8" class="c-cloud" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(891.6000000000001 719) scale(0.6875)">
+          <rect x="896.4000000000001" y="713" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="896.4000000000001" y="713" width="92" height="52" rx="8" class="c-cloud" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(902.4000000000001 719) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" x="931.6000000000001" y="744.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">github-worker</text>
-          <text x="931.6000000000001" y="759.8" class="t-muted" font-size="8" text-anchor="middle">gated commit</text>
+          <text data-node-label="" x="942.4000000000001" y="744.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">github-worker</text>
+          <text x="942.4000000000001" y="759.8" class="t-muted" font-size="8" text-anchor="middle">gated commit</text>
         </g>
 
         <g id="node-adv_review" data-node-id="adv_review" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), rejected blocker/major, any review, Advisers via cw consult: optional; the coordinator decides" aria-pressed="false" data-node-kind="database" data-node-sublabel="rejected blocker/major, any review" data-node-context="Advisers via cw consult: optional; the coordinator decides">
@@ -1094,28 +1094,28 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <g id="node-adv_final" data-node-id="adv_final" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), final checkpoint, Advisers via cw consult: optional; the coordinator decides" aria-pressed="false" data-node-kind="database" data-node-sublabel="final checkpoint" data-node-context="Advisers via cw consult: optional; the coordinator decides">
           <title>advisers (optional) · final checkpoint · Advisers via cw consult: optional; the coordinator decides</title>
-          <rect x="730.8000000000001" y="837" width="124" height="52" rx="8" class="c-mask"/>
-          <rect x="730.8000000000001" y="837" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(736.8000000000001 843) scale(0.6875)">
+          <rect x="741.6" y="837" width="124" height="52" rx="8" class="c-mask"/>
+          <rect x="741.6" y="837" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(747.6 843) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="792.8000000000001" y="868.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
-          <text x="792.8000000000001" y="882.9" class="t-muted" font-size="8" text-anchor="middle">final checkpoint</text>
+          <text data-node-label="" x="803.6" y="868.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
+          <text x="803.6" y="882.9" class="t-muted" font-size="8" text-anchor="middle">final checkpoint</text>
         </g>
 
         <!-- Edge labels -->
         <g data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted">
-          <rect x="672.8" y="719" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="697" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted</text>
+          <rect x="705.2" y="719" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="729.4000000000001" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted</text>
         </g>
         <g data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="1" data-edge-id="advice-design">
           <rect x="302.40000000000003" y="223" width="38.8" height="14" rx="3" class="c-mask"/>
           <text x="321.8" y="233" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
         </g>
         <g data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-final">
-          <rect x="800.8000000000001" y="791" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="820.2" y="801" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+          <rect x="784.2" y="791" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="803.6" y="801" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
         </g>
         <g data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-review">
           <rect x="581.8000000000001" y="791" width="38.8" height="14" rx="3" class="c-mask"/>
@@ -1127,36 +1127,36 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
 
         <g data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="6" data-edge-id="change">
-          <rect x="554.4000000000001" y="543" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="573.8000000000001" y="553" class="t-edge-emphasis" font-size="8" text-anchor="middle">change</text>
+          <rect x="581.8000000000001" y="543" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="601.2" y="553" class="t-edge-emphasis" font-size="8" text-anchor="middle">change</text>
         </g>
         <g data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="7" data-edge-id="code-findings">
-          <rect x="252.8" y="513" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="298.6" y="523" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+          <rect x="466.40000000000003" y="568" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="512.2" y="578" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
         <g data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="8" data-edge-id="consult-design">
           <rect x="280" y="265" width="67.6" height="14" rx="3" class="c-mask"/>
           <text x="313.8" y="275" class="t-edge-dashed" font-size="8" text-anchor="middle">real options</text>
         </g>
         <g data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="9" data-edge-id="consult-final">
-          <rect x="646.6" y="812" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="690" y="822" class="t-edge-dashed" font-size="8" text-anchor="middle">final checkpoint</text>
+          <rect x="652.0000000000001" y="812" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="695.4000000000001" y="822" class="t-edge-dashed" font-size="8" text-anchor="middle">final checkpoint</text>
         </g>
         <g data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="10" data-edge-id="consult-review">
-          <rect x="255.20000000000002" y="761" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="298.6" y="771" class="t-edge-dashed" font-size="8" text-anchor="middle">finding rejected</text>
+          <rect x="488.80000000000007" y="766" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="532.2" y="776" class="t-edge-dashed" font-size="8" text-anchor="middle">finding rejected</text>
         </g>
         <g data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="11" data-edge-id="consult-spec">
           <rect x="469.20000000000005" y="57" width="72.4" height="14" rx="3" class="c-mask"/>
           <text x="505.40000000000003" y="67" class="t-edge-dashed" font-size="8" text-anchor="middle">open question</text>
         </g>
         <g data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="12" data-edge-id="contract-to-implementer">
-          <rect x="507.00000000000006" y="361" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="531.2" y="371" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
+          <rect x="550" y="429" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="574.2" y="439" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
         </g>
         <g data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-tests">
-          <rect x="544.8" y="295" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="569" y="305" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
+          <rect x="577" y="295" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="601.2" y="305" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
         </g>
         <g data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="14" data-edge-id="design-findings">
           <rect x="459.6" y="223" width="91.6" height="14" rx="3" class="c-mask"/>
@@ -1167,16 +1167,16 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="517.4000000000001" y="191" class="t-muted" font-size="8" text-anchor="middle">design</text>
         </g>
         <g data-edge-from="verify" data-edge-to="commit" data-edge-label="passes" data-edge-key="16" data-edge-id="passes">
-          <rect x="842.8000000000001" y="719" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="862.2" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">passes</text>
+          <rect x="853.6" y="719" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="873" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">passes</text>
         </g>
         <g data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="17" data-edge-id="reviewed-spec">
           <rect x="373.40000000000003" y="171" width="72.4" height="14" rx="3" class="c-mask"/>
           <text x="409.6" y="181" class="t-edge-emphasis" font-size="8" text-anchor="middle">reviewed spec</text>
         </g>
         <g data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="18" data-edge-id="reviewed-tests">
-          <rect x="682.4" y="588" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="721" y="598" class="t-muted" font-size="8" text-anchor="middle">reviewed tests</text>
+          <rect x="687.8000000000001" y="588" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="726.4000000000001" y="598" class="t-muted" font-size="8" text-anchor="middle">reviewed tests</text>
         </g>
         <g data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="19" data-edge-id="spec-findings">
           <rect x="268" y="99" width="91.6" height="14" rx="3" class="c-mask"/>
@@ -1187,20 +1187,20 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="301.8" y="151" class="t-muted" font-size="8" text-anchor="middle">change</text>
         </g>
         <g data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="test-findings">
-          <rect x="651.2" y="347" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="697" y="357" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+          <rect x="656.6000000000001" y="347" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="702.4000000000001" y="357" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
         <g data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="22" data-edge-id="tests-to-review">
-          <rect x="668" y="389" width="34" height="14" rx="3" class="c-mask"/>
-          <text x="685" y="399" class="t-muted" font-size="8" text-anchor="middle">tests</text>
+          <rect x="673.4000000000001" y="389" width="34" height="14" rx="3" class="c-mask"/>
+          <text x="690.4000000000001" y="399" class="t-muted" font-size="8" text-anchor="middle">tests</text>
         </g>
         <g data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="23" data-edge-id="to-code-review">
           <rect x="579.4000000000001" y="667" width="43.6" height="14" rx="3" class="c-mask"/>
           <text x="601.2" y="677" class="t-edge-emphasis" font-size="8" text-anchor="middle">results</text>
         </g>
         <g data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="24" data-edge-id="verify-problems">
-          <rect x="704.8" y="642" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="729" y="652" class="t-edge-security" font-size="8" text-anchor="middle">problems</text>
+          <rect x="710.2" y="642" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="734.4000000000001" y="652" class="t-edge-security" font-size="8" text-anchor="middle">problems</text>
         </g>
 
         <!-- Legend -->

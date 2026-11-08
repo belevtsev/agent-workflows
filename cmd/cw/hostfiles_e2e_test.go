@@ -8,13 +8,13 @@ package main
 //   E2E-3 TestHostfilesE2E/install_reinstall_uninstall (uninstall step)
 //   E2E-4 TestHostfilesE2E/install_usage_errors
 //   E2E-5 TestHostfilesE2E/default_checkout
-//   E2E-6 TestHostfilesE2E/migrate_v2_dry_run
-//   E2E-7 TestHostfilesE2E/help_lists_v3_commands
-//   E2E-8 TestHostfilesE2E/migrate_v2_keeps_v3_block
+//   E2E-6, E2E-8 removed with cw migrate-v2 (TC-RM-1 RM-1)
+//   E2E-7 TestHostfilesE2E/help_lists_v3_commands (TC-RM-1 K-1; RM-1: help omits migrate-v2)
 //   E2E-9 TestHostfilesE2E/uninstall_without_links_into_checkout (rev 5)
-//   E2E-10 TestHostfilesE2E/relative_paths (rev 5)
-//   CLI-1 TestHostfilesE2E/removed_v2_commands_and_flags, TestHostfilesE2E/dry_run_is_usage_error,
-//         TestHostfilesE2E/version_json
+//   E2E-10 TestHostfilesE2E/relative_paths (rev 5; TC-RM-1 K-4: relative --from, --home and
+//          --state-dir)
+//   CLI-1 TestHostfilesE2E/removed_v2_commands_and_flags (TC-RM-1 RM-1: migrate-v2 cases),
+//         TestHostfilesE2E/dry_run_is_usage_error, TestHostfilesE2E/version_json
 //   CLI-2 TestHostfilesE2E/directory_precedence
 //
 // All identifiers are prefixed with hfe2e to stay clear of package main.
@@ -136,60 +136,17 @@ func TestHostfilesE2E(t *testing.T) {
 		}
 	})
 
-	t.Run("migrate_v2_dry_run", func(t *testing.T) {
-		// E2E-6
-		e := hfe2eNewEnv(t, bin)
-		want := hfe2eWriteV2(t, e)
-		// Snapshot the trees a migration acts on (not the whole XDG state home, where cw may
-		// keep unrelated bookkeeping of its own).
-		st := filepath.Join(e.stateHome, "agent-workflows")
-		roots := []string{
-			filepath.Join(e.home, ".claude"), filepath.Join(e.home, ".agents"), filepath.Join(e.home, ".local"),
-			e.codex, filepath.Join(st, "current"), filepath.Join(st, "releases"), filepath.Join(st, "state.json"),
-			filepath.Join(st, "journal.json"), filepath.Join(st, "workflow-tasks"),
-		}
-		before := hfe2eSnapshot(t, roots...)
-		stdout, stderr, code := e.run(t, "migrate-v2", "--dry-run")
-		if code != 0 {
-			t.Fatalf("migrate-v2 --dry-run exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
-		}
-		hfe2eDiff(t, before, hfe2eSnapshot(t, roots...))
-		lines := strings.Split(stdout, "\n")
-		for i, line := range lines {
-			var hits []string
-			for _, p := range want {
-				if hfe2eLineHasPath(line, p) {
-					hits = append(hits, p)
-				}
-			}
-			if len(hits) > 1 {
-				t.Errorf("stdout line %d names more than one action path %v: %q", i+1, hits, line)
-			}
-		}
-		for _, p := range want {
-			found := false
-			for _, line := range lines {
-				if hfe2eLineHasPath(line, p) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Errorf("dry-run output does not name %s\nstdout:\n%s", p, stdout)
-			}
-		}
-	})
-
 	t.Run("help_lists_v3_commands", func(t *testing.T) {
-		// E2E-7
+		// E2E-7 (K-1, RM-1): help lists install and uninstall, and lists none of the removed
+		// commands, migrate-v2 included.
 		e := hfe2eNewEnv(t, bin)
 		stdout, stderr, code := e.run(t)
 		if code != 0 {
 			t.Fatalf("cw exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 		}
 		help := stdout + "\n" + stderr
-		for _, cmd := range []string{"install", "uninstall", "migrate-v2"} {
-			if !regexp.MustCompile(`(^|[^A-Za-z0-9-])` + regexp.QuoteMeta(cmd) + `($|[^A-Za-z0-9-])`).MatchString(help) {
+		for _, cmd := range []string{"install", "uninstall"} {
+			if !hfe2eHasToken(help, cmd) {
 				t.Errorf("help does not list %q\n%s", cmd, help)
 			}
 		}
@@ -198,27 +155,10 @@ func TestHostfilesE2E(t *testing.T) {
 				t.Errorf("help still lists removed command %q\n%s", cmd, help)
 			}
 		}
-	})
-
-	t.Run("migrate_v2_keeps_v3_block", func(t *testing.T) {
-		// E2E-8: without v2 state, migrate-v2 leaves the v3 install alone.
-		e := hfe2eNewEnv(t, bin)
-		checkout := filepath.Join(e.root, "checkout")
-		hfe2eWriteCheckout(t, checkout, false)
-		if stdout, stderr, code := e.run(t, "install", "--host", "codex", "--from", checkout); code != 0 {
-			t.Fatalf("install exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+		// RM-1: migrate-v2 is a distinctive token, so any mention in help counts as listing it.
+		if hfe2eHasToken(help, "migrate-v2") || hfe2eListsCommand(help, "migrate-v2") {
+			t.Errorf("help still lists removed command %q\n%s", "migrate-v2", help)
 		}
-		agentsMD := filepath.Join(e.codex, "AGENTS.md")
-		before := hfe2eRead(t, agentsMD)
-		links := hfe2eSnapshot(t, filepath.Join(e.home, ".agents"))
-		stdout, stderr, code := e.run(t, "migrate-v2")
-		if code != 0 {
-			t.Fatalf("migrate-v2 exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
-		}
-		if got := hfe2eRead(t, agentsMD); got != before {
-			t.Errorf("AGENTS.md changed by migrate-v2\n before: %q\n  after: %q", before, got)
-		}
-		hfe2eDiff(t, links, hfe2eSnapshot(t, filepath.Join(e.home, ".agents")))
 	})
 
 	t.Run("uninstall_without_links_into_checkout", func(t *testing.T) {
@@ -292,7 +232,7 @@ func TestHostfilesE2E(t *testing.T) {
 	})
 
 	t.Run("relative_paths", func(t *testing.T) {
-		// E2E-10: relative --from, --home and --state-dir, run from a parent directory.
+		// E2E-10 (K-4): relative --from, --home and --state-dir, run from a parent directory.
 		t.Run("install_relative_from", func(t *testing.T) {
 			e := hfe2eNewEnv(t, bin)
 			checkout := filepath.Join(e.root, "checkout")
@@ -316,42 +256,83 @@ func TestHostfilesE2E(t *testing.T) {
 				}
 			}
 		})
-		t.Run("migrate_relative_home_default_state_dir", func(t *testing.T) {
+		t.Run("install_relative_home", func(t *testing.T) {
+			// K-4: a relative --home resolves against the process working directory (e.root), so
+			// the links land under <cwd>/alt-home/.agents/skills and nothing under $HOME. Fails
+			// if the relative home is ignored, resolved against another directory or left to $HOME.
 			e := hfe2eNewEnv(t, bin)
-			e.noStateEnv = true // the default state dir then lives under the selected home
-			alt := filepath.Join(hfe2eReal(t, e.root), "alt-home")
-			st := filepath.Join(alt, ".local", "state", "agent-workflows")
-			links := hfe2eWriteSmallV2(t, alt, filepath.Join(alt, ".claude"), st)
-			stdout, stderr, code := e.run(t, "--home", "alt-home", "migrate-v2")
+			checkout := filepath.Join(e.root, "checkout")
+			hfe2eWriteCheckout(t, checkout, false)
+			alt := filepath.Join(e.root, "alt-home")
+			hfe2eMkdir(t, alt)
+			stdout, stderr, code := e.run(t, "--home", "alt-home", "install", "--host", "codex", "--from", checkout)
 			if code != 0 {
-				t.Fatalf("migrate-v2 exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+				t.Fatalf("install exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 			}
-			for _, p := range append(links, filepath.Join(st, "current")) {
-				hfe2eAssertAbsent(t, p)
+			skills := filepath.Join(alt, ".agents", "skills")
+			for name, dir := range hfe2eRegs {
+				hfe2eAssertLink(t, filepath.Join(skills, name), filepath.Join(checkout, dir))
 			}
+			hfe2eAssertAbsent(t, filepath.Join(e.home, ".agents"))
 		})
-		t.Run("migrate_relative_state_dir", func(t *testing.T) {
+		t.Run("task_start_relative_state_dir", func(t *testing.T) {
+			// K-4: a relative --state-dir resolves against the process working directory (e.root),
+			// so cw task start creates the task under <cwd>/custom/agent-workflows/workflow-tasks and
+			// nothing under $XDG_STATE_HOME/agent-workflows/workflow-tasks. Fails if the relative
+			// state dir is ignored, resolved against another directory or left to the XDG default.
 			e := hfe2eNewEnv(t, bin)
-			st := filepath.Join(hfe2eReal(t, e.root), "custom", "agent-workflows")
-			links := hfe2eWriteSmallV2(t, e.home, filepath.Join(e.home, ".claude"), st)
-			stdout, stderr, code := e.run(t, "--state-dir", filepath.Join("custom", "agent-workflows"), "migrate-v2")
+			project := filepath.Join(e.root, "project")
+			hfe2eMkdir(t, project)
+			plan := filepath.Join(e.root, "plan.json")
+			hfe2eWrite(t, plan, `{"title":"Handle the documented empty-input case","kind":"substantial",`+
+				`"checkpoints":{"required":false,"reason":"The documented contract fixes the result; no alternative approach is open"},`+
+				`"requirements":[{"id":"empty-input","description":"Empty input returns the documented result","check_ids":["unit"],"allow_non_execution":false}],`+
+				`"checks":[{"id":"unit","argv":["go","test","./..."],"timeout_seconds":120}]}`+"\n", 0o644)
+			stdout, stderr, code := e.run(t, "--state-dir", filepath.Join("custom", "agent-workflows"),
+				"task", "start", "--repo", project, "--plan", plan, "--summary")
 			if code != 0 {
-				t.Fatalf("migrate-v2 exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+				t.Fatalf("task start exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 			}
-			for _, p := range append(links, filepath.Join(st, "current")) {
-				hfe2eAssertAbsent(t, p)
+			var res struct {
+				Task   string `json:"task"`
+				TaskID string `json:"task_id"`
 			}
+			if err := json.NewDecoder(strings.NewReader(stdout)).Decode(&res); err != nil {
+				t.Fatalf("task start stdout is not a JSON object: %v\n%s", err, stdout)
+			}
+			if !filepath.IsAbs(res.Task) {
+				t.Fatalf("task path %q is not absolute\n%s", res.Task, stdout)
+			}
+			info, err := os.Stat(res.Task)
+			if err != nil || !info.IsDir() {
+				t.Fatalf("task path %q is not a directory (err %v)\n%s", res.Task, err, stdout)
+			}
+			store := filepath.Join(e.root, "custom", "agent-workflows", "workflow-tasks")
+			realTask, err1 := filepath.EvalSymlinks(res.Task)
+			realStore, err2 := filepath.EvalSymlinks(store)
+			if err1 != nil || err2 != nil {
+				t.Fatalf("resolve task %q (%v) or store %q (%v)", res.Task, err1, store, err2)
+			}
+			if filepath.Dir(realTask) != realStore {
+				t.Errorf("task path %q is not directly under %q", res.Task, store)
+			}
+			if res.TaskID != "" && filepath.Base(realTask) != res.TaskID {
+				t.Errorf("task path %q does not end in task_id %q", res.Task, res.TaskID)
+			}
+			hfe2eAssertAbsent(t, filepath.Join(e.stateHome, "agent-workflows", "workflow-tasks"))
 		})
 	})
 
 	t.Run("removed_v2_commands_and_flags", func(t *testing.T) {
-		// CLI-1: removed commands and root flags are usage errors and create nothing under HOME.
+		// CLI-1, RM-1: removed commands and root flags are usage errors and create nothing under HOME.
 		for _, args := range [][]string{
 			{"update"},
 			{"rollback"},
 			{"recover"},
 			{"status"},
 			{"setup"},
+			{"migrate-v2"},
+			{"migrate-v2", "--dry-run"},
 			{"--manager-protocol"},
 			{"--release-identity"},
 			{"--verify-release", "v1.0.0"},
@@ -563,35 +544,10 @@ func hfe2eListsCommand(help, cmd string) bool {
 	return false
 }
 
-// hfe2eLineHasPath reports whether line contains p as a whole path token.
-func hfe2eLineHasPath(line, p string) bool {
-	isPathByte := func(b byte) bool {
-		return b == '/' || b == '.' || b == '-' || b == '_' ||
-			(b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
-	}
-	for from := 0; ; {
-		i := strings.Index(line[from:], p)
-		if i < 0 {
-			return false
-		}
-		i += from
-		j := i + len(p)
-		if (i == 0 || !isPathByte(line[i-1])) && (j == len(line) || !isPathByte(line[j]) || (line[j] == '.' && (j+1 == len(line) || !isPathByte(line[j+1])))) {
-			return true
-		}
-		from = i + 1
-	}
-}
-
-// hfe2eReal resolves symlinks in p (darwin temp dirs live behind /var -> /private/var), so link
-// targets are spelled the way a process that resolves relative paths with getcwd sees them.
-func hfe2eReal(t *testing.T, p string) string {
-	t.Helper()
-	r, err := filepath.EvalSymlinks(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return r
+// hfe2eHasToken reports whether text contains word as a whole token: not preceded or followed by
+// a letter, digit or hyphen.
+func hfe2eHasToken(text, word string) bool {
+	return regexp.MustCompile(`(^|[^A-Za-z0-9-])` + regexp.QuoteMeta(word) + `($|[^A-Za-z0-9-])`).MatchString(text)
 }
 
 // hfe2eSamePath reports whether a and b name the same path, lexically or after resolving symlinks.
@@ -604,31 +560,9 @@ func hfe2eSamePath(a, b string) bool {
 	return err1 == nil && err2 == nil && ra == rb
 }
 
-// hfe2eWriteSmallV2 writes a minimal v2 state dir st (with state.json) and owned host links under
-// home and claude; it returns the link paths.
-func hfe2eWriteSmallV2(t *testing.T, home, claude, st string) []string {
-	t.Helper()
-	hfe2eWrite(t, filepath.Join(st, "releases", "r1", "skills", "foo", "SKILL.md"), "# foo\n", 0o644)
-	hfe2eSymlink(t, "releases/r1", filepath.Join(st, "current"))
-	hfe2eWrite(t, filepath.Join(st, "state.json"), "{}\n", 0o644)
-	links := map[string]string{
-		filepath.Join(claude, "skills", "foo"):          filepath.Join(st, "current", "skills", "foo"),
-		filepath.Join(home, ".agents", "skills", "foo"): filepath.Join(st, "current", "skills", "foo"),
-		filepath.Join(home, ".local", "bin", "cw"):      filepath.Join(st, "current", "bin", "cw"),
-	}
-	var out []string
-	for p, target := range links {
-		hfe2eSymlink(t, target, p)
-		out = append(out, p)
-	}
-	sort.Strings(out)
-	return out
-}
-
 type hfe2eEnv struct {
 	bin, root, home, codex, stateHome, dataHome, configHome string
 	noCodexEnv                                              bool // omit CODEX_HOME from the environment
-	noStateEnv                                              bool // omit XDG_STATE_HOME from the environment
 }
 
 func hfe2eNewEnv(t *testing.T, bin string) *hfe2eEnv {
@@ -663,9 +597,7 @@ func (e *hfe2eEnv) environ() []string {
 		"HOME=" + e.home,
 		"XDG_DATA_HOME=" + e.dataHome,
 		"XDG_CONFIG_HOME=" + e.configHome,
-	}
-	if !e.noStateEnv {
-		env = append(env, "XDG_STATE_HOME="+e.stateHome)
+		"XDG_STATE_HOME=" + e.stateHome,
 	}
 	if !e.noCodexEnv {
 		env = append(env, "CODEX_HOME="+e.codex)
@@ -732,55 +664,6 @@ func hfe2eWriteCheckout(t *testing.T, dir string, withDefaults bool) {
 	hfe2eWrite(t, filepath.Join(dir, "skills-manifest.json"), string(data), 0o644)
 }
 
-// hfe2eWriteV2 lays out a v2 installation and returns the absolute paths a migration acts on.
-func hfe2eWriteV2(t *testing.T, e *hfe2eEnv) []string {
-	t.Helper()
-	st := filepath.Join(e.stateHome, "agent-workflows")
-	claude := filepath.Join(e.home, ".claude")
-	hfe2eWrite(t, filepath.Join(st, "releases", "r1", "skills", "foo", "SKILL.md"), "# foo\n", 0o444)
-	hfe2eWrite(t, filepath.Join(st, "releases", "r1", "bin", "cw"), "#!/bin/sh\n", 0o555)
-	hfe2eWrite(t, filepath.Join(st, "releases", "r1", "agents", "cw-reviewer.md"), "r\n", 0o444)
-	hfe2eSymlink(t, "releases/r1", filepath.Join(st, "current"))
-	hfe2eWrite(t, filepath.Join(st, "state.json"), "{}\n", 0o644)
-	hfe2eWrite(t, filepath.Join(st, "journal.json"), "[]\n", 0o644)
-	hfe2eWrite(t, filepath.Join(st, "workflow-tasks", "t1", "task.json"), "{}\n", 0o644)
-
-	links := map[string]string{
-		filepath.Join(claude, "skills", "foo"):            filepath.Join(st, "current", "skills", "foo"),
-		filepath.Join(e.home, ".agents", "skills", "foo"): filepath.Join(st, "current", "skills", "foo"),
-		filepath.Join(claude, "agents", "cw-reviewer.md"): filepath.Join(st, "current", "agents", "cw-reviewer.md"),
-		filepath.Join(e.home, ".local", "bin", "cw"):      filepath.Join(st, "current", "bin", "cw"),
-	}
-	want := []string{
-		filepath.Join(claude, "CLAUDE.md"),
-		filepath.Join(e.codex, "AGENTS.md"),
-		filepath.Join(st, "current"),
-		filepath.Join(st, "releases"),
-		filepath.Join(st, "state.json"),
-		filepath.Join(st, "journal.json"),
-	}
-	for p, target := range links {
-		hfe2eSymlink(t, target, p)
-		want = append(want, p)
-	}
-	hfe2eWrite(t, filepath.Join(claude, "CLAUDE.md"), "# mine\n\n"+hfe2eStart+"\nmanaged\n"+hfe2eEnd+"\n", 0o644)
-	hfe2eWrite(t, filepath.Join(e.codex, "AGENTS.md"), hfe2eStart+"\nmanaged\n"+hfe2eEnd+"\n", 0o644)
-	// Make the release tree read-only like a v2 release.
-	for _, d := range []string{
-		filepath.Join(st, "releases", "r1", "skills", "foo"),
-		filepath.Join(st, "releases", "r1", "skills"),
-		filepath.Join(st, "releases", "r1", "bin"),
-		filepath.Join(st, "releases", "r1", "agents"),
-		filepath.Join(st, "releases", "r1"),
-	} {
-		if err := os.Chmod(d, 0o555); err != nil {
-			t.Fatal(err)
-		}
-	}
-	sort.Strings(want)
-	return want
-}
-
 func hfe2eMkdir(t *testing.T, p string) {
 	t.Helper()
 	if err := os.MkdirAll(p, 0o755); err != nil {
@@ -795,14 +678,6 @@ func hfe2eWrite(t *testing.T, p, content string, mode fs.FileMode) {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(p, mode); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func hfe2eSymlink(t *testing.T, target, p string) {
-	t.Helper()
-	hfe2eMkdir(t, filepath.Dir(p))
-	if err := os.Symlink(target, p); err != nil {
 		t.Fatal(err)
 	}
 }

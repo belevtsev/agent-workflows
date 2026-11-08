@@ -37,7 +37,7 @@
     { "id": "test_review", "lane": "tests", "col": 4, "type": "messagebus", "label": "reviewer", "sublabel": "test review" },
     { "id": "implementer", "lane": "build", "col": 3, "type": "frontend", "label": "implementer", "sublabel": "the change" },
     { "id": "integrate", "lane": "integrate_lane", "col": 3, "type": "backend", "label": "Integrate + run", "sublabel": "coordinator" },
-    { "id": "code_review", "lane": "gate", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "code review" },
+    { "id": "code_review", "lane": "gate", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "code review: source + changes vs requirements" },
     { "id": "verify", "lane": "gate", "col": 4, "type": "security", "label": "cw task verify", "sublabel": "records current" },
     { "id": "commit", "lane": "gate", "col": 5, "type": "cloud", "label": "github-worker", "sublabel": "gated commit" },
     { "id": "adv_spec", "lane": "spec", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "open question" },
@@ -79,7 +79,8 @@
       "items": [
         "Findings go back to the author of that stage",
         "The review cap applies per stage",
-        "Test review runs before integration, without the code"
+        "Test review runs before integration, without the code",
+        "Code review reads the integrated source and its changes against the requirements"
       ]
     },
     {

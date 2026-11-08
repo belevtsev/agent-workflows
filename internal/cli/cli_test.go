@@ -50,7 +50,7 @@ func samePath(got, want string) bool {
 }
 
 func TestOfflineHelpAndVersionHaveNoEnvironmentDependencies(t *testing.T) {
-	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "migrate-v2"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"help", "consult"}, {"help", "graphify", "query"}, {"consult", "--help"}, {"graphify", "build", "--help"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"install", "--help"}, {"version"}} {
+	for _, args := range [][]string{{"help"}, {"help", "install"}, {"help", "task", "start"}, {"help", "metrics", "summarize"}, {"help", "consult"}, {"help", "graphify", "query"}, {"consult", "--help"}, {"graphify", "build", "--help"}, {"doctor", "--help"}, {"task", "verify", "--help"}, {"metrics", "schema"}, {"install", "--help"}, {"version"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			config, out := testConfig(t)
 			config.Executable = func() (string, error) { t.Fatal("environment resolved for help/version"); return "", nil }
@@ -89,6 +89,8 @@ func TestUsageFailuresHaveExitCodeTwo(t *testing.T) {
 		{"install", "--bootstrap"}, {"--bootstrap"},
 		{"update", "--prepare-only"}, {"--prepare-only"},
 		{"validate"}, {"validate", "--json"},
+		// TC-RM-1 RM-1: the v2 migration command was removed and is unknown like the others.
+		{"migrate-v2"}, {"migrate-v2", "--dry-run"},
 		// D3 (Removed): the OpenAI participation flags are unknown.
 		{"consult", "--request", "r", "--output", "o", "--with-openai"}, {"consult", "--request", "r", "--output", "o", "--without-openai"},
 	} {

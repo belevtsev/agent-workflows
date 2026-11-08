@@ -79,7 +79,11 @@ Stop and return to the coordinator when:
 
 - a requirement is ambiguous, two requirements conflict, or meeting one needs
   a change outside your owned paths or to the public interface; ask one
-  precise question, citing the requirement ID, and keep working on the rest;
+  precise question, citing the requirement ID, and keep working on the rest.
+  A contract change comes back through the
+  [contract amendment](README.md#contract-amendment) procedure as an amended
+  contract and brief in a refreshed assignment, never as the test engineer's
+  work;
 - a check the brief names cannot run on this host; report which and why;
 - the change is complete, every checklist item is answered and every check
   passed.
