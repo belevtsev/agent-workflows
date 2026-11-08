@@ -22,8 +22,9 @@ model. It checks that every case has `case.yaml`, `prompt.md` and at least one
 grader; that the YAML and frontmatter parse with only the keys the runner
 accepts and the keys it requires; that grader regexes compile as JavaScript
 patterns (inline flags such as `(?i)` are rejected; use `flags`); that every
-file a grader reads is one of the brief's owned paths (or under `artefacts/`
-when the brief names none); that every agent a prompt dispatches is listed in
+file a grader reads is one of the brief's owned paths, under `artefacts/`
+when the brief names none, or, for a case that dispatches the spec writer,
+inside the folder its brief's `Change folder:` bullet names; that every agent a prompt dispatches is listed in
 `.claude-plugin/plugin.json`, and that the `tool_used: Agent` grader matches
 it; and that each mutant applies to its fixture and builds. A failure names the
 case file and the rule it breaks.
@@ -94,8 +95,9 @@ The cost ceiling defaults to 5 US dollars per suite (list price), applied to
 each suite's job separately, so spend can exceed it only by the runs already in
 flight when it is reached; a run the ceiling stops is partial and fails the job. The pass floor
 defaults to 0.8: every case's score (the share of its graders that passed)
-must reach it. The job uploads `result.json`, the runner's stderr and the run
-workspaces as the `eval-<suite>-<run id>` artifact, prints a per-case summary
+must reach it. The job uploads `result.json`, the runner's stderr and the
+workspaces of runs whose case has an interface contract (the implementer and
+test-engineer suites) as the `eval-<suite>-<run id>` artifact, prints a per-case summary
 (`TestEvalResult`), fails on any non-zero runner exit, and for `test-engineer`
 then runs the mutant gate on those workspaces. `--model`, the model for the
 agent under test, defaults to `claude-opus-5-5`, the model every agent under

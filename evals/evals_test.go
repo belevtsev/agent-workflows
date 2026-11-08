@@ -146,7 +146,7 @@ var (
 	envKey       = regexp.MustCompile(`^EVAL_[A-Z0-9_]*$`)
 	dispatchRef  = regexp.MustCompile(`subagent_type\\?"?\s*:\s*\\?"([^"\\]+)\\?"`)
 	ownedBullet  = regexp.MustCompile(`^\s*-\s*Owned paths:`)
-	folderBullet = regexp.MustCompile("^\\s*-\\s*Change folder:\\s*`([^`]+)`")
+	folderBullet = regexp.MustCompile(`^\s*-\s*Change folder:`)
 	backticked   = regexp.MustCompile("`([^`]+)`")
 	pathLike     = regexp.MustCompile(`/|\.[A-Za-z0-9]+$`)
 )
@@ -179,8 +179,15 @@ func validateCase(repoRoot, caseDir string, p pluginInfo) []error {
 	graderCount := c.checkCaseYAML()
 	body := c.checkPrompt()
 	owned := ownedPaths(body)
-	c.changeFolder = changeFolder(body)
 	dispatched := c.checkDispatch(body, p)
+	// Only the spec writer writes its change folder; the spec reviewer reads
+	// one and must never edit it.
+	if slices.ContainsFunc(dispatched, func(d string) bool {
+		_, agent, namespaced := strings.Cut(d, ":")
+		return d == "spec-writer" || namespaced && agent == "spec-writer"
+	}) {
+		c.changeFolder = changeFolder(body)
+	}
 
 	graderDir := filepath.Join(caseDir, "graders")
 	files, _ := filepath.Glob(filepath.Join(graderDir, "*.md"))
@@ -661,33 +668,30 @@ func matchesDispatch(re *jsRegex, dispatched []string) bool {
 	return false
 }
 
-// changeFolder returns the folder named by the brief's "- Change folder:"
-// bullet, the spec writer's output, cleaned and with a trailing slash; ""
-// when the brief has no such bullet or it names no relative folder.
+// changeFolder returns the first backticked folder in the brief's first
+// "- Change folder:" bullet, which may wrap onto indented lines, cleaned and
+// with a trailing slash; "" when the brief has no such bullet or that folder
+// is not relative inside the workspace.
 func changeFolder(body string) string {
-	for _, line := range strings.Split(body, "\n") {
-		m := folderBullet.FindStringSubmatch(line)
-		if m == nil {
-			continue
-		}
-		dir := path.Clean(m[1])
-		if dir == "." || path.IsAbs(dir) || dir == ".." || strings.HasPrefix(dir, "../") {
-			return ""
-		}
-		return dir + "/"
+	m := backticked.FindStringSubmatch(bulletText(body, folderBullet))
+	if m == nil {
+		return ""
 	}
-	return ""
+	dir := path.Clean(m[1])
+	if dir == "." || path.IsAbs(dir) || dir == ".." || strings.HasPrefix(dir, "../") {
+		return ""
+	}
+	return dir + "/"
 }
 
-// ownedPaths returns the paths in the brief's "Owned paths:" bullet, nil when
-// the brief has none.
-func ownedPaths(body string) []string {
-	lines := strings.Split(body, "\n")
+// bulletText returns the first line matching bullet joined with its indented
+// continuation lines, or "" when no line matches.
+func bulletText(body string, bullet *regexp.Regexp) string {
 	var text strings.Builder
 	found := false
-	for _, line := range lines {
+	for _, line := range strings.Split(body, "\n") {
 		if !found {
-			if ownedBullet.MatchString(line) {
+			if bullet.MatchString(line) {
 				found = true
 				text.WriteString(line)
 			}
@@ -699,11 +703,18 @@ func ownedPaths(body string) []string {
 		}
 		text.WriteString(" " + trimmed)
 	}
-	if !found {
+	return text.String()
+}
+
+// ownedPaths returns the paths in the brief's "Owned paths:" bullet, nil when
+// the brief has none.
+func ownedPaths(body string) []string {
+	text := bulletText(body, ownedBullet)
+	if text == "" {
 		return nil
 	}
 	owned := []string{}
-	for _, m := range backticked.FindAllStringSubmatch(text.String(), -1) {
+	for _, m := range backticked.FindAllStringSubmatch(text, -1) {
 		if pathLike.MatchString(m[1]) && !strings.ContainsAny(m[1], " ") {
 			owned = append(owned, m[1])
 		}

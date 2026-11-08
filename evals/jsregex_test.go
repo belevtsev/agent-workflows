@@ -36,8 +36,10 @@ import (
 // Valid JavaScript that RE2 cannot express is rejected with an error naming
 // the pattern, never passed silently: v-mode set notation, \p{...} binary
 // properties, long category names, script aliases and Script_Extensions,
-// class ranges bounded by a character beyond U+FFFF without u, and lone
-// surrogates inside a class.
+// class ranges bounded by a character beyond U+FFFF without u, lone
+// surrogates inside a class, and patterns whose compiled form RE2 finds too
+// large. Opening nested counted repeats is the only retry; any other RE2
+// error is reported as it is.
 type jsRegex struct {
 	*regexp.Regexp
 	approximate bool

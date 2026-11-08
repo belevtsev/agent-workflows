@@ -7,8 +7,9 @@ import (
 	"testing"
 )
 
-// Authored tests for the spec writer's change folder (S1-S10) and nested
-// counted repeats in compileJS (N1-N8). Contract v2, test-author-3-rev.
+// Authored tests for the spec writer's change folder (S1-S16) and nested
+// counted repeats in compileJS (N1-N12). Contract v4, test-author-3-rev3.
+// S1-S10 dispatch agent-workflows:spec-writer.
 
 // authored3Plugin lists the agents the spec fixtures dispatch.
 func authored3Plugin() pluginInfo {
@@ -18,6 +19,7 @@ func authored3Plugin() pluginInfo {
 			"spec-writer":   true,
 			"spec-reviewer": true,
 			"test-engineer": true,
+			"architect":     true,
 		},
 	}
 }
@@ -30,6 +32,18 @@ tool: Agent
 input_match: '"subagent_type"\s*:\s*"(?:[\w-]+:)?spec-writer"'
 ---
 `
+
+// authored3ValidateAgent validates a case whose prompt dispatches subagentType
+// (for example "agent-workflows:spec-reviewer" or "architect") naming agent in
+// its prose and its Agent grader.
+func authored3ValidateAgent(t *testing.T, subagentType, agent, body string, graders map[string]string) []error {
+	t.Helper()
+	files := authored3Files(body, graders)
+	files["prompt.md"] = authoredPrompt(`subagent_type: "`+subagentType+`"`, body)
+	files["graders/dispatched-writer.md"] = authoredGrader("type: tool_used\ntool: Agent\ninput_match: '\"subagent_type\"\\s*:\\s*\"(?:[\\w-]+:)?" + agent + "\"'\n")
+	root, caseDir := authoredWriteCase(t, files)
+	return validateCase(root, caseDir, authored3Plugin())
+}
 
 // authored3Body builds a spec-writer brief. folder is the backticked change
 // folder (omitted when empty); owned is the backticked owned file (the
@@ -45,8 +59,13 @@ func authored3Body(folder, owned string) string {
 // authored3BodyLines builds a spec-writer brief with the given extra bullet
 // lines (^ stands for a backtick) after the optional Owned paths bullet.
 func authored3BodyLines(owned string, bullets ...string) string {
+	return authored3BodyFor("spec-writer", owned, bullets...)
+}
+
+// authored3BodyFor is authored3BodyLines with agent named in the prose.
+func authored3BodyFor(agent, owned string, bullets ...string) string {
 	var b strings.Builder
-	b.WriteString("You are the coordinator. Dispatch the ^spec-writer^ agent once through the\n")
+	b.WriteString("You are the coordinator. Dispatch the ^" + agent + "^ agent once through the\n")
 	b.WriteString("Agent tool (^DISPATCH^) with the brief below.\n\n")
 	b.WriteString("Brief for the spec writer:\n")
 	b.WriteString("- Goal: write the OpenSpec change for exporting demos.\n")
@@ -357,7 +376,133 @@ func TestAuthored3FirstChangeFolderWins(t *testing.T) {
 	}
 }
 
-// N1-N8: nested counted repeats past RE2's 1000 limit.
+// S11 (v3): the change folder applies only to a spec-writer dispatch; for any
+// other agent the bullet is ignored entirely.
+func TestAuthored3ChangeFolderOnlyForSpecWriter(t *testing.T) {
+	others := []struct{ subagentType, agent string }{
+		{"agent-workflows:spec-reviewer", "spec-reviewer"},
+		{"architect", "architect"},
+		{"agent-workflows:architect", "architect"},
+	}
+	for _, o := range others {
+		t.Run(o.subagentType, func(t *testing.T) {
+			body := authored3BodyFor(o.agent, "", "- Change folder: ^"+authored3Folder+"^.")
+			errs := authored3ValidateAgent(t, o.subagentType, o.agent, body, map[string]string{
+				"tasks.md": authored3Exists(authored3Folder + "tasks.md"),
+			})
+			authoredWantError(t, errs, "is not an owned path", authoredCaseRel+"/graders/tasks.md")
+			authoredWantNoErrorContaining(t, errs, "the change folder")
+		})
+		t.Run(o.subagentType+" artefacts default kept", func(t *testing.T) {
+			body := authored3BodyFor(o.agent, "", "- Change folder: ^"+authored3Folder+"^.")
+			errs := authored3ValidateAgent(t, o.subagentType, o.agent, body, map[string]string{
+				"art.md": authored3Exists("artefacts/review.md"),
+			})
+			authoredWantNoError(t, errs)
+		})
+	}
+	// Control: both spec-writer forms apply the folder.
+	for _, st := range []string{"spec-writer", "agent-workflows:spec-writer"} {
+		t.Run(st+" applies folder", func(t *testing.T) {
+			body := authored3BodyFor("spec-writer", "", "- Change folder: ^"+authored3Folder+"^.")
+			errs := authored3ValidateAgent(t, st, "spec-writer", body, map[string]string{
+				"tasks.md": authored3Exists(authored3Folder + "tasks.md"),
+			})
+			authoredWantNoError(t, errs)
+			errs = authored3ValidateAgent(t, st, "spec-writer", body, map[string]string{
+				"other.md": authored3Exists("testdata/other.md"),
+			})
+			authoredWantError(t, errs, "is not an owned path", "the change folder "+authored3Folder, authoredCaseRel+"/graders/other.md")
+		})
+	}
+}
+
+// S12 (v3): the Change folder bullet may wrap, with the folder on an indented
+// continuation line.
+func TestAuthored3ChangeFolderWrapped(t *testing.T) {
+	bodies := map[string][]string{
+		"folder on next line":        {"- Change folder:", "  ^a/b/^."},
+		"folder after wrapped prose": {"- Change folder: the spec writer's output folder,", "  which is", "  ^a/b/^."},
+	}
+	for name, bullets := range bodies {
+		t.Run(name, func(t *testing.T) {
+			body := authored3BodyLines("", bullets...)
+			errs := authored3ValidateBody(t, body, map[string]string{
+				"in.md":   authored3Exists("a/b/file.md"),
+				"spec.md": authored3Target("a/b/specs/x/spec.md"),
+			})
+			authoredWantNoError(t, errs)
+			errs = authored3ValidateBody(t, body, map[string]string{"other.md": authored3Exists("testdata/other.md")})
+			authoredWantError(t, errs, "is not an owned path", "the change folder a/b/", authoredCaseRel+"/graders/other.md")
+		})
+	}
+}
+
+// S13 (v3): continuation stops at a new "- " bullet, a blank line or an
+// unindented line; a backticked path there is not the folder.
+func TestAuthored3ChangeFolderContinuationStops(t *testing.T) {
+	t.Run("wrapped folder then new bullet", func(t *testing.T) {
+		body := authored3BodyLines("", "- Change folder:", "  ^a/^.", "- Reference: ^c/^.")
+		errs := authored3ValidateBody(t, body, map[string]string{"a.md": authored3Exists("a/file.md")})
+		authoredWantNoError(t, errs)
+		errs = authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
+		authoredWantError(t, errs, "is not an owned path", "the change folder a/", authoredCaseRel+"/graders/c.md")
+	})
+	stops := map[string][]string{
+		"new unindented bullet (indented bullet is S16)": {"- Change folder: given below,", "  in the next bullet.", "- Reference: ^c/^."},
+		"blank line":      {"- Change folder:", "", "  ^c/^"},
+		"unindented line": {"- Change folder: given below.", "^c/^ is the reference."},
+	}
+	for name, bullets := range stops {
+		t.Run("no folder: "+name, func(t *testing.T) {
+			body := authored3BodyLines("", bullets...)
+			errs := authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
+			authoredWantError(t, errs, "is not an owned path", authoredCaseRel+"/graders/c.md")
+			authoredWantNoErrorContaining(t, errs, "the change folder")
+		})
+	}
+}
+
+// S14 (v3): only the first Change folder bullet is consulted; if it is
+// ignored, a later valid bullet does not supply a folder.
+func TestAuthored3IgnoredFirstBulletMeansNoFolder(t *testing.T) {
+	body := authored3BodyLines("", "- Change folder: ^../x/^.", "- Change folder: ^a/^.")
+	errs := authored3ValidateBody(t, body, map[string]string{"a.md": authored3Exists("a/file.md")})
+	authoredWantError(t, errs, "is not an owned path", authoredCaseRel+"/graders/a.md")
+	authoredWantNoErrorContaining(t, errs, "the change folder")
+}
+
+// S15 (v3): a folder of . or ./ is no folder.
+func TestAuthored3DotChangeFolderIgnored(t *testing.T) {
+	for _, folder := range []string{".", "./"} {
+		t.Run(folder, func(t *testing.T) {
+			errs := authored3Validate(t, folder, "", map[string]string{"other.md": authored3Exists("testdata/other.md")})
+			authoredWantError(t, errs, "is not an owned path", authoredCaseRel+"/graders/other.md")
+			authoredWantNoErrorContaining(t, errs, "the change folder")
+			errs = authored3Validate(t, folder, "", map[string]string{"art.md": authored3Exists("artefacts/x.md")})
+			authoredWantNoError(t, errs)
+		})
+	}
+}
+
+// S16 (v4): an indented line whose trimmed text starts with "- " is a new
+// bullet and stops continuation, so the unindented-line rule is not what
+// stops it here. The control differs only by the "- " marker.
+func TestAuthored3IndentedBulletStopsContinuation(t *testing.T) {
+	t.Run("indented bullet", func(t *testing.T) {
+		body := authored3BodyLines("", "- Change folder:", "  - ^c/^")
+		errs := authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
+		authoredWantError(t, errs, "is not an owned path", authoredCaseRel+"/graders/c.md")
+		authoredWantNoErrorContaining(t, errs, "the change folder")
+	})
+	t.Run("control indented continuation", func(t *testing.T) {
+		body := authored3BodyLines("", "- Change folder:", "  ^c/^")
+		errs := authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
+		authoredWantNoError(t, errs)
+	})
+}
+
+// N1-N12: nested counted repeats past RE2's 1000 limit.
 func TestAuthored3NestedRepeatsCompile(t *testing.T) {
 	t.Run("N1", func(t *testing.T) {
 		re, err := compileJS(`(?:a{50}){50}`, "")
@@ -411,17 +556,51 @@ func TestAuthored3NestedRepeatsCompile(t *testing.T) {
 			t.Fatalf("approximate = false, want true")
 		}
 	})
+	// N5-N8 use {501}, so the nested repeats exceed RE2's limit and the
+	// open-repeat retry path is reached; these are also the N10 rows. The
+	// {500} forms (exactly 1000, within the limit) are kept as a control.
 	invalid := []struct{ req, pattern, flags string }{
-		{"N5", `(?:a{5,2}){500}`, ""},
-		{"N6", `(?:a{2}){500}(`, ""},
-		{"N7", `(?:a{2}){500}{`, "u"},
-		{"N8", `(?:a{2}){500})`, ""},
+		{"N5 N10 out of order", `(?:a{5,2}){501}`, ""},
+		{"N6 N10 unbalanced open", `(?:a{2}){501}(`, ""},
+		{"N7 N10 lone brace u", `(?:a{2}){501}{`, "u"},
+		{"N8 N10 unbalanced close", `(?:a{2}){501})`, ""},
+		{"N5 at limit", `(?:a{5,2}){500}`, ""},
+		{"N6 at limit", `(?:a{2}){500}(`, ""},
+		{"N7 at limit", `(?:a{2}){500}{`, "u"},
+		{"N8 at limit", `(?:a{2}){500})`, ""},
+		{"N11 stacked star", `(?:a{2}){501}*`, ""},
+		{"N11 stacked count", `(?:a{2}){501}{2}`, ""},
+		{"N12 expression too large", strings.Repeat("a{1000}", 4000), ""},
 	}
 	for _, tc := range invalid {
 		t.Run(tc.req, func(t *testing.T) {
 			_, err := compileJS(tc.pattern, tc.flags)
 			if err == nil || !strings.Contains(err.Error(), "does not compile") {
-				t.Fatalf("compileJS(%q, %q) error = %v, want one containing %q", tc.pattern, tc.flags, err, "does not compile")
+				t.Fatalf("compileJS(%.60q, %q) error = %v, want one containing %q", tc.pattern, tc.flags, err, "does not compile")
+			}
+		})
+	}
+	// N9 and the valid N11 form: past the limit, compiles and is approximate.
+	// At exactly 1000 the pattern stays exact.
+	approx := []struct {
+		req, pattern string
+		want         bool
+	}{
+		{"N9", `(?:a{2}){501}`, true},
+		{"N11 lazy", `(?:a{2}){501}?`, true},
+		{"N9 at limit exact", `(?:a{2}){500}`, false},
+	}
+	for _, tc := range approx {
+		t.Run(tc.req, func(t *testing.T) {
+			re, err := compileJS(tc.pattern, "")
+			if err != nil {
+				t.Fatalf("compileJS(%q): %v", tc.pattern, err)
+			}
+			if re.approximate != tc.want {
+				t.Fatalf("approximate = %v, want %v", re.approximate, tc.want)
+			}
+			if !re.MatchString(strings.Repeat("a", 1002)) {
+				t.Fatalf("does not match 1002 a")
 			}
 		})
 	}
