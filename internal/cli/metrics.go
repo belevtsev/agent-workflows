@@ -85,6 +85,9 @@ func importCommand(config Config) *cobra.Command {
 			if appendHistory && (composition || summary || pricesPath != "") {
 				return usage(errors.New("--append stores token counts only and takes no --prices, --composition or --summary; pass --prices to cw metrics history"))
 			}
+			if dryRun, _ := command.Root().PersistentFlags().GetBool("dry-run"); dryRun && appendHistory {
+				return usage(errors.New("metrics import --append rejects --dry-run; nothing was written (run it without --append to see the report)"))
+			}
 			if composition && pricesPath == "" {
 				return usage(errors.New("--composition requires --prices: its totals are reconciled with the recorded cost"))
 			}

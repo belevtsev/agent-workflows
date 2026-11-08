@@ -157,8 +157,8 @@ directory you gave v2, and the Claude home is `$CLAUDE_CONFIG_DIR`, else
   rm -rf "$state/current" "$state/releases" "$state/bases" "$state/runtime" "$state/state.json" "$state/journal.json" "$state/mutation.lock"
   ```
 
-  Keep `workflow-tasks/` and the state directory itself: `cw` keeps its task
-  records there.
+  Keep `workflow-tasks/`, `metrics/` and the state directory itself: `cw` keeps
+  its task records and the [cost history](#cost-history) there.
 
 v2 also wrote model keys into `<claude-home>/settings.json` and
 `$CODEX_HOME/config.toml`, and may have added a `PATH` line to a shell profile;
@@ -176,9 +176,12 @@ Global flags apply to every command:
 | State | `--state-dir`, else `$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows` |
 | Configuration | `--config-dir`, else `$XDG_CONFIG_HOME/agent-workflows`, else `~/.config/agent-workflows` |
 
-The task store is `<state>/workflow-tasks`. The configuration directory holds the
+The task store is `<state>/workflow-tasks` and the cost history is
+`<state>/metrics/history.jsonl`. The configuration directory holds the
 saved adviser keys (`credentials.json`) and `preferences.json`. `--dry-run` is a
-global flag; `cw install`, `cw uninstall` and `cw keys set|unset` reject it.
+global flag; commands that would write without a preview reject it with exit
+status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
+the `cw task` state commands and `cw metrics import --append`.
 
 ## Model policy
 
