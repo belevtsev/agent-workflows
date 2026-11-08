@@ -17,10 +17,12 @@ lightweight: the coder writes the tests, the reviewer checks each against the
 Code Review Rules, and commits and pushes run directly under the user's
 authorization. Dispatch an independent [test engineer](references/contracts/test-engineer.md)
 when a substantial task adds or materially changes behavioural tests, helpers,
-fixtures, golden data, fuzz seeds or tolerances, or when the user asks; dispatch
-the [GitHub worker](references/github-worker.md) to publish a substantial task or
-when the user asks for a bounded worker. Repository instructions and user
-authorization still govern.
+fixtures, golden data, fuzz seeds or tolerances, or when the user asks. Publish
+a verified substantial task with `cw publish`, drafting the commit message and
+PR text yourself; you carry the user's authorization and the command is only the
+mechanism. Dispatch the GitHub worker for the fallback cases that
+[publication](references/github-worker.md) lists or when the user asks for a
+bounded worker. Repository instructions and user authorization still govern.
 
 ## Follow the decision flow
 
@@ -107,6 +109,6 @@ a task is substantial or replace a gate.
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
 | Roles, flow, review stages | [contracts](references/contracts/README.md) |
 | Independent tests | [test-engineer](references/contracts/test-engineer.md) |
-| Commit, push, PR | [github-worker](references/github-worker.md) |
+| Commit, push, PR | [publication](references/github-worker.md) |
 | Jira, Confluence, GitHub evidence | [connected-sources](references/connected-sources.md) |
 | Adviser providers | [adviser-providers](references/adviser-providers.md) |

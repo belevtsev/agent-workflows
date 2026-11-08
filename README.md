@@ -16,7 +16,7 @@ blocks the commit until `cw task verify` passes.
 
 ## How it works
 
-<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
+<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
@@ -34,7 +34,7 @@ spec exists or the request states every behaviour.
 | implementer | brief and contract | the change, a self-review | Opus 5.5, high |
 | test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
 | reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | Opus 5.5, high |
-| github-worker | verified facts, your approval | commit, push, PR | Sonnet 5.5, medium |
+| github-worker | verified facts, your approval | commit, push, PR when `cw publish` does not fit (hunk-level scopes, fork PRs, conversions) | Sonnet 5.5, medium |
 
 The table is not a one-way pipeline: every review loops back to its stage's
 author, except that a code review finding about a test goes to a fresh test
@@ -133,6 +133,12 @@ in a Bash command, in any form. Each open substantial task for the repository
 (not abandoned, touched in the last 14 days) blocks it until `cw task verify`
 passes on the current source. Editing a verified file reopens the task. With no
 task at all, a large change gets a prompt suggesting `cw task start`.
+
+`cw publish` commits a verified task's files, pushes them and creates or edits
+the pull request, and applies the same gate itself, so it holds under Codex as
+well. The coordinator runs it with your approval; the command never approves
+anything on its own. See the
+[publication reference](skills/task-orchestration/references/github-worker.md).
 
 When a task applies the `go` pack, verify also needs a passed direct `go test`
 run covering each changed package, with allowlisted flags only (no `-run` or

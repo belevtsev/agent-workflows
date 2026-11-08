@@ -16,13 +16,13 @@ First-party automation must be written in Go. The repository check (`internal/sk
 
 ## Diagrams
 
-[archify](third_party/archify/SKILL.md), vendored under `third_party/archify`, is the only diagram tool; do not add diagram sources in any other format. Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, which the docs embed because GitHub cannot run the interactive HTML. Edit the spec, never the SVG, then regenerate the SVG from the repository root (Node 18 or newer and Chrome):
+[archify](third_party/archify/SKILL.md), vendored under `third_party/archify`, is the only diagram tool; do not add diagram sources in any other format. Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, which the docs embed because GitHub cannot run the interactive HTML. Edit the spec, never the SVG, then regenerate every SVG from the repository root (Node 18 or newer and Chrome, Chromium or Edge; set `ARCHIFY_CHROME` to choose the browser):
 
 ```sh
-node third_party/archify/bin/archify.mjs finalize workflow docs/diagrams/workflow-overview.json /tmp/workflow-overview.html --quality showcase
+go run ./cmd/cwdev diagram-svg --all
 ```
 
-`finalize` validates the spec and checks the rendered page in a headless browser. Open the HTML it wrote, choose **Export → SVG · Auto** and save the file over `docs/diagrams/workflow-overview.svg`; that export carries both colour themes, so it reads in GitHub's light and dark modes. Pass the spec's own `meta.quality_profile` to `--quality` (`decision-flow.json` uses `standard`). Keep the HTML out of the repository.
+For each spec it runs archify `finalize` with the spec's own `diagram_type` and `meta.quality_profile`, which validates the spec and checks the rendered page in a headless browser, then opens the viewer HTML in headless Chrome, chooses **Export → SVG · Auto** and writes the downloaded SVG over the committed one. That export carries both colour themes, so it reads in GitHub's light and dark modes. `go run ./cmd/cwdev diagram-svg docs/diagrams/decision-flow.json` exports one spec (`--out FILE` writes elsewhere), and `--check` writes nothing and fails when a committed SVG differs from a fresh export. The command adds the final newline `.editorconfig` requires and otherwise keeps the viewer's bytes; exports are byte-identical across runs on one machine, but `--check` is not run in CI because other operating systems and Chrome versions may serialise differently.
 
 ## Proposing or changing a skill
 
