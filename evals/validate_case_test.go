@@ -842,7 +842,7 @@ func TestAuthoredFindCases(t *testing.T) {
 	}
 }
 
-// authoredRealCases are the 23 cases the repository ships today (D2).
+// authoredRealCases are the 26 cases the repository ships today (D2).
 var authoredRealCases = []string{
 	"architect/config-hot-reload",
 	"architect/ledger-money-adr",
@@ -851,6 +851,9 @@ var authoredRealCases = []string{
 	"implementer/bounded-worker-pool",
 	"implementer/idempotency-claims",
 	"implementer/parse-limits-config",
+	"reviewer/code-price-cache",
+	"reviewer/code-upload-quota",
+	"reviewer/code-webhook-dispatch",
 	"reviewer/design-job-timeout-units",
 	"reviewer/design-revision-scope-growth",
 	"reviewer/design-webhook-retries",
@@ -878,8 +881,8 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		t.Fatalf("loadPluginInfo(%s): %v", root, err)
 	}
 	authoredWantRoster(t, p) // D1
-	if len(authoredRealCases) != 23 {
-		t.Fatalf("authoredRealCases lists %d cases, want 23", len(authoredRealCases))
+	if len(authoredRealCases) != 26 {
+		t.Fatalf("authoredRealCases lists %d cases, want 26", len(authoredRealCases))
 	}
 
 	dirs, err := findCases(filepath.Join(root, "evals"))

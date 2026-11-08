@@ -1,0 +1,5 @@
+check unit (final run at the integrated source), working directory testdata/pricing
+argv: go test -race -count=1 -covermode=atomic -coverprofile=/private/task/cover.out ./...
+ok  	example.com/pricing/pricecache	1.446s	coverage: 77.8% of statements
+status: passed
+coverage profile: /private/task/cover.out (copied to testdata/checks/cover.out)
