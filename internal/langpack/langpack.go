@@ -21,6 +21,17 @@ type Run struct {
 	// GOFLAGS is the GOFLAGS of the run's environment; empty when unset or
 	// when the run was recorded before cw recorded it.
 	GOFLAGS string
+	// CheckID is the planned check the run belongs to; "" when unknown.
+	CheckID string
+	// Log is the run's stored output, possibly only its start (see
+	// Truncated); nil when it was not read, could not be read, or does not
+	// match the run's recorded digest.
+	Log []byte
+	// Truncated reports that the output was longer than the stored log.
+	Truncated bool
+	// Rerun reports that an earlier run of the same check failed with an
+	// exit code at the same before-snapshot and the same recorded GOFLAGS.
+	Rerun bool
 }
 
 // EvidenceRule reports what a changed task lacks in executed evidence, given
