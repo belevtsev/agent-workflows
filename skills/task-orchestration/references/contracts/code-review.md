@@ -83,16 +83,21 @@ The implementer never receives `design.md`
 finding that only `design.md` supports names the `design.md` rule for the
 coordinator and also states it as a constraint in contract terms (who starts,
 stops or closes what; which lock is not held across which call; which failure
-is returned). The coordinator forwards only the constraint, adding it to the
-implementation brief, or treats the finding as a contract question when the
-contract should carry it.
+is returned). The coordinator forwards only the constraint, under the
+finding's ID with its disposition, never the finding's summary or its
+`design.md` rule, or, when the contract or brief should carry the rule,
+raises it as a question in contract terms through the
+[contract amendment](README.md#contract-amendment) procedure, which strips
+implementation from it before the architect sees it.
 
 A finding's `evidence` holds only source references inside the tree
 (`path`, line range, `sha256`); `cw task handoff` rejects any other path. Put
 everything else (a reproduction test's absolute path, its command and output,
 the `design.md` rule) in the finding's `summary`, or in a file outside the
 source that the summary names; an untested requirement's summary stays as
-[class 1](#uncovered-changed-blocks) limits it.
+[class 1](#uncovered-changed-blocks) limits it. Whatever a finding cites, the
+coordinator removes any `design.md` rule from it before it reaches the
+implementer, which gets the finding in requirement or constraint terms only.
 
 ## Quality bar
 
@@ -142,7 +147,8 @@ unexecuted (count 0) exactly one class, decided in this order:
    reach it: a fallback nobody asked for, or code outside the change's scope.
    This is an implementation finding for the implementer, graded by its
    effect, or, when the contract seems to have missed a needed behaviour, a
-   contract question for the coordinator. A block that does the opposite of
+   contract question for the coordinator
+   ([contract amendment](README.md#contract-amendment)). A block that does the opposite of
    what a requirement asks for the same input, such as a fallback where the
    contract says fail closed, belongs here too: the requirement asks for
    other behaviour, not for this block's.

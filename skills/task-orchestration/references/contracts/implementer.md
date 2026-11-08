@@ -19,7 +19,9 @@ same contract.
 - An artefact directory for your outputs, outside the source tree and separate
   from the architect's.
 - On revision, the accepted [code review](code-review.md) findings and the
-  coordinator's dispositions, by finding ID.
+  coordinator's dispositions, by finding ID, with any `design.md` rule
+  removed: a finding that only `design.md` supports arrives as a constraint
+  in contract terms under its ID.
 
 ## Inputs you must never receive
 

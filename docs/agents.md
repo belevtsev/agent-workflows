@@ -69,8 +69,15 @@ Test review runs the tests against a stub first, so a test of non-trivial
 behaviour that passes against the stub is flagged
 ([test review](../skills/task-orchestration/references/contracts/test-review.md)).
 Code review, which does read the code, also flags a test that could not fail
-for the defect it claims to prevent. A known limit: an internal branch that no
-requirement names has no test asked for it.
+for the defect it claims to prevent. An internal branch that no requirement
+names and that leaves an unexecuted changed block is classified there: when
+the final check wrote a coverage profile, code review gives every unexecuted
+changed block one class, an untested
+requirement (sent to a fresh test engineer by requirement ID, contract-level
+inputs and expected outcome, never coverage), behaviour no requirement asks
+for, or an unreachable defence
+([uncovered changed blocks](../skills/task-orchestration/references/contracts/code-review.md#uncovered-changed-blocks)).
+The test engineer itself still never sees coverage.
 
 **Why doesn't the implementer write its own tests?** Code tested only by its
 author is one of the failures this project exists to prevent: the same
@@ -83,8 +90,11 @@ checks them.
 
 **Does the reviewer ever read the code?** Yes. Code review runs on the
 integrated source after the tests have run. It has the whole repository, a
-bundle that lists the files changed since the task started, and the
-requirements to check the change against
+bundle that lists the files changed since the task started, the interface
+contract, `design.md`, the test engineer's matrix and requirement map, and the
+final check's coverage profile when one exists; it checks the change against the requirements
+and the design, and backs each behaviour finding with a test that fails on the
+current source
 ([code review](../skills/task-orchestration/references/contracts/code-review.md#inputs-you-receive)).
 Only test review never sees the implementation, so it judges the tests by the
 contract alone.
