@@ -1,7 +1,8 @@
 name: Agent evals
 
 # Runs the paid `claude plugin eval` suites under evals/, one job per suite, and
-# gates on a pass-rate floor and, for test-engineer, on the mutant gate. See
+# gates on a pass-rate floor and, for test-engineer and adversarial-tester, on
+# the mutant gate and the adversarial gate. See
 # evals/README.md. Offline validation of the case files runs with every other
 # Go test in the CI workflow (ci.yml).
 
@@ -185,3 +186,8 @@ jobs:
         env:
           EVAL_ARTEFACTS_DIR: ${{ runner.temp }}/eval-out/workspaces
         run: go test ./evals/ -run '^TestMutantGate$' -count=1 -v
+      - name: Gate the adversarial-tester tests on the seeded defects
+        if: always() && matrix.suite == 'adversarial-tester' && steps.run.outcome == 'success'
+        env:
+          EVAL_ARTEFACTS_DIR: ${{ runner.temp }}/eval-out/workspaces
+        run: go test ./evals/ -run '^TestAdversarialGate$' -count=1 -v

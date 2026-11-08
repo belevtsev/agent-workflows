@@ -12,13 +12,16 @@ reviewer never reviews its own work.
 | [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
 | [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | Opus, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
 | [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | Opus, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
+| [adversarial-tester](https://github.com/belevtsev/agent-workflows/blob/main/agents/adversarial-tester.md) | Opus, high | Opt-in, beside code review: white-box tests that must fail on the integrated source, each a finding for the implementer; kept as source-access regression tests, never black-box coverage | [adversarial-tester](../skills/task-orchestration/references/contracts/adversarial-tester.md) |
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | Opus, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
-| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | Sonnet, medium | Commit, push and pull request from verified facts | [GitHub worker](../skills/task-orchestration/references/github-worker.md) |
+| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | Sonnet, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker.md) |
 
 Substantial work that builds new behaviour has a review loop at every stage:
 spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
 test engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
-implementer → `cw task verify` → a commit through the GitHub worker. Findings go
+implementer → `cw task verify` → a commit with `cw publish`, run by the
+coordinator under the user's authorization (the GitHub worker for the fallback
+cases). Findings go
 back to the author of that stage, and the review cap applies to each stage. The
 spec writer turns requirements, tickets and pages into an
 [OpenSpec](https://github.com/Fission-AI/OpenSpec) change under
@@ -41,8 +44,8 @@ here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.
 
-The spec writer, architect, implementer, test engineer and reviewer have eval
-suites under [`evals/`](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md);
+The spec writer, architect, implementer, test engineer, adversarial tester and
+reviewer have eval suites under [`evals/`](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md);
 the reviewer's covers spec, design and test review.
 
 Agent definitions live in [`agents/`](https://github.com/belevtsev/agent-workflows/tree/main/agents); keep only agent files there, because the plugin loads every Markdown file there as an agent.
@@ -81,6 +84,11 @@ inputs and expected outcome, never coverage), behaviour no requirement asks
 for, or an unreachable defence
 ([uncovered changed blocks](../skills/task-orchestration/references/contracts/code-review.md#uncovered-changed-blocks)).
 The test engineer itself still never sees coverage.
+For a change that touches concurrency, parsing or untrusted input, security or
+data integrity, the plan can also opt in to the
+[adversarial tester](../skills/task-orchestration/references/contracts/adversarial-tester.md),
+which reads the code but keeps only tests that fail on it; those never count as
+black-box coverage, and the test engineer never sees them.
 
 **Why doesn't the implementer write its own tests?** Code tested only by its
 author is one of the failures this project exists to prevent: the same
@@ -115,12 +123,16 @@ Codex roles follow
 [model-policy.yaml](../skills/task-orchestration/model-policy.yaml). Moving
 more roles to a cheaper model is the owner's decision.
 
-**Why is the GitHub worker an agent rather than a shell script?** First-party
-automation must be written in Go, and the repository check rejects `.sh` and
-`.py` files outside `skills/` and `third_party/`
-([contributing](../CONTRIBUTING.md#go-only-automation)). A script that runs git
-itself is also invisible to the Claude Code commit gate, which sees only Bash
-commands that name git ([hooks](hooks.md)).
+**Why is the GitHub worker an agent rather than a shell script?** Routine
+publication no longer needs either: it runs as the Go command `cw publish`,
+which applies the verify gate itself, so it holds where the Claude Code commit
+gate, which sees only Bash commands that name git, cannot look, and under Codex
+([hooks](hooks.md)). First-party automation must be written in Go anyway; the
+repository check rejects `.sh` and `.py` files outside `skills/` and
+`third_party/` ([contributing](../CONTRIBUTING.md#go-only-automation)). The
+worker remains an agent for the fallback cases the command refuses, such as
+hunk-level scopes, fork pull requests and content conversions
+([publication](../skills/task-orchestration/references/github-worker.md#fallback-the-github-worker)).
 
 **Why not run design review and test review in parallel?** The tests are
 written from the fixed interface contract, and the contract is fixed only after

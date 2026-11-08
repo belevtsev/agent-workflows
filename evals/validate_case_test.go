@@ -27,10 +27,11 @@ func authoredRealRoot(t *testing.T) string {
 	return root
 }
 
-// authoredRoster is the plugin's agent roster: exactly these six agents (D1).
+// authoredRoster is the plugin's agent roster: exactly these seven agents
+// (D1, roster-tests revision 2 RT3).
 var authoredRoster = []string{
 	"spec-writer", "architect", "implementer",
-	"test-engineer", "reviewer", "github-worker",
+	"test-engineer", "adversarial-tester", "reviewer", "github-worker",
 }
 
 // authoredRemovedAgents were dropped from the roster and must not come back.
@@ -676,9 +677,10 @@ func TestAuthoredPluginFixtureMatchesRoster(t *testing.T) {
 	}
 }
 
-// D1: the roster check accepts the six-agent manifest and rejects the old
-// eight-agent manifest, another plugin name, a manifest missing one new agent
-// and one carrying an extra removed agent, each loaded from a temporary root.
+// D1 (RT3): the roster check accepts the seven-agent manifest and rejects the
+// six-agent manifest without adversarial-tester, the old eight-agent manifest,
+// another plugin name, a manifest missing one roster agent and one carrying an
+// extra removed agent, each loaded from a temporary root.
 func TestAuthoredRosterCheckRejectsOtherManifests(t *testing.T) {
 	load := func(t *testing.T, name string, agents []string) pluginInfo {
 		t.Helper()
@@ -688,9 +690,16 @@ func TestAuthoredRosterCheckRejectsOtherManifests(t *testing.T) {
 		}
 		return p
 	}
-	t.Run("six-agent control accepted", func(t *testing.T) {
+	t.Run("seven-agent control accepted", func(t *testing.T) {
 		if msg := authoredRosterMismatch(load(t, "agent-workflows", authoredRoster)); msg != "" {
-			t.Fatalf("want the six-agent manifest accepted; got %s", msg)
+			t.Fatalf("want the seven-agent manifest accepted; got %s", msg)
+		}
+	})
+	t.Run("six-agent manifest without adversarial-tester rejected", func(t *testing.T) {
+		six := []string{"spec-writer", "architect", "implementer", "test-engineer", "reviewer", "github-worker"}
+		msg := authoredRosterMismatch(load(t, "agent-workflows", six))
+		if !strings.Contains(msg, `missing "adversarial-tester"`) {
+			t.Fatalf("want the six-agent manifest rejected as missing adversarial-tester; got %q", msg)
 		}
 	})
 	type manifest struct {
@@ -842,8 +851,13 @@ func TestAuthoredFindCases(t *testing.T) {
 	}
 }
 
-// authoredRealCases are the 26 cases the repository ships today (D2).
+// authoredRealCases are the 29 cases the repository ships (D2, RT4, and
+// roster-tests revision 3 M2: main's 26 plus the three adversarial-tester
+// cases), in the order findCases returns them.
 var authoredRealCases = []string{
+	"adversarial-tester/frame-length-limit",
+	"adversarial-tester/loader-once-race",
+	"adversarial-tester/path-prefix-escape",
 	"architect/config-hot-reload",
 	"architect/ledger-money-adr",
 	"architect/outbox-publisher",
@@ -872,7 +886,8 @@ var authoredRealCases = []string{
 	"test-engineer/ttl-cache-matrix",
 }
 
-// V10, D1, D2: the real plugin manifest loads with the six-agent roster and
+// V10, D1, D2 (RT3, RT4, M2): the real plugin manifest loads with the
+// seven-agent roster, findCases returns exactly the 29 cases in order, and
 // every real case validates.
 func TestAuthoredRealCasesValidate(t *testing.T) {
 	root := authoredRealRoot(t)
@@ -881,8 +896,12 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		t.Fatalf("loadPluginInfo(%s): %v", root, err)
 	}
 	authoredWantRoster(t, p) // D1
-	if len(authoredRealCases) != 26 {
-		t.Fatalf("authoredRealCases lists %d cases, want 26", len(authoredRealCases))
+	// M2: the fixture holds the 29 cases, sorted as findCases returns them.
+	if len(authoredRealCases) != 29 {
+		t.Fatalf("authoredRealCases lists %d cases, want 29", len(authoredRealCases))
+	}
+	if !sort.StringsAreSorted(authoredRealCases) {
+		t.Fatalf("authoredRealCases is not in sorted order: %q", authoredRealCases)
 	}
 
 	dirs, err := findCases(filepath.Join(root, "evals"))
@@ -902,12 +921,9 @@ func TestAuthoredRealCasesValidate(t *testing.T) {
 		found[filepath.ToSlash(rel)] = true
 		rels = append(rels, filepath.ToSlash(rel))
 	}
-	// D2: authoredRealCases is in the order findCases returns.
-	if !sort.StringsAreSorted(authoredRealCases) {
-		t.Errorf("authoredRealCases is not sorted: %q", authoredRealCases)
-	}
+	// D2: findCases returns exactly authoredRealCases, in that order.
 	if strings.Join(rels, "\n") != strings.Join(authoredRealCases, "\n") {
-		t.Errorf("findCases order = %q, want authoredRealCases %q", rels, authoredRealCases)
+		t.Errorf("findCases order = %q, want exactly %q", rels, authoredRealCases)
 	}
 	for _, c := range authoredRealCases {
 		if !found[c] {

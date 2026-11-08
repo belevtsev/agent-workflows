@@ -1,0 +1,11 @@
+Fix: begin registers the new in-flight call in c.inflight under the write lock, so a Get that overlaps a load of the same key waits for it instead of calling load again (R3, DR1).
+--- a/memo.go
++++ b/memo.go
+@@ -61,6 +61,7 @@
+ // begin starts the in-flight call for key. The caller holds the write lock.
+ func (c *Cache) begin(key string) *call {
+ 	cl := &call{done: make(chan struct{})}
++	c.inflight[key] = cl
+ 	return cl
+ }
+

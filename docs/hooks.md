@@ -29,6 +29,12 @@ commands a Bash input runs). `cw hook pre-publish` then finds each `git commit`
 and `git push` in the command and the directory it runs in, and exits at once,
 without output, when there is none.
 
+`cw publish` applies the same gate itself, before it commits or pushes: it runs
+the same search for open records (over the task's own store and the store
+below), so the gate holds under Codex, which has no hook, too. It refuses with
+exit 3 `open-record` instead of a deny. The hook does not inspect `cw publish`:
+its command text names no git, and cw runs git itself.
+
 ### Recognised commands
 
 The hook splits the command into simple commands at `;`, `&&`, `||`, `|`, `&`,
@@ -146,7 +152,8 @@ The hook reads records from `$CW_TASK_STORE` when it is set, else from the
 state directory `cw task start` writes to (`$XDG_STATE_HOME/agent-workflows/workflow-tasks`,
 else `~/.local/state/agent-workflows/workflow-tasks`). `cw task start` does not
 read `CW_TASK_STORE`; give it the same directory with `--store` when you use
-the variable.
+the variable. `cw publish` reads both the store of the task it publishes (the
+task directory's parent) and this store, once each when they are the same.
 
 ## Fail-open rules
 
