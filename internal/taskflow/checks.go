@@ -75,6 +75,12 @@ func validateCommand(argv []string) error {
 		}
 		return nil
 	}
+	// cw publish commits, pushes and opens pull requests. Refusing it here is
+	// a guard, not a sandbox: a check can still run another program that
+	// publishes.
+	if name == "cw" && cwSubcommand(argv[1:]) == "publish" {
+		return errors.New("publication and deployment commands are outside task checks")
+	}
 	for _, subcommand := range argv[1:] {
 		publication := (name == "docker" || name == "podman") && subcommand == "push"
 		publication = publication || slices.Contains([]string{"npm", "pnpm", "yarn", "cargo"}, name) && subcommand == "publish"
@@ -84,6 +90,24 @@ func validateCommand(argv []string) error {
 		}
 	}
 	return nil
+}
+
+// cwSubcommand returns the first argument after cw's global flags: the
+// directory flags take a value (separate or after =), --dry-run takes none
+// or an attached one, and any other argument starting with - stands alone.
+func cwSubcommand(args []string) string {
+	valued := []string{"--config-dir", "--home", "--codex-home", "--claude-home", "--state-dir"}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case slices.Contains(valued, arg):
+			i++
+		case strings.HasPrefix(arg, "-"):
+		default:
+			return arg
+		}
+	}
+	return ""
 }
 
 // directSubcommand consumes global options before classifying a direct Git or
@@ -232,6 +256,8 @@ type logCapture struct {
 	bytes   int64
 	written int
 	failure error
+	// tests reads the per-test results of the complete output.
+	tests langpack.GoTestOutput
 }
 
 func (capture *logCapture) Write(data []byte) (int, error) {
@@ -239,6 +265,7 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	defer capture.mu.Unlock()
 	capture.bytes += int64(len(data))
 	capture.full.Write(data)
+	capture.tests.Write(data)
 	keep := min(len(data), MaxLogBytes-capture.written)
 	if keep > 0 && capture.failure == nil {
 		n, err := capture.file.Write(data[:keep])
@@ -250,6 +277,13 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	}
 	// Drain all process output even after reaching the storage bound.
 	return len(data), nil
+}
+
+// testResults reports the per-test results of the output written so far.
+func (capture *logCapture) testResults() langpack.GoTestResults {
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	return capture.tests.Results()
 }
 
 // Run executes only argv recorded in the immutable plan or added by an
@@ -363,6 +397,17 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if run.Status == "passed" {
 			run.Status = "source_changed"
 			run.Failure = "source_snapshot_changed_or_unavailable"
+		}
+	}
+	// The results file is written before the terminal revision names it. A
+	// write failure leaves the run without results and fails only a run that
+	// would otherwise pass.
+	if results := capture.testResults(); len(results.Tests) > 0 {
+		if name, sum, err := writeTestResults(path, run.ID, results); err == nil {
+			run.TestResults, run.TestResultsSHA256 = name, sum
+		} else if run.Status == "passed" {
+			run.Status = "failed"
+			run.Failure = "test_results_write_failed"
 		}
 	}
 	_, storeErr := updateWhenUnlocked(finishCtx, path, run.ID, func(_ *os.Root, record *Record) error {

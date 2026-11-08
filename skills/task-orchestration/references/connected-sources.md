@@ -101,8 +101,9 @@ Read enough paginated results to establish completeness for the current question
 - Draft PR titles and descriptions around the final diff, observable behavior, and relevant
   validation. Drafting does not authorize commits, pushes, PR creation, merge, or comments.
   Perform already requested publication without repeating an approval request.
-- Dispatch the [GitHub worker](github-worker.md) to publish a substantial task or
-  when the user asks for a bounded worker; a small task commits and pushes
+- Publish a verified substantial task with `cw publish`; dispatch the
+  [GitHub worker](github-worker.md) for its fallback cases or when the user asks
+  for a bounded worker; a small task commits and pushes
   directly under the user's authorization. Its `commit_execution`,
   `pr_authoring_routine` and `pr_submission` roles use the `github` profile. It
   drafts messages and PR text from fixed independently verified facts and executes

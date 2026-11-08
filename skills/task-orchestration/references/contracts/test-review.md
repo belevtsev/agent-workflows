@@ -34,6 +34,7 @@ so; the coordinator replaces you with a fresh reviewer.
 - Implementation source, diffs, history, coverage, build or runtime logs, or
   the implementer's self-review.
 - The design discussion (`design.md`) or adviser output.
+- The [adversarial tester](adversarial-tester.md)'s tests, findings or probes.
 - Authority to edit tests, commit or write to connected systems.
 
 ## Required outputs

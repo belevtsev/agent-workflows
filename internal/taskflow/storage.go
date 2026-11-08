@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -385,6 +386,9 @@ func validateRecord(record Record) error {
 		if run.Status != "running" && run.FinishedAt == nil {
 			return errors.New("terminal check is missing its completion time")
 		}
+		if (run.TestResults != "" || run.TestResultsSHA256 != "") && (run.TestResults != testResultsName(run.ID) || !validSHA256(run.TestResultsSHA256) || run.Status == "running") {
+			return errors.New("invalid stored check run test results binding")
+		}
 	}
 	requirements := map[string]bool{}
 	for _, requirement := range record.Plan.Requirements {
@@ -450,6 +454,17 @@ func requireRevisionCapacity(record Record, additional int, completingRunID stri
 }
 
 func updateWithCapacity(path string, additional int, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
+	return updateDiscarding(path, additional, completingRunID, change, nil)
+}
+
+// updateDiscarding is updateWithCapacity with one addition: when change
+// succeeded and the update then fails (revision capacity, validation,
+// encoding, the size limit or the record write), it calls discard, still
+// under the task lock, so change can remove the artefacts it stored. discard
+// is not called once the revision name exists or its absence cannot be
+// confirmed after a failed write, even when this run published nothing (the
+// name already existed). A nil discard is updateWithCapacity.
+func updateDiscarding(path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (_ Record, err error) {
 	root, directory, err := openTask(path)
 	if err != nil {
 		return Record{}, err
@@ -479,6 +494,12 @@ func updateWithCapacity(path string, additional int, completingRunID string, cha
 	if err := change(root, &record); err != nil {
 		return Record{}, err
 	}
+	published := false
+	defer func() {
+		if err != nil && !published && discard != nil {
+			discard(root)
+		}
+	}()
 	record.Revision++
 	record.PreviousSHA256 = previous
 	record.UpdatedAt = time.Now().UTC()
@@ -505,7 +526,11 @@ func updateWithCapacity(path string, additional int, completingRunID string, cha
 	if len(data) > MaxInputBytes {
 		return Record{}, errors.New("task revision exceeds size limit")
 	}
-	if err := writeNew(root, fmt.Sprintf("record-%06d.json", record.Revision), data); err != nil {
+	name := fmt.Sprintf("record-%06d.json", record.Revision)
+	if err := writeNew(root, name, data); err != nil {
+		// Only a revision file that is certainly absent was not published.
+		_, statErr := root.Lstat(name)
+		published = !errors.Is(statErr, fs.ErrNotExist)
 		return Record{}, err
 	}
 	return record, nil

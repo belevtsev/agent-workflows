@@ -36,6 +36,13 @@ type WorkerBrief struct {
 	// Contract names the saved Go contract extract a test-engineer brief
 	// carries; only an implementation brief may carry one.
 	Contract *ContractRef `json:"contract,omitempty"`
+	// Inputs names the artefacts handed to the worker; assign verifies each
+	// hash and stores a copy.
+	Inputs []InputRef `json:"inputs,omitempty"`
+	// Requirements declares the contract requirements a brief with a contract
+	// covers; it is required when the plan can prove tests and refused when it
+	// cannot.
+	Requirements []ContractRequirement `json:"requirements,omitempty"`
 }
 
 type WorkerAssignment struct {
@@ -50,6 +57,9 @@ type WorkerAssignment struct {
 	// ContractFile is the immutable copy of the brief's contract extract in
 	// the task directory; its bytes hash to Brief.Contract.SHA256.
 	ContractFile string `json:"contract_file,omitempty"`
+	// InputFiles are the stored copies of Brief.Inputs in the task directory,
+	// in the same order.
+	InputFiles []string `json:"input_files,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -90,6 +100,9 @@ type WorkerResult struct {
 	// row of a file that still exists; results recorded before this field
 	// existed have none.
 	ReachRuns []ReachRun `json:"reach_runs,omitempty"`
+	// RequirementMap answers every requirement the brief declares; only a
+	// completed result of such an assignment carries it.
+	RequirementMap []RequirementMapping `json:"requirement_map,omitempty"`
 }
 
 // ReachRun is one mode of one reach row as a reviewer ran it, or did not.
@@ -220,7 +233,10 @@ func validateBrief(record Record, brief WorkerBrief) error {
 			return fmt.Errorf("worker brief references unplanned check %s", id)
 		}
 	}
-	return nil
+	if err := validateInputs(brief.Inputs); err != nil {
+		return err
+	}
+	return validateBriefRequirements(record, brief)
 }
 
 func assignmentHash(assignment WorkerAssignment) (string, error) {
@@ -281,7 +297,16 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // attached with a resolved decision, unless its plan declares checkpoints not
 // required; a before checkpoint attached anyway is still validated.
 func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
-	return update(taskPath, func(root *os.Root, record *Record) error {
+	// stored names the copies a successful closure wrote; the update removes
+	// them if it then fails, unless the revision name exists or its absence
+	// cannot be confirmed afterwards (see updateDiscarding).
+	var stored []string
+	discardStored := func(root *os.Root) {
+		for _, name := range stored {
+			root.Remove(name)
+		}
+	}
+	return updateDiscarding(taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
 			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
@@ -329,11 +354,46 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 				return err
 			}
 		}
+		// storeReviewBundle and storeContract validate and store their copy in
+		// one step, and R8 needs the validated contract, so a check refused
+		// after them removes that copy. A failure of the record update after
+		// this closure removes every copy it stored (discardStored; see
+		// updateDiscarding). A copy can still be left unnamed by a failed
+		// removal; by a copy write whose directory sync failed after it was
+		// linked; by a failed record write after which the revision name exists
+		// (even one this run did not publish) or its absence cannot be
+		// confirmed; or by a crash or kill between the copy writes and the
+		// revision's publication. A revision published with uncertain
+		// durability names the copies.
+		discard := func(err error) error {
+			for _, name := range []string{assignment.BundleFile, assignment.ContractFile} {
+				if name != "" {
+					root.Remove(name)
+				}
+			}
+			return err
+		}
+		if err := requirementsFollowPlan(*record, brief); err != nil {
+			return discard(err)
+		}
+		if err := verifyInputs(brief.Inputs); err != nil {
+			return discard(err)
+		}
+		if len(brief.Inputs) > 0 {
+			if assignment.InputFiles, err = storeInputs(root, brief); err != nil {
+				return discard(err)
+			}
+		}
 		record.Assignments = append(record.Assignments, assignment)
 		record.EvidenceRevision++
 		record.Verification = nil
+		for _, name := range append([]string{assignment.BundleFile, assignment.ContractFile}, assignment.InputFiles...) {
+			if name != "" {
+				stored = append(stored, name)
+			}
+		}
 		return nil
-	})
+	}, discardStored)
 }
 
 func refsShape(refs []SourceRef, required bool) error {
@@ -411,7 +471,7 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 			return err
 		}
 	}
-	return nil
+	return validateRequirementMap(assigned, result)
 }
 
 func reachRunsShape(role string, runs []ReachRun) error {
@@ -673,7 +733,7 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 		if findWorkerResult(*record, input.AssignmentID) != nil {
 			return errors.New("assignment already has an immutable terminal result; use a new assignment ID")
 		}
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -706,6 +766,20 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 		}
 		for _, id := range runs {
 			if err := workerCheckArtifact(root, *record, id); err != nil {
+				return err
+			}
+		}
+		if len(input.RequirementMap) > 0 {
+			if err := mappedTestAuthorship(*record, input); err != nil {
+				return err
+			}
+			projectRoot, err := os.OpenRoot(snapshot.Root)
+			if err != nil {
+				return err
+			}
+			err = mappedTestsLive(newTestSource(projectRoot, snapshot, files), input)
+			projectRoot.Close()
+			if err != nil {
 				return err
 			}
 		}

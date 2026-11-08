@@ -1,0 +1,9 @@
+Fix: contains accepts only the root itself or a path that starts with the root followed by a separator, so a sibling such as ../<rootbase>-evil/x returns ErrOutside (R5, DR1).
+--- a/jail.go
++++ b/jail.go
+@@ -44,4 +44,4 @@
+ // contains reports whether the cleaned path p lies within the root.
+ func (r *Root) contains(p string) bool {
+-	return strings.HasPrefix(p, r.dir)
++	return p == r.dir || strings.HasPrefix(p, r.dir+string(filepath.Separator))
+ }
