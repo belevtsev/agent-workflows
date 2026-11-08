@@ -170,7 +170,8 @@ and no amendment.
    needed symbol still carries it, report the blocker. The refreshed
    test-engineer assignment, under a new ID, owns at least every test path
    its earlier one owned, which supersedes the earlier extract for
-   `cw task verify`.
+   `cw task verify`. Its brief re-declares in `requirements` every requirement
+   it still carries, not only the changed IDs.
 
 Each worker receives the amended contract (the implementer also its amended
 brief), the changed requirement IDs and, for each of its questions the

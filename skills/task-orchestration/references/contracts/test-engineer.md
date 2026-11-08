@@ -158,6 +158,11 @@ changing a test file.
 3. `requirement-map.md`: one line per requirement ID naming the test (file and
    test name) that fails when that requirement is violated, or `uncovered` with
    the reason (no public seam, needs an environment the brief did not give).
+   The same mapping goes in the result's `requirement_map`, one entry per
+   requirement the brief declares: its `tests`, naming only tests in files this
+   round changed or an earlier test-engineer round (one whose brief carried a
+   contract) changed and whose latest acceptance is not `rejected` (a round closed
+   `unused` still counts), or its `uncovered` reason.
 4. The handoff result as [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
    describes, recorded as [below](#record-and-complete).
 
@@ -238,11 +243,15 @@ gates to you would prevent a valid red-test handoff. Execution checks stay in
 the task plan, owned by the coordinator or a separate `verification`
 assignment, and the overall change is accepted on their real results.
 
-The brief's constraints carry the packet identity and the read boundary. Return
-the requirement-to-case mapping, authored artefact hashes, inputs read,
-unresolved questions and any exposure in the bounded summary or a referenced
-artefact, alongside the normal result. These are workflow records, not new
-native JSON fields or proof of who read or wrote a file. The coordinator records
+The brief carries the contract, its `requirements` (each contract requirement
+with the plan requirements it implements) and the `inputs` handed to you; its
+constraints carry the packet identity and the read boundary. The result's
+`requirement_map` records the requirement-to-test mapping. Return the authored
+artefact hashes, inputs read, unresolved questions and any exposure in the
+bounded summary or a referenced artefact, alongside the normal result. These
+remain workflow records, not native JSON fields or proof of who read or wrote a
+file. A red-test handoff with `check_ids: []` stays valid: the map needs the
+mapped tests to exist at handoff, not to pass. The coordinator records
 assignment, handoff and acceptance before claiming authorship complete, and a
 fresh [test review](test-review.md) follows before integration.
 

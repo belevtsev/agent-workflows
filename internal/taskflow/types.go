@@ -161,6 +161,12 @@ type CheckRun struct {
 	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
 	// Argv, unlike GOFLAGS, is stored verbatim.
 	GOFLAGS string `json:"goflags,omitempty"`
+	// TestResults names the private file in the task directory holding the
+	// per-test results read from the run's complete output; TestResultsSHA256
+	// is the hash of its bytes. Both are empty when the output held no test
+	// event.
+	TestResults       string `json:"test_results,omitempty"`
+	TestResultsSHA256 string `json:"test_results_sha256,omitempty"`
 }
 
 type Attachment struct {

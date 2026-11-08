@@ -479,6 +479,9 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		contractIssues, contractNotes := contractProblems(root, *record)
 		result.Problems = append(result.Problems, contractIssues...)
 		result.Limitations = append(result.Limitations, contractNotes...)
+		traceIssues, traceNotes := traceVerifyEntries(root, *record, snapshot, files)
+		result.Problems = append(result.Problems, traceIssues...)
+		result.Limitations = append(result.Limitations, traceNotes...)
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
 				executionIssues, executionNotes := executionProblems(root, *record, snapshot, files)

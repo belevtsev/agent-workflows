@@ -232,6 +232,8 @@ type logCapture struct {
 	bytes   int64
 	written int
 	failure error
+	// tests reads the per-test results of the complete output.
+	tests langpack.GoTestOutput
 }
 
 func (capture *logCapture) Write(data []byte) (int, error) {
@@ -239,6 +241,7 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	defer capture.mu.Unlock()
 	capture.bytes += int64(len(data))
 	capture.full.Write(data)
+	capture.tests.Write(data)
 	keep := min(len(data), MaxLogBytes-capture.written)
 	if keep > 0 && capture.failure == nil {
 		n, err := capture.file.Write(data[:keep])
@@ -250,6 +253,13 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	}
 	// Drain all process output even after reaching the storage bound.
 	return len(data), nil
+}
+
+// testResults reports the per-test results of the output written so far.
+func (capture *logCapture) testResults() langpack.GoTestResults {
+	capture.mu.Lock()
+	defer capture.mu.Unlock()
+	return capture.tests.Results()
 }
 
 // Run executes only argv recorded in the immutable plan, in the repository
@@ -370,6 +380,17 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if run.Status == "passed" {
 			run.Status = "source_changed"
 			run.Failure = "source_snapshot_changed_or_unavailable"
+		}
+	}
+	// The results file is written before the terminal revision names it. A
+	// write failure leaves the run without results and fails only a run that
+	// would otherwise pass.
+	if results := capture.testResults(); len(results.Tests) > 0 {
+		if name, sum, err := writeTestResults(path, run.ID, results); err == nil {
+			run.TestResults, run.TestResultsSHA256 = name, sum
+		} else if run.Status == "passed" {
+			run.Status = "failed"
+			run.Failure = "test_results_write_failed"
 		}
 	}
 	_, storeErr := updateWhenUnlocked(finishCtx, path, run.ID, func(_ *os.Root, record *Record) error {
