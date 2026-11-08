@@ -176,17 +176,14 @@ some run only by name. See the [skill catalog](skills/README.md).
 
 ## Configuration
 
-Paths, state, config and the model policy lookup: [operations](docs/operations.md).
+Paths, state, config, the model policy lookup and
+[cleaning up a v2 installation](docs/operations.md#cleaning-up-a-v2-installation):
+[operations](docs/operations.md).
 
 ## Advisers (optional)
 
 `cw consult` can ask hosted advisers at decision checkpoints; the coordinator
 decides from source evidence. See [advisers](docs/advisers.md).
-
-## Upgrading from v2
-
-Run `cw migrate-v2 --dry-run`, then `cw migrate-v2`, then install the plugins.
-See [moving from v2](docs/operations.md#moving-from-v2).
 
 ## Contributing, security, license
 
