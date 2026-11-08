@@ -43,3 +43,75 @@ suites under [`evals/`](https://github.com/belevtsev/agent-workflows/blob/main/e
 the reviewer's covers spec, design and test review.
 
 Agent definitions live in [`agents/`](https://github.com/belevtsev/agent-workflows/tree/main/agents); keep only agent files there, because the plugin loads every Markdown file there as an agent.
+
+## Design choices
+
+Short answers to alternatives that come up often, with the reason behind each
+choice.
+
+**Why not merge the spec writer and the architect?** The spec is settled, and
+reviewed against its sources, before any design starts. Keeping the authors
+apart is meant to stop the requirements from being bent to fit a design the
+author already has in mind. The spec stage is skipped for a small task, when a
+reviewed spec already exists, or when the request is precise enough to be its
+own spec
+([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
+
+**Why does the test engineer never see the code?** So that the tests cannot
+simply mirror the code and pass on the same bug. The test engineer works from
+the interface contract and the public interface extract, and takes expected
+values from the contract
+([quality bar](../skills/task-orchestration/references/contracts/test-engineer.md#quality-bar)).
+Its test matrix covers boundary, failure, concurrency, idempotency and security
+cases, or says why one does not apply
+([required outputs](../skills/task-orchestration/references/contracts/test-engineer.md#required-outputs)).
+Test review runs the tests against a stub first, so a test of non-trivial
+behaviour that passes against the stub is flagged
+([test review](../skills/task-orchestration/references/contracts/test-review.md)).
+Code review, which does read the code, also flags a test that could not fail
+for the defect it claims to prevent. A known limit: an internal branch that no
+requirement names has no test asked for it.
+
+**Why doesn't the implementer write its own tests?** Code tested only by its
+author is one of the failures this project exists to prevent: the same
+reasoning that wrote a bug can write a test that misses it. The implementer
+proves its change with the checks the brief names and writes a self-review; the
+behavioural tests come from the test engineer
+([implementer](../skills/task-orchestration/references/contracts/implementer.md#purpose)).
+A small task is the exception: its author writes the tests and a reviewer
+checks them.
+
+**Does the reviewer ever read the code?** Yes. Code review runs on the
+integrated source after the tests have run. It has the whole repository, a
+bundle that lists the files changed since the task started, and the
+requirements to check the change against
+([code review](../skills/task-orchestration/references/contracts/code-review.md#inputs-you-receive)).
+Only test review never sees the implementation, so it judges the tests by the
+contract alone.
+
+**Why not run more agents on a cheaper model?** This project has not measured
+whether a cheaper model keeps the same review and test quality, or how much it
+would save; the agents under test in its eval suites run on Opus by default
+([evals](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md)).
+On Claude Code the GitHub worker already runs on Sonnet 5.5 at medium effort,
+and every later review of a stage (a diff-scoped follow-up, a review scoped to
+a fix, a confirmation pass) runs on Sonnet 5.5 at high; the other roles run on
+Opus 5.5
+([Claude Code policy](../skills/task-orchestration/model-policy.claude.yaml)).
+Codex roles follow
+[model-policy.yaml](../skills/task-orchestration/model-policy.yaml). Moving
+more roles to a cheaper model is the owner's decision.
+
+**Why is the GitHub worker an agent rather than a shell script?** First-party
+automation must be written in Go, and the repository check rejects `.sh` and
+`.py` files outside `skills/` and `third_party/`
+([contributing](../CONTRIBUTING.md#go-only-automation)). A script that runs git
+itself is also invisible to the Claude Code commit gate, which sees only Bash
+commands that name git ([hooks](hooks.md)).
+
+**Why not run design review and test review in parallel?** The tests are
+written from the fixed interface contract, and the contract is fixed only after
+the design review passes, so test review has nothing to review until then
+([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
+What does run in parallel is the implementer and the test engineer, from the
+same contract; test review then runs before integration.
