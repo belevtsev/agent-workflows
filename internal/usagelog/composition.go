@@ -965,11 +965,12 @@ func parseShell(command string) shellCommand {
 }
 
 // splitShell is parseShell that also returns its work: the bytes it passed
-// through its quote scanner plus the bytes of each line it searched for a
-// redirect target. The work must stay linear in len(command): the quote state
-// at each "<<" of a line carries on from the previous one and is never
-// rescanned from the line's start, and a line is searched for a redirect at
-// most once.
+// through its quote scanner, the bytes of each line it searched for a
+// redirect target, and the quote-nesting frames that any step copied or
+// searched. The work must stay linear in len(command): the quote state at
+// each "<<" of a line carries on from the previous one and is never rescanned
+// from the line's start, a line is searched for a redirect at most once, and
+// no per-line or per-marker step may copy or search the whole nesting.
 func splitShell(command string) (shellCommand, int) {
 	var shell shellCommand
 	work := 0
@@ -1178,9 +1179,20 @@ var strayScanBytes atomic.Int64
 // strayScanWork reports strayScanBytes.
 func strayScanWork() int64 { return strayScanBytes.Load() }
 
+// count adds n to the scanner's work, or to strayScanBytes when it has none.
+func (q *quoteScanner) count(n int) {
+	if q.work != nil {
+		*q.work += n
+	} else {
+		strayScanBytes.Add(int64(n))
+	}
+}
+
+// clone copies the scanner; the copy of its stack counts as work.
 func (q *quoteScanner) clone() quoteScanner {
 	c := *q
 	c.stack = slices.Clone(q.stack)
+	q.count(len(q.stack))
 	return c
 }
 
@@ -1199,15 +1211,20 @@ func (q *quoteScanner) quoted() bool {
 	return top == '\'' || top == '"' || top == 'C'
 }
 
-// arithmetic reports whether the text so far ends inside $((...)).
-func (q *quoteScanner) arithmetic() bool { return slices.Contains(q.stack, 'A') }
+// arithmetic reports whether the text so far ends inside $((...)). The
+// frames it searches count as work.
+func (q *quoteScanner) arithmetic() bool {
+	i := slices.Index(q.stack, 'A')
+	if i < 0 {
+		q.count(len(q.stack))
+		return false
+	}
+	q.count(i + 1)
+	return true
+}
 
 func (q *quoteScanner) feed(text string) {
-	if q.work != nil {
-		*q.work += len(text)
-	} else {
-		strayScanBytes.Add(int64(len(text)))
-	}
+	q.count(len(text))
 	for i := 0; i < len(text); i++ {
 		ch := text[i]
 		opened := false
