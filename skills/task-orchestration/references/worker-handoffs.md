@@ -27,6 +27,10 @@ establish behavior. Preserve required design challenges and execution
 environments. The test engineer receives only the agreed contract and approved
 scaffold ([boundary](contracts/test-engineer.md#author-only-from-the-contract));
 the coordinator or verifier inspects implementation and owns the execution gates.
+Under Claude Code the reviewer and the test engineer start without CLAUDE.md
+files ([host mapping](hosts.md#worker-agent-types)): their contracts carry the
+project rules they apply, and their briefs quote, word for word, any other
+project constraint the work must meet, such as a check command or a naming rule.
 
 ## Assign before dispatch
 
@@ -142,9 +146,9 @@ names:
 | Stage | Contract | Reviews | Findings go back to | Record role |
 | --- | --- | --- | --- | --- |
 | Spec review | [spec-review](contracts/spec-review.md) | the OpenSpec change folder | spec writer | `evidence` |
-| Design review | [design-review](contracts/design-review.md) | `design.md`, `interface-contract.md` | architect | `evidence` |
+| Design review | [design-review](contracts/design-review.md) | `design.md`, `interface-contract.md`, the ADR when one is written | architect | `evidence` |
 | Test review | [test-review](contracts/test-review.md) | test matrix, requirement map, tests | test engineer | `evidence` |
-| Code review | [code-review](contracts/code-review.md) | the integrated source | implementer; a finding about a test goes to a fresh test engineer | `review` |
+| Code review | [code-review](contracts/code-review.md) | the integrated source against `interface-contract.md` and `design.md`, with the final check's coverage profile when one exists | implementer; a finding about a test goes to a fresh test engineer | `review` |
 
 Under Claude Code, dispatch each with the `agent-workflows:reviewer` agent type
 and the stage's role, model and effort ([host mapping](hosts.md#worker-agent-types)),
@@ -171,6 +175,25 @@ revision answers each one; the next round reviews the revision. Before rejecting
 a `blocker` or `major` finding at any stage, the coordinator consults the
 available advisers ([adviser points](consultation-helper.md#adviser-points-in-the-flow)).
 
+**Growth check.** Every time a spec or design is reviewed again after a
+revision (a diff-scoped follow-up, a review scoped to a fix, a confirmation
+pass, and the scoped design review of a
+[contract amendment](contracts/README.md#contract-amendment)), the reviewer
+checks what the revision added as well as whether each finding is resolved.
+Here an accepted finding also means a user's answer to an open question listed
+with the dispositions, and a question forwarded in an amendment. Every
+requirement, scenario, task, option, component, interface, dependency or
+behaviour that the diff adds and that no accepted finding asked for is a
+finding in the category `scope creep`, citing the added text and the findings
+it was checked against. The one exception is what the smallest change that
+resolves an accepted finding cannot do without, judged against that finding's
+"what would resolve it" (for an answer or a forwarded question, the smallest
+change that applies it), not against the revision's own claim that an addition
+serves it. Its severity follows the shared grading: an unrequested
+addition the next stage would build or test is at least `major`. The
+coordinator returns it to the author like any other finding, and an addition
+that the user or the sources do require is `rejected` with that evidence.
+
 **Review cap.** The cap applies to each stage separately: one full review; after
 the fixes, at most one diff-scoped follow-up by a fresh reviewer; and a further
 review only to re-bind a fix of a defect that follow-up found, scoped to that
@@ -179,16 +202,62 @@ fix that changes executable code or a gate's behaviour gets one review scoped to
 it. Verify a prose-only fix yourself (diff readback, the checks it cites, the
 reviewer's failure scenario rechecked against the new text), then have a fresh
 reviewer re-bind with a confirmation pass that reports only a fix that fails its
-finding, a defect in code or a gate, or a new contradiction or lost rule in the
-instructions a coordinator follows; that pass does not count against the cap.
+finding, a defect in code or a gate, a new contradiction or lost rule in the
+instructions a coordinator follows, or, for a spec or design, a `scope creep`
+finding from the growth check; that pass does not count against the cap.
 Report any extra review in the result. Findings that change no behaviour, fail no
 gate and lose no rule are `deferred` or `rejected` rather than reviewed again; a
 finding with a concrete failure scenario is never deferred unless the defect
 predates the change and the change neither causes, touches nor newly exposes it.
-When a revision changes the approach or touches components the last review did
-not cover, the follow-up reviews those components in full. The coordinator
+A [contract amendment](contracts/README.md#contract-amendment) opens a cap of
+the same shape for each stage it reaches. When a revision changes the approach
+or touches components the last review did not cover, the follow-up reviews those components in full. The coordinator
 closes each superseded round's author and reviewer assignments as `unused`, with
 dispositions, before `cw task verify`.
+
+**Round budget.** The cap limits reviews; this budget limits, across the whole
+task, the author rounds that feed them. A round is one return of work to an
+author that changes its artefact, whether the author is continued or dispatched
+fresh, and it counts once however many findings or answers it carries. The spec
+writer gets at most two revision rounds, and the architect at most two across
+the design and the interface contract together. Each of these counts: a revision
+that answers findings or the user's answers to open questions; the change log of
+each [contract amendment](contracts/README.md#contract-amendment); and each fix
+after that amendment's scoped review. The first spec, design and contract are
+not revisions. The test engineer gets at most two rounds, counting the first
+dispatch, every return of test-review findings, every return at integration of a
+test that contradicts the contract, every fresh test engineer for a code-review
+finding and every refreshed assignment after an amendment. A replacement for an
+exposed test engineer, and a correction round that `cw task verify` requires
+because source changed a declaration outside an amendment, repeat an earlier
+round and do not count. Implementer fixes, reviews, re-binds and confirmation
+passes never count; an author's prose fix is a revision and counts. When a
+finding, an open question or a worker's question would need a third revision or
+test-engineer round, the coordinator does not start it. An amendment needs an
+architect round and a test-engineer round, so it starts only when both budgets
+have room. The coordinator has the implementer fix the findings that need no
+counted round. It keeps every other `blocker` and `major` finding `accepted`,
+never `deferred`: the budget, like the cap, never excuses a defect, and the
+[deferral limits](#return-and-accept-evidence) still hold. It defers or rejects
+only what those limits allow. It then asks the user whether to spend another
+round, giving each open finding with its evidence and the round it needs. The
+task stays open and nothing is published until every open `blocker` and `major`
+is resolved or rejected against evidence. A user's answer can add rounds; it
+never changes a disposition. The coordinator never edits a spec, design,
+contract or test itself to stay within the budget.
+
+**Fast paths.** These follow from the rules above and change none of them:
+
+- A first review with no `blocker` or `major` finding needs no follow-up
+  unless a revision follows it (a fix, or answers to open questions), and that
+  revision gets only the review the cap gives it.
+- `minor` findings that change no behaviour, fail no gate and lose no rule are
+  `deferred` or `rejected` without another review.
+- Code review can overlap check runs while source is stable; record its
+  handoff after the last check run and worker record, since a later one makes
+  it stale (end of [run every reach-row mode](#run-every-reach-row-mode)).
+- Under Claude Code, every later review of a stage runs on the
+  [`review_followup` role](#follow-up-review-after-a-fix-revision).
 
 ## Review substantial changes
 
@@ -196,8 +265,14 @@ New substantial tasks whose source differs from baseline require an independent
 substantive code reviewer, distinct from the coordinator and implementation
 workers, before final adviser context (or completion when checkpoints are not
 required). Its brief uses `role: "review"`, the [code-review](contracts/code-review.md)
-contract and `owned_paths: ["."]` for the full resulting source; it returns the
-same handoff shape with no changes. Adviser checkpoints do not replace review,
+contract and `owned_paths: ["."]` for the full resulting source, and names the
+absolute paths of `interface-contract.md`, `design.md`, the test engineer's
+`test-matrix.md` and `requirement-map.md`, and the final coverage check's
+profile with the ID of the run that wrote it, when they exist; it returns the same handoff shape with
+no changes. Each behaviour finding carries a reproduction test that fails on
+the current source; the coordinator applies it unchanged and accepts the fix
+only when a recorded check run of it passes
+([reproduce every behaviour finding](contracts/code-review.md#reproduce-every-behaviour-finding)). Adviser checkpoints do not replace review,
 and missing independent review cannot be presented as completed review. Small
 and unchanged read-only tasks stay lightweight.
 
@@ -327,12 +402,17 @@ missed; neither counts against the cap. Record the follow-up's other findings as
 1. Record the earlier review's handoff as soon as it returns, before changing
    source: a review handoff cannot be recorded as completed once the source has
    changed.
-2. Fix the source, assigning any fix worker before dispatching it. Then run every
+2. Apply each accepted finding's reproduction test unchanged, as a new file
+   that is none of the test engineer's authored files
+   ([reproduce every behaviour finding](contracts/code-review.md#reproduce-every-behaviour-finding)).
+   Fix the source, assigning any fix worker before dispatching it, with exact
+   file scopes that leave the reproduction tests out. Then run every
    check that a record or a fix worker's brief cites, once, before recording
    anything that cites it: a source change leaves no earlier run current.
 3. Record any fix worker's handoff and acceptance. Close with an `unused`
    acceptance each earlier implementation assignment whose owned paths the fix
-   changed (verify reports its scope stale otherwise), and the earlier review, with
+   or an applied reproduction test changed (verify reports its scope stale
+   otherwise), and the earlier review, with
    dispositions that cite the fixed source as `resolved` or give the evidence for
    `rejected` (an `unused` acceptance may give `[]` for `evidence` and `check_ids`).
 4. Build the follow-up's bundle, assign the review, and record its handoff and

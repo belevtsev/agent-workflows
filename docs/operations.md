@@ -3,8 +3,8 @@
 Claude Code gets the skills and worker agents from the plugin in
 `.claude-plugin/`, and Codex from `.codex-plugin/` and
 `.agents/plugins/marketplace.json`. This page covers installing them and `cw`,
-the Codex instruction block, removing a v2 installation, paths, the model policy
-lookup and adviser keys.
+the Codex instruction block, cleaning up a v2 installation by hand, paths, the
+model policy lookup and adviser keys.
 
 ## Install
 
@@ -102,8 +102,8 @@ It also removes links into the checkout that the manifest no longer registers.
 
 It owns only symlinks in `~/.agents/skills` that point into the checkout. Anything
 else at a registered name, such as a directory, a file or a link elsewhere, makes
-it fail without changing anything. Remove that entry, or run `cw migrate-v2` when
-it is a v2 link.
+it fail without changing anything. Remove that entry; for a link a v2 installation
+left, see [cleaning up a v2 installation](#cleaning-up-a-v2-installation).
 
 ```sh
 cw uninstall --host codex
@@ -119,53 +119,50 @@ There is no state file, journal, snapshot or rollback. Both commands reject
 `--dry-run`. `cw install --host claude` and `cw uninstall --host claude` are usage
 errors that point at the Claude Code plugin.
 
-## Moving from v2
+## Cleaning up a v2 installation
 
-v2 kept immutable release snapshots under the state directory and linked the
-skills, the Claude Code worker agents and `~/.local/bin/cw` into them. Remove that
-installation with the v3 `cw`:
+v3 has no migration command. If you used v2, remove what it left behind by hand,
+then install the plugins. Below, the state directory is
+`$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows`, or the
+directory you gave v2, and the Claude home is `$CLAUDE_CONFIG_DIR`, else
+`~/.claude`, or the one you gave v2.
 
-```sh
-cw migrate-v2 --dry-run
-cw migrate-v2
-```
+- **Links.** v2 linked skills and agents into its release snapshots. List the
+  links with `ls -l ~/.agents/skills <claude-home>/skills <claude-home>/agents ~/.local/bin`
+  and `rm` each one whose target is under the state directory: skill links,
+  `cw-*.md` agents and `~/.local/bin/cw`. `rm` on a link removes only the link.
+  `cw install --host codex` refuses to replace a leftover link in
+  `~/.agents/skills`, so remove those first.
+  Leave regular files and links that point elsewhere, such as a v3 `cw` you put
+  in `~/.local/bin`.
+- **Adopted skills.** If you let v2 adopt your own Codex skills
+  (`--adopt-personal-skills`), it moved each one from `~/.agents/skills`,
+  `$CODEX_HOME/skills` or `~/.codex/skills` to
+  `backups/personal-skills/<name>` in the state directory, and linked
+  `~/.agents/skills/<name>` to its own copy. After you remove that link, move
+  each skill back to where it was; do not delete `backups/` before that.
+- **Instruction blocks.** Delete the block from `<!-- agent-workflows-start -->`
+  to `<!-- agent-workflows-end -->`, markers included, in
+  `<claude-home>/CLAUDE.md` and `~/.codex/AGENTS.md` (`$CODEX_HOME/AGENTS.md`).
+  The Claude Code plugin does not use it. `cw install --host codex` rewrites the
+  block in `AGENTS.md`, so skip that file if you install that way.
+- **State.** In the state directory, `current`, `releases`, `bases`, `runtime`,
+  `state.json`, `journal.json` and `mutation.lock` belong to v2 and are safe to
+  delete. Some v2 files may be read-only, so make the directories writable first
+  (set `state` to the directory you gave v2, if you gave one):
 
-The dry run lists each action without changing anything. `cw migrate-v2` removes:
+  ```sh
+  state="${XDG_STATE_HOME:-$HOME/.local/state}/agent-workflows"
+  chmod -R u+w "$state/releases" "$state/bases" "$state/runtime" 2>/dev/null
+  rm -rf "$state/current" "$state/releases" "$state/bases" "$state/runtime" "$state/state.json" "$state/journal.json" "$state/mutation.lock"
+  ```
 
-- the symlinks in `~/.claude/skills/`, `~/.claude/agents/cw-*.md`,
-  `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory
-  (v3 renamed those agents: the plugin ships `agent-workflows:reviewer`,
-  `agent-workflows:test-engineer` and `agent-workflows:github-worker`; a
-  `cw-*.md` that is a regular file or points elsewhere is not v2's and stays, so
-  delete such a copy yourself);
-- while v2's `state.json` or `journal.json` is still in the state directory, the
-  managed block in `~/.claude/CLAUDE.md` and `$CODEX_HOME/AGENTS.md`, and in the
-  Claude and Codex homes v2 recorded there (the skill links under a recorded
-  Claude home go too);
-- `current`, `releases`, `bases`, `runtime`, `state.json` and `journal.json` in the
-  state directory.
+  Keep `workflow-tasks/`, `metrics/` and the state directory itself: `cw` keeps
+  its task records and the [cost history](#cost-history) there.
 
-It keeps `workflow-tasks/` and everything else, and running it again is safe:
-without the v2 records it never touches `AGENTS.md` or `CLAUDE.md`. If v2 used a
-custom state directory, pass it with `--state-dir`. A directory with none of
-the entries above has nothing to migrate, and one with release entries but
-neither `state.json` nor `journal.json` must be named `agent-workflows`, so a
-mistyped path such as `~/.local/state` changes nothing. Relative
-paths are resolved against the current directory. If a step fails, the output
-lists only the actions completed before it. It
-does not touch the model keys v2 wrote into `~/.claude/settings.json` or
-`$CODEX_HOME/config.toml`, or the `PATH` line v2 added to a shell profile; edit
-those by hand if you want them gone.
-
-Order:
-
-1. Install the v3 `cw` ([get cw](#get-cw)) and run `cw migrate-v2`.
-2. Install the plugins.
-3. For Codex, if you want the instruction block, run `cw install --host codex`
-   instead of installing the Codex plugin.
-
-Run `cw migrate-v2` before `cw install --host codex`: while the v2 records exist,
-it strips the same markers from `AGENTS.md`.
+v2 also wrote model keys into `<claude-home>/settings.json` and
+`$CODEX_HOME/config.toml`, and may have added a `PATH` line to a shell profile;
+edit those by hand if you want them gone.
 
 ## Paths
 
@@ -179,9 +176,14 @@ Global flags apply to every command:
 | State | `--state-dir`, else `$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows` |
 | Configuration | `--config-dir`, else `$XDG_CONFIG_HOME/agent-workflows`, else `~/.config/agent-workflows` |
 
-The task store is `<state>/workflow-tasks`. The configuration directory holds the
-saved adviser keys (`credentials.json`) and `preferences.json`. `--dry-run` is a
-global flag; `cw install`, `cw uninstall` and `cw keys set|unset` reject it.
+The task store is `<state>/workflow-tasks` and the cost history is
+`<state>/metrics/history.jsonl`. The configuration directory holds the
+saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
+pack selection written by `cw pack add` and `cw pack remove`; absent means the
+default selection). `--dry-run` is a
+global flag; commands that would write without a preview reject it with exit
+status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
+the `cw task` state commands and `cw metrics import --append`.
 
 ## Model policy
 
@@ -229,15 +231,89 @@ value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
 `cw metrics summarize` reads supplied observations without changing project source.
 `cw metrics import` reports per-agent tokens and dollars from a Claude Code transcript
-or a Codex rollout, without writing anything; with `--composition` and `--prices` it also
+or a Codex rollout, without writing anything unless `--append` asks it to add the
+session to the [cost history](#cost-history); with `--composition` and `--prices` it also
 attributes each agent's input to its sources (Claude transcripts only).
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
+
+`cw task timeline --task DIR [--summary]` reports the wall time a task spent, from
+timestamps the record already stores, and is read-only: it loads the record with
+the same validation as `cw task show` and writes nothing, so `--dry-run` changes
+nothing. It prints one JSON object with `task`, `task_id`, `started_at` (the
+record's `created_at`), `updated_at`, `elapsed` and `entries`. `elapsed` runs from
+`started_at` to `updated_at`, the record's last stored revision, not to the current
+time, so it does not grow while the task sits idle. `entries` holds one entry per
+worker assignment (`kind` `assignment`, `id`, `stage` = the brief's role, `agent`,
+`state` = the latest acceptance's status, else the result's status, else
+`assigned`, `assigned_at`, `submitted_at`, `accepted_at`, `assign_to_handoff` and
+`handoff_to_accept`) and one per check run (`kind` `check`, `id`, `stage` = the
+plan check ID, `state` = the run's status, `started_at`, `finished_at` and
+`duration`), ordered by start time, with entries lacking a start last.
+Timestamps are UTC RFC 3339 with nanoseconds and durations are rounded to the
+millisecond (`250ms`, `1m2.003s`). A timestamp the record does not hold (no
+handoff yet, no acceptance, a check still running) is `n/a`, and so is every
+duration computed from one; a missing value is never shown as `0s`. `--summary`
+prints JSON Lines rather than a one-line result: one compact object for the task
+(`task_id`, `started_at`, `updated_at`, `elapsed`), then one per entry with its
+start under `start` and its durations, omitting `task`, `submitted_at`,
+`accepted_at` and `finished_at`.
 
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational
 rules. Native task commands execute only explicitly selected argv; repository text,
 measurement input and model advice do not authorize publication or deployment.
+
+### Cost history
+
+Claude Code deletes transcripts after `cleanupPeriodDays`, and their token and cost
+data goes with them. To keep it, append each session to the cost history before
+the transcript expires, and read the history back at any time:
+
+```sh
+cw metrics import --claude-transcript ~/.claude/projects/<project>/<session-id>.jsonl --append
+cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
+```
+
+- **Where.** `--append` writes to `metrics/history.jsonl` under the state
+  directory (`--state-dir`, else `$XDG_STATE_HOME/agent-workflows`, else
+  `~/.local/state/agent-workflows`), or to `--history FILE`. A new file is created
+  with mode 0600 and a missing directory with 0700; an existing file or directory
+  keeps its mode, so check it when you point `--history` somewhere shared. A
+  symlink or other non-regular file there is refused. The file is limited to
+  1 GiB: an append that would pass it fails without writing, and you start a new
+  history by moving the old one aside (records in the old file then no longer
+  de-duplicate new imports). macOS and Linux only.
+- **What.** One JSON line per de-duplicated provider request: `v` (schema version
+  1), `kind` (`cw.metrics_request`), `source`, `session_id`, `request_id` (the
+  import's de-duplication key), `agent_id`, `agent_role`, `agent_type`, `model`,
+  `timestamp` (UTC), `imported_at`, and the token counts (uncached input, 5m, 1h
+  and unsplit cache writes, cache reads, output, thinking). It never stores prompt
+  or response text, tool inputs or results, file contents, agent descriptions or
+  the transcript path. Lines are at most 4096 bytes and text fields at most 256.
+- **Idempotent.** A record's identity is `(source, session_id, request_id)`.
+  Re-importing a session appends only requests the history does not hold, so
+  importing it again, or after it has grown, never double-counts. A stored record
+  whose counts differ from the transcript is kept and counted as `conflicting`.
+  Requests without a request or message id cannot be de-duplicated and are only
+  counted (`unkeyed`). `--append` prints these counts instead of the report.
+- **Prices.** The history stores token counts, not dollars. `cw metrics history
+  --prices FILE` prices every group with the table you pass, so a later price
+  change only needs a different table. The recorded cost-state total of a Claude
+  session is not stored; `cw metrics import` still reports it while the
+  transcript exists.
+- **Concurrency and damage.** Every writer takes an exclusive `flock` on the
+  sibling `<history>.lock` file (released if the process dies, never deleted,
+  and waited for at most 30 seconds), reads the stored
+  identities, and appends whole lines in one write; readers take a shared lock.
+  A torn final line from an interrupted write is terminated before the next
+  append. `cw metrics history` skips a damaged line, counts it in
+  `damaged_lines`, lists the first 100 with their line numbers and reasons, and
+  warns on stderr.
+- **Report.** `cw metrics history` filters by `--session`, `--model`, and an
+  inclusive UTC `--since`/`--until` date range, and prints totals and groups by
+  model, UTC day and session. Without `--prices` every amount is unknown, with a
+  reason.
 
 ## Consultation command
 

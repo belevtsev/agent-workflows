@@ -2,6 +2,16 @@
 
 Status: proposed. Design only.
 
+P3a status: `cw` embeds `packs/go/pack.yaml` and reads the selection from
+`packs.json` in the configuration directory, which replaces `languages.json`
+below. With no `packs.json` every built-in language pack is selected
+(R-DEFAULT-SELECTION, only in `langpack.DefaultSelection`); an explicit file,
+even an empty one, overrides it, and a domain pack is never selected by default.
+`cw task start` records the selected packs whose `detect` file is at the top of
+the selected path, and verify applies their rules by id. Schema 1 has `schema`,
+`id`, `kind`, `detect`, `commands`, `tests`, `interface_extract`, `skills`,
+`review` and `evidence_rule`. Today's Go rule is `go.package-test/v1`.
+
 ## 1. Decision
 
 Core is the `agent-workflows` plugin and `cw`. Each language is a plugin,
@@ -137,8 +147,7 @@ On Codex `cw lang` uses `internal/codexinstall`; then start a new session
 
 ## 7. Migration, alternatives, risks, steps
 
-**Migration.** `cw migrate-v2` selects `go` for upgraders. `cw doctor` prints
-"go.mod found, Go pack not selected".
+**Migration.** `cw doctor` prints "go.mod found, Go pack not selected".
 
 | Rejected | Why |
 | --- | --- |
@@ -166,7 +175,7 @@ set. Older `cw` ignores `languages.json` and uses the fallback.
 5. Applicability in `cw task start`, `Verify`, `cw doctor`. Tests: `go.mod`
    present or not × selected or not; unknown rule id falls back. Done: gate
    uses the start set.
-6. `cw install --lang`, `migrate-v2` default, setup skill. Test: temp `HOME`
+6. `cw install --lang`, setup skill. Test: temp `HOME`
    install. Done: both hosts reach the same set.
 7. README: "Choose languages", "Change languages", "Language packs",
    "Included skills" split core and Go, migration note, "Go diagnostics" moved

@@ -77,16 +77,48 @@ adviser checkpoints are not required:
   "checks": [
     {
       "id": "unit",
-      "argv": ["go", "test", "./..."],
+      "argv": ["go", "test", "-covermode=atomic", "-coverpkg=./...", "-coverprofile=/private/path/cover.out", "./..."],
       "timeout_seconds": 120
     }
   ]
 }
 ```
 
+The `-covermode=atomic -coverpkg=./... -coverprofile=` flags give the
+[code review](contracts/code-review.md#uncovered-changed-blocks) the coverage
+profile of the final check run; they earn the same credit as a plain
+`go test`. `-coverpkg=./...` also counts statements that one package's tests
+run in another; an end-to-end test of a built binary still records none.
+Write the profile to an absolute path outside the source tree, such as the
+private directory that holds `plan.json` (the task directory does not exist
+yet when the plan is written). `cw task run` captures the source before and
+after a check, and that source includes untracked files the repository does
+not ignore: a profile written inside the tree changes the source during the
+run, so a passing run is recorded as `source_changed`, and the profile then
+shows up as a changed file in the reviewer bundle. Every run of the check
+overwrites the profile and `cw` does not hash it, so give the reviewer its
+path together with the ID of the run that wrote it. The profile is review
+evidence only: no coverage threshold applies and it gates nothing. Coverage
+changes how a test binary behaves: tests that run the test binary again as a
+child process and compare its exact output can fail under `-cover`, because
+the child warns on stderr that `GOCOVERDIR` is not set. When the full check
+has such tests, keep it without coverage and bind a second check that adds
+the flags and names the packages the plan expects to change, leaving those
+tests' packages out; a change inside them then has no profile, which the
+reviewer records under what was not reviewed.
+
 A substantial plan binds at least one check to a requirement. Once its source
 changes, `verify` needs the latest run of some check passed at the current source.
-When the selected path holds `go.mod`, each changed package also needs a check
+The Go rule applies when the task applies the `go` pack. That pack is selected by
+default. A task records it when `go.mod` or `go.work` is at the top of the selected
+path at start, and the rule then checks packages whenever `go.mod` is at the top at
+verify. A task that started with neither file gets no Go rule, even if it creates
+`go.mod` later. `cw pack add` and `cw pack remove` affect only tasks started
+afterwards; an open task keeps the pack set it recorded. `cw pack list` shows the
+selection. `cw pack remove go` writes an explicit
+`packs.json`, which drops the Go rule for all of that user's repositories and
+leaves only the fallback rule (any passed check); `cw pack add go`, or deleting
+`packs.json`, restores it. Under the Go rule each changed package also needs a check
 whose argv is a direct `go test` naming `./...`, the package (`./pkg`) or a parent
 (`./dir/...`). A file belongs to the package of its directory (or of the directory
 holding its `testdata/`); a non-Go file in a directory without Go files belongs to
@@ -111,7 +143,7 @@ directly from the defect crashed bash 3.2), and whenever in doubt. The plan cann
 started with checkpoints not required later meets an open decision or a change to
 code that must behave alike on several platforms or shells, stop and ask the user, and never start a new record over
 source the first one already changed, because its baseline would hide those edits
-from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. With
+from review. A `checkpoints` object without an explicit `required`, or `"required": false` without a non-blank reason, makes `start` fail; a `small` plan cannot include `checkpoints`. A not-required reason must not claim advisers are missing while the task binds any (the binding, `cw task show --field advisers`, and `cw keys status` say which are available; `cw doctor`'s launcher and Codex shell lines do not): `start` refuses it, and `verify` reports it on a record an older `cw` created; when that record's source changed and no usable before checkpoint is attached, stop and ask the user, for the same reason. With
 `"required": false`, `assign` needs no before checkpoint and `verify` adds the
 limitation `adviser checkpoints not required: <reason>` instead of requiring both
 checkpoints. Requirements, checks, worker records and the independent review stay
@@ -373,7 +405,12 @@ the plan. Bind a mode that runs the same gates on a committed copy of the workin
 tree and prints that copy's tree hash. Name the project's command for it from its
 development docs. agent-workflows needs no such mode: its full check,
 `["go", "test", "-race", "-count=1", "./..."]` with `GOWORK=off` exported in the
-shell that runs `cw task run`, runs on the working tree. Give the check a timeout
+shell that runs `cw task run`, runs on the working tree. It takes no coverage
+flags: the `internal/graphify` process tests run the test binary again and
+compare its output, and fail under `-cover` (with `GOCOVERDIR` set as well).
+For the code review's profile, bind a second check with the coverage flags
+that names the packages the plan expects to change, outside
+`internal/graphify`; a change inside `internal/graphify` gets no profile. Give the check a timeout
 that covers the whole suite. `cw task run` binds the result to the live working
 tree, the same as any other check, so `cw task verify` can complete before the
 commit. After the authorized commit, compare `git rev-parse HEAD^{tree}` with the
@@ -388,6 +425,8 @@ cw metrics summarize --input-root /private/path/observations run-a.json run-b.js
 cw metrics import --claude-transcript ~/.claude/projects/PROJECT/SESSION.jsonl [--prices prices.json]
 cw metrics import --codex-session ~/.codex/sessions/YYYY/MM/DD/rollout-ID.jsonl --prices prices.json
 cw metrics import --claude-transcript SESSION.jsonl --prices prices.json --composition [--summary]
+cw metrics import --claude-transcript SESSION.jsonl --append [--history FILE]
+cw metrics history [--history FILE] [--session ID] [--model M] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--prices prices.json]
 ```
 
 `import` reads a session read-only and reports each agent (the main session and
@@ -404,6 +443,16 @@ reported separately from recorded dollars; no price is built in. The report's
 it. When a model's transcript and recorded totals differ, for example a `cost-state`
 written before the session ended, the report shows the difference and leaves
 `usage` and `cost` out.
+
+`--append` (with `--claude-transcript` or `--codex-session`) keeps the counts after
+the transcript is deleted. It appends one record per de-duplicated request to the cost history,
+`<state>/metrics/history.jsonl` unless `--history` names another file, and prints what
+it appended instead of the report. A record holds token counts, IDs, timestamps, the
+model and agent labels, and no dollars. Requests already stored are skipped, so
+importing again never double-counts. `--append` rejects `--prices`, `--composition`,
+`--summary` and `--dry-run`. `cw metrics history` aggregates the history by model,
+UTC day and session, and recomputes dollars from `--prices`. `docs/operations.md`
+(Cost history) covers the schema, locking and damaged lines.
 
 `--composition` (it needs `--prices`) adds where each agent's input came from. Each
 agent is mapped to a role from the `cw task assign` brief whose assignment id its Agent

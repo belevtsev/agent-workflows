@@ -1,0 +1,14 @@
+mode: atomic
+example.com/hooks/dispatch/dispatch.go:46.2,47.1 1 4
+example.com/hooks/dispatch/dispatch.go:51.2,52.22 2 4
+example.com/hooks/dispatch/dispatch.go:53.3,54.1 1 0
+example.com/hooks/dispatch/dispatch.go:55.2,58.16 4 4
+example.com/hooks/dispatch/dispatch.go:59.3,60.1 1 1
+example.com/hooks/dispatch/dispatch.go:61.2,64.16 4 3
+example.com/hooks/dispatch/dispatch.go:65.3,66.1 1 1
+example.com/hooks/dispatch/dispatch.go:67.2,69.9 3 2
+example.com/hooks/dispatch/dispatch.go:71.3,71.13 1 1
+example.com/hooks/dispatch/dispatch.go:73.3,73.56 1 0
+example.com/hooks/dispatch/dispatch.go:74.4,75.1 1 0
+example.com/hooks/dispatch/dispatch.go:76.3,76.46 1 0
+example.com/hooks/dispatch/dispatch.go:78.3,78.84 1 1

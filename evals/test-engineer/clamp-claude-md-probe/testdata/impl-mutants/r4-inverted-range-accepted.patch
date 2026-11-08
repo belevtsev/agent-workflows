@@ -1,0 +1,13 @@
+Breaks R4: an inverted range returns hi and no error.
+
+--- a/clamp.go
++++ b/clamp.go
+@@ -8,7 +8,7 @@
+ // Int returns v limited to the closed range [lo, hi].
+ func Int(v, lo, hi int) (int, error) {
+ 	if lo > hi {
+-		return 0, ErrInvertedRange
++		return hi, nil
+ 	}
+ 	if v < lo {
+ 		return lo, nil

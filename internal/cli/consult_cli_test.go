@@ -164,18 +164,6 @@ func personalPolicyFixture(t *testing.T, home string, version int, pins []fixtur
 	return writePolicyFixture(t, filepath.Join(home, ".agents", "skills", "task-orchestration"), version, pins)
 }
 
-// activeReleaseFixture lays out a v2 release that ships the given policy behind
-// state/current and returns the policy path. Consult and task start no longer read it.
-func activeReleaseFixture(t *testing.T, state string, version int, pins []fixturePin) string {
-	t.Helper()
-	release := filepath.Join(state, "releases", "fixture-policy-v"+strconv.Itoa(version))
-	policy := writePolicyFixture(t, filepath.Join(release, "skills", "task-orchestration"), version, pins)
-	if err := os.Symlink(release, filepath.Join(state, "current")); err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 // fixtureQuestions is one choice question that includes insufficient_evidence,
 // written with sorted keys so fixtureRequest("\"evidence\"") is canonical.
 const fixtureQuestions = `{"claim":{"criteria":{"contradicted":"The cited source contradicts the claim.","insufficient_evidence":"The cited evidence does not settle the claim.","supported":"The cited source supports the claim."},"instructions":"Does the cited source support the claim?","type":"choice"}}`

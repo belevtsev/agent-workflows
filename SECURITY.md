@@ -11,7 +11,7 @@ Please include the affected version, steps to reproduce, and the impact you expe
 In scope:
 
 - The `cw` binary and its subcommands.
-- `cw install --host codex` and `cw migrate-v2`, and the files they write or remove in Codex and Claude Code configuration.
+- `cw install --host codex` and `cw uninstall --host codex`, and the files they write or remove in Codex configuration and `~/.agents/skills`.
 - The plugin manifests in `.claude-plugin/`, `.codex-plugin/` and `.agents/plugins/`.
 - Skills that run commands on the user's machine.
 

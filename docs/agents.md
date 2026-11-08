@@ -9,7 +9,7 @@ reviewer never reviews its own work.
 | Agent | Model, effort | Does | Contract |
 |---|---|---|---|
 | [spec-writer](https://github.com/belevtsev/agent-workflows/blob/main/agents/spec-writer.md) | Opus, high | OpenSpec change folder from source documents: proposal, spec deltas with testable scenarios, sized tasks, open questions | [spec-writer](../skills/task-orchestration/references/contracts/spec-writer.md) |
-| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief | [architect](../skills/task-orchestration/references/contracts/architect.md) |
+| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
 | [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | Opus, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
 | [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | Opus, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | Opus, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
@@ -33,7 +33,10 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 Under the Claude Code plugin the agent types are namespaced, for example
 `agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md#worker-agent-types)
 maps each policy role to its type. The frontmatter model is a default: the
-coordinator passes the role's model and effort on every dispatch. Every agent
+coordinator passes the role's model and effort on every dispatch. The reviewer
+and the test engineer also set `omitClaudeMd: true`, so under Claude Code they
+start without the user's and the project's CLAUDE.md files; their contracts and
+briefs carry the project rules they apply. Codex has no such switch. Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.
@@ -43,3 +46,85 @@ suites under [`evals/`](https://github.com/belevtsev/agent-workflows/blob/main/e
 the reviewer's covers spec, design and test review.
 
 Agent definitions live in [`agents/`](https://github.com/belevtsev/agent-workflows/tree/main/agents); keep only agent files there, because the plugin loads every Markdown file there as an agent.
+
+## Design choices
+
+Short answers to alternatives that come up often, with the reason behind each
+choice.
+
+**Why not merge the spec writer and the architect?** The spec is settled, and
+reviewed against its sources, before any design starts. Keeping the authors
+apart is meant to stop the requirements from being bent to fit a design the
+author already has in mind. The spec stage is skipped for a small task, when a
+reviewed spec already exists, or when the request is precise enough to be its
+own spec
+([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
+
+**Why does the test engineer never see the code?** So that the tests cannot
+simply mirror the code and pass on the same bug. The test engineer works from
+the interface contract and the public interface extract, and takes expected
+values from the contract
+([quality bar](../skills/task-orchestration/references/contracts/test-engineer.md#quality-bar)).
+Its test matrix covers boundary, failure, concurrency, idempotency and security
+cases, or says why one does not apply
+([required outputs](../skills/task-orchestration/references/contracts/test-engineer.md#required-outputs)).
+Test review runs the tests against a stub first, so a test of non-trivial
+behaviour that passes against the stub is flagged
+([test review](../skills/task-orchestration/references/contracts/test-review.md)).
+Code review, which does read the code, also flags a test that could not fail
+for the defect it claims to prevent. An internal branch that no requirement
+names and that leaves an unexecuted changed block is classified there: when
+the final check wrote a coverage profile, code review gives every unexecuted
+changed block one class, an untested
+requirement (sent to a fresh test engineer by requirement ID, contract-level
+inputs and expected outcome, never coverage), behaviour no requirement asks
+for, or an unreachable defence
+([uncovered changed blocks](../skills/task-orchestration/references/contracts/code-review.md#uncovered-changed-blocks)).
+The test engineer itself still never sees coverage.
+
+**Why doesn't the implementer write its own tests?** Code tested only by its
+author is one of the failures this project exists to prevent: the same
+reasoning that wrote a bug can write a test that misses it. The implementer
+proves its change with the checks the brief names and writes a self-review; the
+behavioural tests come from the test engineer
+([implementer](../skills/task-orchestration/references/contracts/implementer.md#purpose)).
+A small task is the exception: its author writes the tests and a reviewer
+checks them.
+
+**Does the reviewer ever read the code?** Yes. Code review runs on the
+integrated source after the tests have run. It has the whole repository, a
+bundle that lists the files changed since the task started, the interface
+contract, `design.md`, the test engineer's matrix and requirement map, and the
+final check's coverage profile when one exists; it checks the change against the requirements
+and the design, and backs each behaviour finding with a test that fails on the
+current source
+([code review](../skills/task-orchestration/references/contracts/code-review.md#inputs-you-receive)).
+Only test review never sees the implementation, so it judges the tests by the
+contract alone.
+
+**Why not run more agents on a cheaper model?** This project has not measured
+whether a cheaper model keeps the same review and test quality, or how much it
+would save; the agents under test in its eval suites run on Opus by default
+([evals](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md)).
+On Claude Code the GitHub worker already runs on Sonnet 5.5 at medium effort,
+and every later review of a stage (a diff-scoped follow-up, a review scoped to
+a fix, a confirmation pass) runs on Sonnet 5.5 at high; the other roles run on
+Opus 5.5
+([Claude Code policy](../skills/task-orchestration/model-policy.claude.yaml)).
+Codex roles follow
+[model-policy.yaml](../skills/task-orchestration/model-policy.yaml). Moving
+more roles to a cheaper model is the owner's decision.
+
+**Why is the GitHub worker an agent rather than a shell script?** First-party
+automation must be written in Go, and the repository check rejects `.sh` and
+`.py` files outside `skills/` and `third_party/`
+([contributing](../CONTRIBUTING.md#go-only-automation)). A script that runs git
+itself is also invisible to the Claude Code commit gate, which sees only Bash
+commands that name git ([hooks](hooks.md)).
+
+**Why not run design review and test review in parallel?** The tests are
+written from the fixed interface contract, and the contract is fixed only after
+the design review passes, so test review has nothing to review until then
+([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
+What does run in parallel is the implementer and the test engineer, from the
+same contract; test review then runs before integration.

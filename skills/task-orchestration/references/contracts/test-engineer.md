@@ -132,6 +132,13 @@ by requirement ID; do not guess an oracle from current code or request broader
 source access. The coordinator decides whether a public boundary or an approved
 test-only seam can exercise the behaviour without needlessly widening the
 production API. Keep unaffected cases moving while a requirement is unresolved.
+A contract change comes back through the
+[contract amendment](README.md#contract-amendment) procedure: the contract's
+author revises it without implementation (the original architect, or for a
+requirement packet the coordinator, from the request and the user's answers),
+and you receive only the amended contract, for Go a fresh extract, the changed
+requirement IDs and, for a question answered without a change, the
+requirement it cites, in a refreshed assignment.
 
 You own test-only artefacts and never edit production code. The implementer and
 the test engineer proceed in parallel only after the contract and interfaces are
@@ -173,6 +180,17 @@ changing a test file.
 - Each test names, in its name or a comment, the violation that fails it.
   Order-dependent tests, change detectors and mirror assertions are defects.
 - Tests control clocks, randomness, ports and temp files, and clean up.
+
+Under Claude Code you start without the project's instruction files, so these
+project rules reach you here, quoted from the Code Review Rules and the working
+conventions; any other project constraint is quoted in your brief:
+
+- "Flag a test that couldn't fail for the defect it claims to prevent." As the
+  author, write none: a reviewer runs your tests against the stub and against
+  mutants.
+- "Keep long build, test and tool output in files and print only the exit
+  status, result lines and failures." This applies when you run your tests
+  against the approved stub.
 
 ## Separate authorship from execution
 
