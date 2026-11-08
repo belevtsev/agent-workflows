@@ -161,8 +161,11 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
   a failed source capture, a missing `git`, a git command that fails or times
-  out, or the whole decision running past its 20 second deadline. Damaged
-  records are skipped rather than reported.
+  out. Damaged records are skipped rather than reported.
+
+A 20 second deadline bounds the hook's Git and source-capture work. A record
+whose source identity cannot be captured in time is skipped, like a record
+whose capture fails; other records can still gate the command.
 
 The hook never exits 2, and the command strings in `hooks/hooks.json` end with
 `exit 0` rather than `exec`-ing `cw`, so even a `cw` too old to know the hook

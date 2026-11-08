@@ -32,10 +32,11 @@ import (
 // missing git never blocks the user's own commands.
 const (
 	hookInputLimit = 1 << 20
-	// hookPublishTimeout bounds the whole pre-publish decision, including the
-	// source captures, whose Git probes allow far longer on their own. It
-	// stays below the 30 second hook timeout in hooks/hooks.json, so cw
-	// itself exits 0 without a decision rather than being killed.
+	// hookPublishTimeout bounds the pre-publish hook's Git and source-capture
+	// work, whose capture probes allow far longer on their own. A record
+	// whose source identity cannot be captured in time is skipped, while
+	// other records can still gate. It stays below the 30 second hook
+	// timeout in hooks/hooks.json, so cw finishes before it is killed.
 	hookPublishTimeout    = 20 * time.Second
 	hookGitTimeout        = 5 * time.Second
 	hookDoctorTimeout     = 5 * time.Second

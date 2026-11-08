@@ -27,29 +27,32 @@ const (
 	maxFileBytes   = maxSourceBytes
 	maxGitOutput   = 8 << 20
 
-	// gitProbeBudget bounds one Git inspection command. Git failing says the
-	// path is not a repository; Git running out of time says nothing about
-	// it, so capture stops with an error instead. Five seconds was exceeded
-	// on loaded machines (macOS CI runners, hosts at load averages far above
-	// their core count), so the budget only stops a hung Git. The caller's
-	// context bounds every probe as well, so a caller with a shorter
-	// deadline, such as a hook or cw doctor, keeps it.
+	// gitProbeBudget bounds one Git inspection command. Git exiting with a
+	// failure says the path is not a repository; Git running out of time
+	// says nothing about it, so capture stops with an error instead. Five
+	// seconds was exceeded on loaded machines (macOS CI runners, hosts at
+	// load averages far above their core count), so the budget only stops a
+	// hung Git. The caller's context bounds every probe as well, so a caller
+	// with a shorter deadline, such as a hook or cw doctor, keeps it.
 	gitProbeBudget = 60 * time.Second
 )
 
-// gitProbeAborted is a Git inspection command that did not finish on its
-// own: it ran past its budget or was killed by a signal. Unlike a Git
-// failure it says nothing about the repository, so capture returns it rather
-// than treating a repository as a plain folder or dropping HEAD or the branch.
-type gitProbeAborted struct{ message string }
+// gitProbeAborted is a Git inspection command that did not finish cleanly:
+// it ran past its budget, was killed by a signal, was stopped by the caller,
+// or could not be run or waited for. Unlike Git exiting with a failure it
+// says nothing about the repository, so capture returns it rather than
+// treating a repository as a plain folder or dropping HEAD or the branch. It
+// wraps its cause, so a caller's cancellation stays visible to errors.Is.
+type gitProbeAborted struct{ err error }
 
-func (err gitProbeAborted) Error() string { return err.message }
+func (aborted gitProbeAborted) Error() string { return aborted.err.Error() }
 
-// stopsCapture reports whether a Git probe error ends capture: an aborted
-// probe or the caller's own cancellation or deadline.
+func (aborted gitProbeAborted) Unwrap() error { return aborted.err }
+
+// stopsCapture reports whether a Git probe error ends capture.
 func stopsCapture(err error) bool {
 	_, aborted := errors.AsType[gitProbeAborted](err)
-	return aborted || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+	return aborted
 }
 
 type captured struct {
@@ -192,24 +195,37 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 		gitArgs := []string{"-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", dir}
 		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv)}, maxGitOutput)
 		if runErr != nil {
+			probe := strings.Join(args, " ")
+			// The caller's context is checked first: its deadline can end
+			// the probe's context too.
 			if ctx.Err() != nil {
-				return "", ctx.Err()
+				return "", gitProbeAborted{fmt.Errorf("Git inspection stopped by the caller (git %s): %w", probe, ctx.Err())}
 			}
 			if probeCtx.Err() != nil {
-				return "", gitProbeAborted{fmt.Sprintf("Git inspection timed out after %s (git %s)", probeBudget, args[0])}
+				return "", gitProbeAborted{fmt.Errorf("Git inspection timed out after %s (git %s)", probeBudget, probe)}
 			}
-			if exit, ok := errors.AsType[*exec.ExitError](runErr); ok && !exit.Exited() {
-				return "", gitProbeAborted{fmt.Sprintf("Git inspection was killed before it finished (git %s)", args[0])}
+			// Only Git exiting with a status, or no Git at all, is positive
+			// evidence about the repository. Anything else, such as a start
+			// failure or a child holding Git's output open past WaitDelay
+			// after Git exited, stops capture.
+			exit, isExit := errors.AsType[*exec.ExitError](runErr)
+			switch {
+			case isExit && exit.Exited(), errors.Is(runErr, exec.ErrNotFound):
+				return "", errors.New("Git inspection failed")
+			case isExit:
+				return "", gitProbeAborted{fmt.Errorf("Git inspection was killed before it finished (git %s)", probe)}
+			default:
+				return "", gitProbeAborted{fmt.Errorf("Git inspection could not complete (git %s): %w", probe, runErr)}
 			}
-			return "", errors.New("Git inspection failed")
 		}
 		if result.Truncated {
 			return string(result.Stdout), errors.New("Git metadata exceeded the inspection output limit")
 		}
 		return string(result.Stdout), nil
 	}
-	// Only Git finishing with a failure, or no Git at all, means the selected
-	// path is not in a Git repository.
+	// Only Git exiting with a failure status, or no git on PATH, means the
+	// selected path is not in a Git repository; every unclean finish of this
+	// or a later probe stops capture.
 	root, gitErr := git(selected, "rev-parse", "--show-toplevel")
 	if stopsCapture(gitErr) {
 		return captured{}, gitErr

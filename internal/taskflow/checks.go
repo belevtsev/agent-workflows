@@ -20,6 +20,17 @@ import (
 	"github.com/belevtsev/agent-workflows/internal/projectctx"
 )
 
+const (
+	// checkFinishTimeout bounds recording a finished check: the source
+	// capture after the run and the terminal record write.
+	checkFinishTimeout = 30 * time.Second
+	// checkRecordWriteReserve is the part of checkFinishTimeout the source
+	// capture never uses, so the terminal record write can still wait for
+	// the task lock. Without it a stalled capture could use the whole
+	// budget and leave the run recorded as running.
+	checkRecordWriteReserve = 10 * time.Second
+)
+
 // validateCommandShape checks the bounded representation shared by immutable
 // history and new commands without making an execution-policy decision.
 func validateCommandShape(argv []string) error {
@@ -344,9 +355,14 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	}
 	// A cancelled request still needs a terminal source/run record. This bounded
 	// cleanup context never executes another command from the task plan.
-	finishCtx, finishCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	finishCtx, finishCancel := context.WithTimeout(context.WithoutCancel(ctx), checkFinishTimeout)
 	defer finishCancel()
-	after, snapshotErr := projectctx.Capture(finishCtx, run.Before.SelectedPath)
+	// The source capture gets only part of the finish budget, so a slow Git
+	// probe cannot leave the terminal record write without time to wait for
+	// the task lock; a capture that runs out marks the run source_changed.
+	captureCtx, captureCancel := context.WithTimeout(finishCtx, checkFinishTimeout-checkRecordWriteReserve)
+	after, snapshotErr := projectctx.Capture(captureCtx, run.Before.SelectedPath)
+	captureCancel()
 	if snapshotErr == nil {
 		run.After = &after
 	}
