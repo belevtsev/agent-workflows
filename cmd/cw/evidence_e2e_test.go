@@ -381,14 +381,22 @@ func TestEvidenceE2EGoPackagesNeedCoveringPassedRuns(t *testing.T) {
 	// failed run of the same check at the same source withdraws the credit.
 	e.runExpect(false, "beta", "BETA_FAIL=1")
 	expect("pass then fail at the same source", []string{beta}, []string{anyRun, alpha})
+	// P3a-2 B10, B22: a pass after a failed run of the same check at the same
+	// source and GOFLAGS is a rerun; it earns no credit and says so.
+	rerun := "check beta passed after a failed run at the same source and GOFLAGS, so it earns no Go evidence credit"
 	e.run("beta")
-	expect("fail then pass at the same source", nil, []string{anyRun, beta, alpha})
+	if v := expect("fail then pass at the same source", []string{beta}, []string{anyRun, alpha}); !slices.Contains(v.Limitations, rerun) {
+		t.Errorf("fail then pass at the same source: limitations lack %q\nlimitations: %q", rerun, v.Limitations)
+	}
 
-	// So does a later filtered run of the same check.
+	// So does a later filtered run of the same check; the plain pass after it
+	// is still a rerun of the failure at this source.
 	e.runExpect(true, "beta", "GOFLAGS=-run=^$")
 	expect("pass then filtered pass at the same source", []string{beta}, []string{anyRun, alpha})
 	e.run("beta")
-	expect("filtered then plain pass at the same source", nil, []string{anyRun, beta, alpha})
+	if v := expect("filtered then plain pass at the same source", []string{beta}, []string{anyRun, alpha}); !slices.Contains(v.Limitations, rerun) {
+		t.Errorf("filtered then plain pass at the same source: limitations lack %q\nlimitations: %q", rerun, v.Limitations)
+	}
 
 	// Any further change to beta needs a new run, and so does alpha.
 	e.write("beta/beta.go", betaSource+"\nfunc Triple() int { return 3 * Value() }\n\nfunc Four() int { return 4 }\n")
@@ -575,7 +583,12 @@ func TestEvidenceE2EReviewSeverityAndRejectedBlocker(t *testing.T) {
 				t.Errorf("refusal %q does not name severity", output)
 			}
 			after := e.verify()
-			if !slices.Equal(before.Problems, after.Problems) {
+			// P3a-2 tolerance: through the binary the facts budget is 5 s, so
+			// the B9 problem may appear in one verify only; compare without it.
+			graph := func(p string) bool {
+				return p == "changed Go packages need a passed go test ./... run at the current source because the package graph is unavailable"
+			}
+			if !slices.Equal(slices.DeleteFunc(slices.Clone(before.Problems), graph), slices.DeleteFunc(slices.Clone(after.Problems), graph)) {
 				t.Errorf("refused handoff changed verification problems:\nbefore %q\nafter %q", before.Problems, after.Problems)
 			}
 		})

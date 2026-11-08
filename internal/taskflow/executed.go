@@ -3,6 +3,7 @@ package taskflow
 import (
 	"context"
 	"os"
+	"slices"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
@@ -50,7 +51,14 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 	passed := []langpack.Run{}
 	for _, check := range record.Plan.Checks {
 		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
-			passed = append(passed, langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS})
+			entry := langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}
+			if record.Packs != nil {
+				entry.CheckID, entry.Truncated, entry.Rerun = run.CheckID, run.Truncated, rerun(record, *run)
+				if data, err := privateRead(root, run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
+					entry.Log = data
+				}
+			}
+			passed = append(passed, entry)
 		}
 	}
 	if record.Packs == nil {
@@ -67,4 +75,13 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 	}
 	evidence := langpack.Evaluate(ctx, snapshot.SelectedPath, checkEnvironment(), ruleIDs, source, passed)
 	return append(problems, evidence.Problems...), append(limitations, evidence.Limitations...)
+}
+
+// rerun reports whether another run of run's check failed with an exit code
+// at the same before-snapshot and with the same recorded GOFLAGS. A passed
+// run is never failed, so run never matches itself.
+func rerun(record Record, run CheckRun) bool {
+	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
+		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && other.GOFLAGS == run.GOFLAGS
+	})
 }

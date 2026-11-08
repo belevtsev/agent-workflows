@@ -10,7 +10,18 @@ even an empty one, overrides it, and a domain pack is never selected by default.
 `cw task start` records the selected packs whose `detect` file is at the top of
 the selected path, and verify applies their rules by id. Schema 1 has `schema`,
 `id`, `kind`, `detect`, `commands`, `tests`, `interface_extract`, `skills`,
-`review` and `evidence_rule`. Today's Go rule is `go.package-test/v1`.
+`review` and `evidence_rule`. The Go pack's rule is `go.package-test/v2` (P3a-2); a task keeps the rule it
+recorded at start, so tasks started earlier keep `go.package-test/v1`. v2
+runs `go list` offline at verify, inside the task lock, for at most 6 s;
+when the package graph is not ready within 5 s, as on a slow host, verify
+asks for `go test ./...` instead. Known gaps, each with its follow-up: a
+rerun is a failure at the same before-snapshot and `GOFLAGS`, so a
+content-neutral commit between a failure and a pass restores credit
+(follow-up: a per-run content digest); gathering facts inside the lock can
+cost a finishing check its terminal record when both source captures take
+about 8 s or more (follow-up: gather facts before the lock, which would also
+allow a longer budget); `-race` availability is probed for the host at
+verify, not recorded per run (follow-up: record it with each run).
 
 ## 1. Decision
 

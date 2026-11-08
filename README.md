@@ -134,10 +134,16 @@ in a Bash command, in any form. Each open substantial task for the repository
 passes on the current source. Editing a verified file reopens the task. With no
 task at all, a large change gets a prompt suggesting `cw task start`.
 
-When a task applies the `go` pack, verify also needs a passed direct `go test`
-run covering each changed package, with allowlisted flags only (no `-run` or
-`-skip`); see
-[evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+When a task applies the `go` pack, verify also needs passed direct `go test`
+runs, with allowlisted flags only (no `-run` or `-skip`): one with `-race`
+covering each changed package (a plain run, with a recorded limitation,
+where `-race` cannot run on the host), one covering each package whose tests
+link a changed package, and `go test ./...` after a change to module or
+vendored files, build constraints, generated code, embedded files or shared
+testdata. A pass after a failed run of the same check at the same source
+and `GOFLAGS` earns no credit until the source changes, and skipped tests
+are listed. A task keeps the rule
+it recorded at start; see [evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
 The `go` pack is selected by default. A task records it when `go.mod` or
 `go.work` is at the top of the selected path at start, and the rule then checks
 packages whenever `go.mod` is at the top at verify. A task that started with
