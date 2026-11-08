@@ -72,6 +72,24 @@ others' edits. `check_ids` selects commands already in the immutable task plan.
 test engineer records as its [contract](contracts/test-engineer.md#record-and-complete)
 says: native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.
 
+A brief of any role may carry `inputs`: up to 32 artefacts handed to the worker,
+inside or outside the project, each as an absolute `path` with its `sha256`.
+`assign` checks every hash and stores a private copy of each in the task, so a
+later edit of the original changes nothing and `verify` reports a copy that is
+missing or differs. A test engineer's brief, which carries `contract`, also
+declares `requirements`: each contract requirement with the plan requirements it
+implements as `criteria`, for example
+`{"requirement": "R4", "criteria": ["inputs"]}`. They are required when the plan
+has a `go test` check whose argv earns per-test credit, which needs `-json` in its
+own argv and only flags the Go evidence rule allows (no `-args`, `-run`, `-skip`
+or other refused flag), and refused when it has none. A correction round, a
+refreshed brief after a contract amendment, or a refreshed round after a fix closed
+the earlier round `unused` re-declares every requirement whose tests it owns, and
+may map them to the files an earlier round wrote; `verify` lists a requirement no
+current round declares, and fails a plan requirement that some closed round linked
+when no current round links it; a plan requirement no round ever linked is no
+problem and shows as `unmapped` in `cw task trace`.
+
 Use exact on-disk path spelling without symlink components. Ownership checks cover
 direct file aliases, not hardlinks beneath separate directory scopes. Scoped
 freshness hashes every entry under each owned directory, rejects symlinks and stops
@@ -93,6 +111,7 @@ The result JSON contains:
 | `findings` | Each finding's `id`, `summary`, `severity` (`blocker`, `major` or `minor`; required in a review) and source `evidence`; `[]` records none |
 | `uncertainties` | Remaining unknowns; `[]` records none |
 | `reach_runs` | Review only: how each reach-row mode was [run](#run-every-reach-row-mode) |
+| `requirement_map` | Completed result of a brief with `requirements` only: for each declared requirement, its `tests` (`path` of a `_test.go` file this result or an earlier test-engineer result changed, and the Go test `name`), or an `uncovered` reason |
 
 The result must match actual source at submission: never invent a fingerprint or
 copy the original baseline after edits. `cw task` fills omitted single-valued
@@ -103,6 +122,8 @@ source reference or changed file, from its current bytes. A filled hash binds th
 bytes present when the record is written, so give it explicitly when the worker
 computed it and a later edit must be detected. Collections (`evidence`, `changed_files`, `check_ids`,
 `findings`, `uncertainties`) are never filled: give `[]` when empty.
+`cw task trace --task /private/task --summary` shows, for each plan requirement,
+the mapped tests and the `-json` runs that proved or failed them.
 
 The coordinator independently checks meaning, scope, source and results. Its
 acceptance holds `assignment_id`, `status` (`accepted`, `rejected` or `unused`),

@@ -68,6 +68,9 @@ func validateWorkerRecord(record Record) error {
 		if (assigned.ContractFile != "") != (assigned.Brief.Contract != nil) || assigned.ContractFile != "" && !contractFileName.MatchString(assigned.ContractFile) {
 			return errors.New("stored assignment contract binding is invalid")
 		}
+		if err := validateInputFiles(assigned); err != nil {
+			return err
+		}
 	}
 	results := map[string]bool{}
 	for _, bound := range record.WorkerResults {

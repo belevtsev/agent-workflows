@@ -168,6 +168,26 @@ requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
 it they print the whole record, which grows past 80 KB (`run` prints the check
 run). Read a stored value missing from a summary with
 `cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`).
+`cw task trace` accepts `--summary` too.
+
+When a test engineer will be dispatched with a contract, give the plan a check
+whose argv runs `go test -json`, for example `["go", "test", "-json", "./..."]`,
+with only flags the Go evidence rule allows (no `-args`, `-run`, `-skip` or other
+refused flag): it is the only kind of run that proves a mapped test. Prefer making
+it the task's main Go test check rather than a second full run. Put `-json` in
+argv and never export `GOFLAGS=-json` in the shell that runs `cw task run`: it
+reaches every check, and `go vet` then exits 0 on findings. In a plan with such a
+check, `assign` refuses a brief with a `contract` but no `requirements`; in a plan
+without one, it refuses `requirements`. Records made before brief `inputs` and
+`requirements`, result `requirement_map` and run `test_results` existed need none
+of them: each is "not required" for those records, which load, hash and verify as
+before. A new contract brief without requirements is refused only when the plan
+has a per-test-credited `-json` `go test` check. Compatibility runs one way only:
+records stay version 3, so once a record gains any of the new members (`inputs`
+and `input_files`, `requirements`, `requirement_map`, `test_results`), only this
+`cw` or a later one can read it, and an older `cw` fails to load it. That includes
+the `cw hook pre-publish` binary, whose commit gate then fails open. Update every
+installed `cw`, including the one the hook runs, before running tasks with this one.
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, and not disabled in the saved preferences) into the task record as
@@ -302,6 +322,24 @@ result lines and failures; for Go,
 `go test ./... >log 2>&1; echo exit=$?; grep -E '^(FAIL|ok|panic)|--- FAIL|_test\.go:[0-9]+|\.go:[0-9]+:[0-9]+' log | head -60`
 keeps failing test names, assertion messages and compile errors.
 
+Every run records the per-test results of its `-json` events, read from its
+complete output, as `test_results`. A `-json` run's stored log holds JSON event
+lines, so its `--summary` takes `failing_tests` from those results, while the
+error lines and log tail still come from the log. For each current test-engineer
+assignment with a completed handoff, `verify` judges every mapped test at the
+current source: it fails a test that is missing, failed in a latest run at the
+current source, was only skipped, or has no PASS in a latest passed run of a
+per-test-credited `-json` check; it lists `uncovered` requirements and
+requirements no current round declares as limitations, and fails a plan
+requirement whose every linking round is closed. `cw task trace --task <dir> --summary`
+shows each plan requirement's status and gaps; without `--summary` it prints
+every mapped test with the runs that recorded it. With go1.27.3, `-json` frames
+what tests print, but a line that a test writes straight to stdout or stderr
+starting with byte 0x16 becomes a result event for any test name it gives, so
+it can forge a PASS. It cannot hide a real FAIL: a FAIL of the same test in a
+latest run at the current source makes the test `failed` whatever else the run
+recorded.
+
 Record acceptance and the coordinator's decision through an assessment JSON. A source
 reference contains its repository-relative `path`, valid `start_line`/`end_line`,
 and the SHA-256 of the complete current file; omit `sha256` to have it filled from
@@ -411,10 +449,12 @@ never pass before the commit. Do not move it to a scratch clone or leave it out 
 the plan. Bind a mode that runs the same gates on a committed copy of the working
 tree and prints that copy's tree hash. Name the project's command for it from its
 development docs. agent-workflows needs no such mode: its full check,
-`["go", "test", "-race", "-count=1", "./..."]` with `GOWORK=off` exported in the
-shell that runs `cw task run`, runs on the working tree. It takes no coverage
-flags: the `internal/graphify` process tests run the test binary again and
-compare its output, and fail under `-cover` (with `GOCOVERDIR` set as well).
+`["go", "test", "-race", "-count=1", "-json", "./..."]` with `GOWORK=off` exported in the
+shell that runs `cw task run`, runs on the working tree. `-json` makes it the
+check that proves mapped tests; its stored log then holds JSON events, and its
+`--summary` takes `failing_tests` from the run's per-test results. It takes no
+coverage flags: the `internal/graphify` process tests run the test binary again
+and compare its output, and fail under `-cover` (with `GOCOVERDIR` set as well).
 For the code review's profile, bind a second check with the coverage flags
 that names the packages the plan expects to change, outside
 `internal/graphify`; a change inside `internal/graphify` gets no profile. Give the check a timeout
