@@ -1,0 +1,15 @@
+Breaks R1: a value equal to hi comes back as hi-1.
+
+--- a/clamp.go
++++ b/clamp.go
+@@ -13,8 +13,8 @@
+ 	if v < lo {
+ 		return lo, nil
+ 	}
+-	if v > hi {
+-		return hi, nil
++	if v >= hi {
++		return hi - 1, nil
+ 	}
+ 	return v, nil
+ }

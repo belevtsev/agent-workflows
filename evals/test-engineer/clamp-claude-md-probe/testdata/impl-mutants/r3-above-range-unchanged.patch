@@ -1,0 +1,13 @@
+Breaks R3: a value above hi is returned unchanged.
+
+--- a/clamp.go
++++ b/clamp.go
+@@ -14,7 +14,7 @@
+ 		return lo, nil
+ 	}
+ 	if v > hi {
+-		return hi, nil
++		return v, nil
+ 	}
+ 	return v, nil
+ }
