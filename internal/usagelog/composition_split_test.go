@@ -335,12 +335,17 @@ func FuzzSplitShellWork(f *testing.F) {
 // splitTestSink keeps the R4d split result alive across the second reading.
 var splitTestSink shellCommand
 
-// R4d: splitting the deep_lines input allocates at most 100 bytes per input
-// byte. It catches a splitter that copies the whole nesting state for every
-// line without counting it as work, but only when that copy allocates. It does
-// not call t.Parallel: TotalAlloc is process-wide.
+// R4d (contract revision 5, amendment 1): splitting the deep_lines input
+// allocates at most 400 bytes per input byte. The bound is not a tight
+// allocation budget: a linear splitter allocates up to about 190 bytes per
+// input byte here. Its purpose is to catch allocation that grows with the
+// nesting depth on every line, such as a splitter that copies the whole
+// nesting state for every line without counting it as work (about 1,500 bytes
+// per input byte at n = 4000 and 5,600 at n = 16000), and it catches that only
+// when the copy allocates. It does not call t.Parallel: TotalAlloc is
+// process-wide.
 func TestSplitShellDeepNestingAllocations(t *testing.T) {
-	const perByte = 100
+	const perByte = 400
 	for _, n := range []int{4000, 16000} {
 		command := strings.Repeat("( ", n) + strings.Repeat("\n", n)
 		var before, after runtime.MemStats

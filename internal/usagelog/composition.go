@@ -992,8 +992,9 @@ func splitShell(command string) (shellCommand, int) {
 			// <<< is a here-string; << inside a quoted string (but not in a
 			// $(...) or `...` substitution within one) is text, and inside
 			// $((...)) it is a shift. The quote state is only needed when the
-			// << is not a here-string, the marker only matched outside quotes,
-			// and arithmetic only checked for a marker.
+			// << is not a here-string, and the marker only matched outside
+			// quotes. quoted and arithmetic take constant time, so the order
+			// of the marker and arithmetic checks below does not affect cost.
 			if at > 0 && line[at-1] == '<' {
 				continue
 			}
@@ -1161,13 +1162,22 @@ type logicalLine struct {
 // $((...)), ((...)) and `...` (whose text is unquoted, even within double
 // quotes), backslash escapes (an escaped byte opens nothing) and comments.
 type quoteScanner struct {
-	stack    []byte // ' " C ($'...') S ($( ) ( A ($(( ) `
-	prev     byte   // the previous byte, 0 at the start
-	escaped  bool   // the next byte is escaped
-	comment  bool   // inside a comment, until the newline
-	opened   bool   // the previous byte opened a $( or ( frame
-	closeArg bool   // the previous byte closed a $((...)); its second ) is due
-	work     *int   // counts the bytes fed to this scanner and its clones; nil: strayScanBytes
+	frames   *quoteFrame // the innermost open frame; nil outside any
+	prev     byte        // the previous byte, 0 at the start
+	escaped  bool        // the next byte is escaped
+	comment  bool        // inside a comment, until the newline
+	opened   bool        // the previous byte opened a $( or ( frame
+	closeArg bool        // the previous byte closed a $((...)); its second ) is due
+	work     *int        // counts the bytes fed to this scanner and its clones; nil: strayScanBytes
+}
+
+// quoteFrame is one open quote or parenthesis, linked to the frame it opened
+// in. Frames are never changed once made, so a scanner and its clones share
+// them: a clone takes constant time however deep the nesting is.
+type quoteFrame struct {
+	up    *quoteFrame
+	ch    byte // ' " C ($'...') S ($( ) ( A ($(( ) `
+	arith int  // the A frames at or below this one
 }
 
 // strayScanBytes counts the bytes fed to quote scanners that no splitShell
@@ -1188,22 +1198,41 @@ func (q *quoteScanner) count(n int) {
 	}
 }
 
-// clone copies the scanner; the copy of its stack counts as work.
-func (q *quoteScanner) clone() quoteScanner {
-	c := *q
-	c.stack = slices.Clone(q.stack)
-	q.count(len(q.stack))
-	return c
-}
+// clone copies the scanner. The copy shares the immutable frames, so it
+// copies no frame and adds no work.
+func (q *quoteScanner) clone() quoteScanner { return *q }
 
 func (q *quoteScanner) top() byte {
-	if len(q.stack) == 0 {
+	if q.frames == nil {
 		return 0
 	}
-	return q.stack[len(q.stack)-1]
+	return q.frames.ch
 }
 
-func (q *quoteScanner) pop() { q.stack = q.stack[:len(q.stack)-1] }
+// push opens a frame inside the current one.
+func (q *quoteScanner) push(ch byte) {
+	arith := 0
+	if q.frames != nil {
+		arith = q.frames.arith
+	}
+	if ch == 'A' {
+		arith++
+	}
+	q.frames = &quoteFrame{up: q.frames, ch: ch, arith: arith}
+}
+
+// replace turns the innermost frame into ch. It makes a new frame rather than
+// changing the old one, which a clone may share. Changing it in place would
+// give the same results today, so no test can tell the two apart: a frame is
+// replaced only by the byte right after the one that pushed it, and splitShell
+// clones only after a newline, so the frame is never shared yet. Keeping every
+// frame immutable does not depend on that.
+func (q *quoteScanner) replace(ch byte) {
+	q.pop()
+	q.push(ch)
+}
+
+func (q *quoteScanner) pop() { q.frames = q.frames.up }
 
 // quoted reports whether the text so far ends inside a quoted string.
 func (q *quoteScanner) quoted() bool {
@@ -1211,17 +1240,10 @@ func (q *quoteScanner) quoted() bool {
 	return top == '\'' || top == '"' || top == 'C'
 }
 
-// arithmetic reports whether the text so far ends inside $((...)). The
-// frames it searches count as work.
-func (q *quoteScanner) arithmetic() bool {
-	i := slices.Index(q.stack, 'A')
-	if i < 0 {
-		q.count(len(q.stack))
-		return false
-	}
-	q.count(i + 1)
-	return true
-}
+// arithmetic reports whether the text so far ends inside $((...)). Each frame
+// records how many A frames lie at or below it, so this searches no frame and
+// adds no work.
+func (q *quoteScanner) arithmetic() bool { return q.frames != nil && q.frames.arith > 0 }
 
 func (q *quoteScanner) feed(text string) {
 	q.count(len(text))
@@ -1260,28 +1282,28 @@ func (q *quoteScanner) feed(text string) {
 			case ch == '"':
 				q.pop()
 			case ch == '(' && q.prev == '$':
-				q.stack = append(q.stack, 'S')
+				q.push('S')
 				opened = true
 			case ch == '`':
-				q.stack = append(q.stack, '`')
+				q.push('`')
 			}
 		default:
 			switch {
 			case ch == '\\':
 				q.escaped = true
 			case ch == '\'' && q.prev == '$':
-				q.stack = append(q.stack, 'C')
+				q.push('C')
 			case ch == '\'' || ch == '"':
-				q.stack = append(q.stack, ch)
+				q.push(ch)
 			case ch == '#' && (q.prev == 0 || strings.IndexByte(" \t\n;&|()", q.prev) >= 0):
 				q.comment = true
 			case ch == '(' && q.opened:
-				q.stack[len(q.stack)-1] = 'A'
+				q.replace('A')
 			case ch == '(' && q.prev == '$':
-				q.stack = append(q.stack, 'S')
+				q.push('S')
 				opened = true
 			case ch == '(':
-				q.stack = append(q.stack, '(')
+				q.push('(')
 				opened = true // (( starts an arithmetic command
 			case ch == ')' && q.top() == 'A':
 				q.pop()
@@ -1291,7 +1313,7 @@ func (q *quoteScanner) feed(text string) {
 			case ch == '`' && q.top() == '`':
 				q.pop()
 			case ch == '`':
-				q.stack = append(q.stack, '`')
+				q.push('`')
 			}
 		}
 		q.opened = opened
