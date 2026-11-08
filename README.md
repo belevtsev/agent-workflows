@@ -16,7 +16,7 @@ blocks the commit until `cw task verify` passes.
 
 ## How it works
 
-<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
+<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source and its changes) and implementer, cw task verify, gated commit by github-worker. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
@@ -33,8 +33,14 @@ spec exists or the request states every behaviour.
 | architect | the reviewed spec or request | design, interface contract, implementation brief | Opus 5.5, xhigh |
 | implementer | brief and contract | the change, a self-review | Opus 5.5, high |
 | test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
-| reviewer | the spec, design, tests (never the code) or integrated source | graded findings with evidence | Opus 5.5, high |
+| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the requirements | graded findings with evidence | Opus 5.5, high |
 | github-worker | verified facts, your approval | commit, push, PR | Sonnet 5.5, medium |
+
+The table is not a one-way pipeline: every review loops back to its stage's
+author, except that a code review finding about a test goes to a fresh test
+engineer; the implementer and the test engineer run in parallel from the same
+contract. Small tasks skip this staged flow: their author writes the tests and
+a reviewer checks them.
 
 Codex uses [model-policy.yaml](skills/task-orchestration/model-policy.yaml).
 See [agents](docs/agents.md) and the
