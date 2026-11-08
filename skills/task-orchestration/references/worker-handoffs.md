@@ -4,9 +4,13 @@ Use this contract for delegated repository work in any project; the project's
 instructions choose tools and check commands. Keep briefs, results and records
 outside source. The coordinator selects the runtime agent,
 resolves its model from policy, [dispatches it](global-workflow.md#dispatch-workers)
-and verifies actual identity and returned work. Native commands only validate
-declarations and evidence: they never launch or stop agents, authenticate
-identities, isolate permissions or authorize external actions.
+and verifies actual identity and returned work. Native commands validate
+declarations and evidence, except `cw publish`, which carries out a publication
+(commit, push, pull request) that the coordinator, carrying the user's
+authorization, is authorized to make. None of them launches or stops agents,
+authenticates identities, isolates permissions or authorizes external actions:
+`cw publish` is only the mechanism, and the authorization stays with the
+coordinator.
 
 ## Brief and dispatch
 

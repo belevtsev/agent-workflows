@@ -44,9 +44,10 @@ fallbacks. Sol 6.1 `max` is configured; Sol `ultra` requires an explicit user re
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
-results do not prove correctness or grant permission. Publishing a substantial
-task, or a user request for a bounded worker, dispatches the
-[GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
+results do not prove correctness or grant permission. A verified substantial
+task is published with `cw publish`, run by the coordinator under the user's
+authorization; its fallback cases, or a user request for a bounded worker,
+dispatch the [GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
 task commits and pushes directly under the user's authorization. Pass model and
 effort explicitly and verify effective host settings.
 `fallbacks.github_unavailable: report_blocker`, when present, overrides

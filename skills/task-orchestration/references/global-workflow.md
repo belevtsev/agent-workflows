@@ -399,6 +399,13 @@ needs no new test run; compare the committed tree with the verified one instead.
 Do not rerun `cw task verify` after that commit: it would replace the stored
 complete verification with one that reports every binding stale.
 
+Publish a verified task with `cw publish`, under the user's authorization that
+you carry: it commits the task's verified files, pushes and creates or edits the
+pull request, and its readback compares the committed files with the verified
+ones, so the comparison above is done for you. The
+[publication reference](github-worker.md) gives the flags, exit statuses and the
+cases that go to the GitHub worker instead.
+
 A project's full check may require a clean checkout at an exact commit, so it can
 never pass before the commit. Do not move it to a scratch clone or leave it out of
 the plan. Bind a mode that runs the same gates on a committed copy of the working
