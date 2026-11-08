@@ -27,6 +27,7 @@
     "./agents/architect.md",
     "./agents/implementer.md",
     "./agents/test-engineer.md",
+    "./agents/adversarial-tester.md",
     "./agents/reviewer.md",
     "./agents/github-worker.md"
   ],

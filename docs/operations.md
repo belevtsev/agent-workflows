@@ -18,10 +18,11 @@ claude plugin install agent-workflows@agent-workflows
 Inside a session, `/plugin marketplace add belevtsev/agent-workflows` and
 `/plugin install agent-workflows@agent-workflows` do the same. The Go skill pack
 is a second plugin in the same marketplace, `cc-skills-golang@agent-workflows`.
-The plugin provides the skills and the six worker agents under `agents/`
+The plugin provides the skills and the seven worker agents under `agents/`
 (`agent-workflows:spec-writer`, `agent-workflows:architect`,
 `agent-workflows:implementer`, `agent-workflows:test-engineer`,
-`agent-workflows:reviewer` and `agent-workflows:github-worker`). It does not
+`agent-workflows:reviewer`, `agent-workflows:github-worker` and the opt-in
+`agent-workflows:adversarial-tester`). It does not
 edit `~/.claude/CLAUDE.md` or `settings.json`. `cw install --host claude` is
 refused with a pointer to the plugin.
 

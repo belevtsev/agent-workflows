@@ -39,7 +39,9 @@ satisfies a later state.
    and states 2 and 4 are not required
    ([details](references/global-workflow.md#start-and-bind-a-task)). The plan
    cannot change after start: a task that later meets an open decision stops and
-   asks the user, and never restarts over source the first record changed. Hand a
+   asks the user, and never restarts over source the first record changed. Decide
+   here whether the plan opts in to the
+   [adversarial tester](references/contracts/adversarial-tester.md#opt-in-and-record). Hand a
    consequential planning, architecture or diagnosis question that source does
    not settle to a `decision`-profile worker.
 2. **Before checkpoint** (when required). With enough source evidence to assess
@@ -50,7 +52,10 @@ satisfies a later state.
    [flow](references/contracts/README.md#flow), with a review loop at every
    stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
    implementer ∥ test engineer ⇄ reviewer (tests) → integrate and run →
-   reviewer (code) ⇄ implementer. Findings go back to that stage's author; the
+   reviewer (code) ⇄ implementer, with an opt-in
+   [adversarial tester](references/contracts/adversarial-tester.md) beside the
+   code review for concurrency, parsing or untrusted input, security or data
+   integrity, or when the user asks. Findings go back to that stage's author; the
    [review cap](references/worker-handoffs.md#review-stages) applies per stage,
    and the round budget in the same section bounds spec, design, contract and
    test-engineer rounds across the whole task (implementer fixes never count);

@@ -212,7 +212,9 @@ a new reproduction of its own. This exception covers only failing
 reproduction tests a code reviewer writes for its own findings; any other
 behavioural test, including one the coordinator or an implementer writes,
 still needs a fresh test engineer. A later source-aware role gets the same
-exception only when its contract and `test-strategy` name it.
+exception only when its contract and `test-strategy` name it; the opt-in
+[adversarial tester](adversarial-tester.md#after-a-finding) is one, for the
+tests it keeps.
 
 ## Stopping conditions
 

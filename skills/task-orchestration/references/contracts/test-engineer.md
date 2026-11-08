@@ -18,7 +18,9 @@ seeds, tolerances, removal and disabling, or when the user asks for one. In the
 for a substantial task that skips the design stage, from the coordinator's
 requirement packet. For a small task the coder writes the tests and the
 reviewer checks each against the Code Review Rules; a test-engineer dispatch
-alone does not make a small task substantial. Pure formatting or documentation
+alone does not make a small task substantial. Tests kept by the
+[adversarial tester](adversarial-tester.md) are source-access regression tests
+and need no test-engineer dispatch. Pure formatting or documentation
 work needs no new tests. Explicit user scope and no-tests instructions still
 apply.
 
@@ -116,6 +118,8 @@ the host cannot supply an unexposed context, report that limitation.
 - Implementation source, diffs, history, build or runtime logs, coverage,
   mutation output or the implementer's self-review.
 - The design discussion (`design.md`) or adviser output.
+- The [adversarial tester](adversarial-tester.md)'s tests, findings or probes;
+  at most a requirement ID the coordinator chooses reaches you from that stage.
 
 ## Author only from the contract
 
