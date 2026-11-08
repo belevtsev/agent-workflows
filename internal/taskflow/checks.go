@@ -75,6 +75,12 @@ func validateCommand(argv []string) error {
 		}
 		return nil
 	}
+	// cw publish commits, pushes and opens pull requests. Refusing it here is
+	// a guard, not a sandbox: a check can still run another program that
+	// publishes.
+	if name == "cw" && cwSubcommand(argv[1:]) == "publish" {
+		return errors.New("publication and deployment commands are outside task checks")
+	}
 	for _, subcommand := range argv[1:] {
 		publication := (name == "docker" || name == "podman") && subcommand == "push"
 		publication = publication || slices.Contains([]string{"npm", "pnpm", "yarn", "cargo"}, name) && subcommand == "publish"
@@ -84,6 +90,24 @@ func validateCommand(argv []string) error {
 		}
 	}
 	return nil
+}
+
+// cwSubcommand returns the first argument after cw's global flags: the
+// directory flags take a value (separate or after =), --dry-run takes none
+// or an attached one, and any other argument starting with - stands alone.
+func cwSubcommand(args []string) string {
+	valued := []string{"--config-dir", "--home", "--codex-home", "--claude-home", "--state-dir"}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case slices.Contains(valued, arg):
+			i++
+		case strings.HasPrefix(arg, "-"):
+		default:
+			return arg
+		}
+	}
+	return ""
 }
 
 // directSubcommand consumes global options before classifying a direct Git or

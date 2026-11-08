@@ -14,7 +14,7 @@ evidence.
 | Test engineer | `test-engineer` | [test-engineer.md](test-engineer.md) | interface contract, interface extract | tests, `test-matrix.md`, `requirement-map.md` |
 | Test review | `reviewer` | [test-review.md](test-review.md) | contract, extract, tests, stub | `test-review.md` |
 | Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle, interface contract, `design.md`, test matrix and requirement map, coverage profile | findings, a failing test per behaviour finding |
-| GitHub worker | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
+| GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
 
 ## Flow
 
@@ -94,7 +94,9 @@ only when available; without them every step runs unchanged.
 8. **Final checkpoint** (point d, when checkpoints are required), then
    **`cw task verify`** checks that every assignment, handoff, acceptance, check
    run and review is recorded and current.
-9. **Commit** through the GitHub worker with the user's authorization.
+9. **Commit** with `cw publish` under the user's authorization, which the
+   coordinator carries; the GitHub worker is the
+   [fallback](../github-worker.md#fallback-the-github-worker).
 
 The skip rules are unchanged. A small task stays lightweight and runs none of
 these stages, the spec and design stages included: the coder writes the tests

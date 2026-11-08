@@ -257,10 +257,43 @@ prints JSON Lines rather than a one-line result: one compact object for the task
 start under `start` and its durations, omitting `task`, `submitted_at`,
 `accepted_at` and `finished_at`.
 
+`cw publish` commits a verified task's files, pushes the commit and, with
+`--pr create` or `--pr edit`, creates or edits its pull request. It runs only
+after `cw task verify` passed on the current source and no other open task record
+gates the repository, commits whole files of the task's verified change set,
+reads every step back, appends a `started` and a `finished` entry
+(`publication-NNNNNN.json`) to the task directory, and continues from the
+observed state when the same command runs again. `--summary` prints one line.
+Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
+5 unknown, 6 mismatch, 130 cancelled) and what to do for each are in the
+[publication reference](../skills/task-orchestration/references/github-worker.md),
+which also names the cases that go to the GitHub worker instead. It needs Git
+2.24 or newer. Its known limitations:
+
+- A new file that the user's ignore rules exclude only through `XDG_CONFIG_HOME`
+  or `GIT_CONFIG_*` makes `git add --intent-to-add` fail on every run
+  (1 `commit-failed`), because the source capture does not read those rules.
+- With `core.autocrlf` set to `input` or true, every commit-set file that
+  contains a CR byte, binaries included, is refused as 4 `content-conversion`.
+- A Git lock that a concurrent git process holds for more than about two seconds
+  reads as a stale lock (4 `git-locked`, or 5 `commit-unknown` after a failed
+  commit), so check that no git process runs before removing one.
+- A remote with a push URL for another repository, several URLs or an
+  `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
+  with a pull request any host alias is refused as 4 `repo-mismatch`.
+
+A task check cannot run `cw publish`: `cw task start` refuses such a plan. This
+is a guard, not a sandbox, since a check can still run another program that
+publishes.
+
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational
 rules. Native task commands execute only explicitly selected argv; repository text,
 measurement input and model advice do not authorize publication or deployment.
+`cw publish` is the only command that writes to a remote, and only after verify
+passed. The coordinator runs it under the user's authorization; cw never
+authorizes a publication, and no flag or text in it stands for the user's
+consent.
 
 ### Cost history
 
