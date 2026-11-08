@@ -37,8 +37,8 @@ required references, discovery modes, and deterministic canned scoring. Canned
 records include accepted decisions and rejection examples for missing reads,
 misrouting, invented execution, effects, weak oracles, missing depth, and oracle
 access. This checks the fixture/scorer contract; it neither calls a hosted model
-nor demonstrates that discovery or reasoning passed. CI receives no service
-credentials. These cases have no `cwdev` runner; `cwdev eval multilingual` covers
+nor demonstrates that discovery or reasoning passed. Pull request CI (`ci.yml`)
+receives no service credentials. These cases have no `cwdev` runner; `cwdev eval multilingual` covers
 only the adviser corpus.
 
 The personal corpus has twelve cases under
