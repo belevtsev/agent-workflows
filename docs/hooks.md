@@ -163,6 +163,10 @@ exits 0 without output, and the command proceeds, when:
   a failed source capture, a missing `git`, a git command that fails or times
   out. Damaged records are skipped rather than reported.
 
+A 20 second deadline bounds the hook's Git and source-capture work. A record
+whose source identity cannot be captured in time is skipped, like a record
+whose capture fails; other records can still gate the command.
+
 The hook never exits 2, and the command strings in `hooks/hooks.json` end with
 `exit 0` rather than `exec`-ing `cw`, so even a `cw` too old to know the hook
 subcommand cannot block. A hook timeout (30 seconds) is treated by Claude Code

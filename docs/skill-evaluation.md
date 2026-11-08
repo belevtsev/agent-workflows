@@ -5,7 +5,7 @@ is concise; entrypoints retain scope and essential safeguards, with detailed
 references loaded only for the current question. Twenty-seven skills (rarely used
 library skills and the language-neutral principal-engineer, observability and
 performance) stay out of the automatic listing on both hosts and run only when invoked by name; see
-[skills you call by name](../README.md#skills-you-call-by-name). Model/effort defaults are
+[the skill catalog](../skills/README.md). Model/effort defaults are
 validated policy, not claims of improved quality, token savings, or elapsed time.
 Measure those outcomes on equivalent work.
 

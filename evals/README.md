@@ -1,19 +1,19 @@
 # Eval suites for the agent roster
 
-One suite per plugin agent, three scenario cases each, under
-`architect/`, `implementer/` and `test-engineer/`. Every case asks the
-coordinator to dispatch the plugin agent once through the Agent tool with a
-brief, and grades the artefacts the agent writes under `artefacts/` in the
-run's workspace against the agent's contract in
-`skills/task-orchestration/references/contracts/`.
+One suite per plugin agent, three scenario cases each, under `spec-writer/`,
+`spec-reviewer/`, `architect/`, `implementer/` and `test-engineer/`. Every
+case asks the coordinator to dispatch the plugin agent once through the Agent
+tool with a brief, and grades what the agent writes (artefacts under
+`artefacts/` in the run's workspace, and the spec writer's change folder)
+against the agent's contract in `skills/task-orchestration/references/contracts/`.
 
 Each case's `testdata/` holds the scenario inputs the brief names; the case's
 `scaffold.sh` copies it into the run's workspace, so pass `--scaffold`. The
-implementer cases also hold a `design.md` and the test-engineer cases an
-`impl/` directory that the brief forbids passing on; `tool_used` graders fail
-the run if either is read. The test-engineer cases also hold
-`testdata/impl-mutants/*.patch`, which the scaffold deletes from the workspace
-(see [Mutant gate](#mutant-gate)).
+implementer cases also hold a `design.md`, the test-engineer cases an `impl/`
+directory and one spec-reviewer case the writer's notes, which the brief
+forbids passing on; `tool_used` graders fail the run if any is read. The
+scaffold deletes the test-engineer cases' `testdata/impl-mutants/*.patch` from
+the workspace (see [Mutant gate](#mutant-gate)).
 
 ## Offline checks
 
@@ -39,11 +39,14 @@ claude plugin eval . --tag architect --ablation none --runs 1 --scaffold \
   --allow-tools Write Edit "Bash(go *)" --max-cost-usd 20 --no-publish
 ```
 
-Use `--tag implementer` or `--tag test-engineer` for the other suites and
-`--case <name>` for one case. Results land in `evals/results/`, which is
-ignored by Git. Go sources under `testdata/` are fixtures and are ignored by
-the Go toolchain. Every run is a real model call on your account; the
-ceiling is a list-price estimate checked before each run starts.
+Use `--tag implementer`, `--tag test-engineer`, `--tag spec-writer` or
+`--tag spec-reviewer` for the other suites and `--case <name>` for one case.
+The spec suites write Markdown only; add `"Bash(openspec *)"` to let them run
+`openspec validate` when the CLI is installed. Results land in
+`evals/results/`, which is ignored by Git. Go sources under `testdata/` are
+fixtures and are ignored by the Go toolchain. Every run is a real model call on
+your account; the ceiling is a list-price estimate checked before each run
+starts.
 
 ## Mutant gate
 
@@ -95,8 +98,8 @@ must reach it. The job uploads `result.json`, the runner's stderr and the run
 workspaces as the `eval-<suite>-<run id>` artifact, prints a per-case summary
 (`TestEvalResult`), fails on any non-zero runner exit, and for `test-engineer`
 then runs the mutant gate on those workspaces. `--model`, the model for the
-agent under test, defaults to `claude-opus-5-5`, the model the architect,
-implementer and test-engineer agents pin in their frontmatter (`model: opus`),
+agent under test, defaults to `claude-opus-5-5`, the model every agent under
+`agents/` pins in its frontmatter (`model: opus`),
 so the run uses Opus whether the runner applies `--model` to the dispatched
 agent or only to the session that dispatches it. `--judge-model`, the model for
 `llm` graders, defaults to `claude-haiku-5-5`. Dispatch inputs override the

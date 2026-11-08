@@ -163,7 +163,7 @@ edited by hand; tasks started afterwards do not bind it.
 | `openai_decisions` | OpenAI Decisions | `gpt-6-luna` | `OPENAI_API_KEY` | Enabled |
 | `jev` | TypeSafe Jev | exact `jev-X.Y.Z`, such as `jev-1.14.0` | `TYPESAFE_API_KEY` | Opt-in |
 
-The README's [adviser setup](../README.md#configure-advisers) shows masked terminal
+The [adviser setup](advisers.md#configure-advisers) shows masked terminal
 input, presence checks, CLI inheritance and desktop launch environments. An export
 in another terminal does not update a running agent or integration-server process;
 restart from the configured environment and open a fresh chat. Never commit key
@@ -228,7 +228,7 @@ and the official [API contract](https://docs.typesafe.ai/api) and
 [model reference](https://docs.typesafe.ai/models) describe the service. The
 [Jev 1.13 limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13) are
 version-specific; do not describe them as verified 1.14 behavior. The
-[setup guidance](../README.md#optional-set-up-jev) explains moving aliases and the
+[setup guidance](advisers.md#optional-set-up-jev) explains moving aliases and the
 separate image, Box and long-context opt-ins, which the helper never sends.
 TypeSafe is hosted in the US, offers zero data retention only to enterprise
 customers, and states in its privacy policy that it does not train on prompts.
