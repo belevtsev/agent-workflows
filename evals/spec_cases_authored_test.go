@@ -8,7 +8,7 @@ import (
 )
 
 // Authored tests for the spec writer's change folder (S1-S16) and nested
-// counted repeats in compileJS (N1-N12). Contract v4, test-author-3-rev3.
+// counted repeats in compileJS (N1-N12). Contract v5, test-author-3-rev4.
 // S1-S10 dispatch agent-workflows:spec-writer.
 
 // authored3Plugin lists the agents the spec fixtures dispatch.
@@ -448,11 +448,22 @@ func TestAuthored3ChangeFolderContinuationStops(t *testing.T) {
 		errs = authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
 		authoredWantError(t, errs, "is not an owned path", "the change folder a/", authoredCaseRel+"/graders/c.md")
 	})
+	// The blank line holds three spaces, so the unindented-line rule cannot
+	// be what stops it (contract v5); only the blank-line rule can.
 	stops := map[string][]string{
 		"new unindented bullet (indented bullet is S16)": {"- Change folder: given below,", "  in the next bullet.", "- Reference: ^c/^."},
-		"blank line":      {"- Change folder:", "", "  ^c/^"},
-		"unindented line": {"- Change folder: given below.", "^c/^ is the reference."},
+		"whitespace-only blank line":                     {"- Change folder:", "   ", "  ^c/^"},
+		"unindented line":                                {"- Change folder: given below.", "^c/^ is the reference."},
 	}
+	// Control for the blank-line row: without the whitespace-only line, the
+	// indented c/ continues the bullet and is the folder.
+	t.Run("control: no blank line, c/ is the folder", func(t *testing.T) {
+		body := authored3BodyLines("", "- Change folder:", "  ^c/^")
+		errs := authored3ValidateBody(t, body, map[string]string{"c.md": authored3Exists("c/file.md")})
+		authoredWantNoError(t, errs)
+		errs = authored3ValidateBody(t, body, map[string]string{"other.md": authored3Exists("testdata/other.md")})
+		authoredWantError(t, errs, "is not an owned path", "the change folder c/", authoredCaseRel+"/graders/other.md")
+	})
 	for name, bullets := range stops {
 		t.Run("no folder: "+name, func(t *testing.T) {
 			body := authored3BodyLines("", bullets...)
@@ -556,21 +567,25 @@ func TestAuthored3NestedRepeatsCompile(t *testing.T) {
 			t.Fatalf("approximate = false, want true")
 		}
 	})
-	// N5-N8 use {501}, so the nested repeats exceed RE2's limit and the
-	// open-repeat retry path is reached; these are also the N10 rows. The
-	// {500} forms (exactly 1000, within the limit) are kept as a control.
+	// N5-N8 use {501}, past RE2's limit; they are also the N10 rows. Per
+	// contract v5, only N6 and N8 (and N11 below) reach the open-repeat retry:
+	// N5 ({5,2}, quantifier out of order) and N7 (a lone { in Unicode mode)
+	// are rejected by the translator before RE2 runs. N12 has no nested
+	// repeat, so it is rejected by RE2 without a retry. The {500} forms
+	// (exactly 1000, within the limit) are kept as controls that never need
+	// the retry.
 	invalid := []struct{ req, pattern, flags string }{
-		{"N5 N10 out of order", `(?:a{5,2}){501}`, ""},
-		{"N6 N10 unbalanced open", `(?:a{2}){501}(`, ""},
-		{"N7 N10 lone brace u", `(?:a{2}){501}{`, "u"},
-		{"N8 N10 unbalanced close", `(?:a{2}){501})`, ""},
+		{"N5 N10 out of order (rejected before RE2)", `(?:a{5,2}){501}`, ""},
+		{"N6 N10 unbalanced open (reaches retry)", `(?:a{2}){501}(`, ""},
+		{"N7 N10 lone brace u (rejected before RE2)", `(?:a{2}){501}{`, "u"},
+		{"N8 N10 unbalanced close (reaches retry)", `(?:a{2}){501})`, ""},
 		{"N5 at limit", `(?:a{5,2}){500}`, ""},
 		{"N6 at limit", `(?:a{2}){500}(`, ""},
 		{"N7 at limit", `(?:a{2}){500}{`, "u"},
 		{"N8 at limit", `(?:a{2}){500})`, ""},
-		{"N11 stacked star", `(?:a{2}){501}*`, ""},
-		{"N11 stacked count", `(?:a{2}){501}{2}`, ""},
-		{"N12 expression too large", strings.Repeat("a{1000}", 4000), ""},
+		{"N11 stacked star (reaches retry)", `(?:a{2}){501}*`, ""},
+		{"N11 stacked count (reaches retry)", `(?:a{2}){501}{2}`, ""},
+		{"N12 expression too large (no nested repeat, no retry)", strings.Repeat("a{1000}", 4000), ""},
 	}
 	for _, tc := range invalid {
 		t.Run(tc.req, func(t *testing.T) {
@@ -580,14 +595,15 @@ func TestAuthored3NestedRepeatsCompile(t *testing.T) {
 			}
 		})
 	}
-	// N9 and the valid N11 form: past the limit, compiles and is approximate.
-	// At exactly 1000 the pattern stays exact.
+	// N9 and the valid N11 form reach the open-repeat retry: past the limit,
+	// they compile and are approximate. At exactly 1000 the pattern stays exact
+	// without the retry.
 	approx := []struct {
 		req, pattern string
 		want         bool
 	}{
-		{"N9", `(?:a{2}){501}`, true},
-		{"N11 lazy", `(?:a{2}){501}?`, true},
+		{"N9 (reaches retry)", `(?:a{2}){501}`, true},
+		{"N11 lazy (reaches retry)", `(?:a{2}){501}?`, true},
 		{"N9 at limit exact", `(?:a{2}){500}`, false},
 	}
 	for _, tc := range approx {
