@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/langpack"
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Independent end-to-end contract tests for executed evidence and finding

@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 func sameKeys[V any](values map[string]V, keys []string) bool {

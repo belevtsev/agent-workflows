@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Tests for `cw hook pre-publish` (R-PRE, R-CMD) and `cw hook session-start`

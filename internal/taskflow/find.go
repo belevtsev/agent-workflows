@@ -13,7 +13,7 @@ import (
 
 	json "encoding/json/v2"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // MaxOpenAge bounds how long a substantial record keeps governing

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Tests for the plugin hook file (R-JSON) and for running its inline commands

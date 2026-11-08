@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/procgroup"
+	"github.com/belevtsev/agent-workflows/v3/internal/procgroup"
 )
 
 const (
