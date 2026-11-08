@@ -80,6 +80,17 @@ type session struct {
 	requests  int
 	capped    bool
 	limitsHit map[string]bool
+	// collected, when non-nil, receives every recorded request for the
+	// cost history.
+	collected *[]collectedRequest
+}
+
+// collectedRequest is one recorded request with the identity and labels the
+// cost history stores; key is empty for a request without an id.
+type collectedRequest struct {
+	key, model, timestamp string
+	agent                 *Agent
+	request               request
 }
 
 func newSession(report *Report, source string) *session {
@@ -90,7 +101,8 @@ func (s *session) hit(limit string) { s.limitsHit[limit] = true }
 
 // record adds a request unless its key was already seen and reports whether
 // it did. An empty key cannot be de-duplicated and is included and counted.
-func (s *session) record(agent *agentState, key, model string, r request) bool {
+// timestamp is the request line's raw timestamp, used only when collecting.
+func (s *session) record(agent *agentState, key, model, timestamp string, r request) bool {
 	if key == "" {
 		s.report.Anomalies.EntriesWithoutRequestID++
 	} else if previous, ok := s.seen[key]; ok {
@@ -118,6 +130,9 @@ func (s *session) record(agent *agentState, key, model string, r request) bool {
 		agent.models[model] = tokens
 	}
 	tokens.add(r)
+	if s.collected != nil {
+		*s.collected = append(*s.collected, collectedRequest{key: key, model: model, timestamp: timestamp, agent: &agent.agent, request: r})
+	}
 	return true
 }
 
