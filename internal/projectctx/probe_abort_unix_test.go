@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-// Tests for contract probe-abort revision 2, requirements R1-R7 and R10,
-// driven through capture(ctx, repo, budget).
+// Tests for contract probe-abort revisions 2 to 4, requirements R1-R7 and
+// R10-R12, driven through capture(ctx, repo, budget).
 //
 // TestMain puts one fake git first on PATH for the whole package. The fake
 // passes every call to the real git unless the call's `-C <dir>` holds a
@@ -27,8 +27,13 @@ import (
 // the probe words equal the control file "target", touches "reached" and
 // performs the control file "action". Each test therefore sets its fake's
 // behaviour inside its own repository, and per-probe subtests run in
-// parallel. Processes a fake leaves behind are listed in "pids" and killed in
-// cleanup.
+// parallel. R4, R5 and R11 do not use the fake; they set PATH themselves.
+//
+// Cleanup safety: a fake's sleepers run through the symlink
+// <dir>/.git/pa-fake/sleep, so that path, unique to the test's repository,
+// is in their command line. Their PIDs are listed in "pids", and cleanup
+// sends SIGKILL to a listed PID only while `ps` shows that PID's command line
+// still holds that path, so a reused PID is never signalled.
 
 // paProbes are capture's six probes in the agreed order: the words after
 // `-C <dir>`, joined by single spaces.
@@ -55,14 +60,19 @@ const (
 	paRoomyBudget    = 30 * time.Second // cases where the budget must not fire
 	paCallerDeadline = 10 * time.Second // R3 deadline case
 	paHangSeconds    = "120"            // a hanging probe outlives every bound
-	paLingerSeconds  = "60"             // R10 child holds stdout well past 3 s
+	paLingerSeconds  = "60"             // R10 child holds stdout well past the grace
+	paUncleanGrace   = 10 * time.Second // R10, R12: capture's wait for output after git exits
+	paBriefSeconds   = "3"              // R12 child holds stdout well within the grace
 	paGuardSlack     = 20 * time.Second
 	paReachGuard     = 60 * time.Second // waiting for a fake's marker
 )
 
-// Set by TestMain.
+// Set by TestMain. paRealGit is set whenever git is installed, even when the
+// fake could not be set up.
 var (
 	paRealGit      string
+	paSleep        string
+	paPs           string
 	paOriginalPath string
 	paSetupError   error
 )
@@ -74,19 +84,23 @@ func TestMain(m *testing.M) {
 func paMain(m *testing.M) int {
 	paOriginalPath = os.Getenv("PATH")
 	realGit, gitErr := exec.LookPath("git")
+	if gitErr == nil {
+		paRealGit = realGit
+	}
 	sleep, sleepErr := exec.LookPath("sleep")
-	if err := errors.Join(gitErr, sleepErr); err != nil {
+	ps, psErr := exec.LookPath("ps")
+	if err := errors.Join(gitErr, sleepErr, psErr); err != nil {
 		paSetupError = err
 		return m.Run()
 	}
-	paRealGit = realGit
+	paSleep, paPs = sleep, ps
 	dir, err := os.MkdirTemp("", "probe-abort-fake-git")
 	if err != nil {
 		paSetupError = err
 		return m.Run()
 	}
 	defer os.RemoveAll(dir)
-	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(paFakeScript(realGit, sleep, paOriginalPath)), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(paFakeScript(realGit, paOriginalPath)), 0o755); err != nil {
 		paSetupError = err
 		return m.Run()
 	}
@@ -98,9 +112,9 @@ func paQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-func paFakeScript(realGit, sleep, path string) string {
+func paFakeScript(realGit, path string) string {
 	git := paQuote(realGit)
-	sl := paQuote(sleep)
+	sl := `"$ctl/sleep"`
 	return strings.Join([]string{
 		"#!/bin/sh",
 		"sig=''",
@@ -139,6 +153,11 @@ func paFakeScript(realGit, sleep, path string) string {
 		`			echo $! >> "$ctl/pids"`,
 		`			: > "$ctl/reached"`,
 		"\t\t\texec " + git + ` "$@" ;;`,
+		"\t\tbrief)",
+		"\t\t\t" + sl + " " + paBriefSeconds + " &",
+		`			echo $! >> "$ctl/pids"`,
+		`			: > "$ctl/reached"`,
+		"\t\t\texec " + git + ` "$@" ;;`,
 		"\t\tesac",
 		"\tfi",
 		"fi",
@@ -151,6 +170,14 @@ func paRequireFake(t *testing.T) {
 	t.Helper()
 	if paSetupError != nil {
 		t.Skipf("fake git is unavailable: %v", paSetupError)
+	}
+}
+
+// paRequireGit skips only when git itself is not installed.
+func paRequireGit(t *testing.T) {
+	t.Helper()
+	if paRealGit == "" {
+		t.Skip("git is not installed")
 	}
 }
 
@@ -195,12 +222,15 @@ func paCommittedRepo(t *testing.T, branch string) string {
 type paControl string
 
 // paConfigure makes the fake git perform action ("hang", "kill", "fail",
-// "linger") for probe in repo, or only log every call when action is "". It
-// kills every process the fake records in cleanup.
+// "linger", "brief") for probe in repo, or only log every call when action is "". In
+// cleanup it kills those recorded sleepers that are still running.
 func paConfigure(t *testing.T, repo, probe, action string) paControl {
 	t.Helper()
 	ctl := paControl(filepath.Join(repo, ".git", "pa-fake"))
 	if err := os.Mkdir(string(ctl), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(paSleep, ctl.file("sleep")); err != nil {
 		t.Fatal(err)
 	}
 	if action != "" {
@@ -217,15 +247,25 @@ func paConfigure(t *testing.T, repo, probe, action string) paControl {
 
 func (c paControl) file(name string) string { return filepath.Join(string(c), name) }
 
+// killLeftovers sends SIGKILL to each recorded PID whose current command line
+// still holds this control directory's sleep path. A PID that has exited, or
+// now belongs to another process, is left alone.
 func (c paControl) killLeftovers() {
 	data, err := os.ReadFile(c.file("pids"))
 	if err != nil {
 		return
 	}
+	token := c.file("sleep")
 	for _, field := range strings.Fields(string(data)) {
-		if pid, err := strconv.Atoi(field); err == nil && pid > 1 {
-			_ = syscall.Kill(pid, syscall.SIGKILL)
+		pid, err := strconv.Atoi(field)
+		if err != nil || pid <= 1 {
+			continue
 		}
+		command, err := exec.Command(paPs, "-ww", "-o", "command=", "-p", field).Output()
+		if err != nil || !strings.Contains(string(command), token) {
+			continue
+		}
+		_ = syscall.Kill(pid, syscall.SIGKILL)
 	}
 }
 
@@ -450,18 +490,28 @@ func TestProbeAbortCallerEnds(t *testing.T) {
 // open aborts capture with a zero value and the could-not-complete message
 // naming the whole probe; it is neither read as "not a repository" nor
 // returned as a snapshot without Head and Branch. For each of the six probes.
+// capture waits a grace period for the output after git exits, so, as in R1,
+// the six captures run at once in goroutines and the suite waits about one
+// grace period whatever the -parallel limit. The child holds stdout for 60 s,
+// well past the grace period.
 func TestProbeAbortUncleanFinish(t *testing.T) {
 	paRequireFake(t)
 	t.Parallel()
-	for _, probe := range paProbes {
+	type run struct {
+		ctl  paControl
+		done <-chan paResult
+	}
+	runs := make([]run, len(paProbes))
+	for i, probe := range paProbes {
+		repo := paCommittedRepo(t, "probe-branch")
+		ctl := paConfigure(t, repo, probe, "linger")
+		runs[i] = run{ctl, paCaptureAsync(t.Context(), repo, paRoomyBudget)}
+	}
+	for i, probe := range paProbes {
 		t.Run(probe, func(t *testing.T) {
-			t.Parallel()
-			repo := paCommittedRepo(t, "probe-branch")
-			ctl := paConfigure(t, repo, probe, "linger")
+			result := paAwait(t, runs[i].done, paRoomyBudget+paUncleanGrace+paGuardSlack)
 
-			result := paAwait(t, paCaptureAsync(t.Context(), repo, paRoomyBudget), paRoomyBudget+paGuardSlack)
-
-			ctl.requireReached(t)
+			runs[i].ctl.requireReached(t)
 			prefix := fmt.Sprintf("Git inspection could not complete (git %s): ", probe)
 			if result.err == nil || !strings.HasPrefix(result.err.Error(), prefix) {
 				t.Fatalf("capture returned (%+v, %v), want an error starting with %q", result.got, result.err, prefix)
@@ -471,10 +521,46 @@ func TestProbeAbortUncleanFinish(t *testing.T) {
 	}
 }
 
+// R12: a probe whose git exits 0 while a background child keeps its stdout
+// open for 3 seconds, well within capture's 10 second output grace, and then
+// exits does not disturb capture: nil error, non-empty Head and the right
+// Branch. For each of the six probes; as in R1 the six captures run at once in
+// goroutines, so the suite waits about 3 seconds.
+func TestProbeAbortOutputGrace(t *testing.T) {
+	paRequireFake(t)
+	t.Parallel()
+	type run struct {
+		ctl  paControl
+		done <-chan paResult
+	}
+	runs := make([]run, len(paProbes))
+	for i, probe := range paProbes {
+		repo := paCommittedRepo(t, "probe-branch")
+		ctl := paConfigure(t, repo, probe, "brief")
+		runs[i] = run{ctl, paCaptureAsync(t.Context(), repo, paRoomyBudget)}
+	}
+	for i, probe := range paProbes {
+		t.Run(probe, func(t *testing.T) {
+			result := paAwait(t, runs[i].done, paRoomyBudget+paUncleanGrace+paGuardSlack)
+
+			runs[i].ctl.requireReached(t)
+			if result.err != nil {
+				t.Fatalf("capture returned %v, want nil", result.err)
+			}
+			if result.got.snapshot.Head == "" {
+				t.Fatal("snapshot Head is empty, want the commit")
+			}
+			if result.got.snapshot.Branch != "probe-branch" {
+				t.Fatalf("snapshot Branch %q, want %q", result.got.snapshot.Branch, "probe-branch")
+			}
+		})
+	}
+}
+
 // R4: a plain directory outside any repository, with the real git, is
 // captured as a folder without Git identity.
 func TestProbeAbortOutsideRepository(t *testing.T) {
-	paRequireFake(t)
+	paRequireGit(t)
 	parent := paTempDir(t)
 	dir := filepath.Join(parent, "plain")
 	if err := os.Mkdir(dir, 0o755); err != nil {
@@ -492,14 +578,37 @@ func TestProbeAbortOutsideRepository(t *testing.T) {
 }
 
 // R5: with no git on PATH, even a real repository is captured as a folder
-// without Git identity.
+// without Git identity. The real git only builds the repository.
 func TestProbeAbortNoGit(t *testing.T) {
-	paRequireFake(t)
+	paRequireGit(t)
 	repo := paCommittedRepo(t, "probe-branch")
 	t.Setenv("PATH", paTempDir(t))
 
 	got, err := capture(t.Context(), repo, paRoomyBudget)
 	paExpectFolderOnly(t, got, err)
+}
+
+// R11: when PATH holds a `git` that cannot be started (its #! interpreter
+// does not exist), capture of a real repository aborts with a zero value and
+// the could-not-complete message for the first probe; it is not read as "not
+// a repository". Sequential, because it sets PATH without the fake.
+func TestProbeAbortGitCannotStart(t *testing.T) {
+	paRequireGit(t)
+	repo := paCommittedRepo(t, "probe-branch")
+	bin := paTempDir(t)
+	broken := "#!" + filepath.Join(bin, "missing-interpreter") + "\n"
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(broken), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+
+	got, err := capture(t.Context(), repo, paRoomyBudget)
+
+	prefix := "Git inspection could not complete (git rev-parse --show-toplevel): "
+	if err == nil || !strings.HasPrefix(err.Error(), prefix) {
+		t.Fatalf("capture returned (%+v, %v), want an error starting with %q", got, err, prefix)
+	}
+	paExpectZero(t, got)
 }
 
 // R6: when `rev-parse --show-toplevel` exits with status 1 promptly, even in

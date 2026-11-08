@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Tests for contract probe-abort revision 2, requirements R8-R9: the
+// Tests for contract probe-abort revisions 2 and 3, requirements R8-R9: the
 // pre-publish hook's own deadline bounds source capture.
 
 func hdQuote(s string) string {
@@ -24,19 +24,28 @@ func hdQuote(s string) string {
 // probe (an invocation carrying core.untrackedCache=false) records its PID,
 // touches the returned marker and then sleeps for minutes; every other
 // invocation, such as the hook's own Git, runs the real git with the
-// original PATH. Cleanup kills every recorded sleeper.
-func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, originalPath string) string {
+// original PATH.
+//
+// Cleanup safety: the sleepers run through the symlink <dir>/hd-sleep, so
+// that path, unique to this test, is in their command line. Cleanup sends
+// SIGKILL to a recorded PID only while `ps` shows that PID's command line
+// still holds the path, so a reused PID is never signalled.
+func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, ps, originalPath string) string {
 	t.Helper()
 	dir := hkCanonicalTempDir(t)
 	marker := filepath.Join(dir, "capture-reached")
 	pids := filepath.Join(dir, "pids")
+	sleeper := filepath.Join(dir, "hd-sleep")
+	if err := os.Symlink(sleep, sleeper); err != nil {
+		t.Fatal(err)
+	}
 	script := strings.Join([]string{
 		"#!/bin/sh",
 		`case " $* " in`,
 		"*' core.untrackedCache=false '*)",
 		"\techo $$ >> " + hdQuote(pids),
 		"\t: > " + hdQuote(marker),
-		"\texec " + hdQuote(sleep) + " 300 ;;",
+		"\texec " + hdQuote(sleeper) + " 300 ;;",
 		"esac",
 		"PATH=" + hdQuote(originalPath),
 		"export PATH",
@@ -56,9 +65,15 @@ func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, originalPath strin
 			return
 		}
 		for _, field := range strings.Fields(string(data)) {
-			if pid, err := strconv.Atoi(field); err == nil && pid > 1 {
-				_ = syscall.Kill(pid, syscall.SIGKILL)
+			pid, err := strconv.Atoi(field)
+			if err != nil || pid <= 1 {
+				continue
 			}
+			command, err := exec.Command(ps, "-ww", "-o", "command=", "-p", field).Output()
+			if err != nil || !strings.Contains(string(command), sleeper) {
+				continue
+			}
+			_ = syscall.Kill(pid, syscall.SIGKILL)
 		}
 	})
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+originalPath)
@@ -79,6 +94,10 @@ func TestPrePublishCaptureDeadlineAllows(t *testing.T) {
 	if err != nil {
 		t.Skipf("sleep is not on PATH: %v", err)
 	}
+	ps, err := exec.LookPath("ps")
+	if err != nil {
+		t.Skipf("ps is not on PATH: %v", err)
+	}
 	originalPath := os.Getenv("PATH")
 
 	h := newHKHarness(t)
@@ -92,7 +111,7 @@ func TestPrePublishCaptureDeadlineAllows(t *testing.T) {
 	record := h.start(t, repo, hkSubstantialPlan)
 	h.assessAndVerify(t, record, source)
 
-	marker := hdInstallHangingCaptureGit(t, realGit, sleep, originalPath)
+	marker := hdInstallHangingCaptureGit(t, realGit, sleep, ps, originalPath)
 	const deadline = 10 * time.Second
 	h.config.prePublishTimeout = deadline
 
