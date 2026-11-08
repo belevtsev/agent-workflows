@@ -25,6 +25,7 @@ type claudeHead struct {
 type claudeEntry struct {
 	SessionID string         `json:"sessionId"`
 	RequestID string         `json:"requestId"`
+	Timestamp jsontext.Value `json:"timestamp"`
 	Effort    jsontext.Value `json:"effort"`
 	Message   *claudeMessage `json:"message"`
 }
@@ -148,7 +149,7 @@ func metaText(value jsontext.Value) string {
 	return text
 }
 
-func importClaude(ctx context.Context, path string, prices *PriceTable, composition bool) (Report, error) {
+func importClaude(ctx context.Context, path string, prices *PriceTable, composition bool, collected *[]collectedRequest) (Report, error) {
 	report := newReport(SourceClaude)
 	absolute, err := filepath.Abs(path)
 	if err != nil {
@@ -165,6 +166,7 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 	sessionID := strings.TrimSuffix(base, ".jsonl")
 	report.SessionID = sessionID
 	s := newSession(&report, SourceClaude)
+	s.collected = collected
 
 	type agentFile struct {
 		state *agentState
@@ -291,7 +293,7 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 					context(false)
 					return
 				}
-				recorded := s.record(file.state, key, entry.Message.Model, req)
+				recorded := s.record(file.state, key, entry.Message.Model, metaText(entry.Timestamp), req)
 				if effort := metaText(entry.Effort); recorded && effort != "" {
 					file.state.efforts[effort] = true
 				}

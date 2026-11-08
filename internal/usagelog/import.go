@@ -28,6 +28,12 @@ type Options struct {
 // or unrecognised source; bounded reads that stop early yield a report with
 // status incomplete instead.
 func Import(ctx context.Context, options Options) (Report, error) {
+	return importSession(ctx, options, nil)
+}
+
+// importSession is Import that also appends every recorded request to
+// collected when it is non-nil.
+func importSession(ctx context.Context, options Options, collected *[]collectedRequest) (Report, error) {
 	switch {
 	case (options.ClaudeTranscript == "") == (options.CodexSession == ""):
 		return Report{}, fmt.Errorf("%w: supply exactly one of a Claude transcript or a Codex session", ErrInvalidOptions)
@@ -36,9 +42,9 @@ func Import(ctx context.Context, options Options) (Report, error) {
 	case options.Composition && options.Prices == nil:
 		return Report{}, fmt.Errorf("%w: a composition needs a price table to reconcile with the recorded cost", ErrInvalidOptions)
 	case options.ClaudeTranscript != "":
-		return importClaude(ctx, options.ClaudeTranscript, options.Prices, options.Composition)
+		return importClaude(ctx, options.ClaudeTranscript, options.Prices, options.Composition, collected)
 	default:
-		report, err := importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices)
+		report, err := importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices, collected)
 		if err == nil && options.Composition {
 			report.Composition = unsupportedComposition(report)
 		}
