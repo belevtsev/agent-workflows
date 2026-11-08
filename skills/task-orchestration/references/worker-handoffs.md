@@ -15,7 +15,8 @@ self-contained brief (exact source revision and inputs, question or owned files,
 relevant decisions, constraints, permitted actions, output evidence, stopping
 condition) with only the context it needs and no duplicate investigation.
 Resolve its role's profile from the [host mapping](hosts.md#profiles-and-policy);
-under Claude Code, reviews after a task's first full review use the
+under Claude Code, every later review of a stage, after that stage's first full
+review, uses the
 [`review_followup` role](#follow-up-review-after-a-fix-revision). Editing workers
 share the codebase and preserve others' changes; coordinate shared interfaces,
 respect concurrency limits and keep dependent integration with the coordinator.

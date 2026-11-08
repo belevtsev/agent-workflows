@@ -51,7 +51,8 @@ substantive ownership. Model selection never relaxes a role's action bounds.
 
 Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
 `architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
-Claude-only `review_followup` role (every review after a task's first full review)
+Claude-only `review_followup` role (every later review of a stage, after that
+stage's first full review)
 and the three routine GitHub roles use cheaper Sonnet 5.5 profiles; resolve the
 current policy before dispatch. A saved `review` pin does not apply to
 `review_followup`; pin it separately.

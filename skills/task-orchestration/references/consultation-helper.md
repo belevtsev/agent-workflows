@@ -93,6 +93,13 @@ observations under the [adjudication rules](#adjudicate-without-network-access).
 Point a's decisions reach the spec writer as the coordinator's answers, and
 point b's reach the architect, never the adviser output itself.
 
+Inside a substantial task these points replace the suggestions in specialist
+skills (such as `code-review`, `test-strategy`, `software-architecture`,
+`production-plan`, `principal-engineer` and `security-threat-model`) to consult
+advisers on a consequential judgment: such a judgment waits for the next point,
+or is point c when it is the rejection of a finding. Outside a substantial task
+those skills keep their own rule.
+
 ## Participation
 
 An adviser participates only when it is configured: enabled in the policy's

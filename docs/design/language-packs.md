@@ -44,7 +44,7 @@ race command"), never a tool.
 Make neutral, in [task-orchestration references][tor]:
 `contracts/implementer.md:17`, `contracts/test-engineer.md:55-56` and its
 "Extract Go declarations" section, `hosts.md:144-145`,
-`global-workflow.md:44-57,80,249,355`, `consultation-helper.md:323`; and "Go-focused" plus the `go` keyword in core
+`global-workflow.md:44-57,80,89-100,269-270,375`, `consultation-helper.md:333`; and "Go-focused" plus the `go` keyword in core
 manifests and marketplaces.
 `agents/*.md` have no Go; the in-flight spec agents must not add any.
 
