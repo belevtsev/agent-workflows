@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // Contract: cw-task-autofill-summary revision 1, requirements R1-R7.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 )
 
 // Independent black-box tests of the executed-evidence contract, written from

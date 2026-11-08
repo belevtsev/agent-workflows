@@ -10,6 +10,10 @@ This is the v3.0.0 breaking change: the v2 installer is removed, and Claude Code
 and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 `cw` before installing the plugins; see "Moving from v2" in `docs/operations.md`.
 
+### Breaking
+
+- The Go module path is now `github.com/belevtsev/agent-workflows/v3`, so `go install …@latest` can resolve v3 release tags. The old install path without `/v3` (`go install …/agent-workflows/cmd/cw@…`) no longer gets updates: its `@main` and `@latest` queries fail with a module path mismatch; install with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main` (or `@latest` once the first v3 tag exists). Code that imports `github.com/belevtsev/agent-workflows/...` must import `github.com/belevtsev/agent-workflows/v3/...`.
+
 ### Added
 
 - The spec-writer and spec-reviewer agents under `agents/`, with role contracts that write and review OpenSpec-compatible change folders (`openspec/changes/<change-id>/` with `proposal.md`, spec deltas and `tasks.md`), the policy roles `spec_writer` and `spec_reviewer`, eval suites under `evals/`, and the seven-role flow (spec writer → spec reviewer → architect → interface contract → implementer ∥ test engineer → reviewer → `cw task verify` → commit) in `skills/task-orchestration/SKILL.md` and `references/contracts/README.md`.
@@ -25,7 +29,7 @@ and Codex get the skills from plugins. v2 users run `cw migrate-v2` with the new
 - `cw keys set NAME | unset NAME | status` saves, removes and reports the adviser keys (`TYPESAFE_API_KEY`, `SUBQ_API_KEY`, `OPENAI_API_KEY`); `set` reads the value from standard input or `--from-env VAR`, never from the command line.
 - `cw install --host codex [--from DIR]` links every `skills-manifest.json` registration from a checkout (default `$XDG_DATA_HOME/agent-workflows/src`) into `~/.agents/skills/<name>`, writes the `global/AGENTS.md` block between `<!-- agent-workflows-start -->` and `<!-- agent-workflows-end -->` in `$CODEX_HOME/AGENTS.md`, and prints the recommended `config.toml` settings from `global/codex-defaults.toml` without editing that file. Re-run it after `git pull` to update. `cw uninstall --host codex` removes the links and the block, also after the checkout is deleted. There is no state, journal, snapshot or rollback.
 - `cw migrate-v2 [--dry-run]` removes a v2 installation: the symlinks in `~/.claude/skills/`, `~/.claude/agents/cw-*.md`, `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory, the managed block in `~/.claude/CLAUDE.md` and `$CODEX_HOME/AGENTS.md` (and in the host homes v2 recorded) while v2's `state.json` or `journal.json` remains, and `current`, `releases`, `bases`, `runtime`, `state.json` and `journal.json` in the state directory. It keeps `workflow-tasks/` and does not touch the model keys v2 wrote into `settings.json` or `config.toml`, or the `PATH` line in a shell profile. A `--state-dir` without any v2 entry has nothing to migrate, and one with release entries but neither `state.json` nor `journal.json` must be named `agent-workflows`.
-- Release archives `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64, with `SHA256SUMS`, built by goreleaser (`.goreleaser.yaml`); `go install github.com/belevtsev/agent-workflows/cmd/cw@main` builds from source (not `@latest`, which resolves to an old v1 tag because the module path has no major-version suffix).
+- Release archives `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64, with `SHA256SUMS`, built by goreleaser (`.goreleaser.yaml`); `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main` builds from source.
 
 ### Changed
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 )
 
 // ErrInvalidOptions reports an option combination Import does not accept.

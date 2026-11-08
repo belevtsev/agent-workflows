@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/credentials"
+	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
 )
 
 type carveoutKeysResult struct {

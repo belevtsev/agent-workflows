@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/credentials"
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Contract adviser-switch, revision 4: F1 (task start honours the saved

@@ -19,7 +19,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // Options selects one consultation or offline adjudication.
