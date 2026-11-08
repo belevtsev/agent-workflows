@@ -2,6 +2,16 @@
 
 Status: proposed. Design only.
 
+P3a status: `cw` embeds `packs/go/pack.yaml` and reads the selection from
+`packs.json` in the configuration directory, which replaces `languages.json`
+below. With no `packs.json` every built-in language pack is selected
+(R-DEFAULT-SELECTION, only in `langpack.DefaultSelection`); an explicit file,
+even an empty one, overrides it, and a domain pack is never selected by default.
+`cw task start` records the selected packs whose `detect` file is at the top of
+the selected path, and verify applies their rules by id. Schema 1 has `schema`,
+`id`, `kind`, `detect`, `commands`, `tests`, `interface_extract`, `skills`,
+`review` and `evidence_rule`. Today's Go rule is `go.package-test/v1`.
+
 ## 1. Decision
 
 Core is the `agent-workflows` plugin and `cw`. Each language is a plugin,
