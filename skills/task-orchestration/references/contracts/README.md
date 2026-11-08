@@ -20,11 +20,13 @@ evidence.
 
 Every stage that produces an artefact has a review loop: the reviewer's findings
 go back to that stage's author, who revises and answers each one, and the
-[review cap](../worker-handoffs.md#review-stages) bounds the rounds of each
-stage separately. After the task's before checkpoint, when its checkpoints are
-required, advisers join only at the
-[adviser points](../consultation-helper.md#adviser-points-in-the-flow) (a to d
-below) and only when available; without them every step runs unchanged.
+[review cap](../worker-handoffs.md#review-stages) bounds the reviews of each
+stage separately, while the round budget in the same section bounds spec,
+design, contract and test-engineer rounds across the whole task; implementer
+fixes never count. After the task's before checkpoint, when its checkpoints are
+required, advisers join only at the [adviser
+points](../consultation-helper.md#adviser-points-in-the-flow) (a to d below) and
+only when available; without them every step runs unchanged.
 
 1. **Spec writer ⇄ reviewer (spec).** The spec writer turns the source
    documents into an OpenSpec change folder; the reviewer grades findings

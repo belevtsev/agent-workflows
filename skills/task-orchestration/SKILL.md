@@ -48,9 +48,11 @@ satisfies a later state.
    [flow](references/contracts/README.md#flow), with a review loop at every
    stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
    implementer ∥ test engineer ⇄ reviewer (tests) → integrate and run →
-   reviewer (code) ⇄ implementer. Findings go back to that stage's author, and
-   the [review cap](references/worker-handoffs.md#review-stages) applies per
-   stage; that file says when a small task skips the spec and design stages.
+   reviewer (code) ⇄ implementer. Findings go back to that stage's author; the
+   [review cap](references/worker-handoffs.md#review-stages) applies per stage,
+   and the round budget in the same section bounds spec, design, contract and
+   test-engineer rounds across the whole task (implementer fixes never count);
+   that file says when a small task skips the spec and design stages.
    After state 2, advisers join only at the four
    [adviser points](references/consultation-helper.md#adviser-points-in-the-flow)
    and only when available; without them the flow runs unchanged. Assign and
