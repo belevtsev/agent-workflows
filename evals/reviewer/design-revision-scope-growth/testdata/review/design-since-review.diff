@@ -1,0 +1,165 @@
+--- a/design/design.md
++++ b/design/design.md
+@@ -3,47 +3,63 @@
+ ## Context
+ 
+ The reviewed change `add-webhook-retries` asks for retries of deliveries that
+-fail with a network error or a 5xx response. Today `Sweeper.sweepOnce` sends
+-each pending delivery once and marks a failure `failed`
+-(`hooks/delivery.go:52-69`).
++fail with a network error or a 5xx response, on the schedule 1 s, 2 s, 4 s,
++8 s and 16 s, and for retries that survive a restart. Today
++`Sweeper.sweepOnce` sends each pending delivery once and marks a failure
++`failed` (`hooks/delivery.go:52-69`). Delivery state already lives in the
++`deliveries` table, which the sweeper polls every 5 s
++(`hooks/delivery.go:26-33`).
+ 
+ ## Options considered
+ 
+-1. **In-memory timer per failed delivery.** When an attempt fails, the
+-   sweeper starts a `time.AfterFunc` for the next attempt and keeps the
+-   delivery in a map keyed by ID until it succeeds or runs out of attempts.
+-   Consequence: retries fire at exactly the scheduled instant, with no
+-   polling delay.
++1. **In-memory timer per failed delivery.** When an attempt fails, a
++   `time.AfterFunc` fires the next attempt. Consequence: exact timing, but
++   every pending retry is lost on a restart or redeploy, which the spec's
++   `Retries survive a restart` forbids.
++2. **Persisted next attempt time, read by the sweeper** (smallest change).
++   A failed attempt stores `next_attempt_at` on the delivery row and keeps it
++   `pending`; the sweeper sends rows whose `next_attempt_at` has passed.
++   Consequence: retries survive a restart; an attempt can start up to one
++   sweep interval late, so the sweeper interval drops from 5 s to 250 ms.
+ 
+ ## Decision and why
+ 
+-Option 1: it gives exact timing and needs no schema change.
++Option 2: it reuses the sweeper and the table that already survive restarts,
++and the 250 ms interval keeps each attempt within the spec's schedule.
+ 
+ ## Component boundaries and interfaces
+ 
+-- `Retrier` (new, composition) owns the map of pending retries and their
+-  timers. It is created by `main` next to the `Sweeper` and stopped with it.
+-- `Sweeper` keeps sending first attempts. On a retryable failure it hands
+-  the delivery to `Retrier.Schedule` instead of marking it failed.
+-- `Sender` is unchanged and is the only component that calls endpoints.
++- `Sweeper` (existing, composition) stays the only component that sends. It
++  selects `pending` rows with `next_attempt_at <= now`.
++- `Schedule` (new, decision) maps a failed attempt to the next
++  `next_attempt_at` or to `failed`.
++- `EndpointBreaker` (new, decision) counts consecutive failed deliveries per
++  endpoint. After 3 in a row it opens for 10 minutes: the sweeper skips every
++  delivery to that endpoint while it is open, and an admin call
++  `POST /admin/endpoints/{id}/breaker/reset` closes it early. This protects
++  struggling endpoints beyond the backoff schedule.
++- `Sender` is unchanged.
+ 
+ ## Failure behaviour
+ 
+-- Network error or 5xx: schedule the next attempt.
++- Network error or 5xx: store `next_attempt_at` per R3 and keep the row
++  `pending`; after the sixth failed attempt mark it `failed`.
+ - 4xx other than 429: mark the delivery `failed`.
+ - Send timeout (10 s): treated as a network error.
+-- Context cancellation: `Retrier.Stop` cancels every timer; deliveries in
+-  flight finish their current attempt.
+-- Duplicate failure report for the same delivery: `Schedule` ignores an ID
+-  that already has a timer.
++- Restart or redeploy: pending rows and their `next_attempt_at` are in the
++  table, so the next sweep after start-up sends every retry that is due.
++- Open breaker: deliveries to that endpoint stay `pending` and are not
++  attempted until the breaker closes.
+ 
+ ## Rollout and rollback
+ 
+-No schema change. Deploy the new build; roll back by deploying the previous
+-build. Nothing is irreversible.
++Add the nullable column `next_attempt_at` and the table `endpoint_breakers`,
++then deploy the new build. Rolling back to the previous build leaves both in
++place; the previous build ignores them. The column and the table are additive
++and need no data migration.
+ 
+ ## Verification plan
+ 
+-- R1, R2, R4: unit tests with an injected clock.
+-- R3: manual check against a staging endpoint.
+-- R5: unit test with concurrent `Schedule` calls.
++- R1 to R4: unit tests with an injected clock.
++- R5: integration test that restarts the sweeper between attempts.
++- R6: unit test of the breaker with an injected clock.
+--- a/design/interface-contract.md
++++ b/design/interface-contract.md
+@@ -4,34 +4,55 @@
+ 
+ ## Requirements
+ 
+-- R1: `NewRetrier(sender, clock, store)` returns `ErrNilSender`,
+-  `ErrNilClock` or `ErrNilStore` when the matching argument is nil.
+-- R2: `Retrier.Schedule(d)` for a delivery whose attempt failed with a
+-  network error or a 5xx response sends another attempt, up to 6 attempts
+-  in all, then marks the delivery `failed` in the store.
+-- R3: Retries back off so that a struggling endpoint is not overwhelmed.
+-- R4: A delivery whose attempt got a 4xx response other than 429 is marked
+-  `failed` without another attempt.
+-- R5: `Schedule` is safe for concurrent use; a second `Schedule` for an ID
+-  that already has a pending retry is ignored.
++- R1: `NewSchedule(clock)` returns `ErrNilClock` when `clock` is nil.
++- R2: `Schedule.Next(d, failure)` for a delivery whose attempt failed with a
++  network error or a 5xx response returns the time of the next attempt, up
++  to 6 attempts in all, and `Failed` after the sixth failed attempt.
++- R3: The wait before attempts 2 to 6 is 1 s, 2 s, 4 s, 8 s and 16 s after
++  the failed attempt, in that order.
++- R4: A delivery whose attempt got a 4xx response other than 429 is `Failed`
++  without another attempt.
++- R5: A retry whose `next_attempt_at` passed while the service was down is
++  sent by the first sweep after start-up.
++- R6: `EndpointBreaker.Allow(endpointID)` returns false for 10 minutes after
++  3 consecutive failed deliveries to that endpoint, and `Reset(endpointID)`
++  makes it return true again.
+ 
+ ## Types and operations
+ 
+ ```go
+-var ErrNilSender = errors.New("hooks: sender must not be nil")
+ var ErrNilClock = errors.New("hooks: clock must not be nil")
+-var ErrNilStore = errors.New("hooks: store must not be nil")
+ 
+-type Retrier struct{ /* unexported */ }
++// Failure classifies a failed attempt.
++type Failure int
+ 
+-func NewRetrier(sender Sender, clock func() time.Time, store Store) (*Retrier, error)
+-func (r *Retrier) Schedule(d Delivery)
+-func (r *Retrier) Stop()
++const (
++	NetworkError Failure = iota // network error or send timeout
++	ServerError                 // 5xx or 429
++	ClientError                 // 4xx other than 429
++)
++
++type Outcome struct {
++	NextAttempt time.Time
++	Failed      bool
++}
++
++type Schedule struct{ /* unexported */ }
++
++func NewSchedule(clock func() time.Time) (*Schedule, error)
++func (s *Schedule) Next(d Delivery, failure Failure) Outcome
++
++type EndpointBreaker struct{ /* unexported */ }
++
++func NewEndpointBreaker(clock func() time.Time) *EndpointBreaker
++func (b *EndpointBreaker) RecordFailure(endpointID int64)
++func (b *EndpointBreaker) RecordSuccess(endpointID int64)
++func (b *EndpointBreaker) Allow(endpointID int64) bool
++func (b *EndpointBreaker) Reset(endpointID int64)
+ ```
+ 
+ ## Invariants
+ 
+-- At most one pending retry per delivery ID.
+ - No delivery gets more than 6 attempts.
+ 
+ ## Out of scope

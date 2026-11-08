@@ -112,6 +112,20 @@ with the namespaced `subagent_type`:
 - Each reads its [role contract](contracts/README.md) from the path the brief
   gives, or from the plugin root when the brief gives none; a reviewer brief
   names one of the four review contracts.
+- `reviewer` and `test-engineer` set `omitClaudeMd: true` (Claude Code 2.1.271
+  or newer): they start without the user, project and local CLAUDE.md files, so
+  author priors and coordinator instructions stay out of an independent review
+  or test. Managed policy files still load. Their contracts carry the project
+  rules they apply, and the brief quotes any other project constraint the work
+  must meet. The other four agents keep CLAUDE.md, because they work to the
+  project's conventions.
+- That isolation holds on Claude Code only. Codex has no per-agent switch: it
+  injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
+  agent even with `fork_turns: "none"`, as reported for Codex CLI 0.166.0 in
+  [google/elephant-goldfish-model#237](https://github.com/google/elephant-goldfish-model/issues/237)
+  (open), so a Codex reviewer or test engineer sees those files. Keep task
+  conclusions out of `AGENTS.md`, and report the independence of a Codex
+  reviewer or test engineer as limited by them.
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
 - These workers cannot load skills by name. When a worker needs one, such as
   `code-review` for a code reviewer, put the absolute path of its `SKILL.md` in

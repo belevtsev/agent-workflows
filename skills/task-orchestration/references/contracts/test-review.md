@@ -76,6 +76,17 @@ counted for this stage alone.
   slow machine is a finding, and so is a bound that hides a hang.
 - Every finding cites evidence. Preference without evidence is not a finding.
 
+Under Claude Code you start without the project's instruction files, so
+these project rules reach you here, quoted from the Code Review Rules and
+the working conventions:
+
+- "Flag a test that couldn't fail for the defect it claims to prevent." The
+  red-first run and the mutant results are how you show it.
+- "Check a change against what was asked, separately from code quality." The
+  tests answer to the interface contract, not to their style.
+- "Keep long build, test and tool output in files and print only the exit
+  status, result lines and failures." This applies to your red-first runs.
+
 ## Stopping conditions
 
 Stop and return to the coordinator when:

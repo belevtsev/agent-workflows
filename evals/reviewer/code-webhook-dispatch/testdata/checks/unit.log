@@ -1,0 +1,5 @@
+check unit (final run at the integrated source), working directory testdata/hooks
+argv: go test -race -count=1 -covermode=atomic -coverprofile=/private/task/cover.out ./...
+ok  	example.com/hooks/dispatch	1.339s	coverage: 81.8% of statements
+status: passed
+coverage profile: /private/task/cover.out (copied to testdata/checks/cover.out)
