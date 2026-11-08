@@ -11,7 +11,8 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/projectctx`, `internal/graphify`, `internal/outcomes` and
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
 and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
-evaluation.
+evaluation and `cwdev diagram-svg`, which regenerates the archify diagram SVGs
+(see "Diagrams" in `CONTRIBUTING.md`).
 
 ## Verification
 
@@ -90,7 +91,7 @@ and untrusted agreement.
 ### Multilingual evaluation
 
 The multilingual corpus is a skill resource, and `cwdev eval multilingual` is its
-runner and the only `cwdev` command:
+runner:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual
