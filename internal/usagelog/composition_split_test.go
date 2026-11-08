@@ -7,9 +7,9 @@ import (
 )
 
 // Behavioural tests for the Bash command splitter written from test contract
-// linear-split, revision 1 (requirements R1 and R3). They use only
-// splitShell/parseShell, calls[i].fields, heredocs[i].body, heredocs[i].redirect
-// and the work count.
+// linear-split, revision 4 (requirements R1 and R3). They use only splitShell,
+// strayScanWork, calls[i].fields, heredocs[i].body, heredocs[i].redirect and the
+// work count.
 
 // splitTestBodies returns the heredoc bodies of sh, ignoring redirect entries
 // (`> FILE` lines are not heredoc bodies).
@@ -63,13 +63,26 @@ func splitTestWords(n int, sep string) string {
 	return strings.Join(words, sep)
 }
 
-// R1 (contract revision 2): this work-count test checks that splitting work
+// R1 (contract revision 4): this work-count test checks that splitting work
 // stays linear in the command length. It does not measure time and is not an
-// end-to-end timing check. A splitter that rescans the text before each "<<" to
-// decide its quote state does work quadratic in the number of markers: at 8000
-// words that is tens of millions of bytes against a bound of about 4*40 KB, and
-// work(4n)/work(n) is about 16 instead of about 4. A rescan through a scanner
-// that no splitShell call counts shows up in strayScanWork, which must stay 0.
+// end-to-end timing check.
+//
+// What it guards: `work` grows with every byte fed through the call's own quote
+// scanner and its clones, and with each once-per-line redirect-target search of
+// a line that holds a heredoc marker. A splitter that rescans the line prefix
+// for every "<<" through that scanner (or a clone of it) does work quadratic in
+// the number of markers: about 10 million bytes at 2000 words and about 160
+// million at 8000 words, against bounds of about 40 KB and 160 KB, and
+// work(4n)/work(n) is about 16 instead of about 4. Separately, strayScanWork
+// grows with bytes fed through a quote scanner that has no counter at all, so a
+// rescan through such a scanner makes it non-zero.
+//
+// What it does not detect: anything outside the counted scanner bytes and the
+// once-per-line redirect-search count is invisible to both counts. Examples
+// (not a complete list): a rescan through a scanner clone given its own private
+// counter; prefix logic that does not use the quote scanner (for example
+// counting quote bytes in line[:at] with strings.Count); a quadratic marker
+// matcher; or other quadratic steps such as rebuilding kept lines.
 func TestSplitShellWorkLinear(t *testing.T) {
 	t.Parallel()
 	const n = 2000
@@ -116,10 +129,10 @@ func TestSplitShellWorkLinear(t *testing.T) {
 					}
 				}
 			}
-			// Scanner bytes outside any splitShell count (process-wide, atomic):
-			// correct splitting never adds to it.
+			// Bytes fed through a quote scanner with no counter at all
+			// (process-wide, atomic): correct splitting never adds to it.
 			if stray := strayScanWork(); stray != 0 {
-				t.Errorf("strayScanWork() = %d after the splits, want 0 (uncounted quote scanning)", stray)
+				t.Errorf("strayScanWork() = %d after the splits, want 0 (bytes fed through a quote scanner with no counter)", stray)
 			}
 			// Linear: about 4x for 4x the words; a rescanning splitter gives about 16x.
 			if work[0] > 0 {
@@ -181,9 +194,6 @@ func TestSplitShellHeredocMarkers(t *testing.T) {
 			sh, work := splitShell(c.cmd)
 			if work > splitTestWorkBound(c.cmd) {
 				t.Errorf("work = %d, want <= %d", work, splitTestWorkBound(c.cmd))
-			}
-			if parsed := parseShell(c.cmd); !reflect.DeepEqual(parsed, sh) {
-				t.Errorf("parseShell differs from splitShell:\nparseShell %+v\nsplitShell %+v", parsed, sh)
 			}
 			bodies := splitTestBodies(sh)
 			if c.want.firstOnly {
