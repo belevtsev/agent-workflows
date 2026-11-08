@@ -86,7 +86,16 @@ adviser checkpoints are not required:
 
 A substantial plan binds at least one check to a requirement. Once its source
 changes, `verify` needs the latest run of some check passed at the current source.
-When the selected path holds `go.mod`, each changed package also needs a check
+The Go rule applies when the task applies the `go` pack. That pack is selected by
+default. A task records it when `go.mod` or `go.work` is at the top of the selected
+path at start, and the rule then checks packages whenever `go.mod` is at the top at
+verify. A task that started with neither file gets no Go rule, even if it creates
+`go.mod` later. `cw pack add` and `cw pack remove` affect only tasks started
+afterwards; an open task keeps the pack set it recorded. `cw pack list` shows the
+selection. `cw pack remove go` writes an explicit
+`packs.json`, which drops the Go rule for all of that user's repositories and
+leaves only the fallback rule (any passed check); `cw pack add go`, or deleting
+`packs.json`, restores it. Under the Go rule each changed package also needs a check
 whose argv is a direct `go test` naming `./...`, the package (`./pkg`) or a parent
 (`./dir/...`). A file belongs to the package of its directory (or of the directory
 holding its `testdata/`); a non-Go file in a directory without Go files belongs to

@@ -177,7 +177,9 @@ Global flags apply to every command:
 | Configuration | `--config-dir`, else `$XDG_CONFIG_HOME/agent-workflows`, else `~/.config/agent-workflows` |
 
 The task store is `<state>/workflow-tasks`. The configuration directory holds the
-saved adviser keys (`credentials.json`) and `preferences.json`. `--dry-run` is a
+saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
+pack selection written by `cw pack add` and `cw pack remove`; absent means the
+default selection). `--dry-run` is a
 global flag; `cw install`, `cw uninstall` and `cw keys set|unset` reject it.
 
 ## Model policy
