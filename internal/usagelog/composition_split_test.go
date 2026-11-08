@@ -345,41 +345,70 @@ func FuzzSplitShellWork(f *testing.F) {
 // splitTestSink keeps the R4d split result alive across the second reading.
 var splitTestSink shellCommand
 
-// R4d (contract revision 5, amendments 1 and 2): splitting the deep_lines
-// input allocates at most 400 bytes per input byte. The bound is not a tight
-// allocation budget: in builds without the race detector, a linear splitter
-// allocates up to about 190 bytes per input byte here. Its purpose is to catch
-// allocation that grows with the nesting depth on every line, such as a
-// splitter that copies the whole nesting state for every line without counting
-// it as work (about 1,500 bytes per input byte at n = 4000 and 5,600 at
-// n = 16000), and it catches that only when the copy allocates. It does not
-// call t.Parallel: TotalAlloc is process-wide.
+// R4d (contract revision 5, amendments 5 and 6): splitting a deeply nested
+// input allocates at most 300 bytes per input byte more than splitting a
+// control input whose parentheses all close. With n = 16000 it builds, before
+// any measurement, the deep input Repeat("( ", n) + Repeat("\n", n) (the
+// deep_lines input: n "(" and no ")", so nesting depth n on every following
+// line) and the control input Repeat("( ) ", n/2) + Repeat("\n", n) (n/2 "("
+// and n/2 ")", so nesting depth 0 on the following lines), and fails if their
+// lengths differ. The two inputs do not have the same parentheses; what is
+// equal is the input length, the number of parenthesis bytes (n), the spaces
+// (n), the newlines (n) and the number of separator matches on the first line.
+// For each input it runs runtime.GC twice, reads runtime.MemStats.TotalAlloc,
+// calls splitShell once (keeping the result alive in splitTestSink) and reads
+// TotalAlloc again; the difference is alloc(input). It asserts that the excess
+// alloc(deep) - alloc(control), a signed number that can be negative, is at
+// most 300 * len(deep).
 //
-// It is skipped under the race detector (splitTestRaceEnabled, set by the
-// build-constrained composition_split_race_test.go and
-// composition_split_norace_test.go). There, in bytes per input byte, a linear
-// splitter allocates about 3,100-3,250 at n = 4000 and about 690-700 at
-// n = 16000, while a splitter that copies its whole nesting state per line
-// allocates about 4,500 at n = 4000 and about 6,150 at n = 16000. A bound at
-// n = 16000 alone would still separate them, but no single per-byte bound at
-// both sizes separates them with a safe margin: at n = 4000 the two are within
-// 1.5x.
+// Its purpose is to catch allocation that grows with the nesting depth on every
+// line, in both modes, such as a splitter that copies its whole nesting state
+// for every line without counting it as work; it is not a tight allocation
+// budget. Both inputs make the splitter do the same line handling, so the
+// control cancels the allocation that does not depend on nesting depth, and the
+// check holds with and without the race detector and is never skipped. The
+// control pushes half as many nesting frames as the deep input, which is the
+// steady excess of about 4 bytes per input byte without -race.
+// Measured excess in bytes per input byte at n = 16000 (48,000 input bytes): a
+// splitter that meets R4a, about 4 without -race and about -25 to +40 under
+// -race, and about -145 to +190 under -race (standard deviation about 60) in
+// the noisiest variant measured (a simpler separator pattern whose line
+// handling stays in the regexp's backtracking regime under -race), so 300 is
+// about 1.6x the largest reading seen (about 4.7 standard deviations), not 3x;
+// a splitter that copies its nesting state per line in a compact form (one bit
+// per nesting level), about 570-720 in both modes, and any copy that keeps each
+// level's kind needs more; one that copies it per line as a byte slice, about
+// 5,460 in both modes; one that copies it per line as linked frames, about
+// 318,850 in both modes.
+//
+// It does not call t.Parallel: TotalAlloc is process-wide.
 func TestSplitShellDeepNestingAllocations(t *testing.T) {
-	if splitTestRaceEnabled {
-		t.Skip("R4d allocation bound skipped under the race detector: no single per-byte bound at both n = 4000 and n = 16000 separates a linear splitter from a per-line copy of the nesting state with a safe margin (at n = 4000 they are within 1.5x)")
+	const (
+		n          = 16000
+		perByteMax = 300
+	)
+	// Build both inputs before any measurement.
+	deep := strings.Repeat("( ", n) + strings.Repeat("\n", n)
+	control := strings.Repeat("( ) ", n/2) + strings.Repeat("\n", n)
+	if len(deep) != len(control) {
+		t.Fatalf("deep input is %d bytes but control input is %d bytes; R4d needs inputs of the same length", len(deep), len(control))
 	}
-	const perByte = 400
-	for _, n := range []int{4000, 16000} {
-		command := strings.Repeat("( ", n) + strings.Repeat("\n", n)
+	measure := func(command string) int64 {
 		var before, after runtime.MemStats
+		splitTestSink = shellCommand{}
+		runtime.GC()
+		runtime.GC()
 		runtime.ReadMemStats(&before)
 		splitTestSink, _ = splitShell(command)
 		runtime.ReadMemStats(&after)
-		allocated := after.TotalAlloc - before.TotalAlloc
-		if allocated > perByte*uint64(len(command)) {
-			t.Errorf("n = %d: splitShell allocated %d bytes for %d input bytes: %.1f bytes per input byte, want <= %d",
-				n, allocated, len(command), float64(allocated)/float64(len(command)), perByte)
-		}
+		return int64(after.TotalAlloc - before.TotalAlloc)
 	}
+	allocDeep := measure(deep)
+	allocControl := measure(control)
 	splitTestSink = shellCommand{}
+	excess := allocDeep - allocControl
+	if excess > perByteMax*int64(len(deep)) {
+		t.Errorf("alloc(deep) = %d bytes, alloc(control) = %d bytes: excess %.1f bytes per input byte (%d input bytes), want <= %d",
+			allocDeep, allocControl, float64(excess)/float64(len(deep)), len(deep), perByteMax)
+	}
 }
