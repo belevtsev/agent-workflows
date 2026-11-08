@@ -2,6 +2,7 @@ package projectctx
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -11,6 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+// defaultProbeWaitDelay is how long a probe's output may still arrive after
+// the process exits or is stopped, unless the Command sets its own.
+const defaultProbeWaitDelay = 100 * time.Millisecond
 
 type limitedOutput struct {
 	bytes   []byte
@@ -43,7 +48,7 @@ func executeBounded(ctx context.Context, command Command, limit int) (CommandRes
 	configureProbeProcess(cmd)
 	cmd.Dir = command.Dir
 	cmd.Env = command.Env
-	cmd.WaitDelay = 100 * time.Millisecond
+	cmd.WaitDelay = cmp.Or(command.WaitDelay, defaultProbeWaitDelay)
 	var input io.WriteCloser
 	if command.StopAfterJSONID != 0 {
 		var err error

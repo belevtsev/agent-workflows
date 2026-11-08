@@ -35,6 +35,15 @@ const (
 	// hung Git. The caller's context bounds every probe as well, so a caller
 	// with a shorter deadline, such as a hook or cw doctor, keeps it.
 	gitProbeBudget = 60 * time.Second
+
+	// gitProbeWaitDelay is how long a Git probe's output may still be
+	// copied after Git exits. Capture stops when a probe does not finish
+	// cleanly, and on a loaded host copying a large listing such as
+	// ls-tree -r can take far longer than the 100ms default, which made a
+	// complete probe fail with exec.ErrWaitDelay. A probe stopped by its
+	// deadline has its process group killed, so its pipes normally close at
+	// once.
+	gitProbeWaitDelay = 10 * time.Second
 )
 
 // gitProbeAborted is a Git inspection command that did not finish cleanly:
@@ -193,7 +202,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 		// Read-only Git inspection must not invoke a configured filesystem
 		// monitor hook or update the untracked cache as a side effect.
 		gitArgs := []string{"-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", dir}
-		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv)}, maxGitOutput)
+		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv), WaitDelay: gitProbeWaitDelay}, maxGitOutput)
 		if runErr != nil {
 			probe := strings.Join(args, " ")
 			// The caller's context is checked first: its deadline can end
