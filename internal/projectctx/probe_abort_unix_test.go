@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-// Tests for contract probe-abort revisions 2 to 4, requirements R1-R7 and
-// R10-R12, driven through capture(ctx, repo, budget).
+// Tests for contract probe-abort revisions 2 to 5, requirements R1-R7 and
+// R10-R13, driven through capture(ctx, repo, budget).
 //
 // TestMain puts one fake git first on PATH for the whole package. The fake
 // passes every call to the real git unless the call's `-C <dir>` holds a
@@ -65,6 +65,7 @@ const (
 	paBriefSeconds   = "3"              // R12 child holds stdout well within the grace
 	paGuardSlack     = 20 * time.Second
 	paReachGuard     = 60 * time.Second // waiting for a fake's marker
+	paPromptReturn   = 5 * time.Second  // R13: must stay below paUncleanGrace
 )
 
 // Set by TestMain. paRealGit is set whenever git is installed, even when the
@@ -153,6 +154,13 @@ func paFakeScript(realGit, path string) string {
 		`			echo $! >> "$ctl/pids"`,
 		`			: > "$ctl/reached"`,
 		"\t\t\texec " + git + ` "$@" ;;`,
+		"\t\tlingerchild)",
+		"\t\t\t" + sl + " " + paLingerSeconds + " &",
+		`			echo $! >> "$ctl/pids"`,
+		`			: > "$ctl/reached"`,
+		"\t\t\t" + git + ` "$@"`,
+		`			: > "$ctl/git-exited"`,
+		"\t\t\texit 0 ;;",
 		"\t\tbrief)",
 		"\t\t\t" + sl + " " + paBriefSeconds + " &",
 		`			echo $! >> "$ctl/pids"`,
@@ -222,7 +230,7 @@ func paCommittedRepo(t *testing.T, branch string) string {
 type paControl string
 
 // paConfigure makes the fake git perform action ("hang", "kill", "fail",
-// "linger", "brief") for probe in repo, or only log every call when action is "". In
+// "linger", "lingerchild", "brief") for probe in repo, or only log every call when action is "". In
 // cleanup it kills those recorded sleepers that are still running.
 func paConfigure(t *testing.T, repo, probe, action string) paControl {
 	t.Helper()
@@ -553,6 +561,68 @@ func TestProbeAbortOutputGrace(t *testing.T) {
 			if result.got.snapshot.Branch != "probe-branch" {
 				t.Fatalf("snapshot Branch %q, want %q", result.got.snapshot.Branch, "probe-branch")
 			}
+		})
+	}
+}
+
+// R13: when the caller cancels during the output grace (the probe's git has
+// exited, but a background child it started still holds stdout for 60 s),
+// capture returns promptly with a zero value and the stopped-by-the-caller
+// message naming the whole probe. The fake runs the real git as a child,
+// touches "git-exited" once it exits, and then exits 0; the test cancels only
+// after that marker. For each of the six probes, in parallel subtests: each
+// subtest's grace starts and ends within its own run.
+func TestProbeAbortCancelDuringOutputGrace(t *testing.T) {
+	paRequireFake(t)
+	t.Parallel()
+	for _, probe := range paProbes {
+		t.Run(probe, func(t *testing.T) {
+			t.Parallel()
+			repo := paCommittedRepo(t, "probe-branch")
+			ctl := paConfigure(t, repo, probe, "lingerchild")
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			done := paCaptureAsync(ctx, repo, paRoomyBudget)
+			exited := ctl.file("git-exited")
+			waitUntil := time.Now().Add(paReachGuard)
+			for {
+				if _, err := os.Stat(exited); err == nil {
+					break
+				}
+				select {
+				case result := <-done:
+					t.Fatalf("capture returned (%+v, %v) before the targeted probe's git exited", result.got, result.err)
+				case <-time.After(10 * time.Millisecond):
+				}
+				if time.Now().After(waitUntil) {
+					t.Fatalf("the targeted probe's git did not exit within %v", paReachGuard)
+				}
+			}
+			cancel()
+			cancelled := time.Now()
+			// A justified exception to the 20 s slack rule: this bound must
+			// stay below the 10 s output grace, or the test could not tell a
+			// prompt return from waiting out the grace.
+			var result paResult
+			select {
+			case result = <-done:
+			case <-time.After(paPromptReturn):
+				t.Fatalf("capture did not return within %v of the cancel", paPromptReturn)
+			}
+			if elapsed := time.Since(cancelled); elapsed > paPromptReturn {
+				t.Fatalf("capture returned %v after the cancel, want at most %v", elapsed, paPromptReturn)
+			}
+
+			ctl.requireReached(t)
+			if !errors.Is(result.err, context.Canceled) {
+				t.Fatalf("capture error %v, want one matching context.Canceled", result.err)
+			}
+			want := fmt.Sprintf("Git inspection stopped by the caller (git %s): context canceled", probe)
+			if result.err.Error() != want {
+				t.Fatalf("capture error %q, want %q", result.err.Error(), want)
+			}
+			paExpectZero(t, result.got)
 		})
 	}
 }
