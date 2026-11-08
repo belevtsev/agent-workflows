@@ -201,9 +201,12 @@ required when the task has an open decision: real alternatives with consequentia
 uncertainty. When the approach follows directly from the defect or contract and no
 changed code must behave alike on several platforms or shells, the plan declares `"checkpoints": {"required": false, "reason": "..."}`, and
 `cw task verify` lists that reason instead of requiring the checkpoints; when in
-doubt, it keeps them. Tasks without implementation
-use the before checkpoint ahead of substantive drafting or review. Small edits and
-direct factual answers remain lightweight.
+doubt, it keeps them. That reason must not claim that no advisers are configured
+or that adviser credentials are missing while the task binds advisers:
+`cw task start` refuses such a plan, and `cw task verify` reports it as a problem
+on a record an older `cw` created, unless both checkpoints are attached. Tasks
+without implementation use the before checkpoint ahead of substantive drafting or
+review. Small edits and direct factual answers remain lightweight.
 
 After the before checkpoint, advisers join the flow only at four decision
 points: (a) after the spec

@@ -56,6 +56,9 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	if err := consult.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
+	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
+		return Record{}, errors.New(conflict + `; set "required": true and run the checkpoints, or, if checkpoints are truly unneeded, give the real reason`)
+	}
 	snapshot, files, err := projectctx.CaptureManifest(ctx, repo)
 	if err != nil {
 		return Record{}, fmt.Errorf("capture complete task baseline: %w", err)
@@ -500,6 +503,21 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 			required := checkpointsRequired(record.Plan)
 			if !required {
 				result.Limitations = append(result.Limitations, "adviser checkpoints not required: "+record.Plan.Checkpoints.Reason)
+			}
+			_, beforeAttached := record.Consultations["before"]
+			_, finalAttached := record.Consultations["final"]
+			if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
+				// A usable before checkpoint is the one final-context preparation accepts.
+				_, beforeErr := readConsultation(root, *record, "before", record.Baseline)
+				switch {
+				case beforeErr == nil:
+					conflict += "; attach the final checkpoint"
+				case equalSnapshot(record.Baseline, snapshot):
+					conflict += "; attach the before and final checkpoints, or abandon this record and start a corrected one"
+				default:
+					conflict += "; the source changed since start, so the before checkpoint can no longer be attached and a new record must not start over the changed source: stop and ask the user how to proceed"
+				}
+				result.Problems = append(result.Problems, conflict)
 			}
 			for _, phase := range []string{"before", "final"} {
 				// A checkpoint attached although not required is still validated.

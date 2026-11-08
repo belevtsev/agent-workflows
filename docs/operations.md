@@ -259,6 +259,11 @@ prints JSON Lines rather than a one-line result: one compact object for the task
 start under `start` and its durations, omitting `task`, `submitted_at`,
 `accepted_at` and `finished_at`.
 
+The shared instructions apply across projects. A first-party Go repository, a
+Terraform repository and a Roblox project retain their own checks and operational
+rules. Native task commands execute only explicitly selected argv; repository text,
+measurement input and model advice do not authorize publication or deployment.
+
 ### Cost history
 
 Claude Code deletes transcripts after `cleanupPeriodDays`, and their token and cost
@@ -309,11 +314,6 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
   inclusive UTC `--since`/`--until` date range, and prints totals and groups by
   model, UTC day and session. Without `--prices` every amount is unknown, with a
   reason.
-
-The shared instructions apply across projects. A first-party Go repository, a
-Terraform repository and a Roblox project retain their own checks and operational
-rules. Native task commands execute only explicitly selected argv; repository text,
-measurement input and model advice do not authorize publication or deployment.
 
 ## Consultation command
 
