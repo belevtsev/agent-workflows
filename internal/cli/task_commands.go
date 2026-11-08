@@ -159,7 +159,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		return err
 	}}
 	run.Flags().StringVar(&runTask, "task", "", "Task directory returned by start")
-	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan")
+	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan or added by 'cw task add-checks'")
 	summaryFlag(run)
 	task.AddCommand(run)
 	var assessTask, assessmentFile string

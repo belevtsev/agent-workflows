@@ -36,8 +36,10 @@ satisfies a later state.
    otherwise the plan declares `"checkpoints": {"required": false, "reason": "..."}`
    and states 2 and 4 are not required
    ([details](references/global-workflow.md#start-and-bind-a-task)). The plan
-   cannot change after start: a task that later meets an open decision stops and
-   asks the user, and never restarts over source the first record changed. Hand a
+   cannot change after start; checks can only be added, by a merge-bound
+   `cw task add-checks` after a base-branch merge, never removed or narrowed
+   ([merging the base branch](references/global-workflow.md#merging-the-base-branch)).
+   A task that later meets an open decision stops and asks the user, and never restarts over source the first record changed. Hand a
    consequential planning, architecture or diagnosis question that source does
    not settle to a `decision`-profile worker.
 2. **Before checkpoint** (when required). With enough source evidence to assess

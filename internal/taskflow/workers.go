@@ -216,7 +216,7 @@ func validateBrief(record Record, brief WorkerBrief) error {
 		return errors.New("worker check_ids must be distinct planned check IDs")
 	}
 	for _, id := range brief.CheckIDs {
-		if !slices.ContainsFunc(record.Plan.Checks, func(check Check) bool { return check.ID == id }) {
+		if _, found := findCheck(record, id); !found {
 			return fmt.Errorf("worker brief references unplanned check %s", id)
 		}
 	}
@@ -764,7 +764,7 @@ func validateAcceptance(record Record, result BoundWorkerResult, input WorkerAcc
 		return errors.New("acceptance check_ids must be distinct planned IDs")
 	}
 	for _, id := range input.CheckIDs {
-		if !slices.ContainsFunc(record.Plan.Checks, func(check Check) bool { return check.ID == id }) {
+		if _, found := findCheck(record, id); !found {
 			return fmt.Errorf("acceptance references unknown check %s", id)
 		}
 	}

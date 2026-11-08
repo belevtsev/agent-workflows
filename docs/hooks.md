@@ -115,7 +115,10 @@ bytes.
 
 A `cw` release older than these fields rejects the unknown `source_sha256` and
 `abandonment` members, so it cannot read a record this release has verified or
-abandoned; keep every host that shares a task store on the same `cw`.
+abandoned; keep every host that shares a task store on the same `cw`. The same
+holds for `amendments`, which `cw task add-checks` writes: an older `cw` cannot
+read a record carrying it, and its hook skips such a record instead of gating
+it.
 
 ### Asking instead of denying
 

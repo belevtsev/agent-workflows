@@ -252,8 +252,8 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-// Run executes only argv recorded in the immutable plan, in the repository
-// directory, without a shell. Starting and terminal states are separate durable
+// Run executes only argv recorded in the immutable plan or added by an
+// amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
 func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
@@ -262,15 +262,8 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
 	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
-		found := false
-		for _, candidate := range record.Plan.Checks {
-			if candidate.ID == checkID {
-				check = candidate
-				found = true
-				break
-			}
-		}
-		if !found {
+		var found bool
+		if check, found = findCheck(*record, checkID); !found {
 			return errors.New("check is not in the explicit coordinator plan")
 		}
 		if err := validateCommand(check.Argv); err != nil {
