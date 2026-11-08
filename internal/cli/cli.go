@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,10 @@ type Config struct {
 	WorkingDir                 func() (string, error)
 	Executable                 func() (string, error)
 	Getenv                     func(string) string
+
+	// prePublishTimeout replaces hookPublishTimeout when set, so tests can
+	// reach the hook's deadline quickly.
+	prePublishTimeout time.Duration
 }
 
 type usageError struct{ error }
