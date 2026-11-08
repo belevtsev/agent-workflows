@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -30,7 +31,12 @@ import (
 // error, exits 0 without output, so a damaged record, an unreadable store or a
 // missing git never blocks the user's own commands.
 const (
-	hookInputLimit        = 1 << 20
+	hookInputLimit = 1 << 20
+	// hookPublishTimeout bounds the whole pre-publish decision, including the
+	// source captures, whose Git probes allow far longer on their own. It
+	// stays below the 30 second hook timeout in hooks/hooks.json, so cw
+	// itself exits 0 without a decision rather than being killed.
+	hookPublishTimeout    = 20 * time.Second
 	hookGitTimeout        = 5 * time.Second
 	hookDoctorTimeout     = 5 * time.Second
 	hookDoctorCacheAge    = time.Hour
@@ -72,7 +78,9 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			decision, ok := prePublishDecision(cmd.Context(), root, config)
+			ctx, cancel := context.WithTimeout(cmd.Context(), cmp.Or(config.prePublishTimeout, hookPublishTimeout))
+			defer cancel()
+			decision, ok := prePublishDecision(ctx, root, config)
 			if !ok {
 				return nil
 			}
