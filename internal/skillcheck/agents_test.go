@@ -1,8 +1,9 @@
 package skillcheck
 
-// Tests for contract roster-tests, revision 1, section A (plugin agent
-// roster). Each check is a function of a repository root so that it runs on
-// the real checkout and on synthetic roots that must make it fail.
+// Tests for contract roster-tests, revisions 1 to 3, section A (plugin agent
+// roster, A1 to A6: A5 is agent isolation, A6 the adversarial tester's
+// contract size). Each check is a function of a repository root so that it
+// runs on the real checkout and on synthetic roots that must make it fail.
 
 import (
 	"bytes"
@@ -189,6 +190,7 @@ func agentPinProblems(root string) []string {
 		{"agents/reviewer.md", "opus", "high"},
 		{"agents/github-worker.md", "sonnet", "medium"},
 		{"agents/test-engineer.md", "", ""},
+		{"agents/adversarial-tester.md", "opus", "high"}, // RT1
 	} {
 		if !listedFiles[pin.file] {
 			problems = append(problems, pin.file+": not listed in .claude-plugin/plugin.json agents")
@@ -298,6 +300,29 @@ func agentIsolationProblems(root string) []string {
 	return problems
 }
 
+// adversarialContractFile is the adversarial tester's role contract (A6).
+const adversarialContractFile = "skills/task-orchestration/references/contracts/adversarial-tester.md"
+
+// adversarialContractLimit is the exclusive size bound: at most 4095 bytes.
+const adversarialContractLimit = 4096
+
+// adversarialContractProblems checks A6 (roster-tests RT2, labelled A6 since
+// revision 3): the adversarial tester's role contract exists under root as a
+// regular file and is under 4096 bytes.
+func adversarialContractProblems(root string) []string {
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(adversarialContractFile)))
+	if err != nil {
+		return []string{adversarialContractFile + ": does not exist"}
+	}
+	if !info.Mode().IsRegular() {
+		return []string{adversarialContractFile + ": is not a regular file"}
+	}
+	if info.Size() >= adversarialContractLimit {
+		return []string{fmt.Sprintf("%s: %d bytes, want under %d", adversarialContractFile, info.Size(), adversarialContractLimit)}
+	}
+	return nil
+}
+
 // --- synthetic roots ---------------------------------------------------------
 
 func agentDoc(name, model, effort string) string {
@@ -317,15 +342,27 @@ func agentDocWith(name, model, effort string, extra ...string) string {
 	return b.String()
 }
 
-// validAgentRoot builds a root whose roster satisfies A1 to A5.
+// validAgentListed is the plugin.json agents array of validAgentRoot.
+func validAgentListed() []string {
+	return []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md", "./agents/adversarial-tester.md"}
+}
+
+// validAgentRoot builds a root whose roster satisfies A1 to A5, including the
+// adversarial tester pinned at opus/high (RT1) and not isolated (M1).
 func validAgentRoot(t *testing.T) (string, map[string]string) {
 	t.Helper()
 	files := map[string]string{
-		"agents/reviewer.md":      agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
-		"agents/github-worker.md": agentDoc("github-worker", "sonnet", "medium"),
-		"agents/test-engineer.md": agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
+		"agents/reviewer.md":           agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
+		"agents/github-worker.md":      agentDoc("github-worker", "sonnet", "medium"),
+		"agents/test-engineer.md":      agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
+		"agents/adversarial-tester.md": agentDoc("adversarial-tester", "opus", "high"),
 	}
-	return writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md"}, files), files
+	return writeAgentRoot(t, validAgentListed(), files), files
+}
+
+// withoutListed returns validAgentListed minus the entry for file.
+func withoutListed(file string) []string {
+	return slices.DeleteFunc(validAgentListed(), func(entry string) bool { return entry == "./"+file })
 }
 
 func writeAgentRoot(t *testing.T, listed []string, files map[string]string) string {
@@ -393,7 +430,7 @@ func TestA1_SyntheticViolationsAreReported(t *testing.T) {
 	t.Run("unlisted agent file", func(t *testing.T) {
 		_, files := validAgentRoot(t)
 		files["agents/stray.md"] = agentDoc("stray", "opus", "high")
-		root := writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md"}, files)
+		root := writeAgentRoot(t, validAgentListed(), files)
 		problems := agentListingProblems(root)
 		wantProblem(t, problems, "agents/stray.md")
 		if len(problems) != 1 {
@@ -402,24 +439,24 @@ func TestA1_SyntheticViolationsAreReported(t *testing.T) {
 	})
 	t.Run("listed file missing", func(t *testing.T) {
 		_, files := validAgentRoot(t)
-		root := writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md", "./agents/ghost.md"}, files)
+		root := writeAgentRoot(t, append(validAgentListed(), "./agents/ghost.md"), files)
 		wantProblem(t, agentListingProblems(root), "./agents/ghost.md")
 	})
 	t.Run("listed file outside agents", func(t *testing.T) {
 		_, files := validAgentRoot(t)
 		files["docs/reviewer.md"] = agentDoc("reviewer", "opus", "high")
-		root := writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md", "./docs/reviewer.md"}, files)
+		root := writeAgentRoot(t, append(validAgentListed(), "./docs/reviewer.md"), files)
 		wantProblem(t, agentListingProblems(root), "./docs/reviewer.md")
 	})
 	t.Run("listed file in a subdirectory of agents", func(t *testing.T) {
 		_, files := validAgentRoot(t)
 		files["agents/nested/helper.md"] = agentDoc("helper", "opus", "high")
-		root := writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md", "./agents/nested/helper.md"}, files)
+		root := writeAgentRoot(t, append(validAgentListed(), "./agents/nested/helper.md"), files)
 		wantProblem(t, agentListingProblems(root), "./agents/nested/helper.md")
 	})
 	t.Run("listed path escapes the repository", func(t *testing.T) {
 		_, files := validAgentRoot(t)
-		root := writeAgentRoot(t, []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md", "./agents/../../outside.md"}, files)
+		root := writeAgentRoot(t, append(validAgentListed(), "./agents/../../outside.md"), files)
 		wantProblem(t, agentListingProblems(root), "./agents/../../outside.md")
 	})
 }
@@ -518,7 +555,8 @@ func TestA2_SyntheticViolationsNameFileAndField(t *testing.T) {
 // --- A3 ----------------------------------------------------------------------
 
 // A3 fails when reviewer is not opus/high, github-worker is not sonnet/medium,
-// or test-engineer is missing or unlisted.
+// test-engineer is missing or unlisted, or adversarial-tester is missing,
+// unlisted or not opus/high (RT1).
 func TestA3_OwnerFixedPins(t *testing.T) {
 	for _, problem := range agentPinProblems(repoRoot) {
 		t.Errorf("A3: %s", problem)
@@ -526,7 +564,7 @@ func TestA3_OwnerFixedPins(t *testing.T) {
 }
 
 func TestA3_SyntheticViolationsAreReported(t *testing.T) {
-	allListed := []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md"}
+	allListed := validAgentListed()
 	for _, test := range []struct {
 		name      string
 		listed    []string
@@ -538,7 +576,16 @@ func TestA3_SyntheticViolationsAreReported(t *testing.T) {
 		{"github-worker model", allListed, func(f map[string]string) { f["agents/github-worker.md"] = agentDoc("github-worker", "opus", "medium") }, []string{"agents/github-worker.md", "model"}},
 		{"github-worker effort", allListed, func(f map[string]string) { f["agents/github-worker.md"] = agentDoc("github-worker", "sonnet", "high") }, []string{"agents/github-worker.md", "effort"}},
 		{"test-engineer missing", allListed, func(f map[string]string) { delete(f, "agents/test-engineer.md") }, []string{"agents/test-engineer.md"}},
-		{"test-engineer unlisted", allListed[:2], func(map[string]string) {}, []string{"agents/test-engineer.md", "not listed"}},
+		{"test-engineer unlisted", withoutListed("agents/test-engineer.md"), func(map[string]string) {}, []string{"agents/test-engineer.md", "not listed"}},
+		// RT1: the adversarial tester's owner-fixed pin.
+		{"adversarial-tester model", allListed, func(f map[string]string) {
+			f["agents/adversarial-tester.md"] = agentDoc("adversarial-tester", "sonnet", "high")
+		}, []string{"agents/adversarial-tester.md", "model"}},
+		{"adversarial-tester effort", allListed, func(f map[string]string) {
+			f["agents/adversarial-tester.md"] = agentDoc("adversarial-tester", "opus", "medium")
+		}, []string{"agents/adversarial-tester.md", "effort"}},
+		{"adversarial-tester missing", allListed, func(f map[string]string) { delete(f, "agents/adversarial-tester.md") }, []string{"agents/adversarial-tester.md", "does not exist"}},
+		{"adversarial-tester unlisted", withoutListed("agents/adversarial-tester.md"), func(map[string]string) {}, []string{"agents/adversarial-tester.md", "not listed"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, files := validAgentRoot(t)
@@ -560,7 +607,7 @@ func TestA4_RemovedAgentsStayRemoved(t *testing.T) {
 }
 
 func TestA4_SyntheticViolationsAreReported(t *testing.T) {
-	base := []string{"./agents/reviewer.md", "./agents/github-worker.md", "./agents/test-engineer.md"}
+	base := validAgentListed()
 	for _, removed := range removedAgentNames {
 		t.Run("file stem "+removed, func(t *testing.T) {
 			_, files := validAgentRoot(t)
@@ -591,23 +638,45 @@ func TestA4_SyntheticViolationsAreReported(t *testing.T) {
 
 // --- A5 ----------------------------------------------------------------------
 
-// fullAgentRoster returns the six-agent roster the plugin ships, listed in
-// plugin.json, with reviewer and test-engineer isolated and architect setting
-// omitClaudeMd: false explicitly (absent and false are both allowed).
+// fullAgentRoster returns the seven-agent roster the plugin ships (M1),
+// listed in plugin.json, with reviewer and test-engineer isolated, architect
+// setting omitClaudeMd: false explicitly (absent and false are both allowed)
+// and adversarial-tester pinned at opus/high without the field, since it is
+// not isolated.
 func fullAgentRoster() ([]string, map[string]string) {
 	files := map[string]string{
-		"agents/spec-writer.md":   agentDoc("spec-writer", "opus", "high"),
-		"agents/architect.md":     agentDocWith("architect", "opus", "high", "omitClaudeMd: false"),
-		"agents/implementer.md":   agentDoc("implementer", "opus", "high"),
-		"agents/test-engineer.md": agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
-		"agents/reviewer.md":      agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
-		"agents/github-worker.md": agentDoc("github-worker", "sonnet", "medium"),
+		"agents/spec-writer.md":        agentDoc("spec-writer", "opus", "high"),
+		"agents/architect.md":          agentDocWith("architect", "opus", "high", "omitClaudeMd: false"),
+		"agents/implementer.md":        agentDoc("implementer", "opus", "high"),
+		"agents/test-engineer.md":      agentDocWith("test-engineer", "opus", "high", "omitClaudeMd: true"),
+		"agents/adversarial-tester.md": agentDoc("adversarial-tester", "opus", "high"),
+		"agents/reviewer.md":           agentDocWith("reviewer", "opus", "high", "omitClaudeMd: true"),
+		"agents/github-worker.md":      agentDoc("github-worker", "sonnet", "medium"),
 	}
 	listed := []string{
 		"./agents/spec-writer.md", "./agents/architect.md", "./agents/implementer.md",
-		"./agents/test-engineer.md", "./agents/reviewer.md", "./agents/github-worker.md",
+		"./agents/test-engineer.md", "./agents/adversarial-tester.md", "./agents/reviewer.md",
+		"./agents/github-worker.md",
 	}
 	return listed, files
+}
+
+// M1: fails when fullAgentRoster, described as the roster the plugin ships,
+// drifts from the seven agents of roster-tests revision 3.
+func TestA5_FullRosterFixtureHoldsSevenAgents(t *testing.T) {
+	listed, files := fullAgentRoster()
+	want := []string{"spec-writer", "architect", "implementer", "test-engineer", "adversarial-tester", "reviewer", "github-worker"}
+	if len(listed) != len(want) || len(files) != len(want) {
+		t.Fatalf("fullAgentRoster lists %d and writes %d agents, want %d: %q", len(listed), len(files), len(want), listed)
+	}
+	for _, name := range want {
+		if !slices.Contains(listed, "./agents/"+name+".md") {
+			t.Errorf("fullAgentRoster does not list %s", name)
+		}
+		if _, ok := files["agents/"+name+".md"]; !ok {
+			t.Errorf("fullAgentRoster has no file for %s", name)
+		}
+	}
 }
 
 // A5.1, A5.2, A5.3, A5.4: fails when the real reviewer or test-engineer does
@@ -626,9 +695,18 @@ func TestA5_IsolatedAgentsOmitClaudeMd(t *testing.T) {
 	}
 }
 
-// A5.5: a valid six-agent roster has no A5 problem (and stays valid for A1 to
-// A4, so the fixture itself is a real roster); fails when A5 rejects absent or
-// false on a non-isolated agent, or true on an isolated one.
+// A6 (RT2) fails when the adversarial tester's role contract is missing from
+// the repository or is 4096 bytes or more.
+func TestA6_AdversarialTesterContract(t *testing.T) {
+	for _, problem := range adversarialContractProblems(repoRoot) {
+		t.Errorf("A6: %s", problem)
+	}
+}
+
+// A5.5, M1: a valid seven-agent roster has no A5 problem (and stays valid for
+// A1 to A4, so the fixture itself is a real roster); fails when A5 rejects
+// absent or false on a non-isolated agent, or true on an isolated one, or when
+// A3 misses the adversarial tester in the shipped roster.
 func TestA5_ValidRosterIsClean(t *testing.T) {
 	listed, files := fullAgentRoster()
 	root := writeAgentRoot(t, listed, files)
@@ -640,7 +718,7 @@ func TestA5_ValidRosterIsClean(t *testing.T) {
 		"A5": agentIsolationProblems,
 	} {
 		if problems := check(root); len(problems) != 0 {
-			t.Errorf("%s on the valid six-agent roster: %q", name, problems)
+			t.Errorf("%s on the valid seven-agent roster: %q", name, problems)
 		}
 	}
 }
@@ -679,10 +757,11 @@ func TestA5_IsolatedAgentWithoutBooleanTrueIsReported(t *testing.T) {
 	}
 }
 
-// A5.2, A5.5: fails when a non-isolated agent may set omitClaudeMd: true, or
-// when the problem does not name the file and the field.
+// A5.2, A5.5, M1: fails when a non-isolated agent, the adversarial tester
+// included, may set omitClaudeMd: true, or when the problem does not name the
+// file and the field.
 func TestA5_OtherAgentWithTrueIsReported(t *testing.T) {
-	for _, agent := range []string{"spec-writer", "architect", "implementer", "github-worker"} {
+	for _, agent := range []string{"spec-writer", "architect", "implementer", "adversarial-tester", "github-worker"} {
 		t.Run(agent, func(t *testing.T) {
 			listed, files := fullAgentRoster()
 			file := "agents/" + agent + ".md"
@@ -747,4 +826,35 @@ func TestA5_PreChangeShapeNamesBothFiles(t *testing.T) {
 	if len(problems) != 2 {
 		t.Errorf("problems = %q, want exactly the two isolated agent files", problems)
 	}
+}
+
+// --- A6 ----------------------------------------------------------------------
+
+// A6 (RT2): fails when a missing, 4096-byte or directory contract passes, or
+// when a 4095-byte contract is rejected.
+func TestA6_SyntheticBoundaries(t *testing.T) {
+	writeContract := func(t *testing.T, size int) string {
+		t.Helper()
+		root := t.TempDir()
+		writeFixture(t, filepath.Join(root, filepath.FromSlash(adversarialContractFile)), bytes.Repeat([]byte("a"), size))
+		return root
+	}
+	t.Run("missing fails", func(t *testing.T) {
+		wantProblem(t, adversarialContractProblems(t.TempDir()), adversarialContractFile)
+	})
+	t.Run("4096 bytes fails", func(t *testing.T) {
+		wantProblem(t, adversarialContractProblems(writeContract(t, 4096)), adversarialContractFile, "4096")
+	})
+	t.Run("4095 bytes passes", func(t *testing.T) {
+		if problems := adversarialContractProblems(writeContract(t, 4095)); len(problems) != 0 {
+			t.Errorf("a 4095-byte contract was rejected: %q", problems)
+		}
+	})
+	t.Run("directory in place of the file fails", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(adversarialContractFile)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		wantProblem(t, adversarialContractProblems(root), adversarialContractFile)
+	})
 }

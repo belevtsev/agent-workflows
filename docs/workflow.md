@@ -93,6 +93,19 @@ rules; the
 says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
 checks its tests before integration.
 
+## Opt-in adversarial tester
+
+A plan opts in at classify, before `cw task start`, when the change touches
+concurrency, parsing or untrusted input, security or data integrity, or when the
+user asks. A fresh
+[adversarial tester](../skills/task-orchestration/references/contracts/adversarial-tester.md)
+then reads the interface contract, `design.md`, the integrated source and the
+coverage profile, and tries to break the change in parallel with code review.
+Every test it keeps fails on the integrated source and cites the requirement or
+design rule it shows broken; each is a finding for the implementer and stays as
+a regression test written with source access. It never counts as black-box
+coverage, and the test engineer never sees it.
+
 ## Local configuration
 
 Neither the plugins nor `cw install --host codex` edit a host's model settings.

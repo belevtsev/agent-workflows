@@ -33,6 +33,7 @@ spec exists or the request states every behaviour.
 | architect | the reviewed spec or request | design, interface contract, implementation brief | Opus 5.5, xhigh |
 | implementer | brief and contract | the change, a self-review | Opus 5.5, high |
 | test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
+| adversarial-tester (opt-in) | contract, design, the integrated source and its coverage | tests that fail on the code, each a finding | Opus 5.5, high |
 | reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | Opus 5.5, high |
 | github-worker | verified facts, your approval | commit, push, PR when `cw publish` does not fit (hunk-level scopes, fork PRs, conversions) | Sonnet 5.5, medium |
 
