@@ -273,6 +273,11 @@ func splitTestHeredocCases() []splitTestHeredocCase {
 		// R4b-6: a $( closed on the next line leaves no nesting behind.
 		{"r4b_6_substitution_closed_next_line", "echo $(\n) 'q' cat <<EOF\nbody1\nEOF\ncat <<END\ncw task start\nEND\ncw task verify",
 			splitTestHeredocWant{bodies: []string{"body1", "cw task start"}, verifyCall: true}},
+		// R4b-7 and R4b-8 (amendment 2): a $(( ... )) that opens and closes
+		// inside a double-quoted string returns to that string, so the
+		// string's closing " ends it and the following <<EOF is a heredoc.
+		{"r4b_7_arithmetic_in_double_quotes_then_heredoc", "echo \"$((1))\" && cat <<EOF\ncw task start\nEOF\ncw task verify", heredocA},
+		{"r4b_8_shift_in_double_quotes_then_heredoc", "x=\"$(( 2 << 1 ))\"; cat <<EOF\ncw task start\nEOF\ncw task verify", heredocA},
 	}
 }
 
@@ -314,6 +319,11 @@ func TestSplitShellHeredocMarkers(t *testing.T) {
 // 4*len+16, and its result equals parseShell's. Run as a normal test, it
 // checks the seeds: the R4a inputs at n = 20 and every command of
 // TestSplitShellHeredocMarkers.
+//
+// The parseShell == splitShell check is not a check of splitting: parseShell
+// is defined as splitShell's first result, so it cannot detect a defect inside
+// splitShell. It guards that parseShell keeps returning exactly splitShell's
+// result if either of them is changed later.
 func FuzzSplitShellWork(f *testing.F) {
 	for _, d := range splitTestDeepRows() {
 		f.Add(d.cmd(20))
@@ -335,16 +345,26 @@ func FuzzSplitShellWork(f *testing.F) {
 // splitTestSink keeps the R4d split result alive across the second reading.
 var splitTestSink shellCommand
 
-// R4d (contract revision 5, amendment 1): splitting the deep_lines input
-// allocates at most 400 bytes per input byte. The bound is not a tight
-// allocation budget: a linear splitter allocates up to about 190 bytes per
-// input byte here. Its purpose is to catch allocation that grows with the
-// nesting depth on every line, such as a splitter that copies the whole
-// nesting state for every line without counting it as work (about 1,500 bytes
-// per input byte at n = 4000 and 5,600 at n = 16000), and it catches that only
-// when the copy allocates. It does not call t.Parallel: TotalAlloc is
-// process-wide.
+// R4d (contract revision 5, amendments 1 and 2): splitting the deep_lines
+// input allocates at most 400 bytes per input byte. The bound is not a tight
+// allocation budget: in builds without the race detector, a linear splitter
+// allocates up to about 190 bytes per input byte here. Its purpose is to catch
+// allocation that grows with the nesting depth on every line, such as a
+// splitter that copies the whole nesting state for every line without counting
+// it as work (about 1,500 bytes per input byte at n = 4000 and 5,600 at
+// n = 16000), and it catches that only when the copy allocates. It does not
+// call t.Parallel: TotalAlloc is process-wide.
+//
+// It is skipped under the race detector (splitTestRaceEnabled, set by the
+// build-constrained composition_split_race_test.go and
+// composition_split_norace_test.go): there the race runtime's own allocation,
+// which does not grow with nesting, dominates (about 3,300 bytes per input
+// byte at n = 4000 and 700 at n = 16000 for a linear splitter), so no
+// per-byte bound separates a linear splitter from a per-line copy.
 func TestSplitShellDeepNestingAllocations(t *testing.T) {
+	if splitTestRaceEnabled {
+		t.Skip("R4d allocation bound skipped under the race detector: the race runtime's own allocation dominates TotalAlloc, so no per-byte bound separates a linear splitter from a per-line copy of the nesting state")
+	}
 	const perByte = 400
 	for _, n := range []int{4000, 16000} {
 		command := strings.Repeat("( ", n) + strings.Repeat("\n", n)
