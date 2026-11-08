@@ -1,0 +1,14 @@
+Breaks R3: init rewrites an existing config.json and reports created.
+
+--- a/cmd/notes/main.go
++++ b/cmd/notes/main.go
+@@ -49,9 +49,6 @@
+ 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+ 			return false, "", errors.New("refusing to use " + target + ": not a directory")
+ 		}
+-		if _, err := os.Stat(filepath.Join(target, "config.json")); err == nil {
+-			return false, target, nil
+-		}
+ 	}
+ 	if err := os.MkdirAll(target, 0o700); err != nil {
+ 		return false, "", err

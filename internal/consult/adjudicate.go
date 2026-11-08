@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // investigationConfidence is the answer confidence at or above which a

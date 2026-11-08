@@ -2,7 +2,7 @@
 
 Read this when you need to know whether tests would actually fail if the code broke. Coverage shows what ran. Mutation testing changes the code and checks that a test notices. Use it on important or recently changed packages, not across a whole repository, and report a missing tool rather than installing it unasked.
 
-This is source-aware verifier/reviewer work. Under the [test-author protocol](../../task-orchestration/references/test-author.md), authors do not inspect mutants, production source, coverage, or raw mutation/build/runtime output. The verifier translates a survivor into a requirement/case ID and contract input with expected/actual outcomes, or asks the coordinator to resolve an unspecified contract. New or changed tests, helpers, fixtures, skips, tolerances, and seeds return to an unexposed author; do not send mutant text or implementation-derived expected values.
+This is source-aware verifier/reviewer work. Under the [test-engineer contract](../../task-orchestration/references/contracts/test-engineer.md), authors do not inspect mutants, production source, coverage, or raw mutation/build/runtime output. The verifier translates a survivor into a requirement/case ID and contract input with expected/actual outcomes, or asks the coordinator to resolve an unspecified contract. New or changed tests, helpers, fixtures, skips, tolerances, and seeds return to an unexposed author; do not send mutant text or implementation-derived expected values.
 
 ## Run Gremlins
 

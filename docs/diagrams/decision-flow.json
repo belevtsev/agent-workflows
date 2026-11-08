@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Decision flow of a substantial task",
+    "locale": "en",
+    "quality_profile": "standard",
+    "output": "docs/diagrams/decision-flow.html",
+    "legend": {
+      "entries": {
+        "backend": { "label": "Task step" },
+        "security": { "label": "Decision" },
+        "messagebus": { "label": "Adviser checkpoint" },
+        "external": { "label": "Rework or gap" },
+        "cloud": { "label": "Complete" }
+      }
+    }
+  },
+  "lanes": [
+    { "id": "rework", "label": "Rework and gaps" },
+    { "id": "checkpoints", "label": "Checkpoints, when required" },
+    { "id": "task", "label": "Task flow" },
+    { "id": "draft_lane", "label": "Plan, draft or review only" },
+    { "id": "complete", "label": "Complete" }
+  ],
+  "nodes": [
+    { "id": "gap", "lane": "rework", "col": 2, "type": "external", "label": "Investigate gap", "sublabel": "adjudicate or consult again" },
+    { "id": "rework_step", "lane": "rework", "col": 5, "type": "external", "label": "Revise + recheck", "sublabel": "refresh evidence" },
+    { "id": "before", "lane": "checkpoints", "col": 1, "type": "messagebus", "label": "Before checkpoint", "sublabel": "consult, adjudicate" },
+    { "id": "final", "lane": "checkpoints", "col": 4, "type": "messagebus", "label": "Final checkpoint", "sublabel": "fresh evidence" },
+    { "id": "classify", "lane": "task", "col": 0, "type": "backend", "label": "Classify", "sublabel": "cw task start" },
+    { "id": "open", "lane": "task", "col": 1, "type": "security", "label": "Open decision?", "sublabel": "or cross-platform" },
+    { "id": "mode", "lane": "task", "col": 2, "type": "security", "label": "Authorized work?", "sublabel": "per the user" },
+    { "id": "build", "lane": "task", "col": 3, "type": "backend", "label": "Implement", "sublabel": "cw task assign" },
+    { "id": "check", "lane": "task", "col": 4, "type": "backend", "label": "Check + review", "sublabel": "independent review" },
+    { "id": "ready", "lane": "complete", "col": 5, "type": "cloud", "label": "cw task verify", "sublabel": "then report" },
+    { "id": "draft", "lane": "draft_lane", "col": 3, "type": "backend", "label": "Draft or review", "sublabel": "no implementation" }
+  ],
+  "edges": [
+    { "id": "to-open", "from": "classify", "to": "open" },
+    { "id": "needs-before", "from": "open", "to": "before", "label": "yes" },
+    { "id": "skip-before", "from": "open", "to": "mode", "label": "no" },
+    { "id": "before-resolved", "from": "before", "to": "mode", "label": "resolved", "variant": "emphasis" },
+    { "id": "before-gap", "from": "before", "to": "gap", "label": "unresolved", "variant": "security", "role": "error" },
+    { "id": "to-build", "from": "mode", "to": "build", "label": "changes" },
+    { "id": "to-draft", "from": "mode", "to": "draft", "label": "plan only", "role": "branch" },
+    { "id": "build-check", "from": "build", "to": "check" },
+    { "id": "draft-check", "from": "draft", "to": "check" },
+    { "id": "check-final", "from": "check", "to": "final", "label": "required" },
+    { "id": "check-ready", "from": "check", "to": "ready", "label": "not required" },
+    { "id": "final-ready", "from": "final", "to": "ready", "label": "resolved", "variant": "emphasis" },
+    { "id": "final-gap", "from": "final", "to": "gap", "label": "unresolved", "variant": "security", "role": "error" },
+    { "id": "final-rework", "from": "final", "to": "rework_step", "label": "needs revision", "variant": "dashed" },
+    { "id": "rework-check", "from": "rework_step", "to": "check", "label": "recheck", "variant": "dashed", "role": "return" },
+    { "id": "gap-before", "from": "gap", "to": "before", "label": "before", "variant": "dashed", "role": "return" },
+    { "id": "gap-final", "from": "gap", "to": "final", "label": "final", "variant": "dashed", "role": "return" }
+  ]
+}

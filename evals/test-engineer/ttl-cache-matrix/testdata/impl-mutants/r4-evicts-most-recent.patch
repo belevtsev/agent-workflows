@@ -1,0 +1,13 @@
+Breaks R4: a full cache evicts the most recently used entry instead of the least.
+
+--- a/cache.go
++++ b/cache.go
+@@ -63,7 +63,7 @@
+ 		return
+ 	}
+ 	if c.order.Len() >= c.capacity {
+-		back := c.order.Back()
++		back := c.order.Front()
+ 		c.order.Remove(back)
+ 		delete(c.items, back.Value.(*entry[K, V]).key)
+ 	}

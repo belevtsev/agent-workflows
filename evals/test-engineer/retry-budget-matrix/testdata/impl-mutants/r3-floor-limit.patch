@@ -1,0 +1,13 @@
+Breaks R3: the limit rounds ratio * requests down instead of up.
+
+--- a/budget.go
++++ b/budget.go
+@@ -61,7 +61,7 @@
+ 	now := b.clock()
+ 	b.requests = prune(b.requests, now.Add(-window))
+ 	b.retries = prune(b.retries, now.Add(-window))
+-	limit := int(math.Ceil(b.ratio * float64(len(b.requests))))
++	limit := int(math.Floor(b.ratio * float64(len(b.requests))))
+ 	if limit < b.min {
+ 		limit = b.min
+ 	}

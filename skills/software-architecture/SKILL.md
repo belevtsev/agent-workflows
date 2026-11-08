@@ -15,6 +15,6 @@ Compare the current design with the smallest viable change. Add another option o
 
 For an interface change, trace authoritative schema or API, generated artifacts, producers, consumers, stored representations, and deployment order. Check defaults, missing and unknown values, errors, version negotiation, and whether mixed versions must work. Derive migration requirements from the supported deployment model; do not invent legacy support.
 
-Use an editable diagram when relationships or ordering are easier to inspect visually. Label actual ownership, protocol direction, trust boundaries, and failure paths. Use Mermaid for a compact static explanation; use the diagram tool requested by the user for a deliverable. Inspect the rendered result and correct it before delivery.
+Use an editable diagram when relationships or ordering are easier to inspect visually. Label actual ownership, protocol direction, trust boundaries, and failure paths. Draw it with the `archify` skill: an editable JSON spec with an HTML or static SVG export. Inspect the rendered result and correct it before delivery.
 
 For a substantial decision, use the optional [decision record](references/decision-record.md). Finish with a chosen design, reviewable implementation steps, and evidence that would establish the important invariants. When implementation is authorized, carry it through the relevant verification rather than stopping at the design.

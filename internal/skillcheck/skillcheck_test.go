@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,7 +27,6 @@ var repoRoot = filepath.Join("..", "..")
 type manifest struct {
 	Registrations      map[string]string `json:"registrations"`
 	GlobalInstructions string            `json:"global_instructions"`
-	ClaudeAgents       map[string]string `json:"claude_agents"`
 	RequiredLicenses   []string          `json:"required_licenses"`
 	ModelPolicy        string            `json:"model_policy"`
 	ClaudeModelPolicy  string            `json:"claude_model_policy"`
@@ -305,9 +304,6 @@ func TestManifestAndPluginPathsResolve(t *testing.T) {
 	requireExists(t, "global_instructions", m.GlobalInstructions)
 	requireExists(t, "model_policy", m.ModelPolicy)
 	requireExists(t, "claude_model_policy", m.ClaudeModelPolicy)
-	for name, path := range m.ClaudeAgents {
-		requireExists(t, "claude_agents "+name, path)
-	}
 	for _, path := range m.RequiredLicenses {
 		requireExists(t, "required_licenses", path)
 	}
@@ -343,6 +339,19 @@ func TestManifestAndPluginPathsResolve(t *testing.T) {
 				requireExists(t, marketplace, object.Path)
 			}
 		}
+	}
+}
+
+// Contract roster-tests, revision 1, requirement A5: the manifest no longer
+// carries claude_agents; the plugin's agents array is the only roster.
+func TestA5_ManifestHasNoClaudeAgents(t *testing.T) {
+	var members map[string]jsontext.Value
+	readJSON(t, "skills-manifest.json", &members)
+	if len(members) == 0 {
+		t.Fatal("skills-manifest.json has no members")
+	}
+	if _, ok := members["claude_agents"]; ok {
+		t.Error("skills-manifest.json still has a claude_agents member")
 	}
 }
 

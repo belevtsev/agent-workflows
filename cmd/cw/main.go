@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/belevtsev/agent-workflows/internal/cli"
+	"github.com/belevtsev/agent-workflows/v3/internal/cli"
 )
 
 // Release builds set these with -ldflags -X.

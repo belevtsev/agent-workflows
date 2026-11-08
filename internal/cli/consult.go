@@ -10,9 +10,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/graphify"
-	"github.com/belevtsev/agent-workflows/internal/userconfig"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/graphify"
+	"github.com/belevtsev/agent-workflows/v3/internal/userconfig"
 	"github.com/spf13/cobra"
 )
 

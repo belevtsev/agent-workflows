@@ -9,8 +9,8 @@ out of `cw`'s build and test package discovery.
 `cmd/cw` is a thin command entrypoint over `internal/cli`, which has injectable
 I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/projectctx`, `internal/graphify`, `internal/outcomes` and
-`internal/usagelog`; `internal/codexinstall` and `internal/v2migrate` implement
-`cw install --host codex` and `cw migrate-v2`. `cmd/cwdev` holds the maintainer
+`internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
+and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
 evaluation.
 
 ## Verification
@@ -57,8 +57,9 @@ scripts.
 
 Backend decision fixtures live in `internal/skillcheck/testdata/backend-skills`;
 give evaluators raw inputs without their expected decisions. Model evaluations and
-fresh discovery are separate from native test assertions; CI does not call hosted
-models or receive service credentials.
+fresh discovery are separate from native test assertions; `ci.yml` does not call
+hosted models or receive service credentials. Only the separate agent-eval
+workflow does, as described under Continuous integration.
 
 ### Consultation
 
@@ -128,7 +129,7 @@ keep their existing path. Use project-neutral fixtures, including a non-Go
 project, for API and CLI coverage. Worker records remain separate from adviser
 records.
 
-Changes to the independent test-author workflow also need bounded Codex and
+Changes to the independent test-engineer workflow also need bounded Codex and
 Claude smokes outside CI: give fresh authors only an approved contract and test
 scaffold, retain their authored patch identity, then execute their tests against
 unseen correct and defective implementations. Inspect initial context, available
@@ -180,7 +181,12 @@ preserved licenses are covered by the import-provenance checks in
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 
 The race detector runs on Linux only. Only obsolete pull request runs are
-cancelled. CI makes no release and receives no service credentials.
+cancelled. `ci.yml` makes no release and receives no service credentials.
+
+`.github/workflows/evals.yml` is separate: it runs the paid `claude plugin eval`
+suites under `evals/` on demand and weekly, receives the `ANTHROPIC_API_KEY`
+secret, and skips with a notice when that secret is not set. It never runs on
+pushes or pull requests. See `evals/README.md`.
 
 ## Releases
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 )
 
 // limitationNaming reports whether one limitation line contains every word,

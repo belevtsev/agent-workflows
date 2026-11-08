@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/langpack"
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // passedAt reports whether run passed without changing the source and ran at
@@ -18,8 +18,8 @@ func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
 
 // executionProblems asks the language-pack registry which evidence rules
 // apply to a changed substantial task and returns what they report, given the
-// files changed since the baseline and the argv of every passed run at the
-// current snapshot. files is the current manifest. Records started before the
+// files changed since the baseline and, for each planned check whose latest
+// run passed at the current snapshot, that run. files is the current manifest. Records started before the
 // baseline manifest existed cannot list changed files; that gap is returned as
 // a limitation.
 func executionProblems(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
@@ -53,10 +53,12 @@ func executionProblems(root *os.Root, record Record, snapshot projectctx.Snapsho
 			}
 		}
 	}
-	passed := [][]string{}
-	for _, run := range record.Checks {
-		if passedAt(run, snapshot) {
-			passed = append(passed, run.Argv)
+	// Only the latest run of each check counts, as in bindChecks: a pass
+	// followed by a failure at the same source proves nothing.
+	passed := []langpack.Run{}
+	for _, check := range record.Plan.Checks {
+		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
+			passed = append(passed, langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS})
 		}
 	}
 	for _, rule := range langpack.Rules(source) {

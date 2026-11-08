@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // validModel applies the policy pin rules of internal/modelpolicy: a

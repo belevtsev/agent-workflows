@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"encoding/json/jsontext"
@@ -183,7 +184,6 @@ const (
 )
 
 var (
-	heredocPattern    = regexp.MustCompile(`<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)['"]?`)
 	redirectPattern   = regexp.MustCompile(`(?:>|\btee)\s*(\S+)\s*<<|<<-?\s*['"]?[A-Za-z_][A-Za-z0-9_]*['"]?\s*(?:>|\|\s*tee)\s*(\S+)`)
 	separatorPattern  = regexp.MustCompile(`&&|\|\||[;|&(){}]`)
 	assignmentPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=\S*$`)
@@ -960,26 +960,55 @@ func (call shellCall) isCw() bool {
 // programs a command runs. It is not a shell parser: unusual quoting can
 // still be misread, but text in heredoc bodies and quoted strings is ignored.
 func parseShell(command string) shellCommand {
+	shell, _ := splitShell(command)
+	return shell
+}
+
+// splitShell is parseShell that also returns its work: the bytes it passed
+// through its quote scanner, the bytes of each line it searched for a
+// redirect target, and the quote-nesting frames that any step copied or
+// searched. The work must stay linear in len(command): the quote state at
+// each "<<" of a line carries on from the previous one and is never rescanned
+// from the line's start, a line is searched for a redirect at most once, and
+// no per-line or per-marker step may copy or search the whole nesting.
+func splitShell(command string) (shellCommand, int) {
 	var shell shellCommand
+	work := 0
 	lines := strings.Split(strings.ReplaceAll(command, "\\\n", " "), "\n")
 	var kept []string
-	var quotes quoteScanner // the quoting state after the kept lines
+	quotes := quoteScanner{work: &work} // the quoting state after the kept lines
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		var markers [][2]int
 		within, scanned := quotes.clone(), 0
 		target, targetKnown := "", false
-		for _, at := range heredocPattern.FindAllStringSubmatchIndex(line, -1) {
-			within.feed(line[scanned:at[0]])
-			scanned = at[0]
+		for from := 0; ; {
+			at := strings.Index(line[from:], "<<")
+			if at < 0 {
+				break
+			}
+			at += from
+			from = at + 1
 			// <<< is a here-string; << inside a quoted string (but not in a
 			// $(...) or `...` substitution within one) is text, and inside
-			// $((...)) it is a shift.
-			if at[0] > 0 && line[at[0]-1] == '<' || within.quoted() || within.arithmetic() {
+			// $((...)) it is a shift. The quote state is only needed when the
+			// << is not a here-string, and the marker only matched outside
+			// quotes. quoted and arithmetic take constant time, so the order
+			// of the marker and arithmetic checks below does not affect cost.
+			if at > 0 && line[at-1] == '<' {
 				continue
 			}
-			markers = append(markers, [2]int{at[0], at[1]})
-			delimiter := line[at[4]:at[5]]
+			within.feed(line[scanned:at])
+			scanned = at
+			if within.quoted() {
+				continue
+			}
+			end, delimiter, ok := heredocMarker(line, at)
+			if !ok || within.arithmetic() {
+				continue
+			}
+			from = end
+			markers = append(markers, [2]int{at, end})
 			var body []string
 			for i+1 < len(lines) {
 				i++
@@ -989,6 +1018,7 @@ func parseShell(command string) shellCommand {
 				body = append(body, lines[i])
 			}
 			if !targetKnown { // once per line: the line's first redirect
+				work += len(line)
 				if match := redirectPattern.FindStringSubmatch(line); match != nil {
 					target = strings.Trim(cmp.Or(match[1], match[2]), `"'`)
 				}
@@ -997,18 +1027,25 @@ func parseShell(command string) shellCommand {
 			doc := heredoc{line: len(kept), body: strings.Join(body, "\n"), target: target}
 			shell.heredocs = append(shell.heredocs, doc)
 		}
-		if len(markers) > 0 {
-			var b strings.Builder
-			from := 0
-			for _, m := range markers {
-				b.WriteString(line[from:m[0]])
-				from = m[1]
-			}
-			b.WriteString(line[from:])
-			line = b.String()
+		if len(markers) == 0 {
+			// The line is kept as it is, so the scan of its start carries on.
+			within.feed(line[scanned:])
+			within.feed("\n")
+			quotes = within
+			kept = append(kept, line)
+			continue
 		}
+		var b strings.Builder
+		from := 0
+		for _, m := range markers {
+			b.WriteString(line[from:m[0]])
+			from = m[1]
+		}
+		b.WriteString(line[from:])
+		line = b.String()
 		kept = append(kept, line)
-		quotes.feed(line + "\n")
+		quotes.feed(line)
+		quotes.feed("\n")
 	}
 	for _, logical := range splitLogical(strings.Join(kept, "\n")) {
 		// A line that redirects to a file (jq -n '{...}' > FILE) may write a brief.
@@ -1022,7 +1059,43 @@ func parseShell(command string) shellCommand {
 			}
 		}
 	}
-	return shell
+	return shell, work
+}
+
+// heredocMarker matches a heredoc marker at line[at:], which starts with
+// "<<": an optional "-", blanks, an optional quote, the delimiter word and an
+// optional quote, the shape of <<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)['"]?.
+// It reads only the marker's own bytes, so finding every marker of a line
+// stays linear.
+func heredocMarker(line string, at int) (end int, delimiter string, ok bool) {
+	i := at + 2
+	if i < len(line) && line[i] == '-' {
+		i++
+	}
+	for i < len(line) && strings.IndexByte(" \t\n\f\r", line[i]) >= 0 {
+		i++
+	}
+	if i < len(line) && (line[i] == '\'' || line[i] == '"') {
+		i++
+	}
+	start := i
+	for i < len(line) && isDelimiterByte(line[i], i == start) {
+		i++
+	}
+	if i == start {
+		return 0, "", false
+	}
+	delimiter = line[start:i]
+	if i < len(line) && (line[i] == '\'' || line[i] == '"') {
+		i++
+	}
+	return i, delimiter, true
+}
+
+// isDelimiterByte reports whether ch can be part of a heredoc delimiter word
+// ([A-Za-z_] first, then [A-Za-z0-9_]).
+func isDelimiterByte(ch byte, first bool) bool {
+	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || !first && '0' <= ch && ch <= '9'
 }
 
 // commandFields drops what precedes a command word: assignments, compound
@@ -1089,28 +1162,77 @@ type logicalLine struct {
 // $((...)), ((...)) and `...` (whose text is unquoted, even within double
 // quotes), backslash escapes (an escaped byte opens nothing) and comments.
 type quoteScanner struct {
-	stack    []byte // ' " C ($'...') S ($( ) ( A ($(( ) `
-	prev     byte   // the previous byte, 0 at the start
-	escaped  bool   // the next byte is escaped
-	comment  bool   // inside a comment, until the newline
-	opened   bool   // the previous byte opened a $( or ( frame
-	closeArg bool   // the previous byte closed a $((...)); its second ) is due
+	frames   *quoteFrame // the innermost open frame; nil outside any
+	prev     byte        // the previous byte, 0 at the start
+	escaped  bool        // the next byte is escaped
+	comment  bool        // inside a comment, until the newline
+	opened   bool        // the previous byte opened a $( or ( frame
+	closeArg bool        // the previous byte closed a $((...)); its second ) is due
+	work     *int        // counts the bytes fed to this scanner and its clones; nil: strayScanBytes
 }
 
-func (q *quoteScanner) clone() quoteScanner {
-	c := *q
-	c.stack = slices.Clone(q.stack)
-	return c
+// quoteFrame is one open quote or parenthesis, linked to the frame it opened
+// in. Frames are never changed once made, so a scanner and its clones share
+// them: a clone takes constant time however deep the nesting is.
+type quoteFrame struct {
+	up    *quoteFrame
+	ch    byte // ' " C ($'...') S ($( ) ( A ($(( ) `
+	arith int  // the A frames at or below this one
 }
+
+// strayScanBytes counts the bytes fed to quote scanners that no splitShell
+// call counts (a zero quoteScanner, or one whose work was cleared). Splitting
+// never adds to it; tests check that it stays zero, so no scan escapes the
+// work count.
+var strayScanBytes atomic.Int64
+
+// strayScanWork reports strayScanBytes.
+func strayScanWork() int64 { return strayScanBytes.Load() }
+
+// count adds n to the scanner's work, or to strayScanBytes when it has none.
+func (q *quoteScanner) count(n int) {
+	if q.work != nil {
+		*q.work += n
+	} else {
+		strayScanBytes.Add(int64(n))
+	}
+}
+
+// clone copies the scanner. The copy shares the immutable frames, so it
+// copies no frame and adds no work.
+func (q *quoteScanner) clone() quoteScanner { return *q }
 
 func (q *quoteScanner) top() byte {
-	if len(q.stack) == 0 {
+	if q.frames == nil {
 		return 0
 	}
-	return q.stack[len(q.stack)-1]
+	return q.frames.ch
 }
 
-func (q *quoteScanner) pop() { q.stack = q.stack[:len(q.stack)-1] }
+// push opens a frame inside the current one.
+func (q *quoteScanner) push(ch byte) {
+	arith := 0
+	if q.frames != nil {
+		arith = q.frames.arith
+	}
+	if ch == 'A' {
+		arith++
+	}
+	q.frames = &quoteFrame{up: q.frames, ch: ch, arith: arith}
+}
+
+// replace turns the innermost frame into ch. It makes a new frame rather than
+// changing the old one, which a clone may share. Changing it in place would
+// give the same results today, so no test can tell the two apart: a frame is
+// replaced only by the byte right after the one that pushed it, and splitShell
+// clones only after a newline, so the frame is never shared yet. Keeping every
+// frame immutable does not depend on that.
+func (q *quoteScanner) replace(ch byte) {
+	q.pop()
+	q.push(ch)
+}
+
+func (q *quoteScanner) pop() { q.frames = q.frames.up }
 
 // quoted reports whether the text so far ends inside a quoted string.
 func (q *quoteScanner) quoted() bool {
@@ -1118,10 +1240,13 @@ func (q *quoteScanner) quoted() bool {
 	return top == '\'' || top == '"' || top == 'C'
 }
 
-// arithmetic reports whether the text so far ends inside $((...)).
-func (q *quoteScanner) arithmetic() bool { return slices.Contains(q.stack, 'A') }
+// arithmetic reports whether the text so far ends inside $((...)). Each frame
+// records how many A frames lie at or below it, so this searches no frame and
+// adds no work.
+func (q *quoteScanner) arithmetic() bool { return q.frames != nil && q.frames.arith > 0 }
 
 func (q *quoteScanner) feed(text string) {
+	q.count(len(text))
 	for i := 0; i < len(text); i++ {
 		ch := text[i]
 		opened := false
@@ -1157,28 +1282,28 @@ func (q *quoteScanner) feed(text string) {
 			case ch == '"':
 				q.pop()
 			case ch == '(' && q.prev == '$':
-				q.stack = append(q.stack, 'S')
+				q.push('S')
 				opened = true
 			case ch == '`':
-				q.stack = append(q.stack, '`')
+				q.push('`')
 			}
 		default:
 			switch {
 			case ch == '\\':
 				q.escaped = true
 			case ch == '\'' && q.prev == '$':
-				q.stack = append(q.stack, 'C')
+				q.push('C')
 			case ch == '\'' || ch == '"':
-				q.stack = append(q.stack, ch)
+				q.push(ch)
 			case ch == '#' && (q.prev == 0 || strings.IndexByte(" \t\n;&|()", q.prev) >= 0):
 				q.comment = true
 			case ch == '(' && q.opened:
-				q.stack[len(q.stack)-1] = 'A'
+				q.replace('A')
 			case ch == '(' && q.prev == '$':
-				q.stack = append(q.stack, 'S')
+				q.push('S')
 				opened = true
 			case ch == '(':
-				q.stack = append(q.stack, '(')
+				q.push('(')
 				opened = true // (( starts an arithmetic command
 			case ch == ')' && q.top() == 'A':
 				q.pop()
@@ -1188,7 +1313,7 @@ func (q *quoteScanner) feed(text string) {
 			case ch == '`' && q.top() == '`':
 				q.pop()
 			case ch == '`':
-				q.stack = append(q.stack, '`')
+				q.push('`')
 			}
 		}
 		q.opened = opened
@@ -1736,8 +1861,10 @@ func (c *composer) roles(report *Report) []roleChoice {
 		}
 		link := c.links[a.stem]
 		description := agent.Description
+		agentType := agent.AgentType
 		if link != nil {
 			description = cmp.Or(description, link.description)
+			agentType = cmp.Or(agentType, link.subagentType)
 		}
 		if link != nil && link.brief != nil {
 			switch link.brief.role {
@@ -1758,15 +1885,11 @@ func (c *composer) roles(report *Report) []roleChoice {
 					continue
 				}
 				choices[i] = roleChoice{link.brief.role, "cw_task_assign"}
-				if link.brief.role == "implementation" && testAuthorPattern.MatchString(link.brief.text) {
+				if link.brief.role == "implementation" && (testAuthorPattern.MatchString(link.brief.text) || describedRole("", agentType).role == "test_author") {
 					choices[i].role = "test_author"
 				}
 				continue
 			}
-		}
-		agentType := agent.AgentType
-		if link != nil {
-			agentType = cmp.Or(agentType, link.subagentType)
 		}
 		choices[i] = describedRole(description, agentType)
 	}
@@ -1797,16 +1920,18 @@ func describedRole(description, agentType string) roleChoice {
 	case evidencePattern.MatchString(d):
 		return roleChoice{"evidence", "description"}
 	}
-	switch agentType {
+	// Plugin agents are dispatched by their namespaced type; transcripts from
+	// before v3 name the cw- types, which keep their roles.
+	switch strings.TrimPrefix(agentType, "agent-workflows:") {
 	case "Explore", "web-fetch", "claude-code-guide":
 		return roleChoice{"evidence", "agent_type"}
 	case "Plan":
 		return roleChoice{"planning", "agent_type"}
-	case "cw-reviewer":
+	case "reviewer", "cw-reviewer":
 		return roleChoice{"review", "agent_type"}
-	case "cw-test-author":
+	case "test-engineer", "cw-test-author":
 		return roleChoice{"test_author", "agent_type"}
-	case "cw-github-worker":
+	case "github-worker", "cw-github-worker":
 		return roleChoice{"github", "agent_type"}
 	}
 	return roleChoice{"other", "none"}

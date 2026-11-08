@@ -28,12 +28,21 @@ func TestRulesSelectsLanguageRulesByProject(t *testing.T) {
 	}
 }
 
+// argvRuns wraps each argv as a passed run without GOFLAGS.
+func argvRuns(argvs [][]string) []Run {
+	var runs []Run
+	for _, argv := range argvs {
+		runs = append(runs, Run{Argv: argv})
+	}
+	return runs
+}
+
 func TestAnyPassedRunNeedsOnePassedRun(t *testing.T) {
 	source := Source{Current: []string{"main.py"}, Changed: []string{"main.py"}}
 	if got := (AnyPassedRun{}).Problems(source, nil); !slices.Equal(got, []string{"changed substantial task has no passed check run at the current source"}) {
 		t.Fatalf("no passed run: problems %q", got)
 	}
-	if got := (AnyPassedRun{}).Problems(source, [][]string{{"pytest"}}); len(got) != 0 {
+	if got := (AnyPassedRun{}).Problems(source, argvRuns([][]string{{"pytest"}})); len(got) != 0 {
 		t.Fatalf("one passed run: problems %q", got)
 	}
 }
@@ -56,14 +65,14 @@ func TestGoTestsNeedsACoveringRunPerChangedPackage(t *testing.T) {
 		{"root package covered by .", []string{"a.go"}, [][]string{{"go", "test", "."}}, nil},
 		{"deleted file of a remaining package", []string{"internal/pkg/gone.go"}, nil, []string{pkgProblem}},
 		{"deleted package", []string{"internal/removed/removed.go"}, nil, nil},
-		{"only a test file changed", []string{"internal/pkg/pkg_test.go"}, nil, nil},
-		{"only testdata changed", []string{"internal/pkg/testdata/fixture.go"}, nil, nil},
+		{"only a test file changed", []string{"internal/pkg/pkg_test.go"}, nil, []string{pkgProblem}},
+		{"only testdata changed", []string{"internal/pkg/testdata/fixture.go"}, nil, []string{pkgProblem}},
 		{"only a nested module changed", []string{"nested/nested.go"}, nil, nil},
-		{"only non-Go files changed", []string{"README.md"}, nil, nil},
+		{"only a non-Go file of the root package changed", []string{"README.md"}, nil, []string{"changed package . has no passed go test run at the current source"}},
 		{"changed files unknown", nil, nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := (GoTests{}).Problems(Source{Current: goModule, Changed: tc.changed}, tc.passed)
+			got := (GoTests{}).Problems(Source{Current: goModule, Changed: tc.changed}, argvRuns(tc.passed))
 			if !slices.Equal(got, tc.want) {
 				t.Fatalf("problems %q, want %q", got, tc.want)
 			}

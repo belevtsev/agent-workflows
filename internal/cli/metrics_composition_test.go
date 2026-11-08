@@ -20,7 +20,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 )
 
 const compTol = 1e-9
@@ -2527,11 +2526,14 @@ func TestMetricsCompositionStalePhaseDollarQuoteEscape(t *testing.T) {
 	compWantBoundaries(t, comp, "coordinator", "task_start")
 }
 
-// (8) Splitting is linear.
+// (8) Long commands split correctly end to end. Linearity itself (no rescan of the
+// text before each "<<") is asserted by the usagelog work-count test
+// TestSplitShellWorkLinear, which does not depend on machine speed; this test has
+// no timing assertion.
 //   - "double_quoted" / "single_quoted" (revision 10): echo "<100,000 a<<b words>" (about
 //     500 KB) then the cw call on the next line; none of the "<<" is a heredoc, so the cw
-//     call is a command. Deciding quote state for each "<<" must not rescan the text before it.
-//   - "first" (revision 9 bound, 20,000 unquoted words, about 100 KB): the cw call precedes
+//     call is a command.
+//   - "first" (revision 9, 20,000 unquoted words, about 100 KB): the cw call precedes
 //     the long line, so its boundary does not depend on how the heredoc markers are read.
 func TestMetricsCompositionStalePhaseLongCommandLinear(t *testing.T) {
 	long := strings.TrimSpace(strings.Repeat("a<<b ", 100000))
@@ -2544,14 +2546,9 @@ func TestMetricsCompositionStalePhaseLongCommandLinear(t *testing.T) {
 	for name, cmd := range cases {
 		t.Run(name, func(t *testing.T) {
 			mainPath, prices := compWriteCallsFixture(t, compBashCalls(cmd), nil)
-			start := time.Now()
 			out, err := executeImport(t, "--claude-transcript", mainPath, "--prices", prices, "--composition")
-			elapsed := time.Since(start)
 			if err != nil {
 				t.Fatalf("import: %v (exit %d)", err, ExitCode(err))
-			}
-			if elapsed >= 10*time.Second {
-				t.Errorf("import took %v, want under 10s", elapsed)
 			}
 			var report map[string]any
 			if err := json.Unmarshal([]byte(out), &report); err != nil {

@@ -18,6 +18,8 @@ same contract.
   read each `SKILL.md`.
 - An artefact directory for your outputs, outside the source tree and separate
   from the architect's.
+- On revision, the accepted [code review](code-review.md) findings and the
+  coordinator's dispositions, by finding ID.
 
 ## Inputs you must never receive
 
@@ -38,6 +40,8 @@ same contract.
    a Checks section listing each command run, its exit status and the log path.
 3. The handoff result in the shape [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
    describes, with `changed_files` covering every file you touched.
+4. On revision, `change-log.md` in the artefact directory answering every code
+   review finding by ID: what changed, with `path:line`, or why nothing did.
 
 ## Quality bar
 

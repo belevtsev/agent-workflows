@@ -3,8 +3,8 @@
 Claude Code gets the skills and worker agents from the plugin in
 `.claude-plugin/`, and Codex from `.codex-plugin/` and
 `.agents/plugins/marketplace.json`. This page covers installing them and `cw`,
-the Codex instruction block, removing a v2 installation, paths, the model policy
-lookup and adviser keys.
+the Codex instruction block, cleaning up a v2 installation by hand, paths, the
+model policy lookup and adviser keys.
 
 ## Install
 
@@ -18,10 +18,10 @@ claude plugin install agent-workflows@agent-workflows
 Inside a session, `/plugin marketplace add belevtsev/agent-workflows` and
 `/plugin install agent-workflows@agent-workflows` do the same. The Go skill pack
 is a second plugin in the same marketplace, `cc-skills-golang@agent-workflows`.
-The plugin provides the skills and the worker agents
-(`agent-workflows:cw-reviewer`, `agent-workflows:cw-test-author`,
-`agent-workflows:cw-github-worker`, and the architect, implementer and
-test-engineer agents under `agents/`). It does not
+The plugin provides the skills and the six worker agents under `agents/`
+(`agent-workflows:spec-writer`, `agent-workflows:architect`,
+`agent-workflows:implementer`, `agent-workflows:test-engineer`,
+`agent-workflows:reviewer` and `agent-workflows:github-worker`). It does not
 edit `~/.claude/CLAUDE.md` or `settings.json`. `cw install --host claude` is
 refused with a pointer to the plugin.
 
@@ -47,12 +47,13 @@ Docker skills in `third_party/docker-skills` are in neither plugin; only
 With Go installed, build from the main branch:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/cmd/cw@main
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main
 ```
 
-Use `@main` or a commit, not `@latest` or a `v3` tag: the module path has no
-major-version suffix, so Go resolves `@latest` to an old v1 release and rejects
-`@v3.x.y`. `cw version` then shows a Go pseudo-version that names the commit.
+`@latest` works once the first v3 release tag exists. Until then use `@main` or
+a commit; `cw version` then shows a Go pseudo-version that names the commit. The
+old path without `/v3` gets no updates: its `@main` and `@latest` queries fail
+with a module path mismatch.
 
 Or download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
@@ -101,8 +102,8 @@ It also removes links into the checkout that the manifest no longer registers.
 
 It owns only symlinks in `~/.agents/skills` that point into the checkout. Anything
 else at a registered name, such as a directory, a file or a link elsewhere, makes
-it fail without changing anything. Remove that entry, or run `cw migrate-v2` when
-it is a v2 link.
+it fail without changing anything. Remove that entry; for a link a v2 installation
+left, see [cleaning up a v2 installation](#cleaning-up-a-v2-installation).
 
 ```sh
 cw uninstall --host codex
@@ -118,49 +119,50 @@ There is no state file, journal, snapshot or rollback. Both commands reject
 `--dry-run`. `cw install --host claude` and `cw uninstall --host claude` are usage
 errors that point at the Claude Code plugin.
 
-## Moving from v2
+## Cleaning up a v2 installation
 
-v2 kept immutable release snapshots under the state directory and linked the
-skills, the Claude Code worker agents and `~/.local/bin/cw` into them. Remove that
-installation with the v3 `cw`:
+v3 has no migration command. If you used v2, remove what it left behind by hand,
+then install the plugins. Below, the state directory is
+`$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows`, or the
+directory you gave v2, and the Claude home is `$CLAUDE_CONFIG_DIR`, else
+`~/.claude`, or the one you gave v2.
 
-```sh
-cw migrate-v2 --dry-run
-cw migrate-v2
-```
+- **Links.** v2 linked skills and agents into its release snapshots. List the
+  links with `ls -l ~/.agents/skills <claude-home>/skills <claude-home>/agents ~/.local/bin`
+  and `rm` each one whose target is under the state directory: skill links,
+  `cw-*.md` agents and `~/.local/bin/cw`. `rm` on a link removes only the link.
+  `cw install --host codex` refuses to replace a leftover link in
+  `~/.agents/skills`, so remove those first.
+  Leave regular files and links that point elsewhere, such as a v3 `cw` you put
+  in `~/.local/bin`.
+- **Adopted skills.** If you let v2 adopt your own Codex skills
+  (`--adopt-personal-skills`), it moved each one from `~/.agents/skills`,
+  `$CODEX_HOME/skills` or `~/.codex/skills` to
+  `backups/personal-skills/<name>` in the state directory, and linked
+  `~/.agents/skills/<name>` to its own copy. After you remove that link, move
+  each skill back to where it was; do not delete `backups/` before that.
+- **Instruction blocks.** Delete the block from `<!-- agent-workflows-start -->`
+  to `<!-- agent-workflows-end -->`, markers included, in
+  `<claude-home>/CLAUDE.md` and `~/.codex/AGENTS.md` (`$CODEX_HOME/AGENTS.md`).
+  The Claude Code plugin does not use it. `cw install --host codex` rewrites the
+  block in `AGENTS.md`, so skip that file if you install that way.
+- **State.** In the state directory, `current`, `releases`, `bases`, `runtime`,
+  `state.json`, `journal.json` and `mutation.lock` belong to v2 and are safe to
+  delete. Some v2 files may be read-only, so make the directories writable first
+  (set `state` to the directory you gave v2, if you gave one):
 
-The dry run lists each action without changing anything. `cw migrate-v2` removes:
+  ```sh
+  state="${XDG_STATE_HOME:-$HOME/.local/state}/agent-workflows"
+  chmod -R u+w "$state/releases" "$state/bases" "$state/runtime" 2>/dev/null
+  rm -rf "$state/current" "$state/releases" "$state/bases" "$state/runtime" "$state/state.json" "$state/journal.json" "$state/mutation.lock"
+  ```
 
-- the symlinks in `~/.claude/skills/`, `~/.claude/agents/cw-*.md`,
-  `~/.agents/skills/` and `~/.local/bin/cw` that point into the v2 state directory;
-- while v2's `state.json` or `journal.json` is still in the state directory, the
-  managed block in `~/.claude/CLAUDE.md` and `$CODEX_HOME/AGENTS.md`, and in the
-  Claude and Codex homes v2 recorded there (the skill links under a recorded
-  Claude home go too);
-- `current`, `releases`, `bases`, `runtime`, `state.json` and `journal.json` in the
-  state directory.
+  Keep `workflow-tasks/` and the state directory itself: `cw` keeps its task
+  records there.
 
-It keeps `workflow-tasks/` and everything else, and running it again is safe:
-without the v2 records it never touches `AGENTS.md` or `CLAUDE.md`. If v2 used a
-custom state directory, pass it with `--state-dir`. A directory with none of
-the entries above has nothing to migrate, and one with release entries but
-neither `state.json` nor `journal.json` must be named `agent-workflows`, so a
-mistyped path such as `~/.local/state` changes nothing. Relative
-paths are resolved against the current directory. If a step fails, the output
-lists only the actions completed before it. It
-does not touch the model keys v2 wrote into `~/.claude/settings.json` or
-`$CODEX_HOME/config.toml`, or the `PATH` line v2 added to a shell profile; edit
-those by hand if you want them gone.
-
-Order:
-
-1. Install the v3 `cw` ([get cw](#get-cw)) and run `cw migrate-v2`.
-2. Install the plugins.
-3. For Codex, if you want the instruction block, run `cw install --host codex`
-   instead of installing the Codex plugin.
-
-Run `cw migrate-v2` before `cw install --host codex`: while the v2 records exist,
-it strips the same markers from `AGENTS.md`.
+v2 also wrote model keys into `<claude-home>/settings.json` and
+`$CODEX_HOME/config.toml`, and may have added a `PATH` line to a shell profile;
+edit those by hand if you want them gone.
 
 ## Paths
 
@@ -218,7 +220,7 @@ limitations), `cw doctor` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file),
 `cw task contract-extract` prints requested Go declarations without bodies for a
-test author's contract, and
+test engineer's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid
 value (task, assignment hash, agent, current snapshot, result hash, coordinator
 and file hashes) while validating explicit values as before. `cw metrics schema` describes the versioned observation format;
@@ -334,7 +336,7 @@ again. Installation and local validation do not require keys or make hosted
 requests.
 
 A terminal export does not update an already running desktop app; use the
-[setup instructions](../README.md#make-keys-visible-to-the-agent) and a fresh
+[setup instructions](advisers.md#make-keys-visible-to-the-agent) and a fresh
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
 

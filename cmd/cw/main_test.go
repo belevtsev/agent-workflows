@@ -36,7 +36,7 @@ func buildPlainCW(t *testing.T) string {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(t.TempDir(), "cw")
-	build := exec.CommandContext(t.Context(), goTool(t), "build", "-o", binary, "github.com/belevtsev/agent-workflows/cmd/cw")
+	build := exec.CommandContext(t.Context(), goTool(t), "build", "-o", binary, "github.com/belevtsev/agent-workflows/v3/cmd/cw")
 	build.Dir = module
 	build.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := build.CombinedOutput(); err != nil {

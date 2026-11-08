@@ -226,42 +226,96 @@ func TestSeverityContractRejectedBlockerNeedsLaterReview(t *testing.T) {
 	})
 }
 
-// A review assigned before the blocker was rejected has a bundle that does
-// not list the rejection, so accepting it afterwards does not clear the
-// blocker.
-func TestSeverityContractEarlierBundleDoesNotClear(t *testing.T) {
+// The record order refuses accepting an earlier review once a later review is
+// assigned, so a review whose bundle predates a rejection can never be the
+// review that clears it.
+func TestSeverityContractEarlierReviewAcceptanceRefusedAfterLaterAssignment(t *testing.T) {
 	const id = "blocker-finding-11"
 	record, ref := preparedChangedTask(t)
 	record = mustAssignWorker(t, record, workerBrief("review-1", "/root/reviewer-1", "review", []string{"."}, "focused"))
 	result := workerResult(t, record, "review-1", "completed", ref)
 	result.Findings = []WorkerFinding{severityFinding(id, "blocker", ref)}
 	record = mustSubmitWorker(t, record, result)
-
-	brief := workerBrief("review-2", "/root/reviewer-2", "review", []string{"."}, "focused")
-	brief.Bundle = fixtureReviewBundle(t, record, "review-2")
-	updated, err := AssignWorker(t.Context(), record.Directory, brief)
-	if err != nil {
-		t.Skipf("a review cannot be assigned while an earlier result awaits acceptance: %v", err)
-	}
-	record = updated
+	record = mustAssignWorker(t, record, workerBrief("review-2", "/root/reviewer-2", "review", []string{"."}, "focused"))
 
 	acceptance := workerAcceptance(t, record, "review-1", "accepted", ref)
 	acceptance.Findings = []FindingDisposition{severityRejected(id, ref)}
-	if record, err = AcceptWorkerResult(t.Context(), record.Directory, acceptance); err != nil {
-		// The record order already rules the scenario out.
-		t.Skipf("the rejection cannot be recorded after a later review is assigned: %v", err)
+	before := productionTaskBytes(t, record.Directory)
+	if _, err := AcceptWorkerResult(t.Context(), record.Directory, acceptance); err == nil {
+		t.Fatal("accepting review-1 after review-2 was assigned was not refused")
 	}
-	// The earlier review may be refused as stale; if it is recorded, its
-	// acceptance must still not clear the blocker.
-	if submitted, err := SubmitWorkerResult(t.Context(), record.Directory, workerResult(t, record, "review-2", "completed", ref)); err != nil {
-		t.Logf("earlier-assigned review refused at handoff: %v", err)
-	} else if accepted, err := AcceptWorkerResult(t.Context(), submitted.Directory, workerAcceptance(t, submitted, "review-2", "accepted", ref)); err != nil {
-		t.Logf("earlier-assigned review refused at acceptance: %v", err)
-		record = submitted
-	} else {
-		record = accepted
+	after := productionTaskBytes(t, record.Directory)
+	if len(before) != len(after) {
+		t.Errorf("refused acceptance changed the task files: %d before, %d after", len(before), len(after))
 	}
-	if problems := severityMentions(severityVerify(t, record).Problems, id); len(problems) == 0 {
-		t.Error("a review whose bundle predates the rejection cleared the blocker")
+	for name, data := range before {
+		if after[name] != data {
+			t.Errorf("refused acceptance changed %s", name)
+		}
 	}
+}
+
+// severityTryReview records a review by agent that raises no finding, as far
+// as the record order allows, and returns the latest record. A refusal is
+// logged: a review that cannot be recorded cannot clear anything.
+func severityTryReview(t *testing.T, record Record, id, agent string, ref SourceRef) Record {
+	t.Helper()
+	brief := workerBrief(id, agent, "review", []string{"."}, "focused")
+	brief.Bundle = fixtureReviewBundle(t, record, id)
+	updated, err := AssignWorker(t.Context(), record.Directory, brief)
+	if err != nil {
+		t.Logf("review by %s refused at assignment: %v", agent, err)
+		return record
+	}
+	record = updated
+	if updated, err = SubmitWorkerResult(t.Context(), record.Directory, workerResult(t, record, id, "completed", ref)); err != nil {
+		t.Logf("review by %s refused at handoff: %v", agent, err)
+		return record
+	}
+	record = updated
+	if updated, err = AcceptWorkerResult(t.Context(), record.Directory, workerAcceptance(t, record, id, "accepted", ref)); err != nil {
+		t.Logf("review by %s refused at acceptance: %v", agent, err)
+		return record
+	}
+	return updated
+}
+
+// Clearing a rejected blocker needs an independent reviewer: a later
+// accepted review by the coordinator or by an implementation worker's agent
+// leaves it a problem.
+func TestSeverityContractRejectedBlockerNeedsIndependentReviewer(t *testing.T) {
+	const id = "blocker-finding-13"
+
+	t.Run("coordinator as reviewer", func(t *testing.T) {
+		record, ref := severityBlockerTask(t, id)
+		coordinator := record.Plan.CoordinatorID
+		if coordinator == "" {
+			t.Fatal("the plan records no coordinator")
+		}
+		record = severityTryReview(t, record, "review-2", coordinator, ref)
+		if problems := severityMentions(severityVerify(t, record).Problems, id); len(problems) == 0 {
+			t.Errorf("a review by the coordinator %s cleared the blocker", coordinator)
+		}
+	})
+
+	t.Run("implementation worker as reviewer", func(t *testing.T) {
+		record, ref := severityBlockerTask(t, id)
+		const implementer = "/root/implementation"
+		record = mustAssignWorker(t, record, workerBrief("impl", implementer, "implementation", []string{"source.txt"}, "focused"))
+		record = mustSubmitWorker(t, record, workerResult(t, record, "impl", "completed", ref))
+		record = mustAcceptWorker(t, record, workerAcceptance(t, record, "impl", "accepted", ref))
+		if problems := severityMentions(severityVerify(t, record).Problems, id); len(problems) == 0 {
+			t.Fatal("precondition: the blocker is not a problem after the implementation result")
+		}
+		record = severityTryReview(t, record, "review-2", implementer, ref)
+		if problems := severityMentions(severityVerify(t, record).Problems, id); len(problems) == 0 {
+			t.Errorf("a review by the implementation worker %s cleared the blocker", implementer)
+		}
+
+		// Control: in the same record, an independent reviewer clears it.
+		record = severityTryReview(t, record, "review-3", "/root/reviewer-3", ref)
+		if problems := severityMentions(severityVerify(t, record).Problems, id); len(problems) != 0 {
+			t.Errorf("control: an independent later review left problems %q", problems)
+		}
+	})
 }
