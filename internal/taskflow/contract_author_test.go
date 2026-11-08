@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Independent contract tests for WP9 (packet revisions 1 and 2). Every test names the

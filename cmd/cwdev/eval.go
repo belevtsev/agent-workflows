@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/credentials"
-	"github.com/belevtsev/agent-workflows/internal/userconfig"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
+	"github.com/belevtsev/agent-workflows/v3/internal/userconfig"
 )
 
 // exitStatus is the process status of a command that reported its own result.

@@ -1,4 +1,4 @@
-module github.com/belevtsev/agent-workflows
+module github.com/belevtsev/agent-workflows/v3
 
 go 1.27.1
 

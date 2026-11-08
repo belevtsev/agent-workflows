@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/consult"
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // noAdvisersLimitation is the verify limitation for a task bound to no advisers.

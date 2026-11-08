@@ -6,7 +6,7 @@
 // presented as a recorded amount.
 package usagelog
 
-import "github.com/belevtsev/agent-workflows/internal/outcomes"
+import "github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 
 const (
 	// ReportSchemaVersion versions the JSON import report.

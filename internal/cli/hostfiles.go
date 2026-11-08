@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/codexinstall"
-	"github.com/belevtsev/agent-workflows/internal/v2migrate"
+	"github.com/belevtsev/agent-workflows/v3/internal/codexinstall"
+	"github.com/belevtsev/agent-workflows/v3/internal/v2migrate"
 	"github.com/spf13/cobra"
 )
 

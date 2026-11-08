@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
 // shippedPolicy is the shipped task-orchestration policy, relative to this

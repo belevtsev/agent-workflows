@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 )
 
 func metricsConfig(t *testing.T, root string) (Config, *bytes.Buffer) {

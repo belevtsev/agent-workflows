@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/modelpolicy"
+	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 	"gopkg.in/yaml.v3"
 )
 

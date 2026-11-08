@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/spf13/cobra"
 )
 

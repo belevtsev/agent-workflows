@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/internal/langpack"
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // passedAt reports whether run passed without changing the source and ran at

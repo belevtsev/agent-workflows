@@ -12,7 +12,7 @@ import (
 
 	json "encoding/json/v2"
 
-	"github.com/belevtsev/agent-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 )
 
 // PriceTable is an explicitly supplied rate table in USD per million tokens.
