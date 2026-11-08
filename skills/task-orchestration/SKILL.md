@@ -1,6 +1,6 @@
 ---
 name: task-orchestration
-description: Coordinate substantial work with bounded workers; dispatch independent test authors and routine GitHub workers.
+description: Coordinate substantial work with bounded workers; dispatch independent test engineers, reviewers at every stage and routine GitHub workers.
 ---
 
 # Task orchestration
@@ -15,7 +15,7 @@ platforms or shells, more than about 300 changed lines, or a design choice with
 real alternatives that the source cannot settle. Everything else stays
 lightweight: the coder writes the tests, the reviewer checks each against the
 Code Review Rules, and commits and pushes run directly under the user's
-authorization. Dispatch an independent [test author](references/test-author.md)
+authorization. Dispatch an independent [test engineer](references/contracts/test-engineer.md)
 when a substantial task adds or materially changes behavioural tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks; dispatch
 the [GitHub worker](references/github-worker.md) to publish a substantial task or
@@ -45,12 +45,17 @@ satisfies a later state.
    context, adjudicate and attach a resolved record before implementation edits
    or worker dispatch; without implementation, before substantive drafting or review.
 3. **Implement and verify.** Build new behaviour along the
-   [seven-role path](references/contracts/README.md#flow): spec writer → spec
-   reviewer → architect → interface contract → implementer ∥ test engineer
-   (isolated) → integrate and run the matrix → reviewer. The spec's scenarios
-   are test engineer requirements; that file says when to skip the spec step.
-   Assign and dispatch workers, integrate, run the selected checks and obtain
-   the independent review within the [review cap](references/worker-handoffs.md#review-substantial-changes).
+   [flow](references/contracts/README.md#flow), with a review loop at every
+   stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
+   implementer ∥ test engineer ⇄ reviewer (tests) → integrate and run →
+   reviewer (code) ⇄ implementer. Findings go back to that stage's author, and
+   the [review cap](references/worker-handoffs.md#review-stages) applies per
+   stage; that file says when a small task skips the spec and design stages.
+   After state 2, advisers join only at the four
+   [adviser points](references/consultation-helper.md#adviser-points-in-the-flow)
+   and only when available; without them the flow runs unchanged. Assign and
+   dispatch workers, integrate, run the selected checks and obtain the
+   independent code review.
 4. **Fresh final checkpoint** (when required). Consult with a new request from
    the completed work, current diff, check results and remaining limitations,
    using the `final` context; adjudicate and attach it.
@@ -98,7 +103,8 @@ a task is substantial or replace a gate.
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
 | Advisers, checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
-| Independent tests | [test-author](references/test-author.md) |
+| Roles, flow, review stages | [contracts](references/contracts/README.md) |
+| Independent tests | [test-engineer](references/contracts/test-engineer.md) |
 | Commit, push, PR | [github-worker](references/github-worker.md) |
 | Jira, Confluence, GitHub evidence | [connected-sources](references/connected-sources.md) |
 | Adviser providers | [adviser-providers](references/adviser-providers.md) |

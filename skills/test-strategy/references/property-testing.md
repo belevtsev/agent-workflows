@@ -2,7 +2,7 @@
 
 Read this when a rule holds across a whole input domain, or when the correct answer can't be stated exactly. An example test checks one point. A property states a rule and lets a generator look for the counterexample.
 
-Follow the [test-author protocol](../../task-orchestration/references/test-author.md) for properties, models, generators, and corpus changes. Authors use approved contracts and interfaces, never implementation source or raw execution evidence. Missing guarantees, seams, or dependencies go to the coordinator.
+Follow the [test-engineer contract](../../task-orchestration/references/contracts/test-engineer.md) for properties, models, generators, and corpus changes. Authors use approved contracts and interfaces, never implementation source or raw execution evidence. Missing guarantees, seams, or dependencies go to the coordinator.
 
 That trade only pays when the contract has a shape to assert, such as an inverse, an invariant, or an approved reference to compare with. Code without one gets example tests, and that's a valid conclusion. A source-aware coordinator can check whether the shape is missing or buried under I/O and propose an approved interface; extracting production code stays outside the test author's ownership.
 

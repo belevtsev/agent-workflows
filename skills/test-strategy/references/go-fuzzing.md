@@ -9,7 +9,7 @@ automatically.
 Use the [official Go fuzzing guide](https://go.dev/doc/security/fuzz/) for the
 current runner and corpus mechanics rather than inventing version-specific flags.
 
-The [test-author protocol](../../task-orchestration/references/test-author.md)
+The [test-engineer contract](../../task-orchestration/references/contracts/test-engineer.md)
 applies to targets, generators, harness helpers, and seed/corpus changes. The
 author uses approved contracts, interface extracts, scaffolding, and dependencies;
 the source-aware verifier owns integrated execution and raw failure evidence.

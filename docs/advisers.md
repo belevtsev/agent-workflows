@@ -1,14 +1,14 @@
 # Advisers
 
 Advisers are optional. This page covers which hosted advisers exist, how to set
-up their keys, how `cw consult` uses them at the two decision checkpoints, and
-how the coordinator decides. Policy details are in
+up their keys, how `cw consult` uses them at the decision points of the flow,
+and how the coordinator decides. Policy details are in
 [workflow and integrations](workflow.md#decision-advisers).
 
 ## Configure advisers
 
-Advisers are optional hosted models that return typed Choice judgments at the two
-decision checkpoints. An adviser participates only when it is configured:
+Advisers are optional hosted models that return typed Choice judgments at the
+decision points of the flow. An adviser participates only when it is configured:
 
 - it is enabled in `consultation.providers` of the active
   [model policy](../skills/task-orchestration/model-policy.yaml) with its pinned model;
@@ -204,6 +204,18 @@ changed code must behave alike on several platforms or shells, the plan declares
 doubt, it keeps them. Tasks without implementation
 use the before checkpoint ahead of substantive drafting or review. Small edits and
 direct factual answers remain lightweight.
+
+After the before checkpoint, advisers join the flow only at four decision
+points: (a) after the spec
+review, on an open question the spec leaves to a choice; (b) on the architect's
+choice between real options, before the design review; (c) before the
+coordinator rejects a `blocker` or `major` review finding at any stage; and (d)
+the final checkpoint before `cw task verify`. When the task's binding holds an
+adviser, the coordinator consults it at each point; when it holds none, points a
+to c are skipped and recorded as "no advisers configured", point d attaches the
+offline `no_advisers_configured` record, and the flow runs as it would without
+advisers. The [adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)
+give the commands.
 
 Configured advisers receive the same permitted evidence, questions and neutral
 Choice options. The [consultation helper](../skills/task-orchestration/references/consultation-helper.md)

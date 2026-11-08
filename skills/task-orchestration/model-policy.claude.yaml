@@ -40,15 +40,18 @@ profiles:
 roles:
   coordinator: substantive
   coding: substantive
-  testing: substantive
   planning: decision
   architecture: decision
-  # Contract roles for the seven-role flow (references/contracts/README.md).
+  # Contract roles for the flow (references/contracts/README.md). Every review
+  # stage runs the reviewer agent: spec_review, design_review, test_review and
+  # review (code review); review_followup covers every later review of a stage.
   spec_writer: substantive
-  spec_reviewer: substantive
+  spec_review: substantive
   architect: decision
+  design_review: substantive
   implementer: substantive
   test_engineer: substantive
+  test_review: substantive
   review: substantive
   review_followup: review_followup
   diagnosis: decision

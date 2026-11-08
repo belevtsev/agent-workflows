@@ -2,7 +2,7 @@
 
 Read this when writing or changing tests, or adding fakes or test helpers. A test exists to catch a specific break, so it has to name that break and exercise the real thing.
 
-Apply the [test-author protocol](../../task-orchestration/references/test-author.md): authors use only the coordinator's approved contract packet and exact test-file scope. Source-aware investigation, integrated execution, and mutation analysis belong to the coordinator/verifier. Ask for missing contract details or private seams instead of inspecting the implementation.
+Apply the [test-engineer contract](../../task-orchestration/references/contracts/test-engineer.md): authors use only the coordinator's approved contract packet and exact test-file scope. Source-aware investigation, integrated execution, and mutation analysis belong to the coordinator/verifier. Ask for missing contract details or private seams instead of inspecting the implementation.
 
 ## Name the break
 

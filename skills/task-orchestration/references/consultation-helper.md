@@ -55,6 +55,44 @@ is restricted, record that limitation and follow the source-evidence fallback; d
 not bypass restrictions or add retries. Installation, validation and CI do not
 call hosted models.
 
+## Adviser points in the flow
+
+Once a task has started, and after the before checkpoint when its checkpoints
+are required (unchanged, [above](#task-checkpoints)), advisers enter the
+[flow](contracts/README.md#flow) at four decision points only, never at every
+step:
+
+| Point | When | Record |
+| --- | --- | --- |
+| a | After the spec review, on each open question the spec leaves to a choice | interim consultation |
+| b | On the architect's choice between real options, before the design review | interim consultation |
+| c | Before the coordinator rejects a `blocker` or `major` finding at any [review stage](worker-handoffs.md#review-stages) | interim consultation |
+| d | The final checkpoint before `cw task verify` | the task's `final` checkpoint ([above](#task-checkpoints)) |
+
+An adviser is available when the policy enables it, the user has not disabled it
+and its credential is present: the [participation](#participation) rule, which
+`cw task start` records as the task's `advisers` binding (`cw task show --field advisers`;
+`cw doctor` and `cw keys status` report missing credentials). With any adviser
+bound, the coordinator consults at each point. With none bound, points a to c
+are skipped and the ledger records `no advisers configured`, never a failure;
+at point d, when checkpoints are required, `cw consult` makes no network call
+and writes the `no_advisers_configured` record that the checkpoint attaches as
+usual. The flow then runs exactly as it does without advisers. An adviser that
+fails or refuses is recorded `unavailable` or `refusal` and blocks nothing.
+
+An interim consultation (points a to c) is an ad hoc request: follow the
+[quick path](#quick-path) without `cw task context` in step 3 (the before
+context matches only the baseline source), pass the `--policy` the task started
+with, if any, and stop after `cw consult --adjudicate`: there is no task phase
+to attach it to. Ad hoc participation applies the same three conditions, so it
+matches the binding unless the policy, preferences or keys changed since
+`cw task start`; consult only when the binding is not empty. Keep its files with the task's other private records, outside
+source, and cite its path and outcome in the ledger, or for point c in the
+finding's disposition `reason`. Its evidence stays source, checks and
+observations under the [adjudication rules](#adjudicate-without-network-access).
+Point a's decisions reach the spec writer as the coordinator's answers, and
+point b's reach the architect, never the adviser output itself.
+
 ## Participation
 
 An adviser participates only when it is configured: enabled in the policy's

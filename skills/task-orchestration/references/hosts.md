@@ -66,8 +66,9 @@ current policy before dispatch. A saved `review` pin does not apply to
 | `bounded_evidence` | `opus` | `high` |
 
 - Pass `model` and `effort` on every dispatch, including built-in agents such as
-  `Explore`, which otherwise use their own default model, and the cw worker agents
-  below, whose definitions set neither.
+  `Explore`, which otherwise use their own default model. The plugin agents below
+  pin a default in their frontmatter, but the Agent tool's `model` overrides it,
+  so the policy's role (for example `review_followup` on Sonnet) still applies.
 - Agent accepts model aliases, not full IDs: `claude-opus-5-5` maps to `opus`,
   and `claude-sonnet-5-5` to `sonnet`. An alias can resolve to another release.
   Per-invocation `effort` requires Claude Code 2.1.292 or newer.
@@ -93,63 +94,61 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 ### Worker agent types
 
-Eight Claude agent definitions ship with the `agent-workflows` plugin. They have no
-Skill tool, so the worker starts without the skill listing (about 6K fewer input
-tokens on its first request). Dispatch these roles with the namespaced
-`subagent_type`:
+Six Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
+directory. They have no Skill tool, so the worker starts without the skill
+listing (about 6K fewer input tokens on its first request). Dispatch these roles
+with the namespaced `subagent_type`:
 
-| Role | `subagent_type` |
-| --- | --- |
-| `review`, `review_followup` | `agent-workflows:cw-reviewer` |
-| `test_author` (the `testing` profile) | `agent-workflows:cw-test-author` |
-| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:cw-github-worker` |
-| `spec_writer` | `agent-workflows:spec-writer` |
-| `spec_reviewer` | `agent-workflows:spec-reviewer` |
-| `architect` | `agent-workflows:architect` |
-| `implementer` | `agent-workflows:implementer` |
-| `test_engineer` | `agent-workflows:test-engineer` |
+| Role | `subagent_type` | Frontmatter default |
+| --- | --- | --- |
+| `spec_writer` | `agent-workflows:spec-writer` | `opus`, `high` |
+| `architect` | `agent-workflows:architect` | `opus`, `xhigh` |
+| `implementer` | `agent-workflows:implementer` | `opus`, `high` |
+| `test_engineer` | `agent-workflows:test-engineer` | `opus`, `high` |
+| `spec_review`, `design_review`, `test_review`, `review`, `review_followup` | `agent-workflows:reviewer` | `opus`, `high` |
+| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:github-worker` | `sonnet`, `medium` |
 
-- The last five ship in the plugin's `agents/` directory. Each reads its
-  [role contract](contracts/README.md) from the path the brief gives, or from the
-  plugin root when the brief gives none.
+- Each reads its [role contract](contracts/README.md) from the path the brief
+  gives, or from the plugin root when the brief gives none; a reviewer brief
+  names one of the four review contracts.
 - Other roles keep `general-purpose` or a built-in type such as `Explore`.
 - These workers cannot load skills by name. When a worker needs one, such as
-  `code-review` for a reviewer, put the absolute path of its `SKILL.md` in the brief
-  (`<plugin root>/skills/<name>/SKILL.md`, where the plugin root is the line
-  `Plugin root:` in the task-orchestration `SKILL.md`); for a test author, list it
-  among the approved inputs.
+  `code-review` for a code reviewer, put the absolute path of its `SKILL.md` in
+  the brief (`<plugin root>/skills/<name>/SKILL.md`, where the plugin root is the
+  line `Plugin root:` in the task-orchestration `SKILL.md`); for a test engineer,
+  list it among the approved inputs.
 - If the type is unavailable, for example when the plugin is not installed,
   dispatch `general-purpose` with the same model, effort and brief and
   note it in the assignment. Only the token cost differs.
 - The runtime agent type appears in transcript metadata as
   `agent:custom:<name>`; check it with the model and effort.
 
-## Independent test authors on either host
+## Independent test engineers on either host
 
-The [test-author contract](test-author.md) applies when a substantial task
-authors, changes, removes or disables behavioral tests or their helpers/data, or
-when the user asks for an independent author. `test_author` is
-the dispatch identity; resolve the existing `testing` profile rather than adding
-a host policy role or selecting a cheaper publication profile. In the seven-role
-flow the [test engineer](contracts/test-engineer.md) is that identity and resolves
-the `test_engineer` role instead. Preserve configured model/effort overrides and
+The [test-engineer contract](contracts/test-engineer.md) applies when a
+substantial task authors, changes, removes or disables behavioural tests or their
+helpers or data, or when the user asks for an independent author. Resolve the
+`test_engineer` role rather than adding a host policy role or selecting a
+cheaper publication profile. Preserve configured model and effort overrides and
 verify the effective settings.
 
 On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
-and `reasoning_effort`. On Claude, use a fresh `agent-workflows:cw-test-author` Agent invocation
-with the resolved model alias and explicit `effort`, accounting for the overrides
-above. Do not resume a coder, coordinator or source-aware reviewer as the author.
-Inspect initial injected context and automatic project instructions as well as the
-handoff; a fresh conversation alone does not establish an unexposed context.
+and `reasoning_effort`. On Claude, use a fresh `agent-workflows:test-engineer`
+Agent invocation with the resolved model alias and explicit `effort`, accounting
+for the overrides above. Do not resume an implementer, coordinator or
+source-aware reviewer as the test engineer. Inspect initial injected context and
+automatic project instructions as well as the handoff; a fresh conversation alone
+does not establish an unexposed context.
 
-Give only approved contract/interface/scaffold inputs and exact test-output paths;
-on either host, Go contracts start from the
-[declaration extract](test-author.md#extract-go-declarations).
+Give only approved contract, interface and scaffold inputs and exact test-output
+paths; on either host, Go contracts start from the
+[declaration extract](contracts/test-engineer.md#extract-go-declarations).
 The coordinator retains implementation discovery and raw execution diagnostics.
 Inspect available tool transcripts for boundary violations; neither host dispatch
-nor native task ownership is a filesystem sandbox. If the author is exposed, stop
-or supersede it and use a fresh replacement. Report a blocker when suitable fresh
-context/model settings cannot be supplied; do not fall back to an exposed worker.
+nor native task ownership is a filesystem sandbox. If the test engineer is
+exposed, stop or supersede it and use a fresh replacement. Report a blocker when
+suitable fresh context or model settings cannot be supplied; do not fall back to
+an exposed worker.
 
 ## Adviser questions
 

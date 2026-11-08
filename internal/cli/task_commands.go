@@ -229,9 +229,9 @@ func addTaskCommands(root *cobra.Command, config Config) {
 	bundle.Flags().StringVar(&bundleOutput, "output", "", "New file for the bundle, outside the project source")
 	task.AddCommand(bundle)
 	var contractPath, contractSymbols string
-	contractExtract := &cobra.Command{Use: "contract-extract", Short: "Print requested Go declarations, without bodies, as a test-author contract extract", Long: "Print the requested declarations of the Go package in --path as JSON: each function or method (Type.Method) signature, type (with struct fields and interface methods), const and var, with its doc comment and path:line, and the SHA-256 of every source file a printed declaration comes from. " +
+	contractExtract := &cobra.Command{Use: "contract-extract", Short: "Print requested Go declarations, without bodies, as a test-engineer contract extract", Long: "Print the requested declarations of the Go package in --path as JSON: each function or method (Type.Method) signature, type (with struct fields and interface methods), const and var, with its doc comment and path:line, and the SHA-256 of every source file a printed declaration comes from. " +
 		"Function bodies, function literal bodies and the comments inside them are never printed, and only the requested symbols are. An unknown symbol, a directory without non-test Go source or a parse error fails with nothing printed. " +
-		"Save the output outside the project source, review it, and give its path and sha256 as the test-author brief's contract; 'cw task assign' refuses an extract that differs from what the current source yields. Other languages keep a prose contract. The task record is not changed.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		"Save the output outside the project source, review it, and give its path and sha256 as the test-engineer brief's contract; 'cw task assign' refuses an extract that differs from what the current source yields. Other languages keep a prose contract. The task record is not changed.", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if contractPath == "" || contractSymbols == "" {
 			return usage(errors.New("contract-extract needs --path and --symbols"))
 		}

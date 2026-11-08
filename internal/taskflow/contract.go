@@ -19,11 +19,11 @@ import (
 	"strings"
 )
 
-// A test-author contract for Go is built from declarations extracted from the
+// A test-engineer contract for Go is built from declarations extracted from the
 // source rather than written from memory. ExtractContract prints only the
 // requested symbols, always without function bodies (including function
 // literals in var values) and without comments inside those bodies, and records
-// the SHA-256 of every file a printed declaration comes from. A test-author
+// the SHA-256 of every file a printed declaration comes from. A test-engineer
 // brief carries the saved extract as its contract; assign refuses an extract
 // that differs from what the current source yields, and verify reports a
 // current contract whose declarations have since changed.
@@ -32,7 +32,7 @@ const maxContractSymbols = 256
 
 var contractFileName = regexp.MustCompile(`^contract-[A-Za-z][A-Za-z0-9_-]{0,63}-[0-9a-f]{32}\.json$`)
 
-// ContractRef names the saved contract extract a test-author brief carries.
+// ContractRef names the saved contract extract a test-engineer brief carries.
 type ContractRef struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
@@ -508,7 +508,7 @@ func commentTexts(group *ast.CommentGroup) []string {
 	return texts
 }
 
-// storeContract checks a test-author brief's contract extract and stores an
+// storeContract checks a test-engineer brief's contract extract and stores an
 // immutable copy in the task directory. The extract must be saved outside the
 // project source, describe a package inside it, and equal, byte for byte, what
 // ExtractContract yields for the current source.
@@ -579,7 +579,7 @@ func readStoredContract(root *os.Root, assigned WorkerAssignment) (Contract, err
 }
 
 // contractSuperseded reports whether a later contract-bearing assignment owns
-// every path the assignment at index owns: a test-author correction round with
+// every path the assignment at index owns: a test-engineer correction round with
 // a refreshed contract replaces the earlier contract.
 func contractSuperseded(record Record, index int) bool {
 	owned := record.Assignments[index].Brief.OwnedPaths
@@ -615,11 +615,11 @@ func contractProblems(root *os.Root, record Record) (problems, notes []string) {
 		}
 		current, err := ExtractContract(filepath.Join(saved.Root, filepath.FromSlash(saved.Dir)), saved.Symbols)
 		if err != nil {
-			problems = append(problems, fmt.Sprintf("worker assignment %s contract is stale: %v; assign a test-author correction round with a fresh contract-extract", assigned.Brief.ID, err))
+			problems = append(problems, fmt.Sprintf("worker assignment %s contract is stale: %v; assign a test-engineer correction round with a fresh contract-extract", assigned.Brief.ID, err))
 			continue
 		}
 		if changed := changedContractSymbols(saved, current); len(changed) > 0 {
-			problems = append(problems, fmt.Sprintf("worker assignment %s contract is stale: the declarations of %s changed since extraction; assign a test-author correction round with a fresh contract-extract", assigned.Brief.ID, strings.Join(changed, ", ")))
+			problems = append(problems, fmt.Sprintf("worker assignment %s contract is stale: the declarations of %s changed since extraction; assign a test-engineer correction round with a fresh contract-extract", assigned.Brief.ID, strings.Join(changed, ", ")))
 			continue
 		}
 		if changed := changedContractFiles(saved, current); len(changed) > 0 {

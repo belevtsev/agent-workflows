@@ -230,8 +230,8 @@ coordinator acceptance](worker-handoffs.md) through `cw task assign`, `cw task
 handoff` and `cw task accept` before relying on its output. These commands
 validate records rather than launch agents or expand their permissions.
 
-A user-requested [test author](test-author.md) alone does not make a small task
-substantial. Use small native records for that scope, with an author assignment
+A user-requested [test engineer](contracts/test-engineer.md) alone does not make
+a small task substantial. Use small native records for that scope, with an author assignment
 owning exact test artifacts and `check_ids: []`; the coordinator or verifier owns
 the plan's execution checks. A valid red-test handoff is authorship evidence, not
 a passing check. Keep implementation and raw task/check output outside the
