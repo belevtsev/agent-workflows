@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Approved test-author scaffold for the WP9 contract tests (no assertions).

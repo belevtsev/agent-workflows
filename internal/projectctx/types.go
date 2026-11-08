@@ -52,6 +52,10 @@ type Command struct {
 	// StopAfterJSONID closes a one-request protocol probe after a complete
 	// response; it does not leave a language server running in the background.
 	StopAfterJSONID int
+	// WaitDelay is how long the probe's output may still arrive after the
+	// process exits or is stopped, before the pipes are closed and the run
+	// fails with exec.ErrWaitDelay. Zero selects defaultProbeWaitDelay.
+	WaitDelay time.Duration
 }
 
 // CommandResult never contains more than the configured probe output limit.

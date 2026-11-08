@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/belevtsev/agent-workflows/internal/outcomes"
-	"github.com/belevtsev/agent-workflows/internal/usagelog"
+	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/v3/internal/usagelog"
 	"github.com/spf13/cobra"
 )
 

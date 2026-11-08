@@ -1,0 +1,13 @@
+Breaks R4: a .notes symbolic link to a directory is followed and written through.
+
+--- a/cmd/notes/main.go
++++ b/cmd/notes/main.go
+@@ -45,7 +45,7 @@
+ 		return false, "", errors.New("directory does not exist: " + abs)
+ 	}
+ 	target := filepath.Join(abs, ".notes")
+-	if info, err := os.Lstat(target); err == nil {
++	if info, err := os.Stat(target); err == nil {
+ 		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+ 			return false, "", errors.New("refusing to use " + target + ": not a directory")
+ 		}

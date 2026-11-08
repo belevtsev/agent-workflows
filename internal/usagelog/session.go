@@ -3,7 +3,7 @@ package usagelog
 import (
 	"slices"
 
-	"github.com/belevtsev/agent-workflows/internal/outcomes"
+	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 )
 
 const unknownModel = "unknown"

@@ -27,8 +27,8 @@ adviser or review requirements.
 
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
 `claude-sonnet-5-5` at `medium`, and the Claude-only `review_followup` role (every
-review after a task's first full review) uses it at `high`; Codex keeps every review
-on `review`. Other roles use `claude-opus-5-5` at `high`, except
+later review of a stage, after that stage's first full review) uses it at `high`;
+Codex keeps every review on its stage's role. Other roles use `claude-opus-5-5` at `high`, except
 the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 
@@ -53,17 +53,35 @@ effort explicitly and verify effective host settings.
 the general expensive fallback for these three roles on both hosts; historical
 policies without it retain their fallback behavior.
 
-## Independent test authors
+## Review loops
+
+Substantial work that builds new behaviour has a review loop at every stage:
+spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
+test engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
+implementer → `cw task verify` → gated commit. One `reviewer` agent runs every
+stage with the contract its brief names; findings go back to that stage's
+author; the severity grades and the per-stage review cap are in
+[review stages](../skills/task-orchestration/references/worker-handoffs.md#review-stages).
+A small task skips the flow, the spec and design stages included, and the
+[contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)
+says when a substantial task skips the spec stage. After the before checkpoint,
+which is unchanged, advisers join only at four decision points and only when
+available
+([adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)).
+
+## Independent test engineers
 
 When a substantial task adds or materially changes behavioral tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks, the
 coordinator dispatches a fresh
-[test author](../skills/task-orchestration/references/test-author.md) under the
-existing `testing` model profile. For a small task the coder writes the tests and
-the reviewer checks each against the Code Review Rules. That reference holds the
-author's contract, input boundary, feedback, replacement and record rules; the
-[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-authors-on-either-host)
-says how to start one on each host.
+[test engineer](../skills/task-orchestration/references/contracts/test-engineer.md)
+under the `test_engineer` role. For a small task the coder writes the tests and
+the reviewer checks each against the Code Review Rules. That contract holds the
+input boundary, the Go declaration extract, feedback, replacement and record
+rules; the
+[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)
+says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
+checks its tests before integration.
 
 ## Local configuration
 
@@ -163,7 +181,7 @@ edited by hand; tasks started afterwards do not bind it.
 | `openai_decisions` | OpenAI Decisions | `gpt-6-luna` | `OPENAI_API_KEY` | Enabled |
 | `jev` | TypeSafe Jev | exact `jev-X.Y.Z`, such as `jev-1.14.0` | `TYPESAFE_API_KEY` | Opt-in |
 
-The README's [adviser setup](../README.md#configure-advisers) shows masked terminal
+The [adviser setup](advisers.md#configure-advisers) shows masked terminal
 input, presence checks, CLI inheritance and desktop launch environments. An export
 in another terminal does not update a running agent or integration-server process;
 restart from the configured environment and open a fresh chat. Never commit key
@@ -200,6 +218,10 @@ request is prepared, sent, recorded and reused is in
 [task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
 and the sections after it; the plan shape that declares them not required is in
 [start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+After the before checkpoint, advisers join only at the four
+[adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow),
+and only when the task's binding holds one; otherwise each point is skipped and
+recorded as "no advisers configured", and the flow runs unchanged.
 
 ### Provider notes
 
@@ -228,7 +250,7 @@ and the official [API contract](https://docs.typesafe.ai/api) and
 [model reference](https://docs.typesafe.ai/models) describe the service. The
 [Jev 1.13 limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13) are
 version-specific; do not describe them as verified 1.14 behavior. The
-[setup guidance](../README.md#optional-set-up-jev) explains moving aliases and the
+[setup guidance](advisers.md#optional-set-up-jev) explains moving aliases and the
 separate image, Box and long-context opt-ins, which the helper never sends.
 TypeSafe is hosted in the US, offers zero data retention only to enterprise
 customers, and states in its privacy policy that it does not train on prompts.

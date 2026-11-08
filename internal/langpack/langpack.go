@@ -14,21 +14,30 @@ type Source struct {
 	Changed []string
 }
 
-// EvidenceRule reports what a changed task lacks in executed evidence.
-// passed holds the argv of every check run that passed at the current source.
-type EvidenceRule interface {
-	Applies(source Source) bool
-	Problems(source Source, passed [][]string) []string
+// Run is a check run that passed at the current source: the latest run of
+// its check.
+type Run struct {
+	Argv []string
+	// GOFLAGS is the GOFLAGS of the run's environment; empty when unset or
+	// when the run was recorded before cw recorded it.
+	GOFLAGS string
 }
 
-// languageRules are the installed language packs, in report order.
-var languageRules = []EvidenceRule{GoTests{}}
+// EvidenceRule reports what a changed task lacks in executed evidence, given
+// the passed runs at the current source.
+type EvidenceRule interface {
+	Applies(source Source) bool
+	Problems(source Source, passed []Run) []string
+}
+
+// languageRules returns the installed language packs, in report order.
+func languageRules() []EvidenceRule { return []EvidenceRule{GoTests{}} }
 
 // Rules returns the rules that apply to source: AnyPassedRun, which applies
 // to every project, then each applicable language rule.
 func Rules(source Source) []EvidenceRule {
 	rules := []EvidenceRule{AnyPassedRun{}}
-	for _, rule := range languageRules {
+	for _, rule := range languageRules() {
 		if rule.Applies(source) {
 			rules = append(rules, rule)
 		}
@@ -42,7 +51,7 @@ type AnyPassedRun struct{}
 
 func (AnyPassedRun) Applies(Source) bool { return true }
 
-func (AnyPassedRun) Problems(_ Source, passed [][]string) []string {
+func (AnyPassedRun) Problems(_ Source, passed []Run) []string {
 	if len(passed) == 0 {
 		return []string{"changed substantial task has no passed check run at the current source"}
 	}

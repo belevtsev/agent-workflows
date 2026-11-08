@@ -1,7 +1,7 @@
 {
   "name": "agent-workflows",
   "version": "3.0.0-dev",
-  "description": "Evidence-based code review, independent test authors, a verify gate for substantial tasks, and Go-focused engineering skills for Codex.",
+  "description": "Evidence-based reviews at every stage, independent test engineers, a verify gate for substantial tasks, and Go-focused engineering skills for Codex.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/agent-workflows",
   "repository": "https://github.com/belevtsev/agent-workflows",
@@ -10,7 +10,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Agent Workflows",
-    "shortDescription": "Evidence-based review, independent test authors and a verify gate",
+    "shortDescription": "Reviews at every stage, independent test engineers and a verify gate",
     "longDescription": "Engineering workflow skills for substantial changes: evidence-based code review, test strategy, domain modeling, codebase design, threat modeling, and a task-orchestration flow with independent reviewers, test authors and a verify gate backed by the cw command.",
     "developerName": "Pavlo Belevtsev",
     "category": "Developer Tools",

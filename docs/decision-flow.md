@@ -29,40 +29,7 @@ consequential uncertainty, and any task when unsure. Small edits and direct fact
 retain the lightweight path, including relevant verification and user authorization.
 No required state is skipped, and an unresolved decision blocks the next state.
 
-```mermaid
-flowchart TD
-    Classify[Classify the task<br/>cw task start binds configured advisers]
-    Open{Open decision, code that must behave<br/>alike across platforms or shells, or in doubt?}
-    Before[Before checkpoint<br/>consult configured advisers, adjudicate, attach]
-    BeforeOK{Before adjudication}
-    Mode{What work did the user authorize?}
-    Build[Implement within the authorized scope<br/>cw task assign allowed from here]
-    Draft[Plan, draft or review only]
-    Check[Integrate, run the selected checks, independent review]
-    Final[Fresh final checkpoint<br/>completed work and current checks]
-    FinalOK{Final adjudication}
-    Ready[cw task verify, then report<br/>Publish only when already authorized]
-    Rework[Revise within scope and recheck<br/>Refresh affected evidence and advice]
-    Gap[Investigate the material gap<br/>Adjudicate again or consult with new evidence]
-
-    Classify --> Open
-    Open -->|Yes| Before --> BeforeOK
-    Open -->|No: checkpoints not required| Mode
-    BeforeOK -->|Unresolved| Gap
-    BeforeOK -->|Resolved| Mode
-    Mode -->|Changes authorized| Build
-    Mode -->|Plan or review only| Draft
-    Build --> Check
-    Draft --> Check
-    Check -->|Checkpoints required| Final --> FinalOK
-    Check -->|Not required| Ready
-    FinalOK -->|Resolved| Ready
-    FinalOK -->|Unresolved| Gap
-    FinalOK -->|Needs revision| Rework
-    Rework --> Check
-    Gap -->|Before| Before
-    Gap -->|Final| Final
-```
+<img src="diagrams/decision-flow.svg" alt="Decision flow of a substantial task: classify, then the before checkpoint when an open decision requires it, then the authorized work (implement, or plan, draft or review only), check and independent review, the final checkpoint when required, and cw task verify; an unresolved checkpoint leads to investigating the gap and consulting again, and a needed revision leads to revise and recheck" width="820">
 
 When required, the before checkpoint precedes implementation, or substantive
 drafting or review for a task without implementation, and `cw task assign` is
@@ -73,49 +40,14 @@ judgments grant no implementation or publication permission.
 
 ## Decision forks inside each checkpoint
 
-The branches below describe each question. Provider status, record status and the
-coordinator's final decision are recorded separately.
-
-```mermaid
-flowchart TD
-    Input[Same permitted evidence, instructions and Choice options]
-    Set{Participating adviser has its key?}
-    Skip[not_configured<br/>no request]
-    Attempt[One attempt per configured adviser<br/>30-second batch budget]
-    Validate[Validate results independently<br/>Keep valid answers and explicit missing coverage]
-    Coverage{Choice coverage for this question?}
-    Match{Do all attempted advisers' choices match?}
-    NoAdv[no_advisers<br/>nothing attempted]
-    Agree[agreement]
-    Differ[disagreement]
-    Partial[partial<br/>some choices, some missing]
-    None[unavailable<br/>no choices]
-    Evidence[The coordinator inspects sources and relevant checks<br/>Investigate disputed or missing facts]
-    Facts{Enough verified evidence to decide?}
-    Resolved[Resolved: typed source, check or observation entries<br/>rejection reasons, investigation notes]
-    Unresolved[Unresolved: choice null<br/>reason names the material gap]
-
-    Input --> Set
-    Set -->|No| Skip
-    Set -->|Yes| Attempt
-    Attempt --> Validate
-    Skip --> Validate
-    Validate --> Coverage
-    Coverage -->|Nothing attempted| NoAdv
-    Coverage -->|Every attempted adviser chose| Match
-    Match -->|Yes| Agree
-    Match -->|No| Differ
-    Coverage -->|Some choices| Partial
-    Coverage -->|No choices| None
-    NoAdv --> Evidence
-    Agree --> Evidence
-    Differ --> Evidence
-    Partial --> Evidence
-    None --> Evidence
-    Evidence --> Facts
-    Facts -->|Yes| Resolved
-    Facts -->|No| Unresolved
-```
+For each question, a participating adviser without its key is recorded as
+`not_configured` and gets no request; every other one gets one attempt, and its
+valid answers are kept. The comparison status below follows from the choices
+observed, and in every case the coordinator then inspects sources and relevant
+checks: with enough verified evidence the question resolves with typed entries,
+otherwise it stays unresolved with a null choice and a reason naming the gap.
+Provider status, record status and the coordinator's final decision are
+recorded separately.
 
 | Observed choices for one question | Comparison status | Next step |
 | --- | --- | --- |

@@ -7,7 +7,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // Coordinators previously ran cw doctor and hashed files by hand to fill values

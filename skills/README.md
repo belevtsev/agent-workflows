@@ -32,7 +32,7 @@ reviews; the rest are specialists those two point to.
 | [security-threat-model](security-threat-model/SKILL.md) | automatic | Build a requested repository threat model with source-backed boundaries, abuse paths, and mitigations. |
 | [shell-portability](shell-portability/SKILL.md) | automatic | Write, review, or run shell scripts and installers that must work under sh, dash, busybox, macOS bash 3.2, bash 5, and curl | sh. |
 | [software-architecture](software-architecture/SKILL.md) | automatic | Design or assess component ownership, dependencies, and interface evolution across packages or repositories. |
-| [task-orchestration](task-orchestration/SKILL.md) | automatic | Coordinate substantial work with bounded workers; dispatch independent test authors and routine GitHub workers. |
+| [task-orchestration](task-orchestration/SKILL.md) | automatic | Coordinate substantial work with bounded workers; dispatch independent test engineers, reviewers at every stage and routine GitHub workers. |
 | [test-strategy](test-strategy/SKILL.md) | automatic | Choose tests for changed behavior, including Go fuzzing, with meaningful oracles and verification gates. |
 
 Vendored packs (the Go specialist pack, archify, typesafe-ai) live in

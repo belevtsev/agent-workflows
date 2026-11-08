@@ -16,8 +16,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // The compact views below are one JSON line each. They keep the facts a

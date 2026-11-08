@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {

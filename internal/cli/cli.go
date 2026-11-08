@@ -1,6 +1,5 @@
 // Package cli provides the cw command tree: the task, consult, doctor, metrics,
-// keys and graphify runtime, plus the thin Codex installer and the v2
-// migration.
+// keys and graphify runtime, plus the thin Codex installer.
 package cli
 
 import (
@@ -13,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +27,10 @@ type Config struct {
 	WorkingDir                 func() (string, error)
 	Executable                 func() (string, error)
 	Getenv                     func(string) string
+
+	// prePublishTimeout replaces hookPublishTimeout when set, so tests can
+	// reach the hook's deadline quickly.
+	prePublishTimeout time.Duration
 }
 
 type usageError struct{ error }
@@ -121,6 +125,7 @@ func NewCommand(config Config) *cobra.Command {
 	}})
 	addDoctorCommand(root, config)
 	addTaskCommands(root, config)
+	addTaskAbandonCommand(root)
 	addMetricsCommand(root, config)
 	addConsultCommand(root, config)
 	addKeysCommand(root, config)

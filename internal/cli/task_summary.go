@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"path/filepath"
 
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // The --summary results below are printed as one JSON line. Each names the task

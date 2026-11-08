@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/projectctx"
-	"github.com/belevtsev/agent-workflows/internal/taskflow"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 // Contract: cw-task-autofill-summary revision 1, requirements R1, R2, R6, R8 and R9 through the CLI.

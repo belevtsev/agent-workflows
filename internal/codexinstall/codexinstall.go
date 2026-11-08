@@ -198,7 +198,7 @@ func Install(o Options) (Report, error) {
 			report.Changes = append(report.Changes, Change{Action: "relink", Path: path, Target: want})
 		default:
 			if _, err := os.Lstat(path); err == nil {
-				return Report{Instructions: paths.instructions}, fmt.Errorf("%w: %s (remove it or run cw migrate-v2 if it came from a v2 installation)", ErrNotOwned, path)
+				return Report{Instructions: paths.instructions}, fmt.Errorf("%w: %s (remove it; if a v2 installation left it, see \"Cleaning up a v2 installation\" in docs/operations.md)", ErrNotOwned, path)
 			} else if !errors.Is(err, fs.ErrNotExist) {
 				return report, err
 			}
@@ -379,23 +379,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	slices.Sort(keys)
 	return keys
-}
-
-// RemoveBlockFromFile strips the managed block from the file at path, deleting
-// the file when nothing else remains. It reports whether a block was found and
-// leaves a missing file alone. With dryRun it only reports. It is shared with
-// the v2 migration, which cleans the same markers from host instruction files.
-func RemoveBlockFromFile(path string, dryRun bool) (bool, error) {
-	file, err := readInstructions(path)
-	if err != nil || !file.exists {
-		return false, err
-	}
-	updated, removed, err := RemoveBlock(file.data)
-	if err != nil {
-		return false, fmt.Errorf("%s: %w", path, err)
-	}
-	if !removed || dryRun {
-		return removed, nil
-	}
-	return true, file.save(updated)
 }

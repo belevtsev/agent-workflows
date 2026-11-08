@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/internal/usagelog"
+	"github.com/belevtsev/agent-workflows/v3/internal/usagelog"
 )
 
 const (

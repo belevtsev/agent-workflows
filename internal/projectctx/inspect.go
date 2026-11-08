@@ -14,7 +14,7 @@ import (
 // Inspect retains useful marker detection when byte hashing is incomplete. Its
 // warnings and partial fingerprint must be preserved by callers.
 func Inspect(ctx context.Context, repo string) (Profile, error) {
-	got, err := capture(ctx, repo)
+	got, err := capture(ctx, repo, gitProbeBudget)
 	if err != nil {
 		return Profile{}, err
 	}

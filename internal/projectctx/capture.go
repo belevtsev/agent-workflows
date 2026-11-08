@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -25,7 +26,45 @@ const (
 	maxSourceBytes = 64 << 20
 	maxFileBytes   = maxSourceBytes
 	maxGitOutput   = 8 << 20
+
+	// gitProbeBudget bounds one Git inspection command, including the time
+	// its output takes to arrive after Git exits. Git exiting with a failure
+	// says the path is not a repository; Git running out of time says
+	// nothing about it, so capture stops with an error instead. Five seconds
+	// was exceeded on loaded machines (macOS CI runners, hosts at load
+	// averages far above their core count), so the budget only stops a hung
+	// Git. The caller's context bounds every probe as well, so a caller with
+	// a shorter deadline, such as a hook or cw doctor, keeps it.
+	gitProbeBudget = 60 * time.Second
+
+	// gitProbeWaitDelay is how long a Git probe's output may still be
+	// copied after Git exits. Capture stops when a probe does not finish
+	// cleanly, and on a loaded host copying a large listing such as
+	// ls-tree -r can take far longer than the 100ms default, which made a
+	// complete probe fail with exec.ErrWaitDelay. The grace never outlasts
+	// the probe budget or the caller's context: when either ends, the
+	// probe's process group is killed, which normally closes its pipes at
+	// once.
+	gitProbeWaitDelay = 10 * time.Second
 )
+
+// gitProbeAborted is a Git inspection command that did not finish cleanly:
+// it ran past its budget, was killed by a signal, was stopped by the caller,
+// or could not be run or waited for. Unlike Git exiting with a failure it
+// says nothing about the repository, so capture returns it rather than
+// treating a repository as a plain folder or dropping HEAD or the branch. It
+// wraps its cause, so a caller's cancellation stays visible to errors.Is.
+type gitProbeAborted struct{ err error }
+
+func (aborted gitProbeAborted) Error() string { return aborted.err.Error() }
+
+func (aborted gitProbeAborted) Unwrap() error { return aborted.err }
+
+// stopsCapture reports whether a Git probe error ends capture.
+func stopsCapture(err error) bool {
+	_, aborted := errors.AsType[gitProbeAborted](err)
+	return aborted
+}
 
 type captured struct {
 	snapshot Snapshot
@@ -49,7 +88,7 @@ type gitEntry struct {
 // Capture fails closed when bounded inspection cannot identify every eligible
 // source byte. No complete fingerprint is returned for an escaping symlink.
 func Capture(ctx context.Context, repo string) (Snapshot, error) {
-	got, err := capture(ctx, repo)
+	got, err := capture(ctx, repo, gitProbeBudget)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -118,7 +157,7 @@ func ManifestRawPath(spelled string) string {
 // A tracked file missing from disk is omitted. It fails exactly when Capture
 // fails.
 func CaptureManifest(ctx context.Context, repo string) (Snapshot, []FileState, error) {
-	got, err := capture(ctx, repo)
+	got, err := capture(ctx, repo, gitProbeBudget)
 	if err != nil {
 		return Snapshot{}, nil, err
 	}
@@ -150,7 +189,8 @@ func canonicalDirectory(path string) (string, error) {
 	return filepath.Clean(abs), nil
 }
 
-func capture(ctx context.Context, repo string) (captured, error) {
+// capture inspects repo, giving each Git command at most probeBudget.
+func capture(ctx context.Context, repo string, probeBudget time.Duration) (captured, error) {
 	selected, err := canonicalDirectory(repo)
 	if err != nil {
 		return captured{}, err
@@ -159,24 +199,48 @@ func capture(ctx context.Context, repo string) (captured, error) {
 	workingState := ""
 	tracked := map[string]gitEntry{}
 	git := func(dir string, args ...string) (string, error) {
-		probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		probeCtx, cancel := context.WithTimeout(ctx, probeBudget)
 		defer cancel()
 		// Read-only Git inspection must not invoke a configured filesystem
 		// monitor hook or update the untracked cache as a side effect.
 		gitArgs := []string{"-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", dir}
-		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv)}, maxGitOutput)
+		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv), WaitDelay: gitProbeWaitDelay}, maxGitOutput)
 		if runErr != nil {
+			probe := strings.Join(args, " ")
+			// The caller's context is checked first: its deadline can end
+			// the probe's context too.
 			if ctx.Err() != nil {
-				return "", ctx.Err()
+				return "", gitProbeAborted{fmt.Errorf("Git inspection stopped by the caller (git %s): %w", probe, ctx.Err())}
 			}
-			return "", errors.New("Git inspection failed")
+			if probeCtx.Err() != nil {
+				return "", gitProbeAborted{fmt.Errorf("Git inspection timed out after %s (git %s)", probeBudget, probe)}
+			}
+			// Only Git exiting with a status, or no Git at all, is positive
+			// evidence about the repository. Anything else, such as a start
+			// failure or a child holding Git's output open past WaitDelay
+			// after Git exited, stops capture.
+			exit, isExit := errors.AsType[*exec.ExitError](runErr)
+			switch {
+			case isExit && exit.Exited(), errors.Is(runErr, exec.ErrNotFound):
+				return "", errors.New("Git inspection failed")
+			case isExit:
+				return "", gitProbeAborted{fmt.Errorf("Git inspection was killed before it finished (git %s)", probe)}
+			default:
+				return "", gitProbeAborted{fmt.Errorf("Git inspection could not complete (git %s): %w", probe, runErr)}
+			}
 		}
 		if result.Truncated {
 			return string(result.Stdout), errors.New("Git metadata exceeded the inspection output limit")
 		}
 		return string(result.Stdout), nil
 	}
+	// Only Git exiting with a failure status, or no git on PATH, means the
+	// selected path is not in a Git repository; every unclean finish of this
+	// or a later probe stops capture.
 	root, gitErr := git(selected, "rev-parse", "--show-toplevel")
+	if stopsCapture(gitErr) {
+		return captured{}, gitErr
+	}
 	gitRepo := gitErr == nil
 	if gitRepo {
 		got.snapshot.Root, err = canonicalDirectory(strings.TrimSuffix(strings.TrimSuffix(root, "\n"), "\r"))
@@ -187,16 +251,25 @@ func capture(ctx context.Context, repo string) (captured, error) {
 			return captured{}, errors.New("selected path is outside its Git worktree root")
 		}
 		head, headErr := git(got.snapshot.Root, "rev-parse", "--verify", "HEAD")
+		if stopsCapture(headErr) {
+			return captured{}, headErr
+		}
 		if headErr == nil {
 			got.snapshot.Head = strings.TrimSpace(head)
 		}
 		branch, branchErr := git(got.snapshot.Root, "symbolic-ref", "--short", "-q", "HEAD")
+		if stopsCapture(branchErr) {
+			return captured{}, branchErr
+		}
 		if branchErr == nil {
 			got.snapshot.Branch = strings.TrimSpace(branch)
 		}
 		// Only index/tree plumbing is used. Worktree commands such as status
 		// can run repository-configured clean filters while refreshing files.
 		index, indexErr := git(got.snapshot.Root, "ls-files", "--stage", "-z", "--cached")
+		if stopsCapture(indexErr) {
+			return captured{}, indexErr
+		}
 		var validIndex bool
 		tracked, validIndex = parseGitEntries(index, true)
 		if indexErr != nil || !validIndex {
@@ -206,6 +279,9 @@ func capture(ctx context.Context, repo string) (captured, error) {
 		headEntries := map[string]gitEntry{}
 		if got.snapshot.Head != "" {
 			tree, treeErr := git(got.snapshot.Root, "ls-tree", "-r", "-z", "HEAD")
+			if stopsCapture(treeErr) {
+				return captured{}, treeErr
+			}
 			var validTree bool
 			headEntries, validTree = parseGitEntries(tree, false)
 			if treeErr != nil || !validTree {
@@ -219,6 +295,9 @@ func capture(ctx context.Context, repo string) (captured, error) {
 			got.paths = append(got.paths, path)
 		}
 		listed, listErr := git(got.snapshot.Root, "ls-files", "-z", "--others", "--exclude-standard")
+		if stopsCapture(listErr) {
+			return captured{}, listErr
+		}
 		if listErr != nil {
 			got.incomplete("Git file listing exceeded bounds or was unavailable")
 		}
