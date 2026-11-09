@@ -53,6 +53,8 @@ roles:
   implementer: substantive
   test_engineer: substantive
   test_review: substantive
+  # Opt-in adversarial white-box tester (contracts/adversarial-tester.md).
+  adversarial_tester: substantive
   review: substantive
   review_followup: review_followup
   diagnosis: decision

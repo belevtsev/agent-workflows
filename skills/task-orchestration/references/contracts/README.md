@@ -13,6 +13,7 @@ evidence.
 | Implementer | `implementer` | [implementer.md](implementer.md) | brief, interface contract, repository | the change, `self-review.md` |
 | Test engineer | `test-engineer` | [test-engineer.md](test-engineer.md) | interface contract, interface extract | tests, `test-matrix.md`, `requirement-map.md` |
 | Test review | `reviewer` | [test-review.md](test-review.md) | contract, extract, tests, stub | `test-review.md` |
+| Adversarial tester (opt-in) | `adversarial-tester` | [adversarial-tester.md](adversarial-tester.md) | contract, `design.md`, integrated source, coverage profile | failing tests, `adversarial-findings.md` |
 | Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle, interface contract, `design.md`, test matrix and requirement map, coverage profile | findings, a failing test per behaviour finding |
 | GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
 
@@ -91,6 +92,11 @@ only when available; without them every step runs unchanged.
    [contract amendment](#contract-amendment).
    Before rejecting a `blocker` or `major` finding at this or any earlier stage,
    the coordinator consults advisers (point c).
+   When the plan opted in at classify (concurrency, parsing or untrusted
+   input, security, data integrity, or the user asks), a fresh
+   [adversarial tester](adversarial-tester.md) runs on the same source in
+   parallel with this review; each test it keeps fails on that source and is a
+   finding for the implementer.
 8. **Final checkpoint** (point d, when checkpoints are required), then
    **`cw task verify`** checks that every assignment, handoff, acceptance, check
    run and review is recorded and current.
@@ -110,22 +116,24 @@ spec, or from the request when there is none, and the design review still runs.
 Artefacts and records stay outside the source tree; the exceptions are the
 change folder, under `openspec/changes/`, and an ADR (step 2). Model and effort come from the
 policy roles `spec_writer`, `spec_review`, `architect`, `design_review`,
-`implementer`, `test_engineer`, `test_review`, `review` and `review_followup`
+`implementer`, `test_engineer`, `test_review`, `review`, `review_followup` and,
+when opted in, `adversarial_tester`
 ([hosts](../hosts.md)).
 
 ## Contract amendment
 
-The interface contract changes only through its author. When the implementer
-or the test engineer returns a question by requirement ID, or a code-review
+The interface contract changes only through its author. When the implementer,
+the test engineer or the [adversarial tester](adversarial-tester.md) returns a
+question by requirement ID, or a code-review
 finding raises one, that the contract as written cannot answer (an ambiguous or conflicting requirement, missing
 expected behaviour, unclear error semantics, a needed change to the public
 interface or a missing public seam), the coordinator does not answer it from
 the code. A question the contract already answers gets the quoted requirement
 and no amendment.
 
-1. **Batch.** Collect the open questions from both workers and the code
+1. **Batch.** Collect the open questions from the workers and the code
    review into one request, each as its requirement ID and the gap in contract
-   terms. Strip anything a question carries from either worker's work or the
+   terms. Strip anything a question carries from any worker's work or the
    review's evidence: implementation source, tests, reproduction tests, diffs,
    logs, coverage and reasoning. Workers keep working on the requirements the
    questions do not touch.

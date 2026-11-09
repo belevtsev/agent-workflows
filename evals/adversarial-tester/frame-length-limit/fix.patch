@@ -1,0 +1,15 @@
+Fix: checkLength compares the decoded length to max as a uint64 before any conversion to int, so a length of 2^63 or more returns ErrTooLarge instead of wrapping negative and panicking in make (R2, DR1).
+--- a/frame.go
++++ b/frame.go
+@@ -45,9 +45,8 @@
+ // length above max.
+ func checkLength(n uint64, max int) (int, error) {
+-	size := int(n)
+-	if size > max {
++	if n > uint64(max) {
+ 		return 0, ErrTooLarge
+ 	}
+-	return size, nil
++	return int(n), nil
+ }
+

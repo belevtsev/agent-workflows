@@ -134,6 +134,15 @@ a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` han
 flag values redacted, but stores the check's argv verbatim: keep secrets out of
 check argv.
 
+When the change touches concurrency, parsing or untrusted input, security or
+data integrity, or the user asks, the plan opts in to the
+[adversarial tester](contracts/adversarial-tester.md#opt-in-and-record) now,
+because the plan cannot change after `start`: add a requirement naming the
+opted-in areas and a check that writes a coverage profile outside the source
+tree, into a directory that exists before `cw task run` (for Go,
+`-coverprofile=<artefact-dir>/cover.out`; a check runs without a shell, so it
+cannot create the directory).
+
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set
 `"required": true`, and both checkpoints are required. When the approach follows directly from the
