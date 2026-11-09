@@ -55,9 +55,10 @@ The coordinator resolves, defers or rejects each finding against evidence and
 stays within the [review cap](worker-handoffs.md#review-stages);
 keep small and unchanged read-only tasks lightweight.
 
-To publish a substantial task, or when the user asks for a bounded worker,
-dispatch the [GitHub worker](github-worker.md); a small task commits and pushes
-directly under the user's authorization. The worker drafts messages and
+To publish a verified substantial task, run `cw publish` under the user's
+authorization; for its fallback cases, or when the user asks for a bounded
+worker, dispatch the [GitHub worker](github-worker.md); a small task commits and
+pushes directly under the user's authorization. The worker drafts messages and
 PR text from fixed verified facts and performs scoped, authorized commit/push and
 `gh` PR writes with refresh and readback. Its three roles use the `github` profile;
 substantive `pr_authoring` stays with the substantive profile. New claims or changed

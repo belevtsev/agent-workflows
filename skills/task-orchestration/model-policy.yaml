@@ -66,6 +66,8 @@ roles:
   implementer: sol
   test_engineer: sol
   test_review: sol
+  # Opt-in adversarial white-box tester (contracts/adversarial-tester.md).
+  adversarial_tester: sol
   review: sol
   diagnosis: sol
   documentation: sol

@@ -44,9 +44,10 @@ fallbacks. Sol 6.1 `max` is configured; Sol `ultra` requires an explicit user re
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
-results do not prove correctness or grant permission. Publishing a substantial
-task, or a user request for a bounded worker, dispatches the
-[GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
+results do not prove correctness or grant permission. A verified substantial
+task is published with `cw publish`, run by the coordinator under the user's
+authorization; its fallback cases, or a user request for a bounded worker,
+dispatch the [GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
 task commits and pushes directly under the user's authorization. Pass model and
 effort explicitly and verify effective host settings.
 `fallbacks.github_unavailable: report_blocker`, when present, overrides
@@ -91,6 +92,19 @@ rules; the
 [host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)
 says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
 checks its tests before integration.
+
+## Opt-in adversarial tester
+
+A plan opts in at classify, before `cw task start`, when the change touches
+concurrency, parsing or untrusted input, security or data integrity, or when the
+user asks. A fresh
+[adversarial tester](../skills/task-orchestration/references/contracts/adversarial-tester.md)
+then reads the interface contract, `design.md`, the integrated source and the
+coverage profile, and tries to break the change in parallel with code review.
+Every test it keeps fails on the integrated source and cites the requirement or
+design rule it shows broken; each is a finding for the implementer and stays as
+a regression test written with source access. It never counts as black-box
+coverage, and the test engineer never sees it.
 
 ## Local configuration
 

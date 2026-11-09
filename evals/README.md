@@ -1,17 +1,30 @@
 # Eval suites for the agent roster
 
 One suite per plugin agent that writes or reviews artefacts: `spec-writer/`,
-`reviewer/`, `architect/`, `implementer/` and `test-engineer/`. Every case
+`reviewer/`, `architect/`, `implementer/`, `test-engineer/` and
+`adversarial-tester/`. Every case
 asks the coordinator to dispatch the plugin agent once through the Agent
 tool with a brief, and grades what the agent writes (artefacts under
 `artefacts/` in the run's workspace, and the spec writer's change folder)
 against the agent's contract in `skills/task-orchestration/references/contracts/`.
 
-The spec-writer and implementer suites hold three cases each, and the
-architect and test-engineer suites four. The architect's fourth case,
+The spec-writer, implementer and adversarial-tester suites hold three cases
+each, and the architect and test-engineer suites four. The architect's fourth case,
 `ledger-money-adr`, works in a repository that keeps ADRs in
-`docs/decisions/` and checks the ADR the architect writes there. The
-`reviewer/` suite holds twelve, named by the review contract the brief names:
+`docs/decisions/` and checks the ADR the architect writes there.
+
+Each `adversarial-tester/` case seeds one defect
+in an unexported helper that the case's contract-level tests miss (an
+unregistered in-flight load, an `int` conversion before a length check, a
+path prefix check without a separator); its graders check that a kept test
+fails for that defect with its command, that no kept test passes on the seeded
+source, and that the agent edits nothing under `testdata/work/` or
+`testdata/contract/` and dispatches no other worker. The graders cannot run
+code; the [adversarial gate](#adversarial-gate) runs the kept tests after the
+run.
+
+The `reviewer/` suite holds twelve, named by the review contract the brief
+names:
 
 - `spec-*` (four cases): spec review of an OpenSpec change folder against
   its sources and the current code ([spec-review](../skills/task-orchestration/references/contracts/spec-review.md)).
@@ -44,7 +57,10 @@ design-review cases the architect's notes or conversation. Two cases,
 also plant a marker in the workspace's `CLAUDE.md` (see
 [Instruction-file probe](#instruction-file-probe)). The scaffold
 deletes the test-engineer cases' `testdata/impl-mutants/*.patch` from the
-workspace (see [Mutant gate](#mutant-gate)).
+workspace (see [Mutant gate](#mutant-gate)). The adversarial-tester scaffolds
+also copy `testdata/work` to `artefacts/scratch/`, the scratch copy the brief
+gives for probes; each of those cases keeps its `fix.patch` at the case root,
+which the scaffold never copies (see [Adversarial gate](#adversarial-gate)).
 
 ## Offline checks
 
@@ -71,8 +87,8 @@ claude plugin eval . --tag architect --ablation none --runs 1 --scaffold \
   --allow-tools Write Edit "Bash(go *)" --max-cost-usd 20 --no-publish
 ```
 
-Use `--tag implementer`, `--tag test-engineer`, `--tag spec-writer` or
-`--tag reviewer` for the other suites, `--tag spec-review`, `--tag
+Use `--tag implementer`, `--tag test-engineer`, `--tag spec-writer`,
+`--tag adversarial-tester` or `--tag reviewer` for the other suites, `--tag spec-review`, `--tag
 design-review`, `--tag test-review` or `--tag code-review` for one review
 stage, and
 `--case <name>` for one case. The spec suites write Markdown only; add
@@ -166,6 +182,30 @@ marker and the reply's first line says `UNKNOWN`. Run it once with
 `omitClaudeMd: true` removed from the agent file to see the probe fail: the
 agent should then name the marker. Each run is a paid model call.
 
+## Adversarial gate
+
+`TestAdversarialGate` checks the adversarial tester's must-fail rule on a
+finished run. For each workspace it builds a throwaway module from the case's
+`testdata/work` with the agent's `artefacts/adversarial_test.go` at the module
+root, runs each kept test alone on the seeded source, then applies the case's
+`fix.patch` and runs the whole package. It fails when the agent kept no test,
+when any kept test passes on the seeded source, or when the package still fails
+after the fix (a kept test that fails for another reason). Run it like the
+mutant gate:
+
+```sh
+TMPDIR=/tmp/evals-run claude plugin eval . --tag adversarial-tester --ablation none \
+  --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
+  --max-cost-usd 20 --no-publish
+EVAL_ARTEFACTS_DIR=/tmp/evals-run go test ./evals/ -run '^TestAdversarialGate$' -v
+```
+
+`TestAdversarialFixtures` (offline, in every `go test`) checks that each
+`fix.patch` applies and that the black-box tests pass before and after it; the
+authored self-tests in `adversarial_gate_authored_test.go` run the gate on
+known-good, extra-passing and unrelated-failure kept files from
+`testdata/adversarial-selftest/`.
+
 ## What CI runs
 
 `.github/workflows/evals.yml` runs on demand (`workflow_dispatch`) and weekly on
@@ -189,10 +229,11 @@ flight when it is reached; a run the ceiling stops is partial and fails the job.
 defaults to 0.8: every case's score (the share of its graders that passed)
 must reach it. The job uploads `result.json`, the runner's stderr and the
 workspaces of runs that hold `testdata/contract/interface-contract.md` or
-`testdata/checks/cover.out` (the implementer and test-engineer suites and the
+`testdata/checks/cover.out` (the implementer, test-engineer and adversarial-tester suites and the
 `tests-*` and `code-*` reviewer cases) as the `eval-<suite>-<run id>` artifact, prints a per-case summary
-(`TestEvalResult`), fails on any non-zero runner exit, and for `test-engineer`
-then runs the mutant gate on those workspaces. `--model`, the model for the
+(`TestEvalResult`), fails on any non-zero runner exit, and then runs the mutant
+gate on those workspaces for `test-engineer` and the adversarial gate for
+`adversarial-tester`. `--model`, the model for the
 agent under test, defaults to `claude-opus-5-5`, the model every agent these
 suites dispatch pins in its frontmatter (`model: opus`; only `github-worker`,
 which no suite dispatches, pins `sonnet`),

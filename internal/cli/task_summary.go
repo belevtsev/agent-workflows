@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"path/filepath"
+	"slices"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
@@ -57,6 +58,18 @@ func runSummary(task string, run taskflow.CheckRun) taskRunSummary {
 	excerpt := excerptLog(task, run.Log)
 	value.FailingTests, value.ErrorLines, value.LogTail, value.ExcerptUnavailable = excerpt.FailingTests, excerpt.ErrorLines, excerpt.Tail, excerpt.Unavailable
 	value.LogTruncated = run.Truncated
+	// A run with per-test results names its failing tests from them, not
+	// from the log, which for a -json run holds JSON events.
+	if run.TestResults != "" {
+		if results, err := taskflow.ReadTestResults(task, run); err == nil {
+			value.FailingTests = nil
+			for _, test := range results.Tests {
+				if test.Fail > 0 && len(value.FailingTests) < maxFailingTests && !slices.Contains(value.FailingTests, test.Test) {
+					value.FailingTests = append(value.FailingTests, test.Test)
+				}
+			}
+		}
+	}
 	return value
 }
 

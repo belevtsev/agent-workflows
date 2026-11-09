@@ -578,6 +578,12 @@ func resolveDir(dir, path string) string {
 // main worktree's root as well, so a record started in either location
 // gates both.
 func repositoryOf(ctx context.Context, dir string) (taskflow.Repository, error) {
+	return resolveRepository(ctx, dir, gitOutput)
+}
+
+// resolveRepository is repositoryOf with the function that runs git and
+// returns its output without trailing line ends (empty output is an error).
+func resolveRepository(ctx context.Context, dir string, gitOutput func(ctx context.Context, dir string, args ...string) (string, error)) (taskflow.Repository, error) {
 	toplevel, err := gitOutput(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return taskflow.Repository{}, err

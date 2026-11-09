@@ -95,7 +95,7 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 ### Worker agent types
 
-Six Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
+Seven Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
 directory. They have no Skill tool, so the worker starts without the skill
 listing (about 6K fewer input tokens on its first request). Dispatch these roles
 with the namespaced `subagent_type`:
@@ -106,6 +106,7 @@ with the namespaced `subagent_type`:
 | `architect` | `agent-workflows:architect` | `opus`, `xhigh` |
 | `implementer` | `agent-workflows:implementer` | `opus`, `high` |
 | `test_engineer` | `agent-workflows:test-engineer` | `opus`, `high` |
+| `adversarial_tester` (opt-in) | `agent-workflows:adversarial-tester` | `opus`, `high` |
 | `spec_review`, `design_review`, `test_review`, `review`, `review_followup` | `agent-workflows:reviewer` | `opus`, `high` |
 | `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:github-worker` | `sonnet`, `medium` |
 
@@ -117,7 +118,7 @@ with the namespaced `subagent_type`:
   author priors and coordinator instructions stay out of an independent review
   or test. Managed policy files still load. Their contracts carry the project
   rules they apply, and the brief quotes any other project constraint the work
-  must meet. The other four agents keep CLAUDE.md, because they work to the
+  must meet. The other five agents keep CLAUDE.md, because they work to the
   project's conventions.
 - That isolation holds on Claude Code only. Codex has no per-agent switch: it
   injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
