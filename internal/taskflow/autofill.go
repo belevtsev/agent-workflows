@@ -92,8 +92,29 @@ func completeWorkerResult(record Record, assigned WorkerAssignment, snapshot pro
 			}
 		}
 	}
-	input.ChangedFiles, err = fillChangedFileHashes(root, input.ChangedFiles)
-	return input, err
+	if input.ChangedFiles, err = fillChangedFileHashes(root, input.ChangedFiles); err != nil {
+		return input, err
+	}
+	fillGofmtHashes(root, record, assigned, input.ChangedFiles)
+	return input, nil
+}
+
+// fillGofmtHashes sets each omitted gofmt_sha256 of a gofmt-eligible entry
+// whose current bytes format to the hash of the formatted bytes (R13.b).
+// Entries that cannot be read or do not format are left for validation.
+func fillGofmtHashes(root *os.Root, record Record, assigned WorkerAssignment, changes []WorkerChangedFile) {
+	for i := range changes {
+		if changes[i].GofmtSHA256 != "" || !cleanWorkerPath(changes[i].Path, false) || !gofmtEligible(record, assigned, changes[i]) {
+			continue
+		}
+		data, err := readWorkerFile(root, changes[i].Path)
+		if err != nil {
+			continue
+		}
+		if hash, ok := gofmtHash(data); ok {
+			changes[i].GofmtSHA256 = hash
+		}
+	}
 }
 
 // completeAcceptance fills the task, the declared coordinator and the hash of

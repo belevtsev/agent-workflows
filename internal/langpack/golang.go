@@ -3,6 +3,7 @@ package langpack
 import (
 	"fmt"
 	"maps"
+	"math"
 	"path"
 	"path/filepath"
 	"slices"
@@ -181,6 +182,67 @@ func allowedValue(name, value string) bool {
 	}
 	count, err := strconv.Atoi(value)
 	return err == nil && count >= 1
+}
+
+// GoTestRunLimit returns how many times a per-test credited run executes each
+// test: its -count times the number of its -cpu values, or 0 when the run earns
+// no per-test credit (R22).
+func GoTestRunLimit(run Run) int {
+	if !GoTestsCredited(run) {
+		return 0
+	}
+	// The flags are read as credited reads them: the GOFLAGS fields, then the
+	// argv flags from index 2, a value-taking flag without an inline value
+	// taking the next argv element. The last count and the last cpu flag win.
+	// count is parsed as cmd/go parses it (strconv.ParseInt with base 0),
+	// unlike allowedValue's strconv.Atoi, so 010 is 8 and +3 is 3; a value
+	// that does not parse, or is less than 1, gives 0. cpus counts the cpu
+	// value's comma-separated fields that are not empty after trimming spaces,
+	// at least 1. The product saturates at the largest int.
+	fields, err := splitQuoted(run.GOFLAGS)
+	if err != nil {
+		return 0
+	}
+	count, cpu := "1", ""
+	note := func(name, value string) {
+		switch name {
+		case "count":
+			count = value
+		case "cpu":
+			cpu = value
+		}
+	}
+	for _, field := range fields {
+		name, value, _ := parseFlag(field)
+		note(name, value)
+	}
+	for i := 2; i < len(run.Argv); i++ {
+		arg := run.Argv[i]
+		if !strings.HasPrefix(arg, "-") {
+			continue
+		}
+		name, value, inline := parseFlag(arg)
+		if allowedFlags[name] && !inline && i+1 < len(run.Argv) {
+			i++
+			value = run.Argv[i]
+		}
+		note(name, value)
+	}
+	executions, err := strconv.ParseInt(count, 0, 64)
+	if err != nil || executions < 1 {
+		return 0
+	}
+	cpus := 0
+	for _, field := range strings.Split(cpu, ",") {
+		if strings.TrimSpace(field) != "" {
+			cpus++
+		}
+	}
+	cpus = max(cpus, 1)
+	if executions > int64(math.MaxInt/cpus) {
+		return math.MaxInt
+	}
+	return int(executions) * cpus
 }
 
 // credited returns the package patterns a passed run proves, or nil when it

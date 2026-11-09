@@ -126,6 +126,7 @@ func NewCommand(config Config) *cobra.Command {
 	addDoctorCommand(root, config)
 	addTaskCommands(root, config)
 	addTaskTraceCommand(root)
+	addTaskAuthorshipCommand(root)
 	addTaskAbandonCommand(root)
 	addTaskTimelineCommand(root)
 	addPublishCommand(root, config)

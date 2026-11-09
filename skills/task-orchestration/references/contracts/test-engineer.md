@@ -255,6 +255,29 @@ mapped tests to exist at handoff, not to pass. The coordinator records
 assignment, handoff and acceptance before claiming authorship complete, and a
 fresh [test review](test-review.md) follows before integration.
 
+### Authorship is checked from the record
+
+In a task started with test rules, `cw task verify` judges authorship from the
+record, not from your summary ([test authorship](../worker-handoffs.md#test-rules-and-test-authorship)):
+
+- **Test files.** A test file is a `_test.go` file, or any file under a
+  `testdata` directory, of a package that `go test ./...` runs at the selected
+  path. Files under `vendor`, `_` or `.` directories and in nested modules are not
+  test files. Put helpers in `_test.go` files or under `testdata`, where they are
+  guarded; a helper package that is not a test file is code review's job.
+- **`changed_files`.** List every test file and fixture you authored and every
+  deletion, and nothing else. Test files and test data of nested modules, and
+  fixtures under any `testdata` directory, may be listed. Ask the coordinator for
+  any change to `go.mod`, `go.sum` or a helper that is neither a `_test.go` file
+  nor under `testdata`: a write of any other path excludes your agent from
+  independent authorship.
+- **Rejection.** When you are exposed, the coordinator records your round
+  `rejected`; it never counts again, even after it is closed `unused`. A round
+  closed `unused` without a rejection keeps its authorship.
+- **Pre-task test files.** An edit to a test file that existed before the task,
+  by anyone, needs a test-engineer round that records the new bytes; until then
+  the file is `lost` or `unowned`.
+
 Substantial work keeps its decision checkpoints, when required, and a distinct
 source-aware code reviewer who inspects implementation and tests; blind
 authorship does not replace review. Report contract coverage, actual checks and
