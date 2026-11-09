@@ -191,7 +191,9 @@ verification and changes the evidence binding, so a final context prepared
 before it is stale. Added checks run, bind and are cited (in assessments, the
 decision, worker briefs, results and acceptances) like plan checks, and the
 reviewer bundle lists them after the plan checks; a satisfied requirement still
-cites every plan check it names. Verify credits only runs stored in the record
+cites every plan check it names. Brief obligations stay fixed: whether a brief
+with a contract must or must not declare requirements follows the plan checks
+only, so an added `-json` check never changes it. Verify credits only runs stored in the record
 that passed at the current source: no credit comes from the base branch's CI,
 and files the merge brought in stay changed. Merge history is checked only by
 `add-checks`; later history changes do not affect the added checks.

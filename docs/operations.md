@@ -372,7 +372,9 @@ An accepted amendment is appended to the record's `amendments` (shown by
 `evidence_revision`, so a final context prepared before it is stale. Added
 checks run, bind and can be cited like plan checks, and the reviewer bundle
 lists them after the plan checks; a satisfied requirement must still cite every
-plan check it names. Verify credits only runs stored in the record that passed
+plan check it names. Whether a brief with a contract must or must not declare
+requirements follows the plan checks only, so an added `-json` check never
+changes it. Verify credits only runs stored in the record that passed
 at the current source. No credit comes from the base branch's CI, and files the
 merge brought in stay in the changed set even when they match the base. Merge
 history is inspected only by `add-checks`; later resets or base-branch updates
