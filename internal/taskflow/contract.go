@@ -580,11 +580,16 @@ func readStoredContract(root *os.Root, assigned WorkerAssignment) (Contract, err
 
 // contractSuperseded reports whether a later contract-bearing assignment owns
 // every path the assignment at index owns: a test-engineer correction round with
-// a refreshed contract replaces the earlier contract.
+// a refreshed contract replaces the earlier contract. In a record with test
+// rules, only a round with an accepted acceptance and no rejected one
+// supersedes (R18).
 func contractSuperseded(record Record, index int) bool {
 	owned := record.Assignments[index].Brief.OwnedPaths
 	for _, later := range record.Assignments[index+1:] {
 		if later.ContractFile == "" {
+			continue
+		}
+		if record.TestRules != "" && (!hasAcceptance(record, later.Brief.ID, "accepted") || hasAcceptance(record, later.Brief.ID, "rejected")) {
 			continue
 		}
 		if !slices.ContainsFunc(owned, func(path string) bool {

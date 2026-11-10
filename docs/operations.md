@@ -226,7 +226,11 @@ limitations), `cw doctor` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
-the `-json` check runs that recorded them, `cw task bundle` writes the
+the `-json` check runs that recorded them, `cw task authorship --task DIR` lists,
+without changing the record and also for an abandoned task, each Go test file
+changed since start with its authorship status (`independent`, `source_aware`,
+`lost` or `unowned`), its reason and the assignment it rests on, and exits 0
+whatever the statuses, `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file),
 `cw task contract-extract` prints requested Go declarations without bodies for a
 test engineer's contract, and

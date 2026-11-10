@@ -216,6 +216,37 @@ exception only when its contract and `test-strategy` name it; the opt-in
 [adversarial tester](adversarial-tester.md#after-a-finding) is one, for the
 tests it keeps.
 
+**How cw reads it.** In a task with test rules, cw reads this marking from the
+record ([test authorship](../worker-handoffs.md#test-rules-and-test-authorship)):
+the file must be new (absent at task start), cited at its current bytes by a
+`resolved` disposition of the review's latest acceptance, which is `accepted` or
+`unused`, lists a check, and belongs to a round never rejected. Such a file is
+`source_aware`: `verify` accepts it as a changed test file, but it is never
+coverage, and a mapped test in it is `not_independent`, so a requirement mapped
+only to such tests stays unproven. Another source-aware role uses the same
+marking from a `review`, `evidence` or `verification` assignment.
+
+### Backstops cw cannot check
+
+- **Forged test framing.** `verify` counts a mapped PASS only with a `run` event
+  per result, no more `run` events than `-count` × `-cpu` × the packages of the
+  test's directory declaring it, and no output line beginning with byte 0x16. Code
+  in the test binary can still print a forged `=== RUN` and `--- PASS` pair, or
+  unmarked framing before the first test starts, for a mapped test that never
+  genuinely runs. Look for code that prints `=== RUN` or `--- PASS` framing, and
+  for a mapped test that cannot run: a subtest never created, a file excluded by
+  build constraints, or `os.Exit` before `m.Run` (in `TestMain` or an `init`
+  function). Also look for an unused allowance: another package in the same
+  directory declares the mapped test's top-level name, but that declaration does
+  not run the mapped name in each execution, for example because it is
+  build-constrained, never creates the mapped subtest, or is an example without
+  an output comment. Look for the forging code in files that are not test files
+  and in source-aware test files.
+- **Unguarded test code.** Helper packages that are not test files (for example a
+  `testutil` package), and test files outside the root module (nested modules, a
+  `go.work` workspace root), are not guarded by the authorship rule: review them
+  as source.
+
 ## Stopping conditions
 
 Stop and return to the coordinator when every changed file has been read,

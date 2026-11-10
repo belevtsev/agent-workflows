@@ -102,6 +102,10 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	now := time.Now().UTC()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
+	if packs != nil {
+		// StartWithPacks fixes the test rules; Start keeps the earlier ones (R1).
+		record.TestRules = TestRulesV1
+	}
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -486,9 +490,18 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		contractIssues, contractNotes := contractProblems(root, *record)
 		result.Problems = append(result.Problems, contractIssues...)
 		result.Limitations = append(result.Limitations, contractNotes...)
-		traceIssues, traceNotes := traceVerifyEntries(root, *record, snapshot, files)
+		view := newSourceView(snapshot, files)
+		defer view.close()
+		traceIssues, traceNotes := traceVerifyEntries(root, *record, view)
 		result.Problems = append(result.Problems, traceIssues...)
 		result.Limitations = append(result.Limitations, traceNotes...)
+		if gated(*record) {
+			// R16, R15 and R14, then R23's limitation, before the
+			// substantial-task block.
+			authorshipIssues, authorshipNotes := authorshipVerifyEntries(view.authorship(root, *record), *record)
+			result.Problems = append(result.Problems, authorshipIssues...)
+			result.Limitations = append(result.Limitations, authorshipNotes...)
+		}
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
 				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)

@@ -81,6 +81,9 @@ func planProvesTests(plan Plan) bool {
 // when the plan can prove tests, and refuses them when it cannot.
 func requirementsFollowPlan(record Record, brief WorkerBrief) error {
 	proves := planProvesTests(record.Plan)
+	if gated(record) && brief.Contract != nil && !proves {
+		return errors.New("a brief with a contract needs a go test check in the plan whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag); this task's plan has none")
+	}
 	if proves && brief.Contract != nil && len(brief.Requirements) == 0 {
 		return errors.New("a brief with a contract must declare requirements: each contract requirement with the plan requirements it implements")
 	}
