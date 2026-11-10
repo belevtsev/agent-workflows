@@ -359,7 +359,7 @@ func priorFindings(record Record) []BundleFinding {
 
 func bundleChecks(record Record, snapshot projectctx.Snapshot) []BundleCheck {
 	checks := []BundleCheck{}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		entry := BundleCheck{CheckID: check.ID, Status: "not_run"}
 		if run := latestRun(record, check.ID); run != nil {
 			entry.RunID, entry.Status, entry.Log = run.ID, run.Status, filepath.Join(record.Directory, run.Log)

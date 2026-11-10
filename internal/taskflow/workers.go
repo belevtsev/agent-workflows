@@ -69,6 +69,9 @@ type WorkerChangedFile struct {
 	Path    string `json:"path"`
 	SHA256  string `json:"sha256"`
 	Deleted bool   `json:"deleted"`
+	// GofmtSHA256 is the SHA-256 of the gofmt-formatted bytes of a changed Go
+	// test file of a contract-bearing result, recorded by cw (R13).
+	GofmtSHA256 string `json:"gofmt_sha256,omitempty"`
 }
 
 type WorkerFinding struct {
@@ -229,7 +232,7 @@ func validateBrief(record Record, brief WorkerBrief) error {
 		return errors.New("worker check_ids must be distinct planned check IDs")
 	}
 	for _, id := range brief.CheckIDs {
-		if !slices.ContainsFunc(record.Plan.Checks, func(check Check) bool { return check.ID == id }) {
+		if _, found := findCheck(record, id); !found {
 			return fmt.Errorf("worker brief references unplanned check %s", id)
 		}
 	}
@@ -444,8 +447,11 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 	}
 	seen := map[string]bool{}
 	for _, changed := range result.ChangedFiles {
-		if !cleanWorkerPath(changed.Path, false) || seen[changed.Path] || changed.Deleted && changed.SHA256 != "" || !changed.Deleted && !validSHA256(changed.SHA256) {
+		if !cleanWorkerPath(changed.Path, false) || seen[changed.Path] || changed.Deleted && changed.SHA256 != "" || !changed.Deleted && !validSHA256(changed.SHA256) || changed.GofmtSHA256 != "" && (changed.Deleted || !validSHA256(changed.GofmtSHA256)) {
 			return errors.New("changed files need distinct clean paths and SHA256, or explicit deletion without SHA256")
+		}
+		if changed.GofmtSHA256 != "" && !gofmtEligible(record, assigned, changed) {
+			return fmt.Errorf("changed file %s: %s", changed.Path, gofmtOnlyMessage)
 		}
 		seen[changed.Path] = true
 		if !slices.ContainsFunc(assigned.Brief.OwnedPaths, func(owned string) bool { return scopeContains(owned, changed.Path) }) {
@@ -581,7 +587,20 @@ func readWorkerFile(root *os.Root, name string) ([]byte, error) {
 	return data, nil
 }
 
-func validateChangedFiles(snapshot projectctx.Snapshot, changes []WorkerChangedFile) error {
+// gofmtOnlyMessage is R13.a's refusal of a gofmt_sha256 cw does not record.
+const gofmtOnlyMessage = "cw records gofmt_sha256 only for a Go test file that parses, in a contract-bearing result of a task with test rules; omit it"
+
+// gofmtEligible reports whether cw records a gofmt hash for the entry: a Go
+// test source file, not deleted, in a contract-bearing result of a record with
+// test rules (R13).
+func gofmtEligible(record Record, assigned WorkerAssignment, changed WorkerChangedFile) bool {
+	return record.TestRules != "" && assigned.Brief.Contract != nil && !changed.Deleted && goTestSourcePath(changed.Path)
+}
+
+// validateChangedFiles checks each declared file against the current source.
+// eligible, when not nil, names the entries whose gofmt hash the handoff
+// checks against their bytes (R13.b).
+func validateChangedFiles(snapshot projectctx.Snapshot, changes []WorkerChangedFile, eligible func(WorkerChangedFile) bool) error {
 	root, err := os.OpenRoot(snapshot.Root)
 	if err != nil {
 		return err
@@ -603,6 +622,14 @@ func validateChangedFiles(snapshot projectctx.Snapshot, changes []WorkerChangedF
 		}
 		if digest(data) != changed.SHA256 {
 			return fmt.Errorf("changed file %s hash differs", changed.Path)
+		}
+		if eligible == nil || !eligible(changed) {
+			continue
+		}
+		if hash, ok := gofmtHash(data); ok && changed.GofmtSHA256 != hash {
+			return fmt.Errorf("changed file %s: gofmt_sha256 differs from the SHA-256 of its gofmt-formatted bytes", changed.Path)
+		} else if !ok && changed.GofmtSHA256 != "" {
+			return fmt.Errorf("changed file %s: %s", changed.Path, gofmtOnlyMessage)
 		}
 	}
 	return nil
@@ -710,7 +737,9 @@ func reviewEvidenceBinding(record Record, ownID string) (string, error) {
 	return digest(data), nil
 }
 
-func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult) error {
+// validateLiveWorkerRefs checks a result's references and changed files
+// against the current source; eligible is validateChangedFiles's.
+func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, eligible func(WorkerChangedFile) bool) error {
 	if len(result.Evidence) > 0 {
 		if err := validateWorkerRefs(snapshot, result.Evidence); err != nil {
 			return err
@@ -721,7 +750,7 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult) e
 			return err
 		}
 	}
-	return validateChangedFiles(snapshot, result.ChangedFiles)
+	return validateChangedFiles(snapshot, result.ChangedFiles, eligible)
 }
 
 func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
@@ -757,7 +786,8 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 		if err := reachRunCoverage(root, *assigned, input); err != nil {
 			return err
 		}
-		if err := validateLiveWorkerRefs(snapshot, input); err != nil {
+		eligible := func(changed WorkerChangedFile) bool { return gofmtEligible(*record, *assigned, changed) }
+		if err := validateLiveWorkerRefs(snapshot, input, eligible); err != nil {
 			return err
 		}
 		runs, err := workerChecks(*record, snapshot, input.CheckIDs, input.Status == "completed")
@@ -838,7 +868,7 @@ func validateAcceptance(record Record, result BoundWorkerResult, input WorkerAcc
 		return errors.New("acceptance check_ids must be distinct planned IDs")
 	}
 	for _, id := range input.CheckIDs {
-		if !slices.ContainsFunc(record.Plan.Checks, func(check Check) bool { return check.ID == id }) {
+		if _, found := findCheck(record, id); !found {
 			return fmt.Errorf("acceptance references unknown check %s", id)
 		}
 	}
@@ -888,7 +918,7 @@ func workerResultFresh(record Record, assigned WorkerAssignment, bound BoundWork
 			return errors.New("worker handoff ownership scope is stale")
 		}
 	}
-	return validateLiveWorkerRefs(snapshot, bound.Result)
+	return validateLiveWorkerRefs(snapshot, bound.Result, nil)
 }
 
 // AcceptWorkerResult records the coordinator's judgment of one exact immutable

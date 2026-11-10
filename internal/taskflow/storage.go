@@ -304,7 +304,7 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
-		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest) || !sameEncoded(current.Packs, record.Packs)) {
+		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest) || !sameEncoded(current.Packs, record.Packs) || current.TestRules != record.TestRules) {
 			return Record{}, "", errors.New("immutable task baseline changed")
 		}
 		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {
@@ -318,6 +318,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		}
 		if i > 0 {
 			if err := validateWorkerTransition(record, current); err != nil {
+				return Record{}, "", err
+			}
+			if err := validateAmendmentTransition(record, current); err != nil {
 				return Record{}, "", err
 			}
 			a, _ := encode(current.Plan)
@@ -339,6 +342,9 @@ func validateRecord(record Record) error {
 	if err := validateRecordedPlan(record.Plan); err != nil {
 		return err
 	}
+	if err := validateAmendments(record); err != nil {
+		return err
+	}
 	if err := validateWorkerRecord(record); err != nil {
 		return err
 	}
@@ -354,6 +360,9 @@ func validateRecord(record Record) error {
 	if manifest := record.BaselineManifest; manifest != nil && (manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0) {
 		return errors.New("invalid stored baseline manifest reference")
 	}
+	if record.TestRules != "" && (record.TestRules != TestRulesV1 || record.BaselineManifest == nil) {
+		return errors.New("invalid stored test rules")
+	}
 	if err := consult.ValidateBinding(record.Advisers); err != nil {
 		return err
 	}
@@ -367,7 +376,7 @@ func validateRecord(record Record) error {
 		}
 	}
 	checks := map[string]Check{}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		checks[check.ID] = check
 	}
 	runs := map[string]bool{}
@@ -508,6 +517,9 @@ func updateDiscarding(path string, additional int, completingRunID string, chang
 		return Record{}, err
 	}
 	if err := validateWorkerTransition(before, record); err != nil {
+		return Record{}, err
+	}
+	if err := validateAmendmentTransition(before, record); err != nil {
 		return Record{}, err
 	}
 	data, err := encode(record)

@@ -102,6 +102,10 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	now := time.Now().UTC()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
+	if packs != nil {
+		// StartWithPacks fixes the test rules; Start keeps the earlier ones (R1).
+		record.TestRules = TestRulesV1
+	}
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -355,14 +359,8 @@ func checkStoredRun(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 	if err != nil || len(ids) != 1 || ids[0] != id {
 		return errors.New("referenced check run is no longer the current passed run")
 	}
-	var approved *Check
-	for i := range record.Plan.Checks {
-		if record.Plan.Checks[i].ID == run.CheckID {
-			approved = &record.Plan.Checks[i]
-			break
-		}
-	}
-	if approved == nil || !slices.Equal(approved.Argv, run.Argv) {
+	approved, found := findCheck(record, run.CheckID)
+	if !found || !slices.Equal(approved.Argv, run.Argv) {
 		return errors.New("check argv differs from the explicit plan")
 	}
 	data, err := privateRead(root, run.Log, MaxLogBytes)
@@ -379,13 +377,14 @@ func evidenceBinding(record Record) (string, error) {
 	data, err := encode(struct {
 		Revision    int                        `json:"revision"`
 		Plan        Plan                       `json:"plan"`
+		Amendments  []Amendment                `json:"amendments,omitempty"`
 		Checks      []CheckRun                 `json:"checks"`
 		Assessments map[string]BoundAssessment `json:"assessments"`
 		Decision    *BoundDecision             `json:"decision"`
 		Assignments []WorkerAssignment         `json:"assignments"`
 		Results     []BoundWorkerResult        `json:"worker_results"`
 		Acceptances []BoundWorkerAcceptance    `json:"worker_acceptances"`
-	}{record.EvidenceRevision, record.Plan, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
+	}{record.EvidenceRevision, record.Plan, record.Amendments, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
 	if err != nil {
 		return "", err
 	}
@@ -435,7 +434,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 			}
 		}
 	}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		if run := latestRun(record, check.ID); run != nil && run.Status != "passed" {
 			problem("latest run of %s is %s", check.ID, run.Status)
 		}
@@ -491,9 +490,18 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		contractIssues, contractNotes := contractProblems(root, *record)
 		result.Problems = append(result.Problems, contractIssues...)
 		result.Limitations = append(result.Limitations, contractNotes...)
-		traceIssues, traceNotes := traceVerifyEntries(root, *record, snapshot, files)
+		view := newSourceView(snapshot, files)
+		defer view.close()
+		traceIssues, traceNotes := traceVerifyEntries(root, *record, view)
 		result.Problems = append(result.Problems, traceIssues...)
 		result.Limitations = append(result.Limitations, traceNotes...)
+		if gated(*record) {
+			// R16, R15 and R14, then R23's limitation, before the
+			// substantial-task block.
+			authorshipIssues, authorshipNotes := authorshipVerifyEntries(view.authorship(root, *record), *record)
+			result.Problems = append(result.Problems, authorshipIssues...)
+			result.Limitations = append(result.Limitations, authorshipNotes...)
+		}
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
 				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)

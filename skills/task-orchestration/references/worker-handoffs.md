@@ -67,7 +67,7 @@ Roles are `implementation`, `evidence`, `review` and `verification`; only
 implementation results can declare changes. `owned_paths` holds clean relative
 files or directory prefixes (`.` covers the whole project); active implementation
 assignments cannot own overlapping paths, and shared-filesystem workers preserve
-others' edits. `check_ids` selects commands already in the immutable task plan.
+others' edits. `check_ids` selects plan checks or checks added by `cw task add-checks`.
 `cw task run` retains actual execution; a worker's assertion is not a pass. A
 test engineer records as its [contract](contracts/test-engineer.md#record-and-complete)
 says: native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.
@@ -161,6 +161,65 @@ After the coordinator stops or supersedes blocked or cancelled work, it can clos
 it as `unused` with an explicit rationale; this neither satisfies requirements nor
 counts as independent review. The worker must stop changing source before its
 assignment is closed; these commands do not stop the runtime process.
+
+## Test rules and test authorship
+
+`cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
+record; a record without it (one started by an older `cw`) keeps the earlier
+rules. A record with test rules whose plan `kind` is `substantial` is *gated*:
+`verify` and `assign` apply the rules below to it.
+
+- **A contract needs a provable plan.** In a gated record, `assign` refuses a
+  brief that carries `contract` when no plan check is a `go test` whose argv earns
+  per-test credit (`-json` in its own argv, only allowed flags). The plan cannot
+  change, so stop and ask the user how to proceed.
+- **Proven PASS.** A mapped test passes only when a per-test credited run at the
+  current source recorded at least one `run` event per result, no more `run`
+  events than its `-count` times its `-cpu` values times the packages of its
+  directory declaring the test, and no output line beginning with byte 0x16.
+  Otherwise it is `pass_unproven`. This is a mitigation, not a proof: see
+  `global-workflow.md` "Execute and record evidence".
+- **gofmt hash.** For each changed Go test file (`_test.go`, outside
+  `testdata`) of a contract-bearing result in a record with test rules, `handoff`
+  fills `gofmt_sha256`, the SHA-256 of the gofmt-formatted bytes, when the file
+  parses. An explicit value must equal it; on any other entry it is refused.
+  Formatting a test engineer's file mechanically then keeps its authorship.
+- **Authorship from the record.** Every Go test file (a `_test.go` file or a
+  file under the `testdata` of a package that `go test ./...` runs at the selected
+  path) whose bytes differ from the baseline must be `independent` or
+  `source_aware`, or `verify` fails it as `lost` or `unowned`.
+  - `independent`: a completed, contract-bearing result recorded its current bytes
+    or deletion (or bytes gofmt-equivalent to them), its latest acceptance is
+    `accepted` or `unused`, the round was never rejected, and its agent is not
+    excluded.
+  - An agent is excluded when it is the plan's `coordinator_id`, or holds any
+    implementation assignment without a contract, any review or verification
+    assignment, or a contract-bearing assignment whose result wrote a path that
+    is neither a `_test.go` file nor under a `testdata` directory.
+  - A round with any `rejected` acceptance never counts again, even after it is
+    closed `unused`. A round closed `unused` without a rejection keeps its
+    authorship.
+  - `lost`: an independent round wrote the file, but its current state is neither
+    what that round recorded nor gofmt-equivalent to it. An edit to a test file
+    that existed before the task, such as a rename refactor, needs a
+    test-engineer round that records the new bytes.
+  - A mapped test whose file is not `independent` is `not_independent` in `verify`
+    and `cw task trace`.
+- **Reproduction tests.** A file is `source_aware` when cw reads this marking:
+  a `resolved` finding disposition of a `review`, `evidence` or `verification`
+  assignment cites the file in its evidence at the file's current bytes; the
+  file is new (absent at start); the acceptance holding the disposition is the
+  assignment's latest, is `accepted` or `unused`, lists at least one check in
+  `check_ids`, and the assignment was never rejected. When the review closes
+  `unused`, keep the citation and the check in that `unused` acceptance. A
+  source-aware file is never coverage: a mapped test in it is `not_independent`.
+- **No go.mod.** When the selected path has no `go.mod` but has `go.work` or Go
+  files, no file counts as a Go test file, and `verify` adds the limitation
+  `test authorship not judged: ...`. A `go.work` workspace root is not supported.
+
+`cw task authorship --task DIR` prints, read-only, each changed test file with its
+status, reason and the assignment, agent, contract and finding the status rests
+on. It exits 0 whatever the statuses and works on an abandoned task.
 
 ## Review stages
 

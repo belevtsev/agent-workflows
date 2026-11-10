@@ -161,6 +161,11 @@ the pack set it recorded. `cw pack list` shows the selection.
 all of that user's repositories and leaves only the fallback rule (any passed
 check); `cw pack add go`, or deleting `packs.json`, restores it.
 
+A task that merges its base branch covers the merged packages by adding a
+check with `cw task add-checks` after `git merge --no-ff <base>`; the plan
+itself never changes. See
+[Merging the base branch during a task](docs/operations.md#merging-the-base-branch-during-a-task).
+
 **See why a commit is blocked.** The denial names each blocking task. This lists
 its problems, such as a missing review or an unmet requirement:
 

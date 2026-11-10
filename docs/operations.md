@@ -226,7 +226,11 @@ limitations), `cw doctor` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
-the `-json` check runs that recorded them, `cw task bundle` writes the
+the `-json` check runs that recorded them, `cw task authorship --task DIR` lists,
+without changing the record and also for an abandoned task, each Go test file
+changed since start with its authorship status (`independent`, `source_aware`,
+`lost` or `unowned`), its reason and the assignment it rests on, and exits 0
+whatever the statuses, `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file),
 `cw task contract-extract` prints requested Go declarations without bodies for a
 test engineer's contract, and
@@ -303,6 +307,103 @@ measurement input and model advice do not authorize publication or deployment.
 passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
+
+### Merging the base branch during a task
+
+A task's plan cannot change after `cw task start`. When the task merges its base
+branch, the merge can change packages or module files that no plan check covers;
+`cw task add-checks` adds checks that cover them, tied to the merge commit.
+Checks can only be added this way, never removed, replaced or narrowed.
+
+1. Fetch the base branch: `git fetch`.
+2. Merge it with `git merge --no-ff <base>`, for example
+   `git merge --no-ff origin/main`. `--no-ff` records a merge commit even when
+   the branch has no commit after the task baseline, which is common mid-task:
+   the publication hook gates only `git commit` and `git push`, so it does not
+   block the merge, but it denies commits while the record is unverified. For
+   the same reason, conclude a conflicted merge with `git merge --continue`,
+   not `git commit`. In a non-interactive shell (agents, CI) always use
+   `GIT_EDITOR=true git merge --continue`, which keeps the prepared merge
+   message; plain `git merge --continue` opens an editor, so use it only in an
+   interactive terminal.
+3. Add the checks:
+
+   ```sh
+   cw task add-checks --task <task-dir> --input amend.json --summary
+   ```
+
+   with `amend.json` naming the merge commit (its ID or `HEAD`), the base ref, a
+   reason and the checks:
+
+   ```json
+   {
+     "merge_commit": "HEAD",
+     "base_ref": "origin/main",
+     "reason": "merged origin/main; go.mod and internal/b changed",
+     "checks": [{"id": "widened", "argv": ["go", "test", "./..."], "timeout_seconds": 300}]
+   }
+   ```
+
+   `timeout_seconds` may be omitted (300). `--input -` reads standard input.
+   `--summary` prints the task, the amendment index, the added check IDs and
+   the resolved merge and base commits.
+4. Run each added check: `cw task run --task <task-dir> --check widened`.
+5. Run `cw task verify --task <task-dir> --summary`.
+
+`cw task add-checks` refuses, exits 1 and writes nothing when:
+
+- the task is `small`, its record has no baseline manifest, or its evidence
+  rules do not include the Go package-test rule (the task started after
+  `cw pack remove go`, or a record without a pack set has no `go.mod` at the
+  top of the selected path);
+- an added check ID is already a plan or added check, the plan and added checks
+  would exceed 256, or an argv is not a direct `go test` that the Go rule
+  credits (flags outside the allowlist, such as `-run`, and wrappers such as
+  `make` earn no credit); `GOFLAGS` in `cw`'s environment plays no part here;
+- the merge does not qualify: `merge_commit` must resolve to a commit with at
+  least two parents that is reachable from HEAD and not from the task's
+  baseline HEAD or from `base_ref`, and a parent after the first must be
+  reachable from `base_ref`. A shallow repository is refused because Git cannot
+  answer ancestry across its boundary; `git fetch --unshallow` fixes it;
+- an added check, taken in input order, covers no package or module file that
+  the merge changed relative to its first parent, that is still changed since
+  the task baseline, and that no plan check or earlier added check covers. A
+  module file (`go.mod`, `go.sum`, `go.work`, `go.work.sum`) is covered only by
+  `./...`.
+
+An accepted amendment is appended to the record's `amendments` (shown by
+`cw task show`), removes the stored verification and increments
+`evidence_revision`, so a final context prepared before it is stale. Added
+checks run, bind and can be cited like plan checks, and the reviewer bundle
+lists them after the plan checks; a satisfied requirement must still cite every
+plan check it names. Whether a brief with a contract must or must not declare
+requirements follows the plan checks only, so an added `-json` check never
+changes it. Verify credits only runs stored in the record that passed
+at the current source. No credit comes from the base branch's CI, and files the
+merge brought in stay in the changed set even when they match the base. Merge
+history is inspected only by `add-checks`; later resets or base-branch updates
+do not change the added checks.
+
+If the base merge left no merge commit, `add-checks` refuses with a hint naming
+`git merge --no-ff`. Recover as follows:
+
+- **Fast-forward.** A plain `git merge` on a branch with no commit after the
+  baseline fast-forwards. Check that the branch is not pushed and that
+  `ORIG_HEAD` names the commit before the merge, then run
+  `git reset --keep ORIG_HEAD` (never `--hard`, which discards uncommitted task
+  work) and merge again with `git merge --no-ff <base>`.
+- **Squash.** `git merge --squash` stages the squashed changes and leaves HEAD
+  unmoved; the hook denies the commit. Undo it with `git reset --merge` only
+  when nothing else is staged. Otherwise restore from HEAD only the paths the
+  squash staged, `git restore --staged --worktree --source=HEAD -- <those paths>`,
+  never other staged work. Then merge with `--no-ff`.
+- **Rebase.** After `git pull --rebase` (or with `pull.rebase=true`) on an
+  unpushed branch, return to the pre-rebase commit with
+  `git reset --keep ORIG_HEAD` and merge with `--no-ff`.
+
+A `cw` release older than `add-checks` cannot read a record carrying
+`amendments`, and its hook skips such a record; keep every host that shares a
+task store on the same `cw`.
 
 ### Cost history
 

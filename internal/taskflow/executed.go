@@ -17,39 +17,19 @@ func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
 
 // executionProblems asks the language-pack registry which evidence rules
 // apply to a changed substantial task and returns what they report, given the
-// files changed since the baseline and, for each planned check whose latest
-// run passed at the current snapshot, that run. files is the current manifest. Records started before the
-// baseline manifest existed cannot list changed files; that gap is returned as
-// a limitation.
+// files changed since the baseline and, for each planned or added check whose
+// latest run passed at the current snapshot, that run. files is the current
+// manifest. Records started before the baseline manifest existed cannot list
+// changed files; that gap is returned as a limitation.
 func executionProblems(ctx context.Context, root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
-	relative, err := selectedRelative(snapshot)
+	source, limitations, err := evidenceSource(root, record, snapshot, files)
 	if err != nil {
 		return []string{err.Error()}, nil
-	}
-	source := langpack.Source{Current: []string{}}
-	for _, file := range files {
-		if name, ok := relative(file.Path); ok {
-			source.Current = append(source.Current, name)
-		}
-	}
-	if record.BaselineManifest == nil {
-		limitations = append(limitations, "task predates the baseline manifest; language evidence rules saw no changed files")
-	} else {
-		baseline, err := readBaselineManifest(root, *record.BaselineManifest)
-		if err != nil {
-			return []string{err.Error()}, nil
-		}
-		source.Changed = []string{}
-		for _, file := range changedSince(baseline, files) {
-			if name, ok := relative(file.Path); ok {
-				source.Changed = append(source.Changed, name)
-			}
-		}
 	}
 	// Only the latest run of each check counts, as in bindChecks: a pass
 	// followed by a failure at the same source proves nothing.
 	passed := []langpack.Run{}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
 			entry := langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}
 			if record.Packs != nil {
@@ -84,4 +64,36 @@ func rerun(record Record, run CheckRun) bool {
 	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
 		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && other.GOFLAGS == run.GOFLAGS
 	})
+}
+
+// evidenceSource describes the selected project for the evidence rules: the
+// current files and, when the record has a baseline manifest, the files
+// changed since it, both relative to the selected path. files is the current
+// manifest. A record without a baseline manifest gets a limitation instead of
+// a changed-file list.
+func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (langpack.Source, []string, error) {
+	relative, err := selectedRelative(snapshot)
+	if err != nil {
+		return langpack.Source{}, nil, err
+	}
+	source := langpack.Source{Current: []string{}}
+	for _, file := range files {
+		if name, ok := relative(file.Path); ok {
+			source.Current = append(source.Current, name)
+		}
+	}
+	if record.BaselineManifest == nil {
+		return source, []string{"task predates the baseline manifest; language evidence rules saw no changed files"}, nil
+	}
+	baseline, err := readBaselineManifest(root, *record.BaselineManifest)
+	if err != nil {
+		return langpack.Source{}, nil, err
+	}
+	source.Changed = []string{}
+	for _, file := range changedSince(baseline, files) {
+		if name, ok := relative(file.Path); ok {
+			source.Changed = append(source.Changed, name)
+		}
+	}
+	return source, nil, nil
 }

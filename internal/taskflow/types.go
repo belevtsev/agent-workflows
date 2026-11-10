@@ -24,6 +24,9 @@ const (
 	MaxLogBytes   = 128 << 10
 )
 
+// TestRulesV1 is the test rule set cw task start records (R1).
+const TestRulesV1 = "go.test-evidence/v1"
+
 var identifier = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,63}$`)
 
 // Plan is supplied explicitly by the coordinator. Repository instructions are
@@ -193,16 +196,18 @@ type Verification struct {
 }
 
 type Record struct {
-	Version          int                 `json:"version"`
-	ID               string              `json:"id"`
-	Directory        string              `json:"directory"`
-	Revision         int                 `json:"revision"`
-	EvidenceRevision int                 `json:"evidence_revision"`
-	PreviousSHA256   string              `json:"previous_sha256"`
-	CreatedAt        time.Time           `json:"created_at"`
-	UpdatedAt        time.Time           `json:"updated_at"`
-	Plan             Plan                `json:"plan"`
-	Baseline         projectctx.Snapshot `json:"baseline"`
+	Version          int       `json:"version"`
+	ID               string    `json:"id"`
+	Directory        string    `json:"directory"`
+	Revision         int       `json:"revision"`
+	EvidenceRevision int       `json:"evidence_revision"`
+	PreviousSHA256   string    `json:"previous_sha256"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Plan             Plan      `json:"plan"`
+	// Amendments lists, in order, the checks added after start (amend.go).
+	Amendments []Amendment         `json:"amendments,omitempty"`
+	Baseline   projectctx.Snapshot `json:"baseline"`
 	// BaselineManifest lists every eligible file at start. Records written
 	// before reviewer bundles existed omit it and are exempt from the bundle
 	// requirement on review assignments.
@@ -210,7 +215,10 @@ type Record struct {
 	// Packs is the pack set fixed at start. It is nil for records started by
 	// Start or by a cw that predates packs; such records verify with the
 	// legacy rules.
-	Packs             *PackSet                   `json:"packs,omitempty"`
+	Packs *PackSet `json:"packs,omitempty"`
+	// TestRules names the test rule set fixed at start. Records started by
+	// Start, or by a cw before this change, omit it and keep the earlier rules.
+	TestRules         string                     `json:"test_rules,omitempty"`
 	Advisers          map[string]string          `json:"advisers"`
 	Contexts          map[string]Context         `json:"contexts"`
 	Checks            []CheckRun                 `json:"checks"`
