@@ -359,14 +359,8 @@ func checkStoredRun(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 	if err != nil || len(ids) != 1 || ids[0] != id {
 		return errors.New("referenced check run is no longer the current passed run")
 	}
-	var approved *Check
-	for i := range record.Plan.Checks {
-		if record.Plan.Checks[i].ID == run.CheckID {
-			approved = &record.Plan.Checks[i]
-			break
-		}
-	}
-	if approved == nil || !slices.Equal(approved.Argv, run.Argv) {
+	approved, found := findCheck(record, run.CheckID)
+	if !found || !slices.Equal(approved.Argv, run.Argv) {
 		return errors.New("check argv differs from the explicit plan")
 	}
 	data, err := privateRead(root, run.Log, MaxLogBytes)
@@ -383,13 +377,14 @@ func evidenceBinding(record Record) (string, error) {
 	data, err := encode(struct {
 		Revision    int                        `json:"revision"`
 		Plan        Plan                       `json:"plan"`
+		Amendments  []Amendment                `json:"amendments,omitempty"`
 		Checks      []CheckRun                 `json:"checks"`
 		Assessments map[string]BoundAssessment `json:"assessments"`
 		Decision    *BoundDecision             `json:"decision"`
 		Assignments []WorkerAssignment         `json:"assignments"`
 		Results     []BoundWorkerResult        `json:"worker_results"`
 		Acceptances []BoundWorkerAcceptance    `json:"worker_acceptances"`
-	}{record.EvidenceRevision, record.Plan, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
+	}{record.EvidenceRevision, record.Plan, record.Amendments, record.Checks, record.Assessments, record.Decision, record.Assignments, record.WorkerResults, record.WorkerAcceptances})
 	if err != nil {
 		return "", err
 	}
@@ -439,7 +434,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 			}
 		}
 	}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		if run := latestRun(record, check.ID); run != nil && run.Status != "passed" {
 			problem("latest run of %s is %s", check.ID, run.Status)
 		}

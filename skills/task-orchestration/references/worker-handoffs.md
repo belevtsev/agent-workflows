@@ -67,7 +67,7 @@ Roles are `implementation`, `evidence`, `review` and `verification`; only
 implementation results can declare changes. `owned_paths` holds clean relative
 files or directory prefixes (`.` covers the whole project); active implementation
 assignments cannot own overlapping paths, and shared-filesystem workers preserve
-others' edits. `check_ids` selects commands already in the immutable task plan.
+others' edits. `check_ids` selects plan checks or checks added by `cw task add-checks`.
 `cw task run` retains actual execution; a worker's assertion is not a pass. A
 test engineer records as its [contract](contracts/test-engineer.md#record-and-complete)
 says: native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.

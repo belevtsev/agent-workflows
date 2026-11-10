@@ -196,16 +196,18 @@ type Verification struct {
 }
 
 type Record struct {
-	Version          int                 `json:"version"`
-	ID               string              `json:"id"`
-	Directory        string              `json:"directory"`
-	Revision         int                 `json:"revision"`
-	EvidenceRevision int                 `json:"evidence_revision"`
-	PreviousSHA256   string              `json:"previous_sha256"`
-	CreatedAt        time.Time           `json:"created_at"`
-	UpdatedAt        time.Time           `json:"updated_at"`
-	Plan             Plan                `json:"plan"`
-	Baseline         projectctx.Snapshot `json:"baseline"`
+	Version          int       `json:"version"`
+	ID               string    `json:"id"`
+	Directory        string    `json:"directory"`
+	Revision         int       `json:"revision"`
+	EvidenceRevision int       `json:"evidence_revision"`
+	PreviousSHA256   string    `json:"previous_sha256"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Plan             Plan      `json:"plan"`
+	// Amendments lists, in order, the checks added after start (amend.go).
+	Amendments []Amendment         `json:"amendments,omitempty"`
+	Baseline   projectctx.Snapshot `json:"baseline"`
 	// BaselineManifest lists every eligible file at start. Records written
 	// before reviewer bundles existed omit it and are exempt from the bundle
 	// requirement on review assignments.

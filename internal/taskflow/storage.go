@@ -320,6 +320,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 			if err := validateWorkerTransition(record, current); err != nil {
 				return Record{}, "", err
 			}
+			if err := validateAmendmentTransition(record, current); err != nil {
+				return Record{}, "", err
+			}
 			a, _ := encode(current.Plan)
 			b, _ := encode(record.Plan)
 			if string(a) != string(b) {
@@ -337,6 +340,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 
 func validateRecord(record Record) error {
 	if err := validateRecordedPlan(record.Plan); err != nil {
+		return err
+	}
+	if err := validateAmendments(record); err != nil {
 		return err
 	}
 	if err := validateWorkerRecord(record); err != nil {
@@ -370,7 +376,7 @@ func validateRecord(record Record) error {
 		}
 	}
 	checks := map[string]Check{}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		checks[check.ID] = check
 	}
 	runs := map[string]bool{}
@@ -511,6 +517,9 @@ func updateDiscarding(path string, additional int, completingRunID string, chang
 		return Record{}, err
 	}
 	if err := validateWorkerTransition(before, record); err != nil {
+		return Record{}, err
+	}
+	if err := validateAmendmentTransition(before, record); err != nil {
 		return Record{}, err
 	}
 	data, err := encode(record)

@@ -304,7 +304,8 @@ type storedResults struct {
 	tests     map[[2]string]langpack.GoTestResult
 }
 
-// judgedRun is the latest run of a planned check, taken in plan order, that
+// judgedRun is the latest run of a planned or added check, taken in plan then
+// amendment order, that
 // ran at the current source.
 type judgedRun struct {
 	run      *CheckRun
@@ -360,7 +361,7 @@ func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgeme
 	}
 	currentRuns := []judgedRun{}
 	isCurrent := map[string]bool{}
-	for _, check := range record.Plan.Checks {
+	for _, check := range allChecks(record) {
 		run := latestRun(record, check.ID)
 		if run == nil || run.Status == "running" || run.After == nil || !equalSnapshot(run.Before, snapshot) || !equalSnapshot(*run.After, snapshot) {
 			continue

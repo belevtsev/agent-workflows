@@ -128,6 +128,7 @@ func NewCommand(config Config) *cobra.Command {
 	addTaskTraceCommand(root)
 	addTaskAuthorshipCommand(root)
 	addTaskAbandonCommand(root)
+	addTaskAddChecksCommand(root)
 	addTaskTimelineCommand(root)
 	addPublishCommand(root, config)
 	addMetricsCommand(root, config)

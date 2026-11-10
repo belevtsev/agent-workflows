@@ -143,12 +143,83 @@ tree, into a directory that exists before `cw task run` (for Go,
 `-coverprofile=<artefact-dir>/cover.out`; a check runs without a shell, so it
 cannot create the directory).
 
+### Merging the base branch
+
+Merging the task's base branch into the task branch can change packages and
+module files that no plan check covers, and the plan cannot change. Cover them
+with an amendment, in this order:
+
+1. Fetch the base: `git fetch`.
+2. Merge it with `git merge --no-ff <base>`, for example
+   `git merge --no-ff origin/main`. `--no-ff` records a merge commit even when
+   the branch has no commit after the task baseline; the publication hook gates
+   only `git commit` and `git push`, so it does not block the merge. Conclude a
+   conflicted merge with `git merge --continue`; the hook denies `git commit`
+   while the record is unverified. In a non-interactive shell (agents, CI)
+   always use `GIT_EDITOR=true git merge --continue`, which keeps the prepared
+   merge message; plain `git merge --continue` opens an editor and is for an
+   interactive terminal.
+3. Add the covering checks with
+   `cw task add-checks --task DIR --input amend.json [--summary]`, where the
+   input names the merge commit (or `HEAD`), the base ref, a reason and the
+   checks:
+   `{"merge_commit": "HEAD", "base_ref": "origin/main", "reason": "merged origin/main; go.mod and internal/b changed", "checks": [{"id": "widened", "argv": ["go", "test", "./..."]}]}`
+   (`timeout_seconds` defaults to 300).
+4. Run each added check: `cw task run --task DIR --check widened`.
+5. Run `cw task verify`.
+
+`add-checks` refuses, and writes nothing, when:
+
+- the task is `small`, has no baseline manifest, or its evidence rules do not
+  include the Go package-test rule (`cw pack remove go` before start, or, for a
+  record without a pack set, no `go.mod` at the top of the selected path);
+- an added ID is already a plan or added check, plan and added checks would
+  exceed 256, or an argv is not a direct `go test` the Go rule credits (the
+  allowlist above; `-run` and wrappers earn none);
+- the merge conditions fail: `merge_commit` must name a commit with at least
+  two parents that is reachable from HEAD, not from the task baseline HEAD and
+  not from `base_ref`, and a parent after the first must be reachable from
+  `base_ref`; a shallow repository is refused too (`git fetch --unshallow`
+  fixes it);
+- an added check, in order, covers no package or module file that the merge
+  changed relative to its first parent, that is still changed since the
+  baseline, and that no plan check or earlier added check covers (a module file
+  is covered only by `./...`).
+
+An accepted amendment is stored in the record's `amendments`, removes the stored
+verification and changes the evidence binding, so a final context prepared
+before it is stale. Added checks run, bind and are cited (in assessments, the
+decision, worker briefs, results and acceptances) like plan checks, and the
+reviewer bundle lists them after the plan checks; a satisfied requirement still
+cites every plan check it names. Brief obligations stay fixed: whether a brief
+with a contract must or must not declare requirements follows the plan checks
+only, so an added `-json` check never changes it. Verify credits only runs stored in the record
+that passed at the current source: no credit comes from the base branch's CI,
+and files the merge brought in stay changed. Merge history is checked only by
+`add-checks`; later history changes do not affect the added checks.
+
+Recovery when no merge commit exists:
+
+- A plain `git merge` that fast-forwarded leaves no merge commit, and
+  `add-checks` refuses with a hint naming `git merge --no-ff`. Check that the
+  branch is not pushed and that `ORIG_HEAD` names the commit before the merge,
+  then run `git reset --keep ORIG_HEAD` (never `--hard`, which discards
+  uncommitted task work) and merge again with `--no-ff`.
+- `git merge --squash` leaves the squashed changes staged and HEAD unmoved (the
+  hook denies the commit). Undo it with `git reset --merge` only when nothing
+  else is staged; otherwise restore from HEAD only the paths the squash staged
+  (`git restore --staged --worktree --source=HEAD -- <those paths>`), never
+  other staged work, and merge with `--no-ff`.
+- After a rebase (`git pull --rebase`, `pull.rebase=true`) on an unpushed
+  branch, return to the pre-rebase commit with `git reset --keep ORIG_HEAD` and
+  merge with `--no-ff`.
+
 Adviser checkpoints run when the task has an open decision: real alternatives
 with consequential uncertainty. For such a task, omit `checkpoints` or set
 `"required": true`, and both checkpoints are required. When the approach follows directly from the
 defect or contract, declare `"required": false` with a non-blank `reason`. Keep checkpoints required for any change to code that must behave alike on
 several platforms or shells (in a measured replay, a fix declared to follow
-directly from the defect crashed bash 3.2), and whenever in doubt. The plan cannot change after `start`: if a task
+directly from the defect crashed bash 3.2), and whenever in doubt. The plan cannot change after `start` (checks can only be added, by a merge-bound `cw task add-checks`, never removed or narrowed; see [merging the base branch](#merging-the-base-branch)): if a task
 started with checkpoints not required later meets an open decision or a change to
 code that must behave alike on several platforms or shells, stop and ask the user, and never start a new record over
 source the first one already changed, because its baseline would hide those edits
