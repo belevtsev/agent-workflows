@@ -564,7 +564,7 @@ func (r *aclRepo) startWith(t *testing.T, packSet bool) string {
 	}
 	dir := r.cliStart(t)
 	if !aclHasGoRule(aclLoad(t, dir)) {
-		t.Fatalf("setup: cw task start under the default selection recorded no go.package-test/v1 pack: %+v", aclLoad(t, dir).Packs)
+		t.Fatalf("setup: cw task start under the default selection recorded no Go package-test pack (v1 or v2): %+v", aclLoad(t, dir).Packs)
 	}
 	return dir
 }
@@ -574,7 +574,7 @@ func aclHasGoRule(rec taskflow.Record) bool {
 		return false
 	}
 	for _, p := range rec.Packs.Applied {
-		if p.EvidenceRule == "go.package-test/v1" {
+		if p.EvidenceRule == "go.package-test/v1" || p.EvidenceRule == "go.package-test/v2" {
 			return true
 		}
 	}
@@ -1077,7 +1077,13 @@ func aclDoneCriterion(t *testing.T, packSet bool) {
 		t.Errorf("R13.a: verify problems %q lack %q", v1.Problems, aclPkgBProblem)
 	}
 
-	res := r.addChecks(t, dir)
+	// A recorded go pack applies go.package-test/v2, which credits only
+	// -race runs; legacy records keep go.package-test/v1.
+	widened := aclWidened
+	if packSet {
+		widened = aclCheck{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}
+	}
+	res := r.addChecks(t, dir, widened)
 	line := aclOneLine(t, "R18.d", res.stdout)
 	stored := aclLoad(t, dir)
 	var printed, file any
@@ -1104,7 +1110,7 @@ func aclDoneCriterion(t *testing.T, packSet bool) {
 		"amendments.0.base_commit":                    r.O,
 		"amendments.0.reason":                         aclReason,
 		"amendments.0.coordinator_id":                 "/root/coord",
-		"amendments.0.checks.widened.argv":            []any{"go", "test", "./..."},
+		"amendments.0.checks.widened.argv":            aclAnyArgv(widened.Argv),
 		"amendments.0.checks.widened.timeout_seconds": float64(300),
 	}
 	fields := make([]string, 0, len(wantShow))
@@ -1119,8 +1125,8 @@ func aclDoneCriterion(t *testing.T, packSet bool) {
 	}
 
 	run := r.runCheck(t, dir, "widened")
-	if run.Status != "passed" || !reflect.DeepEqual(run.Argv, aclWidened.Argv) {
-		t.Fatalf("R11.a: run of widened status %q argv %q, want passed %q", run.Status, run.Argv, aclWidened.Argv)
+	if run.Status != "passed" || !reflect.DeepEqual(run.Argv, widened.Argv) {
+		t.Fatalf("R11.a: run of widened status %q argv %q, want passed %q", run.Status, run.Argv, widened.Argv)
 	}
 	aclAssess(t, dir, r.root, []string{"unit", "widened"}, []string{"widened"})
 	r.acceptedReview(t, dir, "review-1")
@@ -1169,7 +1175,7 @@ func aclTestPackSetWithoutGoRule(t *testing.T) {
 	}
 	dir := r.cliStart(t)
 	if rec := aclLoad(t, dir); rec.Packs == nil || aclHasGoRule(rec) {
-		t.Fatalf("setup: pack set %+v, want one recorded without go.package-test/v1", rec.Packs)
+		t.Fatalf("setup: pack set %+v, want one recorded without a Go package-test rule", rec.Packs)
 	}
 	r.standard(t)
 	before := aclDirState(t, dir)
@@ -1845,4 +1851,13 @@ func aclTestIgnoresGOFLAGS(t *testing.T) {
 	if n := len(aclLoad(t, dir).Amendments); n != 1 {
 		t.Errorf("R5.c: amendments = %d, want 1", n)
 	}
+}
+
+// aclAnyArgv converts argv to the []any that cw task show decodes to.
+func aclAnyArgv(argv []string) []any {
+	out := make([]any, len(argv))
+	for i, a := range argv {
+		out[i] = a
+	}
+	return out
 }

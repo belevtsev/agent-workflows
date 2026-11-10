@@ -118,12 +118,24 @@ afterwards; an open task keeps the pack set it recorded. `cw pack list` shows th
 selection. `cw pack remove go` writes an explicit
 `packs.json`, which drops the Go rule for all of that user's repositories and
 leaves only the fallback rule (any passed check); `cw pack add go`, or deleting
-`packs.json`, restores it. Under the Go rule each changed package also needs a check
-whose argv is a direct `go test` naming `./...`, the package (`./pkg`) or a parent
-(`./dir/...`). A file belongs to the package of its directory (or of the directory
-holding its `testdata/`); a non-Go file in a directory without Go files belongs to
-the nearest ancestor package. A changed `go.mod`, `go.sum`, `go.work` or
-`go.work.sum` needs `./...`. Only runs whose every flag, in argv and in `GOFLAGS`,
+`packs.json`, restores it. Under the Go rule (`go.package-test/v2`; a task keeps the rule it recorded at
+start, so tasks started earlier keep `go.package-test/v1`) each changed
+package needs a check whose argv is a direct `go test -race` naming `./...`,
+the package (`./pkg`) or a parent (`./dir/...`); where `-race` cannot run on
+the host (its own platform, with the cgo setting `cw task verify` sees), a
+plain `go test` run counts and verify records why. A file belongs to the
+package of its directory (or of the directory holding its `testdata/`); a
+non-Go file in a directory without Go files belongs to the nearest ancestor
+package. Each package whose test binary links a changed package needs a
+passed `go test` run covering it, unless only that changed package's
+`_test.go` or `testdata/` files changed. A changed `go.mod`, `go.sum`,
+`go.work`, `go.work.sum` or vendored file, a changed file with a build
+constraint line or a generated-code header, a changed embedded file, changed
+testdata outside any package directory, or a package graph that `go list`
+cannot compute at verify within 5 s needs `./...`. A pass after a failed run
+of the same check at the same source and `GOFLAGS` earns no credit until the
+source changes. Skipped tests are listed as limitations, which needs `-v` or
+`-json` on the run. Only runs whose every flag, in argv and in `GOFLAGS`,
 is on the allowlist (`v`, `race`, `count` of at least 1, `timeout`, `cover*`,
 `tags` and the other flags in `internal/langpack/golang.go` that cannot skip or
 replace tests) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,

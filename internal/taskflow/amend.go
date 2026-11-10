@@ -106,7 +106,9 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 		if record.BaselineManifest == nil {
 			return errors.New("checks can be added only to a task with a baseline manifest")
 		}
-		if record.Packs != nil && !slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool { return pack.EvidenceRule == langpack.GoPackageTestV1 }) {
+		if record.Packs != nil && !slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool {
+			return pack.EvidenceRule == langpack.GoPackageTestV1 || pack.EvidenceRule == langpack.GoPackageTestV2
+		}) {
 			return errNoGoRule
 		}
 		existing := allChecks(*record)

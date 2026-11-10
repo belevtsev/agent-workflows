@@ -22,4 +22,4 @@ review:
   - Response bodies and sql.Rows are closed, and rows.Err() is checked.
   - No sync.Mutex or other lock is copied.
   - Reachable dependency vulnerabilities were checked with govulncheck.
-evidence_rule: go.package-test/v1
+evidence_rule: go.package-test/v2

@@ -549,7 +549,8 @@ func TestContractSubSelectedSubdirThroughCLI(t *testing.T) {
 		"check again "+subC12Phrase)
 
 	before := subLoad(t, dir).Revision
-	out, stderr, err = subCLI(t, "", "task", "add-checks", "--task", dir, "--input", amend(subWidened()), "--summary")
+	// The recorded go pack applies go.package-test/v2, which credits only -race runs.
+	out, stderr, err = subCLI(t, "", "task", "add-checks", "--task", dir, "--input", amend(taskflow.Check{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}), "--summary")
 	if err != nil {
 		t.Fatalf("cw task add-checks widened refused: %v\n%s", err, stderr)
 	}
