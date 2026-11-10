@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -82,7 +84,9 @@ func Trace(ctx context.Context, taskPath string) (TraceReport, error) {
 	if err != nil {
 		return TraceReport{}, err
 	}
-	report := judgeTrace(root, record, snapshot, files).report
+	view := newSourceView(snapshot, files)
+	report := judgeTrace(root, record, view).report
+	view.close()
 	after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return TraceReport{}, err
@@ -120,7 +124,7 @@ type TraceTest struct {
 	Path    string     `json:"path"`
 	Name    string     `json:"name"`
 	Package string     `json:"package"`
-	Status  string     `json:"status"` // passed, failed, skipped, missing or not_run
+	Status  string     `json:"status"` // passed, failed, skipped, missing, not_run, pass_unproven or not_independent
 	Detail  string     `json:"detail,omitempty"`
 	Runs    []TraceRun `json:"runs"`
 }
@@ -135,6 +139,8 @@ type TraceRun struct {
 	Pass        int    `json:"pass"`
 	Fail        int    `json:"fail"`
 	Skip        int    `json:"skip"`
+	Run         int    `json:"run,omitzero"`
+	Marked      int    `json:"marked,omitzero"`
 }
 
 // testSource resolves mapped tests at one source: the project root, the
@@ -145,12 +151,31 @@ type testSource struct {
 	gomod   []byte
 	module  bool // the selected path holds a regular go.mod
 	current []string
+	// read caches each project-relative file read through root, so a file is
+	// read at most once per source.
+	read map[string]readFile
+}
+
+// readFile is one cached read of a regular file.
+type readFile struct {
+	data []byte
+	err  error
+}
+
+// selectedPrefix returns the selected path relative to the project root,
+// slash-separated, when it is inside the root.
+func selectedPrefix(snapshot projectctx.Snapshot) (string, bool) {
+	prefix, err := filepath.Rel(snapshot.Root, snapshot.SelectedPath)
+	if err != nil || prefix == ".." || strings.HasPrefix(prefix, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return filepath.ToSlash(prefix), true
 }
 
 func newTestSource(root *os.Root, snapshot projectctx.Snapshot, files []projectctx.FileState) testSource {
-	source := testSource{root: root, current: []string{}}
-	if prefix, err := filepath.Rel(snapshot.Root, snapshot.SelectedPath); err == nil && prefix != ".." && !strings.HasPrefix(prefix, ".."+string(filepath.Separator)) {
-		source.prefix = filepath.ToSlash(prefix)
+	source := testSource{root: root, current: []string{}, read: map[string]readFile{}}
+	if prefix, ok := selectedPrefix(snapshot); ok {
+		source.prefix = prefix
 	}
 	if source.prefix == "" {
 		return source
@@ -165,11 +190,27 @@ func newTestSource(root *os.Root, snapshot projectctx.Snapshot, files []projectc
 		if source.prefix != "." {
 			name = source.prefix + "/go.mod"
 		}
-		if data, err := readWorkerFile(root, name); err == nil {
+		if data, err := source.readFile(name); err == nil {
 			source.gomod, source.module = data, true
 		}
 	}
 	return source
+}
+
+// readFile reads a project-relative regular file through the source's root,
+// refusing symlinks, at most once per source.
+func (source testSource) readFile(name string) ([]byte, error) {
+	if source.root == nil {
+		return nil, errors.New("project root cannot be opened")
+	}
+	if cached, ok := source.read[name]; ok {
+		return cached.data, cached.err
+	}
+	data, err := readWorkerFile(source.root, name)
+	if source.read != nil {
+		source.read[name] = readFile{data: data, err: err}
+	}
+	return data, err
 }
 
 // moduleRelative returns a project-relative path relative to the selected
@@ -197,7 +238,7 @@ func (source testSource) resolve(test MappedTest) (string, string) {
 	if source.root == nil {
 		return pkg, fmt.Sprintf("%s is absent or not a regular file", test.Path)
 	}
-	data, err := readWorkerFile(source.root, test.Path)
+	data, err := source.readFile(test.Path)
 	if err != nil {
 		return pkg, fmt.Sprintf("%s is absent or not a regular file", test.Path)
 	}
@@ -292,8 +333,11 @@ type judgedEntry struct {
 
 // judgeTrace judges the mapped tests of every current map-bearing assignment
 // with a completed result, and the coverage closed ones lost, from the record,
-// the task directory and the current source.
-func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) traceJudgement {
+// the task directory and the current source. In a record with test rules a
+// PASS counts only when the run proves it (R7, R8).
+func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgement {
+	snapshot := view.snapshot
+	rules := record.TestRules != ""
 	judgement := traceJudgement{report: TraceReport{TaskID: record.ID, Fingerprint: snapshot.Fingerprint, Criteria: []TraceCriterion{}, Problems: []string{}}}
 	loaded := map[string]*storedResults{}
 	for i := range record.Checks {
@@ -331,14 +375,40 @@ func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, 
 	described := func(run *CheckRun, text string) string {
 		return fmt.Sprintf("run %s of check %s %s", run.ID, run.CheckID, text)
 	}
-	var source *testSource
-	judge := func(test MappedTest) TraceTest {
-		if source == nil {
-			// An unopenable project root leaves every test absent.
-			projectRoot, _ := os.OpenRoot(snapshot.Root)
-			value := newTestSource(projectRoot, snapshot, files)
-			source = &value
+	// declarations counts, per mapped test, the packages of the test's
+	// directory that declare it (R7.a); each directory's sources are read once.
+	sources, counted := map[string][][]byte{}, map[MappedTest]int{}
+	declarations := func(test MappedTest) int {
+		if count, ok := counted[test]; ok {
+			return count
 		}
+		dir := path.Dir(test.Path)
+		read, ok := sources[dir]
+		if !ok {
+			read = [][]byte{}
+			for _, file := range view.files {
+				name := projectctx.ManifestRawPath(file.Path)
+				base := path.Base(name)
+				if path.Dir(name) != dir || !strings.HasSuffix(base, "_test.go") || strings.HasPrefix(base, "_") || strings.HasPrefix(base, ".") {
+					continue
+				}
+				if data, err := view.testSource().readFile(name); err == nil {
+					read = append(read, data)
+				}
+			}
+			sources[dir] = read
+		}
+		counted[test] = max(langpack.GoTestDeclaringPackages(read, test.Name), 1)
+		return counted[test]
+	}
+	limit := func(run *CheckRun, test MappedTest) int {
+		return saturatingProduct(langpack.GoTestRunLimit(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), declarations(test))
+	}
+	proves := func(run *CheckRun, found langpack.GoTestResult, test MappedTest) bool {
+		return found.Pass >= 1 && found.Run >= found.Pass+found.Fail+found.Skip && found.Run <= limit(run, test) && found.Marked == 0
+	}
+	judge := func(test MappedTest) TraceTest {
+		source := view.testSource()
 		pkg, missing := source.resolve(test)
 		judged := TraceTest{Path: test.Path, Name: test.Name, Package: pkg, Runs: []TraceRun{}}
 		if pkg != "" {
@@ -352,12 +422,18 @@ func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, 
 				if run.After != nil {
 					fingerprint = run.After.Fingerprint
 				}
-				judged.Runs = append(judged.Runs, TraceRun{RunID: run.ID, CheckID: run.CheckID, Status: run.Status, Fingerprint: fingerprint, Current: isCurrent[run.ID], Credited: langpack.GoTestsCredited(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), Pass: found.Pass, Fail: found.Fail, Skip: found.Skip})
+				judged.Runs = append(judged.Runs, TraceRun{RunID: run.ID, CheckID: run.CheckID, Status: run.Status, Fingerprint: fingerprint, Current: isCurrent[run.ID], Credited: langpack.GoTestsCredited(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), Pass: found.Pass, Fail: found.Fail, Skip: found.Skip, Run: found.Run, Marked: found.Marked})
 			}
 		}
 		if missing != "" {
 			judged.Status, judged.Detail = "missing", missing
 			return judged
+		}
+		if gated(record) {
+			if authored := view.authorship(taskRoot, record).classify(test.Path); authored.status != "independent" {
+				judged.Status, judged.Detail = "not_independent", fmt.Sprintf("%s is %s: %s", test.Path, authored.status, authored.reason)
+				return judged
+			}
 		}
 		for _, current := range currentRuns {
 			if entry(current.results, pkg, test.Name).Fail > 0 {
@@ -366,10 +442,28 @@ func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, 
 			}
 		}
 		for _, current := range currentRuns {
-			if current.passed && current.credited && entry(current.results, pkg, test.Name).Pass > 0 {
+			if found := entry(current.results, pkg, test.Name); current.passed && current.credited && found.Pass > 0 && (!rules || proves(current.run, found, test)) {
 				judged.Status = "passed"
 				return judged
 			}
+		}
+		for _, current := range currentRuns {
+			found := entry(current.results, pkg, test.Name)
+			if !rules || !current.passed || !current.credited || found.Pass < 1 {
+				continue
+			}
+			judged.Status = "pass_unproven"
+			switch {
+			case found.Marked >= 1:
+				judged.Detail = described(current.run, "recorded an output line of it beginning with byte 0x16")
+			case found.Run > limit(current.run, test):
+				judged.Detail = described(current.run, fmt.Sprintf("recorded %d run events for it, more than its -count, -cpu and declarations allow (%d)", found.Run, limit(current.run, test)))
+			case current.results.truncated:
+				judged.Detail = described(current.run, "recorded a PASS, but not a run event for each of its results, and stopped recording at its bound")
+			default:
+				judged.Detail = described(current.run, "recorded a PASS, but not a run event for each of its results")
+			}
+			return judged
 		}
 		for _, current := range currentRuns {
 			if current.passed && current.credited && entry(current.results, pkg, test.Name).Skip > 0 {
@@ -405,7 +499,7 @@ func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, 
 		}
 		return judged
 	}
-	phrases := map[string]string{"missing": "is missing at the current source", "failed": "failed at the current source", "skipped": "was skipped at the current source", "not_run": "has no PASS at the current source"}
+	phrases := map[string]string{"missing": "is missing at the current source", "failed": "failed at the current source", "skipped": "was skipped at the current source", "not_run": "has no PASS at the current source", "pass_unproven": "has no proven PASS at the current source", "not_independent": "is not independently authored"}
 
 	current, closed := mapCurrency(record)
 	// Judge each current map-bearing assignment's completed map once, in
@@ -529,10 +623,16 @@ func judgeTrace(taskRoot *os.Root, record Record, snapshot projectctx.Snapshot, 
 			judgement.lostProblems = append(judgement.lostProblems, fmt.Sprintf("plan requirement %s lost its mapped tests: every test-engineer assignment that linked it is closed unused, rejected or replaced", criterion.ID))
 		}
 	}
-	if source != nil && source.root != nil {
-		source.root.Close()
-	}
 	return judgement
+}
+
+// saturatingProduct returns a times b for non-negative a and b, saturating at
+// the largest int.
+func saturatingProduct(a, b int) int {
+	if a != 0 && b > math.MaxInt/a {
+		return math.MaxInt
+	}
+	return a * b
 }
 
 // lookup returns the test's entry in results; a nil results holds none.
@@ -546,12 +646,12 @@ func (results *storedResults) lookup(pkg, name string) (langpack.GoTestResult, b
 
 // traceVerifyEntries turns the judgement of mapped tests into verify's
 // problems (R6, R32, R30, R42, in that order) and limitations (R31, R41).
-func traceVerifyEntries(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
+func traceVerifyEntries(root *os.Root, record Record, view *sourceView) (problems, limitations []string) {
 	problems = inputCopyProblems(root, record)
 	if !slices.ContainsFunc(record.Assignments, mapBearing) {
 		return problems, nil
 	}
-	judgement := judgeTrace(root, record, snapshot, files)
+	judgement := judgeTrace(root, record, view)
 	if judgement.judged > 0 {
 		problems = append(problems, judgement.unreadable...)
 	}

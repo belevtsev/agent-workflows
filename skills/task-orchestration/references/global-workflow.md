@@ -349,6 +349,49 @@ it can forge a PASS. It cannot hide a real FAIL: a FAIL of the same test in a
 latest run at the current source makes the test `failed` whatever else the run
 recorded.
 
+**Test rules.** `cw task start` records `"test_rules": "go.test-evidence/v1"` in
+every new record. A `cw` built before this rule cannot load such a record (its
+commit and push hook skips it), so finish a task with the `cw` that started it.
+Records without `test_rules` keep the rules above. In a record with test rules:
+
+- **Proven PASS (a mitigation).** Each run's results also count the `run` events
+  and the output lines beginning with byte 0x16 of each test. A mapped test is
+  `passed` only when a per-test credited current passed run recorded at least one
+  `run` event per result, no more `run` events than its `-count` times its `-cpu`
+  values times the packages of the test's directory that declare it, and no
+  marked output line; a PASS without that is `pass_unproven`, which fails
+  `verify`. This catches a forged PASS of a test with no `run` event and a forged
+  PASS of a test that genuinely runs. It does not prove the test ran: code in the
+  test binary can still print a forged `=== RUN` and `--- PASS` pair, or unmarked
+  framing before the first test starts, for a mapped test that never genuinely
+  runs (a subtest never created, a build-constrained file, `os.Exit` before
+  `m.Run`), and a same-named declaration in another package of the directory
+  that does not run the mapped name raises the allowance. Code review is the
+  backstop ([code review](contracts/code-review.md#backstops-cw-cannot-check)).
+- **Authorship (substantial plans).** Every changed Go test file must be
+  `independent` (recorded by a never-rejected test-engineer round with a
+  `completed` result whose latest acceptance is `accepted` or `unused`, by an
+  agent that is not excluded) or a
+  cited reproduction test (`source_aware`); `verify` fails a `lost` or `unowned`
+  one, and a mapped test whose file is not `independent` is `not_independent`
+  ([worker handoffs](worker-handoffs.md#test-rules-and-test-authorship)). When the
+  plan has no per-test credited `go test -json` check and a changed test file is
+  not `source_aware`, `verify` fails once with "test files changed, but the plan
+  has no go test check whose argv earns per-test credit ...": the plan cannot
+  change, so stop and ask the user. An unreadable baseline manifest fails with
+  `test authorship cannot be judged: <error>`. A selected path without `go.mod`
+  but with `go.work` or Go files gets the limitation `test authorship not judged:
+  ...`, and its test files are not guarded.
+- **Contracts need a provable plan.** In a substantial task, `assign` refuses a
+  brief with a `contract` when no plan check earns per-test credit.
+- **Contract currency.** An earlier contract stops being re-extracted only when a
+  later contract-bearing round that covers its owned paths has an `accepted`
+  acceptance and no `rejected` one; a round never accepted, or ever rejected,
+  leaves the earlier contract checked.
+
+`cw task authorship --task <dir>` lists each changed test file with its status
+and reason, without changing the record.
+
 Record acceptance and the coordinator's decision through an assessment JSON. A source
 reference contains its repository-relative `path`, valid `start_line`/`end_line`,
 and the SHA-256 of the complete current file; omit `sha256` to have it filled from

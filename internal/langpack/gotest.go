@@ -26,13 +26,18 @@ const (
 	MaxGoTestLineBytes = 64 << 10
 )
 
-// GoTestResult counts one test's results in one package.
+// GoTestResult counts one test's results in one package. Run and Marked are
+// filled only by ResultsWithRuns.
 type GoTestResult struct {
 	Package string `json:"package"`
 	Test    string `json:"test"`
 	Pass    int    `json:"pass"`
 	Fail    int    `json:"fail"`
 	Skip    int    `json:"skip"`
+	// Run counts the test's run events.
+	Run int `json:"run,omitzero"`
+	// Marked counts the test's output events whose Output begins with byte 0x16.
+	Marked int `json:"marked,omitzero"`
 }
 
 // GoTestResults is every test result a GoTestOutput read.
@@ -74,8 +79,18 @@ func (tally *testTally) count(key testKey, action string) {
 		result.Fail++
 	case "skip":
 		result.Skip++
+	case "run":
+		result.Run++
+	case "output":
+		result.Marked++
 	}
 	tally.counts[key] = result
+}
+
+// resultAction reports whether action is a pass, fail or skip event, which
+// the results tally counts; run and marked output events go to the runs tally.
+func resultAction(action string) bool {
+	return action == "pass" || action == "fail" || action == "skip"
 }
 
 // GoTestOutput reads the pass, fail and skip events of go test -json output
@@ -83,6 +98,9 @@ func (tally *testTally) count(key testKey, action string) {
 // concurrent use.
 type GoTestOutput struct {
 	tally testTally
+	// runs counts run events and marked output events per (package, test),
+	// under its own bounds (R5.b).
+	runs testTally
 	// line holds the current line's bytes; overlong is set once the line
 	// passed the bound, and its bytes are discarded through its newline.
 	line     []byte
@@ -111,7 +129,11 @@ func (o *GoTestOutput) Write(p []byte) (int, error) {
 		}
 		if !o.overlong {
 			if key, action, ok := testEvent(o.line); ok {
-				o.tally.count(key, action)
+				if resultAction(action) {
+					o.tally.count(key, action)
+				} else {
+					o.runs.count(key, action)
+				}
 			}
 		}
 		o.line, o.overlong = o.line[:0], false
@@ -125,7 +147,7 @@ func (o *GoTestOutput) Write(p []byte) (int, error) {
 func (o *GoTestOutput) Results() GoTestResults {
 	tally := o.tally
 	if !o.overlong && len(o.line) > 0 {
-		if key, action, ok := testEvent(o.line); ok {
+		if key, action, ok := testEvent(o.line); ok && resultAction(action) {
 			tally.counts = maps.Clone(o.tally.counts)
 			tally.count(key, action)
 		}
@@ -140,9 +162,29 @@ func (o *GoTestOutput) Results() GoTestResults {
 	return GoTestResults{Tests: tests, Truncated: tally.truncated}
 }
 
+// ResultsWithRuns reports Results with each entry's Run and Marked counts (R5).
+func (o *GoTestOutput) ResultsWithRuns() GoTestResults {
+	results := o.Results()
+	runs := o.runs
+	if !o.overlong && len(o.line) > 0 {
+		if key, action, ok := testEvent(o.line); ok && !resultAction(action) {
+			runs.counts = maps.Clone(o.runs.counts)
+			runs.count(key, action)
+		}
+	}
+	for i, test := range results.Tests {
+		counted := runs.counts[testKey{pkg: test.Package, test: test.Test}]
+		results.Tests[i].Run, results.Tests[i].Marked = counted.Run, counted.Marked
+	}
+	results.Truncated = results.Truncated || runs.truncated
+	return results
+}
+
 // testEvent reads one line (without its newline) as a go test -json pass,
-// fail or skip event. Member names match exactly; a duplicate member, a
-// member of the wrong type or invalid UTF-8 makes the line count nothing.
+// fail, skip or run event, or as an output event whose Output is a string
+// beginning with byte 0x16, returned with the action "output" (R5.a). Member
+// names match exactly; a duplicate member, a member of the wrong type or
+// invalid UTF-8 makes the line count nothing.
 func testEvent(line []byte) (testKey, string, bool) {
 	line = bytes.TrimSuffix(line, []byte{'\r'})
 	if len(line) == 0 || len(line) > MaxGoTestLineBytes || line[0] != '{' {
@@ -152,12 +194,22 @@ func testEvent(line []byte) (testKey, string, bool) {
 		Action  jsontext.Value `json:"Action"`
 		Test    jsontext.Value `json:"Test"`
 		Package jsontext.Value `json:"Package"`
+		Output  jsontext.Value `json:"Output"`
 	}
 	if err := json.Unmarshal(line, &event); err != nil {
 		return testKey{}, "", false
 	}
 	action, ok := jsonString(event.Action)
-	if !ok || action != "pass" && action != "fail" && action != "skip" {
+	if !ok {
+		return testKey{}, "", false
+	}
+	switch action {
+	case "pass", "fail", "skip", "run":
+	case "output":
+		if output, ok := jsonString(event.Output); !ok || !strings.HasPrefix(output, "\x16") {
+			return testKey{}, "", false
+		}
+	default:
 		return testKey{}, "", false
 	}
 	test, ok := jsonString(event.Test)
@@ -256,15 +308,37 @@ func goIdentifier(name string) bool {
 
 // GoTestDeclared reports whether src declares the top-level test function of name.
 func GoTestDeclared(src []byte, name string) bool {
+	_, ok := declaringPackage(src, name)
+	return ok
+}
+
+// declaringPackage returns src's package clause name when src parses and
+// declares the top-level function, without a receiver, named the part of
+// name before its first "/".
+func declaringPackage(src []byte, name string) (string, bool) {
 	top, _, _ := strings.Cut(name, "/")
 	file, err := parser.ParseFile(token.NewFileSet(), "", src, parser.SkipObjectResolution)
 	if err != nil {
-		return false
+		return "", false
 	}
-	return slices.ContainsFunc(file.Decls, func(decl ast.Decl) bool {
+	return file.Name.Name, slices.ContainsFunc(file.Decls, func(decl ast.Decl) bool {
 		function, ok := decl.(*ast.FuncDecl)
 		return ok && function.Recv == nil && function.Name.Name == top
 	})
+}
+
+// GoTestDeclaringPackages returns how many distinct package clauses among
+// sources declare the top-level test function of name (the part before the
+// first "/") without a receiver; a source that does not parse counts nothing
+// (R7.a).
+func GoTestDeclaringPackages(sources [][]byte, name string) int {
+	packages := map[string]bool{}
+	for _, src := range sources {
+		if pkg, ok := declaringPackage(src, name); ok {
+			packages[pkg] = true
+		}
+	}
+	return len(packages)
 }
 
 // GoTestPackage returns the import path of the package go test ./... at the
