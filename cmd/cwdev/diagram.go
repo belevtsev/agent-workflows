@@ -209,39 +209,28 @@ func (tools diagramTools) export(parent context.Context, spec diagramSpec) ([]by
 
 	stem := strings.TrimSuffix(filepath.Base(spec.path), ".json")
 	viewerPath := filepath.Join(work, stem+".html")
-	finalize := []string{tools.archify, "finalize", spec.diagramType, spec.path, viewerPath}
-	if spec.quality != "" {
-		finalize = append(finalize, "--quality", spec.quality)
-	}
-	command := exec.CommandContext(ctx, tools.node, finalize...)
-	command.Dir = tools.root
-	// archify's own temporary files (its browser profile among them) go
-	// below work, so they are removed with it even when node is killed.
-	command.Env = append(os.Environ(), "ARCHIFY_CHROME="+tools.chrome, "TMPDIR="+work)
-	// Killing node's whole process group also stops the browser archify's
-	// own checks start.
-	ownProcessGroup(command)
-	command.Cancel = func() error { return killProcessGroup(command) }
-	command.WaitDelay = 5 * time.Second
-	output, err := command.CombinedOutput()
-	if errors.Is(err, exec.ErrWaitDelay) && command.ProcessState != nil && command.ProcessState.Success() {
-		// node succeeded; only a helper that left its process group still
-		// held the output, which WaitDelay stopped waiting for.
-		err = nil
-	}
-	// Stop and wait out anything node left in its group (archify's browser
-	// after a kill) so it cannot write into work while it is removed.
-	_ = killProcessGroup(command)
-	waitProcessGroupGone(command, processGroupGrace)
-	if err := timedOut(ctx, tools.timeout, "finalize", errors.New(tail(output))); err != nil {
+	err = tools.finalize(ctx, spec, work, viewerPath)
+	var chromeFailure browserCheckChromeFailure
+	if errors.As(err, &chromeFailure) {
+		// archify's browser-check could not run Chrome; its receipt says the
+		// failure is about the host, not the diagram, and archify's own
+		// supported fix is one retry. Every other gate result still fails.
+		retryWork := filepath.Join(work, "retry")
+		if mkErr := os.Mkdir(retryWork, 0o700); mkErr != nil {
+			return nil, err
+		}
+		viewerPath = filepath.Join(retryWork, stem+".html")
+		retryErr := tools.finalize(ctx, spec, retryWork, viewerPath)
+		if retryErr != nil {
+			return nil, fmt.Errorf("%w\nretried once after browser-check could not run Chrome; the first attempt failed with: %s", retryErr, chromeFailure.diagnostics)
+		}
+		fmt.Fprintf(os.Stderr, "cwdev: diagram-svg: %s: browser-check could not run Chrome on the first attempt and passed on one retry; first attempt:%s\n", spec.path, chromeFailure.diagnostics)
+	} else if err != nil {
 		return nil, err
-	}
-	if err != nil {
-		return nil, fmt.Errorf("archify finalize failed: %w%s\n%s", err, finalizeDiagnostics(viewerPath), tail(output))
 	}
 	viewer, err := os.ReadFile(viewerPath)
 	if err != nil || len(viewer) == 0 {
-		return nil, fmt.Errorf("archify finalize exited 0 but wrote no viewer HTML at %s\n%s", viewerPath, tail(output))
+		return nil, fmt.Errorf("archify finalize exited 0 but wrote no viewer HTML at %s", viewerPath)
 	}
 
 	injected, err := injectCaptureScript(viewer)
@@ -268,6 +257,89 @@ func (tools diagramTools) export(parent context.Context, spec diagramSpec) ([]by
 		return nil, err
 	}
 	return svg, nil
+}
+
+// finalize runs archify finalize for spec, writing viewerPath, with its
+// temporary files below work. A failure that archify's receipt attributes
+// only to Chrome failing to run browser-check is a
+// browserCheckChromeFailure.
+func (tools diagramTools) finalize(ctx context.Context, spec diagramSpec, work, viewerPath string) error {
+	finalize := []string{tools.archify, "finalize", spec.diagramType, spec.path, viewerPath}
+	if spec.quality != "" {
+		finalize = append(finalize, "--quality", spec.quality)
+	}
+	command := exec.CommandContext(ctx, tools.node, finalize...)
+	command.Dir = tools.root
+	// archify's own temporary files (its browser profile among them) go
+	// below work, so they are removed with it even when node is killed.
+	command.Env = append(os.Environ(), "ARCHIFY_CHROME="+tools.chrome, "TMPDIR="+work)
+	// Killing node's whole process group also stops the browser archify's
+	// own checks start.
+	ownProcessGroup(command)
+	command.Cancel = func() error { return killProcessGroup(command) }
+	command.WaitDelay = 5 * time.Second
+	output, err := command.CombinedOutput()
+	if errors.Is(err, exec.ErrWaitDelay) && command.ProcessState != nil && command.ProcessState.Success() {
+		// node succeeded; only a helper that left its process group still
+		// held the output, which WaitDelay stopped waiting for.
+		err = nil
+	}
+	// Stop and wait out anything node left in its group (archify's browser
+	// after a kill) so it cannot write into work while it is removed.
+	_ = killProcessGroup(command)
+	waitProcessGroupGone(command, processGroupGrace)
+	if err := timedOut(ctx, tools.timeout, "finalize", errors.New(tail(output))); err != nil {
+		return err
+	}
+	if err != nil {
+		diagnostics := finalizeDiagnostics(viewerPath)
+		failure := fmt.Errorf("archify finalize failed: %w%s\n%s", err, diagnostics, tail(output))
+		if browserCheckCouldNotRunChrome(viewerPath) {
+			return browserCheckChromeFailure{error: failure, diagnostics: diagnostics}
+		}
+		return failure
+	}
+	if viewer, err := os.Stat(viewerPath); err != nil || viewer.Size() == 0 {
+		return fmt.Errorf("archify finalize exited 0 but wrote no viewer HTML at %s\n%s", viewerPath, tail(output))
+	}
+	return nil
+}
+
+// browserCheckChromeFailure is a finalize failure whose receipt blames only
+// Chrome failing to run browser-check; diagnostics is what the receipt said.
+type browserCheckChromeFailure struct {
+	error
+	diagnostics string
+}
+
+func (failure browserCheckChromeFailure) Unwrap() error { return failure.error }
+
+// chromeRuntimeCodes are the archify diagnostics that report Chrome failing
+// to complete browser-check (a protocol or event timeout, a crash, a slow
+// startup), as opposed to a finding about the diagram.
+var chromeRuntimeCodes = map[string]bool{
+	"viewer/browser-check-runtime":  true,
+	"viewer/chrome-startup-timeout": true,
+}
+
+// browserCheckCouldNotRunChrome reports whether the finalize receipt next to
+// viewerPath failed at browser-check with only Chrome runtime errors.
+func browserCheckCouldNotRunChrome(viewerPath string) bool {
+	receipt, ok := readFinalizeReceipt(viewerPath)
+	if !ok || receipt.FailedStage != "browser-check" {
+		return false
+	}
+	errorsSeen := 0
+	for _, diagnostic := range receipt.Diagnostics {
+		if diagnostic.Severity != "error" {
+			continue
+		}
+		if !chromeRuntimeCodes[diagnostic.Code] {
+			return false
+		}
+		errorsSeen++
+	}
+	return errorsSeen > 0
 }
 
 // processGroupGrace bounds the wait for a killed process group to exit.
@@ -303,32 +375,26 @@ func timedOut(ctx context.Context, limit time.Duration, step string, cause error
 // writes next to its output, which explain a failed gate; its plain output
 // only names the receipt, which is removed with the work directory.
 func finalizeDiagnostics(viewerPath string) string {
-	data, err := os.ReadFile(strings.TrimSuffix(viewerPath, ".html") + ".finalize.json")
-	if err != nil {
-		return ""
-	}
-	var receipt struct {
-		FailedStage any `json:"failedStage"`
-		Diagnostics []struct {
-			Code     string `json:"code"`
-			Severity string `json:"severity"`
-			Message  string `json:"message"`
-			Subject  struct {
-				Path string `json:"path"`
-			} `json:"subject"`
-		} `json:"diagnostics"`
-	}
-	if json.Unmarshal(data, &receipt) != nil {
+	receipt, ok := readFinalizeReceipt(viewerPath)
+	if !ok {
 		return ""
 	}
 	var lines []string
-	if stage, ok := receipt.FailedStage.(string); ok && stage != "" {
-		lines = append(lines, "failed stage: "+stage)
+	if receipt.FailedStage != "" {
+		lines = append(lines, "failed stage: "+receipt.FailedStage)
 	}
 	for _, diagnostic := range receipt.Diagnostics {
 		line := fmt.Sprintf("%s %s: %s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 		if diagnostic.Subject.Path != "" {
 			line += " (at " + diagnostic.Subject.Path + ")"
+		}
+		// A runtime failure's cause (a timed-out DevTools method, a crash)
+		// is only in its evidence.
+		var evidence struct {
+			Reason string `json:"reason"`
+		}
+		if json.Unmarshal(diagnostic.Evidence, &evidence) == nil && evidence.Reason != "" {
+			line += "; reason: " + evidence.Reason
 		}
 		lines = append(lines, line)
 	}
@@ -336,6 +402,38 @@ func finalizeDiagnostics(viewerPath string) string {
 		return ""
 	}
 	return "\n" + strings.Join(lines, "\n")
+}
+
+// finalizeReceipt is the part of archify's finalize receipt cwdev reads.
+type finalizeReceipt struct {
+	FailedStage string `json:"-"`
+	Diagnostics []struct {
+		Code     string `json:"code"`
+		Severity string `json:"severity"`
+		Message  string `json:"message"`
+		Subject  struct {
+			Path string `json:"path"`
+		} `json:"subject"`
+		Evidence json.RawMessage `json:"evidence"`
+	} `json:"diagnostics"`
+}
+
+// readFinalizeReceipt reads the finalize receipt archify writes next to
+// viewerPath. A failedStage that is not a string reads as "".
+func readFinalizeReceipt(viewerPath string) (finalizeReceipt, bool) {
+	var receipt finalizeReceipt
+	data, err := os.ReadFile(strings.TrimSuffix(viewerPath, ".html") + ".finalize.json")
+	if err != nil {
+		return receipt, false
+	}
+	var raw struct {
+		FailedStage any `json:"failedStage"`
+	}
+	if json.Unmarshal(data, &raw) != nil || json.Unmarshal(data, &receipt) != nil {
+		return receipt, false
+	}
+	receipt.FailedStage, _ = raw.FailedStage.(string)
+	return receipt, true
 }
 
 // tail keeps the end of a child's output for an error message.
