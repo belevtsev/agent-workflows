@@ -27,6 +27,10 @@ package main
 //
 // Contract diagram-svg-v6 also adds a test of R7's brief retries before
 // the removal warning (TestDiagramSVGContractRetriesTemporaryDirectoryRemoval).
+//
+// Contract diagram-svg-v7 adds one retry of finalize when its receipt says
+// browser-check failed only because Chrome could not complete it
+// (TestDiagramSVGContractRetriesBrowserCheckChromeFailureOnce).
 
 import (
 	"bufio"
@@ -121,12 +125,22 @@ const (
 	dsvgLateEvaluateError  = "late-evaluate-error-B"
 	// dsvgFailedStage and the dsvgDiag* values fill the fake finalize
 	// receipt.
-	dsvgFailedStage    = "layout-check"
-	dsvgDiagErrorCode  = "ARCH-E101"
-	dsvgDiagErrorText  = "edge e3 overlaps node api"
-	dsvgDiagErrorPath  = "$.edges[3]"
-	dsvgDiagWarnCode   = "ARCH-W007"
-	dsvgDiagWarnText   = "label exceeds 40 characters"
+	dsvgFailedStage   = "layout-check"
+	dsvgDiagErrorCode = "ARCH-E101"
+	dsvgDiagErrorText = "edge e3 overlaps node api"
+	dsvgDiagErrorPath = "$.edges[3]"
+	dsvgDiagWarnCode  = "ARCH-W007"
+	dsvgDiagWarnText  = "label exceeds 40 characters"
+	// dsvgChromeReason is the evidence reason of the fake receipt's Chrome
+	// runtime diagnostic; dsvgChromeRuntimeJSON is a browser-check failure
+	// that blames only Chrome, dsvgChromeContentJSON one that also reports
+	// a finding about the diagram.
+	dsvgChromeReason      = "Runtime.evaluate: timed out after 15000ms"
+	dsvgChromeRuntimeDiag = `{"code": "viewer/browser-check-runtime", "severity": "error", "message": "browser-check could not complete its Chrome inspection.", "evidence": {"reason": "` + dsvgChromeReason + `"}}`
+	dsvgChromeRuntimeJSON = `{"ok": false, "failedStage": "browser-check", "diagnostics": [` + dsvgChromeRuntimeDiag +
+		`, {"code": "` + dsvgDiagWarnCode + `", "severity": "warning", "message": "` + dsvgDiagWarnText + `", "evidence": "free text"}]}`
+	dsvgChromeContentJSON = `{"ok": false, "failedStage": "browser-check", "diagnostics": [` + dsvgChromeRuntimeDiag +
+		`, {"code": "viewer/containment", "severity": "error", "message": "` + dsvgDiagErrorText + `"}]}`
 	dsvgDiagnosticJSON = `"diagnostics": [` +
 		`{"code": "` + dsvgDiagErrorCode + `", "severity": "error", "message": "` + dsvgDiagErrorText + `", "subject": {"path": "` + dsvgDiagErrorPath + `"}},` +
 		`{"code": "` + dsvgDiagWarnCode + `", "severity": "warning", "message": "` + dsvgDiagWarnText + `"}]`
@@ -603,6 +617,17 @@ func dsvgInsertBeforeLastBody(page []byte, text string) []byte {
 	return append(out, page[i:]...)
 }
 
+// dsvgWriteFile0 creates path if it does not exist and reports whether it
+// did.
+func dsvgWriteFile0(path string) bool {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return false
+	}
+	file.Close()
+	return true
+}
+
 func dsvgFakeNode(dir string) int {
 	args := os.Args[1:]
 	cwd, _ := os.Getwd()
@@ -621,8 +646,23 @@ func dsvgFakeNode(dir string) int {
 	dsvgWriteRecord(dir, "node", record)
 	receipt := strings.TrimSuffix(html, ".html") + ".finalize.json"
 	switch mode {
-	case "fail", "failreceipt", "failbadreceipt", "failnostage":
+	case "chromeonce", "chromestartuponce":
+		// browser-check could not run Chrome on the first finalize only.
+		if dsvgWriteFile0(filepath.Join(dir, "chrome-failed-once")) {
+			mode = strings.TrimSuffix(strings.Replace(mode, "chrome", "chromefail", 1), "once")
+		}
+	}
+	switch mode {
+	case "fail", "failreceipt", "failbadreceipt", "failnostage", "chromefail", "chromefailstartup", "chromecontent", "chromeotherstage":
 		switch mode {
+		case "chromefail":
+			dsvgWriteFakeReceipt(receipt, dsvgChromeRuntimeJSON)
+		case "chromefailstartup":
+			dsvgWriteFakeReceipt(receipt, strings.Replace(dsvgChromeRuntimeJSON, "viewer/browser-check-runtime", "viewer/chrome-startup-timeout", 1))
+		case "chromeotherstage":
+			dsvgWriteFakeReceipt(receipt, strings.Replace(dsvgChromeRuntimeJSON, `"failedStage": "browser-check"`, `"failedStage": "check"`, 1))
+		case "chromecontent":
+			dsvgWriteFakeReceipt(receipt, dsvgChromeContentJSON)
 		case "failreceipt":
 			dsvgWriteFakeReceipt(receipt, `{"ok": false, "failedStage": "`+dsvgFailedStage+`", `+dsvgDiagnosticJSON+`}`)
 		case "failbadreceipt":
@@ -2763,6 +2803,70 @@ func TestDiagramSVGContractMainCancelsRunOnSignal(t *testing.T) {
 			if t.Failed() {
 				t.Logf("exit: %v\nstdout: %s\nstderr: %s", child.ProcessState, read(stdout), read(stderr))
 			}
+		})
+	}
+}
+
+// failures (R2): when archify's receipt says browser-check failed only
+// because Chrome could not complete it, finalize runs once more, reports the
+// first attempt's cause and still fails when the retry fails. A browser-check
+// failure that also reports a finding about the diagram is not retried.
+func TestDiagramSVGContractRetriesBrowserCheckChromeFailureOnce(t *testing.T) {
+	for mode, code := range map[string]string{"chromeonce": "viewer/browser-check-runtime", "chromestartuponce": "viewer/chrome-startup-timeout"} {
+		t.Run("passes-on-retry/"+mode, func(t *testing.T) {
+			e := dsvgSetup(t)
+			t.Setenv(dsvgNodeModeEnv, mode)
+			spec := dsvgWriteSpec(t, e.diagrams, "delta.json", `{"diagram_type": "flowchart-fake"}`)
+			var err error
+			stdout, stderr := dsvgCaptureStreams(t, func() {
+				err = run(t.Context(), []string{"diagram-svg", "--root", e.root, spec})
+			})
+			if err != nil {
+				t.Fatalf("diagram-svg failed after a retryable browser-check failure: %v\nstdout: %s\nstderr: %s", err, stdout, stderr)
+			}
+			if nodes := dsvgReadRecords(t, e.records, "node"); len(nodes) != 2 {
+				t.Fatalf("finalize ran %d times, want 2", len(nodes))
+			}
+			for _, want := range []string{"retry", code, "reason: " + dsvgChromeReason} {
+				if !strings.Contains(stderr, want) {
+					t.Errorf("stderr does not report %q:\n%s", want, stderr)
+				}
+			}
+			dsvgAssertFile(t, filepath.Join(e.diagrams, "delta.svg"), string(dsvgFakeSVG("delta"))+"\n")
+			dsvgAssertTmpEmpty(t, e)
+		})
+	}
+	for _, c := range []struct {
+		name, mode string
+		runs       int
+		want       []string
+	}{
+		{name: "fails-twice", mode: "chromefail", runs: 2, want: []string{"retried once", "reason: " + dsvgChromeReason, "failed stage: browser-check"}},
+		{name: "diagram-finding", mode: "chromecontent", runs: 1, want: []string{"viewer/containment", dsvgDiagErrorText}},
+		{name: "runtime-error-at-other-stage", mode: "chromeotherstage", runs: 1, want: []string{"failed stage: check", "viewer/browser-check-runtime"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := dsvgSetup(t)
+			t.Setenv(dsvgNodeModeEnv, c.mode)
+			spec := dsvgWriteSpec(t, e.diagrams, "delta.json", `{"diagram_type": "flowchart-fake"}`)
+			before := dsvgSnapshot(t, e.diagrams)
+			output, err := dsvgRun(t, "--root", e.root, spec)
+			if err == nil {
+				t.Fatalf("diagram-svg succeeded; output: %s", output)
+			}
+			if nodes := dsvgReadRecords(t, e.records, "node"); len(nodes) != c.runs {
+				t.Fatalf("finalize ran %d times, want %d", len(nodes), c.runs)
+			}
+			for _, want := range c.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error does not contain %q:\n%v", want, err)
+				}
+			}
+			if c.runs == 1 && strings.Contains(err.Error(), "retried") {
+				t.Errorf("a browser-check failure with a diagram finding was retried: %v", err)
+			}
+			dsvgAssertSnapshot(t, "docs/diagrams", before, dsvgSnapshot(t, e.diagrams))
+			dsvgAssertTmpEmpty(t, e)
 		})
 	}
 }

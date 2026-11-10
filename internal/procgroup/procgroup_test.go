@@ -20,27 +20,45 @@ import (
 )
 
 const (
-	// delayedMemberScript creates $1/ready-delayed once running, waits $2
-	// seconds and then creates $1/late-delayed. Only a kill stops that write.
+	// afterKill is the file the tests create once Kill has returned. Every
+	// member waits for it before its late write, so a late-* file proves that
+	// its writer was alive after Kill returned. A late write no longer depends
+	// on how long a loaded runner takes between the members starting and Kill:
+	// a member that wrote after a fixed delay could finish before Kill was
+	// even called (macOS CI, PR #80), which proved nothing about Kill.
+	afterKill = "after-kill"
+	// awaitAfterKill polls for $1/after-kill for about 30 s and then exits
+	// without writing, so a member left behind by a failed test still ends.
+	awaitAfterKill = `i=0
+while [ ! -e "$1/` + afterKill + `" ]; do
+	i=$((i + 1))
+	if [ "$i" -gt 600 ]; then exit 0; fi
+	sleep 0.05
+done
+`
+	// delayedMemberScript creates $1/ready-delayed once running, then creates
+	// $1/late-delayed once $1/after-kill exists. Only a kill stops that write.
 	delayedMemberScript = `: > "$1/ready-delayed"
-sleep "$2"
-: > "$1/late-delayed"`
+` + awaitAfterKill + `: > "$1/late-delayed"`
+	// forkedChildScript is one child of the forking member: it creates
+	// $1/late-forked-$2 once $1/after-kill exists.
+	forkedChildScript = awaitAfterKill + `: > "$1/late-forked-$2"`
 	// forkingMemberScript creates $1/ready-forking and then, for about 2.5 s,
-	// keeps forking children that each create $1/late-forked-N after 0.3 s.
-	// About 30 children (each with its sleep) are alive at once.
+	// keeps forking children ($2 is forkedChildScript), each of which forks
+	// sleep every 50 ms, so forks are in flight whenever Kill runs.
 	forkingMemberScript = `: > "$1/ready-forking"
 i=0
 while [ "$i" -lt 200 ]; do
-	/bin/sh -c 'sleep 0.3; : > "$1/late-forked-$2"' sh "$1" "$i" &
+	/bin/sh -c "$2" sh "$1" "$i" &
 	i=$((i + 1))
 	sleep 0.01
 done
 wait`
-	// memberLeaderScript starts the delayed member (2 s delay) and the forking
-	// member in its group with all their output on /dev/null, waits until both
-	// are running and exits 0. It gives up with exit 3 after about five seconds.
-	memberLeaderScript = `/bin/sh -c "$2" sh "$1" 2 >/dev/null 2>&1 </dev/null &
-/bin/sh -c "$3" sh "$1" >/dev/null 2>&1 </dev/null &
+	// memberLeaderScript starts the delayed member and the forking member in
+	// its group with all their output on /dev/null, waits until both are
+	// running and exits 0. It gives up with exit 3 after about five seconds.
+	memberLeaderScript = `/bin/sh -c "$2" sh "$1" >/dev/null 2>&1 </dev/null &
+/bin/sh -c "$3" sh "$1" "$4" >/dev/null 2>&1 </dev/null &
 i=0
 while [ ! -e "$1/ready-delayed" ] || [ ! -e "$1/ready-forking" ]; do
 	i=$((i + 1))
@@ -48,10 +66,10 @@ while [ ! -e "$1/ready-delayed" ] || [ ! -e "$1/ready-forking" ]; do
 	sleep 0.01
 done
 exit 0`
-	// lateWindow covers every late write a member could make after its
-	// leader saw both members running: 2 s for the delayed member and about
-	// 2.5 s + 0.3 s for the last forked child, plus a margin.
-	lateWindow = 3500 * time.Millisecond
+	// lateWindow is how long the tests watch for late writes after creating
+	// $1/after-kill: a surviving member notices it within 50 ms, and a
+	// surviving forking member forks a child that notices it at once.
+	lateWindow = 2 * time.Second
 	// prompt is how quickly Kill must return when no live member remains to
 	// wait for.
 	prompt = time.Second
@@ -150,8 +168,13 @@ func groupLeader(t *testing.T, command *exec.Cmd) int {
 	return pgid
 }
 
-func memberGroupCommand(directory string) *exec.Cmd {
-	return exec.Command("/bin/sh", "-c", memberLeaderScript, "sh", directory, delayedMemberScript, forkingMemberScript)
+// memberGroupCommand returns the leader of a member group writing into
+// directory. If the test stops before requireNoLateWrite, cleanup creates
+// $1/after-kill so surviving members write and exit at once instead of
+// polling for 30 s.
+func memberGroupCommand(t *testing.T, directory string) *exec.Cmd {
+	t.Cleanup(func() { _ = os.WriteFile(filepath.Join(directory, afterKill), nil, 0o600) })
+	return exec.Command("/bin/sh", "-c", memberLeaderScript, "sh", directory, delayedMemberScript, forkingMemberScript, forkedChildScript)
 }
 
 // awaitStdoutClosed reads reader until every writer has closed it. A leader
@@ -164,26 +187,53 @@ func awaitStdoutClosed(t *testing.T, reader *os.File) {
 	}
 }
 
-// requireMemberMarkerControl runs the delayed member unkilled with no delay,
-// proving it can report both running and its late write.
+// requireMemberMarkerControl runs both member kinds unkilled with
+// $1/after-kill already present, proving each can report its late write.
 func requireMemberMarkerControl(t *testing.T) {
 	t.Helper()
 	directory := t.TempDir()
-	if err := exec.Command("/bin/sh", "-c", delayedMemberScript, "sh", directory, "0").Run(); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, afterKill), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"ready-delayed", "late-delayed"} {
+	if err := exec.Command("/bin/sh", "-c", delayedMemberScript, "sh", directory).Run(); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("/bin/sh", "-c", forkedChildScript, "sh", directory, "0").Run(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ready-delayed", "late-delayed", "late-forked-0"} {
 		if _, err := os.Stat(filepath.Join(directory, name)); err != nil {
-			t.Fatalf("unkilled delayed member did not write %s: %v", name, err)
+			t.Fatalf("unkilled member did not write %s: %v", name, err)
+		}
+	}
+	// The forking member as the leader starts it: its children must receive
+	// forkedChildScript and write. It runs about 2.5 s; one child suffices.
+	forking := exec.Command("/bin/sh", "-c", forkingMemberScript, "sh", directory, forkedChildScript)
+	if err := forking.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = forking.Process.Kill()
+		_ = forking.Wait()
+	}()
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		if _, err := os.Stat(filepath.Join(directory, "late-forked-1")); err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("unkilled forking member's children did not write late-forked-1")
 		}
 	}
 }
 
-// requireNoLateWrite waits until the observation window ends and then checks
-// that no member reached a late write.
-func requireNoLateWrite(t *testing.T, directory string, until time.Time) {
+// requireNoLateWrite creates $1/after-kill, which Kill has returned before,
+// waits lateWindow and then checks that no member reached a late write.
+func requireNoLateWrite(t *testing.T, directory string) {
 	t.Helper()
-	time.Sleep(time.Until(until))
+	if err := os.WriteFile(filepath.Join(directory, afterKill), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(lateWindow)
 	late, err := filepath.Glob(filepath.Join(directory, "late-*"))
 	if err != nil {
 		t.Fatal(err)
@@ -199,12 +249,11 @@ func TestKillStopsLiveMembersAfterLeaderWasReaped(t *testing.T) {
 	requireGroupPlatform(t)
 	requireMemberMarkerControl(t)
 	directory := t.TempDir()
-	leader := memberGroupCommand(directory)
+	leader := memberGroupCommand(t, directory)
 	pgid := groupLeader(t, leader)
 	if err := leader.Wait(); err != nil {
 		t.Fatalf("leader did not see both members running: %v", err)
 	}
-	ready := time.Now()
 	requireLive(t, pgid, true, "before Kill")
 	if err := procgroup.Kill(pgid); err != nil {
 		t.Fatalf("Kill(%d) = %v, want nil", pgid, err)
@@ -212,7 +261,7 @@ func TestKillStopsLiveMembersAfterLeaderWasReaped(t *testing.T) {
 	// On macOS this is kill(-pgid, 0) failing with ESRCH or EPERM; on Linux
 	// members that are already zombies (awaiting their new parent) are allowed.
 	requireLive(t, pgid, false, "after Kill")
-	requireNoLateWrite(t, directory, ready.Add(lateWindow))
+	requireNoLateWrite(t, directory)
 }
 
 // PG-2: the only member is the test's own exited child, not yet waited for.
@@ -254,12 +303,11 @@ func TestKillReturnsPromptlyWithZombieLeaderAndKillsMembers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	leader := memberGroupCommand(directory)
+	leader := memberGroupCommand(t, directory)
 	leader.Stdout = writer
 	pgid := groupLeader(t, leader)
 	writer.Close()
 	awaitStdoutClosed(t, reader)
-	ready := time.Now()
 	// Let the exit that closed stdout finish, so the leader is a zombie.
 	time.Sleep(50 * time.Millisecond)
 	if leader.ProcessState != nil {
@@ -280,7 +328,7 @@ func TestKillReturnsPromptlyWithZombieLeaderAndKillsMembers(t *testing.T) {
 	if err := leader.Wait(); err != nil {
 		t.Fatalf("leader did not see both members running: %v", err)
 	}
-	requireNoLateWrite(t, directory, ready.Add(lateWindow))
+	requireNoLateWrite(t, directory)
 }
 
 // PG-5: the group's only member was its leader, which has been reaped.
