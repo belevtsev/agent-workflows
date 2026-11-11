@@ -78,6 +78,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 - The configuration directory of the runtime commands is `--config-dir`, then `$XDG_CONFIG_HOME/agent-workflows`, then `~/.config/agent-workflows` (`internal/userconfig`); a recorded installation's directory is no longer consulted. `preferences.json` is read for `advisers.disabled` only, and a top-level member other than `version`, `hosts`, `shared` and `advisers` is refused.
 - `cw task`, `cw consult`, `cw doctor`, `cw graphify` and `cw metrics` no longer depend on `internal/workflow`.
 - **Supported platforms stated.** The README's intro and Quick start and [Get cw](docs/operations.md#get-cw) say that `cw` runs on macOS and Linux and that Windows is not supported, and that Go modules (`go.mod` at the top of the task's path) get the package-level `go test` rule in `cw task verify` while other repositories need any one passed check.
+- Both plugins and the marketplace carry version `3.0.0-rc.1`, and [Get cw](docs/operations.md#get-cw) installs the `v3.0.0-rc.1` release instead of `@main`.
 
 ### Fixed
 
