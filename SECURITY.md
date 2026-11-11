@@ -17,6 +17,24 @@ In scope:
 
 Out of scope: vulnerabilities in third-party tools, model providers, or Codex and Claude Code themselves; report those upstream.
 
+## Threat model
+
+The verify gate is a guardrail for a cooperative agent that skipped a step, such as committing before `cw task verify` passed. It is not a defence against an agent that sets out to bypass it.
+
+- **Asset.** The task store under `~/.local/state/agent-workflows` (`$XDG_STATE_HOME/agent-workflows` when that is set, or the directory given with `--store` or `CW_TASK_STORE`). Its records hold each task's plan, check runs, reviews and verification, and the commit and push gate decides from them.
+- **Actor.** The coding agent itself. It runs as the same user (same UID) as `cw`, with the same `PATH`, and can write everything that user can write: the task store, the repository and any program on `PATH`.
+- **What the gate does.** It asks the agent to stop. On Claude Code the hook denies a `git commit` or `git push` it recognises while a governing task has no passing `cw task verify` on the current source, and names the task and the command to run; `cw publish` refuses in the same case.
+
+Non-goals. The gate does not try to stop:
+
+- **Tampering with the task store.** The agent can write, rewrite or corrupt any record. The revision hash chain is plain SHA-256 with no key, so a rewritten chain validates, and a record that does not load is skipped instead of gating.
+- **A replaced toolchain.** A check runs the first program of its name on `PATH`, so a fake `go` that prints `ok` records a pass. Checking the binary's path or hash would show which `go` ran, not that it reports honestly: a `go` rebuilt from modified source by the same user would pass such a check too. That is a limit of the design.
+- **Self-declared agent IDs.** Worker independence compares the `agent_id` and `coordinator_id` strings written into briefs and the plan. Nothing authenticates them, so one agent can record every role.
+- **`cw task abandon` run by the agent.** Any process that can run `cw` can abandon a task, and an abandoned task never gates.
+- **Git run by scripts and other programs.** The hook reads the text of a Bash command, so git run by a script, a Makefile, another language, an alias or a command form the hook does not parse goes unchecked. Codex has no hook; there only `cw publish` applies the gate.
+
+[Known bypasses](docs/hooks.md#known-bypasses) lists each way around the gate today. A bypass on that list, or one that needs the agent to set out to defeat the gate, is a known limit rather than a vulnerability; an everyday command the hook misses is a bug to report as an ordinary issue.
+
 ## Credentials and `cw consult`
 
 `cw consult` sends evidence excerpts to third-party adviser APIs (TypeSafe, SubQ, OpenAI). It does this only when a provider is enabled and its key is set in the environment or saved with `cw keys set`. Without keys, nothing is sent. Saved keys are stored in `~/.config/agent-workflows` (or `$XDG_CONFIG_HOME/agent-workflows`, or `--config-dir`). Treat that directory as secret, and review what evidence you share before running a consultation.

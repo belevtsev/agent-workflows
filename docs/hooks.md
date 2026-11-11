@@ -29,6 +29,10 @@ commands a Bash input runs). `cw hook pre-publish` then finds each `git commit`
 and `git push` in the command and the directory it runs in, and exits at once,
 without output, when there is none.
 
+The gate asks a cooperative agent to stop when it skipped a step; it is not a
+defence against an agent that sets out to bypass it. See the
+[threat model](../SECURITY.md#threat-model) and [Known bypasses](#known-bypasses).
+
 `cw publish` applies the same gate itself, before it commits or pushes: it runs
 the same search for open records (over the task's own store and the store
 below), so the gate holds under Codex, which has no hook, too. It refuses with
@@ -181,6 +185,31 @@ The hook never exits 2, and the command strings in `hooks/hooks.json` end with
 `exit 0` rather than `exec`-ing `cw`, so even a `cw` too old to know the hook
 subcommand cannot block. A hook timeout (30 seconds) is treated by Claude Code
 as a non-blocking error.
+
+## Known bypasses
+
+The gate is a guardrail for a cooperative agent that skipped a step, not a
+defence against an agent that sets out to bypass it (see the
+[threat model](../SECURITY.md#threat-model)). Each row below works today, run
+by the agent itself while the repository has an open substantial task with no
+passing `cw task verify`.
+
+| Way around the gate | What happens today |
+| --- | --- |
+| `cd "$PWD" && git commit -am x`, `cd ~/proj && git commit -am x`, `cd "/tmp/my proj" && git commit -am x`; also `cd -`, `popd` and `cd` with options | Allowed. After a `cd` the hook cannot follow, later git commands are not checked ([Recognised commands](#recognised-commands)). |
+| `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
+| `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
+| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of another command is not recognised. |
+| `git cherry-pick`, `git merge` (also `--squash`), `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create commits without `git commit`. |
+| `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The command text does not name `git commit` or `git push`. |
+| Git run outside Claude Code's Bash tool: Codex, a terminal, an editor | Not checked; only `cw publish` applies the gate there. |
+| An unreadable newest revision: `echo '{' > <task>/record-000002.json` | Allowed. A task whose record does not load is skipped, and a task directory whose newest revision does not decode is ignored. Removing the file restores the deny. |
+| A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
+| `cw task abandon --task <task> --reason TEXT` | Allowed. An abandoned task never gates, and the deny text names this command as a way out. |
+| A task nobody touched for 14 days | Allowed, with no message: the task stops gating 14 days after its latest revision ([Which records gate](#which-records-gate)). |
+| A fake `go` earlier on `PATH`, such as a script that prints `ok` and exits 0 | `cw task run` records the check as passed with exit code 0. A check runs the first program of its name on `cw`'s `PATH`, and the Go evidence rule judges the argv, not the binary. Checking the binary's path or hash would not catch a `go` rebuilt from modified source either; that is a limit of the design. |
+| Self-declared agent IDs | One agent can record itself as implementer, test engineer and reviewer under different `agent_id` strings. Independence compares those strings with each other and with the plan's `coordinator_id`; nothing authenticates them. |
+| The off switches and failures: `enforce_verify=false`, `cw` not on `PATH`, an internal error or timeout in the hook | Allowed. See [Fail-open rules](#fail-open-rules) and [Disabling the gate](#disabling-the-gate). |
 
 ## Disabling the gate
 
