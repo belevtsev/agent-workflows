@@ -220,8 +220,7 @@ some run only by name. See the [skill catalog](skills/README.md).
 
 ## Configuration
 
-Paths, state, config, the model policy lookup and
-[cleaning up a v2 installation](docs/operations.md#cleaning-up-a-v2-installation):
+Paths, state, config and the model policy lookup:
 [operations](docs/operations.md).
 
 ## Advisers (optional)
