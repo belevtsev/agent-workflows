@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -34,7 +35,8 @@ func prInput(mode string, edit func(*Input)) Input {
 }
 
 // oracle: the R1 usage rules; each rejected input breaks one rule and the
-// error names that rule (the message is the usage error's kind).
+// error is that rule's exact message, naming the flag (the message is the
+// usage error's kind).
 func TestParseRequestRejectsUsageErrors(t *testing.T) {
 	type tc struct {
 		name string
@@ -49,14 +51,14 @@ func TestParseRequestRejectsUsageErrors(t *testing.T) {
 		{"no --branch", usageInput(func(in *Input) { in.Branch = "" }), "--branch BRANCH is required"},
 		{"--pr draft", prInput("draft", nil), `--pr must be none, create or edit, not "draft"`},
 		{"create without --repo", prInput(PRCreate, func(in *Input) { in.Repo = nil }), "--pr create needs --repo, --base, --title and --body-file"},
-		{"create without --base", prInput(PRCreate, func(in *Input) { in.Base = nil }), "--pr create needs"},
-		{"create without --title", prInput(PRCreate, func(in *Input) { in.Title = nil }), "--pr create needs"},
-		{"create without --body-file", prInput(PRCreate, func(in *Input) { in.BodyGiven = false }), "--pr create needs"},
-		{"edit without --repo", prInput(PREdit, func(in *Input) { in.Repo = nil }), "--pr edit needs"},
+		{"create without --base", prInput(PRCreate, func(in *Input) { in.Base = nil }), "--pr create needs --repo, --base, --title and --body-file"},
+		{"create without --title", prInput(PRCreate, func(in *Input) { in.Title = nil }), "--pr create needs --repo, --base, --title and --body-file"},
+		{"create without --body-file", prInput(PRCreate, func(in *Input) { in.BodyGiven = false }), "--pr create needs --repo, --base, --title and --body-file"},
+		{"edit without --repo", prInput(PREdit, func(in *Input) { in.Repo = nil }), "--pr edit needs --repo, --base, --title and --body-file"},
 		{"none with --repo", prInput(PRNone, nil), "--repo applies only with --pr create or --pr edit"},
-		{"default none with --title", usageInput(func(in *Input) { in.Title = strPtr("t") }), "--title applies only with"},
-		{"default none with --base", usageInput(func(in *Input) { in.Base = strPtr("main") }), "--base applies only with"},
-		{"default none with --body-file", usageInput(func(in *Input) { in.BodyGiven = true }), "--body-file applies only with"},
+		{"default none with --title", usageInput(func(in *Input) { in.Title = strPtr("t") }), "--title applies only with --pr create or --pr edit"},
+		{"default none with --base", usageInput(func(in *Input) { in.Base = strPtr("main") }), "--base applies only with --pr create or --pr edit"},
+		{"default none with --body-file", usageInput(func(in *Input) { in.BodyGiven = true }), "--body-file applies only with --pr create or --pr edit"},
 		{"base invalid", prInput(PRCreate, func(in *Input) { in.Base = strPtr("ma..in") }), `--base "ma..in" is not a valid branch name`},
 		{"base equals branch", prInput(PRCreate, func(in *Input) { in.Base = strPtr("feature") }), "--base must differ from --branch"},
 		{"title empty", prInput(PRCreate, func(in *Input) { in.Title = strPtr("") }), "--title must not be empty"},
@@ -77,35 +79,35 @@ func TestParseRequestRejectsUsageErrors(t *testing.T) {
 		{"path empty", usageInput(func(in *Input) { in.Paths = []string{""} }), "--path must not be empty"},
 		{"path NUL", usageInput(func(in *Input) { in.Paths = []string{"a\x00b"} }), "--path contains NUL"},
 		{"path absolute", usageInput(func(in *Input) { in.Paths = []string{"/r/a.txt"} }), `--path "/r/a.txt" must be relative to the worktree`},
-		{"path dotdot", usageInput(func(in *Input) { in.Paths = []string{".."} }), "must not contain a .. segment"},
-		{"path leading dotdot", usageInput(func(in *Input) { in.Paths = []string{"../r/a.txt"} }), "must not contain a .. segment"},
-		{"path inner dotdot", usageInput(func(in *Input) { in.Paths = []string{"sub/../a.txt"} }), "must not contain a .. segment"},
+		{"path dotdot", usageInput(func(in *Input) { in.Paths = []string{".."} }), `--path ".." must not contain a .. segment`},
+		{"path leading dotdot", usageInput(func(in *Input) { in.Paths = []string{"../r/a.txt"} }), `--path "../r/a.txt" must not contain a .. segment`},
+		{"path inner dotdot", usageInput(func(in *Input) { in.Paths = []string{"sub/../a.txt"} }), `--path "sub/../a.txt" must not contain a .. segment`},
 		{"path twice", usageInput(func(in *Input) { in.Paths = []string{"a.txt", "b.txt", "a.txt"} }), `--path "a.txt" is given twice`},
 		{"repo empty owner", prInput(PRCreate, func(in *Input) { in.Repo = strPtr("/widget") }), `--repo "/widget" must be OWNER/NAME`},
 	}
 	for _, repo := range []string{"octo", "octo/widget/x", "-octo/widget", "octo/-widget", "oc to/widget", "octo/", "octo/wid:get", "octo/wid@get"} {
-		cases = append(cases, tc{"repo " + repo, prInput(PRCreate, func(in *Input) { in.Repo = strPtr(repo) }), "must be OWNER/NAME"})
+		cases = append(cases, tc{"repo " + repo, prInput(PRCreate, func(in *Input) { in.Repo = strPtr(repo) }), fmt.Sprintf("--repo %q must be OWNER/NAME", repo)})
 	}
 	for _, head := range []string{"abc123", strings.Repeat("a", 39), strings.Repeat("a", 41), strings.Repeat("a", 63), strings.Repeat("a", 65), strings.ToUpper(testHead), strings.Repeat("g", 40)} {
-		cases = append(cases, tc{"expect-head " + head, usageInput(func(in *Input) { in.ExpectHead = head }), "--expect-head must be a full lowercase commit ID"})
+		cases = append(cases, tc{"expect-head " + head, usageInput(func(in *Input) { in.ExpectHead = head }), "--expect-head must be a full lowercase commit ID (40 or 64 hexadecimal characters)"})
 	}
 	for _, remote := range []string{"ABSENT", "none", "", "abc", strings.ToUpper(testHead)} {
-		cases = append(cases, tc{"expect-remote " + remote, usageInput(func(in *Input) { in.ExpectRemote = strPtr(remote) }), "--expect-remote must be absent or a full lowercase commit ID"})
+		cases = append(cases, tc{"expect-remote " + remote, usageInput(func(in *Input) { in.ExpectRemote = strPtr(remote) }), "--expect-remote must be absent or a full lowercase commit ID (40 or 64 hexadecimal characters)"})
 	}
 	for _, name := range []string{"-feature", "fea..ture", "fea ture", "feature.lock", "x.lock/y", "feature/.x", ".hidden", "@", "feature/", "feature.",
 		"/feature", "fea//ture", "fea@{ture", "fea~1", "fea^", "fea:ture", "fea?", "fea*", "fea[ture", `fea\ture`, "fea\x01ture", "fea\x7fture", "fea\tture"} {
-		cases = append(cases, tc{"branch " + name, usageInput(func(in *Input) { in.Branch = name }), "is not a valid branch name"})
+		cases = append(cases, tc{"branch " + name, usageInput(func(in *Input) { in.Branch = name }), fmt.Sprintf("--branch %q is not a valid branch name", name)})
 	}
 	for _, name := range []string{"-origin", "ori gin", ".."} {
-		cases = append(cases, tc{"push " + name, usageInput(func(in *Input) { in.Remote = name }), "is not a valid remote name"})
+		cases = append(cases, tc{"push " + name, usageInput(func(in *Input) { in.Remote = name }), fmt.Sprintf("--push %q is not a valid remote name", name)})
 	}
 	for _, timeout := range []string{"0s", "999ms", "2h0m1s", "3h", "-1s", "10", "soon", ""} {
 		cases = append(cases, tc{"timeout " + timeout, usageInput(func(in *Input) { in.Timeout = strPtr(timeout) }), "--timeout must be a duration from 1s to 2h"})
 	}
 	for _, c := range cases {
 		req, err := ParseRequest(c.in)
-		if err == nil || !strings.Contains(err.Error(), c.want) {
-			t.Errorf("%s: ParseRequest error %v, want one containing %q", c.name, err, c.want)
+		if err == nil || err.Error() != c.want {
+			t.Errorf("%s: ParseRequest error %v, want %q", c.name, err, c.want)
 		}
 		if !reflect.DeepEqual(req, Request{}) {
 			t.Errorf("%s: ParseRequest returned %+v with its error, want the zero Request", c.name, req)

@@ -1,9 +1,19 @@
+//go:build !windows
+
 package publish
 
 import (
 	"slices"
 	"testing"
 )
+
+// errText is err's message, or "" for nil.
+func errText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
 
 // oracle: commitSet's contract: the authorized paths whose verified state
 // differs from the head's, sorted, and [] (not nil, so the report prints [])
@@ -32,9 +42,12 @@ func TestCommitSetKeepsChangedAuthorizedPathsSorted(t *testing.T) {
 	}
 }
 
-// oracle: Git's boolean rules as gitBool's comment states them (words in any
-// case, empty is false, signed decimal or 0x integers with a k/m/g suffix are
-// true when non-zero, anything else is not recognised).
+// oracle: cw's reading of Git's boolean rules as gitBool's comment states
+// them (words in any case, empty is false, signed decimal or 0x integers with
+// a k/m/g suffix are true when non-zero, anything else is not recognised).
+// The rows pin cw's current parser. Two rows differ from git 2.56, which
+// rejects 3g (it overflows Git's int) and reads a quoted " 1" as true; both
+// predate this test and fail closed or fail in git itself.
 func TestGitBoolFollowsGitBooleanRules(t *testing.T) {
 	cases := []struct {
 		value               string
@@ -63,56 +76,63 @@ func TestGitBoolFollowsGitBooleanRules(t *testing.T) {
 // `key\nvalue` or a bare key for a valueless key; the last entry wins, and
 // output not ending in NUL is an error.
 func TestEffectiveConfigTakesTheLastEntry(t *testing.T) {
+	const badOutput = "unexpected git config output"
 	cases := []struct {
 		name, output string
 		want         configEntry
-		wantErr      bool
+		wantErr      string
 	}{
-		{"one value", "core.autocrlf\ntrue\x00", configEntry{set: true, value: "true"}, false},
-		{"valueless", "core.autocrlf\x00", configEntry{set: true, valueless: true}, false},
-		{"empty value is not valueless", "core.autocrlf\n\x00", configEntry{set: true}, false},
-		{"last entry wins", "core.autocrlf\ntrue\x00core.autocrlf\ninput\x00", configEntry{set: true, value: "input"}, false},
-		{"valueless last entry wins", "core.autocrlf\nfalse\x00core.autocrlf\x00", configEntry{set: true, valueless: true}, false},
-		{"value with a newline", "k\nline one\nline two\x00", configEntry{set: true, value: "line one\nline two"}, false},
-		{"empty output", "", configEntry{}, true},
-		{"no terminating NUL", "core.autocrlf\ntrue", configEntry{}, true},
-		{"bytes after the last NUL", "core.autocrlf\ntrue\x00core", configEntry{}, true},
+		{"one value", "core.autocrlf\ntrue\x00", configEntry{set: true, value: "true"}, ""},
+		{"valueless", "core.autocrlf\x00", configEntry{set: true, valueless: true}, ""},
+		{"empty value is not valueless", "core.autocrlf\n\x00", configEntry{set: true}, ""},
+		{"last entry wins", "core.autocrlf\ntrue\x00core.autocrlf\ninput\x00", configEntry{set: true, value: "input"}, ""},
+		{"valueless last entry wins", "core.autocrlf\nfalse\x00core.autocrlf\x00", configEntry{set: true, valueless: true}, ""},
+		{"value with a newline", "k\nline one\nline two\x00", configEntry{set: true, value: "line one\nline two"}, ""},
+		{"empty output", "", configEntry{}, badOutput},
+		{"no terminating NUL", "core.autocrlf\ntrue", configEntry{}, badOutput},
+		{"bytes after the last NUL", "core.autocrlf\ntrue\x00core", configEntry{}, badOutput},
 	}
 	for _, c := range cases {
 		got, err := effectiveConfig([]byte(c.output))
-		if (err != nil) != c.wantErr || got != c.want {
-			t.Errorf("%s: effectiveConfig = %+v, %v; want %+v, error %v", c.name, got, err, c.want, c.wantErr)
+		if errText(err) != c.wantErr || got != c.want {
+			t.Errorf("%s: effectiveConfig = %+v, %q; want %+v, %q", c.name, got, errText(err), c.want, c.wantErr)
 		}
 	}
 }
 
 // oracle: autocrlf converts when its effective value is input (any case) or
 // true; fileMode is off when its value is false; unset means neither; a value
-// Git would not accept is an error for both.
+// Git would not accept is an error that names its key (the user sees it as
+// read-failed).
 func TestAutocrlfAndFileModeDecisions(t *testing.T) {
+	const autocrlfErr = "core.autocrlf has a value cw does not recognise"
+	const fileModeErr = "core.fileMode has a value cw does not recognise"
 	val := func(v string) configEntry { return configEntry{set: true, value: v} }
 	cases := []struct {
-		name                               string
-		entry                              configEntry
-		converts, convertsErr, off, offErr bool
+		name        string
+		entry       configEntry
+		converts    bool
+		convertsErr string
+		off         bool
+		offErr      string
 	}{
-		{"unset", configEntry{}, false, false, false, false},
-		{"valueless", configEntry{set: true, valueless: true}, true, false, false, false},
-		{"true", val("true"), true, false, false, false},
-		{"one", val("1"), true, false, false, false},
-		{"false", val("false"), false, false, true, false},
-		{"empty", val(""), false, false, true, false},
-		{"zero", val("0"), false, false, true, false},
-		{"input", val("input"), true, false, false, true},
-		{"INPUT", val("INPUT"), true, false, false, true},
-		{"unrecognised", val("sometimes"), false, true, false, true},
+		{"unset", configEntry{}, false, "", false, ""},
+		{"valueless", configEntry{set: true, valueless: true}, true, "", false, ""},
+		{"true", val("true"), true, "", false, ""},
+		{"one", val("1"), true, "", false, ""},
+		{"false", val("false"), false, "", true, ""},
+		{"empty", val(""), false, "", true, ""},
+		{"zero", val("0"), false, "", true, ""},
+		{"input", val("input"), true, "", false, fileModeErr},
+		{"INPUT", val("INPUT"), true, "", false, fileModeErr},
+		{"unrecognised", val("sometimes"), false, autocrlfErr, false, fileModeErr},
 	}
 	for _, c := range cases {
-		if got, err := autocrlfConverts(c.entry); got != c.converts || (err != nil) != c.convertsErr {
-			t.Errorf("%s: autocrlfConverts = %v, %v; want %v, error %v", c.name, got, err, c.converts, c.convertsErr)
+		if got, err := autocrlfConverts(c.entry); got != c.converts || errText(err) != c.convertsErr {
+			t.Errorf("%s: autocrlfConverts = %v, %q; want %v, %q", c.name, got, errText(err), c.converts, c.convertsErr)
 		}
-		if got, err := fileModeOff(c.entry); got != c.off || (err != nil) != c.offErr {
-			t.Errorf("%s: fileModeOff = %v, %v; want %v, error %v", c.name, got, err, c.off, c.offErr)
+		if got, err := fileModeOff(c.entry); got != c.off || errText(err) != c.offErr {
+			t.Errorf("%s: fileModeOff = %v, %q; want %v, %q", c.name, got, errText(err), c.off, c.offErr)
 		}
 	}
 }
@@ -172,11 +192,13 @@ func TestReduceURLSplitsHostAndPath(t *testing.T) {
 	cases := []struct{ name, url, host, path string }{
 		{"https with user and port", "https://User@GitHub.COM:443/Owner/Repo.git", "github.com", "/Owner/Repo.git"},
 		{"ssh scheme", "ssh://git@host.example/srv/r.git", "host.example", "/srv/r.git"},
-		{"IPv6 host keeps its brackets", "ssh://git@[::1]:2222/r.git", "[::1]", "/r.git"},
+		{"IPv6 host with port keeps its brackets", "ssh://git@[::1]:2222/r.git", "[::1]", "/r.git"},
+		{"IPv6 host without port keeps its brackets", "ssh://[::1]/r.git", "[::1]", "/r.git"},
 		{"no path", "https://host.example", "host.example", ""},
 		{"file scheme", "file:///srv/r.git", "", "/srv/r.git"},
 		{"scp form", "git@github.com:owner/repo.git", "github.com", "owner/repo.git"},
 		{"scp form without user", "host:path/r.git", "host", "path/r.git"},
+		{"scp form without a slash", "host:r.git", "host", "r.git"},
 		{"scp form with absolute path", "host:/srv/r.git", "host", "/srv/r.git"},
 		{"colon after a slash is local", "./dir:x/r.git", "", "/w/repo/dir:x/r.git"},
 		{"leading colon is local", ":r.git", "", "/w/repo/:r.git"},
@@ -209,6 +231,7 @@ func TestSameRepositoryComparesReducedURLs(t *testing.T) {
 		{"file scheme and local path", "file:///w/remote.git", "/w/remote.git", true},
 		{"relative and absolute local path", "../remote.git", "/w/remote.git", true},
 		{"other host", "https://github.com/o/r", "https://gitlab.com/o/r", false},
+		{"other IPv6 host", "ssh://[::1]/o/r", "ssh://[::2]/o/r", false},
 		{"other repository", "https://github.com/o/r", "https://github.com/o/s", false},
 		{"host against local path", "ssh://host.example/w/remote.git", "/w/remote.git", false},
 	}
@@ -250,9 +273,10 @@ const (
 	testCommitB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
-// testPR is an open PR that carries testPRRequest's base, title and body.
+// testPR is an open PR that carries testPRRequest's base, title and body
+// (with LF line endings where the request has CRLF).
 func testPR(number int, edit func(*pullRequest)) pullRequest {
-	pr := pullRequest{Number: number, State: "OPEN", HeadRefName: "feature", HeadRefOID: testCommitA, BaseRefName: "main", Title: "Add the widget", Body: "Body text."}
+	pr := pullRequest{Number: number, State: "OPEN", HeadRefName: "feature", HeadRefOID: testCommitA, BaseRefName: "main", Title: "Add the widget", Body: "Body text.\nLine two."}
 	if edit != nil {
 		edit(&pr)
 	}
@@ -260,15 +284,15 @@ func testPR(number int, edit func(*pullRequest)) pullRequest {
 }
 
 func testPRRequest(mode string) Request {
-	return Request{pr: mode, branch: "feature", base: "main", title: "Add the widget", body: []byte("Body text.\r\n\n")}
+	return Request{pr: mode, branch: "feature", base: "main", title: "Add the widget", body: []byte("Body text.\r\nLine two.\r\n\n")}
 }
 
 // oracle: R12.c and R12.d: create needs no open PR (or one equivalent PR,
 // which is present); edit needs exactly one, which is present only when it is
-// equivalent and already at the known head; body comparison ignores CRLF and
-// trailing whitespace.
+// equivalent and already at the known head; body comparison treats CRLF as LF
+// and ignores trailing whitespace.
 func TestPlanPRAppliesTheCreateAndEditRules(t *testing.T) {
-	crlfBody := testPR(7, func(pr *pullRequest) { pr.Body = "Body text.\r\n \t" })
+	crlfBody := testPR(7, func(pr *pullRequest) { pr.Body = "Body text.\r\nLine two.\r\n \t" })
 	otherTitle := testPR(7, func(pr *pullRequest) { pr.Title = "Other" })
 	otherBase := testPR(7, func(pr *pullRequest) { pr.BaseRefName = "develop" })
 	otherBody := testPR(7, func(pr *pullRequest) { pr.Body = "Other body." })
@@ -310,7 +334,7 @@ func TestReadbackDiffersNamesEachDifference(t *testing.T) {
 		onlyHead bool
 	}{
 		{"matches", testPR(7, nil), "", false},
-		{"matches after body normalisation", testPR(7, func(pr *pullRequest) { pr.Body = "Body text.\r\n" }), "", false},
+		{"matches after body normalisation", testPR(7, func(pr *pullRequest) { pr.Body = "Body text.\r\nLine two.\r\n" }), "", false},
 		{"head only", testPR(7, func(pr *pullRequest) { pr.HeadRefOID = testCommitB }), "the pull request differs: head " + testCommitB, true},
 		{"state", testPR(7, func(pr *pullRequest) { pr.State = "CLOSED" }), "the pull request differs: state CLOSED", false},
 		{"base and title", testPR(7, func(pr *pullRequest) { pr.BaseRefName, pr.Title = "develop", "Other" }), "the pull request differs: base develop, title", false},
