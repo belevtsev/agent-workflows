@@ -113,7 +113,9 @@ The Go rule applies when the task applies the `go` pack. That pack is selected b
 default. A task records it when `go.mod` or `go.work` is at the top of the selected
 path at start, and the rule then checks packages whenever `go.mod` is at the top at
 verify. A task that started with neither file gets no Go rule, even if it creates
-`go.mod` later. `cw pack add` and `cw pack remove` affect only tasks started
+`go.mod` later; a record with no pack set (started by a `cw` before packs) gets
+the earlier Go package rule whenever `go.mod` is at the top at verify.
+`cw pack add` and `cw pack remove` affect only tasks started
 afterwards; an open task keeps the pack set it recorded. `cw pack list` shows the
 selection. `cw pack remove go` writes an explicit
 `packs.json`, which drops the Go rule for all of that user's repositories and
@@ -135,10 +137,12 @@ testdata outside any package directory, or a package graph that `go list`
 cannot compute at verify within 5 s needs `./...`. A pass after a failed run
 of the same check at the same source and `GOFLAGS` earns no credit until the
 source changes. Skipped tests are listed as limitations, which needs `-v` or
-`-json` on the run. Only runs whose every flag, in argv and in `GOFLAGS`,
-is on the allowlist (`v`, `race`, `count` of at least 1, `timeout`, `cover*`,
+`-json` on the run; a run without either gets a limitation saying they are not
+listed. Only runs whose every flag, in argv and in `GOFLAGS` (split as `go`
+splits it), is on the allowlist (`v`, `race`, `count` of at least 1, `timeout`, `cover*`,
 `tags` and the other flags in `internal/langpack/golang.go` that cannot skip or
-replace tests) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
+replace tests; a `test.` prefix only on flags `go test` passes to the test
+binary) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
 `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-C`, unknown flags,
 a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` hands
 `./b` to the test binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style
