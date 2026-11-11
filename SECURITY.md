@@ -34,7 +34,7 @@ Non-goals. The gate does not try to stop:
 - **`cw task abandon` run by the agent.** Any process that can run `cw` can abandon a task, and an abandoned task never gates.
 - **Git run by scripts and other programs.** The hook reads the text of a Bash command, so git run by a script, a Makefile, another language, an alias or a command form the hook does not parse goes unchecked. Codex has no hook; there only `cw publish` applies the gate.
 
-[Known bypasses](docs/hooks.md#known-bypasses) lists each way around the gate today. A bypass on that list, or one that needs the agent to set out to defeat the gate, is a known limit rather than a vulnerability; an everyday command the hook misses is a bug to report as an ordinary issue.
+[Known bypasses](docs/hooks.md#known-bypasses) lists the known ways around the gate today. A bypass on that list, or one that needs the agent to set out to defeat the gate, is a known limit rather than a vulnerability; an everyday command the hook misses is a bug to report as an ordinary issue.
 
 ## Credentials and `cw consult`
 

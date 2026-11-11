@@ -199,7 +199,7 @@ passing `cw task verify`.
 | `cd "$PWD" && git commit -am x`, `cd ~/proj && git commit -am x`, `cd "/tmp/my proj" && git commit -am x`; also `cd -`, `popd` and `cd` with options | Allowed. After a `cd` the hook cannot follow, later git commands are not checked ([Recognised commands](#recognised-commands)). |
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
-| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of another command is not recognised. |
+| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. |
 | `git cherry-pick`, `git merge` (also `--squash`), `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create commits without `git commit`. |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The command text does not name `git commit` or `git push`. |
 | Git run outside Claude Code's Bash tool: Codex, a terminal, an editor | Not checked; only `cw publish` applies the gate there. |
