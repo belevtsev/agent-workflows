@@ -198,8 +198,8 @@ pushes or pull requests. See `evals/README.md`.
 ## Releases
 
 A release is published from a pushed `v*` tag, never from a push to main, and
-only the project owner pushes tags. The tags are `v3.0.0-rc.1`, then one release
-candidate per phase, then `v3.0.0`. The plugin manifests carry the tag without
+only the project owner pushes tags. The tags are `v3.0.0-rc.1`, then further
+release candidates (`v3.0.0-rc.2` and so on), then `v3.0.0`. The plugin manifests carry the tag without
 its leading `v`: `version` in `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, and `metadata.version` in
 `.claude-plugin/marketplace.json`. `TestPluginVersionsAgree` in
