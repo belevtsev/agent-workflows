@@ -96,6 +96,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 - The v2 installer engine: `install.sh`, the setup wizard (terminal and plain interfaces, presets, `--settings`, `--shell`, `--adopt-personal-skills`), `cw status`, `cw update`, `cw rollback`, `cw recover`, and `cw install`/`cw uninstall` for Claude Code.
 - Immutable release snapshots under `~/.local/state/agent-workflows/{current,releases,bases,runtime}`, `state.json` and `journal.json`, release-tag verification, the manager runtime, and `personal-skill-origins.json`. What a v2 installation left behind is removed by hand (see "No v2 migration" above).
 - `cwdev check`, `cwdev release` and `cwdev sandbox`, and `testing/sandbox`; `cwdev` keeps `eval multilingual`, and gains `diagram-svg` (see Added).
+- `cwdev diagram-svg` and its headless-Chrome exporter. The committed SVGs stay; to change a diagram, edit its spec, export the SVG from the archify viewer and commit it (see [Diagrams](CONTRIBUTING.md#diagrams)).
 - `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
 
