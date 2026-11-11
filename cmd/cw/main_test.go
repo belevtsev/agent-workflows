@@ -15,7 +15,7 @@ func goTool(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	if root := runtime.GOROOT(); root != "" {
+	if root := runtime.GOROOT(); root != "" { //nolint:staticcheck // SA1019: a test binary runs where go test built it, so this is the toolchain that built the test.
 		candidate := filepath.Join(root, "bin", name)
 		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
 			return candidate

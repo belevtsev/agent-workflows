@@ -415,7 +415,7 @@ func goTest(ctx context.Context, dir string) runOutcome {
 // goCommand runs the go tool that built this test in dir, as a standalone
 // module that may fetch the authored tests' dependencies.
 func goCommand(ctx context.Context, dir string, args ...string) ([]byte, error) {
-	goBin := filepath.Join(runtime.GOROOT(), "bin", "go")
+	goBin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // SA1019: a test binary runs where go test built it, so this is the toolchain that built the test.
 	cmd := exec.CommandContext(ctx, goBin, args...)
 	cmd.Dir = dir
 	env := slices.DeleteFunc(os.Environ(), func(kv string) bool {

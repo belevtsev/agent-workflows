@@ -52,6 +52,39 @@ jobs:
         if: runner.os != 'Linux'
         run: go test -count=1 ./...
 
+  lint:
+    name: Lint and vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOWORK: 'off'
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Go with dependency cache
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # goinstall builds the pinned linter with the Go that go.mod selects, so
+      # it can load this module's Go version. .golangci.yml holds the linters.
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+      # The runner is Linux; this also lints the darwin-only files.
+      - name: Lint the darwin build
+        env:
+          GOOS: darwin
+        run: golangci-lint run ./...
+      # Pinned so a new govulncheck release cannot fail CI without a
+      # repository change; new vulnerability data still can, by design.
+      - name: Check reachable vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
   plugins:
     name: Plugin manifests
     runs-on: ubuntu-latest

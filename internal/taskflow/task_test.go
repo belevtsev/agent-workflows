@@ -50,7 +50,9 @@ func TestCheckSubprocess(t *testing.T) {
 	case "wait":
 		time.Sleep(20 * time.Second)
 	case "mutate":
-		os.WriteFile(args[1], []byte("changed\n"), 0600)
+		if err := os.WriteFile(args[1], []byte("changed\n"), 0600); err != nil {
+			os.Exit(26)
+		}
 	case "output":
 		fmt.Print(strings.Repeat("x", MaxLogBytes+2048))
 	case "barrier":
@@ -121,7 +123,7 @@ func TestCheckSubprocess(t *testing.T) {
 		if err := child.Start(); err != nil {
 			os.Exit(19)
 		}
-		child.Process.Release()
+		_ = child.Process.Release()
 	case "delayed-marker":
 		time.Sleep(2 * time.Second)
 		if err := os.WriteFile(args[1], []byte("escaped check descendant"), 0600); err != nil {
@@ -192,7 +194,7 @@ func pgStormLeader(args []string) int {
 	if err := forker.Start(); err != nil {
 		return 34
 	}
-	forker.Process.Release()
+	_ = forker.Process.Release()
 	running := filepath.Join(trial, "running")
 	deadline := time.Now().Add(pgStormReadiness)
 	for {
@@ -605,9 +607,9 @@ func TestCompletionWaitsForEveryOwnedRunAndRefusesSameCheckConcurrency(t *testin
 	done := make(chan error, 1)
 	go func() { _, err := Run(t.Context(), record.Directory, "background"); done <- err }()
 	t.Cleanup(func() {
-		os.WriteFile(release, []byte("release"), 0600)
+		_ = os.WriteFile(release, []byte("release"), 0600)
 		select {
-		case <-done:
+		case <-done: //nolint:errcheck // cleanup only waits for the background run to end
 		case <-time.After(12 * time.Second):
 		}
 	})
@@ -1126,7 +1128,7 @@ func TestVerifyRequiresAPassedRunForChangedSubstantialSource(t *testing.T) {
 				changedWorkerSource(t, record)
 			}
 			if tc.mode != "" {
-				Run(t.Context(), record.Directory, "focused")
+				_, _ = Run(t.Context(), record.Directory, "focused") // the verify report below is the oracle
 			}
 			verified := mustVerifyReport(t, record)
 			if got := slices.Contains(verified.Problems, problem); got != tc.problem {

@@ -24,7 +24,7 @@ func TestCheckpointsDecodeRejectsInvalidPolicy(t *testing.T) {
 		// C1: required omitted, only a reason given.
 		{name: "C1 required omitted with reason", fragment: `{"reason": "x"}`},
 		// C4: misspelled required member.
-		{name: "C4 misspelled required", fragment: `{"requried": false, "reason": "x"}`},
+		{name: "C4 misspelled required", fragment: `{"requried": false, "reason": "x"}`}, //nolint:misspell // the misspelling is the fixture
 		// C4: unknown member alongside an explicit required.
 		{name: "C4 unknown member with explicit required", fragment: `{"required": true, "extra": "y"}`},
 		// C6: empty checkpoints object.

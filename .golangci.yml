@@ -1,0 +1,68 @@
+# golangci-lint v2 configuration. CI pins the linter version in
+# .github/workflows/ci.yml; docs/development.md lists the local commands.
+# third_party/ is a separate module, so ./... does not reach it.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        # The os.Root and unix forms of os.Remove, which std-error-handling
+        # below already exempts: best-effort removal of a temporary or lock
+        # file on a cleanup path.
+        - (*os.Root).Remove
+        - golang.org/x/sys/unix.Unlinkat
+    misspell:
+      ignore-rules:
+        # "hardlinked" (two names for one inode) is a word here, not a
+        # misspelling of "hardline".
+        - hardlinked
+    staticcheck:
+      checks:
+        - all
+        # golangci-lint's defaults: comment and naming style checks.
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        # Error strings are user-facing sentences that cw prints as they are,
+        # many starting with a proper noun such as "Git".
+        - -ST1005
+        # Quick fixes (QF) are refactoring suggestions, not defects.
+        - -QF*
+  exclusions:
+    presets:
+      # errcheck: Close, Flush, os.Remove(All), the fmt print family and
+      # os.(Un)Setenv. Writes that are kept check Close on their success path;
+      # the unchecked calls are deferred closes of read handles, cleanup on an
+      # error path, and diagnostics to stdout or stderr.
+      - std-error-handling
+    rules:
+      # G104 repeats errcheck, which is configured above.
+      - linters: [gosec]
+        text: "G104:"
+      # G304: cw is a local command run by the user it serves. It opens the
+      # files that user names on the command line or that live in its own
+      # state, cache and task directories; a variable path is its purpose.
+      - linters: [gosec]
+        text: "G304:"
+      # Tests only, rule by rule: fake secrets in fixtures (G101); conversions
+      # of test-made values (G115); files, modes and walks under t.TempDir
+      # (G122, G301, G302, G306, G703); git, go and the test binary itself run
+      # with test-chosen arguments (G204, G702); math/rand for non-secret data
+      # (G404); key/value and parallel slices the test sized (G602); dials to a
+      # local test listener (G704). Production code gets none of these.
+      - path: _test\.go
+        linters: [gosec]
+        text: "G(101|115|122|204|301|302|306|404|602|702|703|704):"

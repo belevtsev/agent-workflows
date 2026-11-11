@@ -265,7 +265,7 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	defer capture.mu.Unlock()
 	capture.bytes += int64(len(data))
 	capture.full.Write(data)
-	capture.tests.Write(data)
+	_, _ = capture.tests.Write(data) // GoTestOutput.Write only parses and never fails.
 	keep := min(len(data), MaxLogBytes-capture.written)
 	if keep > 0 && capture.failure == nil {
 		n, err := capture.file.Write(data[:keep])
@@ -342,7 +342,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	capture := &logCapture{file: logFile, full: sha256.New(), saved: sha256.New()}
 	runCtx, cancel := context.WithTimeout(ctx, time.Duration(check.TimeoutSeconds)*time.Second)
 	defer cancel()
-	command := exec.CommandContext(runCtx, check.Argv[0], check.Argv[1:]...)
+	command := exec.CommandContext(runCtx, check.Argv[0], check.Argv[1:]...) //nolint:gosec // G204: running the check argv the user declared in the plan is this function's purpose; no shell.
 	command.Dir = run.Before.SelectedPath
 	command.Env = checkEnvironment()
 	command.Stdout = capture

@@ -186,21 +186,6 @@ func acIsolate(t *testing.T) {
 	acShared.active = true
 }
 
-func acWriteAtomic(path string, data []byte) error {
-	f, err := os.CreateTemp(filepath.Dir(path), ".tmp-")
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(f.Name(), path)
-}
-
 func acGitE(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir

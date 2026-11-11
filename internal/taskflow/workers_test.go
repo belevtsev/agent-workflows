@@ -139,7 +139,7 @@ func completeIndependentReview(t *testing.T, record Record, ref SourceRef, id st
 }
 
 func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *testing.T) {
-	record, ref := fixtureTask(t, helperPlan(t, "substantial", "pass"))
+	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	if Version != 3 || record.Version != Version || record.Plan.CoordinatorID != "/root" {
 		t.Fatalf("new task version/default: %+v", record.Plan)
 	}
@@ -147,7 +147,7 @@ func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *tes
 		t.Fatal(err)
 	}
 	record = mustAssignWorker(t, record, workerBrief("implement", "/root/implementation", "implementation", []string{"source.txt"}, "focused"))
-	ref = changedWorkerSource(t, record)
+	ref := changedWorkerSource(t, record)
 	mustAssess(t, record, ref)
 	result := workerResult(t, record, "implement", "completed", ref)
 	result.ChangedFiles = []WorkerChangedFile{{Path: ref.Path, SHA256: ref.SHA256}}

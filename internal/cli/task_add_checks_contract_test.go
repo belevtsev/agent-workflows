@@ -1006,7 +1006,9 @@ func aclAppendRevision(t *testing.T, dir string, mutate func(*taskflow.Record)) 
 		if err := os.WriteFile(path, b, 0o600); err != nil {
 			t.Fatalf("setup: %v", err)
 		}
-		os.Chmod(path, 0o600)
+		if err := os.Chmod(path, 0o600); err != nil {
+			t.Fatalf("setup: %v", err)
+		}
 	}
 	write(encode(rec, esc))
 	if _, err := taskflow.Load(dir); err != nil {

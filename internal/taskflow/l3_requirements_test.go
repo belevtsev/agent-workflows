@@ -58,7 +58,7 @@ func TestAssignRequirementsShape(t *testing.T) {
 			b.Requirements = reqs
 		}
 		b.Goal = label
-		f.assignFails(b, want)
+		_ = f.assignFails(b, want)
 	}
 	refuse("no contract", []taskflow.ContractRequirement{l3Req("R1", "C1")}, false, l3ReqNoCon)
 	refuse("257 requirements", l3Reqs(257, "C1"), true, l3ReqShape)
@@ -124,11 +124,11 @@ func TestAssignRequirementsFollowPlan(t *testing.T) {
 		f := l3New(t, l3Opts{checks: plan(argvs)})
 		b := f.brief("none", []string{"p/none_test.go"})
 		b.Goal = label
-		f.assignFails(b, l3MustDeclar)
+		_ = f.assignFails(b, l3MustDeclar)
 		b = f.brief("empty", []string{"p/empty_test.go"})
 		b.Requirements = []taskflow.ContractRequirement{}
 		b.Goal = label + ", empty list"
-		f.assignFails(b, l3MustDeclar)
+		_ = f.assignFails(b, l3MustDeclar)
 		if err := f.assign(f.brief("with", []string{"p/with_test.go"}, l3Req("R1", "C1"))); err != nil {
 			t.Errorf("%s: brief with requirements refused: %v (R8)", label, err)
 		}
@@ -137,7 +137,7 @@ func TestAssignRequirementsFollowPlan(t *testing.T) {
 		f := l3New(t, l3Opts{checks: plan(argvs)})
 		b := f.brief("with", []string{"p/with_test.go"}, l3Req("R1", "C1"))
 		b.Goal = label
-		f.assignFails(b, l3NoCredit)
+		_ = f.assignFails(b, l3NoCredit)
 		if err := f.assign(f.brief("none", []string{"p/none_test.go"})); err != nil {
 			t.Errorf("%s: contract brief without requirements refused: %v (R8: accepted as before)", label, err)
 		}

@@ -1089,7 +1089,7 @@ func compactConsultPair(t *testing.T, output string, args ...string) (plain, sum
 	t.Helper()
 	run := func(extra ...string) compactOutcome {
 		outcome := executeConsult(t, fixtureEnvironment(nil), append(append(slices.Clone(args), "--output", output), extra...)...)
-		return compactOutcome{err: outcome.err, stdout: outcome.stdout, stderr: outcome.stderr}
+		return compactOutcome(outcome)
 	}
 	plain = run()
 	var err error

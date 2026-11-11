@@ -8,7 +8,15 @@ Thanks for helping improve agent-workflows. This file explains how to build, tes
 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
-`GOWORK=off go test ./internal/skillcheck` checks skill metadata, Markdown links, manifests and plugin paths on its own. CI runs gofmt, vet and the tests on Linux and macOS, and validates the plugin manifests. See `docs/development.md` for details.
+Lint and check reachable vulnerabilities with the versions CI pins:
+
+```sh
+GOWORK=off go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+GOWORK=off golangci-lint run ./...
+GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+```
+
+`GOWORK=off go test ./internal/skillcheck` checks skill metadata, Markdown links, manifests and plugin paths on its own. CI runs gofmt, vet and the tests on Linux and macOS, golangci-lint and govulncheck on Linux, and validates the plugin manifests. See `docs/development.md` for details.
 
 ## Go-only automation
 
@@ -47,7 +55,7 @@ For a new skill, you can open a skill proposal issue first to discuss scope.
 - Behaviour changes need tests.
 - Add an entry under `## [Unreleased]` in `CHANGELOG.md`.
 - Update docs when commands, skills or install behaviour change.
-- Run the build, vet and test commands above before requesting review.
+- Run the build, vet, test, lint and vulnerability commands above before requesting review.
 
 Releases are published when a `v*` tag is pushed. Maintainers create tags; contributors do not need to.
 

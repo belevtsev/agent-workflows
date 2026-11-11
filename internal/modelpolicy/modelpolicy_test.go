@@ -278,7 +278,7 @@ func TestPolicyVersion(t *testing.T) {
 		requireContains(t, err, `"3"`)
 	})
 	t.Run("true", func(t *testing.T) {
-		parseError(t, "version: true\n"+minimalConsultation)
+		_ = parseError(t, "version: true\n"+minimalConsultation)
 	})
 }
 

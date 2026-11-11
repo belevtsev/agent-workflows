@@ -429,7 +429,7 @@ func TestVerifyV2RerunB22(t *testing.T) {
 				t.Fatalf("precondition: the blocking run ended before it started blocking: %v", err)
 			case <-limit:
 				cancel()
-				<-done
+				<-done //nolint:errcheck // only joins the cancelled run
 				t.Fatal("precondition: the blocking run never started")
 			case <-tick.C:
 				if _, err := os.Stat(started); err == nil {
@@ -438,7 +438,7 @@ func TestVerifyV2RerunB22(t *testing.T) {
 			}
 		}
 		cancel()
-		<-done
+		<-done          //nolint:errcheck // only joins the cancelled run
 		v.run(t, false) // CWV2_BLOCK still set: the check times out
 		t.Setenv("CWV2_BLOCK", "")
 		v.run(t, true)

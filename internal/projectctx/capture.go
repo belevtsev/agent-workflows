@@ -2,7 +2,7 @@ package projectctx
 
 import (
 	"context"
-	"crypto/sha1" // Git's sha1 object format requires its native blob identity.
+	"crypto/sha1" //nolint:gosec // G505: Git's sha1 object format requires its native blob identity.
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -393,7 +393,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 		fmt.Fprintf(hash, "path:%d:%s\x00", len(rel), rel)
 		info, statErr := sourceRoot.Lstat(rel)
 		if errors.Is(statErr, fs.ErrNotExist) {
-			io.WriteString(hash, "missing\x00")
+			_, _ = io.WriteString(hash, "missing\x00")
 			if _, ok := tracked[rel]; ok {
 				got.snapshot.Dirty = true
 			}
@@ -416,7 +416,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 			got.files = append(got.files, FileState{Path: manifestPath(rel), Mode: "120000", SHA256: hex.EncodeToString(targetHash[:])})
 			if indexed, ok := tracked[rel]; ok {
 				object := gitBlobHash(indexed.oid, int64(len(target)))
-				io.WriteString(object, target)
+				_, _ = io.WriteString(object, target)
 				if indexed.mode != "120000" || indexed.stage != "0" || hex.EncodeToString(object.Sum(nil)) != indexed.oid {
 					got.snapshot.Dirty = true
 				}
@@ -531,7 +531,7 @@ func sameGitEntries(index, tree map[string]gitEntry) bool {
 }
 
 func gitBlobHash(oid string, size int64) hashpkg.Hash {
-	var result hashpkg.Hash = sha1.New()
+	var result hashpkg.Hash = sha1.New() //nolint:gosec // G401: a sha1 repository names blobs by their sha1 object ID.
 	if len(oid) == 64 {
 		result = sha256.New()
 	}
