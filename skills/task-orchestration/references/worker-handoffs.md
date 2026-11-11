@@ -108,7 +108,7 @@ The result JSON contains:
 | `evidence` | Source references with `path`, `start_line`, `end_line` and full-file `sha256` |
 | `changed_files` | Declared changes with `path` and `sha256`, or `deleted: true`; empty for read-only roles |
 | `check_ids` | Actual task check records cited by the worker |
-| `findings` | Each finding's `id`, `summary`, `severity` (`blocker`, `major` or `minor`; required in a review) and source `evidence`; `[]` records none |
+| `findings` | Each finding's `id`, `summary`, `severity` (`blocker`, `major` or `minor`; required in a review; a finding without one reads as `major`) and source `evidence`; `[]` records none |
 | `uncertainties` | Remaining unknowns; `[]` records none |
 | `reach_runs` | Review only: how each reach-row mode was [run](#run-every-reach-row-mode) |
 | `requirement_map` | Completed result of a brief with `requirements` only: for each declared requirement, its `tests` (`path` of a `_test.go` file this result or an earlier test-engineer result changed, and the Go test `name`), or an `uncovered` reason |
@@ -134,7 +134,8 @@ behaviour, fails no gate and loses no rule (`cw task verify` lists it as a
 limitation; never defer a defect in changed behaviour or any finding with a
 concrete failure scenario, unless the defect predates the change and the change neither causes,
 touches nor newly exposes it). `verify` lists each rejected `blocker` or `major`
-finding as a limitation; a rejected `blocker` also needs a later accepted
+finding as a limitation (with `--summary`, first, as `rejected_findings`); a
+rejected `blocker` is a problem until a later accepted
 independent review whose bundle lists the rejection and whose result does not
 re-raise its `id`. An `accepted` disposition
 acknowledges an unresolved finding and blocks completion. Reviewer agreement is not

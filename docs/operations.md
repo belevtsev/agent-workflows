@@ -185,8 +185,8 @@ Global flags apply to every command:
 The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
 saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
-pack selection written by `cw pack add` and `cw pack remove`; absent means the
-default selection). `--dry-run` is a
+pack selection written by `cw pack add` and `cw pack remove`, where `cw lang` is
+an alias of `cw pack`; absent means the default selection). `--dry-run` is a
 global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
@@ -201,8 +201,8 @@ the `cw task` state commands and `cw metrics import --append`.
    that path (a path that exists but cannot be read is reported, not skipped);
 4. the policy embedded in `cw`.
 
-The runtime reads only `version`, `consultation.deadline_seconds` and
-`consultation.providers` from it. The worker routing in
+The runtime reads only `version`, `consultation.deadline_seconds` (an integer
+from 1 to 3600) and `consultation.providers` from it. The worker routing in
 [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) and
 [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml)
 is read by the coordinator through the skill, not by `cw`.
@@ -231,11 +231,13 @@ limitations), `cw doctor` and `cw consult` accept it too, `cw task show
 --field <dotted.path>` prints only selected values, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
-the `-json` check runs that recorded them, `cw task authorship --task DIR` lists,
+the `-json` check runs that recorded them, `cw task authorship --task DIR` lists
+in one JSON line,
 without changing the record and also for an abandoned task, each Go test file
 changed since start with its authorship status (`independent`, `source_aware`,
-`lost` or `unowned`), its reason and the assignment it rests on, and exits 0
-whatever the statuses, `cw task bundle` writes the
+`lost` or `unowned`), its reason and the assignment it rests on, plus problems
+such as a missing or unreadable baseline manifest, and exits 0
+whatever the statuses (1 when the task cannot be loaded), `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file),
 `cw task contract-extract` prints requested Go declarations without bodies for a
 test engineer's contract, and
@@ -247,11 +249,33 @@ and file hashes) while validating explicit values as before. `cw metrics schema`
 or a Codex rollout, without writing anything unless `--append` asks it to add the
 session to the [cost history](#cost-history); with `--composition` and `--prices` it also
 attributes each agent's input to its sources (Claude transcripts only).
+It labels an agent by its `cw task assign` brief, else by its description, else by
+its agent type: `test-engineer` (or `cw-test-author` in older transcripts) is
+`test_author`, `reviewer` (or `cw-reviewer`) is `review`, and `github-worker` (or
+`cw-github-worker`) is `github`. A test engineer dispatched as `general-purpose` is
+`test_author` only when its description or brief says "test author"; otherwise it
+takes its brief's role. Two descriptions and types win over an `implementation`,
+`evidence` or `verification` brief: a description naming GitHub work makes the
+agent `github`, and on an `implementation` brief a description or brief text that
+says "test author", or the `test-engineer` type, makes it `test_author`.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. With go1.27.3, a line that a test writes straight to stdout or
 stderr starting with byte 0x16 becomes a `-json` result event for any test name it
 gives, so it can forge a PASS; it cannot hide a real FAIL, because a FAIL of the same
 test in a latest run at the current source makes that test `failed`. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
+
+Source capture treats a path as a plain folder only when Git exits with a failure
+status or no `git` is on `PATH`. Any other end of a Git probe stops the capture
+with `Git inspection timed out after <budget> (git <probe>)`, `Git inspection was
+killed before it finished (git <probe>)` (detected on Unix), `Git inspection
+stopped by the caller (git <probe>): <reason>` or `Git inspection could not
+complete (git <probe>): <cause>`; the last covers a child process that holds
+Git's output open after Git exits. Each probe has 60 seconds, within the
+caller's own deadline, and 10 seconds for its output after Git exits. After a
+check runs, its source capture gets at most 20 of the 30 seconds for recording
+the result, so the result is still written when that capture fails or runs out,
+unless the task lock stays held through the rest; a check that passed but whose
+capture failed or ran out is recorded as `source_changed`.
 
 `cw task timeline --task DIR [--summary]` reports the wall time a task spent, from
 timestamps the record already stores, and is read-only: it loads the record with
@@ -551,7 +575,9 @@ the saved file or neither, without any value or provider call.
 To disable an adviser and keep its key, list its provider ID under
 `advisers.disabled` in `preferences.json` in the configuration directory, for
 example `{"version":1,"advisers":{"disabled":["openai_decisions"]}}`. Edit the file
-by hand; it must be a regular file with mode `0600`, owned by you. An unreadable or
+by hand; it must be a regular file with mode `0600`, owned by you. `cw` reads
+only `advisers.disabled` from it, and refuses a top-level member other than
+`version`, `advisers`, `hosts` and `shared`. An unreadable or
 invalid file makes `cw task start` fail before it creates a task. The change applies
 to tasks started afterwards: `cw task start` binds the advisers configured at that
 moment. A bound adviser whose key is missing at consultation time is recorded as
