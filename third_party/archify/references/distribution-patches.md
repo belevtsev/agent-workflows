@@ -62,7 +62,8 @@ The distribution patches are:
   directories. New managed-distribution tests cover updater no-ops, five core
   modes, external outputs, aliases, immutable hashes, missing Chrome,
   preview/opener helpers, custom digest-pinned brand capture, and separate
-  third-party notices.
+  third-party notices. Their installed-file containment cases target the retained
+  `assets/template.html`, since the HTML examples are not shipped.
 
 Explicit custom brand URLs with digest pinning are retained. Their requested
 capture/reproduction can use the network; this feature is separate from the

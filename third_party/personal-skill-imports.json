@@ -741,7 +741,7 @@
         {
           "path": "references/distribution-patches.md",
           "mode": 420,
-          "imported_sha256": "990ea652439a4e97076b38996dff71e9b80ab3657c68851affccede2a5b54583",
+          "imported_sha256": "a26454a116a1488ccb77bf5e9f85f76584d96b2a60ba861ed2fd9404638566db",
           "adaptation": "Add the managed distribution patch record, retained feature/license scope, and verification limits."
         },
         {
@@ -1337,8 +1337,8 @@
         {
           "path": "test/managed-distribution.test.mjs",
           "mode": 420,
-          "imported_sha256": "c40dbfb5685d6079660982f5459de1505b045b07bdcd3909e391dff997650ebf",
-          "adaptation": "Add regressions for updater no-ops, immutable package outputs, all five diagram modes, portable helpers, and retained asset notices."
+          "imported_sha256": "b3f32f780af27fcca141f1de4bea89cda5d68e85cdae63660540610a9116cbea",
+          "adaptation": "Add regressions for updater no-ops, immutable package outputs, all five diagram modes, portable helpers, and retained asset notices; containment cases target the retained assets/template.html."
         },
         {
           "path": "test/output-path.test.mjs",

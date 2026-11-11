@@ -13,4 +13,5 @@ Excluded: EVALUATIONS.md, upstream's 0.9 MB evaluation log. README.md links to
 it at the commit above instead of the missing local copy.
 
 To refresh: diff everything except skills/*/SKILL.md against the commit above,
-apply upstream changes, then re-apply the entrypoint rewrites and update this file.
+apply upstream changes, then re-apply the entrypoint rewrites and the
+EVALUATIONS.md exclusion above, and update this file.
