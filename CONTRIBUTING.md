@@ -2,6 +2,8 @@
 
 Thanks for helping improve agent-workflows. This file explains how to build, test and propose changes.
 
+Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Build and test
 
 ```sh
@@ -44,12 +46,17 @@ For a new skill, you can open a skill proposal issue first to discuss scope.
 ## Pull requests
 
 - One topic per pull request.
+- Pull requests stay under about 600 changed lines, unless most of the change is deletion. Split a larger change into several pull requests and say so in each description.
 - Behaviour changes need tests.
 - Add an entry under `## [Unreleased]` in `CHANGELOG.md`.
 - Update docs when commands, skills or install behaviour change.
 - Run the build, vet and test commands above before requesting review.
 
 Releases are published when a `v*` tag is pushed. Maintainers create tags; contributors do not need to.
+
+## Built with itself
+
+agent-workflows is developed with its own workflow. Substantial changes run as `cw` tasks through the staged flow in the [README](README.md#how-it-works): separate agents write, test and review the change, `cw` records each step in a task record, and the commit waits until `cw task verify` passes. Task records stay in the maintainer's local state directory and are not committed. Since [pull request #38](https://github.com/belevtsev/agent-workflows/pull/38), every commit written with an agent names its model in a `Co-Authored-By` trailer, and the project's single maintainer merges every pull request. Whether the workflow improves results has not been measured yet.
 
 ## License
 
