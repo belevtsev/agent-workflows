@@ -25,6 +25,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 
 ### Added
 
+- **Threat model for the verify gate.** The gate is a guardrail for a cooperative agent that skipped a step, not a defence against one that sets out to bypass it; [SECURITY.md](SECURITY.md#threat-model) states what it protects and does not, and [Known bypasses](docs/hooks.md#known-bypasses) lists the known ways around it today.
 - `cw task authorship --task DIR` prints, as one JSON line and without changing the record, each Go test file changed since `cw task start` with its authorship status (`independent`, `source_aware`, `lost` or `unowned`), the reason, and the assignment, agent, contract and finding the status rests on, plus problems such as an unreadable baseline manifest. It works on an abandoned task and exits 0 whatever the statuses (1 when the task cannot be loaded, 2 on a usage error). See "Test rules and test authorship" in `worker-handoffs.md`.
 - `cw task add-checks --task DIR --input FILE|- [--summary]` adds credited direct `go test` checks to a started substantial task after it merges its base branch with `git merge --no-ff <base>`. The input names the merge commit, the base ref, a reason and the checks. The plan stays byte-identical; added checks get new IDs, are never replaced, removed or narrowed, and each must cover a package or module file the merge changed that no earlier check covers. Git merge history is checked only at admission: the merge commit must be reachable from HEAD and not from the task baseline or the base, with a parent after the first reachable from the base, in a repository that is not shallow. An accepted amendment clears the stored verification; added checks then run, bind and earn verify credit like plan checks. See "Merging the base branch during a task" in `docs/operations.md`.
 - Pack manifests: the built-in Go pack `packs/go/pack.yaml` (schema 1, `kind: language`), embedded in `cw` and checked by `internal/skillcheck`.
@@ -99,6 +100,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 - `cwdev diagram-svg`. The committed SVGs stay; to change a diagram, export it from the archify viewer and commit it (see [Diagrams](CONTRIBUTING.md#diagrams)).
 - `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
+- Archify's pre-rendered HTML examples and the Go pack's `EVALUATIONS.md` (13 MB of the plugin download); `archify examples --output-dir <dir>` renders the examples. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## [2.0.96] - 2026-11-07
 

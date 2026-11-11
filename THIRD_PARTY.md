@@ -41,7 +41,9 @@ Thirteen library-specific Go skills (`golang-samber-*`, `golang-uber-fx`,
 `golang-uber-dig`, `golang-google-wire`, `golang-swagger`, `golang-graphql` and
 `golang-spf13-viper`) add `disable-model-invocation: true` and an
 `agents/openai.yaml` that disables implicit invocation, so they run only when
-invoked by name.
+invoked by name. Upstream's evaluation log, `EVALUATIONS.md`, is not vendored;
+the Go bundle's README links to it at the recorded upstream commit, and
+[`UPSTREAM`](third_party/cc-skills-golang/UPSTREAM) lists the exclusion.
 
 The 82 original Docker skill files were verified against their exact upstream
 Git blobs at the recorded commit. Local adaptations shorten discovery and UI
@@ -55,8 +57,10 @@ The Apache license is copied in full from that same commit.
 
 Archify retains its working diagram resources and asset notices. Its local
 adaptations make discovery concise and task delivery portable within this suite;
-source-only upstream tests and repository tooling are excluded from the installed
-distribution. Per-file source and import hashes, exclusions, and adaptation notes are recorded
+source-only upstream tests, repository tooling and the pre-rendered HTML examples
+(`examples/*.html`; `archify examples --output-dir <directory>` renders them from
+the retained JSON) are excluded from the installed distribution. Per-file source
+and import hashes, exclusions, and adaptation notes are recorded
 in [the personal skill import provenance](third_party/personal-skill-imports.json).
 The [Archify distribution patch record](third_party/archify/references/distribution-patches.md)
 details the disabled automatic updater, external output policy, retained runtime

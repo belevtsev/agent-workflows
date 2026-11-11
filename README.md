@@ -12,7 +12,8 @@ is tested by the agent that wrote it. This project splits a substantial change
 across agents with separate contexts: one writes the spec, one designs, one
 implements, another writes tests from the contract without seeing the code, and
 another reviews. The `cw` command records each step, and on Claude Code a hook
-blocks the commit until `cw task verify` passes.
+asks the agent to stop and pass `cw task verify` before it commits; see
+[what the gate does not stop](#the-verify-gate).
 
 ## How it works
 
@@ -129,11 +130,19 @@ including the `cw` commands below; you can run them yourself to inspect a task.
 
 ## The verify gate
 
-On Claude Code the plugin checks every `git commit` and `git push` it can find
-in a Bash command, in any form. Each open substantial task for the repository
-(not abandoned, touched in the last 14 days) blocks it until `cw task verify`
-passes on the current source. Editing a verified file reopens the task. With no
-task at all, a large change gets a prompt suggesting `cw task start`.
+The gate is a guardrail for a cooperative agent that skipped a step, not a
+defence against an agent that sets out to bypass it. On Claude Code the plugin
+reads each Bash command for `git commit` and `git push`. While an open
+substantial task for the repository (not abandoned, touched in the last 14
+days) has no passing `cw task verify` on the current source, the hook denies
+the command and asks the agent to stop and verify first. Editing a verified
+file reopens the task. With no task at all, a large change gets a prompt
+suggesting `cw task start`.
+
+It does not stop git run by a script, an alias or a command form the hook does
+not parse, an edited or damaged task store, a fake toolchain on `PATH`, or
+`cw task abandon` run by the agent. See the [threat model](SECURITY.md#threat-model)
+and the [known bypasses](docs/hooks.md#known-bypasses).
 
 `cw publish` commits a verified task's files, pushes them and creates or edits
 the pull request, and applies the same gate itself, so it holds under Codex as

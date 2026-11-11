@@ -35,7 +35,7 @@
     "enforce_verify": {
       "type": "boolean",
       "title": "Gate git commit and push on cw task verify",
-      "description": "When an open substantial cw task record exists for this repository, block commit and push until cw task verify has passed on the current source.",
+      "description": "When an open substantial cw task record exists for this repository, deny the git commit and push commands the hook recognises and ask the agent to stop until cw task verify has passed on the current source. A guardrail, not a sandbox: see docs/hooks.md, Known bypasses.",
       "default": true
     },
     "small_task_prompt": {

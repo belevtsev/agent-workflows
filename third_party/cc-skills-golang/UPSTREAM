@@ -6,7 +6,12 @@ This directory is a maintained fork, not a mirror. Every skills/*/SKILL.md
 entrypoint is rewritten here: descriptions are shortened for the automatic skill
 listing, upstream `allowed-tools` are moved to `metadata.upstream` so the host
 does not pre-approve tools, and rarely used library skills are hidden with
-`disable-model-invocation: true`. Files other than SKILL.md are unchanged.
+`disable-model-invocation: true`. Files other than SKILL.md are unchanged,
+except as noted below.
+
+Excluded: EVALUATIONS.md, upstream's 0.9 MB evaluation log. README.md links to
+it at the commit above instead of the missing local copy.
 
 To refresh: diff everything except skills/*/SKILL.md against the commit above,
-apply upstream changes, then re-apply the entrypoint rewrites and update this file.
+apply upstream changes, then re-apply the entrypoint rewrites and the
+EVALUATIONS.md exclusion above, and update this file.
