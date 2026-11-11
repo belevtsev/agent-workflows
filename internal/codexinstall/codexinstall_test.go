@@ -14,7 +14,7 @@ package codexinstall_test
 //         TestInstallAddsMissingBodyNewline, TestInstallWritesThroughAgentsMDSymlink
 //   CI-8  TestInstallIsIdempotent, TestInstallDoesNotResolveSourceSymlinks
 //   CI-9  TestInstallOwnership
-//   CI-10 TestInstallRefusesForeignOccupant
+//   CI-10 TestInstallRefusesForeignOccupant, TestInstallForeignOccupantMessageNamesPathAndRemoval
 //   CI-11 TestInstallRefusesMalformedAgentsMD, TestInstallRejectsInvalidSource
 //   CI-12 TestUninstallRemovesOwnedLinksOnly, TestUninstallWithoutUsableSource
 //   CI-13 TestUninstallRemovesOwnedLinksOnly, TestUninstallDeletesEmptyAgentsMD,
@@ -841,6 +841,23 @@ func TestInstallRefusesForeignOccupant(t *testing.T) {
 				diffSnapshots(t, before, snapshot(t, f.home, f.codexHome, f.source))
 			})
 		}
+	}
+}
+
+// CI-10: the refusal names the occupied path and tells the user to remove it,
+// and nothing more.
+// oracle: the exact error text "entry is not owned by agent-workflows: <path> (remove it)".
+func TestInstallForeignOccupantMessageNamesPathAndRemoval(t *testing.T) {
+	f := newFx(t, map[string]string{"alpha": "skills/alpha", "beta": "skills/beta"})
+	occupied := filepath.Join(f.skillsDir(), "beta")
+	mustWrite(t, occupied, "user file\n", 0o644)
+	_, err := codexinstall.Install(f.opts())
+	if !errors.Is(err, codexinstall.ErrNotOwned) {
+		t.Fatalf("Install error = %v, want ErrNotOwned", err)
+	}
+	want := "entry is not owned by agent-workflows: " + occupied + " (remove it)"
+	if got := err.Error(); got != want {
+		t.Errorf("Install error text:\n got %q\nwant %q", got, want)
 	}
 }
 

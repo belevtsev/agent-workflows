@@ -3,8 +3,7 @@
 Claude Code gets the skills and worker agents from the plugin in
 `.claude-plugin/`, and Codex from `.codex-plugin/` and
 `.agents/plugins/marketplace.json`. This page covers installing them and `cw`,
-the Codex instruction block, cleaning up a v2 installation by hand, paths, the
-model policy lookup and adviser keys.
+the Codex instruction block, paths, the model policy lookup and adviser keys.
 
 ## Install
 
@@ -108,8 +107,7 @@ It also removes links into the checkout that the manifest no longer registers.
 
 It owns only symlinks in `~/.agents/skills` that point into the checkout. Anything
 else at a registered name, such as a directory, a file or a link elsewhere, makes
-it fail without changing anything. Remove that entry; for a link a v2 installation
-left, see [cleaning up a v2 installation](#cleaning-up-a-v2-installation).
+it fail without changing anything. Remove that entry.
 
 ```sh
 cw uninstall --host codex
@@ -124,51 +122,6 @@ checkout, it still removes the block and prints a line saying so.
 There is no state file, journal, snapshot or rollback. Both commands reject
 `--dry-run`. `cw install --host claude` and `cw uninstall --host claude` are usage
 errors that point at the Claude Code plugin.
-
-## Cleaning up a v2 installation
-
-v3 has no migration command. If you used v2, remove what it left behind by hand,
-then install the plugins. Below, the state directory is
-`$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows`, or the
-directory you gave v2, and the Claude home is `$CLAUDE_CONFIG_DIR`, else
-`~/.claude`, or the one you gave v2.
-
-- **Links.** v2 linked skills and agents into its release snapshots. List the
-  links with `ls -l ~/.agents/skills <claude-home>/skills <claude-home>/agents ~/.local/bin`
-  and `rm` each one whose target is under the state directory: skill links,
-  `cw-*.md` agents and `~/.local/bin/cw`. `rm` on a link removes only the link.
-  `cw install --host codex` refuses to replace a leftover link in
-  `~/.agents/skills`, so remove those first.
-  Leave regular files and links that point elsewhere, such as a v3 `cw` you put
-  in `~/.local/bin`.
-- **Adopted skills.** If you let v2 adopt your own Codex skills
-  (`--adopt-personal-skills`), it moved each one from `~/.agents/skills`,
-  `$CODEX_HOME/skills` or `~/.codex/skills` to
-  `backups/personal-skills/<name>` in the state directory, and linked
-  `~/.agents/skills/<name>` to its own copy. After you remove that link, move
-  each skill back to where it was; do not delete `backups/` before that.
-- **Instruction blocks.** Delete the block from `<!-- agent-workflows-start -->`
-  to `<!-- agent-workflows-end -->`, markers included, in
-  `<claude-home>/CLAUDE.md` and `~/.codex/AGENTS.md` (`$CODEX_HOME/AGENTS.md`).
-  The Claude Code plugin does not use it. `cw install --host codex` rewrites the
-  block in `AGENTS.md`, so skip that file if you install that way.
-- **State.** In the state directory, `current`, `releases`, `bases`, `runtime`,
-  `state.json`, `journal.json` and `mutation.lock` belong to v2 and are safe to
-  delete. Some v2 files may be read-only, so make the directories writable first
-  (set `state` to the directory you gave v2, if you gave one):
-
-  ```sh
-  state="${XDG_STATE_HOME:-$HOME/.local/state}/agent-workflows"
-  chmod -R u+w "$state/releases" "$state/bases" "$state/runtime" 2>/dev/null
-  rm -rf "$state/current" "$state/releases" "$state/bases" "$state/runtime" "$state/state.json" "$state/journal.json" "$state/mutation.lock"
-  ```
-
-  Keep `workflow-tasks/`, `metrics/` and the state directory itself: `cw` keeps
-  its task records and the [cost history](#cost-history) there.
-
-v2 also wrote model keys into `<claude-home>/settings.json` and
-`$CODEX_HOME/config.toml`, and may have added a `PATH` line to a shell profile;
-edit those by hand if you want them gone.
 
 ## Paths
 
@@ -190,6 +143,11 @@ an alias of `cw pack`; absent means the default selection). `--dry-run` is a
 global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
+
+v2.x used the same state and configuration directories, and v3 reads what v2.x
+left in them: the task records in `<state>/workflow-tasks`, the saved adviser
+keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
+left behind can be removed by hand.
 
 ## Model policy
 

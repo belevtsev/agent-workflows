@@ -198,7 +198,7 @@ func Install(o Options) (Report, error) {
 			report.Changes = append(report.Changes, Change{Action: "relink", Path: path, Target: want})
 		default:
 			if _, err := os.Lstat(path); err == nil {
-				return Report{Instructions: paths.instructions}, fmt.Errorf("%w: %s (remove it; if a v2 installation left it, see \"Cleaning up a v2 installation\" in docs/operations.md)", ErrNotOwned, path)
+				return Report{Instructions: paths.instructions}, fmt.Errorf("%w: %s (remove it)", ErrNotOwned, path)
 			} else if !errors.Is(err, fs.ErrNotExist) {
 				return report, err
 			}

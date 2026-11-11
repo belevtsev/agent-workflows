@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The v2 installer is removed: install the Claude Code or Codex plugin instead; `cw install --host claude`
   now points at the plugin ([install][install]).
+- v2.x is end-of-life: no fixes, no upgrade or cleanup path. Install v3 fresh, keep `workflow-tasks/`,
+  `credentials.json` and `preferences.json`, and remove other v2 files by hand ([paths](docs/operations.md#paths)).
 - The module path gains `/v3`: install with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main`
   and import `github.com/belevtsev/agent-workflows/v3/...` ([get cw][getcw]).
 - Worker agents lose the `cw-` prefix and policy role `testing` is split by stage: dispatch
