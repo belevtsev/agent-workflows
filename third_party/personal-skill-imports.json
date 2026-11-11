@@ -181,27 +181,6 @@
           "imported_sha256": "55a5f74699a0f0e44018a4a000556d43c90430b95f39accac6141af8318b5133"
         },
         {
-          "path": "examples/class-payment-processors-rendered.html",
-          "mode": 420,
-          "source_sha256": "d94a3ea55770d1cd2685a7ad6bccf194acecf07b505f210ba56fd2d3307d52a5",
-          "source_git_blob": "46f711e544bd61d2aa3d0be1bbbcd1dd51a12818",
-          "imported_sha256": "d94a3ea55770d1cd2685a7ad6bccf194acecf07b505f210ba56fd2d3307d52a5"
-        },
-        {
-          "path": "examples/class-payments-rendered.html",
-          "mode": 420,
-          "source_sha256": "40574bed3eb6ad5ecd1325f41597335676bed7242912f41ae2876af183e5a874",
-          "source_git_blob": "d6dd74230afa50c2d6b7a6d77edd320d8a955d3b",
-          "imported_sha256": "40574bed3eb6ad5ecd1325f41597335676bed7242912f41ae2876af183e5a874"
-        },
-        {
-          "path": "examples/dataflow-product-analytics.html",
-          "mode": 420,
-          "source_sha256": "6d6790f1fa3631241dba4065e33ba2ce947a1da032cdd6d7d44c7190f85d3f5d",
-          "imported_sha256": "3ad4b3badbcd6440d1ca06ed87070e7e1ebe851840bcd8651cccd4536ac3f99e",
-          "adaptation": "Refreshed to upstream Archify 3.2.0."
-        },
-        {
           "path": "examples/delivery.explainer.json",
           "mode": 420,
           "source_sha256": "188cf8777816ac034dd5a92b04bf427b0f1a8dbfa0956ae072b2d4091427806c",
@@ -214,13 +193,6 @@
           "source_sha256": "f565a8acfebdb21453e2bccd82d3760b4736e38fe194fb2f0804b57817eba813",
           "imported_sha256": "e3dc105d03c1c9881160006cdace23cb5d8533803e337caf0ec287c64e775275",
           "adaptation": "Refreshed to upstream Archify 3.2.0."
-        },
-        {
-          "path": "examples/erd-orders-rendered.html",
-          "mode": 420,
-          "source_sha256": "3d0dcdda77c8436762c0b4e07c52457d5b16543cddc5e6aaf1f47d099b17a694",
-          "source_git_blob": "982f80eee38ec4a77d9f1091e488d9671ad422ba",
-          "imported_sha256": "3d0dcdda77c8436762c0b4e07c52457d5b16543cddc5e6aaf1f47d099b17a694"
         },
         {
           "path": "examples/event-stream.dataflow.json",
@@ -246,13 +218,6 @@
           "mode": 420,
           "source_sha256": "630be98449925d2716ecb8439f404b2bff5fe65ba905b0ad0baea6d96890c526",
           "imported_sha256": "630be98449925d2716ecb8439f404b2bff5fe65ba905b0ad0baea6d96890c526"
-        },
-        {
-          "path": "examples/lifecycle-agent-run.html",
-          "mode": 420,
-          "source_sha256": "0874c0723b10104ea03c566d1d63d958b6f93a6788c0075c1d1d162ccdb4054c",
-          "imported_sha256": "c31f00939790af2b9f417d2dd440683382cd3f49c7d91d13953b5b1bebdf755b",
-          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "examples/locales/de.json",
@@ -357,20 +322,6 @@
           "imported_sha256": "dbd5c174af66296caec372e7214cf4df7158b50a563508e16826b95ab8d1cd6c"
         },
         {
-          "path": "examples/sequence-cache-miss-request.html",
-          "mode": 420,
-          "source_sha256": "307951a168d2492eb0c41f318260d0a866f6e6057df5253d3528c32a23084ea3",
-          "imported_sha256": "1d5900665532daa696681210023e08b95d6858c96781b4bbb26c677c301bcd0d",
-          "adaptation": "Refreshed to upstream Archify 3.2.0."
-        },
-        {
-          "path": "examples/subscription-billing-rendered.html",
-          "mode": 420,
-          "source_sha256": "b4f11e17fda7ed78ef818367f71de4898bb43eafe0a7757f26f4e1277bf16ec3",
-          "source_git_blob": "5d2879f91e3307065babc7e88ba2add8e8c3b01f",
-          "imported_sha256": "b4f11e17fda7ed78ef818367f71de4898bb43eafe0a7757f26f4e1277bf16ec3"
-        },
-        {
           "path": "examples/subscription-billing.erd.json",
           "mode": 420,
           "source_sha256": "89945699d92b9cc0ab91263cf38a07c350867d260eacd5d8ba1dc835fe2d22ed",
@@ -378,66 +329,10 @@
           "imported_sha256": "89945699d92b9cc0ab91263cf38a07c350867d260eacd5d8ba1dc835fe2d22ed"
         },
         {
-          "path": "examples/timeline-archify-dev-activity-rendered.html",
-          "mode": 420,
-          "source_sha256": "692d8b48257e227a9ccc6a699bbbdf5a48c07cbcd08557bd8b48c1ecb3848aaf",
-          "source_git_blob": "69c6ffd8215bba4b35313bbea123f540d3ccf532",
-          "imported_sha256": "692d8b48257e227a9ccc6a699bbbdf5a48c07cbcd08557bd8b48c1ecb3848aaf"
-        },
-        {
-          "path": "examples/timeline-payment-incident-rendered.html",
-          "mode": 420,
-          "source_sha256": "222c4995eac9e1ffcfabc1297174504f462149607ead1a281607eaaf9f73dcd8",
-          "source_git_blob": "1a5bce8b8f3a703099fe5c3d70c3aa02baf86cc3",
-          "imported_sha256": "222c4995eac9e1ffcfabc1297174504f462149607ead1a281607eaaf9f73dcd8"
-        },
-        {
-          "path": "examples/tree-archify-repository-rendered.html",
-          "mode": 420,
-          "source_sha256": "a000d17dd87414ada14f1e5039e95cb0504f7194529db336d72a2f2369d72a07",
-          "source_git_blob": "60eb64aff78ed21997d65d6dc347a4cfd6690911",
-          "imported_sha256": "a000d17dd87414ada14f1e5039e95cb0504f7194529db336d72a2f2369d72a07"
-        },
-        {
-          "path": "examples/tree-payment-platform-rendered.html",
-          "mode": 420,
-          "source_sha256": "1f7b0a95699d6208fdaeda801cfa7e261b8ced13ac17be3de86dd5246987c250",
-          "source_git_blob": "e553b65ae19289796906d7daf7a753457e980e47",
-          "imported_sha256": "1f7b0a95699d6208fdaeda801cfa7e261b8ced13ac17be3de86dd5246987c250"
-        },
-        {
-          "path": "examples/waterfall-checkout-request-rendered.html",
-          "mode": 420,
-          "source_sha256": "aaafa380d6eef4cebd8a7461ac1e7bbeb960b4d445139ce447b86af6caf6db96",
-          "source_git_blob": "3514b20352022f9f5982628b278cfe2f4e11bab5",
-          "imported_sha256": "aaafa380d6eef4cebd8a7461ac1e7bbeb960b4d445139ce447b86af6caf6db96"
-        },
-        {
-          "path": "examples/waterfall-example-rebuild-rendered.html",
-          "mode": 420,
-          "source_sha256": "873b684dc631e1942979c5d02dfa4d789d24dc2a30a7b32abdd7df533c607006",
-          "source_git_blob": "9c49ab14120b557d6fd1e5c2d8ec47c507f9adfa",
-          "imported_sha256": "873b684dc631e1942979c5d02dfa4d789d24dc2a30a7b32abdd7df533c607006"
-        },
-        {
-          "path": "examples/web-app-rendered.html",
-          "mode": 420,
-          "source_sha256": "8233f4f600c89559b64ac650ad11b66ee1423103e8b6c5e53f63740afc06f6da",
-          "imported_sha256": "37b490991c6eaa483b36bd37b7886ed52fd5a10f2351131dbde8197807c07f73",
-          "adaptation": "Refreshed to upstream Archify 3.2.0."
-        },
-        {
           "path": "examples/web-app.architecture.json",
           "mode": 420,
           "source_sha256": "95e051b27a9e4a3307e194c0f666fca4af51470be7e2228d400ff48aea5b353b",
           "imported_sha256": "95e051b27a9e4a3307e194c0f666fca4af51470be7e2228d400ff48aea5b353b"
-        },
-        {
-          "path": "examples/workflow-agent-tool-call-rendered.html",
-          "mode": 420,
-          "source_sha256": "3edbb38a05430865ee2f620c35de49f8e78dfd8788be14840d9e134b5912230d",
-          "imported_sha256": "38220f39f8110f9f0b1fdbd96fd750bd33a3750de45dc2913827e3fc30224c85",
-          "adaptation": "Refreshed to upstream Archify 3.2.0."
         },
         {
           "path": "explainer/browser-check.mjs",
@@ -846,7 +741,7 @@
         {
           "path": "references/distribution-patches.md",
           "mode": 420,
-          "imported_sha256": "d59abead861a1e0529b9e412bd611a3ecd7b11727f9d241feadf7811903fe4c5",
+          "imported_sha256": "990ea652439a4e97076b38996dff71e9b80ab3657c68851affccede2a5b54583",
           "adaptation": "Add the managed distribution patch record, retained feature/license scope, and verification limits."
         },
         {
@@ -1471,8 +1366,23 @@
         }
       ],
       "excluded_source_files": [
+        "examples/class-payment-processors-rendered.html",
+        "examples/class-payments-rendered.html",
+        "examples/dataflow-product-analytics.html",
+        "examples/erd-orders-rendered.html",
+        "examples/lifecycle-agent-run.html",
         "examples/locales/es.json",
         "examples/locales/ko.json",
+        "examples/sequence-cache-miss-request.html",
+        "examples/subscription-billing-rendered.html",
+        "examples/timeline-archify-dev-activity-rendered.html",
+        "examples/timeline-payment-incident-rendered.html",
+        "examples/tree-archify-repository-rendered.html",
+        "examples/tree-payment-platform-rendered.html",
+        "examples/waterfall-checkout-request-rendered.html",
+        "examples/waterfall-example-rebuild-rendered.html",
+        "examples/web-app-rendered.html",
+        "examples/workflow-agent-tool-call-rendered.html",
         "renderers/lifecycle/grid-routing.mjs",
         "test/adaptive-reader-layout.test.mjs",
         "test/animation.test.mjs",

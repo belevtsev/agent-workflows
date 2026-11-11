@@ -17,7 +17,8 @@ license of every one, and of the files first-party skills adapt.
 is rewritten: shorter descriptions for the skill listing, upstream
 `allowed-tools` moved into metadata so the host does not pre-approve tools, and
 rarely used library skills hidden. Everything else matches the upstream commit
-recorded in [UPSTREAM](cc-skills-golang/UPSTREAM), which also says how to refresh.
+recorded in [UPSTREAM](cc-skills-golang/UPSTREAM), which also lists the files left
+out and says how to refresh.
 
 ## Rules for vendored content
 

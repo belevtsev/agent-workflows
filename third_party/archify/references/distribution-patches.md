@@ -10,7 +10,9 @@ manifest URL as provenance.
 The runtime retains the upstream `archify/` directory: the root metadata and license
 files, `assets`, `bin`, `brand-marks`, `delta`, `examples`, `explainer`, `locales`,
 `migrations`, `recipes`, `references`, `renderers`, `schemas`, and `scripts`. All
-`bin` helpers, JSON examples, locale files, and existing HTML examples are retained.
+`bin` helpers, JSON examples, and locale files are retained. The pre-rendered HTML
+examples (`examples/*.html`, about 12 MB) are excluded; `archify examples
+--output-dir <directory>` renders them from the retained JSON examples.
 Caches, dependencies, `.git`, upstream website and release tooling, and tests needing
 the upstream parent project are excluded. The shared pack's adoption catalog keeps
 the complete untouched inventory of the earlier personal copy, and the import ledger
@@ -40,7 +42,7 @@ The distribution patches are:
   `bin/archify.mjs` checks demo and migration destinations before creating their
   output directories.
 - `archify examples` and `scripts/render-examples.mjs` require an explicit
-  external `--output-dir`. They do not refresh bundled HTML examples in place.
+  external `--output-dir`. They never write rendered examples into the package.
   The new `scripts/output-directory.mjs` applies this same policy to retained
   generators. Generator write modes require an external output directory;
   `--check` only reads the bundled generated file.
