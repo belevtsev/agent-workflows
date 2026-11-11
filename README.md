@@ -50,6 +50,11 @@ See [agents](docs/agents.md) and the
 
 ## Quick start
 
+**Platforms.** macOS and Linux; Windows is not supported.
+
+**Languages.** Go repositories get the package-level `go test` rule in
+[`cw task verify`](#the-verify-gate); others need any one passed check.
+
 Install `cw`, which records tasks and runs checks (Go 1.27 or newer), from
 `@main` or a [release archive](docs/operations.md#get-cw):
 
