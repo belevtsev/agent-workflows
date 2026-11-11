@@ -44,9 +44,10 @@ linters:
   exclusions:
     presets:
       # errcheck: Close, Flush, os.Remove(All), the fmt print family and
-      # os.(Un)Setenv. Writes that are kept check Close on their success path;
-      # the unchecked calls are deferred closes of read handles, cleanup on an
-      # error path, and diagnostics to stdout or stderr.
+      # os.(Un)Setenv. These are mostly deferred closes of read handles,
+      # cleanup on an error path, and diagnostics to stdout or stderr. The
+      # linter no longer flags them, so a write whose Close result matters
+      # must check it explicitly.
       - std-error-handling
     rules:
       # G104 repeats errcheck, which is configured above.
