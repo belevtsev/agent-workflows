@@ -52,7 +52,7 @@ Releases are published when a `v*` tag is pushed. Maintainers create tags; contr
 
 ## Built with itself
 
-agent-workflows is developed with its own workflow. Substantial changes run as `cw` tasks through the staged flow in the [README](README.md#how-it-works): separate agents write, test and review the change, `cw` records each step in a task record, and the commit waits until `cw task verify` passes. Task records stay in the maintainer's local state directory and are not committed. A commit written with an agent names its model in a `Co-Authored-By` trailer, and the project's single maintainer merges every pull request. Whether the workflow improves results has not been measured yet.
+agent-workflows is developed with its own workflow. Substantial changes run as `cw` tasks through the staged flow in the [README](README.md#how-it-works): separate agents write, test and review the change, `cw` records each step in a task record, and the commit waits until `cw task verify` passes. Task records stay in the maintainer's local state directory and are not committed. Since [pull request #38](https://github.com/belevtsev/agent-workflows/pull/38), every commit written with an agent names its model in a `Co-Authored-By` trailer, and the project's single maintainer merges every pull request. Whether the workflow improves results has not been measured yet.
 
 ## License
 
