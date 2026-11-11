@@ -220,7 +220,7 @@ func Install(o Options) (Report, error) {
 	}
 	report.Block = status
 
-	if err := os.MkdirAll(paths.skills, 0o755); err != nil {
+	if err := os.MkdirAll(paths.skills, 0o755); err != nil { //nolint:gosec // G301: Codex's skills directory keeps the usual 0755 of a home config directory.
 		return report, err
 	}
 	for _, change := range report.Changes {
@@ -348,7 +348,7 @@ func (f instructionFile) save(data []byte) error {
 	if len(data) == 0 {
 		return os.Remove(f.path)
 	}
-	if err := os.MkdirAll(filepath.Dir(f.path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(f.path), 0o755); err != nil { //nolint:gosec // G301: the instruction file's directory keeps the usual 0755 of a home config directory.
 		return err
 	}
 	temp, err := os.CreateTemp(filepath.Dir(f.path), ".AGENTS.md.*")

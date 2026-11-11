@@ -458,7 +458,7 @@ func (d *decoder) escape(result []byte) ([]byte, error) {
 			}
 		}
 		if first >= 0xd800 && first <= 0xdfff {
-			return append(result, 0xe0|byte(first>>12), 0x80|byte(first>>6)&0x3f, 0x80|byte(first)&0x3f), nil
+			return append(result, 0xe0|byte(first>>12), 0x80|byte(first>>6)&0x3f, 0x80|byte(first)&0x3f), nil //nolint:gosec // G115: first is a lone surrogate; each byte keeps only its UTF-8 bits.
 		}
 		return utf8.AppendRune(result, first), nil
 	default:

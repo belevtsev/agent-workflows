@@ -21,9 +21,9 @@ func TestAssignContractNeedsProvingPlan(t *testing.T) {
 	t.Parallel()
 	for _, argv := range [][]string{l3PlainP, {"go", "test", "-json", "-run", "TestPass", "./p/..."}, {"go", "test", "-json", "./p/...", "-args", "-x"}} {
 		f := l4New(t, l4Opts{checks: []taskflow.Check{l3Check("unit", argv...)}})
-		f.assignFails(f.brief("te1", []string{"p/te_test.go"}), l4R17)
+		_ = f.assignFails(f.brief("te1", []string{"p/te_test.go"}), l4R17)
 		// R17 takes precedence over L3 R8's refusal of requirements.
-		f.assignFails(f.brief("te1b", []string{"p/te1b_test.go"}, l3Req("R1", "C1")), l4R17)
+		_ = f.assignFails(f.brief("te1b", []string{"p/te1b_test.go"}, l3Req("R1", "C1")), l4R17)
 		// R17 runs before input verification.
 		withInput := f.brief("te1c", []string{"p/te1c_test.go"})
 		in := filepath.Join(f.root, "input.txt")
@@ -31,7 +31,7 @@ func TestAssignContractNeedsProvingPlan(t *testing.T) {
 			t.Fatal(err)
 		}
 		withInput.Inputs = []taskflow.InputRef{{Path: in, SHA256: strings.Repeat("0", 64)}}
-		f.assignFails(withInput, l4R17)
+		_ = f.assignFails(withInput, l4R17)
 		for _, a := range f.load().Assignments {
 			if a.Brief.Contract != nil {
 				t.Errorf("argv %q: a refused brief left assignment %s with contract file %q (R17)", argv, a.Brief.ID, a.ContractFile)

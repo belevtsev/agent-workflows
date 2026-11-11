@@ -453,7 +453,7 @@ func runInstallerSignal(t *testing.T, argv []string, mode installerMode, signal 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/SHA256SUMS":
-			io.WriteString(w, sums)
+			_, _ = io.WriteString(w, sums)
 		case "/" + archiveName:
 			requestOnce.Do(func() { close(requested) })
 			select {
@@ -496,8 +496,8 @@ func runInstallerSignal(t *testing.T, argv []string, mode installerMode, signal 
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
 	kill := func() {
-		syscall.Kill(-pgid, syscall.SIGKILL)
-		<-done
+		_ = syscall.Kill(-pgid, syscall.SIGKILL)
+		<-done //nolint:errcheck // only joins Wait after the kill
 	}
 
 	ready := func() bool {

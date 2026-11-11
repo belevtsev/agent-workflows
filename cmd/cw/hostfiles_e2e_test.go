@@ -631,7 +631,7 @@ func (e *hfe2eEnv) run(t *testing.T, args ...string) (stdout, stderr string, cod
 func hfe2eBuild(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "cw")
-	goBin := filepath.Join(runtime.GOROOT(), "bin", "go")
+	goBin := filepath.Join(runtime.GOROOT(), "bin", "go") //nolint:staticcheck // SA1019: a test binary runs where go test built it, so this is the toolchain that built the test.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, goBin, "build", "-o", bin, ".")

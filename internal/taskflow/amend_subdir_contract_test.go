@@ -416,10 +416,10 @@ func TestContractSubSelectedSubdirConvertsMergePaths(t *testing.T) {
 		"check c-tests "+subC12Phrase)
 
 	// internal/b/b.go converted from svc/internal/b/b.go: b-tests covers internal/b.
-	rec := subAccepted(t, dir, input(taskflow.Check{ID: "b-tests", Argv: []string{"go", "test", "./internal/b"}}))
+	subAccepted(t, dir, input(taskflow.Check{ID: "b-tests", Argv: []string{"go", "test", "./internal/b"}}))
 	// go.mod converted from svc/go.mod: widened still covers the module file,
 	// although internal/b is now covered by b-tests.
-	rec = subAccepted(t, dir, input(subWidened()))
+	rec := subAccepted(t, dir, input(subWidened()))
 
 	if len(rec.Amendments) != 2 {
 		t.Fatalf("amendments = %d, want 2", len(rec.Amendments))

@@ -92,7 +92,7 @@ func findGo(env []string) string {
 			continue
 		}
 		candidate := filepath.Join(entry, name)
-		info, err := os.Stat(candidate)
+		info, err := os.Stat(candidate) //nolint:gosec // G703: a PATH lookup stats PATH entries by design.
 		if err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode().Perm()&0o111 != 0) {
 			return candidate
 		}
@@ -103,7 +103,7 @@ func findGo(env []string) string {
 // goCommand returns go with args in dir, under ctx, with env followed by
 // extra, and with standard error kept in stderr.
 func goCommand(ctx context.Context, goPath, dir string, env []string, stderr *headBuffer, args []string, extra ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, goPath, args...)
+	cmd := exec.CommandContext(ctx, goPath, args...) //nolint:gosec // G204: goPath is the go binary found on an absolute PATH entry; args are fixed go list flags.
 	cmd.Dir = dir
 	cmd.Env = slices.Concat(env, extra)
 	cmd.Stderr = stderr

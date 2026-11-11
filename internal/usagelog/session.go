@@ -78,7 +78,6 @@ type session struct {
 	agents    []*agentState
 	seen      map[string][7]int64
 	requests  int
-	capped    bool
 	limitsHit map[string]bool
 	// collected, when non-nil, receives every recorded request for the
 	// cost history.

@@ -19,16 +19,6 @@ type carveoutKeysResult struct {
 	out, stderr string
 }
 
-// text is everything the command reported: its error, standard output and
-// standard error.
-func (r carveoutKeysResult) text() string {
-	text := r.out + "\n" + r.stderr
-	if r.err != nil {
-		text = r.err.Error() + "\n" + text
-	}
-	return text
-}
-
 // carveoutKeysDir returns a configuration directory path, not yet created,
 // whose parent has no symlink component.
 func carveoutKeysDir(t *testing.T) string {

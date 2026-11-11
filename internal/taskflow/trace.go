@@ -500,7 +500,7 @@ func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgeme
 		}
 		return judged
 	}
-	phrases := map[string]string{"missing": "is missing at the current source", "failed": "failed at the current source", "skipped": "was skipped at the current source", "not_run": "has no PASS at the current source", "pass_unproven": "has no proven PASS at the current source", "not_independent": "is not independently authored"}
+	phrases := map[string]string{"missing": "is missing at the current source", "failed": "failed at the current source", "skipped": "was skipped at the current source", "not_run": "has no PASS at the current source", "pass_unproven": "has no proven PASS at the current source", "not_independent": "is not independently authored"} //nolint:gosec // G101: report phrases, not credentials.
 
 	current, closed := mapCurrency(record)
 	// Judge each current map-bearing assignment's completed map once, in

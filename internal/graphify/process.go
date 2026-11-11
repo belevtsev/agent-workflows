@@ -161,7 +161,7 @@ func runWithOutputLimit(ctx context.Context, arguments []string, directory strin
 		if !joined {
 			// This is the only Wait result. WaitDelay closes retained pipes and
 			// joins the copiers; never abandon a goroutine writing our buffers.
-			<-done
+			<-done //nolint:errcheck // interrupted is the error to report; this receive only joins Wait.
 		}
 		// One group kill can miss a member that another member was forking at
 		// that moment (seen on macOS), and that member need not be the leader.
