@@ -185,7 +185,7 @@ preserved licenses are covered by the import-provenance checks in
 | --- | --- |
 | `Native Go / ubuntu-latest` | gofmt check, `go vet ./...`, `go test -race -count=1 ./...` |
 | `Native Go / macos-latest` | gofmt check, `go vet ./...`, `go test -count=1 ./...` |
-| `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), for Linux and then `GOOS=darwin`; `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...` |
+| `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 
 The lint job builds the pinned golangci-lint with the Go toolchain that go.mod

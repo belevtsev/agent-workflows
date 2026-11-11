@@ -8,15 +8,16 @@ Thanks for helping improve agent-workflows. This file explains how to build, tes
 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
-Lint and check reachable vulnerabilities with the versions CI pins:
+Lint and check reachable vulnerabilities with the versions CI pins, for both release platforms, as CI does:
 
 ```sh
 GOWORK=off go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
-GOWORK=off golangci-lint run ./...
-GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+GOWORK=off go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+GOWORK=off GOOS=linux golangci-lint run ./... && GOWORK=off GOOS=darwin golangci-lint run ./...
+GOWORK=off GOOS=linux govulncheck ./... && GOWORK=off GOOS=darwin govulncheck ./...
 ```
 
-`GOWORK=off go test ./internal/skillcheck` checks skill metadata, Markdown links, manifests and plugin paths on its own. CI runs gofmt, vet and the tests on Linux and macOS, golangci-lint and govulncheck on Linux, and validates the plugin manifests. See `docs/development.md` for details.
+`GOWORK=off go test ./internal/skillcheck` checks skill metadata, Markdown links, manifests and plugin paths on its own. CI runs gofmt, vet and the tests on Linux and macOS, golangci-lint and govulncheck for the Linux and darwin builds, and validates the plugin manifests. See `docs/development.md` for details.
 
 ## Go-only automation
 
