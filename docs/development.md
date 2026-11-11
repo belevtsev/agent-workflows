@@ -11,8 +11,7 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/projectctx`, `internal/graphify`, `internal/outcomes` and
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
 and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
-evaluation and `cwdev diagram-svg`, which regenerates the archify diagram SVGs
-(see "Diagrams" in `CONTRIBUTING.md`).
+evaluation.
 
 ## Verification
 
@@ -159,6 +158,11 @@ source. The [runtime setup](operations.md#optional-graphify-runtime) is explicit
 per device; `cw` must never provision it.
 
 ### Archify
+
+To change a diagram under `docs/diagrams/`, edit its JSON spec, render it with
+archify `finalize`, export the SVG from the archify viewer (**Export → SVG ·
+Auto**) and commit that SVG with the spec; see
+[Diagrams](../CONTRIBUTING.md#diagrams) for the command.
 
 With Node.js available, run the bundled portable Archify tests from its package:
 
