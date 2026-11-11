@@ -13,7 +13,8 @@ across agents with separate contexts: one writes the spec, one designs, one
 implements, another writes tests from the contract without seeing the code, and
 another reviews. The `cw` command records each step, and on Claude Code a hook
 asks the agent to stop and pass `cw task verify` before it commits; see
-[what the gate does not stop](#the-verify-gate).
+[what the gate does not stop](#the-verify-gate). `cw` runs on macOS and Linux
+only ([Quick start](#quick-start)).
 
 ## How it works
 
