@@ -77,7 +77,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 - `cw consult` and `cw task start` resolve the model policy as `--policy`, then `$CW_MODEL_POLICY`, then `~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the policy embedded in `cw`; the installed release's `current/skills/task-orchestration/model-policy.yaml` is no longer read. The runtime reads only `version`, `consultation.deadline_seconds` (1 to 3600) and `consultation.providers` from it (`internal/modelpolicy`).
 - The configuration directory of the runtime commands is `--config-dir`, then `$XDG_CONFIG_HOME/agent-workflows`, then `~/.config/agent-workflows` (`internal/userconfig`); a recorded installation's directory is no longer consulted. `preferences.json` is read for `advisers.disabled` only, and a top-level member other than `version`, `hosts`, `shared` and `advisers` is refused.
 - `cw task`, `cw consult`, `cw doctor`, `cw graphify` and `cw metrics` no longer depend on `internal/workflow`.
-- **Supported platforms stated.** The README's Quick start and [Get cw](docs/operations.md#get-cw) say that `cw` runs on macOS and Linux and that Windows is not supported, and that Go repositories get the package-level `go test` rule in `cw task verify` while others need any one passed check.
+- **Supported platforms stated.** The README's Quick start and [Get cw](docs/operations.md#get-cw) say that `cw` runs on macOS and Linux and that Windows is not supported, and that Go modules (`go.mod` at the top of the task's path) get the package-level `go test` rule in `cw task verify` while other repositories need any one passed check.
 
 ### Fixed
 
