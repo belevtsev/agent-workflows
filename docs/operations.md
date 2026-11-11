@@ -180,8 +180,8 @@ Global flags apply to every command:
 The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
 saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
-pack selection written by `cw pack add` and `cw pack remove`, alias `cw lang`;
-absent means the default selection). `--dry-run` is a
+pack selection written by `cw pack add` and `cw pack remove`, where `cw lang` is
+an alias of `cw pack`; absent means the default selection). `--dry-run` is a
 global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
@@ -249,7 +249,10 @@ its agent type: `test-engineer` (or `cw-test-author` in older transcripts) is
 `test_author`, `reviewer` (or `cw-reviewer`) is `review`, and `github-worker` (or
 `cw-github-worker`) is `github`. A test engineer dispatched as `general-purpose` is
 `test_author` only when its description or brief says "test author"; otherwise it
-takes its brief's role.
+takes its brief's role. Two descriptions and types win over an `implementation`,
+`evidence` or `verification` brief: a description naming GitHub work makes the
+agent `github`, and on an `implementation` brief a description or brief text that
+says "test author", or the `test-engineer` type, makes it `test_author`.
 Unknown metrics remain unknown, and synthetic observations are never described as
 production savings. With go1.27.3, a line that a test writes straight to stdout or
 stderr starting with byte 0x16 becomes a `-json` result event for any test name it
