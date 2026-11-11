@@ -21,20 +21,20 @@ Out of scope: vulnerabilities in third-party tools, model providers, or Codex an
 
 The verify gate is a guardrail for a cooperative agent that skipped a step, such as committing before `cw task verify` passed. It is not a defence against an agent that sets out to bypass it.
 
-- **Asset.** The task store under `~/.local/state/agent-workflows` (`$XDG_STATE_HOME/agent-workflows` when that is set, or the directory given with `--store` or `CW_TASK_STORE`). Its records hold each task's plan, check runs, reviews and verification, and the commit and push gate decides from them.
-- **Actor.** The coding agent itself. It runs as the same user (same UID) as `cw`, with the same `PATH`, and can write everything that user can write: the task store, the repository and any program on `PATH`.
+- **Asset.** The task store under `~/.local/state/agent-workflows` (`$XDG_STATE_HOME/agent-workflows` when that is set, the state directory given with the global `--state-dir` flag, or a store given with `--store` or `CW_TASK_STORE`). Its records hold each task's plan, check runs, reviews and verification, and the commit and push gate decides from them.
+- **Actor.** The coding agent itself. It runs as the same user (same UID) as `cw`, with the same `PATH`. It can write everything that user can write, including the task store and the repository, and can put its own program ahead of any on `PATH`.
 - **What the gate does.** It asks the agent to stop. On Claude Code the hook denies a `git commit` or `git push` it recognises while a governing task has no passing `cw task verify` on the current source, and names the task and the command to run; `cw publish` refuses in the same case.
 
 Non-goals. The gate does not try to stop:
 
 - **Tampering with the task store.** The agent can write, rewrite or corrupt any record. The revision hash chain is plain SHA-256 with no key, so a rewritten chain validates, and a record that does not load is skipped instead of gating.
-- **A replaced toolchain.** A check runs the first program of its name on `PATH`, so a fake `go` that prints `ok` records a pass. Checking the binary's path or hash would show which `go` ran, not that it reports honestly: a `go` rebuilt from modified source by the same user would pass such a check too. That is a limit of the design.
+- **A replaced toolchain.** A check runs the first program of its name on `PATH`, so a fake `go` that prints `ok` records a pass. Checking the binary's path or hash would show which `go` ran, not that it reports honestly: the same user can rebuild `cmd/go` from modified source, or keep the binary and edit the standard library in a GOROOT it can write. That is a limit of the design.
 - **Containing checks.** A check runs with the user's rights. `cw task start` refuses some programs by name (shells, `env`, `sudo`, network and deployment tools, git other than inspection commands, `cw publish`), but `make`, `python3 -c`, `go run` or a script can still do anything, including commit and push. The refusal guards against accidents; it is not a sandbox.
 - **Self-declared agent IDs.** Worker independence compares the `agent_id` and `coordinator_id` strings written into briefs and the plan. Nothing authenticates them, so one agent can record every role.
 - **`cw task abandon` run by the agent.** Any process that can run `cw` can abandon a task, and an abandoned task never gates.
-- **Git run by scripts and other programs.** The hook reads the text of a Bash command, so git run by a script, a Makefile, another language, an alias or a command form the hook does not parse goes unchecked. Codex has no hook; there only `cw publish` applies the gate.
+- **Git run by scripts and other programs.** The hook reads the text of a Bash command, so git run by a script, a Makefile, another language, an alias or a command form the hook does not parse goes unchecked, and so does a commit made through the GitHub API. Codex has no hook; there only `cw publish` applies the gate.
 
-[Known bypasses](docs/hooks.md#known-bypasses) lists the known ways around the gate today. A bypass on that list, or one that needs the agent to set out to defeat the gate, is a known limit rather than a vulnerability; an everyday command the hook misses is a bug to report as an ordinary issue.
+[Known bypasses](docs/hooks.md#known-bypasses) lists the known ways around the gate today. None of them is a vulnerability, and neither is a new bypass that needs the agent to set out to defeat the gate. If the hook misses an everyday command that a cooperative agent writes, report it as an ordinary bug in a public issue, not through a security advisory.
 
 ## Credentials and `cw consult`
 
