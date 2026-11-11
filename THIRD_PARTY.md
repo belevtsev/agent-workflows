@@ -21,6 +21,7 @@ third-party material. Inclusion does not imply upstream endorsement.
 | `skills/clocks-and-time` | [`clocks-and-time` in auralshin/coding-skills](https://github.com/auralshin/coding-skills/tree/35766f5523b532a7d4dbfaa951fd74451abda7f0/skills/clocks-and-time), rewritten for Go | `LICENSE` (MIT) |
 | `third_party/cc-skills-golang/skills/golang-code-style/references/style-guides.md` | Restates decisions from the [Google Go style guide](https://google.github.io/styleguide/go/) (CC-BY-3.0) and the [Uber Go style guide](https://github.com/uber-go/guide) (Apache-2.0) | Credited in the file |
 | `skills/security-threat-model` | Locally maintained adaptation with retained reference material; no upstream revision is asserted | `LICENSE.txt` (Apache-2.0) |
+| `CODE_OF_CONDUCT.md` | [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) version 2.1, from [EthicalSource/contributor_covenant](https://github.com/EthicalSource/contributor_covenant/blob/d947a0f0cd479bac3e8f1d2d617aa7f8e7fee5b4/content/version/2/1/code_of_conduct.md) commit `d947a0f0cd479bac3e8f1d2d617aa7f8e7fee5b4`; unchanged except that the enforcement contact is filled in and the site's front matter is left out | The file's Attribution section; [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 The security threat-model adaptation narrows its trigger, updates the invocation
 prompt, and asks for clarification only when missing context materially affects

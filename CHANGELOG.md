@@ -62,8 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   reference, which the architect, implementer and test-engineer contracts apply.
 - Eval suites for six of the agents, checked offline by `go test ./evals/...` and run weekly in CI
   ([evals](evals/README.md#what-ci-runs)).
-- `LICENSE` (MIT), `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request templates, CODEOWNERS,
-  Dependabot and folder guides ([docs index](docs/README.md)).
+- `LICENSE` (MIT), `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `SECURITY.md`, issue and pull request
+  templates, CODEOWNERS, Dependabot and folder guides ([contributing](CONTRIBUTING.md)).
 
 ### Changed
 
@@ -80,6 +80,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cw` no longer reads its model policy or configuration from an installed release
   ([policy](docs/operations.md#model-policy), [paths](docs/operations.md#paths)).
 - Diagrams are archify specs with committed SVGs; Mermaid is gone ([diagrams](CONTRIBUTING.md#diagrams)).
+- `cw` runs on macOS and Linux; Windows is not supported ([get cw][getcw]).
 - CI runs gofmt, vet and tests on Linux and macOS; releases come only from pushed `v*` tags
   ([releases](docs/development.md#releases)).
 

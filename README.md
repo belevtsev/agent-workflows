@@ -13,7 +13,8 @@ across agents with separate contexts: one writes the spec, one designs, one
 implements, another writes tests from the contract without seeing the code, and
 another reviews. The `cw` command records each step, and on Claude Code a hook
 asks the agent to stop and pass `cw task verify` before it commits; see
-[what the gate does not stop](#the-verify-gate).
+[what the gate does not stop](#the-verify-gate). `cw` runs on macOS and Linux
+only ([Quick start](#quick-start)).
 
 ## How it works
 
@@ -50,6 +51,12 @@ See [agents](docs/agents.md) and the
 [role contracts](skills/task-orchestration/references/contracts/README.md).
 
 ## Quick start
+
+**Platforms.** macOS and Linux; Windows is not supported.
+
+**Languages.** Go modules (`go.mod` at the top of the task's path) get the
+package-level `go test` rule in [`cw task verify`](#the-verify-gate); other
+repositories need any one passed check.
 
 Install `cw`, which records tasks and runs checks (Go 1.27 or newer), from
 `@main` or a [release archive](docs/operations.md#get-cw):
@@ -232,5 +239,6 @@ decides from source evidence. See [advisers](docs/advisers.md).
 ## Contributing, security, license
 
 See [CONTRIBUTING](CONTRIBUTING.md) and the [docs index](docs/README.md).
+Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
 Report vulnerabilities as described in [SECURITY](SECURITY.md). Licensed under
 the [MIT License](LICENSE).
