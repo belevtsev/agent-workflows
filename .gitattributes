@@ -3,5 +3,4 @@ third_party/** linguist-vendored
 
 # Preserve upstream-rendered HTML bytes, including whitespace-only lines.
 third_party/archify/assets/template.html whitespace=-blank-at-eol
-third_party/archify/examples/*.html whitespace=-blank-at-eol
 third_party/archify/renderers/workflow/workflow-compiler.mjs whitespace=-blank-at-eol

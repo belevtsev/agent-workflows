@@ -16,13 +16,17 @@ First-party automation must be written in Go. The repository check (`internal/sk
 
 ## Diagrams
 
-[archify](third_party/archify/SKILL.md), vendored under `third_party/archify`, is the only diagram tool; do not add diagram sources in any other format. Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, which the docs embed because GitHub cannot run the interactive HTML. Edit the spec, never the SVG, then regenerate every SVG from the repository root (Node 18 or newer and Chrome, Chromium or Edge; set `ARCHIFY_CHROME` to choose the browser):
+[archify](third_party/archify/SKILL.md), vendored under `third_party/archify`, is the only diagram tool; do not add diagram sources in any other format. Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, which the docs embed because GitHub cannot run the interactive HTML. To change a diagram:
 
-```sh
-go run ./cmd/cwdev diagram-svg --all
-```
+1. Edit the JSON spec, never the SVG.
+2. Render the viewer from the repository root with archify `finalize`, passing the spec's own `diagram_type` and `meta.quality_profile`. It validates the spec and checks the rendered page in a headless browser, so it needs Node 18 or newer and Chrome, Chromium or Edge (set `ARCHIFY_CHROME` to choose the browser). `.archify/` is ignored by Git:
 
-For each spec it runs archify `finalize` with the spec's own `diagram_type` and `meta.quality_profile`, which validates the spec and checks the rendered page in a headless browser, then opens the viewer HTML in headless Chrome, chooses **Export → SVG · Auto** and writes the downloaded SVG over the committed one. That export carries both colour themes, so it reads in GitHub's light and dark modes. `go run ./cmd/cwdev diagram-svg docs/diagrams/decision-flow.json` exports one spec (`--out FILE` writes elsewhere), and `--check` writes nothing and fails when a committed SVG differs from a fresh export. The command adds the final newline `.editorconfig` requires and otherwise keeps the viewer's bytes; exports are byte-identical across runs on one machine, but `--check` is not run in CI because other operating systems and Chrome versions may serialise differently.
+   ```sh
+   node third_party/archify/bin/archify.mjs finalize workflow docs/diagrams/decision-flow.json .archify/decision-flow.html --quality standard
+   ```
+
+3. Open the HTML in a browser, choose **Export → SVG · Auto** and save the download over the committed SVG, here `docs/diagrams/decision-flow.svg`, ending it with the newline `.editorconfig` requires. That export carries both colour themes, so it reads in GitHub's light and dark modes.
+4. Commit the spec and the SVG together.
 
 ## Proposing or changing a skill
 

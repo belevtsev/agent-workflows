@@ -112,9 +112,9 @@ test('physical output containment rejects installed files and future children th
   const alias = path.join(directory, 'package-alias');
   fs.symlinkSync(skillRoot, alias, 'dir');
   for (const output of [
-    path.join(skillRoot, 'examples/web-app-rendered.html'),
+    path.join(skillRoot, 'assets/template.html'),
     path.join(skillRoot, 'future/missing/diagram.html'),
-    path.join(alias, 'examples/web-app-rendered.html'),
+    path.join(alias, 'assets/template.html'),
     path.join(alias, 'future/missing/diagram.html'),
   ]) {
     assert.throws(() => assertExternalOutputPath(output), /outside the managed Archify package/);
@@ -202,7 +202,7 @@ test('runtime helper entrypoints reject package outputs before modifying install
     ['migrate', 'workflow', workflow, path.join(alias, 'future/workflow.json'), '--to-schema', '2', '--json'],
   ]) assertRefused(invoke(skillRoot, args, directory, env));
   for (const helper of ['browser-check', 'visual-check']) {
-    assertRefused(invoke(skillRoot, [helper, path.join(skillRoot, 'examples/web-app-rendered.html'), '--out-dir', path.dirname(output), '--json'], directory, env));
+    assertRefused(invoke(skillRoot, [helper, path.join(skillRoot, 'assets/template.html'), '--out-dir', path.dirname(output), '--json'], directory, env));
   }
   assertRefused(spawnSync(process.execPath, [path.join(skillRoot, 'bin/recover-output.mjs'), path.join(alias, 'future'), '--json'], { cwd: directory, env, encoding: 'utf8' }));
   assert.deepEqual(hashes(skillRoot), before);

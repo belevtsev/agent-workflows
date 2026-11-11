@@ -94,6 +94,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cw install|uninstall` for Claude Code, and the release snapshots and state files.
 - `cwdev check`, `cwdev release` and `cwdev sandbox` ([development](docs/development.md)).
 - The `db-postgres` third-party skill, whose license was ambiguous.
+- Archify's rendered HTML examples and the Go pack's `EVALUATIONS.md`, 13 MB of the plugin download;
+  `archify examples --output-dir <dir>` renders the examples ([third-party notices](THIRD_PARTY.md)).
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
