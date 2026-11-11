@@ -238,5 +238,6 @@ decides from source evidence. See [advisers](docs/advisers.md).
 ## Contributing, security, license
 
 See [CONTRIBUTING](CONTRIBUTING.md) and the [docs index](docs/README.md).
+Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
 Report vulnerabilities as described in [SECURITY](SECURITY.md). Licensed under
 the [MIT License](LICENSE).

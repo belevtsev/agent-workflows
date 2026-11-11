@@ -166,7 +166,11 @@ Choice questions for every adviser.
 Run `cw keys status`. For each key it shows whether the key comes from that
 process's environment, the saved keys or neither. These are
 offline checks; they do not validate keys or prove availability in another
-process. Start the CLI from the same terminal to inherit exported keys:
+process. `cw doctor`'s credential lines count other places and point back to
+`cw keys status`: `credentials_environment` counts that process's environment
+without saved keys, and `credentials_launcher` and `credentials_codex_shell`
+count Codex environments, not `cw`'s own. Start the CLI from the same terminal
+to inherit exported keys:
 
 ```sh
 claude

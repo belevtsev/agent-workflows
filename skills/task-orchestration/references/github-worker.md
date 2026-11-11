@@ -47,7 +47,11 @@ commit: snapshots include HEAD, so it reports stale bindings.
    bounds each git and gh command (default 10m).
 4. Read the JSON report: the commit, the remote ref and the PR number and URL
    are read back from the repository, the remote and GitHub. The task directory
-   gains a `started` and a `finished` entry (`publication-NNNNNN.json`).
+   gains a `started` and a `finished` entry (`publication-NNNNNN.json`),
+   hash-chained through `previous_sha256` and written beside the task
+   revisions, which it never changes. The push sends only the commit to
+   `refs/heads/BRANCH` of REMOTE, never tags; the command never amends or
+   force-pushes.
 
 The same command, run again, continues from the state it observes: a commit
 already made by an earlier run, a branch already pushed or an equivalent PR
@@ -68,7 +72,9 @@ user's authorization still covers it.
 `--summary` prints one line with the members `status`, `reason`, `task_id`,
 `commit`, `remote_ref`, `pr_number`, `pr_url` and `record` instead of the whole
 report. A task check cannot run
-`cw publish` (`cw task start` refuses such a plan); that refusal is a guard,
+`cw publish`, even after `cw`'s global flags: `cw task start` refuses such a
+plan, and `cw task run` such a check in a recorded plan, with "publication and
+deployment commands are outside task checks". That refusal is a guard,
 not a sandbox, since a check can still run another program that publishes.
 
 ## Fallback: the GitHub worker
