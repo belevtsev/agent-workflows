@@ -99,6 +99,7 @@ hand before installing the plugins; see "Cleaning up a v2 installation" in
 - `cwdev diagram-svg`. The committed SVGs stay; to change a diagram, export it from the archify viewer and commit it (see [Diagrams](CONTRIBUTING.md#diagrams)).
 - `.github/workflows/validate.yml`, which published a release on every push to main.
 - The `db-postgres` third-party skill, because its license was ambiguous. The suite now has 36 registrations with 81 entrypoints.
+- Archify's pre-rendered HTML examples and the Go pack's `EVALUATIONS.md` (13 MB of the plugin download); `archify examples --output-dir <dir>` renders the examples. See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## [2.0.96] - 2026-11-07
 

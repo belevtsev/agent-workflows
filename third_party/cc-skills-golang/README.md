@@ -249,7 +249,7 @@ These skills are designed as **atomic, cross-referencing units**. A skill may re
 | ----------- | ------------------- | ------------------- | --------- |
 | **Overall** | **3315/3395 (98%)** | **1915/3395 (56%)** | **+41pp** |
 
-See [EVALUATIONS.md](./EVALUATIONS.md) for the full per-skill breakdown.
+See [EVALUATIONS.md](https://github.com/samber/cc-skills-golang/blob/053894c088317d7ba2038cffcbf5fd57b5494fa6/EVALUATIONS.md) for the full per-skill breakdown.
 
 ## 📖 Skills description
 
