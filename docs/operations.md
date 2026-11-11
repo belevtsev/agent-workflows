@@ -44,6 +44,11 @@ Docker skills in `third_party/docker-skills` are in neither plugin; only
 
 ### Get cw
 
+`cw` runs on macOS and Linux; Windows is not supported (`cw` does not build
+there). Go modules (`go.mod` at the top of the task's path) get the
+package-level `go test` rule in `cw task verify`; other repositories need any
+one passed check (see [evidence rules](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
+
 With Go installed, build from the main branch:
 
 ```sh
