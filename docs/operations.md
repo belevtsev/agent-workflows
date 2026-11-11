@@ -139,6 +139,11 @@ global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
 
+v2.x used the same state and configuration directories, and v3 reads what v2.x
+left in them: the task records in `<state>/workflow-tasks`, the saved adviser
+keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
+left behind can be removed by hand.
+
 ## Model policy
 
 `cw consult` and `cw task start` select the model policy in this order:
