@@ -48,7 +48,7 @@ For a new skill, you can open a skill proposal issue first to discuss scope.
 - One topic per pull request.
 - Pull requests stay under about 600 changed lines, unless most of the change is deletion. Split a larger change into several pull requests and say so in each description.
 - Behaviour changes need tests.
-- Add an entry under `## [Unreleased]` in `CHANGELOG.md`.
+- Add an entry under `## [Unreleased]` in `CHANGELOG.md`, in Breaking, Added, Changed, Fixed or Removed: one bullet of at most two lines that says what changed for a user and links the doc with the detail; a Breaking bullet names the action a user takes. No line above the first released version may exceed 200 characters (`go test ./internal/skillcheck` checks it).
 - Update docs when commands, skills or install behaviour change.
 - Run the build, vet and test commands above before requesting review.
 
