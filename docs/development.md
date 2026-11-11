@@ -51,7 +51,11 @@ GOWORK=off go test ./internal/skillcheck
   `graphify`, `task-orchestration` and `test-strategy` exist and stay
   discoverable;
 - the skill routing and import-provenance fixtures under
-  `internal/skillcheck/testdata` hold their contracts.
+  `internal/skillcheck/testdata` hold their contracts;
+- no first-party Markdown file (any `.md` outside `third_party/`) opens a
+  `mermaid` code block, since archify is the only diagram tool;
+- no line of `CHANGELOG.md` above the first released version heading is longer
+  than 200 characters.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell

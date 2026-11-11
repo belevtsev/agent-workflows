@@ -230,8 +230,7 @@ some run only by name. See the [skill catalog](skills/README.md).
 
 ## Configuration
 
-Paths, state, config, the model policy lookup and
-[cleaning up a v2 installation](docs/operations.md#cleaning-up-a-v2-installation):
+Paths, state, config and the model policy lookup:
 [operations](docs/operations.md).
 
 ## Advisers (optional)
@@ -242,5 +241,6 @@ decides from source evidence. See [advisers](docs/advisers.md).
 ## Contributing, security, license
 
 See [CONTRIBUTING](CONTRIBUTING.md) and the [docs index](docs/README.md).
+Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
 Report vulnerabilities as described in [SECURITY](SECURITY.md). Licensed under
 the [MIT License](LICENSE).
