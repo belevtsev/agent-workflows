@@ -23,10 +23,6 @@ const (
 	prPollPause    = 2 * time.Second
 )
 
-// GitOutput runs git in dir and returns its output without trailing line
-// ends; empty output is an error.
-type GitOutput = func(ctx context.Context, dir string, args ...string) (string, error)
-
 // Deps are the run's dependencies on its surroundings.
 type Deps struct {
 	// LookPath finds an executable on cw's PATH.
@@ -35,9 +31,6 @@ type Deps struct {
 	Environ []string
 	// HookStore returns the task store cw hook pre-publish reads.
 	HookStore func() (string, error)
-	// Repository resolves the repository a command in dir publishes from,
-	// running git through the function it is given.
-	Repository func(ctx context.Context, dir string, output GitOutput) (taskflow.Repository, error)
 }
 
 // run is one cw publish run.
@@ -213,7 +206,7 @@ func (r *run) repository(ctx context.Context) *failure {
 
 // openRecords applies R7: no other open record may gate the repository.
 func (r *run) openRecords(ctx context.Context) *failure {
-	repo, err := r.deps.Repository(ctx, r.worktree, r.git.output)
+	repo, err := taskflow.ResolveRepository(ctx, r.worktree, r.git.output)
 	if err != nil {
 		if interrupted(ctx) {
 			return failf("cancelled", "interrupted while resolving the repository")

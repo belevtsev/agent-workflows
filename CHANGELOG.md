@@ -6,8 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Exit statuses follow one table: an incomplete `cw task verify`, a failed `cw task run` check and a partial `cw consult` exit 5,
+  Graphify unavailable exits 4, `cw publish` unknown and mismatch exit 6 and 7: update scripts that test them ([exit statuses](docs/operations.md#exit-statuses)).
+
 ### Changed
 
+- The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
+  clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 - File locks get one shared implementation, `internal/fslock`: a `flock` lock that is released when its holder
   dies, for contributors adding a lock ([development](docs/development.md)).
 

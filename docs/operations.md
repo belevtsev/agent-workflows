@@ -150,6 +150,31 @@ left in them: the task records in `<state>/workflow-tasks`, the saved adviser
 keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
 left behind can be removed by hand.
 
+## Exit statuses
+
+Every `cw` command exits with a status from one table, so a script or an agent
+can tell "the answer is no" from "`cw` failed" without reading stderr:
+
+| Status | Meaning | Where |
+| --- | --- | --- |
+| 0 | ok | The command did what was asked. |
+| 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
+| 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`. |
+| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
+| 6 | unknown | `cw publish` cannot establish whether a step happened. |
+| 7 | mismatch | `cw publish` read back a step that differs from the request. |
+| 130 | cancelled | The command was interrupted. |
+
+On 5, `cw task verify` and `cw task run` still print the verification or the
+check run on stdout, which names the reason. `cw consult` prints its status
+line, or with `--summary` the one-line view, and writes the record to the
+`--output` path. The task commands other
+than `verify` and `run` still exit 1 when the record's state refuses them, for
+example an abandoned task or a `cw task add-checks` refusal. The hooks
+(`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)).
+
 ## Model policy
 
 `cw consult` and `cw task start` select the model policy in this order:
@@ -270,7 +295,7 @@ reads every step back, appends a `started` and a `finished` entry
 (`publication-NNNNNN.json`) to the task directory, and continues from the
 observed state when the same command runs again. `--summary` prints one line.
 Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
-5 unknown, 6 mismatch, 130 cancelled) and what to do for each are in the
+6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
 which also names the cases that go to the GitHub worker instead. It needs Git
 2.24 or newer. Its known limitations:
@@ -281,7 +306,7 @@ which also names the cases that go to the GitHub worker instead. It needs Git
 - With `core.autocrlf` set to `input` or true, every commit-set file that
   contains a CR byte, binaries included, is refused as 4 `content-conversion`.
 - A Git lock that a concurrent git process holds for more than about two seconds
-  reads as a stale lock (4 `git-locked`, or 5 `commit-unknown` after a failed
+  reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
   commit), so check that no git process runs before removing one.
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
@@ -550,7 +575,7 @@ listed in both, and refuses a top-level member other than
 invalid file makes `cw task start` fail before it creates a task. The change applies
 to tasks started afterwards: `cw task start` binds the advisers configured at that
 moment. A bound adviser whose key is missing at consultation time is recorded as
-`not_configured`; `cw consult` still writes the record, exits `2` and names the
+`not_configured`; `cw consult` still writes the record, exits `5` and names the
 variable, and `cw task consult` rejects that record. Supply the key and consult
 again. Installation and local validation do not require keys or make hosted
 requests.
