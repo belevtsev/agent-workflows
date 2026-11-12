@@ -9,11 +9,11 @@ import (
 
 // newTaskShowCommand returns cw task show. It only reads, so the global
 // --dry-run changes nothing.
-func newTaskShowCommand(taskDeps) *cobra.Command {
+func newTaskShowCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var fields []string
 	show := &cobra.Command{Use: "show", Short: "Read a task and validate its immutable revision chain", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := requireTask(directory); err != nil {
+		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}
 		for _, path := range fields {

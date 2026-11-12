@@ -13,6 +13,9 @@ import (
 // which also name the task's directory in its store.
 var taskIDPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
+// IsTaskID reports whether value has the form of a task ID.
+func IsTaskID(value string) bool { return taskIDPattern.MatchString(value) }
+
 // CheckRequestContexts reports whether task records in store back the task
 // contexts of a consultation request, each the JSON object that cw task
 // context printed. A context's task_id must name a task directory in store

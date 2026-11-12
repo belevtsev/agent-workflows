@@ -289,7 +289,10 @@ degraded or stale.
 the adviser binding fixed at `cw task start`, two substantial-task decision
 checkpoints (unless the plan declares them not required, with a reason that
 verify lists) and the coordinator's decisions in a private
-external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
+external task directory, by default `STATE/workflow-tasks`. Every task command's
+`--task` takes the directory `start` printed or the task's ID (32 hex digits), which
+names that directory in the task store: `$CW_TASK_STORE` when set (as for a task
+started with `--store DIR`), else `STATE/workflow-tasks`; write `./ID` for a directory of that name. Its `start`, `assign`,
 `handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `trace` commands accept `--summary` for a
 one-line result instead of the whole record (`run`: the whole check run, plus failing
 test names, from a `go test -json` run's per-test results when it recorded them, and first error lines when it failed; `verify`: without its fixed

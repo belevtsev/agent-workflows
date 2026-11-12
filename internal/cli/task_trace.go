@@ -66,7 +66,7 @@ func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := requireTask(directory); err != nil {
+			if err := deps.requireTask(&directory); err != nil {
 				return err
 			}
 			report, err := taskEnv(deps.config).Trace(cmd.Context(), directory)

@@ -8,7 +8,7 @@ import (
 )
 
 // newTaskTimelineCommand returns cw task timeline.
-func newTaskTimelineCommand(taskDeps) *cobra.Command {
+func newTaskTimelineCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var summary bool
 	timeline := &cobra.Command{
@@ -20,7 +20,7 @@ func newTaskTimelineCommand(taskDeps) *cobra.Command {
 		Args: noPositional,
 		// The command only reads, so the global --dry-run changes nothing.
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := requireTask(directory); err != nil {
+			if err := deps.requireTask(&directory); err != nil {
 				return err
 			}
 			record, err := taskflow.Load(directory)

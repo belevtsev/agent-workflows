@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ type taskDeps struct {
 }
 
 // taskCommands are the constructors of the cw task subcommands, one per file.
-var taskCommands = []func(taskDeps) *cobra.Command{
+var taskCommands = []func(deps taskDeps) *cobra.Command{
 	newTaskStartCommand,
 	newTaskContextCommand,
 	newTaskRunCommand,
@@ -56,19 +57,29 @@ func (deps taskDeps) guard() error {
 	return nil
 }
 
-// taskFlag adds --task, the task directory a command reads or changes, which
-// requireTask checks.
+// taskFlag adds --task, the task directory a command reads or changes, or its
+// task ID, which requireTask checks and resolves.
 func taskFlag(cmd *cobra.Command, directory *string) {
-	cmd.Flags().StringVar(directory, "task", "", "Task directory returned by start")
+	cmd.Flags().StringVar(directory, "task", "", "Task directory returned by start, or its task ID (32 hex digits) in the task store: $CW_TASK_STORE, else the state directory's workflow-tasks")
 }
 
 // requireTask is the usage error of a command run without --task. Each task
 // command checks it before reading its input or the task: an empty task path
-// would otherwise resolve to the working directory.
-func requireTask(directory string) error {
-	if directory == "" {
+// would otherwise resolve to the working directory. A task ID, 32 lowercase
+// hex digits, becomes that task's directory in the task store the hook reads
+// (hookTaskStore); write ./ID for a directory of that name.
+func (deps taskDeps) requireTask(directory *string) error {
+	if *directory == "" {
 		return usage(errors.New("--task DIR is required"))
 	}
+	if !taskflow.IsTaskID(*directory) {
+		return nil
+	}
+	store, err := hookTaskStore(deps.root, deps.config)
+	if err != nil {
+		return err
+	}
+	*directory = filepath.Join(store, *directory)
 	return nil
 }
 
