@@ -434,6 +434,8 @@ func TestRecordWrittenByRC1LoadsAndVerifiesUnchanged(t *testing.T) {
 		t.Fatalf("verify the rc.1 record: %v", err)
 	}
 	verified.CheckedAt, stored.CheckedAt = time.Time{}, time.Time{}
+	// The record stores the findings' text only, not their codes.
+	verified.ProblemFindings, verified.LimitationFindings = nil, nil
 	if !reflect.DeepEqual(verified, stored) {
 		t.Fatalf("Verify = %+v, want the verification rc.1 stored, %+v", verified, stored)
 	}

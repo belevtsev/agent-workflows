@@ -221,6 +221,11 @@ type Verification struct {
 	Problems     []string  `json:"problems"`
 	Limitations  []string  `json:"limitations"`
 	CheckedAt    time.Time `json:"checked_at"`
+	// ProblemFindings and LimitationFindings are Problems and Limitations
+	// with their codes, in the same order. Verify sets them; the JSON output
+	// and the record carry only the text, so a loaded record has none.
+	ProblemFindings    []Finding `json:"-"`
+	LimitationFindings []Finding `json:"-"`
 }
 
 type Record struct {

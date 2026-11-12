@@ -178,6 +178,14 @@ the production ports; `cli.Config.Now` is the clock of the task commands, the
 gate and `cw publish`. A rule test passes a fake `Source`, clock or
 `Artifacts` instead of building a Git repository or waiting.
 
+`cw task verify` runs a list of rules (`internal/taskflow/verify_rules.go`), in
+a fixed order. Each rule returns findings: a stable `FindingCode` and the
+message that the JSON output prints in `problems` or `limitations`. A new
+check is a new rule, or a new code in an existing one. Code that picks out
+entries, such as the `--summary` view, selects them by code, never by text, so
+rewording a message changes no caller. The JSON output and the task record
+keep the text only.
+
 A caller tells a `taskflow` refusal from a failure with `errors.Is`, never by
 its message: `ErrTaskLocked`, `ErrAbandoned`, `ErrRevisionLimit` and
 `ErrInvalidInput` (input a use case refuses before it writes; a damaged stored
