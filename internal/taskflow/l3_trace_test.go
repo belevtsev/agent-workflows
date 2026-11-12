@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -301,6 +302,42 @@ func TestTraceGOFLAGSWithoutCredit(t *testing.T) {
 	if v := f.verify(); !l3Has(v.Problems, want) {
 		t.Errorf("verify problems %v lack %q (R30)", v.Problems, want)
 	}
+}
+
+// TestTraceRunForAnotherPlatformWithoutCredit fails when a PASS from a run
+// built for another GOARCH proves a test (F1). Threat: go test hands each
+// cross-compiled test binary to a go_<goos>_<goarch>_exec program on PATH,
+// and this one prints a framed PASS for TestPass without running anything.
+// Oracle: the run passes with that PASS, but its go env names a GOARCH other
+// than its go command's host's, so the trace keeps TestPass not_run and says
+// why. It sets GOARCH and PATH, so it does not run in parallel.
+func TestTraceRunForAnotherPlatformWithoutCredit(t *testing.T) {
+	f := l3New(t, l3Opts{})
+	f.mustAssign(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
+	f.write("p/te_test.go", l3PTests)
+	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"}, l3Map("R1", l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te1", "accepted")
+	goarch := "arm64"
+	if runtime.GOARCH == "arm64" {
+		goarch = "amd64"
+	}
+	wrappers := t.TempDir()
+	wrapper := filepath.Join(wrappers, "go_"+runtime.GOOS+"_"+goarch+"_exec")
+	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nprintf '\\026=== RUN   TestPass\\n\\026--- PASS: TestPass (0.00s)\\n\\026PASS\\n'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOARCH", goarch)
+	t.Setenv("PATH", wrappers+string(os.PathListSeparator)+os.Getenv("PATH"))
+	ok := f.run("ok")
+	t.Setenv("GOARCH", "")
+	if ok.Status != "passed" {
+		t.Fatalf("fixture run status %q; want passed through the exec program", ok.Status)
+	}
+	detail := fmt.Sprintf("run %s of check ok recorded a PASS, but earns no per-test credit: it built its tests for %s/%s, not for its go command's host %s/%s, so go test may have handed them to a go_%s_%s_exec program instead of running them",
+		ok.ID, runtime.GOOS, goarch, runtime.GOOS, runtime.GOARCH, runtime.GOOS, goarch)
+	f.l3Report("cross-platform run", f.trace(), nil,
+		l3TC("C1", "open", l3TR("te1", "R1", "unproven",
+			l3TT("p/te_test.go", "TestPass", l3Module+"/p", "not_run", detail, l3TraceRun(ok, true, false, 1, 0, 0)))))
 }
 
 // TestTraceTruncatedResults fails when a test the run's results could not

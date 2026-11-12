@@ -125,8 +125,8 @@ Then check the build with `cw version`, which prints JSON with `version`,
 
 Upgrade every `cw` that shares a task store at once, including the one the
 commit hook runs. The first revision a newer `cw` writes to a task can raise
-the record's version; an older `cw` then cannot read the record. A `cw` older
-than v3.0.0-rc.2 cannot read the version 4 records this release writes, calls
+the record's version; an older `cw` then cannot read the record. This `cw`
+writes version 5 records. A `cw` older than v3.0.0-rc.2 cannot read them, calls
 them unsupported, and its hook, where it has one, skips such a task instead of
 gating it. From v3.0.0-rc.2 on, a `cw task` command on a record from a newer
 `cw` exits 4 and says to upgrade `cw`, and the hook asks before each commit and
@@ -488,9 +488,10 @@ accidents: a test that calls the GitHub API can read a token under a name of
 its own, which the plan and verify then show.
 
 Variables the filter keeps, `GOFLAGS` among them, reach every check whether or
-not `env_passthrough` names them. The run records the `GOFLAGS` the check saw,
-and the Go rule credits only allowlisted flags, so a `GOFLAGS` with `-exec` or
-`-toolexec` earns no credit.
+not `env_passthrough` names them. The run records `cw`'s `GOFLAGS` under
+`goflags`, and the Go rule credits only allowlisted flags among those its go
+command applied ([below](#which-go-a-check-runs)), so a `GOFLAGS` with `-exec` or
+`-toolexec`, in the environment or in a go env file, earns no credit.
 
 ### Which go a check runs
 
@@ -510,11 +511,26 @@ variable nor a go env file can pick another tree's `go.env`, and the go command
 cannot switch again. The run records it under `tool` (`path`, `version`,
 `sha256`, `goroot`), and `cw task verify` lists the go command and `GOROOT` that
 each passed go check ran as a limitation. A run recorded before this has no
-`tool` and keeps its credit.
+`tool`, and verify says so.
+
+Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
+GOHOSTARCH`, with the check's environment and in the selected path, and the
+run records what it printed under `go_env` (`GOFLAGS` redacted as in
+`goflags`). The check then runs with that `GOFLAGS` (a single space when it is
+empty), `GOOS` and `GOARCH` at the end of its environment, where they win over
+a go env file, so a go env file changed after `cw` read it changes nothing;
+the test binaries see them too. The Go rule credits a `go test` run only by that record: the
+`GOFLAGS` the go command applied, the environment's or else a go env file's
+(`GOENV`, `go env -w`), must pass the allowlist, and `GOOS` and `GOARCH` must
+equal `GOHOSTOS` and `GOHOSTARCH`, since `go test` hands a test binary built
+for another platform to a `go_<goos>_<goarch>_exec` program on `PATH`. A run
+recorded without `go_env` (record version 4) earns no Go rule credit either:
+run its check again. Verify lists such a run, and one built for another
+platform, as `check <id> passed, but earns no Go evidence credit: …`.
 
 When no go command verifies, such as a script named `go` first on `PATH`, a
 `GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
-downloaded, the check does not run:
+downloaded, or its `go env` cannot be read, the check does not run:
 the run is recorded as `failed` with failure `untrusted_toolchain`, no exit code
 and an empty log, and `cw task run` exits 5 with an error that names the
 candidate. Put the real `go` first on `PATH`. This shows what the binary is, not

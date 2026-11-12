@@ -164,8 +164,8 @@ func requireTaskCommandsRefused(t *testing.T, h *summaryCLIHarness, message stri
 // A task record with a revision newer than this cw reads is refused, not
 // failed: the task commands exit 4 and say to upgrade cw.
 func TestTaskCommandsExitRefusedForARecordFromANewerCw(t *testing.T) {
-	h := rewriteStartedRecord(t, func(members map[string]jsontext.Value) { members["version"] = jsontext.Value("5") })
-	requireTaskCommandsRefused(t, h, "task record version 5 was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it")
+	h := rewriteStartedRecord(t, func(members map[string]jsontext.Value) { members["version"] = jsontext.Value("6") })
+	requireTaskCommandsRefused(t, h, "task record version 6 was written by a newer cw; this cw reads versions 3 to 5; upgrade cw to read it")
 }
 
 // A task record without packs or test_rules, which cw v2.0.66 to v2.0.96

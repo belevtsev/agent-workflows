@@ -30,7 +30,8 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 	passed := []langpack.Run{}
 	for _, check := range allChecks(record) {
 		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
-			entry := langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS, CheckID: run.CheckID, Truncated: run.Truncated, Rerun: rerun(record, *run)}
+			entry := evidenceRun(*run)
+			entry.Rerun = rerun(record, *run)
 			if data, err := privateRead(root, run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
 				entry.Log = data
 			}
@@ -49,12 +50,33 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 }
 
 // rerun reports whether another run of run's check failed with an exit code
-// at the same before-snapshot and with the same recorded GOFLAGS. A passed
-// run is never failed, so run never matches itself.
+// at the same before-snapshot and with the same applied GOFLAGS. A failed run
+// recorded without go_env (record version 4) shows only its environment's
+// GOFLAGS, not a go env file's, so it also matches a run whose environment
+// gave the same. A passed run is never failed, so run never matches itself.
 func rerun(record Record, run CheckRun) bool {
 	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
-		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && other.GOFLAGS == run.GOFLAGS
+		sameFlags := appliedGOFLAGS(other) == appliedGOFLAGS(run) || other.GoEnv == nil && other.GOFLAGS == run.GOFLAGS
+		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && sameFlags
 	})
+}
+
+// evidenceRun returns run as the Go evidence rule judges it: its argv, the
+// GOFLAGS its go command applied, and why credit is withheld when its go_env
+// is missing or names another platform than its go command's host
+// (langpack.GoEnvWithheld). Every judgement of a recorded run goes through it.
+func evidenceRun(run CheckRun) langpack.Run {
+	return langpack.Run{Argv: run.Argv, GOFLAGS: appliedGOFLAGS(run), Withheld: langpack.GoEnvWithheld(run.GoEnv), CheckID: run.CheckID, Truncated: run.Truncated}
+}
+
+// appliedGOFLAGS returns the GOFLAGS run's go command applied, as its go_env
+// reported them, or for a run recorded without go_env, which earns no credit,
+// the GOFLAGS of its environment.
+func appliedGOFLAGS(run CheckRun) string {
+	if run.GoEnv != nil {
+		return run.GoEnv.GOFLAGS
+	}
+	return run.GOFLAGS
 }
 
 // evidenceSource describes the selected project for the evidence rules: the

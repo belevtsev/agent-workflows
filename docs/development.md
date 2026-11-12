@@ -190,7 +190,7 @@ improvements, and they must not modify personal host configuration.
 ### Task record format
 
 A task record's `version` says which `cw` can read it. `cw` writes
-`taskflow.Version` (4) and reads `taskflow.MinVersion` (3) to `Version`. It
+`taskflow.Version` (5) and reads `taskflow.MinVersion` (3) to `Version`. It
 loads strictly: a member it does not know fails the decode, and a value that a
 validated member did not allow before, such as a new `test_rules` set, check
 run `status` or context phase, fails validation with "invalid stored …".
@@ -226,11 +226,13 @@ run `status` or context phase, fails validation with "invalid stored …".
 - The version each release writes (release step 1 appends a line):
   - v3.0.0-rc.1 (`13b6103`, not published): 3.
   - v3.0.0-rc.2: 4.
+  - v3.0.0-rc.3 (in development): 5.
 
-  The first record change after rc.2, such as R1's `profile`, bumps `Version`
-  to 5. `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version
-  3: `internal/taskflow/testdata/rc1-small-task` holds a record it wrote, which
-  must keep loading and verifying.
+  The check run member `go_env` (F1) was the first record change after rc.2
+  and bumped `Version` to 5; later changes before rc.3, such as R1's
+  `profile`, keep 5. `v3.0.0-rc.1` was never tagged, but the code at
+  `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
+  a record it wrote, which must keep loading and verifying.
 
 ### Graphify
 

@@ -82,12 +82,12 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 }
 
-// D5 and D11 (task records, versions 3 to 4): a task record chain whose
+// D5 and D11 (task records, versions 3 to 5): a task record chain whose
 // revisions hold an older version is refused with the restart guidance, one
 // with a newer version with the upgrade guidance, and its record files stay
 // byte-identical.
 func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
-	for _, version := range []int{1, 2, 5} {
+	for _, version := range []int{1, 2, 6} {
 		t.Run(fmt.Sprintf("version_%d", version), func(t *testing.T) {
 			repo, home := t.TempDir(), t.TempDir()
 			if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
@@ -158,9 +158,9 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 				return files
 			}
 			before := snapshot()
-			refusal := fmt.Sprintf("task record version %d is not supported; this cw reads versions 3 to 4; start a new task with 'cw task start'", version)
-			if version > 4 {
-				refusal = fmt.Sprintf("task record version %d was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it", version)
+			refusal := fmt.Sprintf("task record version %d is not supported; this cw reads versions 3 to 5; start a new task with 'cw task start'", version)
+			if version > 5 {
+				refusal = fmt.Sprintf("task record version %d was written by a newer cw; this cw reads versions 3 to 5; upgrade cw to read it", version)
 			}
 			for _, command := range []string{"show", "verify"} {
 				t.Run(command, func(t *testing.T) {
