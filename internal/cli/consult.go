@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/graphify"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +39,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 		Short: "Collect independent adviser judgments, or validate a recorded decision offline",
 		Long: "With --request, validate a shared Choice request (at most 8 questions) and send it once to each configured adviser under the policy's batch deadline, writing a new private version 4 record. " +
 			"The participating advisers are the task's adviser binding when the request state holds task_context or task_contexts, and otherwise the policy's enabled providers. " +
+			"A task context must be one that 'cw task context' printed and that its task's record still holds, found in the task store the hook reads ($CW_TASK_STORE, else the state directory's workflow-tasks); otherwise nothing is sent and the run exits 1. " +
 			"Without a task, an adviser disabled in your saved preferences (advisers.disabled in preferences.json of the configuration directory) is recorded as not_configured and never contacted, even with --policy; so is one you have not opted in to, unless --policy is given: opt in by listing it under advisers.enabled or saving its key with 'cw keys set'. A task keeps its binding. " +
 			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. " +
 			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
@@ -68,6 +71,15 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				// consult reads the withheld advisers only for a request
 				// without a task binding.
 				options.Disabled = func() ([]string, error) { return withheldAdvisers(root, config, policy != "", cmd.ErrOrStderr()) }
+				// A task-bound request is asked only when the records in the
+				// task store the hook reads back each of its task contexts.
+				options.TaskRecords = func(contexts [][]byte) error {
+					store, err := hookTaskStore(root, config)
+					if err != nil {
+						return fmt.Errorf("cannot locate the task store that backs the task context: %w", err)
+					}
+					return taskflow.CheckRequestContexts(store, contexts)
+				}
 			}
 			if !summary {
 				outcome, err := consult.Run(cmd.Context(), options)

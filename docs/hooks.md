@@ -340,7 +340,8 @@ The hook reads records from `$CW_TASK_STORE` when it is set, else from the
 state directory `cw task start` writes to (`$XDG_STATE_HOME/agent-workflows/workflow-tasks`,
 else `~/.local/state/agent-workflows/workflow-tasks`). `cw task start` does not
 read `CW_TASK_STORE`; give it the same directory with `--store` when you use
-the variable. `cw publish` reads both the store of the task it publishes (the
+the variable. `cw consult` reads a task-bound request's task record from this
+store too. `cw publish` reads both the store of the task it publishes (the
 task directory's parent) and this store, once each when they are the same.
 
 Without `$CW_TASK_STORE`, the hook cannot locate the store when

@@ -1487,7 +1487,12 @@ func (r *aclRepo) consultRecord(t *testing.T, dir, phase string) string {
 	req["state"].(map[string]any)["task_context"] = taskContext
 	reqPath := r.jsonFile(t, phase+"-request.json", req)
 	consultPath := filepath.Join(r.base, phase+"-consult.json")
-	if res := r.cw.run("", "--config-dir", r.configDir, "consult", "--request", reqPath, "--output", consultPath); res.err != nil {
+	// The task sits in r.store, so cw consult finds its record through
+	// CW_TASK_STORE, as the hook does.
+	r.cw.env["CW_TASK_STORE"] = r.store
+	res := r.cw.run("", "--config-dir", r.configDir, "consult", "--request", reqPath, "--output", consultPath)
+	delete(r.cw.env, "CW_TASK_STORE")
+	if res.err != nil {
 		t.Fatalf("setup: cw consult (%s): %s", phase, res.message())
 	}
 	decision := r.inputFile(t, phase+"-decision.json", aclExampleDecision)

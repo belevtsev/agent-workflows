@@ -730,7 +730,11 @@ When they differ:
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
 request, otherwise the providers enabled in the [selected policy](#model-policy)
 that you opted in to and did not disable in your preferences, each only with its
-key present. It works
+key present. A task-bound request is sent only when the task's record holds
+its task context exactly as `cw task context` printed it, read from the task
+store the hook reads (`$CW_TASK_STORE`, else the state directory's
+`workflow-tasks`, [task store](hooks.md#task-store)); otherwise `cw consult`
+exits 1 and writes and sends nothing. It works
 from any directory. With no adviser configured it writes a
 `no_advisers_configured` record without network access:
 
