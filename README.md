@@ -95,9 +95,9 @@ claude plugin install agent-workflows@agent-workflows
 codex plugin marketplace add belevtsev/agent-workflows
 ```
 
-Then run `codex`, open `/plugins`, install `agent-workflows`, trust its two
+Then run `codex`, open `/plugins`, install `agent-workflows`, trust its
 hooks in `/hooks` and start a new session. Until you trust them, Codex runs
-neither hook and the plugin gives the skills only: no conventions and no commit
+none of the hooks and the plugin gives the skills only: no conventions and no commit
 hook. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
 the Docker skills and writes the `AGENTS.md` instruction block, but installs no
 hooks. [What each shape gives](docs/operations.md#codex).

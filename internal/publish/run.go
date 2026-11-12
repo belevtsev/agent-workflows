@@ -252,11 +252,11 @@ func (r *run) openRecords(ctx context.Context) *failure {
 	}
 	switch {
 	case unreadable:
-		return failf("open-record", "another task record for this repository cannot be read, so it may gate: upgrade cw if a newer cw wrote it, else remove its directory or move it out of the task store; verify or abandon any other open record, as each problem says")
+		return failf("open-record", "another task record for this repository cannot be read, so it may gate: upgrade cw if a newer cw wrote it, else remove its directory or move it out of the task store; verify any other open record, or ask the user before abandoning it, as each problem says")
 	case legacy:
-		return failf("open-record", "another open task record gates this repository; verify or abandon it, or move a record this cw cannot read out of the task store, as its problem says")
+		return failf("open-record", "another open task record gates this repository; verify it, or ask the user before abandoning it, or move a record this cw cannot read out of the task store, as its problem says")
 	case len(r.rep.OpenRecords) > 0:
-		return failf("open-record", "another open task record gates this repository; verify or abandon it first")
+		return failf("open-record", "another open task record gates this repository; verify it first, or ask the user before abandoning it")
 	}
 	return nil
 }

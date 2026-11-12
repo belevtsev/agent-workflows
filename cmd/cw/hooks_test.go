@@ -128,7 +128,7 @@ func TestHooksJSONShape(t *testing.T) {
 	t.Run("events matchers and conditions", func(t *testing.T) {
 		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
 		// PreToolUse has one Bash group with exactly two handlers, whose ifs
-		// are Bash(*git*) and Bash(*cw*abandon*) and whose commands are both
+		// are Bash(*git*) and Bash(*abandon*) and whose commands are both
 		// the agreed inline command, so both reach the same decision where
 		// both run; SessionStart calls cw hook and references the plugin
 		// root and data directory.
@@ -171,7 +171,7 @@ func TestHooksJSONShape(t *testing.T) {
 // other for cw task abandon, with the same command.
 const (
 	preToolUseIf        = "Bash(*git*)"
-	preToolUseAbandonIf = "Bash(*cw*abandon*)"
+	preToolUseAbandonIf = "Bash(*abandon*)"
 	preToolUseCommand   = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
 )
 

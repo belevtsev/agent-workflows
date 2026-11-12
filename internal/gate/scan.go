@@ -68,38 +68,59 @@ type abandonment struct {
 // abandonments returns every `cw task abandon` in a shell command line, read
 // as splitPublications reads it (cwAbandon), without duplicates and in
 // command order, inside substitutions, `sh -c` strings and eval too. It
-// fails closed like gitPublications: when that reading is not certain and
-// finds none, while flatAbandon shows cw together with abandon, it returns
-// one abandonment the gate cannot identify, such as cw run by xargs or named
-// through a variable. A reading of a line that runs cw is never certain: the
-// gate does not trust cw, whose `cw task verify` runs plan commands.
+// fails closed like gitPublications: when that reading is not certain, and
+// flatAbandons shows cw, task and abandon while the reading finds none, or
+// fewer than flatAbandons counts, it adds one abandonment the gate cannot
+// identify, such as cw run by xargs or named through a variable. A reading
+// of a line that runs cw is never certain: the gate does not trust cw, whose
+// `cw task verify` runs plan commands.
 func abandonments(command, cwd, home string) []abandonment {
 	scanner := splitCommand(command, cwd, home)
-	if len(scanner.abandoned) == 0 && !scanner.certain && flatAbandon(command) {
-		return []abandonment{{}}
+	found := scanner.abandoned
+	if !scanner.certain {
+		if shows, count := flatAbandons(command); shows && (len(found) == 0 || count > scanner.abandonRuns) {
+			found = append(found, abandonment{})
+		}
 	}
-	return scanner.abandoned
+	return found
 }
 
-// flatSeparators are the characters at which flatAbandon splits a command
+// flatSeparators are the characters at which flatAbandons splits a command
 // line: blanks, quotes, backslash, and the characters that separate commands,
 // redirect, or open an expansion or assignment.
 const flatSeparators = " \t\r\n'\"\\;|&()<>`$={}:"
 
-// flatAbandon reports whether a command line, split into tokens at
-// flatSeparators with leading hyphens removed, holds a token whose base name
-// is cw and the token abandon, anywhere. So it finds cw written as a path
-// (/usr/local/bin/cw), quoted, as another program's argument (xargs cw,
-// find -exec cw), as a variable's value (C=cw, ${C:-cw}) or in a
-// substitution ($(command -v cw)).
-func flatAbandon(command string) bool {
-	cw, abandon := false, false
+// flatAbandons reports whether a command line, split into tokens at
+// flatSeparators with leading hyphens removed, holds a token whose program
+// name (programName) is cw, the token task and the token abandon, anywhere
+// and in any order. So it finds cw written as a path (/usr/local/bin/cw),
+// quoted, as another program's argument (xargs cw, find -exec cw,
+// go run …/cmd/cw@v3.0.0), as a variable's value (C=cw, ${C:-cw}) or in a
+// substitution ($(command -v cw)). It also counts the tokens abandon that
+// directly follow a token task, each a `task abandon` the line may run.
+func flatAbandons(command string) (bool, int) {
+	cw, task, abandon, count := false, false, false, 0
+	previous := ""
 	for _, token := range strings.FieldsFunc(command, func(r rune) bool { return strings.ContainsRune(flatSeparators, r) }) {
 		token = strings.TrimLeft(token, "-")
-		cw = cw || filepath.Base(token) == "cw"
-		abandon = abandon || token == "abandon"
+		cw = cw || programName(token) == "cw"
+		task = task || token == "task"
+		if token == "abandon" {
+			abandon = true
+			if previous == "task" {
+				count++
+			}
+		}
+		previous = token
 	}
-	return cw && abandon
+	return cw && task && abandon, count
+}
+
+// programName returns the base name of a program word, without the
+// @VERSION that a go run package argument ends with (…/cmd/cw@v3.0.0).
+func programName(word string) string {
+	name, _, _ := strings.Cut(filepath.Base(word), "@")
+	return name
 }
 
 // cwValueOptions are the options that take a separate value on the way to
@@ -107,14 +128,14 @@ func flatAbandon(command string) bool {
 var cwValueOptions = map[string]bool{"--config-dir": true, "--home": true, "--codex-home": true, "--claude-home": true, "--state-dir": true, "--task": true, "--reason": true}
 
 // cwAbandon reports whether words, a simple command from its program on, run
-// `cw task abandon` from at: a program named cw, by any path, whose first two
-// operands are task and abandon, as cobra finds the command among options
-// and the values of those in cwValueOptions. `--help` counts too: the reading
-// of a line that runs cw is never certain, so the flat split would ask about
-// it anyway. It returns the directory the last `--task DIR` or `--task=DIR`
-// names, resolved from at.
+// `cw task abandon` from at: a program named cw (programName), by any path,
+// whose first two operands are task and abandon, as cobra finds the command
+// among options and the values of those in cwValueOptions. `--help` counts
+// too: the reading of a line that runs cw is never certain, so the flat split
+// would ask about it anyway. It returns the directory the last `--task DIR`
+// or `--task=DIR` names, resolved from at.
 func cwAbandon(words []shellwords.Word, at place, vars expansion) (abandonment, bool) {
-	if len(words) == 0 || filepath.Base(words[0].Text) != "cw" {
+	if len(words) == 0 || programName(words[0].Text) != "cw" {
 		return abandonment{}, false
 	}
 	var operands []string
@@ -192,7 +213,9 @@ const maxScriptDepth = 8
 type wordScanner struct {
 	found     []publication
 	abandoned []abandonment
-	certain   bool
+	// abandonRuns counts the abandonments found, duplicates included.
+	abandonRuns int
+	certain     bool
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
@@ -281,6 +304,7 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 		return at
 	}
 	if next, ok := cwAbandon(words, runs, vars); ok {
+		s.abandonRuns++
 		if !slices.Contains(s.abandoned, next) {
 			s.abandoned = append(s.abandoned, next)
 		}

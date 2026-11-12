@@ -38,7 +38,7 @@ func acVerifyAttachFinal(ids string) string {
 // acVerifyUnchanged is the R4 message with no usable before checkpoint and
 // the source unchanged since start.
 func acVerifyUnchanged(ids string) string {
-	return acClaimPrefix + ids + "; attach the before and final checkpoints, or abandon this record and start a corrected one"
+	return acClaimPrefix + ids + "; attach the before and final checkpoints, or ask the user before abandoning this record and starting a corrected one"
 }
 
 // acVerifyChanged is the R4 message with no usable before checkpoint and the

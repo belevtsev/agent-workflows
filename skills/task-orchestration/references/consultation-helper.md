@@ -396,8 +396,9 @@ binds <IDs>; ` followed by:
 
 - `attach the final checkpoint` when a usable before checkpoint is attached:
   resolved and valid against the baseline, as the final context requires;
-- `attach the before and final checkpoints, or abandon this record and start a
-  corrected one` when there is no usable before checkpoint and the source is
+- `attach the before and final checkpoints, or ask the user before abandoning
+  this record and starting a corrected one` when there is no usable before
+  checkpoint and the source is
   unchanged since start;
 - `the source changed since start, so the before checkpoint can no longer be
   attached and a new record must not start over the changed source: stop and ask

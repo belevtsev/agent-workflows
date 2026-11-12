@@ -380,6 +380,11 @@ func TestDecideAsksBeforeAbandoningATask(t *testing.T) {
 		{"relative directory after an unresolved cd", "cd $OTHER && cw task abandon --task task-1 --reason x", "the task in `task-1`, a directory the gate cannot resolve"},
 		{"cw named through a variable", "C=cw; $C task abandon --task /store/task-1 --reason x", "a task the gate cannot identify"},
 		{"two tasks", "cw task abandon --task /store/task-1 --reason x; cw task abandon --task /store/task-9 --reason x", "task task-1 (Add retries) in /store/task-1; the task in /store/task-9"},
+		{"the same task twice", "cw task abandon --task /store/task-1 --reason x; cw task abandon --task /store/task-1 --reason x", "task task-1 (Add retries) in /store/task-1"},
+		// The reading names the first; the flat split counts two
+		// `task abandon`, so the second, which xargs runs, is not left out.
+		{"an abandon the reading misses beside one it reads", "cw task abandon --task /store/task-1 --reason r && echo /store/task-2 | xargs cw task abandon --reason r --task",
+			"task task-1 (Add retries) in /store/task-1; a task the gate cannot identify"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			git := &fakeGit{}

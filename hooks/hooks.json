@@ -25,7 +25,7 @@
           },
           {
             "type": "command",
-            "if": "Bash(*cw*abandon*)",
+            "if": "Bash(*abandon*)",
             "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
             "timeout": 30
           }
