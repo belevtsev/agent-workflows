@@ -125,11 +125,12 @@ Then check the build with `cw version`, which prints JSON with `version`,
 
 Upgrade every `cw` that shares a task store at once, including the one the
 commit hook runs. The first revision a newer `cw` writes to a task can raise
-the record's version; an older `cw` then cannot read the record, and its hook
-skips the task instead of gating it. `cw` v3.0.0-rc.1 cannot read the version 4
-records this release writes and calls them unsupported; in later releases a
-`cw task` command on a record from a newer `cw` exits 4 and says to upgrade
-`cw` ([task record format](development.md#task-record-format)).
+the record's version; an older `cw` then cannot read the record. `cw`
+v3.0.0-rc.1 cannot read the version 4 records this release writes, calls them
+unsupported, and its hook skips such a task instead of gating it. In later
+releases a `cw task` command on a record from a newer `cw` exits 4 and says to
+upgrade `cw`, and the hook asks before each commit and push
+([task record format](development.md#task-record-format)).
 
 ## Codex install and uninstall
 
