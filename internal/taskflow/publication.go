@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -30,7 +31,8 @@ const (
 var publicationName = regexp.MustCompile(`^publication-([0-9]{6})\.json$`)
 
 // ErrPublicationLocked reports that another cw publish holds the task's
-// .publish-lock directory, or that an interrupted one left it behind.
+// .publish-lock, or that a .publish-lock directory of cw v3.0.0-rc.1, held or
+// left behind by an interrupted run, is in the task directory.
 var ErrPublicationLocked = errors.New("another cw publish holds this task's .publish-lock; inspect an interrupted run before removing it")
 
 // ErrSourceCapture wraps a failure to capture the current source manifest.
@@ -148,7 +150,8 @@ type PublicationSource struct {
 type PublicationTask struct {
 	root      *os.Root
 	directory string
-	locked    bool
+	lock      *fslock.Lock
+	lockDir   *os.File
 	read      bool
 	next      int
 	previous  string
@@ -169,25 +172,37 @@ func OpenPublicationTask(path string) (*PublicationTask, error) {
 // Directory is the canonical task directory.
 func (t *PublicationTask) Directory() string { return t.directory }
 
-// Lock creates .publish-lock. An existing one is ErrPublicationLocked and
-// stays in place.
+// Lock takes an flock on the regular file .publish-lock, which stays in the
+// task directory; the kernel releases the lock when this process exits or is
+// killed. It tries once: a lock another run holds, or a .publish-lock
+// directory, which cw v3.0.0-rc.1 creates and leaves behind when it is
+// killed, is ErrPublicationLocked, and the directory stays in place.
 func (t *PublicationTask) Lock() error {
-	if err := t.root.Mkdir(publishLockName, 0700); err != nil {
-		if errors.Is(err, os.ErrExist) {
+	directory, err := t.root.Open(".")
+	if err != nil {
+		return err
+	}
+	lock, err := fslock.Acquire(context.Background(), publishLockName, fslock.Options{Dir: directory, Wait: fslock.NoWait})
+	if err != nil {
+		directory.Close()
+		if errors.Is(err, fslock.ErrBusy) {
+			return ErrPublicationLocked
+		}
+		if info, statErr := t.root.Lstat(publishLockName); errors.Is(err, fslock.ErrNotRegular) && statErr == nil && info.IsDir() {
 			return ErrPublicationLocked
 		}
 		return err
 	}
-	t.locked = true
+	t.lock, t.lockDir = lock, directory
 	return nil
 }
 
-// Close removes the lock this task took and closes the directory.
+// Close releases the lock this task took and closes the directory.
 func (t *PublicationTask) Close() error {
 	var err error
-	if t.locked {
-		err = t.root.Remove(publishLockName)
-		t.locked = false
+	if t.lock != nil {
+		err = errors.Join(t.lock.Close(), t.lockDir.Close())
+		t.lock, t.lockDir = nil, nil
 	}
 	return errors.Join(err, t.root.Close())
 }

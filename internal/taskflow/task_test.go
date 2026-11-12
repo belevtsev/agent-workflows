@@ -648,7 +648,7 @@ func TestCompletionWaitsForEveryOwnedRunAndRefusesSameCheckConcurrency(t *testin
 func TestOlderNonterminalRunCannotBeHiddenByLatestPass(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	mustAssess(t, record, ref)
-	if _, err := update(record.Directory, func(_ *os.Root, record *Record) error {
+	if _, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error {
 		older := record.Checks[0]
 		id, err := randomID()
 		if err != nil {

@@ -171,7 +171,7 @@ func AttachConsultation(ctx context.Context, path, phase, inputPath string) (Rec
 	if len(raw) > MaxInputBytes {
 		return Record{}, errors.New("consultation exceeds the 8 MiB input limit")
 	}
-	return update(path, func(root *os.Root, record *Record) error {
+	return update(ctx, path, func(root *os.Root, record *Record) error {
 		for other, attachment := range record.Consultations {
 			if other != phase {
 				otherInfo, statErr := os.Stat(attachment.SourcePath)
