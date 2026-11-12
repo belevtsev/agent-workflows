@@ -18,6 +18,17 @@ summary is produced with a 5 second deadline and cached for one hour under
 `${CLAUDE_PLUGIN_DATA}/doctor/<sha256 of the directory>.json`; when it cannot be
 produced in time, the conventions are returned alone.
 
+Under Codex, which sets `PLUGIN_ROOT`, a `resume` adds nothing. A resumed
+Codex thread keeps all that earlier session starts added, and after a
+compaction, which drops it, Codex runs the hook again with `compact`
+([Codex](#codex)). `cw` then prints a SessionStart object without
+`additionalContext`: printing nothing would make the hook command print the
+file. The lines below and the doctor summary also wait for the next startup
+or compaction, so a resume never suggests `cw gate install` beside the
+`compact` run that Codex can start at the same moment. A thread started before
+you trusted the hooks gets the conventions at its next compaction. Claude
+Code's `resume` is unchanged.
+
 Between the conventions and that summary, after a blank line, it adds one
 short line for each version that is out of step, and one when git's hooks
 would catch more than the plugin hook does; the context is paid for in every
@@ -63,8 +74,9 @@ session, so there is nothing when all is in order:
 
 The session's directory, which the last line and the doctor summary need, is
 the `cwd` of the hook input on stdin. `cw` reads stdin only when one of them
-is on, and for at most 2 seconds, then takes its working directory, which
-Claude Code and Codex set to the session's directory.
+is on, or under Codex for its `source`, and for at most 2 seconds, then takes
+its working directory, which Claude Code and Codex set to the session's
+directory. Input it cannot read gives no source, so the context is added.
 
 When `cw` is not on `PATH`, the hook command prints the file followed by one
 line that starts `agent-workflows: the commit and push verify gate is inactive
@@ -734,6 +746,9 @@ and `codex plugin add`, as in [Codex](#codex).
 | `codex exec resume` with `-c model_auto_compact_token_limit=30000` | SessionStart `resume` and `compact`, both after the compaction and before the next request | The compacted history held no copy; each hook added one. |
 | `codex exec fork` of another session | no SessionStart call; `cw hook pre-publish` twice | The fork's first request carried its parent's history. |
 | A copy of the plugin whose `.codex-plugin/plugin.json` names `./hooks/codex-hooks.json` | that file's SessionStart handler and its one PreToolUse handler, once each; none from `hooks/hooks.json` | The manifest's file replaces the default. |
+
+The Codex runs used a `cw` from before F19: since then a Codex `resume` adds nothing, so the conventions are not
+added again on resume, and after a compaction only the `compact` run adds them ([Session start](#session-start)).
 
 These runs did not cover SessionStart on `clear` under either host (neither
 headless mode can clear), on `resume` and `compact` under Claude Code, or in
