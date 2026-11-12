@@ -60,17 +60,18 @@ type taskStartOptions struct {
 }
 
 // startOptions resolves what cw task start binds, failing in this order: the
-// model policy, the credential environment, the configured advisers, the
-// adviser opt-ins (a warning about unreadable saved keys goes to stderr), the
-// pack selection, the working directory and the state directory. The bound
-// advisers are those the policy configures less those withheld.
+// model policy, the configuration directory, the configured advisers, the
+// adviser opt-ins, the pack selection, the working directory and the state
+// directory. Saved keys that cannot be read are not used and opt in to
+// nothing, with one warning on stderr. The bound advisers are those the
+// policy configures less those withheld.
 func (deps taskDeps) startOptions(flags taskStartFlags, stderr io.Writer) (taskStartOptions, error) {
 	root, config := deps.root, deps.config
 	selectedPolicy, err := selectPolicy(root, config, flags.policy)
 	if err != nil {
 		return taskStartOptions{}, err
 	}
-	getenv, err := credentialEnvironment(root, config)
+	getenv, unread, err := credentialEnvironment(root, config, stderr)
 	if err != nil {
 		return taskStartOptions{}, err
 	}
@@ -78,7 +79,7 @@ func (deps taskDeps) startOptions(flags taskStartFlags, stderr io.Writer) (taskS
 	if options.advisers, err = consult.ConfiguredAdvisers(selectedPolicy, getenv); err != nil {
 		return taskStartOptions{}, err
 	}
-	withheld, err := withheldAdvisers(root, config, flags.policy != "", stderr)
+	withheld, err := withheldAdvisers(root, config, flags.policy != "", unread, stderr)
 	if err != nil {
 		return taskStartOptions{}, err
 	}

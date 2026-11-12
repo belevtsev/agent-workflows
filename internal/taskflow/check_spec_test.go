@@ -31,7 +31,7 @@ func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 	t.Setenv("CW_SPEC_PROBE_TOKEN", "hidden")
 	t.Setenv("CW_SPEC_PROBE_VISIBLE", "shown")
 	check := Check{ID: "unit", Argv: []string{"make", "test", "-j", "4"}, TimeoutSeconds: 42}
-	got, tool, goEnv, err := checkSpec(t.Context(), check, "/repo/selected")
+	got, tool, goEnv, _, err := checkSpec(t.Context(), check, "/repo/selected")
 	want := proc.Spec{
 		Path: "make", Args: []string{"test", "-j", "4"}, Dir: "/repo/selected", Env: checkEnvironment(check),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
@@ -63,12 +63,12 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("precondition: the real go does not verify: %v", err)
 	}
-	got, tool, goEnv, err := checkSpec(t.Context(), check, dir)
+	got, tool, goEnv, _, err := checkSpec(t.Context(), check, dir)
 	if err != nil || tool == nil || *tool != want {
 		t.Fatalf("checkSpec tool = %+v, %v; want %+v", tool, err, want)
 	}
 	verified := append(checkEnvironment(check), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local")
-	read, pin, err := langpack.ReadGoEnv(t.Context(), want, dir, verified)
+	read, pin, _, err := langpack.ReadGoEnv(t.Context(), want, dir, verified)
 	if err != nil || goEnv == nil || *goEnv != read {
 		t.Fatalf("checkSpec go env = %+v, want %+v (%v)", goEnv, read, err)
 	}
@@ -85,7 +85,7 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, tool, goEnv, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || goEnv != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
+	if _, tool, goEnv, _, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || goEnv != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
 		t.Fatalf("checkSpec with a script first on PATH: tool %+v, go env %+v, error %v; want neither and an error naming %s", tool, goEnv, err, filepath.Join(fake, "go"))
 	}
 }
@@ -152,8 +152,8 @@ func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) {
 		return langpack.GoTool{Path: program, Version: "go1.27.4", GOROOT: filepath.Dir(program)}, nil
 	}
-	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, []string, error) {
-		return langpack.GoEnv{}, nil, errors.New("cannot read the configuration of the go command: test reader")
+	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, []string, map[string]string, error) {
+		return langpack.GoEnv{}, nil, nil, errors.New("cannot read the configuration of the go command: test reader")
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	run, err := RunCheck(t.Context(), record.Directory, "unit")
@@ -209,16 +209,16 @@ func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
 	if err != nil || !filepath.IsAbs(noop) {
 		t.Fatalf("precondition: no true program on PATH: %q, %v", noop, err)
 	}
-	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, error) {
-		read, pin, err := langpack.ReadGoEnv(ctx, tool, dir, env)
+	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, map[string]string, error) {
+		read, pin, key, err := langpack.ReadGoEnv(ctx, tool, dir, env)
 		if err := os.WriteFile(file, []byte("GOFLAGS=-exec="+noop+"\nGOARCH="+other+"\n"), 0o644); err != nil {
 			t.Error(err)
 		}
-		return read, pin, err
+		return read, pin, key, err
 	}
 	t.Cleanup(func() { readGoEnv = langpack.ReadGoEnv })
 	check := Check{ID: "unit", Argv: []string{"go", "test", "-count=1", "./..."}, TimeoutSeconds: 120}
-	spec, tool, goEnv, err := checkSpec(t.Context(), check, dir)
+	spec, tool, goEnv, _, err := checkSpec(t.Context(), check, dir)
 	if err != nil || tool == nil || goEnv == nil {
 		t.Fatalf("checkSpec: tool %+v, go env %+v, %v", tool, goEnv, err)
 	}
@@ -226,7 +226,7 @@ func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
 	if *goEnv != want {
 		t.Fatalf("precondition: go env read before the rewrite = %+v, want %+v", *goEnv, want)
 	}
-	if got, _, err := langpack.ReadGoEnv(t.Context(), *tool, dir, spec.Env); err != nil || got != *goEnv {
+	if got, _, _, err := langpack.ReadGoEnv(t.Context(), *tool, dir, spec.Env); err != nil || got != *goEnv {
 		t.Errorf("the run's go command reports %+v (%v), want what go_env recorded, %+v", got, err, *goEnv)
 	}
 	spec.StdoutLimit, spec.StderrLimit = 1<<20, 1<<20
@@ -265,7 +265,7 @@ func TestCheckExitCodeRecordsOnlyAStartedProgramsStatus(t *testing.T) {
 		{name: "stopped before the start", ctx: cancelled, check: helper("pass")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			spec, _, _, err := checkSpec(t.Context(), tc.check, t.TempDir())
+			spec, _, _, _, err := checkSpec(t.Context(), tc.check, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -292,7 +292,7 @@ func TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout(t *test
 			// sh prints its pid, which is the id of the check's process group,
 			// and exits; the background sleep holds the output pipe open.
 			script := fmt.Sprintf("sleep 30 & echo $$; exit %d", status)
-			spec, _, _, err := checkSpec(t.Context(), Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
+			spec, _, _, _, err := checkSpec(t.Context(), Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}

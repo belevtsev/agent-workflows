@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;
   run it again where an older `cw` wrote the hooks, which `cw doctor` and the session-start line then name ([git hooks](docs/hooks.md#git-hooks)).
+- Each check run records the digest of the source it ran at and a key of its go and `env_passthrough` configuration, keyed per task,
+  and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 
 ### Changed
 
@@ -43,6 +45,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
+  is not owner-only: they skip the saved keys, use the environment ones and warn ([adviser keys](docs/operations.md#adviser-keys)).
 - `cw publish --help` says a run appends its `started` entry only once its checks pass, so a run they deny or refuse
   appends none, as the docs do ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes

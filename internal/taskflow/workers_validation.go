@@ -82,7 +82,7 @@ func validateWorkerRecord(record Record) error {
 		if err := validateResult(record, *assigned, bound.Result); err != nil {
 			return err
 		}
-		if !validSHA256(bound.ScopeSHA256) || assigned.Brief.Role == "review" && !validSHA256(bound.ReviewEvidenceSHA256) || assigned.Brief.Role != "review" && bound.ReviewEvidenceSHA256 != "" {
+		if !validSHA256(bound.ScopeSHA256) || bound.SourceSHA256 != "" && !validSHA256(bound.SourceSHA256) || assigned.Brief.Role == "review" && !validSHA256(bound.ReviewEvidenceSHA256) || assigned.Brief.Role != "review" && bound.ReviewEvidenceSHA256 != "" {
 			return errors.New("stored worker result scope or review dependency binding is invalid")
 		}
 		hash, err := workerResultHash(bound)
