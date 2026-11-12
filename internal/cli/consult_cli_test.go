@@ -421,7 +421,7 @@ func boundAdviserLine(provider string) string {
 }
 
 // D3 (dry run, participation set), Revision 2 (batched bindings) and Revision
-// 3 (task-bound dry run with an unconfigured bound adviser exits 2): a dry run
+// 3 (task-bound dry run with an unconfigured bound adviser exits 5): a dry run
 // previews each participating provider as dry_run or not_configured, taking
 // the participation set from a task binding when the request carries one.
 func TestConsultDryRunPreviewsParticipatingProviders(t *testing.T) {
@@ -462,7 +462,7 @@ func TestConsultDryRunPreviewsParticipatingProviders(t *testing.T) {
 			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(test.state))
 			output := filepath.Join(directory, "preview.json")
 			outcome := executeConsult(t, fixtureEnvironment(test.credentials), "--request", request, "--output", output, "--policy", policy, "--dry-run")
-			// Only a task-bound provider without a credential makes the dry run exit 2.
+			// Only a task-bound provider without a credential makes the dry run exit 5.
 			var unconfiguredBound []string
 			if strings.Contains(test.state, "task_context") {
 				for provider, want := range test.want {
@@ -474,8 +474,8 @@ func TestConsultDryRunPreviewsParticipatingProviders(t *testing.T) {
 			if len(unconfiguredBound) == 0 && outcome.err != nil {
 				t.Fatalf("dry run failed: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 			}
-			if len(unconfiguredBound) != 0 && ExitCode(outcome.err) != 2 {
-				t.Fatalf("dry run with an unconfigured bound adviser is not exit 2: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
+			if len(unconfiguredBound) != 0 && ExitCode(outcome.err) != 5 {
+				t.Fatalf("dry run with an unconfigured bound adviser is not exit 5: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 			}
 			for _, provider := range unconfiguredBound {
 				if !strings.Contains(outcome.stderr, boundAdviserLine(provider)) {
@@ -545,10 +545,10 @@ func TestConsultRejectsInvalidTaskBindings(t *testing.T) {
 	}
 }
 
-// D3 (exit 2 for a task-bound request whose bound provider is not_configured)
-// and Revision 3 (the stderr line): stderr names each variable to set and the
-// record is still written, without a provider request.
-func TestConsultTaskBoundMissingCredentialExitsTwo(t *testing.T) {
+// D3 (a task-bound request whose bound provider is not_configured is a
+// negative result, exit 5) and Revision 3 (the stderr line): stderr names each
+// variable to set and the record is still written, without a provider request.
+func TestConsultTaskBoundMissingCredentialIsNegativeResult(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		bound []fixturePin
@@ -567,8 +567,8 @@ func TestConsultTaskBoundMissingCredentialExitsTwo(t *testing.T) {
 			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(state))
 			output := filepath.Join(directory, "record.json")
 			outcome := executeConsult(t, fixtureEnvironment(nil), "--request", request, "--output", output, "--policy", policy)
-			if ExitCode(outcome.err) != 2 {
-				t.Fatalf("bound provider without a credential is not exit 2: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
+			if ExitCode(outcome.err) != 5 {
+				t.Fatalf("bound provider without a credential is not exit 5: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 			}
 			for _, pin := range test.bound {
 				if line := boundAdviserLine(pin.provider); !strings.Contains(outcome.stderr, line) {
@@ -626,7 +626,7 @@ var recordVersionMember = regexp.MustCompile(`"version":(\s*)4([\s,}])`)
 
 // D3 (exit codes, record version 4 only) and D4 (adjudication rules applied
 // in full with no adviser answer): adjudication of a no_advisers_configured
-// record resolves (exit 0) or stays unresolved (exit 2); an older or newer
+// record resolves (exit 0) or stays unresolved (exit 5); an older or newer
 // record version and adviser output used as evidence are invalid input (exit
 // 1) and write nothing.
 func TestConsultAdjudicationExitCodesAndRecordVersion(t *testing.T) {
@@ -671,10 +671,10 @@ func TestConsultAdjudicationExitCodesAndRecordVersion(t *testing.T) {
 			t.Fatalf("adjudicated record = %+v, %v", validated, err)
 		}
 	})
-	t.Run("unresolved_exits_two", func(t *testing.T) {
+	t.Run("unresolved_exits_negative", func(t *testing.T) {
 		outcome, output := adjudicate(t, recordPath, map[string]any{"claim": unresolvedItem()})
-		if ExitCode(outcome.err) != 2 {
-			t.Fatalf("unresolved adjudication is not exit 2: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
+		if ExitCode(outcome.err) != 5 {
+			t.Fatalf("unresolved adjudication is not exit 5: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 		}
 		_, data := readRecordFixture(t, output)
 		validated, err := consult.ValidateRecord(data)

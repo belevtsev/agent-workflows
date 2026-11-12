@@ -120,7 +120,7 @@ func TestGraphifyReportsUnavailableAsStructuredOutput(t *testing.T) {
 	config, out := testConfig(t)
 	missing := filepath.Join(t.TempDir(), "missing")
 	err := Execute(t.Context(), []string{"graphify", "build", "--repo", missing}, config)
-	if ExitCode(err) != 2 || err.Error() != "" {
+	if ExitCode(err) != 4 || err.Error() != "" {
 		t.Fatalf("error = %v, exit %d", err, ExitCode(err))
 	}
 	var report graphifyFailure

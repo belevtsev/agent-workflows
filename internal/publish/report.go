@@ -35,9 +35,11 @@ var reasonStatus = map[string]string{
 	"cancelled": StatusCancelled,
 }
 
+// statusExit is the exit status of each status, on cw's exit table in
+// internal/cli/exit.go; a test there checks that the two agree.
 var statusExit = map[string]int{
 	StatusPublished: 0, StatusFailed: 1, StatusDenied: 3, StatusRefused: 4,
-	StatusUnknown: 5, StatusMismatch: 6, StatusCancelled: 130,
+	StatusUnknown: 6, StatusMismatch: 7, StatusCancelled: 130,
 }
 
 // Report is what cw publish prints (contract section 6).

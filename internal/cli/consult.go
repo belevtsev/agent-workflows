@@ -14,22 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// reportedExit is a process status for a command that has already written its
-// own result, so the entrypoint adds no further error line.
-type reportedExit int
-
-func (reportedExit) Error() string { return "" }
-
-func finish(status int, err error) error {
-	if err != nil {
-		return err
-	}
-	if status != 0 {
-		return reportedExit(status)
-	}
-	return nil
-}
-
 func noPositional(cmd *cobra.Command, args []string) error {
 	if err := cobra.NoArgs(cmd, args); err != nil {
 		return usage(err)
@@ -58,7 +42,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
 			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
 			"With --adjudicate and --decision, validate the coordinator's decision against a saved version 4 record, using no network, credentials or policy.\n\n" +
-			"Exits 0 when complete (including no_advisers_configured and dry runs), 2 when coverage or the decision is incomplete or a task-bound adviser is not configured (the record is still written, and stderr names the variable to set), and 1 when input is invalid or the output path already exists.",
+			"Exits 0 when complete (including no_advisers_configured and dry runs), 5 when coverage or the decision is incomplete or a task-bound adviser is not configured (the record is still written, and stderr names the variable to set), 2 for a usage error, and 1 when input is invalid or the output path already exists.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			options.DryRun, _ = root.PersistentFlags().GetBool("dry-run")
@@ -86,14 +70,15 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				options.Disabled = func() ([]string, error) { return withheldAdvisers(root, config, policy != "", cmd.ErrOrStderr()) }
 			}
 			if !summary {
-				return finish(consult.Run(cmd.Context(), options))
+				outcome, err := consult.Run(cmd.Context(), options)
+				return finish(consultExit(outcome), err)
 			}
 			// The human status line is replaced by the one-line view of the
 			// record this run wrote; stderr and the exit status are unchanged.
 			options.Stdout = io.Discard
-			status, err := consult.Run(cmd.Context(), options)
-			if err != nil || status == 1 {
-				return finish(status, err)
+			outcome, err := consult.Run(cmd.Context(), options)
+			if err != nil || outcome == consult.Invalid {
+				return finish(consultExit(outcome), err)
 			}
 			view, err := options.View()
 			if err != nil {
@@ -102,7 +87,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			if err := writeJSON(cmd.OutOrStdout(), view); err != nil {
 				return err
 			}
-			return finish(status, nil)
+			return finish(consultExit(outcome), nil)
 		},
 	}
 	flags := command.Flags()
@@ -140,7 +125,9 @@ func addGraphifyCommands(root *cobra.Command, config Config) {
 		if err := writeJSON(cmd.OutOrStdout(), graphifyFailure{"unavailable", code, err.Error(), graphify.Fallback}); err != nil {
 			return err
 		}
-		return reportedExit(2)
+		// Every unavailable report is a refusal, whatever its code; a failure
+		// to write the report above stays a failure.
+		return reportedExit(ExitRefused)
 	}
 	define := func(use, short string, timeout float64, positional cobra.PositionalArgs, execute func(*cobra.Command, []string, graphify.Options) error) *cobra.Command {
 		options := &graphify.Options{}
