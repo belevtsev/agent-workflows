@@ -89,6 +89,9 @@ GOWORK=off go test ./internal/skillcheck
   discoverable;
 - the skill routing and import-provenance fixtures under
   `internal/skillcheck/testdata` hold their contracts;
+- each file of an imported skill matches the SHA-256 and the executable bit
+  recorded in `third_party/personal-skill-imports.json`; the other permission
+  bits follow the checkout's umask and are not compared;
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
