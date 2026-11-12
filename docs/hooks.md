@@ -18,6 +18,25 @@ summary is produced with a 5 second deadline and cached for one hour under
 `${CLAUDE_PLUGIN_DATA}/doctor/<sha256 of the directory>.json`; when it cannot be
 produced in time, the conventions are returned alone.
 
+Between the conventions and that summary, after a blank line, it adds one
+short line for each version that is out of step; the context is paid for in
+every session, so there is nothing when all agree:
+
+- `plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw` when the `version` of the
+  plugin manifest beside `global/` (`.claude-plugin/plugin.json`, or
+  `.codex-plugin/plugin.json` under [Codex](#codex)) and the `cw version`
+  differ on major, minor, patch or pre-release. It ends `update the plugin`
+  when `cw` is the newer one. A `cw` built between tags (`dev` or a Go
+  pseudo-version) is not compared. A `cw` older than this check, such as
+  v3.0.0-rc.1, prints no line.
+- `Claude Code 2.1.291, agent-workflows needs 2.1.292: upgrade Claude Code`
+  when the client is older than the minimum in the
+  [quick start](../README.md#quick-start). No documented hook input or
+  variable carries the client version, so `cw` reads `AI_AGENT`, which Claude
+  Code sets to a value such as `claude-code_2-1-311_harness` unless the
+  environment it starts in already names another agent. Any other value, and
+  Codex, give no line.
+
 When `cw` is not on `PATH`, the hook command prints the file followed by one
 line that starts `agent-workflows: the commit and push verify gate is inactive
 because cw was not found on PATH.` and goes on with the `go install` command for
@@ -542,7 +561,11 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   the hook inherits the environment Codex was started with.
 - **Session start.** On `startup` the session-start hook adds
   `global/AGENTS.md` to the session, so the trusted plugin also loads the
-  working conventions.
+  working conventions. Its SessionStart input has `model` but no `turn_id`, so
+  `cw` takes `PLUGIN_ROOT`, which Claude Code does not set, as the sign of
+  Codex there: it then compares `cw` with `.codex-plugin/plugin.json` and
+  skips the Claude Code version ([Session start](#session-start)). Not yet
+  recorded under Codex.
 
 So under Codex the pre-publish hook turns four asks into denies: a
 `cw task abandon`, an unrecorded substantial change, a push with uncommitted

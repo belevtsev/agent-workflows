@@ -1826,3 +1826,226 @@ func TestHookSessionStartDoctor(t *testing.T) {
 		}
 	})
 }
+
+const hkVersionInstructions = "# Rules\n\nWork carefully."
+
+// hkManifest is a plugin manifest that holds version.
+func hkManifest(version string) string {
+	return `{"name":"agent-workflows","version":"` + version + `"}`
+}
+
+// hkPluginRoot creates a plugin root whose global/AGENTS.md holds
+// hkVersionInstructions, writes each manifest's content to
+// <root>/<directory>/plugin.json, and returns the root and the instructions
+// path.
+func hkPluginRoot(t *testing.T, manifests map[string]string) (string, string) {
+	t.Helper()
+	root := hkCanonicalTempDir(t)
+	for directory, content := range manifests {
+		if err := os.MkdirAll(filepath.Join(root, directory), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, directory, "plugin.json"), []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	instructions := filepath.Join(root, "global", "AGENTS.md")
+	if err := os.MkdirAll(filepath.Dir(instructions), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(instructions, []byte(hkVersionInstructions+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return root, instructions
+}
+
+// hkVersionNotes runs session-start as cw cwVersion, with env, for a plugin
+// root holding manifests, and returns what follows the instructions and a
+// blank line: "" when the context is the instructions alone. In env, <root>
+// stands for the plugin root.
+func hkVersionNotes(t *testing.T, cwVersion string, manifests, env map[string]string) string {
+	t.Helper()
+	root, instructions := hkPluginRoot(t, manifests)
+	h := newHKHarness(t)
+	h.config.Version = cwVersion
+	for name, value := range env {
+		h.env[name] = strings.ReplaceAll(value, "<root>", root)
+	}
+	got, err := h.runSessionStart(t, "", "--instructions", instructions, "--cache", hkCanonicalTempDir(t))
+	if err != nil {
+		t.Fatalf("session-start: %v", err)
+	}
+	context := hkSessionContext(t, got)
+	if context == hkVersionInstructions {
+		return ""
+	}
+	notes, ok := strings.CutPrefix(context, hkVersionInstructions+"\n\n")
+	if !ok {
+		t.Fatalf("additionalContext %q does not start with the instructions and a blank line", context)
+	}
+	return notes
+}
+
+func TestHookSessionStartNamesThePluginAndCWVersionsWhenTheyDiffer(t *testing.T) {
+	// Oracle: when .claude-plugin/plugin.json above the instructions and cw
+	// differ on major.minor.patch or pre-release, the context is the
+	// instructions, a blank line and one line naming both versions and the
+	// one to update, chosen by semantic version precedence.
+	tests := []struct {
+		name, plugin, cw, want string
+	}{
+		{"plugin newer", "3.0.0-rc.2", "v3.0.0-rc.1", "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"cw newer", "3.0.0-rc.1", "v3.0.0-rc.2", "plugin 3.0.0-rc.1, cw 3.0.0-rc.2: update the plugin"},
+		{"release above its pre-release", "3.0.0", "v3.0.0-rc.5", "plugin 3.0.0, cw 3.0.0-rc.5: upgrade cw"},
+		{"numeric pre-release by value", "3.0.0-rc.10", "v3.0.0-rc.9", "plugin 3.0.0-rc.10, cw 3.0.0-rc.9: upgrade cw"},
+		{"minor", "3.1.0", "v3.0.9", "plugin 3.1.0, cw 3.0.9: upgrade cw"},
+		{"cw build metadata kept in the line", "3.0.0-rc.2", "v3.0.0-rc.1+dirty", "plugin 3.0.0-rc.2, cw 3.0.0-rc.1+dirty: upgrade cw"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := hkVersionNotes(t, test.cw, map[string]string{".claude-plugin": hkManifest(test.plugin)}, nil); got != test.want {
+				t.Fatalf("version notes %q, want %q", got, test.want)
+			}
+		})
+	}
+
+	t.Run("before the doctor summary", func(t *testing.T) {
+		// Oracle: with session_doctor on, the line sits between the
+		// instructions and the doctor summary, each after a blank line.
+		repo := hkRepo(t)
+		_, instructions := hkPluginRoot(t, map[string]string{".claude-plugin": hkManifest("3.0.0-rc.2")})
+		h := newHKHarness(t)
+		h.config.Version = "v3.0.0-rc.1"
+		h.env["CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR"] = "true"
+		stdin, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "startup", "cwd": repo})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := h.runSessionStart(t, string(stdin), "--instructions", instructions, "--cache", hkCanonicalTempDir(t))
+		if err != nil {
+			t.Fatalf("session-start: %v", err)
+		}
+		hkDoctorSummary(t, hkSessionContext(t, got), hkVersionInstructions+"\n\nplugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw")
+	})
+}
+
+func TestHookSessionStartSaysNothingWhenVersionsMatchOrCWIsADevBuild(t *testing.T) {
+	// Oracle: the context is the instructions alone when the versions match
+	// on major.minor.patch and pre-release, when cw is a development build
+	// (dev or a Go pseudo-version), and when the manifest or its version
+	// cannot be read. The control shows that the same fixture with a
+	// released cw that differs gets the line, so the silence comes from the
+	// match or the skip.
+	const pluginNewer = "3.0.0-rc.2"
+	if got := hkVersionNotes(t, "v3.0.0-rc.1", map[string]string{".claude-plugin": hkManifest(pluginNewer)}, nil); got == "" {
+		t.Fatal("control: plugin 3.0.0-rc.2 with cw v3.0.0-rc.1 gave no version line")
+	}
+	tests := []struct {
+		name, cw  string
+		manifests map[string]string
+	}{
+		{"same version", "v3.0.0-rc.1", map[string]string{".claude-plugin": hkManifest("3.0.0-rc.1")}},
+		{"same version without v", "3.0.0-rc.1", map[string]string{".claude-plugin": hkManifest("3.0.0-rc.1")}},
+		{"build metadata ignored", "v3.0.0-rc.1+dirty", map[string]string{".claude-plugin": hkManifest("3.0.0-rc.1")}},
+		{"same release", "v3.0.0", map[string]string{".claude-plugin": hkManifest("3.0.0")}},
+		{"dev", "dev", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"devel", "(devel)", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"pseudo-version after a pre-release tag", "v3.0.0-rc.1.0.20261112143000-abcdef123456", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"pseudo-version after a release tag", "v3.0.1-0.20261112143000-abcdef123456", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"pseudo-version with no tag", "v3.0.0-20261112143000-abcdef123456", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"dirty pseudo-version", "v3.0.0-rc.1.0.20261112143000-abcdef123456+dirty", map[string]string{".claude-plugin": hkManifest(pluginNewer)}},
+		{"no manifest", "v3.0.0-rc.1", nil},
+		{"manifest without a version", "v3.0.0-rc.1", map[string]string{".claude-plugin": `{"name":"agent-workflows"}`}},
+		{"manifest version not semver", "v3.0.0-rc.1", map[string]string{".claude-plugin": hkManifest("next")}},
+		{"manifest not JSON", "v3.0.0-rc.1", map[string]string{".claude-plugin": `{"version":"3.0.0-rc.2"`}},
+		{"only the Codex manifest under Claude Code", "v3.0.0-rc.1", map[string]string{".codex-plugin": hkManifest(pluginNewer)}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := hkVersionNotes(t, test.cw, test.manifests, nil); got != "" {
+				t.Fatalf("version notes %q, want none", got)
+			}
+		})
+	}
+}
+
+func TestHookSessionStartComparesTheManifestOfTheHost(t *testing.T) {
+	// Oracle: under Codex, which sets PLUGIN_ROOT, cw compares
+	// .codex-plugin/plugin.json; under Claude Code, .claude-plugin/plugin.json.
+	// Each case gives the two manifests different versions, so the line
+	// appears exactly when the host's manifest differs from cw.
+	codex := map[string]string{"PLUGIN_ROOT": "<root>"}
+	tests := []struct {
+		name, claude, codex string
+		env                 map[string]string
+		want                string
+	}{
+		{"Codex reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", codex, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Claude Code reads its own manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Codex ignores the Claude Code manifest", "3.0.0-rc.2", "3.0.0-rc.1", codex, ""},
+		{"Claude Code ignores the Codex manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			manifests := map[string]string{".claude-plugin": hkManifest(test.claude), ".codex-plugin": hkManifest(test.codex)}
+			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, test.env); got != test.want {
+				t.Fatalf("version notes %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestHookSessionStartNamesAClaudeCodeOlderThanTheMinimum(t *testing.T) {
+	// Oracle: under Claude Code, an AI_AGENT of the form
+	// claude-code_<major>-<minor>-<patch>_<role> below 2.1.292 adds one line
+	// naming the client version and the minimum; at or above it, under
+	// Codex, and for any other value there is no line. With plugin drift
+	// too, the plugin line comes first.
+	matching := map[string]string{".claude-plugin": hkManifest("3.0.0-rc.1")}
+	const oldClient = "Claude Code 2.1.291, agent-workflows needs 2.1.292: upgrade Claude Code"
+	tests := []struct {
+		name, agent string
+		codex       bool
+		manifests   map[string]string
+		want        string
+	}{
+		{"one below the minimum", "claude-code_2-1-291_harness", false, matching, oldClient},
+		{"older minor", "claude-code_2-0-999_harness", false, matching, "Claude Code 2.0.999, agent-workflows needs 2.1.292: upgrade Claude Code"},
+		{"Bash tool form", "claude-code_1-9-400_agent", false, matching, "Claude Code 1.9.400, agent-workflows needs 2.1.292: upgrade Claude Code"},
+		{"with plugin drift", "claude-code_2-1-291_harness", false, map[string]string{".claude-plugin": hkManifest("3.0.0-rc.2")}, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw\n" + oldClient},
+		{"at the minimum", "claude-code_2-1-292_harness", false, matching, ""},
+		{"newer", "claude-code_2-1-311_harness", false, matching, ""},
+		{"newer major", "claude-code_3-0-0_harness", false, matching, ""},
+		{"unset", "", false, matching, ""},
+		{"another agent", "cursor", false, matching, ""},
+		{"another format", "claude-code/2.1.200", false, matching, ""},
+		{"two numbers", "claude-code_2-1_harness", false, matching, ""},
+		{"under Codex", "claude-code_2-1-291_harness", true, matching, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]string{"AI_AGENT": test.agent}
+			manifests := test.manifests
+			if test.codex {
+				env["PLUGIN_ROOT"] = "<root>"
+				manifests = map[string]string{".codex-plugin": manifests[".claude-plugin"]}
+			}
+			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, env); got != test.want {
+				t.Fatalf("version notes %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestMinimumClaudeCodeVersionIsTheREADMEs(t *testing.T) {
+	// Oracle: README.md's Quick start states minClaudeCodeVersion as the
+	// minimum Claude Code version, so the session-start line and the README
+	// cannot drift apart.
+	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "**Claude Code version.** " + minClaudeCodeVersion + " or newer"; !strings.Contains(string(readme), want) {
+		t.Fatalf("README.md does not contain %q", want)
+	}
+}
