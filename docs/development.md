@@ -79,7 +79,10 @@ GOWORK=off go test ./internal/skillcheck
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
-- the model policy loads;
+- the model policy loads; its shipped routing keeps Claude Code lookup on Haiku,
+  summarization on Sonnet, and Codex `max` for planning, architecture and
+  diagnosis only; the recommended Codex memory passes use Luna; and the profile
+  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
