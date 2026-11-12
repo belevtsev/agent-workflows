@@ -16,6 +16,7 @@ import (
 // its own ctx (B1.a: a 6 s graph within a 2-minute deadline is not cut off).
 func TestEvaluateV2B1(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	v2 := "go.package-test/v2"
 	if !langpack.KnownRule(v2) {
 		t.Errorf("B1 violated: KnownRule(%q) is false", v2)

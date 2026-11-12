@@ -54,6 +54,7 @@ func gfWatchFIFO(t *testing.T) (string, <-chan string, <-chan struct{}) {
 // reader reaches end of file only once every holder has exited, so "held"
 // then end of file within 10 s means the child died; it would live for 60 s.
 func TestLoadGoFactsLeavesNoChildOfGoRunning(t *testing.T) {
+	langpack.TrustGoOnPath(t)
 	src := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	oneSecond := func(t *testing.T) context.Context {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

@@ -135,7 +135,8 @@ constraint line or a generated-code header, a changed embedded file, changed
 testdata outside any package directory, or a package graph that `go list`
 cannot compute at verify within 5 s needs `./...`; verify runs `go list`
 offline (`GOPROXY=off`), inside the task lock, for at most 6 s, so a cold
-module cache can be the reason. A pass after a failed run
+module cache can be the reason. It runs only a `go` it verified, so a fake
+`go` first on `PATH` is another reason, and `-race` stays required. A pass after a failed run
 of the same check at the same source and `GOFLAGS` earns no credit until the
 source changes. Skipped tests are listed as limitations, which needs `-v` or
 `-json` on the run; a run without either gets a limitation saying they are not

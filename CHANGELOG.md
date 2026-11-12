@@ -48,6 +48,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   no longer outlives them or their time budget; `cw publish` and `cw graphify` share that runner ([development](docs/development.md)).
 - A check named `go` runs only a `go` built from `cmd/go`, with its own GOROOT, through shims and toolchain switches, and records it; a fake `go` on `PATH`
   is recorded `failed` (`untrusted_toolchain`) instead of passing: put the real `go` first on `PATH` ([which go](docs/operations.md#which-go-a-check-runs)).
+- `cw task verify` reads the Go rule's package graph and `-race` probe from a verified `go` too, so a shim on `PATH` that answers
+  "-race is not supported" no longer waives `-race`; an unverified `go` is listed and asks for `./...` ([which go](docs/operations.md#which-go-a-check-runs)).
 
 ### Removed
 

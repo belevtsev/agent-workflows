@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -172,23 +174,29 @@ func vvRace(t *testing.T) {
 	}
 }
 
-// vvWrapper puts first on PATH a go that answers -race with stderr line and
-// exit 2 (when line is set), sleeps 6 s before the graph command (when slow),
-// and otherwise runs the real go.
-func (v *vvTask) vvWrapper(t *testing.T, line string, slow bool) {
+// vvWrapper puts first on PATH a go shim that answers -race with stderr line
+// and exit 2 (when line is set), sleeps 6 s before it answers `go env GOROOT`,
+// which cw runs to verify it (when slow), reports its own directory as GOROOT
+// (when ownRoot), and otherwise runs the real go. It returns the shim.
+func (v *vvTask) vvWrapper(t *testing.T, line string, slow, ownRoot bool) string {
 	t.Helper()
+	root := t.TempDir()
 	script := "#!/bin/sh\n"
 	if line != "" {
 		script += "case \" $* \" in *\" -race \"*) printf '%s\\n' '" + line + "' >&2; exit 2;; esac\n"
 	}
 	if slow {
-		script += "case \" $* \" in *\" -deps \"*) /bin/sleep 6;; esac\n"
+		script += "if [ \"$*\" = 'env GOROOT' ]; then /bin/sleep 6; fi\n"
 	}
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "go"), []byte(script+"exec '"+v.realGo+"' \"$@\"\n"), 0o755); err != nil {
-		t.Fatal(err)
+	if ownRoot {
+		script += "if [ \"$*\" = 'env GOROOT' ]; then echo '" + root + "'; exit 0; fi\n"
 	}
-	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	shim := filepath.Join(root, "bin", "go")
+	if os.Mkdir(filepath.Dir(shim), 0o755) != nil || os.WriteFile(shim, []byte(script+"exec '"+v.realGo+"' \"$@\"\n"), 0o755) != nil {
+		t.Fatal("cannot write the go shim")
+	}
+	t.Setenv("PATH", filepath.Dir(shim)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return shim
 }
 
 func vvPrefixed(list []string, prefixes ...string) []string {
@@ -234,13 +242,14 @@ func TestVerifyV2EndToEndB23(t *testing.T) {
 		vvWant(t, "B23.a/B2", v.verify(t), []string{vvB2}, nil, nil)
 	})
 	// Section 3.3, J4: Verify passes its ctx to Evaluate unchanged, so the
-	// 2-minute deadline on cli.Execute's ctx outlasts a 6 s graph command; a
-	// fresh ctx would end the facts budget at 5 s and lose the B2 problem.
+	// 2-minute deadline on cli.Execute's ctx outlasts a go shim that takes 6 s
+	// to report the real GOROOT; a fresh ctx would end the facts budget at 5 s
+	// and lose the B2 problem.
 	t.Run("3.3/J4 verify's ctx sets the facts budget", func(t *testing.T) {
 		v := vvStart(t, 300, false, "go", "test", "-race", "./a")
 		vvRace(t)
 		v.run(t, true)
-		v.vvWrapper(t, "", true)
+		v.vvWrapper(t, "", true, false)
 		ver := v.verify(t)
 		vvWant(t, "3.3/J4/B2", ver, []string{vvB2}, nil, nil)
 		if got := vvPrefixed(ver.Limitations, "go.package-test/v2 could not compute the package graph"); len(got) != 0 {
@@ -269,16 +278,47 @@ func TestVerifyV2EndToEndB23(t *testing.T) {
 			t.Errorf("B23.e1 violated: limitations %q", got)
 		}
 	})
+	// B6 through the verified go: CGO_ENABLED=0 at verify makes -race
+	// unavailable where it needs cgo; on macOS it needs none (B18), so there
+	// -race stays required.
 	t.Run("B23.e2 -race unavailable", func(t *testing.T) {
 		v := vvStart(t, 300, false, "go", "test", "./...")
 		v.run(t, true)
-		v.vvWrapper(t, "-race is not supported on plan9/amd64", false)
+		t.Setenv("CGO_ENABLED", "0")
 		ver := v.verify(t)
+		if runtime.GOOS == "darwin" {
+			vvWant(t, "B23.e2/B18", ver, []string{vvT2("a")}, nil, nil)
+			return
+		}
 		if got := vvPrefixed(ver.Problems, "changed package ", "package "); len(got) != 0 {
 			t.Errorf("B23.e2 violated: problems %q", got)
 		}
-		vvWant(t, "B23.e2/B6", ver, nil, []string{"-race cannot run on this host (-race is not supported on plan9/amd64), so plain go test runs are credited for changed packages"}, nil)
+		vvWant(t, "B23.e2/B6", ver, nil, []string{"-race cannot run on this host (go: -race requires cgo; enable cgo by setting CGO_ENABLED=1), so plain go test runs are credited for changed packages"}, nil)
 	})
+	// G6b: a go shim first on PATH answers the -race probe with "not
+	// supported". Oracle: verify reads its Go facts only from a go command it
+	// verified, so that answer never waives -race: a shim that runs the real
+	// go for `go env GOROOT` is followed to it, and one that reports its own
+	// directory is refused, which a limitation names. A plain run then leaves
+	// a's -race problem, unless the real go itself cannot race here.
+	for _, ownRoot := range []bool{false, true} {
+		t.Run(fmt.Sprintf("B23.e3 a shim's -race answer does not waive -race (own GOROOT %v)", ownRoot), func(t *testing.T) {
+			v := vvStart(t, 300, false, "go", "test", "./...")
+			v.run(t, true)
+			raced := exec.Command("go", "list", "-race", "runtime").Run() == nil
+			shim := v.vvWrapper(t, "-race is not supported on plan9/amd64", false, ownRoot)
+			ver := v.verify(t)
+			var problems []string
+			if raced || ownRoot {
+				problems = append(problems, vvT2("a"))
+			}
+			vvWant(t, "B23.e3", ver, problems, nil, []string{"-race cannot run on this host (-race is not supported on plan9/amd64), so plain go test runs are credited for changed packages"})
+			refusal := vvPrefixed(ver.Limitations, "go.package-test/v2 could not compute the package graph: cannot verify the go command "+shim+":")
+			if ownRoot != (len(refusal) == 1) {
+				t.Errorf("B23.e3 violated: limitations refusing %s are %q, want one only when the shim reports its own GOROOT", shim, refusal)
+			}
+		})
+	}
 	t.Run("B23.f log cut at the storage limit", func(t *testing.T) {
 		v := vvStart(t, 300, false, "go", "test", "-v", "./...")
 		t.Setenv("CWV2_BIG", "1")
