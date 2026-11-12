@@ -27,9 +27,12 @@ import (
 // deadline.
 const GoFactsTimeout = 5 * time.Second
 
-// LoadGoFacts gathers GoFacts for the module at dir. It runs, offline, the
-// go command that env's PATH names, and reads the headers of source's changed
-// .go files. Its budget ends at ctx's deadline when ctx has one, and
+// LoadGoFacts gathers GoFacts for the module at dir. It verifies the go
+// command that env's PATH names with ResolveGo, runs the go command it
+// verified, offline and with GoTool.Env, and reads the headers of source's
+// changed .go files. When no go command verifies, GraphError says why and
+// NoRace stays "", so the graph facts are unavailable and -race stays
+// required. Its budget ends at ctx's deadline when ctx has one, and
 // GoFactsTimeout after the call starts otherwise; it returns within one
 // second after the budget ends. It never writes under dir, and it reports
 // failures in GraphError and NoRace instead of returning an error. A nil env
@@ -50,9 +53,14 @@ func LoadGoFacts(ctx context.Context, dir string, env []string, source Source) G
 		facts.GraphError = "reading the changed .go files did not finish within the facts budget"
 		return facts
 	}
-	goPath := findGo(env)
-	if goPath == "" {
-		facts.GraphError = "go was not found on PATH"
+	// A shim first on PATH could otherwise answer the -race probe with "not
+	// supported" and waive -race.
+	tool, err := resolveGo(ctx, "go", dir, slices.Concat(env, []string{"GOPROXY=off"}))
+	if err != nil {
+		facts.GraphError = err.Error()
+		if ctx.Err() != nil {
+			facts.GraphError = "verifying the go command did not finish within the facts budget"
+		}
 		return facts
 	}
 	mod := "readonly"
@@ -60,8 +68,8 @@ func LoadGoFacts(ctx context.Context, dir string, env []string, source Source) G
 		mod = "vendor"
 	}
 	var probe sync.WaitGroup
-	probe.Go(func() { facts.NoRace = raceUnavailable(ctx, goPath, dir, env, mod) })
-	tested, embedded, excluded, graphError := packageGraph(ctx, goPath, dir, env, mod)
+	probe.Go(func() { facts.NoRace = raceUnavailable(ctx, tool, dir, env, mod) })
+	tested, embedded, excluded, graphError := packageGraph(ctx, tool, dir, env, mod)
 	probe.Wait()
 	if graphError != "" {
 		facts.GraphError = graphError
@@ -101,12 +109,15 @@ func findGo(env []string) string {
 	return ""
 }
 
-// runGo runs go with args in dir, under ctx, with env followed by extra, and
-// with standard error kept in stderr; stdout, when not nil, receives the
-// output. go and its descendants run in a process group of their own, which
-// is killed when the run ends.
-func runGo(ctx context.Context, goPath, dir string, env []string, stdout io.Writer, stderr *proc.HeadBuffer, args []string, extra ...string) proc.Result {
-	return proc.Run(ctx, proc.Spec{Path: goPath, Args: args, Dir: dir, Env: slices.Concat(env, extra), Stdout: stdout, Stderr: stderr,
+// resolveGo is ResolveGo; a test replaces it with a resolver it controls.
+var resolveGo = ResolveGo
+
+// runGo runs tool with args in dir, under ctx, with env followed by extra and
+// then tool.Env, and with standard error kept in stderr; stdout, when not nil,
+// receives the output. go and its descendants run in a process group of their
+// own, which is killed when the run ends.
+func runGo(ctx context.Context, tool GoTool, dir string, env []string, stdout io.Writer, stderr *proc.HeadBuffer, args []string, extra ...string) proc.Result {
+	return proc.Run(ctx, proc.Spec{Path: tool.Path, Args: args, Dir: dir, Env: slices.Concat(env, extra, tool.Env()), Stdout: stdout, Stderr: stderr,
 		WaitDelay: 500 * time.Millisecond})
 }
 
@@ -116,12 +127,12 @@ const stderrLimit = 64 << 10
 // raceUnavailable runs the race probe and returns the go command's reason
 // that -race cannot run for cw's own target, or "" when it can or when the
 // probe failed in another way.
-func raceUnavailable(ctx context.Context, goPath, dir string, env []string, mod string) string {
+func raceUnavailable(ctx context.Context, tool GoTool, dir string, env []string, mod string) string {
 	if ctx.Err() != nil {
 		return ""
 	}
 	stderr := &proc.HeadBuffer{Limit: stderrLimit}
-	got := runGo(ctx, goPath, dir, env, nil, stderr, []string{"list", "-mod=" + mod, "-race", "runtime"},
+	got := runGo(ctx, tool, dir, env, nil, stderr, []string{"list", "-mod=" + mod, "-race", "runtime"},
 		"GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOFLAGS=-mod="+mod, "GOPROXY=off")
 	if got.Code != 2 {
 		return ""
@@ -149,7 +160,7 @@ var errGoListLimit = errors.New("go list output exceeds 64 MiB")
 
 // packageGraph runs go list on the module at dir and returns its facts, or
 // why they could not be computed.
-func packageGraph(ctx context.Context, goPath, dir string, env []string, mod string) (tested map[string][]string, embedded, excluded []string, graphError string) {
+func packageGraph(ctx context.Context, tool GoTool, dir string, env []string, mod string) (tested map[string][]string, embedded, excluded []string, graphError string) {
 	const unfinished = "go list did not finish within the facts budget"
 	if ctx.Err() != nil {
 		return nil, nil, nil, unfinished
@@ -160,7 +171,7 @@ func packageGraph(ctx context.Context, goPath, dir string, env []string, mod str
 	// stdout is not an *os.File, so os/exec copies into it from its own
 	// goroutine, which Wait joins, and WaitDelay closes that copy's pipe.
 	stdout := &cappedBuffer{stop: stop}
-	got := runGo(commandCtx, goPath, dir, env, stdout, stderr, []string{"list", "-e=false", "-mod=" + mod, "-deps", "-test",
+	got := runGo(commandCtx, tool, dir, env, stdout, stderr, []string{"list", "-e=false", "-mod=" + mod, "-deps", "-test",
 		"-json=ImportPath,Dir,Module,ForTest,Deps,Incomplete,EmbedFiles,TestEmbedFiles,XTestEmbedFiles,IgnoredGoFiles,IgnoredOtherFiles", "./..."},
 		"GOPROXY=off")
 	err := got.Err
