@@ -7,6 +7,7 @@
 | [Decision flow](decision-flow.md) | Follow the states a substantial task goes through, from classification to completion |
 | [Advisers](advisers.md) | Set up optional adviser keys, consult advisers at checkpoints and adjudicate their answers |
 | [Operations](operations.md) | Install or remove the Codex skills and find `cw` state and config paths |
+| [Packs](packs.md) | Choose the packs `cw task verify` applies, or add a language pack |
 | [Development](development.md) | Build, test and release `cw` itself |
 | [Skill evaluation](skill-evaluation.md) | Measure whether a skill or agent change helps, with routing fixtures and evals |
 | [Diagrams](diagrams/) | Edit the workflow diagram specifications (render them with the `archify` skill) |
