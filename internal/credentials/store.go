@@ -155,15 +155,23 @@ func checkLock(lock *os.File) error {
 // at most five seconds for another writer.
 func lockDirectory(ctx context.Context, directory *os.File) (*fslock.Lock, error) {
 	lock, err := fslock.Acquire(ctx, lockName, fslock.Options{Dir: directory, Wait: 5 * time.Second, Check: checkLock})
-	switch {
-	case err == nil:
-		return lock, nil
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return nil, err
-	case errors.Is(err, fslock.ErrBusy):
-		return nil, ErrBusy
+	if err != nil {
+		return nil, lockFailure(err)
 	}
-	return nil, ErrUnsafeStore
+	return lock, nil
+}
+
+// lockFailure maps an fslock error onto the store's errors by cause.
+func lockFailure(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return err
+	case errors.Is(err, fslock.ErrBusy):
+		return ErrBusy
+	case errors.Is(err, errors.ErrUnsupported):
+		return ErrLockUnsupported
+	}
+	return ErrUnsafeStore
 }
 
 func (store Store) verifyAnchor(directory *os.File) error {
