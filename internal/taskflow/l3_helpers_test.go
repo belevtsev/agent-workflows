@@ -148,7 +148,7 @@ func l3New(t *testing.T, o l3Opts) *l3Fix {
 	for _, id := range reqs {
 		plan.Requirements = append(plan.Requirements, taskflow.Requirement{ID: id, Description: "criterion " + id, CheckIDs: []string{checks[0].ID}})
 	}
-	rec, err := taskflow.Start(f.ctx, f.sel, store, plan, nil)
+	rec, err := taskflow.StartWithPacks(f.ctx, f.sel, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("taskflow.Start: %v", err)
 	}
@@ -706,12 +706,13 @@ func l3JSON(v any) string {
 	return string(data)
 }
 
-// l3TraceRun is the expected TraceRun of run for one test's entry.
+// l3TraceRun is the expected TraceRun of run for one test's entry. The
+// fixtures run go test -json, where a test that ran once has one run event.
 func l3TraceRun(run taskflow.CheckRun, current, credited bool, pass, fail, skip int) taskflow.TraceRun {
 	fp := ""
 	if run.After != nil {
 		fp = run.After.Fingerprint
 	}
 	return taskflow.TraceRun{RunID: run.ID, CheckID: run.CheckID, Status: run.Status, Fingerprint: fp,
-		Current: current, Credited: credited, Pass: pass, Fail: fail, Skip: skip}
+		Current: current, Credited: credited, Pass: pass, Fail: fail, Skip: skip, Run: 1}
 }

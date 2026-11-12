@@ -81,7 +81,7 @@ func bundleTestRepo(t *testing.T, files map[string]string, git bool) string {
 
 func bundleTestStart(t *testing.T, repo string, plan Plan) Record {
 	t.Helper()
-	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding())
+	record, err := StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding(), SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

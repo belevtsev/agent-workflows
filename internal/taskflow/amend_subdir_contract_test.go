@@ -178,9 +178,9 @@ func subStore(t *testing.T) string {
 func subStart(t *testing.T, repo string) taskflow.Record {
 	t.Helper()
 	store := subStore(t)
-	rec, err := taskflow.Start(context.Background(), repo, store, subPlan(), map[string]string{})
+	rec, err := taskflow.StartWithPacks(context.Background(), repo, store, subPlan(), map[string]string{}, taskflow.SelectionExplicit, acPacks())
 	if err != nil {
-		t.Fatalf("Start(%s): %v", repo, err)
+		t.Fatalf("StartWithPacks(%s): %v", repo, err)
 	}
 	return rec
 }

@@ -114,6 +114,7 @@ func TestTraceJudgesMappedTests(t *testing.T) {
 		l3Map("R1", l3Mapped("p/te_test.go", "TestPass"), l3Mapped("p/te_test.go", "TestSub/a")),
 		l3Map("R2", r2...),
 		l3Uncovered("R3", "needs fault injection")))
+	f.accept("te1", "accepted")
 	f.mustAssign(f.brief("te2", []string{"r/r_test.go"}, l3Req("R9", "C4")))
 
 	// After the handoff: one file deleted, one no longer declares its test,
@@ -193,6 +194,7 @@ func TestTraceDetailsAcrossRuns(t *testing.T) {
 	f.mustAssign(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
 	f.write("p/te_test.go", l3PTests)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"}, l3Map("R1", l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te1", "accepted")
 	p := l3Module + "/p"
 	expect := func(label, status, detail string, runs ...taskflow.TraceRun) {
 		t.Helper()
@@ -247,6 +249,7 @@ func TestTraceCountsOnlyLatestRuns(t *testing.T) {
 	f.write("p/flaky_test.go", flaky)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go", "p/flaky_test.go"},
 		l3Map("R1", l3Mapped("p/flaky_test.go", "TestFlaky"), l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te1", "accepted")
 	p := l3Module + "/p"
 
 	l3WriteFile(t, flag, "present\n")
@@ -285,6 +288,7 @@ func TestTraceGOFLAGSWithoutCredit(t *testing.T) {
 	f.mustAssign(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
 	f.write("p/te_test.go", l3PTests)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"}, l3Map("R1", l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te1", "accepted")
 	ok := f.run("ok")
 	if ok.Status != "passed" || !strings.Contains(ok.GOFLAGS, "-run") {
 		t.Fatalf("fixture run status %q goflags %q; want passed with the -run GOFLAGS recorded", ok.Status, ok.GOFLAGS)
@@ -336,6 +340,7 @@ func TestZ` + strings.Repeat("z", 420) + `(t *testing.T) {}
 	first := "TestMany/00000" + strings.Repeat("x", 395)
 	f.mustSubmit(f.result("te1", "completed", []string{"b/b_test.go"},
 		l3Map("R1", l3Mapped("b/b_test.go", first)), l3Map("R2", l3Mapped("b/b_test.go", last))))
+	f.accept("te1", "accepted")
 	big1 := f.run("big1")
 	big2 := f.run("big2")
 	if big1.Status != "passed" || big2.Status != "passed" {
@@ -397,6 +402,7 @@ func TestTraceDropsRequirementsOfUnusedAssignments(t *testing.T) {
 	f.write("p/te_test.go", l3PTests+"\nfunc TestMore(t *testing.T) {}\n")
 	f.mustSubmit(f.result("te2", "completed", []string{"p/te_test.go"},
 		l3Uncovered("R1", "amended away"), l3Map("R4", l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te2", "accepted")
 	run := f.run("ok")
 	if run.TestResults == "" {
 		t.Fatalf("run recorded no test_results (R15)")
@@ -533,6 +539,7 @@ func TestVerifyResultsFileIntegrity(t *testing.T) {
 	f.mustAssign(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
 	f.write("p/te_test.go", l3PTests)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"}, l3Map("R1", l3Mapped("p/te_test.go", "TestPass"))))
+	f.accept("te1", "accepted")
 	run1, run2 := f.run("ok"), f.run("ok")
 	if run1.TestResults == "" || run2.TestResults == "" {
 		t.Fatalf("runs recorded no test_results (R15)")
@@ -612,10 +619,11 @@ func TestVerifyAddsNothingWithoutNewMembers(t *testing.T) {
 
 // TestContractWithoutRequirementsIsNotJudged fails when a contract-bearing
 // assignment without requirements, in a plan that cannot prove tests, gets
-// judged or traced (R40, new-cw half; R8).
+// judged or traced (R40, new-cw half; R8). Only a small plan takes such a
+// brief: a substantial one refuses it (L4 R17).
 func TestContractWithoutRequirementsIsNotJudged(t *testing.T) {
 	t.Parallel()
-	f := l3New(t, l3Opts{checks: []taskflow.Check{l3Check("plain", l3PlainP...), l3Check("norun", "go", "test", "-json", "-run", ".", "./p/...")}})
+	f := l4New(t, l4Opts{small: true, checks: []taskflow.Check{l3Check("plain", l3PlainP...), l3Check("norun", "go", "test", "-json", "-run", ".", "./p/...")}})
 	f.mustAssign(f.brief("te1", []string{"p/te_test.go"}))
 	f.write("p/te_test.go", l3PTests)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"}))
@@ -650,6 +658,7 @@ func TestTraceModuleBelowProjectRoot(t *testing.T) {
 	res := base
 	res.RequirementMap = []taskflow.RequirementMapping{l3Map("R1", l3Mapped("mod/p/te_test.go", "TestPass"))}
 	f.mustSubmit(res)
+	f.accept("te1", "accepted")
 	ok := f.run("ok")
 	f.l3Report("module below the project root", f.trace(), nil,
 		l3TC("C1", "proven", l3TR("te1", "R1", "proven",
@@ -671,9 +680,11 @@ func TestVerifyOrdersMappedTestProblems(t *testing.T) {
 	f.mustSubmit(f.result("zz", "completed", []string{"p/z_test.go"},
 		l3Map("R2", l3Mapped("p/z_test.go", "TestZ"), l3Mapped("p/z_test.go", "TestA")),
 		l3Map("R1", l3Mapped("p/z_test.go", "TestA"))))
+	f.accept("zz", "accepted")
 	f.mustAssign(f.brief("aa", []string{"p/a_test.go"}, l3Req("R3", "C1")))
 	f.write("p/a_test.go", "package p\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n")
 	f.mustSubmit(f.result("aa", "completed", []string{"p/a_test.go"}, l3Map("R3", l3Mapped("p/a_test.go", "TestB"))))
+	f.accept("aa", "accepted")
 
 	var judged []string
 	for _, x := range f.verify().Problems {
@@ -715,6 +726,7 @@ func TestTracePicksRunsInPlanCheckOrder(t *testing.T) {
 	f.write("p/te_test.go", l3PTests)
 	f.mustSubmit(f.result("te1", "completed", []string{"p/te_test.go"},
 		l3Map("R1", l3Mapped("p/te_test.go", "TestPass"), l3Mapped("p/te_test.go", "TestSkip"))))
+	f.accept("te1", "accepted")
 	p := l3Module + "/p"
 
 	u1 := f.run("u1")

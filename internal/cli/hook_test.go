@@ -295,7 +295,7 @@ func hkSubstantialRecord(t *testing.T, repo, store, title string) taskflow.Recor
 		Requirements: []taskflow.Requirement{{ID: "source", Description: "Inspect actual source", CheckIDs: []string{"unit"}, AllowNonExecution: true}},
 		Checks:       []taskflow.Check{{ID: "unit", Argv: []string{"go", "test", "./..."}}},
 	}
-	record, err := taskflow.Start(t.Context(), repo, store, plan, nil)
+	record, err := taskflow.StartWithPacks(t.Context(), repo, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("taskflow.Start: %v", err)
 	}

@@ -217,7 +217,7 @@ func TestProductionNestedStoreStartReadRemove(test *testing.T) {
 					test.Fatalf("nested privateStore = %q, %v", resolved, err)
 				}
 			}
-			record, err := Start(test.Context(), repository, store, productionBasePlan(), fixtureBinding())
+			record, err := StartWithPacks(test.Context(), repository, store, productionBasePlan(), fixtureBinding(), SelectionExplicit, nil)
 			if err != nil {
 				test.Fatal(err)
 			}
@@ -285,7 +285,7 @@ func TestProductionStorePathGuards(test *testing.T) {
 			if _, err := privateStore(store, repository); err == nil {
 				test.Fatal("privateStore accepted unsafe path")
 			}
-			if _, err := Start(test.Context(), repository, store, productionBasePlan(), fixtureBinding()); err == nil {
+			if _, err := StartWithPacks(test.Context(), repository, store, productionBasePlan(), fixtureBinding(), SelectionExplicit, nil); err == nil {
 				test.Fatal("Start accepted unsafe store path")
 			}
 			if !reflect.DeepEqual(productionTaskBytes(test, target), targetBefore) || !reflect.DeepEqual(productionTaskBytes(test, repository), repoBefore) {

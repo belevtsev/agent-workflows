@@ -211,14 +211,37 @@ func contractAuthorSave(t *testing.T, contract taskflow.Contract) (string, []byt
 }
 
 // contractAuthorContractBrief extracts repo/pkg as it is now, saves the
-// extract outside the project and returns an implementation brief carrying it.
+// extract outside the project and returns an implementation brief carrying it,
+// with one contract requirement implementing the plan requirement "r".
 func contractAuthorContractBrief(t *testing.T, repo, id string, owned ...string) taskflow.WorkerBrief {
 	t.Helper()
 	contract := contractAuthorExtract(t, filepath.Join(repo, "pkg"), contractAuthorTaskSymbols()...)
 	file, data := contractAuthorSave(t, contract)
 	brief := scaffoldBrief(id, owned...)
 	brief.Contract = &taskflow.ContractRef{Path: file, SHA256: scaffoldSHA256(data)}
+	brief.Requirements = []taskflow.ContractRequirement{{Requirement: "R1", Criteria: []string{"r"}}}
 	return brief
+}
+
+// contractAuthorAcceptedRound hands off a completed result of the contract
+// assignment id that maps its contract requirement as uncovered, and accepts
+// it.
+func contractAuthorAcceptedRound(t *testing.T, repo, task, id string) {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(repo, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := taskflow.SourceRef{Path: "go.mod", StartLine: 1, EndLine: 1, SHA256: scaffoldSHA256(data)}
+	result := taskflow.WorkerResult{AssignmentID: id, Status: "completed", Summary: "completed for the scaffold", Evidence: []taskflow.SourceRef{ref}, ChangedFiles: []taskflow.WorkerChangedFile{}, CheckIDs: []string{}, Findings: []taskflow.WorkerFinding{}, Uncertainties: []string{},
+		RequirementMap: []taskflow.RequirementMapping{{Requirement: "R1", Uncovered: "scaffold: no test written"}}}
+	if _, err := taskflow.SubmitWorkerResult(t.Context(), task, result); err != nil {
+		t.Fatalf("SubmitWorkerResult(%s): %v", id, err)
+	}
+	acceptance := taskflow.WorkerAcceptance{AssignmentID: id, Status: "accepted", Reason: "scaffold judgment", Evidence: []taskflow.SourceRef{ref}, CheckIDs: []string{}, Findings: []taskflow.FindingDisposition{}}
+	if _, err := taskflow.AcceptWorkerResult(t.Context(), task, acceptance); err != nil {
+		t.Fatalf("AcceptWorkerResult(%s): %v", id, err)
+	}
 }
 
 // contractAuthorAssign assigns brief and fails the test on error.
@@ -860,6 +883,7 @@ func TestContractAuthorAssignAccepts(t *testing.T) {
 	file, data := contractAuthorSave(t, contract)
 	brief := scaffoldBrief("alpha", "pkg/a_test.go")
 	brief.Contract = &taskflow.ContractRef{Path: file, SHA256: scaffoldSHA256(data)}
+	brief.Requirements = []taskflow.ContractRequirement{{Requirement: "R1", Criteria: []string{"r"}}}
 	record := contractAuthorAssign(t, task, brief)
 	matches := contractAuthorAssignments(record, "alpha")
 	if len(matches) != 1 {
@@ -1107,6 +1131,10 @@ func TestContractAuthorVerifySupersession(t *testing.T) {
 				second = contractAuthorContractBrief(t, repo, "bravo", tc.owned...)
 			}
 			contractAuthorAssign(t, task, second)
+			if tc.contract {
+				// R18: only an accepted round supersedes.
+				contractAuthorAcceptedRound(t, repo, task, "bravo")
+			}
 			problems, limitations := contractAuthorContractEntries(t, task)
 			alpha := append(contractAuthorWith(problems, "alpha"), contractAuthorWith(limitations, "alpha")...)
 			if tc.supersedes {

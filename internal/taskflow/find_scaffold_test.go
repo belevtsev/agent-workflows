@@ -32,7 +32,7 @@ func openPlan(title, kind string) Plan {
 // a missing store with private permissions.
 func startIn(t *testing.T, store, repo, title, kind string) Record {
 	t.Helper()
-	record, err := Start(t.Context(), repo, store, openPlan(title, kind), nil)
+	record, err := StartWithPacks(t.Context(), repo, store, openPlan(title, kind), nil, SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("start %s: %v", title, err)
 	}
