@@ -122,7 +122,7 @@ type Bundle struct {
 
 // BuildBundle generates the bundle for a review about to be assigned, with
 // every reach facet empty. It changes nothing.
-func BuildBundle(ctx context.Context, taskPath, reviewID string) (Bundle, error) {
+func (env Env) BuildBundle(ctx context.Context, taskPath, reviewID string) (Bundle, error) {
 	root, _, err := openTask(taskPath)
 	if err != nil {
 		return Bundle{}, err
@@ -138,7 +138,7 @@ func BuildBundle(ctx context.Context, taskPath, reviewID string) (Bundle, error)
 	if findAssignment(record, reviewID) != nil {
 		return Bundle{}, fmt.Errorf("review ID %s is already assigned; use a new ID", reviewID)
 	}
-	return buildBundle(ctx, root, record, reviewID, nil)
+	return env.buildBundle(ctx, taskDirectory{root}, record, reviewID, nil)
 }
 
 // EncodeBundle returns the file form: indented JSON ending in a newline.
@@ -152,12 +152,12 @@ func EncodeBundle(bundle Bundle) ([]byte, error) {
 
 // buildBundle generates the bundle at the current source. When want is set,
 // the source must still be that snapshot.
-func buildBundle(ctx context.Context, root *os.Root, record Record, reviewID string, want *projectctx.Snapshot) (Bundle, error) {
-	baseline, err := readBaselineManifest(root, *record.BaselineManifest)
+func (env Env) buildBundle(ctx context.Context, artifacts Artifacts, record Record, reviewID string, want *projectctx.Snapshot) (Bundle, error) {
+	baseline, err := readBaselineManifest(artifacts, *record.BaselineManifest)
 	if err != nil {
 		return Bundle{}, err
 	}
-	snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+	snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -182,7 +182,7 @@ func buildBundle(ctx context.Context, root *os.Root, record Record, reviewID str
 		bundle.ChangedSinceReview = append(bundle.ChangedSinceReview, file.Path)
 	}
 	if previous := previousReviewed(record); previous != nil {
-		earlier, err := readStoredBundle(root, *previous)
+		earlier, err := readStoredBundle(artifacts, *previous)
 		if err != nil {
 			return Bundle{}, fmt.Errorf("previous review %s: %w", previous.Brief.ID, err)
 		}
@@ -212,8 +212,8 @@ func buildBundle(ctx context.Context, root *os.Root, record Record, reviewID str
 	return bundle, nil
 }
 
-func readBaselineManifest(root *os.Root, ref ManifestRef) ([]projectctx.FileState, error) {
-	data, err := privateRead(root, ref.File, MaxInputBytes)
+func readBaselineManifest(artifacts Artifacts, ref ManifestRef) ([]projectctx.FileState, error) {
+	data, err := artifacts.Read(ref.File, MaxInputBytes)
 	if err != nil {
 		return nil, fmt.Errorf("read baseline manifest: %w", err)
 	}
@@ -303,11 +303,11 @@ func previousReviewed(record Record) *WorkerAssignment {
 	return nil
 }
 
-func readStoredBundle(root *os.Root, assigned WorkerAssignment) (Bundle, error) {
+func readStoredBundle(artifacts Artifacts, assigned WorkerAssignment) (Bundle, error) {
 	if assigned.BundleFile == "" || assigned.Brief.Bundle == nil {
 		return Bundle{}, errors.New("review has no stored bundle")
 	}
-	data, err := privateRead(root, assigned.BundleFile, MaxInputBytes)
+	data, err := artifacts.Read(assigned.BundleFile, MaxInputBytes)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -321,8 +321,8 @@ func readStoredBundle(root *os.Root, assigned WorkerAssignment) (Bundle, error) 
 	return bundle, nil
 }
 
-func reviewBundleArtifact(root *os.Root, assigned WorkerAssignment) error {
-	_, err := readStoredBundle(root, assigned)
+func reviewBundleArtifact(artifacts Artifacts, assigned WorkerAssignment) error {
+	_, err := readStoredBundle(artifacts, assigned)
 	return err
 }
 
@@ -495,7 +495,7 @@ func validFacet(value string) bool {
 
 // storeReviewBundle validates the brief's filled bundle against a bundle
 // regenerated now and stores an immutable copy in the task directory.
-func storeReviewBundle(ctx context.Context, root *os.Root, record Record, brief WorkerBrief, snapshot projectctx.Snapshot) (string, error) {
+func (env Env) storeReviewBundle(ctx context.Context, root *os.Root, record Record, brief WorkerBrief, snapshot projectctx.Snapshot) (string, error) {
 	if brief.Bundle == nil {
 		return "", errors.New("a review assignment needs its reviewer bundle: run cw task bundle, fill every reach facet, and give its path and sha256 as the brief's bundle")
 	}
@@ -520,7 +520,7 @@ func storeReviewBundle(ctx context.Context, root *os.Root, record Record, brief 
 	if filled.ReviewID != brief.ID {
 		return "", fmt.Errorf("reviewer bundle is for review %q, not %q", filled.ReviewID, brief.ID)
 	}
-	expected, err := buildBundle(ctx, root, record, brief.ID, &snapshot)
+	expected, err := env.buildBundle(ctx, taskDirectory{root}, record, brief.ID, &snapshot)
 	if err != nil {
 		return "", err
 	}

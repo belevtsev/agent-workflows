@@ -24,8 +24,9 @@ host loads it as settings or changes a running chat's model. Read
 [model-policy.yaml](../model-policy.yaml) and, under Claude Code,
 [model-policy.claude.yaml](../model-policy.claude.yaml), which replaces its
 profiles and roles (read Sol and Luna below as its matching profiles). Codex
-defaults: Sol 6.1 `max` substantive, Luna `high` bounded evidence and `github`,
-Luna `xhigh` other bounded execution; Claude `github`: Sonnet 5.5 `medium`.
+defaults: Sol 6.1 `high` substantive and `max` for planning, architecture and
+diagnosis (`decision`), Luna `high` bounded evidence and `github`, Luna `xhigh`
+other bounded execution; Claude `github`: Sonnet 5.5 `medium`.
 
 Before dispatch, resolve each role's profile (model and effort) and scope from the
 current policy, preserving explicit user choices; a user request can override
@@ -40,8 +41,8 @@ only bounded evidence gathering. A compatible subworker does not repair the main
 worker's mismatch.
 
 Substantive coding, testing, planning, review, diagnosis, documentation, new
-acceptance claims and final verification use the configured non-Luna substantive
-profile. Routine execution requires fixed files, revision, verified facts, action
+acceptance claims and final verification use the role's configured non-Luna
+substantive profile. Routine execution requires fixed files, revision, verified facts, action
 bounds and authorization from the coordinator; routine GitHub wording can be
 drafted from fixed verified facts under the [GitHub worker contract](github-worker.md).
 New claims, ambiguous scope, conflicts or uncertain verification return to
@@ -52,8 +53,8 @@ substantive ownership. Model selection never relaxes a role's action bounds.
 Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
 `architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
 Claude-only `review_followup` role (every later review of a stage, after that
-stage's first full review)
-and the three routine GitHub roles use cheaper Sonnet 5.5 profiles; resolve the
+stage's first full review), `summarization` and the three routine GitHub roles
+use cheaper Sonnet 5.5 profiles, and `lookup` uses Haiku 5.5; resolve the
 current policy before dispatch. A saved `review` pin does not apply to
 `review_followup`; pin it separately.
 
@@ -64,14 +65,16 @@ current policy before dispatch. A saved `review` pin does not apply to
 | `bounded_execution` | `opus` | `high` |
 | `review_followup` | `sonnet` | `high` |
 | `github` | `sonnet` | `medium` |
-| `bounded_evidence` | `opus` | `high` |
+| `bounded_evidence` | `sonnet` | `high` |
+| `lookup` | `haiku` | `high` |
 
 - Pass `model` and `effort` on every dispatch, including built-in agents such as
   `Explore`, which otherwise use their own default model. The plugin agents below
   pin a default in their frontmatter, but the Agent tool's `model` overrides it,
   so the policy's role (for example `review_followup` on Sonnet) still applies.
 - Agent accepts model aliases, not full IDs: `claude-opus-5-5` maps to `opus`,
-  and `claude-sonnet-5-5` to `sonnet`. An alias can resolve to another release.
+  `claude-sonnet-5-5` to `sonnet` and `claude-haiku-5-5` to `haiku`. An alias can
+  resolve to another release.
   Per-invocation `effort` requires Claude Code 2.1.292 or newer.
 - `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces `CLAUDE_CODE_SUBAGENT_MODEL`, or the
   inherited model if it is unset, instead of the Agent `model` argument.

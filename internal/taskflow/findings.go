@@ -2,7 +2,6 @@ package taskflow
 
 import (
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 )
@@ -47,7 +46,7 @@ func reviewSeverities(role string, findings []WorkerFinding) error {
 // rejected blocker or major finding is a limitation, because the coordinator
 // rejected it alone. A rejected blocker is also a problem until a later review
 // rebinds the rejection (see rebound).
-func rejectedFindingReport(root *os.Root, record Record) (problems, limitations []string) {
+func rejectedFindingReport(artifacts Artifacts, record Record) (problems, limitations []string) {
 	for index, assigned := range record.Assignments {
 		accepted := latestAcceptance(record, assigned.Brief.ID)
 		result := findWorkerResult(record, assigned.Brief.ID)
@@ -67,7 +66,7 @@ func rejectedFindingReport(root *os.Root, record Record) (problems, limitations 
 				continue
 			}
 			limitations = append(limitations, fmt.Sprintf("%s%s (%s) of worker assignment %s: %s", rejectedFindingPrefix, disposition.FindingID, severity, assigned.Brief.ID, disposition.Reason))
-			if severity == "blocker" && !rebound(root, record, index, disposition.FindingID) {
+			if severity == "blocker" && !rebound(artifacts, record, index, disposition.FindingID) {
 				problems = append(problems, fmt.Sprintf("rejected blocker finding %s of worker assignment %s needs a later accepted independent review whose bundle lists it as rejected and whose result does not re-raise it (same finding id)", disposition.FindingID, assigned.Brief.ID))
 			}
 		}
@@ -80,7 +79,7 @@ func rejectedFindingReport(root *os.Root, record Record) (problems, limitations 
 // acceptance is accepted, its stored bundle lists the finding as rejected (so
 // the reviewer saw the rejection and its reason), and its result raises no
 // finding with the same ID.
-func rebound(root *os.Root, record Record, index int, findingID string) bool {
+func rebound(artifacts Artifacts, record Record, index int, findingID string) bool {
 	original := record.Assignments[index].Brief.ID
 	for _, later := range record.Assignments[index+1:] {
 		if later.Brief.Role != "review" || later.BundleFile == "" || !independentReviewer(record, later) {
@@ -94,7 +93,7 @@ func rebound(root *os.Root, record Record, index int, findingID string) bool {
 		if slices.ContainsFunc(result.Result.Findings, func(finding WorkerFinding) bool { return finding.ID == findingID }) {
 			continue
 		}
-		bundle, err := readStoredBundle(root, later)
+		bundle, err := readStoredBundle(artifacts, later)
 		if err != nil {
 			continue
 		}

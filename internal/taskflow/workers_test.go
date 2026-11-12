@@ -63,7 +63,7 @@ func workerResult(t *testing.T, record Record, id, status string, refs ...Source
 			t.Fatal(err)
 		}
 		defer root.Close()
-		bundle, err := readStoredBundle(root, *assigned)
+		bundle, err := readStoredBundle(taskDirectory{root}, *assigned)
 		if err != nil {
 			t.Fatal(err)
 		}

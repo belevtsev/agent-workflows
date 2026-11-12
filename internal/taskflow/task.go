@@ -55,7 +55,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
 		return Record{}, errors.New(conflict + `; set "required": true and run the checkpoints, or, if checkpoints are truly unneeded, give the real reason`)
 	}
-	snapshot, files, err := projectctx.CaptureManifest(ctx, repo)
+	snapshot, files, err := env.source().Manifest(ctx, repo)
 	if err != nil {
 		return Record{}, fmt.Errorf("capture complete task baseline: %w", err)
 	}
@@ -135,7 +135,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 	}
 	var result Context
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -143,13 +143,13 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 			return errors.New("before context no longer matches the baseline; start a new task")
 		}
 		if phase == "final" && record.Plan.Kind == "substantial" {
-			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
+			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("final context needs resolved before consultation: %w", err)
 			}
 		}
 		result = Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot, Advisers: record.Advisers}
 		if phase == "final" {
-			if problems := localEvidenceProblems(root, *record, snapshot); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, snapshot); len(problems) > 0 {
 				return fmt.Errorf("final context requires completed applicable evidence: %s", strings.Join(problems, "; "))
 			}
 			result.EvidenceSHA256, err = evidenceBinding(*record)
@@ -157,7 +157,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 				return err
 			}
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -260,7 +260,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 		return Record{}, errors.New("assessment must update a requirement or the Coordinator decision")
 	}
 	return update(ctx, env, path, func(_ *os.Root, record *Record) error {
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -329,7 +329,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 			}
 			record.Decision = &BoundDecision{Decision: decision, Snapshot: snapshot, CheckRuns: runs}
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -342,7 +342,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 	})
 }
 
-func checkStoredRun(root *os.Root, record Record, snapshot projectctx.Snapshot, id string) error {
+func checkStoredRun(artifacts Artifacts, record Record, snapshot projectctx.Snapshot, id string) error {
 	var run *CheckRun
 	for i := range record.Checks {
 		if record.Checks[i].ID == id {
@@ -363,7 +363,7 @@ func checkStoredRun(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 	if !found || !slices.Equal(approved.Argv, run.Argv) {
 		return errors.New("check argv differs from the explicit plan")
 	}
-	data, err := privateRead(root, run.Log, MaxLogBytes)
+	data, err := artifacts.Read(run.Log, MaxLogBytes)
 	if err != nil {
 		return err
 	}
@@ -393,8 +393,8 @@ func evidenceBinding(record Record) (string, error) {
 
 // localEvidenceProblems is shared by final-context preparation and completion.
 // The final adviser checkpoint can only bind already completed evidence.
-func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Snapshot) []string {
-	problems := workerEvidenceProblems(root, record, snapshot)
+func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectctx.Snapshot) []string {
+	problems := workerEvidenceProblems(artifacts, record, snapshot)
 	problem := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 	for _, run := range record.Checks {
 		if run.Status == "running" || run.FinishedAt == nil {
@@ -429,7 +429,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 			}
 		}
 		for _, id := range bound.CheckRuns {
-			if err := checkStoredRun(root, record, snapshot, id); err != nil {
+			if err := checkStoredRun(artifacts, record, snapshot, id); err != nil {
 				problem("requirement %s: %v", requirement.ID, err)
 			}
 		}
@@ -457,7 +457,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 			problem("Codex task decision lacks permitted non-execution reasoning")
 		}
 		for _, id := range decision.CheckRuns {
-			if err := checkStoredRun(root, record, snapshot, id); err != nil {
+			if err := checkStoredRun(artifacts, record, snapshot, id); err != nil {
 				problem("Codex task decision: %v", err)
 			}
 		}
@@ -470,7 +470,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
-		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)
 		}
@@ -482,31 +482,32 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		problem := func(format string, args ...any) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}
-		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
+		artifacts := taskDirectory{root}
+		result.Problems = append(result.Problems, localEvidenceProblems(artifacts, *record, snapshot)...)
 		result.Limitations = append(result.Limitations, toolLimitations(*record, snapshot)...)
 		result.Limitations = append(result.Limitations, passthroughLimitations(*record, snapshot)...)
 		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
-		findingIssues, findingNotes := rejectedFindingReport(root, *record)
+		findingIssues, findingNotes := rejectedFindingReport(artifacts, *record)
 		result.Problems = append(result.Problems, findingIssues...)
 		result.Limitations = append(result.Limitations, findingNotes...)
-		contractIssues, contractNotes := contractProblems(root, *record)
+		contractIssues, contractNotes := contractProblems(artifacts, *record)
 		result.Problems = append(result.Problems, contractIssues...)
 		result.Limitations = append(result.Limitations, contractNotes...)
 		view := newSourceView(snapshot, files)
 		defer view.close()
-		traceIssues, traceNotes := traceVerifyEntries(root, *record, view)
+		traceIssues, traceNotes := traceVerifyEntries(artifacts, *record, view)
 		result.Problems = append(result.Problems, traceIssues...)
 		result.Limitations = append(result.Limitations, traceNotes...)
 		if gated(*record) {
 			// R16, R15 and R14, then R23's limitation, before the
 			// substantial-task block.
-			authorshipIssues, authorshipNotes := authorshipVerifyEntries(view.authorship(root, *record), *record)
+			authorshipIssues, authorshipNotes := authorshipVerifyEntries(view.authorship(artifacts, *record), *record)
 			result.Problems = append(result.Problems, authorshipIssues...)
 			result.Limitations = append(result.Limitations, authorshipNotes...)
 		}
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
-				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)
+				executionIssues, executionNotes := executionProblems(ctx, artifacts, *record, snapshot, files)
 				result.Problems = append(result.Problems, executionIssues...)
 				result.Limitations = append(result.Limitations, executionNotes...)
 			}
@@ -521,7 +522,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 			_, finalAttached := record.Consultations["final"]
 			if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
 				// A usable before checkpoint is the one final-context preparation accepts.
-				_, beforeErr := readConsultation(root, *record, "before", record.Baseline)
+				_, beforeErr := readConsultation(artifacts, *record, "before", record.Baseline)
 				switch {
 				case beforeErr == nil:
 					conflict += "; attach the final checkpoint"
@@ -541,7 +542,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 				if phase == "before" {
 					expected = record.Baseline
 				}
-				consultation, err := readConsultation(root, *record, phase, expected)
+				consultation, err := readConsultation(artifacts, *record, phase, expected)
 				if err != nil {
 					problem("%s consultation: %v", phase, err)
 					continue
@@ -553,7 +554,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 				}
 			}
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}

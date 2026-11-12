@@ -403,7 +403,7 @@ func TestTaskTraceCLIPrintsReport(t *testing.T) {
 	if want := map[string]string{"C1": "proven", "C2": "open", "C3": "unmapped"}; !l3cEqualMaps(statuses, want) {
 		t.Errorf("printed criterion statuses %v, want %v", statuses, want)
 	}
-	direct, err := taskflow.Trace(f.ctx, f.dir)
+	direct, err := taskflow.Env{}.Trace(f.ctx, f.dir)
 	if err != nil {
 		t.Fatalf("taskflow.Trace: %v", err)
 	}
