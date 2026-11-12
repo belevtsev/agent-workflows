@@ -309,7 +309,7 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 			root.Remove(name)
 		}
 	}
-	return updateDiscarding(taskPath, 1, "", func(root *os.Root, record *Record) error {
+	return updateDiscarding(ctx, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
 			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
@@ -753,7 +753,7 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, e
 }
 
 func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
-	return update(taskPath, func(root *os.Root, record *Record) error {
+	return update(ctx, taskPath, func(root *os.Root, record *Record) error {
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
 			return errors.New("worker result references an unknown assignment")
@@ -924,7 +924,7 @@ func workerResultFresh(record Record, assigned WorkerAssignment, bound BoundWork
 // result. Rejudgment appends another acceptance. Unused handoffs require a reason
 // and never satisfy a completed-work or independent-review gate.
 func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
-	return update(taskPath, func(root *os.Root, record *Record) error {
+	return update(ctx, taskPath, func(root *os.Root, record *Record) error {
 		result := findWorkerResult(*record, input.AssignmentID)
 		if result == nil {
 			return errors.New("acceptance references a missing worker result; record a terminal handoff first")

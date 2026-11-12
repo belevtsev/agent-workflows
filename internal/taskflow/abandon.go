@@ -1,6 +1,7 @@
 package taskflow
 
 import (
+	"context"
 	"errors"
 	"os"
 	"time"
@@ -18,12 +19,13 @@ type Abandonment struct {
 var errAbandoned = errors.New("task was abandoned; start a new task with 'cw task start'")
 
 // Abandon appends the terminal revision that marks the record at path
-// abandoned for reason, a non-blank text of at most 16 KiB.
+// abandoned for reason, a non-blank text of at most 16 KiB. It takes no
+// context, so it waits for the task lock for at most its 10 s bound.
 func Abandon(path, reason string) (Record, error) {
 	if !boundedText(reason) {
 		return Record{}, errors.New("an abandonment reason of 1 to 16384 bytes is required")
 	}
-	return update(path, func(_ *os.Root, record *Record) error {
+	return update(context.Background(), path, func(_ *os.Root, record *Record) error {
 		record.Abandonment = &Abandonment{Reason: reason, At: time.Now().UTC()}
 		return nil
 	})

@@ -135,7 +135,7 @@ func PrepareContext(ctx context.Context, path, phase string) (Context, error) {
 		return Context{}, errors.New("phase must be before or final")
 	}
 	var result Context
-	_, err := update(path, func(root *os.Root, record *Record) error {
+	_, err := update(ctx, path, func(root *os.Root, record *Record) error {
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
@@ -260,7 +260,7 @@ func Assess(ctx context.Context, path string, input AssessmentInput) (Record, er
 	if len(input.Requirements) == 0 && input.Decision == nil {
 		return Record{}, errors.New("assessment must update a requirement or the Coordinator decision")
 	}
-	return update(path, func(_ *os.Root, record *Record) error {
+	return update(ctx, path, func(_ *os.Root, record *Record) error {
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
@@ -470,7 +470,7 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 // meaning of source, the adequacy of tests, or the truth of Codex's reasoning.
 func Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
-	_, err := update(path, func(root *os.Root, record *Record) error {
+	_, err := update(ctx, path, func(root *os.Root, record *Record) error {
 		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)

@@ -42,8 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
-- A killed `cw` no longer leaves its task, or the task's `cw publish`, locked, and a second task writer waits up to 10 s instead of failing.
-  `cw` v3.0.0-rc.1 does not see the new task lock: do not mix `cw` versions on one task ([task locks](docs/operations.md#task-locks)).
+- A killed `cw` no longer leaves its task, or the task's `cw publish`, locked, and a second task writer waits up to 10 s instead of failing. Do not mix
+  `cw` versions on one task: v3.0.0-rc.1 does not see the new task lock, and its `cw publish` reports `locked` once this `cw` has published there ([task locks](docs/operations.md#task-locks)).
 
 ### Removed
 
