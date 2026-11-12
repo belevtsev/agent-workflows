@@ -354,9 +354,10 @@ as a non-blocking error.
 `cw hook git pre-commit` and `cw hook git pre-push` apply the same gate from
 git's own `pre-commit` and `pre-push` hooks, so a commit or push is checked
 however it starts: through an alias, a script, `make` or `xargs`, or from a
-terminal. Nothing installs them yet; a repository's own hooks can call them,
-as in `exec cw hook git pre-commit "$@"`. Git runs each in the worktree it
-publishes from, and `cw` judges that repository by the rules above:
+terminal. `cw gate install` writes the two hooks into a repository
+([Installing the git hooks](#installing-the-git-hooks)), or a hook of your own
+can call them. Git runs each in the worktree it publishes from, and `cw`
+judges that repository by the rules above:
 
 - While a record gates, the deny reason goes to stderr and `cw` exits 3
   ([denied](operations.md#exit-statuses)); git stops at any non-zero status
@@ -386,13 +387,82 @@ Git's hook variables, such as `GIT_DIR` and `GIT_INDEX_FILE`, reach the gate's
 own git commands, but not source capture, which runs git with a minimal
 environment of its own.
 
+### Installing the git hooks
+
+Nothing is installed unless you ask, one repository at a time (`--repo`
+defaults to the working directory; a symbolic link is followed first):
+
+```sh
+cw gate install --repo /path/to/repo
+cw gate status --repo /path/to/repo      # --json: {hooks_path, shared, hooks: [{name, path, state}]}
+cw gate uninstall --repo /path/to/repo
+```
+
+- **Where.** The hooks go in the directory git runs them from,
+  `git rev-parse --git-path hooks`: `.git/hooks`, or `core.hooksPath` when it
+  is set. `cw` runs that git without `GIT_DIR`, `GIT_WORK_TREE` and the other
+  variables that would select another repository. Linked worktrees share the
+  directory, so one install covers every worktree of the repository; only a
+  relative `core.hooksPath` resolves in each worktree's own root. When
+  `core.hooksPath` names a directory inside the worktree, the new hooks are
+  untracked files there, which `git status` lists.
+- **Shared directories.** A hooks directory can serve other repositories too:
+  `core.hooksPath` set in your global or system git configuration, or a hooks
+  directory outside the repository's git directory and work tree. Install
+  and uninstall then exit 4 ([refused](operations.md#exit-statuses)) and
+  change nothing, unless you pass `--shared`; `cw gate status` reports
+  `shared`. Install creates a missing hooks directory only inside the git
+  directory, and uninstall removes it again once it is empty; it refuses a
+  missing one anywhere else.
+- **What.** Each hook is a three-line `/bin/sh` script with mode 0755:
+
+  ```sh
+  #!/bin/sh
+  # agent-workflows: written by cw gate install; cw gate uninstall deletes this file
+  command -v cw >/dev/null 2>&1 || exit 0; exec cw hook git pre-commit "$@"
+  ```
+
+  Install writes it to a temporary file and links that into place, so an
+  interrupted install never leaves part of a hook, and a file another program
+  puts there in the meantime is never replaced. On a file system without hard
+  links, install fails (exit 1) and changes nothing.
+
+  The hook runs the first `cw` on git's `PATH`. With none, it exits 0 and git goes
+  ahead without a check or a message ([Known bypasses](#known-bypasses)). A
+  `cw` too old to have `cw hook git` exits with an error, which stops git
+  until you upgrade it or run `cw gate uninstall`.
+- **Ownership.** `cw gate status` reports each hook as `installed` (its bytes
+  are exactly the script above), `absent`, or `foreign` (anything else at that
+  path, including a copy of the script with lines of your own). Install
+  replaces, and uninstall removes, only an installed hook: before either, `cw`
+  moves the file aside and checks it again, and puts back a file that changed
+  since the first check.
+- **A hook that is already there.** `cw gate install` leaves a foreign hook
+  unchanged, writes the other one, exits 4 ([refused](operations.md#exit-statuses))
+  and prints the line to add after the foreign hook's first line:
+
+  ```sh
+  if command -v cw >/dev/null 2>&1; then cw hook git pre-commit "$@" </dev/null || exit $?; fi
+  ```
+
+  In `pre-push`, use `cw hook git pre-push`. Hook managers write the hook
+  files themselves, so add the line where the manager reads it: to
+  `.husky/pre-commit` for husky, which points `core.hooksPath` at `.husky/_`;
+  as a `run:` command in `lefthook.yml` for lefthook; or as a `repo: local`
+  hook with `language: system` for the pre-commit framework. `cw gate status`
+  then still reports that hook as `foreign`.
+
 ## Known bypasses
 
 The gate is a guardrail for a cooperative agent that skipped a step, not a
 defence against an agent that sets out to bypass it (see the
 [threat model](../SECURITY.md#threat-model)). Each row below lets a commit or
 push through today while the repository has an open substantial task, or lets
-`cw task verify` pass on evidence it cannot check.
+`cw task verify` pass on evidence it cannot check. In a repository where
+`cw gate install` wrote git's hooks, git runs the gate itself before each
+`git commit` and `git push`, however it was started, so the rows that come down
+to the plugin hook not seeing the git command no longer apply to commits and
+pushes there; the last row lists what still gets past git's hooks.
 
 | Way around the gate | What happens today |
 | --- | --- |
@@ -420,6 +490,7 @@ push through today while the repository has an open substantial task, or lets
 | A plan check that runs `make publish`, `python3 -c …`, `go run …` or `./release.sh` | Allowed by `cw task start`, and `cw task run` runs it with the user's rights, so it can commit and push; the hook never sees it. `cw task start` refuses shells, `env`, `sudo`, network and deployment tools, git other than inspection commands and `cw publish` by name, which guards against accidents, not against a program that does the same. |
 | Self-declared agent IDs | One agent can record itself as implementer, test engineer and reviewer under different `agent_id` strings. Independence compares those strings with each other and with the plan's `coordinator_id`; nothing authenticates them. |
 | The off switches and failures: `enforce_verify=false`, `cw` not on `PATH`, an internal error or timeout in the hook | Allowed. The deny text names the `enforce_verify` switch, and the agent can run the `claude plugin configure` command itself: the hook does not inspect it, and the option applies once Claude Code restarts. See [Fail-open rules](#fail-open-rules) and [Disabling the gate](#disabling-the-gate). |
+| Where `cw gate install` wrote git's hooks, git run outside the agent's shell tool with `--no-verify` or `CW_GATE=off`, after `core.hooksPath` changed, or with no `cw` on git's `PATH` (a GUI client's `PATH` may be shorter) | Allowed, with no message. Git skips its hooks, or the installed hook exits 0 when it finds no `cw` ([Installing the git hooks](#installing-the-git-hooks)). |
 
 ## Disabling the gate
 
@@ -431,7 +502,8 @@ first and exits 0 when it is absent; the session-start line then says so.
 Codex has no plugin configuration: start Codex with the variable instead, as
 in `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false codex` ([Codex](#codex)).
 `cw hook git` reads the same variables from git's environment, and also
-`CW_GATE=off` ([Git hooks](#git-hooks)).
+`CW_GATE=off` ([Git hooks](#git-hooks)); `cw gate uninstall` removes the git
+hooks that `cw gate install` wrote.
 
 ## Codex
 
