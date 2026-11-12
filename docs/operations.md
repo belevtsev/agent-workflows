@@ -394,6 +394,48 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### What a check runs with
+
+`cw task run` runs a check's argv directly, without a shell, in the selected
+path, with no input and `timeout_seconds` as its bound. `cw task start`,
+`cw task add-checks` and `cw task run` refuse some programs by name: shells,
+`env`, `sudo`, network and deployment tools, git other than inspection commands,
+and `cw publish`. That denylist is an accident guard, not a sandbox: `make`,
+`python3 -c`, `go run` or a script can still do anything the user can
+([threat model](../SECURITY.md#threat-model)).
+
+The check gets `cw`'s environment without the variables whose names contain
+`KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, in any case, and without
+`BASH_ENV` and `ENV`. A check that needs one of them, such as an integration
+test that reads `DB_PASSWORD` or `GOOGLE_APPLICATION_CREDENTIALS`, names it in
+its `env_passthrough`: at most 32 names matching `^[A-Z_][A-Z0-9_]*$`, each
+matched exactly.
+
+```json
+{"id": "integration", "argv": ["go", "test", "-race", "./..."], "env_passthrough": ["DB_PASSWORD"]}
+```
+
+`cw` then passes that variable with its value when its own environment sets
+it; every other variable the filter drops stays out. The plan records the
+names, never the values, and `cw task verify` lists each check whose passed run
+had them as a limitation, such as `check integration received DB_PASSWORD
+through env_passthrough, where cw's environment set them`. A value the check
+prints lands in its log in the task directory.
+
+`env_passthrough` cannot name `BASH_ENV` or `ENV` (a shell that the check starts
+would run the file they name), `GOROOT` or `GOTOOLCHAIN` (`cw` sets them for a
+go check, [below](#which-go-a-check-runs)), or `GH_TOKEN`, `GITHUB_TOKEN`,
+`GH_ENTERPRISE_TOKEN` and `GITHUB_ENTERPRISE_TOKEN`: `gh` publishes with them,
+and publication is outside task checks. `cw task start`, `cw task add-checks`
+and `cw task run` refuse such a check. Like the denylist, this guards against
+accidents: a test that calls the GitHub API can read a token under a name of
+its own, which the plan and verify then show.
+
+Variables the filter keeps, `GOFLAGS` among them, reach every check whether or
+not `env_passthrough` names them. The run records the `GOFLAGS` the check saw,
+and the Go rule credits only allowlisted flags, so a `GOFLAGS` with `-exec` or
+`-toolexec` earns no credit.
+
 ### Which go a check runs
 
 A check whose program is `go` (or `go.exe`), named bare or by a path, runs only
@@ -491,6 +533,8 @@ Checks can only be added this way, never removed, replaced or narrowed.
   would exceed 256, or an argv is not a direct `go test` that the Go rule
   credits (flags outside the allowlist, such as `-run`, and wrappers such as
   `make` earn no credit); `GOFLAGS` in `cw`'s environment plays no part here;
+- an added check's `env_passthrough` breaks the plan's rules for it
+  ([what a check runs with](#what-a-check-runs-with));
 - the merge does not qualify: `merge_commit` must resolve to a commit with at
   least two parents that is reachable from HEAD and not from the task's
   baseline HEAD or from `base_ref`, and a parent after the first must be

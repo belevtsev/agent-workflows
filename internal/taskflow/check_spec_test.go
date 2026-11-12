@@ -23,7 +23,7 @@ import (
 // check whose program is not go becomes a process, with no go command
 // resolved. Oracle: the runner before proc.Run executed
 // exec.CommandContext(argv[0], argv[1:]...) in the snapshot's selected path
-// with checkEnvironment(), no input, timeout_seconds as its bound and a 2 s
+// with checkEnvironment(check), no input, timeout_seconds as its bound and a 2 s
 // WaitDelay, and gave both outputs to the log capture, which RunCheck attaches.
 func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 	t.Setenv("CW_SPEC_PROBE_TOKEN", "hidden")
@@ -31,7 +31,7 @@ func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 	check := Check{ID: "unit", Argv: []string{"make", "test", "-j", "4"}, TimeoutSeconds: 42}
 	got, tool, err := checkSpec(t.Context(), check, "/repo/selected")
 	want := proc.Spec{
-		Path: "make", Args: []string{"test", "-j", "4"}, Dir: "/repo/selected", Env: checkEnvironment(),
+		Path: "make", Args: []string{"test", "-j", "4"}, Dir: "/repo/selected", Env: checkEnvironment(check),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
 	}
 	if err != nil || tool != nil || !reflect.DeepEqual(got, want) {
@@ -55,7 +55,7 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	dir := t.TempDir()
 	check := Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 42}
 	// go test puts the go command that runs it first on the test's PATH.
-	want, err := langpack.ResolveGo(t.Context(), "go", dir, checkEnvironment())
+	want, err := langpack.ResolveGo(t.Context(), "go", dir, checkEnvironment(check))
 	if err != nil {
 		t.Fatalf("precondition: the real go does not verify: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 		t.Fatalf("checkSpec tool = %+v, %v; want %+v", tool, err, want)
 	}
 	wantSpec := proc.Spec{
-		Path: want.Path, Args: []string{"test", "./..."}, Dir: dir, Env: append(checkEnvironment(), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local"),
+		Path: want.Path, Args: []string{"test", "./..."}, Dir: dir, Env: append(checkEnvironment(check), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local"),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
 	}
 	if !reflect.DeepEqual(got, wantSpec) {

@@ -537,6 +537,21 @@ func acCheck(id string, argv ...string) taskflow.Check {
 
 func acWidened() taskflow.Check { return acCheck("widened", acWidenedArgv...) }
 
+// acPassthroughCheck is acWidened with names as its env_passthrough, decoded
+// from add-checks input JSON as cw task add-checks decodes it.
+func acPassthroughCheck(t *testing.T, names ...string) taskflow.Check {
+	t.Helper()
+	data, err := json.Marshal(map[string]any{"id": "widened", "argv": acWidenedArgv, "env_passthrough": names})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var check taskflow.Check
+	if err := taskflow.Decode(bytes.NewReader(data), &check); err != nil {
+		t.Fatal(err)
+	}
+	return check
+}
+
 func acInput(merge string, checks ...taskflow.Check) taskflow.AmendmentInput {
 	return taskflow.AmendmentInput{MergeCommit: merge, BaseRef: "origin/main", Reason: acReason, Checks: checks}
 }
@@ -1308,6 +1323,23 @@ func acTestCheckValidation(t *testing.T) {
 		_, dir := acStandardTask(t, acPlanOpts{})
 		acExpectRefused(t, dir, acInput("HEAD", acCheck("widened", "sh", "-c", "go test ./...")),
 			"check widened: ", "checks cannot invoke a shell")
+	})
+	// An added check takes env_passthrough under the plan's rules: kept in
+	// the stored amendment, and refused for a name plan admission refuses.
+	t.Run("env_passthrough kept in the amendment (A7)", func(t *testing.T) {
+		t.Parallel()
+		_, dir := acStandardTask(t, acPlanOpts{})
+		rec := acExpectAccepted(t, dir, acInput("HEAD", acPassthroughCheck(t, "DB_PASSWORD")))
+		data, err := json.Marshal(rec.Amendments[0].Checks[0])
+		if err != nil || !bytes.Contains(data, []byte(`"env_passthrough":["DB_PASSWORD"]`)) {
+			t.Errorf("added check stored as %s (%v); want env_passthrough [DB_PASSWORD]", data, err)
+		}
+	})
+	t.Run("env_passthrough of a publication token refused (A7)", func(t *testing.T) {
+		t.Parallel()
+		_, dir := acStandardTask(t, acPlanOpts{})
+		acExpectRefused(t, dir, acInput("HEAD", acPassthroughCheck(t, "GITHUB_TOKEN")),
+			"check widened: env_passthrough cannot name GITHUB_TOKEN")
 	})
 	t.Run("A5 precedes A6 row-major", func(t *testing.T) {
 		t.Parallel()
