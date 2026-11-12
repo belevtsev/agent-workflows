@@ -23,15 +23,15 @@ func ReadTestResults(taskPath string, run CheckRun) (langpack.GoTestResults, err
 		return langpack.GoTestResults{}, err
 	}
 	defer root.Close()
-	return readTestResults(root, run)
+	return readTestResults(taskDirectory{root}, run)
 }
 
 // readTestResults reads run's stored results file from the task directory.
-func readTestResults(root *os.Root, run CheckRun) (langpack.GoTestResults, error) {
+func readTestResults(artifacts Artifacts, run CheckRun) (langpack.GoTestResults, error) {
 	if run.TestResults == "" {
 		return langpack.GoTestResults{}, errors.New("check run recorded no test results")
 	}
-	data, err := privateRead(root, run.TestResults, MaxInputBytes)
+	data, err := artifacts.Read(run.TestResults, MaxInputBytes)
 	if err != nil {
 		return langpack.GoTestResults{}, err
 	}
@@ -70,7 +70,7 @@ func writeTestResults(path, runID string, results langpack.GoTestResults) (strin
 // Trace reports each plan requirement with the contract requirements linked to
 // it, their mapped tests and the check runs that recorded them, judged at the
 // current source. It changes nothing.
-func Trace(ctx context.Context, taskPath string) (TraceReport, error) {
+func (env Env) Trace(ctx context.Context, taskPath string) (TraceReport, error) {
 	root, directory, err := openTask(taskPath)
 	if err != nil {
 		return TraceReport{}, err
@@ -80,14 +80,14 @@ func Trace(ctx context.Context, taskPath string) (TraceReport, error) {
 	if err != nil {
 		return TraceReport{}, err
 	}
-	snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+	snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return TraceReport{}, err
 	}
 	view := newSourceView(snapshot, files)
-	report := judgeTrace(root, record, view).report
+	report := judgeTrace(taskDirectory{root}, record, view).report
 	view.close()
-	after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+	after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return TraceReport{}, err
 	}
@@ -336,7 +336,7 @@ type judgedEntry struct {
 // with a completed result, and the coverage closed ones lost, from the record,
 // the task directory and the current source. A PASS counts only when the run
 // proves it (R7, R8).
-func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgement {
+func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudgement {
 	snapshot := view.snapshot
 	judgement := traceJudgement{report: TraceReport{TaskID: record.ID, Fingerprint: snapshot.Fingerprint, Criteria: []TraceCriterion{}, Problems: []string{}}}
 	loaded := map[string]*storedResults{}
@@ -345,7 +345,7 @@ func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgeme
 		if run.Status == "running" || run.TestResults == "" {
 			continue
 		}
-		results, err := readTestResults(taskRoot, *run)
+		results, err := readTestResults(artifacts, *run)
 		if err != nil {
 			problem := fmt.Sprintf("check run %s test results: stored file cannot be read or differs from its sha256", run.ID)
 			judgement.unreadable = append(judgement.unreadable, problem)
@@ -430,7 +430,7 @@ func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgeme
 			return judged
 		}
 		if gated(record) {
-			if authored := view.authorship(taskRoot, record).classify(test.Path); authored.status != "independent" {
+			if authored := view.authorship(artifacts, record).classify(test.Path); authored.status != "independent" {
 				judged.Status, judged.Detail = "not_independent", fmt.Sprintf("%s is %s: %s", test.Path, authored.status, authored.reason)
 				return judged
 			}
@@ -646,12 +646,12 @@ func (results *storedResults) lookup(pkg, name string) (langpack.GoTestResult, b
 
 // traceVerifyEntries turns the judgement of mapped tests into verify's
 // problems (R6, R32, R30, R42, in that order) and limitations (R31, R41).
-func traceVerifyEntries(root *os.Root, record Record, view *sourceView) (problems, limitations []string) {
-	problems = inputCopyProblems(root, record)
+func traceVerifyEntries(artifacts Artifacts, record Record, view *sourceView) (problems, limitations []string) {
+	problems = inputCopyProblems(artifacts, record)
 	if !slices.ContainsFunc(record.Assignments, mapBearing) {
 		return problems, nil
 	}
-	judgement := judgeTrace(root, record, view)
+	judgement := judgeTrace(artifacts, record, view)
 	if judgement.judged > 0 {
 		problems = append(problems, judgement.unreadable...)
 	}

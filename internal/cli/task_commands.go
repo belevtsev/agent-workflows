@@ -205,7 +205,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err != nil {
 			return err
 		}
-		value, err := taskflow.BuildBundle(cmd.Context(), bundleTask, bundleReview)
+		value, err := taskEnv(config).BuildBundle(cmd.Context(), bundleTask, bundleReview)
 		if err != nil {
 			return err
 		}

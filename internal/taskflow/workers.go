@@ -312,7 +312,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
-			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
+			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("adjudicate and attach the before checkpoint before dispatching workers: %w", err)
 			}
 		}
@@ -325,7 +325,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
 		}
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -337,7 +337,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if err != nil {
 			return err
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -348,7 +348,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 			return err
 		}
 		if brief.Role == "review" || brief.Bundle != nil {
-			if assignment.BundleFile, err = storeReviewBundle(ctx, root, *record, brief, after); err != nil {
+			if assignment.BundleFile, err = env.storeReviewBundle(ctx, root, *record, brief, after); err != nil {
 				return err
 			}
 		}
@@ -512,11 +512,11 @@ func reachRunsShape(role string, runs []ReachRun) error {
 // runs only when the result is submitted: records written before reach_runs
 // existed still load, and a review assigned with a version 1 bundle, which
 // never asked for runs, needs none.
-func reachRunCoverage(root *os.Root, assigned WorkerAssignment, result WorkerResult) error {
+func reachRunCoverage(artifacts Artifacts, assigned WorkerAssignment, result WorkerResult) error {
 	if assigned.Brief.Role != "review" || result.Status != "completed" || assigned.BundleFile == "" {
 		return nil
 	}
-	bundle, err := readStoredBundle(root, assigned)
+	bundle, err := readStoredBundle(artifacts, assigned)
 	if err != nil {
 		return err
 	}
@@ -761,7 +761,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if findWorkerResult(*record, input.AssignmentID) != nil {
 			return errors.New("assignment already has an immutable terminal result; use a new assignment ID")
 		}
-		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -782,7 +782,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 				return err
 			}
 		}
-		if err := reachRunCoverage(root, *assigned, input); err != nil {
+		if err := reachRunCoverage(taskDirectory{root}, *assigned, input); err != nil {
 			return err
 		}
 		eligible := func(changed WorkerChangedFile) bool { return gofmtEligible(*assigned, changed) }
@@ -794,7 +794,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		for _, id := range runs {
-			if err := workerCheckArtifact(root, *record, id); err != nil {
+			if err := workerCheckArtifact(taskDirectory{root}, *record, id); err != nil {
 				return err
 			}
 		}
@@ -831,7 +831,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if err != nil {
 			return err
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -929,7 +929,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 		if result == nil {
 			return errors.New("acceptance references a missing worker result; record a terminal handoff first")
 		}
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -948,7 +948,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				return err
 			}
 			for _, id := range result.CheckRuns {
-				if err := workerCheckArtifact(root, *record, id); err != nil {
+				if err := workerCheckArtifact(taskDirectory{root}, *record, id); err != nil {
 					return err
 				}
 			}
@@ -970,11 +970,11 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		for _, id := range runs {
-			if err := checkStoredRun(root, *record, snapshot, id); err != nil {
+			if err := checkStoredRun(taskDirectory{root}, *record, snapshot, id); err != nil {
 				return err
 			}
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -993,12 +993,12 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 	})
 }
 
-func workerCheckArtifact(root *os.Root, record Record, id string) error {
+func workerCheckArtifact(artifacts Artifacts, record Record, id string) error {
 	for _, run := range record.Checks {
 		if run.ID != id {
 			continue
 		}
-		data, err := privateRead(root, run.Log, MaxLogBytes)
+		data, err := artifacts.Read(run.Log, MaxLogBytes)
 		if err != nil {
 			return err
 		}
@@ -1072,7 +1072,7 @@ func deferredFindingLimitations(record Record) []string {
 	return limitations
 }
 
-func workerEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Snapshot) []string {
+func workerEvidenceProblems(artifacts Artifacts, record Record, snapshot projectctx.Snapshot) []string {
 	problems := []string{}
 	currentReview := false
 	for _, assigned := range record.Assignments {
@@ -1128,17 +1128,17 @@ func workerEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sn
 			problems = append(problems, fmt.Sprintf("worker assignment %s: %v", assigned.Brief.ID, fresh))
 		}
 		for _, id := range result.CheckRuns {
-			if err := workerCheckArtifact(root, record, id); err != nil {
+			if err := workerCheckArtifact(artifacts, record, id); err != nil {
 				problems = append(problems, fmt.Sprintf("worker assignment %s: %v", assigned.Brief.ID, err))
 			}
 		}
 		for _, id := range accepted.CheckRuns {
-			if err := workerCheckArtifact(root, record, id); err != nil {
+			if err := workerCheckArtifact(artifacts, record, id); err != nil {
 				problems = append(problems, fmt.Sprintf("worker acceptance %s: %v", assigned.Brief.ID, err))
 			}
 		}
 		if assigned.BundleFile != "" {
-			if err := reviewBundleArtifact(root, assigned); err != nil {
+			if err := reviewBundleArtifact(artifacts, assigned); err != nil {
 				problems = append(problems, fmt.Sprintf("worker assignment %s: %v", assigned.Brief.ID, err))
 			}
 		}

@@ -58,7 +58,7 @@ func traceSummary(directory string, report taskflow.TraceReport) taskTraceSummar
 
 // addTaskTraceCommand adds `cw task trace` to the task command that
 // addTaskCommands registered on root.
-func addTaskTraceCommand(root *cobra.Command) {
+func addTaskTraceCommand(root *cobra.Command, config Config) {
 	var task *cobra.Command
 	for _, command := range root.Commands() {
 		if command.Name() == "task" {
@@ -86,7 +86,7 @@ func addTaskTraceCommand(root *cobra.Command) {
 			if directory == "" {
 				return usage(errors.New("trace needs --task"))
 			}
-			report, err := taskflow.Trace(cmd.Context(), directory)
+			report, err := taskEnv(config).Trace(cmd.Context(), directory)
 			if err != nil {
 				return err
 			}

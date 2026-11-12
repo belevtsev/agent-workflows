@@ -71,7 +71,7 @@ func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 			source.Current = append(source.Current, name)
 		}
 	}
-	baseline, err := readBaselineManifest(root, *record.BaselineManifest)
+	baseline, err := readBaselineManifest(taskDirectory{root}, *record.BaselineManifest)
 	if err != nil {
 		return langpack.Source{}, err
 	}

@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
-  so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- Task rules read the source, the clock and task artefacts through ports (`taskflow.Env`, `cli.Config.Now`),
+  so a rule test uses fakes instead of a Git repository or waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

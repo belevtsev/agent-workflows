@@ -3,13 +3,12 @@ package cli
 import (
 	"errors"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
 // addTaskAuthorshipCommand adds `cw task authorship` to the task command that
 // addTaskCommands registered on root.
-func addTaskAuthorshipCommand(root *cobra.Command) {
+func addTaskAuthorshipCommand(root *cobra.Command, config Config) {
 	var task *cobra.Command
 	for _, command := range root.Commands() {
 		if command.Name() == "task" {
@@ -36,7 +35,7 @@ func addTaskAuthorshipCommand(root *cobra.Command) {
 			if directory == "" {
 				return usage(errors.New("authorship needs --task"))
 			}
-			report, err := taskflow.Authorship(cmd.Context(), directory)
+			report, err := taskEnv(config).Authorship(cmd.Context(), directory)
 			if err != nil {
 				return err
 			}

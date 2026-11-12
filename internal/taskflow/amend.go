@@ -125,7 +125,7 @@ func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput)
 				return fmt.Errorf("check %s is not a direct go test that the Go evidence rule credits", check.ID)
 			}
 		}
-		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -166,7 +166,7 @@ func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput)
 				return fmt.Errorf("check %s covers no package or module file that the merge changed, that is still changed since the baseline, and that no earlier check covers", request.checks[i].ID)
 			}
 		}
-		after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}

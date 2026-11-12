@@ -94,7 +94,7 @@ func TestTaskAuthorshipCLIPrintsReport(t *testing.T) {
 		rep.Files[0].Status != "unowned" || rep.Files[1].Status != "unowned" {
 		t.Errorf("printed report %s, want task %s with p/stray_test.go and p/te_test.go unowned (R19, R20)", line, f.id)
 	}
-	direct, err := taskflow.Authorship(f.ctx, f.dir)
+	direct, err := taskflow.Env{}.Authorship(f.ctx, f.dir)
 	if err != nil {
 		t.Fatalf("taskflow.Authorship: %v", err)
 	}

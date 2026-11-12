@@ -161,7 +161,7 @@ func TestTaskBundleWritesBundleAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bundle, err := taskflow.BuildBundle(t.Context(), h.record.Directory, "review1")
+	bundle, err := taskflow.Env{}.BuildBundle(t.Context(), h.record.Directory, "review1")
 	if err != nil {
 		t.Fatal(err)
 	}
