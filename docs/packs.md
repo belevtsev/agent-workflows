@@ -116,10 +116,14 @@ process. The technical steps are these.
    open tasks keep the id they recorded.
 4. List in `skills` only skills that ship: a core skill under `skills/`, or
    `cc-skills-golang:<name>`. No plugin ships skills from `packs/` today.
-5. Update the tests that pin the built-in set to the Go pack alone:
+5. Update the tests that pin the built-in set to the Go pack alone. Any new
+   pack fails these:
    - `TestDefaultSelectionAndEmbeddedPacks` in `internal/langpack`;
    - `TestPackAddRemove` and `TestTaskStartRecordsPacks` in `internal/cli`;
    - `TestStartWithPacksRecordsPackSet` in `internal/taskflow`.
+
+   A `language` pack also changes the default selection, so it fails
+   `TestPackList` and `TestPackDefaultConfigDir` in `internal/cli` too.
 6. Run `go test ./internal/langpack ./internal/skillcheck ./internal/cli ./internal/taskflow`.
    `TestRepositoryPacks` in `internal/skillcheck` checks that each pack loads,
    names a known rule and lists skills that exist.

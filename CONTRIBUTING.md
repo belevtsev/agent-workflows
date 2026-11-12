@@ -56,7 +56,7 @@ For a new skill, you can open a skill proposal issue first to discuss scope.
 
 A pack is built into `cw`: a `packs/<id>/pack.yaml` file, plus Go code in `internal/langpack` when it needs a new evidence rule. [Packs](docs/packs.md) describes the format, what `cw` reads and the steps.
 
-1. Open an issue with the [pack proposal template](.github/ISSUE_TEMPLATE/pack_proposal.md) before you write code. Agree on the kind and the evidence rule first: a `language` pack is selected by default, so its rule changes `cw task verify` for every user with that language.
+1. Open an issue with the [pack proposal template](.github/ISSUE_TEMPLATE/pack_proposal.md) before you write code. Agree on the kind and the evidence rule first. A `language` pack is selected for every user who has no `packs.json`, as soon as they update `cw`. Its rule then applies to their new tasks.
 2. Follow [Add a pack](docs/packs.md#add-a-pack), including the tests it names.
 3. In the CHANGELOG entry, say how a user opts out (`cw pack remove <id>`) when the pack is selected by default.
 
