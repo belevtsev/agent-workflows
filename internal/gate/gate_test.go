@@ -1,0 +1,262 @@
+package gate_test
+
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/gate"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
+)
+
+// These tests drive Decide through its Deps alone: a fake Git that answers
+// from a table, a fixed clock and a fake Store. No git process runs and no
+// task record exists on disk.
+
+// fixedNow is the clock every test passes as Deps.Now.
+var fixedNow = time.Date(2026, 11, 12, 9, 30, 0, 0, time.UTC)
+
+// fakeGit answers git commands from a table keyed by "DIR: ARGS" and records
+// every call in the same form. A command without an answer fails.
+type fakeGit struct {
+	answers map[string]string
+	calls   []string
+}
+
+func (f *fakeGit) run(_ context.Context, dir string, args ...string) (string, error) {
+	key := dir + ": " + strings.Join(args, " ")
+	f.calls = append(f.calls, key)
+	if output, ok := f.answers[key]; ok {
+		return output, nil
+	}
+	return "", errors.New("fake git has no answer for " + key)
+}
+
+// answer adds output for git args run in dir.
+func (f *fakeGit) answer(dir, args, output string) {
+	if f.answers == nil {
+		f.answers = map[string]string{}
+	}
+	f.answers[dir+": "+args] = output
+}
+
+// repository makes the fake resolve dir as the top level of a main
+// worktree.
+func (f *fakeGit) repository(dir string) {
+	f.answer(dir, "rev-parse --show-toplevel", dir+"\n")
+	f.answer(dir, "rev-parse --path-format=absolute --git-common-dir", filepath.Join(dir, ".git")+"\n")
+}
+
+// storeCall is one FindOpen call the fake store saw.
+type storeCall struct {
+	repo taskflow.Repository
+	now  time.Time
+}
+
+// fakeStore returns fixed open records per worktree, or err.
+type fakeStore struct {
+	open  map[string][]taskflow.OpenRecord
+	err   error
+	calls []storeCall
+}
+
+func (s *fakeStore) FindOpen(_ context.Context, repo taskflow.Repository, now time.Time) ([]taskflow.OpenRecord, error) {
+	s.calls = append(s.calls, storeCall{repo: repo, now: now})
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.open[repo.Worktree], nil
+}
+
+// canonicalDir returns a fresh directory in canonical form; the repository
+// resolver keeps only top levels that exist.
+func canonicalDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// record is an open record; problem "" means its verification covers the
+// source.
+func record(id, title, problem string) taskflow.OpenRecord {
+	return taskflow.OpenRecord{Record: taskflow.Record{ID: id, Directory: "/store/" + id, Plan: taskflow.Plan{Title: title}}, Problem: problem}
+}
+
+func decide(command, cwd string, enforce, prompt bool, git *fakeGit, store *fakeStore) gate.Decision {
+	return gate.Decide(context.Background(), gate.Input{Command: command, CWD: cwd, Enforce: enforce, Prompt: prompt},
+		gate.Deps{Git: git.run, Now: func() time.Time { return fixedNow }, Store: store})
+}
+
+func TestDecideDeniesWhileARecordGates(t *testing.T) {
+	repo := canonicalDir(t)
+	git := &fakeGit{}
+	git.repository(repo)
+	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {record("task-1", "Add retries", "it has no passing cw task verify")}}}
+
+	got := decide("git commit -m x && git push origin main", repo, true, true, git, store)
+
+	// Oracle: the deny text cw hook pre-publish printed before the gate left
+	// internal/cli, byte for byte, for one gating record.
+	want := gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: git commit and push stay blocked while a task for this repository is open: " +
+		"each must pass cw task verify on the source being published, or be closed. " +
+		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task /store/task-1 --summary`, " +
+		"or close it with `cw task abandon --task /store/task-1 --reason TEXT` if it is finished or was given up. " +
+		"To turn the gate off, set enforce_verify=false in the plugin config."}
+	if got != want {
+		t.Fatalf("Decide = %+v\nwant %+v", got, want)
+	}
+	// Oracle: a commit and a push from one worktree read its records once,
+	// for the resolved repository and at the time Deps.Now reports.
+	if len(store.calls) != 1 {
+		t.Fatalf("store calls %+v, want one", store.calls)
+	}
+	if call := store.calls[0]; call.repo.Worktree != repo || !slices.Equal(call.repo.Roots, []string{repo}) || !call.now.Equal(fixedNow) {
+		t.Fatalf("store call %+v, want worktree and roots %s at %v", call, repo, fixedNow)
+	}
+}
+
+func TestDecideAsksBeforePushingUncommittedChangesOverAVerifiedRecord(t *testing.T) {
+	repo := canonicalDir(t)
+	verified := map[string][]taskflow.OpenRecord{repo: {record("task-2", "Fix parser", "")}}
+	status := "status --porcelain --untracked-files=no --ignore-submodules=none"
+	// Oracle: the ask text cw hook pre-publish printed before the move.
+	ask := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: task task-2 (Fix parser) passed cw task verify on the working tree, " +
+		"but the working tree has uncommitted changes to tracked files, so the pushed commits may not hold the verified source. " +
+		"Commit the changes and verify again, or confirm to push anyway."}
+	for _, c := range []struct {
+		name    string
+		command string
+		enforce bool
+		status  string
+		want    gate.Decision
+	}{
+		// Oracle for each row: only a push asks, only with enforce on, and
+		// only when git status lists a tracked change.
+		{"push of a dirty tree asks", "git push origin main", true, " M source.txt\n", ask},
+		{"commit of a dirty tree is allowed", "git commit -m x", true, " M source.txt\n", gate.Decision{}},
+		{"push with enforce off is allowed", "git push origin main", false, " M source.txt\n", gate.Decision{}},
+		{"push of a clean tree is allowed", "git push origin main", true, "", gate.Decision{}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			git := &fakeGit{}
+			git.repository(repo)
+			git.answer(repo, status, c.status)
+			if got := decide(c.command, repo, c.enforce, true, git, &fakeStore{open: verified}); got != c.want {
+				t.Fatalf("Decide = %+v\nwant %+v", got, c.want)
+			}
+		})
+	}
+}
+
+func TestDecideAsksForAnUnrecordedSubstantialChange(t *testing.T) {
+	repo := canonicalDir(t)
+	numstat := "diff --numstat -z --no-renames --no-ext-diff --no-textconv"
+	// 320 changed lines under two top-level directories, code without tests:
+	// all three signs.
+	changes := "250\t60\tpkg/a.go\x0010\t0\tcmd/b.go\x00"
+	signs := "320 changed lines (more than 300); changes in 2 top-level directories (cmd, pkg); code changed with no test file changed"
+	advice := "Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. " +
+		"Set small_task_prompt=false in the plugin config to stop this prompt."
+
+	t.Run("commit", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		git.answer(repo, numstat+" --cached", changes)
+		got := decide("git commit -m x", repo, true, true, git, &fakeStore{})
+		// Oracle: the commit wording of the ask text printed before the move.
+		want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: this commit looks like a substantial change with no cw task record for " + repo + ": " + signs + ". " + advice}
+		if got != want {
+			t.Fatalf("Decide = %+v\nwant %+v", got, want)
+		}
+	})
+
+	t.Run("push", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		git.answer(repo, "rev-parse --verify --quiet @{upstream}", "0123abcd\n")
+		git.answer(repo, numstat+" 0123abcd...HEAD", changes)
+		got := decide("git push", repo, true, true, git, &fakeStore{})
+		// Oracle: a push compares HEAD with the upstream git reports, its
+		// trailing newline removed, and uses the push wording.
+		want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commits being pushed look like a substantial change with no cw task record for " + repo + ": " + signs + ". " + advice}
+		if got != want {
+			t.Fatalf("Decide = %+v\nwant %+v", got, want)
+		}
+	})
+
+	t.Run("prompt off", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		git.answer(repo, numstat+" --cached", changes)
+		// Oracle: small_task_prompt=false turns this ask off.
+		if got := decide("git commit -m x", repo, true, false, git, &fakeStore{}); got != (gate.Decision{}) {
+			t.Fatalf("Decide = %+v, want allow", got)
+		}
+	})
+}
+
+func TestDecideDenyWinsOverAsk(t *testing.T) {
+	gated, unrecorded := canonicalDir(t), canonicalDir(t)
+	git := &fakeGit{}
+	git.repository(gated)
+	git.repository(unrecorded)
+	git.answer(unrecorded, "diff --numstat -z --no-renames --no-ext-diff --no-textconv --cached", "400\t0\tpkg/a.go\x001\t0\tcmd/b.go\x00")
+	store := &fakeStore{open: map[string][]taskflow.OpenRecord{gated: {record("task-3", "Gated", "its source changed after the last passing cw task verify")}}}
+
+	got := decide("git -C "+unrecorded+" commit -m y; git commit -m x", gated, true, true, git, store)
+
+	// Oracle: a deny for one publication in the command wins over an ask for
+	// another, and names only the gating record.
+	if got.Permission != gate.Deny || !strings.Contains(got.Reason, "Task task-3 (Gated): its source changed after the last passing cw task verify;") || strings.Contains(got.Reason, "substantial change") {
+		t.Fatalf("Decide = %+v, want a deny naming only task-3", got)
+	}
+}
+
+func TestDecideFailsOpen(t *testing.T) {
+	repo := canonicalDir(t)
+	gating := map[string][]taskflow.OpenRecord{repo: {record("task-4", "T", "it has no passing cw task verify")}}
+
+	t.Run("git fails", func(t *testing.T) {
+		git := &fakeGit{}
+		store := &fakeStore{open: gating}
+		// Oracle: a repository git cannot resolve is not checked.
+		if got := decide("git commit -m x", repo, true, true, git, store); got != (gate.Decision{}) || len(store.calls) != 0 {
+			t.Fatalf("Decide = %+v with %d store calls, want allow and none", got, len(store.calls))
+		}
+	})
+
+	t.Run("store fails", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		// Oracle: records that cannot be read never gate.
+		if got := decide("git commit -m x", repo, true, true, git, &fakeStore{err: errors.New("unreadable")}); got != (gate.Decision{}) {
+			t.Fatalf("Decide = %+v, want allow", got)
+		}
+	})
+
+	t.Run("both options off", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		// Oracle: enforce_verify=false and small_task_prompt=false switch the
+		// gate off before it runs git.
+		if got := decide("git commit -m x", repo, false, false, git, &fakeStore{open: gating}); got != (gate.Decision{}) || len(git.calls) != 0 {
+			t.Fatalf("Decide = %+v after git calls %v, want allow and none", got, git.calls)
+		}
+	})
+
+	t.Run("nothing published", func(t *testing.T) {
+		git := &fakeGit{}
+		git.repository(repo)
+		// Oracle: a command with no git commit or push runs no git.
+		if got := decide("git status && echo git commit", repo, true, true, git, &fakeStore{open: gating}); got != (gate.Decision{}) || len(git.calls) != 0 {
+			t.Fatalf("Decide = %+v after git calls %v, want allow and none", got, git.calls)
+		}
+	})
+}

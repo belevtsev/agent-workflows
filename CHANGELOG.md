@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
+  clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking
