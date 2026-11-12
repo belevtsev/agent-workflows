@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
   without hard links ([diagnostics][diag]).
+- Resuming a Codex thread no longer adds the conventions again, nor a second `cw gate install` line beside the compaction that
+  can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

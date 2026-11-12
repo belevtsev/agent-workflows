@@ -51,8 +51,11 @@ type hookInput struct {
 	// TurnID and Model are Codex's documented extensions of the hook input;
 	// Claude Code's PreToolUse input has neither, although it sends turn_id
 	// for another event. testdata holds one recorded input from each host.
-	TurnID    string `json:"turn_id"`
-	Model     string `json:"model"`
+	TurnID string `json:"turn_id"`
+	Model  string `json:"model"`
+	// Source is how a session started, in SessionStart input only: startup,
+	// resume, clear or compact (and fork under Codex).
+	Source    string `json:"source"`
 	ToolInput struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
@@ -107,7 +110,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	var instructions, cache string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
-		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
+		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context; nothing when Codex resumes a thread",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
@@ -295,6 +298,14 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 // sessionStartContext returns the instructions file, followed by any version
 // notes and the cw gate install line, and by the doctor summary when the
 // plugin option asks for it and it can be produced in time.
+//
+// When Codex resumes a thread it returns "" and true, so the hook prints a
+// SessionStart object without additionalContext. The thread already holds
+// what earlier session starts added, and Codex adds the context again after
+// a compaction, so a resume would only add a second copy. Printing nothing
+// instead would make the hook command fall back to printing the file.
+// Returning before gateInstallNote also keeps the resume from suggesting cw
+// gate install beside the compact run Codex can start at the same moment.
 func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string) (string, bool) {
 	data, err := os.ReadFile(instructions)
 	if err != nil || len(bytes.TrimSpace(data)) == 0 {
@@ -302,12 +313,17 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 	}
 	text := strings.TrimRight(string(data), "\n")
 	// Only the cw gate install line, which the gate being off silences, and
-	// the doctor summary need the session's directory.
+	// the doctor summary need the session's directory; under Codex the
+	// source decides whether there is anything to add.
 	gate := config.Getenv(enforceVerifyOption) != "false"
 	doctor := config.Getenv(sessionDoctorOption) == "true"
-	dir := ""
-	if gate || doctor {
-		dir = sessionDirectory(config)
+	codex := config.Getenv(codexPluginRoot) != ""
+	dir, source := "", ""
+	if gate || doctor || codex {
+		dir, source = sessionInput(config)
+	}
+	if codex && source == "resume" {
+		return "", true
 	}
 	var notes []string
 	if note := versionNotes(config, instructions); note != "" {
@@ -334,36 +350,37 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 // which the host has written by the time the hook runs.
 const hookSessionInputTimeout = 2 * time.Second
 
-// sessionDirectory returns the session's directory: the cwd of the hook
-// input on stdin, else the working directory, which Claude Code and Codex
-// both set to the session's directory; "" when neither is known. A host that
-// keeps stdin open would hold the read until it kills the hook, so the read
-// gets hookSessionInputTimeout and is then abandoned. It runs in a goroutine
-// with a timer rather than with a read deadline, which a pipe on darwin does
-// not support.
-func sessionDirectory(config Config) string {
-	read := make(chan string, 1)
+// sessionInput returns the session's directory and how the session started.
+// The directory is the cwd of the hook input on stdin, else the working
+// directory, which Claude Code and Codex both set to the session's directory;
+// "" when neither is known. The source is the input's source, "" when the
+// input cannot be read. A host that keeps stdin open would hold the read
+// until it kills the hook, so the read gets hookSessionInputTimeout and is
+// then abandoned. It runs in a goroutine with a timer rather than with a read
+// deadline, which a pipe on darwin does not support.
+func sessionInput(config Config) (dir, source string) {
+	read := make(chan hookInput, 1)
 	go func() {
 		input, err := readHookInput(config.In)
 		if err != nil {
-			input.CWD = ""
+			input = hookInput{}
 		}
-		read <- input.CWD
+		read <- input
 	}()
 	timer := time.NewTimer(hookSessionInputTimeout)
 	defer timer.Stop()
 	select {
-	case dir := <-read:
-		if dir != "" {
-			return dir
+	case input := <-read:
+		if input.CWD != "" {
+			return input.CWD, input.Source
 		}
 	case <-timer.C:
 	}
 	dir, err := config.WorkingDir()
 	if err != nil {
-		return ""
+		return "", ""
 	}
-	return dir
+	return dir, ""
 }
 
 // cachedDoctorSummary returns the one-line doctor summary for dir, served from the
