@@ -5,17 +5,19 @@ package proc
 import (
 	"errors"
 	"os/exec"
+	"time"
 )
 
-func ownGroup(*exec.Cmd) {}
+func ownGroup(*exec.Cmd, bool) {}
 
-// endGroup kills the command itself when the run is stopped. Without process
-// groups nothing else is known to belong to the run.
-func endGroup(command *exec.Cmd, stopped bool) error {
-	if stopped {
-		_ = command.Process.Kill()
-	}
-	return nil
+// endGroup has nothing to kill: without process groups nothing else is known
+// to belong to the run.
+func endGroup(*exec.Cmd) error { return nil }
+
+// stopGroup kills the command itself, at once, and returns its Wait result.
+func stopGroup(command *exec.Cmd, _ time.Duration, done <-chan error) (waitErr, cleanup error) {
+	_ = command.Process.Kill()
+	return <-done, nil
 }
 
 // KillGroup is unavailable without process groups.

@@ -9,13 +9,16 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
 // defaultPath is the only PATH a child inherits beyond the runtime's own
 // directory, so an inherited PATH cannot substitute git or Graphify helpers.
 const defaultPath = "/bin:/usr/bin"
 
-// killWait bounds the wait for pipes after a process group has been killed.
+// killWait bounds the wait for pipes after the leader has exited or its
+// process group has been killed.
 const killWait = 5 * time.Second
 
 // environment is deliberately minimal: no inherited API keys, interpreter
@@ -80,12 +83,12 @@ func run(ctx context.Context, arguments []string, directory string, env []string
 
 // capturedOutput shares one raw byte budget between both pipe copiers. Writes
 // always consume their input, including after overflow, so only the owner of the
-// process decides when to kill and join it.
+// process decides when to kill and join it; the first overflow calls stop.
 type capturedOutput struct {
 	mu             sync.Mutex
 	remaining      int
 	stdout, stderr bytes.Buffer
-	overflow       chan struct{}
+	stop           context.CancelFunc
 	exceeded       bool
 }
 
@@ -107,7 +110,7 @@ func (stream captureStream) Write(data []byte) (int, error) {
 	output.remaining -= count
 	if count < len(data) && !output.exceeded {
 		output.exceeded = true
-		close(output.overflow)
+		output.stop()
 	}
 	return len(data), nil
 }
@@ -122,66 +125,46 @@ func runWithOutputLimit(ctx context.Context, arguments []string, directory strin
 	if len(arguments) == 0 {
 		return 0, "", "", errors.New("missing tool command")
 	}
-	output := &capturedOutput{remaining: max(0, limit), overflow: make(chan struct{})}
-	command := &exec.Cmd{Path: arguments[0], Args: arguments, Dir: directory, Env: env,
-		Stdout: captureStream{output: output}, Stderr: captureStream{output: output, stderr: true}, WaitDelay: killWait}
-	isolate(command)
-	if err := command.Start(); err != nil {
-		return 0, "", "", err
-	}
-	done := make(chan error, 1)
-	go func() { done <- command.Wait() }()
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-	var waitErr error
+	// An overflow stops the run as a cancellation of runCtx would.
+	runCtx, stop := context.WithCancel(ctx)
+	defer stop()
+	output := &capturedOutput{remaining: max(0, limit), stop: stop}
+	// The leader gets a session of its own. proc.Run kills its group until no
+	// member is alive when the run ends, after a normal exit too: completion
+	// transfers no descendant lifetime to the caller. A non-positive timeout
+	// still times out at once.
+	got := proc.Run(runCtx, proc.Spec{Path: arguments[0], Args: arguments[1:], Dir: directory, Env: env,
+		Stdout: captureStream{output: output}, Stderr: captureStream{output: output, stderr: true},
+		Timeout: max(timeout, time.Nanosecond), WaitDelay: killWait, Session: true})
+	output.mu.Lock()
+	exceeded := output.exceeded
+	output.mu.Unlock()
+	// The leader can exit after its output has already overflowed.
 	var interrupted error
-	joined := false
-	select {
-	case waitErr = <-done:
-		joined = true
-	case <-output.overflow:
+	switch {
+	case exceeded:
 		interrupted = refuse("output_limit", "Tool output exceeded the local limit")
-	case <-timer.C:
-		interrupted = refuse("timeout", "Graphify operation timed out; no incomplete graph was activated")
-	case <-ctx.Done():
+	case got.Stopped && ctx.Err() != nil:
 		interrupted = ctx.Err()
-	}
-	// Wait can win the select after a short-lived child has already overflowed.
-	// Kill the group even then: descendants may outlive the direct child, and
-	// exec's context watcher would no longer own their lifetime.
-	if interrupted == nil {
-		select {
-		case <-output.overflow:
-			interrupted = refuse("output_limit", "Tool output exceeded the local limit")
-		default:
-		}
+	case got.Stopped:
+		interrupted = refuse("timeout", "Graphify operation timed out; no incomplete graph was activated")
 	}
 	if interrupted != nil {
-		killGroup(command)
-		if !joined {
-			// This is the only Wait result. WaitDelay closes retained pipes and
-			// joins the copiers; never abandon a goroutine writing our buffers.
-			<-done //nolint:errcheck // interrupted is the error to report; this receive only joins Wait.
-		}
-		// One group kill can miss a member that another member was forking at
-		// that moment (seen on macOS), and that member need not be the leader.
-		// With the leader joined, kill until the group has no live member.
-		if err := stopGroup(command); err != nil {
-			return 0, "", "", errors.Join(interrupted, cleanupFailed(err))
+		if got.Cleanup != nil {
+			return 0, "", "", errors.Join(interrupted, cleanupFailed(got.Cleanup))
 		}
 		return 0, "", "", interrupted
 	}
-	// Completion transfers no descendant lifetime to the caller. Wait may
-	// retain ExitError over a copier timeout, and redirected descendants can
-	// outlive even a successful, fully joined leader.
-	if err := stopGroup(command); err != nil {
-		return 0, "", "", cleanupFailed(err)
+	if got.Cleanup != nil {
+		return 0, "", "", cleanupFailed(got.Cleanup)
 	}
-	if _, exited := errors.AsType[*exec.ExitError](waitErr); waitErr != nil && !exited {
-		return 0, "", "", waitErr
+	// Wait may retain ExitError over a copier timeout; any other error, such
+	// as a start failure or a descendant holding the output, is reported.
+	if _, exited := errors.AsType[*exec.ExitError](got.Err); got.Err != nil && !exited {
+		return 0, "", "", got.Err
 	}
 	// Invalid bytes become replacement characters, one per byte.
-	return command.ProcessState.ExitCode(), string([]rune(output.stdout.String())), string([]rune(output.stderr.String())), nil
+	return got.Code, string([]rune(output.stdout.String())), string([]rune(output.stderr.String())), nil
 }
 
 // cleanupFailed reports a tool process that survived the group kill, so a
