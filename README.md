@@ -69,15 +69,15 @@ repositories need any one passed check.
 
 Install `cw`, which records tasks and runs checks, from the release archive for
 your system on the
-[v3.0.0-rc.1 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.1)
+[v3.0.0-rc.2 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.2)
 ([steps](docs/operations.md#get-cw)), or build that tag with Go 1.27.1 or newer:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2
 ```
 
 The project owner pushes each release tag; the release page and `go install`
-work once `v3.0.0-rc.1` is tagged.
+work once `v3.0.0-rc.2` is tagged.
 
 **Claude Code.** Add the marketplace:
 

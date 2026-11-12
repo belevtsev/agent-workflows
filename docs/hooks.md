@@ -23,13 +23,13 @@ short line for each version that is out of step, and one when git's hooks
 would catch more than the plugin hook does; the context is paid for in every
 session, so there is nothing when all is in order:
 
-- `plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw` when the `version` of the
+- `plugin 3.0.0-rc.3, cw 3.0.0-rc.2: upgrade cw` when the `version` of the
   plugin manifest beside `global/` (`.claude-plugin/plugin.json`, or
   `.codex-plugin/plugin.json` under [Codex](#codex)) and the `cw version`
   differ on major, minor, patch or pre-release. It ends `update the plugin`
   when `cw` is the newer one. A `cw` built between tags (`dev` or a Go
-  pseudo-version) is not compared. A `cw` older than this check, such as
-  v3.0.0-rc.1, prints no line.
+  pseudo-version) is not compared. A `cw` older than v3.0.0-rc.2 prints no
+  line.
 - `Claude Code 2.1.291, agent-workflows needs 2.1.292: upgrade Claude Code`
   when the client is older than the minimum in the
   [quick start](../README.md#quick-start). No documented hook input or
@@ -289,7 +289,7 @@ abandoned; keep every host that shares a task store on the same `cw`. The same
 holds for `amendments`, which `cw task add-checks` writes: an older `cw` cannot
 read a record carrying it, and its hook skips such a record instead of gating
 it. It also holds for the record version: every revision this release writes
-is version 4, which `cw` v3.0.0-rc.1 cannot read
+is version 4, which a `cw` older than v3.0.0-rc.2 cannot read
 ([task record format](development.md#task-record-format)).
 
 ### Asking instead of denying
@@ -541,7 +541,7 @@ and the last row lists what still gets past git's hooks.
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
-| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under `cw` v3.0.0-rc.1, any version 4 record ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
+| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under a `cw` older than v3.0.0-rc.2, any version 4 record ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | `chmod 000 <task>`, or `chmod 000` on every revision file of a task (its only one, for a new task) | Allowed. A task directory the hook cannot list, or whose revision files it cannot open, has no revision to read and is ignored, like one in which no revision decodes. |
 | A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |

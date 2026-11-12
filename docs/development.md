@@ -189,9 +189,10 @@ run `status` or context phase, fails validation with "invalid stored …".
   ([Releases](#releases)). Raise `MinVersion` only to drop a version on purpose.
 - Every new revision is written with `Version`, so the first revision this `cw`
   appends to a record an older `cw` started raises its version. From then on
-  that older `cw` cannot read the record: the hook of `cw` v3.0.0-rc.1 skips
-  the task instead of gating it, and a later hook asks before each commit and
-  push. Run the same `cw` on every host and hook that shares a task store.
+  that older `cw` cannot read the record: the hook of a `cw` older than
+  v3.0.0-rc.2 skips the task instead of gating it, and the hook of v3.0.0-rc.2
+  or later asks before each commit and push. Run the same `cw` on every host
+  and hook that shares a task store.
 - The hook selects a task by the newest revision it can decode, reading
   `plan.kind`, `baseline.root` and `updated_at` without loading the chain, so
   that an older hook can still ask about a record it cannot read. Those three
@@ -208,12 +209,12 @@ run `status` or context phase, fails validation with "invalid stored …".
   `MinVersion`, or a revision with a lower version than the one before it, does
   not load either, and exits 1.
 - The version each release writes (release step 1 appends a line):
-  - v3.0.0-rc.1: 3.
-  - v3.0.0-rc.2 (planned): 4.
+  - v3.0.0-rc.1 (`13b6103`, not published): 3.
+  - v3.0.0-rc.2: 4.
 
-  Record changes merged before rc.2 is tagged stay on 4; the first one after
-  it, such as R1's `profile`, bumps `Version` to 5.
-  `internal/taskflow/testdata/rc1-small-task` holds a record rc.1 wrote, which
+  The first record change after rc.2, such as R1's `profile`, bumps `Version`
+  to 5. `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version
+  3: `internal/taskflow/testdata/rc1-small-task` holds a record it wrote, which
   must keep loading and verifying.
 
 ### Graphify
@@ -283,8 +284,9 @@ pushes or pull requests. See `evals/README.md`.
 ## Releases
 
 A release is published from a pushed `v*` tag, never from a push to main, and
-only the project owner pushes tags. The tags are `v3.0.0-rc.1`, then further
-release candidates (`v3.0.0-rc.2` and so on), then `v3.0.0`. The plugin manifests carry the tag without
+only the project owner pushes tags. The tags are `v3.0.0-rc.2`, the first
+published v3 release candidate (`v3.0.0-rc.1` was never tagged), then further
+release candidates (`v3.0.0-rc.3` and so on), then `v3.0.0`. The plugin manifests carry the tag without
 its leading `v`: `version` in `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, and `metadata.version` in
 `.claude-plugin/marketplace.json`. `TestPluginVersionsAgree` in
@@ -294,7 +296,7 @@ its leading `v`: `version` in `.claude-plugin/plugin.json` and
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
 `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64 (each with
 `LICENSE`, `THIRD_PARTY.md` and `licenses/`), `SHA256SUMS`, and a changelog from
-the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.1`
+the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.2`
 as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
 `cw version` reports the tag, commit and commit date.
 

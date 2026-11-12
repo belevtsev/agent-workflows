@@ -30,7 +30,7 @@ Five states in order; no required state is skipped, and earlier evidence never
 satisfies a later state.
 
 1. **Classify.** If `cw` is not on `PATH`, stop and give the install command:
-   `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1` with
+   `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2` with
    Go 1.27.1 or newer, or the release archive
    ([get `cw`](../../docs/operations.md#get-cw)).
    Run `cw doctor --summary --repo /absolute/path` at the start

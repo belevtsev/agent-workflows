@@ -96,12 +96,12 @@ one passed check (see [evidence rules](../skills/task-orchestration/references/g
 
 Download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
-[v3.0.0-rc.1 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.1),
+[v3.0.0-rc.2 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.2),
 check the archive against `SHA256SUMS`, and put `cw` on your `PATH`. For example,
 on an Apple silicon Mac:
 
 ```sh
-archive=cw_v3.0.0-rc.1_darwin_arm64.tar.gz
+archive=cw_v3.0.0-rc.2_darwin_arm64.tar.gz
 grep " $archive\$" SHA256SUMS | shasum -a 256 -c
 tar -xzf "$archive" cw
 mkdir -p ~/.local/bin && mv cw ~/.local/bin/cw
@@ -111,11 +111,11 @@ On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. Or, with Go 1.27.1
 or newer, build the same tag:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2
 ```
 
 The project owner pushes each release tag ([releases](development.md#releases));
-the release page and `go install` work once `v3.0.0-rc.1` is tagged. It is a
+the release page and `go install` work once `v3.0.0-rc.2` is tagged. It is a
 prerelease, so GitHub's latest release stays `v2.0.96`, the last release of the
 v2 installer. The old path without `/v3` gets no updates: its `@main` and
 `@latest` queries fail with a module path mismatch.
@@ -125,12 +125,12 @@ Then check the build with `cw version`, which prints JSON with `version`,
 
 Upgrade every `cw` that shares a task store at once, including the one the
 commit hook runs. The first revision a newer `cw` writes to a task can raise
-the record's version; an older `cw` then cannot read the record. `cw`
-v3.0.0-rc.1 cannot read the version 4 records this release writes, calls them
-unsupported, and its hook skips such a task instead of gating it. In later
-releases a `cw task` command on a record from a newer `cw` exits 4 and says to
-upgrade `cw`, and the hook asks before each commit and push
-([task record format](development.md#task-record-format)).
+the record's version; an older `cw` then cannot read the record. A `cw` older
+than v3.0.0-rc.2 cannot read the version 4 records this release writes, calls
+them unsupported, and its hook, where it has one, skips such a task instead of
+gating it. From v3.0.0-rc.2 on, a `cw task` command on a record from a newer
+`cw` exits 4 and says to upgrade `cw`, and the hook asks before each commit and
+push ([task record format](development.md#task-record-format)).
 
 ## Codex install and uninstall
 
@@ -412,41 +412,15 @@ leaves the task writable. `cw publish` takes the same kind of lock on
 `.publish-lock` without waiting: a second run exits 1 `locked`. Both files stay
 in the task directory.
 
-`cw` v3.0.0-rc.1 used a `.lock` and a `.publish-lock` directory instead, and a
-killed run left them behind. This `cw` still honours them: a writer waits 10
-seconds for `.lock`, then fails with `task is locked; inspect an interrupted
-writer before removing its .lock directory`, and `cw publish` exits 1 `locked`.
-Remove one only after checking that no older `cw` runs. That `cw` does not see
-`.lockfile`, so do not mix `cw` versions on one task. Once this `cw` has
-published from a task, its `.publish-lock` file stays, so `cw publish` of
-v3.0.0-rc.1 reports `locked` on that task for good and says to remove the file.
-### Which go a check runs
-
-A check whose program is `go` (or `go.exe`), named bare or by a path, runs only
-a go command that `cw` verified. `cw` takes the `go` the check's `PATH` names
-(or the path given) and runs it once as `go env GOROOT`, in the selected path,
-with the check's environment and within its timeout, before it takes the task
-lock. That follows a version manager's shim, a `golang.org/dl` wrapper and a
-`GOTOOLCHAIN` switch to the go command that would really run; `cmd/go` looks
-for a switched toolchain such as `go1.27.4` on `PATH` before it downloads one
-into the module cache. `cw` then reads `$GOROOT/bin/go` without running it and
-accepts it only when its build information names `cmd/go` and the printed
-`GOROOT` resolves to that file's own tree, the directory above its `bin`. The
-check runs that file by its absolute path with `GOROOT` set to that tree and
-`GOTOOLCHAIN=local`, after the check's own environment, so neither a `GOROOT`
-variable nor a go env file can pick another tree's `go.env`, and the go command
-cannot switch again. The run records it under `tool` (`path`, `version`,
-`sha256`, `goroot`), and `cw task verify` lists the go command and `GOROOT` that
-each passed go check ran as a limitation. A run recorded before this has no
-`tool` and keeps its credit.
-
-When no go command verifies, such as a script named `go` first on `PATH`, a
-`GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
-downloaded, the check does not run:
-the run is recorded as `failed` with failure `untrusted_toolchain`, no exit code
-and an empty log, and `cw task run` exits 5 with an error that names the
-candidate. Put the real `go` first on `PATH`. This shows what the binary is, not
-that it reports honestly ([threat model](../SECURITY.md#threat-model)).
+A `cw` older than v3.0.0-rc.2 used a `.lock` and a `.publish-lock` directory
+instead, and a killed run left them behind. This `cw` still honours them: a
+writer waits 10 seconds for `.lock`, then fails with `task is locked; inspect an
+interrupted writer before removing its .lock directory`, and `cw publish` exits
+1 `locked`. Remove one only after checking that no older `cw` runs. That `cw`
+does not see `.lockfile`, so do not mix `cw` versions on one task. Once this
+`cw` has published from a task, its `.publish-lock` file stays, so the
+`cw publish` of an older `cw` reports `locked` on that task for good and says to
+remove the file.
 
 ### What a check runs with
 
