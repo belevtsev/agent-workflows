@@ -517,9 +517,11 @@ func TestHooksEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("session-start with cw emits the instructions", func(t *testing.T) {
+	t.Run("session-start with cw emits the instructions and the cw gate install line", func(t *testing.T) {
 		// R-E2E: with cw on PATH, one SessionStart JSON line carrying
-		// global/AGENTS.md without trailing newlines.
+		// global/AGENTS.md without trailing newlines, a blank line and the
+		// line that suggests cw gate install, since the session's repository
+		// has the open substantial record and no git hooks.
 		code, stdout, stderr := hooksSh(t, sessionCommand, sessionStdin, env(withCW))
 		if code != 0 {
 			t.Fatalf("exit %d stderr %q", code, stderr)
@@ -539,8 +541,11 @@ func TestHooksEndToEnd(t *testing.T) {
 		if output.HookSpecificOutput.HookEventName != "SessionStart" {
 			t.Fatalf("hookEventName %q", output.HookSpecificOutput.HookEventName)
 		}
-		if want := strings.TrimRight(string(agents), "\n"); output.HookSpecificOutput.AdditionalContext != want {
-			t.Fatalf("additionalContext differs from global/AGENTS.md without trailing newlines (got %d bytes, want %d)", len(output.HookSpecificOutput.AdditionalContext), len(want))
+		const gateLine = "git hooks absent, so a commit or push from a script, an alias or a terminal skips the verify gate: suggest cw gate install to the user"
+		got := output.HookSpecificOutput.AdditionalContext
+		if want := strings.TrimRight(string(agents), "\n") + "\n\n" + gateLine; got != want {
+			t.Fatalf("additionalContext differs from global/AGENTS.md without trailing newlines, a blank line and %q (got %d bytes ending %q, want %d)",
+				gateLine, len(got), got[max(0, len(got)-200):], len(want))
 		}
 	})
 

@@ -107,6 +107,8 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
   they never change a hook cw did not write, or a hooks directory other repositories use without `--shared` ([installing](docs/hooks.md#installing-the-git-hooks)).
 - The session-start context gains one line when the plugin and `cw` versions differ, naming the one to update, and one
   when Claude Code is older than 2.1.292; a `cw` built between tags is not compared ([session start](docs/hooks.md#session-start)).
+- While a substantial task is open in a repository without git's hooks, the session-start context suggests `cw gate install` once
+  for that task and `cw doctor` reports `git_hooks` as missing; it never installs them ([reminders](docs/hooks.md#installing-the-git-hooks)).
 
 ### Changed
 

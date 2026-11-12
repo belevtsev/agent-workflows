@@ -35,7 +35,7 @@ holds the definition of a substantial task and the Code Review Rules.
 
 | Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
 | Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
 | `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
 
@@ -273,8 +273,9 @@ is read by the coordinator through the skill, not by `cw`.
 
 `cw doctor --repo /absolute/project/path` selects the project directly, without
 requiring a clean project. It reports the target worktree/content identity,
-discovered capabilities, repository contract paths, optional tool executables and
-adviser key presence. `--live` explicitly enables bounded local integration checks;
+discovered capabilities, repository contract paths, optional tool executables,
+adviser key presence and whether git's own hooks run the commit gate
+(`git_hooks`, [installing the git hooks](hooks.md#installing-the-git-hooks)). `--live` explicitly enables bounded local integration checks;
 ordinary metadata does not prove semantic retrieval, dirty-source freshness or
 runtime call targets. Each live probe and each Git inspection runs in a process
 group of its own; when it answers, exits or reaches its deadline, `cw` kills the
