@@ -18,10 +18,12 @@ const gateOffVariable = "CW_GATE"
 // pre-merge-commit, which git runs as its own hooks in the worktree it
 // commits, pushes or merges in. The subcommand is the hook's name, which the
 // script cw gate install writes passes; pre-merge-commit judges the merge
-// commit as pre-commit judges any commit. A git hook cannot ask, so the
-// gate's deny exits ExitDenied with its reason on stderr, and each ask
-// becomes a warning on stderr with exit 0. Every other case, including any
-// internal error, exits 0 without output, as cw hook pre-publish does.
+// commit as pre-commit judges any commit, except that it lets through a
+// merge of commits on remote-tracking branches and does not prompt about a
+// substantial change, which is the incoming branch's. A git hook cannot ask,
+// so the gate's deny exits ExitDenied with its reason on stderr, and each
+// ask becomes a warning on stderr with exit 0. Every other case, including
+// any internal error, exits 0 without output, as cw hook pre-publish does.
 func addGitHookCommand(root, hook *cobra.Command, config Config) {
 	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit, merge and push on cw task verify from git's own pre-commit, pre-push and pre-merge-commit hooks", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	hook.AddCommand(git)
@@ -35,7 +37,8 @@ func addGitHookCommand(root, hook *cobra.Command, config Config) {
 		applies := "It applies the rules of cw hook pre-publish to the " + publish.what
 		if publish.name == "pre-merge-commit" {
 			applies = "Git runs it before git merge, or git pull, makes a merge commit without conflicts; a merge with conflicts is committed by git commit, which runs pre-commit. " +
-				"It applies the rules of cw hook pre-publish to the merge commit as to a git commit"
+				"A merge commit whose every merged-in commit is reachable from a remote-tracking ref (refs/remotes/), such as the base branch fetched from a remote, goes ahead without a check. " +
+				"Any other merge commit gets the rules of cw hook pre-publish for a git commit, without the prompt about a substantial change with no task record"
 		}
 		git.AddCommand(&cobra.Command{
 			Use:   publish.name + " [GIT-HOOK-ARGUMENTS]",
@@ -50,7 +53,7 @@ func addGitHookCommand(root, hook *cobra.Command, config Config) {
 			RunE: func(cmd *cobra.Command, _ []string) error {
 				ctx, cancel := context.WithTimeout(cmd.Context(), cmp.Or(config.prePublishTimeout, hookPublishTimeout))
 				defer cancel()
-				message, blocked := gitHookDecision(ctx, root, config, publish.command)
+				message, blocked := gitHookDecision(ctx, root, config, publish.command, publish.name == "pre-merge-commit")
 				if message != "" {
 					fmt.Fprintln(cmd.ErrOrStderr(), message)
 				}
@@ -65,10 +68,13 @@ func addGitHookCommand(root, hook *cobra.Command, config Config) {
 
 // gitHookDecision returns what cw hook git prints for the git command
 // ("commit" or "push") about to run in the working directory, and whether
-// it blocks it.
-func gitHookDecision(ctx context.Context, root *cobra.Command, config Config, command string) (string, bool) {
+// it blocks it. For a merge commit (pre-merge-commit) the gate reads the
+// merge heads from git's environment, and the prompt about a substantial
+// change with no task record is off: the change is the incoming branch's,
+// such as the base branch's on git pull.
+func gitHookDecision(ctx context.Context, root *cobra.Command, config Config, command string, merge bool) (string, bool) {
 	enforce := config.Getenv(enforceVerifyOption) != "false"
-	prompt := config.Getenv(smallTaskPromptOption) != "false"
+	prompt := config.Getenv(smallTaskPromptOption) != "false" && !merge
 	if config.Getenv(gateOffVariable) == "off" || !enforce && !prompt {
 		return "", false
 	}
@@ -81,8 +87,11 @@ func gitHookDecision(ctx context.Context, root *cobra.Command, config Config, co
 	if err == nil {
 		store.store = gate.TaskStore(path)
 	}
-	decision := gate.DecideGitHook(ctx, gate.GitHookInput{Dir: dir, Push: command == "push", Enforce: enforce, Prompt: prompt},
-		gate.Deps{Git: gate.ExecGit, Now: config.Now, Store: store})
+	input := gate.GitHookInput{Dir: dir, Push: command == "push", Enforce: enforce, Prompt: prompt}
+	if merge {
+		input.MergeHeads = gate.MergeHeads(config.Environ())
+	}
+	decision := gate.DecideGitHook(ctx, input, gate.Deps{Git: gate.ExecGit, Now: config.Now, Store: store})
 	if store.failed && decision.Permission == gate.Allow {
 		decision = gate.Decision{Permission: gate.Ask, Reason: storeFailureReason(store.err, store.store != nil)}
 	}

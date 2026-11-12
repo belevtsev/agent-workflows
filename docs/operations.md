@@ -563,12 +563,16 @@ Checks can only be added this way, never removed, replaced or narrowed.
    not `git commit`. In a non-interactive shell (agents, CI) always use
    `GIT_EDITOR=true git merge --continue`, which keeps the prepared merge
    message; plain `git merge --continue` opens an editor, so use it only in an
-   interactive terminal. Where `cw gate install` has run, git's own hooks judge
-   the merge commit as a commit, `pre-merge-commit` for a merge without
-   conflicts and `pre-commit` for `git merge --continue`, so they stop the merge
-   while the record is unverified; the user decides whether to let this merge
-   through with `CW_GATE=off`, as in `CW_GATE=off git merge --no-ff origin/main`
-   ([git hooks](hooks.md#git-hooks)).
+   interactive terminal. Where `cw gate install` has run, git's
+   `pre-merge-commit` hook lets a merge without conflicts through when every
+   commit it takes in is on a remote-tracking branch, as `origin/main` is after
+   `git fetch`. It stops any other merge while the record is unverified, such
+   as one of a local branch, and `pre-commit` stops `git merge --continue`
+   after conflicts ([git hooks](hooks.md#git-hooks)). When git stops a merge,
+   the agent stops and asks the user how to go on; without an answer it undoes
+   the merge with `git merge --abort`. The agent never sets `CW_GATE=off`
+   itself: letting a merge through that way, as in
+   `CW_GATE=off git merge --no-ff origin/main`, is the user's decision.
 3. Add the checks:
 
    ```sh

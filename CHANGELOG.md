@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
+  commit it takes in, so merging the fetched base branch, or `git pull`, keeps working; a merge of a local branch still stops ([git hooks](docs/hooks.md#git-hooks)).
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
   its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command

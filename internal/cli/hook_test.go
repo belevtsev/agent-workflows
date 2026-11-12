@@ -71,6 +71,13 @@ func newHKHarness(t *testing.T) *hkHarness {
 	harness := &hkHarness{out: out, home: hkCanonicalTempDir(t), env: map[string]string{}}
 	config.HomeDir = func() (string, error) { return harness.home, nil }
 	config.Getenv = func(name string) string { return harness.env[name] }
+	config.Environ = func() []string {
+		environ := make([]string, 0, len(harness.env))
+		for name, value := range harness.env {
+			environ = append(environ, name+"="+value)
+		}
+		return environ
+	}
 	harness.config = config
 	return harness
 }

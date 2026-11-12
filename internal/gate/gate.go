@@ -154,6 +154,10 @@ type GitHookInput struct {
 	// Push is true for the pre-push hook and false for pre-commit and
 	// pre-merge-commit, which git runs before a merge commit.
 	Push bool
+	// MergeHeads, for pre-merge-commit only, are the commits the merge
+	// commit takes in besides HEAD (MergeHeads reads them from git's
+	// environment).
+	MergeHeads []string
 	// Enforce and Prompt are Input's.
 	Enforce, Prompt bool
 }
@@ -163,9 +167,12 @@ type GitHookInput struct {
 // nothing asks about a directory change. A commit is measured by the index
 // git commits, which git's pre-commit and pre-merge-commit hooks name in
 // GIT_INDEX_FILE and the gate's git inherits, so a commit with -a or with
-// paths counts what it records.
+// paths counts what it records. A merge commit whose every merge head is
+// reachable from a remote-tracking ref, such as a merge of the task's base
+// branch, is allowed: it takes in published work, not local work no record
+// covers. Any other merge commit is judged as a commit.
 func DecideGitHook(ctx context.Context, in GitHookInput, deps Deps) Decision {
-	if !in.Enforce && !in.Prompt {
+	if !in.Enforce && !in.Prompt || fromRemote(ctx, deps.Git, in.Dir, in.MergeHeads) {
 		return Decision{}
 	}
 	d := decider{in: Input{Enforce: in.Enforce, Prompt: in.Prompt}, deps: deps, found: map[string][]taskflow.OpenRecord{}}
@@ -175,6 +182,55 @@ func DecideGitHook(ctx context.Context, in GitHookInput, deps Deps) Decision {
 		asks = append(asks, question)
 	}
 	return conclude(in.Enforce, gating, asks)
+}
+
+// mergeHeadPrefix starts the name of each variable in which git merge (and
+// git pull through it) names a commit it merges in, as GITHEAD_<object
+// name>=<name as given>, for its hooks too. pre-merge-commit runs before git
+// writes MERGE_HEAD, so these variables are where the hook finds the merge
+// heads.
+const mergeHeadPrefix = "GITHEAD_"
+
+// MergeHeads returns the merge heads git names in environ, a process
+// environment as os.Environ returns it: the object name in each
+// GITHEAD_<object name> variable, once, in the order found. A name that is
+// not a full SHA-1 or SHA-256 object name in lower-case hexadecimal is
+// skipped.
+func MergeHeads(environ []string) []string {
+	var heads []string
+	for _, variable := range environ {
+		name, _, _ := strings.Cut(variable, "=")
+		head, ok := strings.CutPrefix(name, mergeHeadPrefix)
+		if ok && isObjectName(head) && !slices.Contains(heads, head) {
+			heads = append(heads, head)
+		}
+	}
+	return heads
+}
+
+// isObjectName reports whether s is a full SHA-1 or SHA-256 object name in
+// lower-case hexadecimal.
+func isObjectName(s string) bool {
+	if len(s) != 40 && len(s) != 64 {
+		return false
+	}
+	return strings.Trim(s, "0123456789abcdef") == ""
+}
+
+// fromRemote reports whether heads is not empty and each of them is
+// reachable from a remote-tracking ref (refs/remotes/) of the repository at
+// dir. A git failure counts as not reachable, so the merge commit is judged
+// as a commit.
+func fromRemote(ctx context.Context, git Git, dir string, heads []string) bool {
+	for _, head := range heads {
+		if !isObjectName(head) {
+			return false
+		}
+		if _, err := git.output(ctx, dir, "for-each-ref", "--count=1", "--format=%(refname)", "--contains", head, "refs/remotes/"); err != nil {
+			return false
+		}
+	}
+	return len(heads) > 0
 }
 
 // conclude returns the decision for the records that gate a command's
