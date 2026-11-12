@@ -18,7 +18,7 @@ only ([Quick start](#quick-start)).
 
 ## How it works
 
-<img src="docs/diagrams/workflow-overview.svg" alt="Flow: spec-writer and reviewer (spec), architect and reviewer (design), implementer in parallel with test-engineer and reviewer (tests), integrate and run, reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback. Findings loop back to each author; optional advisers join at four decision points." width="820">
+<img src="docs/diagrams/workflow-overview.svg" alt="Flow of a substantial task: spec-writer and reviewer (spec, skipped with a reviewed spec or a precise request), architect and reviewer (design and contract), implementer in parallel with test-engineer and reviewer (tests), integrate and run, then reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, with the adversarial-tester beside the code review if the plan opts in, whose failing tests go to the implementer, then cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback when cw publish does not fit. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
@@ -61,7 +61,7 @@ repositories need any one passed check.
 Install `cw`, which records tasks and runs checks, from the release archive for
 your system on the
 [v3.0.0-rc.1 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.1)
-([steps](docs/operations.md#get-cw)), or build that tag with Go 1.27 or newer:
+([steps](docs/operations.md#get-cw)), or build that tag with Go 1.27.1 or newer:
 
 ```sh
 go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1
@@ -100,15 +100,27 @@ cw doctor --summary --repo "$PWD"
 
 ## Your first task
 
+The steps below are for a substantial task. A small change needs none of this;
+just ask.
+
 You ask, answer questions and approve the commit. The agent runs the rest,
 including the `cw` commands below; you can run them yourself to inspect a task.
+
+Cost per task is not yet measured. The planned caps, set by the task's profile,
+are unmeasured placeholders: 15 USD or 6M tokens (`lite`), 40 USD or 15M
+(`standard`) and 100 USD or 40M (`strict`). `cw` does not enforce them yet;
+profiles come in a later release candidate.
 
 1. Ask for the change in your repository. Naming the skill starts the workflow;
    a plain request also works, because the skill loads when the task matches.
 
    ```text
-   /agent-workflows:task-orchestration Add a --json flag to the export command
+   /agent-workflows:task-orchestration Add retries with backoff to the HTTP client and the job queue, sharing one retry policy
    ```
+
+   This request meets two of the [criteria for a substantial task](#how-it-works):
+   it changes more than one package, and the shared retry policy is a design
+   choice with real alternatives that the source cannot settle.
 
 2. The agent runs `cw doctor`, decides whether the task is substantial and
    records the requirements and the checks that prove them

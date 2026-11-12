@@ -6,7 +6,7 @@ Carry the user's scope and existing authorization across turns. Preserve unrelat
 
 ## Substantial tasks
 
-A task is substantial when it has two or more of: changes in more than one package or component; behaviour that must match across platforms or shells; more than about 300 changed lines; a design choice with real alternatives that the source cannot settle. For a substantial task load the `task-orchestration` skill and follow its decision flow, which ends with `cw task verify`. Everything else stays lightweight: the coder writes the tests, the reviewer checks each against the Code Review Rules, and commits and pushes run directly under the user's authorization.
+A task is substantial when it has two or more of: changes in more than one package or component; behaviour that must match across platforms or shells; more than about 300 changed lines; a design choice with real alternatives that the source cannot settle. For a substantial task load the `task-orchestration` skill and follow its decision flow, which ends with `cw task verify`. If `cw` is not on `PATH`, stop and give the install command: `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1` with Go 1.27.1 or newer, or the release archive (https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw). Everything else stays lightweight: the coder writes the tests, the reviewer checks each against the Code Review Rules, and commits and pushes run directly under the user's authorization.
 
 ## Code Review Rules
 
