@@ -241,23 +241,65 @@ type expansion struct {
 	home string
 	// pwd reports whether $PWD is the directory in effect.
 	pwd bool
-	// ifs reports whether the command names IFS, which changes how the
+	// ifs reports whether the command may change IFS, which changes how the
 	// shell splits an unquoted expansion.
 	ifs bool
 }
 
-// newExpansion returns what the gate knows of HOME and PWD for command, given
-// HOME's value in the environment. A command that names either other than in
-// a `$NAME` or `${NAME}` expansion, as an assignment, export, read or unset
-// of it does, may change its value first, so the value is unknown.
-func newExpansion(command, home string) expansion {
-	names := func(name string) bool {
-		return strings.Contains(strings.NewReplacer("${"+name+"}", "", "$"+name, "").Replace(command), name)
-	}
-	if !filepath.IsAbs(home) || names("HOME") {
+// newExpansion returns what the gate knows of HOME and PWD before a command
+// line runs, given HOME's value in the environment.
+func newExpansion(home string) expansion {
+	if !filepath.IsAbs(home) {
 		home = ""
 	}
-	return expansion{home: home, pwd: !names("PWD"), ifs: strings.Contains(command, "IFS")}
+	return expansion{home: home, pwd: true}
+}
+
+// after returns what the gate knows of HOME, PWD and IFS where commands run:
+// a variable that any of them assigns, exports, unsets or reads (assigns) may
+// have changed, so its value is unknown throughout them.
+func (v expansion) after(commands []shellwords.SimpleCommand) expansion {
+	for _, simple := range commands {
+		if assigns(simple.Words, "HOME") {
+			v.home = ""
+		}
+		if assigns(simple.Words, "PWD") {
+			v.pwd = false
+		}
+		if assigns(simple.Words, "IFS") {
+			v.ifs = true
+		}
+	}
+	return v
+}
+
+// variableSetters are the builtins that set, export, unset or read a
+// variable that one of their words names.
+var variableSetters = map[string]bool{
+	"export": true, "unset": true, "readonly": true, "declare": true, "typeset": true, "local": true,
+	"read": true, "getopts": true, "printf": true, "mapfile": true, "readarray": true, "vared": true,
+	"for": true, "select": true, "let": true,
+}
+
+// assigns reports whether a simple command's words assign, export, unset or
+// read the variable name: a word that starts `NAME=`, `NAME+=` or `NAME[`,
+// the word NAME after a builtin in variableSetters (`unset HOME`,
+// `read HOME`, `printf -v HOME`, `for HOME in`), or NAME anywhere in the
+// script of an eval, which runs in the same shell.
+func assigns(words []shellwords.Word, name string) bool {
+	if _, _, run, _ := programWords(words); run != nil && run.sameShell && strings.Contains(run.text, name) {
+		return true
+	}
+	setter := false
+	for _, word := range words {
+		if rest, ok := strings.CutPrefix(word.Text, name); ok {
+			if rest == "" && setter || strings.HasPrefix(rest, "=") || strings.HasPrefix(rest, "+=") || strings.HasPrefix(rest, "[") {
+				return true
+			}
+		}
+		setter = setter || variableSetters[strings.TrimPrefix(word.Text, `\`)]
+	}
+	return false
 }
 
 // expandDir returns the directory a cd, pushd or -C argument names, resolved
@@ -265,16 +307,20 @@ func newExpansion(command, home string) expansion {
 // tell which directory that is. A leading unquoted `~`, alone or before a
 // slash, names HOME, and a leading `$HOME`, `${HOME}`, `$PWD` or `${PWD}`,
 // unquoted or in double quotes, names HOME or dir; the rest of the argument,
-// or an argument without them, must be a literal path (followablePath). Any
-// other variable (`$OTHER`), another user's home (`~user`), a substitution,
-// a glob, a quoted or escaped `~` or `$` (`'$HOME'`, `\~`), and an unquoted
+// or an argument without them, must be literal as written (literalRaw), as a
+// quoted `~` or glob character is. Any other variable (`$OTHER`), another
+// user's home (`~user`), a substitution, an unquoted glob, and an unquoted
 // `$HOME` or `$PWD` the shell may split or glob are not resolved. A relative
 // path from an unknown dir ("") stays unknown: the result is then "".
 func expandDir(word shellwords.Word, dir string, vars expansion) (string, bool) {
+	if word.Text == "" {
+		return "", false
+	}
 	if word.Raw == "~" || strings.HasPrefix(word.Raw, "~/") {
 		// The shell neither splits nor globs what a tilde expands to.
-		return expandedPath(vars.home, word.Text[1:])
+		return expandedPath(vars.home, word.Text[1:], literalRaw(word.Raw[1:], false, false))
 	}
+	quoted := strings.HasPrefix(word.Raw, `"`)
 	unquoted := strings.TrimPrefix(word.Raw, `"`)
 	for _, variable := range []string{"$HOME", "${HOME}", "$PWD", "${PWD}"} {
 		if !strings.HasPrefix(unquoted, variable) || !strings.HasPrefix(word.Text, variable) {
@@ -283,40 +329,115 @@ func expandDir(word shellwords.Word, dir string, vars expansion) (string, bool) 
 		if next := unquoted[len(variable):]; variable[1] != '{' && next != "" && isNameByte(next[0]) {
 			return "", false // a longer name, such as $HOMEDIR
 		}
-		value, rest := vars.home, word.Text[len(variable):]
+		value, rest, literal := vars.home, word.Text[len(variable):], literalRaw(unquoted[len(variable):], quoted, false)
 		if strings.Contains(variable, "PWD") {
 			if !vars.pwd {
 				return "", false
 			}
 			if dir == "" {
-				return "", literalRest(rest)
+				return "", literal
 			}
 			value = dir
 		}
-		if unquoted == word.Raw && (vars.ifs || strings.ContainsAny(value, " \t\n*?[")) {
+		if !quoted && (vars.ifs || strings.ContainsAny(value, " \t\n*?[")) {
 			return "", false
 		}
-		return expandedPath(value, rest)
+		return expandedPath(value, rest, literal)
 	}
-	if !followablePath(word.Text) {
+	if !literalRaw(word.Raw, false, true) {
 		return "", false
 	}
 	return resolveDir(dir, word.Text), true
 }
 
 // expandedPath returns an expanded variable's absolute value followed by the
-// literal rest of the word.
-func expandedPath(value, rest string) (string, bool) {
-	if !filepath.IsAbs(value) || !literalRest(rest) {
+// rest of the word, when that rest is literal.
+func expandedPath(value, rest string, literal bool) (string, bool) {
+	if !literal || !filepath.IsAbs(value) {
 		return "", false
 	}
 	return filepath.Clean(value + rest), true
 }
 
-// literalRest reports whether what follows an expanded variable in a word is
-// literal, as followablePath requires of a whole path.
-func literalRest(rest string) bool {
-	return !strings.ContainsAny(rest, "~$`*?[{")
+// literalRaw reports whether raw, a word or the rest of one as written,
+// stands for its Word.Text and nothing else: no `$` or backquote outside
+// single quotes, no glob or brace character outside quotes, no unquoted `~`
+// at the start of the word or after `=` or `:`, no zsh `=` expansion at its
+// start, and no backslash escape inside $'...', which Word.Text keeps as
+// written. Quoted and escaped characters are literal. inDouble starts the
+// scan inside double quotes; start reports whether raw begins the word.
+func literalRaw(raw string, inDouble, start bool) bool {
+	return scanRaw(raw, inDouble, func(i int, c, quote byte) bool {
+		switch {
+		case quote == 'a':
+			return c != '\\'
+		case c == '$' || c == '`':
+			return false
+		case quote == '"':
+			return true
+		case strings.IndexByte("*?[{", c) >= 0:
+			return false
+		case c == '~':
+			return !(start && i == 0) && !(i > 0 && (raw[i-1] == '=' || raw[i-1] == ':'))
+		case c == '=':
+			return !(start && i == 0)
+		}
+		return true
+	})
+}
+
+// expands reports whether the shell expands a parameter, or substitutes a
+// command, in any of words as written: a `$` or backquote outside single
+// quotes and $'...' that no backslash escapes.
+func expands(words []shellwords.Word) bool {
+	return slices.ContainsFunc(words, func(word shellwords.Word) bool {
+		return !scanRaw(word.Raw, false, func(_ int, c, quote byte) bool { return quote == 'a' || c != '$' && c != '`' })
+	})
+}
+
+// scanRaw calls active, in order, for each character of raw, a word as
+// written, that is neither inside single quotes nor escaped by a backslash,
+// with the quoting it is in: 0 unquoted, '"' in double quotes or 'a' in
+// $'...'. Quote characters are not passed, nor the `$` that opens $'...'.
+// It returns false as soon as active does.
+func scanRaw(raw string, inDouble bool, active func(i int, c, quote byte) bool) bool {
+	quote := byte(0)
+	if inDouble {
+		quote = '"'
+	}
+	for i := 0; i < len(raw); i++ {
+		c := raw[i]
+		switch {
+		case quote == '\'':
+			if c == '\'' {
+				quote = 0
+			}
+			continue
+		case quote == 'a' && c == '\'':
+			quote = 0
+			continue
+		case quote == '"' && c == '"':
+			quote = 0
+			continue
+		case quote != 'a' && c == '\\':
+			i++ // escaped
+			continue
+		case quote == 0 && (c == '\'' || c == '"'):
+			quote = c
+			continue
+		case quote == 0 && c == '$' && i+1 < len(raw) && raw[i+1] == '\'':
+			quote = 'a'
+			i++
+			continue
+		}
+		if !active(i, c, quote) {
+			return false
+		}
+		if quote == 'a' && c == '\\' {
+			i++ // the escaped character, a quote among them, stays in $'...'
+		}
+	}
+	return true
 }
 
 // isNameByte reports whether b may continue a shell variable name.

@@ -61,8 +61,8 @@ func splitPublications(command, cwd, home string) ([]publication, bool) {
 		}
 		return match
 	})
-	scanner := wordScanner{certain: true, session: cwd, vars: newExpansion(command, home)}
-	scanner.scan(command, place{dir: cwd}, 0)
+	scanner := wordScanner{certain: true, session: cwd}
+	scanner.scan(command, place{dir: cwd}, 0, newExpansion(home))
 	return scanner.found, scanner.certain
 }
 
@@ -92,7 +92,6 @@ type wordScanner struct {
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
-	vars    expansion
 }
 
 // place is the directory a command runs in as the scanner follows it. When
@@ -105,14 +104,16 @@ type place struct {
 	unresolved string
 }
 
-// scan reads one command line from at and returns the directory in effect
-// at its top level afterwards. A subshell or substitution starts from the
-// directory in effect where it opens and restores it when it ends.
-func (s *wordScanner) scan(command string, at place, depth int) place {
+// scan reads one command line from at, where vars holds what the scanner
+// knows of HOME and PWD, and returns the directory in effect at its top level
+// afterwards. A subshell or substitution starts from the directory in effect
+// where it opens and restores it when it ends.
+func (s *wordScanner) scan(command string, at place, depth int, vars expansion) place {
 	result := shellwords.Split(command)
 	if result.Uncertain != "" {
 		s.certain = false
 	}
+	vars = vars.after(result.Commands)
 	var outer []place // the directory each open subshell or substitution started from
 	for _, simple := range result.Commands {
 		for range simple.Leave {
@@ -126,7 +127,7 @@ func (s *wordScanner) scan(command string, at place, depth int) place {
 		if !trusted(simple) {
 			s.certain = false
 		}
-		at = s.visit(simple.Words, at, depth)
+		at = s.visit(simple.Words, at, depth, vars)
 	}
 	if len(outer) > 0 {
 		return outer[0]
@@ -136,27 +137,21 @@ func (s *wordScanner) scan(command string, at place, depth int) place {
 
 // visit reads one simple command run from at and returns the directory in
 // effect after it.
-func (s *wordScanner) visit(all []shellwords.Word, at place, depth int) place {
+func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars expansion) place {
 	words, chdirs, run, known := programWords(all)
 	if !known {
 		s.certain = false
 	}
 	if len(words) > 0 && (words[0].Text == "cd" || words[0].Text == "pushd" || words[0].Text == "popd") {
 		change := strings.Join(wordRaws(words), " ")
-		switch {
-		case len(words) == 1 && words[0].Text == "cd" && !slices.ContainsFunc(all, func(word shellwords.Word) bool { return word.Text == "" }):
-			// A bare cd moves to HOME; `cd ""` does not.
-			return s.move(at, shellwords.Word{Text: "~", Raw: "~"}, change)
-		case len(words) != 2 || words[0].Text == "popd" || strings.HasPrefix(words[1].Text, "-"):
-			// Options, `cd -`, `cd ""`, pushd without a directory, popd:
-			// the directory stack and OLDPWD are not followed.
-			return place{unresolved: change}
+		if slices.ContainsFunc(all, func(word shellwords.Word) bool { return word.Text == "" }) {
+			return place{unresolved: change} // `cd ""`: bash refuses it, zsh and dash stay
 		}
-		return s.move(at, words[1], change)
+		return chdir(words[0].Text, words[1:], at, change, vars)
 	}
 	runs := at
 	for _, chdir := range chdirs {
-		runs = s.move(runs, chdir, chdir.Raw)
+		runs = move(runs, chdir, chdir.Raw, vars)
 	}
 	if run != nil {
 		if strings.ContainsAny(run.text, "$`") {
@@ -169,7 +164,13 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int) place {
 			s.add(runs, publication{push: true})
 			return at
 		}
-		after := s.scan(run.text, runs, depth+1)
+		inner := vars
+		if run.expanded {
+			// The shell here expanded $PWD in the text: to this directory,
+			// not to the one the text has moved to where $PWD appears.
+			inner.pwd = false
+		}
+		after := s.scan(run.text, runs, depth+1, inner)
 		if run.sameShell && len(chdirs) == 0 {
 			return after // eval runs in the current shell
 		}
@@ -180,18 +181,62 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int) place {
 	if subcommand == 0 || (texts[subcommand] != "commit" && texts[subcommand] != "push") {
 		return at
 	}
-	for _, move := range moves {
-		runs = s.move(runs, words[move], words[move].Raw)
+	for _, index := range moves {
+		runs = move(runs, words[index], words[index].Raw, vars)
 	}
 	s.add(runs, publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])})
 	return at
 }
 
+// stackEntry matches a cd or pushd argument that names an entry of the
+// directory stack, as `+1` does in bash's pushd and in zsh's cd and pushd.
+var stackEntry = regexp.MustCompile(`^[+-][0-9]+$`)
+
+// chdir returns the directory a cd, pushd or popd command, with args after
+// the program, moves to from at. It follows a directory after the options
+// -L, -P (unless the directory has a `..` component, which -P resolves after
+// symbolic links) and --, `pushd -n`, which stays, and a bare cd, which
+// moves to HOME. OLDPWD (`cd -`), the directory stack (popd, a bare pushd,
+// `+1`), any other option and more than one directory leave the directory
+// unknown, named by change, the command as written.
+func chdir(program string, args []shellwords.Word, at place, change string, vars expansion) place {
+	unknown := place{unresolved: change}
+	if program == "popd" {
+		return unknown
+	}
+	physical, ended := false, false
+	for !ended && len(args) > 0 && strings.HasPrefix(args[0].Text, "-") && args[0].Text != "-" {
+		option := args[0].Text
+		args = args[1:]
+		switch {
+		case option == "--":
+			ended = true
+		case program == "pushd" && option == "-n":
+			return at // adds to the stack without changing directory
+		case program == "cd" && strings.Trim(option[1:], "LP") == "":
+			physical = option[len(option)-1] == 'P' // the last one wins
+		default:
+			return unknown
+		}
+	}
+	switch {
+	case len(args) == 0 && program == "cd":
+		return move(at, shellwords.Word{Text: "~", Raw: "~"}, change, vars)
+	case len(args) != 1:
+		return unknown
+	case !ended && (args[0].Text == "-" || stackEntry.MatchString(args[0].Text)):
+		return unknown
+	case physical && slices.Contains(strings.Split(args[0].Text, "/"), ".."):
+		return unknown
+	}
+	return move(at, args[0], change, vars)
+}
+
 // move returns the directory a cd, pushd or -C argument moves to from at. An
 // argument expandDir cannot resolve leaves the directory unknown, named by
 // change: the directory change as written.
-func (s *wordScanner) move(at place, word shellwords.Word, change string) place {
-	dir, ok := expandDir(word, at.dir, s.vars)
+func move(at place, word shellwords.Word, change string, vars expansion) place {
+	dir, ok := expandDir(word, at.dir, vars)
 	switch {
 	case !ok:
 		return place{unresolved: change}
@@ -215,10 +260,13 @@ func (s *wordScanner) add(at place, next publication) {
 
 // script is a command string that a simple command runs: the string of
 // `sh -c`, which runs in a shell of its own, or the words of `eval`, which
-// run in the current one.
+// run in the current one. expanded reports that the simple command's words
+// expand a parameter (expands), so the text may hold values the
+// shell running the simple command expanded, such as its own $PWD.
 type script struct {
 	text      string
 	sameShell bool
+	expanded  bool
 }
 
 // programWords returns the words of a simple command, as written and with
@@ -250,7 +298,7 @@ func programWords(all []shellwords.Word) (words, chdirs []shellwords.Word, run *
 		switch {
 		case word == "eval":
 			if quoted > total-len(words) {
-				return nil, chdirs, &script{text: strings.Join(wordTexts(words[1:]), " "), sameShell: true}, known
+				return nil, chdirs, &script{text: strings.Join(wordTexts(words[1:]), " "), sameShell: true, expanded: expands(words[1:])}, known
 			}
 			words = words[1:]
 		case shellPrefixWords[word] || (strings.Contains(word, "=") && !strings.HasPrefix(word, "-")):
@@ -259,7 +307,7 @@ func programWords(all []shellwords.Word) (words, chdirs []shellwords.Word, run *
 			if text, ok := envString(wordTexts(words[1:])); word == "env" && ok {
 				// env splits the string itself, without a shell: reading it
 				// as a command line finds at least what env runs.
-				return nil, chdirs, &script{text: text}, false
+				return nil, chdirs, &script{text: text, expanded: expands(words[1:])}, false
 			}
 			var moves []shellwords.Word
 			words, moves = wrapperOptions(word, words[1:])
@@ -269,7 +317,7 @@ func programWords(all []shellwords.Word) (words, chdirs []shellwords.Word, run *
 			}
 		case shells[word]:
 			if text, ok := shellString(wordTexts(words[1:])); ok {
-				return nil, chdirs, &script{text: text}, known
+				return nil, chdirs, &script{text: text, expanded: expands(words[1:])}, known
 			}
 			words[0].Text = word
 			return words, chdirs, nil, known

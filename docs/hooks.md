@@ -104,19 +104,25 @@ ends with them, as in a subshell; redirections on a `cd` are ignored, and
 the same repository. `DIR` may start with `~` or `~/`, `$HOME`, `${HOME}`,
 `$PWD` or `${PWD}`, unquoted or in double quotes: `~` and `$HOME` are the
 hook's `HOME`, which the agent's shell shares, and `$PWD` is the directory in
-effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed,
-and a bare `cd` moves to `HOME`.
+effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed.
+Quoted and escaped characters are literal, so `git -C "…/com~apple~CloudDocs/proj"`
+and `cd '/tmp/price$5'` are followed as written. A bare `cd` moves to `HOME`;
+`cd -L DIR`, `cd -P DIR` and `cd -- DIR` move to `DIR`, and `pushd -n DIR`
+stays where it is.
 
 The hook never skips a git command after a directory change it cannot
-follow. Such changes are `cd` with options, `cd -`, `cd ""`, `pushd`
-without a directory, `popd`, and a `DIR` the hook cannot resolve. A `DIR`
-cannot be resolved when it is another variable (`cd $OTHER`), `'$HOME'` or
-`~user`, a glob, `~` or `$HOME` in a command that also names `HOME` (as
-`HOME=/x` or `export HOME` do), or an unquoted `$HOME` or `$PWD` the shell
-may split (a value with a blank, or a command that names `IFS`). After such
-a change, later git commands are checked against the session's working
-directory until an absolute `cd` or `-C`, and a record that gates them there
-asks instead of denying, naming the change
+follow: `cd -`, `cd ""`, `popd`, `pushd` without a directory, a directory
+stack entry such as `cd +1`, other `cd` and `pushd` options, `cd -P` to a
+path with `..`, and a `DIR` the hook cannot resolve. A `DIR` cannot be
+resolved when it is another variable (`cd $OTHER`), `~user`, an unquoted
+glob, an unquoted `$HOME` or `$PWD` the shell may split (a value with a
+blank, or a command that sets `IFS`), or `~` or `$HOME` in a command that
+assigns, exports, unsets or reads `HOME` (`HOME=/x`, `export HOME=/x`,
+`unset HOME`, `read HOME`); likewise `$PWD` where `PWD` is set, and in a
+double-quoted `sh -c` or `eval` string, where the outer shell has already
+expanded it. After such a change, later git commands are checked against the
+session's working directory until an absolute `cd` or `-C`, and a record
+that gates them there asks instead of denying, naming the change
 ([Asking instead of denying](#asking-instead-of-denying)). A script or
 program that runs git itself (`./release.sh`, `make publish`) is not seen,
 because the command text does not name git.
@@ -313,7 +319,9 @@ push through today while the repository has an open substantial task, or lets
 
 | Way around the gate | What happens today |
 | --- | --- |
-| `cd ~/proj; git commit -am x` where `~/proj` does not exist, and any other `cd` to a missing directory followed by `;` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. |
+| `cd - && git commit -am x`, `popd && git commit -am x`, `cd $OTHER && git commit -am x` and the other directory changes the hook cannot follow ([Recognised commands](#recognised-commands)), from a session directory that no record gates | Allowed. The hook checks the git command against the session's working directory, so it asks only when a record gates that directory. |
+| A `cd` that fails, followed by `;`, `\|\|` or a newline: `cd ~/proj; git commit -am x` where `~/proj` does not exist, bash's `cd ""`, `cd ${HOME}x`, `cd /missing \|\| git commit -am x` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. |
+| `HOME=/x cd ~/proj && git push` | Allowed from a session directory that no record gates. The shell expands `~` with the old `HOME`, before the assignment applies to `cd`, but the hook treats `HOME` as unknown in a command that assigns it ([Recognised commands](#recognised-commands)). |
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
 | `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. |

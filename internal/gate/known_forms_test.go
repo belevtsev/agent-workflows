@@ -15,19 +15,29 @@ import (
 // changes to command recognition add rows here, so a change in any known
 // form shows up as a failing row. {R} is the gated repository, {S} a gated
 // repository whose path holds a space, and {O} a directory outside both.
-// HOME is {R}'s parent directory, and {N} is {R}'s name in it.
+// HOME is {R}'s parent directory, and {N} is {R}'s name in it. {I}, {D} and
+// {G} are gated repositories whose paths hold characters the shell expands
+// outside quotes: an iCloud Drive folder with a space and `~`, a `$` (in
+// {P}/price$5) and glob characters with a space, which the flat split
+// cannot follow either.
 func TestPrePublishKnownForms(t *testing.T) {
 	repo := canonicalDir(t)
 	spaced := filepath.Join(canonicalDir(t), "my proj")
-	if err := os.Mkdir(spaced, 0o700); err != nil {
-		t.Fatal(err)
+	icloud := filepath.Join(canonicalDir(t), "Mobile Documents", "com~apple~CloudDocs", "proj")
+	dollar := filepath.Join(canonicalDir(t), "price$5")
+	glob := filepath.Join(canonicalDir(t), "a *b?[c]")
+	for _, dir := range []string{spaced, icloud, dollar, glob} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	elsewhere := canonicalDir(t)
 	home := filepath.Dir(repo)
 	open := func(id string) []taskflow.OpenRecord {
 		return []taskflow.OpenRecord{record(id, "Open", "it has no passing cw task verify")}
 	}
-	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: open("task-k"), spaced: open("task-s")}}
+	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: open("task-k"), spaced: open("task-s"),
+		icloud: open("task-i"), dollar: open("task-d"), glob: open("task-g")}}
 	rows := []struct {
 		name    string
 		cwd     string
@@ -167,6 +177,15 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"env -C a path under ~", "{O}", "env -C ~/{N} git commit -m x", gate.Deny},
 		{"cd to a path under ~ inside sh -c", "{O}", "sh -c 'cd ~/{N} && git push'", gate.Deny},
 		{"a push after the cd beside an unresolved commit", "{R}", `(cd $OTHER && git commit -m x); cd "$PWD" && git push`, gate.Deny},
+		{"cd to a path under ~ with HOME in a commit message", "{O}", `cd ~/{N} && git commit -m "fix HOME docs"`, gate.Deny},
+
+		// Quoted and escaped characters are literal, so the path is followed
+		// as written.
+		{"git -C a double-quoted path with ~ and a space", "{O}", `git -C "{I}" commit -m x`, gate.Deny},
+		{"cd to a double-quoted path with ~ and a space", "{O}", `cd "{I}" && git push`, gate.Deny},
+		{"cd to a single-quoted path with $", "{O}", "cd '{D}' && git push", gate.Deny},
+		{"cd to a path with an escaped $", "{O}", `cd {P}/price\$5 && git push`, gate.Deny},
+		{"git -C a double-quoted path with glob characters", "{O}", `git -C "{G}" push`, gate.Deny},
 
 		// Directories the gate cannot resolve: the git command is checked in
 		// the session's directory, {R}, and asks. Where the shell does not
@@ -174,8 +193,6 @@ func TestPrePublishKnownForms(t *testing.T) {
 		// first, expanding it would deny.
 		{"cd to another variable", "{R}", "cd $OTHER && git commit -m x", gate.Ask},
 		{"a relative cd after another variable", "{R}", "cd $OTHER && cd sub && git push", gate.Ask},
-		{"cd to $HOME in single quotes", "{R}", "cd '$HOME/{N}' && git commit -m x", gate.Ask},
-		{"cd to an escaped ~", "{R}", `cd \~/{N} && git push`, gate.Ask},
 		{"cd to another user's home", "{R}", "cd ~nobody && git push", gate.Ask},
 		{"cd to a glob", "{R}", "cd /tmp/* && git push", gate.Ask},
 		{"cd to a path under ~ after HOME is assigned", "{R}", "HOME=/tmp; cd ~/{N} && git push", gate.Ask},
@@ -183,25 +200,34 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"cd to an unquoted $PWD that holds a space", "{S}", "cd $PWD && git push", gate.Ask},
 		{"git -C another variable", "{R}", "git -C $OTHER push", gate.Ask},
 		{"env -C another variable", "{R}", "env -C $OTHER git commit -m x", gate.Ask},
+		// The outer shell expands $PWD in a double-quoted string before
+		// sh runs it, so it does not name /tmp.
+		{"$PWD in a double-quoted sh -c string after its cd", "{R}", `sh -c "cd /tmp && git -C $PWD push"`, gate.Ask},
 
 		// Directory changes the gate does not follow, OLDPWD and the
 		// directory stack among them: as above, checked in {R} and asked.
 		{"cd -", "{R}", "cd - && git commit -m x", gate.Ask},
-		{"cd -P", "{R}", "cd -P {O} && git commit -m x", gate.Ask},
-		{"cd --", "{R}", "cd -- {O} && git push", gate.Ask},
 		{"cd to an empty word", "{R}", `cd "" ; git push`, gate.Ask},
 		{"popd", "{R}", "popd && git push", gate.Ask},
-		{"pushd -n", "{R}", "pushd -n {O} && git push", gate.Ask},
 		{"pushd without a directory", "{R}", "pushd && git push", gate.Ask},
-		// A bare cd moves to HOME, which the gate follows.
+		{"cd to a directory stack entry", "{R}", "cd +1 && git push", gate.Ask},
+
+		// Directory changes the gate follows: -L, -P and -- go to the
+		// directory, pushd -n stays, and a bare cd moves to HOME.
+		{"cd -P", "{O}", "cd -P {R} && git commit -m x", gate.Deny},
+		{"cd -L", "{O}", "cd -L {R} && git commit -m x", gate.Deny},
+		{"cd --", "{O}", "cd -- {R} && git push", gate.Deny},
+		{"pushd -n stays", "{R}", "pushd -n {O} && git push", gate.Deny},
 		{"a bare cd, then a relative cd", "{O}", "cd && cd {N} && git push", gate.Deny},
 	}
-	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere, "{N}", filepath.Base(repo))
+	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere, "{N}", filepath.Base(repo),
+		"{I}", icloud, "{D}", dollar, "{P}", filepath.Dir(dollar), "{G}", glob)
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			git := &fakeGit{}
-			git.repository(repo)
-			git.repository(spaced)
+			for _, dir := range []string{repo, spaced, icloud, dollar, glob} {
+				git.repository(dir)
+			}
 			command := paths.Replace(row.command)
 			got := decideIn(gate.Input{Command: command, CWD: paths.Replace(row.cwd), Home: home, Enforce: true, Prompt: true}, git, store)
 			if got.Permission != row.want {
