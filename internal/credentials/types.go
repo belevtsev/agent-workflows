@@ -28,6 +28,7 @@ var (
 	ErrSave                   = errors.New("credential changes could not be saved")
 	ErrConflict               = errors.New("credential storage changed; read the current credentials before saving again")
 	ErrBusy                   = errors.New("credential storage is busy; no changes were committed")
+	ErrLockUnsupported        = errors.New("credential storage is unavailable: file locking is not supported on this platform; no changes were committed")
 	ErrPersistenceUnconfirmed = errors.New("credentials were committed but persistence durability is unconfirmed")
 )
 

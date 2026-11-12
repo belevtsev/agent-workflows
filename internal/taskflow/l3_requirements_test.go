@@ -134,7 +134,9 @@ func TestAssignRequirementsFollowPlan(t *testing.T) {
 		}
 	}
 	for label, argvs := range notProving {
-		f := l3New(t, l3Opts{checks: plan(argvs)})
+		// Only a small plan takes a contract brief its checks cannot prove; a
+		// substantial one refuses it first (L4 R17).
+		f := l4New(t, l4Opts{small: true, checks: plan(argvs)})
 		b := f.brief("with", []string{"p/with_test.go"}, l3Req("R1", "C1"))
 		b.Goal = label
 		_ = f.assignFails(b, l3NoCredit)
@@ -175,7 +177,8 @@ func TestAssignStoresRequirementsAsGiven(t *testing.T) {
 		t.Errorf("stored record holds requirements %s (%v), want %s (R9)", l3JSON(stored["requirements"]), err, l3JSON(given))
 	}
 
-	g := l3New(t, l3Opts{checks: []taskflow.Check{l3Check("plain", l3PlainP...)}})
+	// A small plan: a substantial one refuses these briefs (L4 R17).
+	g := l4New(t, l4Opts{small: true, checks: []taskflow.Check{l3Check("plain", l3PlainP...)}})
 	b := g.brief("empty", []string{"p/a_test.go"})
 	b.Requirements = []taskflow.ContractRequirement{}
 	g.mustAssign(b)
@@ -193,7 +196,9 @@ func TestAssignStoresRequirementsAsGiven(t *testing.T) {
 // when an empty map is not treated as absent (R10, R38).
 func TestHandoffRequirementMapCarrier(t *testing.T) {
 	t.Parallel()
-	f := l3New(t, l3Opts{files: map[string]string{"p/te_test.go": l3PTests}, checks: []taskflow.Check{l3Check("plain", l3PlainP...)}})
+	// A small plan: a substantial one refuses the contract brief without
+	// requirements (L4 R17).
+	f := l4New(t, l4Opts{small: true, files: map[string]string{"p/te_test.go": l3PTests}, checks: []taskflow.Check{l3Check("plain", l3PlainP...)}})
 	m := l3Map("R1", l3Mapped("p/te_test.go", "TestPass"))
 	f.mustAssign(f.brief("contract", []string{"p/a_test.go"}))
 	f.write("p/a_test.go", "package p\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n")

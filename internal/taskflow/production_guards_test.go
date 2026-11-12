@@ -518,7 +518,7 @@ func TestProductionStartRejectsDeniedBeforeArtifacts(test *testing.T) {
 			}
 			plan := productionBasePlan()
 			plan.Checks[0].Argv = slices.Clone(argv)
-			if _, err := Start(test.Context(), repository, store, plan, fixtureBinding()); err == nil {
+			if _, err := StartWithPacks(test.Context(), repository, store, plan, fixtureBinding(), SelectionExplicit, nil); err == nil {
 				test.Fatal("new Start admitted denied inspection command")
 			}
 			if err := filepath.WalkDir(store, func(path string, entry fs.DirEntry, walkErr error) error {

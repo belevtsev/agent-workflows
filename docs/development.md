@@ -18,6 +18,17 @@ for both the gate and `internal/usagelog`; extend it there rather than
 splitting commands again.
 `cmd/cwdev` holds the maintainer evaluation.
 
+`internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
+stable lock file, waits under a context and an optional bound, and the kernel
+releases it when the holder dies. Take a new lock with it rather than another
+`flock` or `mkdir` loop.
+
+`internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
+stable lock file, waits under a context and an optional bound, and the kernel
+releases it when the holder dies. The credential store, the cost history and
+the Graphify cache use it; take a new lock with it rather than another
+`flock` or `mkdir` loop.
+
 ## Verification
 
 ```sh
@@ -232,8 +243,20 @@ the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.1`
 as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
 `cw version` reports the tag, commit and commit date.
 
-The plugin marketplace installs from the default branch, so plugin users get
-`main` between tags: every merge must leave `main` releasable.
+The plugin marketplace installs from the default branch, and the
+agent-workflows manifests pin `version` to the last tag. On Claude Code a new
+install of agent-workflows copies `main` as it stands that day. An existing
+install keeps its cached copy until the `version` string changes, which only
+the release pull request (step 1 below) does, so existing users move from one
+release to the next and never see `main` between them
+([versions and updates](https://code.claude.com/docs/en/plugins/loading#versions-and-updates);
+from the vendor documentation, not tested here). Every merge must still leave
+`main` releasable, because new installs take it.
+
+`third_party/cc-skills-golang` pins its own `version` (2.0.0) in its
+`.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and the release
+pull request does not change it. When its content changes, bump that version
+in the same pull request; otherwise existing users keep their cached copy.
 
 Steps for each tag `vX` (the owner runs steps 3 to 5):
 

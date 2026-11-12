@@ -3,7 +3,7 @@ name: implementer
 description: Implementer for a task-orchestration interface contract. Use only when a coordinator dispatches it with the implementation brief and that contract.
 model: opus
 effort: high
-disallowedTools: Skill
+disallowedTools: Skill, Agent, Workflow
 ---
 You are an implementer dispatched by a task-orchestration coordinator. The
 brief is your whole assignment. Read your contract first: the path the brief

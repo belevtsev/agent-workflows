@@ -688,7 +688,7 @@ func acRequireNoTask(t *testing.T, label, store string) {
 // message and that nothing was written in the store.
 func acRequireStartRefused(t *testing.T, label, repo, store string, plan Plan, binding map[string]string, ids string) {
 	t.Helper()
-	record, err := Start(t.Context(), repo, store, plan, binding)
+	record, err := StartWithPacks(t.Context(), repo, store, plan, binding, SelectionExplicit, nil)
 	if err == nil {
 		t.Fatalf("R2 %s: Start accepted a contradiction; record %s", label, record.Directory)
 	}
@@ -769,7 +769,7 @@ func TestStartContradictionPrecedesBaselineAndStoreErrors(t *testing.T) {
 		// The same missing repository with a non-claiming reason still fails,
 		// with an error that is not the contradiction: the order matters.
 		repo := filepath.Join(t.TempDir(), "does-not-exist")
-		_, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), acNotRequired(t, acBenignReason), fixtureBinding())
+		_, err := StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), acNotRequired(t, acBenignReason), fixtureBinding(), SelectionExplicit, nil)
 		if err == nil {
 			t.Fatal("fixture invariant: Start accepted a missing repository")
 		}
@@ -792,7 +792,7 @@ func TestStartExistingPlanValidationPrecedesContradiction(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := filepath.Join(t.TempDir(), "tasks")
-			_, err := Start(t.Context(), acRepo(t), store, plan, fixtureBinding())
+			_, err := StartWithPacks(t.Context(), acRepo(t), store, plan, fixtureBinding(), SelectionExplicit, nil)
 			if err == nil {
 				t.Fatal("R2: Start accepted a plan existing validation refuses")
 			}
@@ -829,7 +829,7 @@ func TestStartAcceptsPlansThatAreNotContradictions(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			record, err := Start(t.Context(), acRepo(t), filepath.Join(t.TempDir(), "tasks"), c.plan, c.binding)
+			record, err := StartWithPacks(t.Context(), acRepo(t), filepath.Join(t.TempDir(), "tasks"), c.plan, c.binding, SelectionExplicit, nil)
 			if err != nil || record.Directory == "" {
 				t.Fatalf("R2 unchanged: Start refused a plan that is not a contradiction: %v", err)
 			}

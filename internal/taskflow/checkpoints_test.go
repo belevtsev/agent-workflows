@@ -42,7 +42,7 @@ func checkpointsTestRefusedStart(t *testing.T, label string, plan Plan) {
 		t.Fatal(err)
 	}
 	store := filepath.Join(t.TempDir(), "tasks")
-	if _, err := Start(t.Context(), repo, store, plan, fixtureBinding()); err == nil {
+	if _, err := StartWithPacks(t.Context(), repo, store, plan, fixtureBinding(), SelectionExplicit, nil); err == nil {
 		t.Fatalf("%s: Start accepted the plan", label)
 	}
 	if _, err := os.Stat(store); errors.Is(err, os.ErrNotExist) {

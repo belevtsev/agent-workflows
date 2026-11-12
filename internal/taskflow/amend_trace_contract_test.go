@@ -172,9 +172,9 @@ func (f *m1Fixture) start(checks []taskflow.Check) {
 		Checks:      checks,
 		Checkpoints: &taskflow.CheckpointPolicy{Required: false, Reason: "approach follows directly from the contract"},
 	}
-	rec, err := taskflow.Start(f.ctx, f.repo, f.store, plan, map[string]string{})
+	rec, err := taskflow.StartWithPacks(f.ctx, f.repo, f.store, plan, map[string]string{}, taskflow.SelectionExplicit, acPacks())
 	if err != nil {
-		f.t.Fatalf("Start: %v", err)
+		f.t.Fatalf("StartWithPacks: %v", err)
 	}
 	f.task = rec.Directory
 	f.id = rec.ID

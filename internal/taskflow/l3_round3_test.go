@@ -94,6 +94,7 @@ func TestTracePicksMiddleRunInPlanCheckOrder(t *testing.T) {
 		l3Map("R1", l3Mapped("p/te_test.go", "TestPass")),
 		l3Map("R2", l3Mapped("p/te_test.go", "TestSkip")),
 		l3Map("R3", l3Mapped("q/te_test.go", "TestFail"))))
+	f.accept("te1", "accepted")
 
 	// Phase 1: only uncredited passing runs of p, so TestPass is not_run with
 	// detail 1; and three failing runs of q.
@@ -154,6 +155,7 @@ func TestTraceTruncatedPicksMiddleRunInPlanCheckOrder(t *testing.T) {
 	f.mustAssign(f.brief("te1", []string{"b/b_test.go"}, l3Req("R1", "C1")))
 	f.write("b/b_test.go", l3r3Many)
 	f.mustSubmit(f.result("te1", "completed", []string{"b/b_test.go"}, l3Map("R1", l3Mapped("b/b_test.go", last))))
+	f.accept("te1", "accepted")
 	runs := f.l3r3RunAll("passed", "t1", "t2", "t3")
 	f.l3r3Expect("truncated results (not_run detail 3)", f.trace(), f.verify(), "R1", "b/b_test.go", last, "not_run", "has no PASS at the current source",
 		fmt.Sprintf("run %s of check t2 stopped recording tests at its bound", runs["t2"].ID))

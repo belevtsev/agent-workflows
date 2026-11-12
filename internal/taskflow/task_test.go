@@ -21,6 +21,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 )
 
 // TestCheckSubprocess acts as the check helper only in a re-executed helper
@@ -276,7 +278,7 @@ func fixtureTaskBound(t *testing.T, plan Plan, advisers map[string]string) (Reco
 	if err := os.WriteFile(filepath.Join(repo, "source.txt"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, advisers)
+	record, err := StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, advisers, SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +361,7 @@ func TestCheckOutcomesNeverBecomePasses(t *testing.T) {
 				// accepts a runtime argv override.
 				plan.Checks[0].Argv = append(plan.Checks[0].Argv, filepath.Join(record.Baseline.Root, "source.txt"))
 				var err error
-				record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers)
+				record, err = StartWithPacks(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers, SelectionExplicit, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -899,7 +901,7 @@ func TestTerminalPublicationWaitsForShortMetadataWriter(t *testing.T) {
 func TestStorageRejectsRepoAndSymlinkEscapes(t *testing.T) {
 	plan := helperPlan(t, "small", "pass")
 	repo := t.TempDir()
-	if _, err := Start(t.Context(), repo, filepath.Join(repo, "records"), plan, fixtureBinding()); err == nil {
+	if _, err := StartWithPacks(t.Context(), repo, filepath.Join(repo, "records"), plan, fixtureBinding(), SelectionExplicit, nil); err == nil {
 		t.Fatal("in-repo storage accepted")
 	}
 	parent := t.TempDir()
@@ -908,7 +910,7 @@ func TestStorageRejectsRepoAndSymlinkEscapes(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Skip(err)
 	}
-	if _, err := Start(t.Context(), repo, link, plan, fixtureBinding()); err == nil {
+	if _, err := StartWithPacks(t.Context(), repo, link, plan, fixtureBinding(), SelectionExplicit, nil); err == nil {
 		t.Fatal("symlink storage accepted")
 	}
 	record, _ := fixtureTask(t, plan)
@@ -932,7 +934,7 @@ func TestInitialRevisionNeverPublishesAboveReadableLimit(t *testing.T) {
 		plan.Checks = append(plan.Checks, Check{ID: fmt.Sprintf("check%d", i), Argv: []string{"go", "test", strings.Repeat("x", 65500)}, TimeoutSeconds: 1})
 	}
 	store := filepath.Join(t.TempDir(), "tasks")
-	if _, err := Start(t.Context(), t.TempDir(), store, plan, fixtureBinding()); err == nil || !strings.Contains(err.Error(), "initial task revision exceeds") {
+	if _, err := StartWithPacks(t.Context(), t.TempDir(), store, plan, fixtureBinding(), SelectionExplicit, nil); err == nil || !strings.Contains(err.Error(), "initial task revision exceeds") {
 		t.Fatalf("oversized initial revision accepted: %v", err)
 	}
 	entries, err := os.ReadDir(store)
@@ -1010,7 +1012,7 @@ func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
 	git("add", ".")
 	git("commit", "-qm", "baseline")
 	var err error
-	record, err = Start(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers)
+	record, err = StartWithPacks(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers, SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1054,11 +1056,12 @@ func mustVerifyReport(t *testing.T, record Record) Verification {
 	return verified
 }
 
-// Verify asks the language-pack registry for the evidence rules of a changed
-// substantial task, given paths relative to the selected path: in a Go module a
-// changed package needs a passed go test run covering it. The rules themselves
-// are tested in internal/langpack.
+// Verify applies the evidence rule the task's pack set names to a changed
+// substantial task, given paths relative to the selected path: under the Go
+// rule go.package-test/v1 a changed package needs a passed go test run
+// covering it. The rules themselves are tested in internal/langpack.
 func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
+	goPack := []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV1}}
 	const problem = "changed package internal/pkg has no passed go test run at the current source"
 	for _, tc := range []struct {
 		name    string
@@ -1080,7 +1083,10 @@ func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
 				module[path.Join(tc.module, name)] = data
 			}
 			repo := bundleTestRepo(t, module, true)
-			record := bundleTestStart(t, filepath.Join(repo, tc.module), executionPlan([]string{fakeGo(t, tc.exit), "test", "-count=1", tc.pattern}))
+			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
+			if err != nil {
+				t.Fatal(err)
+			}
 			bundleTestWrite(t, repo, path.Join(tc.module, "internal/pkg/pkg.go"), "package pkg\n\nconst Changed = true\n")
 			run, _ := Run(t.Context(), record.Directory, "unit")
 			if want := map[int]string{0: "passed", 1: "failed"}[tc.exit]; run.Status != want {
