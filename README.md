@@ -226,16 +226,16 @@ cw task verify --task <task-dir> --summary
 cw task abandon --task <task-dir> --reason "replaced by a new task"
 ```
 
-**Let git run the gate too.** This writes git's pre-commit and pre-push hooks
-for one repository, so a commit or push from a script, an alias or a terminal
-meets the same gate; `cw gate uninstall` removes them:
+**Let git run the gate too.** `cw gate install` writes git's pre-commit and
+pre-push hooks for one repository, so a commit or push from a script, an alias
+or a terminal meets the same gate; `cw gate uninstall` removes them:
 
 ```sh
 cw gate install --repo /path/to/repo
 ```
 
 `cw` never writes them unasked. While a task is open in a repository without
-them, the session start suggests the command and `cw doctor` reports
+them, the session-start context suggests the command and `cw doctor` reports
 `git_hooks` as `missing`
 ([installing the git hooks](docs/hooks.md#installing-the-git-hooks)).
 
