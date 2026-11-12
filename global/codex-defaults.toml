@@ -1,10 +1,8 @@
-model_context_window = 512000
-
 [features]
 memories = true
 
 [memories]
 generate_memories = true
 use_memories = true
-extract_model = "gpt-6.1-sol"
-consolidation_model = "gpt-6.1-sol"
+extract_model = "gpt-6-luna"
+consolidation_model = "gpt-6-luna"

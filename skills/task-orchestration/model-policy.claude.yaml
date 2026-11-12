@@ -6,9 +6,9 @@ version: 1
 # policy enables it, its credential is present, the user opted in to it, and it
 # is not disabled in the user's preferences. Agent tool
 # dispatch accepts aliases only, so references/hosts.md maps these profiles to
-# `model: opus` or `model: sonnet` with explicit effort. Most substantive work
-# runs at `high`; the `decision` profile keeps `xhigh` for planning, architecture
-# and diagnosis.
+# `model: opus`, `model: sonnet` or `model: haiku` with explicit effort. Most
+# substantive work runs at `high`; the `decision` profile keeps `xhigh` for
+# planning, architecture and diagnosis.
 profiles:
   substantive:
     model: claude-opus-5-5
@@ -33,8 +33,17 @@ profiles:
     model: claude-sonnet-5-5
     effort: medium
     scope: bounded_execution
+  # Read-only evidence that draws no consequential conclusion. Summarization
+  # runs here: a summary replaces the source for the coordinator, so what it
+  # leaves out is not seen again.
   bounded_evidence:
-    model: claude-opus-5-5
+    model: claude-sonnet-5-5
+    effort: high
+    scope: bounded_evidence
+  # Locating and quoting files, symbols and documents: the answer is paths and
+  # quotes the coordinator can check against the source.
+  lookup:
+    model: claude-haiku-5-5
     effort: high
     scope: bounded_evidence
 
@@ -64,7 +73,7 @@ roles:
   pr_authoring_routine: github
   commit_execution: github
   pr_submission: github
-  lookup: bounded_evidence
+  lookup: lookup
   summarization: bounded_evidence
 
 unknown_role_profile: substantive
