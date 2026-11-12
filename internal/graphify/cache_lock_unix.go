@@ -30,7 +30,7 @@ func acquireCacheLock(ctx context.Context, path string) (func(), error) {
 		if err != nil {
 			return err
 		}
-		named, err := os.Lstat(path)
+		named, err := os.Lstat(path) //nolint:gosec // G703: re-checks the lock file this function just opened; it reads no content.
 		if err != nil {
 			return err
 		}

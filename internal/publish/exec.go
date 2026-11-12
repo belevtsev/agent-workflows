@@ -95,7 +95,7 @@ func (t tool) run(ctx context.Context, stdin []byte, stdout io.Writer, args ...s
 	if commandCtx.Err() != nil {
 		return result{code: -1, stopped: true, cancelled: interrupted(ctx)}
 	}
-	command := exec.Command(t.path, args...)
+	command := exec.Command(t.path, args...) //nolint:gosec // G204: t.path is the git or gh binary resolved at start, no shell.
 	command.Dir, command.Env = t.dir, t.env
 	if stdin != nil {
 		command.Stdin = bytes.NewReader(stdin)

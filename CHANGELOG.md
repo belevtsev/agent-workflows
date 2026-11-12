@@ -83,8 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ([policy](docs/operations.md#model-policy), [paths](docs/operations.md#paths)).
 - Diagrams are archify specs with committed SVGs; Mermaid is gone ([diagrams](CONTRIBUTING.md#diagrams)).
 - `cw` runs on macOS and Linux; Windows is not supported ([get cw][getcw]).
-- CI runs gofmt, vet and tests on Linux and macOS; releases come only from pushed `v*` tags
-  ([releases](docs/development.md#releases)).
+- CI runs gofmt, vet and tests on Linux and macOS, plus golangci-lint and govulncheck for both
+  ([CI](docs/development.md#continuous-integration)); releases come only from pushed `v*` tags and
+  build with go1.27.4, which fixes 11 reachable stdlib vulnerabilities ([releases](docs/development.md#releases)).
 - Both plugins and the marketplace carry version `3.0.0-rc.1`; install `cw` from the `v3.0.0-rc.1` release instead of `@main` ([get cw][getcw]).
 
 ### Fixed

@@ -633,7 +633,7 @@ func gitOutput(ctx context.Context, dir string, args ...string) (string, error) 
 func gitRun(ctx context.Context, dir string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, hookGitTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, "git", append([]string{"--no-optional-locks", "-c", "core.fsmonitor=false", "-C", dir}, args...)...)
+	command := exec.CommandContext(ctx, "git", append([]string{"--no-optional-locks", "-c", "core.fsmonitor=false", "-C", dir}, args...)...) //nolint:gosec // G204: fixed git binary, no shell; callers pass cw's own subcommands and revisions git resolved.
 	command.Stderr = io.Discard
 	output, err := command.Output()
 	return string(output), err

@@ -189,7 +189,17 @@ preserved licenses are covered by the import-provenance checks in
 | --- | --- |
 | `Native Go / ubuntu-latest` | gofmt check, `go vet ./...`, `go test -race -count=1 ./...` |
 | `Native Go / macos-latest` | gofmt check, `go vet ./...`, `go test -count=1 ./...` |
+| `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
+
+The lint job builds the pinned golangci-lint with the Go toolchain that go.mod
+selects, so the linter can load this module. `.golangci.yml` enables govet,
+staticcheck, errcheck, ineffassign, unused, gosec and misspell, and gives the
+reason for each exclusion; a suppressed finding in code carries a
+`//nolint:<linter> // reason` comment. govulncheck fails the job when the
+standard library of that toolchain or a dependency has a vulnerability that
+the code can reach; the fix is a newer toolchain or module version. The
+[contributing guide](../CONTRIBUTING.md#build-and-test) has the local commands.
 
 The race detector runs on Linux only. Only obsolete pull request runs are
 cancelled. `ci.yml` makes no release and receives no service credentials.

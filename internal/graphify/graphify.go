@@ -439,7 +439,7 @@ func executable(target string) bool {
 	if err != nil {
 		return false
 	}
-	info, err := os.Stat(absolute)
+	info, err := os.Stat(absolute) //nolint:gosec // G703: checks whether a graphify runtime candidate is an executable file; it reads no content.
 	if err != nil || !info.Mode().IsRegular() {
 		return false
 	}
@@ -682,7 +682,7 @@ func validateGraph(target string, state sourceState, snapshot string, rewrite bo
 		if err != nil {
 			return Summary{}, err
 		}
-		if err := os.WriteFile(target, data, 0o600); err != nil {
+		if err := os.WriteFile(target, data, 0o600); err != nil { //nolint:gosec // G703: target is the graph file inside cw's private pending build directory.
 			return Summary{}, err
 		}
 		if err := os.Chmod(target, 0o600); err != nil {
@@ -730,7 +730,7 @@ func currentEntry(state sourceState, entry string) (readyEntry, Summary, error) 
 func writeSnapshot(directory string, content map[string][]byte) error {
 	for name, data := range content {
 		target := filepath.Join(directory, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil { //nolint:gosec // G301: inside the 0700 cache parent; the graphify runtime reads the snapshot.
 			return err
 		}
 		if err := os.WriteFile(target, data, 0o600); err != nil {
@@ -744,7 +744,7 @@ func writeSnapshot(directory string, content map[string][]byte) error {
 // complete, rewritten graph in pending or an error.
 func (o Options) extract(ctx context.Context, runtime, pending string, content map[string][]byte, state sourceState) (Summary, error) {
 	snapshot, output := filepath.Join(pending, "source"), filepath.Join(pending, "graphify-out")
-	if err := os.Mkdir(snapshot, 0o755); err != nil {
+	if err := os.Mkdir(snapshot, 0o755); err != nil { //nolint:gosec // G301: inside the 0700 cache parent; the graphify runtime reads the snapshot.
 		return Summary{}, err
 	}
 	if err := writeSnapshot(snapshot, content); err != nil {
@@ -754,10 +754,10 @@ func (o Options) extract(ctx context.Context, runtime, pending string, content m
 	if err != nil {
 		return Summary{}, err
 	}
-	if err := os.WriteFile(filepath.Join(pending, "extraction.stdout"), []byte(stdout), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(pending, "extraction.stdout"), []byte(stdout), 0o644); err != nil { //nolint:gosec // G306: inside the 0700 cache parent.
 		return Summary{}, err
 	}
-	if err := os.WriteFile(filepath.Join(pending, "extraction.stderr"), []byte(stderr), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(pending, "extraction.stderr"), []byte(stderr), 0o644); err != nil { //nolint:gosec // G306: inside the 0700 cache parent.
 		return Summary{}, err
 	}
 	if code != 0 || extractionFailure.MatchString(stdout+stderr) {
@@ -962,7 +962,7 @@ func Build(ctx context.Context, o Options) (BuildResult, error) {
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return result, err
 	}
-	if err := os.Chmod(parent, 0o700); err != nil {
+	if err := os.Chmod(parent, 0o700); err != nil { //nolint:gosec // G302: parent is a directory, and 0700 is owner-only.
 		return result, err
 	}
 	pending, err := os.MkdirTemp(parent, ".build-")
@@ -982,7 +982,7 @@ func Build(ctx context.Context, o Options) (BuildResult, error) {
 	if !reflect.DeepEqual(again, state) {
 		return result, refuse("source_changed", "Source changed during extraction; build a fresh graph")
 	}
-	if err := os.WriteFile(filepath.Join(pending, "graphify-out", ".graphify_root"), []byte(state.Repository), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(pending, "graphify-out", ".graphify_root"), []byte(state.Repository), 0o644); err != nil { //nolint:gosec // G306: inside the 0700 cache parent.
 		return result, err
 	}
 	graph, err := os.ReadFile(filepath.Join(pending, "graphify-out", "graph.json"))

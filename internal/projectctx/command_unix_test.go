@@ -22,7 +22,7 @@ func TestNormalProbeExitStopsDetachedOwnedChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer syscall.Kill(pid, syscall.SIGKILL)
+	defer syscall.Kill(pid, syscall.SIGKILL) //nolint:errcheck // best-effort cleanup; the process may already be gone
 	deadline := time.Now().Add(time.Second)
 	for {
 		probeCtx, cancel := context.WithTimeout(t.Context(), time.Second)

@@ -1484,7 +1484,7 @@ func TestProductionCacheLockProcessDeathAndRefusals(test *testing.T) {
 		_ = command.Process.Kill()
 		if !waited {
 			select {
-			case <-done:
+			case <-done: //nolint:errcheck // the holder was killed; only reaping matters
 			case <-time.After(5 * time.Second):
 				test.Error("lock holder was not reaped")
 			}
@@ -1520,7 +1520,7 @@ func TestProductionCacheLockProcessDeathAndRefusals(test *testing.T) {
 		test.Fatal(err)
 	}
 	select {
-	case <-done:
+	case <-done: //nolint:errcheck // the owner was killed; only its exit matters
 		waited = true
 	case <-time.After(5 * time.Second):
 		test.Fatal("killed lock owner did not exit")

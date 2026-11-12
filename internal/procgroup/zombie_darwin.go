@@ -19,7 +19,7 @@ func onlyDead(pgid int) bool {
 		return false
 	}
 	for _, proc := range procs {
-		if proc.Eproc.Pgid != int32(pgid) || proc.Proc.P_stat != sZomb {
+		if proc.Eproc.Pgid != int32(pgid) || proc.Proc.P_stat != sZomb { //nolint:gosec // G115: Kill just signalled this live group, so pgid fits a Darwin pid_t (int32).
 			return false
 		}
 	}

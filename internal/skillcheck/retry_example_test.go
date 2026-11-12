@@ -60,7 +60,7 @@ func TestInvalidConfiguration(t *testing.T) {
  }
 }
 `))
-	command := exec.CommandContext(t.Context(), filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-count=1", "-timeout=10s", "./...")
+	command := exec.CommandContext(t.Context(), filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-count=1", "-timeout=10s", "./...") //nolint:staticcheck // SA1019: a test binary runs where go test built it, so this is the toolchain that built the test.
 	command.Dir = root
 	command.Env = append(os.Environ(), "GOWORK=off", "GOENV=off", "GOFLAGS=", "GOTOOLCHAIN=local", "GOPROXY=off")
 	if output, err := command.CombinedOutput(); err != nil {

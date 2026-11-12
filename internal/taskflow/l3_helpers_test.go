@@ -686,17 +686,6 @@ func l3Criterion(t *testing.T, rep taskflow.TraceReport, id string) taskflow.Tra
 	return taskflow.TraceCriterion{}
 }
 
-func l3Test(t *testing.T, r taskflow.TraceRequirement, worker, name string) taskflow.TraceTest {
-	t.Helper()
-	for _, x := range r.Tests {
-		if x.Path == worker && x.Name == name {
-			return x
-		}
-	}
-	t.Fatalf("requirement %s/%s has no test %s %s: %s", r.AssignmentID, r.Requirement, worker, name, l3JSON(r))
-	return taskflow.TraceTest{}
-}
-
 func l3Mapped(path, name string) taskflow.MappedTest {
 	return taskflow.MappedTest{Path: path, Name: name}
 }

@@ -44,7 +44,7 @@ func executeBounded(ctx context.Context, command Command, limit int) (CommandRes
 	}
 	probeCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	cmd := exec.CommandContext(probeCtx, command.Executable, command.Args...)
+	cmd := exec.CommandContext(probeCtx, command.Executable, command.Args...) //nolint:gosec // G204: argv comes from cw's own probes (git and the doctor's fixed tools), no shell.
 	configureProbeProcess(cmd)
 	cmd.Dir = command.Dir
 	cmd.Env = command.Env

@@ -1473,8 +1473,9 @@ func largestRemainder(total int64, weights []int64) []int64 {
 	for i, w := range weights {
 		hi, lo := bits.Mul64(uint64(total), uint64(max(w, 0)))
 		q, r := bits.Div64(hi, lo, sum)
-		shares[i] = int64(q)
-		assigned += int64(q)
+		// q = total*w/sum with 0 <= w <= sum, so q <= total fits int64.
+		shares[i] = int64(q) //nolint:gosec // G115: bounded by total, see above.
+		assigned += int64(q) //nolint:gosec // G115: bounded by total, see above.
 		remainders[i] = rem{i, r}
 	}
 	slices.SortStableFunc(remainders, func(x, y rem) int { return cmp.Compare(y.r, x.r) })

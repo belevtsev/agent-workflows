@@ -132,7 +132,7 @@ func TestAssignInputsDuplicates(t *testing.T) {
 	one := l3Input(t, filepath.Join(real, "spec.md"), "spec\n")
 	b := f.plainBrief("dup", []string{"p/dup.go"})
 	b.Inputs = []taskflow.InputRef{one, one}
-	f.assignFails(b, "worker brief inputs repeat "+one.Path)
+	_ = f.assignFails(b, "worker brief inputs repeat "+one.Path)
 
 	link := filepath.Join(f.root, "link")
 	if err := os.Symlink(real, link); err != nil {
@@ -231,15 +231,15 @@ func TestAssignInputChecksRunLast(t *testing.T) {
 
 	b := f.brief("r8", []string{"p/r8_test.go"})
 	b.Inputs = []taskflow.InputRef{missing}
-	f.assignFails(b, "a brief with a contract must declare requirements: each contract requirement with the plan requirements it implements")
+	_ = f.assignFails(b, "a brief with a contract must declare requirements: each contract requirement with the plan requirements it implements")
 
 	b = f.brief("r7", []string{"p/r7_test.go"}, l3Req("R1", "C9"))
 	b.Inputs = []taskflow.InputRef{missing}
-	f.assignFails(b, "brief requirement R1 names unknown plan requirement C9")
+	_ = f.assignFails(b, "brief requirement R1 names unknown plan requirement C9")
 
 	b = f.brief("r2", []string{"p/r2_test.go"}, l3Req("R1", "C1"))
 	b.Inputs = []taskflow.InputRef{missing, missing}
-	f.assignFails(b, "worker brief inputs repeat "+missing.Path)
+	_ = f.assignFails(b, "worker brief inputs repeat "+missing.Path)
 }
 
 // TestAssignStoresInputCopies fails when assign does not store one private

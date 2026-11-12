@@ -85,7 +85,7 @@ their notices:
 
 | Module | Version | Retained license |
 | --- | --- | --- |
-| [Go runtime and standard library](https://github.com/golang/go/tree/go1.27.1) | go1.27.1 | [BSD notice](licenses/go-LICENSE) |
+| [Go runtime and standard library](https://github.com/golang/go/tree/go1.27.4) | go1.27.4 | [BSD notice](licenses/go-LICENSE) |
 | [pelletier/go-toml](https://github.com/pelletier/go-toml) | v2.2.3 | [MIT notice](licenses/go-toml-LICENSE) |
 | [go-yaml/yaml](https://github.com/go-yaml/yaml) | v3.0.1 | [MIT/Apache notices](licenses/yaml-LICENSE) |
 | [spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | [Apache notice](licenses/cobra-LICENSE) |
