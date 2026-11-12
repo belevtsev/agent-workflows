@@ -22,6 +22,14 @@ func l3Result(pkg, test string, pass, fail, skip int) langpack.GoTestResult {
 	return langpack.GoTestResult{Package: pkg, Test: test, Pass: pass, Fail: fail, Skip: skip}
 }
 
+// l3RunResult is l3Result as one real go test -json run stores it: the test
+// ran once, so it has one run event (L4 R6).
+func l3RunResult(pkg, test string, pass, fail, skip int) langpack.GoTestResult {
+	result := l3Result(pkg, test, pass, fail, skip)
+	result.Run = 1
+	return result
+}
+
 // l3ResultsFile checks the R15 file contract for run and returns its decoded
 // results: check-<run id>.tests.json, a private regular file in the task
 // directory, hashing to test_results_sha256 and decoding strictly.
@@ -91,10 +99,10 @@ func TestRunRecordsTestResultsOfPassedAndFailedRuns(t *testing.T) {
 		t.Fatalf("ok run status %q failure %q, want passed with exit 0 (R16: results change no status)", ok.Status, ok.Failure)
 	}
 	want := l3Results{Tests: []langpack.GoTestResult{
-		l3Result(p, "TestPass", 1, 0, 0),
-		l3Result(p, "TestSkip", 0, 0, 1),
-		l3Result(p, "TestSub", 1, 0, 0),
-		l3Result(p, "TestSub/a", 1, 0, 0),
+		l3RunResult(p, "TestPass", 1, 0, 0),
+		l3RunResult(p, "TestSkip", 0, 0, 1),
+		l3RunResult(p, "TestSub", 1, 0, 0),
+		l3RunResult(p, "TestSub/a", 1, 0, 0),
 	}}
 	if got := f.l3ResultsFile(ok); !reflect.DeepEqual(got, want) {
 		t.Errorf("ok run results = %s, want %s (R15)", l3JSON(got), l3JSON(want))
@@ -109,8 +117,8 @@ func TestRunRecordsTestResultsOfPassedAndFailedRuns(t *testing.T) {
 		t.Errorf("bad run status %q failure %q, want failed command_failed (R16)", bad.Status, bad.Failure)
 	}
 	wantBad := l3Results{Tests: []langpack.GoTestResult{
-		l3Result(q, "TestFail", 0, 1, 0),
-		l3Result(q, "TestQPass", 1, 0, 0),
+		l3RunResult(q, "TestFail", 0, 1, 0),
+		l3RunResult(q, "TestQPass", 1, 0, 0),
 	}}
 	if got := f.l3ResultsFile(bad); !reflect.DeepEqual(got, wantBad) {
 		t.Errorf("bad run results = %s, want %s (R15)", l3JSON(got), l3JSON(wantBad))
@@ -272,7 +280,7 @@ func TestTouch(t *testing.T) {
 	if run.Status != "source_changed" {
 		t.Fatalf("run status %q, want source_changed", run.Status)
 	}
-	want := l3Results{Tests: []langpack.GoTestResult{l3Result(l3Module+"/s", "TestTouch", 1, 0, 0)}}
+	want := l3Results{Tests: []langpack.GoTestResult{l3RunResult(l3Module+"/s", "TestTouch", 1, 0, 0)}}
 	if got := f.l3ResultsFile(run); !reflect.DeepEqual(got, want) {
 		t.Errorf("source_changed run results = %s, want %s (R15)", l3JSON(got), l3JSON(want))
 	}
@@ -358,8 +366,8 @@ func TestAfter(t *testing.T) {}
 		t.Fatalf("run status %q truncated %v output %d bytes, want a passed run past the %d-byte log", run.Status, run.Truncated, run.OutputBytes, taskflow.MaxLogBytes)
 	}
 	want := l3Results{Tests: []langpack.GoTestResult{
-		l3Result(l3Module+"/big", "TestAfter", 1, 0, 0),
-		l3Result(l3Module+"/big", "TestBig", 1, 0, 0),
+		l3RunResult(l3Module+"/big", "TestAfter", 1, 0, 0),
+		l3RunResult(l3Module+"/big", "TestBig", 1, 0, 0),
 	}}
 	if got := f.l3ResultsFile(run); !reflect.DeepEqual(got, want) {
 		t.Errorf("results = %s, want %s (R17: TestAfter is reported after the first 128 KiB)", l3JSON(got), l3JSON(want))

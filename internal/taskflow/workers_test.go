@@ -454,7 +454,7 @@ func TestImplementationHandoffSurvivesUnrelatedNonGoSourceChanges(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(repo, "index.html"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding())
+	record, err := StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding(), SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

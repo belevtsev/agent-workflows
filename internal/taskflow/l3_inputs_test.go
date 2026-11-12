@@ -127,7 +127,7 @@ func TestAssignInputsShape(t *testing.T) {
 // contract file is refused (R2).
 func TestAssignInputsDuplicates(t *testing.T) {
 	t.Parallel()
-	f := l3New(t, l3Opts{checks: []taskflow.Check{l3Check("plain", l3PlainP...)}})
+	f := l3New(t, l3Opts{})
 	real := filepath.Join(f.root, "real")
 	one := l3Input(t, filepath.Join(real, "spec.md"), "spec\n")
 	b := f.plainBrief("dup", []string{"p/dup.go"})
@@ -140,7 +140,7 @@ func TestAssignInputsDuplicates(t *testing.T) {
 	}
 	other := taskflow.InputRef{Path: filepath.Join(link, "spec.md"), SHA256: one.SHA256}
 	contract := taskflow.InputRef{Path: f.contract.Path, SHA256: f.contract.SHA256}
-	b = f.brief("spellings", []string{"p/spellings_test.go"})
+	b = f.brief("spellings", []string{"p/spellings_test.go"}, l3Req("R1", "C1"))
 	b.Inputs = []taskflow.InputRef{one, other, contract}
 	f.mustAssign(b)
 	if got := f.assignment("spellings").InputFiles; len(got) != 3 {

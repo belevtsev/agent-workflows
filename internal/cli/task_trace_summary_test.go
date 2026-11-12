@@ -65,6 +65,7 @@ func TestTaskTraceCLISummary(t *testing.T) {
 		l3cMap("R2", l3cTest("p/te_test.go", "TestPass"), l3cTest("q/te_test.go", "TestFail"),
 			l3cTest("p/te_test.go", "TestSkip"), l3cTest("p/never_test.go", "TestNever")),
 		l3cUncovered("R3", "needs a fault seam"))
+	f.accept("te1", "accepted")
 	f.assign("te2", []string{"r/r_test.go"}, l3cReq("R4", "C2"))
 	ok := f.run("ok")
 	bad := f.run("bad")

@@ -83,9 +83,9 @@ func l3cNew(t *testing.T, reqs []string, checks ...taskflow.Check) *l3cFix {
 	for _, id := range reqs {
 		plan.Requirements = append(plan.Requirements, taskflow.Requirement{ID: id, Description: "criterion " + id, CheckIDs: []string{checks[0].ID}})
 	}
-	rec, err := taskflow.Start(f.ctx, f.repo, store, plan, nil)
+	rec, err := taskflow.StartWithPacks(f.ctx, f.repo, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
-		t.Fatalf("Start: %v", err)
+		t.Fatalf("StartWithPacks: %v", err)
 	}
 	f.dir, f.id = rec.Directory, rec.ID
 	extract, err := taskflow.ExtractContract(filepath.Join(f.repo, "p"), []string{"F"})
@@ -371,6 +371,7 @@ func l3cTraceFixture(t *testing.T) *l3cFix {
 	f.write("q/te_test.go", l3cQTests)
 	f.submit("te1", []string{"p/te_test.go", "q/te_test.go"},
 		l3cMap("R1", l3cTest("p/te_test.go", "TestPass")), l3cMap("R2", l3cTest("q/te_test.go", "TestFail")))
+	f.accept("te1", "accepted")
 	f.run("ok")
 	f.run("bad")
 	return f

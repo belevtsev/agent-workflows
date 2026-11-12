@@ -297,7 +297,7 @@ func TestDeferredEvidenceFreshnessMatchesResolved(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			record, err := Start(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), helperPlan(t, "small", "pass"), fixtureBinding())
+			record, err := StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), helperPlan(t, "small", "pass"), fixtureBinding(), SelectionExplicit, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -24,9 +24,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
+
+// acPacks is the explicit pack selection the amendment fixtures start with: a
+// Go pack detected by go.mod that names go.package-test/v1, the Go rule these
+// contracts state their verify problems in.
+func acPacks() []langpack.Manifest {
+	return []langpack.Manifest{spManifest("go", langpack.GoPackageTestV1, "go.mod")}
+}
 
 const (
 	acReason          = "merged origin/main; go.mod and internal/b changed"
@@ -500,16 +508,26 @@ func acPlan(o acPlanOpts) taskflow.Plan {
 	return p
 }
 
-// start begins the task with taskflow.Start, which records no pack set
-// (section 2 recipe "Record without a pack set").
+// start begins the task with taskflow.StartWithPacks and acPacks.
 func (r *acRepo) start(t *testing.T, o acPlanOpts) string {
 	t.Helper()
-	rec, err := taskflow.Start(context.Background(), r.root, r.store, acPlan(o), map[string]string{})
+	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, acPlan(o), map[string]string{}, taskflow.SelectionExplicit, acPacks())
 	if err != nil {
-		t.Fatalf("setup: taskflow.Start: %v", err)
+		t.Fatalf("setup: taskflow.StartWithPacks: %v", err)
 	}
 	if rec.Directory == "" {
-		t.Fatalf("setup: taskflow.Start returned no directory")
+		t.Fatalf("setup: taskflow.StartWithPacks returned no directory")
+	}
+	return rec.Directory
+}
+
+// startLegacy begins the task with taskflow.Start, which records no pack set
+// (section 2 recipe "Record without a pack set").
+func (r *acRepo) startLegacy(t *testing.T) string {
+	t.Helper()
+	rec, err := taskflow.Start(context.Background(), r.root, r.store, acPlan(acPlanOpts{}), map[string]string{})
+	if err != nil {
+		t.Fatalf("setup: taskflow.Start: %v", err)
 	}
 	return rec.Directory
 }
@@ -1048,7 +1066,7 @@ func acTestEligibility(t *testing.T) {
 	t.Run("R2.b no baseline manifest refused (B2)", func(t *testing.T) {
 		t.Parallel()
 		r := acNewRepo(t)
-		dir := r.start(t, acPlanOpts{})
+		dir := r.startLegacy(t)
 		rec := acLoad(t, dir)
 		if rec.Revision != 1 || rec.BaselineManifest == nil {
 			t.Fatalf("setup: started record revision %d, baseline manifest present %v; want revision 1 with a manifest", rec.Revision, rec.BaselineManifest != nil)
@@ -1062,7 +1080,9 @@ func acTestEligibility(t *testing.T) {
 	})
 	t.Run("R2.d no pack set and no go.mod now refused (C2)", func(t *testing.T) {
 		t.Parallel()
-		r, dir := acStandardTask(t, acPlanOpts{})
+		r := acNewRepo(t)
+		dir := r.startLegacy(t)
+		r.standard(t)
 		if err := os.Remove(filepath.Join(r.root, "go.mod")); err != nil {
 			t.Fatalf("setup: %v", err)
 		}
@@ -1070,7 +1090,9 @@ func acTestEligibility(t *testing.T) {
 	})
 	t.Run("R2.e no pack set with go.mod accepted", func(t *testing.T) {
 		t.Parallel()
-		_, dir := acStandardTask(t, acPlanOpts{})
+		r := acNewRepo(t)
+		dir := r.startLegacy(t)
+		r.standard(t)
 		if rec := acLoad(t, dir); rec.Packs != nil {
 			t.Fatalf("setup: taskflow.Start recorded a pack set %+v", rec.Packs)
 		}
@@ -1190,9 +1212,9 @@ func acTestMergeGate(t *testing.T) {
 		if err := os.MkdirAll(store, 0o700); err != nil {
 			t.Fatalf("setup: %v", err)
 		}
-		rec, err := taskflow.Start(context.Background(), root, store, acPlan(acPlanOpts{}), map[string]string{})
+		rec, err := taskflow.StartWithPacks(context.Background(), root, store, acPlan(acPlanOpts{}), map[string]string{}, taskflow.SelectionExplicit, acPacks())
 		if err != nil {
-			t.Fatalf("setup: taskflow.Start outside Git: %v", err)
+			t.Fatalf("setup: taskflow.StartWithPacks outside Git: %v", err)
 		}
 		acExpectRefused(t, rec.Directory, acInput(strings.Repeat("ab", 20), acWidened()),
 			"adding checks needs a Git repository with a committed HEAD")

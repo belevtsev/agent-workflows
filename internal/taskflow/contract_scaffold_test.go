@@ -54,7 +54,7 @@ func scaffoldTask(t *testing.T, files map[string]string) (repo, task string) {
 		scaffoldWrite(t, repo, path, data)
 	}
 	var plan taskflow.Plan
-	const planJSON = `{"title":"contract scaffold","kind":"substantial","checkpoints":{"required":false,"reason":"scaffold"},"requirements":[{"id":"r","description":"scaffold requirement","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`
+	const planJSON = `{"title":"contract scaffold","kind":"substantial","checkpoints":{"required":false,"reason":"scaffold"},"requirements":[{"id":"r","description":"scaffold requirement","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","-json","./..."]}]}`
 	if err := taskflow.Decode(strings.NewReader(planJSON), &plan); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func scaffoldTask(t *testing.T, files map[string]string) (repo, task string) {
 	if err := os.Mkdir(store, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	record, err := taskflow.Start(t.Context(), repo, store, plan, map[string]string{})
+	record, err := taskflow.StartWithPacks(t.Context(), repo, store, plan, map[string]string{}, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
