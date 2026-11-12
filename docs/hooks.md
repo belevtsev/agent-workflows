@@ -44,8 +44,32 @@ its command text names no git, and cw runs git itself.
 
 ### Recognised commands
 
-The hook splits the command into simple commands at `;`, `&&`, `||`, `|`, `&`,
-newlines, parentheses and any unpaired backtick, and finds git:
+The hook reads the command the way the shell does before it expands anything
+(`internal/shellwords`): it splits it into simple commands at `;`, `&&`, `||`,
+`|`, `&`, newlines and parentheses, and into words with their quotes and
+backslash escapes resolved. Text inside quotes, in a heredoc body or in a
+comment is never a command, so `echo "todo; git commit later"`,
+`rg "foo|git commit" docs` and `cat <<'EOF'` with `git push` in its body are
+allowed.
+
+That reading fails closed, and the set of commands it trusts is deliberately
+small. It allows a command that names git outside a command only when every
+form in the line is one it reads exactly as bash, zsh and dash do, and every
+simple command in the line, inside substitutions too, is one of these:
+
+- `echo`, `printf` without `-v`, `cat`, `rg` without `--pre` or
+  `--pre-glob`, `grep`, `jq` and `cd`;
+- `git commit` and `git push`, which the gate checks anyway, and `gh pr`;
+- the reserved words `if`, `then`, `else`, `fi`, `for`, `do`, `done`,
+  `while`, `case`, `esac`, `{`, `}` and `!`.
+
+The command must also hold no `NAME=value` assignment, and no redirection
+other than a heredoc or here-string as input, `/dev/null`, or a duplicated
+descriptor such as `2>&1`; `cat > notes.md <<'EOF'` writes a file and is not
+trusted. Any other command, however harmless, keeps the decision of the
+simpler split the hook used before, which reads text in quotes and heredocs
+as commands: the hook applies both and denies when either finds a commit or
+push. It finds git:
 
 - after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
   `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
@@ -59,23 +83,27 @@ newlines, parentheses and any unpaired backtick, and finds git:
   `env -C a env -C b` move it to `a/b`);
 - around a `$(...)` or backtick substitution in the same command
   (`GIT_COMMITTER_DATE="$(date -R)" git commit`); the command inside a
-  substitution is checked too, from the directory in effect where it appears;
+  substitution, including one in an unquoted heredoc body, is checked too,
+  from the directory in effect where it appears;
 - inside a command string given to `sh`, `bash`, `zsh`, `dash` or `ksh` with
-  `-c` (also `-lc` and similar), or to `eval`;
+  `-c` (also `-lc`, `-e -c`, `-c --` and similar), to `eval` or to
+  `env -S`; a string nested more than eight levels deep counts as a commit
+  and a push;
 - written as a path (`/usr/bin/git`), quoted (`"git"`, `'commit'`) or with a
   backslash that bypasses an alias (`\git`);
 - with git's global options, including `-c NAME=VALUE`, `--git-dir`,
   `--work-tree` and `-C DIR`.
 
 The directory starts as the session's working directory and moves with a
-preceding `cd DIR` or `pushd DIR` and with each `-C DIR`; a `cd` inside
-parentheses or a substitution ends with them, as in a subshell; redirections on a
-`cd` are ignored, and `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` after
-`cd` or `-C` stays in the same repository. The split is deliberately simple and fails open: after a directory
-change the hook cannot follow (`cd` with options, `cd -`, `~`, `$VAR`, a quoted
-path with spaces, `popd`) later git commands are not checked until an absolute
-`cd` or `-C`, and a `-C DIR` it cannot resolve (`git -C "$PWD"`,
-`git -C ~/proj`, `env -C ~/proj git`) lets that command through. A script or program that runs git itself (`./release.sh`,
+preceding `cd DIR` or `pushd DIR`, quoted paths with spaces included, and with
+each `-C DIR`; a `cd` inside parentheses, a substitution or an `sh -c` string
+ends with them, as in a subshell; redirections on a `cd` are ignored, and
+`"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` after `cd` or `-C` stays in
+the same repository. The hook fails open: after a directory change it cannot
+follow (`cd` with options, `cd -`, `~`, `$VAR`, `popd`) later git commands are
+not checked until an absolute `cd` or `-C`, and a `-C DIR` it cannot resolve
+(`git -C "$PWD"`, `git -C ~/proj`, `env -C ~/proj git`) lets that command
+through. A script or program that runs git itself (`./release.sh`,
 `make publish`) is not seen, because the command text does not name git.
 
 ### Which records gate
@@ -208,7 +236,7 @@ push through today while the repository has an open substantial task, or lets
 
 | Way around the gate | What happens today |
 | --- | --- |
-| `cd "$PWD" && git commit -am x`, `cd ~/proj && git commit -am x`, `cd "/tmp/my proj" && git commit -am x`, `git -C "$PWD" commit -am x`, `git -C ~/proj commit -am x`, `env -C ~/proj git commit -am x`; also `cd -`, `popd` and `cd` with options | Allowed. After a `cd` or `-C` the hook cannot follow, the git command is not checked ([Recognised commands](#recognised-commands)). |
+| `cd "$PWD" && git commit -am x`, `cd ~/proj && git commit -am x`, `git -C "$PWD" commit -am x`, `git -C ~/proj commit -am x`, `env -C ~/proj git commit -am x`; also `cd -`, `popd` and `cd` with options | Allowed. After a `cd` or `-C` the hook cannot follow, the git command is not checked ([Recognised commands](#recognised-commands)). |
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
 | `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. |
