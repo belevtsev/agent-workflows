@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The docs say what a refused `cw publish` leaves: nothing when its checks refuse, even for one file of the set, and the commit
+  or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.
