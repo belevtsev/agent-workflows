@@ -281,9 +281,9 @@ investigation note for differing advisers with confidence of 0.7 or higher, in
 `partial` as in `disagreement` comparisons; and `agreement_not_independent: true`
 when advisers agree on a request that marks untrusted text in `state.untrusted`.
 An unresolved decision blocks completion. `cw consult` exits `0` for success, no
-configured advisers, a dry run or a resolved adjudication; `2` for partial or
-unavailable coverage, an unresolved adjudication, a task-bound adviser without
-its key (also in a dry run), or a command-line usage error such as an unknown
+configured advisers, a dry run or a resolved adjudication; `5` for partial or
+unavailable coverage, an unresolved adjudication or a task-bound adviser without
+its key (also in a dry run); `2` for a command-line usage error such as an unknown
 flag (including the removed `--with-openai`) or conflicting or missing options,
 reported before any file is read; and `1` for an invalid request, record,
 decision or policy file or an existing output path. Attaching a new

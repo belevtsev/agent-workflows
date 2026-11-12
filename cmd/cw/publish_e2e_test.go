@@ -2713,7 +2713,7 @@ func pubTestPREdit(t *testing.T, tl *pubTools) {
 	}
 }
 
-// pubTestPRUnknownAfterCreate: R16.d (create fails after creating: exit 5,
+// pubTestPRUnknownAfterCreate: R16.d (create fails after creating: exit 6,
 // PR step unknown with the number a read-only list found), R17 (no second
 // create), R20.b (the same command continues and finds it).
 func pubTestPRUnknownAfterCreate(t *testing.T, tl *pubTools) {
@@ -2723,7 +2723,7 @@ func pubTestPRUnknownAfterCreate(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.setGH(func(s *pubGHState) { s.CreateMode = "fail-after" })
 	f := e.prFlags("create")
-	rep := pubWant(t, e.publishF(f), 5, "unknown", "pr-unknown")
+	rep := pubWant(t, e.publishF(f), 6, "unknown", "pr-unknown")
 	c := rep.Steps.Commit.Commit
 	pubWantSteps(t, rep, "done", "done", "unknown")
 	if rep.Steps.PR.Number != 1 {
@@ -2735,7 +2735,7 @@ func pubTestPRUnknownAfterCreate(t *testing.T, tl *pubTools) {
 	if n := e.ghCheck(e.repo, pubTitle); n.create != 1 || n.edit != 0 {
 		t.Errorf("gh create %d edit %d after an unknown outcome, want 1 and 0 (R17)", n.create, n.edit)
 	}
-	e.checkLastRun(e.entries(), rep, 5, e.msg)
+	e.checkLastRun(e.entries(), rep, 6, e.msg)
 	e.setGH(func(s *pubGHState) { s.CreateMode = "" })
 	r := e.publishF(f)
 	rep = pubWant(t, r, 0, "published", "")
@@ -2760,7 +2760,7 @@ func pubTestPRUnknownBeforeCreate(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.setGH(func(s *pubGHState) { s.CreateMode = "fail-before" })
 	f := e.prFlags("create")
-	rep := pubWant(t, e.publishF(f), 5, "unknown", "pr-unknown")
+	rep := pubWant(t, e.publishF(f), 6, "unknown", "pr-unknown")
 	pubWantSteps(t, rep, "done", "done", "unknown")
 	if rep.Steps.PR.Number != 0 {
 		t.Errorf("pr step %+v, want number 0 when the list finds none", rep.Steps.PR)
@@ -2774,12 +2774,12 @@ func pubTestPRUnknownBeforeCreate(t *testing.T, tl *pubTools) {
 }
 
 // prUnknown checks a run that must end in R16.d after the commit and push:
-// exit 5 pr-unknown, PR step unknown with number the read-only list found,
+// exit 6 pr-unknown, PR step unknown with number the read-only list found,
 // the push kept, and R17 (gh create and edit counts as given).
 func (e *pubEnv) prUnknown(label string, r pubRun, number, creates, edits int) *pubReport {
 	t := e.t
 	t.Helper()
-	rep := pubWant(t, r, 5, "unknown", "pr-unknown")
+	rep := pubWant(t, r, 6, "unknown", "pr-unknown")
 	pubWantSteps(t, rep, "done", "done", "unknown")
 	if rep.Steps.PR.Number != number {
 		t.Errorf("%s: pr step %+v, want number %d (R16.d)", label, rep.Steps.PR, number)
@@ -2793,7 +2793,7 @@ func (e *pubEnv) prUnknown(label string, r pubRun, number, creates, edits int) *
 	if n := e.ghCheck(e.repo, pubTitle); n.create != creates || n.edit != edits {
 		t.Errorf("%s: gh create %d edit %d, want %d and %d (R17)", label, n.create, n.edit, creates, edits)
 	}
-	e.checkLastRun(e.entries(), rep, 5, e.msg)
+	e.checkLastRun(e.entries(), rep, 6, e.msg)
 	return rep
 }
 
@@ -2849,7 +2849,7 @@ func pubTestPREditUnknown(t *testing.T, tl *pubTools) {
 
 // pubTestPRNotLocated: R16.a and R16.d, gh pr create succeeds but the list
 // never shows the new PR: after five list reads the PR cannot be located,
-// exit 5 pr-unknown with number 0 (the read-only list finds none); one
+// exit 6 pr-unknown with number 0 (the read-only list finds none); one
 // create (R17). R20.b: once the list shows it, the same command finds the
 // equivalent PR and creates nothing.
 func pubTestPRNotLocated(t *testing.T, tl *pubTools) {
@@ -2879,7 +2879,7 @@ func pubTestPRNotLocated(t *testing.T, tl *pubTools) {
 }
 
 // pubTestPRViewFails: R16.d, gh pr view fails after a create or an edit, so
-// the PR cannot be read back: exit 5 pr-unknown with the number the list
+// the PR cannot be read back: exit 6 pr-unknown with the number the list
 // found (1 created, 7 edited); R20.b continues to already-present.
 func pubTestPRViewFails(t *testing.T, tl *pubTools) {
 	for _, c := range []struct {
@@ -2920,7 +2920,7 @@ func pubTestPRViewFails(t *testing.T, tl *pubTools) {
 }
 
 // pubTestInterruptPR: R18.c and R16.d, SIGINT during gh pr create stops it
-// and gives exit 5 pr-unknown (number 0: nothing was created); R17 (the
+// and gives exit 6 pr-unknown (number 0: nothing was created); R17 (the
 // create is not retried in the run); R20.b continues and creates the PR.
 func pubTestInterruptPR(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
@@ -2949,14 +2949,14 @@ func pubTestInterruptPR(t *testing.T, tl *pubTools) {
 	}
 }
 
-// pubTestPRMismatchTitle: R16.c, a readback whose title differs exits 6.
+// pubTestPRMismatchTitle: R16.c, a readback whose title differs exits 7.
 func pubTestPRMismatchTitle(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
 	e.startTask(pubPlanSmall)
 	e.standardChange()
 	e.verifyTask()
 	e.setGH(func(s *pubGHState) { s.CreateTitleSuffix = " (edited by a bot)" })
-	rep := pubWant(t, e.publishF(e.prFlags("create")), 6, "mismatch", "pr-mismatch")
+	rep := pubWant(t, e.publishF(e.prFlags("create")), 7, "mismatch", "pr-mismatch")
 	pubWantSteps(t, rep, "done", "done", "mismatch")
 	if n := e.ghCheck(e.repo, pubTitle); n.create != 1 || n.edit != 0 {
 		t.Errorf("gh create %d edit %d, want 1 and 0", n.create, n.edit)
@@ -2989,7 +2989,7 @@ func pubTestPRReadbackStale(t *testing.T, tl *pubTools) {
 	e.standardChange()
 	e.verifyTask()
 	e.setGH(func(s *pubGHState) { s.StaleViews = 100 })
-	rep := pubWant(t, e.publishF(e.prFlags("create")), 6, "mismatch", "pr-mismatch")
+	rep := pubWant(t, e.publishF(e.prFlags("create")), 7, "mismatch", "pr-mismatch")
 	pubWantSteps(t, rep, "done", "done", "mismatch")
 	if n := e.ghCheck(e.repo, pubTitle); n.view != 5 || n.create != 1 {
 		t.Errorf("gh view %d create %d, want 5 views (one and four more) and 1 create", n.view, n.create)
@@ -3007,7 +3007,7 @@ func pubNormBody(s string) string {
 // differs from the body file (a bot's note appended, or a leading newline,
 // which the normalisation does not remove because it trims the end only), or
 // the PR is closed or merged between the list that located it and the view.
-// Each gives exit 6 pr-mismatch with PR step mismatch after one view (cw reads
+// Each gives exit 7 pr-mismatch with PR step mismatch after one view (cw reads
 // again only while headRefOid alone differs), the commit and push kept, one
 // create or edit (R17: no retry), and the started and finished entries
 // (R19). A body that differs from the body file only by the normalisation of
@@ -3057,7 +3057,7 @@ func pubTestPRReadbackBodyState(t *testing.T, tl *pubTools) {
 					t.Errorf("pr step %+v, want PR %d at %s on %s, OPEN", pr, number, rep.Steps.Commit.Commit, pubBase)
 				}
 			} else {
-				rep = pubWant(t, r, 6, "mismatch", "pr-mismatch")
+				rep = pubWant(t, r, 7, "mismatch", "pr-mismatch")
 				pubWantSteps(t, rep, "done", "done", "mismatch")
 			}
 			c0 := rep.Steps.Commit.Commit
@@ -3137,7 +3137,7 @@ func pubTestPRReRead(t *testing.T, tl *pubTools) {
 	e.checkLastRun(e.entries(), rep, 4, e.msg)
 }
 
-// pubTestPushRefused: R15.d (a remote's pre-receive refusal is unknown, 5,
+// pubTestPushRefused: R15.d (a remote's pre-receive refusal is unknown, 6,
 // with remote_ref observed and no PR step), R17, R20.c (continuation).
 func pubTestPushRefused(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
@@ -3146,7 +3146,7 @@ func pubTestPushRefused(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.hook(filepath.Join(e.remote, "hooks"), "pre-receive", pubHookConf{Exit: 1})
 	f := e.prFlags("create")
-	rep := pubWant(t, e.publishF(f), 5, "unknown", "push-unknown")
+	rep := pubWant(t, e.publishF(f), 6, "unknown", "push-unknown")
 	pubWantSteps(t, rep, "done", "unknown", "skipped")
 	if rep.Steps.Push.RemoteRef != "absent" || e.remoteRef(e.remote, pubBranch) != "absent" {
 		t.Errorf("push remote_ref %q remote %s, want absent", rep.Steps.Push.RemoteRef, e.remoteRef(e.remote, pubBranch))
@@ -3178,7 +3178,7 @@ func pubTestPrePushFails(t *testing.T, tl *pubTools) {
 	e.standardChange()
 	e.verifyTask()
 	log := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-push", pubHookConf{Exit: 1})
-	rep := pubWant(t, e.publish(), 5, "unknown", "push-unknown")
+	rep := pubWant(t, e.publish(), 6, "unknown", "push-unknown")
 	pubWantSteps(t, rep, "done", "unknown", "not-requested")
 	if n := len(pubCalls(t, log)); n != 1 {
 		t.Errorf("pre-push ran %d times, want 1", n)
@@ -3196,7 +3196,7 @@ func pubTestPushMismatch(t *testing.T, tl *pubTools) {
 	e.standardChange()
 	e.verifyTask()
 	e.hook(filepath.Join(e.remote, "hooks"), "post-receive", pubHookConf{Run: [][]string{{tl.realGit, "--git-dir=" + e.remote, "update-ref", "refs/heads/" + pubBranch, e.base}}})
-	rep := pubWant(t, e.publishF(e.prFlags("create")), 6, "mismatch", "push-mismatch")
+	rep := pubWant(t, e.publishF(e.prFlags("create")), 7, "mismatch", "push-mismatch")
 	pubWantSteps(t, rep, "done", "mismatch", "skipped")
 	if rep.Steps.Push.RemoteRef != e.base {
 		t.Errorf("push remote_ref %q, want the observed %s", rep.Steps.Push.RemoteRef, e.base)
@@ -3424,7 +3424,7 @@ func pubTestDEmpty(t *testing.T, tl *pubTools) {
 }
 
 // pubTestCommitUnknown: R14.a, a lock left after the failed commit is
-// unknown (5) with locks_left; R17, nothing further runs.
+// unknown (6) with locks_left; R17, nothing further runs.
 func pubTestCommitUnknown(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
 	e.startTask(pubPlanSmall)
@@ -3432,7 +3432,7 @@ func pubTestCommitUnknown(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	headLock := filepath.Join(e.gitDir, "HEAD.lock")
 	log := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{Create: []string{headLock}, Exit: 1})
-	rep := pubWant(t, e.publishF(e.prFlags("create")), 5, "unknown", "commit-unknown")
+	rep := pubWant(t, e.publishF(e.prFlags("create")), 6, "unknown", "commit-unknown")
 	pubWantSteps(t, rep, "unknown", "skipped", "skipped")
 	pubWantStrings(t, "locks_left", rep.LocksLeft, []string{headLock})
 	if rep.Steps.Commit.Commit != e.base || e.rev("HEAD") != e.base {
@@ -3447,7 +3447,7 @@ func pubTestCommitUnknown(t *testing.T, tl *pubTools) {
 	if n := e.ghCheck(e.repo, pubTitle); n.create != 0 {
 		t.Errorf("gh create after commit-unknown")
 	}
-	e.checkLastRun(e.entries(), rep, 5, e.msg)
+	e.checkLastRun(e.entries(), rep, 6, e.msg)
 }
 
 // pubTestCommitFailed: R14.b (commit-failed, HEAD unchanged), R21.a and
@@ -3512,7 +3512,7 @@ func pubTestCommitMismatch(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.hook(filepath.Join(e.gitDir, "hooks"), "commit-msg", pubHookConf{AppendArg1: "\nSigned-off-by: Hook <hook@example.invalid>\n"})
 	prePush := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-push", pubHookConf{})
-	rep := pubWant(t, e.publish(), 6, "mismatch", "commit-mismatch")
+	rep := pubWant(t, e.publish(), 7, "mismatch", "commit-mismatch")
 	pubWantSteps(t, rep, "mismatch", "skipped", "not-requested")
 	head := e.rev("HEAD")
 	if rep.Steps.Commit.Commit != head || head == e.base {
@@ -3536,7 +3536,7 @@ func pubTestCommitMismatch(t *testing.T, tl *pubTools) {
 // when deleted). Fails when cw's readback ignores file bytes, file modes,
 // presence or new paths, or compares against the index instead of the
 // verified state.
-// Expected (R14.d, section 6, R19): exit 6 commit-mismatch, commit step
+// Expected (R14.d, section 6, R19): exit 7 commit-mismatch, commit step
 // mismatch with the observed HEAD in steps.commit.commit, push and PR steps
 // skipped, no git push and no pre-push hook, the remote's refs unchanged, no
 // gh pr create, edit or view, no amend or reset (the branch's reflog holds
@@ -3601,7 +3601,7 @@ func pubTestCommitMismatchTree(t *testing.T, tl *pubTools) {
 			f := e.prFlags("create")
 
 			r := e.publishF(f)
-			rep := pubWant(t, r, 6, "mismatch", "commit-mismatch")
+			rep := pubWant(t, r, 7, "mismatch", "commit-mismatch")
 			pubWantSteps(t, rep, "mismatch", "skipped", "skipped")
 			head := e.rev("HEAD")
 			if head == e.base || rep.Steps.Commit.Commit != head {
@@ -3652,7 +3652,7 @@ func pubTestCommitMismatchTree(t *testing.T, tl *pubTools) {
 			if len(entries) != 2 {
 				t.Errorf("%d publication entries, want a started and a finished entry", len(entries))
 			}
-			e.checkLastRun(entries, rep, 6, e.msg)
+			e.checkLastRun(entries, rep, 7, e.msg)
 			if rep.PreviousOutcome != "none" {
 				t.Errorf("previous_outcome %q, want none", rep.PreviousOutcome)
 			}
@@ -3724,7 +3724,7 @@ func pubTestInterruptCommit(t *testing.T, tl *pubTools) {
 	e.wantRequestCommit(rep.Steps.Commit.Commit, e.base, pubMessage, want)
 }
 
-// pubTestInterruptPush: R18.c, SIGINT during git push gives 5 push-unknown;
+// pubTestInterruptPush: R18.c, SIGINT during git push gives 6 push-unknown;
 // R20.c, with locks_left empty the same command continues.
 func pubTestInterruptPush(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
@@ -3738,12 +3738,12 @@ func pubTestInterruptPush(t *testing.T, tl *pubTools) {
 	if err := p.cmd.Process.Signal(os.Interrupt); err != nil {
 		t.Fatal(err)
 	}
-	rep := pubWant(t, e.waitRun(p), 5, "unknown", "push-unknown")
+	rep := pubWant(t, e.waitRun(p), 6, "unknown", "push-unknown")
 	pubWantSteps(t, rep, "done", "unknown", "not-requested")
 	if rep.Steps.Push.RemoteRef != "absent" || e.remoteRef(e.remote, pubBranch) != "absent" {
 		t.Errorf("remote_ref %q remote %s, want absent", rep.Steps.Push.RemoteRef, e.remoteRef(e.remote, pubBranch))
 	}
-	e.checkLastRun(e.entries(), rep, 5, e.msg)
+	e.checkLastRun(e.entries(), rep, 6, e.msg)
 	e.hook(filepath.Join(e.gitDir, "hooks"), "pre-push", pubHookConf{})
 	if len(rep.LocksLeft) != 0 {
 		t.Logf("locks_left %q after the stopped push; R20.c continuation not exercised", rep.LocksLeft)

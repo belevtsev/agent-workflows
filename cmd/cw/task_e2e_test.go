@@ -52,8 +52,8 @@ func TestTaskLifecycleE2E(t *testing.T) {
 		e := tle2eNewEnv(t, bin)
 		task, _ := e.start(t, tle2ePlanOK)
 		code, v := e.verify(t, task)
-		if code != 1 {
-			t.Errorf("verify exit %d, want 1", code)
+		if code != 5 {
+			t.Errorf("verify exit %d, want 5", code)
 		}
 		if v.complete {
 			t.Errorf("complete = true, want false")
@@ -69,8 +69,8 @@ func TestTaskLifecycleE2E(t *testing.T) {
 		e.runCheck(t, task, "bad", 1, "failed")
 		e.assess(t, task)
 		code, v := e.verify(t, task)
-		if code != 1 {
-			t.Errorf("verify exit %d, want 1", code)
+		if code != 5 {
+			t.Errorf("verify exit %d, want 5", code)
 		}
 		if v.complete {
 			t.Errorf("complete = true, want false")
@@ -84,8 +84,8 @@ func TestTaskLifecycleE2E(t *testing.T) {
 		task, _ := e.happyPath(t)
 		tle2eWrite(t, filepath.Join(e.repo, "a.txt"), "line one\nchanged\n")
 		code, v := e.verify(t, task)
-		if code != 1 {
-			t.Errorf("verify after source change exit %d, want 1", code)
+		if code != 5 {
+			t.Errorf("verify after source change exit %d, want 5", code)
 		}
 		if v.complete {
 			t.Errorf("complete = true after source change, want false")
@@ -224,8 +224,14 @@ func (e *tle2eEnv) start(t *testing.T, plan string) (task, taskID string) {
 func (e *tle2eEnv) runCheck(t *testing.T, task, check string, wantCode int, wantStatus string) {
 	t.Helper()
 	stdout, stderr, code := e.cw(t, "task", "run", "--task", task, "--check", check, "--summary")
-	if code != wantCode {
-		t.Fatalf("task run %s exit %d, want %d\nstdout:\n%s\nstderr:\n%s", check, code, wantCode, stdout, stderr)
+	// cw exits 0 for a passed check and 5 (negative result) for any other
+	// recorded status; wantCode is the check's own exit code.
+	wantExit := 0
+	if wantStatus != "passed" {
+		wantExit = 5
+	}
+	if code != wantExit {
+		t.Fatalf("task run %s exit %d, want %d\nstdout:\n%s\nstderr:\n%s", check, code, wantExit, stdout, stderr)
 	}
 	obj := tle2eDecodeOne(t, stdout)
 	if got := tle2eString(t, obj, "check_id"); got != check {
