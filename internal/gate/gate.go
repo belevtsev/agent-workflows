@@ -4,8 +4,8 @@
 // and answers allow, ask or deny with the reason shown to the agent and the
 // user. It also asks before each `cw task abandon` in the command, which
 // closes a task so it no longer gates: only the user may decide that.
-// DecideGitHook answers the same for git's own pre-commit and pre-push
-// hooks. The hook's input and output formats belong to the caller; the gate
+// DecideGitHook answers the same for git's own pre-commit, pre-merge-commit
+// and pre-push hooks. The hook's input and output formats belong to the caller; the gate
 // reaches git, the clock and the task store only through Deps.
 //
 // The gate fails open: every condition that is not a positive decision,
@@ -146,12 +146,13 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	return conclude(in.Enforce, gating, asks)
 }
 
-// GitHookInput is the git commit or git push that git is about to run, as its
-// pre-commit or pre-push hook sees it.
+// GitHookInput is the commit or push that git is about to make, as its
+// pre-commit, pre-merge-commit or pre-push hook sees it.
 type GitHookInput struct {
 	// Dir is the directory git runs the hook in: the top of the worktree.
 	Dir string
-	// Push is true for the pre-push hook and false for pre-commit.
+	// Push is true for the pre-push hook and false for pre-commit and
+	// pre-merge-commit, which git runs before a merge commit.
 	Push bool
 	// Enforce and Prompt are Input's.
 	Enforce, Prompt bool
@@ -160,9 +161,9 @@ type GitHookInput struct {
 // DecideGitHook returns the decision for in, as Decide returns it for one
 // git commit or git push run in in.Dir: the hook knows the directory, so
 // nothing asks about a directory change. A commit is measured by the index
-// git commits, which git's pre-commit hook names in GIT_INDEX_FILE and the
-// gate's git inherits, so a commit with -a or with paths counts what it
-// records.
+// git commits, which git's pre-commit and pre-merge-commit hooks name in
+// GIT_INDEX_FILE and the gate's git inherits, so a commit with -a or with
+// paths counts what it records.
 func DecideGitHook(ctx context.Context, in GitHookInput, deps Deps) Decision {
 	if !in.Enforce && !in.Prompt {
 		return Decision{}

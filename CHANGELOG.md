@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
 
+### Added
+
+- `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;
+  run it again where an older `cw` wrote the hooks ([git hooks](docs/hooks.md#git-hooks)).
+
 ### Changed
 
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to

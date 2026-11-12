@@ -16,10 +16,11 @@ import (
 // hooks with the built cw, which git's hooks find on PATH as they would an
 // installed cw, then commits with an open unverified task in two ways the
 // plugin hook does not recognise, through a git alias and from a shell
-// script, and pushes. Oracle: git's exit status, the gate's deny text in
-// git's output, and that no commit or remote branch was created
-// (`git rev-parse`). Uninstall then leaves the hooks directory as it was,
-// byte for byte.
+// script, pushes, and merges a branch without conflicts, which runs
+// pre-merge-commit instead of pre-commit. Oracle: git's exit status, the
+// gate's deny text in git's output, and that no commit or remote branch was
+// created (`git rev-parse`). Uninstall then leaves the hooks directory as it
+// was, byte for byte.
 func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
 	binary := buildPlainCW(t)
 	module, err := filepath.Abs(filepath.Join("..", ".."))
@@ -35,6 +36,12 @@ func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
 	hooksWriteFile(t, repo, "source.txt", "first\n")
 	hooksGit(t, home, repo, "add", "-A")
 	hooksGit(t, home, repo, "commit", "-q", "-m", "initial")
+	// A branch whose change merges without conflicts.
+	hooksGit(t, home, repo, "switch", "-q", "-c", "side")
+	hooksWriteFile(t, repo, "side.txt", "side\n")
+	hooksGit(t, home, repo, "add", "side.txt")
+	hooksGit(t, home, repo, "commit", "-q", "-m", "side")
+	hooksGit(t, home, repo, "switch", "-q", "main")
 	hooks := filepath.Join(repo, ".git", "hooks")
 	before := gateSnapshot(t, hooks)
 
@@ -91,6 +98,8 @@ func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
 		{"git alias", "git", []string{"-c", "alias.ci=commit", "ci", "-q", "-am", "through an alias"}},
 		{"shell script", "/bin/sh", []string{script}},
 		{"push", "git", []string{"push", "-q", remote, "HEAD:refs/heads/main"}},
+		// Last: a stopped merge leaves the merge in progress.
+		{"merge commit", "git", []string{"merge", "--no-ff", "--no-edit", "side"}},
 	} {
 		code, output := run(t, attempt.program, attempt.args...)
 		if code != 1 || !strings.Contains(output, record.ID) || !strings.Contains(output, "cw task verify --task "+record.Directory) {

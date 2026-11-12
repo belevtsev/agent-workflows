@@ -162,6 +162,18 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 			}
 			return repo
 		}, "configured", false},
+		// An install by a cw that wrote no pre-merge-commit: git makes a merge
+		// commit without the gate, so cw gate install needs to run again.
+		{"only the pre-commit and pre-push hooks and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			for _, name := range []string{"pre-commit", "pre-push"} {
+				hkWriteFile(t, repo, ".git/hooks/"+name, gtScript(name))
+				if err := os.Chmod(filepath.Join(repo, ".git", "hooks", name), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			return repo
+		}, "missing", true},
 		{"a hook cw gate install did not write and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			hkWriteFile(t, repo, ".git/hooks/pre-push", "#!/bin/sh\nexit 0\n")

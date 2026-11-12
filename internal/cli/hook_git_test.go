@@ -16,7 +16,7 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
-// Tests for `cw hook git pre-commit` and `cw hook git pre-push`, driven
+// Tests for `cw hook git pre-commit`, `pre-push` and `pre-merge-commit`, driven
 // through Execute with the hook's working directory set to the repository,
 // as git runs its hooks. Each oracle is the exit status and stderr.
 
@@ -124,6 +124,53 @@ func TestHookGitWarnsWherePrePublishAsks(t *testing.T) {
 		repo, h := hkUnrecordedChange(t)
 		expectWarning(t, h, repo, "pre-commit", hkCommitAskWording)
 	})
+}
+
+func TestHookGitPreMergeCommitJudgesAMergeCommitAsACommit(t *testing.T) {
+	// Oracle (F4): git runs pre-merge-commit, not pre-commit, before a merge
+	// commit it makes without conflicts, and cw judges that commit as any
+	// other: in each state, cw hook git pre-merge-commit exits with the
+	// status and writes exactly the stderr of cw hook git pre-commit, which
+	// the tests above pin. The states cover a deny (an open unverified task),
+	// a warning (a record that cannot be read, a substantial change with no
+	// task) and silence; the last is a verified task with uncommitted
+	// changes, where pre-push would warn, so pre-merge-commit is not judged
+	// as a push.
+	for _, row := range []struct {
+		name  string
+		state func(t *testing.T) (*hkHarness, string)
+		code  int
+		warns bool
+	}{
+		{"open unverified task", func(t *testing.T) (*hkHarness, string) {
+			repo := hkRepo(t)
+			h := newHKHarness(t)
+			h.start(t, repo, hkSubstantialPlan)
+			return h, repo
+		}, ExitDenied, true},
+		{"record that cannot be read", func(t *testing.T) (*hkHarness, string) {
+			h, repo, _, record := hkUnreadableStore(t)
+			hkWriteFile(t, record.Directory, "record-000002.json", "{\n")
+			return h, repo
+		}, ExitOK, true},
+		{"substantial change with no task", func(t *testing.T) (*hkHarness, string) {
+			repo, h := hkUnrecordedChange(t)
+			return h, repo
+		}, ExitOK, true},
+		{"verified task with uncommitted changes", func(t *testing.T) (*hkHarness, string) {
+			repo, h := hkDirtyPushState(t)
+			return h, repo
+		}, ExitOK, false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			h, repo := row.state(t)
+			code, stderr := h.gitHook(t, "pre-commit", repo)
+			if code != row.code || (stderr != "") != row.warns {
+				t.Fatalf("hook git pre-commit: exit %d stderr %q, want exit %d and stderr only if %v", code, stderr, row.code, row.warns)
+			}
+			h.hgExpect(t, "pre-merge-commit", repo, code, stderr)
+		})
+	}
 }
 
 func TestHookGitOffSwitchesAndFailOpen(t *testing.T) {

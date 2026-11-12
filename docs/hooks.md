@@ -395,14 +395,28 @@ as a non-blocking error.
 
 ## Git hooks
 
-`cw hook git pre-commit` and `cw hook git pre-push` apply the same gate from
-git's own `pre-commit` and `pre-push` hooks, so a commit or push is checked
-however it starts: through an alias, a script, `make` or `xargs`, or from a
-terminal. `cw gate install` writes the two hooks into a repository
+`cw hook git pre-commit`, `cw hook git pre-push` and
+`cw hook git pre-merge-commit` apply the same gate from git's own `pre-commit`,
+`pre-push` and `pre-merge-commit` hooks, so a commit, merge commit or push is
+checked however it starts: through an alias, a script, `make` or `xargs`, or
+from a terminal. `cw gate install` writes the three hooks into a repository
 ([Installing the git hooks](#installing-the-git-hooks)), or a hook of your own
 can call them. Git runs each in the worktree it publishes from, and `cw`
 judges that repository by the rules above:
 
+- `cw hook git` knows which hook runs it only from its subcommand, the hook's
+  name, which the installed script passes; it ignores git's arguments and
+  stdin. `pre-commit` and `pre-merge-commit` judge a commit, `pre-push` a
+  push.
+- Git runs `pre-merge-commit`, not `pre-commit`, before `git merge` or
+  `git pull` makes a merge commit without conflicts; `pre-merge-commit` judges
+  that merge commit exactly as `pre-commit` judges a commit, so it stops the
+  merge while a record gates, and git leaves the merge in progress
+  (`git merge --abort` undoes it). A merge with conflicts is committed by
+  `git commit` or `git merge --continue`, which run `pre-commit`. A
+  fast-forward makes no commit and runs neither. Merging the base branch
+  during a task therefore stops while its record is unverified
+  ([Merging the base branch during a task](operations.md#merging-the-base-branch-during-a-task)).
 - While a record gates, the deny reason goes to stderr and `cw` exits 3
   ([denied](operations.md#exit-statuses)); git stops at any non-zero status
   and itself exits 1.
@@ -416,7 +430,8 @@ judges that repository by the rules above:
   arise.
 - For the substantial-change warning, a commit's change is the index git is
   committing (`GIT_INDEX_FILE`), so `git commit -a` and `git commit PATH`
-  count what they record.
+  count what they record, and a merge commit's change is what it brings into
+  the current branch.
 - Where `cw hook pre-publish` lets the command through without output
   ([Fail-open rules](#fail-open-rules)), such as after a git failure or at the
   20 second deadline, `cw hook git` exits 0 without output.
@@ -424,7 +439,8 @@ judges that repository by the rules above:
 The plugin config does not reach git. The hook reads
 `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY` and `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`
 from git's environment, and `CW_GATE=off` turns it off, as in
-`CW_GATE=off git commit -m x`. `git commit --no-verify` and
+`CW_GATE=off git commit -m x`. `git commit --no-verify`,
+`git merge --no-verify` (and `git pull --no-verify`) and
 `git push --no-verify` skip git's hooks, `cw`'s included, for one command;
 `cw hook pre-publish` still checks a `git commit --no-verify` the agent runs.
 Git's hook variables, such as `GIT_DIR` and `GIT_INDEX_FILE`, reach the gate's
@@ -458,7 +474,8 @@ cw gate uninstall --repo /path/to/repo
   `shared`. Install creates a missing hooks directory only inside the git
   directory, and uninstall removes it again once it is empty; it refuses a
   missing one anywhere else.
-- **What.** Each hook is a three-line `/bin/sh` script with mode 0755:
+- **What.** Each hook is a three-line `/bin/sh` script with mode 0755 that
+  passes its own name to `cw hook git`; `pre-commit` is:
 
   ```sh
   #!/bin/sh
@@ -473,8 +490,11 @@ cw gate uninstall --repo /path/to/repo
 
   The hook runs the first `cw` on git's `PATH`. With none, it exits 0 and git goes
   ahead without a check or a message ([Known bypasses](#known-bypasses)). A
-  `cw` too old to have `cw hook git` exits with an error, which stops git
-  until you upgrade it or run `cw gate uninstall`.
+  `cw` too old to have `cw hook git`, or, in `pre-merge-commit`, one older than
+  `cw hook git pre-merge-commit`, exits with an error, which stops git until you
+  upgrade it or run `cw gate uninstall`. A repository whose hooks an older
+  `cw gate install` wrote has no `pre-merge-commit`: `cw gate status` reports it
+  `absent` until `cw gate install` runs again.
 - **Ownership.** `cw gate status` reports each hook as `installed` (its bytes
   are exactly the script above, and it has an execute bit), `absent`, or
   `foreign` (anything else at that path, including a copy of the script with
@@ -485,14 +505,15 @@ cw gate uninstall --repo /path/to/repo
   moves the file aside and checks it again, and puts back a file that changed
   since the first check.
 - **A hook that is already there.** `cw gate install` leaves a foreign hook
-  unchanged, writes the other one, exits 4 ([refused](operations.md#exit-statuses))
+  unchanged, writes the others, exits 4 ([refused](operations.md#exit-statuses))
   and prints the line to add after the foreign hook's first line:
 
   ```sh
   if command -v cw >/dev/null 2>&1; then cw hook git pre-commit "$@" </dev/null || exit $?; fi
   ```
 
-  In `pre-push`, use `cw hook git pre-push`. Hook managers write the hook
+  In `pre-push` and `pre-merge-commit`, use `cw hook git pre-push` and
+  `cw hook git pre-merge-commit`. Hook managers write the hook
   files themselves, so add the line where the manager reads it: to
   `.husky/pre-commit` for husky, which points `core.hooksPath` at `.husky/_`;
   as a `run:` command in `lefthook.yml` for lefthook; or as a `repo: local`
@@ -510,7 +531,7 @@ cw gate uninstall --repo /path/to/repo
   | `cw gate status` | Open substantial task | `git_hooks` status | Listed by `--summary` |
   | --- | --- | --- | --- |
   | any, with `enforce_verify` `false` | either | `not_applicable`, not inspected | No |
-  | both hooks `installed` | either | `configured` | No |
+  | all three hooks `installed` | either | `configured` | No |
   | a hook `foreign` | either | `detected`, with the hint to add the line above | No |
   | otherwise a hook `absent`, directory `shared` | either | `detected`, with the hint that install needs `--shared` | No |
   | otherwise a hook `absent` | yes | `missing` | Yes, so the summary's status is `attention` |
@@ -525,7 +546,7 @@ defence against an agent that sets out to bypass it (see the
 push through today while the repository has an open substantial task, or lets
 `cw task verify` pass on evidence it cannot check. In a repository where
 `cw gate install` wrote git's hooks, git runs the gate itself before each
-`git commit` and `git push`, however it was started: the rows that say "Caught
+`git commit`, merge commit and `git push`, however it was started: the rows that say "Caught
 when `cw gate install` has run" no longer let a commit or push through there,
 and the last row lists what still gets past git's hooks.
 
@@ -537,7 +558,7 @@ and the last row lists what still gets past git's hooks.
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. Caught when `cw gate install` has run. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. Caught when `cw gate install` has run: git runs its hooks for the command an alias stands for. |
 | `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. Caught when `cw gate install` has run. |
-| `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Pushing them is caught when `cw gate install` has run; their commits can still be made, since some of these never run `pre-commit` (a merge without conflicts runs `pre-merge-commit`, which `cw gate install` does not write). |
+| `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Caught when `cw gate install` has run: a merge commit, from `git merge`, `git merge --continue` or `git pull`, runs `pre-merge-commit` or, after conflicts, `pre-commit`. The others can still make their commits, since git does not run `pre-commit` for them as it does for `git commit`; pushing them is caught. |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |

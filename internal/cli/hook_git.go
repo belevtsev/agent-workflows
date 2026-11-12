@@ -15,23 +15,36 @@ import (
 // override for one git command, which the plugin config does not reach.
 const gateOffVariable = "CW_GATE"
 
-// addGitHookCommand adds cw hook git pre-commit and pre-push, which git runs
-// as its own hooks in the worktree it commits or pushes from. A git hook
-// cannot ask, so the gate's deny exits ExitDenied with its reason on stderr,
-// and each ask becomes a warning on stderr with exit 0. Every other case,
-// including any internal error, exits 0 without output, as cw hook
-// pre-publish does.
+// addGitHookCommand adds cw hook git pre-commit, pre-push and
+// pre-merge-commit, which git runs as its own hooks in the worktree it
+// commits, pushes or merges in. The subcommand is the hook's name, which the
+// script cw gate install writes passes; pre-merge-commit judges the merge
+// commit as pre-commit judges any commit. A git hook cannot ask, so the
+// gate's deny exits ExitDenied with its reason on stderr, and each ask
+// becomes a warning on stderr with exit 0. Every other case, including any
+// internal error, exits 0 without output, as cw hook pre-publish does.
 func addGitHookCommand(root, hook *cobra.Command, config Config) {
-	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit and push on cw task verify from git's own pre-commit and pre-push hooks", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
+	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit, merge and push on cw task verify from git's own pre-commit, pre-push and pre-merge-commit hooks", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	hook.AddCommand(git)
-	for _, publish := range []struct{ name, command string }{{"pre-commit", "commit"}, {"pre-push", "push"}} {
+	// command is what the gate judges, a commit or a push; what is the git
+	// command that runs the hook, as the help names it.
+	for _, publish := range []struct{ name, command, what string }{
+		{"pre-commit", "commit", "git commit"},
+		{"pre-push", "push", "git push"},
+		{"pre-merge-commit", "commit", "git merge"},
+	} {
+		applies := "It applies the rules of cw hook pre-publish to the " + publish.what
+		if publish.name == "pre-merge-commit" {
+			applies = "Git runs it before git merge, or git pull, makes a merge commit without conflicts; a merge with conflicts is committed by git commit, which runs pre-commit. " +
+				"It applies the rules of cw hook pre-publish to the merge commit as to a git commit"
+		}
 		git.AddCommand(&cobra.Command{
 			Use:   publish.name + " [GIT-HOOK-ARGUMENTS]",
 			Short: "Git " + publish.name + " hook: exit 3 (denied) while an open substantial task record for the repository lacks a passing cw task verify on the source being published",
 			Long: "Run by git as its " + publish.name + " hook, in the worktree it publishes from; git's arguments and stdin are ignored. " +
-				"It applies the rules of cw hook pre-publish to the git " + publish.command + ": when a record gates, it prints the deny reason on stderr and exits 3 (denied), which stops git. " +
+				applies + ": when a record gates, it prints the deny reason on stderr and exits 3 (denied), which stops git. " +
 				"A git hook cannot ask, so where cw hook pre-publish would ask, it prints the question as a warning on stderr and exits 0. Every other case, including any internal error, exits 0 without output. " +
-				"Set " + gateOffVariable + "=off, or " + enforceVerifyOption + "=false and " + smallTaskPromptOption + "=false, in git's environment to turn it off; git " + publish.command + " --no-verify skips git's hooks.",
+				"Set " + gateOffVariable + "=off, or " + enforceVerifyOption + "=false and " + smallTaskPromptOption + "=false, in git's environment to turn it off; " + publish.what + " --no-verify skips git's hooks.",
 			Args: cobra.ArbitraryArgs,
 			// A remote URL git passes that starts with "-" must not fail the push.
 			FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},

@@ -35,8 +35,8 @@ const gateShared = "shared"
 // paid for in every session, so it is one short line.
 const gateInstallLine = "git hooks absent, so a commit or push from a script, an alias or a terminal skips the verify gate: suggest cw gate install to the user"
 
-// summary sums up the report in one word: gateInstalled when both hooks are
-// cw's own, gateForeign when either is a file cw gate install did not write,
+// summary sums up the report in one word: gateInstalled when every hook is
+// cw's own, gateForeign when any is a file cw gate install did not write,
 // gateShared when one is absent from a hooks directory other repositories
 // use too, and gateAbsent when one is absent from the repository's own.
 func (report gateStatusReport) summary() string {
@@ -158,9 +158,9 @@ func gitHooksCheck(ctx context.Context, root *cobra.Command, config Config, dir 
 	case err != nil:
 		return check("unchecked", "The git hooks directory could not be located, for example outside a Git repository; raw diagnostics were suppressed", "git_hooks_directory")
 	case state == gateInstalled:
-		return check("configured", "cw gate install wrote git's pre-commit and pre-push hooks, so git runs the commit gate however a commit or push starts", "git_hooks_directory")
+		return check("configured", "cw gate install wrote git's pre-commit, pre-push and pre-merge-commit hooks, so git runs the commit gate however a commit, merge commit or push starts", "git_hooks_directory")
 	case state == gateForeign:
-		return check("detected", "A pre-commit or pre-push hook that cw gate install did not write is in place; whether it runs the commit gate is unchecked, and cw gate install prints the line to add to it", "git_hooks_directory")
+		return check("detected", "A pre-commit, pre-push or pre-merge-commit hook that cw gate install did not write is in place; whether it runs the commit gate is unchecked, and cw gate install prints the line to add to it", "git_hooks_directory")
 	case state == gateShared:
 		return check("detected", "The git hooks directory serves other repositories too, so cw gate install leaves it unchanged without --shared; cw gate status says why", "git_hooks_directory")
 	}
