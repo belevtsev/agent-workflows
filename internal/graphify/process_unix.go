@@ -1,4 +1,4 @@
-//go:build unix
+//go:build linux || darwin
 
 package graphify
 
@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/procgroup"
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
 func supported() error { return nil }
@@ -28,5 +28,5 @@ func stopGroup(command *exec.Cmd) error {
 	if command.Process == nil {
 		return nil
 	}
-	return procgroup.Kill(command.Process.Pid)
+	return proc.KillGroup(command.Process.Pid)
 }

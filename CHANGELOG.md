@@ -34,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   or comments, such as `echo "todo; git commit later"`, and follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
 - Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
   now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
+- `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
+  as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 

@@ -10,7 +10,43 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
+
+// Oracle, per row: the errors the probe error must match with errors.Is, and
+// whether it must be nil. A group member that survived the kill fails every
+// probe the caller did not stop, including a completed protocol exchange; a
+// caller's context error stays matchable when joined with that survivor.
+func TestProbeErrorReportsSurvivorsAndKeepsContextErrors(t *testing.T) {
+	survivor := errors.New("process group 42 still had a live member")
+	exitErr := errors.New("exit status 1")
+	for _, row := range []struct {
+		name     string
+		ctxErr   error
+		got      proc.Result
+		complete bool
+		want     []error
+	}{
+		{"clean exit", nil, proc.Result{Code: 0}, false, nil},
+		{"exit status passes through", nil, proc.Result{Code: 1, Err: exitErr}, false, []error{exitErr}},
+		{"completed protocol", nil, proc.Result{Code: -1, Stopped: true, Cancelled: true, Err: exitErr}, true, nil},
+		{"survivor after a clean exit", nil, proc.Result{Code: 0, Cleanup: survivor}, false, []error{survivor}},
+		{"survivor after a completed protocol", nil, proc.Result{Code: -1, Stopped: true, Cancelled: true, Cleanup: survivor}, true, []error{survivor}},
+		{"deadline", context.DeadlineExceeded, proc.Result{Code: -1, Stopped: true, Err: exitErr}, false, []error{context.DeadlineExceeded}},
+		{"deadline with a survivor", context.DeadlineExceeded, proc.Result{Code: -1, Stopped: true, Cleanup: survivor}, false, []error{context.DeadlineExceeded, survivor}},
+	} {
+		err := probeError(row.ctxErr, row.got, row.complete)
+		if row.want == nil && err != nil {
+			t.Errorf("%s: probeError = %v, want nil", row.name, err)
+		}
+		for _, want := range row.want {
+			if !errors.Is(err, want) {
+				t.Errorf("%s: probeError = %v, want it to match %v", row.name, err, want)
+			}
+		}
+	}
+}
 
 func TestDoctorProbeHelper(t *testing.T) {
 	switch os.Getenv("CW_DOCTOR_TEST_PROBE") {

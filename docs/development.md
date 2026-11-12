@@ -22,14 +22,15 @@ splitting commands again.
 
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
 stable lock file, waits under a context and an optional bound, and the kernel
-releases it when the holder dies. Take a new lock with it rather than another
-`flock` or `mkdir` loop.
-
-`internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
-stable lock file, waits under a context and an optional bound, and the kernel
 releases it when the holder dies. The credential store, the cost history and
 the Graphify cache use it; take a new lock with it rather than another
 `flock` or `mkdir` loop.
+
+`internal/proc` runs an external program: `proc.Run` starts it without a shell
+in a process group of its own, with an explicit environment, keeps the head of
+its output and the tail of its error output, and when the run ends, normally
+or at its deadline, kills the group until no member is alive. Run a new
+subprocess with it rather than another `exec.Cmd` and group kill.
 
 ## Verification
 
