@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 )
 
 // Advisers bind only when the user opts in: advisers.enabled in the saved
@@ -49,7 +49,7 @@ func optInDoctorKeyWarnings(t *testing.T, f compactDoctorFixture, env map[string
 	if outcome.err != nil {
 		t.Fatalf("doctor: %v: %s", outcome.err, outcome.text())
 	}
-	var report projectctx.DoctorReport
+	var report doctor.DoctorReport
 	if err := json.Unmarshal([]byte(outcome.stdout), &report); err != nil {
 		t.Fatalf("doctor output is not a report: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestDoctorDoesNotGuessOptInWhenSavedKeysAreUnreadable(t *testing.T) {
 		t.Fatalf("doctor key warnings = %q with an unreadable key store, want none", got)
 	}
 	outcome := f.run(t, fixtureCredentials("openai_decisions"))
-	var report projectctx.DoctorReport
+	var report doctor.DoctorReport
 	if err := json.Unmarshal([]byte(outcome.stdout), &report); err != nil {
 		t.Fatalf("doctor output is not a report: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestDoctorSummaryStaysOkWithOnlyAKeyWithoutAnOptIn(t *testing.T) {
 		{name: "same text from the profile", profile: []string{optInKeyWarning}, want: "attention"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			report := projectctx.DoctorReport{Checks: map[string]projectctx.Check{}, Warnings: c.warnings}
+			report := doctor.DoctorReport{Checks: map[string]doctor.Check{}, Warnings: c.warnings}
 			report.Profile.Warnings = c.profile
 			summary := summarizeDoctor(report)
 			if summary.Status != c.want || !slices.Contains(summary.Warnings, optInKeyWarning) {

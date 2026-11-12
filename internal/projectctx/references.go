@@ -91,6 +91,6 @@ func runGrep(ctx context.Context, root, term string, mode ...string) ([]byte, bo
 	args = append(args, mode...)
 	args = append(args, "--no-color", "-z", "-n", "-I", "-F", "-e", term, "--")
 	args = append(args, ReferencePathspecs...)
-	result, err := executeBounded(probeCtx, Command{Executable: "git", Args: args, Dir: root, Env: minimalEnvironment(os.Getenv)}, maxReferenceOutput)
+	result, err := executeBounded(probeCtx, Command{Executable: "git", Args: args, Dir: root, Env: MinimalEnvironment(os.Getenv)}, maxReferenceOutput)
 	return result.Stdout, result.Truncated, err
 }

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -58,7 +58,7 @@ type doctorSummary struct {
 	MissingCredentials []string                `json:"missing_credentials,omitempty"`
 }
 
-func summarizeDoctor(report projectctx.DoctorReport) doctorSummary {
+func summarizeDoctor(report doctor.DoctorReport) doctorSummary {
 	snapshot := report.Profile.Snapshot
 	value := doctorSummary{
 		Status:    "ok",

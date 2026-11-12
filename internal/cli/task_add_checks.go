@@ -2,25 +2,13 @@ package cli
 
 import (
 	"errors"
-	"io"
-	"os"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
-// addTaskAddChecksCommand adds `cw task add-checks` to the task command that
-// addTaskCommands registered on root.
-func addTaskAddChecksCommand(root *cobra.Command) {
-	var task *cobra.Command
-	for _, command := range root.Commands() {
-		if command.Name() == "task" {
-			task = command
-		}
-	}
-	if task == nil {
-		return
-	}
+// newTaskAddChecksCommand returns cw task add-checks.
+func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
 	var summary bool
 	addChecks := &cobra.Command{
@@ -31,33 +19,16 @@ func addTaskAddChecksCommand(root *cobra.Command) {
 			"The plan never changes and no check is replaced, removed or narrowed: each added check needs a new ID and must cover a package or module file the merge changed that no earlier check covers. " +
 			"The merge commit must be reachable from HEAD and not from the task baseline or the base, with a parent after the first reachable from the base. " +
 			"An accepted amendment clears the stored verification; run the added checks with 'cw task run' and verify again.",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if err := cobra.NoArgs(cmd, args); err != nil {
-				return usage(err)
-			}
-			return nil
-		},
+		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
-				return usage(errors.New("task state commands reject --dry-run; no files or checks were changed"))
+			if err := deps.guard(); err != nil {
+				return err
 			}
 			if directory == "" {
 				return usage(errors.New("--task DIR is required"))
 			}
-			if inputFile == "" {
-				return usage(errors.New("a JSON input file is required"))
-			}
-			var reader io.Reader = cmd.InOrStdin()
-			if inputFile != "-" {
-				file, err := os.Open(inputFile)
-				if err != nil {
-					return err
-				}
-				defer file.Close()
-				reader = file
-			}
 			var input taskflow.AmendmentInput
-			if err := taskflow.Decode(reader, &input); err != nil {
+			if err := readTaskInput(cmd, inputFile, &input); err != nil {
 				return err
 			}
 			record, err := taskflow.AddChecks(cmd.Context(), directory, input)
@@ -77,8 +48,8 @@ func addTaskAddChecksCommand(root *cobra.Command) {
 	}
 	addChecks.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
 	addChecks.Flags().StringVar(&inputFile, "input", "", "Amendment JSON file, or - for standard input")
-	addChecks.Flags().BoolVar(&summary, "summary", false, "Print a one-line summary instead of the whole task record")
-	task.AddCommand(addChecks)
+	summaryFlag(addChecks, &summary)
+	return addChecks
 }
 
 // addChecksSummary is the --summary line of cw task add-checks.

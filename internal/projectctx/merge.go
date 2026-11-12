@@ -131,7 +131,7 @@ func (git mergeGit) run(args ...string) (string, int, error) {
 	probeCtx, cancel := context.WithTimeout(git.ctx, gitProbeBudget)
 	defer cancel()
 	// Replace refs and grafts can rewrite parentage, so neither is read.
-	environment := append(minimalEnvironment(os.Getenv), "GIT_NO_REPLACE_OBJECTS=1", "GIT_GRAFT_FILE="+filepath.Join(os.DevNull, "cw-no-grafts"))
+	environment := append(MinimalEnvironment(os.Getenv), "GIT_NO_REPLACE_OBJECTS=1", "GIT_GRAFT_FILE="+filepath.Join(os.DevNull, "cw-no-grafts"))
 	gitArgs := []string{"-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", git.root}
 	result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: git.root, Env: environment, WaitDelay: gitProbeWaitDelay}, maxGitOutput)
 	if runErr != nil {
