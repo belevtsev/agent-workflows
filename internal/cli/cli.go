@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -73,9 +74,9 @@ func defaults(config Config) Config {
 }
 
 // taskEnv is the taskflow.Env the task commands run their use cases with:
-// the production ports, with config's clock.
+// the production ports, with config's clock and cw consult's record validator.
 func taskEnv(config Config) taskflow.Env {
-	return taskflow.Env{Clock: config.Now}
+	return taskflow.Env{Clock: config.Now, Consultation: consult.ValidateRecord}
 }
 
 // NewCommand constructs the cw command tree.

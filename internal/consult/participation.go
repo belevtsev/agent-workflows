@@ -3,10 +3,10 @@ package consult
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
 )
 
@@ -21,44 +21,6 @@ func validModel(provider string, model any) bool {
 // knownProvider reports whether name is a known adviser ID under the policy
 // pin rules.
 func knownProvider(name string) bool { return slices.Contains(providerOrder, name) }
-
-// AttemptedStatus reports whether status is the outcome of an attempted
-// adviser: success, partial, refusal or unavailable. It is false for
-// not_configured (never contacted) and for any other value.
-func AttemptedStatus(status string) bool {
-	switch status {
-	case "success", "partial", "refusal", "unavailable":
-		return true
-	}
-	return false
-}
-
-// ValidateBinding applies the policy pin rules (internal/modelpolicy) to an
-// adviser binding (provider ID -> model): every ID must be a known adviser
-// (jev, subq_snap, openai_decisions), jev must be a versioned Jev ID
-// (jev-X.Y.Z; aliases such as jev-latest are refused), subq_snap must be
-// subq-snap-preview and openai_decisions must be gpt-6-luna. An empty or nil
-// binding is valid. Providers are checked in sorted order, so the error is
-// deterministic.
-func ValidateBinding(advisers map[string]string) error {
-	for _, name := range slices.Sorted(maps.Keys(advisers)) {
-		if !knownProvider(name) {
-			return fmt.Errorf("adviser binding names unknown adviser %q", name)
-		}
-		if !validModel(name, advisers[name]) {
-			return fmt.Errorf("adviser binding pins %s to an unsupported model %q", name, advisers[name])
-		}
-	}
-	return nil
-}
-
-// CredentialVariable returns the environment variable that holds a known
-// adviser's credential (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY);
-// ok is false for an unknown provider ID.
-func CredentialVariable(provider string) (name string, ok bool) {
-	name, ok = credentialNames[provider]
-	return name, ok
-}
 
 // policy is the validated adviser portion of a model policy: its enabled
 // providers (provider -> pinned model, possibly empty) and the batch deadline.
@@ -101,11 +63,18 @@ func ConfiguredAdvisers(selected modelpolicy.Source, getenv func(string) string)
 	return configured, nil
 }
 
+// credentialVariable returns the credential variable of a known adviser, or ""
+// for an unknown one.
+func credentialVariable(provider string) string {
+	name, _ := record.CredentialVariable(provider)
+	return name
+}
+
 func credential(getenv func(string) string, provider string) string {
 	if getenv == nil {
 		return ""
 	}
-	return getenv(credentialNames[provider])
+	return getenv(credentialVariable(provider))
 }
 
 // adviserBinding validates one task context's advisers mapping.

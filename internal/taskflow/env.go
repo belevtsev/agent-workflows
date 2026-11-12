@@ -2,9 +2,11 @@ package taskflow
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -33,19 +35,32 @@ type Artifacts interface {
 	Read(name string, limit int64) ([]byte, error)
 }
 
+// ConsultationValidator fully revalidates a stored consultation record and
+// returns its summary; production is consult.ValidateRecord. It is a port so
+// the task flow does not link the adviser HTTP providers that cw consult
+// carries beside the validator.
+type ConsultationValidator func(data []byte) (consultrecord.Record, error)
+
+// errNoConsultationValidator refuses a consultation check when the Env has no
+// validator: a stored consultation is never trusted unchecked.
+var errNoConsultationValidator = errors.New("no consultation validator is configured, so the consultation record cannot be checked")
+
 // Env carries the ports a task use case reads instead of reaching the machine
 // directly, so a rule can run in a unit test with fakes. The ports are
 // declared here, at their consumer. A nil port selects its production
 // implementation, so the zero Env is production: projectctx captures the
-// source and time.Now is the clock.
+// source and time.Now is the clock. The consultation validator is the
+// exception: its implementation lives in internal/consult, which taskflow must
+// not import, so a nil one fails closed and every consultation check refuses.
 //
 // Each use case is a method on Env; one that writes a task revision passes
 // the Env to update, which stamps the revision. Artifacts belong to one task
 // directory, so they are not in Env: a use case hands its rules the directory
 // it opened (taskDirectory).
 type Env struct {
-	Source Source
-	Clock  Clock
+	Source       Source
+	Clock        Clock
+	Consultation ConsultationValidator
 }
 
 // source returns the Env's Source; a nil one captures with projectctx.
@@ -62,6 +77,15 @@ func (env Env) now() time.Time {
 		return time.Now().UTC()
 	}
 	return env.Clock().UTC()
+}
+
+// validateConsultation revalidates a consultation record with the Env's
+// validator; a nil validator refuses.
+func (env Env) validateConsultation(data []byte) (consultrecord.Record, error) {
+	if env.Consultation == nil {
+		return consultrecord.Record{}, errNoConsultationValidator
+	}
+	return env.Consultation(data)
 }
 
 // projectSource is the production Source.

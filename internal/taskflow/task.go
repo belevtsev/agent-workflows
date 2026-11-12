@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -49,7 +49,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	if advisers == nil {
 		advisers = map[string]string{}
 	}
-	if err := consult.ValidateBinding(advisers); err != nil {
+	if err := consultrecord.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
 	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
@@ -143,7 +143,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 			return errors.New("before context no longer matches the baseline; start a new task")
 		}
 		if phase == "final" && record.Plan.Kind == "substantial" {
-			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
+			if _, err := env.readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("final context needs resolved before consultation: %w", err)
 			}
 		}
@@ -522,7 +522,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 			_, finalAttached := record.Consultations["final"]
 			if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
 				// A usable before checkpoint is the one final-context preparation accepts.
-				_, beforeErr := readConsultation(artifacts, *record, "before", record.Baseline)
+				_, beforeErr := env.readConsultation(artifacts, *record, "before", record.Baseline)
 				switch {
 				case beforeErr == nil:
 					conflict += "; attach the final checkpoint"
@@ -542,7 +542,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 				if phase == "before" {
 					expected = record.Baseline
 				}
-				consultation, err := readConsultation(artifacts, *record, phase, expected)
+				consultation, err := env.readConsultation(artifacts, *record, phase, expected)
 				if err != nil {
 					problem("%s consultation: %v", phase, err)
 					continue
