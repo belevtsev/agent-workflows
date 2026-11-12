@@ -38,6 +38,17 @@ func carveoutPrivateDir(t *testing.T) string {
 	return dir
 }
 
+// carveoutOptedInDir is a private configuration directory whose preferences
+// opt in to every adviser, so the selected policy alone decides who takes part.
+func carveoutOptedInDir(t *testing.T) string {
+	t.Helper()
+	dir := carveoutPrivateDir(t)
+	if err := os.WriteFile(filepath.Join(dir, "preferences.json"), []byte(optInEveryAdviser), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 type carveoutConsultResult struct {
 	err    error
 	stderr string
@@ -52,7 +63,7 @@ func carveoutRunConsult(t *testing.T, config Config, rootFlags []string, flags .
 	var stderr bytes.Buffer
 	config.Err = &stderr
 	config.Out = io.Discard
-	args := append([]string{"--config-dir", carveoutPrivateDir(t)}, rootFlags...)
+	args := append([]string{"--config-dir", carveoutOptedInDir(t)}, rootFlags...)
 	args = append(args, "consult")
 	args = append(args, flags...)
 	args = append(args, "--request", request, "--output", output, "--dry-run")
@@ -339,7 +350,7 @@ func carveoutTaskStartAdvisers(t *testing.T, config Config) map[string]string {
 	var out, stderr bytes.Buffer
 	config.Out = &out
 	config.Err = &stderr
-	args := []string{"--config-dir", carveoutPrivateDir(t), "task", "start", "--plan", "-", "--store", carveoutPrivateDir(t)}
+	args := []string{"--config-dir", carveoutOptedInDir(t), "task", "start", "--plan", "-", "--store", carveoutPrivateDir(t)}
 	if err := Execute(context.Background(), args, config); err != nil {
 		t.Fatalf("task start error = %v; stderr: %s", err, stderr.String())
 	}

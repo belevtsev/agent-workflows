@@ -101,7 +101,8 @@ fallbacks:
 # platforms or shells. Otherwise its plan declares checkpoints not required,
 # with a reason; when in doubt, it keeps them. Advisers
 # take part only when configured: listed under providers below, with their
-# credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY), and not
+# credential present (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENAI_API_KEY), opted in
+# to (advisers.enabled, a key saved with cw keys set, or --policy), and not
 # disabled in the user's preferences. With none
 # configured, the coordinator still holds each checkpoint and decides on source
 # evidence and checks under the same rules. Each checkpoint is a separate evidence

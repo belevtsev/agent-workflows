@@ -140,9 +140,9 @@ func TestTaskStartBindsConfiguredAdvisersFromPolicy(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newBindingFixture(t, 3, test.pins, test.credentials)
-			var flags []string
+			flags := []string{"--config-dir", adviserBindingConfigDir(t, optInEveryAdviser)}
 			if test.explicit != nil {
-				flags = []string{"--policy", writePolicyFixture(t, filepath.Join(t.TempDir(), "explicit"), 3, test.explicit)}
+				flags = append(flags, "--policy", writePolicyFixture(t, filepath.Join(t.TempDir(), "explicit"), 3, test.explicit))
 			}
 			record, document := fixture.start(t, bindingSmallPlan, flags...)
 			requireAdviserBinding(t, "task start", document["advisers"], test.want)
@@ -203,7 +203,8 @@ func TestTaskStartRefusesUnusablePolicyBeforeCreatingATask(t *testing.T) {
 // hold the providers bound at start.
 func TestTaskContextEmitsTheBindingFromStart(t *testing.T) {
 	fixture := newBindingFixture(t, 3, nil, fixtureCredentials("subq_snap"))
-	record, _ := fixture.start(t, bindingSubstantialPlan)
+	optedIn := adviserBindingConfigDir(t, optInEveryAdviser)
+	record, _ := fixture.start(t, bindingSubstantialPlan, "--config-dir", optedIn)
 	want := map[string]string{"subq_snap": "subq-snap-preview"}
 	if !maps.Equal(record.Advisers, want) {
 		t.Fatalf("binding at start = %v, want %v", record.Advisers, want)
@@ -227,7 +228,7 @@ func TestTaskContextEmitsTheBindingFromStart(t *testing.T) {
 	}
 	// A task started now binds the changed configuration, so the unchanged
 	// binding above is not an artifact of the fixture.
-	later, _ := fixture.start(t, bindingSubstantialPlan)
+	later, _ := fixture.start(t, bindingSubstantialPlan, "--config-dir", optedIn)
 	if all := map[string]string{"jev": "jev-1.14.0", "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"}; !maps.Equal(later.Advisers, all) {
 		t.Fatalf("a later task bound %v, want %v", later.Advisers, all)
 	}

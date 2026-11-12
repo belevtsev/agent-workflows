@@ -31,11 +31,13 @@ type Options struct {
 	DryRun bool
 	// Getenv resolves the credential variables; nil reads none.
 	Getenv func(string) string
-	// Disabled, when set, loads the provider IDs the user's preferences
-	// disable. It is called only for a request without a task binding, which
-	// treats each as having no credential: it is recorded as not_configured
-	// and never contacted. Its error fails the run before any output is
-	// written. A task-bound request keeps its binding and never calls it.
+	// Disabled, when set, loads the provider IDs the user withholds: those
+	// the preferences disable and, unless the policy was chosen with --policy,
+	// those the user has not opted in to. It is called only for a request
+	// without a task binding, which treats each as having no credential: it
+	// is recorded as not_configured and never contacted. Its error fails the
+	// run before any output is written. A task-bound request keeps its
+	// binding and never calls it.
 	Disabled func() ([]string, error)
 	Stdout   io.Writer
 	Stderr   io.Writer

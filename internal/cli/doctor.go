@@ -46,6 +46,7 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 			if err != nil {
 				return err
 			}
+			report.Warnings = append(report.Warnings, keyWithoutOptInWarnings(root, config, directory, report)...)
 			if summary {
 				return writeJSON(cmd.OutOrStdout(), summarizeDoctor(report))
 			}

@@ -104,7 +104,8 @@ func addKeysCommand(root *cobra.Command, config Config) {
 		Use:   "set NAME",
 		Short: "Save one adviser key read from standard input, or from the variable named by --from-env",
 		Long: "Save the key for NAME (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY). The key is read from standard input, minus one trailing line break, or with --from-env VAR from that environment variable; it is never taken from the command line. " +
-			"A key is one line of text without spaces or control characters, at most 64 KiB.",
+			"A key is one line of text without spaces or control characters, at most 64 KiB. " +
+			"Saving a key also opts in to its adviser: when the model policy enables it and advisers.disabled in preferences.json does not list it, tasks started afterwards bind it and an ad hoc 'cw consult' contacts it.",
 		Args: keyName,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := guard(cmd); err != nil {
@@ -133,6 +134,7 @@ func addKeysCommand(root *cobra.Command, config Config) {
 	keys.AddCommand(&cobra.Command{
 		Use:   "unset NAME",
 		Short: "Remove one saved adviser key",
+		Long:  "Remove the saved key for NAME. This withdraws the opt-in that saving it gave: a key left only in the environment binds its adviser again only with advisers.enabled in preferences.json or --policy. Tasks already started keep their binding.",
 		Args:  keyName,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := guard(cmd); err != nil {

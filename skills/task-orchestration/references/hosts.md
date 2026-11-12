@@ -175,8 +175,10 @@ selections; resolve any worker scope through the current host policy.
 ## Advisers on either host
 
 Advisers participate only when configured: enabled in `model-policy.yaml`
-`consultation.providers`, with a credential present, and not disabled in the user's
-preferences (`advisers.disabled` in `preferences.json` in the configuration
+`consultation.providers`, with a credential present, opted in to
+(`advisers.enabled`, a key saved with `cw keys set`, or `--policy`), and not
+disabled in the user's preferences (`advisers.disabled` in `preferences.json` in
+the configuration
 directory; this applies to tasks started afterwards). `cw task start` binds that
 set, and both checkpoints use the binding. Advisers are plain HTTPS calls made by
 `cw consult`, so they behave the same on both hosts. The coordinator is never one

@@ -160,6 +160,10 @@ left behind can be removed by hand.
    that path (a path that exists but cannot be read is reported, not skipped);
 4. the policy embedded in `cw`.
 
+Only `--policy` opts in to the providers its policy enables. Under a policy
+selected any other way, only the advisers you opted in to with `advisers.enabled`
+or `cw keys set` take part ([adviser keys](#adviser-keys)).
+
 The runtime reads only `version`, `consultation.deadline_seconds` (an integer
 from 1 to 3600) and `consultation.providers` from it. The worker routing in
 [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) and
@@ -448,7 +452,8 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
 
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
 request, otherwise the providers enabled in the [selected policy](#model-policy)
-and not disabled in your preferences, each only with its key present. It works
+that you opted in to and did not disable in your preferences, each only with its
+key present. It works
 from any directory. With no adviser configured it writes a
 `no_advisers_configured` record without network access:
 
@@ -514,7 +519,10 @@ and Go tooling available.
 
 The shipped policy enables `subq_snap` and `openai_decisions`; `jev` is opt-in. An
 enabled adviser participates only with its key (`SUBQ_API_KEY`, `OPENAI_API_KEY` or
-`TYPESAFE_API_KEY`) and when it is not disabled in your preferences.
+`TYPESAFE_API_KEY`), when you opted in to it, and when it is not disabled in your
+preferences. Saving a key with `cw keys set` opts in to its adviser; a key only in
+the environment also needs `advisers.enabled` or `--policy`, and until then
+`cw doctor` warns "key present, adviser not enabled".
 
 ```sh
 cw keys set SUBQ_API_KEY < /path/to/private-key-file
@@ -531,11 +539,13 @@ both owned by you and not linked. A key in the environment takes precedence over
 saved one. `cw keys status` reports whether each key comes from the environment,
 the saved file or neither, without any value or provider call.
 
-To disable an adviser and keep its key, list its provider ID under
-`advisers.disabled` in `preferences.json` in the configuration directory, for
-example `{"version":1,"advisers":{"disabled":["openai_decisions"]}}`. Edit the file
-by hand; it must be a regular file with mode `0600`, owned by you. `cw` reads
-only `advisers.disabled` from it, and refuses a top-level member other than
+To opt in to an adviser whose key is only in the environment, list its provider
+ID under `advisers.enabled` in `preferences.json` in the configuration directory;
+to disable one and keep its key, list it under `advisers.disabled`, for example
+`{"version":1,"advisers":{"enabled":["subq_snap"],"disabled":["openai_decisions"]}}`.
+Edit the file by hand; it must be a regular file with mode `0600`, owned by you.
+`cw` reads only `advisers.enabled` and `advisers.disabled` from it, refuses an ID
+listed in both, and refuses a top-level member other than
 `version`, `advisers`, `hosts` and `shared`. An unreadable or
 invalid file makes `cw task start` fail before it creates a task. The change applies
 to tasks started afterwards: `cw task start` binds the advisers configured at that

@@ -288,7 +288,8 @@ the `cw hook pre-publish` binary, whose commit gate then fails open. Update ever
 installed `cw`, including the one the hook runs, before running tasks with this one.
 
 `start` binds the configured advisers (enabled in the policy, with a credential
-present, and not disabled in the saved preferences) into the task record as
+present, opted in to with `advisers.enabled`, a key saved with `cw keys set` or
+`--policy`, and not disabled in the saved preferences) into the task record as
 `advisers`, possibly empty. `--policy PATH` selects the policy; without it, as for
 `cw consult`, the default is `$CW_MODEL_POLICY`, then
 `~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the
@@ -297,6 +298,9 @@ policy embedded in `cw`. A `--policy` copy still honours
 invalid, including an older policy version, `start` fails before creating a task
 directory. The binding is fixed for the task's
 lifetime: later policy or credential changes do not alter its checkpoints.
+Never opt advisers in for the user: pass `--policy`, edit `advisers.enabled` or run
+`cw keys set` only when the user asked for it. A `cw doctor` warning "key present,
+adviser not enabled" is for the user to act on, not a step of the flow.
 `context` prints `{"task_id", "phase", "snapshot", "evidence_sha256", "advisers"}`.
 To opt in to Jev, pass a policy copy that enables it; see
 [opt in to Jev](consultation-helper.md#opt-in-to-jev).

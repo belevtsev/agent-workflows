@@ -84,7 +84,8 @@ func loadPolicy(source modelpolicy.Source) (policy, error) {
 // is never nil, and is empty when nothing is configured. Only the credential
 // variables of enabled providers are read, and no credential value is
 // returned. A nil getenv reads no credentials. The error is the policy
-// validation failure, if any.
+// validation failure, if any. A credential alone is not consent: cw task start
+// removes the advisers the user has disabled or not opted in to.
 func ConfiguredAdvisers(selected modelpolicy.Source, getenv func(string) string) (map[string]string, error) {
 	loaded, err := loadPolicy(selected)
 	if err != nil {
