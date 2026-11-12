@@ -129,9 +129,9 @@ more roles to a cheaper model is the owner's decision.
 
 **Why is the GitHub worker an agent rather than a shell script?** Routine
 publication no longer needs either: it runs as the Go command `cw publish`,
-which applies the verify gate itself, so it holds where the Claude Code commit
-gate, which sees only Bash commands that name git, cannot look, and under Codex
-([hooks](hooks.md)). First-party automation must be written in Go anyway; the
+which applies the verify gate itself, so it holds where the commit hook, which
+sees only shell commands that name git, cannot look, and under Codex before its
+hooks are trusted ([hooks](hooks.md#codex)). First-party automation must be written in Go anyway; the
 repository check rejects `.sh` and `.py` files outside `skills/` and
 `third_party/` ([contributing](../CONTRIBUTING.md#go-only-automation)). The
 worker remains an agent for the fallback cases the command refuses, such as

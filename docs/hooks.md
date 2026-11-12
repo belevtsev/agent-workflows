@@ -1,7 +1,8 @@
 # Plugin hooks
 
-`hooks/hooks.json` registers two Claude Code hooks for the agent-workflows
-plugin. Both run `cw`; when `cw` is not on `PATH` they degrade to printing the
+`hooks/hooks.json` registers two hooks for the agent-workflows plugin. Claude
+Code runs them, and so does Codex once you trust them; [Codex](#codex) covers
+what differs there. Both run `cw`; when `cw` is not on `PATH` they degrade to printing the
 conventions file or doing nothing. No hook uses a script file: every command is
 inline, which keeps the repository's automation policy (`go test ./internal/skillcheck`)
 satisfied.
@@ -28,7 +29,8 @@ file alone.
 
 The `PreToolUse` handler runs for every Bash command whose text contains `git`
 (the condition `Bash(*git*)`; Claude Code also runs it when it cannot tell which
-commands a Bash input runs). `cw hook pre-publish` then finds each `git commit`
+commands a Bash input runs, and Codex ignores the condition and runs it for every
+shell command). `cw hook pre-publish` then finds each `git commit`
 and `git push` in the command and the directory it runs in, and exits at once,
 without output, when there is none.
 
@@ -38,8 +40,8 @@ defence against an agent that sets out to bypass it. See the
 
 `cw publish` applies the same gate itself, before it commits or pushes: it runs
 the same search for open records (over the task's own store and the store
-below), so the gate holds under Codex, which has no hook, too. It refuses with
-exit 3 `open-record` instead of a deny. The hook does not inspect `cw publish`:
+below), so the gate also holds where the hook does not run, such as under Codex
+before you trust its hooks. It refuses with exit 3 `open-record` instead of a deny. The hook does not inspect `cw publish`:
 its command text names no git, and cw runs git itself.
 
 ### Recognised commands
@@ -174,7 +176,8 @@ it.
 ### Asking instead of denying
 
 Two cases ask for confirmation (`permissionDecision: "ask"`) instead of
-denying; a deny for any git command in the same Bash input wins.
+denying; a deny for any git command in the same Bash input wins. Codex cannot
+ask, so there both are denies ([Codex](#codex)).
 
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
@@ -207,7 +210,7 @@ A relative `$XDG_STATE_HOME` names no store ([paths](operations.md#paths)).
 Without `$CW_TASK_STORE`, the hook then asks before each `git commit` and
 `git push` it would otherwise judge, with the reason "XDG_STATE_HOME must be
 an absolute path; set it, or set CW_TASK_STORE", instead of letting the
-command through unchecked. Commands that the rules below let through without
+command through unchecked; under Codex it denies ([Codex](#codex)). Commands that the rules below let through without
 reading the store, such as one outside a Git repository, still go ahead.
 
 ## Fail-open rules
@@ -254,7 +257,7 @@ push through today while the repository has an open substantial task, or lets
 | `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. |
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
-| Git run outside Claude Code's Bash tool (Codex, a terminal, an editor), or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only Bash commands, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
+| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules` ([Which source counts](#which-source-counts)). |
 | An unreadable newest revision: `echo '{' > <task>/record-000002.json` | Allowed. A task whose record does not load is skipped, and a task directory whose newest revision does not decode is ignored. Removing the file restores the deny. |
@@ -273,3 +276,61 @@ which exports `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` to the hook, and
 `small_task_prompt` to `false` to stop the ask for unrecorded changes. Removing
 `cw` from `PATH` also disables the gate, because the command checks for `cw`
 first and exits 0 when it is absent; the session-start line then says so.
+Codex has no plugin configuration: start Codex with the variable instead, as
+in `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false codex` ([Codex](#codex)).
+
+## Codex
+
+Codex runs both hooks from the installed plugin's `hooks/hooks.json`. What
+follows was recorded on 2026-11-12 with codex-cli 0.167.2, `codex exec` and a
+wrapper in place of `cw` that saved each hook's input and environment;
+[`codex-pre-tool-use.json`](../internal/cli/testdata/codex-pre-tool-use.json)
+is the recorded PreToolUse input, with paths replaced by placeholders.
+
+- **Trust.** Codex runs a plugin hook only after you trust it: before that,
+  neither hook ran, and `codex exec` did not say so.
+  `--dangerously-bypass-hook-trust` runs untrusted hooks for one invocation.
+  Per the Codex hooks documentation, you trust hooks with `/hooks` in the CLI
+  or **Review hooks** in the desktop app, and trust is recorded against the
+  hook's hash, so review again when an update changes `hooks/hooks.json`. No
+  feature flag is needed: `codex features list` shows `hooks` stable and on,
+  and `plugin_hooks` removed.
+- **Input.** The PreToolUse input names the shell tool `Bash` and holds `cwd`
+  and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`,
+  which Codex documents as its own extensions. Claude Code's PreToolUse input
+  has neither, so `cw` takes the two together as the sign that Codex ran the
+  hook; one of them alone is not enough.
+- **Matcher.** Codex matches `Bash` but ignores the `if` condition, so
+  `cw hook pre-publish` runs for every shell command; it exits at once, without
+  output, for a command with no `git commit` or `git push`.
+- **Decisions.** A deny blocks the command, and the agent sees
+  `Command blocked by PreToolUse hook:` and the reason. No output lets the
+  command run. An ask is not supported: Codex ran the command without asking
+  and told the agent nothing.
+- **Environment.** Codex sets `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA`
+  (also as `PLUGIN_ROOT` and `PLUGIN_DATA`) to the plugin's copy under
+  `$CODEX_HOME/plugins/cache` and its data directory under
+  `$CODEX_HOME/plugins/data`. It sets no `CLAUDE_PLUGIN_OPTION_*` variable, and
+  the hook inherits the environment Codex was started with.
+- **Session start.** On `startup` the session-start hook adds
+  `global/AGENTS.md` to the session, so the trusted plugin also loads the
+  working conventions.
+
+So under Codex the pre-publish hook turns today's three asks into denies: an
+unrecorded substantial change, a push with uncommitted changes over a verified
+record ([Asking instead of denying](#asking-instead-of-denying)), and a relative
+`XDG_STATE_HOME` ([Task store](#task-store)). The reason starts
+`agent-workflows: Codex cannot ask for confirmation`, carries the question
+Claude Code would ask, and says to put it to the user, who goes ahead by running
+the command outside Codex. Every reason under Codex ends by naming the option
+variables.
+
+An ask for a task record that cannot be read, which is planned, will not become
+a deny: a deny would block the user on a damaged file, so under Codex that
+command goes ahead, as Codex runs any ask.
+
+The plugin options are environment variables under Codex: export
+`CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY`, `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`
+or `CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR` in the shell that starts Codex. In the
+recorded run, `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` let through a commit
+that the hook otherwise denied.

@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
 - The commit gate no longer denies `echo`, `printf`, `cat`, `rg`, `grep` or `jq` commands that only mention git in quotes, heredoc input
   or comments, such as `echo "todo; git commit later"`, and follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
+- Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
+  now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 
