@@ -164,8 +164,9 @@ reason that names the task directory and the load error, and `cw publish`
 refuses with exit 3 `open-record`. To clear it, remove the task directory or
 move it out of the task store; for a record from a newer `cw`, upgrade `cw`
 instead. A task directory in which no revision decodes is ignored
-([Known bypasses](#known-bypasses)). Under Codex the command goes ahead
-([Codex](#codex)).
+([Known bypasses](#known-bypasses)). Under Codex the command goes ahead,
+unless it also raises an ask that Codex denies
+([Asking instead of denying](#asking-instead-of-denying), [Codex](#codex)).
 
 ### Which source counts
 
@@ -218,9 +219,11 @@ the last two let the command run, unless joined with one of the first two
   (`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) to turn this prompt off.
 - A commit or push from a repository where no readable record gates, but a
   record that governs it cannot be read
-  ([Records that cannot be read](#records-that-cannot-be-read)). A push of
-  uncommitted changes over the verified records beside it also asks the first
-  question, in the same reason.
+  ([Records that cannot be read](#records-that-cannot-be-read)). The gate
+  also works out the first two asks as if that record did not exist: a push
+  of uncommitted changes over the verified records beside it, or a
+  substantial change with no other record, worded "no readable cw task
+  record". Either one is joined to this ask in the same reason.
 - A commit or push the gate would judge while the task store cannot be located
   or read ([Task store](#task-store)).
 
@@ -375,8 +378,9 @@ denies: a deny would block the user on a file or setting they may not be able
 to fix from Codex, so under Codex the hook prints nothing and the command goes
 ahead, as Codex runs any ask. A relative `XDG_STATE_HOME` is one of these, so
 it no longer denies there. When one of them is joined with one of the two
-denied asks, as for a push of uncommitted changes beside a record that cannot
-be read, the command is denied.
+denied asks, the command is denied: a push of uncommitted changes beside a
+record that cannot be read, or a substantial change whose only record cannot
+be read.
 
 The plugin options are environment variables under Codex: export
 `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY`, `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`

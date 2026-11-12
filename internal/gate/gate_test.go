@@ -261,8 +261,33 @@ func TestDecideAsksWhenARecordCannotBeRead(t *testing.T) {
 	// Oracle: with enforce_verify=false an unreadable record counts as no
 	// record, so the ask for an unrecorded substantial change still comes.
 	got = decide("git commit -m y", unrecorded, false, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{unrecorded: {damaged}}})
-	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, "substantial change with no cw task record") {
+	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, "substantial change with no readable cw task record") {
 		t.Fatalf("Decide with enforce off = %+v, want the unrecorded-change ask", got)
+	}
+}
+
+func TestDecideAsksAboutAnUnrecordedChangeWhenTheOnlyRecordCannotBeRead(t *testing.T) {
+	repo := canonicalDir(t)
+	git := &fakeGit{}
+	git.repository(repo)
+	git.answer(repo, "diff --numstat -z --no-renames --no-ext-diff --no-textconv --cached", "250\t60\tpkg/a.go\x0010\t0\tcmd/b.go\x00")
+	damaged := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-5", Directory: "/store/task-5"}, Unreadable: "invalid task JSON: unexpected EOF"}
+
+	got := decide("git commit -m x", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {damaged}}})
+
+	// Oracle: the unrecorded-change ask the commit raises when the damaged
+	// record is left out, worded so it stays true ("no readable cw task
+	// record"), joined with the ask for the damaged record; a host that
+	// cannot ask must not run it, so it is not ProceedWithoutAsk.
+	want := "agent-workflows: this commit looks like a substantial change with no readable cw task record for " + repo + ": " +
+		"320 changed lines (more than 300); changes in 2 top-level directories (cmd, pkg); code changed with no test file changed. " +
+		"Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. " +
+		"Set small_task_prompt=false in the plugin config to stop this prompt. " +
+		"agent-workflows: cw cannot read a task record for this repository, so the commit and push gate cannot tell whether it allows this command. " +
+		"Task directory /store/task-5: invalid task JSON: unexpected EOF; if the record is damaged, remove the directory or move it out of the task store, " +
+		"then start a new task with `cw task start` if the work is still open. Confirm to run this command without the gate."
+	if got != (gate.Decision{Permission: gate.Ask, Reason: want}) {
+		t.Fatalf("Decide = %+v\nwant an ask with reason %q", got, want)
 	}
 }
 

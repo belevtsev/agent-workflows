@@ -149,8 +149,9 @@ type decider struct {
 // check returns the records that gate one publication and, when none does,
 // the ask it raises, if any. A repository that cannot be resolved, or whose
 // store cannot be read, yields neither. With enforce on, a governing record
-// that cannot be read asks, unless another record gates; with it off, such a
-// record counts as no record.
+// that cannot be read asks, unless another record gates, joined with any ask
+// the publication raises without it; with enforce off, such a record counts
+// as no record.
 func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
 	repo, err := taskflow.ResolveRepository(ctx, publication.dir, d.deps.Git.output)
 	if err != nil {
@@ -174,30 +175,32 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 			verified = append(verified, record)
 		}
 	}
-	dirtyPush := func() bool {
-		return d.in.Enforce && len(verified) > 0 && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree)
-	}
-	switch {
-	case len(gating) > 0:
+	if len(gating) > 0 {
 		return gating, ask{}
-	case d.in.Enforce && len(unreadable) > 0:
-		// A deny would block the user on a file the agent's host may give
-		// them no way to repair, so a host that cannot ask lets it run,
-		// unless the verified records beside it raise their own ask.
-		if dirtyPush() {
-			return nil, ask{reason: uncommittedReason(verified) + " " + unreadableReason(unreadable)}
-		}
-		return nil, ask{reason: unreadableReason(unreadable), proceed: true}
+	}
+	// other is the ask the publication raises as if the unreadable records
+	// did not exist.
+	other := ""
+	switch {
 	case len(verified) > 0:
-		if dirtyPush() {
-			return nil, ask{reason: uncommittedReason(verified)}
+		if d.in.Enforce && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree) {
+			other = uncommittedReason(verified)
 		}
 	case d.in.Prompt:
 		if signs := substantialChangeSigns(ctx, d.deps.Git, repo.Worktree, publication); len(signs) >= 2 {
-			return nil, ask{reason: unrecordedChangeReason(repo.Worktree, publication, signs)}
+			other = unrecordedChangeReason(repo.Worktree, publication, signs, len(unreadable) > 0)
 		}
 	}
-	return nil, ask{}
+	switch {
+	case !d.in.Enforce || len(unreadable) == 0:
+		return nil, ask{reason: other}
+	case other != "":
+		// The other ask keeps its effect: a host that cannot ask denies.
+		return nil, ask{reason: other + " " + unreadableReason(unreadable)}
+	}
+	// A deny would block the user on a file the agent's host may give them
+	// no way to repair, so a host that cannot ask lets it run.
+	return nil, ask{reason: unreadableReason(unreadable), proceed: true}
 }
 
 // denyReason names every gating record, why it gates, and how to verify or

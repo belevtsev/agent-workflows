@@ -88,6 +88,26 @@ func TestHookPrePushBesideAnUnreadableRecordStillAsksAboutUncommittedChanges(t *
 	})
 }
 
+func TestHookPrePublishBesideAnUnreadableRecordStillAsksAboutAnUnrecordedChange(t *testing.T) {
+	// Oracle: a staged substantial change asks about an unrecorded change.
+	// A damaged record, the only one, adds its own question but keeps that
+	// one, worded "no readable cw task record": Claude Code asks about both,
+	// and Codex denies, as it did before the damaged record was reported.
+	repo, h := hkUnrecordedChange(t)
+	damaged := hkSubstantialRecord(t, repo, h.env["CW_TASK_STORE"], "Damaged")
+	hkWriteFile(t, damaged.Directory, "record-000002.json", "{\n")
+	const unrecorded = "this commit looks like a substantial change with no readable cw task record"
+	t.Run("Claude Code", func(t *testing.T) {
+		hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), unrecorded, "Task directory "+damaged.Directory+": invalid task JSON")
+	})
+	t.Run("Codex", func(t *testing.T) {
+		decision, reason := hkDecision(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+		if decision != "deny" || !strings.Contains(reason, unrecorded) || !strings.Contains(reason, damaged.Directory) {
+			t.Fatalf("Codex decision %q with reason %q, want a deny naming the unrecorded change and %s", decision, reason, damaged.Directory)
+		}
+	})
+}
+
 func TestHookPrePublishAsksWhenTheTaskStoreCannotBeRead(t *testing.T) {
 	// Oracle: a CW_TASK_STORE that is a regular file cannot be listed. The
 	// hook allowed every commit silently; it now asks, naming the store
