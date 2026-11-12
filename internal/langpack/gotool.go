@@ -48,7 +48,7 @@ const goRootLimit = 4 << 10
 
 // ResolveGo finds the go command that program names and verifies the go
 // command it would run in dir with env. A program without a path separator is
-// looked up in env's PATH as LoadGoFacts looks up go (findGo); a path is
+// looked up in env's PATH (findGo), as LoadGoFacts does for go; a path is
 // taken as given, relative to dir. That candidate may be a version manager's
 // shim, a golang.org/dl wrapper or a cmd/go whose GOTOOLCHAIN setting or
 // go.mod selects another toolchain, which cmd/go looks for on PATH before it

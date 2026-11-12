@@ -447,6 +447,16 @@ and an empty log, and `cw task run` exits 5 with an error that names the
 candidate. Put the real `go` first on `PATH`. This shows what the binary is, not
 that it reports honestly ([threat model](../SECURITY.md#threat-model)).
 
+`cw task verify` reads the Go rule's facts, the package graph and whether
+`-race` can run on the host, from a go command it verifies the same way: it
+runs the `go` its `PATH` names once as `go env GOROOT`, offline
+(`GOPROXY=off`) and within the facts budget, then runs `go list` from the
+verified file with the same `GOROOT` and `GOTOOLCHAIN=local`. So a shim cannot
+answer the `-race` probe with "not supported" to waive `-race`. When no go
+command verifies, the facts are unavailable: verify lists the refusal, which
+names the candidate, as a limitation, asks for a `go test ./...` run, and still
+requires `-race`.
+
 ### Merging the base branch during a task
 
 A task's plan cannot change after `cw task start`. When the task merges its base

@@ -21,7 +21,8 @@ import (
 
 // Independent tests for LoadGoFacts (P3a-2 interface contract, B16-B20, B24
 // and J4), against real go and fake go scripts. Fake scripts are named only
-// through env's PATH, except where a row sets the process PATH itself.
+// through env's PATH, except where a row sets the process PATH itself, and
+// run only under langpack.TrustGoOnPath, as ResolveGo refuses them.
 
 func gfPosix(t *testing.T) {
 	t.Helper()
@@ -93,9 +94,11 @@ func gfFake(t *testing.T, body string) string {
 }
 
 // gfRecord is a script line that appends the working directory, the
-// arguments and GOPROXY, GOOS, GOARCH and GOFLAGS to file rec.
+// arguments and GOPROXY, GOOS, GOARCH, GOFLAGS, GOROOT and GOTOOLCHAIN to file
+// rec.
 func gfRecord(rec string) string {
-	return `printf '%s|%s|%s|%s|%s|%s\n' "$(/bin/pwd -P)" "$*" "${GOPROXY-unset}" "${GOOS-unset}" "${GOARCH-unset}" "${GOFLAGS-unset}" >> '` + rec + "'\n"
+	return `printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$(/bin/pwd -P)" "$*" "${GOPROXY-unset}" "${GOOS-unset}" "${GOARCH-unset}" "${GOFLAGS-unset}" ` +
+		`"${GOROOT-unset}" "${GOTOOLCHAIN-unset}" >> '` + rec + "'\n"
 }
 
 // gfLines returns the whitespace-separated tokens of a file (none when absent).
@@ -309,6 +312,7 @@ func TestLoadGoFactsRaceProbeRealGoB18(t *testing.T) {
 // error means -race is unavailable.
 func TestLoadGoFactsRaceProbeFakeB18(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	dir := gfModule(t, map[string]string{"go.mod": "module example.com/r\n\ngo 1.21\n", "a/a.go": "package a\n"})
 	for _, r := range []struct{ stderr, code, want string }{
 		{"-race is not supported on plan9/amd64", "2", "-race is not supported on plan9/amd64"},
@@ -367,9 +371,12 @@ func TestLoadGoFactsFailuresB19(t *testing.T) {
 
 // B16, B18, B19, B24, J4: a recording fake go sees exactly the probe and the
 // graph command, in dir, from the one file env's PATH names, each with
-// GOPROXY=off; the probe never sees verify's GOOS, GOARCH or GOFLAGS.
+// GOPROXY=off; the probe never sees verify's GOOS, GOARCH or GOFLAGS. G6b:
+// both see the resolved go command's GoTool.Env last, its GOROOT and
+// GOTOOLCHAIN=local, whatever env sets.
 func TestLoadGoFactsCommandsB19(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	for _, m := range []string{"readonly", "vendor"} {
 		files := map[string]string{"go.mod": "module example.com/c\n\ngo 1.21\n", "a/a.go": "package a\n"}
 		if m == "vendor" {
@@ -378,12 +385,14 @@ func TestLoadGoFactsCommandsB19(t *testing.T) {
 		dir := gfModule(t, files)
 		rec := filepath.Join(gfDir(t), "rec")
 		fake := gfFake(t, gfRecord(rec)+"exit 0\n")
-		gfLoad(t, gfCtx(t), dir, gfEnv("PATH="+fake, "GOOS=linux", "GOARCH=386", "GOFLAGS=-tags=x"), langpack.Source{Current: gfKeys(files), Changed: []string{"a/a.go"}})
+		gfLoad(t, gfCtx(t), dir, gfEnv("PATH="+fake, "GOOS=linux", "GOARCH=386", "GOFLAGS=-tags=x", "GOROOT=/elsewhere", "GOTOOLCHAIN=auto"),
+			langpack.Source{Current: gfKeys(files), Changed: []string{"a/a.go"}})
 		data, _ := os.ReadFile(rec)
 		got := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+		tool := "|" + langpack.TrustedGOROOT + "|local"
 		want := []string{
-			dir + "|list -mod=" + m + " -race runtime|off|" + runtime.GOOS + "|" + runtime.GOARCH + "|-mod=" + m,
-			dir + "|list -e=false -mod=" + m + " " + gfGraphArgs + "|off|linux|386|-tags=x",
+			dir + "|list -mod=" + m + " -race runtime|off|" + runtime.GOOS + "|" + runtime.GOARCH + "|-mod=" + m + tool,
+			dir + "|list -e=false -mod=" + m + " " + gfGraphArgs + "|off|linux|386|-tags=x" + tool,
 		}
 		slices.Sort(got)
 		slices.Sort(want)
@@ -398,6 +407,7 @@ func TestLoadGoFactsCommandsB19(t *testing.T) {
 // reported in GraphError. Upper bounds have 2 s of slack; the lower bound is exact.
 func TestLoadGoFactsTimeAndSizeB20(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	src := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	probeOK := gfProbeOK
 	deadline := func(t *testing.T, d time.Duration) context.Context {
@@ -475,6 +485,7 @@ func gfNotComputed(t *testing.T, id string, got langpack.GoFacts, want string) {
 // entry make the graph unavailable, neither computed nor timed out.
 func TestLoadGoFactsBadGraphB19(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	dir := gfModule(t, map[string]string{"go.mod": "module example.test\n\ngo 1.21\n", "a/a.go": "package a\n"})
 	src := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	incomplete := `{"ImportPath":"example.test/a","Dir":"` + dir + `/a","Module":{"Path":"example.test","Dir":"` + dir + `"},"Incomplete":true}`
@@ -509,6 +520,7 @@ func TestLoadGoFactsEndedCtxB20(t *testing.T) {
 // skipping empty, relative and unusable entries; every command runs that file.
 func TestLoadGoFactsFindsGoB24(t *testing.T) {
 	gfPosix(t)
+	langpack.TrustGoOnPath(t)
 	dir := gfModule(t, map[string]string{"go.mod": "module example.com/g\n\ngo 1.21\n", "a/a.go": "package a\n"})
 	src := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	rec := filepath.Join(gfDir(t), "rec")
