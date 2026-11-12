@@ -12,7 +12,12 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
 and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
 answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
-so gate rules are unit-tested with a fake git, clock and task store.
+so gate rules are unit-tested with a fake git, clock and task store. Under
+Codex, which cannot ask, the hook turns an ask into a deny unless the gate sets
+`ProceedWithoutAsk` on it ([Codex](hooks.md#codex)).
+`internal/shellwords` splits a shell command into simple commands and words
+for both the gate and `internal/usagelog`; extend it there rather than
+splitting commands again.
 `cmd/cwdev` holds the maintainer evaluation.
 
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a

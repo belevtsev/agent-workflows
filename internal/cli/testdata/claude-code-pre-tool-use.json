@@ -1,0 +1,18 @@
+{
+  "session_id": "3f1c2a9e-5b7d-4e8a-9c21-6d0b4f7e8a13",
+  "transcript_path": "<claude-home>/projects/<project>/3f1c2a9e-5b7d-4e8a-9c21-6d0b4f7e8a13.jsonl",
+  "cwd": "<repo>",
+  "scratchpad_dir": "<scratchpad>",
+  "prompt_id": "8d2e6b40-1a9c-4f37-b5e2-0c7a9d3f1e64",
+  "permission_mode": "default",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git commit --allow-empty -m ask-probe",
+    "description": "Commit the change"
+  },
+  "tool_use_id": "toolu_01ABCDEFGHJKLMNPQRSTUVWX"
+}
