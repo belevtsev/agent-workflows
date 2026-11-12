@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -42,10 +43,16 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 			if err != nil {
 				return err
 			}
+			// --timeout bounds the whole inspection, the git_hooks check
+			// included, which gets what projectctx.Doctor leaves.
+			deadline := time.Now().Add(timeout)
 			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, ConfigDir: directory, Live: live, Timeout: timeout, Getenv: config.Getenv})
 			if err != nil {
 				return err
 			}
+			ctx, cancel := context.WithDeadline(cmd.Context(), deadline)
+			defer cancel()
+			report.Checks["git_hooks"] = gitHooksCheck(ctx, root, config, report.Profile.Snapshot.SelectedPath)
 			report.Warnings = append(report.Warnings, keyWithoutOptInWarnings(root, config, directory, report)...)
 			if summary {
 				return writeJSON(cmd.OutOrStdout(), summarizeDoctor(report))

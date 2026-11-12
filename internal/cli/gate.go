@@ -83,6 +83,9 @@ type gateHookStatus struct {
 	Name  string `json:"name"`
 	Path  string `json:"path"`
 	State string `json:"state"`
+	// notExecutable marks an absent hook whose path holds the script cw
+	// gate install writes, without an execute bit.
+	notExecutable bool
 }
 
 func addGateCommands(root *cobra.Command, config Config) {
@@ -197,17 +200,12 @@ func addGateCommands(root *cobra.Command, config Config) {
 	status := define(&cobra.Command{
 		Use:   "status [--repo DIR] [--json]",
 		Short: "Show whether each git hook is installed, absent or foreign",
-		Long: "Print the repository's hooks directory, whether other repositories use it too, and, for pre-commit and pre-push, installed (exactly what cw gate install writes), " +
-			"absent, or foreign (any other file). --json prints {hooks_path, shared, hooks: [{name, path, state}]}.",
+		Long: "Print the repository's hooks directory, whether other repositories use it too, and, for pre-commit and pre-push, installed (exactly what cw gate install writes, with an execute bit), " +
+			"absent (no file, or that script without an execute bit, which git skips), or foreign (any other file). --json prints {hooks_path, shared, hooks: [{name, path, state}]}.",
 	}, false, func(cmd *cobra.Command, hooks gateHooks) error {
-		report := gateStatusReport{HooksPath: hooks.dir, Shared: hooks.shared != "", Hooks: []gateHookStatus{}}
-		for _, name := range gateHookNames {
-			path := filepath.Join(hooks.dir, name)
-			state, _, err := readGateHook(path, name)
-			if err != nil {
-				return fmt.Errorf("read %s: %w", path, err)
-			}
-			report.Hooks = append(report.Hooks, gateHookStatus{Name: name, Path: path, State: state})
+		report, err := gateStatus(hooks)
+		if err != nil {
+			return err
 		}
 		if asJSON {
 			return writeJSON(cmd.OutOrStdout(), report)
@@ -215,14 +213,38 @@ func addGateCommands(root *cobra.Command, config Config) {
 		hooks.report(cmd.OutOrStdout())
 		for _, hook := range report.Hooks {
 			line := hook.Name + ": " + hook.State
-			if hook.State == gateForeign {
+			switch {
+			case hook.State == gateForeign:
 				line += " (not written by cw gate install; cw gate install prints the line to add to it)"
+			case hook.notExecutable:
+				line += " (cw gate install wrote it, but it has no execute bit, so git skips it; cw gate install restores the mode)"
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), line)
 		}
 		return nil
 	})
 	status.Flags().BoolVar(&asJSON, "json", false, "Print JSON")
+}
+
+// gateStatus returns what cw gate status reports for the hooks directory.
+// Git skips a hook without an execute bit, so cw's own script without one is
+// absent there. readGateHook still calls it installed, so that install
+// restores its mode and uninstall removes it.
+func gateStatus(hooks gateHooks) (gateStatusReport, error) {
+	report := gateStatusReport{HooksPath: hooks.dir, Shared: hooks.shared != "", Hooks: []gateHookStatus{}}
+	for _, name := range gateHookNames {
+		path := filepath.Join(hooks.dir, name)
+		state, mode, err := readGateHook(path, name)
+		if err != nil {
+			return gateStatusReport{}, fmt.Errorf("read %s: %w", path, err)
+		}
+		hook := gateHookStatus{Name: name, Path: path, State: state}
+		if state == gateInstalled && mode.Perm()&0o111 == 0 {
+			hook.State, hook.notExecutable = gateAbsent, true
+		}
+		report.Hooks = append(report.Hooks, hook)
+	}
+	return report, nil
 }
 
 // report writes the hooks directory and why other repositories use it, if

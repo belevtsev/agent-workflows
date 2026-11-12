@@ -107,7 +107,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	var instructions, cache string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
-		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
+		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
@@ -293,26 +293,36 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 }
 
 // sessionStartContext returns the instructions file, followed by any version
-// notes and by the doctor summary when the plugin option asks for it and it
-// can be produced in time.
+// notes and the cw gate install line, and by the doctor summary when the
+// plugin option asks for it and it can be produced in time.
 func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string) (string, bool) {
 	data, err := os.ReadFile(instructions)
 	if err != nil || len(bytes.TrimSpace(data)) == 0 {
 		return "", false
 	}
 	text := strings.TrimRight(string(data), "\n")
-	if notes := versionNotes(config, instructions); notes != "" {
-		text += "\n\n" + notes
+	// Only the cw gate install line, which the gate being off silences, and
+	// the doctor summary need the session's directory.
+	gate := config.Getenv(enforceVerifyOption) != "false"
+	doctor := config.Getenv(sessionDoctorOption) == "true"
+	dir := ""
+	if gate || doctor {
+		dir = sessionDirectory(config)
 	}
-	if config.Getenv(sessionDoctorOption) != "true" {
-		return text, true
+	var notes []string
+	if note := versionNotes(config, instructions); note != "" {
+		notes = append(notes, note)
 	}
-	input, err := readHookInput(config.In)
-	dir := input.CWD
-	if err != nil {
-		if dir, err = config.WorkingDir(); err != nil {
-			return text, true
+	if gate && dir != "" {
+		if note := gateInstallNote(ctx, root, config, dir, cache); note != "" {
+			notes = append(notes, note)
 		}
+	}
+	if len(notes) > 0 {
+		text += "\n\n" + strings.Join(notes, "\n")
+	}
+	if !doctor || dir == "" {
+		return text, true
 	}
 	if summary, ok := cachedDoctorSummary(ctx, root, config, dir, cache); ok {
 		text += "\n\n" + summary
@@ -320,8 +330,45 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 	return text, true
 }
 
+// hookSessionInputTimeout bounds the session-start read of the hook input,
+// which the host has written by the time the hook runs.
+const hookSessionInputTimeout = 2 * time.Second
+
+// sessionDirectory returns the session's directory: the cwd of the hook
+// input on stdin, else the working directory, which Claude Code and Codex
+// both set to the session's directory; "" when neither is known. A host that
+// keeps stdin open would hold the read until it kills the hook, so the read
+// gets hookSessionInputTimeout and is then abandoned. It runs in a goroutine
+// with a timer rather than with a read deadline, which a pipe on darwin does
+// not support.
+func sessionDirectory(config Config) string {
+	read := make(chan string, 1)
+	go func() {
+		input, err := readHookInput(config.In)
+		if err != nil {
+			input.CWD = ""
+		}
+		read <- input.CWD
+	}()
+	timer := time.NewTimer(hookSessionInputTimeout)
+	defer timer.Stop()
+	select {
+	case dir := <-read:
+		if dir != "" {
+			return dir
+		}
+	case <-timer.C:
+	}
+	dir, err := config.WorkingDir()
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
 // cachedDoctorSummary returns the one-line doctor summary for dir, served from the
-// cache when it is younger than an hour. Any failure yields no summary.
+// cache when it is younger than an hour. Any failure yields no summary. It
+// leaves out cw doctor's git_hooks check: the cw gate install line covers it.
 func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config, dir, cache string) (string, bool) {
 	selected, err := filepath.EvalSymlinks(dir)
 	if err != nil {
