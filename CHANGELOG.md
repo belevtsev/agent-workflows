@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `cw publish` refuses a remote URL that Git hands to a remote helper (`foo::…`, or a scheme other than https, http,
+  ssh, git or file) as 4 `remote-split`, as the helper, not the URL, picks the destination ([publish](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
   and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 - `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory

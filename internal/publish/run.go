@@ -633,6 +633,11 @@ func (r *run) oneRepository(ctx context.Context) *failure {
 	if f != nil {
 		return f
 	}
+	for _, url := range slices.Concat(fetch, push) {
+		if _, _, ok := reduceURL(url, r.worktree); !ok {
+			return failf("remote-split", "%s has the URL %s, which Git hands to a remote helper: use an https, http, ssh, git or file URL, host:path or a local path", r.req.remote, url)
+		}
+	}
 	if len(fetch) != 1 || len(push) != 1 || !sameRepository(fetch[0], push[0], r.worktree) {
 		return failf("remote-split", "%s must fetch from and push to one repository: fetch %s, push %s", r.req.remote, strings.Join(fetch, " "), strings.Join(push, " "))
 	}
