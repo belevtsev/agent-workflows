@@ -32,6 +32,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"math/rand/v2"
@@ -152,6 +153,7 @@ func TestPublishE2E(t *testing.T) {
 		{"R14d_commit_mismatch", pubTestCommitMismatch},
 		{"R14d_R19_R9c_commit_mismatch_in_bytes_or_mode", pubTestCommitMismatchTree},
 		{"R14e_R18a_commit_timeout", pubTestCommitTimeout},
+		{"hook_background_job_outlives_the_commit", pubTestHookBackgroundJob},
 		{"R18c_interrupt_during_commit", pubTestInterruptCommit},
 		{"R18c_R20c_interrupt_during_push", pubTestInterruptPush},
 		{"R18b_interrupt_during_read_only_command", pubTestInterruptReadOnly},
@@ -3788,6 +3790,50 @@ func pubTestCommitTimeout(t *testing.T, tl *pubTools) {
 	}
 	if e.rev("HEAD") != e.base {
 		t.Errorf("HEAD moved")
+	}
+}
+
+// pubTestHookBackgroundJob: a post-commit hook may start a background job on
+// purpose, such as regenerating tags; git commit exits without waiting for it,
+// and publish leaves it running, as a commit from a shell would. Oracle: the
+// job holds the write end of a FIFO that the hook opened and wrote "held" to.
+// After publish returns, the test reads "held" and then no end of file within
+// 2 s, so a writer is still alive; the job would live 60 s. Had publish killed
+// git's process group, the read would reach end of file at once.
+func pubTestHookBackgroundJob(t *testing.T, tl *pubTools) {
+	e := pubNewEnv(t, tl)
+	e.startTask(pubPlanSmall)
+	e.standardChange()
+	e.verifyTask()
+	dir := t.TempDir()
+	fifo, pidFile := filepath.Join(dir, "held"), filepath.Join(dir, "job.pid")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := os.OpenFile(fifo, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		reader.Close()
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	job := `exec 3>"$1"; echo held >&3; /bin/sleep 60 </dev/null >/dev/null 2>&1 & echo "$!" > "$2"`
+	e.hook(filepath.Join(e.gitDir, "hooks"), "post-commit", pubHookConf{Run: [][]string{{"/bin/sh", "-c", job, "sh", fifo, pidFile}}})
+	pubWant(t, e.publish(), 0, "published", "")
+	if err := reader.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	held, err := io.ReadAll(reader)
+	if string(held) != "held\n" {
+		t.Fatalf("the FIFO gave %q (%v), want %q: the hook did not start its job", held, err, "held\n")
+	}
+	if !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Errorf("the hook's background job had exited when publish returned (read ended with %v), want it still running", err)
 	}
 }
 

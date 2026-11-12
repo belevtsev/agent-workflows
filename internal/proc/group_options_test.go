@@ -22,7 +22,7 @@ import (
 const guard = 20 * time.Second
 
 // stopWhenReady runs the shell script, whose $1 is a FIFO, under spec. Once
-// the program writes its pid to the FIFO, it calls ready with that pid and
+// the program's pid is written to the FIFO, it calls ready with that pid and
 // cancels the run. It returns the result and how long Run took after the
 // cancellation. Cleanup kills a group the test left behind.
 func stopWhenReady(t *testing.T, script string, spec proc.Spec, ready func(pid int)) (proc.Result, time.Duration) {
@@ -80,26 +80,30 @@ func stopWhenReady(t *testing.T, script string, spec proc.Spec, ready func(pid i
 
 // Oracle: with a Grace a stopped program and its background child first
 // receive SIGTERM. A program that traps it runs its handler (SIGKILL cannot be
-// trapped), whose output is kept, and Run returns once the group has emptied,
-// long before the one-minute grace (the guard is 20 s). A program that ignores
-// it, as its child then does, is killed once the grace has passed: Run returns
-// no sooner than Grace after the cancellation, an exact lower bound, and long
-// before the program's own 60 s. Either way no member of the group is alive
-// afterwards and the stop reports no cleanup failure.
+// trapped), whose output and exit status 3 are kept, and Run returns once the
+// group has emptied, long before the one-minute grace (the guard is 20 s). A
+// program that ignores it, as its child then does, is killed once the grace
+// has passed (status -1): Run returns no sooner than Grace after the
+// cancellation, an exact lower bound, and long before the program's own 60 s.
+// Either way no member of the group is alive afterwards and the stop reports
+// no cleanup failure. The child reports ready only after its own exec of sh,
+// so it no longer runs with the shell's trap, which a SIGTERM in the gap
+// between fork and exec would hit instead of ending it.
 func TestRunStopsWithSIGTERMAndKillsAfterTheGrace(t *testing.T) {
 	for _, c := range []struct {
 		name, trap, output string
+		code               int
 		grace, atLeast     time.Duration
 	}{
-		{"exits within the grace", `'echo terminated; exit 0'`, "terminated\n", time.Minute, 0},
-		{"ignores SIGTERM", `''`, "", time.Second, time.Second},
+		{"exits within the grace", `'echo terminated; exit 3'`, "terminated\n", 3, time.Minute, 0},
+		{"ignores SIGTERM", `''`, "", -1, time.Second, time.Second},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			script := "trap " + c.trap + " TERM\n/bin/sleep 60 &\necho \"$$\" > \"$1\"\nwait"
+			script := "trap " + c.trap + " TERM\n/bin/sh -c 'echo \"$PPID\" > \"$1\"; exec /bin/sleep 60' sh \"$1\" &\nwait"
 			got, took := stopWhenReady(t, script, proc.Spec{StdoutLimit: 64, Grace: c.grace}, func(int) {})
-			if !got.Stopped || !got.Cancelled || got.Code != -1 || got.Cleanup != nil || string(got.Stdout) != c.output || took < c.atLeast {
-				t.Errorf("Stopped=%v Cancelled=%v Code=%d Cleanup=%v output=%q, Run took %v after the cancellation; want a cancelled stop, %q, at least %v",
-					got.Stopped, got.Cancelled, got.Code, got.Cleanup, got.Stdout, took, c.output, c.atLeast)
+			if !got.Stopped || !got.Cancelled || got.Code != c.code || got.Cleanup != nil || string(got.Stdout) != c.output || took < c.atLeast {
+				t.Errorf("Stopped=%v Cancelled=%v Code=%d Cleanup=%v output=%q, Run took %v after the cancellation; want a cancelled stop, %d, %q, at least %v",
+					got.Stopped, got.Cancelled, got.Code, got.Cleanup, got.Stdout, took, c.code, c.output, c.atLeast)
 			}
 		})
 	}

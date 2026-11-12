@@ -102,6 +102,9 @@ func (t tool) run(ctx context.Context, stdin []byte, stdout io.Writer, args ...s
 	got := result{stdout: ran.Stdout, stderr: ran.Stderr, code: ran.Code, stopped: ran.Stopped, cancelled: ran.Cancelled, overflow: ran.Overflow}
 	switch {
 	case ran.Stopped:
+		// A stopped command has no exit status of its own here, even one it
+		// gave in answer to the SIGTERM.
+		got.code = -1
 		if err := errors.Join(ran.Err, ran.Cleanup); err != nil && !isExitError(err) {
 			got.err = err
 		}
