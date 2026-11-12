@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
 - Task rules read the source, the clock and task artefacts through ports (`taskflow.Env`, `cli.Config.Now`),
   so a rule test uses fakes instead of a Git repository or waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
+  message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 
 ### Fixed
 
