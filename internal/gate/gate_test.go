@@ -57,11 +57,14 @@ type storeCall struct {
 	now  time.Time
 }
 
-// fakeStore returns fixed open records per worktree, or err.
+// fakeStore returns fixed open records per worktree, or err, and the records
+// in tasks per task directory.
 type fakeStore struct {
-	open  map[string][]taskflow.OpenRecord
-	err   error
-	calls []storeCall
+	open    map[string][]taskflow.OpenRecord
+	tasks   map[string]taskflow.Record
+	err     error
+	calls   []storeCall
+	lookups []string
 }
 
 func (s *fakeStore) FindOpen(_ context.Context, repo taskflow.Repository, now time.Time) ([]taskflow.OpenRecord, error) {
@@ -70,6 +73,14 @@ func (s *fakeStore) FindOpen(_ context.Context, repo taskflow.Repository, now ti
 		return nil, s.err
 	}
 	return s.open[repo.Worktree], nil
+}
+
+func (s *fakeStore) Lookup(dir string) (taskflow.Record, error) {
+	s.lookups = append(s.lookups, dir)
+	if record, ok := s.tasks[dir]; ok {
+		return record, nil
+	}
+	return taskflow.Record{}, errors.New("fake store has no task in " + dir)
 }
 
 // canonicalDir returns a fresh directory in canonical form; the repository
@@ -106,11 +117,13 @@ func TestDecideDeniesWhileARecordGates(t *testing.T) {
 	got := decide("git commit -m x && git push origin main", repo, true, true, git, store)
 
 	// Oracle: the deny text cw hook pre-publish printed before the gate left
-	// internal/cli, byte for byte, for one gating record.
+	// internal/cli, byte for byte, for one gating record, except that it no
+	// longer tells the agent to run cw task abandon: abandoning needs the
+	// user's confirmation (D2).
 	want := gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: git commit and push stay blocked while a task for this repository is open: " +
 		"each must pass cw task verify on the source being published, or be closed. " +
 		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task /store/task-1 --summary`, " +
-		"or close it with `cw task abandon --task /store/task-1 --reason TEXT` if it is finished or was given up. " +
+		"or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task /store/task-1 --reason TEXT` needs their confirmation. " +
 		"To turn the gate off, set enforce_verify=false in the plugin config."}
 	if got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)
@@ -333,7 +346,7 @@ func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
 	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot tell which directory `cd \"$OTHER\"` leads to, " +
 		"so it checked the session's repository " + repo + " instead, where a task is open: " +
 		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`, " +
-		"or close it with `cw task abandon --task /store/task-8 --reason TEXT` if it is finished or was given up. " +
+		"or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task /store/task-8 --reason TEXT` needs their confirmation. " +
 		"Confirm only if the git commit or push does not run in " + repo + "."}
 	if got := decide(command, repo, true, true, git, store); got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)
@@ -348,6 +361,81 @@ func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
 	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, `"$OTHER"`) || !strings.Contains(got.Reason, "/store/task-5") {
 		t.Fatalf("Decide = %+v, want an ask about both that is not ProceedWithoutAsk", got)
 	}
+}
+
+func TestDecideAsksBeforeAbandoningATask(t *testing.T) {
+	outside := canonicalDir(t)
+	tasks := map[string]taskflow.Record{"/store/task-1": {ID: "task-1", Directory: "/store/task-1", Plan: taskflow.Plan{Title: "Add retries"}}}
+	const prefix = "agent-workflows: `cw task abandon` closes a task so that it no longer gates git commit and push, and needs the user's confirmation. This command abandons "
+	const suffix = ". Confirm only if the user wants it abandoned because it is finished or was given up."
+	for _, c := range []struct {
+		name, command, names string
+	}{
+		// Oracle for each row (D2): an ask the user must answer, so a host
+		// that cannot ask denies it, naming the task by ID and title where
+		// the store reads its directory, else by what the gate knows of it.
+		{"absolute directory", "cw task abandon --task /store/task-1 --reason x", "task task-1 (Add retries) in /store/task-1"},
+		{"directory relative to a cd", "cd /store && cw task abandon --task=task-1 --reason x", "task task-1 (Add retries) in /store/task-1"},
+		{"directory the store cannot read", "cw task abandon --task /store/task-9 --reason x", "the task in /store/task-9"},
+		{"relative directory after an unresolved cd", "cd $OTHER && cw task abandon --task task-1 --reason x", "the task in `task-1`, a directory the gate cannot resolve"},
+		{"cw named through a variable", "C=cw; $C task abandon --task /store/task-1 --reason x", "a task the gate cannot identify"},
+		{"two tasks", "cw task abandon --task /store/task-1 --reason x; cw task abandon --task /store/task-9 --reason x", "task task-1 (Add retries) in /store/task-1; the task in /store/task-9"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			git := &fakeGit{}
+			got := decide(c.command, outside, true, true, git, &fakeStore{tasks: tasks})
+			if want := (gate.Decision{Permission: gate.Ask, Reason: prefix + c.names + suffix}); got != want {
+				t.Fatalf("Decide = %+v\nwant %+v", got, want)
+			}
+			// Oracle: a command without a git commit or push runs no git.
+			if len(git.calls) != 0 {
+				t.Fatalf("git calls %v, want none", git.calls)
+			}
+		})
+	}
+
+	t.Run("enforce off", func(t *testing.T) {
+		// Oracle: enforce_verify=false turns the gate off, so nothing is left
+		// for an abandon to bypass.
+		if got := decide("cw task abandon --task /store/task-1 --reason x", outside, false, true, &fakeGit{}, &fakeStore{tasks: tasks}); got != (gate.Decision{}) {
+			t.Fatalf("Decide = %+v, want allow", got)
+		}
+	})
+
+	t.Run("another task command", func(t *testing.T) {
+		// Oracle: cw task show reads a task and closes nothing.
+		store := &fakeStore{tasks: tasks}
+		if got := decide("cw task show --task /store/task-1", outside, true, true, &fakeGit{}, store); got != (gate.Decision{}) || len(store.lookups) != 0 {
+			t.Fatalf("Decide = %+v after lookups %v, want allow and none", got, store.lookups)
+		}
+	})
+
+	t.Run("beside a gated commit", func(t *testing.T) {
+		repo := canonicalDir(t)
+		git := &fakeGit{}
+		git.repository(repo)
+		store := &fakeStore{tasks: tasks, open: map[string][]taskflow.OpenRecord{repo: {record("task-1", "Add retries", "it has no passing cw task verify")}}}
+		got := decide("cw task abandon --task /store/task-1 --reason x && git commit -m x", repo, true, true, git, store)
+		// Oracle: the commit runs before the abandon has closed the task, so
+		// its deny wins, as a deny wins over any ask.
+		if got.Permission != gate.Deny || !strings.Contains(got.Reason, "ask the user before abandoning it") || strings.Contains(got.Reason, "This command abandons") {
+			t.Fatalf("Decide = %+v, want the deny alone", got)
+		}
+	})
+
+	t.Run("joined with an ask a host that cannot ask runs", func(t *testing.T) {
+		repo := canonicalDir(t)
+		git := &fakeGit{}
+		git.repository(repo)
+		damaged := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-5", Directory: "/store/task-5"}, Unreadable: "invalid task JSON: unexpected EOF"}
+		store := &fakeStore{tasks: tasks, open: map[string][]taskflow.OpenRecord{repo: {damaged}}}
+		got := decide("cw task abandon --task /store/task-1 --reason x; git commit -m x", repo, true, true, git, store)
+		// Oracle: the asks join, the abandon's first; the user must answer
+		// the abandon, so the joined ask is not ProceedWithoutAsk.
+		if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.HasPrefix(got.Reason, prefix+"task task-1 (Add retries) in /store/task-1"+suffix+" ") || !strings.Contains(got.Reason, "/store/task-5") {
+			t.Fatalf("Decide = %+v, want the abandon ask joined with the unreadable record's, not ProceedWithoutAsk", got)
+		}
+	})
 }
 
 func TestDecideFailsOpen(t *testing.T) {

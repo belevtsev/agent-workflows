@@ -51,6 +51,18 @@ func TestHookPrePublishAsksOnRelativeXDGStateHome(t *testing.T) {
 		hkExpectAsk(t, h.prePublish(t, proj, "git push origin main"), want)
 	})
 
+	t.Run("an abandon beside a commit names the store too", func(t *testing.T) {
+		// Oracle: the commit's check cannot read the store, which asks
+		// whatever else the command does; the ask before cw task abandon
+		// does not replace that ask but is joined with it.
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.config.WorkingDir = func() (string, error) { return repo, nil }
+		h.env["XDG_STATE_HOME"] = "rel"
+		hkExpectAsk(t, h.prePublish(t, repo, "cw task abandon --task /store/task-1 --reason x && git commit -m x"),
+			"This command abandons the task in /store/task-1.", want)
+	})
+
 	t.Run("commands the gate does not judge still pass", func(t *testing.T) {
 		// Oracle: the fail-open rules for a command with no git commit or
 		// git push, and for a directory outside any repository, do not

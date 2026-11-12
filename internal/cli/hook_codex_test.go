@@ -130,3 +130,36 @@ func TestCodexDecisionLetsAMarkedAskProceed(t *testing.T) {
 		t.Fatalf("codexDecision(%+v) = %+v, want a deny", unmarked, got)
 	}
 }
+
+func TestHookPrePublishAbandonAsksOnClaudeCodeAndDeniesOnCodex(t *testing.T) {
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	store := hkEmptyStore(t)
+	h.env["CW_TASK_STORE"] = store
+	record := hkSubstantialRecord(t, repo, store, "Abandon probe")
+	command := map[string]any{"tool_input": map[string]any{"command": "cw task abandon --task " + record.Directory + " --reason x"}}
+
+	// Oracle (D2): abandoning closes the task so it no longer gates, so
+	// Claude Code asks the user, naming the task by ID, title and directory.
+	question := "agent-workflows: `cw task abandon` closes a task so that it no longer gates git commit and push, and needs the user's confirmation. " +
+		"This command abandons task " + record.ID + " (Abandon probe) in " + record.Directory + ". " +
+		"Confirm only if the user wants it abandoned because it is finished or was given up."
+	if got := hkExpectAsk(t, h.runPrePublish(t, hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, command))); got != question {
+		t.Fatalf("Claude Code ask reason\n%q\nwant\n%q", got, question)
+	}
+
+	// Oracle (#110): the abandon ask is not ProceedWithoutAsk, so Codex,
+	// which runs a command it is asked about, gets a deny that carries the
+	// question and says the user runs the command outside Codex.
+	decision, reason := hkDecision(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, command)))
+	want := "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: " +
+		strings.TrimPrefix(question, "agent-workflows: ") +
+		" Put the question to the user; to go ahead, the user runs the command outside Codex." + hkCodexOptions
+	if decision != "deny" || reason != want {
+		t.Fatalf("Codex decision %q with reason\n%q\nwant deny with reason\n%q", decision, reason, want)
+	}
+
+	// Oracle: cw task show closes nothing, so Codex lets it run.
+	show := map[string]any{"tool_input": map[string]any{"command": "cw task show --task " + record.Directory}}
+	hkExpectAllow(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, show)))
+}

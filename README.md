@@ -173,7 +173,8 @@ suggesting `cw task start`.
 
 It does not stop git run by a script, an alias or a command form the hook does
 not parse, an edited or damaged task store, a fake toolchain on `PATH`, or
-`cw task abandon` run by the agent. See the [threat model](SECURITY.md#threat-model)
+`cw task abandon` run by the agent from a script; the hook asks you before one
+it can see. See the [threat model](SECURITY.md#threat-model)
 and the [known bypasses](docs/hooks.md#known-bypasses).
 
 `cw publish` commits a verified task's files, pushes them and creates or edits
