@@ -28,6 +28,9 @@ type Config struct {
 	WorkingDir                 func() (string, error)
 	Executable                 func() (string, error)
 	Getenv                     func(string) string
+	// Environ lists the environment, as os.Environ does, for the variables
+	// whose names Getenv cannot know in advance.
+	Environ func() []string
 	// Now is the clock: every time cw stores in a task record or a
 	// publication entry, and the time open records age against.
 	Now func() time.Time
@@ -56,6 +59,9 @@ func defaults(config Config) Config {
 	}
 	if config.Getenv == nil {
 		config.Getenv = os.Getenv
+	}
+	if config.Environ == nil {
+		config.Environ = os.Environ
 	}
 	if config.Now == nil {
 		config.Now = time.Now

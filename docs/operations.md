@@ -35,7 +35,7 @@ holds the definition of a substantial task and the Code Review Rules.
 
 | Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `clear` and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
 | Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
 | `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
 
@@ -61,9 +61,10 @@ the architect contract and the `software-architecture` and
   and the doctor summary is off. A recorded run turned the gate off with
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
-- **Evidence.** The plugin rows come from one recorded run with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex)); the last column lists what it did
-  not cover.
+- **Evidence.** The plugin rows come from runs recorded with codex-cli
+  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  the last column lists what they did not cover. The session-start context
+  is added again on each resume and after each compaction.
 
 To install the plugin:
 
@@ -242,9 +243,9 @@ line, or with `--summary` the one-line view, and writes the record to the
 than `verify` and `run` still exit 1 when the record's state refuses them, for
 example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
 (`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
-([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit or
-push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
-when a hook it did not write is in the way, and still writes the other hook;
+([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit,
+merge commit or push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
+when a hook it did not write is in the way, and still writes the other hooks;
 `cw gate install` and `uninstall` exit 4 without changing anything when the
 hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
@@ -563,7 +564,16 @@ Checks can only be added this way, never removed, replaced or narrowed.
    not `git commit`. In a non-interactive shell (agents, CI) always use
    `GIT_EDITOR=true git merge --continue`, which keeps the prepared merge
    message; plain `git merge --continue` opens an editor, so use it only in an
-   interactive terminal.
+   interactive terminal. Where `cw gate install` has run, git's
+   `pre-merge-commit` hook lets a merge without conflicts through when every
+   commit it takes in is on a remote-tracking branch, as `origin/main` is after
+   `git fetch`. It stops any other merge while the record is unverified, such
+   as one of a local branch, and `pre-commit` stops `git merge --continue`
+   after conflicts ([git hooks](hooks.md#git-hooks)). When git stops a merge,
+   the agent stops and asks the user how to go on; without an answer it undoes
+   the merge with `git merge --abort`. The agent never sets `CW_GATE=off`
+   itself: letting a merge through that way, as in
+   `CW_GATE=off git merge --no-ff origin/main`, is the user's decision.
 3. Add the checks:
 
    ```sh
@@ -730,7 +740,12 @@ When they differ:
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
 request, otherwise the providers enabled in the [selected policy](#model-policy)
 that you opted in to and did not disable in your preferences, each only with its
-key present. It works
+key present. A task-bound request is sent only when the task's record holds
+its task context exactly as `cw task context` printed it, read from the task
+store the hook reads (`$CW_TASK_STORE`, else the state directory's
+`workflow-tasks`, [task store](hooks.md#task-store)), and the task was not
+abandoned; otherwise `cw consult` exits 1 and writes and sends nothing. For a
+task started with `--store DIR`, set `CW_TASK_STORE=DIR`. It works
 from any directory. With no adviser configured it writes a
 `no_advisers_configured` record without network access:
 

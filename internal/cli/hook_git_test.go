@@ -16,7 +16,7 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
-// Tests for `cw hook git pre-commit` and `cw hook git pre-push`, driven
+// Tests for `cw hook git pre-commit`, `pre-push` and `pre-merge-commit`, driven
 // through Execute with the hook's working directory set to the repository,
 // as git runs its hooks. Each oracle is the exit status and stderr.
 
@@ -124,6 +124,129 @@ func TestHookGitWarnsWherePrePublishAsks(t *testing.T) {
 		repo, h := hkUnrecordedChange(t)
 		expectWarning(t, h, repo, "pre-commit", hkCommitAskWording)
 	})
+}
+
+func TestHookGitPreMergeCommitJudgesAMergeCommitAsACommit(t *testing.T) {
+	// Oracle (F4): git runs pre-merge-commit, not pre-commit, before a merge
+	// commit it makes without conflicts, and cw judges that commit as any
+	// other, without the prompt about a substantial change: in each state,
+	// cw hook git pre-merge-commit exits with the status and writes exactly
+	// the stderr of cw hook git pre-commit, which the tests above pin, except
+	// that it is silent about a substantial change with no task, which in a
+	// merge commit is the incoming branch's (review finding 2). The states
+	// cover a deny (an open unverified task), a warning (a record that cannot
+	// be read), the substantial change, and silence; the last is a verified
+	// task with uncommitted changes, where pre-push would warn, so
+	// pre-merge-commit is not judged as a push. No GITHEAD_ variable names a
+	// merge head here, so no merge is of remote-tracking commits.
+	for _, row := range []struct {
+		name  string
+		state func(t *testing.T) (*hkHarness, string)
+		code  int
+		warns bool
+		// mergeSilent: pre-merge-commit exits 0 without output, whatever
+		// pre-commit does.
+		mergeSilent bool
+	}{
+		{"open unverified task", func(t *testing.T) (*hkHarness, string) {
+			repo := hkRepo(t)
+			h := newHKHarness(t)
+			h.start(t, repo, hkSubstantialPlan)
+			return h, repo
+		}, ExitDenied, true, false},
+		{"record that cannot be read", func(t *testing.T) (*hkHarness, string) {
+			h, repo, _, record := hkUnreadableStore(t)
+			hkWriteFile(t, record.Directory, "record-000002.json", "{\n")
+			return h, repo
+		}, ExitOK, true, false},
+		{"substantial change with no task", func(t *testing.T) (*hkHarness, string) {
+			repo, h := hkUnrecordedChange(t)
+			return h, repo
+		}, ExitOK, true, true},
+		{"verified task with uncommitted changes", func(t *testing.T) (*hkHarness, string) {
+			repo, h := hkDirtyPushState(t)
+			return h, repo
+		}, ExitOK, false, false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			h, repo := row.state(t)
+			code, stderr := h.gitHook(t, "pre-commit", repo)
+			if code != row.code || (stderr != "") != row.warns {
+				t.Fatalf("hook git pre-commit: exit %d stderr %q, want exit %d and stderr only if %v", code, stderr, row.code, row.warns)
+			}
+			if row.mergeSilent {
+				code, stderr = ExitOK, ""
+			}
+			h.hgExpect(t, "pre-merge-commit", repo, code, stderr)
+		})
+	}
+}
+
+// hgRevParse returns the object name git resolves rev to in repo.
+func hgRevParse(t *testing.T, repo, rev string) string {
+	t.Helper()
+	output, err := exec.CommandContext(t.Context(), "git", "-C", repo, "rev-parse", "--verify", rev).Output()
+	if err != nil {
+		t.Fatalf("git rev-parse %s: %v", rev, err)
+	}
+	return strings.TrimSpace(string(output))
+}
+
+func TestHookGitPreMergeCommitAllowsAMergeOfRemoteTrackingCommits(t *testing.T) {
+	// Oracle (F4 review, design decision): with an open unverified task,
+	// pre-merge-commit lets a merge commit through, exit 0 without output,
+	// exactly when every merge head git names in a GITHEAD_<object name>
+	// variable is reachable from a remote-tracking ref (refs/remotes/), such
+	// as the base branch fetched from a remote; with any merge head only
+	// local, or none named, it denies as pre-commit does, with the same
+	// stderr. pre-commit ignores the variables: a merge with conflicts is
+	// concluded by git commit, which is judged as any commit.
+	repo := hkCommittedRepo(t, map[string]string{"base.txt": "base\n"})
+	hkGit(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+	base := hgRevParse(t, repo, "HEAD")
+	hkWriteFile(t, repo, "base.txt", "upstream\n")
+	hkGit(t, repo, "commit", "-q", "-am", "upstream")
+	hkGit(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+	upstream := hgRevParse(t, repo, "HEAD")
+	hkWriteFile(t, repo, "side.txt", "side\n")
+	hkGit(t, repo, "add", "side.txt")
+	hkGit(t, repo, "commit", "-q", "-m", "local")
+	local := hgRevParse(t, repo, "HEAD")
+	h := newHKHarness(t)
+	h.start(t, repo, hkSubstantialPlan)
+	denied, deny := h.gitHook(t, "pre-commit", repo)
+	if denied != ExitDenied || deny == "" {
+		t.Fatalf("control: hook git pre-commit exit %d stderr %q, want a deny", denied, deny)
+	}
+	for _, row := range []struct {
+		name  string
+		heads map[string]string
+		allow bool
+	}{
+		{"the remote-tracking branch's tip", map[string]string{upstream: "origin/main"}, true},
+		{"an older commit of the remote-tracking branch, as git pull names it", map[string]string{base: base}, true},
+		{"a local commit", map[string]string{local: "side"}, false},
+		{"a remote-tracking commit and a local one", map[string]string{upstream: "origin/main", local: "side"}, false},
+		{"no merge head named", nil, false},
+		{"a merge head that is not an object name", map[string]string{"origin/main": "origin/main"}, false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			for head, name := range row.heads {
+				h.env["GITHEAD_"+head] = name
+			}
+			t.Cleanup(func() {
+				for head := range row.heads {
+					delete(h.env, "GITHEAD_"+head)
+				}
+			})
+			if row.allow {
+				h.hgExpect(t, "pre-merge-commit", repo, ExitOK, "")
+			} else {
+				h.hgExpect(t, "pre-merge-commit", repo, ExitDenied, deny)
+			}
+			h.hgExpect(t, "pre-commit", repo, ExitDenied, deny)
+		})
+	}
 }
 
 func TestHookGitOffSwitchesAndFailOpen(t *testing.T) {

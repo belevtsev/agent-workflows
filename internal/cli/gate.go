@@ -20,8 +20,9 @@ import (
 )
 
 // gateHookNames are the git hooks cw gate manages, in the order it reports
-// them.
-var gateHookNames = []string{"pre-commit", "pre-push"}
+// them. pre-merge-commit is last because it came last: a merge commit that
+// git makes without conflicts runs it instead of pre-commit.
+var gateHookNames = []string{"pre-commit", "pre-push", "pre-merge-commit"}
 
 // gateHookMarker is the comment line of the scripts cw gate install writes.
 // A hook is cw's own only when its bytes equal the script exactly.
@@ -91,8 +92,8 @@ type gateHookStatus struct {
 func addGateCommands(root *cobra.Command, config Config) {
 	gate := &cobra.Command{
 		Use:   "gate",
-		Short: "Install, remove or show the git pre-commit and pre-push hooks that run the commit gate",
-		Long: "cw gate install writes git's pre-commit and pre-push hooks for one repository, so git itself runs cw hook git before each commit and push, " +
+		Short: "Install, remove or show the git pre-commit, pre-push and pre-merge-commit hooks that run the commit gate",
+		Long: "cw gate install writes git's pre-commit, pre-push and pre-merge-commit hooks for one repository, so git itself runs cw hook git before each commit, merge commit and push, " +
 			"however it starts: an alias, a script or a terminal. The hooks go in the directory git runs them from (git rev-parse --git-path hooks), " +
 			"which follows core.hooksPath and is shared by every worktree of the repository. cw gate never replaces or removes a hook it did not write, " +
 			"and changes a hooks directory that other repositories use too only with --shared.",
@@ -135,8 +136,8 @@ func addGateCommands(root *cobra.Command, config Config) {
 	}
 	define(&cobra.Command{
 		Use:   "install [--repo DIR] [--shared]",
-		Short: "Write git's pre-commit and pre-push hooks that run cw hook git",
-		Long: "Write pre-commit and pre-push into the repository's hooks directory. Each runs the first cw on git's PATH, and exits 0 without checking when there is none. " +
+		Short: "Write git's pre-commit, pre-push and pre-merge-commit hooks that run cw hook git",
+		Long: "Write pre-commit, pre-push and pre-merge-commit into the repository's hooks directory. Each runs cw hook git with its own name, using the first cw on git's PATH, and exits 0 without checking when there is none. " +
 			"A hook file cw gate did not write, such as one from a hook manager, is left unchanged: cw prints the line to add to it and exits 4 (refused). " +
 			"It also exits 4 without writing when other repositories use the hooks directory (core.hooksPath from the global or system git configuration, " +
 			"or a directory outside the repository), unless --shared is given, and when the hooks directory is missing outside the git directory.",
@@ -175,7 +176,7 @@ func addGateCommands(root *cobra.Command, config Config) {
 	define(&cobra.Command{
 		Use:   "uninstall [--repo DIR] [--shared]",
 		Short: "Remove the git hooks cw gate install wrote",
-		Long: "Remove pre-commit and pre-push from the repository's hooks directory when they are exactly what cw gate install writes; any other file is left unchanged. " +
+		Long: "Remove pre-commit, pre-push and pre-merge-commit from the repository's hooks directory when they are exactly what cw gate install writes; any other file is left unchanged. " +
 			"A hooks directory inside the git directory that this leaves empty is removed too. Other repositories' hooks directories need --shared, as for install.",
 	}, true, func(cmd *cobra.Command, hooks gateHooks) error {
 		hooks.report(cmd.OutOrStdout())
@@ -200,7 +201,7 @@ func addGateCommands(root *cobra.Command, config Config) {
 	status := define(&cobra.Command{
 		Use:   "status [--repo DIR] [--json]",
 		Short: "Show whether each git hook is installed, absent or foreign",
-		Long: "Print the repository's hooks directory, whether other repositories use it too, and, for pre-commit and pre-push, installed (exactly what cw gate install writes, with an execute bit), " +
+		Long: "Print the repository's hooks directory, whether other repositories use it too, and, for pre-commit, pre-push and pre-merge-commit, installed (exactly what cw gate install writes, with an execute bit), " +
 			"absent (no file, or that script without an execute bit, which git skips), or foreign (any other file). --json prints {hooks_path, shared, hooks: [{name, path, state}]}.",
 	}, false, func(cmd *cobra.Command, hooks gateHooks) error {
 		report, err := gateStatus(hooks)

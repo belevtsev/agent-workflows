@@ -2,7 +2,6 @@ package taskflow
 
 import (
 	"context"
-	"os"
 	"slices"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
@@ -20,8 +19,8 @@ func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
 // changed since the baseline and, for each planned or added check whose
 // latest run passed at the current snapshot, that run. files is the current
 // manifest.
-func executionProblems(ctx context.Context, root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
-	source, err := evidenceSource(root, record, snapshot, files)
+func executionProblems(ctx context.Context, artifacts Artifacts, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
+	source, err := evidenceSource(artifacts, record, snapshot, files)
 	if err != nil {
 		return []string{err.Error()}, nil
 	}
@@ -32,7 +31,7 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
 			entry := evidenceRun(*run)
 			entry.Rerun = rerun(record, *run)
-			if data, err := privateRead(root, run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
+			if data, err := artifacts.Read(run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
 				entry.Log = data
 			}
 			passed = append(passed, entry)
@@ -82,7 +81,7 @@ func appliedGOFLAGS(run CheckRun) string {
 // evidenceSource describes the selected project for the evidence rules: the
 // current files and the files changed since the baseline manifest, both
 // relative to the selected path. files is the current manifest.
-func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (langpack.Source, error) {
+func evidenceSource(artifacts Artifacts, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (langpack.Source, error) {
 	relative, err := selectedRelative(snapshot)
 	if err != nil {
 		return langpack.Source{}, err
@@ -93,7 +92,7 @@ func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 			source.Current = append(source.Current, name)
 		}
 	}
-	baseline, err := readBaselineManifest(root, *record.BaselineManifest)
+	baseline, err := readBaselineManifest(artifacts, *record.BaselineManifest)
 	if err != nil {
 		return langpack.Source{}, err
 	}
