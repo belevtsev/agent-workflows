@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
+  its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.
