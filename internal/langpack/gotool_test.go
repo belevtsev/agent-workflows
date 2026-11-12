@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
 	"strings"
@@ -180,4 +181,48 @@ func TestResolveGoRefusesAToolchainSwitchToAScriptOnPath(t *testing.T) {
 	env := gtEnv(fake+string(os.PathListSeparator)+gtRealGo(t), "GOTOOLCHAIN=auto", "GOPROXY=off")
 	tool, err := langpack.ResolveGo(t.Context(), "go", module, env)
 	gtRefused(t, tool, err, filepath.Join(gtRealGo(t), "go"), "`go env GOROOT` printed \"ok\\n\"")
+}
+
+// LoadGoFacts reads the -race probe and the package graph only from a go
+// command that ResolveGo verified. Each shim first on PATH answers `go list
+// -race runtime` with "-race is not supported" and passes every other command
+// to the real go, except that the second reports its own directory as GOROOT.
+// Oracle: G6b: the first shim is followed to the real go, so the facts equal
+// the real go's, NoRace included; the second is refused, so the graph facts
+// are unavailable with an error that names it, and NoRace stays "", which
+// keeps -race required. Neither shim runs as anything but `go env GOROOT`.
+func TestLoadGoFactsReadsTheRaceProbeOnlyFromAVerifiedGo(t *testing.T) {
+	// /usr/bin and /bin hold the C compiler that -race needs on Linux.
+	real, rest := gtRealGo(t), string(os.PathListSeparator)+"/usr/bin"+string(os.PathListSeparator)+"/bin"
+	files := map[string]string{"go.mod": "module example.com/s\n\ngo 1.21\n", "a/a.go": "package a\n",
+		"a/a_test.go": "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n"}
+	dir := gfModule(t, files)
+	src := langpack.Source{Current: gfKeys(files), Changed: []string{"a/a.go"}}
+	want := langpack.LoadGoFacts(gfCtx(t), dir, gtEnv(real+rest), src)
+	if want.GraphError != "" {
+		t.Fatalf("precondition: the real go gives no package graph: %s", want.GraphError)
+	}
+	for _, ownRoot := range []bool{false, true} {
+		root, calls := t.TempDir(), filepath.Join(t.TempDir(), "calls")
+		body := "printf '%s\\n' \"$*\" >> '" + calls + "'\n" +
+			"case \" $* \" in *\" -race \"*) echo '-race is not supported on plan9/amd64' >&2; exit 2;; esac\n"
+		if ownRoot {
+			body += "if [ \"$*\" = 'env GOROOT' ]; then echo '" + root + "'; exit 0; fi\n"
+		}
+		shim := gtScript(t, filepath.Join(root, "bin"), "go", body+"exec '"+filepath.Join(real, "go")+"' \"$@\"\n")
+		got := langpack.LoadGoFacts(gfCtx(t), dir, gtEnv(filepath.Dir(shim)+rest), src)
+		if ran := gfLines(calls); !slices.Equal(ran, []string{"env", "GOROOT"}) {
+			t.Errorf("shim reporting its own GOROOT %v ran as %q, want only env GOROOT", ownRoot, ran)
+		}
+		if !ownRoot {
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("facts through a shim of the real go = %+v, want the real go's %+v", got, want)
+			}
+			continue
+		}
+		if !strings.Contains(got.GraphError, "cannot verify the go command "+shim) || !strings.Contains(got.GraphError, "put the real go first on PATH") ||
+			got.NoRace != "" || got.Tested != nil || got.Embedded != nil || got.Excluded != nil {
+			t.Errorf("facts through a shim reporting its own GOROOT = %+v; want a GraphError refusing %s, NoRace \"\" and no graph facts", got, shim)
+		}
+	}
 }
