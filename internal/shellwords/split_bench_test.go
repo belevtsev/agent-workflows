@@ -1,4 +1,4 @@
-package usagelog
+package shellwords
 
 import (
 	"strconv"
@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-// BenchmarkSplitShell times splitShell on commands an agent really runs
+// BenchmarkSplit times Split on commands an agent really runs
 // (the realistic cases, which must not get slower) and on deeply nested
 // commands, whose cost must stay linear in their length.
-func BenchmarkSplitShell(b *testing.B) {
+func BenchmarkSplit(b *testing.B) {
 	var file strings.Builder
 	for i := range 2000 {
 		file.WriteString("line " + strconv.Itoa(i) + `: echo "$HOME" | tr a-z A-Z  # (not a <<marker)` + "\n")
@@ -33,7 +33,7 @@ func BenchmarkSplitShell(b *testing.B) {
 		b.Run(c.name, func(b *testing.B) {
 			b.SetBytes(int64(len(c.command)))
 			for b.Loop() {
-				splitShell(c.command)
+				Split(c.command)
 			}
 		})
 	}

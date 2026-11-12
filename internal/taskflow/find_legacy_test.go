@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -75,6 +76,32 @@ func TestFindOpenGatesOnLegacyRecords(t *testing.T) {
 		// Oracle: the record is returned gating, with its ID, directory and
 		// title, and the exact move-it-out problem.
 		store, repo := foFixture(t)
+		now := time.Now()
+		open := foStartAt(t, store, repo, "v2 open work", "substantial", now.Add(-time.Hour))
+		toV2096Shape(t, open, false)
+		got := foFind(t, store, foAtRoot(open.Baseline.Root), now, (&foStub{digest: foDigestA}).identify())
+		foExpect(t, got, foGating(open))
+		if got[0].Problem != legacyGateProblem(open.Directory) {
+			t.Fatalf("legacy record returned with problem %q, want %q", got[0].Problem, legacyGateProblem(open.Directory))
+		}
+	})
+
+	t.Run("a legacy record in a store reached through a symlink names its canonical directory", func(t *testing.T) {
+		// Oracle: the record is returned with the canonical directory Start
+		// recorded, and the problem names that directory. On macOS every
+		// temporary store is reached through /var -> /private/var.
+		target, linkParent := t.TempDir(), t.TempDir()
+		link := filepath.Join(linkParent, "store-link")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		// Start refuses a store whose nearest existing ancestor is itself a
+		// symlink, as macOS's /var is not: the link sits higher up.
+		if err := os.Mkdir(filepath.Join(target, "state"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		_, repo := foFixture(t)
+		store := filepath.Join(link, "state", "tasks")
 		now := time.Now()
 		open := foStartAt(t, store, repo, "v2 open work", "substantial", now.Add(-time.Hour))
 		toV2096Shape(t, open, false)
