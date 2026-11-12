@@ -174,12 +174,17 @@ with an amendment, in this order:
 2. Merge it with `git merge --no-ff <base>`, for example
    `git merge --no-ff origin/main`. `--no-ff` records a merge commit even when
    the branch has no commit after the task baseline; the publication hook gates
-   only `git commit` and `git push`, so it does not block the merge. Conclude a
+   only `git commit` and `git push`, so it does not block the merge, and where
+   `cw gate install` has run, git's `pre-merge-commit` hook lets it through
+   because the fetched base is on a remote-tracking branch. Conclude a
    conflicted merge with `git merge --continue`; the hook denies `git commit`
    while the record is unverified. In a non-interactive shell (agents, CI)
    always use `GIT_EDITOR=true git merge --continue`, which keeps the prepared
    merge message; plain `git merge --continue` opens an editor and is for an
-   interactive terminal.
+   interactive terminal. If git's hooks stop the merge, as they stop a merge of
+   a local branch, or `git merge --continue` after conflicts, while the record
+   is unverified, stop and ask the user how to go on; without an answer, run
+   `git merge --abort`. Never set `CW_GATE=off` yourself.
 3. Add the covering checks with
    `cw task add-checks --task DIR --input amend.json [--summary]`, where the
    input names the merge commit (or `HEAD`), the base ref, a reason and the

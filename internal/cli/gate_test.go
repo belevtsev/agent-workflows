@@ -25,6 +25,21 @@ func gtScript(name string) string {
 		"command -v cw >/dev/null 2>&1 || exit 0; exec cw hook git " + name + " \"$@\"\n"
 }
 
+// gtHooks are the git hooks cw gate must manage, in the order it reports
+// them: git runs pre-commit before a commit, pre-push before a push, and
+// pre-merge-commit before a merge commit it makes without conflicts.
+var gtHooks = []string{"pre-commit", "pre-push", "pre-merge-commit"}
+
+// gtLines is how install, uninstall and status list the hooks, one line per
+// hook in gtHooks' order with its word from words.
+func gtLines(words map[string]string) string {
+	var b strings.Builder
+	for _, name := range gtHooks {
+		b.WriteString(name + ": " + words[name] + "\n")
+	}
+	return b.String()
+}
+
 // gtInstalled is how gtEntry shows a hook cw gate install wrote.
 func gtInstalled(name string) string { return "-rwxr-xr-x -> \n" + gtScript(name) }
 
@@ -86,8 +101,8 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 	// Oracle (plan G4b): a hook file whose bytes are not exactly cw's script
 	// keeps its bytes, mode and link target through install and uninstall;
 	// install exits 4 (refused) and prints the line to add, while the other
-	// hook is written with mode 0755 and the script above, and uninstall
-	// removes only it.
+	// hooks are written with mode 0755 and the script above, and uninstall
+	// removes only them.
 	gtIsolate(t, os.DevNull)
 	for _, row := range []struct {
 		name, foreign, other string
@@ -115,11 +130,19 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 		{"cw's script for the other hook", "pre-push", "pre-commit", func(t *testing.T, path string) {
 			hkWriteFile(t, filepath.Dir(path), filepath.Base(path), gtScript("pre-commit"))
 		}},
+		// Git's sample pre-merge-commit runs pre-commit; a copy of cw's
+		// pre-commit script there is not cw's pre-merge-commit.
+		{"cw's pre-commit script as pre-merge-commit", "pre-merge-commit", "pre-commit", func(t *testing.T, path string) {
+			hkWriteFile(t, filepath.Dir(path), filepath.Base(path), gtScript("pre-commit"))
+			if err := os.Chmod(path, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			repo := hkRepo(t)
 			hooks := filepath.Join(repo, ".git", "hooks")
-			foreign, other := filepath.Join(hooks, row.foreign), filepath.Join(hooks, row.other)
+			foreign := filepath.Join(hooks, row.foreign)
 			row.make(t, foreign)
 			before := gtEntry(t, foreign)
 
@@ -136,8 +159,10 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 			if got := gtEntry(t, foreign); got != before {
 				t.Fatalf("install changed the foreign %s:\n%s\nwant\n%s", row.foreign, got, before)
 			}
-			if got, want := gtEntry(t, other), gtInstalled(row.other); got != want {
-				t.Fatalf("install wrote %s as\n%s\nwant\n%s", row.other, got, want)
+			for _, name := range gtHooks {
+				if got, want := gtEntry(t, filepath.Join(hooks, name)), gtInstalled(name); name != row.foreign && got != want {
+					t.Fatalf("install wrote %s as\n%s\nwant\n%s", name, got, want)
+				}
 			}
 
 			code, stdout, stderr = gtRun(t, "uninstall", "--repo", repo)
@@ -147,8 +172,10 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 			if got := gtEntry(t, foreign); got != before {
 				t.Fatalf("uninstall changed the foreign %s:\n%s\nwant\n%s", row.foreign, got, before)
 			}
-			if got := gtEntry(t, other); got != "absent" {
-				t.Fatalf("uninstall left %s:\n%s", row.other, got)
+			for _, name := range gtHooks {
+				if got := gtEntry(t, filepath.Join(hooks, name)); name != row.foreign && got != "absent" {
+					t.Fatalf("uninstall left %s:\n%s", name, got)
+				}
 			}
 		})
 	}
@@ -157,7 +184,7 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 	// Oracle: status reports absent, installed and foreign per hook, as text
 	// and with --json; install restores the mode of its own script, writes
-	// nothing when both hooks are current, and leaves no other file behind.
+	// nothing when every hook is current, and leaves no other file behind.
 	gtIsolate(t, os.DevNull)
 	repo := hkRepo(t)
 	hooks := filepath.Join(repo, ".git", "hooks")
@@ -187,12 +214,20 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 			t.Fatalf("status --json = %s shared %v %v, want %s unshared %v", report.HooksPath, report.Shared, got, hooks, want)
 		}
 		code, stdout, _ = gtRun(t, "status", "--repo", repo)
-		text := "git hooks directory: " + hooks + "\npre-commit: " + want["pre-commit"] + "\npre-push: " + want["pre-push"]
-		if code != ExitOK || !strings.HasPrefix(stdout, text) {
-			t.Fatalf("status exit %d:\n%s\nwant it to start with\n%s", code, stdout, text)
+		// A foreign hook's line goes on to say what to do.
+		lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
+		ok := code == ExitOK && len(lines) == 1+len(gtHooks) && lines[0] == "git hooks directory: "+hooks
+		for i, name := range gtHooks {
+			if ok {
+				line := strings.TrimPrefix(lines[1+i], name+": "+want[name])
+				ok = line == "" || want[name] == "foreign" && strings.HasPrefix(line, " (")
+			}
+		}
+		if !ok {
+			t.Fatalf("status exit %d:\n%s\nwant the hooks directory %s, then %v in the order %v", code, stdout, hooks, want, gtHooks)
 		}
 	}
-	status(t, map[string]string{"pre-commit": "absent", "pre-push": "absent"})
+	status(t, map[string]string{"pre-commit": "absent", "pre-push": "absent", "pre-merge-commit": "absent"})
 
 	hkWriteFile(t, hooks, "pre-commit", gtScript("pre-commit"))
 	if err := os.Chmod(filepath.Join(hooks, "pre-commit"), 0o644); err != nil {
@@ -208,24 +243,25 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 	}
 	before := entries(t)
 	code, stdout, _ := gtRun(t, "install", "--repo", repo)
-	if code != ExitOK || !strings.Contains(stdout, "pre-commit: updated\npre-push: installed\n") {
+	if code != ExitOK || !strings.HasSuffix(stdout, "\n"+gtLines(map[string]string{"pre-commit": "updated", "pre-push": "installed", "pre-merge-commit": "installed"})) {
 		t.Fatalf("install over its own script without the executable bit: exit %d\n%s", code, stdout)
 	}
-	for _, name := range []string{"pre-commit", "pre-push"} {
+	for _, name := range gtHooks {
 		if got, want := gtEntry(t, filepath.Join(hooks, name)), gtInstalled(name); got != want {
 			t.Fatalf("%s is\n%s\nwant\n%s", name, got, want)
 		}
 	}
-	if got, want := entries(t), before+1; got != want {
+	if got, want := entries(t), before+2; got != want {
 		t.Fatalf("hooks directory holds %d entries after install, want %d:\n%s", got, want, gtDir(t, hooks))
 	}
-	status(t, map[string]string{"pre-commit": "installed", "pre-push": "installed"})
-	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK || !strings.Contains(stdout, "pre-commit: unchanged\npre-push: unchanged\n") {
+	status(t, map[string]string{"pre-commit": "installed", "pre-push": "installed", "pre-merge-commit": "installed"})
+	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK ||
+		!strings.HasSuffix(stdout, "\n"+gtLines(map[string]string{"pre-commit": "unchanged", "pre-push": "unchanged", "pre-merge-commit": "unchanged"})) {
 		t.Fatalf("second install: exit %d\n%s", code, stdout)
 	}
 
 	hkWriteFile(t, hooks, "pre-push", "#!/bin/sh\nexit 0\n")
-	status(t, map[string]string{"pre-commit": "installed", "pre-push": "foreign"})
+	status(t, map[string]string{"pre-commit": "installed", "pre-push": "foreign", "pre-merge-commit": "installed"})
 }
 
 func TestGateStatusReportsItsOwnHookWithoutAnExecuteBitAsAbsent(t *testing.T) {
@@ -260,21 +296,26 @@ func TestGateStatusReportsItsOwnHookWithoutAnExecuteBitAsAbsent(t *testing.T) {
 		}
 		return got
 	}
-	if got, want := states(t), map[string]string{"pre-commit": "absent", "pre-push": "installed"}; !reflect.DeepEqual(got, want) {
+	if got, want := states(t), map[string]string{"pre-commit": "absent", "pre-push": "installed", "pre-merge-commit": "installed"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status --json states %v, want %v", got, want)
 	}
 	code, stdout, _ := gtRun(t, "status", "--repo", repo)
-	want := "\npre-commit: absent (cw gate install wrote it, but it has no execute bit, so git skips it; cw gate install restores the mode)\npre-push: installed\n"
+	want := "\n" + gtLines(map[string]string{
+		"pre-commit":       "absent (cw gate install wrote it, but it has no execute bit, so git skips it; cw gate install restores the mode)",
+		"pre-push":         "installed",
+		"pre-merge-commit": "installed",
+	})
 	if code != ExitOK || !strings.HasSuffix(stdout, want) {
 		t.Fatalf("status exit %d:\n%s\nwant it to end with%s", code, stdout, want)
 	}
-	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK || !strings.HasSuffix(stdout, "pre-commit: updated\npre-push: unchanged\n") {
+	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK ||
+		!strings.HasSuffix(stdout, "\n"+gtLines(map[string]string{"pre-commit": "updated", "pre-push": "unchanged", "pre-merge-commit": "unchanged"})) {
 		t.Fatalf("install over its own script without an execute bit: exit %d\n%s", code, stdout)
 	}
 	if got := gtEntry(t, filepath.Join(hooks, "pre-commit")); got != gtInstalled("pre-commit") {
 		t.Fatalf("pre-commit after install is\n%s\nwant\n%s", got, gtInstalled("pre-commit"))
 	}
-	if got, want := states(t), map[string]string{"pre-commit": "installed", "pre-push": "installed"}; !reflect.DeepEqual(got, want) {
+	if got, want := states(t), map[string]string{"pre-commit": "installed", "pre-push": "installed", "pre-merge-commit": "installed"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("status --json states after install %v, want %v", got, want)
 	}
 }
@@ -289,10 +330,10 @@ func TestGateUsesTheHooksDirectoryGitRuns(t *testing.T) {
 	installed := func(t *testing.T, repo, hooks string) {
 		t.Helper()
 		code, stdout, stderr := gtRun(t, "install", "--repo", repo)
-		if code != ExitOK || !strings.HasPrefix(stdout, "git hooks directory: "+hooks+"\npre-commit: installed\npre-push: installed\n") {
-			t.Fatalf("install --repo %s: exit %d\n%s%s\nwant both installed in %s", repo, code, stdout, stderr, hooks)
+		if want := "git hooks directory: " + hooks + "\n" + gtLines(map[string]string{"pre-commit": "installed", "pre-push": "installed", "pre-merge-commit": "installed"}); code != ExitOK || stdout != want {
+			t.Fatalf("install --repo %s: exit %d\n%s%s\nwant\n%s", repo, code, stdout, stderr, want)
 		}
-		for _, name := range []string{"pre-commit", "pre-push"} {
+		for _, name := range gtHooks {
 			if got := gtEntry(t, filepath.Join(hooks, name)); got != gtInstalled(name) {
 				t.Fatalf("%s/%s is\n%s", hooks, name, got)
 			}
@@ -407,7 +448,8 @@ func TestGateRefusesASharedHooksDirectoryWithoutTheFlag(t *testing.T) {
 				t.Fatalf("status --json: exit %d %s", code, stdout)
 			}
 			code, stdout, stderr := gtRun(t, "install", "--repo", repo, "--shared")
-			if code != ExitRefused || !strings.Contains(stdout, "pre-commit: refused\npre-push: installed\n") || gtEntry(t, filepath.Join(hooks, "pre-push")) != gtInstalled("pre-push") {
+			if code != ExitRefused || !strings.HasSuffix(stdout, "\n"+gtLines(map[string]string{"pre-commit": "refused", "pre-push": "installed", "pre-merge-commit": "installed"})) ||
+				gtEntry(t, filepath.Join(hooks, "pre-push")) != gtInstalled("pre-push") || gtEntry(t, filepath.Join(hooks, "pre-merge-commit")) != gtInstalled("pre-merge-commit") {
 				t.Fatalf("install --shared: exit %d\n%s%s", code, stdout, stderr)
 			}
 			if code, stdout, _ := gtRun(t, "uninstall", "--repo", repo, "--shared"); code != ExitOK || gtDir(t, hooks) != before {
@@ -478,7 +520,7 @@ func TestGateHookLetsGitGoAheadWithoutCw(t *testing.T) {
 	if code, stdout, stderr := gtRun(t, "install", "--repo", repo); code != ExitOK {
 		t.Fatalf("install exit %d\n%s%s", code, stdout, stderr)
 	}
-	for _, name := range []string{"pre-commit", "pre-push"} {
+	for _, name := range gtHooks {
 		hook := exec.CommandContext(t.Context(), "/bin/sh", filepath.Join(repo, ".git", "hooks", name), "origin", "url")
 		hook.Env, hook.Dir = []string{"PATH=" + t.TempDir()}, repo
 		output, err := hook.CombinedOutput()
