@@ -158,11 +158,11 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | Status | Meaning | Where |
 | --- | --- | --- |
 | 0 | ok | The command did what was asked. |
-| 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. |
+| 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`. |
-| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass; `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
+| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
 | 130 | cancelled | The command was interrupted. |

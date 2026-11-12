@@ -438,6 +438,10 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return run, context.Canceled
 		}
+		if run.Failure == "log_write_failed" || run.Failure == "test_results_write_failed" {
+			// The check passed; cw failed to keep its output, which is no answer.
+			return run, errors.New("the check passed, but cw could not write its output: " + run.Failure)
+		}
 		return run, fmt.Errorf("%w: %s", ErrCheckFailed, run.Status)
 	}
 	return run, nil
