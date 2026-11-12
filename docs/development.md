@@ -311,7 +311,7 @@ release to the next and never see `main` between them
 from the vendor documentation, not tested here). Every merge must still leave
 `main` releasable, because new installs take it.
 
-`third_party/cc-skills-golang` pins its own `version` (2.0.0) in its
+`third_party/cc-skills-golang` pins its own `version` (2.0.1) in its
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and the release
 pull request does not change it. When its content changes, bump that version
 in the same pull request; otherwise existing users keep their cached copy.
