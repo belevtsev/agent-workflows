@@ -27,7 +27,7 @@ func backedTaskContext(t *testing.T, store string, advisers map[string]string) s
 	if err := json.Unmarshal([]byte(bindingSmallPlan), &plan); err != nil {
 		t.Fatal(err)
 	}
-	record, err := taskflow.StartWithPacks(t.Context(), repo, store, plan, advisers, taskflow.SelectionExplicit, nil)
+	record, err := taskflow.Env{}.StartWithPacks(t.Context(), repo, store, plan, advisers, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("start a task bound to %v: %v", advisers, err)
 	}
@@ -86,17 +86,30 @@ func editContext(t *testing.T, context string, edit func(map[string]any)) string
 
 // oracle: cw consult asks a task's advisers only when the task store the hook
 // reads ($CW_TASK_STORE here) holds the request's task context: the context's
-// task names a record there, and that record holds the same context (task,
-// phase, snapshot, evidence and adviser binding), the check cw task consult
-// applies when it attaches the record. Any other task-bound request is
-// invalid input: exit 1, no record written and no adviser previewed. The
+// task names a record there that is not abandoned, and that record holds the
+// same context (task, phase, snapshot, evidence and adviser binding), the
+// check cw task consult applies when it attaches the record. Any other
+// task-bound request is invalid input: exit 1, no record written and no
+// adviser previewed; a context whose record is not in the store names the
+// CW_TASK_STORE fix for a --store task. The
 // OpenAI key is set and nothing opts in to OpenAI, so a context that names
 // OpenAI is the only way the dry run would preview it.
 func TestTaskBoundConsultNeedsTheTaskRecordToHoldItsContext(t *testing.T) {
 	store, otherStore := adviserBindingPrivateDir(t), adviserBindingPrivateDir(t)
 	unbound := backedTaskContext(t, store, map[string]string{})
 	bound := backedTaskContext(t, store, map[string]string{"openai_decisions": "gpt-6-luna"})
+	abandoned := backedTaskContext(t, store, map[string]string{"openai_decisions": "gpt-6-luna"})
+	var abandonedTask struct {
+		TaskID string `json:"task_id"`
+	}
+	if err := json.Unmarshal([]byte(abandoned), &abandonedTask); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (taskflow.Env{}).Abandon(filepath.Join(store, abandonedTask.TaskID), "superseded"); err != nil {
+		t.Fatal(err)
+	}
 	const synthetic = `{"advisers":{"openai_decisions":"gpt-6-luna"}}`
+	// says lists the fragments stderr holds, in order, separated by "…".
 	refused := []struct{ name, store, state, says string }{
 		{"context without a task", store, `{"task_context":` + synthetic + `}`, "names no task that cw task start created"},
 		{"binding the record does not hold", store, `{"task_context":` + editContext(t, unbound, func(c map[string]any) {
@@ -115,7 +128,9 @@ func TestTaskBoundConsultNeedsTheTaskRecordToHoldItsContext(t *testing.T) {
 		{"task id that is a path", store, `{"task_context":` + editContext(t, bound, func(c map[string]any) {
 			c["task_id"] = "../" + filepath.Base(store)
 		}) + `}`, "names no task that cw task start created"},
-		{"task in another store", otherStore, `{"task_context":` + bound + `}`, "no task record in the task store"},
+		{"task in another store", otherStore, `{"task_context":` + bound + `}`,
+			"no task record in the task store " + otherStore + " backs task context …; a task started with --store DIR needs CW_TASK_STORE=DIR"},
+		{"abandoned task", store, `{"task_context":` + abandoned + `}`, "task " + abandonedTask.TaskID + " was abandoned; start a new task"},
 		{"batch with one context without a task", store, `{"task_contexts":[` + bound + `,` + synthetic + `]}`, "names no task that cw task start created"},
 	}
 	consultIn := func(t *testing.T, store, state string) (consultOutcome, string) {
@@ -139,7 +154,14 @@ func TestTaskBoundConsultNeedsTheTaskRecordToHoldItsContext(t *testing.T) {
 			if ExitCode(outcome.err) != 1 {
 				t.Fatalf("consult = exit %d, want 1: %s", ExitCode(outcome.err), outcome.text())
 			}
-			if !strings.Contains(outcome.stderr, "Decision consultation validation failed") || !strings.Contains(outcome.stderr, c.says) {
+			_, rest, said := strings.Cut(outcome.stderr, "Decision consultation validation failed")
+			for fragment := range strings.SplitSeq(c.says, "…") {
+				if !said {
+					break
+				}
+				_, rest, said = strings.Cut(rest, fragment)
+			}
+			if !said {
 				t.Fatalf("stderr %q does not say %q", outcome.stderr, c.says)
 			}
 			requireNotWritten(t, output)

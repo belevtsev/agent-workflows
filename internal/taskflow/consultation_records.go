@@ -18,8 +18,10 @@ var taskIDPattern = regexp.MustCompile(`^[0-9a-f]{32}$`)
 // context printed. A context's task_id must name a task directory in store
 // whose record holds that context for its phase, and the contexts together
 // must pass the check that cw task consult applies when it attaches the
-// consultation (requestContext). cw consult runs it before it asks a task's
-// advisers, so it asks only the advisers that a task record binds.
+// consultation (requestContext). An abandoned task backs no context: cw task
+// consult can never attach its consultation. cw consult runs it before it
+// asks a task's advisers, so it asks only the advisers that a live task
+// record binds.
 func CheckRequestContexts(store string, contexts [][]byte) error {
 	values := make([]jsontext.Value, len(contexts))
 	for i, context := range contexts {
@@ -40,7 +42,10 @@ func CheckRequestContexts(store string, contexts [][]byte) error {
 		}
 		record, err := Load(filepath.Join(store, named.TaskID))
 		if err != nil {
-			return fmt.Errorf("no task record in the task store %s backs task context %s: %w", store, named.TaskID, err)
+			return fmt.Errorf("no task record in the task store %s backs task context %s: %w; a task started with --store DIR needs CW_TASK_STORE=DIR", store, named.TaskID, err)
+		}
+		if record.Abandonment != nil {
+			return fmt.Errorf("task %s was abandoned; start a new task with 'cw task start'", named.TaskID)
 		}
 		prepared, ok := record.Contexts[named.Phase]
 		if !ok || prepared.TaskID != record.ID || prepared.Phase != named.Phase {

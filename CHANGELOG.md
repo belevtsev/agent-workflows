@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
+- `cw consult` sends a task-bound request only when its task, not abandoned, holds that task context in the store the hook reads,
+  so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
 
 ### Changed
 
@@ -28,8 +30,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- `cw consult` sends a task-bound request only when the task's record holds its task context, so a request cannot name advisers
-  its task did not bind; with `--store` tasks, set `CW_TASK_STORE` ([consultation](docs/operations.md#consultation-command)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
   and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 - `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory

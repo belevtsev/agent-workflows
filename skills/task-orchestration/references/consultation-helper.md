@@ -146,8 +146,9 @@ The participation set comes from one place:
   rejected; regenerate it with this `cw task context`. A `state` holding both
   `task_context` and `task_contexts` is rejected. Each context must be the one
   `cw task context` printed, unedited, and its task's record must still hold
-  it, in the store the hook reads (`$CW_TASK_STORE` for a `--store` task);
-  otherwise `cw consult` exits 1 before it sends anything.
+  it, in the store the hook reads (`CW_TASK_STORE=DIR` for a task started with
+  `--store DIR`), and the task must not be abandoned; otherwise `cw consult`
+  exits 1 before it sends anything.
 - **Ad hoc request:** otherwise, the policy's enabled providers participate; one
   disabled in the saved preferences, or without `--policy` one not opted in to, is
   recorded as `not_configured` and never contacted.
