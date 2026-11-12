@@ -240,7 +240,7 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"abandon by a path in a substitution", "{R}", `echo "$(/usr/local/bin/cw task abandon --task /store/task-k --reason x)"`, gate.Ask},
 		{"abandon through xargs", "{R}", "echo /store/task-k | xargs cw task abandon --reason x --task", gate.Ask},
 		{"abandon through a variable", "{R}", "C=cw; $C task abandon --task /store/task-k --reason x", gate.Ask},
-		{"abandon through go run", "{R}", "go run github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1 task abandon --task /store/task-k --reason x", gate.Ask},
+		{"abandon through go run", "{R}", "go run github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2 task abandon --task /store/task-k --reason x", gate.Ask},
 		{"abandon --help", "{R}", "cw task abandon --help", gate.Ask},
 		// A known false positive: a line with a command the gate does not
 		// trust (git add) that only mentions cw, task and abandon.

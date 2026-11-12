@@ -4,7 +4,7 @@
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
     "description": "Engineering workflow for Claude Code: reviews at every stage, independent test engineers, a verify gate, and curated Go skills.",
-    "version": "3.0.0-rc.1"
+    "version": "3.0.0-rc.2"
   },
   "plugins": [
     {
