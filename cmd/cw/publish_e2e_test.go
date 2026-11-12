@@ -1257,6 +1257,10 @@ func (e *pubEnv) mustUnchanged(label string, before pubSnap) {
 	if d := pubDiffMaps(before.tree, after.tree); len(d) > 0 {
 		e.t.Errorf("%s changed worktree paths %q", label, d)
 	}
+	// The first run creates the empty lock file .publish-lock, which stays (R5).
+	if _, had := before.task[".publish-lock"]; !had && after.task[".publish-lock"] == "-rw------- "+pubSHA(nil) {
+		delete(after.task, ".publish-lock")
+	}
 	if d := pubDiffMaps(before.task, after.task); len(d) > 0 {
 		e.t.Errorf("%s changed task directory entries %q", label, d)
 	}
@@ -1279,7 +1283,7 @@ func (e *pubEnv) refuse(label string, f pubFlags, code int, status, reason strin
 }
 
 // taskRecordFiles are the task directory's files other than publication
-// files and the transient lock (R21.a).
+// files and the publish lock file (R21.a).
 func (e *pubEnv) taskRecordFiles() map[string]string {
 	e.t.Helper()
 	all := pubTree(e.t, e.task, false)
@@ -1763,7 +1767,7 @@ func (e *pubEnv) checkGit(r pubRun) pubGitCount {
 // pubTestHappyPath: R13.a (one commit that is this request's commit, hooks
 // run), R13.e, R15.b (push done, pre-push runs, no tags with
 // push.followTags), R2 (one stdout line, empty stderr), R4 (--pr none never
-// runs gh although present), R5 (lock held during the run, removed after),
+// runs gh although present), R5 (lock held during the run, released after),
 // R19 (started entry before git commit), R20.d (none), R21.a, R21.c and R22
 // (worktree as working directory, GIT_TERMINAL_PROMPT=0, pass-through).
 func pubTestHappyPath(t *testing.T, tl *pubTools) {
@@ -1877,8 +1881,14 @@ func pubTestHappyPath(t *testing.T, tl *pubTools) {
 	if calls := pubCalls(t, e.ghLog); len(calls) != 0 {
 		t.Errorf("gh ran %d times with --pr none, want never (R4)", len(calls))
 	}
-	if _, err := os.Lstat(filepath.Join(e.task, ".publish-lock")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf(".publish-lock left after the run: %v", err)
+	// The lock file stays in the task directory; no process holds it.
+	if lock, err := os.Open(filepath.Join(e.task, ".publish-lock")); err != nil {
+		t.Errorf(".publish-lock after the run: %v", err)
+	} else {
+		if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+			t.Errorf(".publish-lock still held after the run: %v", err)
+		}
+		lock.Close()
 	}
 	if st := e.git("status", "--porcelain"); st != "" {
 		t.Errorf("worktree or index differ from the commit after publishing:\n%s", st)
@@ -3864,7 +3874,8 @@ func pubTestReadOnlyTimeout(t *testing.T, tl *pubTools) {
 }
 
 // pubTestKilledRun: R19 (a killed run leaves its started entry only), R5
-// (the lock of a killed process stays: locked), R20.d (unfinished).
+// (the kernel releases the lock of a killed process, so the next run is not
+// locked out), R20.d (unfinished).
 func pubTestKilledRun(t *testing.T, tl *pubTools) {
 	e := pubNewEnv(t, tl)
 	e.startTask(pubPlanSmall)
@@ -3889,20 +3900,6 @@ func pubTestKilledRun(t *testing.T, tl *pubTools) {
 	entries := e.entries()
 	if len(entries) != 1 || entries[0].Kind != "started" {
 		t.Fatalf("entries after a killed run: %d, want one started entry", len(entries))
-	}
-	lockDir := filepath.Join(e.task, ".publish-lock")
-	if _, err := os.Lstat(lockDir); err != nil {
-		t.Fatalf(".publish-lock of the killed run: %v", err)
-	}
-	pubWant(t, e.publish(), 1, "failed", "locked")
-	if _, err := os.Lstat(lockDir); err != nil {
-		t.Errorf("a locked run removed the lock: %v", err)
-	}
-	if got := len(pubEntryNames(t, e.task)); got != 1 {
-		t.Errorf("a locked run wrote publication files (%d)", got)
-	}
-	if err := os.Remove(lockDir); err != nil {
-		t.Fatal(err)
 	}
 	e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{})
 	rep := pubWant(t, e.publish(), 0, "published", "")

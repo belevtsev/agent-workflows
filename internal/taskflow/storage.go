@@ -19,12 +19,28 @@ import (
 	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 )
 
 const maxTaskRevisions = 4096
 
+const (
+	// taskLockName is the regular file whose flock serialises the writers of
+	// a task. It is never removed: the kernel releases the lock when its
+	// holder exits or is killed, so an interrupted writer leaves no lock.
+	taskLockName = ".lockfile"
+	// legacyTaskLockName is the directory cw v3.0.0-rc.1 creates as its task
+	// lock. This cw honours one but never creates or removes it.
+	legacyTaskLockName = ".lock"
+	// taskLockWait bounds the wait for each of the two locks, and
+	// taskLockPoll is the retry interval.
+	taskLockWait = 10 * time.Second
+	taskLockPoll = 25 * time.Millisecond
+)
+
 var revisionName = regexp.MustCompile(`^record-([0-9]{6})\.json$`)
 var errTaskLocked = errors.New("task is locked; inspect an interrupted writer before removing its .lock directory")
+var errTaskBusy = errors.New("task is locked: another cw kept writing it for 10 seconds; retry when it finishes")
 var errTaskRevisionLimit = errors.New("task revision limit reached; start a new task")
 
 func randomID() (string, error) {
@@ -545,19 +561,23 @@ func updateWithCapacity(path string, additional int, completingRunID string, cha
 // is not called once the revision name exists or its absence cannot be
 // confirmed after a failed write, even when this run published nothing (the
 // name already existed). A nil discard is updateWithCapacity.
-func updateDiscarding(path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (_ Record, err error) {
+func updateDiscarding(path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (Record, error) {
+	return updateWithContext(context.Background(), path, additional, completingRunID, change, discard)
+}
+
+// updateWithContext is updateDiscarding whose wait for the task lock also
+// ends when ctx is done.
+func updateWithContext(ctx context.Context, path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (_ Record, err error) {
 	root, directory, err := openTask(path)
 	if err != nil {
 		return Record{}, err
 	}
 	defer root.Close()
-	if err := root.Mkdir(".lock", 0700); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return Record{}, errTaskLocked
-		}
+	unlock, err := lockTask(ctx, root, taskLockWait)
+	if err != nil {
 		return Record{}, err
 	}
-	defer root.Remove(".lock")
+	defer unlock()
 	record, previous, err := loadRoot(root, directory)
 	if err != nil {
 		return Record{}, err
@@ -619,13 +639,66 @@ func updateDiscarding(path string, additional int, completingRunID string, chang
 	return record, nil
 }
 
+// lockTask takes the task lock of the task directory root and returns the
+// function that releases it. It waits at most wait, and until ctx is done, for
+// another writer's flock on .lockfile. Holding that, it then waits at most
+// wait for a .lock directory to disappear: cw v3.0.0-rc.1 holds one while it
+// writes and leaves it behind when it is killed. One that stays fails with
+// errTaskLocked and is never removed. That cw ignores .lockfile, so the two
+// do not exclude each other; the no-replace revision write keeps one chain.
+func lockTask(ctx context.Context, root *os.Root, wait time.Duration) (func(), error) {
+	directory, err := root.Open(".")
+	if err != nil {
+		return nil, err
+	}
+	lock, err := fslock.Acquire(ctx, taskLockName, fslock.Options{Dir: directory, Wait: wait, Poll: taskLockPoll})
+	if err != nil {
+		directory.Close()
+		if errors.Is(err, fslock.ErrBusy) {
+			return nil, errTaskBusy
+		}
+		return nil, fmt.Errorf("could not acquire the task lock: %w", err)
+	}
+	unlock := func() {
+		lock.Close()
+		directory.Close()
+	}
+	timeout := time.NewTimer(wait)
+	defer timeout.Stop()
+	for {
+		_, err := root.Lstat(legacyTaskLockName)
+		if errors.Is(err, fs.ErrNotExist) {
+			return unlock, nil
+		}
+		if err != nil {
+			unlock()
+			return nil, err
+		}
+		poll := time.NewTimer(taskLockPoll)
+		select {
+		case <-ctx.Done():
+			poll.Stop()
+			unlock()
+			return nil, fmt.Errorf("could not acquire the task lock: %w", ctx.Err())
+		case <-timeout.C:
+			poll.Stop()
+			unlock()
+			return nil, errTaskLocked
+		case <-poll.C:
+		}
+	}
+}
+
 // Terminal results may race a short assessment/context writer. Preserve the
 // running revision while waiting for that writer; never overwrite or break a
 // lock, and never manufacture success if an abandoned lock outlives the bound.
+// Each attempt waits for the task lock itself; this loop retries, until ctx is
+// done, a writer that outlasts that wait, such as a .lock directory that cw
+// v3.0.0-rc.1 left behind.
 func updateWhenUnlocked(ctx context.Context, path, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
 	for {
-		record, err := updateWithCapacity(path, 1, completingRunID, change)
-		if !errors.Is(err, errTaskLocked) {
+		record, err := updateWithContext(ctx, path, 1, completingRunID, change, nil)
+		if !errors.Is(err, errTaskLocked) && !errors.Is(err, errTaskBusy) {
 			return record, err
 		}
 		timer := time.NewTimer(25 * time.Millisecond)

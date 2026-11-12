@@ -108,6 +108,13 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	if len(data) > MaxInputBytes {
 		return Record{}, initializationError(errors.New("initial task revision exceeds size limit"))
 	}
+	// The task lock file belongs to the task from its first revision, so a
+	// later writer, even a refused one, adds no file to the task directory.
+	unlock, err := lockTask(ctx, root, taskLockWait)
+	if err != nil {
+		return Record{}, initializationError(err)
+	}
+	defer unlock()
 	if err := writeNew(root, baselineManifestFile, manifest); err != nil {
 		return Record{}, initializationError(err)
 	}

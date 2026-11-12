@@ -393,6 +393,22 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### Task locks
+
+Every `cw` command that writes a task record takes an exclusive `flock` on
+`.lockfile` in the task directory. A second writer waits for it up to 10 seconds
+instead of failing, and the kernel releases the lock when its holder exits or
+is killed, so an interrupted `cw` leaves the task writable. `cw publish` takes
+the same kind of lock on `.publish-lock` without waiting: a second run exits 1
+`locked`. Both files stay in the task directory.
+
+`cw` v3.0.0-rc.1 used a `.lock` and a `.publish-lock` directory instead, and a
+killed run left them behind. This `cw` still honours them: a writer waits 10
+seconds for `.lock`, then fails with `task is locked; inspect an interrupted
+writer before removing its .lock directory`, and `cw publish` exits 1 `locked`.
+Remove one only after checking that no older `cw` runs. That `cw` does not see
+`.lockfile`, so do not mix `cw` versions on one task.
+
 ### Merging the base branch during a task
 
 A task's plan cannot change after `cw task start`. When the task merges its base
