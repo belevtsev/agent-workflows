@@ -24,6 +24,7 @@ func testConfig(t *testing.T) (Config, *bytes.Buffer) {
 		WorkingDir: func() (string, error) { return "/fixture/cwd", nil },
 		Executable: func() (string, error) { return os.Executable() },
 		Getenv:     func(string) string { return "" },
+		Environ:    func() []string { return nil },
 	}
 	return config, out
 }

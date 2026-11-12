@@ -32,6 +32,9 @@ type Deps struct {
 	Environ []string
 	// HookStore returns the task store cw hook pre-publish reads.
 	HookStore func() (string, error)
+	// Now is the clock: the time of each publication entry, and the time
+	// open records age against. Nil selects time.Now.
+	Now func() time.Time
 }
 
 // run is one cw publish run.
@@ -64,6 +67,9 @@ type run struct {
 // Run carries out the request and returns its report. It never panics on
 // external state and always releases the task's .publish-lock it took.
 func Run(ctx context.Context, req Request, deps Deps) Report {
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
 	r := &run{req: req, deps: deps, rep: newReport(req)}
 	f := r.execute(ctx)
 	r.conclude(f)
@@ -222,7 +228,7 @@ func (r *run) openRecords(ctx context.Context) *failure {
 			stores = append(stores, canonical)
 		}
 	}
-	now := time.Now()
+	now := r.deps.Now()
 	seen := map[string]bool{r.record.ID: true}
 	legacy, unreadable := false, false
 	for _, store := range stores {
@@ -705,7 +711,7 @@ func (r *run) start() *failure {
 	if r.req.pr != PRNone {
 		request.PR.BodySHA256 = sha256Hex(r.req.body)
 	}
-	if _, err := r.task.Append(taskflow.PublicationEntry{TaskID: r.record.ID, RunID: r.runID, Kind: "started", At: time.Now().UTC(), Request: request}); err != nil {
+	if _, err := r.task.Append(taskflow.PublicationEntry{TaskID: r.record.ID, RunID: r.runID, Kind: "started", At: r.deps.Now().UTC(), Request: request}); err != nil {
 		return failf("record-write-failed", "write the started publication entry: %v", err)
 	}
 	r.started = true
@@ -1045,7 +1051,7 @@ func (r *run) conclude(f *failure) {
 	}
 	code := r.rep.ExitCode()
 	steps := r.rep.Steps
-	path, err := r.task.Append(taskflow.PublicationEntry{TaskID: r.record.ID, RunID: r.runID, Kind: "finished", At: time.Now().UTC(),
+	path, err := r.task.Append(taskflow.PublicationEntry{TaskID: r.record.ID, RunID: r.runID, Kind: "finished", At: r.deps.Now().UTC(),
 		Status: r.rep.Status, Reason: r.rep.Reason, ExitCode: &code, Steps: &steps})
 	if err != nil {
 		detail := "write the finished publication entry: " + err.Error()

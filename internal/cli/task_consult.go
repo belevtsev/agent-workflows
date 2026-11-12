@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +20,7 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 		if inputFile == "" || inputFile == "-" {
 			return usage(errors.New("consult needs a distinct original artifact file via --input"))
 		}
-		value, err := taskflow.AttachConsultation(cmd.Context(), directory, phase, inputFile)
+		value, err := taskEnv(deps.config).AttachConsultation(cmd.Context(), directory, phase, inputFile)
 		if err != nil {
 			return err
 		}

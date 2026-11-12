@@ -15,7 +15,7 @@ const publishLong = `Commit the task's verified files, push the commit to REMOTE
 
 cw publish authorizes nothing: the coordinator that runs it carries the user's authorization for this publication, and cw is only the mechanism. The coordinator drafts the commit message, PR title and body from verified facts into UTF-8 files.
 
-The commit holds whole files only: the task's verified change set since cw task start, or the --path values (each in that set), as cw task verify saw them. The local branch must be BRANCH and HEAD must be --expect-head, or the commit an earlier run of the same request made. Every step is read back. A re-run of the same command continues from the observed state: it commits, pushes or edits only what is missing. Each run appends a started and a finished entry, publication-NNNNNN.json, to the task directory.
+The commit holds whole files only: the task's verified change set since cw task start, or the --path values (each in that set), as cw task verify saw them. The local branch must be BRANCH and HEAD must be --expect-head, or the commit an earlier run of the same request made. Every step is read back. A re-run of the same command continues from the observed state: it commits, pushes or edits only what is missing. Once its checks pass, a run appends a started entry, publication-NNNNNN.json, to the task directory, and a finished entry when it ends. A run that stops at its checks, such as one they deny (exit 3) or refuse (exit 4), commits nothing and appends no entry; a refusal at a later step keeps the commit or push already done, and the finished entry records it.
 
 Output: one JSON line (the report, or with --summary a one-line summary); any status but 0 also writes "agent-workflows: publish STATUS (REASON): DETAIL" to stderr. Git 2.24 or newer is required.
 
@@ -77,6 +77,7 @@ func addPublishCommand(root *cobra.Command, config Config) {
 				LookPath:  exec.LookPath,
 				Environ:   os.Environ(),
 				HookStore: func() (string, error) { return hookTaskStore(root, config) },
+				Now:       config.Now,
 			})
 			var printed any = report
 			if summary {

@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -27,11 +28,6 @@ import (
 // problemCheckStatuses are the doctor check statuses that need attention.
 // Many missing checks are optional tools, which are still facts worth listing.
 var problemCheckStatuses = []string{"missing", "degraded", "stale"}
-
-// dirtyComparisonWarning is the fixed caveat that projectctx appends to the
-// profile warnings of every Git snapshot, clean or dirty
-// (internal/projectctx/capture.go:158). The summary omits it by exact text.
-const dirtyComparisonWarning = "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty"
 
 type doctorSnapshotSummary struct {
 	Head        string `json:"head"`
@@ -81,7 +77,7 @@ func summarizeDoctor(report doctor.DoctorReport) doctorSummary {
 	}
 	attention := len(value.Problems) > 0
 	for index, warning := range slices.Concat(report.Warnings, report.Profile.Warnings) {
-		if warning == dirtyComparisonWarning {
+		if warning == projectctx.DirtyComparisonWarning {
 			value.OmittedFixed++
 			continue
 		}
@@ -112,26 +108,24 @@ type verifySummary struct {
 	OmittedFixedLimitations int      `json:"omitted_fixed_limitations"`
 }
 
-// summarizeVerification drops the fixed limitations, matched by exact text,
-// moves rejected-finding limitations to RejectedFindings, and keeps every
-// problem and every other task-specific limitation in order.
+// summarizeVerification drops the fixed limitations, moves rejected-finding
+// limitations to RejectedFindings, and keeps every problem and every other
+// task-specific limitation in order. It selects limitations by their finding
+// code, never by their text.
 func summarizeVerification(value taskflow.Verification) verifySummary {
 	result := verifySummary{TaskID: value.TaskID, Complete: value.Complete, Problems: value.Problems, Limitations: []string{}}
 	if result.Problems == nil {
 		result.Problems = []string{}
 	}
-	fixed := taskflow.FixedVerifyLimitations()
-	for _, limitation := range value.Limitations {
-		if index := slices.Index(fixed, limitation); index >= 0 {
-			fixed = slices.Delete(fixed, index, index+1)
+	for _, limitation := range value.LimitationFindings {
+		switch limitation.Code {
+		case taskflow.CodeFixedLimitation:
 			result.OmittedFixedLimitations++
-			continue
+		case taskflow.CodeRejectedFinding:
+			result.RejectedFindings = append(result.RejectedFindings, limitation.Message)
+		default:
+			result.Limitations = append(result.Limitations, limitation.Message)
 		}
-		if taskflow.IsRejectedFindingLimitation(limitation) {
-			result.RejectedFindings = append(result.RejectedFindings, limitation)
-			continue
-		}
-		result.Limitations = append(result.Limitations, limitation)
 	}
 	return result
 }

@@ -41,7 +41,7 @@ func l4cNew(t *testing.T) *l3cFix {
 	plan := taskflow.Plan{Title: "l4 cli fixture", Kind: "substantial", CoordinatorID: l3cCoordinator, Checks: []taskflow.Check{check},
 		Checkpoints:  &taskflow.CheckpointPolicy{Required: false, Reason: "fixture"},
 		Requirements: []taskflow.Requirement{{ID: "C1", Description: "criterion C1", CheckIDs: []string{"ok"}}}}
-	rec, err := taskflow.StartWithPacks(f.ctx, f.repo, store, plan, nil, taskflow.SelectionExplicit, nil)
+	rec, err := taskflow.Env{}.StartWithPacks(f.ctx, f.repo, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("StartWithPacks: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestTaskAuthorshipCLIPrintsReport(t *testing.T) {
 		rep.Files[0].Status != "unowned" || rep.Files[1].Status != "unowned" {
 		t.Errorf("printed report %s, want task %s with p/stray_test.go and p/te_test.go unowned (R19, R20)", line, f.id)
 	}
-	direct, err := taskflow.Authorship(f.ctx, f.dir)
+	direct, err := taskflow.Env{}.Authorship(f.ctx, f.dir)
 	if err != nil {
 		t.Fatalf("taskflow.Authorship: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestTaskAuthorshipCLIPrintsReport(t *testing.T) {
 	}
 	l3cSameTree(t, "cw task authorship", before, l3cTree(t, f.dir))
 
-	if _, err := taskflow.Abandon(f.dir, "fixture abandoned"); err != nil {
+	if _, err := (taskflow.Env{}).Abandon(f.dir, "fixture abandoned"); err != nil {
 		t.Fatalf("Abandon: %v", err)
 	}
 	abandoned := l3cTree(t, f.dir)

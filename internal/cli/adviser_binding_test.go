@@ -278,14 +278,15 @@ func adviserBindingConsult(t *testing.T, state, dir string) (consultOutcome, str
 var adviserBindingAllKeys = []string{"jev", "subq_snap", "openai_decisions"}
 
 // adviserBindingConsultWith is adviserBindingConsult with keys set for the
-// given providers.
+// given providers. Each task context in state that holds only a binding is
+// replaced by a real task's context, which the task store backs.
 func adviserBindingConsultWith(t *testing.T, state, dir string, providers ...string) (consultOutcome, string) {
 	t.Helper()
 	directory := t.TempDir()
 	policy := writePolicyFixture(t, filepath.Join(directory, "policy"), adviserBindingVersion, nil)
+	state, getenv := backedConsultEnvironment(t, state, fixtureCredentials(providers...))
 	request := writeFixtureFile(t, directory, "request.json", fixtureRequest(state))
 	output := filepath.Join(directory, "preview.json")
-	getenv := fixtureEnvironment(fixtureCredentials(providers...))
 	outcome := executeConsult(t, getenv, "--request", request, "--output", output, "--policy", policy, "--dry-run", "--config-dir", dir)
 	return outcome, output
 }
@@ -484,19 +485,15 @@ func adviserBindingLenientPreview(t *testing.T, outcome consultOutcome, output s
 }
 
 // G1: consult alone decides whether a request is task-bound; a task-bound
-// state carrying a lone surrogate escape keeps its binding although the
-// preferences disable the bound provider.
+// state carrying a lone surrogate escape beside its task context keeps its
+// binding although the preferences disable the bound provider. A string in
+// the context itself is a member its task record lacks, which
+// TestTaskBoundConsultNeedsTheTaskRecordToHoldItsContext refuses.
 func TestAdviserBindingTaskBoundConsultWithLoneSurrogate(t *testing.T) {
 	for _, c := range []struct {
 		name, state, preferences string
 		want                     map[string]string
 	}{
-		{"control, plain string in task_context",
-			`{"task_context":{"advisers":{"openai_decisions":"gpt-6-luna"},"note":"plain"}}`,
-			adviserBindingOffOpenAI, map[string]string{"openai_decisions": "dry_run"}},
-		{"surrogate in task_context",
-			`{"task_context":{"advisers":{"openai_decisions":"gpt-6-luna"},"note":"\ud800"}}`,
-			adviserBindingOffOpenAI, map[string]string{"openai_decisions": "dry_run"}},
 		{"control, plain string beside task_context",
 			`{"task_context":{"advisers":{"openai_decisions":"gpt-6-luna"}},"note":"plain"}`,
 			adviserBindingOffOpenAI, map[string]string{"openai_decisions": "dry_run"}},

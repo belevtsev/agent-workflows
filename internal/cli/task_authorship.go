@@ -1,12 +1,9 @@
 package cli
 
-import (
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 // newTaskAuthorshipCommand returns cw task authorship.
-func newTaskAuthorshipCommand(taskDeps) *cobra.Command {
+func newTaskAuthorshipCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	authorship := &cobra.Command{
 		Use:   "authorship",
@@ -19,7 +16,7 @@ func newTaskAuthorshipCommand(taskDeps) *cobra.Command {
 			if err := requireTask(directory); err != nil {
 				return err
 			}
-			report, err := taskflow.Authorship(cmd.Context(), directory)
+			report, err := taskEnv(deps.config).Authorship(cmd.Context(), directory)
 			if err != nil {
 				return err
 			}

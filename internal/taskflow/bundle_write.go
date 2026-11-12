@@ -23,12 +23,12 @@ type WrittenBundle struct {
 // new file outside the project source: a file inside it would change the
 // source the review is bound to. A failed write leaves no file at target
 // (writeBundleFile). The task record is not changed.
-func WriteBundle(ctx context.Context, taskPath, reviewID, target string) (WrittenBundle, error) {
+func (env Env) WriteBundle(ctx context.Context, taskPath, reviewID, target string) (WrittenBundle, error) {
 	target, err := filepath.Abs(target)
 	if err != nil {
 		return WrittenBundle{}, err
 	}
-	bundle, err := BuildBundle(ctx, taskPath, reviewID)
+	bundle, err := env.BuildBundle(ctx, taskPath, reviewID)
 	if err != nil {
 		return WrittenBundle{}, err
 	}

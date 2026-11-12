@@ -176,8 +176,8 @@ suggesting `cw task start`.
 It does not stop an edited or damaged task store, a fake toolchain on `PATH`,
 or `cw task abandon` run by the agent from a script (the hook asks you before
 one it can see), nor git run by a script, an alias or a command form the hook
-does not parse, unless `cw gate install` added git's own pre-commit and
-pre-push hooks to the repository
+does not parse, unless `cw gate install` added git's own pre-commit,
+pre-push and pre-merge-commit hooks to the repository
 ([git hooks](docs/hooks.md#installing-the-git-hooks)). See the
 [threat model](SECURITY.md#threat-model) and the
 [known bypasses](docs/hooks.md#known-bypasses).
@@ -228,9 +228,10 @@ cw task verify --task <task-dir> --summary
 cw task abandon --task <task-dir> --reason "replaced by a new task"
 ```
 
-**Let git run the gate too.** `cw gate install` writes git's pre-commit and
-pre-push hooks for one repository, so a commit or push from a script, an alias
-or a terminal meets the same gate; `cw gate uninstall` removes them:
+**Let git run the gate too.** `cw gate install` writes git's pre-commit,
+pre-push and pre-merge-commit hooks for one repository, so a commit, merge
+commit or push from a script, an alias or a terminal meets the same gate;
+`cw gate uninstall` removes them:
 
 ```sh
 cw gate install --repo /path/to/repo

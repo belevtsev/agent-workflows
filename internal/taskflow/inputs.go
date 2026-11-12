@@ -127,12 +127,12 @@ func validateInputFiles(assigned WorkerAssignment) error {
 
 // inputCopyProblems lists, in assignment and input order, every stored input
 // copy that is missing or no longer hashes to its input's SHA-256.
-func inputCopyProblems(root *os.Root, record Record) []string {
+func inputCopyProblems(artifacts Artifacts, record Record) []string {
 	problems := []string{}
 	for _, assigned := range record.Assignments {
 		for i, input := range assigned.Brief.Inputs {
 			if i < len(assigned.InputFiles) {
-				if data, err := privateRead(root, assigned.InputFiles[i], MaxInputBytes); err == nil && digest(data) == input.SHA256 {
+				if data, err := artifacts.Read(assigned.InputFiles[i], MaxInputBytes); err == nil && digest(data) == input.SHA256 {
 					continue
 				}
 			}

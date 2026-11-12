@@ -176,7 +176,7 @@ func TestReachPathsR3NoBundleNoCoverage(t *testing.T) {
 		t.Fatalf("fixture precondition: assignment carries a bundle: %+v", assigned)
 	}
 	result := WorkerResult{AssignmentID: "review", AgentID: assigned.Brief.AgentID, Status: "completed"}
-	if err := reachRunCoverage(root, assigned, result); err != nil {
+	if err := reachRunCoverage(taskDirectory{root}, assigned, result); err != nil {
 		t.Fatalf("review without bundle refused: %v", err)
 	}
 }
@@ -217,11 +217,11 @@ func reachPathsR3StoredBundle(t *testing.T, version int) (*os.Root, WorkerAssign
 func TestReachPathsR3VersionOneBundleExempt(t *testing.T) {
 	result := WorkerResult{AssignmentID: "review", AgentID: "/root/reach-paths-reviewer", Status: "completed"}
 	root, assigned := reachPathsR3StoredBundle(t, 1)
-	if err := reachRunCoverage(root, assigned, result); err != nil {
+	if err := reachRunCoverage(taskDirectory{root}, assigned, result); err != nil {
 		t.Fatalf("version-1 bundle required reach runs: %v", err)
 	}
 	root, assigned = reachPathsR3StoredBundle(t, 2)
-	err := reachRunCoverage(root, assigned, result)
+	err := reachRunCoverage(taskDirectory{root}, assigned, result)
 	if err == nil {
 		t.Fatal("version-2 bundle with an unanswered live row accepted")
 	}

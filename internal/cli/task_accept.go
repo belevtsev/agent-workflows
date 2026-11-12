@@ -20,7 +20,7 @@ func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 		if err := readTaskInput(cmd, inputFile, &input); err != nil {
 			return err
 		}
-		value, err := taskflow.AcceptWorkerResult(cmd.Context(), directory, input)
+		value, err := taskEnv(deps.config).AcceptWorkerResult(cmd.Context(), directory, input)
 		if err != nil {
 			return err
 		}

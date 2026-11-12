@@ -35,7 +35,7 @@ holds the definition of a substantial task and the Code Review Rules.
 
 | Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `clear` and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
 | Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
 | `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
 
@@ -61,9 +61,10 @@ the architect contract and the `software-architecture` and
   and the doctor summary is off. A recorded run turned the gate off with
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
-- **Evidence.** The plugin rows come from one recorded run with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex)); the last column lists what it did
-  not cover.
+- **Evidence.** The plugin rows come from runs recorded with codex-cli
+  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  the last column lists what they did not cover. The session-start context
+  is added again on each resume and after each compaction.
 
 To install the plugin:
 
@@ -242,9 +243,9 @@ line, or with `--summary` the one-line view, and writes the record to the
 than `verify` and `run` still exit 1 when the record's state refuses them, for
 example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
 (`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
-([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit or
-push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
-when a hook it did not write is in the way, and still writes the other hook;
+([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit,
+merge commit or push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
+when a hook it did not write is in the way, and still writes the other hooks;
 `cw gate install` and `uninstall` exit 4 without changing anything when the
 hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
@@ -520,9 +521,11 @@ each passed go check ran as a limitation. A run recorded before this has no
 `tool`, and verify says so.
 
 Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
-GOHOSTARCH`, with the check's environment and in the selected path, and the
-run records what it printed under `go_env` (`GOFLAGS` redacted as in
-`goflags`). The check then runs with that `GOFLAGS` (a single space when it is
+GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX`, with the
+check's environment and in the selected path, and the run records the first
+five values it printed under `go_env` (`GOFLAGS` redacted as in `goflags`);
+the others go only into the run's `env_key` ([run keys](#what-a-check-run-records)).
+The check then runs with that `GOFLAGS` (a single space when it is
 empty), `GOOS` and `GOARCH` at the end of its environment, where they win over
 a go env file, so a go env file changed after `cw` read it changes nothing;
 the test binaries see them too. The Go rule credits a `go test` run only by that record: the
@@ -552,6 +555,32 @@ command verifies, the facts are unavailable: verify lists the refusal, which
 names the candidate, as a limitation, asks for a `go test ./...` run, and still
 requires `-race`.
 
+### What a check run records
+
+Besides its log, exit code and the go command, each check run records two keys
+in its start revision:
+
+- `source_sha256`: the SHA-256 of the source manifest (path, mode and content
+  hash of each eligible file) when the run started, the same digest a verified
+  record stores as `verification.source_sha256`. Committing, staging or
+  switching branches over the same bytes leaves it unchanged. The task
+  directory keeps that manifest as `manifest-<source_sha256>.json`, written
+  once per digest. A worker result records the same member for the source it
+  was submitted at. When that manifest would exceed 8 MiB, the run or result
+  is recorded without `source_sha256` and no manifest is kept.
+- `env_key`: an HMAC-SHA256 of what the run's environment selects: for a go
+  check, every value its `go env` read printed; for any check, each variable
+  its `env_passthrough` names, set to its value or unset. Its key is a random
+  32-byte secret of the task, kept in the task directory as `run-key-secret`
+  (mode 0600) from the first run. No value is stored, and without that file a
+  printed `env_key` does not confirm a guessed value, even a weak password.
+  Within one task, two runs share a key exactly when those values are equal;
+  keys of different tasks are not comparable.
+
+Runs and results recorded before these members existed, or without them,
+lack them, so they are never reused. No rule reads the keys yet: they are the identity that reuse of a
+passed run will compare.
+
 ### Merging the base branch during a task
 
 A task's plan cannot change after `cw task start`. When the task merges its base
@@ -569,7 +598,16 @@ Checks can only be added this way, never removed, replaced or narrowed.
    not `git commit`. In a non-interactive shell (agents, CI) always use
    `GIT_EDITOR=true git merge --continue`, which keeps the prepared merge
    message; plain `git merge --continue` opens an editor, so use it only in an
-   interactive terminal.
+   interactive terminal. Where `cw gate install` has run, git's
+   `pre-merge-commit` hook lets a merge without conflicts through when every
+   commit it takes in is on a remote-tracking branch, as `origin/main` is after
+   `git fetch`. It stops any other merge while the record is unverified, such
+   as one of a local branch, and `pre-commit` stops `git merge --continue`
+   after conflicts ([git hooks](hooks.md#git-hooks)). When git stops a merge,
+   the agent stops and asks the user how to go on; without an answer it undoes
+   the merge with `git merge --abort`. The agent never sets `CW_GATE=off`
+   itself: letting a merge through that way, as in
+   `CW_GATE=off git merge --no-ff origin/main`, is the user's decision.
 3. Add the checks:
 
    ```sh
@@ -736,7 +774,12 @@ When they differ:
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
 request, otherwise the providers enabled in the [selected policy](#model-policy)
 that you opted in to and did not disable in your preferences, each only with its
-key present. It works
+key present. A task-bound request is sent only when the task's record holds
+its task context exactly as `cw task context` printed it, read from the task
+store the hook reads (`$CW_TASK_STORE`, else the state directory's
+`workflow-tasks`, [task store](hooks.md#task-store)), and the task was not
+abandoned; otherwise `cw consult` exits 1 and writes and sends nothing. For a
+task started with `--store DIR`, set `CW_TASK_STORE=DIR`. It works
 from any directory. With no adviser configured it writes a
 `no_advisers_configured` record without network access:
 
