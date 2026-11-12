@@ -34,7 +34,7 @@ const (
 	l4R15             = "test files changed, but the plan has no go test check whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag), so no test engineer can carry a contract; the plan cannot change: stop and ask the user how to proceed"
 	l4R17             = "a brief with a contract needs a go test check in the plan whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag); this task's plan has none"
 	l4R23             = "test authorship not judged: the selected path has no go.mod, so no file counts as a Go test file; a go.work workspace root is not supported"
-	l4NewTask         = "a cw build before v3.0.0-rc.1 wrote it, and this cw does not read such records; start a new task with 'cw task start'"
+	l4NewTask         = ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
 	l4CannotJudge     = "test authorship cannot be judged: "
 	l4SourceChanged   = "source changed during authorship; run it again"
 	l4CitationNoHold  = "finding %s of worker assignment %s cites it as a reproduction test, but the citation does not hold: a reproduction test is a new file whose current bytes the citation names, in an acceptance that lists a check"

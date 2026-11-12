@@ -301,8 +301,12 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if err := decodeBytes(data, &current); err != nil {
 			return Record{}, "", err
 		}
-		if err := requireStartMembers(current); err != nil {
-			return Record{}, "", err
+		// The start members are immutable, so revision 1 decides; a later
+		// revision that drops one fails the immutability check below.
+		if i == 0 {
+			if err := requireStartMembers(current); err != nil {
+				return Record{}, "", err
+			}
 		}
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
@@ -341,10 +345,27 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 	return record, previous, nil
 }
 
-// requireStartMembers refuses a record without the members cw task start has
-// always written since v3.0.0-rc.1: packs, test_rules and baseline_manifest.
-// Only pre-release builds wrote records without them, and this cw keeps no
-// rules for such records.
+// ErrLegacyRecord reports a task record without packs, test_rules or
+// baseline_manifest. cw v2.0.66 to v2.0.96 wrote version 3 records without
+// packs and test_rules (v2.0.66 also without baseline_manifest), and so did v3
+// builds before v3.0.0-rc.1. This cw keeps no rules for such records and
+// refuses to load them; FindOpen still lets one gate publication until its
+// task directory is moved out of the store.
+var ErrLegacyRecord = errors.New("task record predates v3.0.0-rc.1")
+
+// legacyRecordError is the refusal for a record without start members; it
+// matches ErrLegacyRecord.
+type legacyRecordError struct{ missing string }
+
+func (e legacyRecordError) Error() string {
+	return "task record has no " + e.missing + ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
+}
+
+func (e legacyRecordError) Is(target error) bool { return target == ErrLegacyRecord }
+
+// requireStartMembers refuses, with ErrLegacyRecord, a record without the
+// members cw task start has always written since v3.0.0-rc.1: packs,
+// test_rules and baseline_manifest.
 func requireStartMembers(record Record) error {
 	var missing []string
 	if record.Packs == nil {
@@ -363,7 +384,7 @@ func requireStartMembers(record Record) error {
 	if n := len(missing); n > 1 {
 		names = strings.Join(missing[:n-1], ", ") + " or " + missing[n-1]
 	}
-	return fmt.Errorf("task record has no %s; a cw build before v3.0.0-rc.1 wrote it, and this cw does not read such records; start a new task with 'cw task start'", names)
+	return legacyRecordError{missing: names}
 }
 
 func validateRecord(record Record) error {

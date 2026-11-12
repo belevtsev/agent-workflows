@@ -145,10 +145,14 @@ global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
 
-v2.x used the same state and configuration directories, and v3 reads what v2.x
-left in them: the task records in `<state>/workflow-tasks`, the saved adviser
-keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
-left behind can be removed by hand.
+v2.x used the same state and configuration directories. v3 reads the saved
+adviser keys (`credentials.json`) and `preferences.json` that v2.x left; keep
+those. It does not read the task records in `<state>/workflow-tasks` that
+v2.0.66 to v2.0.96 wrote, yet an open substantial one still gates commits and
+pushes in its repository until its directory is moved out of that store
+([which records gate](hooks.md#which-records-gate)). Before upgrading, finish
+each open v2 task with `cw task verify`, or move its directory out of the
+store. Anything else v2.x left behind can be removed by hand.
 
 ## Model policy
 

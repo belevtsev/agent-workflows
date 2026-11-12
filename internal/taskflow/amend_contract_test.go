@@ -1062,7 +1062,7 @@ func acTestEligibility(t *testing.T) {
 		}
 		acRewriteLatest(t, dir, func(rec *taskflow.Record) { rec.BaselineManifest = nil })
 		r.standard(t)
-		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "task record has no baseline_manifest; "+l4NewTask)
+		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "task record has no baseline_manifest"+l4NewTask)
 	})
 	t.Run("R2.f abandoned record refused (B0)", func(t *testing.T) {
 		t.Parallel()

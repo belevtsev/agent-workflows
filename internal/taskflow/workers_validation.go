@@ -124,7 +124,7 @@ func validateWorkerTransition(previous, current Record) error {
 	}
 	if len(current.Assignments) > len(previous.Assignments) {
 		assigned := current.Assignments[len(previous.Assignments)]
-		if current.BaselineManifest != nil && assigned.Brief.Role == "review" && assigned.BundleFile == "" {
+		if assigned.Brief.Role == "review" && assigned.BundleFile == "" {
 			return errors.New("stored review assignment lacks its reviewer bundle")
 		}
 		if assigned.Brief.Role == "implementation" {

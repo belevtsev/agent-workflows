@@ -105,6 +105,10 @@ type OpenRecord struct {
 	// source the command would publish; otherwise it says why the record
 	// gates.
 	Problem string
+	// Legacy reports a record that Load refuses with ErrLegacyRecord. Its
+	// Record holds only what the latest revision shows (legacyRecord), and
+	// neither verify nor abandon can close it: Problem names the way out.
+	Legacy bool
 }
 
 // Gates reports whether the record blocks publication.
@@ -134,10 +138,17 @@ func (o OpenRecord) Gates() bool { return o.Problem != "" }
 // abandoned or stale record, and two records started on the same bytes
 // before either was verified do not finish each other.
 //
+// A record that Load refuses with ErrLegacyRecord is judged the same way
+// from its latest revision, unvalidated, and returned with Legacy set, so a
+// record written by cw v2.0.66 to v2.0.96 keeps gating as it did under
+// v3.0.0-rc.1 until its directory is moved out of the store. One whose
+// verification passed without a source_sha256, which those releases never
+// recorded, is finished.
+//
 // A store that does not exist is empty. A task directory whose record does
-// not load, and a verified record whose current source identity cannot be
-// captured, are skipped: the hook that calls this fails open and must never
-// block on a damaged or unreadable record.
+// not load for another reason, and a verified record whose current source
+// identity cannot be captured, are skipped: the hook that calls this fails
+// open and must never block on a damaged or unreadable record.
 func FindOpen(ctx context.Context, store string, repo Repository, now time.Time, identify SourceIdentifier) ([]OpenRecord, error) {
 	if identify == nil {
 		return nil, errors.New("a source identifier is required")
@@ -182,7 +193,7 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 			}
 			successor, err := Load(directory)
 			if err == nil && successor.ID != record.ID && headOf(successor).governs(repo.Roots, now) &&
-				successor.BaselineManifest != nil && successor.BaselineManifest.SHA256 == verified &&
+				successor.BaselineManifest.SHA256 == verified &&
 				successor.CreatedAt.After(record.Verification.CheckedAt) {
 				return true
 			}
@@ -195,7 +206,16 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 			continue
 		}
 		record, err := Load(directory)
-		if err != nil || !headOf(record).governs(repo.Roots, now) {
+		legacy := errors.Is(err, ErrLegacyRecord)
+		switch {
+		case legacy:
+			record = peeked.legacyRecord(directory)
+			if v := record.Verification; v != nil && v.Complete && v.SourceSHA256 == "" {
+				// cw v2.0.66 to v2.0.96 recorded no source digest, and
+				// a passing verification was the end of its task.
+				continue
+			}
+		case err != nil || !headOf(record).governs(repo.Roots, now):
 			continue
 		}
 		problem, ok := verificationProblem(record, repo.Worktree, digestOf)
@@ -205,7 +225,10 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 		if problem != "" && verifiedDigest(record) && finished(record) {
 			continue
 		}
-		open = append(open, OpenRecord{Record: record, Problem: problem})
+		if legacy && problem != "" {
+			problem = legacyProblem(directory)
+		}
+		open = append(open, OpenRecord{Record: record, Problem: problem, Legacy: legacy})
 	}
 	slices.SortStableFunc(open, func(a, b OpenRecord) int {
 		if order := b.Record.UpdatedAt.Compare(a.Record.UpdatedAt); order != 0 {
@@ -260,14 +283,31 @@ type head struct {
 	// baseline is baseline_manifest.sha256, the digest of the source the
 	// record started from ("" for records without a manifest).
 	baseline string
+	// title, selectedPath and verification are read only by peekLatest, for
+	// a record this cw refuses to load (legacyRecord).
+	title        string
+	selectedPath string
+	verification *Verification
 }
 
 func headOf(record Record) head {
-	value := head{updatedAt: record.UpdatedAt, kind: record.Plan.Kind, root: record.Baseline.Root, abandoned: record.Abandonment != nil}
-	if record.BaselineManifest != nil {
-		value.baseline = record.BaselineManifest.SHA256
-	}
-	return value
+	return head{updatedAt: record.UpdatedAt, kind: record.Plan.Kind, root: record.Baseline.Root, abandoned: record.Abandonment != nil, baseline: record.BaselineManifest.SHA256}
+}
+
+// legacyRecord is what FindOpen knows of a record in directory that Load
+// refuses with ErrLegacyRecord: the members of its latest revision that
+// select and gate it, unvalidated. Its ID is the directory name, as Load
+// requires of every record.
+func (h head) legacyRecord(directory string) Record {
+	return Record{ID: filepath.Base(directory), Directory: directory, UpdatedAt: h.updatedAt,
+		Plan:     Plan{Title: h.title, Kind: h.kind},
+		Baseline: projectctx.Snapshot{Root: h.root, SelectedPath: h.selectedPath}, Verification: h.verification}
+}
+
+// legacyProblem is the gating problem of a record this cw cannot read: it
+// names the way out, since verify and abandon cannot load the record either.
+func legacyProblem(directory string) string {
+	return "this cw cannot read its record, which cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote; move " + directory + " out of the task store, then start a new task with `cw task start`"
 }
 
 // governs reports whether a record with this head governs publication for
@@ -281,14 +321,21 @@ func (h head) governs(roots []string, now time.Time) bool {
 type storedHead struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Plan      struct {
-		Kind string `json:"kind"`
+		Title string `json:"title"`
+		Kind  string `json:"kind"`
 	} `json:"plan"`
 	Baseline struct {
-		Root string `json:"root"`
+		Root         string `json:"root"`
+		SelectedPath string `json:"selected_path"`
 	} `json:"baseline"`
 	BaselineManifest *struct {
 		SHA256 string `json:"sha256"`
 	} `json:"baseline_manifest"`
+	Verification *struct {
+		Complete     bool      `json:"complete"`
+		SourceSHA256 string    `json:"source_sha256"`
+		CheckedAt    time.Time `json:"checked_at"`
+	} `json:"verification"`
 	Abandonment *struct{} `json:"abandonment"`
 }
 
@@ -317,9 +364,13 @@ func peekLatest(directory string) (head, bool) {
 	if err := json.UnmarshalRead(io.LimitReader(file, MaxInputBytes), &stored); err != nil {
 		return head{}, false
 	}
-	value := head{updatedAt: stored.UpdatedAt, kind: stored.Plan.Kind, root: stored.Baseline.Root, abandoned: stored.Abandonment != nil}
+	value := head{updatedAt: stored.UpdatedAt, kind: stored.Plan.Kind, root: stored.Baseline.Root, abandoned: stored.Abandonment != nil,
+		title: stored.Plan.Title, selectedPath: stored.Baseline.SelectedPath}
 	if stored.BaselineManifest != nil {
 		value.baseline = stored.BaselineManifest.SHA256
+	}
+	if v := stored.Verification; v != nil {
+		value.verification = &Verification{Complete: v.Complete, SourceSHA256: v.SourceSHA256, CheckedAt: v.CheckedAt}
 	}
 	return value, true
 }

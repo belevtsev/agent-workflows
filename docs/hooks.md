@@ -112,6 +112,14 @@ change. A record started over source that changed after A's last passing
 verification does not finish A, so starting a fresh record cannot hide
 unreviewed edits.
 
+A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
+v3.0.0-rc.1, has no `packs` or `test_rules`. `cw` refuses to read it, so
+neither `cw task verify` nor `cw task abandon` can close it, but it still gates
+by the rules above, judged from its latest revision. The deny reason names its
+directory: move that directory out of the task store, then start a new task
+with `cw task start`. Such a record that `cw` v2.0.96 verified as complete is
+finished and does not gate, since those releases recorded no source digest.
+
 ### Which source counts
 
 Only the content of the eligible source files counts: `cw task verify` records
@@ -210,7 +218,6 @@ push through today while the repository has an open substantial task, or lets
 | Git run outside Claude Code's Bash tool (Codex, a terminal, an editor), or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only Bash commands, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules` ([Which source counts](#which-source-counts)). |
-| A record from a `cw` build before v3.0.0-rc.1, without `packs`, `test_rules` or `baseline_manifest` | Allowed. This `cw` refuses to load such a record, so its hook skips it: start a new task with `cw task start`. |
 | An unreadable newest revision: `echo '{' > <task>/record-000002.json` | Allowed. A task whose record does not load is skipped, and a task directory whose newest revision does not decode is ignored. Removing the file restores the deny. |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
 | `cw task abandon --task <task> --reason TEXT` | Allowed. An abandoned task never gates, and the deny text names this command as a way out. |

@@ -444,7 +444,9 @@ recorded.
 every new record. A `cw` built before this rule cannot load such a record (its
 commit and push hook skips it), so finish a task with the `cw` that started it.
 `cw` refuses a record without `test_rules`, `packs` or `baseline_manifest`,
-which only builds before v3.0.0-rc.1 wrote: start a new task. The test rules:
+as `cw` v2.0.66 to v2.0.96 and builds before v3.0.0-rc.1 wrote; an open one
+still gates until its directory is moved out of the task store: move it, then
+start a new task. The test rules:
 
 - **Proven PASS (a mitigation).** Each run's results also count the `run` events
   and the output lines beginning with byte 0x16 of each test. A mapped test is

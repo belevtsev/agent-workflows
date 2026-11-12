@@ -166,8 +166,9 @@ assignment is closed; these commands do not stop the runtime process.
 ## Test rules and test authorship
 
 `cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
-record; `cw` refuses a record without it (one from a build before
-v3.0.0-rc.1): start a new task. A record whose plan `kind` is `substantial` is *gated*:
+record; `cw` refuses a record without it (one from `cw` v2.0.66 to v2.0.96 or
+a build before v3.0.0-rc.1): move its directory out of the task store and start
+a new task. A record whose plan `kind` is `substantial` is *gated*:
 `verify` and `assign` apply the rules below to it.
 
 - **A contract needs a provable plan.** In a gated record, `assign` refuses a

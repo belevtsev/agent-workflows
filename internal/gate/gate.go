@@ -168,6 +168,11 @@ func denyReason(gating []taskflow.OpenRecord) string {
 	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
 	for _, open := range gating {
 		record := open.Record
+		if open.Legacy {
+			// Verify and abandon cannot load it; the problem names the way out.
+			fmt.Fprintf(&reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
+			continue
+		}
 		fmt.Fprintf(&reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
 	}
 	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")

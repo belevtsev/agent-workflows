@@ -97,9 +97,9 @@ func TestStartRecordsTestRules(t *testing.T) {
 }
 
 // TestLoadChecksTestRules fails when a stored test_rules that is invalid in
-// revision 1, absent from a revision, or changed in a later revision loads,
-// or fails with another message than R2 or the start-member refusal gives, or
-// when a rewritten but unchanged chain does not load (R2).
+// revision 1, absent from revision 1, or changed or removed in a later
+// revision loads, or fails with another message than R2 or the start-member
+// refusal gives, or when a rewritten but unchanged chain does not load (R2).
 func TestLoadChecksTestRules(t *testing.T) {
 	t.Parallel()
 	set := func(v any) func(int, map[string]any) {
@@ -112,17 +112,17 @@ func TestLoadChecksTestRules(t *testing.T) {
 	}{
 		{"unchanged chain loads", func(int, map[string]any) {}, ""},
 		{"invalid value in every revision", set("go.test-evidence/v2"), l4InvalidRules},
-		{"test rules without a baseline manifest", func(_ int, doc map[string]any) { delete(doc, "baseline_manifest") }, "task record has no baseline_manifest; " + l4NewTask},
+		{"test rules without a baseline manifest", func(_ int, doc map[string]any) { delete(doc, "baseline_manifest") }, "task record has no baseline_manifest" + l4NewTask},
 		{"absent from revision 1, added later", func(rev int, doc map[string]any) {
 			if rev == 1 {
 				delete(doc, "test_rules")
 			}
-		}, "task record has no test_rules; " + l4NewTask},
+		}, "task record has no test_rules" + l4NewTask},
 		{"removed in a later revision", func(rev int, doc map[string]any) {
 			if rev >= 2 {
 				delete(doc, "test_rules")
 			}
-		}, "task record has no test_rules; " + l4NewTask},
+		}, l4Immutable},
 		{"changed to an invalid value in a later revision", func(rev int, doc map[string]any) {
 			if rev >= 2 {
 				doc["test_rules"] = "bogus"

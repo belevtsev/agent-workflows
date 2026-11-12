@@ -223,6 +223,7 @@ func (r *run) openRecords(ctx context.Context) *failure {
 	}
 	now := time.Now()
 	seen := map[string]bool{r.record.ID: true}
+	legacy := false
 	for _, store := range stores {
 		open, err := taskflow.FindOpen(ctx, store, repo, now, taskflow.SourceDigest)
 		if err != nil {
@@ -236,13 +237,17 @@ func (r *run) openRecords(ctx context.Context) *failure {
 				continue
 			}
 			seen[record.Record.ID] = true
+			legacy = legacy || record.Legacy
 			r.rep.OpenRecords = append(r.rep.OpenRecords, OpenRecord{TaskID: record.Record.ID, Title: record.Record.Plan.Title, Directory: record.Record.Directory, Problem: record.Problem})
 		}
 	}
 	if interrupted(ctx) {
 		return failf("cancelled", "interrupted while reading task records")
 	}
-	if len(r.rep.OpenRecords) > 0 {
+	switch {
+	case legacy:
+		return failf("open-record", "another open task record gates this repository; verify or abandon it, or move a record this cw cannot read out of the task store, as its problem says")
+	case len(r.rep.OpenRecords) > 0:
 		return failf("open-record", "another open task record gates this repository; verify or abandon it first")
 	}
 	return nil

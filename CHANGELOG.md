@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking
 
-- `cw` refuses a task record without `packs`, `test_rules` or `baseline_manifest`, which only builds before
-  v3.0.0-rc.1 wrote, and its hook skips one: start a new task with `cw task start` ([known bypasses](docs/hooks.md#known-bypasses)).
+- `cw` refuses task records from cw v2.0.66 to v2.0.96 (no `packs` or `test_rules`), and an open one gates until moved:
+  finish open v2 tasks before upgrading, or move them out of the task store ([which records gate](docs/hooks.md#which-records-gate)).
 
 ### Changed
 

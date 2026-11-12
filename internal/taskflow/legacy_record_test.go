@@ -137,7 +137,7 @@ func TestUnsupportedTaskRecordVersionsAreRefusedWithoutWrites(t *testing.T) {
 // record without the members cw task start writes; names lists the missing
 // members in record order (packs, test_rules, baseline_manifest).
 func missingStartMembersMessage(names string) string {
-	return "task record has no " + names + "; a cw build before v3.0.0-rc.1 wrote it, and this cw does not read such records; start a new task with 'cw task start'"
+	return "task record has no " + names + ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
 }
 
 // startMembersTask builds a native chain on the current start path whose plan
@@ -204,14 +204,16 @@ func startMembersTask(t *testing.T, drop []string, rewrite func(revision, last i
 	return record, ref
 }
 
-// OD-5: a stored version 3 record without packs, test_rules or
-// baseline_manifest, whichever revision lacks it, is refused with the message
-// naming the missing members and telling the user to start a new task, for
-// read and mutating operations alike, and nothing is written or run (oracle:
-// the exact message, unchanged task files, no lock and no probe marker).
+// OD-5: a stored version 3 record whose revision 1 lacks packs, test_rules or
+// baseline_manifest is refused with the message naming the missing members
+// and telling the user to move the task and start a new one, for read and
+// mutating operations alike, and nothing is written or run (oracle: the
+// exact message, an error matching ErrLegacyRecord, unchanged task files, no
+// lock and no probe marker). A later revision that drops a member is caught
+// by the immutability check instead (l4_rules_test.go).
 func TestRecordsWithoutStartMembersAreRefusedWithoutWrites(t *testing.T) {
 	every := func(int, int) bool { return true }
-	last := func(revision, last int) bool { return revision == last }
+	first := func(revision, _ int) bool { return revision == 1 }
 	for _, variant := range []struct {
 		name    string
 		drop    []string
@@ -223,11 +225,14 @@ func TestRecordsWithoutStartMembersAreRefusedWithoutWrites(t *testing.T) {
 		{"no_baseline_manifest", []string{"baseline_manifest"}, every, "baseline_manifest"},
 		{"no_packs_or_test_rules", []string{"packs", "test_rules"}, every, "packs or test_rules"},
 		{"none_of_the_three", []string{"packs", "test_rules", "baseline_manifest"}, every, "packs, test_rules or baseline_manifest"},
-		{"last_revision_without_test_rules", []string{"test_rules"}, last, "test_rules"},
+		{"first_revision_without_test_rules", []string{"test_rules"}, first, "test_rules"},
 	} {
 		t.Run(variant.name, func(t *testing.T) {
 			marker := filepath.Join(t.TempDir(), "probe-must-not-run")
 			record, ref := startMembersTask(t, variant.drop, variant.rewrite, marker)
+			if _, err := Load(record.Directory); !errors.Is(err, ErrLegacyRecord) {
+				t.Errorf("Load error %v does not match ErrLegacyRecord", err)
+			}
 			requireRefusedWithoutWrites(t, record, ref, marker, missingStartMembersMessage(variant.names))
 		})
 	}
