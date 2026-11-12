@@ -407,7 +407,7 @@ binds <IDs>; ` followed by:
 
 With an empty binding, verify reports that no advisers were configured when the
 task started, so decisions rest on source evidence and checks only. This release
-reads task record versions 3 and 4 and consultation record version 4 only; task
+reads task record versions 3 to 5 and consultation record version 4 only; task
 records and consultation records from earlier releases do not load, so restart such
 a task with `cw task start`. A task record from a newer `cw` does not load either:
 upgrade `cw`.

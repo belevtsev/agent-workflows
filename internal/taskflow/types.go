@@ -27,7 +27,7 @@ import (
 // with Version, so a record started by an older cw takes this version at its
 // next revision.
 const (
-	Version    = 4
+	Version    = 5
 	MinVersion = 3
 )
 
@@ -176,10 +176,12 @@ type CheckRun struct {
 	OutputBytes  int64                `json:"output_bytes"`
 	Truncated    bool                 `json:"truncated"`
 	Failure      string               `json:"failure,omitempty"`
-	// GOFLAGS is the GOFLAGS of the check's environment, recorded for the Go
-	// evidence rule with compiler and linker flag values redacted
-	// (langpack.RedactGOFLAGS); runs recorded before it existed omit it.
-	// Argv, unlike GOFLAGS, is stored verbatim.
+	// GOFLAGS is the GOFLAGS that cw's environment gave the check, before
+	// checkSpec pinned GoEnv's into it, with compiler and linker flag values
+	// redacted (langpack.RedactGOFLAGS); runs recorded before it existed omit
+	// it. The Go evidence rule reads GoEnv's instead; rerun also compares it
+	// with a failed run recorded without GoEnv. Argv, unlike GOFLAGS, is
+	// stored verbatim.
 	GOFLAGS string `json:"goflags,omitempty"`
 	// TestResults names the private file in the task directory holding the
 	// per-test results read from the run's complete output; TestResultsSHA256
@@ -191,6 +193,12 @@ type CheckRun struct {
 	// (checkSpec). It is absent for other programs, for a run refused with
 	// failure untrusted_toolchain, and for runs recorded before cw verified go.
 	Tool *langpack.GoTool `json:"tool,omitempty"`
+	// GoEnv is what Tool reported with go env, under the check's environment
+	// and in its directory, just before the check ran (checkSpec): the GOFLAGS
+	// it applied, redacted, and its target and host platforms. The Go evidence
+	// rule credits only a run that has it (evidenceRun). It is absent when Tool
+	// is, and for runs recorded before cw read it (record version 4).
+	GoEnv *langpack.GoEnv `json:"go_env,omitempty"`
 }
 
 type Attachment struct {

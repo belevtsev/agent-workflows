@@ -189,7 +189,8 @@ anything on its own. See the
 [publication reference](skills/task-orchestration/references/github-worker.md).
 
 When a task applies the `go` pack, verify also needs passed direct `go test`
-runs, with allowlisted flags only (no `-run` or `-skip`): one with `-race`
+runs for the host's `GOOS`/`GOARCH`, with allowlisted flags only (no `-run`
+or `-skip`, in argv or in the `GOFLAGS` that `go env` reports): one with `-race`
 covering each changed package (a plain run, with a recorded limitation,
 where `-race` cannot run on the host), one covering each package whose tests
 link a changed package, and `go test ./...` after a change to module or

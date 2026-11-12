@@ -171,10 +171,13 @@ func effectiveFlags(run Run) (raced, verbose bool) {
 	return values["race"], values["v"] || values["json"]
 }
 
-// limitations returns a passed run's limitations: the rerun line for a rerun,
-// and the skipped-test lines of a clean run.
+// limitations returns a passed run's limitations: why credit is withheld
+// from a run that its argv and GOFLAGS would credit, the rerun line for a
+// rerun, and the skipped-test lines of a clean run.
 func (run goRun) limitations() []string {
 	switch {
+	case run.Withheld != "" && credited(Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}) != nil:
+		return []string{fmt.Sprintf("check %s passed, but earns no Go evidence credit: %s", run.CheckID, run.Withheld)}
 	case run.patterns == nil:
 		return nil
 	case run.Rerun:
