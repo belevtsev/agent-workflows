@@ -105,6 +105,8 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
   `SECRET`, `PASSWORD` or `CREDENTIAL`; `cw task verify` lists each as a limitation ([check environment](docs/operations.md#what-a-check-runs-with)).
 - `cw gate install`, `uninstall` and `status` write, remove and report a repository's git pre-commit and pre-push hooks that run that gate;
   they never change a hook cw did not write, or a hooks directory other repositories use without `--shared` ([installing](docs/hooks.md#installing-the-git-hooks)).
+- The session-start context gains one line when the plugin and `cw` versions differ, naming the one to update, and one
+  when Claude Code is older than 2.1.292; a `cw` built between tags is not compared ([session start](docs/hooks.md#session-start)).
 
 ### Changed
 

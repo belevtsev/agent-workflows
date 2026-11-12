@@ -331,9 +331,9 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
 4. Verify the release: download one darwin and one linux archive and check
    them against `SHA256SUMS`; run `cw version` and confirm the tag, commit and
    date; run `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@vX`
-   with a clean module cache; install the plugin on a clean profile and start
-   a session (once the session-start hook compares the plugin and `cw`
-   versions, confirm it reports no mismatch).
+   with a clean module cache; install the plugin on a clean profile, start
+   a session and confirm its context has no `plugin X, cw Y` line
+   ([session start](hooks.md#session-start)).
 5. Edit the GitHub release notes: three sentences on what changed, the
    Breaking list, the upgrade steps, and known limitations with a link to the
    [threat model](../SECURITY.md#threat-model).

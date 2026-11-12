@@ -107,7 +107,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	var instructions, cache string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
-		Short: "SessionStart hook: emit the instructions file, plus a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
+		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
@@ -292,14 +292,18 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 	return filepath.Join(state, "workflow-tasks"), nil
 }
 
-// sessionStartContext returns the instructions file, followed by the doctor
-// summary when the plugin option asks for it and it can be produced in time.
+// sessionStartContext returns the instructions file, followed by any version
+// notes and by the doctor summary when the plugin option asks for it and it
+// can be produced in time.
 func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string) (string, bool) {
 	data, err := os.ReadFile(instructions)
 	if err != nil || len(bytes.TrimSpace(data)) == 0 {
 		return "", false
 	}
 	text := strings.TrimRight(string(data), "\n")
+	if notes := versionNotes(config, instructions); notes != "" {
+		text += "\n\n" + notes
+	}
 	if config.Getenv(sessionDoctorOption) != "true" {
 		return text, true
 	}
