@@ -48,6 +48,11 @@ const (
 	gitProbeWaitDelay = 10 * time.Second
 )
 
+// DirtyComparisonWarning is the fixed caveat that every Git snapshot's
+// warnings carry, clean or dirty. A caller that drops it compares against
+// this value, so rewording it here changes no caller.
+const DirtyComparisonWarning = "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty"
+
 // gitProbeAborted is a Git inspection command that did not finish cleanly:
 // it ran past its budget, was killed by a signal, was stopped by the caller,
 // or could not be run or waited for. Unlike Git exiting with a failure it
@@ -318,7 +323,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 			got.paths = append(got.paths, path)
 			got.snapshot.Dirty = true
 		}
-		got.warnings = append(got.warnings, "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty")
+		got.warnings = append(got.warnings, DirtyComparisonWarning)
 	} else {
 		if ctx.Err() != nil {
 			return captured{}, ctx.Err()
