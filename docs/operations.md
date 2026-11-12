@@ -136,6 +136,13 @@ Global flags apply to every command:
 | State | `--state-dir`, else `$XDG_STATE_HOME/agent-workflows`, else `~/.local/state/agent-workflows` |
 | Configuration | `--config-dir`, else `$XDG_CONFIG_HOME/agent-workflows`, else `~/.config/agent-workflows` |
 
+`$XDG_STATE_HOME` and `$XDG_CONFIG_HOME` must be absolute paths, as the XDG
+Base Directory specification requires. A command that needs the state or the
+configuration directory refuses a relative value with exit status 1, rather
+than resolve it against the working directory and move the task store with
+every `cd`. A relative `--state-dir` or `--home` resolves against the working
+directory; `--config-dir` must be absolute.
+
 The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
 saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the

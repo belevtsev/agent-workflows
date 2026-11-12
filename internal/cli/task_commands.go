@@ -112,7 +112,11 @@ func addTaskCommands(root *cobra.Command, config Config) {
 			if err != nil {
 				return err
 			}
-			chosenStore = filepath.Join(roots.state, "workflow-tasks")
+			state, err := roots.stateDir()
+			if err != nil {
+				return err
+			}
+			chosenStore = filepath.Join(state, "workflow-tasks")
 		}
 		record, err := taskflow.StartWithPacks(cmd.Context(), selected, chosenStore, plan, advisers, packSelection, packs)
 		if err != nil {

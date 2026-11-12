@@ -179,7 +179,9 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
   a failed source capture, a missing `git`, a git command that fails or times
-  out. Damaged records are skipped rather than reported.
+  out, or a relative `$XDG_STATE_HOME` without `$CW_TASK_STORE`, which names
+  no store ([paths](operations.md#paths)). Damaged records are skipped rather
+  than reported.
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record

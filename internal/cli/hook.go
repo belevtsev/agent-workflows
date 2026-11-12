@@ -166,7 +166,11 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(roots.state, "workflow-tasks"), nil
+	state, err := roots.stateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(state, "workflow-tasks"), nil
 }
 
 // sessionStartContext returns the instructions file, followed by the doctor
