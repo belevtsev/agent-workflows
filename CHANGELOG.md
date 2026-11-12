@@ -25,6 +25,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Worker agents can no longer dispatch subagents or run workflows, and the README states the minimum Claude Code version:
   2.1.292, for per-dispatch `effort`; below 2.1.271 `omitClaudeMd` is also ignored silently ([agents](docs/agents.md)).
 
+### Fixed
+
+- A relative `XDG_STATE_HOME` is refused with exit status 1, and the commit hook asks, instead of joining it to the working
+  directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking

@@ -140,9 +140,23 @@ type versionReport struct {
 	Version  string `json:"version"`
 }
 
+// errRelativeStateHome is the state root's error for a relative
+// XDG_STATE_HOME. The pre-publish hook asks on it rather than allow.
+var errRelativeStateHome = errors.New("XDG_STATE_HOME must be an absolute path")
+
 // directories are the roots cw reads and writes, after flags and the
-// environment are applied.
-type directories struct{ home, codex, claude, state string }
+// environment are applied. Read the state root through stateDir.
+type directories struct {
+	home, codex, claude string
+	state               string
+	// stateErr is why there is no state root: a relative XDG_STATE_HOME.
+	stateErr error
+}
+
+// stateDir returns the state root, or why there is none. Only commands that
+// read or write state fail on it, as userconfig.Dir refuses a relative
+// XDG_CONFIG_HOME only where the configuration directory is needed.
+func (dirs directories) stateDir() (string, error) { return dirs.state, dirs.stateErr }
 
 // resolveRoots applies --home, --codex-home, --claude-home and --state-dir,
 // then CODEX_HOME, CLAUDE_CONFIG_DIR and XDG_STATE_HOME, then the defaults
@@ -157,18 +171,30 @@ func resolveRoots(root *cobra.Command, config Config) (directories, error) {
 			return directories{}, errors.New("resolve home directory")
 		}
 	}
-	state := flag("state-dir")
-	if state == "" {
-		base := cmp.Or(config.Getenv("XDG_STATE_HOME"), filepath.Join(home, ".local", "state"))
-		state = filepath.Join(base, "agent-workflows")
-	}
 	dirs := directories{
 		home:   home,
 		codex:  cmp.Or(flag("codex-home"), config.Getenv("CODEX_HOME"), filepath.Join(home, ".codex")),
 		claude: cmp.Or(flag("claude-home"), config.Getenv("CLAUDE_CONFIG_DIR"), filepath.Join(home, ".claude")),
-		state:  state,
+		state:  flag("state-dir"),
 	}
-	for _, path := range []*string{&dirs.home, &dirs.codex, &dirs.claude, &dirs.state} {
+	if dirs.state == "" {
+		// The XDG Base Directory specification makes a relative path
+		// invalid. Refuse it rather than join it to the working directory,
+		// which would move the task store, and the gate with it, on every cd.
+		switch xdg := config.Getenv("XDG_STATE_HOME"); {
+		case xdg == "":
+			dirs.state = filepath.Join(home, ".local", "state", "agent-workflows")
+		case filepath.IsAbs(xdg):
+			dirs.state = filepath.Join(xdg, "agent-workflows")
+		default:
+			dirs.stateErr = errRelativeStateHome
+		}
+	}
+	roots := []*string{&dirs.home, &dirs.codex, &dirs.claude}
+	if dirs.stateErr == nil {
+		roots = append(roots, &dirs.state)
+	}
+	for _, path := range roots {
 		var err error
 		if *path, err = absolute(config, *path); err != nil {
 			return directories{}, err
