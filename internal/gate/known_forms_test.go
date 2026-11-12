@@ -183,6 +183,18 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"cd to an unquoted $PWD that holds a space", "{S}", "cd $PWD && git push", gate.Ask},
 		{"git -C another variable", "{R}", "git -C $OTHER push", gate.Ask},
 		{"env -C another variable", "{R}", "env -C $OTHER git commit -m x", gate.Ask},
+
+		// Directory changes the gate does not follow, OLDPWD and the
+		// directory stack among them: as above, checked in {R} and asked.
+		{"cd -", "{R}", "cd - && git commit -m x", gate.Ask},
+		{"cd -P", "{R}", "cd -P {O} && git commit -m x", gate.Ask},
+		{"cd --", "{R}", "cd -- {O} && git push", gate.Ask},
+		{"cd to an empty word", "{R}", `cd "" ; git push`, gate.Ask},
+		{"popd", "{R}", "popd && git push", gate.Ask},
+		{"pushd -n", "{R}", "pushd -n {O} && git push", gate.Ask},
+		{"pushd without a directory", "{R}", "pushd && git push", gate.Ask},
+		// A bare cd moves to HOME, which the gate follows.
+		{"a bare cd, then a relative cd", "{O}", "cd && cd {N} && git push", gate.Deny},
 	}
 	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere, "{N}", filepath.Base(repo))
 	for _, row := range rows {

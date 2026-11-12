@@ -326,11 +326,11 @@ func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
 	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {record("task-8", "Open", "it has no passing cw task verify")}, other: {damaged}}}
 	command := `cd "$OTHER" && git commit -m x`
 
-	// Oracle: an ask naming the argument as written and the session's
-	// repository the gate checked instead, with each gating record as the
-	// deny names it. It is not a record the host cannot read, so a host that
-	// cannot ask must not run it: it is not ProceedWithoutAsk.
-	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot resolve the directory \"$OTHER\" that this command moves to, " +
+	// Oracle: an ask naming the directory change as written and the
+	// session's repository the gate checked instead, with each gating record
+	// as the deny names it. It is not a record the host cannot read, so a
+	// host that cannot ask must not run it: it is not ProceedWithoutAsk.
+	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot tell which directory `cd \"$OTHER\"` leads to, " +
 		"so it checked the session's repository " + repo + " instead, where a task is open: " +
 		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`, " +
 		"or close it with `cw task abandon --task /store/task-8 --reason TEXT` if it is finished or was given up. " +

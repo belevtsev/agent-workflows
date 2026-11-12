@@ -95,8 +95,8 @@ type Decision struct {
 
 // Decide returns the decision for in. A deny for any publication in the
 // command wins over an ask for another. A record that gates only
-// publications after a directory the gate cannot resolve asks instead of
-// denying.
+// publications after a directory change the gate cannot follow asks
+// instead of denying.
 func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	if !in.Enforce && !in.Prompt {
 		return Decision{}
@@ -239,11 +239,11 @@ func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 }
 
 // unresolvedReason explains the ask for a publication after the directory
-// argument unresolved, which the gate could not resolve: it checked the
-// session directory's repository repo instead, where gating records gate.
+// change unresolved, which the gate could not follow: it checked the session
+// directory's repository repo instead, where gating records gate.
 func unresolvedReason(unresolved, repo string, gating []taskflow.OpenRecord) string {
 	var reason strings.Builder
-	fmt.Fprintf(&reason, "agent-workflows: the commit and push gate cannot resolve the directory %s that this command moves to, so it checked the session's repository %s instead, where a task is open:", unresolved, repo)
+	fmt.Fprintf(&reason, "agent-workflows: the commit and push gate cannot tell which directory `%s` leads to, so it checked the session's repository %s instead, where a task is open:", unresolved, repo)
 	writeGating(&reason, gating)
 	fmt.Fprintf(&reason, " Confirm only if the git commit or push does not run in %s.", repo)
 	return reason.String()

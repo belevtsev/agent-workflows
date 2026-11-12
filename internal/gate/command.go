@@ -41,9 +41,9 @@ type publication struct {
 	// all is a commit with -a or --all, which also commits modified tracked
 	// files that are not staged.
 	all bool
-	// unresolved marks a publication that runs after a cd or -C argument the
-	// gate could not resolve, such as `$OTHER`, and names it as written; dir
-	// is then the session's directory, checked in its place.
+	// unresolved marks a publication that runs after a directory change the
+	// gate could not follow, such as `cd $OTHER` or `cd -`, and names it as
+	// written; dir is then the session's directory, checked in its place.
 	unresolved string
 }
 
@@ -418,6 +418,15 @@ func literalWords(words []string) []shellwords.Word {
 		literal[i] = shellwords.Word{Text: word, Raw: word}
 	}
 	return literal
+}
+
+// wordRaws returns the Raw of each word.
+func wordRaws(words []shellwords.Word) []string {
+	raws := make([]string, len(words))
+	for i, word := range words {
+		raws[i] = word.Raw
+	}
+	return raws
 }
 
 // wordTexts returns the Text of each word.

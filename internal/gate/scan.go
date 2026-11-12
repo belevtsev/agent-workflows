@@ -38,13 +38,12 @@ func gitPublications(command, cwd, home string) []publication {
 // a `$(...)` or backtick substitution is read on its own, from the directory
 // in effect where it appears, and so is the command string of `sh -c '...'`
 // and the words of `eval "..."`. A directory change inside parentheses, a
-// substitution or `sh -c` ends with them, as in a subshell. After a DIR the
-// hook cannot resolve, such as `$OTHER`, later git commands run in the
-// session's directory, cwd, marked unresolved, until an absolute `cd` or -C.
-// After a directory change the hook does not follow at all (`cd` with
-// options, `cd -`, `popd`), the directory is unknown and later git commands
-// are not checked until an absolute `cd` or -C. Redirections are not words,
-// so `cd DIR >/dev/null 2>&1` moves to DIR, and `"$(pwd)"` or
+// substitution or `sh -c` ends with them, as in a subshell. A bare `cd` moves
+// to home. After a directory change the hook cannot follow, a DIR it cannot
+// resolve, such as `$OTHER`, or `cd` with options, `cd -`, pushd without a
+// DIR or `popd`, later git commands run in the session's directory, cwd,
+// marked unresolved, until an absolute `cd` or -C. Redirections are not
+// words, so `cd DIR >/dev/null 2>&1` moves to DIR, and `"$(pwd)"` or
 // `"$(git rev-parse --show-toplevel)"` stays in the same repository.
 //
 // The reading is certain when shellwords.Split is certain at every level and
@@ -91,15 +90,16 @@ type wordScanner struct {
 	found   []publication
 	certain bool
 	// session is the directory the command line starts in; a publication
-	// after a directory the scanner cannot resolve is checked there.
+	// after a directory change the scanner cannot follow is checked there.
 	session string
 	vars    expansion
 }
 
 // place is the directory a command runs in as the scanner follows it. When
-// dir is "" the scanner cannot tell: unresolved then names the cd or -C
-// argument it could not resolve, or is "" after a directory change it does
-// not follow at all.
+// dir is "" the scanner cannot tell: unresolved then names the directory
+// change it could not follow, as written, such as `cd $OTHER`, `cd -` or the
+// `$OTHER` of `git -C $OTHER`; it is "" only when the session's directory is
+// unknown too.
 type place struct {
 	dir        string
 	unresolved string
@@ -142,14 +142,21 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int) place {
 		s.certain = false
 	}
 	if len(words) > 0 && (words[0].Text == "cd" || words[0].Text == "pushd" || words[0].Text == "popd") {
-		if len(words) != 2 || words[0].Text == "popd" || strings.HasPrefix(words[1].Text, "-") {
-			return place{} // options, `cd -`, popd: not followed
+		change := strings.Join(wordRaws(words), " ")
+		switch {
+		case len(words) == 1 && words[0].Text == "cd" && !slices.ContainsFunc(all, func(word shellwords.Word) bool { return word.Text == "" }):
+			// A bare cd moves to HOME; `cd ""` does not.
+			return s.move(at, shellwords.Word{Text: "~", Raw: "~"}, change)
+		case len(words) != 2 || words[0].Text == "popd" || strings.HasPrefix(words[1].Text, "-"):
+			// Options, `cd -`, `cd ""`, pushd without a directory, popd:
+			// the directory stack and OLDPWD are not followed.
+			return place{unresolved: change}
 		}
-		return s.move(at, words[1])
+		return s.move(at, words[1], change)
 	}
 	runs := at
 	for _, chdir := range chdirs {
-		runs = s.move(runs, chdir)
+		runs = s.move(runs, chdir, chdir.Raw)
 	}
 	if run != nil {
 		if strings.ContainsAny(run.text, "$`") {
@@ -174,28 +181,28 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int) place {
 		return at
 	}
 	for _, move := range moves {
-		runs = s.move(runs, words[move])
+		runs = s.move(runs, words[move], words[move].Raw)
 	}
 	s.add(runs, publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])})
 	return at
 }
 
 // move returns the directory a cd, pushd or -C argument moves to from at. An
-// argument expandDir cannot resolve leaves the directory unknown and names
-// the argument as written.
-func (s *wordScanner) move(at place, word shellwords.Word) place {
+// argument expandDir cannot resolve leaves the directory unknown, named by
+// change: the directory change as written.
+func (s *wordScanner) move(at place, word shellwords.Word, change string) place {
 	dir, ok := expandDir(word, at.dir, s.vars)
 	switch {
 	case !ok:
-		return place{unresolved: word.Raw}
+		return place{unresolved: change}
 	case dir == "":
 		return at // relative to an unknown directory
 	}
 	return place{dir: dir}
 }
 
-// add records next as run at: in its directory, or, after an argument the
-// scanner could not resolve, in the session's directory, marked unresolved.
+// add records next as run at: in its directory, or, after a directory change
+// the scanner could not follow, in the session's directory, marked unresolved.
 func (s *wordScanner) add(at place, next publication) {
 	next.dir = at.dir
 	if next.dir == "" && at.unresolved != "" {

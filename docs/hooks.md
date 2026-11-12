@@ -104,21 +104,22 @@ ends with them, as in a subshell; redirections on a `cd` are ignored, and
 the same repository. `DIR` may start with `~` or `~/`, `$HOME`, `${HOME}`,
 `$PWD` or `${PWD}`, unquoted or in double quotes: `~` and `$HOME` are the
 hook's `HOME`, which the agent's shell shares, and `$PWD` is the directory in
-effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed.
+effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed,
+and a bare `cd` moves to `HOME`.
 
-After a `DIR` the hook cannot resolve, such as `cd $OTHER`, `cd '$HOME'`,
-`cd ~user`, a glob, `~` or `$HOME` in a command that also names `HOME` (as
+The hook never skips a git command after a directory change it cannot
+follow. Such changes are `cd` with options, `cd -`, `cd ""`, `pushd`
+without a directory, `popd`, and a `DIR` the hook cannot resolve. A `DIR`
+cannot be resolved when it is another variable (`cd $OTHER`), `'$HOME'` or
+`~user`, a glob, `~` or `$HOME` in a command that also names `HOME` (as
 `HOME=/x` or `export HOME` do), or an unquoted `$HOME` or `$PWD` the shell
-may split (a value with a blank, or a command that names `IFS`), later git
-commands are checked against the session's working directory until an
-absolute `cd` or `-C`. A record that gates them there asks instead of
-denying, naming the directory
-([Asking instead of denying](#asking-instead-of-denying)). The hook fails
-open after a directory change it does not follow at all: after `cd` with
-options, `cd -` or `popd`, later git commands are not checked until an
-absolute `cd` or `-C`. A script or program that runs git itself
-(`./release.sh`, `make publish`) is not seen, because the command text does
-not name git.
+may split (a value with a blank, or a command that names `IFS`). After such
+a change, later git commands are checked against the session's working
+directory until an absolute `cd` or `-C`, and a record that gates them there
+asks instead of denying, naming the change
+([Asking instead of denying](#asking-instead-of-denying)). A script or
+program that runs git itself (`./release.sh`, `make publish`) is not seen,
+because the command text does not name git.
 
 ### Which records gate
 
@@ -230,11 +231,11 @@ three ([Codex](#codex)).
   directory, in any letter case. The reason suggests
   `cw task start`. Set the plugin option `small_task_prompt` to `false`
   (`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) to turn this prompt off.
-- A commit or push after a directory the hook cannot resolve, such as
-  `cd $OTHER && git commit`, when a record gates the session's working
-  directory, where the hook checks it instead
-  ([Recognised commands](#recognised-commands)). The reason names the
-  directory as written and each gating record.
+- A commit or push after a directory change the hook cannot follow, such as
+  `cd $OTHER && git commit`, `cd - && git commit` or `popd && git push`,
+  when a record gates the session's working directory, where the hook checks
+  it instead ([Recognised commands](#recognised-commands)). The reason names
+  the change as written and each gating record.
 - A commit or push from a repository where no readable record gates, but a
   record that governs it cannot be read
   ([Records that cannot be read](#records-that-cannot-be-read)). The gate
@@ -312,7 +313,6 @@ push through today while the repository has an open substantial task, or lets
 
 | Way around the gate | What happens today |
 | --- | --- |
-| `cd - && git commit -am x`, `popd && git commit -am x`, `cd -P DIR && git commit -am x` and other `cd` options | Allowed. After a directory change the hook does not follow, the git command is not checked ([Recognised commands](#recognised-commands)). |
 | `cd ~/proj; git commit -am x` where `~/proj` does not exist, and any other `cd` to a missing directory followed by `;` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. |
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
