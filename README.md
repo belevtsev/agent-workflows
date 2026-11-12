@@ -5,7 +5,7 @@ to a reviewed, tested and verified commit.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/belevtsev/agent-workflows/ci.yml?branch=main&label=CI)](https://github.com/belevtsev/agent-workflows/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/belevtsev/agent-workflows)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/belevtsev/agent-workflows)](https://github.com/belevtsev/agent-workflows/releases/latest)
+[![Release](https://img.shields.io/github/v/release/belevtsev/agent-workflows?include_prereleases)](https://github.com/belevtsev/agent-workflows/releases)
 
 Coding agents often ship code that nobody reviewed, that has no tests, or that
 is tested by the agent that wrote it. This project splits a substantial change
@@ -58,14 +58,17 @@ See [agents](docs/agents.md) and the
 package-level `go test` rule in [`cw task verify`](#the-verify-gate); other
 repositories need any one passed check.
 
-Install `cw`, which records tasks and runs checks (Go 1.27 or newer), from
-`@main` or a [release archive](docs/operations.md#get-cw):
+Install `cw`, which records tasks and runs checks, from the release archive for
+your system on the
+[v3.0.0-rc.1 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.1)
+([steps](docs/operations.md#get-cw)), or build that tag with Go 1.27 or newer:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1
 ```
 
-`@latest` works once the first v3 release tag exists.
+The project owner pushes each release tag; the release page and `go install`
+work once `v3.0.0-rc.1` is tagged.
 
 **Claude Code.** Add the marketplace:
 

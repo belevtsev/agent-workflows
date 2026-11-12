@@ -6,13 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.0.0-rc.1] - 2026-11-12
+
 ### Breaking
 
 - The v2 installer is removed: install the Claude Code or Codex plugin instead; `cw install --host claude`
   now points at the plugin ([install][install]).
 - v2.x is end-of-life: no fixes, no upgrade or cleanup path. Install v3 fresh, keep `workflow-tasks/`,
   `credentials.json` and `preferences.json`, and remove other v2 files by hand ([paths](docs/operations.md#paths)).
-- The module path gains `/v3`: install with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main`
+- The module path gains `/v3`: install with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1`
   and import `github.com/belevtsev/agent-workflows/v3/...` ([get cw][getcw]).
 - Worker agents lose the `cw-` prefix and policy role `testing` is split by stage: dispatch
   `agent-workflows:reviewer`, `:test-engineer` and `:github-worker` ([agent types][types]).
@@ -86,6 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CI runs gofmt, vet and tests on Linux and macOS, plus golangci-lint and govulncheck for both
   ([CI](docs/development.md#continuous-integration)); releases come only from pushed `v*` tags and
   build with go1.27.4, which fixes 11 reachable stdlib vulnerabilities ([releases](docs/development.md#releases)).
+- Both plugins and the marketplace carry version `3.0.0-rc.1`; install `cw` from the `v3.0.0-rc.1` release instead of `@main` ([get cw][getcw]).
 
 ### Fixed
 
@@ -126,5 +129,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Last release published automatically from main.
 
-[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v2.0.96...HEAD
+[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v3.0.0-rc.1...HEAD
+[3.0.0-rc.1]: https://github.com/belevtsev/agent-workflows/compare/v2.0.96...v3.0.0-rc.1
 [2.0.96]: https://github.com/belevtsev/agent-workflows/releases/tag/v2.0.96

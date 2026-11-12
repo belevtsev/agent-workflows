@@ -49,33 +49,34 @@ there). Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in `cw task verify`; other repositories need any
 one passed check (see [evidence rules](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
 
-With Go installed, build from the main branch:
-
-```sh
-go install github.com/belevtsev/agent-workflows/v3/cmd/cw@main
-```
-
-`@latest` works once the first v3 release tag exists. Until then use `@main` or
-a commit; `cw version` then shows a Go pseudo-version that names the commit. The
-old path without `/v3` gets no updates: its `@main` and `@latest` queries fail
-with a module path mismatch.
-
-Or download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
+Download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
-[release page](https://github.com/belevtsev/agent-workflows/releases/latest),
+[v3.0.0-rc.1 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.1),
 check the archive against `SHA256SUMS`, and put `cw` on your `PATH`. For example,
 on an Apple silicon Mac:
 
 ```sh
-archive=cw_v3.0.0_darwin_arm64.tar.gz
+archive=cw_v3.0.0-rc.1_darwin_arm64.tar.gz
 grep " $archive\$" SHA256SUMS | shasum -a 256 -c
 tar -xzf "$archive" cw
 mkdir -p ~/.local/bin && mv cw ~/.local/bin/cw
 ```
 
-On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. Then check the build
-with `cw version`, which prints JSON with `version`, `revision`, `built_at`, `os`
-and `arch`. Bare `cw` prints help.
+On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. Or, with Go 1.27 or
+newer, build the same tag:
+
+```sh
+go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1
+```
+
+The project owner pushes each release tag ([releases](development.md#releases));
+the release page and `go install` work once `v3.0.0-rc.1` is tagged. It is a
+prerelease, so GitHub's latest release stays `v2.0.96`, the last release of the
+v2 installer. The old path without `/v3` gets no updates: its `@main` and
+`@latest` queries fail with a module path mismatch.
+
+Then check the build with `cw version`, which prints JSON with `version`,
+`revision`, `built_at`, `os` and `arch`. Bare `cw` prints help.
 
 ## Codex install and uninstall
 

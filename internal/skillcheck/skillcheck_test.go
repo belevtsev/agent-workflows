@@ -342,6 +342,28 @@ func TestManifestAndPluginPathsResolve(t *testing.T) {
 	}
 }
 
+// The Claude Code plugin, the Codex plugin and the Claude Code marketplace
+// carry one version string: the next release tag without its leading "v"
+// (docs/development.md, Releases).
+// oracle: the three strings read from the manifests are non-empty and equal.
+func TestPluginVersionsAgree(t *testing.T) {
+	var claude, codex struct {
+		Version string `json:"version"`
+	}
+	var marketplace struct {
+		Metadata struct {
+			Version string `json:"version"`
+		} `json:"metadata"`
+	}
+	readJSON(t, ".claude-plugin/plugin.json", &claude)
+	readJSON(t, ".codex-plugin/plugin.json", &codex)
+	readJSON(t, ".claude-plugin/marketplace.json", &marketplace)
+	if claude.Version == "" || codex.Version != claude.Version || marketplace.Metadata.Version != claude.Version {
+		t.Errorf("plugin versions disagree: .claude-plugin/plugin.json version %q, .codex-plugin/plugin.json version %q, .claude-plugin/marketplace.json metadata.version %q",
+			claude.Version, codex.Version, marketplace.Metadata.Version)
+	}
+}
+
 // Contract roster-tests, revision 1, requirement A5: the manifest no longer
 // carries claude_agents; the plugin's agents array is the only roster.
 func TestA5_ManifestHasNoClaudeAgents(t *testing.T) {

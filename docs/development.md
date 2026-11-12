@@ -211,20 +211,44 @@ pushes or pull requests. See `evals/README.md`.
 
 ## Releases
 
-A release is published from a pushed `v*` tag, never from a push to main:
-
-```sh
-git tag v3.0.0
-git push origin v3.0.0
-```
+A release is published from a pushed `v*` tag, never from a push to main, and
+only the project owner pushes tags. The tags are `v3.0.0-rc.1`, then further
+release candidates (`v3.0.0-rc.2` and so on), then `v3.0.0`. The plugin manifests carry the tag without
+its leading `v`: `version` in `.claude-plugin/plugin.json` and
+`.codex-plugin/plugin.json`, and `metadata.version` in
+`.claude-plugin/marketplace.json`. `TestPluginVersionsAgree` in
+`internal/skillcheck` fails when the three differ.
 
 `.github/workflows/release.yml` runs the tests on the tagged commit and then
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
 `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64 (each with
 `LICENSE`, `THIRD_PARTY.md` and `licenses/`), `SHA256SUMS`, and a changelog from
-the commit history. The binaries are built with CGO disabled and trimmed paths, and
-`cw version` reports the tag, commit and commit date. Record the user-facing
-changes in [CHANGELOG.md](../CHANGELOG.md) before tagging.
+the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.1`
+as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
+`cw version` reports the tag, commit and commit date.
+
+The plugin marketplace installs from the default branch, so plugin users get
+`main` between tags: every merge must leave `main` releasable.
+
+Steps for each tag `vX` (the owner runs steps 3 to 5):
+
+1. Open a pull request `chore(release): vX` that moves `[Unreleased]` in
+   [CHANGELOG.md](../CHANGELOG.md) to `## [X] - date`, sets the three version
+   strings to `X`, sets the tag in the install commands and release links of
+   `README.md` and [Get cw](operations.md#get-cw), and lists upgrade steps for
+   any task record version change.
+2. After it merges, confirm CI is green on that commit.
+3. Tag and push: `git tag vX && git push origin vX`. `release.yml` runs the
+   tests and goreleaser.
+4. Verify the release: download one darwin and one linux archive and check
+   them against `SHA256SUMS`; run `cw version` and confirm the tag, commit and
+   date; run `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@vX`
+   with a clean module cache; install the plugin on a clean profile and start
+   a session (once the session-start hook compares the plugin and `cw`
+   versions, confirm it reports no mismatch).
+5. Edit the GitHub release notes: three sentences on what changed, the
+   Breaking list, the upgrade steps, and known limitations with a link to the
+   [threat model](../SECURITY.md#threat-model).
 
 Keep credentials, machine state, evaluations, and audit outputs outside source.
 Preserve all licenses/notices and maintain THIRD_PARTY.md. The manifest defines
