@@ -26,11 +26,11 @@ import (
 // does not support an ask, the pre-publish hook denies instead, except where
 // the ask is about a record or store it cannot read. They fail open: every
 // condition that is not a positive gate decision, including any internal
-// error, exits 0 without output, so an unreadable store or a missing git never
-// blocks the user's own commands. Two exceptions ask, because allowing would
-// skip the gate without a word: a governing task record that cannot be read,
-// and a task store that cannot be located, for each git commit and git push
-// the gate would judge.
+// error, exits 0 without output, so a missing git never blocks the user's own
+// commands. Two exceptions ask, because allowing would skip the gate without
+// a word: a governing task record that cannot be read, and a task store that
+// cannot be located or read, for each git commit and git push the gate would
+// judge.
 const (
 	hookInputLimit = 1 << 20
 	// hookPublishTimeout bounds the pre-publish hook's Git and source-capture
@@ -84,7 +84,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",
 		Long: "Reads the PreToolUse JSON from stdin. When the Bash command runs git commit or git push inside a Git repository and the task store holds " +
 			"substantial, unabandoned records for that repository written within 14 days, it prints a deny decision naming every one whose verification has not passed " +
-			"on the source being published, an ask decision when none gates but one cannot be read or the task store cannot be located, " +
+			"on the source being published, an ask decision when none gates but one cannot be read or the task store cannot be located or read, " +
 			"and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
 			"code changed without tests). Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
@@ -137,21 +137,20 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if err != nil {
 		return hookOutput{}, false
 	}
+	// When the store cannot be located or read, the gate still runs: it
+	// decides which commands publish from a repository, and each of those
+	// asks.
 	path, err := hookTaskStore(root, config)
-	var store gate.Store = gate.TaskStore(path)
-	var unlocated *unlocatedStore
-	if err != nil {
-		// The store cannot be located, but the gate still runs: it decides
-		// which commands publish from a repository, and each of those asks.
-		unlocated = &unlocatedStore{err: err}
-		store = unlocated
+	store := &storeGuard{err: err}
+	if err == nil {
+		store.store = gate.TaskStore(path)
 	}
 	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Enforce: enforce, Prompt: prompt},
 		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
-	if unlocated != nil && unlocated.consulted && decision.Permission == gate.Allow {
+	if store.failed && decision.Permission == gate.Allow {
 		// Like a record that cannot be read, a store that cannot be located
-		// is nothing the user can fix from Codex, so Codex lets it run.
-		decision = gate.Decision{Permission: gate.Ask, Reason: unlocatedStoreReason(err), ProceedWithoutAsk: true}
+		// or read is nothing the user can fix from Codex, so Codex lets it run.
+		decision = gate.Decision{Permission: gate.Ask, Reason: storeFailureReason(store.err, store.store != nil), ProceedWithoutAsk: true}
 	}
 	if input.fromCodex() {
 		decision = codexDecision(decision)
@@ -182,29 +181,43 @@ func codexDecision(decision gate.Decision) gate.Decision {
 	return decision
 }
 
-// unlocatedStoreReason is the ask for a publication when err leaves the task
-// store unknown: a relative XDG_STATE_HOME, or any other failure to resolve
-// the state directory, such as a home directory that cannot be resolved.
-func unlocatedStoreReason(err error) string {
+// storeFailureReason is the ask for a publication when err leaves the task
+// records unknown. When the store was not located, err is a relative
+// XDG_STATE_HOME or another failure to resolve the state directory, such as
+// a home directory that cannot be resolved; when it was, err is why the
+// store cannot be listed, such as its mode or a regular file in its place.
+func storeFailureReason(err error, located bool) string {
 	fix := "cw cannot locate the task store (" + err.Error() + "); set CW_TASK_STORE to it."
-	if errors.Is(err, errRelativeStateHome) {
+	switch {
+	case located:
+		fix = "cw cannot read the task store (" + err.Error() + "); make it a directory you can read, or set CW_TASK_STORE to one."
+	case errors.Is(err, errRelativeStateHome):
 		fix = "XDG_STATE_HOME must be an absolute path; set it, or set CW_TASK_STORE."
 	}
 	return "agent-workflows: " + fix + " Until then the commit and push gate cannot read the task records; confirm to run this command without it."
 }
 
-// unlocatedStore is the gate's store when the hook cannot locate the task
-// store. Every lookup fails with err, so the gate itself allows; consulted
-// reports that the gate reached a publication it would have judged against
-// the records, which the hook then asks about.
-type unlocatedStore struct {
-	err       error
-	consulted bool
+// storeGuard is the gate's store in the hook. It reads store, the task
+// store, or, when the hook cannot locate one (store nil), fails every lookup
+// with err. On a failed lookup the gate itself allows; failed reports that
+// the gate reached a publication it would have judged against the records,
+// which the hook then asks about, and err holds the first failure.
+type storeGuard struct {
+	store  gate.Store
+	err    error
+	failed bool
 }
 
-func (s *unlocatedStore) FindOpen(context.Context, taskflow.Repository, time.Time) ([]taskflow.OpenRecord, error) {
-	s.consulted = true
-	return nil, s.err
+func (s *storeGuard) FindOpen(ctx context.Context, repo taskflow.Repository, now time.Time) ([]taskflow.OpenRecord, error) {
+	if s.store == nil {
+		s.failed = true
+		return nil, s.err
+	}
+	open, err := s.store.FindOpen(ctx, repo, now)
+	if err != nil && !s.failed {
+		s.failed, s.err = true, err
+	}
+	return open, err
 }
 
 func preToolUseDecision(decision, reason string) hookOutput {

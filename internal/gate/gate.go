@@ -148,8 +148,9 @@ type decider struct {
 
 // check returns the records that gate one publication and, when none does,
 // the ask it raises, if any. A repository that cannot be resolved, or whose
-// store cannot be read, yields neither. A governing record that cannot be
-// read asks, unless another record gates.
+// store cannot be read, yields neither. With enforce on, a governing record
+// that cannot be read asks, unless another record gates; with it off, such a
+// record counts as no record.
 func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
 	repo, err := taskflow.ResolveRepository(ctx, publication.dir, d.deps.Git.output)
 	if err != nil {
@@ -162,27 +163,34 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 		}
 		d.found[repo.Worktree] = open
 	}
-	var gating, unreadable []taskflow.OpenRecord
+	var gating, unreadable, verified []taskflow.OpenRecord
 	for _, record := range open {
 		switch {
 		case record.Gates():
 			gating = append(gating, record)
 		case record.NeedsConfirmation():
 			unreadable = append(unreadable, record)
+		default:
+			verified = append(verified, record)
 		}
+	}
+	dirtyPush := func() bool {
+		return d.in.Enforce && len(verified) > 0 && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree)
 	}
 	switch {
 	case len(gating) > 0:
 		return gating, ask{}
-	case len(unreadable) > 0:
+	case d.in.Enforce && len(unreadable) > 0:
 		// A deny would block the user on a file the agent's host may give
-		// them no way to repair, so a host that cannot ask lets it run.
-		if d.in.Enforce {
-			return nil, ask{reason: unreadableReason(unreadable), proceed: true}
+		// them no way to repair, so a host that cannot ask lets it run,
+		// unless the verified records beside it raise their own ask.
+		if dirtyPush() {
+			return nil, ask{reason: uncommittedReason(verified) + " " + unreadableReason(unreadable)}
 		}
-	case len(open) > 0:
-		if d.in.Enforce && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree) {
-			return nil, ask{reason: uncommittedReason(open)}
+		return nil, ask{reason: unreadableReason(unreadable), proceed: true}
+	case len(verified) > 0:
+		if dirtyPush() {
+			return nil, ask{reason: uncommittedReason(verified)}
 		}
 	case d.in.Prompt:
 		if signs := substantialChangeSigns(ctx, d.deps.Git, repo.Worktree, publication); len(signs) >= 2 {

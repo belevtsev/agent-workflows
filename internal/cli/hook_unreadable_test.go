@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
@@ -65,6 +66,39 @@ func TestHookPrePublishAsksWhenARecordCannotBeRead(t *testing.T) {
 		hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "Task directory "+record.Directory+": task record version", "upgrade cw")
 		hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
 	})
+}
+
+func TestHookPrePushBesideAnUnreadableRecordStillAsksAboutUncommittedChanges(t *testing.T) {
+	// Oracle: a verified record and a dirty tree make a push ask about the
+	// uncommitted changes. A damaged record beside it adds its own question
+	// but keeps that one: Claude Code asks about both, and Codex denies, as
+	// it did before the damaged record was reported.
+	repo, h := hkDirtyPushState(t)
+	damaged := h.start(t, repo, hkSubstantialPlan)
+	hkWriteFile(t, damaged.Directory, "record-000002.json", "{\n")
+	t.Run("Claude Code", func(t *testing.T) {
+		hkExpectAsk(t, h.prePublish(t, repo, "git push"), "uncommitted changes to tracked files", "Task directory "+damaged.Directory+": invalid task JSON")
+	})
+	t.Run("Codex", func(t *testing.T) {
+		push := map[string]any{"tool_input": map[string]any{"command": "git push"}}
+		decision, reason := hkDecision(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, push)))
+		if decision != "deny" || !strings.Contains(reason, "uncommitted changes to tracked files") || !strings.Contains(reason, damaged.Directory) {
+			t.Fatalf("Codex decision %q with reason %q, want a deny naming the uncommitted changes and %s", decision, reason, damaged.Directory)
+		}
+	})
+}
+
+func TestHookPrePublishAsksWhenTheTaskStoreCannotBeRead(t *testing.T) {
+	// Oracle: a CW_TASK_STORE that is a regular file cannot be listed. The
+	// hook allowed every commit silently; it now asks, naming the store
+	// error, and Codex runs the command.
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	file := filepath.Join(hkCanonicalTempDir(t), "store")
+	hkWriteFile(t, filepath.Dir(file), "store", "not a directory\n")
+	h.env["CW_TASK_STORE"] = file
+	hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "agent-workflows: cw cannot read the task store (", file, "make it a directory you can read, or set CW_TASK_STORE to one.")
+	hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
 }
 
 func TestHookPrePublishAsksWhenTheTaskStoreCannotBeLocated(t *testing.T) {

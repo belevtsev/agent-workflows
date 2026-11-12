@@ -258,6 +258,35 @@ func TestDecideAsksWhenARecordCannotBeRead(t *testing.T) {
 	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, "substantial change") || !strings.Contains(got.Reason, "/store/task-5") {
 		t.Fatalf("Decide = %+v, want an ask about both that is not ProceedWithoutAsk", got)
 	}
+	// Oracle: with enforce_verify=false an unreadable record counts as no
+	// record, so the ask for an unrecorded substantial change still comes.
+	got = decide("git commit -m y", unrecorded, false, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{unrecorded: {damaged}}})
+	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, "substantial change with no cw task record") {
+		t.Fatalf("Decide with enforce off = %+v, want the unrecorded-change ask", got)
+	}
+}
+
+func TestDecideAsksAboutAnUncommittedPushBesideAnUnreadableRecord(t *testing.T) {
+	repo := canonicalDir(t)
+	git := &fakeGit{}
+	git.repository(repo)
+	git.answer(repo, "status --porcelain --untracked-files=no --ignore-submodules=none", " M source.txt\n")
+	damaged := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-5", Directory: "/store/task-5"}, Unreadable: "invalid task JSON: unexpected EOF"}
+
+	got := decide("git push origin main", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {record("task-2", "Fix parser", ""), damaged}}})
+
+	// Oracle: the uncommitted-push ask for the verified record, as without
+	// the damaged one, joined with the ask for the damaged one; a host that
+	// cannot ask must not run it, so it is not ProceedWithoutAsk.
+	want := "agent-workflows: task task-2 (Fix parser) passed cw task verify on the working tree, " +
+		"but the working tree has uncommitted changes to tracked files, so the pushed commits may not hold the verified source. " +
+		"Commit the changes and verify again, or confirm to push anyway. " +
+		"agent-workflows: cw cannot read a task record for this repository, so the commit and push gate cannot tell whether it allows this command. " +
+		"Task directory /store/task-5: invalid task JSON: unexpected EOF; if the record is damaged, remove the directory or move it out of the task store, " +
+		"then start a new task with `cw task start` if the work is still open. Confirm to run this command without the gate."
+	if got != (gate.Decision{Permission: gate.Ask, Reason: want}) {
+		t.Fatalf("Decide = %+v\nwant an ask with reason %q", got, want)
+	}
 }
 
 func TestDecideFailsOpen(t *testing.T) {

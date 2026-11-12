@@ -25,6 +25,11 @@ func TestFindOpenReturnsRecordsItCannotRead(t *testing.T) {
 		{"garbage newest revision", func(t *testing.T, record Record) {
 			foWrite(t, record.Directory, "record-000002.json", "{\n")
 		}, false, "invalid task JSON"},
+		// JSON that names no kind, root or update time does not count as the
+		// newest revision, so it cannot hide the record either.
+		{"empty newest revision", func(t *testing.T, record Record) {
+			foWrite(t, record.Directory, "record-000002.json", "{}\n")
+		}, false, "task record version 0 is not supported"},
 		{"newer version", func(t *testing.T, record Record) {
 			writeNextRevision(t, record, func(next *Record) { next.Version = Version + 1 })
 		}, true, "upgrade cw"},
