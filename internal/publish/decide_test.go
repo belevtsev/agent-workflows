@@ -188,7 +188,10 @@ func TestConversionNamesWhyGitWouldNotStoreThePath(t *testing.T) {
 // oracle: reduceURL's comment: URLs with a scheme Git serves itself give the
 // lowercased host without user and port, [user@]host:path with the colon
 // before any slash gives host and path, and anything else is a clean absolute
-// local path.
+// local path. In the scp form the host may sit in brackets, after an optional
+// user@, and the path starts after the first colon that follows the closing
+// bracket; the host drops its user and a :port, and an IPv6 host keeps its
+// brackets (Git's parse_connect_url, host_end and get_port in connect.c).
 func TestReduceURLSplitsHostAndPath(t *testing.T) {
 	cases := []struct{ name, url, host, path string }{
 		{"https with user and port", "https://User@GitHub.COM:443/Owner/Repo.git", "github.com", "/Owner/Repo.git"},
@@ -205,6 +208,12 @@ func TestReduceURLSplitsHostAndPath(t *testing.T) {
 		{"scp form without user", "host:path/r.git", "host", "path/r.git"},
 		{"scp form without a slash", "host:r.git", "host", "r.git"},
 		{"scp form with absolute path", "host:/srv/r.git", "host", "/srv/r.git"},
+		{"scp form with a bracket in its path", "h:22]:repo", "h", "22]:repo"},
+		{"scp form with a bracketed user, host and port", "[git@h:22]:repo", "h", "repo"},
+		{"scp form with a user before a bracketed host and port", "git@[h:22]:repo", "h", "repo"},
+		{"scp form with a bracketed IPv6 host", "[::1]:r.git", "[::1]", "r.git"},
+		{"scp form with a user before a bracketed IPv6 host", "git@[::1]:r.git", "[::1]", "r.git"},
+		{"scp form whose bracket does not close", "[h:r.git", "[h", "r.git"},
 		{"colon after a slash is local", "./dir:x/r.git", "", "/w/repo/dir:x/r.git"},
 		{"leading colon is local", ":r.git", "", "/w/repo/:r.git"},
 		{"absolute local is cleaned", "/srv/./r.git/", "", "/srv/r.git"},
@@ -222,7 +231,8 @@ func TestReduceURLSplitsHostAndPath(t *testing.T) {
 // when its scheme is none of ssh, git+ssh, ssh+git, git, file (served
 // natively) or http, https (Git's curl helper), compared case-sensitively.
 // reduceURL reduces none of them, since the helper decides where a push
-// goes.
+// goes, nor an scp form with no colon after its bracketed host, in which Git
+// finds no path.
 func TestReduceURLRefusesRemoteHelperURLs(t *testing.T) {
 	for _, url := range []string{
 		"pubhelper://github.com/o/r",
@@ -237,6 +247,8 @@ func TestReduceURLRefusesRemoteHelperURLs(t *testing.T) {
 		"ftp://github.com/o/r",
 		"ftps://github.com/o/r",
 		"git@host://github.com/o/r",
+		"[git@h:22]",
+		"git@[::1]",
 	} {
 		if host, path, ok := reduceURL(url, "/w/repo"); ok {
 			t.Errorf("reduceURL(%q) = %q, %q, true; want false", url, host, path)
@@ -266,6 +278,9 @@ func TestSameRepositoryComparesReducedURLs(t *testing.T) {
 		{"other IPv6 host", "ssh://[::1]/o/r", "ssh://[::2]/o/r", false},
 		{"other repository", "https://github.com/o/r", "https://github.com/o/s", false},
 		{"host against local path", "ssh://host.example/w/remote.git", "/w/remote.git", false},
+		{"bracket in the path against a bracketed host", "h:22]:repo", "[git@h:22]:repo", false},
+		{"bracketed scp form and ssh URL", "[git@h:22]:repo", "ssh://git@h:22/repo", true},
+		{"bracketed IPv6 scp form and ssh URL", "[::1]:r.git", "ssh://[::1]/r.git", true},
 	}
 	for _, c := range cases {
 		if got := sameRepository(c.a, c.b, "/w/repo"); got != c.want {

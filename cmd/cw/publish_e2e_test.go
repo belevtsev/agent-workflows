@@ -2624,6 +2624,7 @@ func pubTestRemoteSplit(t *testing.T, tl *pubTools) {
 		// Git hands these to a remote helper, which picks the destination.
 		{"pushurl through a remote helper", []func(){cfg("remote.origin.pushurl", "pubhelper::file://"+e.remote)}, true},
 		{"pushurl with an unknown scheme", []func(){cfg("remote.origin.pushurl", "pubhelper://"+e.remote)}, true},
+		{"remote served by a vcs helper", []func(){cfg("remote.origin.vcs", "pubhelper")}, true},
 		{"pushurl trailing slash", []func(){cfg("remote.origin.pushurl", e.remote+"/")}, false},
 		{"pushurl without .git", []func(){cfg("remote.origin.pushurl", strings.TrimSuffix(e.remote, ".git"))}, false},
 		// The path is compared case-insensitively, and the one trailing .git
@@ -2647,6 +2648,9 @@ func pubTestRemoteSplit(t *testing.T, tl *pubTools) {
 			}
 			if c.name == "pushurl through a remote helper" && !strings.Contains(rep.Detail, "pubhelper::file://"+e.remote+", which Git hands to a remote helper") {
 				t.Errorf("detail %q does not name the helper URL", rep.Detail)
+			}
+			if c.name == "remote served by a vcs helper" && !strings.Contains(rep.Detail, "origin sets remote.origin.vcs, so Git hands it to a remote helper") {
+				t.Errorf("detail %q does not name remote.origin.vcs", rep.Detail)
 			}
 		} else {
 			e.refuse(c.name, e.flags().add("--expect-remote", bogus), 4, "refused", "remote-moved")

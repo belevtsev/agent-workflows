@@ -167,11 +167,12 @@ func isAlnum(c byte) bool {
 
 // reduceURL reduces a remote URL to a host and a path: URLs with a scheme in
 // gitSchemes give their lowercased host without user and port,
-// [user@]host:path (colon before any /) gives host and path, and anything
-// else is a local path made absolute against worktree. The third result is
-// false for a URL Git hands to a remote helper (another scheme, or
-// <transport>::<address>): the helper chooses where the push goes, so the
-// URL's host and path name nothing.
+// [user@]host:path (colon before any /) gives host and path as scpForm
+// splits it, and anything else is a local path made absolute against
+// worktree. The third result is false for a URL Git hands to a remote helper
+// (another scheme, or <transport>::<address>): the helper chooses where the
+// push goes, so the URL's host and path name nothing. It is also false for an
+// scp form in which Git finds no path.
 func reduceURL(url, worktree string) (string, string, bool) {
 	if helperTransport(url) {
 		return "", "", false
@@ -199,11 +200,7 @@ func reduceURL(url, worktree string) (string, string, bool) {
 	}
 	if colon := strings.IndexByte(url, ':'); colon > 0 {
 		if slash := strings.IndexByte(url, '/'); slash < 0 || colon < slash {
-			host := url[:colon]
-			if i := strings.LastIndexByte(host, '@'); i >= 0 {
-				host = host[i+1:]
-			}
-			return host, url[colon+1:], true
+			return scpForm(url)
 		}
 	}
 	local := url
@@ -211,6 +208,53 @@ func reduceURL(url, worktree string) (string, string, bool) {
 		local = filepath.Join(worktree, local)
 	}
 	return "", filepath.Clean(local), true
+}
+
+// scpForm splits [user@]host:path as Git's parse_connect_url does (connect.c).
+// The host may be in brackets after an optional user@ (host_end: from the
+// first "@[", else from a leading "["); the brackets run to the first "]",
+// and the path starts after the first ":" that follows them, so a colon
+// inside the brackets belongs to the host. Without brackets the path starts
+// after the first ":". The host drops its user and, inside brackets, a
+// trailing :port (get_port: the first ":" followed by a number below 65536
+// and nothing else); a bracketed host that still holds a ":" is an IPv6
+// address and keeps its brackets, as an ssh:// URL's does. The third result
+// is false when no ":" follows the brackets: Git finds no path there.
+func scpForm(url string) (string, string, bool) {
+	start, end := 0, 0
+	if i := strings.Index(url, "@["); i >= 0 {
+		start = i + 1
+	}
+	if url[start] == '[' {
+		if i := strings.IndexByte(url[start:], ']'); i >= 0 {
+			end = start + i
+		}
+	}
+	separator := strings.IndexByte(url[end:], ':')
+	if separator < 0 {
+		return "", "", false
+	}
+	separator += end
+	host, path := url[:separator], url[separator+1:]
+	if end == 0 {
+		if i := strings.LastIndexByte(host, '@'); i >= 0 {
+			host = host[i+1:]
+		}
+		return host, path, true
+	}
+	host = url[start+1 : end]
+	if i := strings.LastIndexByte(host, '@'); i >= 0 {
+		host = host[i+1:]
+	}
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		if _, err := strconv.ParseUint(host[i+1:], 10, 16); err == nil {
+			host = host[:i]
+		}
+	}
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	return host, path, true
 }
 
 // sameRepository reports whether two remote URLs name the same repository:

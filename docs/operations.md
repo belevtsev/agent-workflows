@@ -416,10 +416,11 @@ Its known limitations:
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
   with a pull request any host alias is refused as 4 `repo-mismatch`.
-- A remote URL that Git hands to a remote helper is refused as 4
+- A remote that Git hands to a remote helper is refused as 4
   `remote-split`, since the helper picks where the push goes: a
-  `<transport>::<address>` URL, or a scheme other than `https`, `http`, `ssh`,
-  `git+ssh`, `ssh+git`, `git` or `file`, in lower case. `host:path` and local
+  `<transport>::<address>` URL, a scheme other than `https`, `http`, `ssh`,
+  `git+ssh`, `ssh+git`, `git` or `file`, in lower case, or a remote with
+  `remote.<name>.vcs` set. `host:path`, `[user@host:port]:path` and local
   paths are accepted.
 
 A task check cannot run `cw publish`: `cw task start` refuses such a plan. This
