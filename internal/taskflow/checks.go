@@ -332,7 +332,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var logFile *os.File
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
-	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
+	_, err := updateWithCapacity(ctx, path, 2, "", func(root *os.Root, record *Record) error {
 		check, found := findCheck(*record, checkID)
 		if !found {
 			return errors.New("check is not in the explicit coordinator plan")
