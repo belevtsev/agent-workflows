@@ -130,14 +130,17 @@ func foFind(t *testing.T, store string, repo Repository, now time.Time, identify
 	return got
 }
 
-// foWant is one expected FindOpen result: the record and whether it gates.
+// foWant is one expected FindOpen result: the record, whether it gates and
+// whether it could not be read.
 type foWant struct {
-	record Record
-	gates  bool
+	record     Record
+	gates      bool
+	unreadable bool
 }
 
-func foGating(record Record) foWant  { return foWant{record: record, gates: true} }
-func foCurrent(record Record) foWant { return foWant{record: record, gates: false} }
+func foGating(record Record) foWant     { return foWant{record: record, gates: true} }
+func foCurrent(record Record) foWant    { return foWant{record: record, gates: false} }
+func foUnreadable(record Record) foWant { return foWant{record: record, unreadable: true} }
 
 // foDescribe renders results for failure messages.
 func foDescribe(got []OpenRecord) string {
@@ -165,6 +168,9 @@ func foExpect(t *testing.T, got []OpenRecord, want ...foWant) {
 		}
 		if (open.Problem != "") != w.gates {
 			t.Fatalf("FindOpen result %d (%q) has problem %q, inconsistent with gates %v", i, open.Record.Plan.Title, open.Problem, w.gates)
+		}
+		if open.NeedsConfirmation() != w.unreadable || (open.Unreadable != "") != w.unreadable {
+			t.Fatalf("FindOpen result %d (%q) NeedsConfirmation() = %v with Unreadable %q, want %v", i, open.Record.Plan.Title, open.NeedsConfirmation(), open.Unreadable, w.unreadable)
 		}
 	}
 }
@@ -446,7 +452,7 @@ func TestFindOpen(t *testing.T) {
 				}
 				stub := &foStub{digest: test.found}
 				got := foFind(t, store, foIn(worktree, worktree, first.Baseline.Root), now, stub.identify())
-				foExpect(t, got, foWant{second, test.gates}, foWant{first, test.gates})
+				foExpect(t, got, foWant{record: second, gates: test.gates}, foWant{record: first, gates: test.gates})
 				foExpectCalls(t, stub, worktree)
 				if test.gates {
 					for _, open := range got {
@@ -506,37 +512,44 @@ func TestFindOpen(t *testing.T) {
 		foExpect(t, foFind(t, store, repository, time.Now(), SourceDigest), foCurrent(record))
 	})
 
-	t.Run("unloadable task directories are skipped", func(t *testing.T) {
-		// F8: a task directory whose record cannot be loaded is skipped and
-		// the other records are still returned.
+	t.Run("unloadable task directories", func(t *testing.T) {
+		// F8: a task directory with no revision that decodes is skipped, and
+		// the other records are still returned. A record whose newest
+		// decodable revision governs but whose chain does not load is
+		// returned too, unreadable, by its updated_at like any other.
 		tests := []struct {
-			name    string
-			corrupt func(t *testing.T, store, repo string, now time.Time)
+			name string
+			// corrupt returns the unreadable result it causes, if any.
+			corrupt func(t *testing.T, store, repo string, now time.Time) []foWant
 		}{
-			{"garbage JSON", func(t *testing.T, store, repo string, now time.Time) {
+			{"garbage JSON", func(t *testing.T, store, repo string, now time.Time) []foWant {
 				foCorrupt(t, foStartAt(t, store, repo, "garbage", "substantial", now.Add(-time.Hour)))
+				return nil
 			}},
-			{"no revision files", func(t *testing.T, store, _ string, _ time.Time) {
+			{"no revision files", func(t *testing.T, store, _ string, _ time.Time) []foWant {
 				if err := os.Mkdir(filepath.Join(store, "empty-task"), 0700); err != nil {
 					t.Fatal(err)
 				}
+				return nil
 			}},
-			{"plain file in store", func(t *testing.T, store, _ string, _ time.Time) {
+			{"plain file in store", func(t *testing.T, store, _ string, _ time.Time) []foWant {
 				if err := os.WriteFile(filepath.Join(store, "stray-file"), []byte("stray\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
+				return nil
 			}},
 			// The highest revision decodes, but the chain has a sequence gap
 			// (revision 2 renamed to record-000003.json).
-			{"revision chain with a sequence gap", func(t *testing.T, store, repo string, now time.Time) {
+			{"revision chain with a sequence gap", func(t *testing.T, store, repo string, now time.Time) []foWant {
 				broken := foBrokenChain(t, store, repo, "gap", now.Add(-time.Hour))
 				if err := os.Rename(filepath.Join(broken.Directory, "record-000002.json"), filepath.Join(broken.Directory, "record-000003.json")); err != nil {
 					t.Fatal(err)
 				}
+				return []foWant{foUnreadable(broken)}
 			}},
 			// The highest revision decodes, but the first revision was
 			// replaced by a different valid record.
-			{"revision chain with a replaced first revision", func(t *testing.T, store, repo string, now time.Time) {
+			{"revision chain with a replaced first revision", func(t *testing.T, store, repo string, now time.Time) []foWant {
 				broken := foBrokenChain(t, store, repo, "replaced", now.Add(-time.Hour))
 				other := startIn(t, filepath.Join(t.TempDir(), "other-tasks"), repo, "other", "substantial")
 				data, err := os.ReadFile(filepath.Join(other.Directory, "record-000001.json"))
@@ -546,6 +559,7 @@ func TestFindOpen(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(broken.Directory, "record-000001.json"), data, 0600); err != nil {
 					t.Fatal(err)
 				}
+				return []foWant{foUnreadable(broken)}
 			}},
 		}
 		for _, test := range tests {
@@ -553,16 +567,16 @@ func TestFindOpen(t *testing.T) {
 				store, repo := foFixture(t)
 				now := time.Now()
 				good := foStartAt(t, store, repo, "good", "substantial", now.Add(-2*time.Hour))
-				test.corrupt(t, store, repo, now)
-				foExpect(t, foFind(t, store, foAtRoot(good.Baseline.Root), now, (&foStub{}).identify()), foGating(good))
+				want := append(test.corrupt(t, store, repo, now), foGating(good))
+				foExpect(t, foFind(t, store, foAtRoot(good.Baseline.Root), now, (&foStub{}).identify()), want...)
 			})
 			t.Run(test.name+", verified record still returned", func(t *testing.T) {
 				store, repo := foFixture(t)
 				now := time.Now()
 				older := foStartAt(t, store, repo, "older open", "substantial", now.Add(-3*time.Hour))
 				verified := foVerify(t, foStartAt(t, store, repo, "verified", "substantial", now.Add(-2*time.Hour)), true, foDigestA)
-				test.corrupt(t, store, repo, now)
-				foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{digest: foDigestA}).identify()), foCurrent(verified), foGating(older))
+				want := append(test.corrupt(t, store, repo, now), foCurrent(verified), foGating(older))
+				foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{digest: foDigestA}).identify()), want...)
 			})
 		}
 	})

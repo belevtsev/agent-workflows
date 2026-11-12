@@ -35,7 +35,7 @@ holds the definition of a substantial task and the Code Review Rules.
 
 | Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask; needs the hooks trusted in `/hooks` | The conventions, plus a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, plus a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables |
 | Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
 | `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
 
@@ -125,11 +125,12 @@ Then check the build with `cw version`, which prints JSON with `version`,
 
 Upgrade every `cw` that shares a task store at once, including the one the
 commit hook runs. The first revision a newer `cw` writes to a task can raise
-the record's version; an older `cw` then cannot read the record, and its hook
-skips the task instead of gating it. `cw` v3.0.0-rc.1 cannot read the version 4
-records this release writes and calls them unsupported; in later releases a
-`cw task` command on a record from a newer `cw` exits 4 and says to upgrade
-`cw` ([task record format](development.md#task-record-format)).
+the record's version; an older `cw` then cannot read the record. `cw`
+v3.0.0-rc.1 cannot read the version 4 records this release writes, calls them
+unsupported, and its hook skips such a task instead of gating it. In later
+releases a `cw task` command on a record from a newer `cw` exits 4 and says to
+upgrade `cw`, and the hook asks before each commit and push
+([task record format](development.md#task-record-format)).
 
 ## Codex install and uninstall
 

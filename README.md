@@ -232,7 +232,9 @@ On Codex, start Codex with `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` (and
 
 The gate fails open: without `cw` on `PATH`, or on an internal error, the
 command goes ahead. Codex runs the same hooks once you trust them in `/hooks`;
-it cannot ask, so there the hook denies where Claude Code asks. Details:
+it cannot ask, so there the hook denies where Claude Code asks, except that
+the asks about a task record (damaged or from a newer `cw`) or a task store
+it cannot read or locate let the command go ahead. Details:
 [hooks](docs/hooks.md#codex).
 
 ## Language packs

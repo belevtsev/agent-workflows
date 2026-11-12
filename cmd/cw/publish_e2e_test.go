@@ -106,6 +106,7 @@ func TestPublishE2E(t *testing.T) {
 		{"R6a_R6b_task_not_verified_or_abandoned", pubTestGateNotVerified},
 		{"R7a_R7b_R7d_other_open_records", pubTestOpenRecords},
 		{"R7_open_record_from_cw_v2_0_96", pubTestOpenLegacyRecord},
+		{"R7_open_record_that_cannot_be_read", pubTestOpenUnreadableRecord},
 		{"R7c_hook_store_and_task_store", pubTestOpenRecordStores},
 		{"R7e_unreadable_store", pubTestStoreUnreadable},
 		{"R7_R10c_linked_worktree", pubTestLinkedWorktree},
@@ -2170,6 +2171,30 @@ func pubTestOpenLegacyRecord(t *testing.T, tl *pubTools) {
 		t.Errorf("open record %+v, want task %s title %q directory %s and the move-it-out problem", o, otherID, "Other open work", otherDir)
 	}
 	if err := os.Rename(otherDir, filepath.Join(e.root, "moved v2 task")); err != nil {
+		t.Fatal(err)
+	}
+	pubWant(t, e.publish(), 0, "published", "")
+}
+
+// pubTestOpenUnreadableRecord: R7 for an open record this cw cannot read
+// (D4). A garbage newest revision used to hide it, and the publication went
+// through; now publish refuses (exit 3, open-record), naming its directory
+// and the load error, and moving it out of the store lets it through.
+func pubTestOpenUnreadableRecord(t *testing.T, tl *pubTools) {
+	e := pubNewEnv(t, tl)
+	e.startTask(pubPlanSmall)
+	e.standardChange()
+	e.verifyTask()
+	otherDir, otherID := e.startOther(pubPlanOther, e.repo, "")
+	pubWriteFile(t, filepath.Join(otherDir, "record-000002.json"), []byte("{\n"), 0o600)
+	rep := e.refuse("open record that cannot be read", e.flags(), 3, "denied", "open-record")
+	if len(rep.OpenRecords) != 1 {
+		t.Fatalf("open_records %+v, want the one unreadable record", rep.OpenRecords)
+	}
+	if o := rep.OpenRecords[0]; o.TaskID != otherID || !pubSamePath(o.Directory, otherDir) || !strings.Contains(o.Problem, "this cw cannot read its record: invalid task JSON") {
+		t.Errorf("open record %+v, want task %s directory %s and the load error", o, otherID, otherDir)
+	}
+	if err := os.Rename(otherDir, filepath.Join(e.root, "moved damaged task")); err != nil {
 		t.Fatal(err)
 	}
 	pubWant(t, e.publish(), 0, "published", "")
