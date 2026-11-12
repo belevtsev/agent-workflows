@@ -180,8 +180,16 @@ run `status` or context phase, fails validation with "invalid stored …".
   ([Releases](#releases)). Raise `MinVersion` only to drop a version on purpose.
 - Every new revision is written with `Version`, so the first revision this `cw`
   appends to a record an older `cw` started raises its version. From then on
-  that older `cw` cannot read the record, and its hook skips the task instead of
-  gating it: run the same `cw` on every host and hook that shares a task store.
+  that older `cw` cannot read the record: the hook of `cw` v3.0.0-rc.1 skips
+  the task instead of gating it, and a later hook asks before each commit and
+  push. Run the same `cw` on every host and hook that shares a task store.
+- The hook selects a task by the newest revision it can decode, reading
+  `plan.kind`, `baseline.root` and `updated_at` without loading the chain, so
+  that an older hook can still ask about a record it cannot read. Those three
+  members keep their names and shapes in every version. The other members it
+  reads (`plan.title`, `baseline.selected_path`, `baseline_manifest.sha256`,
+  `verification` and `abandonment`) keep shapes that decode, or the hook judges
+  the task by an older revision.
 - A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
   says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
   `baseline_manifest`, or binds the removed rule `go.package-test/v1`, is

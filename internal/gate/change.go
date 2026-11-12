@@ -135,15 +135,20 @@ func isCodeFile(file string) bool {
 }
 
 // unrecordedChangeReason explains the ask for a substantial-looking change
-// that no task record covers.
-func unrecordedChangeReason(worktree string, publication publication, signs []string) string {
+// that no task record covers, or none that cw can read when unreadable.
+func unrecordedChangeReason(worktree string, publication publication, signs []string, unreadable bool) string {
 	subject := "this commit looks"
 	if publication.push {
 		subject = "the commits being pushed look"
 	}
-	return fmt.Sprintf("agent-workflows: %s like a substantial change with no cw task record for %s: %s. "+
+	record := "cw task record"
+	if unreadable {
+		// A record exists that cw cannot read.
+		record = "readable cw task record"
+	}
+	return fmt.Sprintf("agent-workflows: %s like a substantial change with no %s for %s: %s. "+
 		"Consider recording it with `cw task start --repo %s --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. "+
-		"Set small_task_prompt=false in the plugin config to stop this prompt.", subject, worktree, strings.Join(signs, "; "), worktree)
+		"Set small_task_prompt=false in the plugin config to stop this prompt.", subject, record, worktree, strings.Join(signs, "; "), worktree)
 }
 
 // uncommittedTrackedChanges reports whether worktree has staged or unstaged
