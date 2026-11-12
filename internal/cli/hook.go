@@ -107,7 +107,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	var instructions, cache string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
-		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
+		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install when the repository has an open substantial task and no git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
@@ -293,26 +293,37 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 }
 
 // sessionStartContext returns the instructions file, followed by any version
-// notes and by the doctor summary when the plugin option asks for it and it
-// can be produced in time.
+// notes and the cw gate install line, and by the doctor summary when the
+// plugin option asks for it and it can be produced in time.
 func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string) (string, bool) {
 	data, err := os.ReadFile(instructions)
 	if err != nil || len(bytes.TrimSpace(data)) == 0 {
 		return "", false
 	}
 	text := strings.TrimRight(string(data), "\n")
-	if notes := versionNotes(config, instructions); notes != "" {
-		text += "\n\n" + notes
-	}
-	if config.Getenv(sessionDoctorOption) != "true" {
-		return text, true
-	}
+	// The session's directory is the hook input's cwd, else the working
+	// directory; "" when neither is known.
 	input, err := readHookInput(config.In)
 	dir := input.CWD
 	if err != nil {
 		if dir, err = config.WorkingDir(); err != nil {
-			return text, true
+			dir = ""
 		}
+	}
+	var notes []string
+	if note := versionNotes(config, instructions); note != "" {
+		notes = append(notes, note)
+	}
+	if dir != "" {
+		if note := gateInstallNote(ctx, root, config, dir); note != "" {
+			notes = append(notes, note)
+		}
+	}
+	if len(notes) > 0 {
+		text += "\n\n" + strings.Join(notes, "\n")
+	}
+	if config.Getenv(sessionDoctorOption) != "true" || dir == "" {
+		return text, true
 	}
 	if summary, ok := cachedDoctorSummary(ctx, root, config, dir, cache); ok {
 		text += "\n\n" + summary
@@ -351,6 +362,7 @@ func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config
 	if err != nil {
 		return "", false
 	}
+	report.Checks["git_hooks"] = gitHooksCheck(ctx, root, config, report.Profile.Snapshot.SelectedPath)
 	data, err := json.Marshal(summarizeDoctor(report), json.Deterministic(true))
 	if err != nil {
 		return "", false

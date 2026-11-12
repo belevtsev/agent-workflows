@@ -126,3 +126,121 @@ func TestDoctorHonorsCodexHomeEnvironmentAndExplicitFlagPrecedence(t *testing.T)
 		})
 	}
 }
+
+func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *testing.T) {
+	// Oracle: cw doctor's git_hooks check has the status each case names,
+	// with a detail that names cw gate install wherever git runs, and
+	// cw doctor --summary, which exits 0, lists it among its problems (which
+	// make the summary's status attention) only when a git hook is absent
+	// from the repository's own hooks directory while a substantial task is
+	// open there. A repository that only lacks the hooks gets no problem.
+	// cw gate and cw doctor read git's configuration from this process's
+	// environment.
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	tests := []struct {
+		name    string
+		setup   func(t *testing.T, h *hkHarness, repo string) string
+		status  string
+		problem bool
+	}{
+		{"no hooks and no task", func(_ *testing.T, _ *hkHarness, repo string) string { return repo }, "not_applicable", false},
+		{"no hooks and a small task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSmallPlan)
+			return repo
+		}, "not_applicable", false},
+		{"no hooks and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			return repo
+		}, "missing", true},
+		{"hooks installed and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			if err := Execute(t.Context(), []string{"gate", "install", "--repo", repo}, h.config); err != nil {
+				t.Fatalf("cw gate install: %v", err)
+			}
+			return repo
+		}, "configured", false},
+		{"a hook cw gate install did not write and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			hkWriteFile(t, repo, ".git/hooks/pre-push", "#!/bin/sh\nexit 0\n")
+			return repo
+		}, "detected", false},
+		{"a hooks directory other repositories use and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			global := hkCanonicalTempDir(t)
+			hkWriteFile(t, global, "gitconfig", "[core]\n\thooksPath = "+hkCanonicalTempDir(t)+"\n")
+			t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(global, "gitconfig"))
+			return repo
+		}, "detected", false},
+		{"not a repository", func(t *testing.T, _ *hkHarness, _ string) string { return hkCanonicalTempDir(t) }, "unchecked", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			h := newHKHarness(t)
+			dir := test.setup(t, h, hkRepo(t))
+			h.out.Reset()
+			if err := Execute(t.Context(), []string{"doctor", "--repo", dir}, h.config); err != nil {
+				t.Fatalf("cw doctor: %v", err)
+			}
+			var report struct {
+				Checks map[string]projectctx.Check `json:"checks"`
+			}
+			if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+				t.Fatalf("cw doctor printed %q: %v", h.out.String(), err)
+			}
+			check, ok := report.Checks["git_hooks"]
+			if !ok || check.Status != test.status {
+				t.Fatalf("git_hooks check %+v (present %v), want status %s", check, ok, test.status)
+			}
+			if test.status != "unchecked" && !strings.Contains(check.Detail, "cw gate install") {
+				t.Fatalf("git_hooks detail %q does not name cw gate install", check.Detail)
+			}
+			h.out.Reset()
+			if err := Execute(t.Context(), []string{"doctor", "--repo", dir, "--summary"}, h.config); err != nil {
+				t.Fatalf("cw doctor --summary: %v", err)
+			}
+			var summary struct {
+				Status   string                      `json:"status"`
+				Problems map[string]projectctx.Check `json:"problems"`
+			}
+			if err := json.Unmarshal(h.out.Bytes(), &summary); err != nil {
+				t.Fatalf("cw doctor --summary printed %q: %v", h.out.String(), err)
+			}
+			problem, listed := summary.Problems["git_hooks"]
+			if listed != test.problem {
+				t.Fatalf("cw doctor --summary lists git_hooks: %v, want %v; problems %+v", listed, test.problem, summary.Problems)
+			}
+			if listed && (problem.Status != test.status || problem.Detail != check.Detail || summary.Status != "attention") {
+				t.Fatalf("cw doctor --summary has status %s and git_hooks problem %+v, want attention and %+v", summary.Status, problem, check)
+			}
+		})
+	}
+
+	t.Run("session-start doctor summary", func(t *testing.T) {
+		// The doctor summary that session-start appends carries the check
+		// too, after the cw gate install line.
+		const instructions = "# Rules\n\nWork carefully."
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.start(t, repo, hkSubstantialPlan)
+		h.env[sessionDoctorOption] = "true"
+		stdin, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "startup", "cwd": repo})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := h.runSessionStart(t, string(stdin), "--instructions", hkWriteInstructions(t, instructions), "--cache", hkCanonicalTempDir(t))
+		if err != nil {
+			t.Fatalf("session-start: %v", err)
+		}
+		line := hkDoctorSummary(t, hkSessionContext(t, got), instructions+"\n\n"+hkGateLine)
+		var summary struct {
+			Problems map[string]projectctx.Check `json:"problems"`
+		}
+		if err := json.Unmarshal([]byte(line), &summary); err != nil {
+			t.Fatal(err)
+		}
+		if problem := summary.Problems["git_hooks"]; problem.Status != "missing" {
+			t.Fatalf("session-start doctor summary has git_hooks problem %+v, want status missing: %s", problem, line)
+		}
+	})
+}

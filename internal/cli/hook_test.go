@@ -2044,3 +2044,98 @@ func TestMinimumClaudeCodeVersionIsTheREADMEs(t *testing.T) {
 		t.Fatalf("README.md does not contain %q", want)
 	}
 }
+
+// hkGateLine is the session-start line that suggests cw gate install,
+// spelled out here as the oracle rather than taken from the code under test.
+const hkGateLine = "git hooks absent, so a commit or push from a script, an alias or a terminal skips the verify gate: suggest cw gate install to the user"
+
+func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *testing.T) {
+	// Oracle: the session-start context is the instructions, a blank line and
+	// hkGateLine exactly when the session's repository has an open
+	// substantial task and a git hook is absent from the repository's own
+	// hooks directory with no foreign hook beside it; in every other case
+	// below it is the instructions alone. The first case is the control for
+	// the others.
+	const instructions = "# Rules\n\nWork carefully."
+	// cw gate reads git's configuration from this process's environment.
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	gate := func(t *testing.T, h *hkHarness, args ...string) {
+		t.Helper()
+		h.out.Reset()
+		if err := Execute(t.Context(), append([]string{"gate"}, args...), h.config); err != nil {
+			t.Fatalf("cw gate %v: %v\n%s", args, err, h.out.String())
+		}
+	}
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, h *hkHarness, repo string)
+		want  string
+	}{
+		{"open substantial task without git hooks", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+		}, hkGateLine},
+		{"open substantial task with one git hook absent", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			gate(t, h, "install", "--repo", repo)
+			if err := os.Remove(filepath.Join(repo, ".git", "hooks", "pre-push")); err != nil {
+				t.Fatal(err)
+			}
+		}, hkGateLine},
+		{"verified task that is still open", func(t *testing.T, h *hkHarness, repo string) {
+			source := []byte("verified source\n")
+			hkWriteFile(t, repo, "source.txt", string(source))
+			h.assessAndVerify(t, h.start(t, repo, hkSubstantialPlan), source)
+		}, hkGateLine},
+		{"no task", func(*testing.T, *hkHarness, string) {}, ""},
+		{"small task", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSmallPlan)
+		}, ""},
+		{"abandoned task", func(t *testing.T, h *hkHarness, repo string) {
+			h.abandon(t, h.start(t, repo, hkSubstantialPlan), "replaced")
+		}, ""},
+		{"open task in another repository", func(t *testing.T, h *hkHarness, _ string) {
+			h.start(t, hkRepo(t), hkSubstantialPlan)
+		}, ""},
+		{"git hooks installed", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			gate(t, h, "install", "--repo", repo)
+		}, ""},
+		{"a hook cw gate install did not write", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			hkWriteFile(t, repo, ".git/hooks/pre-commit", "#!/bin/sh\nexit 0\n")
+		}, ""},
+		{"hooks directory other repositories use", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			global := hkCanonicalTempDir(t)
+			hkWriteFile(t, global, "gitconfig", "[core]\n\thooksPath = "+hkCanonicalTempDir(t)+"\n")
+			t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(global, "gitconfig"))
+		}, ""},
+		{"gate turned off", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			h.env[enforceVerifyOption] = "false"
+		}, ""},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := hkRepo(t)
+			h := newHKHarness(t)
+			test.setup(t, h, repo)
+			stdin, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "startup", "cwd": repo})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := h.runSessionStart(t, string(stdin), "--instructions", hkWriteInstructions(t, instructions), "--cache", hkCanonicalTempDir(t))
+			if err != nil {
+				t.Fatalf("session-start: %v", err)
+			}
+			want := instructions
+			if test.want != "" {
+				want += "\n\n" + test.want
+			}
+			if context := hkSessionContext(t, got); context != want {
+				t.Fatalf("additionalContext %q, want %q", context, want)
+			}
+		})
+	}
+}

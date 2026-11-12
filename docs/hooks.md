@@ -19,8 +19,9 @@ summary is produced with a 5 second deadline and cached for one hour under
 produced in time, the conventions are returned alone.
 
 Between the conventions and that summary, after a blank line, it adds one
-short line for each version that is out of step; the context is paid for in
-every session, so there is nothing when all agree:
+short line for each version that is out of step, and one when git's hooks
+would catch more than the plugin hook does; the context is paid for in every
+session, so there is nothing when all is in order:
 
 - `plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw` when the `version` of the
   plugin manifest beside `global/` (`.claude-plugin/plugin.json`, or
@@ -36,6 +37,18 @@ every session, so there is nothing when all agree:
   Code sets to a value such as `claude-code_2-1-311_harness` unless the
   environment it starts in already names another agent. Any other value, and
   Codex, give no line.
+- `git hooks absent, so a commit or push from a script, an alias or a terminal
+  skips the verify gate: suggest cw gate install to the user` when the
+  session's repository has an open substantial task
+  ([Which records gate](#which-records-gate)), verified or not, and
+  `cw gate status` reports a hook `absent` from the repository's own hooks
+  directory. A hook that `cw gate install` did not write (`foreign`, such as a
+  hook manager's, which may already run the gate), a hooks directory that
+  other repositories use (`shared`, where install needs `--shared`), and
+  `enforce_verify` set to `false` give no line; `cw doctor` reports the first
+  two ([Installing the git hooks](#installing-the-git-hooks)). The line asks
+  the agent to suggest the command, because `cw` writes git's hooks only when
+  you ask.
 
 When `cw` is not on `PATH`, the hook command prints the file followed by one
 line that starts `agent-workflows: the commit and push verify gate is inactive
@@ -468,6 +481,22 @@ cw gate uninstall --repo /path/to/repo
   as a `run:` command in `lefthook.yml` for lefthook; or as a `repo: local`
   hook with `language: system` for the pre-commit framework. `cw gate status`
   then still reports that hook as `foreign`.
+- **Reminders.** `cw` never installs the hooks by itself. While a substantial
+  task is open in a repository without them, the session-start context
+  carries one line that suggests `cw gate install`
+  ([Session start](#session-start)), and `cw doctor` reports a `git_hooks`
+  check whose detail says what to do. Only the hooks missing while a task is
+  open count as a problem, so a repository that simply has no hooks does not
+  change `cw doctor --summary`, which exits 0 either way:
+
+  | `cw gate status` | Open substantial task | `git_hooks` status | Listed by `--summary` |
+  | --- | --- | --- | --- |
+  | both hooks `installed` | either | `configured` | No |
+  | a hook `foreign` | either | `detected`, with the hint to add the line above | No |
+  | otherwise a hook `absent`, directory `shared` | either | `detected`, with the hint that install needs `--shared` | No |
+  | otherwise a hook `absent` | yes | `missing` | Yes, so the summary's status is `attention` |
+  | otherwise a hook `absent` | no | `not_applicable` | No |
+  | not a repository, or git or the task store cannot be read | either | `unchecked` | No |
 
 ## Known bypasses
 
@@ -477,22 +506,22 @@ defence against an agent that sets out to bypass it (see the
 push through today while the repository has an open substantial task, or lets
 `cw task verify` pass on evidence it cannot check. In a repository where
 `cw gate install` wrote git's hooks, git runs the gate itself before each
-`git commit` and `git push`, however it was started, so the rows that come down
-to the plugin hook not seeing the git command no longer apply to commits and
-pushes there; the last row lists what still gets past git's hooks.
+`git commit` and `git push`, however it was started: the rows that say "Caught
+when `cw gate install` has run" no longer let a commit or push through there,
+and the last row lists what still gets past git's hooks.
 
 | Way around the gate | What happens today |
 | --- | --- |
-| `cd - && git commit -am x`, `popd && git commit -am x`, `cd $OTHER && git commit -am x` and the other directory changes the hook cannot follow ([Recognised commands](#recognised-commands)), from a session directory that no record gates | Allowed. The hook checks the git command against the session's working directory, so it asks only when a record gates that directory. |
-| A `cd` that fails, followed by `;`, `\|\|` or a newline: `cd ~/proj; git commit -am x` where `~/proj` does not exist, bash's `cd ""`, `cd ${HOME}x`, `cd /missing \|\| git commit -am x` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. |
-| `HOME=/x cd ~/proj && git push` | Allowed from a session directory that no record gates. The shell expands `~` with the old `HOME`, before the assignment applies to `cd`, but the hook treats `HOME` as unknown in a command that assigns it ([Recognised commands](#recognised-commands)). |
-| `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
-| `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
-| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. |
-| `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. |
-| `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. |
+| `cd - && git commit -am x`, `popd && git commit -am x`, `cd $OTHER && git commit -am x` and the other directory changes the hook cannot follow ([Recognised commands](#recognised-commands)), from a session directory that no record gates | Allowed. The hook checks the git command against the session's working directory, so it asks only when a record gates that directory. Caught when `cw gate install` has run: git runs its hook in the repository it commits to. |
+| A `cd` that fails, followed by `;`, `\|\|` or a newline: `cd ~/proj; git commit -am x` where `~/proj` does not exist, bash's `cd ""`, `cd ${HOME}x`, `cd /missing \|\| git commit -am x` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. Caught when `cw gate install` has run: git's hook judges the repository git runs in. |
+| `HOME=/x cd ~/proj && git push` | Allowed from a session directory that no record gates. The shell expands `~` with the old `HOME`, before the assignment applies to `cd`, but the hook treats `HOME` as unknown in a command that assigns it ([Recognised commands](#recognised-commands)). Caught when `cw gate install` has run. |
+| `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. Caught when `cw gate install` has run. |
+| `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. Caught when `cw gate install` has run: git runs its hooks for the command an alias stands for. |
+| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. Caught when `cw gate install` has run. |
+| `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Pushing them is caught when `cw gate install` has run; their commits can still be made, since some of these never run `pre-commit` (a merge without conflicts runs `pre-merge-commit`, which `cw gate install` does not write). |
+| `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
-| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
+| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under `cw` v3.0.0-rc.1, any version 4 record ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
@@ -504,7 +533,7 @@ pushes there; the last row lists what still gets past git's hooks.
 | A task nobody touched for 14 days | Allowed, with no message: the task stops gating 14 days after its latest revision ([Which records gate](#which-records-gate)). |
 | A `go` rebuilt from modified `cmd/go` source, or a GOROOT the user can write with an edited standard library or tools | `cw task run` records a pass. A check named `go` runs only a build of `cmd/go`, so a script named `go` first on `PATH` is refused with failure `untrusted_toolchain` ([which go a check runs](operations.md#which-go-a-check-runs)), but a build of modified source still passes. A check that runs another program, such as `make`, runs whatever `PATH` names. That is a limit of the design. |
 | A go env file with `GOFLAGS=-exec=/bin/true` (`GOENV=<file>`, or `go env -w`), or a cross-compile `GOOS`/`GOARCH` with a `go_<goos>_<goarch>_exec` program on `PATH` | `cw task run` records a pass, and the Go rule credits it, although no test binary ran: the rule reads `GOFLAGS` only from the environment. A known gap, open until a later fix. |
-| A plan check that runs `make publish`, `python3 -c …`, `go run …` or `./release.sh` | Allowed by `cw task start`, and `cw task run` runs it with the user's rights, so it can commit and push; the hook never sees it. `cw task start` refuses shells, `env`, `sudo`, network and deployment tools, git other than inspection commands and `cw publish` by name, which guards against accidents, not against a program that does the same. |
+| A plan check that runs `make publish`, `python3 -c …`, `go run …` or `./release.sh` | Allowed by `cw task start`, and `cw task run` runs it with the user's rights, so it can commit and push; the hook never sees it. `cw task start` refuses shells, `env`, `sudo`, network and deployment tools, git other than inspection commands and `cw publish` by name, which guards against accidents, not against a program that does the same. Its commits and pushes are caught when `cw gate install` has run: git runs its hooks under the check too, while the task is still unverified. |
 | Self-declared agent IDs | One agent can record itself as implementer, test engineer and reviewer under different `agent_id` strings. Independence compares those strings with each other and with the plan's `coordinator_id`; nothing authenticates them. |
 | The off switches and failures: `enforce_verify=false`, `cw` not on `PATH`, an internal error or timeout in the hook | Allowed. The deny text names the `enforce_verify` switch, and the agent can run the `claude plugin configure` command itself: the hook does not inspect it, and the option applies once Claude Code restarts. See [Fail-open rules](#fail-open-rules) and [Disabling the gate](#disabling-the-gate). |
 | Where `cw gate install` wrote git's hooks, git run outside the agent's shell tool with `--no-verify` or `CW_GATE=off`, after `core.hooksPath` changed, or with no `cw` on git's `PATH` (a GUI client's `PATH` may be shorter) | Allowed, with no message. Git skips its hooks, or the installed hook exits 0 when it finds no `cw` ([Installing the git hooks](#installing-the-git-hooks)). |

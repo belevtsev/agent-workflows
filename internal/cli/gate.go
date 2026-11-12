@@ -200,14 +200,9 @@ func addGateCommands(root *cobra.Command, config Config) {
 		Long: "Print the repository's hooks directory, whether other repositories use it too, and, for pre-commit and pre-push, installed (exactly what cw gate install writes), " +
 			"absent, or foreign (any other file). --json prints {hooks_path, shared, hooks: [{name, path, state}]}.",
 	}, false, func(cmd *cobra.Command, hooks gateHooks) error {
-		report := gateStatusReport{HooksPath: hooks.dir, Shared: hooks.shared != "", Hooks: []gateHookStatus{}}
-		for _, name := range gateHookNames {
-			path := filepath.Join(hooks.dir, name)
-			state, _, err := readGateHook(path, name)
-			if err != nil {
-				return fmt.Errorf("read %s: %w", path, err)
-			}
-			report.Hooks = append(report.Hooks, gateHookStatus{Name: name, Path: path, State: state})
+		report, err := gateStatus(hooks)
+		if err != nil {
+			return err
 		}
 		if asJSON {
 			return writeJSON(cmd.OutOrStdout(), report)
@@ -223,6 +218,20 @@ func addGateCommands(root *cobra.Command, config Config) {
 		return nil
 	})
 	status.Flags().BoolVar(&asJSON, "json", false, "Print JSON")
+}
+
+// gateStatus returns what cw gate status reports for the hooks directory.
+func gateStatus(hooks gateHooks) (gateStatusReport, error) {
+	report := gateStatusReport{HooksPath: hooks.dir, Shared: hooks.shared != "", Hooks: []gateHookStatus{}}
+	for _, name := range gateHookNames {
+		path := filepath.Join(hooks.dir, name)
+		state, _, err := readGateHook(path, name)
+		if err != nil {
+			return gateStatusReport{}, fmt.Errorf("read %s: %w", path, err)
+		}
+		report.Hooks = append(report.Hooks, gateHookStatus{Name: name, Path: path, State: state})
+	}
+	return report, nil
 }
 
 // report writes the hooks directory and why other repositories use it, if
