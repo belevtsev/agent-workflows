@@ -199,6 +199,14 @@ type CheckRun struct {
 	// rule credits only a run that has it (evidenceRun). It is absent when Tool
 	// is, and for runs recorded before cw read it (record version 4).
 	GoEnv *langpack.GoEnv `json:"go_env,omitempty"`
+	// SourceSHA256 is SourceDigest of the source when the run started, read
+	// in its start revision; the task holds that source's manifest as
+	// sourceManifestName of it. EnvKey is envKey of the configuration the run
+	// started under: hashes of its go env read and env_passthrough values,
+	// never a value. Runs recorded before they existed omit both (record
+	// version 5) and are never reused.
+	SourceSHA256 string `json:"source_sha256,omitempty"`
+	EnvKey       string `json:"env_key,omitempty"`
 }
 
 type Attachment struct {

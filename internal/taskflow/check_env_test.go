@@ -216,9 +216,9 @@ func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T) {
 	verified := langpack.GoTool{Path: "/verified/bin/go", Version: "go1.27.4", GOROOT: "/verified"}
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) { return verified, nil }
-	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, error) {
+	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, string, error) {
 		goflags := environmentValue(env, "GOFLAGS")
-		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, nil
+		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, "", nil
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	t.Setenv("GOROOT", "/elsewhere")
@@ -238,7 +238,7 @@ func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T)
 	}
 	for _, goflags := range []string{"-exec=/bin/true", "-toolexec=/bin/true"} {
 		t.Setenv("GOFLAGS", goflags)
-		spec, tool, goEnv, err := checkSpec(t.Context(), check, t.TempDir())
+		spec, tool, goEnv, _, err := checkSpec(t.Context(), check, t.TempDir())
 		if err != nil || tool == nil || *tool != verified || goEnv == nil {
 			t.Fatalf("checkSpec: tool %+v, go env %+v, %v; want %+v and a go env", tool, goEnv, err, verified)
 		}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -362,20 +363,21 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 // with go env under that environment and in dir (langpack.ReadGoEnv), which
 // the Go evidence rule credits by, and the run's environment ends with the
 // GOFLAGS, GOOS and GOARCH it reported, so a go env file read again by the
-// run cannot change them. err says why no go command could be verified, or
-// its go env read, and then the check must not run. Resolving and reading
-// run the go command, within ctx and the check's timeout, so RunCheck calls
-// checkSpec before it takes the task lock. checkSpec is the one place that
-// decides which program a check runs and what that program sees; RunCheck
-// attaches the log as both outputs.
-func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, goEnv *langpack.GoEnv, err error) {
+// run cannot change them. key is envKey of that read's key and the check's
+// environment. err says why no go command could be verified, or its go env
+// read, and then the check must not run. Resolving and reading run the go
+// command, within ctx and the check's timeout, so RunCheck calls checkSpec
+// before it takes the task lock. checkSpec is the one place that decides
+// which program a check runs and what that program sees; RunCheck attaches
+// the log as both outputs.
+func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, goEnv *langpack.GoEnv, key string, err error) {
 	spec = proc.Spec{
 		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(check),
 		Timeout:   time.Duration(check.TimeoutSeconds) * time.Second,
 		WaitDelay: checkWaitDelay,
 	}
 	if strings.TrimSuffix(filepath.Base(spec.Path), ".exe") != "go" {
-		return spec, nil, nil, nil
+		return spec, nil, nil, envKey("", check, spec.Env), nil
 	}
 	if spec.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -384,17 +386,40 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 	}
 	resolved, err := resolveGo(ctx, spec.Path, dir, spec.Env)
 	if err != nil {
-		return spec, nil, nil, err
+		return spec, nil, nil, "", err
 	}
+	environment := slices.Clip(spec.Env)
 	spec.Path = resolved.Path
 	spec.Env = append(spec.Env, resolved.Env()...)
-	read, pin, err := readGoEnv(ctx, resolved, dir, spec.Env)
+	read, pin, goKey, err := readGoEnv(ctx, resolved, dir, spec.Env)
 	if err != nil {
-		return spec, nil, nil, err
+		return spec, nil, nil, "", err
 	}
 	// go test reads a go env file again; the values just read win over it.
 	spec.Env = append(spec.Env, pin...)
-	return spec, &resolved, &read, nil
+	return spec, &resolved, &read, envKey(goKey, check, environment), nil
+}
+
+// envKey identifies the configuration a check runs under beyond its argv,
+// its program and its source: goKey, the key of a go check's go env read
+// (langpack.ReadGoEnv; empty for another program), and each variable the
+// check's env_passthrough names, set to its value in environment or unset.
+// It is langpack.GoEnvKey of them, so it holds hashes only, never a value.
+func envKey(goKey string, check Check, environment []string) string {
+	values := map[string]string{}
+	if goKey != "" {
+		values["go env"] = goKey
+	}
+	for _, name := range check.EnvPassthrough {
+		values["unset "+name] = ""
+		for _, entry := range environment {
+			if variable, value, _ := strings.Cut(entry, "="); variable == name {
+				delete(values, "unset "+name)
+				values["set "+name] = value
+			}
+		}
+	}
+	return langpack.GoEnvKey(values)
 }
 
 // resolveGo and readGoEnv are langpack.ResolveGo and langpack.ReadGoEnv; a
@@ -444,7 +469,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	}
 	// refused says why no verified go command could run the check; the start
 	// revision then records the run as failed, and nothing runs.
-	spec, tool, goEnv, refused := checkSpec(ctx, planned, stored.Baseline.SelectedPath)
+	spec, tool, goEnv, key, refused := checkSpec(ctx, planned, stored.Baseline.SelectedPath)
 	if refused != nil && ctx.Err() != nil {
 		return run, ctx.Err()
 	}
@@ -463,7 +488,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 				return errors.New("the same check already has an owned running attempt; wait for its terminal record")
 			}
 		}
-		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -471,11 +496,18 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 		if !slices.Equal(check.Argv, planned.Argv) || !slices.Equal(check.EnvPassthrough, planned.EnvPassthrough) || snapshot.SelectedPath != spec.Dir {
 			return errors.New("the check or its selected path changed while cw resolved its program; run it again")
 		}
+		manifest, sourceSHA256, err := sourceManifest(files)
+		if err != nil {
+			return err
+		}
+		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
+			return err
+		}
 		id, err := randomID()
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -602,6 +634,40 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 		return run, fmt.Errorf("%w: %s", ErrCheckFailed, run.Status)
 	}
 	return run, nil
+}
+
+// sourceManifestName is the task artefact that lists the source files whose
+// encoded manifest has this SHA-256: SourceDigest of that source.
+func sourceManifestName(sum string) string { return "manifest-" + sum + ".json" }
+
+// sourceManifest encodes files, as projectctx.CaptureManifest returned them,
+// and returns the encoding and its SHA-256, which is SourceDigest of that
+// source.
+func sourceManifest(files []projectctx.FileState) ([]byte, string, error) {
+	data, err := encode(files)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(data) > MaxInputBytes {
+		return nil, "", errors.New("source manifest exceeds the 8 MiB limit")
+	}
+	return data, digest(data), nil
+}
+
+// storeSourceManifest makes sure the task holds data, a sourceManifest
+// encoding whose SHA-256 is sum, as sourceManifestName of sum. The file is
+// written once per digest: one that exists already must hold the same bytes.
+func storeSourceManifest(artifacts Artifacts, data []byte, sum string) error {
+	name := sourceManifestName(sum)
+	if err := artifacts.Write(name, data); errors.Is(err, fs.ErrExist) {
+		stored, readErr := artifacts.Read(name, MaxInputBytes)
+		if readErr != nil || digest(stored) != sum {
+			return fmt.Errorf("stored source manifest %s differs from its name", name)
+		}
+	} else if err != nil {
+		return fmt.Errorf("store source manifest: %w", err)
+	}
+	return nil
 }
 
 // toolLimitations names, for the checks whose latest run passed at snapshot

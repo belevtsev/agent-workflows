@@ -184,3 +184,139 @@ func TestNormalCheckExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
 		t.Fatalf("%d storm descendants outlived a passed check: %v", len(names), names)
 	}
 }
+
+// storedSourceManifest fails unless the task holds the source manifest named
+// by sum as a private file whose bytes hash to sum.
+func storedSourceManifest(t *testing.T, record Record, sum string) {
+	t.Helper()
+	path := filepath.Join(record.Directory, sourceManifestName(sum))
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("the task holds no manifest for source %s: %v", sum, err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || digest(data) != sum || info.Mode().Perm() != 0o600 {
+		t.Fatalf("manifest %s: mode %v, sha256 %s, %v; want a private file whose bytes hash to its name", path, info.Mode(), digest(data), err)
+	}
+}
+
+// TestRunCheckRecordsTheSourceDigestOfTheRun runs a check twice at one source
+// and once after an edit. Oracle (X1): each run's source_sha256 equals
+// SourceDigest of the tree it ran at; the task holds that manifest as
+// manifest-<sha>.json, written once per digest, so a second run at the same
+// source still passes; an edit gives a new digest and a second manifest.
+func TestRunCheckRecordsTheSourceDigestOfTheRun(t *testing.T) {
+	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
+	runAt := func() (CheckRun, string) {
+		t.Helper()
+		run, err := RunCheck(t.Context(), record.Directory, "focused")
+		if err != nil {
+			t.Fatalf("RunCheck: %s, %v", run.Status, err)
+		}
+		want, err := SourceDigest(t.Context(), record.Baseline.SelectedPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return run, want
+	}
+	first, want := runAt()
+	if first.SourceSHA256 != want {
+		t.Fatalf("run source_sha256 = %q, want SourceDigest %q", first.SourceSHA256, want)
+	}
+	storedSourceManifest(t, record, want)
+	if second, _ := runAt(); second.SourceSHA256 != want {
+		t.Errorf("a second run at the same source recorded %q, want %q", second.SourceSHA256, want)
+	}
+	changedWorkerSource(t, record)
+	third, changed := runAt()
+	if third.SourceSHA256 != changed || changed == want {
+		t.Errorf("a run after an edit recorded %q, want the new SourceDigest %q (old %q)", third.SourceSHA256, changed, want)
+	}
+	storedSourceManifest(t, record, changed)
+	loaded, err := Load(record.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, sum := range []string{want, want, changed} {
+		if loaded.Checks[i].SourceSHA256 != sum {
+			t.Errorf("stored run %d source_sha256 = %q, want %q", i, loaded.Checks[i].SourceSHA256, sum)
+		}
+	}
+}
+
+// TestSubmitWorkerResultRecordsTheSourceDigestOfTheReview submits a completed
+// review. Oracle (X1): the bound result's source_sha256 equals SourceDigest of
+// the tree it was submitted at, and the task holds that manifest.
+func TestSubmitWorkerResultRecordsTheSourceDigestOfTheReview(t *testing.T) {
+	record, ref := preparedChangedTask(t)
+	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
+	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))
+	want, err := SourceDigest(t.Context(), record.Baseline.SelectedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound := findWorkerResult(record, "review"); bound == nil || bound.SourceSHA256 != want {
+		t.Fatalf("review result %+v, want source_sha256 %q", bound, want)
+	}
+	storedSourceManifest(t, record, want)
+}
+
+// TestRunCheckKeysTheEnvironmentWithoutItsValues runs a go check under two
+// CGO_ENABLED values, and a check whose env_passthrough names a variable
+// under two values, unset and empty. Oracle (X1): cmd/go reports CGO_ENABLED
+// from the environment, so the same environment gives the same env_key and
+// another CGO_ENABLED another; each passthrough state gives its own key; the
+// key is a hex SHA-256, and no task file but the check's own log holds the
+// passthrough value.
+func TestRunCheckKeysTheEnvironmentWithoutItsValues(t *testing.T) {
+	plan := passthroughPlan(t, helperPlan(t, "small", "pass"), "CW_X1_DB_PASSWORD")
+	plan.Checks = append(plan.Checks, Check{ID: "toolchain", Argv: []string{"go", "version"}, TimeoutSeconds: 120})
+	plan.Requirements[0].CheckIDs = append(plan.Requirements[0].CheckIDs, "toolchain")
+	record, _ := fixtureTask(t, plan)
+	key := func(checkID string) string {
+		t.Helper()
+		run, err := RunCheck(t.Context(), record.Directory, checkID)
+		if err != nil {
+			t.Fatalf("RunCheck %s: %s, %v", checkID, run.Status, err)
+		}
+		if !validSHA256(run.EnvKey) {
+			t.Fatalf("run %s env_key = %q, want a hex SHA-256", checkID, run.EnvKey)
+		}
+		return run.EnvKey
+	}
+	t.Setenv("CGO_ENABLED", "0")
+	off := key("toolchain")
+	if again := key("toolchain"); again != off {
+		t.Errorf("the same environment gave env_key %s, then %s", off, again)
+	}
+	t.Setenv("CGO_ENABLED", "1")
+	if on := key("toolchain"); on == off {
+		t.Errorf("CGO_ENABLED 0 and 1 gave the same env_key %s", on)
+	}
+	const secret = "cw-x1-passthrough-value"
+	t.Setenv("CW_X1_DB_PASSWORD", secret)
+	set := key("focused")
+	t.Setenv("CW_X1_DB_PASSWORD", secret+"-changed")
+	changed := key("focused")
+	if err := os.Unsetenv("CW_X1_DB_PASSWORD"); err != nil {
+		t.Fatal(err)
+	}
+	unset := key("focused")
+	t.Setenv("CW_X1_DB_PASSWORD", "")
+	empty := key("focused")
+	if set == changed || set == unset || changed == unset || unset == empty {
+		t.Errorf("passthrough env_keys set %s, changed %s, unset %s, empty %s; want all different", set, changed, unset, empty)
+	}
+	entries, err := os.ReadDir(record.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".log") {
+			continue // the check's own output, not what cw records
+		}
+		if data, err := os.ReadFile(filepath.Join(record.Directory, entry.Name())); err == nil && strings.Contains(string(data), secret) {
+			t.Errorf("task file %s holds the env_passthrough value", entry.Name())
+		}
+	}
+}

@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
 
+### Added
+
+- Each check run records the digest of the source it ran at and a hash-only key of its go and `env_passthrough` configuration,
+  and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
+
 ### Changed
 
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
