@@ -101,9 +101,13 @@ func readTaskInput(cmd *cobra.Command, path string, value any) error {
 	return taskflow.Decode(reader, value)
 }
 
-// summaryFlag adds --summary to cmd. It prints one compact line with the
-// identifiers and hashes a coordinator needs next, instead of the whole
-// record, which grows with every check and worker record.
-func summaryFlag(cmd *cobra.Command, summary *bool) {
-	cmd.Flags().BoolVar(summary, "summary", false, "Print a one-line summary instead of the whole task record")
+// fullFlag adds --full to cmd, which prints the whole value instead of the
+// default one-line summary: the identifiers and hashes a coordinator needs
+// next, not the record, which grows with every check and worker record.
+// --summary, the former opt-in to the summary, stays accepted and changes
+// nothing.
+func fullFlag(cmd *cobra.Command, full *bool, what string) {
+	cmd.Flags().BoolVar(full, "full", false, "Print "+what+" instead of the one-line summary")
+	cmd.Flags().Bool("summary", false, "Accepted for compatibility; the summary is the default")
+	_ = cmd.Flags().MarkHidden("summary")
 }

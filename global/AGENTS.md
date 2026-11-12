@@ -17,4 +17,4 @@ A task is substantial when it has two or more of: changes in more than one packa
 
 ## Keep context lean
 
-Keep long build, test and tool output in files and print only the exit status, result lines and failures. Pass `--summary` to the `cw` commands that accept it. Delegate long investigations to bounded workers that return conclusions.
+Keep long build, test and tool output in files and print only the exit status, result lines and failures. The `cw task` commands print a one-line summary by default; pass `--summary` to `cw doctor` and `cw task trace`. Delegate long investigations to bounded workers that return conclusions.

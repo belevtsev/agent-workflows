@@ -185,7 +185,7 @@ func (e *evidenceE2E) start(store, name, plan string) (string, int, string) {
 
 func (e *evidenceE2E) verify() taskflow.Verification {
 	e.t.Helper()
-	_, stdout, stderr := e.cw("task", "verify", "--task", e.task)
+	_, stdout, stderr := e.cw("task", "verify", "--full", "--task", e.task)
 	var verification taskflow.Verification
 	if err := json.Unmarshal([]byte(stdout), &verification); err != nil {
 		e.t.Fatalf("verify output is not a verification: %v\nstdout %s\nstderr %s", err, stdout, stderr)

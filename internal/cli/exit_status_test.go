@@ -25,7 +25,7 @@ func TestTaskVerifyExitStatusTellsIncompleteFromIOError(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
 
-	incomplete := compactExecute(h, nil, "task", "verify", "--task", h.task)
+	incomplete := compactExecute(h, nil, "task", "verify", "--full", "--task", h.task)
 	if code := ExitCode(incomplete.err); code != 5 {
 		t.Fatalf("verify of an unassessed task: exit %d, want 5 (negative result): %s", code, incomplete.text())
 	}
@@ -35,7 +35,7 @@ func TestTaskVerifyExitStatusTellsIncompleteFromIOError(t *testing.T) {
 	}
 
 	// The task directory cannot be read: the record is gone.
-	missing := compactExecute(h, nil, "task", "verify", "--task", filepath.Join(filepath.Dir(h.task), "absent-task"))
+	missing := compactExecute(h, nil, "task", "verify", "--full", "--task", filepath.Join(filepath.Dir(h.task), "absent-task"))
 	if code := ExitCode(missing.err); code != 1 || missing.stdout != "" {
 		t.Fatalf("verify of a missing task directory: exit %d, stdout %q; want 1 (failure) and no output: %s", code, missing.stdout, missing.text())
 	}
@@ -48,7 +48,7 @@ func TestTaskVerifyExitStatusTellsIncompleteFromIOError(t *testing.T) {
 	if err := os.RemoveAll(repo); err != nil {
 		t.Fatal(err)
 	}
-	unreadable := compactExecute(h, nil, "task", "verify", "--task", h.task)
+	unreadable := compactExecute(h, nil, "task", "verify", "--full", "--task", h.task)
 	if code := ExitCode(unreadable.err); code != 1 || unreadable.stdout != "" {
 		t.Fatalf("verify with the source directory removed: exit %d, stdout %q; want 1 (failure) and no output: %s", code, unreadable.stdout, unreadable.text())
 	}
@@ -60,7 +60,7 @@ func TestTaskVerifyExitStatusTellsIncompleteFromIOError(t *testing.T) {
 func TestTaskRunExitStatusTellsFailedCheckFromInvalidCheck(t *testing.T) {
 	h := compactCheckHarness(t, nil, []string{"cat", "exit-status-missing-input"})
 
-	failed := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe")
+	failed := compactExecute(h, nil, "task", "run", "--full", "--task", h.task, "--check", "probe")
 	if code := ExitCode(failed.err); code != 5 {
 		t.Fatalf("failed check run: exit %d, want 5 (negative result): %s", code, failed.text())
 	}
@@ -72,7 +72,7 @@ func TestTaskRunExitStatusTellsFailedCheckFromInvalidCheck(t *testing.T) {
 		t.Fatalf("failed check run printed no failed run: %v: %s", err, failed.text())
 	}
 
-	unplanned := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "absent")
+	unplanned := compactExecute(h, nil, "task", "run", "--full", "--task", h.task, "--check", "absent")
 	if code := ExitCode(unplanned.err); code != 1 || unplanned.stdout != "" {
 		t.Fatalf("run of a check outside the plan: exit %d, stdout %q; want 1 (failure) and no output: %s", code, unplanned.stdout, unplanned.text())
 	}
