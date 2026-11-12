@@ -1,9 +1,6 @@
 package cli
 
-import (
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 // newTaskRunCommand returns cw task run. It prints the check run whenever one
 // was recorded, then returns the run's error.
@@ -17,7 +14,7 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 		if err := requireTask(directory); err != nil {
 			return err
 		}
-		value, err := taskflow.RunCheck(cmd.Context(), directory, check)
+		value, err := taskEnv(deps.config).RunCheck(cmd.Context(), directory, check)
 		if value.ID != "" {
 			var printed any = value
 			if summary {

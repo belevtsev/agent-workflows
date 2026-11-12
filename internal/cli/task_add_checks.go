@@ -29,7 +29,7 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 			if err := readTaskInput(cmd, inputFile, &input); err != nil {
 				return err
 			}
-			record, err := taskflow.AddChecks(cmd.Context(), directory, input)
+			record, err := taskEnv(deps.config).AddChecks(cmd.Context(), directory, input)
 			if err != nil {
 				return err
 			}

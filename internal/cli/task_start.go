@@ -33,7 +33,7 @@ func newTaskStartCommand(deps taskDeps) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		record, err := taskflow.StartWithPacks(cmd.Context(), options.repo, options.store, plan, options.advisers, options.packSelection, options.packs)
+		record, err := taskEnv(deps.config).StartWithPacks(cmd.Context(), options.repo, options.store, plan, options.advisers, options.packSelection, options.packs)
 		if err != nil {
 			return err
 		}

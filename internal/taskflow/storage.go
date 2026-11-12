@@ -532,10 +532,10 @@ func Load(path string) (Record, error) {
 	return record, err
 }
 
-// update appends one revision made by change. ctx bounds the wait for the
-// task lock, as in updateDiscarding.
-func update(ctx context.Context, path string, change func(*os.Root, *Record) error) (Record, error) {
-	return updateWithCapacity(ctx, path, 1, "", change)
+// update appends one revision made by change, stamped with env's clock. ctx
+// bounds the wait for the task lock, as in updateDiscarding.
+func update(ctx context.Context, env Env, path string, change func(*os.Root, *Record) error) (Record, error) {
+	return updateWithCapacity(ctx, env, path, 1, "", change)
 }
 
 // Every running check owns one future terminal revision. Count reservations
@@ -563,8 +563,8 @@ func requireRevisionCapacity(record Record, additional int, completingRunID stri
 	return nil
 }
 
-func updateWithCapacity(ctx context.Context, path string, additional int, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
-	return updateDiscarding(ctx, path, additional, completingRunID, change, nil)
+func updateWithCapacity(ctx context.Context, env Env, path string, additional int, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
+	return updateDiscarding(ctx, env, path, additional, completingRunID, change, nil)
 }
 
 // updateDiscarding is updateWithCapacity with one addition: when change
@@ -575,7 +575,7 @@ func updateWithCapacity(ctx context.Context, path string, additional int, comple
 // confirmed after a failed write, even when this run published nothing (the
 // name already existed). A nil discard is updateWithCapacity. The wait for
 // the task lock ends when ctx is done, with an error that wraps ctx.Err().
-func updateDiscarding(ctx context.Context, path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (_ Record, err error) {
+func updateDiscarding(ctx context.Context, env Env, path string, additional int, completingRunID string, change func(*os.Root, *Record) error, discard func(*os.Root)) (_ Record, err error) {
 	root, directory, err := openTask(path)
 	if err != nil {
 		return Record{}, err
@@ -613,7 +613,7 @@ func updateDiscarding(ctx context.Context, path string, additional int, completi
 	record.Version = Version
 	record.Revision++
 	record.PreviousSHA256 = previous
-	record.UpdatedAt = time.Now().UTC()
+	record.UpdatedAt = env.now()
 	if err := requireRevisionCapacity(record, 0, ""); err != nil {
 		return Record{}, err
 	}
@@ -708,9 +708,9 @@ func lockTask(ctx context.Context, root *os.Root, wait time.Duration) (func(), e
 // Each attempt waits for the task lock itself; this loop retries, until ctx is
 // done, a writer that outlasts that wait, such as a .lock directory that cw
 // v3.0.0-rc.1 left behind.
-func updateWhenUnlocked(ctx context.Context, path, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
+func updateWhenUnlocked(ctx context.Context, env Env, path, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
 	for {
-		record, err := updateWithCapacity(ctx, path, 1, completingRunID, change)
+		record, err := updateWithCapacity(ctx, env, path, 1, completingRunID, change)
 		if !errors.Is(err, errTaskLocked) && !errors.Is(err, errTaskBusy) {
 			return record, err
 		}

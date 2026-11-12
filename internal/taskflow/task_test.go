@@ -650,7 +650,7 @@ func TestCompletionWaitsForEveryOwnedRunAndRefusesSameCheckConcurrency(t *testin
 func TestOlderNonterminalRunCannotBeHiddenByLatestPass(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	mustAssess(t, record, ref)
-	if _, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error {
+	if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error {
 		older := record.Checks[0]
 		id, err := randomID()
 		if err != nil {
@@ -876,7 +876,7 @@ func TestTerminalPublicationWaitsForShortMetadataWriter(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := updateWhenUnlocked(ctx, record.Directory, "", func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
+		_, err := updateWhenUnlocked(ctx, Env{}, record.Directory, "", func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
 		done <- err
 	}()
 	select {

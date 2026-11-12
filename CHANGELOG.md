@@ -15,14 +15,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
-  for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
   its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 - `cw doctor` lives in `internal/doctor`, so the commit gate no longer imports the credential store, Graphify or go-toml;
   `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
+- Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
+  so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
+  for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 
 ### Fixed
 

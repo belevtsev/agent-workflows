@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,9 @@ type Config struct {
 	WorkingDir                 func() (string, error)
 	Executable                 func() (string, error)
 	Getenv                     func(string) string
+	// Now is the clock: every time cw stores in a task record or a
+	// publication entry, and the time open records age against.
+	Now func() time.Time
 
 	// prePublishTimeout replaces hookPublishTimeout when set, so tests can
 	// reach the hook's deadline quickly.
@@ -53,6 +57,9 @@ func defaults(config Config) Config {
 	if config.Getenv == nil {
 		config.Getenv = os.Getenv
 	}
+	if config.Now == nil {
+		config.Now = time.Now
+	}
 	if config.In == nil {
 		config.In = os.Stdin
 	}
@@ -63,6 +70,12 @@ func defaults(config Config) Config {
 		config.Err = os.Stderr
 	}
 	return config
+}
+
+// taskEnv is the taskflow.Env the task commands run their use cases with:
+// the production ports, with config's clock.
+func taskEnv(config Config) taskflow.Env {
+	return taskflow.Env{Clock: config.Now}
 }
 
 // NewCommand constructs the cw command tree.
