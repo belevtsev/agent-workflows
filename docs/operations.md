@@ -167,8 +167,10 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
 | 130 | cancelled | The command was interrupted. |
 
-On 5 the command still prints its result on stdout (the verification, the check
-run or the consultation record) and names the reason. The task commands other
+On 5, `cw task verify` and `cw task run` still print the verification or the
+check run on stdout, which names the reason. `cw consult` prints its status
+line, or with `--summary` the one-line view, and writes the record to the
+`--output` path. The task commands other
 than `verify` and `run` still exit 1 when the record's state refuses them, for
 example an abandoned task or a `cw task add-checks` refusal. The hooks
 (`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)); `cw graphify`
