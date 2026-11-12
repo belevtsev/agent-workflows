@@ -14,7 +14,8 @@ even an empty one, overrides it, and a domain pack is never selected by default.
 the selected path, and verify applies their rules by id. Schema 1 has `schema`,
 `id`, `kind`, `detect`, `commands`, `tests`, `interface_extract`, `skills`,
 `review` and `evidence_rule`. The Go pack's rule is `go.package-test/v2` (P3a-2); a task keeps the rule it
-recorded at start, so tasks started earlier keep `go.package-test/v1`. v2
+recorded at start. `go.package-test/v1` is gone: `cw` refuses a record that
+binds it, so start a new task. v2
 runs `go list` offline at verify, inside the task lock, for at most 6 s;
 when the package graph is not ready within 5 s, as on a slow host, verify
 asks for `go test ./...` instead. Known gaps, each with its follow-up: a

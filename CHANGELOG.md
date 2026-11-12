@@ -35,6 +35,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
   now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 
+### Removed
+
+- The Go rule `go.package-test/v1` is gone: `cw` refuses a task that binds it, which only development builds before
+  v3.0.0-rc.1 started, and an open one gates until moved; start a new task ([format](docs/development.md#task-record-format)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking

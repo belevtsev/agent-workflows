@@ -11,50 +11,17 @@ import (
 	"strings"
 )
 
-// GoTests applies to a Go module (go.mod at the selected path). It maps each
-// changed file to the work that must have been tested, and requires a passed
-// run that covers it (see credited):
+var moduleFileNames = []string{"go.mod", "go.sum", "go.work", "go.work.sum"}
+
+// changedWork returns, sorted, the changed packages and the changed module
+// files of a Go module (go.mod at the selected path), the work the Go rule
+// requires a passed run to cover (see credited):
 //
 //   - go.mod, go.sum, go.work or go.work.sum at the module root needs a run
 //     with the pattern ./... ;
 //   - any other file belongs to a package (see packageOf). This includes
 //     _test.go files, files under testdata, and non-Go files such as embedded
 //     assets, .s and .c.
-type GoTests struct{}
-
-func (GoTests) Applies(source Source) bool { return slices.Contains(source.Current, "go.mod") }
-
-func (GoTests) Problems(source Source, passed []Run) []string {
-	proven := [][]string{}
-	for _, run := range passed {
-		if patterns := credited(run); patterns != nil {
-			proven = append(proven, patterns)
-		}
-	}
-	covered := func(pkg string) bool {
-		return slices.ContainsFunc(proven, func(patterns []string) bool {
-			return slices.ContainsFunc(patterns, func(pattern string) bool { return covers(pattern, pkg) })
-		})
-	}
-	packages, moduleFiles := changedWork(source)
-	var problems []string
-	for _, name := range moduleFiles {
-		if !slices.ContainsFunc(proven, func(patterns []string) bool { return slices.Contains(patterns, "...") }) {
-			problems = append(problems, fmt.Sprintf("changed %s has no passed go test ./... run at the current source", name))
-		}
-	}
-	for _, pkg := range packages {
-		if !covered(pkg) {
-			problems = append(problems, fmt.Sprintf("changed package %s has no passed go test run at the current source", pkg))
-		}
-	}
-	return problems
-}
-
-var moduleFileNames = []string{"go.mod", "go.sum", "go.work", "go.work.sum"}
-
-// changedWork returns, sorted, the changed packages and the changed module
-// files at the module root, as GoTests describes.
 func changedWork(source Source) (packages, moduleFiles []string) {
 	modules, sources := map[string]bool{}, map[string]bool{}
 	for _, name := range source.Current {

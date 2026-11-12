@@ -30,10 +30,10 @@ import (
 )
 
 // acPacks is the explicit pack selection the amendment fixtures start with: a
-// Go pack detected by go.mod that names go.package-test/v1, the Go rule these
+// Go pack detected by go.mod that names go.package-test/v2, the Go rule these
 // contracts state their verify problems in.
 func acPacks() []langpack.Manifest {
-	return []langpack.Manifest{spManifest("go", langpack.GoPackageTestV1, "go.mod")}
+	return []langpack.Manifest{spManifest("go", langpack.GoPackageTestV2, "go.mod")}
 }
 
 const (
@@ -46,7 +46,9 @@ const (
 	acB3Phrase        = "checks can be added only to a task whose evidence rules include the Go package-test rule"
 )
 
-var acWidenedArgv = []string{"go", "test", "./..."}
+// acWidenedArgv runs under -race, which go.package-test/v2 needs for each
+// changed package.
+var acWidenedArgv = []string{"go", "test", "-race", "./..."}
 
 // ---------------------------------------------------------------------------
 // Environment and fixture (contract section 2).

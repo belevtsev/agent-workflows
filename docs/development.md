@@ -183,8 +183,9 @@ run `status` or context phase, fails validation with "invalid stored …".
   gating it: run the same `cw` on every host and hook that shares a task store.
 - A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
   says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
-  `baseline_manifest` is refused with `taskflow.ErrLegacyRecord`, which says to
-  start a new task. A `cw task` command on either record exits 4;
+  `baseline_manifest`, or binds the removed rule `go.package-test/v1`, is
+  refused with `taskflow.ErrLegacyRecord`, which says to start a new task. A
+  `cw task` command on either record exits 4;
   `cw publish --task` reports `task-unreadable` and exits 1. A version below
   `MinVersion`, or a revision with a lower version than the one before it, does
   not load either, and exits 1.
