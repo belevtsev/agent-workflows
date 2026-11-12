@@ -1423,7 +1423,7 @@ func compactFormerSummary(t *testing.T, h *summaryCLIHarness, command string) an
 
 // Oracle: without a flag each command prints, byte for byte, what it printed
 // with --summary before (the summary view of the record it left; for verify,
-// the summary of the verification that --full prints), and --summary, now a
+// the summary of the verification it produces), and --summary, now a
 // no-op, prints the same bytes. add-checks is covered by aclTestSummary.
 func TestTaskCommandsPrintTheSummaryByDefault(t *testing.T) {
 	for _, mode := range []compactOutputMode{{"default", nil}, {"--summary", []string{"--summary"}}} {
@@ -1432,10 +1432,11 @@ func TestTaskCommandsPrintTheSummaryByDefault(t *testing.T) {
 				t.Helper()
 				var want string
 				if command == "verify" {
-					full := compactExecute(h, nil, "task", "verify", "--task", h.task, "--full")
-					var verification taskflow.Verification
-					if err := json.Unmarshal([]byte(full.stdout), &verification); err != nil || verification.CheckedAt.IsZero() {
-						t.Fatalf("verify --full did not print the verification: %v: %q", err, full.stdout)
+					// The finding codes the summary selects by are not in the
+					// JSON, so verify again in process on the same source.
+					verification, err := taskEnv(h.config).Verify(t.Context(), h.task)
+					if verification.TaskID == "" {
+						t.Fatalf("verify produced no verification: %v", err)
 					}
 					want = compactJSONLineOf(t, summarizeVerification(verification))
 				} else {
