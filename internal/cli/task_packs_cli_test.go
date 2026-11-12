@@ -167,7 +167,8 @@ func TestVerifyWithPacks(t *testing.T) {
 	pack := func(id, rule string) langpack.Manifest {
 		return langpack.Manifest{Schema: 1, ID: id, Kind: "language", Detect: []string{"go.mod"}, EvidenceRule: rule}
 	}
-	ver, test := []string{"go", "version"}, []string{"go", "test", "./..."}
+	// test runs under -race, so only its GOFLAGS can deny it go.package-test/v2 credit.
+	ver, test := []string{"go", "version"}, []string{"go", "test", "-race", "./..."}
 	for _, c := range []struct {
 		name    string
 		via     string // "cli", "cli-removed" (after cw pack remove go) or "direct" (StartWithPacks explicit)
@@ -181,8 +182,8 @@ func TestVerifyWithPacks(t *testing.T) {
 		{"A20.b passed race run", "cli", nil, []string{"go", "test", "-race", "./..."}, nil, false, nil},
 		{"A20.c after pack remove go", "cli-removed", nil, ver, nil, false, nil},
 		{"A20.d unknown rule", "direct", []langpack.Manifest{pack("go", "go.package-test/v9")}, ver, nil, false, []string{tpNotBuiltIn("go.package-test/v9")}},
-		{"A20 GOFLAGS that skip tests are forwarded", "direct", []langpack.Manifest{pack("go", langpack.GoPackageTestV1)}, test, []string{"-run=^$"}, true, nil},
-		{"A20 only the latest run counts", "direct", []langpack.Manifest{pack("go", langpack.GoPackageTestV1)}, test, []string{"", "-run=^$"}, true, nil},
+		{"A20 GOFLAGS that skip tests are forwarded", "direct", []langpack.Manifest{pack("go", langpack.GoPackageTestV2)}, test, []string{"-run=^$"}, true, nil},
+		{"A20 only the latest run counts", "direct", []langpack.Manifest{pack("go", langpack.GoPackageTestV2)}, test, []string{"", "-run=^$"}, true, nil},
 		{"A20 empty and unknown rules", "direct", []langpack.Manifest{pack("p1", ""), pack("p2", "example.rule/v1")}, ver, nil, false,
 			[]string{tpNotBuiltIn("example.rule/v1")}},
 		{"A20 two unknown rules in order", "direct", []langpack.Manifest{pack("p1", "example.rule/v1"), pack("p2", "go.package-test/v9")}, ver, nil, false,

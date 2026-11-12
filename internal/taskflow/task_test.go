@@ -1058,10 +1058,10 @@ func mustVerifyReport(t *testing.T, record Record) Verification {
 
 // Verify applies the evidence rule the task's pack set names to a changed
 // substantial task, given paths relative to the selected path: under the Go
-// rule go.package-test/v1 a changed package needs a passed go test run
+// rule go.package-test/v2 a changed package needs a passed go test -race run
 // covering it. The rules themselves are tested in internal/langpack.
 func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
-	goPack := []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV1}}
+	goPack := []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV2}}
 	const problem = "changed package internal/pkg has no passed go test run at the current source"
 	for _, tc := range []struct {
 		name    string
@@ -1083,7 +1083,7 @@ func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
 				module[path.Join(tc.module, name)] = data
 			}
 			repo := bundleTestRepo(t, module, true)
-			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
+			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-race", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
 			if err != nil {
 				t.Fatal(err)
 			}

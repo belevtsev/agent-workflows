@@ -43,6 +43,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
+### Removed
+
+- The Go rule `go.package-test/v1` is gone: `cw` refuses a task that binds it, which only development builds before
+  v3.0.0-rc.1 started, and an open one gates until moved; start a new task ([format](docs/development.md#task-record-format)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking

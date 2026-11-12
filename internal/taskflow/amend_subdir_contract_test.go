@@ -223,7 +223,7 @@ func subDirState(t *testing.T, dir string) map[string]string {
 }
 
 func subWidened() taskflow.Check {
-	return taskflow.Check{ID: "widened", Argv: []string{"go", "test", "./..."}}
+	return taskflow.Check{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}
 }
 
 // subRefused asserts the "Refused" meaning of section 1.5 for AddChecks: a

@@ -14,7 +14,6 @@ import (
 // fallback limitation, with no changed file it adds nothing, and in either
 // case runs no command; otherwise it appends GoEvidence over LoadGoFacts with
 // its own ctx (B1.a: a 6 s graph within a 2-minute deadline is not cut off).
-// go.package-test/v1 still runs GoTests and no command.
 func TestEvaluateV2B1(t *testing.T) {
 	gfPosix(t)
 	v2 := "go.package-test/v2"
@@ -40,15 +39,8 @@ func TestEvaluateV2B1(t *testing.T) {
 		}
 	}
 
-	// J5: a v1 task keeps GoTests and runs no command.
-	goSrc := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
-	v1 := langpack.Evaluate(gfCtx(t), dir, env, []string{langpack.GoPackageTestV1}, goSrc, nil)
-	wantV1 := append(langpack.AnyPassedRun{}.Problems(goSrc, nil), langpack.GoTests{}.Problems(goSrc, nil)...)
-	if !slices.Equal(v1.Problems, wantV1) || len(v1.Limitations) != 0 || ran() {
-		t.Errorf("J5 violated: v1 gives %+v (go ran: %v), want problems %q", v1, ran(), wantV1)
-	}
-
 	// B1.a: the graph command sleeps 6 s, then prints nothing and exits 0.
+	goSrc := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	got := langpack.Evaluate(gfCtx(t), dir, env, []string{v2}, goSrc, plain)
 	if !slices.Equal(got.Problems, []string{geT2("a")}) || !slices.Equal(got.Limitations, []string{geNotListed("unit", geWhyPlain)}) {
 		t.Errorf("B1/B1.a violated: Evaluate gives %+v; want problems [%q] and limitations [%q]", got, geT2("a"), geNotListed("unit", geWhyPlain))

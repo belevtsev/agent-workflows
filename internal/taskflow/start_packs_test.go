@@ -131,7 +131,7 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	// file is gone (packs are detected at start only).
 	repo2, store2 := spRepo(t, map[string]string{"go.mod": ""})
 	c, err := taskflow.StartWithPacks(ctx, repo2, store2, spPlan("true"), nil, taskflow.SelectionExplicit,
-		[]langpack.Manifest{spManifest("go", langpack.GoPackageTestV1, "go.mod")})
+		[]langpack.Manifest{spManifest("go", langpack.GoPackageTestV2, "go.mod")})
 	if err != nil || c.Packs == nil || len(c.Packs.Applied) != 1 {
 		t.Fatalf("A19 violated: packs %+v, %v", c.Packs, err)
 	}
