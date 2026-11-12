@@ -23,6 +23,11 @@ than splitting commands again. That package, behind `cw metrics import
 `usagelog.Observer`, and `internal/usagelog` does not import it.
 `cmd/cwdev` holds the maintainer evaluation.
 
+Each `cw task` subcommand has its own constructor, `newTaskXCommand(taskDeps)`,
+in `internal/cli/task_<name>.go`, listed in `taskCommands`. Add a subcommand
+there: reject `--dry-run` with `taskDeps.guard`, read a JSON input with
+`readTaskInput` and print with `writeJSON`.
+
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
 stable lock file, waits under a context and an optional bound, and the kernel
 releases it when the holder dies. The credential store, the cost history, the

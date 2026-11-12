@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
   its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
+- Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
+  without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
