@@ -50,7 +50,7 @@ func (h *hkHarness) hgExpect(t *testing.T, name, dir string, code int, stderr st
 
 func TestHookGitBlocksUntilTheTaskIsVerified(t *testing.T) {
 	// Oracle (plan G4a acceptance): with an open unverified substantial task,
-	// pre-commit and pre-push exit 1 with the deny reason cw hook pre-publish
+	// pre-commit and pre-push exit 3 (denied) with the deny reason cw hook pre-publish
 	// gives, which names the task and its verify command, followed by where a
 	// git hook reads its options. Once cw task verify passes on the source,
 	// both exit 0 with nothing on stderr.
@@ -61,7 +61,7 @@ func TestHookGitBlocksUntilTheTaskIsVerified(t *testing.T) {
 	record := h.start(t, repo, hkSubstantialPlan)
 	for name, command := range map[string]string{"pre-commit": "git commit -m x", "pre-push": "git push"} {
 		reason := hkExpectDeny(t, h.prePublish(t, repo, command), record)
-		h.hgExpect(t, name, repo, ExitFailure, reason+hgOptions+"\n")
+		h.hgExpect(t, name, repo, ExitDenied, reason+hgOptions+"\n")
 	}
 	h.assessAndVerify(t, record, source)
 	for _, name := range []string{"pre-commit", "pre-push"} {
@@ -137,8 +137,8 @@ func TestHookGitOffSwitchesAndFailOpen(t *testing.T) {
 	h.env["CW_GATE"] = "off"
 	h.hgExpect(t, "pre-commit", repo, ExitOK, "")
 	h.env["CW_GATE"] = "on"
-	if code, _ := h.gitHook(t, "pre-commit", repo); code != ExitFailure {
-		t.Fatalf("CW_GATE=on: exit %d, want %d", code, ExitFailure)
+	if code, _ := h.gitHook(t, "pre-commit", repo); code != ExitDenied {
+		t.Fatalf("CW_GATE=on: exit %d, want %d", code, ExitDenied)
 	}
 	delete(h.env, "CW_GATE")
 	h.env[enforceVerifyOption] = "false"
@@ -150,8 +150,9 @@ func TestHookGitOffSwitchesAndFailOpen(t *testing.T) {
 func TestHookGitCaptureDeadlineAllows(t *testing.T) {
 	// Oracle: cw hook git has cw hook pre-publish's deadline. With a verified
 	// task and every source capture probe hanging for minutes, pre-commit
-	// exits 0 without output after reaching capture, well before the probes
-	// end (hang guard: deadline plus 20 s).
+	// exits 0 without output after reaching capture, no sooner than the
+	// deadline, so a probe that ended early cannot pass, and well before the
+	// probes end (hang guard: deadline plus 20 s).
 	realGit, sleep, ps := hgLookPath(t, "git"), hgLookPath(t, "sleep"), hgLookPath(t, "ps")
 	repo := hkCommittedRepo(t, map[string]string{"source.txt": "source\n"})
 	h := newHKHarness(t)
@@ -161,8 +162,8 @@ func TestHookGitCaptureDeadlineAllows(t *testing.T) {
 	h.config.prePublishTimeout = deadline
 	start := time.Now()
 	h.hgExpect(t, "pre-commit", repo, ExitOK, "")
-	if elapsed := time.Since(start); elapsed > deadline+20*time.Second {
-		t.Fatalf("hook took %v, want at most %v", elapsed, deadline+20*time.Second)
+	if elapsed := time.Since(start); elapsed < deadline || elapsed > deadline+20*time.Second {
+		t.Fatalf("hook took %v, want from %v to %v", elapsed, deadline, deadline+20*time.Second)
 	}
 	if _, err := os.Stat(marker); err != nil {
 		t.Fatalf("the hook never reached source capture: %v", err)

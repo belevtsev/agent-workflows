@@ -86,8 +86,9 @@ func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, ps, originalPath s
 
 // R8: with a verified substantial task for the repository and every capture
 // probe hanging for minutes, `cw hook pre-publish` for a commit allows (nil
-// error, no output) within prePublishTimeout + 10 seconds, after reaching
-// source capture. prePublishTimeout is 10 seconds because it also bounds the
+// error, no output) after reaching source capture, no sooner than
+// prePublishTimeout and within its hang guard. prePublishTimeout is 10
+// seconds because it also bounds the
 // hook's real Git calls (contract timing rules).
 func TestPrePublishCaptureDeadlineAllows(t *testing.T) {
 	realGit, err := exec.LookPath("git")
@@ -127,10 +128,12 @@ func TestPrePublishCaptureDeadlineAllows(t *testing.T) {
 		t.Fatalf("the hook never reached source capture: %v", err)
 	}
 	hkExpectAllow(t, got)
-	// Hang guard only (contract timing rules: at least 20 s of slack): the
-	// hook must not wait for the minutes-long capture probes.
-	if limit := deadline + 20*time.Second; elapsed > limit {
-		t.Fatalf("hook took %v, want at most %v", elapsed, limit)
+	// The hook returns no sooner than its deadline, so a capture probe that
+	// ended early cannot pass. Above it, a hang guard only (contract timing
+	// rules: at least 20 s of slack): the hook must not wait for the
+	// minutes-long capture probes.
+	if limit := deadline + 20*time.Second; elapsed < deadline || elapsed > limit {
+		t.Fatalf("hook took %v, want from %v to %v", elapsed, deadline, limit)
 	}
 }
 

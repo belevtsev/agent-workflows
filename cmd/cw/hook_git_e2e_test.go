@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -18,8 +19,9 @@ import (
 // TestGitPreCommitHookRunsTheGate runs the built cw as a real git pre-commit
 // hook, so the hook has git's environment: GIT_INDEX_FILE names the locked
 // index of `git commit -a`, and GIT_PREFIX, GIT_EXEC_PATH and the author
-// variables are set. Oracle: git's exit status, cw's deny text on git's
-// stderr, and whether `git rev-parse HEAD` moved. The sequence deny, allow
+// variables are set. Oracle: cw's exit status inside the hook (3, denied,
+// when the gate blocks), git's own exit status (1 after any failing hook),
+// cw's deny text on git's stderr, and whether `git rev-parse HEAD` moved. The sequence deny, allow
 // after verify, deny after an edit shows that source capture inside the hook
 // reads the source, and that its digest equals what cw task verify recorded
 // outside git.
@@ -38,7 +40,9 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 	hooksWriteFile(t, repo, "b/y.go", "package b\n")
 	hooksGit(t, home, repo, "add", "-A")
 	hooksGit(t, home, repo, "commit", "-q", "-m", "initial")
-	hooksWriteFile(t, repo, ".git/hooks/pre-commit", "#!/bin/sh\nexec '"+binary+"' hook git pre-commit \"$@\"\n")
+	// The hook records cw's exit status, which git does not report.
+	status := filepath.Join(hooksCanonicalTempDir(t), "status")
+	hooksWriteFile(t, repo, ".git/hooks/pre-commit", "#!/bin/sh\n'"+binary+"' hook git pre-commit \"$@\"\nstatus=$?\necho $status > '"+status+"'\nexit $status\n")
 	if err := os.Chmod(filepath.Join(repo, ".git", "hooks", "pre-commit"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -68,14 +72,20 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 		_, stdout, _ := run(t, nil, "git", "rev-parse", "HEAD")
 		return strings.TrimSpace(stdout)
 	}
-	// commit runs `git commit -am MESSAGE` and requires exit status code, a
-	// stderr holding each of contains, and HEAD moved only on success.
+	// commit runs `git commit -am MESSAGE` and requires that cw exited with
+	// code in the hook, that git exited 0 after a hook that did and 1
+	// otherwise, a stderr holding each of contains, and HEAD moved only on
+	// success.
 	commit := func(t *testing.T, message string, code int, contains ...string) {
 		t.Helper()
 		before := head(t)
 		got, _, stderr := run(t, nil, "git", "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-am", message)
-		if got != code {
-			t.Fatalf("git commit -am %s: exit %d, want %d; stderr:\n%s", message, got, code, stderr)
+		recorded, err := os.ReadFile(status)
+		if err != nil || strings.TrimSpace(string(recorded)) != strconv.Itoa(code) {
+			t.Fatalf("git commit -am %s: cw exited %q in the hook (%v), want %d; stderr:\n%s", message, recorded, err, code, stderr)
+		}
+		if want := min(code, 1); got != want {
+			t.Fatalf("git commit -am %s: git exited %d, want %d; stderr:\n%s", message, got, want, stderr)
 		}
 		for _, want := range contains {
 			if !strings.Contains(stderr, want) {
@@ -102,7 +112,7 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	commit(t, "unverified", 1, record.ID, "cw task verify --task "+record.Directory)
+	commit(t, "unverified", 3, record.ID, "cw task verify --task "+record.Directory)
 
 	hash := sha256.Sum256([]byte("second\n"))
 	ref := taskflow.SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: hex.EncodeToString(hash[:])}
@@ -119,7 +129,7 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 	commit(t, "verified", 0)
 
 	hooksWriteFile(t, repo, "source.txt", "third\n")
-	commit(t, "edited after verify", 1, record.ID)
+	commit(t, "edited after verify", 3, record.ID)
 
 	// With the task closed, a substantial change that only -a stages warns
 	// and goes ahead: the gate measured the locked index git commits.

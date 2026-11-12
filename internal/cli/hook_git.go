@@ -17,18 +17,19 @@ const gateOffVariable = "CW_GATE"
 
 // addGitHookCommand adds cw hook git pre-commit and pre-push, which git runs
 // as its own hooks in the worktree it commits or pushes from. A git hook
-// cannot ask, so the gate's deny exits 1 with its reason on stderr, and each
-// ask becomes a warning on stderr with exit 0. Every other case, including
-// any internal error, exits 0 without output, as cw hook pre-publish does.
+// cannot ask, so the gate's deny exits ExitDenied with its reason on stderr,
+// and each ask becomes a warning on stderr with exit 0. Every other case,
+// including any internal error, exits 0 without output, as cw hook
+// pre-publish does.
 func addGitHookCommand(root, hook *cobra.Command, config Config) {
 	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit and push on cw task verify from git's own pre-commit and pre-push hooks", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	hook.AddCommand(git)
 	for _, publish := range []struct{ name, command string }{{"pre-commit", "commit"}, {"pre-push", "push"}} {
 		git.AddCommand(&cobra.Command{
 			Use:   publish.name + " [GIT-HOOK-ARGUMENTS]",
-			Short: "Git " + publish.name + " hook: exit 1 while an open substantial task record for the repository lacks a passing cw task verify on the source being published",
+			Short: "Git " + publish.name + " hook: exit 3 (denied) while an open substantial task record for the repository lacks a passing cw task verify on the source being published",
 			Long: "Run by git as its " + publish.name + " hook, in the worktree it publishes from; git's arguments and stdin are ignored. " +
-				"It applies the rules of cw hook pre-publish to the git " + publish.command + ": when a record gates, it prints the deny reason on stderr and exits 1, which stops git. " +
+				"It applies the rules of cw hook pre-publish to the git " + publish.command + ": when a record gates, it prints the deny reason on stderr and exits 3 (denied), which stops git. " +
 				"A git hook cannot ask, so where cw hook pre-publish would ask, it prints the question as a warning on stderr and exits 0. Every other case, including any internal error, exits 0 without output. " +
 				"Set " + gateOffVariable + "=off, or " + enforceVerifyOption + "=false and " + smallTaskPromptOption + "=false, in git's environment to turn it off; git " + publish.command + " --no-verify skips git's hooks.",
 			Args: cobra.ArbitraryArgs,
@@ -42,7 +43,7 @@ func addGitHookCommand(root, hook *cobra.Command, config Config) {
 					fmt.Fprintln(cmd.ErrOrStderr(), message)
 				}
 				if blocked {
-					return reportedExit(ExitFailure)
+					return reportedExit(ExitDenied)
 				}
 				return nil
 			},

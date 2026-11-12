@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `cw hook git pre-commit` and `cw hook git pre-push` run the commit gate from git's own hooks, which also see aliases and scripts:
-  a gating task exits 1, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
+  a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
 
 ### Changed
 

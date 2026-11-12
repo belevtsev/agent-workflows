@@ -319,8 +319,9 @@ terminal. Nothing installs them yet; a repository's own hooks can call them,
 as in `exec cw hook git pre-commit "$@"`. Git runs each in the worktree it
 publishes from, and `cw` judges that repository by the rules above:
 
-- While a record gates, the deny reason goes to stderr and `cw` exits 1, which
-  stops git.
+- While a record gates, the deny reason goes to stderr and `cw` exits 3
+  ([denied](operations.md#exit-statuses)); git stops at any non-zero status
+  and itself exits 1.
 - A git hook cannot ask, so each case in
   [Asking instead of denying](#asking-instead-of-denying) prints its question
   on stderr after `agent-workflows: warning: a git hook cannot ask for
