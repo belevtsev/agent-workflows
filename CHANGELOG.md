@@ -63,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 - `cw publish` refuses a remote Git hands to a remote helper (`foo::…`, `remote.<name>.vcs`, or a scheme other than https, http, ssh,
   git+ssh, ssh+git, git or file in lower case) as 4 `remote-split` ([publish](docs/operations.md#global-project-diagnostics-and-evidence)).
+- Resuming a Codex thread no longer adds the conventions again, nor a second `cw gate install` line beside the compaction that
+  can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
