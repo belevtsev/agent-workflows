@@ -145,6 +145,24 @@ func TestCloseReleasesTheLockAndKeepsTheFile(t *testing.T) {
 	}
 }
 
+// Oracle: Verify on a closed Lock fails with an error other than ErrReplaced,
+// even after a new Acquire of the same path has most likely taken the closed
+// descriptor's number, which a Verify on the raw number would pass.
+func TestVerifyFailsOnAClosedLock(t *testing.T) {
+	path := tempLock(t)
+	lock, err := fslock.Acquire(t.Context(), path, fslock.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Close(); err != nil {
+		t.Fatal(err)
+	}
+	hold(t, path, fslock.Options{})
+	if err := lock.Verify(); err == nil || errors.Is(err, fslock.ErrReplaced) {
+		t.Fatalf("Verify after Close: %v, want an error other than ErrReplaced", err)
+	}
+}
+
 // Oracle: a waiter with no Wait bound, which opened the lock file while the
 // holder held it, gets the lock once the holder closes.
 func TestWaiterTakesTheLockWhenTheHolderCloses(t *testing.T) {
@@ -301,7 +319,7 @@ func TestAcquireRefusesUnsafeOrMissingLockFiles(t *testing.T) {
 	}{
 		{link, fslock.Options{}, fslock.ErrSymlink},
 		{fifo, fslock.Options{}, fslock.ErrNotRegular},
-		{sub, fslock.Options{Shared: true}, fslock.ErrNotRegular},
+		{sub, fslock.Options{}, fslock.ErrNotRegular},
 		{missing, fslock.Options{Shared: true, NoCreate: true}, fs.ErrNotExist},
 		{target, fslock.Options{Check: func(*os.File) error { return refuse }}, refuse},
 	}
