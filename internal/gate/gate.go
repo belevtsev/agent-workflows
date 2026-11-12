@@ -285,17 +285,57 @@ func denyReason(gating []taskflow.OpenRecord) string {
 	return reason.String()
 }
 
-// namedGating is how many gating records a reason names. The rest are
-// counted, so that the reason stays short however many tasks are open.
-const namedGating = 3
+// namedTasks is how many tasks a reason names. The rest are counted
+// (countRest), so that the reason stays short however many tasks are open.
+const namedTasks = 3
 
-// writeGating writes, for each of the first namedGating gating records, why
+// splitNamed splits a reason's tasks into the first namedTasks, which it
+// names, and the rest, which it counts with countRest.
+func splitNamed[T any](tasks []T) (named, rest []T) {
+	n := min(len(tasks), namedTasks)
+	return tasks[:n], tasks[n:]
+}
+
+// countRest counts the tasks a reason does not name, given their task
+// directories: "N more <noun>s in <stores>", the stores being the
+// directories that hold them, in the order first seen. A "" in dirs is a
+// task whose directory the gate does not know; then it names no store.
+func countRest(noun string, dirs []string) string {
+	var stores []string
+	for _, dir := range dirs {
+		if dir == "" {
+			stores = nil
+			break
+		}
+		if store := filepath.Dir(dir); !slices.Contains(stores, store) {
+			stores = append(stores, store)
+		}
+	}
+	if len(dirs) != 1 {
+		noun += "s"
+	}
+	count := fmt.Sprintf("%d more %s", len(dirs), noun)
+	if len(stores) > 0 {
+		count += " in " + strings.Join(stores, ", ")
+	}
+	return count
+}
+
+// recordDirs returns the task directory of each record.
+func recordDirs(records []taskflow.OpenRecord) []string {
+	dirs := make([]string, 0, len(records))
+	for _, open := range records {
+		dirs = append(dirs, open.Record.Directory)
+	}
+	return dirs
+}
+
+// writeGating writes, for each of the first namedTasks gating records, why
 // it gates and how to verify it, naming its directory once; then that
 // abandoning a task needs the user's confirmation; then how many more gate,
 // and the task store they are in.
 func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
-	n := min(len(gating), namedGating)
-	named, rest := gating[:n], gating[n:]
+	named, rest := splitNamed(gating)
 	abandonable := false
 	for _, open := range named {
 		record := open.Record
@@ -313,21 +353,11 @@ func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 	if len(rest) == 0 {
 		return
 	}
-	var stores []string
-	legacy := false
-	for _, open := range rest {
-		if store := filepath.Dir(open.Record.Directory); !slices.Contains(stores, store) {
-			stores = append(stores, store)
-		}
-		legacy = legacy || open.Legacy
-	}
-	tasks := "tasks"
-	if len(rest) == 1 {
-		tasks = "task"
-	}
-	// U1 (`cw task list`) should point here at `cw task list` instead of the
-	// task store, once it exists.
-	fmt.Fprintf(reason, " And %d more open %s in %s; each needs `cw task verify` or the user's confirmation to abandon", len(rest), tasks, strings.Join(stores, ", "))
+	legacy := slices.ContainsFunc(rest, func(open taskflow.OpenRecord) bool { return open.Legacy })
+	// U1 (`cw task list`) should point here, and in the other reasons that
+	// call countRest, at `cw task list` instead of the task store, once it
+	// exists.
+	fmt.Fprintf(reason, " And %s; each needs `cw task verify` or the user's confirmation to abandon", countRest("open task", recordDirs(rest)))
 	if legacy {
 		reason.WriteString(", or, if this cw cannot read its record, moving its directory out of the task store")
 	}
@@ -346,12 +376,13 @@ func unresolvedReason(unresolved, repo string, gating []taskflow.OpenRecord) str
 }
 
 // unreadableReason explains the ask for a publication that records cw cannot
-// read may gate: it names each one's directory and load error, and how to
-// clear it.
+// read may gate: it names the directory and load error of the first
+// namedTasks, and how to clear each, and counts the rest.
 func unreadableReason(unreadable []taskflow.OpenRecord) string {
 	var reason strings.Builder
 	reason.WriteString("agent-workflows: cw cannot read a task record for this repository, so the commit and push gate cannot tell whether it allows this command.")
-	for _, open := range unreadable {
+	named, rest := splitNamed(unreadable)
+	for _, open := range named {
 		fmt.Fprintf(&reason, " Task directory %s: %s", open.Record.Directory, open.Unreadable)
 		if open.Newer {
 			// The load error already says to upgrade cw.
@@ -360,16 +391,20 @@ func unreadableReason(unreadable []taskflow.OpenRecord) string {
 		}
 		reason.WriteString("; if the record is damaged, remove the directory or move it out of the task store, then start a new task with `cw task start` if the work is still open.")
 	}
+	if len(rest) > 0 {
+		fmt.Fprintf(&reason, " And %s; each needs a cw that can read it or, if it is damaged, its directory moved out of the task store.", countRest("unreadable task record", recordDirs(rest)))
+	}
 	reason.WriteString(" Confirm to run this command without the gate.")
 	return reason.String()
 }
 
 // abandonReason explains the ask for a command that abandons tasks: it names
-// each one's ID, title and directory where store can read it, else what the
-// gate knows of its directory.
+// the first namedTasks by ID, title and directory where store can read it,
+// else by what the gate knows of its directory, and counts the rest.
 func abandonReason(store Store, abandons []abandonment) string {
-	tasks := make([]string, 0, len(abandons))
-	for _, abandon := range abandons {
+	named, rest := splitNamed(abandons)
+	tasks := make([]string, 0, len(named)+1)
+	for _, abandon := range named {
 		switch {
 		case abandon.dir != "":
 			if record, err := store.Lookup(abandon.dir); err == nil {
@@ -383,16 +418,28 @@ func abandonReason(store Store, abandons []abandonment) string {
 			tasks = append(tasks, "a task the gate cannot identify")
 		}
 	}
+	if len(rest) > 0 {
+		dirs := make([]string, 0, len(rest))
+		for _, abandon := range rest {
+			dirs = append(dirs, abandon.dir)
+		}
+		tasks = append(tasks, "and "+countRest("task", dirs))
+	}
 	return "agent-workflows: `cw task abandon` closes a task so that it no longer gates git commit and push, and needs the user's confirmation. " +
 		"This command abandons " + strings.Join(tasks, "; ") + ". Confirm only if the user wants it abandoned because it is finished or was given up."
 }
 
 // uncommittedReason explains the ask for a push whose verified records may
-// not cover what is pushed.
+// not cover what is pushed: it names the first namedTasks and counts the
+// rest.
 func uncommittedReason(open []taskflow.OpenRecord) string {
-	tasks := make([]string, 0, len(open))
-	for _, record := range open {
+	named, rest := splitNamed(open)
+	tasks := make([]string, 0, len(named)+1)
+	for _, record := range named {
 		tasks = append(tasks, fmt.Sprintf("%s (%s)", record.Record.ID, record.Record.Plan.Title))
+	}
+	if len(rest) > 0 {
+		tasks = append(tasks, "and "+countRest("task", recordDirs(rest)))
 	}
 	subject := "task"
 	if len(tasks) > 1 {

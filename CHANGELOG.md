@@ -44,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without hard links ([diagnostics][diag]).
 - The hook docs record live runs: Claude Code asks before `cw task aban''don` too, so it is no longer listed as a bypass, and Codex
   runs both handlers and adds the conventions again on each resume ([recorded host runs](docs/hooks.md#recorded-host-runs)).
+- The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
+  three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
