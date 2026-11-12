@@ -2064,12 +2064,16 @@ const hkGateLine = "git hooks absent, so a commit or push from a script, an alia
 
 func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *testing.T) {
 	// Oracle: the session-start context is the instructions, a blank line and
-	// hkGateLine exactly when the session's repository has an open
-	// substantial task and a git hook is absent from the repository's own
-	// hooks directory, or is cw's script without an execute bit, with no
-	// foreign hook beside it; in every other case below it is the
-	// instructions alone. The first case is the control for the others. Each
-	// case has a cache of its own, so no earlier suggestion silences it.
+	// a line that suggests cw gate install exactly when the session's
+	// repository has an open substantial task and a git hook is absent from
+	// the repository's own hooks directory, or is cw's script without an
+	// execute bit, with no foreign hook beside it; in every other case below
+	// it is the instructions alone. The line is hkGateLine when every hook is
+	// absent; when the others are installed, it names the absent hooks and
+	// says what skips the gate without them, only a merge commit for
+	// pre-merge-commit (F4 review finding 3). The first case is the control
+	// for the others. Each case has a cache of its own, so no earlier
+	// suggestion silences it.
 	const instructions = "# Rules\n\nWork carefully."
 	// cw gate reads git's configuration from this process's environment.
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
@@ -2081,6 +2085,7 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 			t.Fatalf("cw gate %v: %v\n%s", args, err, h.out.String())
 		}
 	}
+	const pushLine = "git hook pre-push absent, so a push from a script, an alias or a terminal skips the verify gate: suggest cw gate install to the user"
 	tests := []struct {
 		name  string
 		setup func(t *testing.T, h *hkHarness, repo string)
@@ -2095,7 +2100,7 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 			if err := os.Remove(filepath.Join(repo, ".git", "hooks", "pre-push")); err != nil {
 				t.Fatal(err)
 			}
-		}, hkGateLine},
+		}, pushLine},
 		{"open substantial task with cw's hook without an execute bit", func(t *testing.T, h *hkHarness, repo string) {
 			h.start(t, repo, hkSubstantialPlan)
 			gate(t, h, "install", "--repo", repo)
@@ -2103,7 +2108,24 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 			if err := os.Chmod(filepath.Join(repo, ".git", "hooks", "pre-push"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-		}, hkGateLine},
+		}, pushLine},
+		// An install by a cw that wrote no pre-merge-commit.
+		{"open substantial task with only the pre-commit and pre-push hooks", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			gate(t, h, "install", "--repo", repo)
+			if err := os.Remove(filepath.Join(repo, ".git", "hooks", "pre-merge-commit")); err != nil {
+				t.Fatal(err)
+			}
+		}, "git hook pre-merge-commit absent, so a merge commit made without conflicts skips the verify gate: suggest cw gate install to the user"},
+		{"open substantial task with only the pre-push hook", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			gate(t, h, "install", "--repo", repo)
+			for _, name := range []string{"pre-commit", "pre-merge-commit"} {
+				if err := os.Remove(filepath.Join(repo, ".git", "hooks", name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}, "git hooks pre-commit and pre-merge-commit absent, so a commit from a script, an alias or a terminal, or a merge commit made without conflicts skips the verify gate: suggest cw gate install to the user"},
 		{"verified task that is still open", func(t *testing.T, h *hkHarness, repo string) {
 			source := []byte("verified source\n")
 			hkWriteFile(t, repo, "source.txt", string(source))

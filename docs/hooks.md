@@ -42,8 +42,13 @@ session, so there is nothing when all is in order:
   when the session's repository has an open substantial task
   ([Which records gate](#which-records-gate)), verified or not, that has not
   had the line yet, and `cw gate status` reports a hook `absent` from the
-  repository's own hooks directory. `cw` then records the suggestion as an
-  empty file `${CLAUDE_PLUGIN_DATA}/gate-suggested/<task id>` for each open
+  repository's own hooks directory. When the other hooks are installed, the
+  line names the absent ones and says what skips the gate without them, as
+  `git hook pre-merge-commit absent, so a merge commit made without conflicts
+  skips the verify gate: suggest cw gate install to the user` does where an
+  older `cw gate install` wrote only `pre-commit` and `pre-push`. `cw` then
+  records the suggestion as an empty file
+  `${CLAUDE_PLUGIN_DATA}/gate-suggested/<task id>` for each open
   task, so a resume, clear or compact repeats nothing, and only a new task
   brings the line back. Without that directory, or when the file cannot be
   written, the line comes every time. A hook that `cw gate install` did not
@@ -536,7 +541,9 @@ cw gate uninstall --repo /path/to/repo
   task opens in a repository without them, the next session-start context
   carries one line that suggests `cw gate install`, once for that task
   ([Session start](#session-start)), and `cw doctor` reports a `git_hooks`
-  check whose detail says what to do. Only the hooks missing while a task is
+  check whose detail names the absent hooks, says what skips the gate without
+  them (only a merge commit, when just `pre-merge-commit` is absent) and what
+  to do. Only the hooks missing while a task is
   open count as a problem, so a repository that simply has no hooks does not
   change `cw doctor --summary`, which exits 0 either way. The doctor summary
   in the session-start context leaves the check out:

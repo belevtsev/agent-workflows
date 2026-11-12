@@ -135,7 +135,9 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 	// hook is absent from the repository's own hooks directory, or is cw's
 	// script without an execute bit, which git skips, while a substantial
 	// task is open there and the gate is on. A repository that only lacks
-	// the hooks gets no problem.
+	// the hooks gets no problem. Where some hooks are installed, the detail
+	// names the absent ones and says what skips the gate without them, only
+	// a merge commit for pre-merge-commit (F4 review finding 3).
 	// cw gate and cw doctor read git's configuration from this process's
 	// environment.
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
@@ -145,23 +147,25 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 		setup   func(t *testing.T, h *hkHarness, repo string) string
 		status  string
 		problem bool
+		// says is part of the detail, when not empty.
+		says string
 	}{
-		{"no hooks and no task", func(_ *testing.T, _ *hkHarness, repo string) string { return repo }, "not_applicable", false},
+		{"no hooks and no task", func(_ *testing.T, _ *hkHarness, repo string) string { return repo }, "not_applicable", false, ""},
 		{"no hooks and a small task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSmallPlan)
 			return repo
-		}, "not_applicable", false},
+		}, "not_applicable", false, ""},
 		{"no hooks and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			return repo
-		}, "missing", true},
+		}, "missing", true, "but git's hooks are absent, so a commit or push from a script, an alias or a terminal, or a merge commit made without conflicts skips the commit gate; cw gate install adds them"},
 		{"hooks installed and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			if err := Execute(t.Context(), []string{"gate", "install", "--repo", repo}, h.config); err != nil {
 				t.Fatalf("cw gate install: %v", err)
 			}
 			return repo
-		}, "configured", false},
+		}, "configured", false, ""},
 		// An install by a cw that wrote no pre-merge-commit: git makes a merge
 		// commit without the gate, so cw gate install needs to run again.
 		{"only the pre-commit and pre-push hooks and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
@@ -173,19 +177,28 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 				}
 			}
 			return repo
-		}, "missing", true},
+		}, "missing", true, "but git's pre-merge-commit hook is absent, so a merge commit made without conflicts skips the commit gate; cw gate install adds it"},
+		{"only the pre-commit and pre-push hooks and no task", func(t *testing.T, h *hkHarness, repo string) string {
+			for _, name := range []string{"pre-commit", "pre-push"} {
+				hkWriteFile(t, repo, ".git/hooks/"+name, gtScript(name))
+				if err := os.Chmod(filepath.Join(repo, ".git", "hooks", name), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			return repo
+		}, "not_applicable", false, "Git's pre-merge-commit hook is absent, so a merge commit made without conflicts skips the commit gate, and no open substantial task governs this repository; cw gate install adds it"},
 		{"a hook cw gate install did not write and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			hkWriteFile(t, repo, ".git/hooks/pre-push", "#!/bin/sh\nexit 0\n")
 			return repo
-		}, "detected", false},
+		}, "detected", false, ""},
 		{"a hooks directory other repositories use and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			global := hkCanonicalTempDir(t)
 			hkWriteFile(t, global, "gitconfig", "[core]\n\thooksPath = "+hkCanonicalTempDir(t)+"\n")
 			t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(global, "gitconfig"))
 			return repo
-		}, "detected", false},
+		}, "detected", false, ""},
 		{"cw's hook without an execute bit and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			if err := Execute(t.Context(), []string{"gate", "install", "--repo", repo}, h.config); err != nil {
@@ -196,13 +209,13 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 				t.Fatal(err)
 			}
 			return repo
-		}, "missing", true},
+		}, "missing", true, "but git's pre-commit hook is absent, so a commit from a script, an alias or a terminal skips the commit gate; cw gate install adds it"},
 		{"no hooks and an open substantial task with the gate off", func(t *testing.T, h *hkHarness, repo string) string {
 			h.start(t, repo, hkSubstantialPlan)
 			h.env[enforceVerifyOption] = "false"
 			return repo
-		}, "not_applicable", false},
-		{"not a repository", func(t *testing.T, _ *hkHarness, _ string) string { return hkCanonicalTempDir(t) }, "unchecked", false},
+		}, "not_applicable", false, ""},
+		{"not a repository", func(t *testing.T, _ *hkHarness, _ string) string { return hkCanonicalTempDir(t) }, "unchecked", false, ""},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -224,6 +237,9 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 			}
 			if test.status != "unchecked" && h.env[enforceVerifyOption] != "false" && !strings.Contains(check.Detail, "cw gate install") {
 				t.Fatalf("git_hooks detail %q does not name cw gate install", check.Detail)
+			}
+			if !strings.Contains(check.Detail, test.says) {
+				t.Fatalf("git_hooks detail %q, want it to say %q", check.Detail, test.says)
 			}
 			h.out.Reset()
 			if err := Execute(t.Context(), []string{"doctor", "--repo", dir, "--summary"}, h.config); err != nil {
