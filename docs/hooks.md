@@ -50,7 +50,17 @@ The hook reads the command the way the shell does before it expands anything
 backslash escapes resolved. Text inside quotes, in a heredoc body or in a
 comment is never a command, so `echo "todo; git commit later"`,
 `rg "foo|git commit" docs` and a heredoc that writes `git push` into a file
-are allowed. It finds git:
+are allowed.
+
+That reading fails closed. It allows a command that names git outside a
+command only when it is certain: every form in the command is one it reads
+exactly as bash, zsh and dash do, and every program in it is one that never
+runs its arguments or input as shell commands (`echo`, `printf`, `cat`, `rg`,
+`grep`, `jq`, file commands, `gh pr` and the like, and read-only git
+subcommands). Otherwise, as for a heredoc delimiter that is not a plain name,
+a `case` command, `cat <<EOF | sh`, `bash <<EOF` or `git rebase --exec`, the
+hook also applies the simpler split it used before, which reads such text as
+commands, and denies when either finds a commit or push. It finds git:
 
 - after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
   `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
@@ -67,7 +77,9 @@ are allowed. It finds git:
   substitution, including one in an unquoted heredoc body, is checked too,
   from the directory in effect where it appears;
 - inside a command string given to `sh`, `bash`, `zsh`, `dash` or `ksh` with
-  `-c` (also `-lc` and similar), or to `eval`;
+  `-c` (also `-lc`, `-e -c`, `-c --` and similar), to `eval` or to
+  `env -S`; a string nested more than eight levels deep counts as a commit
+  and a push;
 - written as a path (`/usr/bin/git`), quoted (`"git"`, `'commit'`) or with a
   backslash that bypasses an alias (`\git`);
 - with git's global options, including `-c NAME=VALUE`, `--git-dir`,

@@ -18,8 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- The commit gate no longer denies commands that only mention git in quotes, heredoc bodies or comments, such as
-  `echo "todo; git commit later"`, and it follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
+- The commit gate no longer denies commands it can read with certainty that only mention git in quotes, heredocs or comments,
+  such as `echo "todo; git commit later"`, and it follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 

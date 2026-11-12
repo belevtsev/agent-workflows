@@ -5,9 +5,12 @@
 //
 // Nothing is expanded or run, and it is not a shell parser: reserved words
 // such as `if`, `do` and `{` are ordinary words, and aliases, functions and
-// other programs' arguments are not followed. Malformed input never fails:
-// an unclosed quote, substitution or heredoc runs to the end of the command.
-// The work is linear in the length of the command, however deeply it nests.
+// other programs' arguments are not followed. Malformed input never fails.
+// Split reads a closed set of forms exactly as a shell does; for anything
+// else, such as an unclosed quote, a heredoc delimiter that is not a plain
+// name or a `case` pattern, it still returns its best reading but says why it
+// may be wrong in Result.Uncertain. The work is linear in the length of the
+// command, however deeply it nests.
 package shellwords
 
 import "strings"
@@ -15,11 +18,12 @@ import "strings"
 // Word is one word of a simple command.
 type Word struct {
 	// Text is the word with its quoting resolved: quotes removed and
-	// backslash escapes applied. Parameter and arithmetic expansions ($VAR,
-	// ${...}, $((...))), a leading ~ and globs are kept as written; Raw tells
-	// whether they were quoted. A command or process substitution keeps only
-	// its delimiters (`$()`, "``", `<()`, `>()`), because the commands inside
-	// it are simple commands of their own.
+	// backslash escapes applied. Parameter expansions ($VAR, ${...}),
+	// arithmetic expansions ($((...))), the escapes of a $'...' string, a
+	// leading ~ and globs are kept as written; Raw tells whether they were
+	// quoted. A command or process substitution keeps only its delimiters
+	// (`$()`, "``", `<()`, `>()`), because the commands inside it are simple
+	// commands of their own.
 	Text string
 	// Raw is the word as written in the command.
 	Raw string
@@ -63,34 +67,59 @@ type SimpleCommand struct {
 	Leave, Enter int
 }
 
-// Split returns the simple commands of a shell command line in the order
-// the shell runs them: the commands inside a substitution come before the
-// command whose word holds it. Commands are separated by `;`, `&`, `&&`,
-// `|`, `||`, `|&`, newlines and parentheses. Quoted text, heredoc bodies and
-// comments are never commands; the command substitutions inside double quotes
-// and inside an unquoted heredoc body are, because the shell runs them.
-func Split(command string) []SimpleCommand {
-	commands, _ := split(command)
-	return commands
+// Result is a command line split into simple commands.
+type Result struct {
+	// Commands are the simple commands in the order the shell runs them:
+	// the commands inside a substitution come before the command whose word
+	// holds it.
+	Commands []SimpleCommand
+	// Uncertain is empty when Split read every form in the command line as
+	// a shell does. Otherwise it names the first form Split may have read
+	// differently, and Commands is a best effort that can miss commands a
+	// shell would run.
+	Uncertain string
+}
+
+// Split splits a shell command line into simple commands. Commands are
+// separated by `;`, `&`, `&&`, `|`, `||`, `|&`, newlines and parentheses,
+// and words by spaces and tabs. Quoted text, heredoc bodies and comments are
+// never commands; the command substitutions inside double quotes and inside
+// an unquoted heredoc body are, because the shell runs them.
+func Split(command string) Result {
+	result, _ := split(command)
+	return result
 }
 
 // split is Split that also returns its work: the bytes each step moved over,
-// in either direction, plus the bytes of each heredoc body line it compared
-// with the delimiter. The work stays within 2*len(command).
-func split(command string) ([]SimpleCommand, int) {
+// the bytes of each heredoc body line it compared with the delimiter, and the
+// bytes of each line it searched for the closing quote of a heredoc
+// delimiter. The work stays within 3*len(command).
+func split(command string) (Result, int) {
 	l := &lexer{src: command, cmd: newBuilder()}
 	l.sink.discard = true
-	for l.i < len(l.src) {
+	for {
+		if l.i >= l.limit() {
+			if len(l.stops) == 0 {
+				break
+			}
+			if l.top().kind == body {
+				l.endBody()
+			} else {
+				l.doubt("a quote or substitution in a heredoc body runs past its delimiter")
+				l.unwind()
+			}
+			continue
+		}
 		before := l.i
 		l.step()
-		l.work += max(l.i-before, before-l.i) // a step back would be read twice
+		l.work += l.i - before
 	}
 	l.finish()
-	return l.out, l.work
+	return Result{Commands: l.out, Uncertain: l.uncertain}, l.work
 }
 
-// kind is the kind of an open frame: a quote, an expansion, a substitution,
-// a subshell or a heredoc body the lexer is inside.
+// kind is the kind of an open frame: a quote, an arithmetic expansion, a
+// substitution, a subshell or a heredoc body the lexer is inside.
 type kind byte
 
 const (
@@ -101,32 +130,28 @@ const (
 	double                       // " ... "
 	ansi                         // $' ... '
 	arithmetic                   // $(( ... )) and (( ... ))
-	parameter                    // ${ ... }
 	body                         // a heredoc body
 )
 
-// frame is one open quote, expansion, subshell, substitution or heredoc
-// body.
+// frame is one open quote, arithmetic expansion, subshell, substitution or
+// heredoc body.
 type frame struct {
 	kind kind
 	// raw: the frame's bytes go into the word as written, because it is
-	// inside a parameter or arithmetic expansion.
+	// inside an arithmetic expansion.
 	raw bool
-	// depth counts the parentheses (arithmetic) or braces (parameter) open
-	// inside the frame, or the subshells it stands for: directly nested
-	// subshells share one frame.
+	// depth counts the parentheses open inside an arithmetic expansion, or
+	// the subshells a subshell frame stands for: directly nested subshells
+	// share one frame.
 	depth int
-	// start is where a substitution began.
+	// start is where a substitution began, or a heredoc body; a body's
+	// start is -1 until it begins.
 	start int
-	// outer is the builder a substitution or a started heredoc body
-	// suspended.
+	// outer is the builder a substitution or a begun heredoc body suspended.
 	outer *builder
-	// doc indexes lexer.docs for a heredoc body.
-	doc int
-	// begun is where a heredoc body begins, -1 until it does; lineStart
-	// marks the start of a body line, where the delimiter may stand.
-	begun     int
-	lineStart bool
+	// doc indexes lexer.docs for a heredoc body; stop is where its delimiter
+	// line starts and resume where the command line goes on after it.
+	doc, stop, resume int
 }
 
 // builder collects one context's simple command: the top level's, or a
@@ -152,14 +177,16 @@ type heredoc struct {
 	command   int // the owner's index in lexer.out once emitted, else -1
 	delimiter string
 	literal   bool // the delimiter was quoted: no substitution in the body
+	tabs      bool // <<-: leading tabs are stripped from the delimiter line
 }
 
 type lexer struct {
-	src  string
-	i    int
-	line int
-	work int
-	out  []SimpleCommand
+	src       string
+	i         int
+	line      int
+	work      int
+	out       []SimpleCommand
+	uncertain string
 	// frames are the open frames, innermost last.
 	frames []frame
 	// cmd builds the command in progress; sink takes what an unquoted
@@ -169,9 +196,36 @@ type lexer struct {
 	docs []heredoc
 	// unread are the heredocs whose body starts after the next newline.
 	unread []int
+	// stops are where the begun heredoc bodies end, innermost last: nothing
+	// inside a body reads past its delimiter line.
+	stops []int
+	// backquotes counts the open backquote substitutions.
+	backquotes int
+	// eol is where the line of the last closing-quote search in a heredoc
+	// delimiter ends; quoteMiss holds, for ' and ", the end of the line of
+	// the last such search that failed.
+	eol       int
+	quoteMiss [2]int
 	// scopes counts the open subshells and substitutions; active, those of
 	// them the last emitted command was in; leave, those left since.
 	scopes, active, leave int
+}
+
+// doubt records why the result may differ from what a shell would run,
+// keeping the first reason.
+func (l *lexer) doubt(reason string) {
+	if l.uncertain == "" {
+		l.uncertain = reason
+	}
+}
+
+// limit is where reading must stop: the delimiter line of the innermost
+// begun heredoc body, or the end of the command line.
+func (l *lexer) limit() int {
+	if n := len(l.stops); n > 0 {
+		return l.stops[n-1]
+	}
+	return len(l.src)
 }
 
 func (l *lexer) top() *frame {
@@ -217,10 +271,10 @@ func (l *lexer) step() {
 		l.double()
 	case ansi:
 		l.ansi()
-	case arithmetic, parameter:
-		l.expansion(top)
+	case arithmetic:
+		l.arithmetic(top)
 	case body:
-		l.body(top)
+		l.body()
 	}
 }
 
@@ -229,7 +283,7 @@ func (l *lexer) step() {
 func (l *lexer) command() {
 	c := l.src[l.i]
 	switch c {
-	case ' ', '\t', '\r', '\f', '\v':
+	case ' ', '\t':
 		l.endWord()
 		l.i++
 	case '\n':
@@ -258,6 +312,7 @@ func (l *lexer) command() {
 		}
 	case '(':
 		if l.peek(1) == '(' { // an arithmetic command, (( ... ))
+			l.doubt("a (( command, which dash reads as nested subshells")
 			l.beginWord()
 			l.appendText("((")
 			l.i += 2
@@ -275,10 +330,13 @@ func (l *lexer) command() {
 	case ')':
 		l.endCommand()
 		l.i++
-		if top := l.top(); top != nil && top.kind == subshell {
+		switch top := l.top(); {
+		case top != nil && top.kind == subshell:
 			l.closeSubshell()
-		} else if top != nil && top.kind == substitution {
+		case top != nil && top.kind == substitution:
 			l.closeSubstitution()
+		default:
+			l.doubt("an unmatched )")
 		}
 	case '`':
 		if top := l.top(); top != nil && top.kind == backquote {
@@ -295,10 +353,10 @@ func (l *lexer) command() {
 			l.i++
 			return
 		}
-		if end := strings.IndexByte(l.src[l.i:], '\n'); end >= 0 {
+		if end := strings.IndexByte(l.src[l.i:l.limit()], '\n'); end >= 0 {
 			l.i += end
 		} else {
-			l.i = len(l.src)
+			l.i = l.limit()
 		}
 	case '<', '>':
 		if l.peek(1) == '(' { // a process substitution
@@ -324,6 +382,7 @@ func (l *lexer) wordByte(c byte) {
 		}
 		l.beginWord()
 		if l.i+1 < len(l.src) {
+			l.escaped(l.src[l.i+1])
 			l.appendByte(l.src[l.i+1])
 			l.i += 2
 			return
@@ -343,6 +402,14 @@ func (l *lexer) wordByte(c byte) {
 	}
 }
 
+// escaped notes a backslash before c: inside a backquote substitution,
+// \` starts a nested one, which Split does not follow.
+func (l *lexer) escaped(c byte) {
+	if c == '`' && l.backquotes > 0 {
+		l.doubt("an escaped backquote inside a backquote substitution")
+	}
+}
+
 // quoteKind is the frame an opening ' or " starts.
 func quoteKind(c byte) kind {
 	if c == '"' {
@@ -351,9 +418,10 @@ func quoteKind(c byte) kind {
 	return single
 }
 
-// dollar reads a $: a substitution, an expansion, a $'...' string where
-// ansiQuotes allows one, or a plain $.
-func (l *lexer) dollar(ansiQuotes bool) {
+// dollar reads a $: a substitution, an arithmetic expansion, a $'...' or
+// $"..." string where quotes allows one, or a plain $. A parameter
+// expansion is plain text: ${ and } are word bytes.
+func (l *lexer) dollar(quotes bool) {
 	l.beginWord()
 	switch next := l.peek(1); {
 	case next == '(' && l.peek(2) == '(':
@@ -362,17 +430,16 @@ func (l *lexer) dollar(ansiQuotes bool) {
 		l.push(frame{kind: arithmetic, raw: true})
 	case next == '(':
 		l.openSubstitution(substitution, 2)
-	case next == '{':
-		l.appendText("${")
-		l.i += 2
-		l.push(frame{kind: parameter, raw: true})
-	case next == '\'' && ansiQuotes:
+	case next == '\'' && quotes:
 		raw := l.raw()
 		if raw {
 			l.appendText("$'")
 		}
 		l.i += 2
 		l.push(frame{kind: ansi, raw: raw})
+	case next == '"' && quotes && !l.raw(): // a $"..." string reads like "..."
+		l.i += 2
+		l.push(frame{kind: double})
 	default:
 		l.appendByte('$')
 		l.i++
@@ -412,6 +479,7 @@ func (l *lexer) double() {
 		case next == '\n' && !l.raw():
 			l.line++ // a line continuation
 		case strings.IndexByte("$`\"\\", next) >= 0 && !l.raw():
+			l.escaped(next)
 			l.appendByte(next)
 		default:
 			l.countLine(next)
@@ -430,10 +498,8 @@ func (l *lexer) double() {
 	}
 }
 
-// ansiEscapes resolves the common escapes of a $'...' string; any other
-// escape is kept as written.
-var ansiEscapes = map[byte]byte{'n': '\n', 't': '\t', 'r': '\r', '\\': '\\', '\'': '\'', '"': '"'}
-
+// ansi reads a byte of a $'...' string. Its escapes stay as written, so a
+// word that holds one is not the text the program receives.
 func (l *lexer) ansi() {
 	c := l.src[l.i]
 	switch {
@@ -444,14 +510,9 @@ func (l *lexer) ansi() {
 		l.i++
 		l.pop()
 	case c == '\\' && l.i+1 < len(l.src):
-		next := l.src[l.i+1]
-		l.countLine(next)
-		if resolved, ok := ansiEscapes[next]; ok && !l.raw() {
-			l.appendByte(resolved)
-		} else {
-			l.appendByte(c)
-			l.appendByte(next)
-		}
+		l.doubt("a backslash escape in a $'...' string")
+		l.countLine(l.src[l.i+1])
+		l.appendText(l.src[l.i : l.i+2])
 		l.i += 2
 	default:
 		l.countLine(c)
@@ -460,27 +521,28 @@ func (l *lexer) ansi() {
 	}
 }
 
-// expansion reads a byte of a parameter or arithmetic expansion, which goes
-// into the word as written. Quotes and substitutions nest inside it.
-func (l *lexer) expansion(f *frame) {
+// arithmetic reads a byte of an arithmetic expansion or command, which goes
+// into the word as written. Quotes and substitutions nest inside it. A ) at
+// depth 0 must be the first of "))"; otherwise the "((" opened nested
+// subshells or a substitution holding a subshell, which Split does not
+// follow.
+func (l *lexer) arithmetic(f *frame) {
 	c := l.src[l.i]
-	open, close := byte('{'), byte('}')
-	if f.kind == arithmetic {
-		open, close = '(', ')'
-	}
 	switch c {
-	case open:
+	case '(':
 		f.depth++
-	case close:
+	case ')':
 		l.appendByte(c)
 		l.i++
 		if f.depth > 0 {
 			f.depth--
 			return
 		}
-		if f.kind == arithmetic && l.peek(0) == ')' { // the second ) of ))
+		if l.peek(0) == ')' {
 			l.appendByte(')')
 			l.i++
+		} else {
+			l.doubt("a (( or $(( that ) closes without ))")
 		}
 		l.pop()
 		return
@@ -508,50 +570,23 @@ func (l *lexer) expansion(f *frame) {
 	l.i++
 }
 
-// body reads a heredoc body: at the start of each line it looks for the
-// delimiter line, and in an unquoted body it finds the substitutions.
-func (l *lexer) body(f *frame) {
-	doc := l.docs[f.doc]
-	if f.lineStart {
-		f.lineStart = false
-		end := strings.IndexByte(l.src[l.i:], '\n')
-		if end < 0 {
-			end = len(l.src)
-		} else {
-			end += l.i
-		}
-		l.work += end - l.i // the comparison reads the line
-		if strings.TrimSpace(l.src[l.i:end]) == doc.delimiter {
-			text := l.src[f.begun:max(f.begun, l.i-1)] // without the newline before the delimiter line
-			if end < len(l.src) {
-				end++
-				l.line++
-			}
-			l.i = end
-			l.endBody(text)
-			return
-		}
-		if doc.literal {
-			l.i = end
-			if end < len(l.src) {
-				l.i++
-				l.line++
-				f.lineStart = true
-			}
-			return
-		}
-	}
-	c := l.src[l.i]
-	switch c {
+// body reads a byte of an unquoted heredoc body, whose delimiter line was
+// found first: it finds the substitutions the shell runs, and nothing it
+// opens reads past the delimiter.
+func (l *lexer) body() {
+	switch c := l.src[l.i]; c {
 	case '\n':
 		l.i++
 		l.line++
-		f.lineStart = true
 	case '\\':
 		l.countLine(l.peek(1))
-		l.i = min(l.i+2, len(l.src))
+		l.i = min(l.i+2, l.limit())
 	case '$':
-		l.dollar(false)
+		if l.peek(1) == '(' {
+			l.dollar(false)
+		} else {
+			l.i++
+		}
 	case '`':
 		l.openSubstitution(backquote, 1)
 	default:
@@ -565,53 +600,115 @@ func (l *lexer) readHeredocs() {
 	if len(l.unread) == 0 {
 		return
 	}
+	for _, doc := range l.unread {
+		if l.docs[doc].owner != l.cmd {
+			l.doubt("a heredoc's body starts inside a substitution")
+		}
+	}
 	for k := len(l.unread) - 1; k >= 0; k-- {
-		l.push(frame{kind: body, doc: l.unread[k], begun: -1})
+		l.push(frame{kind: body, doc: l.unread[k], start: -1})
 	}
 	l.unread = nil
 	l.beginBody()
 }
 
 // beginBody starts the heredoc body on top of the frames at the current
-// line.
+// position. It finds the delimiter line first; a quoted body is then
+// skipped whole. A heredoc inside another heredoc body runs to the end of
+// that body unread, so no byte is searched more than twice.
 func (l *lexer) beginBody() {
 	f := l.top()
-	f.begun, f.lineStart, f.outer = l.i, true, l.cmd
+	doc := l.docs[f.doc]
+	f.start, f.outer = l.i, l.cmd
+	if len(l.stops) > 0 {
+		l.doubt("a heredoc inside a heredoc body")
+		f.stop, f.resume = l.limit(), l.limit()
+	} else {
+		f.stop, f.resume = l.delimiterLine(doc)
+	}
+	l.stops = append(l.stops, f.stop)
 	l.sink = builder{text: l.sink.text[:0], target: -1, line: -1, discard: true}
 	l.cmd = &l.sink
+	if doc.literal || len(l.stops) > 1 {
+		l.line += strings.Count(l.src[l.i:f.stop], "\n")
+		l.i = f.stop
+	}
 }
 
-// endBody gives the heredoc on top of the frames its body and starts the
-// next heredoc body of the same line, if any.
-func (l *lexer) endBody(text string) {
+// delimiterLine finds the delimiter line of a heredoc body that starts at
+// l.i: where it starts, and where the command line goes on after it. The
+// line must equal the delimiter, after its leading tabs for <<-. Without one
+// before the limit, the body runs to the limit.
+func (l *lexer) delimiterLine(doc heredoc) (stop, resume int) {
+	limit := l.limit()
+	for at := l.i; at < limit; {
+		end := strings.IndexByte(l.src[at:limit], '\n')
+		if end < 0 {
+			end = limit
+		} else {
+			end += at
+		}
+		line := l.src[at:end]
+		l.work += len(line)
+		if doc.tabs {
+			line = strings.TrimLeft(line, "\t")
+		}
+		if line == doc.delimiter {
+			return at, min(end+1, limit)
+		}
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), doc.delimiter) {
+			l.doubt("a heredoc body line that nearly matches its delimiter")
+		}
+		at = end + 1
+	}
+	l.doubt("a heredoc without its delimiter line")
+	return limit, limit
+}
+
+// endBody gives the heredoc on top of the frames its body, moves past its
+// delimiter line and starts the next heredoc body of the same line, if any.
+func (l *lexer) endBody() {
 	f := l.pop()
+	l.stops = l.stops[:len(l.stops)-1]
+	text := l.src[f.start:f.stop]
+	if f.stop < f.resume && f.stop > f.start {
+		// The body ends before the newline that precedes its delimiter line.
+		text = l.src[f.start : f.stop-1]
+	}
 	if doc := l.docs[f.doc]; doc.command >= 0 {
 		l.out[doc.command].Redirects[doc.index].Body = text
 	} else {
 		doc.owner.redirects[doc.index].Body = text
 	}
+	l.line += strings.Count(l.src[min(l.i, f.resume):f.resume], "\n")
+	l.i = f.resume
 	l.cmd = f.outer
-	if top := l.top(); top != nil && top.kind == body && top.begun < 0 {
+	if top := l.top(); top != nil && top.kind == body && top.start < 0 {
 		l.beginBody()
 	}
 }
 
 // redirect reads a redirection operator at l.i, with the file descriptor
-// number the word before it may be. A << that no delimiter word follows is
-// text.
+// number the word before it may be.
 func (l *lexer) redirect() {
 	isHeredoc := strings.HasPrefix(l.src[l.i:], "<<") && !strings.HasPrefix(l.src[l.i:], "<<<")
-	var end int
-	var delimiter string
-	var literal bool
+	op := operator(l.src[l.i:])
+	var doc heredoc
+	var target Word
+	end := l.i + len(op)
 	if isHeredoc {
+		if l.peek(2) == '-' {
+			op = "<<-"
+		}
 		var ok bool
-		if end, delimiter, literal, ok = heredocMarker(l.src, l.i); !ok {
+		if end, doc, target, ok = l.delimiterWord(l.i + len(op)); !ok {
+			l.doubt("a << without a delimiter name")
 			l.beginWord()
 			l.appendText("<<")
 			l.i += 2
 			return
 		}
+		doc.tabs = op == "<<-"
 	}
 	b := l.cmd
 	fd := ""
@@ -625,24 +722,129 @@ func (l *lexer) redirect() {
 		b.line = l.line
 	}
 	b.end = l.line
+	b.redirects = append(b.redirects, Redirect{Op: fd + op, Target: target, Line: l.line})
 	if isHeredoc {
-		op := "<<"
-		if l.peek(2) == '-' {
-			op = "<<-"
-		}
-		raw := strings.TrimLeft(l.src[l.i+len(op):end], " \t\f\r")
-		b.redirects = append(b.redirects, Redirect{Op: fd + op, Target: Word{Text: delimiter, Raw: raw}, Line: l.line})
-		l.docs = append(l.docs, heredoc{owner: b, index: len(b.redirects) - 1, command: -1, delimiter: delimiter, literal: literal})
+		doc.owner, doc.index, doc.command = b, len(b.redirects)-1, -1
+		l.docs = append(l.docs, doc)
 		b.docs = append(b.docs, len(l.docs)-1)
 		l.unread = append(l.unread, len(l.docs)-1)
 		b.target = -1
-		l.i = end
-		return
+	} else {
+		b.target = len(b.redirects) - 1
 	}
-	op := operator(l.src[l.i:])
-	b.redirects = append(b.redirects, Redirect{Op: fd + op, Line: l.line})
-	b.target = len(b.redirects) - 1
-	l.i += len(op)
+	l.i = end
+}
+
+// delimiterWord reads the delimiter word of a heredoc operator that ends at
+// from, after blanks, and unquotes it as a shell does. The plain forms NAME,
+// 'NAME', "NAME" and \NAME, with NAME a letter or _ followed by letters,
+// digits and _, are certain. A delimiter that does not start like a NAME
+// is not a heredoc (ok false). A quote left open on the line falls back to
+// the NAME after it, the reading this package has always made.
+func (l *lexer) delimiterWord(from int) (end int, doc heredoc, target Word, ok bool) {
+	i := from
+	for i < len(l.src) && (l.src[i] == ' ' || l.src[i] == '\t') {
+		i++
+	}
+	start := i
+	var text []byte
+	ends := " \t\n;&|()<>"
+	if l.backquotes > 0 {
+		ends += "`" // the shell cuts a backquote substitution's text first
+	}
+	for i < len(l.src) && strings.IndexByte(ends, l.src[i]) < 0 {
+		switch c := l.src[i]; c {
+		case '\'', '"':
+			doc.literal = true
+			closing := l.closingQuote(c, i+1)
+			if closing < 0 {
+				return l.openDelimiter(start)
+			}
+			text = append(text, l.src[i+1:i+1+closing]...)
+			i += closing + 2
+		case '\\':
+			doc.literal = true
+			if i+1 < len(l.src) && l.src[i+1] != '\n' {
+				text = append(text, l.src[i+1])
+			}
+			i += 2
+		default:
+			text = append(text, c)
+			i++
+		}
+	}
+	i = min(i, len(l.src))
+	doc.delimiter = string(text)
+	raw := l.src[start:i]
+	if doc.delimiter == "" || !isNameStart(doc.delimiter[0]) {
+		return 0, heredoc{}, Word{}, false
+	}
+	plain := isName(doc.delimiter) && (raw == doc.delimiter || raw == "'"+doc.delimiter+"'" ||
+		raw == `"`+doc.delimiter+`"` || raw == `\`+doc.delimiter)
+	if !plain {
+		l.doubt("a heredoc delimiter that is not a plain name")
+	}
+	return i, doc, Word{Text: doc.delimiter, Raw: raw}, true
+}
+
+// closingQuote returns the offset from `from` of the next c on the same
+// line, or -1. The lexer only moves forward, so it finds each line's end
+// once, and a failed search remembers that end: the delimiters of one line
+// never search the same bytes twice.
+func (l *lexer) closingQuote(c byte, from int) int {
+	slot := 0
+	if c == '"' {
+		slot = 1
+	}
+	if from < l.quoteMiss[slot] {
+		return -1
+	}
+	if from >= l.eol {
+		l.eol = len(l.src)
+		if end := strings.IndexByte(l.src[from:], '\n'); end >= 0 {
+			l.eol = from + end
+		}
+		l.work += l.eol - from
+	}
+	closing := strings.IndexByte(l.src[from:l.eol], c)
+	if closing < 0 {
+		l.quoteMiss[slot] = l.eol
+	}
+	return closing
+}
+
+// openDelimiter reads a delimiter whose quote stays open on its line as the
+// NAME after the quote, and records the doubt.
+func (l *lexer) openDelimiter(start int) (end int, doc heredoc, target Word, ok bool) {
+	l.doubt("a heredoc delimiter with an unclosed quote")
+	i := start + 1
+	for i < len(l.src) && isNameByte(l.src[i]) {
+		i++
+	}
+	if i == start+1 || !isNameStart(l.src[start+1]) {
+		return 0, heredoc{}, Word{}, false
+	}
+	doc = heredoc{delimiter: l.src[start+1 : i], literal: true}
+	if i < len(l.src) && (l.src[i] == '\'' || l.src[i] == '"') {
+		i++
+	}
+	return i, doc, Word{Text: doc.delimiter, Raw: l.src[start:i]}, true
+}
+
+func isNameStart(c byte) bool { return c == '_' || 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' }
+
+func isNameByte(c byte) bool { return isNameStart(c) || '0' <= c && c <= '9' }
+
+func isName(text string) bool {
+	if text == "" || !isNameStart(text[0]) {
+		return false
+	}
+	for i := 1; i < len(text); i++ {
+		if !isNameByte(text[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // operators are the redirection operators, longest first.
@@ -667,44 +869,6 @@ func isDigits(text []byte) bool {
 	return len(text) > 0
 }
 
-// heredocMarker matches a heredoc marker at text[at:], which starts with
-// "<<": an optional "-", blanks, an optional quote or backslash, the
-// delimiter word and an optional quote, the shape of
-// <<-?[ \t]*(['"\\]?)([A-Za-z_][A-Za-z0-9_]*)['"]?. It reads only the
-// marker's own bytes, so finding every marker of a line stays linear, and
-// reports whether the delimiter was quoted.
-func heredocMarker(text string, at int) (end int, delimiter string, literal, ok bool) {
-	i := at + 2
-	if i < len(text) && text[i] == '-' {
-		i++
-	}
-	for i < len(text) && strings.IndexByte(" \t\f\r", text[i]) >= 0 {
-		i++
-	}
-	if i < len(text) && (text[i] == '\'' || text[i] == '"' || text[i] == '\\') {
-		literal = true
-		i++
-	}
-	start := i
-	for i < len(text) && isDelimiterByte(text[i], i == start) {
-		i++
-	}
-	if i == start {
-		return 0, "", false, false
-	}
-	delimiter = text[start:i]
-	if i < len(text) && (text[i] == '\'' || text[i] == '"') {
-		i++
-	}
-	return i, delimiter, literal, true
-}
-
-// isDelimiterByte reports whether ch can be part of a heredoc delimiter word
-// ([A-Za-z_] first, then [A-Za-z0-9_]).
-func isDelimiterByte(ch byte, first bool) bool {
-	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || !first && '0' <= ch && ch <= '9'
-}
-
 // openSubstitution starts a substitution whose opening delimiter is n bytes
 // at l.i. The commands inside it go to a builder of their own.
 func (l *lexer) openSubstitution(k kind, n int) {
@@ -712,6 +876,9 @@ func (l *lexer) openSubstitution(k kind, n int) {
 	l.push(frame{kind: k, start: l.i, outer: l.cmd})
 	l.cmd = newBuilder()
 	l.scopes++
+	if k == backquote {
+		l.backquotes++
+	}
 	l.i += n
 }
 
@@ -721,16 +888,12 @@ func (l *lexer) closeSubstitution() {
 	f := l.pop()
 	l.leaveScope()
 	l.cmd = f.outer
-	l.appendText(substitutionText(l.src[f.start:min(f.start+2, len(l.src))], f.kind))
-}
-
-// substitutionText is what a substitution that opens with opening leaves in
-// its word's Text: its delimiters.
-func substitutionText(opening string, k kind) string {
-	if k == backquote {
-		return "``"
+	if f.kind == backquote {
+		l.backquotes--
+		l.appendText("``")
+		return
 	}
-	return opening[:1] + "()"
+	l.appendText(l.src[f.start:f.start+1] + "()")
 }
 
 // closeSubshell ends the innermost subshell, on top of the frames.
@@ -781,7 +944,8 @@ func (l *lexer) appendText(text string) {
 }
 
 // endWord ends the word in progress, as a word or as the target of the
-// redirection waiting for one.
+// redirection waiting for one. An unquoted `case` makes the result
+// uncertain: the ) after each of its patterns is not a separator.
 func (l *lexer) endWord() {
 	b := l.cmd
 	if !b.inWord {
@@ -794,6 +958,9 @@ func (l *lexer) endWord() {
 	}
 	word := Word{Text: string(b.text), Raw: l.src[b.start:l.i]}
 	b.text = b.text[:0]
+	if word.Raw == "case" {
+		l.doubt("a case command")
+	}
 	if b.target >= 0 {
 		b.redirects[b.target].Target = word
 		b.target = -1
@@ -821,27 +988,32 @@ func (l *lexer) endCommand() {
 	b.words, b.redirects, b.docs, b.line = nil, nil, nil, -1
 }
 
+// unwind closes the frame on top of the frames as if its closing delimiter
+// followed.
+func (l *lexer) unwind() {
+	switch top := l.top(); top.kind {
+	case substitution, backquote:
+		l.endCommand()
+		l.closeSubstitution()
+	case subshell:
+		l.endCommand()
+		l.closeSubshell()
+	default:
+		l.pop()
+	}
+}
+
 // finish ends whatever the command line left open, innermost first: an
-// unclosed heredoc body runs to the end, and an unclosed substitution or
-// subshell ends with its commands.
+// unclosed substitution or subshell ends with its commands.
 func (l *lexer) finish() {
+	if len(l.unread) > 0 {
+		l.doubt("a heredoc without a body")
+	}
+	if len(l.frames) > 0 {
+		l.doubt("an unclosed quote, substitution or subshell")
+	}
 	for len(l.frames) > 0 {
-		switch top := l.top(); top.kind {
-		case body:
-			if top.begun < 0 {
-				l.pop()
-				continue
-			}
-			l.endBody(l.src[top.begun:])
-		case substitution, backquote:
-			l.endCommand()
-			l.closeSubstitution()
-		case subshell:
-			l.endCommand()
-			l.closeSubshell()
-		default:
-			l.pop()
-		}
+		l.unwind()
 	}
 	l.endCommand()
 }

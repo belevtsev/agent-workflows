@@ -961,7 +961,7 @@ func (call shellCall) isCw() bool {
 // redirects its output to a file is kept as a redirect entry whose body is
 // its lines.
 func parseShell(command string) shellCommand {
-	commands := shellwords.Split(command)
+	commands := shellwords.Split(command).Commands
 	starts := []int{0} // where each line of command starts
 	for i := range len(command) {
 		if command[i] == '\n' {

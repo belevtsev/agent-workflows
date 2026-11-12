@@ -109,22 +109,23 @@ func splitTestDeepRows() []splitTestDeepRow {
 // commands. It does not measure time and is not an end-to-end timing check.
 //
 // What it guards: `work` grows with the bytes each step of the lexer moves
-// over, in either direction, and with the bytes of each heredoc body line it
-// compares with the delimiter. A splitter that goes back over the line before
-// every "<<" to recover its quoting, or compares a body line more than once,
-// does work quadratic in the number of markers or lines: about 10 million
-// bytes at 2000 words and about 160 million at 8000 words for the rescan,
-// against bounds of about 40 KB and 160 KB, and work(4n)/work(n) is about 16
-// instead of about 4. deep_arithmetic also checks that no << inside
-// $(( ... )) is taken as a heredoc, and the other deep rows check their exact
-// body counts.
+// over, which it does only forwards, with the bytes of each heredoc body line
+// it compares with the delimiter, and with each line it searches for the
+// closing quote of a heredoc delimiter. A splitter whose search for a
+// delimiter line or closing quote at every "<<" runs over the rest of the
+// command, or that compares a body line more than once, does work quadratic
+// in the number of markers or lines: about 10 million bytes at 2000 words and
+// about 160 million at 8000 words, against bounds of about 40 KB and 160 KB,
+// and work(4n)/work(n) is about 16 instead of about 4. deep_arithmetic also
+// checks that no << inside $(( ... )) is taken as a heredoc, and the other
+// deep rows check their exact body counts.
 //
-// What it does not detect: work done without moving the position, such as
-// searching or copying the stack of open quotes and parentheses for every
-// line or marker, which only R4d's allocation bound
-// (TestSplitDeepNestingAllocations) can catch, and only when the copy
-// allocates; a quadratic marker matcher; and pattern matching against the
-// rest of the command.
+// What it does not detect: work the lexer does without counting it, such as
+// a separate scan back over bytes already passed, or searching or copying the
+// stack of open quotes and parentheses for every line or marker, which only
+// R4d's allocation bound (TestSplitDeepNestingAllocations) can catch, and
+// only when the copy allocates; a quadratic marker matcher; and pattern
+// matching against the rest of the command.
 func TestSplitWorkLinear(t *testing.T) {
 	t.Parallel()
 	const n = 2000
@@ -161,7 +162,8 @@ func TestSplitWorkLinear(t *testing.T) {
 			var work [2]int
 			for i, words := range []int{n, 4 * n} {
 				cmd := in.cmd(words)
-				sh, w := split(cmd)
+				result, w := split(cmd)
+				sh := result.Commands
 				work[i] = w
 				if w > splitTestWorkBound(cmd) {
 					t.Errorf("%d words: work = %d, want <= 4*len+16 = %d (len %d)", words, w, splitTestWorkBound(cmd), len(cmd))
@@ -278,7 +280,8 @@ func TestSplitHeredocMarkers(t *testing.T) {
 	for _, c := range splitTestHeredocCases() {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			sh, work := split(c.cmd)
+			result, work := split(c.cmd)
+			sh := result.Commands
 			if work > splitTestWorkBound(c.cmd) {
 				t.Errorf("work = %d, want <= %d", work, splitTestWorkBound(c.cmd))
 			}
@@ -333,7 +336,7 @@ func FuzzSplitWork(f *testing.F) {
 }
 
 // splitTestSink keeps the R4d split result alive across the second reading.
-var splitTestSink []SimpleCommand
+var splitTestSink Result
 
 // R4d (contract revision 5, amendments 5 and 6): splitting a deeply nested
 // input allocates at most 300 bytes per input byte more than splitting a
@@ -385,7 +388,7 @@ func TestSplitDeepNestingAllocations(t *testing.T) {
 	}
 	measure := func(command string) int64 {
 		var before, after runtime.MemStats
-		splitTestSink = nil
+		splitTestSink = Result{}
 		runtime.GC()
 		runtime.GC()
 		runtime.ReadMemStats(&before)
@@ -395,7 +398,7 @@ func TestSplitDeepNestingAllocations(t *testing.T) {
 	}
 	allocDeep := measure(deep)
 	allocControl := measure(control)
-	splitTestSink = nil
+	splitTestSink = Result{}
 	excess := allocDeep - allocControl
 	if excess > perByteMax*int64(len(deep)) {
 		t.Errorf("alloc(deep) = %d bytes, alloc(control) = %d bytes: excess %.1f bytes per input byte (%d input bytes), want <= %d",
