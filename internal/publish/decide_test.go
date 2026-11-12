@@ -348,7 +348,7 @@ func TestReadbackDiffersNamesEachDifference(t *testing.T) {
 	}
 }
 
-// oracle: toolEnvironment's comment: the nine repository-selecting variables
+// oracle: ToolEnvironment's comment: the nine repository-selecting variables
 // (listed here independently of repositoryVariables) are removed, set replaces
 // any earlier value of its name and comes last, and everything else is kept
 // in order.
@@ -368,8 +368,8 @@ func TestToolEnvironmentDropsRepositoryVariables(t *testing.T) {
 		{"drops a repository variable without a value", []string{"GIT_DIR", "PATH=/bin"}, []string{"PATH=/bin", "X=1"}, "X=1"},
 	}
 	for _, c := range cases {
-		if got := toolEnvironment(c.environ, c.set); !slices.Equal(got, c.want) {
-			t.Errorf("%s: toolEnvironment = %q, want %q", c.name, got, c.want)
+		if got := ToolEnvironment(c.environ, c.set); !slices.Equal(got, c.want) {
+			t.Errorf("%s: ToolEnvironment = %q, want %q", c.name, got, c.want)
 		}
 	}
 }

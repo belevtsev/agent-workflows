@@ -302,9 +302,11 @@ var repositoryVariables = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
 	"GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_NAMESPACE", "GIT_CEILING_DIRECTORIES",
 	"GIT_DISCOVERY_ACROSS_FILESYSTEM"}
 
-// toolEnvironment is environ without the repository-selecting variables and
-// with set (NAME=value) replacing any earlier value of NAME.
-func toolEnvironment(environ []string, set string) []string {
+// ToolEnvironment is environ without the repository-selecting variables and
+// with set (NAME=value) replacing any earlier value of NAME. cw gate runs git
+// with it too, so git finds the repository it names rather than one the
+// caller's environment selects.
+func ToolEnvironment(environ []string, set string) []string {
 	name, _, _ := strings.Cut(set, "=")
 	kept := []string{}
 	for _, variable := range environ {
