@@ -79,7 +79,7 @@ func TestTaskBundleSizeLimitHelperProcess(t *testing.T) {
 func TestTaskBundleWriteErrorLeavesNoFile(t *testing.T) {
 	h := newTaskBundleHarness(t)
 	h.write(t, "source.txt", "changed source\n")
-	bundle, err := taskflow.BuildBundle(t.Context(), h.record.Directory, "review1")
+	bundle, err := taskflow.Env{}.BuildBundle(t.Context(), h.record.Directory, "review1")
 	if err != nil {
 		t.Fatal(err)
 	}

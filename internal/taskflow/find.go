@@ -37,7 +37,7 @@ type SourceIdentifier func(ctx context.Context, selectedPath string) (string, er
 // repository the manifest covers the whole worktree, whichever directory
 // inside it path names.
 func SourceDigest(ctx context.Context, path string) (string, error) {
-	_, files, err := projectctx.CaptureManifest(ctx, path)
+	_, files, err := projectSource{}.Manifest(ctx, path)
 	if err != nil {
 		return "", err
 	}

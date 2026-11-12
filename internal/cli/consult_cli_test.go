@@ -459,9 +459,10 @@ func TestConsultDryRunPreviewsParticipatingProviders(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			directory := t.TempDir()
 			policy := writePolicyFixture(t, filepath.Join(directory, "policy"), 3, nil)
-			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(test.state))
+			state, getenv := backedConsultEnvironment(t, test.state, test.credentials)
+			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(state))
 			output := filepath.Join(directory, "preview.json")
-			outcome := executeConsult(t, fixtureEnvironment(test.credentials), "--request", request, "--output", output, "--policy", policy, "--dry-run")
+			outcome := executeConsult(t, getenv, "--request", request, "--output", output, "--policy", policy, "--dry-run")
 			// Only a task-bound provider without a credential makes the dry run exit 5.
 			var unconfiguredBound []string
 			if strings.Contains(test.state, "task_context") {
@@ -563,10 +564,10 @@ func TestConsultTaskBoundMissingCredentialIsNegativeResult(t *testing.T) {
 			for index, pin := range test.bound {
 				entries[index] = strconv.Quote(pin.provider) + ":" + strconv.Quote(pin.model)
 			}
-			state := `{"task_context":{"advisers":{` + strings.Join(entries, ",") + `}}}`
+			state, getenv := backedConsultEnvironment(t, `{"task_context":{"advisers":{`+strings.Join(entries, ",")+`}}}`, nil)
 			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(state))
 			output := filepath.Join(directory, "record.json")
-			outcome := executeConsult(t, fixtureEnvironment(nil), "--request", request, "--output", output, "--policy", policy)
+			outcome := executeConsult(t, getenv, "--request", request, "--output", output, "--policy", policy)
 			if ExitCode(outcome.err) != 5 {
 				t.Fatalf("bound provider without a credential is not exit 5: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 			}

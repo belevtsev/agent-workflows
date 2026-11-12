@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +22,7 @@ func newTaskBundleCommand(deps taskDeps) *cobra.Command {
 		if reviewID == "" || outputFile == "" {
 			return usage(errors.New("bundle needs --review-id and --output"))
 		}
-		written, err := taskflow.WriteBundle(cmd.Context(), directory, reviewID, outputFile)
+		written, err := taskEnv(deps.config).WriteBundle(cmd.Context(), directory, reviewID, outputFile)
 		if err != nil {
 			return err
 		}
