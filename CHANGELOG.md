@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- File locks get one shared implementation, `internal/fslock`: a `flock` lock that is released when its holder
-  dies, for contributors adding a lock ([development](docs/development.md)).
+- The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
+  released when its holder dies; new locks reuse it ([development](docs/development.md)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 
