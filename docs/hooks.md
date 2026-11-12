@@ -140,6 +140,15 @@ change. A record started over source that changed after A's last passing
 verification does not finish A, so starting a fresh record cannot hide
 unreviewed edits.
 
+A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
+v3.0.0-rc.1, has no `packs` or `test_rules`. `cw` refuses to read it, so
+neither `cw task verify` nor `cw task abandon` can close it, but it still gates
+by the rules above, judged from its latest revision. The deny reason names its
+directory: move that directory out of the task store, then start a new task
+with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
+verified as complete is finished and does not gate, since those releases
+recorded no source digest.
+
 ### Which source counts
 
 Only the content of the eligible source files counts: `cw task verify` records
@@ -214,8 +223,10 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
   a failed source capture, a missing `git`, a git command that fails or times
-  out. Damaged records are skipped rather than reported. A relative
-  `$XDG_STATE_HOME` is the exception: it asks ([task store](#task-store)).
+  out. Damaged records are skipped rather than reported, except a record
+  written by v2.0.66 to v2.0.96: `cw` refuses it at its first revision, so it
+  gates even when a later revision is damaged. A relative `$XDG_STATE_HOME`
+  is the other exception: it asks ([task store](#task-store)).
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record

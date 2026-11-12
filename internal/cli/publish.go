@@ -23,7 +23,7 @@ Exit statuses:
   0    published  every requested step is done, already present, not needed or not requested
   1    failed     a definite failure (git-missing, locked, task-unreadable, record-invalid, capture-failed, read-failed, record-write-failed, commit-failed); intent-to-add entries may remain after commit-failed
   2    usage error; nothing is printed on stdout
-  3    denied     the verify gate refused (task-abandoned, no-baseline-manifest, task-not-verified, source-changed, open-record): verify or abandon
+  3    denied     the verify gate refused (task-abandoned, task-not-verified, source-changed, open-record): verify or abandon
   4    refused    a precondition does not hold (not-a-repository, nothing-to-publish, path-not-verified, branch-mismatch, head-moved, hunk-scope, content-conversion, git-locked, remote-unknown, remote-split, remote-moved, not-fast-forward, gh-missing, repo-mismatch, pr-exists, pr-missing, pr-ambiguous): fix it or use the GitHub worker
   6    unknown    a commit, push or pull-request command did not confirm its outcome (commit-unknown, push-unknown, pr-unknown); read the reconciliation before re-running
   7    mismatch   a step succeeded but its readback differs (commit-mismatch, push-mismatch, pr-mismatch); inspect, never amend

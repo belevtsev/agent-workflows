@@ -1,7 +1,7 @@
 package taskflow_test
 
 // A contract needs a plan that can prove tests (interface contract L4, third
-// version): R17, and L3 R8 for legacy and small records (R3c).
+// version): R17, and L3 R8 for small records.
 
 import (
 	"os"
@@ -65,24 +65,20 @@ func TestAssignContractNeedsProvingPlan(t *testing.T) {
 }
 
 // TestAssignContractWhenR17DoesNotApply fails when a contract-bearing brief
-// is refused by R17 in a gated record whose plan can prove tests, in a
-// record with test rules whose plan is small, or in a legacy record, or when
-// L3 R8 stops applying there (R17, R3c).
+// is refused by R17 in a gated record whose plan can prove tests or in a
+// record whose plan is small, or when L3 R8 stops applying there (R17).
 func TestAssignContractWhenR17DoesNotApply(t *testing.T) {
 	t.Parallel()
 	g := l4New(t, l4Opts{})
 	g.mustAssign(g.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
 
-	for _, o := range []l4Opts{{small: true}, {legacy: true}} {
-		o.checks = []taskflow.Check{l3Check("unit", l3PlainP...)}
-		f := l4New(t, o)
-		// L3 R8: requirements are refused when the plan cannot prove tests,
-		// but not by R17's message.
-		if err := f.assignFails(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")), ""); err != nil && strings.Contains(err.Error(), l4R17) {
-			t.Errorf("small %v legacy %v: requirements refused with R17's message: %v (R17 applies to gated records)", o.small, o.legacy, err)
-		}
-		if err := f.assign(f.brief("te1", []string{"p/te_test.go"})); err != nil {
-			t.Errorf("small %v legacy %v: a contract without requirements was refused: %v (L3 R8 applies unchanged)", o.small, o.legacy, err)
-		}
+	f := l4New(t, l4Opts{small: true, checks: []taskflow.Check{l3Check("unit", l3PlainP...)}})
+	// L3 R8: requirements are refused when the plan cannot prove tests, but
+	// not by R17's message.
+	if err := f.assignFails(f.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")), ""); err != nil && strings.Contains(err.Error(), l4R17) {
+		t.Errorf("small: requirements refused with R17's message: %v (R17 applies to gated records)", err)
+	}
+	if err := f.assign(f.brief("te1", []string{"p/te_test.go"})); err != nil {
+		t.Errorf("small: a contract without requirements was refused: %v (L3 R8 applies unchanged)", err)
 	}
 }

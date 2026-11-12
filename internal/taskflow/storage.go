@@ -301,6 +301,13 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if err := decodeBytes(data, &current); err != nil {
 			return Record{}, "", err
 		}
+		// The start members are immutable, so revision 1 decides; a later
+		// revision that drops one fails the immutability check below.
+		if i == 0 {
+			if err := requireStartMembers(current); err != nil {
+				return Record{}, "", err
+			}
+		}
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
@@ -338,6 +345,48 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 	return record, previous, nil
 }
 
+// ErrLegacyRecord reports a task record without packs, test_rules or
+// baseline_manifest. cw v2.0.66 to v2.0.96 wrote version 3 records without
+// packs and test_rules (v2.0.66 also without baseline_manifest), and so did v3
+// builds before v3.0.0-rc.1. This cw keeps no rules for such records and
+// refuses to load them; FindOpen still lets one gate publication until its
+// task directory is moved out of the store.
+var ErrLegacyRecord = errors.New("task record predates v3.0.0-rc.1")
+
+// legacyRecordError is the refusal for a record without start members; it
+// matches ErrLegacyRecord.
+type legacyRecordError struct{ missing string }
+
+func (e legacyRecordError) Error() string {
+	return "task record has no " + e.missing + ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
+}
+
+func (e legacyRecordError) Is(target error) bool { return target == ErrLegacyRecord }
+
+// requireStartMembers refuses, with ErrLegacyRecord, a record without the
+// members cw task start has always written since v3.0.0-rc.1: packs,
+// test_rules and baseline_manifest.
+func requireStartMembers(record Record) error {
+	var missing []string
+	if record.Packs == nil {
+		missing = append(missing, "packs")
+	}
+	if record.TestRules == "" {
+		missing = append(missing, "test_rules")
+	}
+	if record.BaselineManifest == nil {
+		missing = append(missing, "baseline_manifest")
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	names := missing[0]
+	if n := len(missing); n > 1 {
+		names = strings.Join(missing[:n-1], ", ") + " or " + missing[n-1]
+	}
+	return legacyRecordError{missing: names}
+}
+
 func validateRecord(record Record) error {
 	if err := validateRecordedPlan(record.Plan); err != nil {
 		return err
@@ -357,10 +406,13 @@ func validateRecord(record Record) error {
 	if _, err := hex.DecodeString(record.ID); err != nil {
 		return errors.New("invalid task ID")
 	}
-	if manifest := record.BaselineManifest; manifest != nil && (manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0) {
+	if err := requireStartMembers(record); err != nil {
+		return err
+	}
+	if manifest := record.BaselineManifest; manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0 {
 		return errors.New("invalid stored baseline manifest reference")
 	}
-	if record.TestRules != "" && (record.TestRules != TestRulesV1 || record.BaselineManifest == nil) {
+	if record.TestRules != TestRulesV1 {
 		return errors.New("invalid stored test rules")
 	}
 	if err := consult.ValidateBinding(record.Advisers); err != nil {

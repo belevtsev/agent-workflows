@@ -69,10 +69,10 @@ const (
 	noPlanCreditProblem = "test files changed, but the plan has no go test check whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag), so no test engineer can carry a contract; the plan cannot change: stop and ask the user how to proceed"
 )
 
-// gated reports whether the record has test rules and a substantial plan, so
-// verify and assign apply the authorship rules to it.
+// gated reports whether the record has a substantial plan, so verify and
+// assign apply the authorship rules to it.
 func gated(record Record) bool {
-	return record.TestRules != "" && record.Plan.Kind == "substantial"
+	return record.Plan.Kind == "substantial"
 }
 
 // hasAcceptance reports whether the assignment has some acceptance with status.
@@ -133,11 +133,7 @@ func (view *sourceView) testSource() *testSource {
 func (view *sourceView) authorship(taskRoot *os.Root, record Record) *authorship {
 	if view.authors == nil {
 		state := baselineState{}
-		if record.BaselineManifest == nil {
-			state.missing = true
-		} else {
-			state.files, state.err = readBaselineManifest(taskRoot, *record.BaselineManifest)
-		}
+		state.files, state.err = readBaselineManifest(taskRoot, *record.BaselineManifest)
 		source := view.testSource()
 		view.authors = newAuthorship(record, state, view.files, func(name string) ([]byte, error) {
 			return source.readFile(projectctx.ManifestRawPath(name))
@@ -153,11 +149,10 @@ func (view *sourceView) close() {
 }
 
 // baselineState is the record's baseline manifest as the classifier sees it:
-// missing (a record that predates it), unreadable, or its files.
+// unreadable, or its files.
 type baselineState struct {
-	missing bool
-	err     error
-	files   []projectctx.FileState
+	err   error
+	files []projectctx.FileState
 }
 
 // authorship classifies paths at one source (R11, R12). It is a pure function
@@ -480,10 +475,6 @@ func (a *authorship) fault(index int) string {
 // authorshipReport builds the R19 report from one classifier.
 func authorshipReport(a *authorship, record Record, snapshot projectctx.Snapshot) AuthorshipReport {
 	report := AuthorshipReport{TaskID: record.ID, Fingerprint: snapshot.Fingerprint, TestRules: record.TestRules, Gated: gated(record), Files: []AuthorshipFile{}, Problems: []string{}}
-	if a.baseline.missing {
-		report.Problems = append(report.Problems, "task predates the baseline manifest; changed test files cannot be listed")
-		return report
-	}
 	if problem, ok := a.unreadable(); ok {
 		report.Problems = append(report.Problems, problem)
 		return report
@@ -507,7 +498,7 @@ func authorshipReport(a *authorship, record Record, snapshot projectctx.Snapshot
 // authorshipVerifyEntries returns verify's R16, R15 and R14 problems, in that
 // order, and R23's limitation, for a gated record.
 func authorshipVerifyEntries(a *authorship, record Record) (problems, limitations []string) {
-	if !gated(record) || a.baseline.missing {
+	if !gated(record) {
 		return nil, nil
 	}
 	if problem, ok := a.unreadable(); ok {

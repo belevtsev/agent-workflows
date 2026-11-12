@@ -158,9 +158,10 @@ func tpNotBuiltIn(id string) string {
 	return "evidence rule " + id + " is not built into this cw; only the fallback rule applied for it"
 }
 
-// A20, A20.a-d, A21, I1, I6 (only as contract section 0 allows): verify applies
+// A20, A20.a-d, I1, I6 (only as contract section 0 allows): verify applies
 // the rules of the applied packs only, from the latest passed run of each
-// check with its GOFLAGS; a legacy record keeps GoTests.
+// check with its GOFLAGS. A record without a pack set is refused at load
+// (internal/taskflow/legacy_record_test.go).
 func TestVerifyWithPacks(t *testing.T) {
 	raceErr := exec.Command("go", "list", "-race", "runtime").Run()
 	pack := func(id, rule string) langpack.Manifest {
@@ -169,7 +170,7 @@ func TestVerifyWithPacks(t *testing.T) {
 	ver, test := []string{"go", "version"}, []string{"go", "test", "./..."}
 	for _, c := range []struct {
 		name    string
-		via     string // "cli", "cli-removed" (after cw pack remove go), "direct" (StartWithPacks explicit) or "legacy" (Start)
+		via     string // "cli", "cli-removed" (after cw pack remove go) or "direct" (StartWithPacks explicit)
 		packs   []langpack.Manifest
 		argv    []string
 		goflags []string // GOFLAGS of each run of the check, in order
@@ -186,7 +187,6 @@ func TestVerifyWithPacks(t *testing.T) {
 			[]string{tpNotBuiltIn("example.rule/v1")}},
 		{"A20 two unknown rules in order", "direct", []langpack.Manifest{pack("p1", "example.rule/v1"), pack("p2", "go.package-test/v9")}, ver, nil, false,
 			[]string{tpNotBuiltIn("example.rule/v1"), tpNotBuiltIn("go.package-test/v9")}},
-		{"A21 legacy record", "legacy", nil, ver, nil, true, nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if c.argv[len(c.argv)-2] == "-race" && raceErr != nil {
@@ -209,8 +209,6 @@ func TestVerifyWithPacks(t *testing.T) {
 				switch c.via {
 				case "cli", "cli-removed":
 					rec.Directory, _, err = e.start(t, repo, tpPlan(c.argv...))
-				case "legacy":
-					rec, err = taskflow.Start(context.Background(), repo, store, plan, nil)
 				default:
 					rec, err = taskflow.StartWithPacks(context.Background(), repo, store, plan, nil, taskflow.SelectionExplicit, c.packs)
 				}
