@@ -247,10 +247,14 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	if complete {
 		t.Fatal("verify --summary reports an incomplete task as complete")
 	}
+	// Oracle: the full problems, with the two "requirement X is not
+	// satisfied" lines joined into one at the place of the first.
 	var problems []any
 	compactDecode(t, line["problems"], &problems)
-	if !reflect.DeepEqual(problems, fullProblems) {
-		t.Fatalf("verify --summary problems = %v, want the full problems %v", problems, fullProblems)
+	wantFull := []any{"requirement zeta is not satisfied", "requirement alpha is not satisfied", "Codex task decision is unresolved"}
+	wantProblems := []any{"requirements zeta, alpha are not satisfied", "Codex task decision is unresolved"}
+	if !reflect.DeepEqual(fullProblems, wantFull) || !reflect.DeepEqual(problems, wantProblems) {
+		t.Fatalf("verify problems = %v, summary problems = %v; want %v and %v", fullProblems, problems, wantFull, wantProblems)
 	}
 	var limitations []string
 	compactDecode(t, line["limitations"], &limitations)
@@ -378,7 +382,7 @@ func compactShowHarness(t *testing.T) (*summaryCLIHarness, map[string]any, taskf
 		t.Fatalf("fixture needs two distinct version runs: first %q last %q", first.ID, last.ID)
 	}
 
-	full := compactExecute(h, nil, "task", "show", "--task", h.task)
+	full := compactExecute(h, nil, "task", "show", "--full", "--task", h.task)
 	if full.err != nil {
 		t.Fatalf("task show: %v: %s", full.err, full.text())
 	}

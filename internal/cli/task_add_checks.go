@@ -12,12 +12,8 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 	addChecks := &cobra.Command{
 		Use:   "add-checks",
 		Short: "Add go test checks to a started substantial task after merging its base branch",
-		Long: "Append an amendment that adds credited direct 'go test' checks, tied to a merge commit from the task's base branch, so the merged changes can be tested. " +
-			"The input JSON names merge_commit (for example HEAD after 'git merge --no-ff origin/main'), base_ref (for example origin/main), a reason and the checks. " +
-			"The plan never changes and no check is replaced, removed or narrowed: each added check needs a new ID and must cover a package or module file the merge changed that no earlier check covers. " +
-			"The merge commit must be reachable from HEAD and not from the task baseline or the base, with a parent after the first reachable from the base. " +
-			"An accepted amendment clears the stored verification; run the added checks with 'cw task run' and verify again.",
-		Args: noPositional,
+		Long:  helpText("task-add-checks"),
+		Args:  noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.guard(); err != nil {
 				return err

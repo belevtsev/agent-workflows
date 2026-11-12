@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
 - `cw task` `start`, `run`, `assess`, `assign`, `handoff`, `accept`, `consult`, `verify` and `add-checks` print their one-line summary by default:
   a script that reads the whole record passes `--full`; `--summary` is still accepted ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- `cw task show` prints the task's state and field names (`--full` for the record), `cw task timeline` the last 20 entries (`--last 0` for all),
+  and the `verify` summary joins like problems and lists at most 20 ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ### Added
 
