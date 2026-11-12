@@ -26,8 +26,9 @@ func hdQuote(s string) string {
 // invocation, such as the hook's own Git, runs the real git with the
 // original PATH.
 //
-// Cleanup safety: the sleepers run through the symlink <dir>/hd-sleep, so
-// that path, unique to this test, is in their command line. Cleanup sends
+// Cleanup safety: the sleepers run through the symlink <dir>/hd/sleep, so
+// that path, unique to this test, is in their command line. The link keeps
+// the name sleep, which a multi-call coreutils (uutils) requires. Cleanup sends
 // SIGKILL to a recorded PID only while `ps` shows that PID's command line
 // still holds the path, so a reused PID is never signalled.
 func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, ps, originalPath string) string {
@@ -35,7 +36,10 @@ func hdInstallHangingCaptureGit(t *testing.T, realGit, sleep, ps, originalPath s
 	dir := hkCanonicalTempDir(t)
 	marker := filepath.Join(dir, "capture-reached")
 	pids := filepath.Join(dir, "pids")
-	sleeper := filepath.Join(dir, "hd-sleep")
+	sleeper := filepath.Join(dir, "hd", "sleep")
+	if err := os.Mkdir(filepath.Dir(sleeper), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Symlink(sleep, sleeper); err != nil {
 		t.Fatal(err)
 	}

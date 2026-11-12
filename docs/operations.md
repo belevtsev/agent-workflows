@@ -239,8 +239,10 @@ check run on stdout, which names the reason. `cw consult` prints its status
 line, or with `--summary` the one-line view, and writes the record to the
 `--output` path. The task commands other
 than `verify` and `run` still exit 1 when the record's state refuses them, for
-example an abandoned task or a `cw task add-checks` refusal. The hooks
-(`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)).
+example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
+(`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
+([hooks](hooks.md)). `cw hook git` exits 1 when the gate blocks the commit or
+push, as git expects of a failing hook ([git hooks](hooks.md#git-hooks)).
 
 ## Model policy
 

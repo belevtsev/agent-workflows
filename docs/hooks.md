@@ -310,6 +310,42 @@ The hook never exits 2, and the command strings in `hooks/hooks.json` end with
 subcommand cannot block. A hook timeout (30 seconds) is treated by Claude Code
 as a non-blocking error.
 
+## Git hooks
+
+`cw hook git pre-commit` and `cw hook git pre-push` apply the same gate from
+git's own `pre-commit` and `pre-push` hooks, so a commit or push is checked
+however it starts: through an alias, a script, `make` or `xargs`, or from a
+terminal. Nothing installs them yet; a repository's own hooks can call them,
+as in `exec cw hook git pre-commit "$@"`. Git runs each in the worktree it
+publishes from, and `cw` judges that repository by the rules above:
+
+- While a record gates, the deny reason goes to stderr and `cw` exits 1, which
+  stops git.
+- A git hook cannot ask, so each case in
+  [Asking instead of denying](#asking-instead-of-denying) prints its question
+  on stderr after `agent-workflows: warning: a git hook cannot ask for
+  confirmation`, exits 0 and git goes ahead: a record that cannot be read or
+  is from a newer `cw`, a task store that cannot be located or read, a push of
+  uncommitted changes over verified records, and a substantial change with no
+  record. Git names the directory, so the ask about a directory change cannot
+  arise.
+- For the substantial-change warning, a commit's change is the index git is
+  committing (`GIT_INDEX_FILE`), so `git commit -a` and `git commit PATH`
+  count what they record.
+- Where `cw hook pre-publish` lets the command through without output
+  ([Fail-open rules](#fail-open-rules)), such as after a git failure or at the
+  20 second deadline, `cw hook git` exits 0 without output.
+
+The plugin config does not reach git. The hook reads
+`CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY` and `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`
+from git's environment, and `CW_GATE=off` turns it off, as in
+`CW_GATE=off git commit -m x`. `git commit --no-verify` and
+`git push --no-verify` skip git's hooks, `cw`'s included, for one command;
+`cw hook pre-publish` still checks a `git commit --no-verify` the agent runs.
+Git's hook variables, such as `GIT_DIR` and `GIT_INDEX_FILE`, reach the gate's
+own git commands, but not source capture, which runs git with a minimal
+environment of its own.
+
 ## Known bypasses
 
 The gate is a guardrail for a cooperative agent that skipped a step, not a
@@ -353,6 +389,8 @@ which exports `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` to the hook, and
 first and exits 0 when it is absent; the session-start line then says so.
 Codex has no plugin configuration: start Codex with the variable instead, as
 in `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false codex` ([Codex](#codex)).
+`cw hook git` reads the same variables from git's environment, and also
+`CW_GATE=off` ([Git hooks](#git-hooks)).
 
 ## Codex
 
