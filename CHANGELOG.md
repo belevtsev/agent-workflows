@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
+  three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
   and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 - `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory

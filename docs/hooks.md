@@ -228,9 +228,10 @@ recorded no source digest.
 
 `cw task abandon` closes a task so that it never gates again, so the decision
 belongs to the user. With `enforce_verify` on, the hook asks before every
-`cw task abandon` it finds (`permissionDecision: "ask"`), naming the task's ID,
+`cw task abandon` it finds (`permissionDecision: "ask"`), naming each task's ID,
 plan title and directory, or the directory alone when it cannot read the
-record there. It finds the command as it finds git
+record there. Past three tasks, it counts the rest, with the directory they
+are in when it knows each one's. It finds the command as it finds git
 ([Recognised commands](#recognised-commands)): `cw` by any path, after
 wrappers and prefixes, inside substitutions, `sh -c` strings and `eval`, with
 `--task DIR` or `--task=DIR`, and `DIR` resolved from the directory in effect.
@@ -260,7 +261,8 @@ directory that other users can read, a broken revision chain, and a record a
 newer `cw` wrote. When that revision says the record governs the repository
 by the rules above, and no readable record gates, the hook asks
 (`permissionDecision: "ask"`) instead of letting the command through, with a
-reason that names the task directory and the load error, and `cw publish`
+reason that names the task directory and the load error of up to three such
+records and counts the others with the task store they are in, and `cw publish`
 refuses with exit 3 `open-record`. To clear it, remove the task directory or
 move it out of the task store; for a record from a newer `cw`, upgrade `cw`
 instead. A task directory in which no revision decodes is ignored
@@ -299,7 +301,8 @@ These cases ask for confirmation (`permissionDecision: "ask"`) instead of
 denying; a deny for any git command in the same Bash input wins, and asks in
 one input are joined. Codex cannot ask, so there the first four are denies
 and the last two let the command run, unless joined with one of the first
-four ([Codex](#codex)).
+four ([Codex](#codex)). Like the deny, a reason names at most three tasks and
+counts the rest.
 
 - A `cw task abandon` ([Abandoning a task](#abandoning-a-task)).
 - A push from a repository whose governing records all passed verification,
