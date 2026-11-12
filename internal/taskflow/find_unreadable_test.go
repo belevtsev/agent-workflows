@@ -55,4 +55,24 @@ func TestFindOpenReturnsRecordsItCannotRead(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("store reached through a symlink", func(t *testing.T) {
+		// Oracle: the unreadable record names the canonical directory Start
+		// recorded, as Load would. On macOS every temporary store is
+		// reached through /var -> /private/var.
+		target, linkParent := t.TempDir(), t.TempDir()
+		link := filepath.Join(linkParent, "store-link")
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(filepath.Join(target, "state"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		_, repo := foFixture(t)
+		store := filepath.Join(link, "state", "tasks")
+		now := time.Now()
+		record := foStartAt(t, store, repo, "damaged", "substantial", now.Add(-time.Hour))
+		foWrite(t, record.Directory, "record-000002.json", "{\n")
+		foExpect(t, foFind(t, store, foAtRoot(record.Baseline.Root), now, (&foStub{}).identify()), foUnreadable(record))
+	})
 }

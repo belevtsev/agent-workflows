@@ -227,6 +227,14 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 		}
 		record, err := Load(directory)
 		legacy := errors.Is(err, ErrLegacyRecord)
+		if err != nil {
+			// Name the directory of a refused record as Load would: in
+			// canonical form, so a store reached through a symlink (macOS
+			// /var) matches.
+			if canonical, err := filepath.EvalSymlinks(directory); err == nil {
+				directory = canonical
+			}
+		}
 		switch {
 		case legacy:
 			record = peeked.peekedRecord(directory)
