@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-// DefaultPoll is the retry interval when Options.Poll is zero.
-const DefaultPoll = 25 * time.Millisecond
+// defaultPoll is the retry interval when Options.Poll is zero.
+const defaultPoll = 25 * time.Millisecond
 
 // NoWait, as Options.Wait, makes Acquire try once and fail with ErrBusy when
 // another holder has the lock.
@@ -41,7 +41,7 @@ type Options struct {
 	// Zero waits until ctx is done; a negative value (NoWait) tries once. When
 	// Wait elapses, Acquire fails with ErrBusy.
 	Wait time.Duration
-	// Poll is the retry interval; zero means DefaultPoll.
+	// Poll is the retry interval; zero means 25ms.
 	Poll time.Duration
 	// Check, when non-nil, vets the open lock file before Acquire waits, once
 	// the lock is held, and on every Verify. Its error is returned unchanged.

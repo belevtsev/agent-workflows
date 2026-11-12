@@ -15,7 +15,6 @@ import (
 // Lock is a held lock. Close releases it.
 type Lock struct {
 	file  *os.File
-	fd    int
 	dir   *os.File
 	path  string
 	check func(*os.File) error
@@ -29,7 +28,7 @@ func Acquire(ctx context.Context, path string, opts Options) (*Lock, error) {
 	}
 	poll := opts.Poll
 	if poll <= 0 {
-		poll = DefaultPoll
+		poll = defaultPoll
 	}
 	var deadline <-chan time.Time
 	if opts.Wait > 0 {
@@ -58,7 +57,7 @@ func Acquire(ctx context.Context, path string, opts Options) (*Lock, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		err := unix.Flock(lock.fd, how|unix.LOCK_NB)
+		err := lock.control(func(fd int) error { return unix.Flock(fd, how|unix.LOCK_NB) })
 		if err == nil {
 			break
 		}
@@ -103,7 +102,7 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 		runtime.KeepAlive(l.dir)
 		switch {
 		case err == nil:
-			l.fd, l.file = fd, os.NewFile(uintptr(fd), l.path)
+			l.file = os.NewFile(uintptr(fd), l.path)
 			return nil
 		case errors.Is(err, unix.EEXIST), errors.Is(err, unix.EINTR):
 			if err := pause(ctx, deadline, time.Millisecond, l.path); err != nil {
@@ -111,6 +110,8 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 			}
 		case errors.Is(err, unix.ELOOP):
 			return &os.PathError{Op: "open", Path: l.path, Err: ErrSymlink}
+		case errors.Is(err, unix.EISDIR):
+			return &os.PathError{Op: "open", Path: l.path, Err: ErrNotRegular}
 		default:
 			return &os.PathError{Op: "open", Path: l.path, Err: err}
 		}
@@ -122,6 +123,20 @@ func (l *Lock) dirFD() int {
 		return unix.AT_FDCWD
 	}
 	return int(l.dir.Fd())
+}
+
+// control runs fn on the lock file's descriptor. It fails once the Lock is
+// closed, so fn never sees a number the process has since reused.
+func (l *Lock) control(fn func(fd int) error) error {
+	raw, err := l.file.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var fnErr error
+	if err := raw.Control(func(fd uintptr) { fnErr = fn(int(fd)) }); err != nil {
+		return err
+	}
+	return fnErr
 }
 
 // pause waits for d, and fails with ctx.Err() or, once deadline fires, ErrBusy.
@@ -143,7 +158,7 @@ func pause(ctx context.Context, deadline <-chan time.Time, d time.Duration, path
 // after Acquire can call it again before committing.
 func (l *Lock) Verify() error {
 	var held, named unix.Stat_t
-	if err := unix.Fstat(l.fd, &held); err != nil {
+	if err := l.control(func(fd int) error { return unix.Fstat(fd, &held) }); err != nil {
 		return &os.PathError{Op: "stat", Path: l.path, Err: err}
 	}
 	if held.Mode&unix.S_IFMT != unix.S_IFREG {
