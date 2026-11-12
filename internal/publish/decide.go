@@ -143,12 +143,44 @@ func conversion(attrs map[string]string, content []byte, verified, head pathStat
 	return ""
 }
 
-// reduceURL reduces a remote URL to a host and a path: scheme URLs give their
-// lowercased host without user and port, [user@]host:path (colon before any
-// /) gives host and path, and anything else is a local path made absolute
-// against worktree.
-func reduceURL(url, worktree string) (string, string) {
-	if scheme, rest, ok := strings.Cut(url, "://"); ok && scheme != "" && !strings.Contains(scheme, "/") {
+// gitSchemes are the URL schemes Git serves itself: ssh (with its deprecated
+// git+ssh and ssh+git spellings), git and file natively, https and http
+// through the curl helper Git ships. Git hands a URL with any other scheme,
+// in any other case, to the remote helper the scheme names.
+var gitSchemes = []string{"https", "http", "ssh", "git+ssh", "ssh+git", "git", "file"}
+
+// helperTransport reports whether Git reads url as <transport>::<address> and
+// runs that remote helper: url starts with a letter or digit, then letters,
+// digits, +, - or ., and "::" follows them; as in Git, the run may be empty.
+func helperTransport(url string) bool {
+	i := 0
+	for i < len(url) && (isAlnum(url[i]) || i > 0 && strings.IndexByte("+-.", url[i]) >= 0) {
+		i++
+	}
+	return strings.HasPrefix(url[i:], "::")
+}
+
+// isAlnum reports whether c is an ASCII letter or digit.
+func isAlnum(c byte) bool {
+	return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9'
+}
+
+// reduceURL reduces a remote URL to a host and a path: URLs with a scheme in
+// gitSchemes give their lowercased host without user and port,
+// [user@]host:path (colon before any /) gives host and path as scpForm
+// splits it, and anything else is a local path made absolute against
+// worktree. The third result is false for a URL Git hands to a remote helper
+// (another scheme, or <transport>::<address>): the helper chooses where the
+// push goes, so the URL's host and path name nothing. It is also false for an
+// scp form in which Git finds no path.
+func reduceURL(url, worktree string) (string, string, bool) {
+	if helperTransport(url) {
+		return "", "", false
+	}
+	if scheme, rest, found := strings.Cut(url, "://"); found && scheme != "" && !strings.Contains(scheme, "/") {
+		if !slices.Contains(gitSchemes, scheme) {
+			return "", "", false
+		}
 		authority, path := rest, ""
 		if i := strings.IndexByte(rest, '/'); i >= 0 {
 			authority, path = rest[:i], rest[i:]
@@ -164,32 +196,76 @@ func reduceURL(url, worktree string) (string, string) {
 		} else if i := strings.LastIndexByte(host, ':'); i >= 0 {
 			host = host[:i]
 		}
-		return strings.ToLower(host), path
+		return strings.ToLower(host), path, true
 	}
 	if colon := strings.IndexByte(url, ':'); colon > 0 {
 		if slash := strings.IndexByte(url, '/'); slash < 0 || colon < slash {
-			host := url[:colon]
-			if i := strings.LastIndexByte(host, '@'); i >= 0 {
-				host = host[i+1:]
-			}
-			return host, url[colon+1:]
+			return scpForm(url)
 		}
 	}
 	local := url
 	if !filepath.IsAbs(local) {
 		local = filepath.Join(worktree, local)
 	}
-	return "", filepath.Clean(local)
+	return "", filepath.Clean(local), true
+}
+
+// scpForm splits [user@]host:path as Git's parse_connect_url does (connect.c).
+// The host may be in brackets after an optional user@ (host_end: from the
+// first "@[", else from a leading "["); the brackets run to the first "]",
+// and the path starts after the first ":" that follows them, so a colon
+// inside the brackets belongs to the host. Without brackets the path starts
+// after the first ":". The host drops its user and, inside brackets, a
+// trailing :port (get_port: the first ":" followed by a number below 65536
+// and nothing else); a bracketed host that still holds a ":" is an IPv6
+// address and keeps its brackets, as an ssh:// URL's does. The third result
+// is false when no ":" follows the brackets: Git finds no path there.
+func scpForm(url string) (string, string, bool) {
+	start, end := 0, 0
+	if i := strings.Index(url, "@["); i >= 0 {
+		start = i + 1
+	}
+	if url[start] == '[' {
+		if i := strings.IndexByte(url[start:], ']'); i >= 0 {
+			end = start + i
+		}
+	}
+	separator := strings.IndexByte(url[end:], ':')
+	if separator < 0 {
+		return "", "", false
+	}
+	separator += end
+	host, path := url[:separator], url[separator+1:]
+	if end == 0 {
+		if i := strings.LastIndexByte(host, '@'); i >= 0 {
+			host = host[i+1:]
+		}
+		return host, path, true
+	}
+	host = url[start+1 : end]
+	if i := strings.LastIndexByte(host, '@'); i >= 0 {
+		host = host[i+1:]
+	}
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		if _, err := strconv.ParseUint(host[i+1:], 10, 16); err == nil {
+			host = host[:i]
+		}
+	}
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	return host, path, true
 }
 
 // sameRepository reports whether two remote URLs name the same repository:
-// equal hosts, and paths equal case-insensitively once leading and trailing
-// slashes and one trailing .git (in any case) are removed. R11.g and R12.a
-// both compare through it.
+// both reduce, with equal hosts, and paths equal case-insensitively once
+// leading and trailing slashes and one trailing .git (in any case) are
+// removed. A URL served by a remote helper names no repository, not even
+// itself. R11.g and R12.a both compare through it.
 func sameRepository(a, b, worktree string) bool {
-	hostA, pathA := reduceURL(a, worktree)
-	hostB, pathB := reduceURL(b, worktree)
-	return hostA == hostB && repositoryPath(pathA) == repositoryPath(pathB)
+	hostA, pathA, okA := reduceURL(a, worktree)
+	hostB, pathB, okB := reduceURL(b, worktree)
+	return okA && okB && hostA == hostB && repositoryPath(pathA) == repositoryPath(pathB)
 }
 
 // repositoryPath is a reduced path in the form sameRepository compares:
