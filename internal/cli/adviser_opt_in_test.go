@@ -27,7 +27,7 @@ const optInKeyWarning = "openai_decisions: key present, adviser not enabled; OPE
 
 // optInUnreadableKeys is the stderr line of a start or ad hoc consult whose
 // saved keys cannot be read.
-const optInUnreadableKeys = "warning: saved adviser keys were not read, so none of them opts in an adviser: " +
+const optInUnreadableKeys = "warning: saved adviser keys were not read, so none of them is used or opts in an adviser: " +
 	"credential storage is unsafe; use an owner-only physical directory and regular private files\n"
 
 // optInOpenConfigDir is a config dir with mode 0755: no preferences file, so
@@ -287,4 +287,57 @@ func TestUnreadableSavedKeysOptInToNothing(t *testing.T) {
 			t.Fatalf("stderr = %q, want it to contain %q", outcome.stderr, optInUnreadableKeys)
 		}
 	})
+}
+
+// oracle: whichever adviser key variables are set, saved keys that cannot be
+// read (a 0755 config dir) are not used and opt in to nothing: cw task start
+// and an ad hoc consult go on with the keys in the environment alone, bind or
+// preview only what those keys and the opt-ins allow (--policy opts in to
+// what it enables), and print the warning line exactly once. Only a run with
+// all three variables set used to skip the key store; any other failed with
+// "credential storage is unsafe".
+func TestUnreadableSavedKeysLeaveTheEnvironmentKeys(t *testing.T) {
+	cases := []struct {
+		name    string
+		keys    []string
+		policy  bool
+		bound   map[string]string
+		preview map[string]string
+	}{
+		{"no key variable", nil, false, map[string]string{},
+			map[string]string{"subq_snap": "not_configured", "openai_decisions": "not_configured"}},
+		{"OpenAI only", []string{"openai_decisions"}, false, map[string]string{},
+			map[string]string{"subq_snap": "not_configured", "openai_decisions": "not_configured"}},
+		{"SubQ and OpenAI", []string{"subq_snap", "openai_decisions"}, false, map[string]string{},
+			map[string]string{"subq_snap": "not_configured", "openai_decisions": "not_configured"}},
+		{"OpenAI only with --policy", []string{"openai_decisions"}, true, map[string]string{"openai_decisions": "gpt-6-luna"},
+			map[string]string{"subq_snap": "not_configured", "openai_decisions": "dry_run"}},
+	}
+	for _, c := range cases {
+		policyFlags := func(t *testing.T) []string {
+			if !c.policy {
+				return nil
+			}
+			return []string{"--policy", writePolicyFixture(t, t.TempDir(), adviserBindingVersion, nil)}
+		}
+		t.Run("task start/"+c.name, func(t *testing.T) {
+			fixture := newBindingFixture(t, adviserBindingVersion, nil, fixtureCredentials(c.keys...))
+			record, document := fixture.start(t, bindingSmallPlan, append([]string{"--config-dir", optInOpenConfigDir(t)}, policyFlags(t)...)...)
+			adviserBindingRequire(t, "task start", record, document, c.bound)
+			if got := fixture.stderr.String(); got != optInUnreadableKeys {
+				t.Fatalf("stderr = %q, want %q", got, optInUnreadableKeys)
+			}
+		})
+		t.Run("ad hoc consult/"+c.name, func(t *testing.T) {
+			directory := t.TempDir()
+			request := writeFixtureFile(t, directory, "request.json", fixtureRequest(`"evidence"`))
+			output := filepath.Join(directory, "preview.json")
+			args := append([]string{"--request", request, "--output", output, "--dry-run", "--config-dir", optInOpenConfigDir(t)}, policyFlags(t)...)
+			outcome := executeConsult(t, fixtureEnvironment(fixtureCredentials(c.keys...)), args...)
+			adviserBindingRequireStatuses(t, adviserBindingPreview(t, outcome, output), c.preview)
+			if got := strings.Count(outcome.stderr, optInUnreadableKeys); got != 1 {
+				t.Fatalf("stderr holds the warning %d times, want once: %q", got, outcome.stderr)
+			}
+		})
+	}
 }

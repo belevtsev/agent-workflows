@@ -108,6 +108,10 @@ Known limitations of `cw publish` that call for the fallback:
   refused as 4 `remote-split`; an `ssh_config` host alias in only one of its
   URLs is refused the same way, and with `--pr create` or `--pr edit` any host
   alias is refused as 4 `repo-mismatch`.
+- A remote that a Git remote helper would serve (`<transport>::<address>`, a
+  scheme other than `https`, `http`, `ssh`, `git+ssh`, `ssh+git`, `git` or
+  `file` in lower case, or a remote with `remote.<name>.vcs` set) is refused
+  as 4 `remote-split`.
 
 The worker can draft a commit message, title and description from already
 verified facts, then execute the authorized commit, push and `gh pr create` or

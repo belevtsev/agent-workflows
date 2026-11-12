@@ -21,6 +21,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -268,7 +269,12 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 func TestCompactVerifySummaryListsRejectedFindingsFirst(t *testing.T) {
 	rejected := "rejected finding f1 (blocker) of worker assignment review1: Source contradicts it."
 	other := "worker assignment review1 finding f2 deferred: Later."
-	value := taskflow.Verification{TaskID: "task", Problems: []string{"a problem"}, Limitations: append(taskflow.FixedVerifyLimitations(), other, rejected)}
+	findings := []taskflow.Finding{}
+	for _, fixed := range taskflow.FixedVerifyLimitations() {
+		findings = append(findings, taskflow.Finding{Code: taskflow.CodeFixedLimitation, Message: fixed})
+	}
+	findings = append(findings, taskflow.Finding{Code: taskflow.CodeDeferredFinding, Message: other}, taskflow.Finding{Code: taskflow.CodeRejectedFinding, Message: rejected})
+	value := taskflow.Verification{TaskID: "task", Problems: []string{"a problem"}, LimitationFindings: findings}
 	data, err := jsonv2.Marshal(summarizeVerification(value))
 	if err != nil {
 		t.Fatal(err)
@@ -285,6 +291,33 @@ func TestCompactVerifySummaryListsRejectedFindingsFirst(t *testing.T) {
 	}
 	if strings.Index(string(data), `"rejected_findings"`) > strings.Index(string(data), `"problems"`) {
 		t.Fatalf("rejected_findings is not printed before problems: %s", data)
+	}
+}
+
+// The summaries select the fixed entries by code or by the producer's exported
+// value, never by a copy of their text, so rewording one changes no summary.
+// Oracle: a fixed limitation and a rejected finding reworded to text no
+// summary has seen are still dropped and moved; the projectctx caveat, read
+// from projectctx itself, is still dropped and counted.
+func TestSummariesHideFixedEntriesWhateverTheirWording(t *testing.T) {
+	reworded := "a reworded fixed limitation"
+	rejected := "a reworded rejection of f1"
+	other := "a task-specific limitation"
+	value := taskflow.Verification{TaskID: "task", Problems: []string{}, LimitationFindings: []taskflow.Finding{
+		{Code: taskflow.CodeFixedLimitation, Message: reworded},
+		{Code: taskflow.CodeRejectedFinding, Message: rejected},
+		{Code: taskflow.CodeTrace, Message: other},
+	}}
+	verify := summarizeVerification(value)
+	if verify.OmittedFixedLimitations != 1 || !slices.Equal(verify.Limitations, []string{other}) || !slices.Equal(verify.RejectedFindings, []string{rejected}) {
+		t.Fatalf("verify summary = %+v, want the reworded fixed limitation omitted, the rejection moved and only %q kept", verify, other)
+	}
+
+	report := doctor.DoctorReport{Checks: map[string]doctor.Check{}}
+	report.Profile.Warnings = []string{projectctx.DirtyComparisonWarning}
+	doctorLine := summarizeDoctor(report)
+	if doctorLine.OmittedFixed != 1 || len(doctorLine.Warnings) != 0 || doctorLine.Status != "ok" {
+		t.Fatalf("doctor summary = %+v, want the projectctx caveat omitted and counted", doctorLine)
 	}
 }
 
@@ -778,7 +811,7 @@ func TestCompactRunSummaryOfPassedRunHasNoExcerpts(t *testing.T) {
 // ---------------------------------------------------------------------------
 // DOC-SUMMARY and DEF-UNCHANGED (doctor).
 
-const compactDirtyCaveat = "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty"
+const compactDirtyCaveat = projectctx.DirtyComparisonWarning
 
 type compactDoctorFixture struct {
 	repo, home, skills, codex string

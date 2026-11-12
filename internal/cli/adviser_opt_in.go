@@ -39,8 +39,10 @@ func optedIn(provider string, preferences userconfig.Advisers, saved func(variab
 // user has not opted in to with advisers.enabled or a key saved with
 // cw keys set. An unreadable preferences file is an error. Saved keys that
 // cannot be read opt in to nothing: the command goes on and says so on
-// stderr, so an unsafe key store never adds an adviser.
-func withheldAdvisers(root *cobra.Command, config Config, explicitPolicy bool, stderr io.Writer) ([]string, error) {
+// stderr, so an unsafe key store never adds an adviser. unread is
+// credentialEnvironment's reason for not reading them, which it has already
+// reported; nil means they were read or were not needed.
+func withheldAdvisers(root *cobra.Command, config Config, explicitPolicy bool, unread error, stderr io.Writer) ([]string, error) {
 	directory, err := credentialDirectory(root, config)
 	if err != nil {
 		return nil, err
@@ -53,11 +55,13 @@ func withheldAdvisers(root *cobra.Command, config Config, explicitPolicy bool, s
 		return preferences.Disabled, nil
 	}
 	saved := func(string) bool { return false }
-	presence, err := (credentials.Resolver{Directory: directory, Getenv: config.Getenv}).Presence()
-	if err != nil {
-		fmt.Fprintf(stderr, "warning: saved adviser keys were not read, so none of them opts in an adviser: %v\n", err)
-	} else {
-		saved = func(variable string) bool { return presence[variable].Stored }
+	if unread == nil {
+		presence, err := (credentials.Resolver{Directory: directory, Getenv: config.Getenv}).Presence()
+		if err != nil {
+			warnUnreadKeys(stderr, err)
+		} else {
+			saved = func(variable string) bool { return presence[variable].Stored }
+		}
 	}
 	var withheld []string
 	for _, provider := range modelpolicy.Providers() {
