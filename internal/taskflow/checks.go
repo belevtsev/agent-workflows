@@ -424,7 +424,7 @@ func checkExitCode(got proc.Result) *int {
 // RunCheck executes only argv recorded in the immutable plan or added by an
 // amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
-func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
+func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
 	var logFile *os.File
 	// The program is resolved before the task lock is taken: resolving a go
@@ -450,7 +450,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	}
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
-	_, err = updateWithCapacity(ctx, path, 2, "", func(root *os.Root, record *Record) error {
+	_, err = updateWithCapacity(ctx, env, path, 2, "", func(root *os.Root, record *Record) error {
 		check, found := findCheck(*record, checkID)
 		if !found {
 			return errors.New("check is not in the explicit coordinator plan")
@@ -475,7 +475,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -483,7 +483,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if refused != nil {
 			// The start revision is also the terminal one: the run failed
 			// without executing anything, and its log stays empty.
-			finished := time.Now().UTC()
+			finished := env.now()
 			run.Status, run.Failure, run.FinishedAt = "failed", "untrusted_toolchain", &finished
 			run.LogSHA256, run.OutputSHA256 = digest(nil), digest(nil)
 		}
@@ -513,7 +513,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	got := proc.Run(ctx, spec)
 	syncErr := logFile.Sync()
 	closeErr := logFile.Close()
-	finished := time.Now().UTC()
+	finished := env.now()
 	run.FinishedAt = &finished
 	run.LogSHA256 = hex.EncodeToString(capture.saved.Sum(nil))
 	run.OutputSHA256 = hex.EncodeToString(capture.full.Sum(nil))
@@ -574,7 +574,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 			run.Failure = "test_results_write_failed"
 		}
 	}
-	_, storeErr := updateWhenUnlocked(finishCtx, path, run.ID, func(_ *os.Root, record *Record) error {
+	_, storeErr := updateWhenUnlocked(finishCtx, env, path, run.ID, func(_ *os.Root, record *Record) error {
 		for i := range record.Checks {
 			if record.Checks[i].ID == run.ID {
 				if record.Checks[i].Status != "running" {

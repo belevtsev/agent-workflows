@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
@@ -59,9 +60,13 @@ func taOneLine(t *testing.T, got string) {
 func TestTaskAbandonCommand(t *testing.T) {
 	t.Run("prints the full record", func(t *testing.T) {
 		// C1: the full record JSON on one line, with abandonment.reason TEXT;
-		// the stored record agrees.
+		// the stored record agrees. Oracle for the time: Config.Now is the
+		// clock of both commands, so created_at, updated_at and
+		// abandonment.at are its time exactly, in UTC.
 		repo := hkRepo(t)
 		h := newHKHarness(t)
+		now := time.Date(2031, time.February, 3, 4, 5, 6, 7, time.FixedZone("UTC+3", 3*60*60))
+		h.config.Now = func() time.Time { return now }
 		record := h.start(t, repo, hkSubstantialPlan)
 		got, err := h.taRun(t, "task", "abandon", "--task", record.Directory, "--reason", "superseded by a new plan")
 		if err != nil {
@@ -75,8 +80,13 @@ func TestTaskAbandonCommand(t *testing.T) {
 		if printed.ID != record.ID || printed.Revision != record.Revision+1 {
 			t.Fatalf("printed record %s revision %d, want %s revision %d", printed.ID, printed.Revision, record.ID, record.Revision+1)
 		}
-		if printed.Abandonment == nil || printed.Abandonment.Reason != "superseded by a new plan" || printed.Abandonment.At.IsZero() {
-			t.Fatalf("printed abandonment %+v, want reason %q and a time", printed.Abandonment, "superseded by a new plan")
+		if printed.Abandonment == nil || printed.Abandonment.Reason != "superseded by a new plan" {
+			t.Fatalf("printed abandonment %+v, want reason %q", printed.Abandonment, "superseded by a new plan")
+		}
+		for name, at := range map[string]time.Time{"created_at": printed.CreatedAt, "updated_at": printed.UpdatedAt, "abandonment.at": printed.Abandonment.At} {
+			if !at.Equal(now) || at.Location() != time.UTC {
+				t.Errorf("printed %s %v, want %v", name, at, now.UTC())
+			}
 		}
 		var raw map[string]any
 		if err := json.Unmarshal([]byte(got), &raw); err != nil {

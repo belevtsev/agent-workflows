@@ -299,7 +299,7 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // A substantial task dispatches no worker before its before checkpoint is
 // attached with a resolved decision, unless its plan declares checkpoints not
 // required; a before checkpoint attached anyway is still validated.
-func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
+func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
 	// stored names the copies a successful closure wrote; the update removes
 	// them if it then fails, unless the revision name exists or its absence
 	// cannot be confirmed afterwards (see updateDiscarding).
@@ -309,7 +309,7 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 			root.Remove(name)
 		}
 	}
-	return updateDiscarding(ctx, taskPath, 1, "", func(root *os.Root, record *Record) error {
+	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
 			if _, err := readConsultation(root, *record, "before", record.Baseline); err != nil {
@@ -332,7 +332,7 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: time.Now().UTC()}
+		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now()}
 		assignment.SHA256, err = assignmentHash(assignment)
 		if err != nil {
 			return err
@@ -752,8 +752,8 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, e
 	return validateChangedFiles(snapshot, result.ChangedFiles, eligible)
 }
 
-func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
-	return update(ctx, taskPath, func(root *os.Root, record *Record) error {
+func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
+	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
 			return errors.New("worker result references an unknown assignment")
@@ -812,7 +812,7 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 				return err
 			}
 		}
-		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SubmittedAt: time.Now().UTC()}
+		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SubmittedAt: env.now()}
 		if input.Status == "completed" {
 			bound.ScopeSHA256, err = scopeBinding(snapshot, assigned.Brief.OwnedPaths)
 		} else {
@@ -923,8 +923,8 @@ func workerResultFresh(record Record, assigned WorkerAssignment, bound BoundWork
 // AcceptWorkerResult records the coordinator's judgment of one exact immutable
 // result. Rejudgment appends another acceptance. Unused handoffs require a reason
 // and never satisfy a completed-work or independent-review gate.
-func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
-	return update(ctx, taskPath, func(root *os.Root, record *Record) error {
+func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
+	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
 		result := findWorkerResult(*record, input.AssignmentID)
 		if result == nil {
 			return errors.New("acceptance references a missing worker result; record a terminal handoff first")
@@ -986,7 +986,7 @@ func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAccept
 				return err
 			}
 		}
-		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: time.Now().UTC()})
+		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: env.now()})
 		record.EvidenceRevision++
 		record.Verification = nil
 		return nil

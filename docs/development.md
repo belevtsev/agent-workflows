@@ -48,7 +48,7 @@ program started on purpose, such as a Git hook's; `Session` starts a session
 rather than only a group, as Graphify needs. `cw doctor --live`, `cw publish`,
 `cw graphify` and the Go facts of `cw task verify` run on it. Run a new
 subprocess with it rather than another `exec.Cmd` and group kill.
-`cw task run` runs a check on it through `taskflow.RunCheck`, and only
+`cw task run` runs a check on it through `taskflow.Env.RunCheck`, and only
 `checkSpec` turns a planned check into its `proc.Spec`: change the program,
 environment or bounds of every check there.
 
@@ -165,6 +165,12 @@ unknowns/comparability. Metadata-only doctor checks never invoke optional tools 
 hosted providers. Real-project read-only diagnostics, synthetic acceptance pilots
 and productivity comparisons are separate evidence; preserve that distinction in
 reports.
+
+`internal/taskflow` declares the ports its use cases read, where they are
+used: `Clock` gives every time a task record stores. Each use case that
+writes a revision is a method on `taskflow.Env`, whose zero value is the
+production ports; `cli.Config.Now` is the clock of the task commands, the gate
+and `cw publish`. A test that needs a time sets the clock instead of waiting.
 
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow
