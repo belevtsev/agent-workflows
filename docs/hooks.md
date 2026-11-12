@@ -1,8 +1,9 @@
 # Plugin hooks
 
-`hooks/hooks.json` registers two hooks for the agent-workflows plugin. Claude
-Code runs them, and so does Codex once you trust them; [Codex](#codex) covers
-what differs there. Both run `cw`; when `cw` is not on `PATH` they degrade to printing the
+`hooks/hooks.json` registers the agent-workflows plugin's hooks: one at
+session start and two before each Bash command. Claude Code runs them, and so
+does Codex once you trust them; [Codex](#codex) covers what differs there.
+Each runs `cw`; when `cw` is not on `PATH` they degrade to printing the
 conventions file or doing nothing. No hook uses a script file: every command is
 inline, which keeps the repository's automation policy (`go test ./internal/skillcheck`)
 satisfied.
@@ -27,12 +28,18 @@ file alone.
 
 ## Publication gate
 
-The `PreToolUse` handler runs for every Bash command whose text contains `git`
-(the condition `Bash(*git*)`; Claude Code also runs it when it cannot tell which
-commands a Bash input runs, and Codex ignores the condition and runs it for every
-shell command). `cw hook pre-publish` then finds each `git commit`
-and `git push` in the command and the directory it runs in, and exits at once,
-without output, when there is none.
+Two `PreToolUse` handlers run the same command, `cw hook pre-publish`: one for
+every Bash command whose text contains `git` (the condition `Bash(*git*)`), the
+other for every one that contains `abandon` (`Bash(*abandon*)`,
+[Abandoning a task](#abandoning-a-task)). Claude Code checks a condition
+against each command of a compound line, so the second does not require `cw`
+in the same command as `abandon`, as in `C=cw; $C task abandon`; it also runs
+them when it cannot tell which commands a Bash input runs. Codex ignores the
+conditions and runs the hook for every shell command. Where both handlers run
+for one command, both reach the same decision. `cw hook pre-publish` then
+finds each `git commit` and `git push` in the command and the directory it
+runs in, and each `cw task abandon`, and exits at once, without output, when
+there is none.
 
 The gate asks a cooperative agent to stop when it skipped a step; it is not a
 defence against an agent that sets out to bypass it. See the
@@ -146,10 +153,10 @@ A record governs the command when all of the following hold:
 Starting a new record does not hide an older one: every governing record gates
 until `cw task verify` passes on the source being published, and the hook
 denies the command with a reason that names each gating record, why it gates,
-and both ways out: `cw task verify --task <dir> --summary`, or
-`cw task abandon --task <dir> --reason TEXT` to close a task that is finished
-or was given up. An abandoned record accepts no further revisions and never
-gates.
+and both ways out: `cw task verify --task <dir> --summary`, or, for a task that
+is finished or was given up, `cw task abandon --task <dir> --reason TEXT`,
+which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
+An abandoned record accepts no further revisions and never gates.
 
 A record is finished, and no longer governs, once another governing record
 (substantial, not abandoned, written within the 14 days) for the repository
@@ -171,6 +178,33 @@ directory: move that directory out of the task store, then start a new task
 with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
 verified as complete is finished and does not gate, since those releases
 recorded no source digest.
+
+### Abandoning a task
+
+`cw task abandon` closes a task so that it never gates again, so the decision
+belongs to the user. With `enforce_verify` on, the hook asks before every
+`cw task abandon` it finds (`permissionDecision: "ask"`), naming the task's ID,
+plan title and directory, or the directory alone when it cannot read the
+record there. It finds the command as it finds git
+([Recognised commands](#recognised-commands)): `cw` by any path, after
+wrappers and prefixes, inside substitutions, `sh -c` strings and `eval`, with
+`--task DIR` or `--task=DIR`, and `DIR` resolved from the directory in effect.
+`cw` is not among the trusted commands, so a line that runs it also gets the
+simpler split's reading: the hook asks whenever words of the line are `cw`, by
+any path, as a value such as `C=cw` or as `go run …/cmd/cw@VERSION`, `task`
+and `abandon`, in any order, and names one task it cannot identify for each
+`task abandon` beyond those it read. That covers `cw` run by `xargs`,
+`find -exec` or `go run`, or through a variable, and also asks about
+`cw task abandon --help` and about a line that only mentions the three words
+next to a command the gate does not trust, such as
+`git add -A && git commit -m "docs: cw task abandon"`. A line without the word
+`task`, such as `go test ./cmd/cw -run abandon`, and a line of trusted
+commands that only mentions them, such as `echo "cw task abandon"`, are
+allowed.
+
+A `git commit` or `git push` that a record gates in the same Bash input is
+denied, as before: it runs before the task is closed. Under Codex the ask is a
+deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
 
 ### Records that cannot be read
 
@@ -217,10 +251,11 @@ is version 4, which `cw` v3.0.0-rc.1 cannot read
 
 These cases ask for confirmation (`permissionDecision: "ask"`) instead of
 denying; a deny for any git command in the same Bash input wins, and asks in
-one input are joined. Codex cannot ask, so there the first three are denies
+one input are joined. Codex cannot ask, so there the first four are denies
 and the last two let the command run, unless joined with one of the first
-three ([Codex](#codex)).
+four ([Codex](#codex)).
 
+- A `cw task abandon` ([Abandoning a task](#abandoning-a-task)).
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
   verified bytes may then not be what the pushed commits hold.
@@ -283,9 +318,11 @@ The gate only ever blocks or asks on a positive decision. `cw hook pre-publish`
 exits 0 without output, and the command proceeds, when:
 
 - the plugin options `enforce_verify` and `small_task_prompt` are both `false`
-  (`enforce_verify=false` alone removes the deny, the uncommitted-push ask and
-  the ask for a record that cannot be read, which then counts as no record);
-- the command contains no `git commit` or `git push` the hook recognises;
+  (`enforce_verify=false` alone removes the deny, the uncommitted-push ask,
+  the ask before `cw task abandon` and the ask for a record that cannot be
+  read, which then counts as no record);
+- the command contains no `git commit`, `git push` or `cw task abandon` the
+  hook recognises;
 - the directory the command runs in is not inside a Git repository;
 - the task store holds no governing record and the change does not look
   substantial;
@@ -374,7 +411,7 @@ push through today while the repository has an open substantial task, or lets
 | A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |
 | A record that cannot be read, under Codex: `echo '{' > <task>/record-000002.json` | Allowed. Codex cannot ask, and the hook lets the command go ahead there rather than block the user on a file it cannot judge ([Codex](#codex)). |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
-| `cw task abandon --task <task> --reason TEXT` | Allowed. An abandoned task never gates, and the deny text names this command as a way out. |
+| `cw task abandon --task <task> --reason TEXT` run where the hook cannot see it: from a script, `make` or a plan check; through a name that no word of the command spells, such as `X=c; ${X}w task abandon …`; through a renamed copy of `cw`, such as `cw-g5 task abandon …`; or, under Claude Code, with `abandon` split by quotes, such as `cw task aban''don …`, which the handler's condition `Bash(*abandon*)` does not match | Allowed. An abandoned task never gates. The hook asks before every `cw task abandon` whose words it can see ([Abandoning a task](#abandoning-a-task)), and under Codex it denies one. |
 | A task nobody touched for 14 days | Allowed, with no message: the task stops gating 14 days after its latest revision ([Which records gate](#which-records-gate)). |
 | A `go` rebuilt from modified `cmd/go` source, or a GOROOT the user can write with an edited standard library or tools | `cw task run` records a pass. A check named `go` runs only a build of `cmd/go`, so a script named `go` first on `PATH` is refused with failure `untrusted_toolchain` ([which go a check runs](operations.md#which-go-a-check-runs)), but a build of modified source still passes. A check that runs another program, such as `make`, runs whatever `PATH` names. That is a limit of the design. |
 | A go env file with `GOFLAGS=-exec=/bin/true` (`GOENV=<file>`, or `go env -w`), or a cross-compile `GOOS`/`GOARCH` with a `go_<goos>_<goarch>_exec` program on `PATH` | `cw task run` records a pass, and the Go rule credits it, although no test binary ran: the rule reads `GOFLAGS` only from the environment. A known gap, open until a later fix. |
@@ -396,14 +433,14 @@ in `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false codex` ([Codex](#codex)).
 
 ## Codex
 
-Codex runs both hooks from the installed plugin's `hooks/hooks.json`. What
+Codex runs the hooks from the installed plugin's `hooks/hooks.json`. What
 follows was recorded on 2026-11-12 with codex-cli 0.167.2, `codex exec` and a
 wrapper in place of `cw` that saved each hook's input and environment;
 [`codex-pre-tool-use.json`](../internal/cli/testdata/codex-pre-tool-use.json)
 is the recorded PreToolUse input, with paths replaced by placeholders.
 
 - **Trust.** Codex runs a plugin hook only after you trust it: before that,
-  neither hook ran, and `codex exec` did not say so.
+  no hook ran, and `codex exec` did not say so.
   `--dangerously-bypass-hook-trust` runs untrusted hooks for one invocation.
   Per the Codex hooks documentation, you trust hooks with `/hooks` in the CLI
   or **Review hooks** in the desktop app, and trust is recorded against the
@@ -417,7 +454,9 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   hook; one of them alone is not enough.
 - **Matcher.** Codex matches `Bash` but ignores the `if` condition, so
   `cw hook pre-publish` runs for every shell command; it exits at once, without
-  output, for a command with no `git commit` or `git push`.
+  output, for a command with no `git commit`, `git push` or `cw task abandon`.
+  The recorded run had one handler; whether Codex runs the two identical
+  handlers once or twice is not recorded.
 - **Decisions.** A deny blocks the command, and the agent sees
   `Command blocked by PreToolUse hook:` and the reason. No output lets the
   command run. An ask is not supported: Codex ran the command without asking
@@ -431,10 +470,10 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   `global/AGENTS.md` to the session, so the trusted plugin also loads the
   working conventions.
 
-So under Codex the pre-publish hook turns three asks into denies: an
-unrecorded substantial change, a push with uncommitted changes over a
-verified record, and a commit or push after a directory the hook cannot
-resolve ([Asking instead of denying](#asking-instead-of-denying)). The
+So under Codex the pre-publish hook turns four asks into denies: a
+`cw task abandon`, an unrecorded substantial change, a push with uncommitted
+changes over a verified record, and a commit or push after a directory the
+hook cannot resolve ([Asking instead of denying](#asking-instead-of-denying)). The
 reason starts `agent-workflows: Codex cannot ask for confirmation`, carries the
 question Claude Code would ask, and says to put it to the user, who goes ahead
 by running the command outside Codex. Every reason under Codex ends by naming

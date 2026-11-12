@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -51,6 +52,129 @@ func gitPublications(command, cwd, home string) []publication {
 // trusts (trusted): a deliberately small set that cannot run text the
 // reading took for data. Any other command keeps the flat split's decision.
 func splitPublications(command, cwd, home string) ([]publication, bool) {
+	scanner := splitCommand(command, cwd, home)
+	return scanner.found, scanner.certain
+}
+
+// abandonment is one `cw task abandon` in a command line: task is the
+// directory its last --task option names, as written, and dir that
+// directory resolved as expandDir resolves a cd argument, from the directory
+// in effect for the command; either is "" when the gate does not know it.
+type abandonment struct {
+	task string
+	dir  string
+}
+
+// abandonments returns every `cw task abandon` in a shell command line, read
+// as splitPublications reads it (cwAbandon), without duplicates and in
+// command order, inside substitutions, `sh -c` strings and eval too. It
+// fails closed like gitPublications: when that reading is not certain, and
+// flatAbandons shows cw, task and abandon while the reading finds none, or
+// fewer than flatAbandons counts, it adds one abandonment the gate cannot
+// identify, such as cw run by xargs or named through a variable. A reading
+// of a line that runs cw is never certain: the gate does not trust cw, whose
+// `cw task verify` runs plan commands.
+func abandonments(command, cwd, home string) []abandonment {
+	scanner := splitCommand(command, cwd, home)
+	found := scanner.abandoned
+	if !scanner.certain {
+		if shows, count := flatAbandons(command); shows && (len(found) == 0 || count > scanner.abandonRuns) {
+			found = append(found, abandonment{})
+		}
+	}
+	return found
+}
+
+// flatSeparators are the characters at which flatAbandons splits a command
+// line: blanks, quotes, backslash, and the characters that separate commands,
+// redirect, or open an expansion or assignment.
+const flatSeparators = " \t\r\n'\"\\;|&()<>`$={}:"
+
+// flatAbandons reports whether a command line, split into tokens at
+// flatSeparators with leading hyphens removed, holds a token whose program
+// name (programName) is cw, the token task and the token abandon, anywhere
+// and in any order. So it finds cw written as a path (/usr/local/bin/cw),
+// quoted, as another program's argument (xargs cw, find -exec cw,
+// go run …/cmd/cw@v3.0.0), as a variable's value (C=cw, ${C:-cw}) or in a
+// substitution ($(command -v cw)). It also counts the tokens abandon that
+// directly follow a token task, each a `task abandon` the line may run.
+func flatAbandons(command string) (bool, int) {
+	cw, task, abandon, count := false, false, false, 0
+	previous := ""
+	for _, token := range strings.FieldsFunc(command, func(r rune) bool { return strings.ContainsRune(flatSeparators, r) }) {
+		token = strings.TrimLeft(token, "-")
+		cw = cw || programName(token) == "cw"
+		task = task || token == "task"
+		if token == "abandon" {
+			abandon = true
+			if previous == "task" {
+				count++
+			}
+		}
+		previous = token
+	}
+	return cw && task && abandon, count
+}
+
+// programName returns the base name of a program word, without the
+// @VERSION that a go run package argument ends with (…/cmd/cw@v3.0.0).
+func programName(word string) string {
+	name, _, _ := strings.Cut(filepath.Base(word), "@")
+	return name
+}
+
+// cwValueOptions are the options that take a separate value on the way to
+// `cw task abandon` and in it: cw's global ones and abandon's own.
+var cwValueOptions = map[string]bool{"--config-dir": true, "--home": true, "--codex-home": true, "--claude-home": true, "--state-dir": true, "--task": true, "--reason": true}
+
+// cwAbandon reports whether words, a simple command from its program on, run
+// `cw task abandon` from at: a program named cw (programName), by any path,
+// whose first two operands are task and abandon, as cobra finds the command
+// among options and the values of those in cwValueOptions. `--help` counts
+// too: the reading of a line that runs cw is never certain, so the flat split
+// would ask about it anyway. It returns the directory the last `--task DIR`
+// or `--task=DIR` names, resolved from at.
+func cwAbandon(words []shellwords.Word, at place, vars expansion) (abandonment, bool) {
+	if len(words) == 0 || programName(words[0].Text) != "cw" {
+		return abandonment{}, false
+	}
+	var operands []string
+	var task *shellwords.Word
+	written := ""
+	for i := 1; i < len(words); i++ {
+		text := words[i].Text
+		switch name, value, attached := strings.Cut(text, "="); {
+		case !strings.HasPrefix(text, "-") || text == "-":
+			operands = append(operands, text)
+		case name == "--task" && attached:
+			// The value keeps the option word as its Raw, so it never reads
+			// as a leading ~ or variable (wrapperOptions).
+			task = &shellwords.Word{Text: value, Raw: words[i].Raw}
+			_, written, _ = strings.Cut(words[i].Raw, "=")
+		case cwValueOptions[text] && i+1 < len(words):
+			i++
+			if text == "--task" {
+				task, written = &words[i], words[i].Raw
+			}
+		}
+	}
+	if len(operands) < 2 || operands[0] != "task" || operands[1] != "abandon" {
+		return abandonment{}, false
+	}
+	if task == nil {
+		return abandonment{}, true
+	}
+	next := abandonment{task: written}
+	if dir, ok := expandDir(*task, at.dir, vars); ok {
+		next.dir = dir // "" for a relative directory from an unknown one
+	}
+	return next, true
+}
+
+// splitCommand reads a shell command line as splitPublications describes and
+// returns the scanner that holds its publications, its abandonments and
+// whether the reading is certain.
+func splitCommand(command, cwd, home string) wordScanner {
 	// A shell would end the command at the first NUL; dropping every NUL
 	// instead reads at least as much of it.
 	command = strings.ReplaceAll(command, "\x00", "")
@@ -63,7 +187,7 @@ func splitPublications(command, cwd, home string) ([]publication, bool) {
 	})
 	scanner := wordScanner{certain: true, session: cwd}
 	scanner.scan(command, place{dir: cwd}, 0, newExpansion(home))
-	return scanner.found, scanner.certain
+	return scanner
 }
 
 // splitToplevel matches a `$(...)` that names the current directory or the
@@ -84,11 +208,14 @@ var splitBackquotes = regexp.MustCompile("`[^`]*`")
 // and a push from the directory in effect there.
 const maxScriptDepth = 8
 
-// wordScanner collects the publications of a command line read with
-// shellwords.Split, and whether that reading is certain.
+// wordScanner collects the publications and abandonments of a command line
+// read with shellwords.Split, and whether that reading is certain.
 type wordScanner struct {
-	found   []publication
-	certain bool
+	found     []publication
+	abandoned []abandonment
+	// abandonRuns counts the abandonments found, duplicates included.
+	abandonRuns int
+	certain     bool
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
@@ -173,6 +300,13 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 		after := s.scan(run.text, runs, depth+1, inner)
 		if run.sameShell && len(chdirs) == 0 {
 			return after // eval runs in the current shell
+		}
+		return at
+	}
+	if next, ok := cwAbandon(words, runs, vars); ok {
+		s.abandonRuns++
+		if !slices.Contains(s.abandoned, next) {
+			s.abandoned = append(s.abandoned, next)
 		}
 		return at
 	}

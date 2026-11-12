@@ -95,9 +95,9 @@ claude plugin install agent-workflows@agent-workflows
 codex plugin marketplace add belevtsev/agent-workflows
 ```
 
-Then run `codex`, open `/plugins`, install `agent-workflows`, trust its two
+Then run `codex`, open `/plugins`, install `agent-workflows`, trust its
 hooks in `/hooks` and start a new session. Until you trust them, Codex runs
-neither hook and the plugin gives the skills only: no conventions and no commit
+none of the hooks and the plugin gives the skills only: no conventions and no commit
 hook. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
 the Docker skills and writes the `AGENTS.md` instruction block, but installs no
 hooks. [What each shape gives](docs/operations.md#codex).
@@ -173,7 +173,8 @@ suggesting `cw task start`.
 
 It does not stop git run by a script, an alias or a command form the hook does
 not parse, an edited or damaged task store, a fake toolchain on `PATH`, or
-`cw task abandon` run by the agent. See the [threat model](SECURITY.md#threat-model)
+`cw task abandon` run by the agent from a script; the hook asks you before one
+it can see. See the [threat model](SECURITY.md#threat-model)
 and the [known bypasses](docs/hooks.md#known-bypasses).
 
 `cw publish` commits a verified task's files, pushes them and creates or edits

@@ -88,7 +88,8 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"on the source being published, an ask decision when none gates but one cannot be read or the task store cannot be located or read, " +
 			"and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
-			"code changed without tests). Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
+			"code changed without tests). It also prints an ask decision, naming the task, for a cw task abandon, which needs the user's confirmation. " +
+			"Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
 			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
@@ -154,10 +155,19 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	}
 	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Home: home, Enforce: enforce, Prompt: prompt},
 		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
-	if store.failed && decision.Permission == gate.Allow {
-		// Like a record that cannot be read, a store that cannot be located
-		// or read is nothing the user can fix from Codex, so Codex lets it run.
-		decision = gate.Decision{Permission: gate.Ask, Reason: storeFailureReason(store.err, store.store != nil), ProceedWithoutAsk: true}
+	if store.failed {
+		switch decision.Permission {
+		case gate.Allow:
+			// Like a record that cannot be read, a store that cannot be
+			// located or read is nothing the user can fix from Codex, so
+			// Codex lets it run.
+			decision = gate.Decision{Permission: gate.Ask, Reason: storeFailureReason(store.err, store.store != nil), ProceedWithoutAsk: true}
+		case gate.Ask:
+			// Joined as the gate joins asks: the store's lets a host that
+			// cannot ask proceed, so the joined ask does only when the other
+			// one does. The ask before cw task abandon is such another one.
+			decision.Reason += " " + storeFailureReason(store.err, store.store != nil)
+		}
 	}
 	if input.fromCodex() {
 		decision = codexDecision(decision)
@@ -225,6 +235,17 @@ func (s *storeGuard) FindOpen(ctx context.Context, repo taskflow.Repository, now
 		s.failed, s.err = true, err
 	}
 	return open, err
+}
+
+// Lookup reads a task directory for the ask before cw task abandon, which
+// names its title. A failure only leaves the title out, so it does not count
+// as the store failing. When the hook located no store it fails with err,
+// and the ask names the directory alone.
+func (s *storeGuard) Lookup(dir string) (taskflow.Record, error) {
+	if s.store == nil {
+		return taskflow.Record{}, s.err
+	}
+	return s.store.Lookup(dir)
 }
 
 func preToolUseDecision(decision, reason string) hookOutput {

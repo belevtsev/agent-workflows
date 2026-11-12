@@ -1,5 +1,5 @@
 {
-  "description": "agent-workflows: load the working conventions at session start and gate git commit and push on a passing cw task verify",
+  "description": "agent-workflows: load the working conventions at session start, gate git commit and push on a passing cw task verify, and ask before cw task abandon",
   "hooks": {
     "SessionStart": [
       {
@@ -20,6 +20,12 @@
           {
             "type": "command",
             "if": "Bash(*git*)",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*abandon*)",
             "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
             "timeout": 30
           }
