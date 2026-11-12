@@ -82,9 +82,9 @@ Upgrade every `cw` that shares a task store at once, including the one the
 commit hook runs. The first revision a newer `cw` writes to a task can raise
 the record's version; an older `cw` then cannot read the record, and its hook
 skips the task instead of gating it. `cw` v3.0.0-rc.1 cannot read the version 4
-records this release writes and calls them unsupported; later releases refuse
-a newer record with exit 4 and say to upgrade `cw`
-([task record format](development.md#task-record-format)).
+records this release writes and calls them unsupported; in later releases a
+`cw task` command on a record from a newer `cw` exits 4 and says to upgrade
+`cw` ([task record format](development.md#task-record-format)).
 
 ## Codex install and uninstall
 
@@ -173,7 +173,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record this `cw` cannot read, because a newer `cw` wrote it (upgrade `cw`) or it has no `packs`, `test_rules` or `baseline_manifest` (start a new task). |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |

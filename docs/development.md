@@ -154,14 +154,18 @@ improvements, and they must not modify personal host configuration.
 ### Task record format
 
 A task record's `version` says which `cw` can read it. `cw` writes
-`taskflow.Version` (4) and reads `taskflow.MinVersion` (3) to `Version`, and it
-decodes strictly: a member it does not know fails the load.
+`taskflow.Version` (4) and reads `taskflow.MinVersion` (3) to `Version`. It
+loads strictly: a member it does not know fails the decode, and a value that a
+validated member did not allow before, such as a new `test_rules` set, check
+run `status` or context phase, fails validation with "invalid stored …".
 
-- Any new member, or any other change that a released `cw` reading the current
-  version could not decode, bumps `Version` in the same pull request, goes under
-  Breaking in the CHANGELOG, and gets upgrade steps in the release notes
-  ([Releases](#releases)). Changes to a version no release has written yet ride
-  on it. Raise `MinVersion` only to drop a version on purpose.
+- Once a release has written version N, a new member or a new value of a
+  validated member (any change that a `cw` reading version N could not load,
+  by decode or by validation) makes the next release write N+1. The pull
+  request that adds the first such change bumps `Version` to N+1; later ones
+  before the next release keep N+1. The bump goes under Breaking in the
+  CHANGELOG and gets upgrade steps in the release notes
+  ([Releases](#releases)). Raise `MinVersion` only to drop a version on purpose.
 - Every new revision is written with `Version`, so the first revision this `cw`
   appends to a record an older `cw` started raises its version. From then on
   that older `cw` cannot read the record, and its hook skips the task instead of
@@ -169,11 +173,18 @@ decodes strictly: a member it does not know fails the load.
 - A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
   says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
   `baseline_manifest` is refused with `taskflow.ErrLegacyRecord`, which says to
-  start a new task. Both exit 4. A version below `MinVersion`, or a revision
-  with a lower version than the one before it, does not load either.
-- `cw` v3.0.0-rc.1 writes version 3. Version 4 has the same members and marks
-  the records rc.1 must not read; `internal/taskflow/testdata/rc1-small-task`
-  holds a record rc.1 wrote, which must keep loading and verifying.
+  start a new task. A `cw task` command on either record exits 4;
+  `cw publish --task` reports `task-unreadable` and exits 1. A version below
+  `MinVersion`, or a revision with a lower version than the one before it, does
+  not load either, and exits 1.
+- The version each release writes (release step 1 appends a line):
+  - v3.0.0-rc.1: 3.
+  - v3.0.0-rc.2 (planned): 4.
+
+  Record changes merged before rc.2 is tagged stay on 4; the first one after
+  it, such as R1's `profile`, bumps `Version` to 5.
+  `internal/taskflow/testdata/rc1-small-task` holds a record rc.1 wrote, which
+  must keep loading and verifying.
 
 ### Graphify
 
@@ -267,8 +278,9 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
    strings to `X`, sets the tag in the install commands and release links of
    `README.md`, [Get cw](operations.md#get-cw), `global/AGENTS.md`, the
    `task-orchestration` skill and `hooks/hooks.json`
-   (`TestInstallCommandsNameTheRelease` fails when one names another tag), and
-   lists upgrade steps for any task record version change.
+   (`TestInstallCommandsNameTheRelease` fails when one names another tag),
+   lists upgrade steps for any task record version change, and appends the
+   record version the release writes to [Task record format](#task-record-format).
 2. After it merges, confirm CI is green on that commit.
 3. Tag and push: `git tag vX && git push origin vX`. `release.yml` runs the
    tests and goreleaser.
