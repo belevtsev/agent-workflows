@@ -89,10 +89,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ([CI](docs/development.md#continuous-integration)); releases come only from pushed `v*` tags and
   build with go1.27.4, which fixes 11 reachable stdlib vulnerabilities ([releases](docs/development.md#releases)).
 - Both plugins and the marketplace carry version `3.0.0-rc.1`; install `cw` from the `v3.0.0-rc.1` release instead of `@main` ([get cw][getcw]).
-- Without `cw` on `PATH`, the session-start hook and the task-orchestration skill give its install command; the README's
-  first task is a substantial one, with planned, unmeasured cost caps ([first task](README.md#your-first-task)).
-- The overview diagram ends with `cw publish`, with the GitHub worker as fallback, and shows the opt-in adversarial tester;
-  security fixes go to the newest v3 release, release candidates included ([security](SECURITY.md#supported-versions)).
+- The README's first task is a substantial one, with a line for small changes and the planned, unmeasured per-task
+  cost caps ([first task](README.md#your-first-task)).
+- Without `cw` on `PATH`, the session-start hook prints its install command, and `global/AGENTS.md` and the
+  task-orchestration skill say to stop and give it ([session start](docs/hooks.md#session-start)).
+- The overview diagram ends with `cw publish`, with the GitHub worker as fallback, and shows the opt-in adversarial
+  tester ([how it works](README.md#how-it-works)).
+- Security fixes go to the newest v3 release, release candidates included ([supported versions](SECURITY.md#supported-versions)).
 
 ### Fixed
 

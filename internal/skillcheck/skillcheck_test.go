@@ -365,7 +365,8 @@ func TestPluginVersionsAgree(t *testing.T) {
 }
 
 // pinnedInstall matches a cw install command pinned to a concrete tag; a
-// placeholder such as @vX does not match.
+// placeholder such as @vX does not match. Sentence punctuation after the tag
+// is trimmed before comparing.
 var pinnedInstall = regexp.MustCompile("agent-workflows/v3/cmd/cw@(v[0-9][^\\s`'\")\\]]*)")
 
 // installCommandFiles tell a user without cw how to install it: the
@@ -411,9 +412,30 @@ func TestInstallCommandsNameTheRelease(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, match := range pinnedInstall.FindAllStringSubmatch(string(data), -1) {
-			if match[1] != tag {
-				t.Errorf("%s: a cw install command names %s, want %s", file, match[1], tag)
+			if named := strings.TrimRight(match[1], ".,;:)"); named != tag {
+				t.Errorf("%s: a cw install command names %s, want %s", file, named, tag)
 			}
+		}
+	}
+}
+
+// stopWithoutCW is the instruction that keeps an agent without cw from
+// improvising a substantial task with no record and no gate.
+const stopWithoutCW = "If `cw` is not on `PATH`, stop and give the install command"
+
+// The always-on conventions and the first step of the task-orchestration
+// skill tell the agent to stop and give the install command when cw is
+// missing.
+// oracle: global/AGENTS.md and skills/task-orchestration/SKILL.md each
+// contain stopWithoutCW verbatim.
+func TestMissingCWStopsTheTask(t *testing.T) {
+	for _, file := range []string{"global/AGENTS.md", "skills/task-orchestration/SKILL.md"} {
+		data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), stopWithoutCW) {
+			t.Errorf("%s does not say %q", file, stopWithoutCW)
 		}
 	}
 }

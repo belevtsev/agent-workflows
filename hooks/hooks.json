@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${CLAUDE_PLUGIN_ROOT}/global/AGENTS.md\"; if ! command -v cw >/dev/null 2>&1; then cat \"$f\"; printf '%s\\n' 'agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH. Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1` (Go 1.27 or newer) or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw'; elif out=$(cw hook session-start --instructions \"$f\" --cache \"${CLAUDE_PLUGIN_DATA}\" 2>/dev/null) && [ -n \"$out\" ]; then printf '%s\\n' \"$out\"; else cat \"$f\"; fi",
+            "command": "f=\"${CLAUDE_PLUGIN_ROOT}/global/AGENTS.md\"; if ! command -v cw >/dev/null 2>&1; then cat \"$f\"; printf '%s\\n' 'agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH. Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1` (Go 1.27.1 or newer) or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw'; elif out=$(cw hook session-start --instructions \"$f\" --cache \"${CLAUDE_PLUGIN_DATA}\" 2>/dev/null) && [ -n \"$out\" ]; then printf '%s\\n' \"$out\"; else cat \"$f\"; fi",
             "timeout": 15
           }
         ]

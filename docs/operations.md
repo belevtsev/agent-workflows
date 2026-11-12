@@ -62,8 +62,8 @@ tar -xzf "$archive" cw
 mkdir -p ~/.local/bin && mv cw ~/.local/bin/cw
 ```
 
-On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. Or, with Go 1.27 or
-newer, build the same tag:
+On Linux, use `sha256sum -c` instead of `shasum -a 256 -c`. Or, with Go 1.27.1
+or newer, build the same tag:
 
 ```sh
 go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1

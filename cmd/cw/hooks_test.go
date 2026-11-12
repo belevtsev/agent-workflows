@@ -189,7 +189,7 @@ func gateInactiveLine(t *testing.T) string {
 		t.Fatalf(".claude-plugin/plugin.json has no version (%v)", err)
 	}
 	return "agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH." +
-		" Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v" + plugin.Version + "` (Go 1.27 or newer)" +
+		" Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v" + plugin.Version + "` (Go 1.27.1 or newer)" +
 		" or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw"
 }
 
