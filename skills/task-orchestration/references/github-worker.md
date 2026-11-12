@@ -65,8 +65,8 @@ user's authorization still covers it.
 | 2 | usage error | none | Fix the command line; nothing ran. |
 | 3 | `denied` | `task-abandoned`, `task-not-verified`, `source-changed`, `open-record` | Verify the task on the current source, or abandon the record named in `open_records`. A record `cw` cannot read (from `cw` v2.0.66 to v2.0.96) cannot be verified or abandoned: move its directory out of the task store, as its `problem` says. |
 | 4 | `refused` | `not-a-repository`, `nothing-to-publish`, `path-not-verified`, `branch-mismatch`, `head-moved`, `hunk-scope`, `content-conversion`, `git-locked`, `remote-unknown`, `remote-split`, `remote-moved`, `not-fast-forward`, `gh-missing`, `repo-mismatch`, `pr-exists`, `pr-missing`, `pr-ambiguous` | Fix the precondition, or use the fallback. Remove a Git lock in `locks_left` only after checking that no git process runs in the repository. |
-| 5 | `unknown` | `commit-unknown`, `push-unknown`, `pr-unknown` | Read the reconciliation in the report (`steps`, `locks_left`), then re-run the same command only while the authorization still covers it. After an unknown PR create, check the PR list first. A `commit-unknown` with locks left may be a definite failure behind a live git process's lock. |
-| 6 | `mismatch` | `commit-mismatch`, `push-mismatch`, `pr-mismatch` | Inspect what was written: a hook or conversion changed the commit, the remote moved, or the PR differs. Never amend or force-push; repair it through the fallback. |
+| 6 | `unknown` | `commit-unknown`, `push-unknown`, `pr-unknown` | Read the reconciliation in the report (`steps`, `locks_left`), then re-run the same command only while the authorization still covers it. After an unknown PR create, check the PR list first. A `commit-unknown` with locks left may be a definite failure behind a live git process's lock. |
+| 7 | `mismatch` | `commit-mismatch`, `push-mismatch`, `pr-mismatch` | Inspect what was written: a hook or conversion changed the commit, the remote moved, or the PR differs. Never amend or force-push; repair it through the fallback. |
 | 130 | `cancelled` | `cancelled` | Interrupted while no commit, push or PR command ran, or during a commit that left HEAD unchanged. Earlier steps may have completed (a commit, or a commit and its push): the report's `steps` shows what did. A 130 during the commit step can leave intent-to-add entries for new files in the index: the report's `intent_to_add` lists the paths passed, so check `git ls-files -s` before handing over to the fallback. Re-run the same command, which continues from the observed state, only while the authorization still covers it. |
 
 `--summary` prints one line with the members `status`, `reason`, `task_id`,
@@ -88,7 +88,7 @@ Dispatch `agent-workflows:github-worker` when `cw publish` does not fit:
 - content conversions (`content-conversion`) and hooks that rewrite the
   commit message or content;
 - records without a source digest;
-- repairing a status 6;
+- repairing a status 7;
 - `cw` unavailable, or the user asks for a bounded worker.
 
 Known limitations of `cw publish` that call for the fallback:
@@ -101,9 +101,9 @@ Known limitations of `cw publish` that call for the fallback:
   included, is refused as 4 `content-conversion`.
 - A Git lock that a concurrent git process (an editor's `git status`) holds for
   more than about two seconds reads as a stale lock: 4 `git-locked` before a
-  step, 5 `commit-unknown` after a failed commit or intent-to-add. Check that
+  step, 6 `commit-unknown` after a failed commit or intent-to-add. Check that
   no git process is running in the repository before removing a lock, and
-  treat such a 5 as unknown.
+  treat such a 6 as unknown.
 - A remote with a push URL for another repository or with several URLs is
   refused as 4 `remote-split`; an `ssh_config` host alias in only one of its
   URLs is refused the same way, and with `--pr create` or `--pr edit` any host

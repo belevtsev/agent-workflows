@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw` refuses task records from cw v2.0.66 to v2.0.96 (no `packs` or `test_rules`), and an open one gates until moved:
   finish open v2 tasks before upgrading, or move them out of the task store ([which records gate](docs/hooks.md#which-records-gate)).
+- Exit statuses follow one table: an incomplete `cw task verify`, a failed `cw task run` check and a partial `cw consult` exit 5,
+  Graphify unavailable exits 4, `cw publish` unknown and mismatch exit 6 and 7: update scripts that test them ([exit statuses](docs/operations.md#exit-statuses)).
 
 ### Changed
 

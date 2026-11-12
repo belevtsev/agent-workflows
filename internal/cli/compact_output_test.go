@@ -205,8 +205,8 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
 
 	full := compactExecute(h, nil, "task", "verify", "--task", h.task)
-	if ExitCode(full.err) != 1 {
-		t.Fatalf("verify of a fresh task should be incomplete (exit 1): %v (exit %d): %s", full.err, ExitCode(full.err), full.text())
+	if ExitCode(full.err) != 5 {
+		t.Fatalf("verify of a fresh task should be incomplete (exit 5): %v (exit %d): %s", full.err, ExitCode(full.err), full.text())
 	}
 	var report map[string]any
 	if err := json.Unmarshal([]byte(full.stdout), &report); err != nil {
@@ -521,7 +521,7 @@ func compactCheckHarness(t *testing.T, files map[string]string, argv []string) *
 	return h
 }
 
-// compactFailedRun runs the probe check with --summary, requires exit 1 and one line, and checks the
+// compactFailedRun runs the probe check with --summary, requires exit 5 and one line, and checks the
 // common members against the stored run.
 func compactFailedRun(t *testing.T, h *summaryCLIHarness) map[string]json.RawMessage {
 	t.Helper()
@@ -536,8 +536,8 @@ func compactFailedRun(t *testing.T, h *summaryCLIHarness) map[string]json.RawMes
 func compactFailedRunLine(t *testing.T, h *summaryCLIHarness) map[string]json.RawMessage {
 	t.Helper()
 	outcome := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe", "--summary")
-	if ExitCode(outcome.err) != 1 {
-		t.Fatalf("failed check run --summary is not exit 1: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
+	if ExitCode(outcome.err) != 5 {
+		t.Fatalf("failed check run --summary is not exit 5: %v (exit %d): %s", outcome.err, ExitCode(outcome.err), outcome.text())
 	}
 	line := compactLine(t, "task run --summary", []byte(outcome.stdout))
 	compactRequireKeys(t, "task run --summary", line, []string{"check_id", "run_id", "status", "exit_code", "log"}, nil)
@@ -612,10 +612,10 @@ func TestCompactRunSummaryReportsFailingGoTests(t *testing.T) {
 		t.Fatalf("log_tail printed although failing tests and error lines were found: %s", line["log_tail"])
 	}
 
-	// DEF-UNCHANGED: without --summary the run prints the CheckRun record and keeps exit 1.
+	// DEF-UNCHANGED: without --summary the run prints the CheckRun record and keeps exit 5.
 	plain := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe")
-	if ExitCode(plain.err) != 1 {
-		t.Fatalf("failed check run without --summary is not exit 1: %v (exit %d)", plain.err, ExitCode(plain.err))
+	if ExitCode(plain.err) != 5 {
+		t.Fatalf("failed check run without --summary is not exit 5: %v (exit %d)", plain.err, ExitCode(plain.err))
 	}
 	var members map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(plain.stdout), &members); err != nil {
@@ -1202,7 +1202,7 @@ func TestCompactConsultSummary(t *testing.T) {
 		status string
 	}{
 		{"resolved", map[string]any{"claim": resolvedItem("supported", []string{"source:docs/claim.md:3-5@0123abc"}, []string{"check:fixture-check@run-1"})}, 0, "resolved"},
-		{"unresolved", map[string]any{"claim": unresolvedItem()}, 2, "unresolved"},
+		{"unresolved", map[string]any{"claim": unresolvedItem()}, 5, "unresolved"},
 	} {
 		t.Run("adjudicate_"+test.name, func(t *testing.T) {
 			scratch := t.TempDir()

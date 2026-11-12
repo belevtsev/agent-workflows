@@ -25,8 +25,8 @@ Exit statuses:
   2    usage error; nothing is printed on stdout
   3    denied     the verify gate refused (task-abandoned, task-not-verified, source-changed, open-record): verify or abandon
   4    refused    a precondition does not hold (not-a-repository, nothing-to-publish, path-not-verified, branch-mismatch, head-moved, hunk-scope, content-conversion, git-locked, remote-unknown, remote-split, remote-moved, not-fast-forward, gh-missing, repo-mismatch, pr-exists, pr-missing, pr-ambiguous): fix it or use the GitHub worker
-  5    unknown    a commit, push or pull-request command did not confirm its outcome (commit-unknown, push-unknown, pr-unknown); read the reconciliation before re-running
-  6    mismatch   a step succeeded but its readback differs (commit-mismatch, push-mismatch, pr-mismatch); inspect, never amend
+  6    unknown    a commit, push or pull-request command did not confirm its outcome (commit-unknown, push-unknown, pr-unknown); read the reconciliation before re-running
+  7    mismatch   a step succeeded but its readback differs (commit-mismatch, push-mismatch, pr-mismatch); inspect, never amend
   130  cancelled  interrupted while no commit, push or pull-request command ran, or during a commit that left HEAD unchanged`
 
 func addPublishCommand(root *cobra.Command, config Config) {

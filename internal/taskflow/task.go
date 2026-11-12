@@ -560,7 +560,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		return result, err
 	}
 	if !result.Complete {
-		return result, errors.New("task completion evidence is incomplete; inspect problems")
+		return result, ErrIncomplete
 	}
 	return result, nil
 }
