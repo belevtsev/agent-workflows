@@ -33,11 +33,11 @@ func TestPrePublishKnownForms(t *testing.T) {
 		want    gate.Permission
 	}{
 		// Oracle for these rows: nothing in the command commits or pushes,
-		// and every program in it only prints, searches or writes files, so
-		// the gate neither denies nor asks.
+		// and every command in it is one the gate trusts (echo, rg, cat with
+		// a heredoc as input), so the gate neither denies nor asks.
 		{"separator inside a quoted argument", "{R}", `echo "todo; git commit later"`, gate.Allow},
 		{"pipe inside a quoted search pattern", "{R}", `rg "foo|git commit" docs`, gate.Allow},
-		{"git push in a heredoc body", "{R}", "cat > notes.md <<'EOF'\nRelease steps:\ngit push origin main\nEOF", gate.Allow},
+		{"git push in a heredoc body", "{R}", "cat <<'EOF'\nRelease steps:\ngit push origin main\nEOF", gate.Allow},
 
 		// Oracle for the rest: each command runs a git commit or push in a
 		// gated repository under bash, zsh or dash, so the gate denies.
@@ -94,6 +94,62 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"quoted text piped to a shell", "{R}", `echo "x; git push" | sh`, gate.Deny},
 		{"eval of a heredoc", "{R}", "eval \"$(cat <<'EOF'\ntrue; git push\nEOF\n)\"", gate.Deny},
 		{"git rebase --exec", "{R}", "git rebase --exec 'make; git push' HEAD~1", gate.Deny},
+		// A heredoc whose output goes to a file keeps the flat split's deny:
+		// only input redirections, /dev/null and 2>&1 keep the trust.
+		{"heredoc written to a file", "{R}", "cat > notes.md <<'EOF'\nRelease steps:\ngit push origin main\nEOF", gate.Deny},
+		// Round 2: a single quote is a plain byte inside $(( )) and $[ ], and a quote,
+		// blank or substitution inside an unquoted ${...} is not read.
+		{"array subscript in $(( ))", "{R}", "echo $(( 'a[$(git push)]' ))", gate.Deny},
+		{"single quotes in $(( ))", "{R}", "echo $(('$(git push)'))", gate.Deny},
+		{"single quotes in a quoted $(( ))", "{R}", "echo \"$(( '$(git push)' ))\"", gate.Deny},
+		{"backquotes in single quotes in $(( ))", "{R}", "echo $(( 1 + '`git push`' ))", gate.Deny},
+		{"$[ ]", "{R}", "echo $[ '$(git push)' ]", gate.Deny},
+		{"single quotes in a $(( )) conditional", "{R}", "echo $(( X ? 1 : '$(git push)' ))", gate.Deny},
+		{"single quotes in an assigned $(( ))", "{R}", "x=$(( '$(git push)' ))", gate.Deny},
+		{"$(( )) inside ${...}", "{R}", "echo ${X:-$(( '$(git push)' ))}", gate.Deny},
+		{"subscript in ${#...}", "{R}", "echo ${#X[ '$(git push)' ]}", gate.Deny},
+		{"subscript in ${...}", "{R}", "echo ${X[ '$(git push)' ]}", gate.Deny},
+		{"offset with a blank in ${...}", "{R}", "echo ${X: '$(git push)'}", gate.Deny},
+		{"offset in ${...} under zsh", "{R}", "echo ${X:'$(git push)'}", gate.Deny},
+		// Round 2: git commands other than commit and push run configured commands.
+		{"git fetch --upload-pack", "{R}", "git fetch --upload-pack='true; git push #' .", gate.Deny},
+		{"git pull --upload-pack", "{R}", "git pull --upload-pack='true; git push #' .", gate.Deny},
+		{"git grep -O", "{R}", "git grep -O'true; git push #' x", gate.Deny},
+		{"git config core.fsmonitor then git status", "{R}", "git config core.fsmonitor 'true; git push #'; git status", gate.Deny},
+		{"git config diff.external then git diff", "{R}", "git config diff.external 'true; git push #'; git diff", gate.Deny},
+		{"git config core.editor then git tag -a", "{R}", "git config core.editor 'true; git push #'; git tag -a v9", gate.Deny},
+		// Round 2: assignments, exported or prefixed, reach git or a later expansion.
+		{"GIT_EXTERNAL_DIFF prefix", "{R}", "GIT_EXTERNAL_DIFF='true; git push #' git diff", gate.Deny},
+		{"GIT_SSH_COMMAND prefix", "{R}", "GIT_SSH_COMMAND='true; git push #' git fetch ssh://h/r", gate.Deny},
+		{"exported GIT_EXTERNAL_DIFF", "{R}", "export GIT_EXTERNAL_DIFF='true; git push #'; git diff", gate.Deny},
+		{"env GIT_EXTERNAL_DIFF", "{R}", "env GIT_EXTERNAL_DIFF='true; git push #' git diff", gate.Deny},
+		{"GIT_CONFIG_COUNT prefix", "{R}", "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.fsmonitor GIT_CONFIG_VALUE_0='true; git push #' git status", gate.Deny},
+		{"assignment expanded by ${X@P}", "{R}", "X='$(git push)'; echo ${X@P}", gate.Deny},
+		{"assignment evaluated in $(( ))", "{R}", "X='a[$(git push)]'; echo $((X))", gate.Deny},
+		{"assignment expanded by ${!X}", "{R}", "X='a[$(git push)]'; echo ${!X}", gate.Deny},
+		{"assignment evaluated by [[ ]]", "{R}", "X='a[$(git push)]'; [[ X -eq 0 ]]", gate.Deny},
+		// Round 2: builtins that evaluate an array subscript.
+		{"[[ -eq ]] subscript", "{R}", "[[ 'a[$(git push)]' -eq 0 ]]", gate.Deny},
+		{"[[ -v ]] subscript", "{R}", "[[ -v 'a[$(git push)]' ]]", gate.Deny},
+		{"test -v subscript", "{R}", "test -v 'a[$(git push)]'", gate.Deny},
+		{"read subscript", "{R}", "read 'a[$(git push)]' <<< 1", gate.Deny},
+		{"printf -v subscript", "{R}", "printf -v 'a[$(git push)]' x", gate.Deny},
+		{"declare subscript", "{R}", "declare 'a[$(git push)]=1'", gate.Deny},
+		{"declare -i subscript", "{R}", "declare -i n='a[$(git push)]'", gate.Deny},
+		{"export subscript", "{R}", "export 'a[$(git push)]=1'", gate.Deny},
+		// Round 2: output written to a file that git or another program then runs.
+		{"post-checkout hook written by cat", "{R}", "cat > .git/hooks/post-checkout <<'EOF'\n#!/bin/sh\ngit push origin main\nEOF\nchmod +x .git/hooks/post-checkout; git checkout -q -b z", gate.Deny},
+		{"fsmonitor appended to .git/config", "{R}", "cat >> .git/config <<'EOF'\n[core]\n\tfsmonitor = \"true; git push #\"\nEOF\ngit status", gate.Deny},
+		{"post-checkout hook written by printf", "{R}", "printf '%s\\n' '#!/bin/sh' 'true\ngit push origin main' > .git/hooks/post-checkout; chmod +x .git/hooks/post-checkout; git switch -q -c z", gate.Deny},
+		{"reference-transaction hook", "{R}", "cat > .git/hooks/reference-transaction <<'EOF'\n#!/bin/sh\n[ -e .p ] || { : > .p; git push origin main; }\nEOF\nchmod +x .git/hooks/reference-transaction; git branch q", gate.Deny},
+		{"hook in core.hooksPath", "{R}", "mkdir -p h; cat > h/post-checkout <<'EOF'\n#!/bin/sh\ngit push origin main\nEOF\nchmod +x h/post-checkout; git config core.hooksPath h; git checkout -q -b z", gate.Deny},
+		{"post-index-change hook", "{R}", "cat > .git/hooks/post-index-change <<'EOF'\n#!/bin/sh\ngit push origin main\nEOF\nchmod +x .git/hooks/post-index-change; git add a.txt", gate.Deny},
+		{"post-checkout hook for git worktree add", "{R}", "cp /dev/null x; cat > .git/hooks/post-checkout <<'EOF'\n#!/bin/sh\ngit push origin main\nEOF\nchmod +x .git/hooks/post-checkout; git worktree add -q ../wt", gate.Deny},
+		{".git/config written by sort -o", "{R}", "printf '%s\\n' '[core]' 'fsmonitor = \"true; git push ../remote.git HEAD:main #\"' | sort -o .git/config; git status", gate.Deny},
+		{".git/config written by git log --output", "{R}", "git log -1 --format='[core]%n%x09fsmonitor = \"true; git push ../remote.git HEAD:main #\"' --output=.git/config; git status", gate.Deny},
+		// Round 2: programs that run another program.
+		{"rg --pre", "{R}", "cat > p <<'EOF'\n#!/bin/sh\ngit push\nEOF\nchmod +x p; rg --pre ./p x a.txt", gate.Deny},
+		{"sort --compress-program", "{R}", "printf '%s\\n' 'true; git push' {1..50000} | sort -S 64K --compress-program=sh -o /dev/null", gate.Deny},
 	}
 	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere)
 	for _, row := range rows {

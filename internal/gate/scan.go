@@ -1,7 +1,6 @@
 package gate
 
 import (
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -46,9 +45,9 @@ func gitPublications(command, cwd string) []publication {
 // `"$(git rev-parse --show-toplevel)"` stays in the same repository.
 //
 // The reading is certain when shellwords.Split is certain at every level and
-// every program in the command line is one that never runs its arguments or
-// its input as shell commands (inertProgram), so text the reading took for
-// data stays data.
+// every simple command in the line, inside substitutions too, is one the gate
+// trusts (trusted): a deliberately small set that cannot run text the
+// reading took for data. Any other command keeps the flat split's decision.
 func splitPublications(command, cwd string) ([]publication, bool) {
 	// A shell would end the command at the first NUL; dropping every NUL
 	// instead reads at least as much of it.
@@ -109,6 +108,9 @@ func (s *wordScanner) scan(command, cwd string, depth int) string {
 		for range simple.Enter {
 			outer = append(outer, dir)
 		}
+		if !trusted(simple) {
+			s.certain = false
+		}
 		dir = s.visit(simple.Words, dir, depth)
 	}
 	if len(outer) > 0 {
@@ -121,7 +123,7 @@ func (s *wordScanner) scan(command, cwd string, depth int) string {
 // effect after it.
 func (s *wordScanner) visit(all []shellwords.Word, dir string, depth int) string {
 	words, chdirs, run, known := programWords(all)
-	if !known || run == nil && !inertProgram(words) {
+	if !known {
 		s.certain = false
 	}
 	if len(words) > 0 && (words[0] == "cd" || words[0] == "pushd" || words[0] == "popd") {
@@ -295,63 +297,73 @@ func envString(args []string) (string, bool) {
 	return "", false
 }
 
-// inertPrograms never run their arguments or their input as shell commands.
-// Shell keywords that end a compound command (`fi`, `done`, `esac`, `}`) and
-// `for`, whose words are a variable and a list, are here too.
-var inertPrograms = map[string]bool{
-	"echo": true, "printf": true, "cat": true, "tee": true, "rg": true, "grep": true, "egrep": true, "fgrep": true,
-	"head": true, "tail": true, "wc": true, "sort": true, "uniq": true, "cut": true, "tr": true, "jq": true,
-	"ls": true, "mkdir": true, "touch": true, "cp": true, "mv": true, "rm": true, "ln": true, "chmod": true,
-	"diff": true, "cmp": true, "basename": true, "dirname": true, "realpath": true, "readlink": true, "pwd": true,
-	"date": true, "sleep": true, "test": true, "[": true, "[[": true, "true": true, "false": true, ":": true,
-	"cd": true, "pushd": true, "popd": true, "export": true, "unset": true, "local": true, "declare": true,
-	"readonly": true, "set": true, "read": true, "wait": true, "exit": true, "return": true,
-	"for": true, "fi": true, "done": true, "esac": true, "}": true, "cw": true,
+// trustedPrograms are the programs whose simple commands the gate trusts,
+// with trustedArguments, and the reserved words that make up control
+// structure. The set is deliberately the minimum the false positives it
+// fixes need: `echo`, `printf`, `cat`, `rg`, `grep` and `jq` write or search
+// text and run nothing, `cd` moves the directory the scanner follows, and
+// git commit and git push are the gate's own targets. Every other command,
+// however harmless, keeps the flat split's decision.
+var trustedPrograms = map[string]bool{
+	"echo": true, "printf": true, "cat": true, "rg": true, "grep": true, "jq": true, "cd": true,
+	"git": true, "gh": true,
+	"if": true, "then": true, "else": true, "fi": true, "for": true, "do": true, "done": true,
+	"while": true, "case": true, "esac": true, "{": true, "}": true, "!": true,
 }
 
-// inertGit are the git subcommands that never run their arguments as
-// commands; the gate checks commit and push itself. inertGH are the gh
-// command groups that never do.
-var (
-	inertGit = map[string]bool{
-		"status": true, "log": true, "diff": true, "show": true, "add": true, "rm": true, "mv": true,
-		"restore": true, "switch": true, "checkout": true, "branch": true, "fetch": true, "pull": true,
-		"stash": true, "tag": true, "rev-parse": true, "ls-files": true, "blame": true, "reset": true,
-		"init": true, "worktree": true, "remote": true, "grep": true, "shortlog": true, "describe": true,
-		"rev-list": true, "merge-base": true, "cat-file": true, "ls-tree": true, "show-ref": true,
-		"config": true, "commit": true, "push": true,
-	}
-	inertGH = map[string]bool{
-		"pr": true, "issue": true, "api": true, "run": true, "repo": true, "release": true, "search": true,
-		"label": true, "browse": true, "auth": true, "status": true,
-	}
-)
+// leadingKeywords are the reserved words that may come before a command's
+// program.
+var leadingKeywords = map[string]bool{"if": true, "then": true, "else": true, "while": true, "do": true, "{": true, "!": true}
 
-// inertProgram reports whether a command, its words without what precedes
-// its program, never runs its arguments or input as shell commands. git
-// qualifies only for a subcommand in inertGit and without `-c` or
-// `--config-env`, which can set a command git runs.
-func inertProgram(words []string) bool {
-	if len(words) == 0 {
-		return true // assignments or redirections only
-	}
-	switch filepath.Base(words[0]) {
-	case "git":
-		for i := 1; i < len(words); i++ {
-			switch word := words[i]; {
-			case word == "-c" || word == "--config-env" || strings.HasPrefix(word, "--config-env="):
-				return false
-			case word == "-C" || word == "--git-dir" || word == "--work-tree" || word == "--namespace" ||
-				word == "--exec-path" || word == "--super-prefix":
-				i++ // the option's argument
-			case !strings.HasPrefix(word, "-"):
-				return inertGit[word]
-			}
+// trusted reports whether the gate trusts a simple command: its words, as
+// written, are reserved words from trustedPrograms followed by a trusted
+// program with trustedArguments, and each of its redirections is trusted. A
+// `NAME=value` assignment, a wrapper such as env or sudo, or a quoted or
+// escaped program name is not trusted.
+func trusted(simple shellwords.SimpleCommand) bool {
+	for _, redirect := range simple.Redirects {
+		if !trustedRedirect(redirect) {
+			return false
 		}
-		return true
-	case "gh":
-		return len(words) > 1 && inertGH[words[1]]
-	default:
-		return inertPrograms[filepath.Base(words[0])]
 	}
+	words := simple.Words
+	for len(words) > 0 && leadingKeywords[words[0].Raw] {
+		words = words[1:]
+	}
+	return len(words) == 0 || trustedPrograms[words[0].Raw] && trustedArguments(words[0].Raw, words[1:])
+}
+
+// trustedArguments reports whether a trusted program's arguments keep it
+// from running anything: printf without -v, which assigns a variable; rg
+// without --pre or --pre-glob, which run a program on each file; git only
+// as `git commit` or `git push`; gh only as `gh pr`.
+func trustedArguments(program string, args []shellwords.Word) bool {
+	switch program {
+	case "printf":
+		return !slices.ContainsFunc(args, func(arg shellwords.Word) bool { return strings.HasPrefix(arg.Text, "-v") })
+	case "rg":
+		return !slices.ContainsFunc(args, func(arg shellwords.Word) bool { return strings.HasPrefix(arg.Text, "--pre") })
+	case "git":
+		return len(args) > 0 && (args[0].Raw == "commit" || args[0].Raw == "push")
+	case "gh":
+		return len(args) > 0 && args[0].Raw == "pr"
+	}
+	return true
+}
+
+// trustedRedirect reports whether a redirection leaves the trust in its
+// command: a heredoc or here-string, which is input, or a redirection to
+// /dev/null or a duplicated file descriptor (2>&1). Output to a file, and
+// input from one, are not trusted.
+func trustedRedirect(redirect shellwords.Redirect) bool {
+	op, target := strings.TrimLeft(redirect.Op, "0123456789"), redirect.Target.Raw
+	switch {
+	case op == "<<" || op == "<<-" || op == "<<<":
+		return true
+	case target == "/dev/null":
+		return true
+	case op == ">&" || op == "<&":
+		return target == "-" || target != "" && strings.Trim(target, "0123456789") == ""
+	}
+	return false
 }

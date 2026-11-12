@@ -199,8 +199,9 @@ type lexer struct {
 	// stops are where the begun heredoc bodies end, innermost last: nothing
 	// inside a body reads past its delimiter line.
 	stops []int
-	// backquotes counts the open backquote substitutions.
-	backquotes int
+	// backquotes counts the open backquote substitutions; braces, the open
+	// unquoted ${ of the current command.
+	backquotes, braces int
 	// eol is where the line of the last closing-quote search in a heredoc
 	// delimiter ends; quoteMiss holds, for ' and ", the end of the line of
 	// the last such search that failed.
@@ -282,6 +283,10 @@ func (l *lexer) step() {
 // operator may start.
 func (l *lexer) command() {
 	c := l.src[l.i]
+	if l.braces > 0 && strings.IndexByte(" \t\n;&|()<>`", c) >= 0 {
+		l.doubt("a ${...} that a blank, operator or substitution splits")
+		l.braces = 0
+	}
 	switch c {
 	case ' ', '\t':
 		l.endWord()
@@ -380,6 +385,7 @@ func (l *lexer) wordByte(c byte) {
 			l.line++
 			return
 		}
+		l.quoteInBraces()
 		l.beginWord()
 		if l.i+1 < len(l.src) {
 			l.escaped(l.src[l.i+1])
@@ -390,12 +396,16 @@ func (l *lexer) wordByte(c byte) {
 		l.appendByte(c)
 		l.i++
 	case '\'', '"':
+		l.quoteInBraces()
 		l.beginWord()
 		l.i++
 		l.push(frame{kind: quoteKind(c)})
 	case '$':
 		l.dollar(true)
 	default:
+		if c == '}' && l.braces > 0 {
+			l.braces--
+		}
 		l.beginWord()
 		l.appendByte(c)
 		l.i++
@@ -418,10 +428,12 @@ func quoteKind(c byte) kind {
 	return single
 }
 
-// dollar reads a $: a substitution, an arithmetic expansion, a $'...' or
-// $"..." string where quotes allows one, or a plain $. A parameter
-// expansion is plain text: ${ and } are word bytes.
-func (l *lexer) dollar(quotes bool) {
+// dollar reads a $: a substitution, an arithmetic expansion, or in a
+// command (where command is true) a $'...' or $"..." string or the start of
+// a parameter expansion, else a plain $. A parameter expansion is plain
+// text: ${ and } are word bytes, and lexer.braces counts the open ones so
+// that a quote, blank or operator inside one makes the result uncertain.
+func (l *lexer) dollar(command bool) {
 	l.beginWord()
 	switch next := l.peek(1); {
 	case next == '(' && l.peek(2) == '(':
@@ -430,19 +442,34 @@ func (l *lexer) dollar(quotes bool) {
 		l.push(frame{kind: arithmetic, raw: true})
 	case next == '(':
 		l.openSubstitution(substitution, 2)
-	case next == '\'' && quotes:
-		raw := l.raw()
-		if raw {
-			l.appendText("$'")
-		}
+	case next == '[':
+		l.doubt("a $[ ... ] arithmetic expansion")
+		l.appendByte('$')
+		l.i++
+	case next == '{' && command:
+		l.braces++
+		l.appendText("${")
 		l.i += 2
-		l.push(frame{kind: ansi, raw: raw})
-	case next == '"' && quotes && !l.raw(): // a $"..." string reads like "..."
+	case next == '\'' && command:
+		l.quoteInBraces()
+		l.i += 2
+		l.push(frame{kind: ansi})
+	case next == '"' && command: // a $"..." string reads like "..."
+		l.quoteInBraces()
 		l.i += 2
 		l.push(frame{kind: double})
 	default:
 		l.appendByte('$')
 		l.i++
+	}
+}
+
+// quoteInBraces records the doubt a quote or escape inside an unquoted
+// ${...} raises: its subscripts and operators are read with their own rules,
+// which Split does not follow.
+func (l *lexer) quoteInBraces() {
+	if l.braces > 0 {
+		l.doubt("a quote inside ${...}")
 	}
 }
 
@@ -504,9 +531,6 @@ func (l *lexer) ansi() {
 	c := l.src[l.i]
 	switch {
 	case c == '\'':
-		if l.raw() {
-			l.appendByte(c)
-		}
 		l.i++
 		l.pop()
 	case c == '\\' && l.i+1 < len(l.src):
@@ -522,7 +546,9 @@ func (l *lexer) ansi() {
 }
 
 // arithmetic reads a byte of an arithmetic expansion or command, which goes
-// into the word as written. Quotes and substitutions nest inside it. A ) at
+// into the word as written. Double quotes and substitutions nest inside it;
+// a single quote is a plain byte there, so a substitution between single
+// quotes is still read as the shell runs it. A ) at
 // depth 0 must be the first of "))"; otherwise the "((" opened nested
 // subshells or a substitution holding a subshell, which Split does not
 // follow.
@@ -546,13 +572,13 @@ func (l *lexer) arithmetic(f *frame) {
 		}
 		l.pop()
 		return
-	case '\'', '"':
+	case '"':
 		l.appendByte(c)
 		l.i++
-		l.push(frame{kind: quoteKind(c), raw: true})
+		l.push(frame{kind: double, raw: true})
 		return
 	case '$':
-		l.dollar(true)
+		l.dollar(false)
 		return
 	case '`':
 		l.openSubstitution(backquote, 1)
@@ -872,6 +898,9 @@ func isDigits(text []byte) bool {
 // openSubstitution starts a substitution whose opening delimiter is n bytes
 // at l.i. The commands inside it go to a builder of their own.
 func (l *lexer) openSubstitution(k kind, n int) {
+	if l.braces > 0 {
+		l.doubt("a substitution inside ${...}")
+	}
 	l.beginWord()
 	l.push(frame{kind: k, start: l.i, outer: l.cmd})
 	l.cmd = newBuilder()
@@ -1009,8 +1038,8 @@ func (l *lexer) finish() {
 	if len(l.unread) > 0 {
 		l.doubt("a heredoc without a body")
 	}
-	if len(l.frames) > 0 {
-		l.doubt("an unclosed quote, substitution or subshell")
+	if len(l.frames) > 0 || l.braces > 0 {
+		l.doubt("an unclosed quote, substitution, subshell or ${")
 	}
 	for len(l.frames) > 0 {
 		l.unwind()

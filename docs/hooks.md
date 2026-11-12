@@ -49,18 +49,27 @@ The hook reads the command the way the shell does before it expands anything
 `|`, `&`, newlines and parentheses, and into words with their quotes and
 backslash escapes resolved. Text inside quotes, in a heredoc body or in a
 comment is never a command, so `echo "todo; git commit later"`,
-`rg "foo|git commit" docs` and a heredoc that writes `git push` into a file
-are allowed.
+`rg "foo|git commit" docs` and `cat <<'EOF'` with `git push` in its body are
+allowed.
 
-That reading fails closed. It allows a command that names git outside a
-command only when it is certain: every form in the command is one it reads
-exactly as bash, zsh and dash do, and every program in it is one that never
-runs its arguments or input as shell commands (`echo`, `printf`, `cat`, `rg`,
-`grep`, `jq`, file commands, `gh pr` and the like, and read-only git
-subcommands). Otherwise, as for a heredoc delimiter that is not a plain name,
-a `case` command, `cat <<EOF | sh`, `bash <<EOF` or `git rebase --exec`, the
-hook also applies the simpler split it used before, which reads such text as
-commands, and denies when either finds a commit or push. It finds git:
+That reading fails closed, and the set of commands it trusts is deliberately
+small. It allows a command that names git outside a command only when every
+form in the line is one it reads exactly as bash, zsh and dash do, and every
+simple command in the line, inside substitutions too, is one of these:
+
+- `echo`, `printf` without `-v`, `cat`, `rg` without `--pre` or
+  `--pre-glob`, `grep`, `jq` and `cd`;
+- `git commit` and `git push`, which the gate checks anyway, and `gh pr`;
+- the reserved words `if`, `then`, `else`, `fi`, `for`, `do`, `done`,
+  `while`, `case`, `esac`, `{`, `}` and `!`.
+
+The command must also hold no `NAME=value` assignment, and no redirection
+other than a heredoc or here-string as input, `/dev/null`, or a duplicated
+descriptor such as `2>&1`; `cat > notes.md <<'EOF'` writes a file and is not
+trusted. Any other command, however harmless, keeps the decision of the
+simpler split the hook used before, which reads text in quotes and heredocs
+as commands: the hook applies both and denies when either finds a commit or
+push. It finds git:
 
 - after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
   `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
