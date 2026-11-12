@@ -90,7 +90,7 @@ func TestCaptureManifestListsEligibleFilesWithModesAndHashes(t *testing.T) {
 // (dependency trees such as node_modules are not eligible), with the same
 // snapshot as Capture.
 func TestCaptureManifestMatchesCaptureOutsideGit(t *testing.T) {
-	root, err := canonicalDirectory(t.TempDir())
+	root, err := CanonicalDirectory(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
