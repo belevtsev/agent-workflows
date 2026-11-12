@@ -145,7 +145,13 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if err == nil {
 		store.store = gate.TaskStore(path)
 	}
-	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Enforce: enforce, Prompt: prompt},
+	// The shell the agent runs commands in has the hook's HOME; without one,
+	// the gate leaves `~` and `$HOME` unresolved.
+	home, err := config.HomeDir()
+	if err != nil {
+		home = ""
+	}
+	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Home: home, Enforce: enforce, Prompt: prompt},
 		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
 	if store.failed && decision.Permission == gate.Allow {
 		// Like a record that cannot be read, a store that cannot be located

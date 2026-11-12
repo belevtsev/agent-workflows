@@ -38,10 +38,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   or comments, such as `echo "todo; git commit later"`, and follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
 - A task record `cw` cannot read makes the commit hook ask and `cw publish` exit 3, where both let it through: remove or move its directory to clear it.
   So does a store the hook cannot locate or read. Under Codex both go ahead, reversing the Codex deny for a relative `XDG_STATE_HOME` ([records](docs/hooks.md#records-that-cannot-be-read)).
+- The commit gate follows `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"`, where it let the git command through; after `cd $OTHER`, `cd -`,
+  `popd` or another change it cannot follow, it checks the session's directory and asks instead of denying ([recognised commands](docs/hooks.md#recognised-commands)).
 - Under Codex the commit hook denies where Claude Code asks, except about a record or store it cannot read, because Codex ran an asked-about command
   without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- The `go list` runs behind `cw task verify`'s Go facts kill their process group when they end, so a child of `go` or a `go` wrapper
+  no longer outlives them or their time budget; `cw publish` and `cw graphify` share that runner ([development](docs/development.md)).
 - A check named `go` runs only a `go` built from `cmd/go`, with its own GOROOT, through shims and toolchain switches, and records it; a fake `go` on `PATH`
   is recorded `failed` (`untrusted_toolchain`) instead of passing: put the real `go` first on `PATH` ([which go](docs/operations.md#which-go-a-check-runs)).
 

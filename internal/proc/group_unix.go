@@ -62,16 +62,56 @@ const (
 	// killed group usually empties in well under a millisecond, then capped.
 	firstPause = 100 * time.Microsecond
 	maxPause   = 10 * time.Millisecond
+	// graceTick is how often a stop within its grace looks whether the group
+	// has emptied.
+	graceTick = 20 * time.Millisecond
 )
 
 // ownGroup puts the command in a new process group whose id is its pid, so a
-// terminal's interrupt reaches cw alone and Run can stop the whole group.
-func ownGroup(command *exec.Cmd) {
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+// terminal's interrupt reaches cw alone and Run can stop the whole group. A
+// new session is also a new process group with that id.
+func ownGroup(command *exec.Cmd, session bool) {
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: !session, Setsid: session}
 }
 
-// endGroup kills the started command's process group until no live member
-// remains, whether the run was stopped or the command exited.
-func endGroup(command *exec.Cmd, _ bool) error {
+// endGroup kills the process group of a command that has exited until no
+// live member remains.
+func endGroup(command *exec.Cmd) error {
 	return KillGroup(command.Process.Pid)
+}
+
+// stopGroup stops a started command whose Wait result arrives on done and
+// returns that result and any cleanup failure. With a grace it first sends
+// SIGTERM to the group and waits, up to the grace, for the command to exit
+// and the group to empty; then it kills the group until no live member
+// remains.
+func stopGroup(command *exec.Cmd, grace time.Duration, done <-chan error) (waitErr, cleanup error) {
+	pgid := command.Process.Pid
+	waited := false
+	if grace > 0 {
+		_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		timer := time.NewTimer(grace)
+		defer timer.Stop()
+		tick := time.NewTicker(graceTick)
+		defer tick.Stop()
+	await:
+		for {
+			select {
+			case waitErr = <-done:
+				waited = true
+			case <-tick.C:
+			case <-timer.C:
+				break await
+			}
+			// As in KillGroup, a group of zombies has no member left to stop.
+			if waited && (errors.Is(syscall.Kill(-pgid, 0), syscall.ESRCH) || onlyDead(pgid)) {
+				return waitErr, nil
+			}
+		}
+	}
+	cleanup = KillGroup(pgid)
+	if !waited {
+		waitErr = <-done
+	}
+	return waitErr, cleanup
 }

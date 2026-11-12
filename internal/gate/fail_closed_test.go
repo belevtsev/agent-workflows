@@ -116,11 +116,11 @@ func TestGateFailsClosed(t *testing.T) {
 	removed, uncertain := 0, 0
 	for range 20000 {
 		form := generateForm(rng, 3)
-		found, certain := splitPublications(form.text, cwd)
+		found, certain := splitPublications(form.text, cwd, "")
 		if !certain {
 			uncertain++
 		}
-		gate, flat := gitPublications(form.text, cwd), flatPublications(form.text, cwd)
+		gate, flat := gitPublications(form.text, cwd, ""), flatPublications(form.text, cwd)
 		if len(gate) > 0 || len(flat) == 0 {
 			continue
 		}

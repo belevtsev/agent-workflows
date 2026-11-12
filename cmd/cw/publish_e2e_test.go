@@ -32,6 +32,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"math/rand/v2"
@@ -152,6 +153,7 @@ func TestPublishE2E(t *testing.T) {
 		{"R14d_commit_mismatch", pubTestCommitMismatch},
 		{"R14d_R19_R9c_commit_mismatch_in_bytes_or_mode", pubTestCommitMismatchTree},
 		{"R14e_R18a_commit_timeout", pubTestCommitTimeout},
+		{"hook_background_job_outlives_the_commit", pubTestHookBackgroundJob},
 		{"R18c_interrupt_during_commit", pubTestInterruptCommit},
 		{"R18c_R20c_interrupt_during_push", pubTestInterruptPush},
 		{"R18b_interrupt_during_read_only_command", pubTestInterruptReadOnly},
@@ -3789,6 +3791,78 @@ func pubTestCommitTimeout(t *testing.T, tl *pubTools) {
 	if e.rev("HEAD") != e.base {
 		t.Errorf("HEAD moved")
 	}
+}
+
+// pubTestHookBackgroundJob: a post-commit hook may start a background job on
+// purpose, such as regenerating tags; git commit exits without waiting for it,
+// and publish leaves it running, as a commit from a shell would. Oracle: the
+// job holds the write end of a FIFO that the hook opened and wrote "held" to.
+// After publish returns, the test reads "held" and then sees no end of file
+// within 2 s, so a writer is still alive; the job would live 60 s. Had publish
+// killed git's process group, the reader would reach end of file at once.
+func pubTestHookBackgroundJob(t *testing.T, tl *pubTools) {
+	e := pubNewEnv(t, tl)
+	e.startTask(pubPlanSmall)
+	e.standardChange()
+	e.verifyTask()
+	dir := t.TempDir()
+	fifo, pidFile := filepath.Join(dir, "held"), filepath.Join(dir, "job.pid")
+	held, ended := pubWatchFIFO(t, fifo)
+	t.Cleanup(func() {
+		if data, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil && pid > 1 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	job := `exec 3>"$1"; echo held >&3; /bin/sleep 60 </dev/null >/dev/null 2>&1 & echo "$!" > "$2"`
+	e.hook(filepath.Join(e.gitDir, "hooks"), "post-commit", pubHookConf{Run: [][]string{{"/bin/sh", "-c", job, "sh", fifo, pidFile}}})
+	pubWant(t, e.publish(), 0, "published", "")
+	select {
+	case got := <-held:
+		if got != "held\n" {
+			t.Fatalf("the FIFO gave %q, want %q: the hook did not start its job", got, "held\n")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the hook never wrote to the FIFO")
+	}
+	select {
+	case <-ended:
+		t.Error("the hook's background job had exited when publish returned, want it still running")
+	case <-time.After(2 * time.Second):
+	}
+}
+
+// pubWatchFIFO makes a FIFO and reads it in the background with blocking
+// calls, which work on every Unix (macOS cannot poll a FIFO, so it has no
+// read deadline): the first five bytes arrive on held, and ended is closed at
+// end of file, once every writer has exited. Cleanup releases a reader still
+// waiting for a writer to open it.
+func pubWatchFIFO(t *testing.T, path string) (<-chan string, <-chan struct{}) {
+	t.Helper()
+	if err := syscall.Mkfifo(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	held, ended := make(chan string, 1), make(chan struct{})
+	go func() {
+		defer close(ended)
+		file, err := os.Open(path)
+		if err != nil {
+			held <- err.Error()
+			return
+		}
+		defer file.Close()
+		first := make([]byte, 5)
+		n, _ := io.ReadFull(file, first)
+		held <- string(first[:n])
+		_, _ = io.Copy(io.Discard, file)
+	}()
+	t.Cleanup(func() {
+		if writer, err := os.OpenFile(path, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+			writer.Close()
+		}
+	})
+	return held, ended
 }
 
 // pubTestInterruptCommit: R18.c, SIGINT during git commit stops it; HEAD

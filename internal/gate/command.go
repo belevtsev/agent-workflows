@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/shellwords"
 )
 
 // shellPrefixWords are words that may precede a simple command without being
@@ -39,6 +41,10 @@ type publication struct {
 	// all is a commit with -a or --all, which also commits modified tracked
 	// files that are not staged.
 	all bool
+	// unresolved marks a publication that runs after a directory change the
+	// gate could not follow, such as `cd $OTHER` or `cd -`, and names it as
+	// written; dir is then the session's directory, checked in its place.
+	unresolved string
 }
 
 // flatPublications is the flat split the gate used before shellwords, kept
@@ -127,18 +133,24 @@ func (s *publicationScanner) scan(command, cwd string) {
 			}
 			return
 		}
-		runs := dir
+		target := dir
 		for _, chdir := range chdirs {
 			if !followablePath(chdir) {
 				return
 			}
-			runs = resolveDir(runs, chdir)
+			target = resolveDir(target, chdir)
 		}
-		target, subcommand, arguments := gitInvocation(words, runs)
-		if target == "" || (subcommand != "commit" && subcommand != "push") {
+		subcommand, moves := gitInvocation(words)
+		if subcommand == 0 || (words[subcommand] != "commit" && words[subcommand] != "push") {
 			return
 		}
-		next := publication{dir: target, push: subcommand == "push", all: subcommand == "commit" && commitsAll(arguments)}
+		for _, move := range moves {
+			target = resolveDir(target, words[move])
+		}
+		if target == "" {
+			return
+		}
+		next := publication{dir: target, push: words[subcommand] == "push", all: words[subcommand] == "commit" && commitsAll(words[subcommand+1:])}
 		if !slices.Contains(s.found, next) {
 			s.found = append(s.found, next)
 		}
@@ -216,10 +228,221 @@ func withoutRedirections(words []string) []string {
 }
 
 // followablePath reports whether a cd argument is a literal path the hook
-// can resolve without a shell: not an option, not `-`, and free of `~`, `$`
-// and glob characters.
+// can resolve without a shell: not an option, not `-`, and free of `~`, `$`,
+// backquotes and glob characters.
 func followablePath(path string) bool {
-	return path != "" && !strings.HasPrefix(path, "-") && !strings.ContainsAny(path, "~$*?[{")
+	return path != "" && !strings.HasPrefix(path, "-") && !strings.ContainsAny(path, "~$`*?[{")
+}
+
+// expansion is what the gate knows of the variables a cd or -C argument may
+// start with: HOME, which `~` also names, and PWD, the directory in effect.
+type expansion struct {
+	// home is HOME's value, or "" when unknown.
+	home string
+	// pwd reports whether $PWD is the directory in effect.
+	pwd bool
+	// ifs reports whether the command may change IFS, which changes how the
+	// shell splits an unquoted expansion.
+	ifs bool
+}
+
+// newExpansion returns what the gate knows of HOME and PWD before a command
+// line runs, given HOME's value in the environment.
+func newExpansion(home string) expansion {
+	if !filepath.IsAbs(home) {
+		home = ""
+	}
+	return expansion{home: home, pwd: true}
+}
+
+// after returns what the gate knows of HOME, PWD and IFS where commands run:
+// a variable that any of them assigns, exports, unsets or reads (assigns) may
+// have changed, so its value is unknown throughout them.
+func (v expansion) after(commands []shellwords.SimpleCommand) expansion {
+	for _, simple := range commands {
+		if assigns(simple.Words, "HOME") {
+			v.home = ""
+		}
+		if assigns(simple.Words, "PWD") {
+			v.pwd = false
+		}
+		if assigns(simple.Words, "IFS") {
+			v.ifs = true
+		}
+	}
+	return v
+}
+
+// variableSetters are the builtins that set, export, unset or read a
+// variable that one of their words names.
+var variableSetters = map[string]bool{
+	"export": true, "unset": true, "readonly": true, "declare": true, "typeset": true, "local": true,
+	"read": true, "getopts": true, "printf": true, "mapfile": true, "readarray": true, "vared": true,
+	"for": true, "select": true, "let": true,
+}
+
+// assigns reports whether a simple command's words assign, export, unset or
+// read the variable name: a word that starts `NAME=`, `NAME+=` or `NAME[`,
+// the word NAME after a builtin in variableSetters (`unset HOME`,
+// `read HOME`, `printf -v HOME`, `for HOME in`), or NAME anywhere in the
+// script of an eval, which runs in the same shell.
+func assigns(words []shellwords.Word, name string) bool {
+	if _, _, run, _ := programWords(words); run != nil && run.sameShell && strings.Contains(run.text, name) {
+		return true
+	}
+	setter := false
+	for _, word := range words {
+		if rest, ok := strings.CutPrefix(word.Text, name); ok {
+			if rest == "" && setter || strings.HasPrefix(rest, "=") || strings.HasPrefix(rest, "+=") || strings.HasPrefix(rest, "[") {
+				return true
+			}
+		}
+		setter = setter || variableSetters[strings.TrimPrefix(word.Text, `\`)]
+	}
+	return false
+}
+
+// expandDir returns the directory a cd, pushd or -C argument names, resolved
+// from dir as bash, zsh and dash expand it, and false when the gate cannot
+// tell which directory that is. A leading unquoted `~`, alone or before a
+// slash, names HOME, and a leading `$HOME`, `${HOME}`, `$PWD` or `${PWD}`,
+// unquoted or in double quotes, names HOME or dir; the rest of the argument,
+// or an argument without them, must be literal as written (literalRaw), as a
+// quoted `~` or glob character is. Any other variable (`$OTHER`), another
+// user's home (`~user`), a substitution, an unquoted glob, and an unquoted
+// `$HOME` or `$PWD` the shell may split or glob are not resolved. A relative
+// path from an unknown dir ("") stays unknown: the result is then "".
+func expandDir(word shellwords.Word, dir string, vars expansion) (string, bool) {
+	if word.Text == "" {
+		return "", false
+	}
+	if word.Raw == "~" || strings.HasPrefix(word.Raw, "~/") {
+		// The shell neither splits nor globs what a tilde expands to.
+		return expandedPath(vars.home, word.Text[1:], literalRaw(word.Raw[1:], false, false))
+	}
+	quoted := strings.HasPrefix(word.Raw, `"`)
+	unquoted := strings.TrimPrefix(word.Raw, `"`)
+	for _, variable := range []string{"$HOME", "${HOME}", "$PWD", "${PWD}"} {
+		if !strings.HasPrefix(unquoted, variable) || !strings.HasPrefix(word.Text, variable) {
+			continue
+		}
+		if next := unquoted[len(variable):]; variable[1] != '{' && next != "" && isNameByte(next[0]) {
+			return "", false // a longer name, such as $HOMEDIR
+		}
+		value, rest, literal := vars.home, word.Text[len(variable):], literalRaw(unquoted[len(variable):], quoted, false)
+		if strings.Contains(variable, "PWD") {
+			if !vars.pwd {
+				return "", false
+			}
+			if dir == "" {
+				return "", literal
+			}
+			value = dir
+		}
+		if !quoted && (vars.ifs || strings.ContainsAny(value, " \t\n*?[")) {
+			return "", false
+		}
+		return expandedPath(value, rest, literal)
+	}
+	if !literalRaw(word.Raw, false, true) {
+		return "", false
+	}
+	return resolveDir(dir, word.Text), true
+}
+
+// expandedPath returns an expanded variable's absolute value followed by the
+// rest of the word, when that rest is literal.
+func expandedPath(value, rest string, literal bool) (string, bool) {
+	if !literal || !filepath.IsAbs(value) {
+		return "", false
+	}
+	return filepath.Clean(value + rest), true
+}
+
+// literalRaw reports whether raw, a word or the rest of one as written,
+// stands for its Word.Text and nothing else: no `$` or backquote outside
+// single quotes, no glob or brace character outside quotes, no unquoted `~`
+// at the start of the word or after `=` or `:`, no zsh `=` expansion at its
+// start, and no backslash escape inside $'...', which Word.Text keeps as
+// written. Quoted and escaped characters are literal. inDouble starts the
+// scan inside double quotes; start reports whether raw begins the word.
+func literalRaw(raw string, inDouble, start bool) bool {
+	return scanRaw(raw, inDouble, func(i int, c, quote byte) bool {
+		switch {
+		case quote == 'a':
+			return c != '\\'
+		case c == '$' || c == '`':
+			return false
+		case quote == '"':
+			return true
+		case strings.IndexByte("*?[{", c) >= 0:
+			return false
+		case c == '~':
+			return !(start && i == 0) && !(i > 0 && (raw[i-1] == '=' || raw[i-1] == ':'))
+		case c == '=':
+			return !(start && i == 0)
+		}
+		return true
+	})
+}
+
+// expands reports whether the shell expands a parameter, or substitutes a
+// command, in any of words as written: a `$` or backquote outside single
+// quotes and $'...' that no backslash escapes.
+func expands(words []shellwords.Word) bool {
+	return slices.ContainsFunc(words, func(word shellwords.Word) bool {
+		return !scanRaw(word.Raw, false, func(_ int, c, quote byte) bool { return quote == 'a' || c != '$' && c != '`' })
+	})
+}
+
+// scanRaw calls active, in order, for each character of raw, a word as
+// written, that is neither inside single quotes nor escaped by a backslash,
+// with the quoting it is in: 0 unquoted, '"' in double quotes or 'a' in
+// $'...'. Quote characters are not passed, nor the `$` that opens $'...'.
+// It returns false as soon as active does.
+func scanRaw(raw string, inDouble bool, active func(i int, c, quote byte) bool) bool {
+	quote := byte(0)
+	if inDouble {
+		quote = '"'
+	}
+	for i := 0; i < len(raw); i++ {
+		c := raw[i]
+		switch {
+		case quote == '\'':
+			if c == '\'' {
+				quote = 0
+			}
+			continue
+		case quote == 'a' && c == '\'':
+			quote = 0
+			continue
+		case quote == '"' && c == '"':
+			quote = 0
+			continue
+		case quote != 'a' && c == '\\':
+			i++ // escaped
+			continue
+		case quote == 0 && (c == '\'' || c == '"'):
+			quote = c
+			continue
+		case quote == 0 && c == '$' && i+1 < len(raw) && raw[i+1] == '\'':
+			quote = 'a'
+			i++
+			continue
+		}
+		if !active(i, c, quote) {
+			return false
+		}
+		if quote == 'a' && c == '\\' {
+			i++ // the escaped character, a quote among them, stays in $'...'
+		}
+	}
+	return true
+}
+
+// isNameByte reports whether b may continue a shell variable name.
+func isNameByte(b byte) bool {
+	return b == '_' || '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z'
 }
 
 // commandWords splits a simple command into words with surrounding quotes
@@ -243,9 +466,9 @@ func commandWords(segment string) ([]string, []string) {
 		case shellPrefixWords[word] || (strings.Contains(word, "=") && !strings.HasPrefix(word, "-")):
 			words = words[1:]
 		case wrapper:
-			var moves []string
-			words, moves = wrapperOptions(word, words[1:])
-			chdirs = append(chdirs, moves...)
+			rest, moves := wrapperOptions(word, literalWords(words[1:]))
+			words = wordTexts(rest)
+			chdirs = append(chdirs, wordTexts(moves)...)
 			if word == "timeout" && len(words) > 0 {
 				words = words[1:] // the duration
 			}
@@ -265,45 +488,75 @@ func commandWords(segment string) ([]string, []string) {
 // cluster (`-iC /dir`). It returns the remaining words and the directory
 // `env -C`/`--chdir` or `sudo -D`/`--chdir` moves the command to, if any;
 // as in env and sudo, the last one wins and a relative one is resolved from
-// the directory the wrapper runs in.
-func wrapperOptions(wrapper string, words []string) ([]string, []string) {
+// the directory the wrapper runs in. A directory attached to its option
+// keeps the option word as its Raw, so it never reads as a leading `~` or
+// variable.
+func wrapperOptions(wrapper string, words []shellwords.Word) ([]shellwords.Word, []shellwords.Word) {
 	takes := wrapperArgumentOptions[wrapper]
 	chdir := map[string]string{"env": "-C", "sudo": "-D"}[wrapper]
-	var chdirs []string
-	for len(words) > 0 && strings.HasPrefix(words[0], "-") && words[0] != "-" {
+	var chdirs []shellwords.Word
+	for len(words) > 0 && strings.HasPrefix(words[0].Text, "-") && words[0].Text != "-" {
 		option := words[0]
 		words = words[1:]
-		if option == "--" {
+		if option.Text == "--" {
 			break
 		}
-		if strings.HasPrefix(option, "--") {
-			name, value, attached := strings.Cut(option, "=")
+		if strings.HasPrefix(option.Text, "--") {
+			name, text, attached := strings.Cut(option.Text, "=")
+			value := shellwords.Word{Text: text, Raw: option.Raw}
 			if !attached && slices.Contains(takes, name) && len(words) > 0 {
 				value, attached = words[0], true
 				words = words[1:]
 			}
 			if name == "--chdir" && attached && chdir != "" {
-				chdirs = []string{value}
+				chdirs = []shellwords.Word{value}
 			}
 			continue
 		}
-		for i := 1; i < len(option); i++ {
-			letter := "-" + option[i:i+1]
+		for i := 1; i < len(option.Text); i++ {
+			letter := "-" + option.Text[i:i+1]
 			if !slices.Contains(takes, letter) {
 				continue
 			}
-			value := option[i+1:]
-			if value == "" && len(words) > 0 {
+			value := shellwords.Word{Text: option.Text[i+1:], Raw: option.Raw}
+			if value.Text == "" && len(words) > 0 {
 				value = words[0]
 				words = words[1:]
 			}
 			if letter == chdir {
-				chdirs = []string{value}
+				chdirs = []shellwords.Word{value}
 			}
 			break // the rest of the cluster is this option's argument
 		}
 	}
 	return words, chdirs
+}
+
+// literalWords returns words as shellwords.Words written without quotes.
+func literalWords(words []string) []shellwords.Word {
+	literal := make([]shellwords.Word, len(words))
+	for i, word := range words {
+		literal[i] = shellwords.Word{Text: word, Raw: word}
+	}
+	return literal
+}
+
+// wordRaws returns the Raw of each word.
+func wordRaws(words []shellwords.Word) []string {
+	raws := make([]string, len(words))
+	for i, word := range words {
+		raws[i] = word.Raw
+	}
+	return raws
+}
+
+// wordTexts returns the Text of each word.
+func wordTexts(words []shellwords.Word) []string {
+	texts := make([]string, len(words))
+	for i, word := range words {
+		texts[i] = word.Text
+	}
+	return texts
 }
 
 // commandStringOption reports whether a shell option cluster such as -c,
@@ -312,36 +565,38 @@ func commandStringOption(word string) bool {
 	return len(word) > 1 && word[0] == '-' && word[1] != '-' && strings.ContainsRune(word[1:], 'c')
 }
 
-// gitInvocation returns the directory git runs in, its subcommand and the
-// subcommand's arguments when words invoke git, or "" when they do not.
-// git's global options are skipped; the ones that take a separate argument
-// consume it, and each -C DIR moves the directory like git does.
-func gitInvocation(words []string, dir string) (string, string, []string) {
+// gitInvocation returns, when words invoke git, the index of its subcommand
+// and the index of the directory each -C DIR before it names, in order; each
+// moves the directory git runs in like a cd. The subcommand's index is 0
+// when words do not invoke git with one. git's global options are skipped;
+// the ones that take a separate argument consume it.
+func gitInvocation(words []string) (int, []int) {
 	if len(words) == 0 || filepath.Base(words[0]) != "git" {
-		return "", "", nil
+		return 0, nil
 	}
+	var chdirs []int
 	for i := 1; i < len(words); i++ {
 		word := words[i]
 		if !strings.HasPrefix(word, "-") {
-			return dir, word, words[i+1:]
+			return i, chdirs
 		}
 		switch word {
 		case "-C":
 			if i+1 < len(words) {
-				dir = resolveDir(dir, words[i+1])
+				chdirs = append(chdirs, i+1)
 			}
 			i++
 		case "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env":
 			i++
 		}
 	}
-	return "", "", nil
+	return 0, nil
 }
 
 // resolveDir follows a cd-like path change from dir. A relative path from
-// an unknown directory ("") stays unknown. Paths the hook cannot resolve
-// lexically, such as $VAR after git -C, are left to git, which then fails
-// and lets the command through.
+// an unknown directory ("") stays unknown. In the flat split, paths the hook
+// cannot resolve lexically, such as $VAR after git -C, are left to git,
+// which then fails and lets the command through.
 func resolveDir(dir, path string) string {
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path)

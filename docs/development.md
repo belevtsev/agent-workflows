@@ -29,7 +29,12 @@ the Graphify cache use it; take a new lock with it rather than another
 `internal/proc` runs an external program: `proc.Run` starts it without a shell
 in a process group of its own, with an explicit environment, keeps the head of
 its output and the tail of its error output, and when the run ends, normally
-or at its deadline, kills the group until no member is alive. Run a new
+or at its deadline, kills the group until no member is alive. `Spec.Grace`
+sends SIGTERM first and kills only after the grace, so `cw publish` gives git
+time to remove its lock files; `KeepGroupOnExit` spares background work a
+program started on purpose, such as a Git hook's; `Session` starts a session
+rather than only a group, as Graphify needs. `cw doctor --live`, `cw publish`,
+`cw graphify` and the Go facts of `cw task verify` run on it. Run a new
 subprocess with it rather than another `exec.Cmd` and group kill.
 `cw task run` runs a check on it through `taskflow.RunCheck`, and only
 `checkSpec` turns a planned check into its `proc.Spec`: change the program,
