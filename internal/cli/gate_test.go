@@ -25,6 +25,9 @@ func gtScript(name string) string {
 		"command -v cw >/dev/null 2>&1 || exit 0; exec cw hook git " + name + " \"$@\"\n"
 }
 
+// gtInstalled is how gtEntry shows a hook cw gate install wrote.
+func gtInstalled(name string) string { return "-rwxr-xr-x -> \n" + gtScript(name) }
+
 // gtLine is the line cw gate install tells a person to add to a foreign hook.
 func gtLine(name string) string {
 	return "if command -v cw >/dev/null 2>&1; then cw hook git " + name + " \"$@\" </dev/null || exit $?; fi"
@@ -62,11 +65,29 @@ func gtEntry(t *testing.T, path string) string {
 	return info.Mode().String() + " -> " + target + "\n" + string(data)
 }
 
+// gtDir is how a directory looks: each entry, hidden ones included, or
+// "missing".
+func gtDir(t *testing.T, dir string) string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return "missing"
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	for _, entry := range entries {
+		b.WriteString(entry.Name() + " " + gtEntry(t, filepath.Join(dir, entry.Name())) + "\n")
+	}
+	return b.String()
+}
+
 func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
-	// Oracle (plan G4b): a hook file cw gate did not write keeps its bytes,
-	// mode and link target through install and uninstall; install exits 4
-	// (refused) and prints the line to add, while the other hook is written
-	// with mode 0755 and the script above, and uninstall removes only it.
+	// Oracle (plan G4b): a hook file whose bytes are not exactly cw's script
+	// keeps its bytes, mode and link target through install and uninstall;
+	// install exits 4 (refused) and prints the line to add, while the other
+	// hook is written with mode 0755 and the script above, and uninstall
+	// removes only it.
 	gtIsolate(t, os.DevNull)
 	for _, row := range []struct {
 		name, foreign, other string
@@ -81,12 +102,18 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 		{"empty file", "pre-push", "pre-commit", func(t *testing.T, path string) {
 			hkWriteFile(t, filepath.Dir(path), filepath.Base(path), "")
 		}},
-		{"symbolic link to a file with the marker", "pre-commit", "pre-push", func(t *testing.T, path string) {
+		{"symbolic link to cw's script", "pre-commit", "pre-push", func(t *testing.T, path string) {
 			target := filepath.Join(hkCanonicalTempDir(t), "shared-hook")
 			hkWriteFile(t, filepath.Dir(target), filepath.Base(target), gtScript("pre-commit"))
 			if err := os.Symlink(target, path); err != nil {
 				t.Fatal(err)
 			}
+		}},
+		{"script of its own that carries cw's marker line", "pre-commit", "pre-push", func(t *testing.T, path string) {
+			hkWriteFile(t, filepath.Dir(path), filepath.Base(path), gtScript("pre-commit")+"npm run lint\n")
+		}},
+		{"cw's script for the other hook", "pre-push", "pre-commit", func(t *testing.T, path string) {
+			hkWriteFile(t, filepath.Dir(path), filepath.Base(path), gtScript("pre-commit"))
 		}},
 	} {
 		t.Run(row.name, func(t *testing.T) {
@@ -109,7 +136,7 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 			if got := gtEntry(t, foreign); got != before {
 				t.Fatalf("install changed the foreign %s:\n%s\nwant\n%s", row.foreign, got, before)
 			}
-			if got, want := gtEntry(t, other), "-rwxr-xr-x -> \n"+gtScript(row.other); got != want {
+			if got, want := gtEntry(t, other), gtInstalled(row.other); got != want {
 				t.Fatalf("install wrote %s as\n%s\nwant\n%s", row.other, got, want)
 			}
 
@@ -129,8 +156,8 @@ func TestGateInstallLeavesAForeignHookUnchanged(t *testing.T) {
 
 func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 	// Oracle: status reports absent, installed and foreign per hook, as text
-	// and with --json; install rewrites a marked hook that differs from its
-	// script, writes nothing when both are current, and writes no other file.
+	// and with --json; install restores the mode of its own script, writes
+	// nothing when both hooks are current, and leaves no other file behind.
 	gtIsolate(t, os.DevNull)
 	repo := hkRepo(t)
 	hooks := filepath.Join(repo, ".git", "hooks")
@@ -139,6 +166,7 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 		code, stdout, stderr := gtRun(t, "status", "--repo", repo, "--json")
 		var report struct {
 			HooksPath string `json:"hooks_path"`
+			Shared    bool   `json:"shared"`
 			Hooks     []struct {
 				Name  string `json:"name"`
 				Path  string `json:"path"`
@@ -155,8 +183,8 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 			}
 			got[hook.Name] = hook.State
 		}
-		if report.HooksPath != hooks || !reflect.DeepEqual(got, want) {
-			t.Fatalf("status --json = %s %v, want %s %v", report.HooksPath, got, hooks, want)
+		if report.HooksPath != hooks || report.Shared || !reflect.DeepEqual(got, want) {
+			t.Fatalf("status --json = %s shared %v %v, want %s unshared %v", report.HooksPath, report.Shared, got, hooks, want)
 		}
 		code, stdout, _ = gtRun(t, "status", "--repo", repo)
 		text := "git hooks directory: " + hooks + "\npre-commit: " + want["pre-commit"] + "\npre-push: " + want["pre-push"]
@@ -164,30 +192,32 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 			t.Fatalf("status exit %d:\n%s\nwant it to start with\n%s", code, stdout, text)
 		}
 	}
-	entries := func(t *testing.T) []string {
+	status(t, map[string]string{"pre-commit": "absent", "pre-push": "absent"})
+
+	hkWriteFile(t, hooks, "pre-commit", gtScript("pre-commit"))
+	if err := os.Chmod(filepath.Join(hooks, "pre-commit"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries := func(t *testing.T) int {
 		t.Helper()
-		names, err := filepath.Glob(filepath.Join(hooks, "*"))
+		found, err := os.ReadDir(hooks)
 		if err != nil {
 			t.Fatal(err)
 		}
-		dot, _ := filepath.Glob(filepath.Join(hooks, ".*"))
-		return append(names, dot...)
+		return len(found)
 	}
 	before := entries(t)
-	status(t, map[string]string{"pre-commit": "absent", "pre-push": "absent"})
-
-	hkWriteFile(t, hooks, "pre-commit", "#!/bin/sh\n# agent-workflows: written by cw gate install; cw gate uninstall deletes this file\nexit 1\n")
 	code, stdout, _ := gtRun(t, "install", "--repo", repo)
 	if code != ExitOK || !strings.Contains(stdout, "pre-commit: updated\npre-push: installed\n") {
-		t.Fatalf("install over an older own hook: exit %d\n%s", code, stdout)
+		t.Fatalf("install over its own script without the executable bit: exit %d\n%s", code, stdout)
 	}
 	for _, name := range []string{"pre-commit", "pre-push"} {
-		if got, want := gtEntry(t, filepath.Join(hooks, name)), "-rwxr-xr-x -> \n"+gtScript(name); got != want {
+		if got, want := gtEntry(t, filepath.Join(hooks, name)), gtInstalled(name); got != want {
 			t.Fatalf("%s is\n%s\nwant\n%s", name, got, want)
 		}
 	}
-	if got, want := len(entries(t)), len(before)+2; got != want {
-		t.Fatalf("hooks directory holds %d entries after install, want %d: %v", got, want, entries(t))
+	if got, want := entries(t), before+1; got != want {
+		t.Fatalf("hooks directory holds %d entries after install, want %d:\n%s", got, want, gtDir(t, hooks))
 	}
 	status(t, map[string]string{"pre-commit": "installed", "pre-push": "installed"})
 	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK || !strings.Contains(stdout, "pre-commit: unchanged\npre-push: unchanged\n") {
@@ -199,52 +229,170 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 }
 
 func TestGateUsesTheHooksDirectoryGitRuns(t *testing.T) {
-	// Oracle: `git rev-parse --git-path hooks`. A relative core.hooksPath
-	// is resolved from the worktree root, also when --repo names a
-	// subdirectory; a linked worktree shares the main repository's hooks;
-	// core.hooksPath from the global configuration is written to, with a
-	// note that other repositories use those hooks too.
-	gtIsolate(t, os.DevNull)
-	installed := func(t *testing.T, repo, hooks string, note bool) {
+	// Oracle: the directory git runs the repository's hooks from. A relative
+	// core.hooksPath resolves from the worktree root, also when --repo names
+	// a subdirectory; a linked worktree shares the main repository's hooks;
+	// --repo reached through a symbolic link means the directory it points
+	// to; GIT_DIR and GIT_WORK_TREE in cw's environment do not choose another
+	// repository. No hook appears anywhere else.
+	installed := func(t *testing.T, repo, hooks string) {
 		t.Helper()
 		code, stdout, stderr := gtRun(t, "install", "--repo", repo)
-		if code != ExitOK || !strings.HasPrefix(stdout, "git hooks directory: "+hooks+"\n") {
-			t.Fatalf("install --repo %s: exit %d\n%s%s\nwant hooks directory %s", repo, code, stdout, stderr, hooks)
-		}
-		if got := strings.Contains(stdout, "\nnote: core.hooksPath is set in the global git configuration"); got != note {
-			t.Fatalf("install note present = %v, want %v:\n%s", got, note, stdout)
+		if code != ExitOK || !strings.HasPrefix(stdout, "git hooks directory: "+hooks+"\npre-commit: installed\npre-push: installed\n") {
+			t.Fatalf("install --repo %s: exit %d\n%s%s\nwant both installed in %s", repo, code, stdout, stderr, hooks)
 		}
 		for _, name := range []string{"pre-commit", "pre-push"} {
-			if got := gtEntry(t, filepath.Join(hooks, name)); got != "-rwxr-xr-x -> \n"+gtScript(name) {
+			if got := gtEntry(t, filepath.Join(hooks, name)); got != gtInstalled(name) {
 				t.Fatalf("%s/%s is\n%s", hooks, name, got)
 			}
 		}
 	}
-
 	t.Run("relative core.hooksPath", func(t *testing.T) {
+		gtIsolate(t, os.DevNull)
 		repo := hkRepo(t)
 		hkGit(t, repo, "config", "core.hooksPath", "tracked-hooks")
+		hkWriteFile(t, repo, "tracked-hooks/post-merge", "#!/bin/sh\n")
 		hkWriteFile(t, repo, "sub/file", "x")
-		installed(t, filepath.Join(repo, "sub"), filepath.Join(repo, "tracked-hooks"), false)
-		if got := gtEntry(t, filepath.Join(repo, ".git", "hooks", "pre-commit")); got != "absent" {
-			t.Fatalf(".git/hooks/pre-commit is %s, want absent", got)
+		installed(t, filepath.Join(repo, "sub"), filepath.Join(repo, "tracked-hooks"))
+		if got := gtDir(t, filepath.Join(repo, ".git", "hooks")); strings.Contains(got, "pre-commit ") {
+			t.Fatalf(".git/hooks holds a pre-commit:\n%s", got)
 		}
 	})
 	t.Run("linked worktree", func(t *testing.T) {
+		gtIsolate(t, os.DevNull)
 		repo := hkRepo(t)
 		hkGit(t, repo, "commit", "-q", "--allow-empty", "-m", "initial")
 		linked := filepath.Join(hkCanonicalTempDir(t), "linked")
 		hkGit(t, repo, "worktree", "add", "-q", linked)
-		installed(t, linked, filepath.Join(repo, ".git", "hooks"), false)
+		installed(t, linked, filepath.Join(repo, ".git", "hooks"))
 	})
-	t.Run("global core.hooksPath", func(t *testing.T) {
-		shared := filepath.Join(hkCanonicalTempDir(t), "shared-hooks")
-		global := filepath.Join(hkCanonicalTempDir(t), "gitconfig")
-		hkWriteFile(t, filepath.Dir(global), filepath.Base(global), "[core]\n\thooksPath = "+shared+"\n")
+	t.Run("symbolic link to a subdirectory", func(t *testing.T) {
+		gtIsolate(t, os.DevNull)
 		repo := hkRepo(t)
-		gtIsolate(t, global)
-		installed(t, repo, shared, true)
+		hkWriteFile(t, repo, "lib/pkg/file", "x")
+		// Joined to the link rather than to lib/pkg, git's ../../.git/hooks
+		// would name outside/.git/hooks.
+		outside := hkCanonicalTempDir(t)
+		link := filepath.Join(outside, "a", "vendor-lib")
+		if err := os.Mkdir(filepath.Dir(link), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(repo, "lib", "pkg"), link); err != nil {
+			t.Fatal(err)
+		}
+		installed(t, link, filepath.Join(repo, ".git", "hooks"))
+		if entries, err := os.ReadDir(outside); err != nil || len(entries) != 1 {
+			t.Fatalf("%s holds %v (%v), want only a/", outside, entries, err)
+		}
 	})
+	t.Run("GIT_DIR and GIT_WORK_TREE of another repository", func(t *testing.T) {
+		gtIsolate(t, os.DevNull)
+		repo, other := hkRepo(t), hkRepo(t)
+		before := gtDir(t, filepath.Join(other, ".git", "hooks"))
+		t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+		t.Setenv("GIT_WORK_TREE", other)
+		installed(t, repo, filepath.Join(repo, ".git", "hooks"))
+		if got := gtDir(t, filepath.Join(other, ".git", "hooks")); got != before {
+			t.Fatalf("install changed the hooks of the repository GIT_DIR names:\n%s", got)
+		}
+	})
+}
+
+func TestGateRefusesASharedHooksDirectoryWithoutTheFlag(t *testing.T) {
+	// Oracle (review decision): a hooks directory that other repositories use
+	// too, through core.hooksPath in the global configuration or a directory
+	// outside the repository's git directory and work tree, makes install
+	// and uninstall exit 4 (refused) before they change anything, unless
+	// --shared is given; status reports it as shared.
+	type setup func(t *testing.T, repo string) (hooks string)
+	outsideDir := func(t *testing.T) string {
+		shared := filepath.Join(hkCanonicalTempDir(t), "shared-hooks")
+		hkWriteFile(t, shared, "pre-commit", "#!/bin/sh\necho team hook\n")
+		return shared
+	}
+	for _, row := range []struct {
+		name, reason string
+		setup        setup
+	}{
+		{"global core.hooksPath", "shared: core.hooksPath is set in the global git configuration", func(t *testing.T, repo string) string {
+			shared := outsideDir(t)
+			global := filepath.Join(hkCanonicalTempDir(t), "gitconfig")
+			hkWriteFile(t, filepath.Dir(global), filepath.Base(global), "[core]\n\thooksPath = "+shared+"\n")
+			gtIsolate(t, global)
+			return shared
+		}},
+		{"local core.hooksPath outside the repository", "shared: it is outside this repository's git directory and work tree", func(t *testing.T, repo string) string {
+			shared := outsideDir(t)
+			hkGit(t, repo, "config", "core.hooksPath", shared)
+			return shared
+		}},
+		{"hooks directory linked outside the repository", "shared: it is outside this repository's git directory and work tree", func(t *testing.T, repo string) string {
+			shared := outsideDir(t)
+			hooks := filepath.Join(repo, ".git", "hooks")
+			if err := os.Rename(hooks, hooks+".old"); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(shared, hooks); err != nil {
+				t.Fatal(err)
+			}
+			return shared
+		}},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			gtIsolate(t, os.DevNull)
+			repo := hkRepo(t)
+			hooks := row.setup(t, repo)
+			before := gtDir(t, hooks)
+			for _, command := range []string{"install", "uninstall"} {
+				code, stdout, stderr := gtRun(t, command, "--repo", repo)
+				if code != ExitRefused || !strings.Contains(stdout, row.reason) || !strings.Contains(stderr, "run cw gate "+command+" again with --shared") {
+					t.Fatalf("%s without --shared: exit %d\n%s%s", command, code, stdout, stderr)
+				}
+				if got := gtDir(t, hooks); got != before {
+					t.Fatalf("%s without --shared changed %s:\n%s", command, hooks, got)
+				}
+			}
+			if code, stdout, _ := gtRun(t, "status", "--repo", repo, "--json"); code != ExitOK || !strings.Contains(stdout, `"shared":true`) {
+				t.Fatalf("status --json: exit %d %s", code, stdout)
+			}
+			code, stdout, stderr := gtRun(t, "install", "--repo", repo, "--shared")
+			if code != ExitRefused || !strings.Contains(stdout, "pre-commit: refused\npre-push: installed\n") || gtEntry(t, filepath.Join(hooks, "pre-push")) != gtInstalled("pre-push") {
+				t.Fatalf("install --shared: exit %d\n%s%s", code, stdout, stderr)
+			}
+			if code, stdout, _ := gtRun(t, "uninstall", "--repo", repo, "--shared"); code != ExitOK || gtDir(t, hooks) != before {
+				t.Fatalf("uninstall --shared: exit %d\n%s\nleft\n%s", code, stdout, gtDir(t, hooks))
+			}
+		})
+	}
+}
+
+func TestGateCreatesAHooksDirectoryOnlyInTheGitDirectory(t *testing.T) {
+	// Oracle (review decision): install creates a missing hooks directory
+	// inside the git directory, and uninstall removes it once it is empty, so
+	// the round trip leaves the repository as it was; a missing hooks
+	// directory anywhere else is refused (exit 4) and not created.
+	gtIsolate(t, os.DevNull)
+	repo := hkCanonicalTempDir(t)
+	hkGit(t, repo, "init", "-q", "--template=")
+	hooks := filepath.Join(repo, ".git", "hooks")
+	if got := gtDir(t, hooks); got != "missing" {
+		t.Fatalf("git init --template= made %s:\n%s", hooks, got)
+	}
+	if code, stdout, stderr := gtRun(t, "install", "--repo", repo); code != ExitOK || gtEntry(t, filepath.Join(hooks, "pre-push")) != gtInstalled("pre-push") {
+		t.Fatalf("install: exit %d\n%s%s", code, stdout, stderr)
+	}
+	if code, stdout, stderr := gtRun(t, "uninstall", "--repo", repo); code != ExitOK || gtDir(t, hooks) != "missing" {
+		t.Fatalf("uninstall: exit %d\n%s%s\nleft %s:\n%s", code, stdout, stderr, hooks, gtDir(t, hooks))
+	}
+
+	hkGit(t, repo, "config", "core.hooksPath", ".githooks")
+	code, _, stderr := gtRun(t, "install", "--repo", repo)
+	if code != ExitRefused || !strings.Contains(stderr, "the hooks directory "+filepath.Join(repo, ".githooks")+" does not exist") {
+		t.Fatalf("install into a missing core.hooksPath: exit %d\n%s", code, stderr)
+	}
+	if got := gtDir(t, filepath.Join(repo, ".githooks")); got != "missing" {
+		t.Fatalf("install created .githooks:\n%s", got)
+	}
 }
 
 func TestGateRefusesDryRunAndADirectoryOutsideGit(t *testing.T) {
@@ -264,7 +412,6 @@ func TestGateRefusesDryRunAndADirectoryOutsideGit(t *testing.T) {
 		t.Fatalf("--dry-run install wrote pre-commit:\n%s", got)
 	}
 	outside := hkCanonicalTempDir(t)
-	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(outside))
 	config, _ := testConfig(t)
 	err := Execute(t.Context(), []string{"gate", "status", "--repo", outside}, config)
 	if ExitCode(err) != ExitFailure || !strings.HasPrefix(err.Error(), "cannot locate the git hooks directory of "+outside+": fatal: not a git repository") {

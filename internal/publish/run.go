@@ -133,7 +133,7 @@ func (r *run) execute(ctx context.Context) *failure {
 	if source.Digest != r.record.Verification.SourceSHA256 {
 		return failf("source-changed", "the source changed after the last passing cw task verify")
 	}
-	r.git = git{tool{path: gitPath, dir: r.worktree, env: toolEnvironment(r.deps.Environ, "GIT_TERMINAL_PROMPT=0"), timeout: r.req.timeout}}
+	r.git = git{tool{path: gitPath, dir: r.worktree, env: ToolEnvironment(r.deps.Environ, "GIT_TERMINAL_PROMPT=0"), timeout: r.req.timeout}}
 	if f := r.repository(ctx); f != nil {
 		return f
 	}
@@ -403,7 +403,7 @@ func (r *run) preconditions(ctx context.Context) *failure {
 	if err != nil {
 		return failf("gh-missing", "gh is not on PATH")
 	}
-	r.gh = gh{tool{path: ghPath, dir: r.worktree, env: toolEnvironment(r.deps.Environ, "GH_PROMPT_DISABLED=1"), timeout: r.req.timeout}}
+	r.gh = gh{tool{path: ghPath, dir: r.worktree, env: ToolEnvironment(r.deps.Environ, "GH_PROMPT_DISABLED=1"), timeout: r.req.timeout}}
 	urls, f := r.gh.repoURLs(ctx, r.req.repo)
 	if f != nil {
 		return f

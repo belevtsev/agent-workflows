@@ -229,7 +229,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -244,7 +244,9 @@ example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
 (`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
 ([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit or
 push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
-when a hook it did not write is in the way, and still writes the other hook
+when a hook it did not write is in the way, and still writes the other hook;
+`cw gate install` and `uninstall` exit 4 without changing anything when the
+hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
 
 ## Model policy

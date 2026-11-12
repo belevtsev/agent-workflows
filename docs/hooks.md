@@ -351,26 +351,31 @@ environment of its own.
 ### Installing the git hooks
 
 Nothing is installed unless you ask, one repository at a time (`--repo`
-defaults to the working directory):
+defaults to the working directory; a symbolic link is followed first):
 
 ```sh
 cw gate install --repo /path/to/repo
-cw gate status --repo /path/to/repo      # --json: {hooks_path, hooks: [{name, path, state}]}
+cw gate status --repo /path/to/repo      # --json: {hooks_path, shared, hooks: [{name, path, state}]}
 cw gate uninstall --repo /path/to/repo
 ```
 
 - **Where.** The hooks go in the directory git runs them from,
   `git rev-parse --git-path hooks`: `.git/hooks`, or `core.hooksPath` when it
-  is set. Linked worktrees share that directory, so one install covers every
-  worktree of the repository; only a relative `core.hooksPath` resolves in
-  each worktree's own root. When `core.hooksPath` comes from your global or
-  system git configuration, every repository that uses it runs the hooks, and
-  `cw gate install` prints a note saying so. When it names a directory inside
-  the worktree, the new hooks are untracked files there, which `git status`
-  lists.
-- **What.** Each hook is a three-line `/bin/sh` script with mode 0755, written
-  to a temporary file and renamed into place, so an interrupted install never
-  leaves part of a hook:
+  is set. `cw` runs that git without `GIT_DIR`, `GIT_WORK_TREE` and the other
+  variables that would select another repository. Linked worktrees share the
+  directory, so one install covers every worktree of the repository; only a
+  relative `core.hooksPath` resolves in each worktree's own root. When
+  `core.hooksPath` names a directory inside the worktree, the new hooks are
+  untracked files there, which `git status` lists.
+- **Shared directories.** A hooks directory can serve other repositories too:
+  `core.hooksPath` set in your global or system git configuration, or a hooks
+  directory outside the repository's git directory and work tree. Install
+  and uninstall then exit 4 ([refused](operations.md#exit-statuses)) and
+  change nothing, unless you pass `--shared`; `cw gate status` reports
+  `shared`. Install creates a missing hooks directory only inside the git
+  directory, and uninstall removes it again once it is empty; it refuses a
+  missing one anywhere else.
+- **What.** Each hook is a three-line `/bin/sh` script with mode 0755:
 
   ```sh
   #!/bin/sh
@@ -378,15 +383,21 @@ cw gate uninstall --repo /path/to/repo
   command -v cw >/dev/null 2>&1 || exit 0; exec cw hook git pre-commit "$@"
   ```
 
-  It runs the first `cw` on git's `PATH`. With none, it exits 0 and git goes
+  Install writes it to a temporary file and links that into place, so an
+  interrupted install never leaves part of a hook, and a file another program
+  puts there in the meantime is never replaced. On a file system without hard
+  links, install fails (exit 1) and changes nothing.
+
+  The hook runs the first `cw` on git's `PATH`. With none, it exits 0 and git goes
   ahead without a check or a message ([Known bypasses](#known-bypasses)). A
   `cw` too old to have `cw hook git` exits with an error, which stops git
   until you upgrade it or run `cw gate uninstall`.
-- **Ownership.** `cw gate status` reports each hook as `installed` (the file
-  carries the marker line above), `absent`, or `foreign` (anything else at
-  that path). Install replaces, and uninstall removes, only a file with the
-  marker line, so a hook you edit keeps your changes only if you delete that
-  line.
+- **Ownership.** `cw gate status` reports each hook as `installed` (its bytes
+  are exactly the script above), `absent`, or `foreign` (anything else at that
+  path, including a copy of the script with lines of your own). Install
+  replaces, and uninstall removes, only an installed hook: before either, `cw`
+  moves the file aside and checks it again, and puts back a file that changed
+  since the first check.
 - **A hook that is already there.** `cw gate install` leaves a foreign hook
   unchanged, writes the other one, exits 4 ([refused](operations.md#exit-statuses))
   and prints the line to add after the foreign hook's first line:

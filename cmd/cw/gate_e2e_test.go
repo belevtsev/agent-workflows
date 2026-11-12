@@ -3,7 +3,6 @@ package main_test
 import (
 	"bytes"
 	"errors"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,20 +105,24 @@ func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
 	}
 
 	cw(t, "gate", "uninstall", "--repo", repo)
-	if after := gateSnapshot(t, hooks); !maps.Equal(after, before) {
-		t.Fatalf("hooks directory after uninstall:\n%v\nwant, as before install:\n%v", after, before)
+	if after := gateSnapshot(t, hooks); after != before {
+		t.Fatalf("hooks directory after uninstall:\n%s\nwant, as before install:\n%s", after, before)
 	}
 }
 
-// gateSnapshot maps each entry of dir to its mode and bytes; a missing dir,
-// as after `git init` with an empty template, has none.
-func gateSnapshot(t *testing.T, dir string) map[string]string {
+// gateSnapshot lists each entry of dir, hidden ones included, with its mode
+// and bytes; a missing dir, as after `git init` with an empty template, is
+// "missing", unlike an empty one.
+func gateSnapshot(t *testing.T, dir string) string {
 	t.Helper()
-	snapshot := map[string]string{}
 	entries, err := os.ReadDir(dir)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) {
+		return "missing"
+	} else if err != nil {
 		t.Fatal(err)
 	}
+	var snapshot strings.Builder
+	snapshot.WriteString("directory\n")
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
@@ -129,7 +132,7 @@ func gateSnapshot(t *testing.T, dir string) map[string]string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		snapshot[entry.Name()] = info.Mode().String() + "\n" + string(data)
+		snapshot.WriteString(entry.Name() + " " + info.Mode().String() + "\n" + string(data) + "\n")
 	}
-	return snapshot
+	return snapshot.String()
 }
