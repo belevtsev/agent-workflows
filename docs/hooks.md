@@ -143,9 +143,10 @@ verification does not finish A, so starting a fresh record cannot hide
 unreviewed edits.
 
 A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
-v3.0.0-rc.1, has no `packs` or `test_rules`. `cw` refuses to read it, so
+v3.0.0-rc.1, has no `packs` or `test_rules`, or binds the removed v1 Go rule
+(`go.package-test/v1`). `cw` refuses to read it, so
 neither `cw task verify` nor `cw task abandon` can close it, but it still gates
-by the rules above, judged from its latest revision. The deny reason names its
+by the rules above, judged from its newest decodable revision. The deny reason names its
 directory: move that directory out of the task store, then start a new task
 with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
 verified as complete is finished and does not gate, since those releases
