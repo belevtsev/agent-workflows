@@ -101,12 +101,24 @@ preceding `cd DIR` or `pushd DIR`, quoted paths with spaces included, and with
 each `-C DIR`; a `cd` inside parentheses, a substitution or an `sh -c` string
 ends with them, as in a subshell; redirections on a `cd` are ignored, and
 `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` after `cd` or `-C` stays in
-the same repository. The hook fails open: after a directory change it cannot
-follow (`cd` with options, `cd -`, `~`, `$VAR`, `popd`) later git commands are
-not checked until an absolute `cd` or `-C`, and a `-C DIR` it cannot resolve
-(`git -C "$PWD"`, `git -C ~/proj`, `env -C ~/proj git`) lets that command
-through. A script or program that runs git itself (`./release.sh`,
-`make publish`) is not seen, because the command text does not name git.
+the same repository. `DIR` may start with `~` or `~/`, `$HOME`, `${HOME}`,
+`$PWD` or `${PWD}`, unquoted or in double quotes: `~` and `$HOME` are the
+hook's `HOME`, which the agent's shell shares, and `$PWD` is the directory in
+effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed.
+
+After a `DIR` the hook cannot resolve, such as `cd $OTHER`, `cd '$HOME'`,
+`cd ~user`, a glob, `~` or `$HOME` in a command that also names `HOME` (as
+`HOME=/x` or `export HOME` do), or an unquoted `$HOME` or `$PWD` the shell
+may split (a value with a blank, or a command that names `IFS`), later git
+commands are checked against the session's working directory until an
+absolute `cd` or `-C`. A record that gates them there asks instead of
+denying, naming the directory
+([Asking instead of denying](#asking-instead-of-denying)). The hook fails
+open after a directory change it does not follow at all: after `cd` with
+options, `cd -` or `popd`, later git commands are not checked until an
+absolute `cd` or `-C`. A script or program that runs git itself
+(`./release.sh`, `make publish`) is not seen, because the command text does
+not name git.
 
 ### Which records gate
 
@@ -197,9 +209,9 @@ is version 4, which `cw` v3.0.0-rc.1 cannot read
 
 These cases ask for confirmation (`permissionDecision: "ask"`) instead of
 denying; a deny for any git command in the same Bash input wins, and asks in
-one input are joined. Codex cannot ask, so there the first two are denies and
-the last two let the command run, unless joined with one of the first two
-([Codex](#codex)).
+one input are joined. Codex cannot ask, so there the first three are denies
+and the last two let the command run, unless joined with one of the first
+three ([Codex](#codex)).
 
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
@@ -218,6 +230,11 @@ the last two let the command run, unless joined with one of the first two
   directory, in any letter case. The reason suggests
   `cw task start`. Set the plugin option `small_task_prompt` to `false`
   (`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) to turn this prompt off.
+- A commit or push after a directory the hook cannot resolve, such as
+  `cd $OTHER && git commit`, when a record gates the session's working
+  directory, where the hook checks it instead
+  ([Recognised commands](#recognised-commands)). The reason names the
+  directory as written and each gating record.
 - A commit or push from a repository where no readable record gates, but a
   record that governs it cannot be read
   ([Records that cannot be read](#records-that-cannot-be-read)). The gate
@@ -295,7 +312,8 @@ push through today while the repository has an open substantial task, or lets
 
 | Way around the gate | What happens today |
 | --- | --- |
-| `cd "$PWD" && git commit -am x`, `cd ~/proj && git commit -am x`, `git -C "$PWD" commit -am x`, `git -C ~/proj commit -am x`, `env -C ~/proj git commit -am x`; also `cd -`, `popd` and `cd` with options | Allowed. After a `cd` or `-C` the hook cannot follow, the git command is not checked ([Recognised commands](#recognised-commands)). |
+| `cd - && git commit -am x`, `popd && git commit -am x`, `cd -P DIR && git commit -am x` and other `cd` options | Allowed. After a directory change the hook does not follow, the git command is not checked ([Recognised commands](#recognised-commands)). |
+| `cd ~/proj; git commit -am x` where `~/proj` does not exist, and any other `cd` to a missing directory followed by `;` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. |
 | `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. |
 | `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. |
 | `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. |
@@ -364,9 +382,10 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   `global/AGENTS.md` to the session, so the trusted plugin also loads the
   working conventions.
 
-So under Codex the pre-publish hook turns two asks into denies: an
-unrecorded substantial change and a push with uncommitted changes over a
-verified record ([Asking instead of denying](#asking-instead-of-denying)). The
+So under Codex the pre-publish hook turns three asks into denies: an
+unrecorded substantial change, a push with uncommitted changes over a
+verified record, and a commit or push after a directory the hook cannot
+resolve ([Asking instead of denying](#asking-instead-of-denying)). The
 reason starts `agent-workflows: Codex cannot ask for confirmation`, carries the
 question Claude Code would ask, and says to put it to the user, who goes ahead
 by running the command outside Codex. Every reason under Codex ends by naming
@@ -378,7 +397,7 @@ store that cannot be located or read ([Task store](#task-store)) do not become
 denies: a deny would block the user on a file or setting they may not be able
 to fix from Codex, so under Codex the hook prints nothing and the command goes
 ahead, as Codex runs any ask. A relative `XDG_STATE_HOME` is one of these, so
-it no longer denies there. When one of them is joined with one of the two
+it no longer denies there. When one of them is joined with one of the
 denied asks, the command is denied: a push of uncommitted changes beside a
 record that cannot be read, or a substantial change whose only record cannot
 be read.

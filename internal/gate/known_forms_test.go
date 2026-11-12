@@ -15,6 +15,7 @@ import (
 // changes to command recognition add rows here, so a change in any known
 // form shows up as a failing row. {R} is the gated repository, {S} a gated
 // repository whose path holds a space, and {O} a directory outside both.
+// HOME is {R}'s parent directory, and {N} is {R}'s name in it.
 func TestPrePublishKnownForms(t *testing.T) {
 	repo := canonicalDir(t)
 	spaced := filepath.Join(canonicalDir(t), "my proj")
@@ -22,6 +23,7 @@ func TestPrePublishKnownForms(t *testing.T) {
 		t.Fatal(err)
 	}
 	elsewhere := canonicalDir(t)
+	home := filepath.Dir(repo)
 	open := func(id string) []taskflow.OpenRecord {
 		return []taskflow.OpenRecord{record(id, "Open", "it has no passing cw task verify")}
 	}
@@ -150,15 +152,46 @@ func TestPrePublishKnownForms(t *testing.T) {
 		// Round 2: programs that run another program.
 		{"rg --pre", "{R}", "cat > p <<'EOF'\n#!/bin/sh\ngit push\nEOF\nchmod +x p; rg --pre ./p x a.txt", gate.Deny},
 		{"sort --compress-program", "{R}", "printf '%s\\n' 'true; git push' {1..50000} | sort -S 64K --compress-program=sh -o /dev/null", gate.Deny},
+
+		// Directories named through HOME or PWD: bash, zsh and dash expand a
+		// leading unquoted ~ and a leading $HOME, ${HOME}, $PWD or ${PWD},
+		// unquoted or in double quotes, so the git command runs in {R}.
+		{"cd to $PWD in double quotes", "{R}", `cd "$PWD" && git commit -m x`, gate.Deny},
+		{"cd to a path under ~", "{O}", "cd ~/{N} && git commit -m x", gate.Deny},
+		{"cd to a path under $HOME", "{O}", "cd $HOME/{N} && git push", gate.Deny},
+		{"cd to a path under ${HOME} in double quotes", "{O}", `cd "${HOME}/{N}" && git push`, gate.Deny},
+		{"cd ~, then a relative cd", "{O}", "cd ~ && cd {N} && git commit -m x", gate.Deny},
+		{"pushd to a path under ~", "{O}", "pushd ~/{N} && git push", gate.Deny},
+		{"git -C a path under ~", "{O}", "git -C ~/{N} commit -m x", gate.Deny},
+		{"git -C $PWD after a cd", "{O}", `cd {R} && git -C "$PWD" push`, gate.Deny},
+		{"env -C a path under ~", "{O}", "env -C ~/{N} git commit -m x", gate.Deny},
+		{"cd to a path under ~ inside sh -c", "{O}", "sh -c 'cd ~/{N} && git push'", gate.Deny},
+		{"a push after the cd beside an unresolved commit", "{R}", `(cd $OTHER && git commit -m x); cd "$PWD" && git push`, gate.Deny},
+
+		// Directories the gate cannot resolve: the git command is checked in
+		// the session's directory, {R}, and asks. Where the shell does not
+		// expand the word, or the command may change HOME, PWD or IFS
+		// first, expanding it would deny.
+		{"cd to another variable", "{R}", "cd $OTHER && git commit -m x", gate.Ask},
+		{"a relative cd after another variable", "{R}", "cd $OTHER && cd sub && git push", gate.Ask},
+		{"cd to $HOME in single quotes", "{R}", "cd '$HOME/{N}' && git commit -m x", gate.Ask},
+		{"cd to an escaped ~", "{R}", `cd \~/{N} && git push`, gate.Ask},
+		{"cd to another user's home", "{R}", "cd ~nobody && git push", gate.Ask},
+		{"cd to a glob", "{R}", "cd /tmp/* && git push", gate.Ask},
+		{"cd to a path under ~ after HOME is assigned", "{R}", "HOME=/tmp; cd ~/{N} && git push", gate.Ask},
+		{"cd to an unquoted $HOME after IFS is assigned", "{R}", "IFS=/; cd $HOME/{N} && git push", gate.Ask},
+		{"cd to an unquoted $PWD that holds a space", "{S}", "cd $PWD && git push", gate.Ask},
+		{"git -C another variable", "{R}", "git -C $OTHER push", gate.Ask},
+		{"env -C another variable", "{R}", "env -C $OTHER git commit -m x", gate.Ask},
 	}
-	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere)
+	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere, "{N}", filepath.Base(repo))
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			git := &fakeGit{}
 			git.repository(repo)
 			git.repository(spaced)
 			command := paths.Replace(row.command)
-			got := decide(command, paths.Replace(row.cwd), true, true, git, store)
+			got := decideIn(gate.Input{Command: command, CWD: paths.Replace(row.cwd), Home: home, Enforce: true, Prompt: true}, git, store)
 			if got.Permission != row.want {
 				t.Fatalf("Decide(%q) = %q (reason %d bytes: %q), want %q", command, got.Permission, len(got.Reason), got.Reason, row.want)
 			}

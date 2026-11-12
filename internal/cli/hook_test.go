@@ -748,8 +748,10 @@ func TestHookPrePublishDirectoryChangeScope(t *testing.T) {
 		{"cd -- makes the target unknown", gated, "cd -- " + ungated + " && git commit -m x", false},
 		{"cd - makes the target unknown", gated, "cd - && git commit -m x", false},
 		{"cd without an argument makes the target unknown", gated, "cd && git commit -m x", false},
-		{"cd ~ makes the target unknown", gated, "cd ~ && git commit -m x", false},
-		{"cd $HOME makes the target unknown", gated, "cd $HOME && git commit -m x", false},
+		// From A, `~` and `$HOME` name the harness's home directory, which
+		// is not a repository.
+		{"cd ~ leaves the gated repository for the home directory", gated, "cd ~ && git commit -m x", false},
+		{"cd $HOME leaves the gated repository for the home directory", gated, "cd $HOME && git commit -m x", false},
 		{"quoted cd path with a space makes the target unknown", gated, `cd "` + ungated + `/sp ace" && git commit -m x`, false},
 		{"popd makes the target unknown", gated, "popd && git commit -m x", false},
 		{"pushd -n makes the target unknown", gated, "pushd -n " + ungated + " && git commit -m x", false},
@@ -788,6 +790,34 @@ func TestHookPrePublishDirectoryChangeScope(t *testing.T) {
 				hkExpectAllow(t, got)
 			}
 		})
+	}
+}
+
+func TestHookPrePublishFollowsHomeAndAsksAboutAnUnresolvedDirectory(t *testing.T) {
+	// A gated repository under the harness's home directory, and a session
+	// directory outside it.
+	h := newHKHarness(t)
+	repo := filepath.Join(h.home, "proj")
+	if err := os.Mkdir(repo, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	hkGit(t, repo, "init", "-q")
+	record := h.start(t, repo, hkSubstantialPlan)
+	elsewhere := hkCanonicalTempDir(t)
+
+	// Oracle: the hook gives the gate its home directory (Config.HomeDir,
+	// $HOME in the shell), so `~` and `$HOME` reach the repository.
+	hkExpectDeny(t, h.prePublish(t, elsewhere, "cd ~/proj && git commit -m x"), record)
+	hkExpectDeny(t, h.prePublish(t, elsewhere, `git -C "$HOME/proj" push`), record)
+
+	// Oracle: after a cd the gate cannot resolve, a commit from the gated
+	// session directory asks, naming the argument and the task, and Codex,
+	// which cannot ask, denies it.
+	unresolved := "cd $OTHER && git commit -m x"
+	hkExpectAsk(t, h.prePublish(t, repo, unresolved), "$OTHER", record.ID)
+	codex := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": unresolved}})
+	if decision, reason := hkDecision(t, h.runPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "$OTHER") {
+		t.Fatalf("Codex decision %q with reason %q, want a deny naming $OTHER", decision, reason)
 	}
 }
 

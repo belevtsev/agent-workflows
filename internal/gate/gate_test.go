@@ -90,8 +90,11 @@ func record(id, title, problem string) taskflow.OpenRecord {
 }
 
 func decide(command, cwd string, enforce, prompt bool, git *fakeGit, store *fakeStore) gate.Decision {
-	return gate.Decide(context.Background(), gate.Input{Command: command, CWD: cwd, Enforce: enforce, Prompt: prompt},
-		gate.Deps{Git: git.run, Now: func() time.Time { return fixedNow }, Store: store})
+	return decideIn(gate.Input{Command: command, CWD: cwd, Enforce: enforce, Prompt: prompt}, git, store)
+}
+
+func decideIn(in gate.Input, git *fakeGit, store *fakeStore) gate.Decision {
+	return gate.Decide(context.Background(), in, gate.Deps{Git: git.run, Now: func() time.Time { return fixedNow }, Store: store})
 }
 
 func TestDecideDeniesWhileARecordGates(t *testing.T) {
@@ -311,6 +314,39 @@ func TestDecideAsksAboutAnUncommittedPushBesideAnUnreadableRecord(t *testing.T) 
 		"then start a new task with `cw task start` if the work is still open. Confirm to run this command without the gate."
 	if got != (gate.Decision{Permission: gate.Ask, Reason: want}) {
 		t.Fatalf("Decide = %+v\nwant an ask with reason %q", got, want)
+	}
+}
+
+func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
+	repo, other := canonicalDir(t), canonicalDir(t)
+	git := &fakeGit{}
+	git.repository(repo)
+	git.repository(other)
+	damaged := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-5", Directory: "/store/task-5"}, Unreadable: "invalid task JSON: unexpected EOF"}
+	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {record("task-8", "Open", "it has no passing cw task verify")}, other: {damaged}}}
+	command := `cd "$OTHER" && git commit -m x`
+
+	// Oracle: an ask naming the argument as written and the session's
+	// repository the gate checked instead, with each gating record as the
+	// deny names it. It is not a record the host cannot read, so a host that
+	// cannot ask must not run it: it is not ProceedWithoutAsk.
+	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot resolve the directory \"$OTHER\" that this command moves to, " +
+		"so it checked the session's repository " + repo + " instead, where a task is open: " +
+		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`, " +
+		"or close it with `cw task abandon --task /store/task-8 --reason TEXT` if it is finished or was given up. " +
+		"Confirm only if the git commit or push does not run in " + repo + "."}
+	if got := decide(command, repo, true, true, git, store); got != want {
+		t.Fatalf("Decide = %+v\nwant %+v", got, want)
+	}
+	// Oracle: enforce_verify=false turns this ask off, as it does the deny.
+	if got := decide(command, repo, false, true, git, store); got != (gate.Decision{}) {
+		t.Fatalf("Decide with enforce off = %+v, want allow", got)
+	}
+	// Oracle: joined with the ask for a record that cannot be read, which a
+	// host that cannot ask lets run, the joined ask is not ProceedWithoutAsk.
+	got := decide(command+"; git -C "+other+" push", repo, true, true, git, store)
+	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, `"$OTHER"`) || !strings.Contains(got.Reason, "/store/task-5") {
+		t.Fatalf("Decide = %+v, want an ask about both that is not ProceedWithoutAsk", got)
 	}
 }
 
