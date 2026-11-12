@@ -32,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   some: reword the reason or keep the checkpoints required ([checkpoints][checkpoints]).
 - `cw task assign` needs `requirements` on a brief with a `contract` exactly when the plan has a
   per-test-credited `go test -json` check: declare them then, and only then ([briefs][assign]).
+- A key variable such as `OPENAI_API_KEY` alone no longer binds an adviser: opt in with `advisers.enabled`,
+  `cw keys set` or `--policy`; `cw doctor` names a key without one ([configure advisers](docs/advisers.md#configure-advisers)).
 
 ### Added
 

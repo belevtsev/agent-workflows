@@ -3,8 +3,8 @@ version: 1
 # Claude Code roles for the coordinator and its workers. Activation, consultation
 # and publication rules stay in model-policy.yaml, which applies on every host.
 # This file has no consultation section: an adviser takes part when the shared
-# policy enables it, its credential is present, and it is not disabled in the
-# user's preferences. Agent tool
+# policy enables it, its credential is present, the user opted in to it, and it
+# is not disabled in the user's preferences. Agent tool
 # dispatch accepts aliases only, so references/hosts.md maps these profiles to
 # `model: opus` or `model: sonnet` with explicit effort. Most substantive work
 # runs at `high`; the `decision` profile keeps `xhigh` for planning, architecture

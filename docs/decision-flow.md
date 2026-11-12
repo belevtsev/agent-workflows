@@ -2,7 +2,9 @@
 
 Advisers are optional. An adviser participates only when it is configured: enabled
 in the policy's `consultation.providers` with its pinned model, with its key
-present, and not disabled in your preferences (`advisers.disabled` in
+present, opted in to (`advisers.enabled`, a key saved with `cw keys set`, or
+`--policy`; a key in the environment alone is not enough), and not disabled in
+your preferences (`advisers.disabled` in
 `preferences.json` in the configuration directory, edited by hand; this applies to
 tasks started afterwards). The shipped policy enables SubQ Snap `subq-snap-preview` and OpenAI
 Decisions `gpt-6-luna`; TypeSafe Jev is opt-in with an exact version such as

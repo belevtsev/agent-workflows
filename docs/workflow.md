@@ -193,8 +193,11 @@ Advisers are optional hosted models that return typed Choice judgments at the tw
 decision checkpoints of a substantial task. They need no separate executable or
 SDK: `cw consult` makes plain HTTPS calls. An adviser participates only when it is
 configured: enabled in the policy's `consultation.providers` with its pinned model,
-with its key present in the process environment or the saved credentials, and not
-disabled in your preferences. To disable one and keep its key, list its provider
+with its key present in the process environment or the saved credentials, opted
+in to, and not disabled in your preferences. You opt in by saving the key with
+`cw keys set`, by listing the provider ID under `advisers.enabled` in
+`preferences.json`, or by passing `--policy`; a key in the environment alone binds
+no adviser. To disable one and keep its key, list its provider
 ID under `advisers.disabled` in `preferences.json` in the configuration directory,
 edited by hand; tasks started afterwards do not bind it.
 

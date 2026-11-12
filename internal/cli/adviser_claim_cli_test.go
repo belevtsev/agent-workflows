@@ -50,11 +50,16 @@ type acCLICase struct {
 }
 
 // acCLIStart runs `cw task start --plan - --store S --config-dir D [--policy P]`.
+// The credentials are also saved in D, which opts in to their advisers.
 func acCLIStart(t *testing.T, c acCLICase) (*bindingFixture, string, error) {
 	t.Helper()
 	fixture := newBindingFixture(t, adviserBindingVersion, nil, fixtureCredentials(c.credentials...))
 	store := adviserBindingPrivateDir(t)
-	args := []string{"task", "start", "--plan", "-", "--store", store, "--config-dir", adviserBindingConfigDir(t, c.preferences)}
+	dir := adviserBindingConfigDir(t, c.preferences)
+	if len(c.credentials) > 0 {
+		wtStoreKeys(t, dir, fixtureCredentials(c.credentials...))
+	}
+	args := []string{"task", "start", "--plan", "-", "--store", store, "--config-dir", dir}
 	if c.policy != nil {
 		args = append(args, "--policy", writePolicyFixture(t, t.TempDir(), adviserBindingVersion, c.policy))
 	}
@@ -148,7 +153,7 @@ func TestTaskStartRefusesNoAdvisersClaimWithBoundAdvisers(t *testing.T) {
 func TestTaskStartAcceptsCorrectedPlanAfterRefusal(t *testing.T) {
 	fixture := newBindingFixture(t, adviserBindingVersion, nil, fixtureCredentials("subq_snap", "openai_decisions"))
 	store := adviserBindingPrivateDir(t)
-	dir := adviserBindingConfigDir(t, "")
+	dir := adviserBindingConfigDir(t, optInEveryAdviser)
 	args := []string{"task", "start", "--plan", "-", "--store", store, "--config-dir", dir}
 	if err := fixture.run(t, acCLIPlan(t, acCLIReason), args...); err == nil {
 		t.Errorf("R3: start accepted a contradiction: %s", fixture.out)

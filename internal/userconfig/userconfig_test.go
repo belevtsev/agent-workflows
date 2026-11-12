@@ -182,11 +182,55 @@ func privateDirWith(t *testing.T, content string) string {
 
 const validPreferences = `{"version":1,"advisers":{"disabled":["jev"]}}`
 
+// disabledAdvisers is the advisers.disabled list that AdviserPreferences reads.
+func disabledAdvisers(dir string) ([]string, error) {
+	advisers, err := userconfig.AdviserPreferences(dir)
+	return advisers.Disabled, err
+}
+
+// advisers.enabled is read beside advisers.disabled, in provider order, and
+// refused when it names an unknown adviser, repeats one, or names one that
+// advisers.disabled also lists.
+func TestEnabledAdvisers(t *testing.T) {
+	// oracle: the Enabled and Disabled lists, or the exact error text.
+	for _, tc := range []struct {
+		name, document string
+		enabled        []string
+		disabled       []string
+		err            string
+	}{
+		{name: "none", document: `{"version":1,"advisers":{"enabled":[]}}`},
+		{name: "two in provider order", document: `{"version":1,"advisers":{"enabled":["openai_decisions","jev"]}}`,
+			enabled: []string{"jev", "openai_decisions"}},
+		{name: "beside disabled", document: `{"version":1,"advisers":{"enabled":["subq_snap"],"disabled":["openai_decisions"]}}`,
+			enabled: []string{"subq_snap"}, disabled: []string{"openai_decisions"}},
+		{name: "unknown adviser", document: `{"version":1,"advisers":{"enabled":["gemini_review"]}}`,
+			err: `unknown adviser "gemini_review" in advisers.enabled`},
+		{name: "duplicate", document: `{"version":1,"advisers":{"enabled":["jev","jev"]}}`,
+			err: `adviser "jev" is listed twice in advisers.enabled`},
+		{name: "enabled and disabled", document: `{"version":1,"advisers":{"enabled":["subq_snap"],"disabled":["subq_snap"]}}`,
+			err: `adviser "subq_snap" is listed in both advisers.enabled and advisers.disabled`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := userconfig.AdviserPreferences(privateDirWith(t, tc.document))
+			if tc.err != "" {
+				if err == nil || err.Error() != tc.err {
+					t.Fatalf("AdviserPreferences = (%+v, %v); want error %q", got, err, tc.err)
+				}
+				return
+			}
+			if err != nil || !slices.Equal(got.Enabled, tc.enabled) || !slices.Equal(got.Disabled, tc.disabled) {
+				t.Fatalf("AdviserPreferences = (%+v, %v); want enabled %q, disabled %q", got, err, tc.enabled, tc.disabled)
+			}
+		})
+	}
+}
+
 // UC-4: no preferences file.
 func TestDisabledAdvisersNoFile(t *testing.T) {
 	requireNone := func(t *testing.T, dir string) {
 		t.Helper()
-		got, err := userconfig.DisabledAdvisers(dir)
+		got, err := disabledAdvisers(dir)
 		if err != nil || got != nil {
 			t.Fatalf("DisabledAdvisers(%q) = (%q, %v); want (nil, nil)", dir, got, err)
 		}
@@ -214,7 +258,7 @@ func TestDisabledAdvisersNoFile(t *testing.T) {
 	})
 	for _, dir := range []string{"relative/dir", "/a/../b"} {
 		t.Run("invalid path "+dir, func(t *testing.T) {
-			_, err := userconfig.DisabledAdvisers(dir)
+			_, err := disabledAdvisers(dir)
 			requireErrorContains(t, err, "private configuration requires an absolute clean path")
 		})
 	}
@@ -239,7 +283,7 @@ func TestDisabledAdvisersValid(t *testing.T) {
 			[]string{"jev"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := userconfig.DisabledAdvisers(privateDirWith(t, tc.document))
+			got, err := disabledAdvisers(privateDirWith(t, tc.document))
 			if err != nil {
 				t.Fatalf("DisabledAdvisers error = %v", err)
 			}
@@ -266,7 +310,7 @@ func TestDisabledAdvisersInvalid(t *testing.T) {
 		{"duplicate", `{"version":1,"advisers":{"disabled":["subq_snap","jev","subq_snap"]}}`, `adviser "subq_snap" is listed twice in advisers.disabled`, false},
 		{"wrong case", `{"version":1,"advisers":{"disabled":["JEV"]}}`, "unknown adviser", false},
 		{"empty name", `{"version":1,"advisers":{"disabled":[""]}}`, "unknown adviser", false},
-		{"unknown advisers member", `{"version":1,"advisers":{"enabled":["jev"]}}`, "invalid preferences", true},
+		{"unknown advisers member", `{"version":1,"advisers":{"enable":["jev"]}}`, "invalid preferences", true},
 		{"disabled not a list", `{"version":1,"advisers":{"disabled":"jev"}}`, "invalid preferences", true},
 		{"truncated", `{"version":1,"advisers":`, "invalid preferences", true},
 		{"misspelled top-level member", `{"version":1,"adviser":{"disabled":["subq_snap"]}}`, "invalid preferences", true},
@@ -274,7 +318,7 @@ func TestDisabledAdvisersInvalid(t *testing.T) {
 		{"no version", `{}`, "preferences require version 1", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := userconfig.DisabledAdvisers(privateDirWith(t, tc.document))
+			got, err := disabledAdvisers(privateDirWith(t, tc.document))
 			if err == nil {
 				t.Fatalf("DisabledAdvisers = %q, nil; want an error", got)
 			}
@@ -298,7 +342,7 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 		dir := filepath.Join(resolvedTemp(t), "open")
 		mkdirMode(t, dir, 0o755)
 		writeMode(t, filepath.Join(dir, "preferences.json"), validPreferences, 0o600)
-		_, err := userconfig.DisabledAdvisers(dir)
+		_, err := disabledAdvisers(dir)
 		requireErrorContains(t, err, dirErr)
 	})
 	t.Run("directory through symlink", func(t *testing.T) {
@@ -310,7 +354,7 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 		if err := os.Symlink(real, link); err != nil {
 			t.Fatal(err)
 		}
-		_, err := userconfig.DisabledAdvisers(link)
+		_, err := disabledAdvisers(link)
 		if err == nil || !strings.HasPrefix(err.Error(), "unsafe directory: ") {
 			t.Fatalf("error = %v; want text starting with %q", err, "unsafe directory: ")
 		}
@@ -326,7 +370,7 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 		if err := os.Symlink(real, link); err != nil {
 			t.Fatal(err)
 		}
-		_, err := userconfig.DisabledAdvisers(filepath.Join(link, "config"))
+		_, err := disabledAdvisers(filepath.Join(link, "config"))
 		if err == nil || !strings.HasPrefix(err.Error(), "unsafe directory: ") {
 			t.Fatalf("error = %v; want text starting with %q", err, "unsafe directory: ")
 		}
@@ -334,13 +378,13 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 	t.Run("file mode 0644", func(t *testing.T) {
 		dir := privateDir(t)
 		writeMode(t, filepath.Join(dir, "preferences.json"), validPreferences, 0o644)
-		_, err := userconfig.DisabledAdvisers(dir)
+		_, err := disabledAdvisers(dir)
 		requireErrorContains(t, err, fileErr)
 	})
 	t.Run("file is a directory", func(t *testing.T) {
 		dir := privateDir(t)
 		mkdirMode(t, filepath.Join(dir, "preferences.json"), 0o700)
-		_, err := userconfig.DisabledAdvisers(dir)
+		_, err := disabledAdvisers(dir)
 		requireErrorContains(t, err, fileErr)
 	})
 	t.Run("file is a symlink", func(t *testing.T) {
@@ -351,7 +395,7 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 		if err := os.Symlink(target, filepath.Join(dir, "preferences.json")); err != nil {
 			t.Fatal(err)
 		}
-		_, err := userconfig.DisabledAdvisers(dir)
+		_, err := disabledAdvisers(dir)
 		requireErrorContains(t, err, fileErr)
 	})
 	t.Run("file larger than 1 MiB", func(t *testing.T) {
@@ -360,7 +404,7 @@ func TestDisabledAdvisersFileRules(t *testing.T) {
 			t.Fatalf("fixture length = %d", len(content))
 		}
 		dir := privateDirWith(t, content)
-		_, err := userconfig.DisabledAdvisers(dir)
+		_, err := disabledAdvisers(dir)
 		requireErrorContains(t, err, fileErr)
 	})
 }

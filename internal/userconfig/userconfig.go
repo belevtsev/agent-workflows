@@ -80,40 +80,50 @@ type preferences struct {
 }
 
 type adviserPreferences struct {
+	Enabled  []string `json:"enabled"`
 	Disabled []string `json:"disabled"`
 }
 
-// DisabledAdvisers returns the provider IDs that <dir>/preferences.json lists
-// under advisers.disabled, in provider order; nil when none. A missing file
-// disables none and leaves the directory unchecked. An existing file is read
-// only when dir is reached without symlinks and is a current-user directory
-// with mode 0700, and the file is a current-user regular file with mode 0600
-// of at most 1 MiB holding a version-1 preferences document whose disabled
-// IDs are known and listed once; a top-level member other than version,
-// hosts, shared and advisers is refused.
-func DisabledAdvisers(dir string) ([]string, error) {
+// Advisers is the adviser portion of the saved preferences. Each list holds
+// known provider IDs in provider order and is nil when empty.
+type Advisers struct {
+	// Enabled lists the advisers the user opted in to (advisers.enabled).
+	Enabled []string
+	// Disabled lists the advisers the user turned off (advisers.disabled).
+	Disabled []string
+}
+
+// AdviserPreferences returns the provider IDs that <dir>/preferences.json
+// lists under advisers.enabled and advisers.disabled. A missing file enables
+// and disables none and leaves the directory unchecked. An existing file is
+// read only when dir is reached without symlinks and is a current-user
+// directory with mode 0700, and the file is a current-user regular file with
+// mode 0600 of at most 1 MiB holding a version-1 preferences document whose
+// IDs are known, listed once in each list and never in both; a top-level
+// member other than version, hosts, shared and advisers is refused.
+func AdviserPreferences(dir string) (Advisers, error) {
 	if !safeAbsolute(dir) {
-		return nil, errors.New("private configuration requires an absolute clean path")
+		return Advisers{}, errors.New("private configuration requires an absolute clean path")
 	}
 	path := filepath.Join(dir, preferencesName)
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
+		return Advisers{}, nil
 	}
 	if err != nil {
-		return nil, err
+		return Advisers{}, err
 	}
 	if err := privateDirectory(dir); err != nil {
-		return nil, err
+		return Advisers{}, err
 	}
 	if !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || !ownedByCaller(info) || info.Size() > maxPreferencesBytes {
-		return nil, errors.New("preferences must be a current-user regular file with mode 0600")
+		return Advisers{}, errors.New("preferences must be a current-user regular file with mode 0600")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return Advisers{}, err
 	}
-	return decodeDisabled(data)
+	return decodeAdvisers(data)
 }
 
 // privateDirectory requires every existing ancestor of dir, and dir itself,
@@ -147,34 +157,53 @@ func ownedByCaller(info os.FileInfo) bool {
 	return ok && int(stat.Uid) == os.Geteuid()
 }
 
-func decodeDisabled(data []byte) ([]string, error) {
+func decodeAdvisers(data []byte) (Advisers, error) {
 	var prefs preferences
 	if err := json.Unmarshal(data, &prefs, json.RejectUnknownMembers(true)); err != nil {
-		return nil, fmt.Errorf("invalid preferences: %w", err)
+		return Advisers{}, fmt.Errorf("invalid preferences: %w", err)
 	}
 	if prefs.Version == nil || *prefs.Version != 1 {
-		return nil, errors.New("preferences require version 1")
+		return Advisers{}, errors.New("preferences require version 1")
 	}
 	if len(prefs.Advisers) == 0 || string(prefs.Advisers) == "null" {
-		return nil, nil
+		return Advisers{}, nil
 	}
 	var advisers adviserPreferences
 	if err := json.Unmarshal(prefs.Advisers, &advisers, json.RejectUnknownMembers(true)); err != nil {
-		return nil, fmt.Errorf("invalid preferences: %w", err)
+		return Advisers{}, fmt.Errorf("invalid preferences: %w", err)
 	}
-	for i, id := range advisers.Disabled {
+	enabled, err := providerList("advisers.enabled", advisers.Enabled)
+	if err != nil {
+		return Advisers{}, err
+	}
+	disabled, err := providerList("advisers.disabled", advisers.Disabled)
+	if err != nil {
+		return Advisers{}, err
+	}
+	for _, id := range enabled {
+		if slices.Contains(disabled, id) {
+			return Advisers{}, fmt.Errorf("adviser %q is listed in both advisers.enabled and advisers.disabled", id)
+		}
+	}
+	return Advisers{Enabled: enabled, Disabled: disabled}, nil
+}
+
+// providerList checks that every ID in one advisers list is known and listed
+// once, and returns them in provider order; nil when none.
+func providerList(member string, ids []string) ([]string, error) {
+	for i, id := range ids {
 		if !modelpolicy.Known(id) {
-			return nil, fmt.Errorf("unknown adviser %q in advisers.disabled", id)
+			return nil, fmt.Errorf("unknown adviser %q in %s", id, member)
 		}
-		if slices.Contains(advisers.Disabled[:i], id) {
-			return nil, fmt.Errorf("adviser %q is listed twice in advisers.disabled", id)
+		if slices.Contains(ids[:i], id) {
+			return nil, fmt.Errorf("adviser %q is listed twice in %s", id, member)
 		}
 	}
-	var disabled []string
+	var ordered []string
 	for _, id := range modelpolicy.Providers() {
-		if slices.Contains(advisers.Disabled, id) {
-			disabled = append(disabled, id)
+		if slices.Contains(ids, id) {
+			ordered = append(ordered, id)
 		}
 	}
-	return disabled, nil
+	return ordered, nil
 }

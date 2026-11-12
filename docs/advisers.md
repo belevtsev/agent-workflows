@@ -13,10 +13,18 @@ decision points of the flow. An adviser participates only when it is configured:
 - it is enabled in `consultation.providers` of the active
   [model policy](../skills/task-orchestration/model-policy.yaml) with its pinned model;
 - its key is present in the process environment or the saved credentials;
+- you opted in to it: you saved its key with `cw keys set`, listed its provider
+  ID under `advisers.enabled` in your preferences, or passed `--policy`, which
+  opts in to every provider that policy enables;
 - it is not disabled in your preferences.
 
-Save a key with `cw keys set NAME`, or export it; a key in the environment takes
-precedence over a saved one ([adviser keys](operations.md#adviser-keys)). To turn
+Save a key with `cw keys set NAME`, which also opts in to its adviser, or export
+it; a key in the environment takes precedence over a saved one
+([adviser keys](operations.md#adviser-keys)). An exported key alone binds no
+adviser, and `cw doctor` warns "key present, adviser not enabled". To use it,
+list the provider ID under `advisers.enabled` in `preferences.json` in the
+configuration directory, such as
+`{"version":1,"advisers":{"enabled":["openai_decisions"]}}`. To turn
 an adviser off and keep its key, list its provider ID under `advisers.disabled`
 in `preferences.json` in the configuration directory, such as
 `{"version":1,"advisers":{"disabled":["openai_decisions"]}}`. The change applies

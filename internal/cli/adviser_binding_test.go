@@ -121,6 +121,8 @@ func adviserBindingDirectories(t *testing.T, root string) []string {
 
 // F1: start never binds a provider the saved preferences disable, with the
 // installed policy or a --policy copy; no preferences file disables nothing.
+// Without --policy, the keys are also saved in the config dir, which opts in
+// to their advisers.
 func TestAdviserBindingStartHonoursSavedPreferences(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -156,9 +158,12 @@ func TestAdviserBindingStartHonoursSavedPreferences(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			fixture := newBindingFixture(t, adviserBindingVersion, c.installed, fixtureCredentials(c.providers...))
-			flags := []string{"--config-dir", adviserBindingConfigDir(t, c.preferences)}
+			dir := adviserBindingConfigDir(t, c.preferences)
+			flags := []string{"--config-dir", dir}
 			if c.policy != nil {
 				flags = append(flags, "--policy", writePolicyFixture(t, t.TempDir(), adviserBindingVersion, c.policy))
+			} else {
+				wtStoreKeys(t, dir, fixtureCredentials(c.providers...))
 			}
 			record, document := fixture.start(t, bindingSmallPlan, flags...)
 			adviserBindingRequire(t, c.name, record, document, c.want)
@@ -198,7 +203,9 @@ func TestAdviserBindingStartRefusesBadPreferences(t *testing.T) {
 	// in the given store, which fixes how deep a task directory sits.
 	control := newBindingFixture(t, adviserBindingVersion, nil, creds)
 	controlStore := adviserBindingPrivateDir(t)
-	document, err := adviserBindingRun(t, control, "--store", controlStore, "--config-dir", adviserBindingConfigDir(t, adviserBindingOffOpenAI))
+	controlDir := adviserBindingConfigDir(t, adviserBindingOffOpenAI)
+	wtStoreKeys(t, controlDir, creds) // opts in to both advisers
+	document, err := adviserBindingRun(t, control, "--store", controlStore, "--config-dir", controlDir)
 	if err != nil {
 		t.Fatalf("control start: %v", err)
 	}
@@ -219,7 +226,7 @@ func TestAdviserBindingStartRefusesBadPreferences(t *testing.T) {
 		{name: "truncated JSON", content: `{"version":1,"advisers":`},
 		{name: "unknown adviser", content: `{"version":1,"advisers":{"disabled":["bogus_adviser"]}}`},
 		{name: "duplicate adviser", content: `{"version":1,"advisers":{"disabled":["subq_snap","subq_snap"]}}`},
-		{name: "unknown member", content: `{"version":1,"advisers":{"enabled":["jev"]}}`},
+		{name: "unknown member", content: `{"version":1,"advisers":{"enable":["jev"]}}`},
 		{name: "unreadable", unreadable: true},
 		{name: "unknown adviser with a policy copy", content: `{"version":1,"advisers":{"disabled":["bogus_adviser"]}}`, policy: true},
 	}
@@ -394,7 +401,7 @@ func TestAdviserBindingAdHocConsultRefusesBadPreferences(t *testing.T) {
 		{name: "truncated JSON", content: `{"version":1,"advisers":`},
 		{name: "unknown adviser", content: `{"version":1,"advisers":{"disabled":["bogus_adviser"]}}`},
 		{name: "duplicate adviser", content: `{"version":1,"advisers":{"disabled":["subq_snap","subq_snap"]}}`},
-		{name: "unknown member", content: `{"version":1,"advisers":{"enabled":["jev"]}}`},
+		{name: "unknown member", content: `{"version":1,"advisers":{"enable":["jev"]}}`},
 		{name: "unreadable", unreadable: true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -532,12 +539,15 @@ func TestAdviserBindingTaskContextsKeepBinding(t *testing.T) {
 	}
 }
 
-// adviserBindingRequireStartBoth requires task start with dir to succeed and
-// bind both shipped providers; it returns the task directory's depth in store.
+// adviserBindingRequireStartBoth requires task start with dir and a --policy
+// copy of the shipped providers to succeed and bind both; it returns the task
+// directory's depth in store. --policy is the opt-in that reads no saved keys,
+// so the credential store's directory check stays out of the way.
 func adviserBindingRequireStartBoth(t *testing.T, dir, store string) int {
 	t.Helper()
 	fixture := newBindingFixture(t, adviserBindingVersion, nil, fixtureCredentials(adviserBindingAllKeys...))
-	document, err := adviserBindingRun(t, fixture, "--store", store, "--config-dir", dir)
+	policy := writePolicyFixture(t, t.TempDir(), adviserBindingVersion, nil)
+	document, err := adviserBindingRun(t, fixture, "--store", store, "--config-dir", dir, "--policy", policy)
 	if err != nil {
 		t.Fatalf("task start with config dir %s: %v", dir, err)
 	}
@@ -569,7 +579,8 @@ func adviserBindingRequireConsultBoth(t *testing.T, dir string) {
 }
 
 // G3: with no preferences.json, the config directory's permissions are not
-// checked, so start and consult work with keys in the environment.
+// checked, so start and consult with --policy work with keys in the
+// environment.
 func TestAdviserBindingNoPreferencesFileSkipsDirectoryCheck(t *testing.T) {
 	for _, c := range []struct {
 		name string

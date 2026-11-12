@@ -114,7 +114,12 @@ those skills keep their own rule.
 
 An adviser participates only when it is configured: enabled in the policy's
 `consultation.providers` with its pinned model, with its credential set in the
-environment or saved credentials, and not disabled in the user's preferences. To
+environment or saved credentials, opted in to, and not disabled in the user's
+preferences. The user opts in by saving the key with `cw keys set`, by listing the
+provider ID under `advisers.enabled` in `preferences.json`, or by passing
+`--policy`, which opts in to every provider that policy enables; a credential in
+the environment alone binds nothing, and `cw doctor` warns "key present, adviser
+not enabled". To
 disable one and keep its key, list its provider ID under `advisers.disabled` in
 `preferences.json` in the configuration directory, edited by hand. The selected
 policy then omits it, and `cw task start` and ad hoc `cw consult` skip it
@@ -141,14 +146,15 @@ The participation set comes from one place:
   rejected; regenerate it with this `cw task context`. A `state` holding both
   `task_context` and `task_contexts` is rejected.
 - **Ad hoc request:** otherwise, the policy's enabled providers participate; one
-  disabled in the saved preferences is recorded as `not_configured` and never
-  contacted.
+  disabled in the saved preferences, or without `--policy` one not opted in to, is
+  recorded as `not_configured` and never contacted.
 
 Without `--policy PATH`, `cw task start` and `cw consult` use `$CW_MODEL_POLICY`,
 then `~/.agents/skills/task-orchestration/model-policy.yaml` when present, then the
 policy embedded in `cw`. `cw task start`
-binds the providers enabled in that policy whose credentials are present and that
-the saved preferences do not disable, read through the same environment-or-saved
+binds the providers enabled in that policy whose credentials are present, that
+the user opted in to and that the saved preferences do not disable, read through
+the same environment-or-saved
 credentials as `cw consult`. If the policy or the saved preferences cannot be read
 or are invalid, including an older policy version, `cw task start` fails before
 creating a task directory; it never binds an empty set silently. A valid
