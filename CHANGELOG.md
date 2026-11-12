@@ -29,8 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - A relative `XDG_STATE_HOME` is refused with exit status 1, and the commit hook asks, instead of joining it to the working
   directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
-- `cw doctor --live` and Git inspection no longer leave a probe's child running on macOS when one kill missed a fork in flight
-  at the deadline: `cw` kills the probe's process group until it is empty ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
+  as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 
