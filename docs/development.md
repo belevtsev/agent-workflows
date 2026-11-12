@@ -63,7 +63,8 @@ GOWORK=off go test ./internal/skillcheck
 - each skill's `name` is at most 64 lowercase letters, digits and hyphens and
   matches its directory, and its `description` has 1 to 1024 characters;
 - relative Markdown links in skills, top-level Markdown files, `docs/` and
-  `.github/` resolve;
+  `.github/` resolve, and a link's `#anchor`, to the same file or to another
+  Markdown file, names one of that file's headings as GitHub slugs them;
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;

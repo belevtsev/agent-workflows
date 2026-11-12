@@ -12,6 +12,12 @@ except as noted below.
 Excluded: EVALUATIONS.md, upstream's 0.9 MB evaluation log. README.md links to
 it at the commit above instead of the missing local copy.
 
+Anchor fixes: skills/golang-documentation/references/practices.md links
+project-docs.md#readmemd and #distribution instead of #readme and #delivery,
+which name no heading; skills/golang-gopls/references/mcp.md links the
+workflow order at practices.md#efficient-workflows instead of
+../SKILL.md#efficient-workflows, a heading SKILL.md does not have.
+
 To refresh: diff everything except skills/*/SKILL.md against the commit above,
-apply upstream changes, then re-apply the entrypoint rewrites and the
-EVALUATIONS.md exclusion above, and update this file.
+apply upstream changes, then re-apply the entrypoint rewrites, the
+EVALUATIONS.md exclusion and the anchor fixes above, and update this file.

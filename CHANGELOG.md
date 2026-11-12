@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Three links in the Go documentation and gopls skills now land on their section, and `go test ./internal/skillcheck`
+  checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.
