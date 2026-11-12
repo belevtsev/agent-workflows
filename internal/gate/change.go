@@ -1,4 +1,4 @@
-package cli
+package gate
 
 import (
 	"context"
@@ -33,13 +33,13 @@ var testDirectories = map[string]bool{"test": true, "tests": true, "testdata": t
 // change to a tracked file); a push publishes the commits between the
 // merge base with the upstream branch, or else with origin's default
 // branch, and HEAD. Any git failure yields no signs.
-func substantialChangeSigns(ctx context.Context, worktree string, publication publication) []string {
+func substantialChangeSigns(ctx context.Context, git Git, worktree string, publication publication) []string {
 	args := []string{"diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--no-textconv"}
 	switch {
 	case publication.push:
-		base, err := gitOutput(ctx, worktree, "rev-parse", "--verify", "--quiet", "@{upstream}")
+		base, err := git.output(ctx, worktree, "rev-parse", "--verify", "--quiet", "@{upstream}")
 		if err != nil {
-			base, err = gitOutput(ctx, worktree, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/HEAD")
+			base, err = git.output(ctx, worktree, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/HEAD")
 		}
 		if err != nil {
 			return nil
@@ -50,7 +50,7 @@ func substantialChangeSigns(ctx context.Context, worktree string, publication pu
 	default:
 		args = append(args, "--cached")
 	}
-	output, err := gitRun(ctx, worktree, args...)
+	output, err := git(ctx, worktree, args...)
 	if err != nil {
 		return nil
 	}
@@ -148,7 +148,7 @@ func unrecordedChangeReason(worktree string, publication publication, signs []st
 
 // uncommittedTrackedChanges reports whether worktree has staged or unstaged
 // changes to tracked files. A git failure reports none.
-func uncommittedTrackedChanges(ctx context.Context, worktree string) bool {
-	output, err := gitRun(ctx, worktree, "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=none")
+func uncommittedTrackedChanges(ctx context.Context, git Git, worktree string) bool {
+	output, err := git(ctx, worktree, "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=none")
 	return err == nil && strings.TrimSpace(output) != ""
 }

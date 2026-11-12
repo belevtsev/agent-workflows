@@ -10,8 +10,10 @@ out of `cw`'s build and test package discovery.
 I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/projectctx`, `internal/graphify`, `internal/outcomes` and
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
-and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
-evaluation.
+and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
+answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
+so gate rules are unit-tested with a fake git, clock and task store.
+`cmd/cwdev` holds the maintainer evaluation.
 
 ## Verification
 
