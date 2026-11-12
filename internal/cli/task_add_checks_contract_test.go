@@ -1381,9 +1381,9 @@ func aclTestPlanChangedFailsCommands(t *testing.T) {
 	}
 	switch vres.exit {
 	case 0:
-	case 1:
+	case 5:
 		if v := aclLoad(t, dir).Verification; v == nil || v.Complete || len(v.Problems) == 0 {
-			t.Fatalf("control: cw task verify exited 1 without recording an incomplete verification (stderr %q)", vres.stderr)
+			t.Fatalf("control: cw task verify exited 5 without recording an incomplete verification (stderr %q)", vres.stderr)
 		}
 	default:
 		t.Fatalf("control: cw task verify exited %d (stderr %q)", vres.exit, vres.stderr)

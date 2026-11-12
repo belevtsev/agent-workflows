@@ -33,27 +33,6 @@ type Config struct {
 	prePublishTimeout time.Duration
 }
 
-type usageError struct{ error }
-
-func usage(err error) error { return usageError{err} }
-
-// ExitCode maps runtime, usage and cancellation errors to Unix exit codes.
-func ExitCode(err error) int {
-	if err == nil {
-		return 0
-	}
-	if errors.Is(err, context.Canceled) {
-		return 130
-	}
-	if status, ok := errors.AsType[reportedExit](err); ok {
-		return int(status)
-	}
-	if _, ok := errors.AsType[usageError](err); ok {
-		return 2
-	}
-	return 1
-}
-
 // Execute runs a fresh command with explicit arguments and cancellation.
 func Execute(ctx context.Context, args []string, config Config) error {
 	command := NewCommand(config)
