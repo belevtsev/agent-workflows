@@ -28,9 +28,12 @@ type Clock func() time.Time
 // revisions: check logs and test results, the baseline manifest,
 // consultations, worker input copies, contracts and review bundles. Read
 // returns the named private regular file, and refuses one over limit bytes.
-// The rules that judge a record read its artefacts only through it.
+// The rules that judge a record read its artefacts only through it. Write
+// stores data as a new private file named name, whole or not at all, and
+// fails with an error matching fs.ErrExist when name exists.
 type Artifacts interface {
 	Read(name string, limit int64) ([]byte, error)
+	Write(name string, data []byte) error
 }
 
 // Env carries the ports a task use case reads instead of reaching the machine
@@ -81,4 +84,8 @@ type taskDirectory struct{ root *os.Root }
 
 func (directory taskDirectory) Read(name string, limit int64) ([]byte, error) {
 	return privateRead(directory.root, name, limit)
+}
+
+func (directory taskDirectory) Write(name string, data []byte) error {
+	return writeNew(directory.root, name, data)
 }
