@@ -229,7 +229,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
-| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
+| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
 | 130 | cancelled | The command was interrupted. |
@@ -412,6 +412,33 @@ Remove one only after checking that no older `cw` runs. That `cw` does not see
 `.lockfile`, so do not mix `cw` versions on one task. Once this `cw` has
 published from a task, its `.publish-lock` file stays, so `cw publish` of
 v3.0.0-rc.1 reports `locked` on that task for good and says to remove the file.
+### Which go a check runs
+
+A check whose program is `go` (or `go.exe`), named bare or by a path, runs only
+a go command that `cw` verified. `cw` takes the `go` the check's `PATH` names
+(or the path given) and runs it once as `go env GOROOT`, in the selected path,
+with the check's environment and within its timeout, before it takes the task
+lock. That follows a version manager's shim, a `golang.org/dl` wrapper and a
+`GOTOOLCHAIN` switch to the go command that would really run; `cmd/go` looks
+for a switched toolchain such as `go1.27.4` on `PATH` before it downloads one
+into the module cache. `cw` then reads `$GOROOT/bin/go` without running it and
+accepts it only when its build information names `cmd/go` and the printed
+`GOROOT` resolves to that file's own tree, the directory above its `bin`. The
+check runs that file by its absolute path with `GOROOT` set to that tree and
+`GOTOOLCHAIN=local`, after the check's own environment, so neither a `GOROOT`
+variable nor a go env file can pick another tree's `go.env`, and the go command
+cannot switch again. The run records it under `tool` (`path`, `version`,
+`sha256`, `goroot`), and `cw task verify` lists the go command and `GOROOT` that
+each passed go check ran as a limitation. A run recorded before this has no
+`tool` and keeps its credit.
+
+When no go command verifies, such as a script named `go` first on `PATH`, a
+`GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
+downloaded, the check does not run:
+the run is recorded as `failed` with failure `untrusted_toolchain`, no exit code
+and an empty log, and `cw task run` exits 5 with an error that names the
+candidate. Put the real `go` first on `PATH`. This shows what the binary is, not
+that it reports honestly ([threat model](../SECURITY.md#threat-model)).
 
 ### Merging the base branch during a task
 
