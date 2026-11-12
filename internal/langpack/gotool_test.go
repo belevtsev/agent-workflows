@@ -287,25 +287,31 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	}
 }
 
-// ReadGoEnv's key follows the configuration and holds none of it. Oracle
-// (X1): cmd/go reports CGO_ENABLED and CC from the environment, so reads
-// under the same environment give the same key, a different CGO_ENABLED or
-// CC a different one; the key is a hex SHA-256 and contains no value read,
-// such as a CC path.
+// GoEnvKey of a ReadGoEnv read follows the configuration and holds none of
+// it. Oracle (X1): cmd/go reports CGO_ENABLED and CC from the environment,
+// so reads under the same environment give the same key, a different
+// CGO_ENABLED or CC a different one; the key is a hex SHA-256 and contains
+// no value read, such as a CC path; and it is an HMAC (review finding 1 on
+// #146): another secret gives another key for the same read.
 func TestReadGoEnvKeyFollowsTheConfigurationWithoutItsValues(t *testing.T) {
 	dir := t.TempDir()
 	tool, err := langpack.ResolveGo(t.Context(), "go", dir, gtEnv(gtRealGo(t)))
 	if err != nil {
 		t.Fatalf("precondition: the real go does not verify: %v", err)
 	}
+	secret := []byte("0123456789abcdef0123456789abcdef")
 	const compiler = "/opt/cw-x1-compiler-marker/bin/cc"
 	read := func(overrides ...string) string {
-		_, _, key, err := langpack.ReadGoEnv(t.Context(), tool, dir, gtEnv(gtRealGo(t), append([]string{"GOENV=off"}, overrides...)...))
+		_, _, config, err := langpack.ReadGoEnv(t.Context(), tool, dir, gtEnv(gtRealGo(t), append([]string{"GOENV=off"}, overrides...)...))
 		if err != nil {
 			t.Fatal(err)
 		}
+		key := langpack.GoEnvKey(secret, config)
 		if sum, err := hex.DecodeString(key); err != nil || len(sum) != sha256.Size {
 			t.Fatalf("key %q is not a hex SHA-256", key)
+		}
+		if other := langpack.GoEnvKey([]byte("another secret, also 32 bytes!!!"), config); other == key {
+			t.Fatalf("two secrets gave the same key %s", key)
 		}
 		return key
 	}
@@ -328,7 +334,7 @@ func TestReadGoEnvKeyFollowsTheConfigurationWithoutItsValues(t *testing.T) {
 // configuration, so the check does not run and earns no credit: a failing or
 // stopped command, and output that is not exactly the values asked for with
 // the four platform values set, are errors naming the go command, with no
-// key (X1).
+// configuration (X1).
 func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	stopped, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -347,9 +353,9 @@ func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tool := langpack.GoTool{Path: gtScript(t, t.TempDir(), "go", c.body), GOROOT: t.TempDir()}
-			got, pin, key, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
-			if err == nil || pin != nil || key != "" || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
-				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; key %q; want no pin, no key and an error naming %s and containing %q", got, pin, err, key, tool.Path, c.want)
+			got, pin, config, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
+			if err == nil || pin != nil || config != nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; config %q; want no pin, no config and an error naming %s and containing %q", got, pin, err, config, tool.Path, c.want)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
@@ -150,11 +151,11 @@ var goEnvNames = []string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH",
 // the run's environment, they win over any go env file, as a value that is
 // not empty does in cmd/go, and a space applies no flags.
 //
-// key is GoEnvKey of every value printed: it tells two configurations apart
-// without holding any of their values.
-func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read GoEnv, pin []string, key string, err error) {
-	refuse := func(format string, args ...any) (GoEnv, []string, string, error) {
-		return GoEnv{}, nil, "", fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
+// config holds every value printed, by name, GOFLAGS unredacted, for a key
+// that tells two configurations apart (GoEnvKey); it is not to be stored.
+func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read GoEnv, pin []string, config map[string]string, err error) {
+	refuse := func(format string, args ...any) (GoEnv, []string, map[string]string, error) {
+		return GoEnv{}, nil, nil, fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
 	}
 	got := proc.Run(ctx, proc.Spec{Path: tool.Path, Args: append([]string{"env", "-json"}, goEnvNames...), Dir: dir, Env: append(slices.Clip(env), tool.Env()...), StdoutLimit: goEnvLimit, StderrLimit: goRootLimit})
 	switch {
@@ -183,19 +184,21 @@ func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read
 	if !complete || read.GOOS == "" || read.GOARCH == "" || read.GOHOSTOS == "" || read.GOHOSTARCH == "" {
 		return refuse("`go env -json` printed %s, not exactly %s with the four platform values set", quoteLimited(string(got.Stdout)), strings.Join(goEnvNames, ", "))
 	}
-	return read, []string{"GOFLAGS=" + cmp.Or(printed["GOFLAGS"], " "), "GOOS=" + read.GOOS, "GOARCH=" + read.GOARCH}, GoEnvKey(printed), nil
+	return read, []string{"GOFLAGS=" + cmp.Or(printed["GOFLAGS"], " "), "GOOS=" + read.GOOS, "GOARCH=" + read.GOARCH}, printed, nil
 }
 
-// GoEnvKey returns the hex SHA-256 of each name in values with the SHA-256
-// of its value, in name order. Two sets of values give the same key exactly
-// when they are equal, barring a hash collision, and the key holds no value
-// bytes.
-func GoEnvKey(values map[string]string) string {
-	sum := sha256.New()
+// GoEnvKey returns the hex HMAC-SHA256, under secret, of each name in values
+// with its value, length-prefixed and in name order. Under one secret two
+// sets of values give the same key exactly when they are equal, barring a
+// collision. The key holds no value bytes, and without the secret it does
+// not confirm a guessed value, even a weak one; a different secret gives
+// unrelated keys.
+func GoEnvKey(secret []byte, values map[string]string) string {
+	mac := hmac.New(sha256.New, secret)
 	for _, name := range slices.Sorted(maps.Keys(values)) {
-		fmt.Fprintf(sum, "%s=%x\n", name, sha256.Sum256([]byte(values[name])))
+		fmt.Fprintf(mac, "%d:%s%d:%s", len(name), name, len(values[name]), values[name])
 	}
-	return hex.EncodeToString(sum.Sum(nil))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // GoEnvWithheld returns why the Go rule credits no go test run made under env,

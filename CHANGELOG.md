@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Each check run records the digest of the source it ran at and a hash-only key of its go and `env_passthrough` configuration,
+- Each check run records the digest of the source it ran at and a key of its go and `env_passthrough` configuration, keyed per task,
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 
 ### Changed

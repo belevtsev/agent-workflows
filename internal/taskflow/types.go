@@ -201,10 +201,13 @@ type CheckRun struct {
 	GoEnv *langpack.GoEnv `json:"go_env,omitempty"`
 	// SourceSHA256 is SourceDigest of the source when the run started, read
 	// in its start revision; the task holds that source's manifest as
-	// sourceManifestName of it. EnvKey is envKey of the configuration the run
-	// started under: hashes of its go env read and env_passthrough values,
-	// never a value. Runs recorded before they existed omit both (record
-	// version 5) and are never reused.
+	// sourceManifestName of it; a source whose manifest exceeds
+	// maxSourceManifestBytes leaves it empty. EnvKey is runKey of the
+	// configuration the run started under (runConfig): an HMAC under the
+	// task's secret of its go env read and env_passthrough values, never a
+	// value; a run refused before it ran has none. Runs recorded before they
+	// existed omit both (record version 5); a run without both is never
+	// reused.
 	SourceSHA256 string `json:"source_sha256,omitempty"`
 	EnvKey       string `json:"env_key,omitempty"`
 }

@@ -559,15 +559,19 @@ in its start revision:
   switching branches over the same bytes leaves it unchanged. The task
   directory keeps that manifest as `manifest-<source_sha256>.json`, written
   once per digest. A worker result records the same member for the source it
-  was submitted at.
-- `env_key`: a SHA-256 over the hashes of what the run's environment selects:
-  for a go check, every value its `go env` read printed; for any check, each
-  variable its `env_passthrough` names, set to its value or unset. It holds
-  hashes only, never a value, so two runs share a key exactly when those
-  values are equal.
+  was submitted at. When that manifest would exceed 8 MiB, the run or result
+  is recorded without `source_sha256` and no manifest is kept.
+- `env_key`: an HMAC-SHA256 of what the run's environment selects: for a go
+  check, every value its `go env` read printed; for any check, each variable
+  its `env_passthrough` names, set to its value or unset. Its key is a random
+  32-byte secret of the task, kept in the task directory as `run-key-secret`
+  (mode 0600) from the first run. No value is stored, and without that file a
+  printed `env_key` does not confirm a guessed value, even a weak password.
+  Within one task, two runs share a key exactly when those values are equal;
+  keys of different tasks are not comparable.
 
-Runs and results recorded before these members existed lack them, so they are
-never reused. No rule reads the keys yet: they are the identity that reuse of a
+Runs and results recorded before these members existed, or without them,
+lack them, so they are never reused. No rule reads the keys yet: they are the identity that reuse of a
 passed run will compare.
 
 ### Merging the base branch during a task

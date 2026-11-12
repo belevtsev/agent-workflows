@@ -152,8 +152,8 @@ func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) {
 		return langpack.GoTool{Path: program, Version: "go1.27.4", GOROOT: filepath.Dir(program)}, nil
 	}
-	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, []string, string, error) {
-		return langpack.GoEnv{}, nil, "", errors.New("cannot read the configuration of the go command: test reader")
+	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, []string, map[string]string, error) {
+		return langpack.GoEnv{}, nil, nil, errors.New("cannot read the configuration of the go command: test reader")
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	run, err := RunCheck(t.Context(), record.Directory, "unit")
@@ -209,7 +209,7 @@ func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
 	if err != nil || !filepath.IsAbs(noop) {
 		t.Fatalf("precondition: no true program on PATH: %q, %v", noop, err)
 	}
-	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, string, error) {
+	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, map[string]string, error) {
 		read, pin, key, err := langpack.ReadGoEnv(ctx, tool, dir, env)
 		if err := os.WriteFile(file, []byte("GOFLAGS=-exec="+noop+"\nGOARCH="+other+"\n"), 0o644); err != nil {
 			t.Error(err)

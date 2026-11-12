@@ -246,33 +246,47 @@ func TestRunCheckRecordsTheSourceDigestOfTheRun(t *testing.T) {
 
 // TestSubmitWorkerResultRecordsTheSourceDigestOfTheReview submits a completed
 // review. Oracle (X1): the bound result's source_sha256 equals SourceDigest of
-// the tree it was submitted at, and the task holds that manifest.
+// the tree it was submitted at, and the submit stores that manifest: moved
+// aside after the check that first wrote it, it is back after the submit.
 func TestSubmitWorkerResultRecordsTheSourceDigestOfTheReview(t *testing.T) {
 	record, ref := preparedChangedTask(t)
 	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
-	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))
 	want, err := SourceDigest(t.Context(), record.Baseline.SelectedPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+	manifest := filepath.Join(record.Directory, sourceManifestName(want))
+	if err := os.Rename(manifest, filepath.Join(t.TempDir(), "aside.json")); err != nil {
+		t.Fatalf("precondition: the check run stored no manifest to move aside: %v", err)
+	}
+	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))
 	if bound := findWorkerResult(record, "review"); bound == nil || bound.SourceSHA256 != want {
 		t.Fatalf("review result %+v, want source_sha256 %q", bound, want)
 	}
 	storedSourceManifest(t, record, want)
 }
 
-// TestRunCheckKeysTheEnvironmentWithoutItsValues runs a go check under two
-// CGO_ENABLED values, and a check whose env_passthrough names a variable
-// under two values, unset and empty. Oracle (X1): cmd/go reports CGO_ENABLED
-// from the environment, so the same environment gives the same env_key and
-// another CGO_ENABLED another; each passthrough state gives its own key; the
-// key is a hex SHA-256, and no task file but the check's own log holds the
-// passthrough value.
-func TestRunCheckKeysTheEnvironmentWithoutItsValues(t *testing.T) {
-	plan := passthroughPlan(t, helperPlan(t, "small", "pass"), "CW_X1_DB_PASSWORD")
+// keyedTask starts a task whose checks, focused (the helper) and toolchain
+// (go version), both name CW_X1_DB_PASSWORD in env_passthrough.
+func keyedTask(t *testing.T) Record {
+	t.Helper()
+	plan := helperPlan(t, "small", "pass")
 	plan.Checks = append(plan.Checks, Check{ID: "toolchain", Argv: []string{"go", "version"}, TimeoutSeconds: 120})
 	plan.Requirements[0].CheckIDs = append(plan.Requirements[0].CheckIDs, "toolchain")
-	record, _ := fixtureTask(t, plan)
+	record, _ := fixtureTask(t, passthroughPlan(t, plan, "CW_X1_DB_PASSWORD"))
+	return record
+}
+
+// TestRunCheckKeysTheEnvironmentWithoutItsValues runs a go check under two
+// CGO_ENABLED values and two env_passthrough values, and a non-go check
+// whose env_passthrough names a variable under two values, unset and empty.
+// Oracle (X1): cmd/go reports CGO_ENABLED from the environment, so the same
+// environment gives the same env_key and another CGO_ENABLED another; each
+// passthrough state gives its own key, for the go check too (review finding
+// 4c on #146); the key is a hex SHA-256, and no task file but the check's
+// own log holds the passthrough value.
+func TestRunCheckKeysTheEnvironmentWithoutItsValues(t *testing.T) {
+	record := keyedTask(t)
 	key := func(checkID string) string {
 		t.Helper()
 		run, err := RunCheck(t.Context(), record.Directory, checkID)
@@ -290,10 +304,15 @@ func TestRunCheckKeysTheEnvironmentWithoutItsValues(t *testing.T) {
 		t.Errorf("the same environment gave env_key %s, then %s", off, again)
 	}
 	t.Setenv("CGO_ENABLED", "1")
-	if on := key("toolchain"); on == off {
+	on := key("toolchain")
+	if on == off {
 		t.Errorf("CGO_ENABLED 0 and 1 gave the same env_key %s", on)
 	}
 	const secret = "cw-x1-passthrough-value"
+	t.Setenv("CW_X1_DB_PASSWORD", secret)
+	if passed := key("toolchain"); passed == on {
+		t.Errorf("the go check's env_key %s ignores its env_passthrough value", on)
+	}
 	t.Setenv("CW_X1_DB_PASSWORD", secret)
 	set := key("focused")
 	t.Setenv("CW_X1_DB_PASSWORD", secret+"-changed")
@@ -317,6 +336,126 @@ func TestRunCheckKeysTheEnvironmentWithoutItsValues(t *testing.T) {
 		}
 		if data, err := os.ReadFile(filepath.Join(record.Directory, entry.Name())); err == nil && strings.Contains(string(data), secret) {
 			t.Errorf("task file %s holds the env_passthrough value", entry.Name())
+		}
+	}
+}
+
+// TestRunKeyIsSaltedPerTask runs the same checks under the same environment
+// in two tasks. Oracle (review finding 1 on #146): env_key is an HMAC under a
+// random secret of each task, kept as a private task file, so within one
+// task the same configuration gives the same key, two tasks give different
+// keys, and a printed key does not confirm a guessed weak value offline.
+func TestRunKeyIsSaltedPerTask(t *testing.T) {
+	t.Setenv("CW_X1_DB_PASSWORD", "hunter2")
+	first, second := keyedTask(t), keyedTask(t)
+	key := func(record Record, checkID string) string {
+		t.Helper()
+		run, err := RunCheck(t.Context(), record.Directory, checkID)
+		if err != nil {
+			t.Fatalf("RunCheck %s: %s, %v", checkID, run.Status, err)
+		}
+		return run.EnvKey
+	}
+	for _, checkID := range []string{"focused", "toolchain"} {
+		one := key(first, checkID)
+		if again := key(first, checkID); again != one {
+			t.Errorf("check %s: one task gave env_key %s, then %s", checkID, one, again)
+		}
+		if other := key(second, checkID); other == one {
+			t.Errorf("check %s: two tasks gave the same env_key %s", checkID, one)
+		}
+	}
+	for _, record := range []Record{first, second} {
+		info, err := os.Stat(filepath.Join(record.Directory, runKeySecretFile))
+		if err != nil || info.Mode().Perm() != 0o600 || info.Size() != 32 {
+			t.Errorf("task %s run key secret: %v, %v; want a private 32-byte file", record.ID, info, err)
+		}
+	}
+}
+
+// TestSourceOverTheManifestLimitIsRecordedWithoutADigest lowers the manifest
+// bound below the fixture's manifest. Oracle (review finding 2 on #146): the
+// check still runs and passes and a worker result is still accepted; both are
+// recorded without source_sha256, and the task stores no source manifest.
+func TestSourceOverTheManifestLimitIsRecordedWithoutADigest(t *testing.T) {
+	maxSourceManifestBytes = 16
+	t.Cleanup(func() { maxSourceManifestBytes = MaxInputBytes })
+	record, ref := preparedChangedTask(t)
+	if run := record.Checks[len(record.Checks)-1]; run.Status != "passed" || run.SourceSHA256 != "" {
+		t.Fatalf("run over the manifest limit: %s, source_sha256 %q; want passed with none", run.Status, run.SourceSHA256)
+	}
+	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
+	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))
+	if bound := findWorkerResult(record, "review"); bound == nil || bound.SourceSHA256 != "" {
+		t.Fatalf("result over the manifest limit %+v, want no source_sha256", bound)
+	}
+	if manifests, _ := filepath.Glob(filepath.Join(record.Directory, "manifest-*.json")); len(manifests) != 0 {
+		t.Errorf("source manifests over the limit were stored: %q", manifests)
+	}
+}
+
+// TestRunCheckRefusesAStoredManifestThatDiffersFromItsName replaces the
+// manifest a first run stored with other bytes. Oracle (review finding 4b on
+// #146): a manifest is written once per digest and an existing one must hash
+// to its name, so the next run at the same source is refused, names the file
+// and records no run.
+func TestRunCheckRefusesAStoredManifestThatDiffersFromItsName(t *testing.T) {
+	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
+	run, err := RunCheck(t.Context(), record.Directory, "focused")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(record.Directory, sourceManifestName(run.SourceSHA256)), []byte("[]"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err == nil || !strings.Contains(err.Error(), "stored source manifest "+sourceManifestName(run.SourceSHA256)+" differs from its name") {
+		t.Fatalf("RunCheck over a corrupt manifest: %v; want a refusal naming it", err)
+	}
+	if loaded, err := Load(record.Directory); err != nil || len(loaded.Checks) != 1 {
+		t.Errorf("after the refusal the record has %d runs (%v), want 1", len(loaded.Checks), err)
+	}
+}
+
+// TestLoadValidatesTheRunAndResultKeys stores a check run and a worker result
+// with each X1 member missing or malformed. Oracle (review finding 4a on
+// #146): a missing member loads, as in a record written before X1; a value
+// that is not a hex SHA-256 fails validation. The result's hash is
+// recomputed, so only the member's own check can refuse it.
+func TestLoadValidatesTheRunAndResultKeys(t *testing.T) {
+	record, ref := preparedChangedTask(t)
+	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
+	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))
+	if err := validateRecord(record); err != nil {
+		t.Fatalf("precondition: the recorded task does not validate: %v", err)
+	}
+	for _, c := range []struct {
+		name  string
+		value string
+		valid bool
+	}{{"missing", "", true}, {"short", "abc123", false}, {"not hex", strings.Repeat("z", 64), false}, {"upper and long", strings.Repeat("A", 66), false}} {
+		for _, member := range []string{"run source_sha256", "run env_key", "result source_sha256"} {
+			t.Run(c.name+" "+member, func(t *testing.T) {
+				changed, err := Load(record.Directory)
+				if err != nil {
+					t.Fatal(err)
+				}
+				run := &changed.Checks[len(changed.Checks)-1]
+				switch member {
+				case "run source_sha256":
+					run.SourceSHA256 = c.value
+				case "run env_key":
+					run.EnvKey = c.value
+				default:
+					bound := &changed.WorkerResults[len(changed.WorkerResults)-1]
+					bound.SourceSHA256 = c.value
+					if bound.SHA256, err = workerResultHash(*bound); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := validateRecord(changed); (err == nil) != c.valid {
+					t.Errorf("validateRecord with %s %q: %v; want valid %v", member, c.value, err, c.valid)
+				}
+			})
 		}
 	}
 }

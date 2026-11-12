@@ -216,9 +216,9 @@ func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T) {
 	verified := langpack.GoTool{Path: "/verified/bin/go", Version: "go1.27.4", GOROOT: "/verified"}
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) { return verified, nil }
-	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, string, error) {
+	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, map[string]string, error) {
 		goflags := environmentValue(env, "GOFLAGS")
-		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, "", nil
+		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, nil, nil
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	t.Setenv("GOROOT", "/elsewhere")
