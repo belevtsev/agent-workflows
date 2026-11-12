@@ -259,9 +259,9 @@ func (f *l3cFix) run(check string) taskflow.CheckRun {
 	f.t.Helper()
 	ctx, cancel := context.WithTimeout(f.ctx, l3cWait)
 	defer cancel()
-	run, err := taskflow.Run(ctx, f.dir, check)
+	run, err := taskflow.RunCheck(ctx, f.dir, check)
 	if run.ID == "" {
-		f.t.Fatalf("Run(%s): %v", check, err)
+		f.t.Fatalf("RunCheck(%s): %v", check, err)
 	}
 	return run
 }

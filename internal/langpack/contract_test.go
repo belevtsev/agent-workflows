@@ -85,7 +85,12 @@ func contractProblemFor(problems []string, pkg string) bool {
 	return false
 }
 
-// contractGoProblems runs GoTests over contractModule with each argv as a
+// contractFacts are go.package-test/v2 facts that add nothing to the
+// contract above: -race cannot run on the host, so a plain run counts, and no
+// test binary links a changed package of another directory.
+var contractFacts = langpack.GoFacts{NoRace: "the contract needs no -race run"}
+
+// contractGoProblems runs the Go rule over contractModule with each argv as a
 // passed run whose environment sets no GOFLAGS.
 func contractGoProblems(t *testing.T, changed []string, passed ...[]string) []string {
 	t.Helper()
@@ -98,11 +103,7 @@ func contractGoProblems(t *testing.T, changed []string, passed ...[]string) []st
 
 func contractGoRunProblems(t *testing.T, changed []string, passed ...langpack.Run) []string {
 	t.Helper()
-	source := langpack.Source{Current: contractModule, Changed: changed}
-	if !(langpack.GoTests{}).Applies(source) {
-		t.Fatal("GoTests does not apply to a module with go.mod at the selected path")
-	}
-	return (langpack.GoTests{}).Problems(source, passed)
+	return langpack.GoEvidence(langpack.Source{Current: contractModule, Changed: changed}, passed, contractFacts).Problems
 }
 
 // contractModuleProblem is the contract's problem for a changed module file.
@@ -110,7 +111,9 @@ func contractModuleProblem(file string) string {
 	return fmt.Sprintf("changed %s has no passed go test ./... run at the current source", file)
 }
 
-func TestContractRulesSelection(t *testing.T) {
+// The Go rule applies only with go.mod at the selected path (oracle: a changed
+// root file with no passed run is a problem there and nowhere else).
+func TestContractGoRuleNeedsGoModAtTheSelectedPath(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		current []string
@@ -122,28 +125,9 @@ func TestContractRulesSelection(t *testing.T) {
 		{"go.mod in a vendor directory", []string{"vendor/x/go.mod", "a.go"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source := langpack.Source{Current: tc.current, Changed: []string{"a.go"}}
-			rules := langpack.Rules(source)
-			if len(rules) == 0 {
-				t.Fatal("Rules returned no rules")
-			}
-			if _, ok := rules[0].(langpack.AnyPassedRun); !ok {
-				t.Fatalf("first rule %T, want AnyPassedRun", rules[0])
-			}
-			hasGo := slices.ContainsFunc(rules, func(rule langpack.EvidenceRule) bool {
-				_, ok := rule.(langpack.GoTests)
-				return ok
-			})
-			if hasGo != tc.wantGo {
-				t.Fatalf("GoTests selected = %v, want %v (rules %#v)", hasGo, tc.wantGo, rules)
-			}
-			if (langpack.GoTests{}).Applies(source) != tc.wantGo {
-				t.Fatalf("GoTests.Applies = %v, want %v", !tc.wantGo, tc.wantGo)
-			}
-			for _, rule := range rules {
-				if !rule.Applies(source) {
-					t.Errorf("Rules returned %T, which does not apply", rule)
-				}
+			problems := langpack.GoEvidence(langpack.Source{Current: tc.current, Changed: []string{"a.go"}}, nil, contractFacts).Problems
+			if applied := len(problems) > 0; applied != tc.wantGo {
+				t.Fatalf("Go rule applied = %v, want %v (problems %q)", applied, tc.wantGo, problems)
 			}
 		})
 	}
@@ -152,9 +136,6 @@ func TestContractRulesSelection(t *testing.T) {
 func TestContractAnyPassedRun(t *testing.T) {
 	source := langpack.Source{Current: []string{"a.txt"}, Changed: []string{"a.txt"}}
 	rule := langpack.AnyPassedRun{}
-	if !rule.Applies(source) {
-		t.Fatal("AnyPassedRun does not apply to a non-Go project")
-	}
 	if problems := rule.Problems(source, nil); len(problems) == 0 {
 		t.Fatal("no passed run gives no problem")
 	}
@@ -832,11 +813,7 @@ func assetProblems(t *testing.T, current, changed []string, passed ...[]string) 
 	for _, argv := range passed {
 		runs = append(runs, langpack.Run{Argv: argv})
 	}
-	source := langpack.Source{Current: current, Changed: changed}
-	if !(langpack.GoTests{}).Applies(source) {
-		t.Fatal("GoTests does not apply")
-	}
-	return (langpack.GoTests{}).Problems(source, runs)
+	return langpack.GoEvidence(langpack.Source{Current: current, Changed: changed}, runs, contractFacts).Problems
 }
 
 // A changed non-Go file in a directory without Go files belongs to the

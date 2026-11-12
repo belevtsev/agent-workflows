@@ -13,17 +13,19 @@ func evLimit(id string) string {
 }
 
 // A11: Evaluate is AnyPassedRun, then each distinct known rule in order; an
-// unknown id adds one limitation; dir and env are ignored for these ids.
+// unknown id, the retired go.package-test/v1 included, adds one limitation;
+// dir and env are ignored for these ids, since go.package-test/v2 runs no
+// command without go.mod at the selected path.
 func TestEvaluate(t *testing.T) {
 	goSrc := langpack.Source{Current: []string{"go.mod", "a/a.go"}, Changed: []string{"a/a.go"}}
 	plain := langpack.Source{Current: []string{"x.txt"}, Changed: []string{"x.txt"}}
 	ver := []langpack.Run{{Argv: []string{"go", "version"}}}
 	any := langpack.AnyPassedRun{}.Problems
-	goT := langpack.GoTests{}.Problems
-	if len(goT(goSrc, ver)) == 0 || len(any(goSrc, nil)) == 0 || len(any(goSrc, ver)) != 0 {
-		t.Fatal("precondition: GoTests and AnyPassedRun do not report as the contract describes")
+	if len(any(goSrc, nil)) == 0 || len(any(goSrc, ver)) != 0 {
+		t.Fatal("precondition: AnyPassedRun does not report as the contract describes")
 	}
-	v1 := langpack.GoPackageTestV1
+	v2 := langpack.GoPackageTestV2
+	noGoMod := "evidence rule " + v2 + " needs go.mod at the selected path; only the fallback rule applied for it"
 	cases := []struct {
 		name             string
 		ids              []string
@@ -32,11 +34,10 @@ func TestEvaluate(t *testing.T) {
 		problems, limits []string
 	}{
 		{"no ids is the fallback alone", nil, goSrc, nil, any(goSrc, nil), nil},
-		{"v1 appends GoTests after the fallback", []string{v1}, goSrc, nil, append(any(goSrc, nil), goT(goSrc, nil)...), nil},
-		{"repeated v1 applies once", []string{v1, v1}, goSrc, ver, goT(goSrc, ver), nil},
-		{"v1 without go.mod adds nothing", []string{v1}, plain, nil, any(plain, nil), nil},
-		{"unknown ids in order, each once", []string{"go.package-test/v9", v1, "example.rule/v1", "go.package-test/v9"}, goSrc, ver,
-			goT(goSrc, ver), []string{evLimit("go.package-test/v9"), evLimit("example.rule/v1")}},
+		{"repeated v2 applies once", []string{v2, v2}, plain, nil, any(plain, nil), []string{noGoMod}},
+		{"the retired v1 is not built in", []string{"go.package-test/v1"}, goSrc, nil, any(goSrc, nil), []string{evLimit("go.package-test/v1")}},
+		{"unknown ids in order, each once", []string{"go.package-test/v9", v2, "example.rule/v1", "go.package-test/v9"}, plain, ver,
+			nil, []string{evLimit("go.package-test/v9"), noGoMod, evLimit("example.rule/v1")}},
 	}
 	for _, c := range cases {
 		a := langpack.Evaluate(context.Background(), t.TempDir(), nil, c.ids, c.src, c.passed)

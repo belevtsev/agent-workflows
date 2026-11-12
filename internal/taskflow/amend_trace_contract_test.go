@@ -300,7 +300,7 @@ func (f *m1Fixture) mergeBaseAndAdd(check taskflow.Check) {
 
 func (f *m1Fixture) run(checkID string) taskflow.CheckRun {
 	f.t.Helper()
-	run, err := taskflow.Run(f.ctx, f.task, checkID)
+	run, err := taskflow.RunCheck(f.ctx, f.task, checkID)
 	if err != nil {
 		f.t.Fatalf("Run %s: %v", checkID, err)
 	}

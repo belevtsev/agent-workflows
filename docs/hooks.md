@@ -143,13 +143,31 @@ verification does not finish A, so starting a fresh record cannot hide
 unreviewed edits.
 
 A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
-v3.0.0-rc.1, has no `packs` or `test_rules`. `cw` refuses to read it, so
+v3.0.0-rc.1, has no `packs` or `test_rules`, or binds the removed v1 Go rule
+(`go.package-test/v1`). `cw` refuses to read it, so
 neither `cw task verify` nor `cw task abandon` can close it, but it still gates
-by the rules above, judged from its latest revision. The deny reason names its
+by the rules above, judged from its newest decodable revision. The deny reason names its
 directory: move that directory out of the task store, then start a new task
 with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
 verified as complete is finished and does not gate, since those releases
 recorded no source digest.
+
+### Records that cannot be read
+
+Any other record that `cw` cannot load is judged by its newest revision file
+that still decodes. Such records include a revision that is not JSON (such as
+after `echo '{' > <task>/record-000002.json`), a revision file or task
+directory that other users can read, a broken revision chain, and a record a
+newer `cw` wrote. When that revision says the record governs the repository
+by the rules above, and no readable record gates, the hook asks
+(`permissionDecision: "ask"`) instead of letting the command through, with a
+reason that names the task directory and the load error, and `cw publish`
+refuses with exit 3 `open-record`. To clear it, remove the task directory or
+move it out of the task store; for a record from a newer `cw`, upgrade `cw`
+instead. A task directory in which no revision decodes is ignored
+([Known bypasses](#known-bypasses)). Under Codex the command goes ahead,
+unless it also raises an ask that Codex denies
+([Asking instead of denying](#asking-instead-of-denying), [Codex](#codex)).
 
 ### Which source counts
 
@@ -177,9 +195,11 @@ is version 4, which `cw` v3.0.0-rc.1 cannot read
 
 ### Asking instead of denying
 
-Two cases ask for confirmation (`permissionDecision: "ask"`) instead of
-denying; a deny for any git command in the same Bash input wins. Codex cannot
-ask, so there both are denies ([Codex](#codex)).
+These cases ask for confirmation (`permissionDecision: "ask"`) instead of
+denying; a deny for any git command in the same Bash input wins, and asks in
+one input are joined. Codex cannot ask, so there the first two are denies and
+the last two let the command run, unless joined with one of the first two
+([Codex](#codex)).
 
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
@@ -198,6 +218,15 @@ ask, so there both are denies ([Codex](#codex)).
   directory, in any letter case. The reason suggests
   `cw task start`. Set the plugin option `small_task_prompt` to `false`
   (`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) to turn this prompt off.
+- A commit or push from a repository where no readable record gates, but a
+  record that governs it cannot be read
+  ([Records that cannot be read](#records-that-cannot-be-read)). The gate
+  also works out the first two asks as if that record did not exist: a push
+  of uncommitted changes over the verified records beside it, or a
+  substantial change with no other record, worded "no readable cw task
+  record". Either one is joined to this ask in the same reason.
+- A commit or push the gate would judge while the task store cannot be located
+  or read ([Task store](#task-store)).
 
 ### Task store
 
@@ -208,12 +237,20 @@ read `CW_TASK_STORE`; give it the same directory with `--store` when you use
 the variable. `cw publish` reads both the store of the task it publishes (the
 task directory's parent) and this store, once each when they are the same.
 
-A relative `$XDG_STATE_HOME` names no store ([paths](operations.md#paths)).
-Without `$CW_TASK_STORE`, the hook then asks before each `git commit` and
-`git push` it would otherwise judge, with the reason "XDG_STATE_HOME must be
-an absolute path; set it, or set CW_TASK_STORE", instead of letting the
-command through unchecked; under Codex it denies ([Codex](#codex)). Commands that the rules below let through without
-reading the store, such as one outside a Git repository, still go ahead.
+Without `$CW_TASK_STORE`, the hook cannot locate the store when
+`$XDG_STATE_HOME` is relative, which names no store
+([paths](operations.md#paths)), or when the home directory cannot be
+resolved. It then asks before each `git commit` and `git push` it would
+otherwise judge, instead of letting the command through unchecked, with a
+reason that names the cause: "XDG_STATE_HOME must be an absolute path; set it,
+or set CW_TASK_STORE", or "cw cannot locate the task store (resolve home
+directory); set CW_TASK_STORE to it". It asks the same way when the store
+exists but cannot be listed, such as a store directory at mode 0000 or a
+regular file in its place, with the reason "cw cannot read the task store
+(ERROR); make it a directory you can read, or set CW_TASK_STORE to one". Under
+Codex the command goes ahead ([Codex](#codex)). Commands that the rules below
+let through without reading the store, such as one outside a Git repository,
+still go ahead. A store that does not exist holds no records.
 
 ## Fail-open rules
 
@@ -221,18 +258,23 @@ The gate only ever blocks or asks on a positive decision. `cw hook pre-publish`
 exits 0 without output, and the command proceeds, when:
 
 - the plugin options `enforce_verify` and `small_task_prompt` are both `false`
-  (`enforce_verify=false` alone removes the deny and the uncommitted-push ask);
+  (`enforce_verify=false` alone removes the deny, the uncommitted-push ask and
+  the ask for a record that cannot be read, which then counts as no record);
 - the command contains no `git commit` or `git push` the hook recognises;
 - the directory the command runs in is not inside a Git repository;
 - the task store holds no governing record and the change does not look
   substantial;
-- anything fails internally: unreadable input, an unreadable or damaged record,
-  a record written by a newer `cw`, a failed source capture, a missing `git`, a
-  git command that fails or times out. Damaged records are skipped rather than
-  reported, except a record written by v2.0.66 to v2.0.96: `cw` refuses it at
-  its first revision, so it gates even when a later revision is damaged. A
-  relative `$XDG_STATE_HOME` is the other exception: it asks
-  ([task store](#task-store)).
+- anything fails internally: unreadable input, a task directory in which no
+  revision decodes or that cannot be listed, a failed source capture, a missing
+  `git`, a git command that fails or times out. Two failures ask instead: a
+  governing record that cannot be read
+  ([Records that cannot be read](#records-that-cannot-be-read)) and a task
+  store that cannot be located or read ([task store](#task-store)). A record
+  written by v2.0.66 to v2.0.96 still denies: `cw` refuses it at its first
+  revision, so it gates even when a later revision is damaged;
+- under Codex, either of those two asks, unless it is joined with an ask that
+  Codex turns into a deny: Codex cannot ask, and a deny would block the user on
+  a file or setting they may not be able to fix from there ([Codex](#codex)).
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record
@@ -262,8 +304,11 @@ push through today while the repository has an open substantial task, or lets
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
-| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under `cw` v3.0.0-rc.1, any version 4 record ([Which source counts](#which-source-counts)). The current hook skips a record from a newer `cw` the same way. |
-| An unreadable newest revision: `echo '{' > <task>/record-000002.json` | Allowed. A task whose record does not load is skipped, and a task directory whose newest revision does not decode is ignored. Removing the file restores the deny. |
+| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under `cw` v3.0.0-rc.1, any version 4 record ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
+| A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
+| `chmod 000 <task>`, or `chmod 000` on every revision file of a task (its only one, for a new task) | Allowed. A task directory the hook cannot list, or whose revision files it cannot open, has no revision to read and is ignored, like one in which no revision decodes. |
+| A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |
+| A record that cannot be read, under Codex: `echo '{' > <task>/record-000002.json` | Allowed. Codex cannot ask, and the hook lets the command go ahead there rather than block the user on a file it cannot judge ([Codex](#codex)). |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
 | `cw task abandon --task <task> --reason TEXT` | Allowed. An abandoned task never gates, and the deny text names this command as a way out. |
 | A task nobody touched for 14 days | Allowed, with no message: the task stops gating 14 days after its latest revision ([Which records gate](#which-records-gate)). |
@@ -319,18 +364,24 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   `global/AGENTS.md` to the session, so the trusted plugin also loads the
   working conventions.
 
-So under Codex the pre-publish hook turns today's three asks into denies: an
-unrecorded substantial change, a push with uncommitted changes over a verified
-record ([Asking instead of denying](#asking-instead-of-denying)), and a relative
-`XDG_STATE_HOME` ([Task store](#task-store)). The reason starts
-`agent-workflows: Codex cannot ask for confirmation`, carries the question
-Claude Code would ask, and says to put it to the user, who goes ahead by running
-the command outside Codex. Every reason under Codex ends by naming the option
-variables.
+So under Codex the pre-publish hook turns two asks into denies: an
+unrecorded substantial change and a push with uncommitted changes over a
+verified record ([Asking instead of denying](#asking-instead-of-denying)). The
+reason starts `agent-workflows: Codex cannot ask for confirmation`, carries the
+question Claude Code would ask, and says to put it to the user, who goes ahead
+by running the command outside Codex. Every reason under Codex ends by naming
+the option variables.
 
-An ask for a task record that cannot be read, which is planned, will not become
-a deny: a deny would block the user on a damaged file, so under Codex that
-command goes ahead, as Codex runs any ask.
+The asks for a task record that cannot be read
+([Records that cannot be read](#records-that-cannot-be-read)) and for a task
+store that cannot be located or read ([Task store](#task-store)) do not become
+denies: a deny would block the user on a file or setting they may not be able
+to fix from Codex, so under Codex the hook prints nothing and the command goes
+ahead, as Codex runs any ask. A relative `XDG_STATE_HOME` is one of these, so
+it no longer denies there. When one of them is joined with one of the two
+denied asks, the command is denied: a push of uncommitted changes beside a
+record that cannot be read, or a substantial change whose only record cannot
+be read.
 
 The plugin options are environment variables under Codex: export
 `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY`, `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`

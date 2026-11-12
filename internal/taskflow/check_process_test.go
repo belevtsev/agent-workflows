@@ -86,7 +86,7 @@ func pgLeaderGroupLive(pidFile string) (bool, error) {
 }
 
 // pgRequireStormDescendantScript proves the storm descendant reports a
-// survivor whose forker is gone once Run has returned, and stays silent while
+// survivor whose forker is gone once RunCheck has returned, and stays silent while
 // its forker is alive.
 func pgRequireStormDescendantScript(t *testing.T, root string) {
 	t.Helper()
@@ -130,7 +130,7 @@ func pgRequireStormDescendantScript(t *testing.T, root string) {
 // measured rate (17.5%) a single-kill cleanup survives all 36 trials with
 // probability 0.825^36 < 0.1%; if the check runner's own timing halved that
 // rate (8.75%), 0.9125^36 < 4%. Each trial starts a fresh task and runs the
-// check once; with Start, Run and a helper leader and forker per trial the
+// check once; with Start, RunCheck and a helper leader and forker per trial the
 // test is sized for about 0.3-0.8 s per trial (11-29 s) plus the observation.
 // The check, right after each return, that no member of the check's group is
 // alive only adds detection.
@@ -151,9 +151,9 @@ func TestNormalCheckExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
 			t.Fatal(err)
 		}
 		record, _ := fixtureTask(t, helperPlan(t, "small", "storm-leader", directory, survivors))
-		run, err := Run(t.Context(), record.Directory, "focused")
+		run, err := RunCheck(t.Context(), record.Directory, "focused")
 		live, probeErr := pgLeaderGroupLive(filepath.Join(directory, "leader-pid"))
-		// From here on, any descendant of this trial still running outlived Run.
+		// From here on, any descendant of this trial still running outlived RunCheck.
 		if writeErr := os.WriteFile(filepath.Join(directory, "returned"), nil, 0o600); writeErr != nil {
 			t.Fatal(writeErr)
 		}
@@ -167,7 +167,7 @@ func TestNormalCheckExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
 			t.Fatalf("trial %d: %v", trial, probeErr)
 		}
 		if live {
-			t.Fatalf("trial %d: a member of the check's process group was alive after Run returned", trial)
+			t.Fatalf("trial %d: a member of the check's process group was alive after RunCheck returned", trial)
 		}
 	}
 	// A survivor reports within about 0.3 s of its trial's return marker.

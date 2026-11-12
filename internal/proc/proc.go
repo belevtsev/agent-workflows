@@ -82,7 +82,10 @@ type Result struct {
 	// Stdout and Stderr are the output Run kept; see Spec.
 	Stdout, Stderr []byte
 	// Code is the exit status, or -1 when the program did not exit on its
-	// own: it never started, was stopped, or died from a signal.
+	// own: it never started, or a signal ended it, such as the kill when the
+	// run was stopped. A program that exited before the stop, while a
+	// descendant held its output open, or within Grace after the SIGTERM,
+	// keeps its status.
 	Code int
 	// Stopped is set when ctx ended or Timeout passed, so the process group
 	// was killed or the program was never started.
@@ -174,6 +177,12 @@ func Run(ctx context.Context, spec Spec) Result {
 		// Killing the group closes every pipe a member holds. A descendant
 		// that left the group can still hold one; WaitDelay bounds that wait.
 		got.Err, got.Cleanup = stopGroup(command, spec.Grace, done)
+		// The program may have exited on its own before the stop, while a
+		// descendant held its output open, or within the grace after
+		// SIGTERM; it keeps its status.
+		if state := command.ProcessState; state != nil && state.Exited() {
+			got.Code = state.ExitCode()
+		}
 	}
 	if input != nil {
 		// Wait closed the pipe once the program exited, which ends a write

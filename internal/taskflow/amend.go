@@ -104,7 +104,7 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 			return errors.New("checks can be added only to a substantial task")
 		}
 		if !slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool {
-			return pack.EvidenceRule == langpack.GoPackageTestV1 || pack.EvidenceRule == langpack.GoPackageTestV2
+			return pack.EvidenceRule == langpack.GoPackageTestV2
 		}) {
 			return errNoGoRule
 		}

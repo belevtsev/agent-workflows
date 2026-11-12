@@ -40,7 +40,7 @@ review:
   - Response bodies and sql.Rows are closed, and rows.Err() is checked.
   - No sync.Mutex or other lock is copied.
   - Reachable dependency vulnerabilities were checked with govulncheck.
-evidence_rule: go.package-test/v1
+evidence_rule: go.package-test/v2
 `
 
 // mfGoWant is section 3.4 decoded by hand; Format, Integration and E2E stay nil.
@@ -54,7 +54,7 @@ func mfGoWant() langpack.Manifest {
 		Skills: langpack.Skills{Implement: []string{"go-principal-engineer"}, Test: []string{"cc-skills-golang:golang-testing"},
 			Security: []string{"go-pki-mtls", "cc-skills-golang:golang-security"}},
 		Review:       mfReview(),
-		EvidenceRule: "go.package-test/v1",
+		EvidenceRule: "go.package-test/v2",
 	}
 }
 
@@ -223,7 +223,7 @@ func TestValidIDAndKnownRule(t *testing.T) {
 			t.Fatalf("A6 violated: ValidID(%q) disagrees with the pattern", s)
 		}
 	}
-	for id, want := range map[string]bool{"go.package-test/v1": true, "": false, "go.package-test/v9": false, "example.rule/v1": false} {
+	for id, want := range map[string]bool{"go.package-test/v2": true, "go.package-test/v1": false, "": false, "go.package-test/v9": false, "example.rule/v1": false} {
 		if langpack.KnownRule(id) != want {
 			t.Errorf("A6 violated: KnownRule(%q) != %v", id, want)
 		}

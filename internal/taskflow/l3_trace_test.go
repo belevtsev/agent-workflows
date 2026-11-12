@@ -305,7 +305,7 @@ func TestTraceGOFLAGSWithoutCredit(t *testing.T) {
 
 // TestTraceTruncatedResults fails when a test the run's results could not
 // record, because they hit their bound, lacks detail 3, or when a test
-// recorded before the bound does not count (R22 through Run, R29).
+// recorded before the bound does not count (R22 through RunCheck, R29).
 func TestTraceTruncatedResults(t *testing.T) {
 	t.Parallel()
 	many := `package b

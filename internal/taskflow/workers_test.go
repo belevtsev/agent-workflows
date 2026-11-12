@@ -180,7 +180,7 @@ func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *tes
 	if _, err := AssignWorker(t.Context(), record.Directory, record.Assignments[0].Brief); err == nil {
 		t.Fatal("immutable assignment reused")
 	}
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Assess(t.Context(), record.Directory, assessment(ref, "focused")); err != nil {
@@ -279,7 +279,7 @@ func TestBlockedCancelledAndUnusedHandoffsNeverClaimCompletion(t *testing.T) {
 			if verified, err := Verify(t.Context(), record.Directory); err == nil || !strings.Contains(strings.Join(verified.Problems, " "), "no terminal handoff") {
 				t.Fatal("orphan assignment did not block completion")
 			}
-			run, err := Run(t.Context(), record.Directory, "focused")
+			run, err := RunCheck(t.Context(), record.Directory, "focused")
 			if err == nil || run.Status != "failed" {
 				t.Fatal("failure fixture did not fail")
 			}
@@ -603,7 +603,7 @@ func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testin
 	t.Run("false completed check", func(t *testing.T) {
 		record, ref := fixtureTask(t, helperPlan(t, "small", "fail"))
 		record = mustAssignWorker(t, record, workerBrief("worker", "/root/worker", "implementation", []string{"source.txt"}, "focused"))
-		if _, err := Run(t.Context(), record.Directory, "focused"); err == nil {
+		if _, err := RunCheck(t.Context(), record.Directory, "focused"); err == nil {
 			t.Fatal("failure fixture passed")
 		}
 		record, err := Load(record.Directory)
