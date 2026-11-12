@@ -164,6 +164,9 @@ func TestRunCheckRefusesAStoredEnvPassthroughThatAdmissionRefuses(t *testing.T) 
 // its go command's host's earns none either; a host run with allowlisted
 // GOFLAGS keeps its credit. A rerun is a failure at the same before-snapshot
 // with the same applied GOFLAGS, wherever the go command took them from.
+// Review finding 3 on #139: a failure recorded without go_env (version 4)
+// shows only its environment's GOFLAGS, so a pass whose environment gave the
+// same is a rerun too, whatever GOFLAGS a go env file added.
 func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 	argv := []string{"go", "test", "-json", "./..."}
 	env := func(goflags, goarch string) *langpack.GoEnv {
@@ -192,6 +195,13 @@ func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 	if !rerun(record, same) || rerun(record, other) {
 		t.Errorf("rerun: same applied GOFLAGS %v, other %v; want true and false", rerun(record, same), rerun(record, other))
 	}
+	legacy := CheckRun{CheckID: "unit", Status: "failed", ExitCode: &exit, Before: before}
+	fromFile := CheckRun{CheckID: "unit", Status: "passed", Before: before, GoEnv: env("-count=1", "amd64")}
+	fromEnvironment := CheckRun{CheckID: "unit", Status: "passed", Before: before, GOFLAGS: "-count=2", GoEnv: env("-count=2", "amd64")}
+	record = Record{Checks: []CheckRun{legacy, fromFile, fromEnvironment}}
+	if !rerun(record, fromFile) || rerun(record, fromEnvironment) {
+		t.Errorf("rerun after a version 4 failure: same environment GOFLAGS %v, other %v; want true and false", rerun(record, fromFile), rerun(record, fromEnvironment))
+	}
 }
 
 // TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough builds a go
@@ -199,14 +209,16 @@ func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 // record that bypassed admission could. Oracle: os/exec uses the last value
 // of a repeated variable, so GOROOT and GOTOOLCHAIN=local of the verified go
 // command (G6) still win over cw's environment; GOFLAGS, which reaches every
-// check whether named or not, is recorded as the check sees it, and the Go
-// rule gives a run with -exec or -toolexec in it no credit. The go env reader
-// stands in for the verified go command and reports the GOFLAGS it is given.
+// check whether named or not, is recorded as cw's environment gave it, the
+// check sees it as go env reported it (F1), and the Go rule gives a run with
+// -exec or -toolexec in it no credit. The go env reader stands in for the
+// verified go command and reports the GOFLAGS it is given.
 func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T) {
 	verified := langpack.GoTool{Path: "/verified/bin/go", Version: "go1.27.4", GOROOT: "/verified"}
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) { return verified, nil }
-	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, error) {
-		return langpack.GoEnv{GOFLAGS: environmentValue(env, "GOFLAGS"), GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, nil
+	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, error) {
+		goflags := environmentValue(env, "GOFLAGS")
+		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, nil
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	t.Setenv("GOROOT", "/elsewhere")
@@ -236,7 +248,7 @@ func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T)
 		if got := last(spec.Env, "GOTOOLCHAIN"); got != "local" {
 			t.Errorf("the go check runs with GOTOOLCHAIN %q, want local", got)
 		}
-		recorded := langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS"))
+		recorded := langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS"))
 		if recorded != goflags || last(spec.Env, "GOFLAGS") != goflags {
 			t.Errorf("GOFLAGS recorded %q, seen %q; want %q for both", recorded, last(spec.Env, "GOFLAGS"), goflags)
 		}

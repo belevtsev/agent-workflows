@@ -359,14 +359,15 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 // named go (or go.exe, as the Go evidence rule names it) runs instead the go
 // command that langpack.ResolveGo verified, by its absolute path and with
 // GoTool.Env added, and tool is that go command; goEnv is what it reported
-// with go env under that final environment and in dir (langpack.ReadGoEnv),
-// which the Go evidence rule credits by. err says why no go command could be
-// verified, or its go env read, and then the check must not run. Resolving
-// and reading run the go command, within ctx and the check's timeout, so
-// RunCheck calls checkSpec before it takes the task lock. checkSpec is the one
-// place that decides which program a check runs and what that program sees;
-// RunCheck records the environment's GOFLAGS from it and attaches the log as
-// both outputs.
+// with go env under that environment and in dir (langpack.ReadGoEnv), which
+// the Go evidence rule credits by, and the run's environment ends with the
+// GOFLAGS, GOOS and GOARCH it reported, so a go env file read again by the
+// run cannot change them. err says why no go command could be verified, or
+// its go env read, and then the check must not run. Resolving and reading
+// run the go command, within ctx and the check's timeout, so RunCheck calls
+// checkSpec before it takes the task lock. checkSpec is the one place that
+// decides which program a check runs and what that program sees; RunCheck
+// attaches the log as both outputs.
 func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, goEnv *langpack.GoEnv, err error) {
 	spec = proc.Spec{
 		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(check),
@@ -387,10 +388,12 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 	}
 	spec.Path = resolved.Path
 	spec.Env = append(spec.Env, resolved.Env()...)
-	read, err := readGoEnv(ctx, resolved, dir, spec.Env)
+	read, pin, err := readGoEnv(ctx, resolved, dir, spec.Env)
 	if err != nil {
 		return spec, nil, nil, err
 	}
+	// go test reads a go env file again; the values just read win over it.
+	spec.Env = append(spec.Env, pin...)
 	return spec, &resolved, &read, nil
 }
 
@@ -472,7 +475,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS")), Tool: tool, GoEnv: goEnv}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err

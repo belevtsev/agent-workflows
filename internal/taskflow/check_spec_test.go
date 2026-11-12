@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -50,8 +51,9 @@ func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 // Oracle: G6's design: a go check runs the go command langpack.ResolveGo
 // verified, by its absolute path, with GOROOT and GOTOOLCHAIN=local appended
 // to the same environment, and returns that go command and (F1) what
-// langpack.ReadGoEnv reports for it under that final environment; when
-// ResolveGo refuses, checkSpec returns its error and neither.
+// langpack.ReadGoEnv reports for it under that environment, whose pin of
+// GOFLAGS, GOOS and GOARCH ends the run's environment; when ResolveGo
+// refuses, checkSpec returns its error and neither.
 func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	dir := t.TempDir()
 	check := Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 42}
@@ -64,15 +66,17 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	if err != nil || tool == nil || *tool != want {
 		t.Fatalf("checkSpec tool = %+v, %v; want %+v", tool, err, want)
 	}
+	verified := append(checkEnvironment(check), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local")
+	read, pin, err := langpack.ReadGoEnv(t.Context(), want, dir, verified)
+	if err != nil || goEnv == nil || *goEnv != read {
+		t.Fatalf("checkSpec go env = %+v, want %+v (%v)", goEnv, read, err)
+	}
 	wantSpec := proc.Spec{
-		Path: want.Path, Args: []string{"test", "./..."}, Dir: dir, Env: append(checkEnvironment(check), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local"),
+		Path: want.Path, Args: []string{"test", "./..."}, Dir: dir, Env: append(verified, pin...),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
 	}
 	if !reflect.DeepEqual(got, wantSpec) {
 		t.Fatalf("checkSpec = %+v\nwant %+v", got, wantSpec)
-	}
-	if read, err := langpack.ReadGoEnv(t.Context(), want, dir, wantSpec.Env); err != nil || goEnv == nil || *goEnv != read {
-		t.Fatalf("checkSpec go env = %+v, want %+v (%v)", goEnv, read, err)
 	}
 
 	fake := t.TempDir()
@@ -147,8 +151,8 @@ func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) {
 		return langpack.GoTool{Path: program, Version: "go1.27.4", GOROOT: filepath.Dir(program)}, nil
 	}
-	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, error) {
-		return langpack.GoEnv{}, errors.New("cannot read the configuration of the go command: test reader")
+	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, []string, error) {
+		return langpack.GoEnv{}, nil, errors.New("cannot read the configuration of the go command: test reader")
 	}
 	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	run, err := RunCheck(t.Context(), record.Directory, "unit")
@@ -165,6 +169,63 @@ func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("the go command ran although its go env could not be read: %v", err)
+	}
+}
+
+// TestCheckSpecHoldsTheRunToTheGoEnvItRead runs a go test check of a test
+// that fails whenever it runs, with GOENV naming an empty go env file that
+// the go env read sees and that is then rewritten, before the run reads it
+// again, to GOFLAGS=-exec=/bin/true and another GOARCH. Oracle: review
+// finding 1 on #139: cmd/go takes a GOFLAGS, GOOS or GOARCH that is not
+// empty from the environment over any go env file, so with go_env's values
+// at the end of the run's environment the run builds for the host, runs the
+// test and fails, and the go command reports what go_env recorded.
+func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
+	dir := t.TempDir()
+	for name, body := range map[string]string{
+		"go.mod":       "module example.com/pinned\n\ngo 1.21\n",
+		"fail_test.go": "package pinned\n\nimport \"testing\"\n\nfunc TestFails(t *testing.T) { t.Fatal(\"ran\") }\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file := filepath.Join(t.TempDir(), "env")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GOENV", file)
+	t.Setenv("GOFLAGS", "")
+	t.Setenv("GOOS", "")
+	t.Setenv("GOARCH", "")
+	other := "arm64"
+	if runtime.GOARCH == "arm64" {
+		other = "amd64"
+	}
+	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, error) {
+		read, pin, err := langpack.ReadGoEnv(ctx, tool, dir, env)
+		if err := os.WriteFile(file, []byte("GOFLAGS=-exec=/bin/true\nGOARCH="+other+"\n"), 0o644); err != nil {
+			t.Error(err)
+		}
+		return read, pin, err
+	}
+	t.Cleanup(func() { readGoEnv = langpack.ReadGoEnv })
+	check := Check{ID: "unit", Argv: []string{"go", "test", "-count=1", "./..."}, TimeoutSeconds: 120}
+	spec, tool, goEnv, err := checkSpec(t.Context(), check, dir)
+	if err != nil || tool == nil || goEnv == nil {
+		t.Fatalf("checkSpec: tool %+v, go env %+v, %v", tool, goEnv, err)
+	}
+	want := langpack.GoEnv{GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH}
+	if *goEnv != want {
+		t.Fatalf("precondition: go env read before the rewrite = %+v, want %+v", *goEnv, want)
+	}
+	if got, _, err := langpack.ReadGoEnv(t.Context(), *tool, dir, spec.Env); err != nil || got != *goEnv {
+		t.Errorf("the run's go command reports %+v (%v), want what go_env recorded, %+v", got, err, *goEnv)
+	}
+	spec.StdoutLimit, spec.StderrLimit = 1<<20, 1<<20
+	got := proc.Run(t.Context(), spec)
+	if got.Err == nil && got.Code == 0 || !strings.Contains(string(got.Stdout), "ran") {
+		t.Errorf("go test of a failing test under the rewritten go env file exited %d (%v), output %q; want the test to run and fail", got.Code, got.Err, got.Stdout)
 	}
 }
 

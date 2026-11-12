@@ -176,10 +176,12 @@ type CheckRun struct {
 	OutputBytes  int64                `json:"output_bytes"`
 	Truncated    bool                 `json:"truncated"`
 	Failure      string               `json:"failure,omitempty"`
-	// GOFLAGS is the GOFLAGS of the check's environment, with compiler and
-	// linker flag values redacted (langpack.RedactGOFLAGS); runs recorded
-	// before it existed omit it. The Go evidence rule reads GoEnv's instead.
-	// Argv, unlike GOFLAGS, is stored verbatim.
+	// GOFLAGS is the GOFLAGS that cw's environment gave the check, before
+	// checkSpec pinned GoEnv's into it, with compiler and linker flag values
+	// redacted (langpack.RedactGOFLAGS); runs recorded before it existed omit
+	// it. The Go evidence rule reads GoEnv's instead; rerun also compares it
+	// with a failed run recorded without GoEnv. Argv, unlike GOFLAGS, is
+	// stored verbatim.
 	GOFLAGS string `json:"goflags,omitempty"`
 	// TestResults names the private file in the task directory holding the
 	// per-test results read from the run's complete output; TestResultsSHA256

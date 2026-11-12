@@ -76,10 +76,11 @@ func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
 			e.write("alpha/alpha.go", brokenAlpha)
 			code, stderr := e.runCode("alpha", tc.configure(e)...)
 			e.expectNoAlphaCredit(code, stderr)
-			if run := e.latestCheckRun("alpha"); run.Status == "passed" {
-				if env := e.storedGoEnv("alpha"); env["goflags"] != "-exec=/bin/true" {
-					t.Errorf("the passed run stores go_env %v, want goflags -exec=/bin/true", env)
-				}
+			if status := e.latestCheckRun("alpha").Status; status != "passed" {
+				t.Fatalf("precondition: the run under the go env file is %s, want passed: /bin/true no longer stands in for alpha's test (cw task run exited %d: %s)", status, code, stderr)
+			}
+			if env := e.storedGoEnv("alpha"); env["goflags"] != "-exec=/bin/true" {
+				t.Errorf("the passed run stores go_env %v, want goflags -exec=/bin/true", env)
 			}
 		})
 	}
@@ -91,7 +92,8 @@ func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
 // Go rule never looked at GOOS or GOARCH, so this run passed and earned
 // credit. Oracle (F1): the rule credits only a run whose go env GOOS and
 // GOARCH are its go command's host's, so the run earns no credit and verify
-// says why; the exec program ran, so the repro is real.
+// says why; the run passed and the exec program ran, so the repro is real
+// (review finding 5 on #139: a run that stops reproducing fails the test).
 func TestTaskRunForAnotherPlatformEarnsNoCredit(t *testing.T) {
 	e := newGoToolchainE2E(t)
 	goarch := "arm64"
@@ -102,8 +104,8 @@ func TestTaskRunForAnotherPlatformEarnsNoCredit(t *testing.T) {
 	e.write("alpha/alpha.go", brokenAlpha)
 	code, stderr := e.runCode("alpha", "PATH="+wrapper+":"+filepath.Dir(goTool(t))+":/usr/bin:/bin", "GOARCH="+goarch)
 	limitations := e.expectNoAlphaCredit(code, stderr)
-	if e.latestCheckRun("alpha").Status != "passed" {
-		return
+	if status := e.latestCheckRun("alpha").Status; status != "passed" {
+		t.Fatalf("precondition: the cross-platform run is %s, want passed: the exec program no longer stands in for alpha's test (cw task run exited %d: %s)", status, code, stderr)
 	}
 	if len(e.fakeCalls()) == 0 {
 		t.Fatal("the run passed, but go test never ran the exec program")

@@ -234,7 +234,10 @@ func TestLoadGoFactsReadsTheRaceProbeOnlyFromAVerifiedGo(t *testing.T) {
 // otherwise the go env file GOENV names supplies it; GOOS and GOARCH follow
 // the environment, and GOHOSTOS and GOHOSTARCH are the go command's own
 // platform, the one this test runs on; GOFLAGS is stored redacted
-// (RedactGOFLAGS).
+// (RedactGOFLAGS). Review finding 1 on #139: pin holds the GOFLAGS read,
+// unredacted, or a space for none, and GOOS and GOARCH; appended to the
+// environment, they win over a go env file that says otherwise, so the go
+// command reports the same configuration again.
 func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	dir := t.TempDir()
 	tool, err := langpack.ResolveGo(t.Context(), "go", dir, gtEnv(gtRealGo(t)))
@@ -249,23 +252,36 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	if runtime.GOARCH == "arm64" {
 		other = "amd64"
 	}
+	rewritten := filepath.Join(t.TempDir(), "env")
+	if err := os.WriteFile(rewritten, []byte("GOFLAGS=-exec=/bin/false\nGOOS=plan9\nGOARCH=386\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	host := func(goflags, goarch string) langpack.GoEnv {
 		return langpack.GoEnv{GOFLAGS: goflags, GOOS: runtime.GOOS, GOARCH: goarch, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH}
+	}
+	pinned := func(goflags, goarch string) []string {
+		return []string{"GOFLAGS=" + goflags, "GOOS=" + runtime.GOOS, "GOARCH=" + goarch}
 	}
 	for _, c := range []struct {
 		name string
 		env  []string
 		want langpack.GoEnv
+		pin  []string
 	}{
-		{"GOFLAGS from the go env file", []string{"GOENV=" + file}, host("-exec=/bin/true", runtime.GOARCH)},
-		{"GOFLAGS from the environment over the file", []string{"GOENV=" + file, "GOFLAGS=-count=1 -v"}, host("-count=1 -v", runtime.GOARCH)},
-		{"another architecture", []string{"GOENV=off", "GOARCH=" + other}, host("", other)},
-		{"linker values redacted", []string{"GOENV=off", "GOFLAGS=-ldflags=-X=main.k=secret -count=1"}, host("-ldflags=<redacted> -count=1", runtime.GOARCH)},
+		{"GOFLAGS from the go env file", []string{"GOENV=" + file}, host("-exec=/bin/true", runtime.GOARCH), pinned("-exec=/bin/true", runtime.GOARCH)},
+		{"GOFLAGS from the environment over the file", []string{"GOENV=" + file, "GOFLAGS=-count=1 -v"}, host("-count=1 -v", runtime.GOARCH), pinned("-count=1 -v", runtime.GOARCH)},
+		{"another architecture", []string{"GOENV=off", "GOARCH=" + other}, host("", other), pinned(" ", other)},
+		{"linker values redacted", []string{"GOENV=off", "GOFLAGS=-ldflags=-X=main.k=secret -count=1"}, host("-ldflags=<redacted> -count=1", runtime.GOARCH), pinned("-ldflags=-X=main.k=secret -count=1", runtime.GOARCH)},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := langpack.ReadGoEnv(t.Context(), tool, dir, gtEnv(gtRealGo(t), c.env...))
-			if err != nil || got != c.want {
-				t.Fatalf("ReadGoEnv = %+v, %v; want %+v", got, err, c.want)
+			env := gtEnv(gtRealGo(t), c.env...)
+			got, pin, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
+			if err != nil || got != c.want || !slices.Equal(pin, c.pin) {
+				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; want %+v, pin %q", got, pin, err, c.want, c.pin)
+			}
+			again, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, append(append(env, pin...), "GOENV="+rewritten))
+			if err != nil || again != c.want {
+				t.Errorf("ReadGoEnv with the pin and a go env file that says otherwise = %+v, %v; want %+v", again, err, c.want)
 			}
 		})
 	}
@@ -292,9 +308,9 @@ func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tool := langpack.GoTool{Path: gtScript(t, t.TempDir(), "go", c.body), GOROOT: t.TempDir()}
-			got, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
-			if err == nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
-				t.Fatalf("ReadGoEnv = %+v, %v; want an error naming %s and containing %q", got, err, tool.Path, c.want)
+			got, pin, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
+			if err == nil || pin != nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; want no pin and an error naming %s and containing %q", got, pin, err, tool.Path, c.want)
 			}
 		})
 	}

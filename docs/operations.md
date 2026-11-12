@@ -460,9 +460,9 @@ accidents: a test that calls the GitHub API can read a token under a name of
 its own, which the plan and verify then show.
 
 Variables the filter keeps, `GOFLAGS` among them, reach every check whether or
-not `env_passthrough` names them. The run records the `GOFLAGS` the check saw,
-and the Go rule credits only allowlisted flags among those its go command
-applied ([below](#which-go-a-check-runs)), so a `GOFLAGS` with `-exec` or
+not `env_passthrough` names them. The run records `cw`'s `GOFLAGS` under
+`goflags`, and the Go rule credits only allowlisted flags among those its go
+command applied ([below](#which-go-a-check-runs)), so a `GOFLAGS` with `-exec` or
 `-toolexec`, in the environment or in a go env file, earns no credit.
 
 ### Which go a check runs
@@ -486,9 +486,12 @@ each passed go check ran as a limitation. A run recorded before this has no
 `tool`, and verify says so.
 
 Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
-GOHOSTARCH`, with the check's final environment and in the selected path, and
-the run records what it printed under `go_env` (`GOFLAGS` redacted as in
-`goflags`). The Go rule credits a `go test` run only by that record: the
+GOHOSTARCH`, with the check's environment and in the selected path, and the
+run records what it printed under `go_env` (`GOFLAGS` redacted as in
+`goflags`). The check then runs with that `GOFLAGS` (a single space when it is
+empty), `GOOS` and `GOARCH` at the end of its environment, where they win over
+a go env file, so a go env file changed after `cw` read it changes nothing;
+the test binaries see them too. The Go rule credits a `go test` run only by that record: the
 `GOFLAGS` the go command applied, the environment's or else a go env file's
 (`GOENV`, `go env -w`), must pass the allowlist, and `GOOS` and `GOARCH` must
 equal `GOHOSTOS` and `GOHOSTARCH`, since `go test` hands a test binary built

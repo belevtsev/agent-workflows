@@ -290,9 +290,10 @@ before. A new contract brief without requirements is refused only when the plan
 has a per-test-credited `-json` `go test` check. Compatibility runs one way only:
 every revision this `cw` writes is record version 5, which v3.0.0-rc.2 and
 older cannot read, so once this `cw` touches a task only this `cw` or a later one can
-read it. That includes the `cw hook pre-publish` binary, whose commit gate then
-fails open. Update every installed `cw`, including the one the hook runs, before
-running tasks with this one.
+read it. That includes the `cw hook pre-publish` binary: an rc.2 hook asks
+before a commit or push that such a record governs instead of checking it, and
+under Codex the command goes ahead. Update every installed `cw`, including the
+one the hook runs, before running tasks with this one.
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, opted in to with `advisers.enabled`, a key saved with `cw keys set` or

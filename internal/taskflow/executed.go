@@ -50,11 +50,14 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 }
 
 // rerun reports whether another run of run's check failed with an exit code
-// at the same before-snapshot and with the same applied GOFLAGS. A passed run
-// is never failed, so run never matches itself.
+// at the same before-snapshot and with the same applied GOFLAGS. A failed run
+// recorded without go_env (record version 4) shows only its environment's
+// GOFLAGS, not a go env file's, so it also matches a run whose environment
+// gave the same. A passed run is never failed, so run never matches itself.
 func rerun(record Record, run CheckRun) bool {
 	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
-		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && appliedGOFLAGS(other) == appliedGOFLAGS(run)
+		sameFlags := appliedGOFLAGS(other) == appliedGOFLAGS(run) || other.GoEnv == nil && other.GOFLAGS == run.GOFLAGS
+		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && sameFlags
 	})
 }
 

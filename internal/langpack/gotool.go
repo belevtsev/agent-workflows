@@ -137,9 +137,15 @@ const goEnvLimit = 64 << 10
 // from the environment or from a go env file. It fails when the command fails,
 // stops, prints more than goEnvLimit bytes or prints anything but the five
 // values, with GOOS, GOARCH, GOHOSTOS and GOHOSTARCH not empty.
-func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (GoEnv, error) {
-	refuse := func(format string, args ...any) (GoEnv, error) {
-		return GoEnv{}, fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
+//
+// Every go command reads a go env file again, and the file can change after
+// this read, so pin holds the run to what was read: GOFLAGS as printed,
+// unredacted, or a single space for none, and GOOS and GOARCH. Appended to
+// the run's environment, they win over any go env file, as a value that is
+// not empty does in cmd/go, and a space applies no flags.
+func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read GoEnv, pin []string, err error) {
+	refuse := func(format string, args ...any) (GoEnv, []string, error) {
+		return GoEnv{}, nil, fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
 	}
 	got := proc.Run(ctx, proc.Spec{Path: tool.Path, Args: []string{"env", "-json", "GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH"}, Dir: dir, Env: append(slices.Clip(env), tool.Env()...), StdoutLimit: goEnvLimit, StderrLimit: goRootLimit})
 	switch {
@@ -159,11 +165,11 @@ func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (GoEn
 	if err := json.Unmarshal(got.Stdout, &printed); err != nil {
 		return refuse("`go env -json` printed %s, not a JSON object of strings", quoteLimited(string(got.Stdout)))
 	}
-	read := GoEnv{GOFLAGS: RedactGOFLAGS(printed["GOFLAGS"]), GOOS: printed["GOOS"], GOARCH: printed["GOARCH"], GOHOSTOS: printed["GOHOSTOS"], GOHOSTARCH: printed["GOHOSTARCH"]}
+	read = GoEnv{GOFLAGS: RedactGOFLAGS(printed["GOFLAGS"]), GOOS: printed["GOOS"], GOARCH: printed["GOARCH"], GOHOSTOS: printed["GOHOSTOS"], GOHOSTARCH: printed["GOHOSTARCH"]}
 	if _, ok := printed["GOFLAGS"]; !ok || len(printed) != 5 || read.GOOS == "" || read.GOARCH == "" || read.GOHOSTOS == "" || read.GOHOSTARCH == "" {
 		return refuse("`go env -json` printed %s, not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", quoteLimited(string(got.Stdout)))
 	}
-	return read, nil
+	return read, []string{"GOFLAGS=" + cmp.Or(printed["GOFLAGS"], " "), "GOOS=" + read.GOOS, "GOARCH=" + read.GOARCH}, nil
 }
 
 // GoEnvWithheld returns why the Go rule credits no go test run made under env,
