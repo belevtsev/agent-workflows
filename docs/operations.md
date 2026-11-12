@@ -368,21 +368,48 @@ start under `start` and its durations, omitting `task`, `submitted_at`,
 `cw publish` commits a verified task's files, pushes the commit and, with
 `--pr create` or `--pr edit`, creates or edits its pull request. It runs only
 after `cw task verify` passed on the current source and no other open task record
-gates the repository, commits whole files of the task's verified change set,
-reads every step back, appends a `started` and a `finished` entry
-(`publication-NNNNNN.json`) to the task directory, and continues from the
-observed state when the same command runs again. `--summary` prints one line.
+gates the repository, commits whole files of the task's verified change set, or
+of the part of it that `--path` names, reads every step back, and continues from
+the observed state when the same command runs again. Once its checks pass, it
+appends a `started` entry (`publication-NNNNNN.json`) to the task directory, and
+a `finished` entry when it ends. `--summary` prints one line.
 Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
 6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
 which also names the cases that go to the GitHub worker instead. It needs Git
-2.24 or newer. Its known limitations:
+2.24 or newer.
+
+A refusal (exit 4, status `refused`) never commits part of the file set, but it
+can come after steps that are already done:
+
+- **At the checks, nothing is committed or recorded.** One file refuses them
+  all: a `--path` outside the verified change set (`path-not-verified`), a file
+  whose staged state is neither `--expect-head`'s nor the verified one
+  (`hunk-scope`), or a file Git would convert (`content-conversion`).
+  `cw publish` then makes no commit and no push, runs no git command that
+  changes the repository or its index, and appends no publication entry, so
+  the report's `record` is empty.
+  The report's `detail`, also printed to stderr as
+  `agent-workflows: publish refused (REASON): DETAIL`, names the first such file,
+  for example `u.txt is not in the task's verified change set`; with
+  `--summary`, the JSON line carries only the reason.
+- **At a later step, the steps before it stay.** Each step checks again before
+  it runs, and refuses when, for example, HEAD moved (`head-moved`), a Git lock
+  appeared (`git-locked`), the remote branch moved (`remote-moved`) or a pull
+  request for the branch appeared (`pr-exists`). A commit already made, and a
+  push already done, are kept, never amended or reset: the report's `steps`
+  shows them as `done` and the refused step as `refused`, and the `finished`
+  entry records the refusal. Run the command again once the cause is fixed: it
+  finds the commit, and the push if done, `already-present` and continues.
+
+Its known limitations:
 
 - A new file that the user's ignore rules exclude only through `XDG_CONFIG_HOME`
   or `GIT_CONFIG_*` makes `git add --intent-to-add` fail on every run
   (1 `commit-failed`), because the source capture does not read those rules.
-- With `core.autocrlf` set to `input` or true, every commit-set file that
-  contains a CR byte, binaries included, is refused as 4 `content-conversion`.
+- With `core.autocrlf` set to `input` or true, a commit-set file that contains
+  a CR byte, binaries included, refuses the publication as 4
+  `content-conversion`.
 - A Git lock that a concurrent git process holds for more than about two seconds
   reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
   commit), so check that no git process runs before removing one.
@@ -650,6 +677,37 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
   inclusive UTC `--since`/`--until` date range, and prints totals and groups by
   model, UTC day and session. Without `--prices` every amount is unknown, with a
   reason.
+
+### Usage stores
+
+The session transcript is the source of a session's usage; the cost history is a
+copy of its token counts. No command reads both, so none reconciles them:
+
+| Command | Reads | Writes |
+| --- | --- | --- |
+| `cw metrics import` | the transcript: a Claude Code session with its subagents, or a Codex rollout with its descendants | nothing |
+| `cw metrics import --append` | the transcript, then the request identities in the history | requests the history lacks |
+| `cw metrics history` | the cost history only | nothing |
+| `cw metrics summarize` | the observation files you name | nothing |
+
+When they differ:
+
+- **Transcript and history.** The stored request wins: if the transcript's
+  counts for the same identity differ, the history keeps its own and `--append`
+  counts the request as `conflicting`; `cw metrics history` reads only the first
+  line of an identity. `cw metrics import` reports the transcript as it is now,
+  `cw metrics history` what was appended; only the history keeps a session after
+  its transcript expires.
+- **Within one import.** Recorded dollars come only from the session's last
+  cost-state in the main Claude transcript, price-table dollars only from
+  `--prices`, and both are reported apart. When transcript tokens and the cost-state differ for a model,
+  neither wins: `usage` and `cost` are withheld with `usage_unknown_reason`, and
+  an incomplete import also leaves `usage` unknown, never zero. Codex rollouts
+  and the history record no dollars, so their only dollars are price-table
+  estimates.
+- **Task records.** A task record holds no session usage. A consultation record
+  keeps each adviser call's provider-reported tokens, which no command adds to
+  session usage.
 
 ## Consultation command
 

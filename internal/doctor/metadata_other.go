@@ -1,6 +1,6 @@
 //go:build !unix
 
-package projectctx
+package doctor
 
 import "os"
 
