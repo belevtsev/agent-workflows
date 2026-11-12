@@ -184,12 +184,23 @@ func writeRecord(output io.WriteCloser, record *object) error {
 	return err
 }
 
-// Run executes one consultation or adjudication and returns the process
-// status: 0 for success, no_advisers_configured, dry_run or a resolved
-// decision; 2 for partial or unavailable coverage, an unresolved decision, or a
-// task-bound request whose bound adviser is not configured (the record is still
-// written); 1 for invalid input or an existing output path. The error is only
-// for cancellation or a failed write of the reserved record.
+// Outcomes of Run. The cw command maps each to its exit status.
+const (
+	// Complete is success, no_advisers_configured, dry_run or a resolved
+	// decision.
+	Complete = 0
+	// Invalid is invalid input or an existing output path. It also
+	// accompanies every error Run returns.
+	Invalid = 1
+	// Incomplete is partial or unavailable coverage, an unresolved decision, or
+	// a task-bound request whose bound adviser is not configured. The record
+	// is still written.
+	Incomplete = 2
+)
+
+// Run executes one consultation or adjudication and returns its outcome:
+// Complete, Invalid or Incomplete. The error is only for cancellation or a
+// failed write of the reserved record.
 func Run(ctx context.Context, o Options) (int, error) {
 	var record *object
 	var request *plan
@@ -210,35 +221,35 @@ func Run(ctx context.Context, o Options) (int, error) {
 	}
 	if err != nil {
 		fmt.Fprintln(o.Stderr, "Decision consultation validation failed: "+err.Error())
-		return 1, nil
+		return Invalid, nil
 	}
 	if request != nil {
 		if record, err = o.execute(ctx, request); err != nil {
 			_ = output.Close() // the run failed; the reserved file stays empty
-			return 1, err
+			return Invalid, err
 		}
 	}
 	if err := writeRecord(output, record); err != nil {
-		return 1, err
+		return Invalid, err
 	}
 	if o.Adjudicate != "" {
 		status := record.get("final_decision").(*object).get("status").(string)
 		fmt.Fprintln(o.Stdout, "Coordinator decision "+status)
 		if status != "resolved" {
-			return 2, nil
+			return Incomplete, nil
 		}
-		return 0, nil
+		return Complete, nil
 	}
 	status := record.get("status").(string)
 	fmt.Fprintln(o.Stdout, "Decision consultation "+status+"; Coordinator decision pending")
-	code := 0
+	code := Complete
 	if status != "success" && status != "no_advisers_configured" && status != "dry_run" {
-		code = 2
+		code = Incomplete
 	}
 	if request.bound {
 		for _, name := range request.unconfigured() {
 			fmt.Fprintf(o.Stderr, "Adviser %s is bound to this task but not configured; set %s and consult again.\n", name, credentialNames[name])
-			code = 2
+			code = Incomplete
 		}
 	}
 	return code, nil

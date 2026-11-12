@@ -433,13 +433,13 @@ const (
 )
 
 // adviserBindingRequireTaskBound requires a task-bound dry run to succeed
-// (in particular, not exit 2 for a missing bound key) and to preview exactly
+// (in particular, not exit 5 for a missing bound key) and to preview exactly
 // the bound providers with want's statuses.
 func adviserBindingRequireTaskBound(t *testing.T, state, preferences string, want map[string]string) {
 	t.Helper()
 	outcome, output := adviserBindingConsult(t, state, adviserBindingConfigDir(t, preferences))
-	if ExitCode(outcome.err) == 2 {
-		t.Fatalf("task-bound dry run exited 2 although every bound key is set: %v: %s", outcome.err, outcome.text())
+	if ExitCode(outcome.err) == 5 {
+		t.Fatalf("task-bound dry run exited 5 although every bound key is set: %v: %s", outcome.err, outcome.text())
 	}
 	got := adviserBindingLenientPreview(t, outcome, output)
 	adviserBindingRequireStatuses(t, got, want)

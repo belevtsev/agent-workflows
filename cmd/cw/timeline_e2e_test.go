@@ -460,8 +460,8 @@ func TestTimelineE2ERealTask(t *testing.T) {
 	env.accept(t, dir, "a3", "rejected")
 	env.accept(t, dir, "a3", "unused")
 	env.mustRun(t, "task", "run", "--task", dir, "--check", "ok", "--summary")
-	if result := env.run(t, nil, "task", "run", "--task", dir, "--check", "bad", "--summary"); result.code != 1 {
-		t.Fatalf("task run --check bad: exit %d, want 1; stderr %s", result.code, result.stderr)
+	if result := env.run(t, nil, "task", "run", "--task", dir, "--check", "bad", "--summary"); result.code != 5 {
+		t.Fatalf("task run --check bad: exit %d, want 5; stderr %s", result.code, result.stderr)
 	}
 	states := map[string]string{"a1": "accepted", "a2": "assigned", "a3": "unused", "ok": "passed", "bad": "failed"}
 
