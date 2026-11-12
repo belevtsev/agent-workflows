@@ -42,7 +42,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
-- A check named `go` runs only a `go` built from `cmd/go`, followed through shims and toolchain switches, and records it; a fake `go` on `PATH`
+- A check named `go` runs only a `go` built from `cmd/go`, with its own GOROOT, through shims and toolchain switches, and records it; a fake `go` on `PATH`
   is recorded `failed` (`untrusted_toolchain`) instead of passing: put the real `go` first on `PATH` ([which go](docs/operations.md#which-go-a-check-runs)).
 
 ### Removed

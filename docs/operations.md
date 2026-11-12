@@ -399,19 +399,24 @@ consent.
 A check whose program is `go` (or `go.exe`), named bare or by a path, runs only
 a go command that `cw` verified. `cw` takes the `go` the check's `PATH` names
 (or the path given) and runs it once as `go env GOROOT`, in the selected path,
-with the check's environment and within its timeout. That follows a version
-manager's shim, a `golang.org/dl` wrapper and a `GOTOOLCHAIN` switch to the go
-command that would really run; `cmd/go` looks for a switched toolchain such as
-`go1.27.4` on `PATH` before it downloads one into the module cache. `cw` then
-reads `$GOROOT/bin/go` without running it and accepts it only when its build
-information names `cmd/go`. The check runs that file by its absolute path, with
-`GOROOT` set to its tree and `GOTOOLCHAIN=local`, so it cannot switch again.
-The run records it under `tool` (`path`, `version`, `sha256`, `goroot`), and
-`cw task verify` lists the go command that each passed go check ran as a
-limitation. A run recorded before this has no `tool` and keeps its credit.
+with the check's environment and within its timeout, before it takes the task
+lock. That follows a version manager's shim, a `golang.org/dl` wrapper and a
+`GOTOOLCHAIN` switch to the go command that would really run; `cmd/go` looks
+for a switched toolchain such as `go1.27.4` on `PATH` before it downloads one
+into the module cache. `cw` then reads `$GOROOT/bin/go` without running it and
+accepts it only when its build information names `cmd/go` and the printed
+`GOROOT` resolves to that file's own tree, the directory above its `bin`. The
+check runs that file by its absolute path with `GOROOT` set to that tree and
+`GOTOOLCHAIN=local`, after the check's own environment, so neither a `GOROOT`
+variable nor a go env file can pick another tree's `go.env`, and the go command
+cannot switch again. The run records it under `tool` (`path`, `version`,
+`sha256`, `goroot`), and `cw task verify` lists the go command and `GOROOT` that
+each passed go check ran as a limitation. A run recorded before this has no
+`tool` and keeps its credit.
 
 When no go command verifies, such as a script named `go` first on `PATH`, a
-broken shim or a toolchain that cannot be downloaded, the check does not run:
+`GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
+downloaded, the check does not run:
 the run is recorded as `failed` with failure `untrusted_toolchain`, no exit code
 and an empty log, and `cw task run` exits 5 with an error that names the
 candidate. Put the real `go` first on `PATH`. This shows what the binary is, not

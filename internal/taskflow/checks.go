@@ -299,10 +299,11 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 // command that langpack.ResolveGo verified, by its absolute path and with
 // GoTool.Env added, and tool is that go command; err says why no go command
 // could be verified, and then the check must not run. Resolving runs the
-// candidate once, within ctx and the check's timeout. checkSpec is the one
-// place that decides which program a check runs and what that program sees;
-// RunCheck records the environment's GOFLAGS from it and attaches the log as
-// both outputs.
+// candidate once, within ctx and the check's timeout, so RunCheck calls
+// checkSpec before it takes the task lock. checkSpec is the one place that
+// decides which program a check runs and what that program sees; RunCheck
+// records the environment's GOFLAGS from it and attaches the log as both
+// outputs.
 func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, err error) {
 	spec = proc.Spec{
 		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(),
@@ -317,7 +318,7 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 		ctx, cancel = context.WithTimeout(ctx, spec.Timeout)
 		defer cancel()
 	}
-	resolved, err := langpack.ResolveGo(ctx, spec.Path, dir, spec.Env)
+	resolved, err := resolveGo(ctx, spec.Path, dir, spec.Env)
 	if err != nil {
 		return spec, nil, err
 	}
@@ -325,6 +326,10 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 	spec.Env = append(spec.Env, resolved.Env()...)
 	return spec, &resolved, nil
 }
+
+// resolveGo is langpack.ResolveGo; a test replaces it with a resolver it
+// controls.
+var resolveGo = langpack.ResolveGo
 
 // checkExitCode returns the exit code a run records, as os.ProcessState's
 // ExitCode reported it: the program's own status whenever it exited, also
@@ -348,14 +353,26 @@ func checkExitCode(got proc.Result) *int {
 // revisions, so process interruption cannot turn an unfinished check into a pass.
 func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
-	var spec proc.Spec
 	var logFile *os.File
+	// The program is resolved before the task lock is taken: resolving a go
+	// command runs it, which can wait on a slow shim or a toolchain download.
+	stored, err := Load(path)
+	if err != nil {
+		return run, err
+	}
+	planned, found := findCheck(stored, checkID)
+	if !found {
+		return run, errors.New("check is not in the explicit coordinator plan")
+	}
 	// refused says why no verified go command could run the check; the start
 	// revision then records the run as failed, and nothing runs.
-	var refused error
+	spec, tool, refused := checkSpec(ctx, planned, stored.Baseline.SelectedPath)
+	if refused != nil && ctx.Err() != nil {
+		return run, ctx.Err()
+	}
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
-	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
+	_, err = updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
 		check, found := findCheck(*record, checkID)
 		if !found {
 			return errors.New("check is not in the explicit coordinator plan")
@@ -372,14 +389,13 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
+		// Both are immutable once recorded; this guards the resolution above.
+		if !slices.Equal(check.Argv, planned.Argv) || snapshot.SelectedPath != spec.Dir {
+			return errors.New("the check or its selected path changed while cw resolved its program; run it again")
+		}
 		id, err := randomID()
 		if err != nil {
 			return err
-		}
-		var tool *langpack.GoTool
-		spec, tool, refused = checkSpec(ctx, check, snapshot.SelectedPath)
-		if refused != nil && ctx.Err() != nil {
-			return ctx.Err()
 		}
 		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS")), Tool: tool}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
@@ -523,7 +539,7 @@ func toolLimitations(record Record, snapshot projectctx.Snapshot) []string {
 		}
 		key := ""
 		if run.Tool != nil {
-			key = run.Tool.Version + " at " + run.Tool.Path
+			key = run.Tool.Version + " at " + run.Tool.Path + " with GOROOT " + run.Tool.GOROOT
 		}
 		if _, seen := checks[key]; !seen {
 			order = append(order, key)

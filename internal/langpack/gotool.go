@@ -28,15 +28,17 @@ type GoTool struct {
 	Version string `json:"version"`
 	// SHA256 is the hex SHA-256 of Path's bytes as ResolveGo read them.
 	SHA256 string `json:"sha256"`
-	// GOROOT is the tree that `go env GOROOT` reported; Path is its bin/go.
+	// GOROOT is Path's own tree, the directory above its bin, to which the
+	// GOROOT that `go env GOROOT` printed resolves.
 	GOROOT string `json:"goroot"`
 }
 
 // Env returns the environment entries under which Path runs as the toolchain
-// ResolveGo verified: GOROOT set to its tree, as cmd/go sets it for a
-// toolchain it switches to, and GOTOOLCHAIN=local, so that Path runs itself
-// instead of switching to another go command. Appended to an environment,
-// they replace its entries of the same names.
+// ResolveGo verified: GOROOT set to its own tree, as cmd/go sets it for a
+// toolchain it switches to, so that neither a GOROOT variable nor a go env
+// file selects another tree and its go.env, and GOTOOLCHAIN=local, so that
+// Path runs itself instead of switching to another go command. Appended to an
+// environment, they replace its entries of the same names.
 func (tool GoTool) Env() []string {
 	return []string{"GOROOT=" + tool.GOROOT, "GOTOOLCHAIN=local"}
 }
@@ -53,7 +55,8 @@ const goRootLimit = 4 << 10
 // downloads one. So ResolveGo runs the candidate once, as `go env GOROOT` in
 // dir with env and within ctx, and then reads $GOROOT/bin/go without
 // executing it: it accepts only a Go program built from cmd/go
-// (debug/buildinfo). The caller runs GoTool.Path with GoTool.Env, so that the
+// (debug/buildinfo), and only when the printed GOROOT resolves to that
+// program's own tree. The caller runs GoTool.Path with GoTool.Env, so that the
 // verified go command cannot switch to another. The error names the
 // candidate.
 func ResolveGo(ctx context.Context, program, dir string, env []string) (GoTool, error) {
@@ -94,7 +97,13 @@ func ResolveGo(ctx context.Context, program, dir string, env []string) (GoTool, 
 	if err != nil {
 		return refuse("%v", err)
 	}
-	tool.GOROOT = goroot
+	// A GOROOT elsewhere, such as a directory of links to the real tree with
+	// a go.env of its own, would run the real go under another configuration.
+	tree := filepath.Dir(filepath.Dir(tool.Path))
+	if resolved, err := filepath.EvalSymlinks(goroot); err != nil || resolved != tree {
+		return refuse("`go env GOROOT` printed %s, which is not %s, the tree of its go command %s", goroot, tree, tool.Path)
+	}
+	tool.GOROOT = tree
 	return tool, nil
 }
 

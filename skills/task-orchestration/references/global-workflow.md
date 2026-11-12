@@ -147,7 +147,9 @@ binary) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
 `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-C`, unknown flags,
 a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` hands
 `./b` to the test binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style
-`.\pkg` patterns earn none. The run records `GOFLAGS` with compiler and linker
+`.\pkg` patterns earn none. The rule reads `GOFLAGS` from the environment only:
+keep it out of go env files (`GOENV`, `go env -w`) and run Go checks for the
+host `GOOS`/`GOARCH`. The run records `GOFLAGS` with compiler and linker
 flag values redacted, but stores the check's argv verbatim: keep secrets out of
 check argv.
 

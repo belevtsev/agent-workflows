@@ -4,6 +4,7 @@ package taskflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,6 +78,49 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
 	if _, tool, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
 		t.Fatalf("checkSpec with a script first on PATH: tool %+v, error %v; want no tool and an error naming %s", tool, err, filepath.Join(fake, "go"))
+	}
+}
+
+// TestRunCheckResolvesGoWithoutHoldingTheTaskLock blocks the go resolver of
+// one check while another check of the same task runs to its terminal record.
+// Oracle: review finding 2 on #119: resolving a go command (a slow shim, a
+// toolchain download) happens before RunCheck takes the task lock, so the
+// other run takes the lock twice and passes; the blocked run then records its
+// refusal in its start revision.
+func TestRunCheckResolvesGoWithoutHoldingTheTaskLock(t *testing.T) {
+	plan := helperPlan(t, "small", "pass")
+	plan.Checks = append(plan.Checks, Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 10})
+	plan.Requirements[0].CheckIDs = append(plan.Requirements[0].CheckIDs, "unit")
+	record, _ := fixtureTask(t, plan)
+	entered, release := make(chan struct{}), make(chan struct{})
+	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) {
+		close(entered)
+		<-release
+		return langpack.GoTool{}, errors.New("refused by the test resolver")
+	}
+	t.Cleanup(func() { resolveGo = langpack.ResolveGo })
+	type result struct {
+		run CheckRun
+		err error
+	}
+	blocked := make(chan result, 1)
+	go func() {
+		run, err := RunCheck(t.Context(), record.Directory, "unit")
+		blocked <- result{run, err}
+	}()
+	select {
+	case <-entered:
+	case got := <-blocked:
+		t.Fatalf("the go check ended before resolving its program: %+v, %v", got.run, got.err)
+	}
+	run, err := RunCheck(t.Context(), record.Directory, "focused")
+	close(release)
+	if err != nil || run.Status != "passed" {
+		t.Errorf("check run while go was resolving: %s, %v; want passed", run.Status, err)
+	}
+	got := <-blocked
+	if got.run.Status != "failed" || got.run.Failure != "untrusted_toolchain" || !errors.Is(got.err, ErrCheckFailed) {
+		t.Errorf("refused go check: %s/%s, %v; want failed/untrusted_toolchain and ErrCheckFailed", got.run.Status, got.run.Failure, got.err)
 	}
 }
 

@@ -64,7 +64,7 @@ func gtRefused(t *testing.T, tool langpack.GoTool, err error, candidate, want st
 }
 
 // The go command that runs this test verifies. Oracle: G6's acceptance: Path
-// ends in /bin/go and is that GOROOT's go command with links resolved, the
+// ends in /bin/go, GOROOT is its own tree (review finding 1 on #119), the
 // version is in the runtime.Version() family, SHA256 is the hash of Path's
 // bytes, and Env pins GOROOT and GOTOOLCHAIN=local.
 func TestResolveGoAcceptsTheRealGoCommand(t *testing.T) {
@@ -75,8 +75,8 @@ func TestResolveGoAcceptsTheRealGoCommand(t *testing.T) {
 	if !strings.HasSuffix(tool.Path, "/bin/go") || version.Lang(tool.Version) != version.Lang(runtime.Version()) {
 		t.Errorf("ResolveGo = %+v, want a Path ending in /bin/go and a %s version", tool, version.Lang(runtime.Version()))
 	}
-	if resolved, err := filepath.EvalSymlinks(filepath.Join(tool.GOROOT, "bin", "go")); err != nil || resolved != tool.Path {
-		t.Errorf("GOROOT %s holds go %s (%v), want %s", tool.GOROOT, resolved, err, tool.Path)
+	if tool.GOROOT != filepath.Dir(filepath.Dir(tool.Path)) {
+		t.Errorf("GOROOT %s, want the tree of %s", tool.GOROOT, tool.Path)
 	}
 	data, err := os.ReadFile(tool.Path)
 	if err != nil {

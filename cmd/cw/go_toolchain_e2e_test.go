@@ -124,8 +124,8 @@ func TestTaskRunRunsTheRealGoThatAShimReports(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if run, tool := e.latestCheckRun("alpha"), e.storedTool("alpha"); run.Status != "passed" || tool["path"] != want || tool["goroot"] != root {
-		t.Fatalf("run %s with tool %v, want passed with %s from %s", run.Status, tool, want, root)
+	if run, tool := e.latestCheckRun("alpha"), e.storedTool("alpha"); run.Status != "passed" || tool["path"] != want || tool["goroot"] != filepath.Dir(filepath.Dir(want)) {
+		t.Fatalf("run %s with tool %v, want passed with %s from its own tree", run.Status, tool, want)
 	}
 	if log := e.log("alpha"); !strings.Contains(log, "example.com/evidence/alpha") || strings.Contains(log, "fake pass") {
 		t.Errorf("log %q, want the real go test output for alpha", log)
@@ -151,9 +151,50 @@ func TestTaskRunRefusesAToolchainSwitchToAFakeOnPath(t *testing.T) {
 	}
 }
 
+// The reviewer's attack on #119: a GOROOT made of links to the real tree plus
+// a go.env of its own that sets GOFLAGS=-exec=/bin/true, so no test binary
+// runs, named by the GOROOT variable or printed by a shim, while alpha's test
+// fails. Oracle: review finding 1: cw accepts only the go command's own tree,
+// so the run is refused as untrusted_toolchain, never recorded as passed.
+func TestTaskRunRefusesAGOROOTOutsideTheGoCommandsTree(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  func(e *goToolchainE2E, root string) []string
+	}{
+		{"GOROOT variable", func(_ *goToolchainE2E, root string) []string { return []string{"GOROOT=" + root} }},
+		{"shim", func(e *goToolchainE2E, root string) []string {
+			return []string{"PATH=" + e.fake("go", "echo '"+root+"'\n") + ":/usr/bin:/bin"}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := newGoToolchainE2E(t)
+			tree, links := evidenceGoEnv(t, "GOROOT"), hooksCanonicalTempDir(t)
+			entries, err := os.ReadDir(tree)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if entry.Name() != "go.env" {
+					if err := os.Symlink(filepath.Join(tree, entry.Name()), filepath.Join(links, entry.Name())); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			if err := os.WriteFile(filepath.Join(links, "go.env"), []byte("GOTOOLCHAIN=local\nGOFLAGS=-exec=/bin/true\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			e.write("alpha/alpha.go", "package alpha\n\nfunc Name() string { return \"broken\" }\n")
+			code, stderr := e.runCode("alpha", tc.env(e, links)...)
+			if run := e.latestCheckRun("alpha"); code != 5 || run.Status != "failed" || run.Failure != "untrusted_toolchain" {
+				t.Fatalf("exit %d, run %s/%s; want exit 5 and a failed untrusted_toolchain run\nstderr %s", code, run.Status, run.Failure, stderr)
+			}
+		})
+	}
+}
+
 // A normal run. Oracle: G6's acceptance: the record stores tool.path and
 // tool.version (the go command that ran, in the runtime.Version() family) and
-// verify lists that go command as a limitation.
+// verify lists that go command and its GOROOT as a limitation.
 func TestTaskRunRecordsTheGoCommandThatRanIt(t *testing.T) {
 	e := newGoToolchainE2E(t)
 	e.runExpect(true, "alpha")
@@ -166,7 +207,7 @@ func TestTaskRunRecordsTheGoCommandThatRanIt(t *testing.T) {
 	if sum, _ := tool["sha256"].(string); tool["path"] != want || version.Lang(toolVersion) != version.Lang(runtime.Version()) || len(sum) != 64 {
 		t.Fatalf("stored tool %v, want path %s, a %s version and a SHA-256", tool, want, version.Lang(runtime.Version()))
 	}
-	limitation := "check alpha ran " + toolVersion + " at " + want + "; cw verified that it is a build of cmd/go, not that it or its GOROOT is unmodified"
+	limitation := "check alpha ran " + toolVersion + " at " + want + " with GOROOT " + filepath.Dir(filepath.Dir(want)) + "; cw verified that it is a build of cmd/go, not that it or its GOROOT is unmodified"
 	if limitations := e.verify().Limitations; !slices.Contains(limitations, limitation) {
 		t.Errorf("verify limitations %q lack %q", limitations, limitation)
 	}
