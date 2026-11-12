@@ -58,12 +58,13 @@ func TestCheckReceivesTheFilteredVariablesItsEnvPassthroughNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	environment := strings.Split(string(output), "\n")
-	if !slices.Contains(environment, "CW_PASSTHROUGH_DB_PASSWORD=named-value") {
-		t.Errorf("the check did not receive the variable its env_passthrough names:\n%s", output)
+	// Only the test's own variables are reported, not the host environment.
+	received := slices.DeleteFunc(strings.Split(string(output), "\n"), func(entry string) bool { return !strings.HasPrefix(entry, "CW_PASSTHROUGH_") })
+	if !slices.Contains(received, "CW_PASSTHROUGH_DB_PASSWORD=named-value") {
+		t.Errorf("the check did not receive the variable its env_passthrough names; it received %q", received)
 	}
 	if strings.Contains(string(output), "CW_PASSTHROUGH_OTHER_SECRET") || strings.Contains(string(output), "unnamed-value") {
-		t.Errorf("the check received a filtered variable its env_passthrough does not name:\n%s", output)
+		t.Errorf("the check received a filtered variable its env_passthrough does not name; it received %q", received)
 	}
 	want := "check focused received CW_PASSTHROUGH_DB_PASSWORD through env_passthrough, where cw's environment set them"
 	if verified := mustVerifyReport(t, record); !slices.Contains(verified.Limitations, want) {
