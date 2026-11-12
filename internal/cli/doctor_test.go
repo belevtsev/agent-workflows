@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +48,7 @@ func TestDoctorTargetsCwdIndependentlyOfInstallerSource(t *testing.T) {
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	var report projectctx.DoctorReport
+	var report doctor.DoctorReport
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestDoctorExplicitPathsAndTimeoutBounds(t *testing.T) {
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	var report projectctx.DoctorReport
+	var report doctor.DoctorReport
 	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestDoctorHonorsCodexHomeEnvironmentAndExplicitFlagPrecedence(t *testing.T)
 			if err := root.ExecuteContext(context.Background()); err != nil {
 				t.Fatal(err)
 			}
-			var report projectctx.DoctorReport
+			var report doctor.DoctorReport
 			if err := json.Unmarshal(out.Bytes(), &report); err != nil || report.Checks[test.configured].Status != "configured" {
 				t.Fatalf("Codex home precedence was ignored: %+v %v", report.Checks, err)
 			}
@@ -201,7 +201,7 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 				t.Fatalf("cw doctor: %v", err)
 			}
 			var report struct {
-				Checks map[string]projectctx.Check `json:"checks"`
+				Checks map[string]doctor.Check `json:"checks"`
 			}
 			if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 				t.Fatalf("cw doctor printed %q: %v", h.out.String(), err)
@@ -218,8 +218,8 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 				t.Fatalf("cw doctor --summary: %v", err)
 			}
 			var summary struct {
-				Status   string                      `json:"status"`
-				Problems map[string]projectctx.Check `json:"problems"`
+				Status   string                  `json:"status"`
+				Problems map[string]doctor.Check `json:"problems"`
 			}
 			if err := json.Unmarshal(h.out.Bytes(), &summary); err != nil {
 				t.Fatalf("cw doctor --summary printed %q: %v", h.out.String(), err)
@@ -252,7 +252,7 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 		}
 		line := hkDoctorSummary(t, hkSessionContext(t, got), instructions+"\n\n"+hkGateLine)
 		var summary struct {
-			Problems map[string]projectctx.Check `json:"problems"`
+			Problems map[string]doctor.Check `json:"problems"`
 		}
 		if err := json.Unmarshal([]byte(line), &summary); err != nil {
 			t.Fatal(err)

@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -837,7 +837,7 @@ func TestCompactDoctorSummary(t *testing.T) {
 	}
 
 	// DEF-UNCHANGED: the default report is still the full DoctorReport with every check.
-	var report projectctx.DoctorReport
+	var report doctor.DoctorReport
 	if err := jsonv2.Unmarshal([]byte(full.stdout), &report); err != nil {
 		t.Fatalf("doctor without --summary is not a DoctorReport: %v", err)
 	}
