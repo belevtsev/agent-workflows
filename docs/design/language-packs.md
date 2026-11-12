@@ -1,6 +1,9 @@
 # ADR: language packs, Go first
 
-Status: proposed. Design only.
+Status: history. This is the design proposed before packs shipped, kept for
+its reasoning. Much of it was never built: `languages.json`, `cw lang show`, a
+plugin per language, `/agent-workflows:setup`, `cw install --lang` and the
+`cw doctor` pack lines. For what ships, read [Packs](../packs.md).
 
 P3a status: `cw` embeds `packs/go/pack.yaml` and reads the selection from
 `packs.json` in the configuration directory, which replaces `languages.json`
