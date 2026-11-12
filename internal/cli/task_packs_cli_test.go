@@ -134,11 +134,11 @@ func tpVerifyChanged(t *testing.T, start func(repo string) (dir string, err erro
 	}
 	for _, g := range goflags {
 		t.Setenv("GOFLAGS", g) // checks inherit this process's environment
-		if run, err := taskflow.RunCheck(context.Background(), dir, "unit"); err != nil || run.ExitCode == nil || *run.ExitCode != 0 {
+		if run, err := (taskflow.Env{}).RunCheck(context.Background(), dir, "unit"); err != nil || run.ExitCode == nil || *run.ExitCode != 0 {
 			t.Fatalf("precondition: the check did not pass with GOFLAGS=%q: %v", g, err)
 		}
 	}
-	v, err := taskflow.Verify(context.Background(), dir)
+	v, err := taskflow.Env{}.Verify(context.Background(), dir)
 	if (err != nil && err.Error() != tpIncomplete) || v.TaskID == "" {
 		t.Fatalf("verify: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestVerifyWithPacks(t *testing.T) {
 				case "cli", "cli-removed":
 					rec.Directory, _, err = e.start(t, repo, tpPlan(c.argv...))
 				default:
-					rec, err = taskflow.StartWithPacks(context.Background(), repo, store, plan, nil, taskflow.SelectionExplicit, c.packs)
+					rec, err = taskflow.Env{}.StartWithPacks(context.Background(), repo, store, plan, nil, taskflow.SelectionExplicit, c.packs)
 				}
 				return rec.Directory, err
 			}

@@ -21,11 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 - `cw doctor` lives in `internal/doctor`, so the commit gate no longer imports the credential store, Graphify or go-toml;
   `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
+- Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
+  so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
+  for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 
 ### Fixed
 
-- The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
-  three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
   and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 - `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory
@@ -38,6 +40,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
   without hard links ([diagnostics][diag]).
+- The hook docs record live runs: Claude Code asks before `cw task aban''don` too, so it is no longer listed as a bypass, and Codex
+  runs both handlers and adds the conventions again on each resume ([recorded host runs](docs/hooks.md#recorded-host-runs)).
+- The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
+  three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

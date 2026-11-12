@@ -328,7 +328,7 @@ func compactShowHarness(t *testing.T) (*summaryCLIHarness, map[string]any, taskf
 	h.taskInput("assign", summaryCLIBrief(), false)
 	h.taskInput("handoff", summaryCLIResult(), false)
 	for _, id := range []string{"version", "version", "again"} {
-		if _, err := taskflow.RunCheck(t.Context(), h.task, id); err != nil {
+		if _, err := (taskflow.Env{}).RunCheck(t.Context(), h.task, id); err != nil {
 			t.Fatal(err)
 		}
 	}

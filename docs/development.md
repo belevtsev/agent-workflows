@@ -48,7 +48,7 @@ program started on purpose, such as a Git hook's; `Session` starts a session
 rather than only a group, as Graphify needs. `cw doctor --live`, `cw publish`,
 `cw graphify` and the Go facts of `cw task verify` run on it. Run a new
 subprocess with it rather than another `exec.Cmd` and group kill.
-`cw task run` runs a check on it through `taskflow.RunCheck`, and only
+`cw task run` runs a check on it through `taskflow.Env.RunCheck`, and only
 `checkSpec` turns a planned check into its `proc.Spec`: change the program,
 environment or bounds of every check there.
 
@@ -79,7 +79,10 @@ GOWORK=off go test ./internal/skillcheck
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
-- the model policy loads;
+- the model policy loads; its shipped routing keeps Claude Code lookup on Haiku,
+  summarization on Sonnet, and Codex `max` for planning, architecture and
+  diagnosis only; the recommended Codex memory passes use Luna; and the profile
+  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
@@ -165,6 +168,12 @@ unknowns/comparability. Metadata-only doctor checks never invoke optional tools 
 hosted providers. Real-project read-only diagnostics, synthetic acceptance pilots
 and productivity comparisons are separate evidence; preserve that distinction in
 reports.
+
+`internal/taskflow` declares the ports its use cases read, where they are
+used: `Clock` gives every time a task record stores. Each use case that
+writes a revision is a method on `taskflow.Env`, whose zero value is the
+production ports; `cli.Config.Now` is the clock of the task commands, the gate
+and `cw publish`. A test that needs a time sets the clock instead of waiting.
 
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow

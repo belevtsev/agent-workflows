@@ -77,6 +77,7 @@ func addPublishCommand(root *cobra.Command, config Config) {
 				LookPath:  exec.LookPath,
 				Environ:   os.Environ(),
 				HookStore: func() (string, error) { return hookTaskStore(root, config) },
+				Now:       config.Now,
 			})
 			var printed any = report
 			if summary {

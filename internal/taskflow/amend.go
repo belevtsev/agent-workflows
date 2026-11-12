@@ -97,12 +97,12 @@ func parseAmendmentInput(input AmendmentInput) (amendmentRequest, error) {
 
 // AddChecks appends one amendment to the task at path, or refuses and writes
 // nothing. On success it returns the new record.
-func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, error) {
+func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, error) {
 	request, err := parseAmendmentInput(input)
 	if err != nil {
 		return Record{}, err
 	}
-	return update(ctx, path, func(root *os.Root, record *Record) error {
+	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		if record.Plan.Kind != "substantial" {
 			return errors.New("checks can be added only to a substantial task")
 		}
@@ -173,7 +173,7 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 		if !equalSnapshot(snapshot, after) {
 			return errors.New("source changed while adding checks")
 		}
-		record.Amendments = append(record.Amendments, Amendment{Checks: request.checks, MergeCommit: facts.Commit, BaseRef: request.baseRef, BaseCommit: facts.BaseCommit, Reason: request.reason, CoordinatorID: effectiveCoordinator(record.Plan), Snapshot: snapshot, At: time.Now().UTC()})
+		record.Amendments = append(record.Amendments, Amendment{Checks: request.checks, MergeCommit: facts.Commit, BaseRef: request.baseRef, BaseCommit: facts.BaseCommit, Reason: request.reason, CoordinatorID: effectiveCoordinator(record.Plan), Snapshot: snapshot, At: env.now()})
 		record.Verification = nil
 		record.EvidenceRevision++
 		return nil

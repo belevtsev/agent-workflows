@@ -136,7 +136,7 @@ func validateCheckpoint(data []byte, expected Context) (consult.Record, error) {
 	return checkpoint, nil
 }
 
-func AttachConsultation(ctx context.Context, path, phase, inputPath string) (Record, error) {
+func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath string) (Record, error) {
 	if !phaseValid(phase) {
 		return Record{}, errors.New("phase must be before or final")
 	}
@@ -171,7 +171,7 @@ func AttachConsultation(ctx context.Context, path, phase, inputPath string) (Rec
 	if len(raw) > MaxInputBytes {
 		return Record{}, errors.New("consultation exceeds the 8 MiB input limit")
 	}
-	return update(ctx, path, func(root *os.Root, record *Record) error {
+	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		for other, attachment := range record.Consultations {
 			if other != phase {
 				otherInfo, statErr := os.Stat(attachment.SourcePath)

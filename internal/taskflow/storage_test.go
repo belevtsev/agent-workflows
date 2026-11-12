@@ -99,7 +99,7 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 		t.Fatalf("exhausted verification claimed success: complete=%t err=%v", result.Complete, err)
 	}
 	called := false
-	if _, err := update(t.Context(), record.Directory, func(root *os.Root, _ *Record) error {
+	if _, err := update(t.Context(), Env{}, record.Directory, func(root *os.Root, _ *Record) error {
 		called = true
 		return writeNew(root, "unexpected-callback-artifact.json", []byte("{}"))
 	}); !errors.Is(err, errTaskRevisionLimit) || called {
@@ -146,7 +146,7 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error {
+		_, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error {
 			close(entered)
 			<-release
 			record.EvidenceRevision++
@@ -165,7 +165,7 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	// it until its context ends, and never runs its change.
 	called := false
 	competing, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
-	_, secondErr := update(competing, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil })
+	_, secondErr := update(competing, Env{}, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil })
 	cancel()
 	close(release)
 	if err := <-done; err != nil {
@@ -174,7 +174,7 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	if !errors.Is(secondErr, context.DeadlineExceeded) || called {
 		t.Fatalf("competing writer bypassed the lock: called=%t err=%v", called, secondErr)
 	}
-	if _, err := update(t.Context(), record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
+	if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
 		t.Fatalf("competing retry consumed exhausted capacity: called=%t err=%v", called, err)
 	}
 	stored, err := Load(record.Directory)
@@ -328,7 +328,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		t.Helper()
 		names := taskArtifactNames(t, record.Directory)
 		called := false
-		if _, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
+		if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
 			t.Fatalf("metadata writer spent a terminal slot: called=%t err=%v", called, err)
 		}
 		if run, err := RunCheck(lifetime, record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
@@ -401,7 +401,7 @@ func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing
 	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	runID := strings.Repeat("a", 32)
-	record, err := updateWithCapacity(t.Context(), record.Directory, 2, "", func(_ *os.Root, record *Record) error {
+	record, err := updateWithCapacity(t.Context(), Env{}, record.Directory, 2, "", func(_ *os.Root, record *Record) error {
 		record.Checks = append(record.Checks, CheckRun{ID: runID, CheckID: "focused", Status: "running", Argv: record.Plan.Checks[0].Argv, StartedAt: time.Now().UTC(), Before: record.Baseline})
 		return nil
 	})
@@ -416,7 +416,7 @@ func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing
 		record.Checks[0].Status, record.Checks[0].FinishedAt = "cancelled", &now
 		return nil
 	}
-	if _, err := updateWhenUnlocked(t.Context(), record.Directory, strings.Repeat("b", 32), finish); err == nil || errors.Is(err, errTaskRevisionLimit) || called {
+	if _, err := updateWhenUnlocked(t.Context(), Env{}, record.Directory, strings.Repeat("b", 32), finish); err == nil || errors.Is(err, errTaskRevisionLimit) || called {
 		t.Fatalf("unowned terminal reservation was accepted: called=%t err=%v", called, err)
 	}
 	lock := filepath.Join(record.Directory, ".lock")
@@ -426,7 +426,7 @@ func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing
 	t.Cleanup(func() { os.Remove(lock) })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := updateWhenUnlocked(ctx, record.Directory, runID, finish); !errors.Is(err, context.Canceled) || called {
+	if _, err := updateWhenUnlocked(ctx, Env{}, record.Directory, runID, finish); !errors.Is(err, context.Canceled) || called {
 		t.Fatalf("abandoned terminal lock claimed success: called=%t err=%v", called, err)
 	}
 	if _, err := os.Stat(lock); err != nil {
@@ -439,7 +439,7 @@ func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing
 	if err := os.Remove(lock); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := updateWhenUnlocked(t.Context(), record.Directory, runID, finish); err != nil || !called {
+	if _, err := updateWhenUnlocked(t.Context(), Env{}, record.Directory, runID, finish); err != nil || !called {
 		t.Fatalf("owner lost its terminal reservation after unlock: called=%t err=%v", called, err)
 	}
 	stored, err = Load(record.Directory)
@@ -460,7 +460,7 @@ func TestLockHolderProcess(t *testing.T) {
 	}
 	switch os.Getenv("CW_TASKFLOW_LOCK_HOLD") {
 	case "task":
-		_, _ = update(t.Context(), ".", func(*os.Root, *Record) error {
+		_, _ = update(t.Context(), Env{}, ".", func(*os.Root, *Record) error {
 			hold()
 			return errors.New("the holder writes no revision")
 		})
@@ -531,7 +531,7 @@ func TestKilledTaskWriterLeavesTaskWritable(t *testing.T) {
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	killLockHolder(t, startLockHolder(t, "task", record.Directory))
 	started := time.Now()
-	_, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
+	_, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
 	if elapsed := time.Since(started); err != nil || elapsed >= time.Second {
 		t.Fatalf("update after a killed writer: err=%v after %s, want success within 1s", err, elapsed)
 	}
@@ -553,7 +553,7 @@ func TestConcurrentWritersAllAppendRevisions(t *testing.T) {
 	for range writers {
 		go func() {
 			<-start
-			_, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
+			_, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
 			results <- err
 		}()
 	}
@@ -582,7 +582,7 @@ func TestWriterWaitsForLegacyLockDirectory(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() {
-		_, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
+		_, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { record.EvidenceRevision++; return nil })
 		done <- err
 	}()
 	// The writer takes .lockfile before it waits for .lock, so .lockfile is
@@ -693,7 +693,7 @@ func TestCancelledWriterStopsWaitingForTheTaskLock(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := update(t.Context(), record.Directory, func(_ *os.Root, record *Record) error {
+		_, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error {
 			close(entered)
 			<-release
 			record.EvidenceRevision++
