@@ -304,7 +304,7 @@ changed since start with its authorship status (`independent`, `source_aware`,
 such as a missing or unreadable baseline manifest, and exits 0
 whatever the statuses (1 when the task cannot be loaded), `cw task bundle` writes the
 reviewer bundle a review assignment must carry (one reach row per changed file) to a
-new file, whole or not at all: a failed write leaves no file at `--output`,
+new file, and a failed write leaves no file at `--output`,
 `cw task contract-extract` prints requested Go declarations without bodies for a
 test engineer's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid

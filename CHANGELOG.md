@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Pass `--task DIR` to every `cw task` command that takes it: the working directory is no longer used as the task,
+  and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
+
 ### Changed
 
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
@@ -13,8 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Every `cw task` command run without `--task` exits 2, `--task DIR is required`, instead of exiting 1 or using the working directory
-  as the task; a failed `cw task bundle` write leaves no partial bundle ([exit statuses](docs/operations.md#exit-statuses)).
+- A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
+  without hard links ([diagnostics][diag]).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

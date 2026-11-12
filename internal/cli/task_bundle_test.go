@@ -209,6 +209,10 @@ func TestTaskBundleRefusesExistingOutput(t *testing.T) {
 	if err == nil || ExitCode(err) == 0 {
 		t.Fatalf("existing output accepted: %v", err)
 	}
+	// The refusal speaks of the reviewer bundle, not of a task artifact.
+	if !strings.HasPrefix(err.Error(), "write the reviewer bundle to ") || strings.Contains(err.Error(), "task artifact") {
+		t.Fatalf("existing output refused with %q; want it to start %q and not name a task artifact", err, "write the reviewer bundle to ")
+	}
 	if data, readErr := os.ReadFile(path); readErr != nil || string(data) != "keep\n" {
 		t.Fatalf("existing output changed: %q %v", data, readErr)
 	}

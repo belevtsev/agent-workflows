@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 // WrittenBundle is a reviewer bundle WriteBundle wrote.
@@ -20,13 +21,8 @@ type WrittenBundle struct {
 // WriteBundle generates the bundle for a review about to be assigned, as
 // BuildBundle does, and writes it with mode 0600 to target, which must be a
 // new file outside the project source: a file inside it would change the
-// source the review is bound to. The task record is not changed.
-//
-// The file appears whole or not at all, as a task artifact does: writeNew
-// writes and syncs a temporary file in target's directory, links it to target,
-// which fails if target exists, syncs the directory and removes the temporary
-// name. A failed write leaves no file at target; a crash can leave a .write-*
-// file beside it, never a partial bundle.
+// source the review is bound to. A failed write leaves no file at target
+// (writeBundleFile). The task record is not changed.
 func WriteBundle(ctx context.Context, taskPath, reviewID, target string) (WrittenBundle, error) {
 	target, err := filepath.Abs(target)
 	if err != nil {
@@ -49,19 +45,77 @@ func WriteBundle(ctx context.Context, taskPath, reviewID, target string) (Writte
 	if err != nil {
 		return WrittenBundle{}, err
 	}
-	if err := writeNewFile(target, data); err != nil {
-		return WrittenBundle{}, fmt.Errorf("write the reviewer bundle to %s: %w", target, err)
+	if err := writeBundleFile(target, data, (*os.Root).Link, syncTaskDirectory); err != nil {
+		return WrittenBundle{}, err
 	}
 	return WrittenBundle{Path: target, Data: data, Bundle: bundle}, nil
 }
 
-// writeNewFile is writeNew for a file outside the task directory, with the
-// file's own directory as the root.
-func writeNewFile(path string, data []byte) error {
+// bundleLink gives the file oldname in root the new name newname, failing if
+// newname exists. Production passes (*os.Root).Link; tests pass a link that
+// fails as a filesystem without hard links does.
+type bundleLink func(root *os.Root, oldname, newname string) error
+
+// writeBundleFile writes data to path, which must not exist, so that a failed
+// write leaves no file at path. data goes to a temporary file in path's
+// directory, which is written, synced and closed, then linked to path: the
+// bundle appears whole or not at all, and the link refuses an existing file.
+// On a filesystem without hard links (vfat, exFAT, some network mounts) it
+// instead creates path exclusively, writes and syncs it, and removes it again
+// if a step fails; there a crash during the write can leave a partial file.
+// The directory is synced last with syncDir (syncTaskDirectory in production).
+func writeBundleFile(path string, data []byte, link bundleLink, syncDir func(*os.Root) error) error {
 	root, err := os.OpenRoot(filepath.Dir(path))
+	if err != nil {
+		return fmt.Errorf("write the reviewer bundle to %s: %w", path, err)
+	}
+	defer root.Close()
+	name := filepath.Base(path)
+	id, err := randomID()
+	if err != nil {
+		return fmt.Errorf("write the reviewer bundle to %s: %w", path, err)
+	}
+	temporary := ".cw-bundle-" + id
+	if err := createSynced(root, temporary, data); err != nil {
+		return fmt.Errorf("write the reviewer bundle to %s: %w", path, err)
+	}
+	err = link(root, temporary, name)
+	root.Remove(temporary)
+	if linksUnsupported(err) {
+		err = createSynced(root, name, data)
+	}
+	if err != nil {
+		return fmt.Errorf("write the reviewer bundle to %s: %w", path, err)
+	}
+	if err := syncDir(root); err != nil {
+		return fmt.Errorf("the reviewer bundle was written to %s but its durability is uncertain: %w", path, err)
+	}
+	return nil
+}
+
+// createSynced creates name in root with mode 0600, failing if it exists,
+// then writes data, syncs and closes it. When a step after the create fails it
+// removes the file, so it never leaves a partial one.
+func createSynced(root *os.Root, name string, data []byte) error {
+	file, err := root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return err
 	}
-	defer root.Close()
-	return writeNew(root, filepath.Base(path), data)
+	_, err = file.Write(data)
+	if err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		root.Remove(name)
+	}
+	return err
+}
+
+// linksUnsupported reports whether a link failed because the filesystem has
+// no hard links. An existing target (EEXIST) and every other error are not.
+func linksUnsupported(err error) bool {
+	return errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.ENOTSUP) || errors.Is(err, syscall.EOPNOTSUPP) || errors.Is(err, errors.ErrUnsupported)
 }
