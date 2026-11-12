@@ -150,6 +150,30 @@ left in them: the task records in `<state>/workflow-tasks`, the saved adviser
 keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
 left behind can be removed by hand.
 
+## Exit statuses
+
+Every `cw` command exits with a status from one table, so a script or an agent
+can tell "the answer is no" from "`cw` failed" without reading stderr:
+
+| Status | Meaning | Where |
+| --- | --- | --- |
+| 0 | ok | The command did what was asked. |
+| 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
+| 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw graphify` `unavailable` with a Graphify code. |
+| 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass; `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
+| 6 | unknown | `cw publish` cannot establish whether a step happened. |
+| 7 | mismatch | `cw publish` read back a step that differs from the request. |
+| 130 | cancelled | The command was interrupted. |
+
+On 5 the command still prints its result on stdout (the verification, the check
+run or the consultation record) and names the reason. The task commands other
+than `verify` and `run` still exit 1 when the record's state refuses them, for
+example an abandoned task or a `cw task add-checks` refusal. The hooks
+(`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)); `cw graphify`
+prints its `unavailable` report on 4 and on 1 (code `filesystem`).
+
 ## Model policy
 
 `cw consult` and `cw task start` select the model policy in this order:
@@ -270,7 +294,7 @@ reads every step back, appends a `started` and a `finished` entry
 (`publication-NNNNNN.json`) to the task directory, and continues from the
 observed state when the same command runs again. `--summary` prints one line.
 Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
-5 unknown, 6 mismatch, 130 cancelled) and what to do for each are in the
+6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
 which also names the cases that go to the GitHub worker instead. It needs Git
 2.24 or newer. Its known limitations:
@@ -550,7 +574,7 @@ listed in both, and refuses a top-level member other than
 invalid file makes `cw task start` fail before it creates a task. The change applies
 to tasks started afterwards: `cw task start` binds the advisers configured at that
 moment. A bound adviser whose key is missing at consultation time is recorded as
-`not_configured`; `cw consult` still writes the record, exits `2` and names the
+`not_configured`; `cw consult` still writes the record, exits `5` and names the
 variable, and `cw task consult` rejects that record. Supply the key and consult
 again. Installation and local validation do not require keys or make hosted
 requests.

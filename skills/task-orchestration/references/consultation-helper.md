@@ -17,7 +17,7 @@ phase (`before` or `final`); use new file paths for each phase.
    `cw task context --task T --phase P >context.json && jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json && cw consult --request request.final.json --output consult.json --summary`.
    The summary prints each adviser's answers and the comparison and names the
    request file instead of repeating it; read `consult.json` only for a field it omits.
-   Exit `2` means partial coverage (disclose it) or a bound adviser without its key
+   Exit `5` means partial coverage (disclose it) or a bound adviser without its key
    (set it and consult again).
 4. Check every judgment against source and write `decision.json` in the
    [decision shape](#adjudicate-without-network-access): entries are `source:`,
@@ -219,7 +219,7 @@ validates the policy and input and writes a preview without network access; it l
 each participating provider with its `requested_model` and status `dry_run` or
 `not_configured`, resolving credentials only to report that status. A task-bound
 dry run whose bound adviser lacks its credential still writes the preview and
-exits `2` with the same message as a real run.
+exits `5` with the same message as a real run.
 
 A real call makes one attempt per configured provider. A 30-second batch budget
 covers connecting, sending and reading every complete response; a provider still
@@ -258,7 +258,7 @@ coverage and choice equality, not truth. `final_decision` starts as `pending`.
 Exit codes:
 
 - `0`: `success`, `no_advisers_configured`, `dry_run`, or a resolved adjudication.
-- `2`: `partial` or `unavailable` coverage, an unresolved adjudication, or a
+- `5`: `partial` or `unavailable` coverage, an unresolved adjudication, or a
   task-bound request or dry run where a bound provider is `not_configured`. The
   record or preview is still written, and stderr says:
   `Adviser <id> is bound to this task but not configured; set <VAR> and consult again.`

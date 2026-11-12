@@ -438,7 +438,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return run, context.Canceled
 		}
-		return run, errors.New("check did not pass: " + run.Status)
+		return run, fmt.Errorf("%w: %s", ErrCheckFailed, run.Status)
 	}
 	return run, nil
 }
