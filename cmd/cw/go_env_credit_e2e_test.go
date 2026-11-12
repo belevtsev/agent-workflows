@@ -41,14 +41,27 @@ func (e *goToolchainE2E) storedGoEnv(check string) map[string]any {
 	return env
 }
 
-// A go env file sets GOFLAGS=-exec=/bin/true, and cw's environment sets an
+// noopProgram returns the absolute path of true, which exits 0 without
+// running anything: /bin/true or /usr/bin/true on Linux, /usr/bin/true on
+// macOS, which has no /bin/true.
+func noopProgram(t *testing.T) string {
+	t.Helper()
+	path, err := exec.LookPath("true")
+	if err != nil || !filepath.IsAbs(path) {
+		t.Fatalf("precondition: no true program on PATH: %q, %v", path, err)
+	}
+	return path
+}
+
+// A go env file sets GOFLAGS=-exec=<true>, and cw's environment sets an
 // empty GOFLAGS, so cmd/go applies the file's: go test hands alpha's test
-// binary to /bin/true, which exits 0 without running it. Threat: the Go rule
+// binary to true, which exits 0 without running it. Threat: the Go rule
 // read GOFLAGS only from the environment, so this run passed and earned
 // credit. Oracle (F1): the rule credits only the GOFLAGS that the verified go
 // command reports with go env under the check's environment, so the run earns
 // no credit, and it records that GOFLAGS under go_env.
 func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
+	goflags := "-exec=" + noopProgram(t)
 	for _, tc := range []struct {
 		name string
 		// configure writes the go env file and returns the extra environment
@@ -57,13 +70,13 @@ func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
 	}{
 		{"GOENV names the file", func(e *goToolchainE2E) []string {
 			file := filepath.Join(hooksCanonicalTempDir(e.t), "env")
-			if err := os.WriteFile(file, []byte("GOFLAGS=-exec=/bin/true\n"), 0o644); err != nil {
+			if err := os.WriteFile(file, []byte("GOFLAGS="+goflags+"\n"), 0o644); err != nil {
 				e.t.Fatal(err)
 			}
 			return []string{"GOENV=" + file}
 		}},
 		{"go env -w writes the user's file", func(e *goToolchainE2E) []string {
-			command := exec.CommandContext(e.t.Context(), goTool(e.t), "env", "-w", "GOFLAGS=-exec=/bin/true")
+			command := exec.CommandContext(e.t.Context(), goTool(e.t), "env", "-w", "GOFLAGS="+goflags)
 			command.Dir, command.Env = e.files, e.env
 			if output, err := command.CombinedOutput(); err != nil {
 				e.t.Fatalf("go env -w: %v\n%s", err, output)
@@ -77,10 +90,10 @@ func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
 			code, stderr := e.runCode("alpha", tc.configure(e)...)
 			e.expectNoAlphaCredit(code, stderr)
 			if status := e.latestCheckRun("alpha").Status; status != "passed" {
-				t.Fatalf("precondition: the run under the go env file is %s, want passed: /bin/true no longer stands in for alpha's test (cw task run exited %d: %s)", status, code, stderr)
+				t.Fatalf("precondition: the run under the go env file is %s, want passed: %s no longer stands in for alpha's test (cw task run exited %d: %s)", status, goflags, code, stderr)
 			}
-			if env := e.storedGoEnv("alpha"); env["goflags"] != "-exec=/bin/true" {
-				t.Errorf("the passed run stores go_env %v, want goflags -exec=/bin/true", env)
+			if env := e.storedGoEnv("alpha"); env["goflags"] != goflags {
+				t.Errorf("the passed run stores go_env %v, want goflags %s", env, goflags)
 			}
 		})
 	}

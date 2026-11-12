@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -175,7 +176,7 @@ func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
 // TestCheckSpecHoldsTheRunToTheGoEnvItRead runs a go test check of a test
 // that fails whenever it runs, with GOENV naming an empty go env file that
 // the go env read sees and that is then rewritten, before the run reads it
-// again, to GOFLAGS=-exec=/bin/true and another GOARCH. Oracle: review
+// again, to GOFLAGS=-exec=<true> and another GOARCH. Oracle: review
 // finding 1 on #139: cmd/go takes a GOFLAGS, GOOS or GOARCH that is not
 // empty from the environment over any go env file, so with go_env's values
 // at the end of the run's environment the run builds for the host, runs the
@@ -202,9 +203,15 @@ func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
 	if runtime.GOARCH == "arm64" {
 		other = "amd64"
 	}
+	// true is /usr/bin/true on macOS, which has no /bin/true; without the
+	// pin, go test would hand the test binary to it and pass.
+	noop, err := exec.LookPath("true")
+	if err != nil || !filepath.IsAbs(noop) {
+		t.Fatalf("precondition: no true program on PATH: %q, %v", noop, err)
+	}
 	readGoEnv = func(ctx context.Context, tool langpack.GoTool, dir string, env []string) (langpack.GoEnv, []string, error) {
 		read, pin, err := langpack.ReadGoEnv(ctx, tool, dir, env)
-		if err := os.WriteFile(file, []byte("GOFLAGS=-exec=/bin/true\nGOARCH="+other+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(file, []byte("GOFLAGS=-exec="+noop+"\nGOARCH="+other+"\n"), 0o644); err != nil {
 			t.Error(err)
 		}
 		return read, pin, err
