@@ -129,11 +129,13 @@ func TestDoctorHonorsCodexHomeEnvironmentAndExplicitFlagPrecedence(t *testing.T)
 
 func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *testing.T) {
 	// Oracle: cw doctor's git_hooks check has the status each case names,
-	// with a detail that names cw gate install wherever git runs, and
-	// cw doctor --summary, which exits 0, lists it among its problems (which
-	// make the summary's status attention) only when a git hook is absent
-	// from the repository's own hooks directory while a substantial task is
-	// open there. A repository that only lacks the hooks gets no problem.
+	// with a detail that names cw gate install wherever git runs and the
+	// gate is on, and cw doctor --summary, which exits 0, lists it among its
+	// problems (which make the summary's status attention) only when a git
+	// hook is absent from the repository's own hooks directory, or is cw's
+	// script without an execute bit, which git skips, while a substantial
+	// task is open there and the gate is on. A repository that only lacks
+	// the hooks gets no problem.
 	// cw gate and cw doctor read git's configuration from this process's
 	// environment.
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
@@ -172,6 +174,22 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 			t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(global, "gitconfig"))
 			return repo
 		}, "detected", false},
+		{"cw's hook without an execute bit and an open substantial task", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			if err := Execute(t.Context(), []string{"gate", "install", "--repo", repo}, h.config); err != nil {
+				t.Fatalf("cw gate install: %v", err)
+			}
+			// Git skips a hook it cannot execute.
+			if err := os.Chmod(filepath.Join(repo, ".git", "hooks", "pre-commit"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return repo
+		}, "missing", true},
+		{"no hooks and an open substantial task with the gate off", func(t *testing.T, h *hkHarness, repo string) string {
+			h.start(t, repo, hkSubstantialPlan)
+			h.env[enforceVerifyOption] = "false"
+			return repo
+		}, "not_applicable", false},
 		{"not a repository", func(t *testing.T, _ *hkHarness, _ string) string { return hkCanonicalTempDir(t) }, "unchecked", false},
 	}
 	for _, test := range tests {
@@ -192,7 +210,7 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 			if !ok || check.Status != test.status {
 				t.Fatalf("git_hooks check %+v (present %v), want status %s", check, ok, test.status)
 			}
-			if test.status != "unchecked" && !strings.Contains(check.Detail, "cw gate install") {
+			if test.status != "unchecked" && h.env[enforceVerifyOption] != "false" && !strings.Contains(check.Detail, "cw gate install") {
 				t.Fatalf("git_hooks detail %q does not name cw gate install", check.Detail)
 			}
 			h.out.Reset()
@@ -216,9 +234,9 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 		})
 	}
 
-	t.Run("session-start doctor summary", func(t *testing.T) {
-		// The doctor summary that session-start appends carries the check
-		// too, after the cw gate install line.
+	t.Run("session-start doctor summary leaves it out", func(t *testing.T) {
+		// The doctor summary that session-start appends, after the cw gate
+		// install line, leaves the check out, since that line covers it.
 		const instructions = "# Rules\n\nWork carefully."
 		repo := hkRepo(t)
 		h := newHKHarness(t)
@@ -239,8 +257,8 @@ func TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks(t *te
 		if err := json.Unmarshal([]byte(line), &summary); err != nil {
 			t.Fatal(err)
 		}
-		if problem := summary.Problems["git_hooks"]; problem.Status != "missing" {
-			t.Fatalf("session-start doctor summary has git_hooks problem %+v, want status missing: %s", problem, line)
+		if problem, listed := summary.Problems["git_hooks"]; listed {
+			t.Fatalf("session-start doctor summary lists git_hooks %+v; the line covers it: %s", problem, line)
 		}
 	})
 }

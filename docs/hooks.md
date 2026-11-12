@@ -38,17 +38,28 @@ session, so there is nothing when all is in order:
   environment it starts in already names another agent. Any other value, and
   Codex, give no line.
 - `git hooks absent, so a commit or push from a script, an alias or a terminal
-  skips the verify gate: suggest cw gate install to the user` when the
-  session's repository has an open substantial task
-  ([Which records gate](#which-records-gate)), verified or not, and
-  `cw gate status` reports a hook `absent` from the repository's own hooks
-  directory. A hook that `cw gate install` did not write (`foreign`, such as a
-  hook manager's, which may already run the gate), a hooks directory that
-  other repositories use (`shared`, where install needs `--shared`), and
-  `enforce_verify` set to `false` give no line; `cw doctor` reports the first
-  two ([Installing the git hooks](#installing-the-git-hooks)). The line asks
-  the agent to suggest the command, because `cw` writes git's hooks only when
-  you ask.
+  skips the verify gate: suggest cw gate install to the user`, once per task:
+  when the session's repository has an open substantial task
+  ([Which records gate](#which-records-gate)), verified or not, that has not
+  had the line yet, and `cw gate status` reports a hook `absent` from the
+  repository's own hooks directory. `cw` then records the suggestion as an
+  empty file `${CLAUDE_PLUGIN_DATA}/gate-suggested/<task id>` for each open
+  task, so a resume, clear or compact repeats nothing, and only a new task
+  brings the line back. Without that directory, or when the file cannot be
+  written, the line comes every time. A hook that `cw gate install` did not
+  write (`foreign`, such as a hook manager's, which may already run the
+  gate), a hooks directory that other repositories use (`shared`, where
+  install needs `--shared`), and `enforce_verify` set to `false` give no line;
+  `cw doctor` reports the first two
+  ([Installing the git hooks](#installing-the-git-hooks)). The session-start
+  doctor summary leaves out the `git_hooks` check, which the line covers. The line
+  asks the agent to suggest the command, because `cw` writes git's hooks only
+  when you ask.
+
+The session's directory, which the last line and the doctor summary need, is
+the `cwd` of the hook input on stdin. `cw` reads stdin only when one of them
+is on, and for at most 2 seconds, then takes its working directory, which
+Claude Code and Codex set to the session's directory.
 
 When `cw` is not on `PATH`, the hook command prints the file followed by one
 line that starts `agent-workflows: the commit and push verify gate is inactive
@@ -464,8 +475,11 @@ cw gate uninstall --repo /path/to/repo
   `cw` too old to have `cw hook git` exits with an error, which stops git
   until you upgrade it or run `cw gate uninstall`.
 - **Ownership.** `cw gate status` reports each hook as `installed` (its bytes
-  are exactly the script above), `absent`, or `foreign` (anything else at that
-  path, including a copy of the script with lines of your own). Install
+  are exactly the script above, and it has an execute bit), `absent`, or
+  `foreign` (anything else at that path, including a copy of the script with
+  lines of your own). Git skips a hook it cannot execute, so the script
+  without an execute bit is `absent`, and the text output says so; install
+  restores its mode, and uninstall removes it. Install
   replaces, and uninstall removes, only an installed hook: before either, `cw`
   moves the file aside and checks it again, and puts back a file that changed
   since the first check.
@@ -483,16 +497,18 @@ cw gate uninstall --repo /path/to/repo
   as a `run:` command in `lefthook.yml` for lefthook; or as a `repo: local`
   hook with `language: system` for the pre-commit framework. `cw gate status`
   then still reports that hook as `foreign`.
-- **Reminders.** `cw` never installs the hooks by itself. While a substantial
-  task is open in a repository without them, the session-start context
-  carries one line that suggests `cw gate install`
+- **Reminders.** `cw` never installs the hooks by itself. When a substantial
+  task opens in a repository without them, the next session-start context
+  carries one line that suggests `cw gate install`, once for that task
   ([Session start](#session-start)), and `cw doctor` reports a `git_hooks`
   check whose detail says what to do. Only the hooks missing while a task is
   open count as a problem, so a repository that simply has no hooks does not
-  change `cw doctor --summary`, which exits 0 either way:
+  change `cw doctor --summary`, which exits 0 either way. The doctor summary
+  in the session-start context leaves the check out:
 
   | `cw gate status` | Open substantial task | `git_hooks` status | Listed by `--summary` |
   | --- | --- | --- | --- |
+  | any, with `enforce_verify` `false` | either | `not_applicable`, not inspected | No |
   | both hooks `installed` | either | `configured` | No |
   | a hook `foreign` | either | `detected`, with the hint to add the line above | No |
   | otherwise a hook `absent`, directory `shared` | either | `detected`, with the hint that install needs `--shared` | No |

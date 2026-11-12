@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	json "encoding/json/v2"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2058,9 +2059,10 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 	// Oracle: the session-start context is the instructions, a blank line and
 	// hkGateLine exactly when the session's repository has an open
 	// substantial task and a git hook is absent from the repository's own
-	// hooks directory with no foreign hook beside it; in every other case
-	// below it is the instructions alone. The first case is the control for
-	// the others.
+	// hooks directory, or is cw's script without an execute bit, with no
+	// foreign hook beside it; in every other case below it is the
+	// instructions alone. The first case is the control for the others. Each
+	// case has a cache of its own, so no earlier suggestion silences it.
 	const instructions = "# Rules\n\nWork carefully."
 	// cw gate reads git's configuration from this process's environment.
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
@@ -2084,6 +2086,14 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 			h.start(t, repo, hkSubstantialPlan)
 			gate(t, h, "install", "--repo", repo)
 			if err := os.Remove(filepath.Join(repo, ".git", "hooks", "pre-push")); err != nil {
+				t.Fatal(err)
+			}
+		}, hkGateLine},
+		{"open substantial task with cw's hook without an execute bit", func(t *testing.T, h *hkHarness, repo string) {
+			h.start(t, repo, hkSubstantialPlan)
+			gate(t, h, "install", "--repo", repo)
+			// Git skips a hook it cannot execute.
+			if err := os.Chmod(filepath.Join(repo, ".git", "hooks", "pre-push"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}, hkGateLine},
@@ -2140,6 +2150,117 @@ func TestHookSessionStartSuggestsGateInstallOnlyForAnOpenTaskWithoutGitHooks(t *
 			}
 			if context := hkSessionContext(t, got); context != want {
 				t.Fatalf("additionalContext %q, want %q", context, want)
+			}
+		})
+	}
+}
+
+// sessionContextIn runs session-start for repo with the instructions file
+// and cache, and returns its additionalContext.
+func (h *hkHarness) sessionContextIn(t *testing.T, repo, instructions, cache string) string {
+	t.Helper()
+	stdin, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "resume", "cwd": repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := h.runSessionStart(t, string(stdin), "--instructions", instructions, "--cache", cache)
+	if err != nil {
+		t.Fatalf("session-start: %v", err)
+	}
+	return hkSessionContext(t, got)
+}
+
+func TestHookSessionStartSuggestsGateInstallOncePerTask(t *testing.T) {
+	// Oracle: with one cache, the session-start context for a repository
+	// with an open substantial task and no git hooks carries hkGateLine the
+	// first time and is the instructions alone after that; a second open
+	// task brings the line back once. Without a cache, or with a cache where
+	// the suggestion cannot be recorded, every context carries the line.
+	const instructions = "# Rules\n\nWork carefully."
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	file := hkWriteInstructions(t, instructions)
+	withLine := instructions + "\n\n" + hkGateLine
+	expect := func(t *testing.T, h *hkHarness, repo, cache string, want ...string) {
+		t.Helper()
+		for i, context := range want {
+			if got := h.sessionContextIn(t, repo, file, cache); got != context {
+				t.Fatalf("session start %d: additionalContext %q, want %q", i+1, got, context)
+			}
+		}
+	}
+
+	t.Run("once per task", func(t *testing.T) {
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		cache := hkCanonicalTempDir(t)
+		h.start(t, repo, hkSubstantialPlan)
+		expect(t, h, repo, cache, withLine, instructions, instructions)
+		h.start(t, repo, hkTitled("Second"))
+		expect(t, h, repo, cache, withLine, instructions)
+	})
+
+	t.Run("without a cache", func(t *testing.T) {
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.start(t, repo, hkSubstantialPlan)
+		expect(t, h, repo, "", withLine, withLine)
+	})
+
+	t.Run("cache that cannot be written", func(t *testing.T) {
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.start(t, repo, hkSubstantialPlan)
+		cache := filepath.Join(hkCanonicalTempDir(t), "file")
+		hkWriteFile(t, filepath.Dir(cache), "file", "a regular file\n")
+		expect(t, h, repo, cache, withLine, withLine)
+	})
+}
+
+func TestHookSessionStartReturnsWhileItsWriterKeepsStdinOpen(t *testing.T) {
+	// Oracle: with stdin left open by its writer, session-start returns
+	// well within the 10 second wait below. With enforce_verify false and
+	// session_doctor off it reads no stdin and its context is the
+	// instructions alone. With the gate on it stops reading stdin after its
+	// bound and takes the working directory as the session's, so the
+	// repository's open task gets hkGateLine.
+	const instructions = "# Rules\n\nWork carefully."
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	file := hkWriteInstructions(t, instructions)
+	run := func(t *testing.T, h *hkHarness) string {
+		t.Helper()
+		reader, writer := io.Pipe()
+		t.Cleanup(func() { writer.Close() })
+		h.config.In = reader
+		h.out.Reset()
+		args := []string{"hook", "session-start", "--instructions", file, "--cache", hkCanonicalTempDir(t)}
+		done := make(chan error, 1)
+		go func() { done <- Execute(t.Context(), args, h.config) }()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatalf("session-start: %v", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("session-start still waited for stdin after 10 seconds")
+		}
+		return hkSessionContext(t, h.out.String())
+	}
+
+	for _, test := range []struct {
+		name, enforce, want string
+	}{
+		{"gate off and no doctor summary", "false", instructions},
+		{"gate on", "", instructions + "\n\n" + hkGateLine},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repo := hkRepo(t)
+			h := newHKHarness(t)
+			h.start(t, repo, hkSubstantialPlan) // the working directory is now repo
+			h.env[enforceVerifyOption] = test.enforce
+			if got := run(t, h); got != test.want {
+				t.Fatalf("additionalContext %q, want %q", got, test.want)
 			}
 		})
 	}

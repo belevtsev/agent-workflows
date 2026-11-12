@@ -228,6 +228,57 @@ func TestGateStatusAndInstallTrackTheirOwnHooks(t *testing.T) {
 	status(t, map[string]string{"pre-commit": "installed", "pre-push": "foreign"})
 }
 
+func TestGateStatusReportsItsOwnHookWithoutAnExecuteBitAsAbsent(t *testing.T) {
+	// Oracle: git skips a hook it cannot execute, so status reports cw's
+	// own script with mode 0644 as absent, with --json and as text, where
+	// the line says why; install then restores mode 0755 (updated) and
+	// status reports installed. The other hook, installed, is the control.
+	gtIsolate(t, os.DevNull)
+	repo := hkRepo(t)
+	hooks := filepath.Join(repo, ".git", "hooks")
+	if code, stdout, stderr := gtRun(t, "install", "--repo", repo); code != ExitOK {
+		t.Fatalf("install: exit %d\n%s%s", code, stdout, stderr)
+	}
+	if err := os.Chmod(filepath.Join(hooks, "pre-commit"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	states := func(t *testing.T) map[string]string {
+		t.Helper()
+		code, stdout, stderr := gtRun(t, "status", "--repo", repo, "--json")
+		var report struct {
+			Hooks []struct {
+				Name  string `json:"name"`
+				State string `json:"state"`
+			} `json:"hooks"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &report); code != ExitOK || err != nil {
+			t.Fatalf("status --json exit %d (%v)\n%s%s", code, err, stdout, stderr)
+		}
+		got := map[string]string{}
+		for _, hook := range report.Hooks {
+			got[hook.Name] = hook.State
+		}
+		return got
+	}
+	if got, want := states(t), map[string]string{"pre-commit": "absent", "pre-push": "installed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status --json states %v, want %v", got, want)
+	}
+	code, stdout, _ := gtRun(t, "status", "--repo", repo)
+	want := "\npre-commit: absent (cw gate install wrote it, but it has no execute bit, so git skips it; cw gate install restores the mode)\npre-push: installed\n"
+	if code != ExitOK || !strings.HasSuffix(stdout, want) {
+		t.Fatalf("status exit %d:\n%s\nwant it to end with%s", code, stdout, want)
+	}
+	if code, stdout, _ := gtRun(t, "install", "--repo", repo); code != ExitOK || !strings.HasSuffix(stdout, "pre-commit: updated\npre-push: unchanged\n") {
+		t.Fatalf("install over its own script without an execute bit: exit %d\n%s", code, stdout)
+	}
+	if got := gtEntry(t, filepath.Join(hooks, "pre-commit")); got != gtInstalled("pre-commit") {
+		t.Fatalf("pre-commit after install is\n%s\nwant\n%s", got, gtInstalled("pre-commit"))
+	}
+	if got, want := states(t), map[string]string{"pre-commit": "installed", "pre-push": "installed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("status --json states after install %v, want %v", got, want)
+	}
+}
+
 func TestGateUsesTheHooksDirectoryGitRuns(t *testing.T) {
 	// Oracle: the directory git runs the repository's hooks from. A relative
 	// core.hooksPath resolves from the worktree root, also when --repo names

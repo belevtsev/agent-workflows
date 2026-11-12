@@ -236,7 +236,7 @@ cw gate install --repo /path/to/repo
 ```
 
 `cw` never writes them unasked. While a task is open in a repository without
-them, the session-start context suggests the command and `cw doctor` reports
+them, the session-start context suggests the command once per task and `cw doctor` reports
 `git_hooks` as `missing`
 ([installing the git hooks](docs/hooks.md#installing-the-git-hooks)).
 

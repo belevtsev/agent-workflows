@@ -107,7 +107,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	var instructions, cache string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
-		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install when the repository has an open substantial task and no git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
+		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
@@ -301,28 +301,27 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 		return "", false
 	}
 	text := strings.TrimRight(string(data), "\n")
-	// The session's directory is the hook input's cwd, else the working
-	// directory; "" when neither is known.
-	input, err := readHookInput(config.In)
-	dir := input.CWD
-	if err != nil {
-		if dir, err = config.WorkingDir(); err != nil {
-			dir = ""
-		}
+	// Only the cw gate install line, which the gate being off silences, and
+	// the doctor summary need the session's directory.
+	gate := config.Getenv(enforceVerifyOption) != "false"
+	doctor := config.Getenv(sessionDoctorOption) == "true"
+	dir := ""
+	if gate || doctor {
+		dir = sessionDirectory(config)
 	}
 	var notes []string
 	if note := versionNotes(config, instructions); note != "" {
 		notes = append(notes, note)
 	}
-	if dir != "" {
-		if note := gateInstallNote(ctx, root, config, dir); note != "" {
+	if gate && dir != "" {
+		if note := gateInstallNote(ctx, root, config, dir, cache); note != "" {
 			notes = append(notes, note)
 		}
 	}
 	if len(notes) > 0 {
 		text += "\n\n" + strings.Join(notes, "\n")
 	}
-	if config.Getenv(sessionDoctorOption) != "true" || dir == "" {
+	if !doctor || dir == "" {
 		return text, true
 	}
 	if summary, ok := cachedDoctorSummary(ctx, root, config, dir, cache); ok {
@@ -331,8 +330,45 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 	return text, true
 }
 
+// hookSessionInputTimeout bounds the session-start read of the hook input,
+// which the host has written by the time the hook runs.
+const hookSessionInputTimeout = 2 * time.Second
+
+// sessionDirectory returns the session's directory: the cwd of the hook
+// input on stdin, else the working directory, which Claude Code and Codex
+// both set to the session's directory; "" when neither is known. A host that
+// keeps stdin open would hold the read until it kills the hook, so the read
+// gets hookSessionInputTimeout and is then abandoned. It runs in a goroutine
+// with a timer rather than with a read deadline, which a pipe on darwin does
+// not support.
+func sessionDirectory(config Config) string {
+	read := make(chan string, 1)
+	go func() {
+		input, err := readHookInput(config.In)
+		if err != nil {
+			input.CWD = ""
+		}
+		read <- input.CWD
+	}()
+	timer := time.NewTimer(hookSessionInputTimeout)
+	defer timer.Stop()
+	select {
+	case dir := <-read:
+		if dir != "" {
+			return dir
+		}
+	case <-timer.C:
+	}
+	dir, err := config.WorkingDir()
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
 // cachedDoctorSummary returns the one-line doctor summary for dir, served from the
-// cache when it is younger than an hour. Any failure yields no summary.
+// cache when it is younger than an hour. Any failure yields no summary. It
+// leaves out cw doctor's git_hooks check: the cw gate install line covers it.
 func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config, dir, cache string) (string, bool) {
 	selected, err := filepath.EvalSymlinks(dir)
 	if err != nil {
@@ -362,7 +398,6 @@ func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config
 	if err != nil {
 		return "", false
 	}
-	report.Checks["git_hooks"] = gitHooksCheck(ctx, root, config, report.Profile.Snapshot.SelectedPath)
 	data, err := json.Marshal(summarizeDoctor(report), json.Deterministic(true))
 	if err != nil {
 		return "", false
