@@ -50,10 +50,10 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 		advisers = map[string]string{}
 	}
 	if err := consult.ValidateBinding(advisers); err != nil {
-		return Record{}, err
+		return Record{}, asInvalid(err)
 	}
 	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
-		return Record{}, errors.New(conflict + `; set "required": true and run the checkpoints, or, if checkpoints are truly unneeded, give the real reason`)
+		return Record{}, invalid(conflict + `; set "required": true and run the checkpoints, or, if checkpoints are truly unneeded, give the real reason`)
 	}
 	snapshot, files, err := env.source().Manifest(ctx, repo)
 	if err != nil {
@@ -131,7 +131,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 // final consultation, assessment and checks then remain visibly stale.
 func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context, error) {
 	if !phaseValid(phase) {
-		return Context{}, errors.New("phase must be before or final")
+		return Context{}, invalid("phase must be before or final")
 	}
 	var result Context
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
@@ -257,7 +257,7 @@ func permittedNonExecution(record Record) bool {
 
 func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (Record, error) {
 	if len(input.Requirements) == 0 && input.Decision == nil {
-		return Record{}, errors.New("assessment must update a requirement or the Coordinator decision")
+		return Record{}, invalid("assessment must update a requirement or the Coordinator decision")
 	}
 	return update(ctx, env, path, func(_ *os.Root, record *Record) error {
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
@@ -277,11 +277,11 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 				}
 			}
 			if requirement == nil || seen[assessment.ID] {
-				return errors.New("assessment contains an unknown or duplicate requirement")
+				return invalid("assessment contains an unknown or duplicate requirement")
 			}
 			seen[assessment.ID] = true
 			if assessment.Status != "satisfied" && assessment.Status != "pending" {
-				return errors.New("requirement status must be satisfied or pending")
+				return invalid("requirement status must be satisfied or pending")
 			}
 			var runs []string
 			if assessment.Status == "satisfied" {
@@ -290,12 +290,12 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 				}
 				if len(assessment.CheckIDs) == 0 {
 					if !requirement.AllowNonExecution || !nonblank(assessment.NonExecutionReason) {
-						return fmt.Errorf("requirement %s needs check evidence or explicitly permitted non-execution reasoning", assessment.ID)
+						return invalidf("requirement %s needs check evidence or explicitly permitted non-execution reasoning", assessment.ID)
 					}
 				} else {
 					for _, id := range requirement.CheckIDs {
 						if !slices.Contains(assessment.CheckIDs, id) {
-							return fmt.Errorf("requirement %s omits planned check %s", assessment.ID, id)
+							return invalidf("requirement %s omits planned check %s", assessment.ID, id)
 						}
 					}
 				}
@@ -305,14 +305,14 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 					return bindErr
 				}
 			} else if len(assessment.Evidence) > 0 || len(assessment.CheckIDs) > 0 {
-				return errors.New("pending assessments must not claim verified evidence")
+				return invalid("pending assessments must not claim verified evidence")
 			}
 			record.Assessments[assessment.ID] = BoundAssessment{Assessment: assessment, Snapshot: snapshot, CheckRuns: runs}
 		}
 		if input.Decision != nil {
 			decision := *input.Decision
 			if !nonblank(decision.Reason) || (decision.Status != "resolved" && decision.Status != "unresolved") {
-				return errors.New("Coordinator decision needs resolved/unresolved status and a reason")
+				return invalid("Coordinator decision needs resolved/unresolved status and a reason")
 			}
 			var runs []string
 			if decision.Status == "resolved" {
@@ -320,7 +320,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 					return err
 				}
 				if len(decision.CheckIDs) == 0 && (!permittedNonExecution(*record) || !nonblank(decision.NonExecutionReason)) {
-					return errors.New("resolved Coordinator decision needs check evidence or permitted non-execution reasoning")
+					return invalid("resolved Coordinator decision needs check evidence or permitted non-execution reasoning")
 				}
 				runs, err = bindChecks(*record, snapshot, decision.CheckIDs)
 				if err != nil {

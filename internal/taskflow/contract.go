@@ -83,15 +83,15 @@ func ParseContractSymbols(value string) ([]string, error) {
 		symbol := strings.TrimSpace(raw)
 		receiver, method, isMethod := strings.Cut(symbol, ".")
 		if !token.IsIdentifier(receiver) || isMethod && !token.IsIdentifier(method) {
-			return nil, fmt.Errorf("symbol %q is not a Go identifier or Type.Method", symbol)
+			return nil, invalidf("symbol %q is not a Go identifier or Type.Method", symbol)
 		}
 		if slices.Contains(symbols, symbol) {
-			return nil, fmt.Errorf("symbol %s is repeated", symbol)
+			return nil, invalidf("symbol %s is repeated", symbol)
 		}
 		symbols = append(symbols, symbol)
 	}
 	if len(symbols) > maxContractSymbols {
-		return nil, fmt.Errorf("at most %d symbols per extract", maxContractSymbols)
+		return nil, invalidf("at most %d symbols per extract", maxContractSymbols)
 	}
 	return symbols, nil
 }

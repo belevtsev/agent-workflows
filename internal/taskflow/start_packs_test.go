@@ -3,6 +3,7 @@ package taskflow_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -104,7 +105,7 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 		t.Fatalf("A19 violated: missing project gives explicit %v, default %v", errA, errB)
 	}
 	_, err := taskflow.StartWithPacks(ctx, repo, store, spPlan("true"), nil, "auto", nil)
-	if err == nil || err.Error() != "pack selection must be default or explicit" {
+	if !errors.Is(err, taskflow.ErrInvalidInput) {
 		t.Fatalf("A19 violated: selection auto gives %v", err)
 	}
 	entries, _ := os.ReadDir(store)

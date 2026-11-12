@@ -178,6 +178,15 @@ the production ports; `cli.Config.Now` is the clock of the task commands, the
 gate and `cw publish`. A rule test passes a fake `Source`, clock or
 `Artifacts` instead of building a Git repository or waiting.
 
+A caller tells a `taskflow` refusal from a failure with `errors.Is`, never by
+its message: `ErrTaskLocked`, `ErrAbandoned`, `ErrRevisionLimit` and
+`ErrInvalidInput` (input a use case refuses before it writes; a damaged stored
+record does not match it), beside `ErrIncomplete`, `ErrCheckFailed`,
+`ErrNewerRecord` and `ErrLegacyRecord`. Each matches however deeply `cli`
+wraps it; typing a refusal keeps its message and its
+[exit status](operations.md#exit-statuses). A test asserts on the sentinel when
+the kind is its point, and on the text only where the text is the contract.
+
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow
 [Task record format](#task-record-format). Tests must cover wrong

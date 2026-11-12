@@ -317,10 +317,10 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 			}
 		}
 		if err := validateBrief(*record, brief); err != nil {
-			return err
+			return asInvalid(err)
 		}
 		if findAssignment(*record, brief.ID) != nil {
-			return errors.New("worker assignment ID is immutable; use a new ID")
+			return invalid("worker assignment ID is immutable; use a new ID")
 		}
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
@@ -756,7 +756,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
-			return errors.New("worker result references an unknown assignment")
+			return invalid("worker result references an unknown assignment")
 		}
 		if findWorkerResult(*record, input.AssignmentID) != nil {
 			return errors.New("assignment already has an immutable terminal result; use a new assignment ID")
@@ -769,10 +769,10 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		if err := validateResult(*record, *assigned, input); err != nil {
-			return err
+			return asInvalid(err)
 		}
 		if err := reviewSeverities(assigned.Brief.Role, input.Findings); err != nil {
-			return err
+			return asInvalid(err)
 		}
 		if !equalSnapshot(snapshot, input.Snapshot) {
 			return errors.New("worker result snapshot differs from actual current source")
@@ -927,7 +927,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
 		result := findWorkerResult(*record, input.AssignmentID)
 		if result == nil {
-			return errors.New("acceptance references a missing worker result; record a terminal handoff first")
+			return invalid("acceptance references a missing worker result; record a terminal handoff first")
 		}
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
@@ -937,7 +937,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		if err := validateAcceptance(*record, *result, input); err != nil {
-			return err
+			return asInvalid(err)
 		}
 		if len(record.WorkerAcceptances) >= 1024 {
 			return errors.New("task worker acceptance limit reached")

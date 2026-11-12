@@ -39,9 +39,9 @@ const (
 )
 
 var revisionName = regexp.MustCompile(`^record-([0-9]{6})\.json$`)
-var errTaskLocked = errors.New("task is locked; inspect an interrupted writer before removing its .lock directory")
-var errTaskBusy = errors.New("task is locked: another cw kept writing it for 10 seconds; retry when it finishes")
-var errTaskRevisionLimit = errors.New("task revision limit reached; start a new task")
+
+// errTaskBusy is ErrTaskLocked when the writer ahead is still writing.
+var errTaskBusy error = kindError{kind: ErrTaskLocked, msg: "task is locked: another cw kept writing it for 10 seconds; retry when it finishes"}
 
 func randomID() (string, error) {
 	var data [16]byte
@@ -558,7 +558,7 @@ func requireRevisionCapacity(record Record, additional int, completingRunID stri
 		return errors.New("starting check record is missing or already terminal")
 	}
 	if record.Revision+additional+reserved > maxTaskRevisions {
-		return errTaskRevisionLimit
+		return ErrRevisionLimit
 	}
 	return nil
 }
@@ -591,7 +591,7 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 		return Record{}, err
 	}
 	if record.Abandonment != nil {
-		return Record{}, errAbandoned
+		return Record{}, ErrAbandoned
 	}
 	if err := requireRevisionCapacity(record, additional, completingRunID); err != nil {
 		return Record{}, err
@@ -652,7 +652,7 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 // another writer's flock on .lockfile. Holding that, it then waits at most
 // wait for a .lock directory to disappear: cw v3.0.0-rc.1 holds one while it
 // writes and leaves it behind when it is killed. One that stays fails with
-// errTaskLocked and is never removed; so does a .lockfile wait that ends while
+// ErrTaskLocked and is never removed; so does a .lockfile wait that ends while
 // one exists, since its holder is most likely waiting for it too. That cw
 // ignores .lockfile, so the two do not exclude each other; the no-replace
 // revision write keeps one chain.
@@ -666,7 +666,7 @@ func lockTask(ctx context.Context, root *os.Root, wait time.Duration) (func(), e
 		directory.Close()
 		if errors.Is(err, fslock.ErrBusy) {
 			if _, statErr := root.Lstat(legacyTaskLockName); statErr == nil {
-				return nil, errTaskLocked
+				return nil, ErrTaskLocked
 			}
 			return nil, errTaskBusy
 		}
@@ -696,7 +696,7 @@ func lockTask(ctx context.Context, root *os.Root, wait time.Duration) (func(), e
 		case <-timeout.C:
 			poll.Stop()
 			unlock()
-			return nil, errTaskLocked
+			return nil, ErrTaskLocked
 		case <-poll.C:
 		}
 	}
@@ -711,7 +711,7 @@ func lockTask(ctx context.Context, root *os.Root, wait time.Duration) (func(), e
 func updateWhenUnlocked(ctx context.Context, env Env, path, completingRunID string, change func(*os.Root, *Record) error) (Record, error) {
 	for {
 		record, err := updateWithCapacity(ctx, env, path, 1, completingRunID, change)
-		if !errors.Is(err, errTaskLocked) && !errors.Is(err, errTaskBusy) {
+		if !errors.Is(err, ErrTaskLocked) {
 			return record, err
 		}
 		timer := time.NewTimer(25 * time.Millisecond)
