@@ -96,9 +96,11 @@ codex plugin marketplace add belevtsev/agent-workflows
 ```
 
 Then run `codex`, open `/plugins`, install `agent-workflows`, trust its two
-hooks in `/hooks` and start a new session. The alternative,
-`cw install --host codex`, writes the `AGENTS.md` instruction block but installs
-no hooks ([details](docs/operations.md#codex-install-and-uninstall)).
+hooks in `/hooks` and start a new session. Until you trust them, Codex runs
+neither hook and the plugin gives the skills only: no conventions and no commit
+hook. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
+the Docker skills and writes the `AGENTS.md` instruction block, but installs no
+hooks. [What each shape gives](docs/operations.md#codex).
 
 Check that `cw` can read your repository:
 
@@ -246,7 +248,7 @@ covers adding a pack.
 
 The Go skills are separate: the `cc-skills-golang` plugin in the same
 marketplace, plus a few Go skills in core. On Codex, install it from
-`/plugins`; on Claude Code:
+`/plugins` (`cw install --host codex` already links it); on Claude Code:
 
 ```sh
 claude plugin install cc-skills-golang@agent-workflows

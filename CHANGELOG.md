@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 - The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
   released when its holder dies; new locks reuse it ([development](docs/development.md)).
+- One table compares the Codex install shapes and recommends the plugin with its hooks trusted; untrusted, it gives
+  skills only, and `cw install --host codex` adds archify but no commit hook ([Codex](docs/operations.md#codex)).
 
 ### Fixed
 
@@ -36,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   So does a store the hook cannot locate or read. Under Codex both go ahead, reversing the Codex deny for a relative `XDG_STATE_HOME` ([records](docs/hooks.md#records-that-cannot-be-read)).
 - Under Codex the commit hook denies where Claude Code asks, except about a record or store it cannot read, because Codex ran an asked-about command
   without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
+- `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
+  as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 
