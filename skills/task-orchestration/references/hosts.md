@@ -97,7 +97,8 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 Seven Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
 directory. They have no Skill tool, so the worker starts without the skill
-listing (about 6K fewer input tokens on its first request). Dispatch these roles
+listing (about 6K fewer input tokens on its first request), and no Agent or
+Workflow tool, so only the coordinator dispatches. Dispatch these roles
 with the namespaced `subagent_type`:
 
 | Role | `subagent_type` | Frontmatter default |

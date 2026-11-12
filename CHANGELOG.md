@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A new [packs](docs/packs.md) page documents `cw pack` and `pack.yaml` as they ship, with the steps and a proposal
+  template for adding a language pack; the language-packs design is marked as history.
 - The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 - The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
@@ -20,6 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Worker agents can no longer dispatch subagents or run workflows, and the README states the minimum Claude Code version:
+  2.1.292, for per-dispatch `effort`; below 2.1.271 `omitClaudeMd` is also ignored silently ([agents](docs/agents.md)).
+
+### Fixed
+
+- A relative `XDG_STATE_HOME` is refused with exit status 1, and the commit hook asks, instead of joining it to the working
+  directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
 - `cw doctor --live` and Git inspection no longer leave a probe's child running on macOS when one kill missed a fork in flight
   at the deadline: `cw` kills the probe's process group until it is empty ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
