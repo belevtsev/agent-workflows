@@ -202,7 +202,9 @@ requiring a clean project. It reports the target worktree/content identity,
 discovered capabilities, repository contract paths, optional tool executables and
 adviser key presence. `--live` explicitly enables bounded local integration checks;
 ordinary metadata does not prove semantic retrieval, dirty-source freshness or
-runtime call targets. Missing or unsupported tooling is qualified and retains normal
+runtime call targets. Each live probe and each Git inspection runs in a process
+group of its own; when it answers, exits or reaches its deadline, `cw` kills the
+group until no member is alive, and a member that survives fails the probe. Missing or unsupported tooling is qualified and retains normal
 source discovery. Neither mode installs dependencies, changes watcher enrollment or
 calls advisers. `--summary` prints one line with only the checks that are missing,
 degraded or stale.

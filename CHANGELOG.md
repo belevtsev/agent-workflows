@@ -18,6 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
   released when its holder dies; new locks reuse it ([development](docs/development.md)).
 
+### Fixed
+
+- `cw doctor --live` and Git inspection no longer leave a probe's child running on macOS when one kill missed a fork in flight
+  at the deadline: `cw` kills the probe's process group until it is empty ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking

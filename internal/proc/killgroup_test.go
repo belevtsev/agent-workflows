@@ -1,22 +1,18 @@
-//go:build unix
+//go:build linux || darwin
 
-package procgroup_test
+package proc_test
 
 import (
-	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/procgroup"
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
+	"github.com/belevtsev/agent-workflows/v3/internal/proc/proctest"
 )
 
 const (
@@ -75,70 +71,9 @@ exit 0`
 	prompt = time.Second
 )
 
-func requireGroupPlatform(t *testing.T) {
-	t.Helper()
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		t.Skip("process-group kill semantics are verified on native Linux and macOS")
-	}
-}
-
-// groupHasLiveMember reports whether process group pgid has a member that is
-// not a zombie. It only ever sends signal 0, and only to a group led by a
-// process this test started. kill(-pgid, 0) failing with ESRCH (no member) or
-// EPERM (macOS: only zombies remain) means no live member. On Linux a zombie
-// still accepts signal 0, so a success there is checked against /proc.
-func groupHasLiveMember(pgid int) (bool, error) {
-	if pgid <= 1 || pgid == os.Getpid() || pgid == syscall.Getpgrp() {
-		return false, fmt.Errorf("refusing to probe process group %d", pgid)
-	}
-	err := syscall.Kill(-pgid, 0)
-	switch {
-	case errors.Is(err, syscall.ESRCH), errors.Is(err, syscall.EPERM):
-		return false, nil
-	case err != nil:
-		return false, err
-	case runtime.GOOS == "linux":
-		return linuxGroupHasNonZombie(pgid)
-	}
-	return true, nil
-}
-
-// linuxGroupHasNonZombie scans /proc for a member of pgid whose state is not
-// zombie (Z) or dead (X).
-func linuxGroupHasNonZombie(pgid int) (bool, error) {
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		return false, err
-	}
-	want := strconv.Itoa(pgid)
-	for _, entry := range entries {
-		if _, err := strconv.Atoi(entry.Name()); err != nil {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "stat"))
-		if err != nil {
-			continue
-		}
-		stat := string(data)
-		end := strings.LastIndexByte(stat, ')')
-		if end < 0 {
-			continue
-		}
-		// After the command name: state, parent pid, process group.
-		fields := strings.Fields(stat[end+1:])
-		if len(fields) < 3 || fields[2] != want {
-			continue
-		}
-		if fields[0] != "Z" && fields[0] != "X" {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func requireLive(t *testing.T, pgid int, want bool, when string) {
 	t.Helper()
-	live, err := groupHasLiveMember(pgid)
+	live, err := proctest.GroupHasLiveMember(pgid)
 	if err != nil {
 		t.Fatalf("%s: %v", when, err)
 	}
@@ -246,7 +181,6 @@ func requireNoLateWrite(t *testing.T, directory string) {
 // PG-1: the leader has exited and been reaped; a delayed member and a forking
 // member (with its own children) are still alive in the group.
 func TestKillStopsLiveMembersAfterLeaderWasReaped(t *testing.T) {
-	requireGroupPlatform(t)
 	requireMemberMarkerControl(t)
 	directory := t.TempDir()
 	leader := memberGroupCommand(t, directory)
@@ -255,7 +189,7 @@ func TestKillStopsLiveMembersAfterLeaderWasReaped(t *testing.T) {
 		t.Fatalf("leader did not see both members running: %v", err)
 	}
 	requireLive(t, pgid, true, "before Kill")
-	if err := procgroup.Kill(pgid); err != nil {
+	if err := proc.KillGroup(pgid); err != nil {
 		t.Fatalf("Kill(%d) = %v, want nil", pgid, err)
 	}
 	// On macOS this is kill(-pgid, 0) failing with ESRCH or EPERM; on Linux
@@ -266,7 +200,6 @@ func TestKillStopsLiveMembersAfterLeaderWasReaped(t *testing.T) {
 
 // PG-2: the only member is the test's own exited child, not yet waited for.
 func TestKillReturnsPromptlyForUnreapedZombieOnly(t *testing.T) {
-	requireGroupPlatform(t)
 	reader, writer, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -282,7 +215,7 @@ func TestKillReturnsPromptlyForUnreapedZombieOnly(t *testing.T) {
 		t.Fatal("child was reaped before Kill")
 	}
 	started := time.Now()
-	err = procgroup.Kill(pgid)
+	err = proc.KillGroup(pgid)
 	elapsed := time.Since(started)
 	if err != nil {
 		t.Fatalf("Kill(%d) with only an unreaped zombie = %v, want nil", pgid, err)
@@ -296,7 +229,6 @@ func TestKillReturnsPromptlyForUnreapedZombieOnly(t *testing.T) {
 // PG-3: the leader has exited but has not been waited for (a zombie), and
 // live members remain in its group.
 func TestKillReturnsPromptlyWithZombieLeaderAndKillsMembers(t *testing.T) {
-	requireGroupPlatform(t)
 	requireMemberMarkerControl(t)
 	directory := t.TempDir()
 	reader, writer, err := os.Pipe()
@@ -315,7 +247,7 @@ func TestKillReturnsPromptlyWithZombieLeaderAndKillsMembers(t *testing.T) {
 	}
 	requireLive(t, pgid, true, "before Kill")
 	started := time.Now()
-	err = procgroup.Kill(pgid)
+	err = proc.KillGroup(pgid)
 	elapsed := time.Since(started)
 	if err != nil {
 		t.Fatalf("Kill(%d) with a zombie leader = %v, want nil", pgid, err)
@@ -333,7 +265,6 @@ func TestKillReturnsPromptlyWithZombieLeaderAndKillsMembers(t *testing.T) {
 
 // PG-5: the group's only member was its leader, which has been reaped.
 func TestKillReturnsPromptlyForEmptyGroup(t *testing.T) {
-	requireGroupPlatform(t)
 	leader := exec.Command("/bin/sh", "-c", "exit 0")
 	pgid := groupLeader(t, leader)
 	if err := leader.Wait(); err != nil {
@@ -341,7 +272,7 @@ func TestKillReturnsPromptlyForEmptyGroup(t *testing.T) {
 	}
 	requireLive(t, pgid, false, "before Kill")
 	started := time.Now()
-	err := procgroup.Kill(pgid)
+	err := proc.KillGroup(pgid)
 	elapsed := time.Since(started)
 	if err != nil {
 		t.Fatalf("Kill(%d) of an empty group = %v, want nil", pgid, err)
@@ -357,7 +288,7 @@ func TestKillReturnsPromptlyForEmptyGroup(t *testing.T) {
 // the user.
 func TestKillRefusesInvalidGroupIDs(t *testing.T) {
 	for _, pgid := range []int{-5, 0, 1} {
-		if err := procgroup.Kill(pgid); err == nil {
+		if err := proc.KillGroup(pgid); err == nil {
 			t.Fatalf("Kill(%d) = nil, want an error", pgid)
 		}
 	}
