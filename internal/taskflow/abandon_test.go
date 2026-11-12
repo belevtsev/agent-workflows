@@ -58,11 +58,14 @@ func abAbandon(t *testing.T, record Record, reason string) Record {
 func TestAbandon(t *testing.T) {
 	t.Run("appends one terminal revision", func(t *testing.T) {
 		// A1: the returned record is one revision newer, carries the reason
-		// and a non-zero time, and Load returns the same abandonment.
+		// and the time of Env's clock, in UTC, and Load returns the same
+		// abandonment. The revision's updated_at is that time too.
 		record := abStart(t, "to abandon")
-		before := time.Now()
-		abandoned := abAbandon(t, record, "superseded by another task")
-		after := time.Now()
+		now := record.CreatedAt.Add(time.Hour).In(time.FixedZone("UTC+3", 3*60*60))
+		abandoned, err := Env{Clock: fixedClock(now)}.Abandon(record.Directory, "superseded by another task")
+		if err != nil {
+			t.Fatalf("Abandon: %v", err)
+		}
 		if abandoned.Revision != record.Revision+1 {
 			t.Fatalf("abandoned revision %d, want %d", abandoned.Revision, record.Revision+1)
 		}
@@ -75,13 +78,10 @@ func TestAbandon(t *testing.T) {
 		if abandoned.Abandonment.Reason != "superseded by another task" {
 			t.Fatalf("abandonment reason %q", abandoned.Abandonment.Reason)
 		}
-		at := abandoned.Abandonment.At
-		if at.IsZero() {
-			t.Fatal("abandonment time is zero")
-		}
-		// Loose bounds: the time is "now", whatever precision is stored.
-		if at.Before(before.Add(-time.Minute)) || at.After(after.Add(time.Minute)) {
-			t.Fatalf("abandonment time %v is not near the call (%v .. %v)", at, before, after)
+		for name, at := range map[string]time.Time{"abandonment time": abandoned.Abandonment.At, "updated_at": abandoned.UpdatedAt} {
+			if !at.Equal(now) || at.Location() != time.UTC {
+				t.Fatalf("%s %v, want %v", name, at, now.UTC())
+			}
 		}
 		loaded := abLoad(t, record.Directory)
 		if loaded.Revision != abandoned.Revision {

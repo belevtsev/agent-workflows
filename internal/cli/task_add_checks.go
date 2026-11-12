@@ -11,7 +11,7 @@ import (
 
 // addTaskAddChecksCommand adds `cw task add-checks` to the task command that
 // addTaskCommands registered on root.
-func addTaskAddChecksCommand(root *cobra.Command) {
+func addTaskAddChecksCommand(root *cobra.Command, config Config) {
 	var task *cobra.Command
 	for _, command := range root.Commands() {
 		if command.Name() == "task" {
@@ -60,7 +60,7 @@ func addTaskAddChecksCommand(root *cobra.Command) {
 			if err := taskflow.Decode(reader, &input); err != nil {
 				return err
 			}
-			record, err := taskflow.AddChecks(cmd.Context(), directory, input)
+			record, err := taskEnv(config).AddChecks(cmd.Context(), directory, input)
 			if err != nil {
 				return err
 			}

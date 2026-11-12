@@ -4,13 +4,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
 // addTaskAbandonCommand adds `cw task abandon` to the task command that
 // addTaskCommands registered on root.
-func addTaskAbandonCommand(root *cobra.Command) {
+func addTaskAbandonCommand(root *cobra.Command, config Config) {
 	var task *cobra.Command
 	for _, command := range root.Commands() {
 		if command.Name() == "task" {
@@ -43,7 +42,7 @@ func addTaskAbandonCommand(root *cobra.Command) {
 			if strings.TrimSpace(reason) == "" {
 				return usage(errors.New("--reason TEXT is required"))
 			}
-			record, err := taskflow.Abandon(directory, reason)
+			record, err := taskEnv(config).Abandon(directory, reason)
 			if err != nil {
 				return err
 			}

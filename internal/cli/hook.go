@@ -154,7 +154,7 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 		home = ""
 	}
 	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Home: home, Enforce: enforce, Prompt: prompt},
-		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
+		gate.Deps{Git: gate.ExecGit, Now: config.Now, Store: store})
 	if store.failed {
 		switch decision.Permission {
 		case gate.Allow:

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
+  so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.

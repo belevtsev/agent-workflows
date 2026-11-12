@@ -37,11 +37,11 @@ type PackBinding struct {
 // selection is SelectionDefault or SelectionExplicit, and Applied holds the
 // selected manifests detected among the baseline files at the top of the
 // selected path. Verify then applies the rules those packs name.
-func StartWithPacks(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, selection string, selected []langpack.Manifest) (Record, error) {
+func (env Env) StartWithPacks(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, selection string, selected []langpack.Manifest) (Record, error) {
 	if selection != SelectionDefault && selection != SelectionExplicit {
 		return Record{}, errors.New("pack selection must be default or explicit")
 	}
-	return start(ctx, repo, store, plan, advisers, packChoice{selection: selection, selected: selected})
+	return env.start(ctx, repo, store, plan, advisers, packChoice{selection: selection, selected: selected})
 }
 
 // packChoice is the selection StartWithPacks records.

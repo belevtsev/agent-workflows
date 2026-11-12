@@ -118,7 +118,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 			}
 			chosenStore = filepath.Join(state, "workflow-tasks")
 		}
-		record, err := taskflow.StartWithPacks(cmd.Context(), selected, chosenStore, plan, advisers, packSelection, packs)
+		record, err := taskEnv(config).StartWithPacks(cmd.Context(), selected, chosenStore, plan, advisers, packSelection, packs)
 		if err != nil {
 			return err
 		}
@@ -138,7 +138,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := guard(cmd); err != nil {
 			return err
 		}
-		value, err := taskflow.PrepareContext(cmd.Context(), contextTask, phase)
+		value, err := taskEnv(config).PrepareContext(cmd.Context(), contextTask, phase)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := guard(cmd); err != nil {
 			return err
 		}
-		value, err := taskflow.RunCheck(cmd.Context(), runTask, check)
+		value, err := taskEnv(config).RunCheck(cmd.Context(), runTask, check)
 		if value.ID != "" {
 			var printed any = value
 			if summary {
@@ -177,7 +177,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := read(cmd, assessmentFile, &input); err != nil {
 			return err
 		}
-		value, err := taskflow.Assess(cmd.Context(), assessTask, input)
+		value, err := taskEnv(config).Assess(cmd.Context(), assessTask, input)
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := read(cmd, briefFile, &input); err != nil {
 			return err
 		}
-		value, err := taskflow.AssignWorker(cmd.Context(), assignTask, input)
+		value, err := taskEnv(config).AssignWorker(cmd.Context(), assignTask, input)
 		if err != nil {
 			return err
 		}
@@ -303,7 +303,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := read(cmd, resultFile, &input); err != nil {
 			return err
 		}
-		value, err := taskflow.SubmitWorkerResult(cmd.Context(), handoffTask, input)
+		value, err := taskEnv(config).SubmitWorkerResult(cmd.Context(), handoffTask, input)
 		if err != nil {
 			return err
 		}
@@ -325,7 +325,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := read(cmd, acceptanceFile, &input); err != nil {
 			return err
 		}
-		value, err := taskflow.AcceptWorkerResult(cmd.Context(), acceptTask, input)
+		value, err := taskEnv(config).AcceptWorkerResult(cmd.Context(), acceptTask, input)
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if consultFile == "" || consultFile == "-" {
 			return usage(errors.New("consult needs a distinct original artifact file via --input"))
 		}
-		value, err := taskflow.AttachConsultation(cmd.Context(), consultTask, consultPhase, consultFile)
+		value, err := taskEnv(config).AttachConsultation(cmd.Context(), consultTask, consultPhase, consultFile)
 		if err != nil {
 			return err
 		}
@@ -365,7 +365,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := guard(cmd); err != nil {
 			return err
 		}
-		value, err := taskflow.Verify(cmd.Context(), verifyTask)
+		value, err := taskEnv(config).Verify(cmd.Context(), verifyTask)
 		if value.TaskID != "" {
 			var printed any = value
 			if summary {
