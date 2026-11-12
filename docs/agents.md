@@ -120,12 +120,15 @@ would save; the agents under test in its eval suites run on Opus by default
 ([evals](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md)).
 On Claude Code the GitHub worker already runs on Sonnet 5.5 at medium effort,
 and every later review of a stage (a diff-scoped follow-up, a review scoped to
-a fix, a confirmation pass) runs on Sonnet 5.5 at high; the other roles run on
-Opus 5.5
-([Claude Code policy](../skills/task-orchestration/model-policy.claude.yaml)).
-Codex roles follow
-[model-policy.yaml](../skills/task-orchestration/model-policy.yaml). Moving
-more roles to a cheaper model is the owner's decision.
+a fix, a confirmation pass) runs on Sonnet 5.5 at high. Read-only evidence work
+runs cheaper too: summarization on Sonnet 5.5 and lookup on Haiku 5.5, both at
+high. The other roles run on Opus 5.5
+([Claude Code policy](../skills/task-orchestration/model-policy.claude.yaml));
+whether the implementer, test review and spec review keep their quality on
+Sonnet is for the evals to show, not a default. Codex roles follow
+[model-policy.yaml](../skills/task-orchestration/model-policy.yaml): Sol at
+`max` for planning, architecture and diagnosis, and at `high` for the other
+substantive roles. Moving more roles to a cheaper model is the owner's decision.
 
 **Why is the GitHub worker an agent rather than a shell script?** Routine
 publication no longer needs either: it runs as the Go command `cw publish`,
