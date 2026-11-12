@@ -818,7 +818,7 @@ func acRewriteLatest(t *testing.T, dir string, mutate func(*taskflow.Record)) {
 func acRun(t *testing.T, dir, id string) taskflow.CheckRun {
 	t.Helper()
 	before := len(acLoad(t, dir).Checks)
-	run, err := taskflow.Run(context.Background(), dir, id)
+	run, err := taskflow.RunCheck(context.Background(), dir, id)
 	if run.ID != "" {
 		return run
 	}
@@ -830,7 +830,7 @@ func acRun(t *testing.T, dir, id string) taskflow.CheckRun {
 			}
 		}
 	}
-	t.Fatalf("Run(%s) recorded no run: %v", id, err)
+	t.Fatalf("RunCheck(%s) recorded no run: %v", id, err)
 	return taskflow.CheckRun{}
 }
 
@@ -1887,9 +1887,9 @@ func acTestRunAddedCheck(t *testing.T) {
 		_, dir := acStandardTask(t, acPlanOpts{})
 		acExpectAccepted(t, dir, acInput("HEAD", acWidened()))
 		prev := acLoad(t, dir)
-		_, err := taskflow.Run(context.Background(), dir, "nonexistent")
+		_, err := taskflow.RunCheck(context.Background(), dir, "nonexistent")
 		if err == nil || !strings.Contains(err.Error(), "check is not in the explicit coordinator plan") {
-			t.Errorf("R11.b: Run(nonexistent) error = %v, want %q", err, "check is not in the explicit coordinator plan")
+			t.Errorf("R11.b: RunCheck(nonexistent) error = %v, want %q", err, "check is not in the explicit coordinator plan")
 		}
 		after := acLoad(t, dir)
 		if len(after.Checks) != len(prev.Checks) || after.Revision != prev.Revision {

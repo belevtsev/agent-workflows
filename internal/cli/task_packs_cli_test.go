@@ -134,7 +134,7 @@ func tpVerifyChanged(t *testing.T, start func(repo string) (dir string, err erro
 	}
 	for _, g := range goflags {
 		t.Setenv("GOFLAGS", g) // checks inherit this process's environment
-		if run, err := taskflow.Run(context.Background(), dir, "unit"); err != nil || run.ExitCode == nil || *run.ExitCode != 0 {
+		if run, err := taskflow.RunCheck(context.Background(), dir, "unit"); err != nil || run.ExitCode == nil || *run.ExitCode != 0 {
 			t.Fatalf("precondition: the check did not pass with GOFLAGS=%q: %v", g, err)
 		}
 	}

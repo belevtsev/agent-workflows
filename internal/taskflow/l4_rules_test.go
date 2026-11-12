@@ -81,8 +81,8 @@ func TestStartRecordsTestRules(t *testing.T) {
 		if rec.TestRules != l4Rules {
 			t.Errorf("%s: returned record test_rules %q, want %q (R1)", c.name, rec.TestRules, l4Rules)
 		}
-		if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
-			t.Fatalf("%s: Run: %v", c.name, err)
+		if _, err := taskflow.RunCheck(ctx, rec.Directory, "unit"); err != nil {
+			t.Fatalf("%s: RunCheck: %v", c.name, err)
 		}
 		loaded, err := taskflow.Load(rec.Directory)
 		if err != nil || loaded.TestRules != l4Rules || loaded.Revision < 2 {
@@ -139,8 +139,8 @@ func TestLoadChecksTestRules(t *testing.T) {
 			t.Parallel()
 			f := l4New(t, l4Opts{checks: []taskflow.Check{l3Check("unit", "go", "version")}})
 			for i := 0; i < 2; i++ {
-				if run, err := taskflow.Run(f.ctx, f.dir, "unit"); run.ID == "" {
-					t.Fatalf("Run: %v", err)
+				if run, err := taskflow.RunCheck(f.ctx, f.dir, "unit"); run.ID == "" {
+					t.Fatalf("RunCheck: %v", err)
 				}
 			}
 			if rev := f.revision(); rev < 3 {

@@ -31,6 +31,9 @@ in a process group of its own, with an explicit environment, keeps the head of
 its output and the tail of its error output, and when the run ends, normally
 or at its deadline, kills the group until no member is alive. Run a new
 subprocess with it rather than another `exec.Cmd` and group kill.
+`cw task run` runs a check on it through `taskflow.RunCheck`, and only
+`checkSpec` turns a planned check into its `proc.Spec`: change the program,
+environment or bounds of every check there.
 
 ## Verification
 

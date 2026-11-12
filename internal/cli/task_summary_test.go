@@ -102,7 +102,7 @@ func (h *summaryCLIHarness) fileSHA256() string {
 func (h *summaryCLIHarness) runChecks() {
 	h.t.Helper()
 	for _, id := range []string{"version", "again"} {
-		if _, err := taskflow.Run(h.t.Context(), h.task, id); err != nil {
+		if _, err := taskflow.RunCheck(h.t.Context(), h.task, id); err != nil {
 			h.t.Fatal(err)
 		}
 	}

@@ -119,7 +119,7 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	if err != nil || rec.Packs == nil {
 		t.Fatalf("A19 violated: packs %+v, %v", rec.Packs, err)
 	}
-	if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
+	if _, err := taskflow.RunCheck(ctx, rec.Directory, "unit"); err != nil {
 		t.Fatal(err)
 	}
 	later, err := taskflow.Load(rec.Directory)
@@ -138,7 +138,7 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	if err := os.Remove(filepath.Join(repo2, "go.mod")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := taskflow.Run(ctx, c.Directory, "unit"); err != nil {
+	if _, err := taskflow.RunCheck(ctx, c.Directory, "unit"); err != nil {
 		t.Fatal(err)
 	}
 	if later, err := taskflow.Load(c.Directory); err != nil || later.Revision <= c.Revision || !reflect.DeepEqual(later.Packs, c.Packs) {

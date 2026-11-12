@@ -152,7 +152,7 @@ func addTaskCommands(root *cobra.Command, config Config) {
 		if err := guard(cmd); err != nil {
 			return err
 		}
-		value, err := taskflow.Run(cmd.Context(), runTask, check)
+		value, err := taskflow.RunCheck(cmd.Context(), runTask, check)
 		if value.ID != "" {
 			var printed any = value
 			if summary {
