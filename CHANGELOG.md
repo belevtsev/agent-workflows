@@ -159,6 +159,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The overview diagram ends with `cw publish`, with the GitHub worker as fallback, and shows the opt-in adversarial
   tester ([how it works](README.md#how-it-works)).
 - Security fixes go to the newest v3 release, release candidates included ([supported versions](SECURITY.md#supported-versions)).
+- The commit gate's deny names at most three open tasks, each directory once, and counts the rest with their task store,
+  so it stays short with many open tasks; the Codex deny and git hook stderr follow ([which records gate](docs/hooks.md#which-records-gate)).
 
 ### Fixed
 

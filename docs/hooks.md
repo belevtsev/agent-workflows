@@ -152,10 +152,12 @@ A record governs the command when all of the following hold:
 
 Starting a new record does not hide an older one: every governing record gates
 until `cw task verify` passes on the source being published, and the hook
-denies the command with a reason that names each gating record, why it gates,
-and both ways out: `cw task verify --task <dir> --summary`, or, for a task that
-is finished or was given up, `cw task abandon --task <dir> --reason TEXT`,
+denies the command with a reason that names up to three gating records, why
+each gates, and both ways out: `cw task verify --task <dir> --summary`, or, for
+a task that is finished or was given up, `cw task abandon --task <dir> --reason TEXT`,
 which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
+The reason names each directory once, in its verify command. Past three, it
+gives the number of other gating records and the task store they are in.
 An abandoned record accepts no further revisions and never gates.
 
 A record is finished, and no longer governs, once another governing record
@@ -173,7 +175,7 @@ A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
 v3.0.0-rc.1, has no `packs` or `test_rules`, or binds the removed v1 Go rule
 (`go.package-test/v1`). `cw` refuses to read it, so
 neither `cw task verify` nor `cw task abandon` can close it, but it still gates
-by the rules above, judged from its newest decodable revision. The deny reason names its
+by the rules above, judged from its newest decodable revision. When the deny reason names it, it names its
 directory: move that directory out of the task store, then start a new task
 with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
 verified as complete is finished and does not gate, since those releases
@@ -277,7 +279,7 @@ four ([Codex](#codex)).
   `cd $OTHER && git commit`, `cd - && git commit` or `popd && git push`,
   when a record gates the session's working directory, where the hook checks
   it instead ([Recognised commands](#recognised-commands)). The reason names
-  the change as written and each gating record.
+  the change as written and the gating records as the deny does.
 - A commit or push from a repository where no readable record gates, but a
   record that governs it cannot be read
   ([Records that cannot be read](#records-that-cannot-be-read)). The gate
