@@ -80,6 +80,12 @@ type Decision struct {
 	// Reason tells the agent and the user why the command is asked about or
 	// denied, and what to do; it is empty for Allow.
 	Reason string
+	// ProceedWithoutAsk marks an Ask that a host unable to ask, such as
+	// Codex, lets run instead of denying, because a deny would block the
+	// user on something they cannot fix there, such as a task record that
+	// cannot be read. No ask sets it yet; one that joins asks sets it only
+	// when every joined ask does.
+	ProceedWithoutAsk bool
 }
 
 // Decide returns the decision for in. A deny for any publication in the

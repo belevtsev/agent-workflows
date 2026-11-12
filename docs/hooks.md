@@ -168,7 +168,7 @@ it.
 
 Two cases ask for confirmation (`permissionDecision: "ask"`) instead of
 denying; a deny for any git command in the same Bash input wins. Codex cannot
-ask, so there each ask is a deny ([Codex](#codex)).
+ask, so there both are denies ([Codex](#codex)).
 
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
@@ -201,7 +201,7 @@ A relative `$XDG_STATE_HOME` names no store ([paths](operations.md#paths)).
 Without `$CW_TASK_STORE`, the hook then asks before each `git commit` and
 `git push` it would otherwise judge, with the reason "XDG_STATE_HOME must be
 an absolute path; set it, or set CW_TASK_STORE", instead of letting the
-command through unchecked. Commands that the rules below let through without
+command through unchecked; under Codex it denies ([Codex](#codex)). Commands that the rules below let through without
 reading the store, such as one outside a Git repository, still go ahead.
 
 ## Fail-open rules
@@ -286,8 +286,9 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   and `plugin_hooks` removed.
 - **Input.** The PreToolUse input names the shell tool `Bash` and holds `cwd`
   and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`,
-  which Codex documents as its own extensions. `cw` takes `turn_id` as the
-  sign that Codex ran the hook.
+  which Codex documents as its own extensions. Claude Code's PreToolUse input
+  has neither, so `cw` takes the two together as the sign that Codex ran the
+  hook; one of them alone is not enough.
 - **Matcher.** Codex matches `Bash` but ignores the `if` condition, so
   `cw hook pre-publish` runs for every shell command; it exits at once, without
   output, for a command with no `git commit` or `git push`.
@@ -304,12 +305,18 @@ is the recorded PreToolUse input, with paths replaced by placeholders.
   `global/AGENTS.md` to the session, so the trusted plugin also loads the
   working conventions.
 
-So under Codex the pre-publish hook turns each ask into a deny. Its reason
-starts `agent-workflows: Codex cannot ask for confirmation`, carries the
-question Claude Code would ask, and says to put it to the user, who goes ahead
-by running the command outside Codex. This holds for every ask the hook gives,
-including any added later, such as one for a task record it cannot read. Every
-reason under Codex ends by naming the option variables.
+So under Codex the pre-publish hook turns today's three asks into denies: an
+unrecorded substantial change, a push with uncommitted changes over a verified
+record ([Asking instead of denying](#asking-instead-of-denying)), and a relative
+`XDG_STATE_HOME` ([Task store](#task-store)). The reason starts
+`agent-workflows: Codex cannot ask for confirmation`, carries the question
+Claude Code would ask, and says to put it to the user, who goes ahead by running
+the command outside Codex. Every reason under Codex ends by naming the option
+variables.
+
+An ask for a task record that cannot be read, which is planned, will not become
+a deny: a deny would block the user on a damaged file, so under Codex that
+command goes ahead, as Codex runs any ask.
 
 The plugin options are environment variables under Codex: export
 `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY`, `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`

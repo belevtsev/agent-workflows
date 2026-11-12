@@ -47,18 +47,21 @@ const (
 
 type hookInput struct {
 	CWD string `json:"cwd"`
-	// TurnID is sent by Codex and not by Claude Code: Codex documents
-	// turn_id as its own extension of the hook input
-	// (testdata/codex-pre-tool-use.json is a recorded Codex input).
+	// TurnID and Model are Codex's documented extensions of the hook input;
+	// Claude Code's PreToolUse input has neither, although it sends turn_id
+	// for another event. testdata holds one recorded input from each host.
 	TurnID    string `json:"turn_id"`
+	Model     string `json:"model"`
 	ToolInput struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
 }
 
-// fromCodex reports whether Codex, not Claude Code, ran the hook.
+// fromCodex reports whether Codex, not Claude Code, ran the hook: it needs
+// both Codex members, so Claude Code adding one of them to PreToolUse does
+// not turn its asks into denies.
 func (input hookInput) fromCodex() bool {
-	return input.TurnID != ""
+	return input.TurnID != "" && input.Model != ""
 }
 
 type hookOutput struct {
@@ -149,20 +152,26 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if unlocated != nil && unlocated.consulted && decision.Permission == gate.Allow {
 		decision = gate.Decision{Permission: gate.Ask, Reason: relativeStateHomeReason}
 	}
-	if decision.Permission == gate.Allow {
-		return hookOutput{}, false
-	}
 	if input.fromCodex() {
 		decision = codexDecision(decision)
+	}
+	if decision.Permission == gate.Allow {
+		return hookOutput{}, false
 	}
 	return preToolUseDecision(string(decision.Permission), decision.Reason), true
 }
 
 // codexDecision adapts a decision to Codex, which parses an ask but runs the
-// command without asking: an ask becomes a deny that carries the question.
-// Codex has no plugin config, so every reason also says where its options are.
+// command without asking: an ask becomes a deny that carries the question,
+// unless it is marked ProceedWithoutAsk, which lets the command run. Codex has
+// no plugin config, so every remaining reason also says where its options are.
 func codexDecision(decision gate.Decision) gate.Decision {
-	if decision.Permission == gate.Ask {
+	switch {
+	case decision.Permission == gate.Allow:
+		return decision
+	case decision.Permission == gate.Ask && decision.ProceedWithoutAsk:
+		return gate.Decision{}
+	case decision.Permission == gate.Ask:
 		decision = gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: " +
 			strings.TrimPrefix(decision.Reason, "agent-workflows: ") +
 			" Put the question to the user; to go ahead, the user runs the command outside Codex."}
