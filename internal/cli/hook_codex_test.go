@@ -14,6 +14,8 @@ import (
 // is the PreToolUse input codex-cli 0.167.2 sent to the plugin hook on
 // 2026-11-12, with its paths replaced by placeholders; that run showed Codex
 // running the command after an ask (docs/hooks.md, Codex).
+// testdata/codex-session-start.json is the SessionStart input the same Codex
+// sent on compact in a later run (docs/hooks.md, Recorded host runs).
 // testdata/claude-code-pre-tool-use.json has the members a review logged from
 // Claude Code 2.1.311's PreToolUse input, with placeholder values.
 
@@ -162,4 +164,48 @@ func TestHookPrePublishAbandonAsksOnClaudeCodeAndDeniesOnCodex(t *testing.T) {
 	// Oracle: cw task show closes nothing, so Codex lets it run.
 	show := map[string]any{"tool_input": map[string]any{"command": "cw task show --task " + record.Directory}}
 	hkExpectAllow(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, show)))
+}
+
+func TestHookSessionStartReadsTheDirectoryFromCodexInput(t *testing.T) {
+	// Oracle: Codex sent this SessionStart input, with cwd, on startup,
+	// resume and compact. Under Codex's PLUGIN_ROOT, cw reads the session's
+	// directory from it, so the context carries hkGateLine for a repository
+	// with an open substantial task and no git hooks, whichever the source;
+	// each source has a cache of its own, so no earlier suggestion silences
+	// it. The control, a repository without a task, gives the instructions
+	// alone. The input has no turn_id, so fromCodex cannot tell the hosts
+	// apart at session start, and cw relies on PLUGIN_ROOT there.
+	const instructions = "# Rules\n\nWork carefully."
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	file := hkWriteInstructions(t, instructions)
+	h := newHKHarness(t)
+	h.env[codexPluginRoot] = filepath.Dir(file)
+	gated := hkRepo(t)
+	h.start(t, gated, hkSubstantialPlan)
+
+	var input hookInput
+	if err := json.Unmarshal(hkRecordedInput(t, "codex-session-start.json", gated, nil), &input); err != nil {
+		t.Fatal(err)
+	}
+	if input.CWD != gated || input.fromCodex() {
+		t.Fatalf("decoded Codex SessionStart input %+v: want cwd %s and fromCodex false", input, gated)
+	}
+	context := func(t *testing.T, repo, source string) string {
+		t.Helper()
+		stdin := hkRecordedInput(t, "codex-session-start.json", repo, map[string]any{"source": source})
+		got, err := h.runSessionStart(t, string(stdin), "--instructions", file, "--cache", hkCanonicalTempDir(t))
+		if err != nil {
+			t.Fatalf("session-start: %v", err)
+		}
+		return hkSessionContext(t, got)
+	}
+	for _, source := range []string{"startup", "resume", "compact"} {
+		if got, want := context(t, gated, source), instructions+"\n\n"+hkGateLine; got != want {
+			t.Fatalf("source %s: additionalContext %q, want %q", source, got, want)
+		}
+	}
+	if got := context(t, hkRepo(t), "compact"); got != instructions {
+		t.Fatalf("repository without a task: additionalContext %q, want %q", got, instructions)
+	}
 }
