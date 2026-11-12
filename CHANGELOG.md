@@ -44,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- The `go list` runs behind `cw task verify`'s Go facts kill their process group when they end, so a child of `go` or a `go` wrapper
+  no longer outlives them or their time budget; `cw publish` and `cw graphify` share that runner ([development](docs/development.md)).
 
 ### Removed
 

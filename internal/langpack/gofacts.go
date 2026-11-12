@@ -12,7 +12,6 @@ import (
 	"go/token"
 	"io"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -20,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
 // GoFactsTimeout is the budget of a LoadGoFacts call whose ctx has no
@@ -100,16 +101,17 @@ func findGo(env []string) string {
 	return ""
 }
 
-// goCommand returns go with args in dir, under ctx, with env followed by
-// extra, and with standard error kept in stderr.
-func goCommand(ctx context.Context, goPath, dir string, env []string, stderr *headBuffer, args []string, extra ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, goPath, args...) //nolint:gosec // G204: goPath is the go binary found on an absolute PATH entry; args are fixed go list flags.
-	cmd.Dir = dir
-	cmd.Env = slices.Concat(env, extra)
-	cmd.Stderr = stderr
-	cmd.WaitDelay = 500 * time.Millisecond
-	return cmd
+// runGo runs go with args in dir, under ctx, with env followed by extra, and
+// with standard error kept in stderr; stdout, when not nil, receives the
+// output. go and its descendants run in a process group of their own, which
+// is killed when the run ends.
+func runGo(ctx context.Context, goPath, dir string, env []string, stdout io.Writer, stderr *proc.HeadBuffer, args []string, extra ...string) proc.Result {
+	return proc.Run(ctx, proc.Spec{Path: goPath, Args: args, Dir: dir, Env: slices.Concat(env, extra), Stdout: stdout, Stderr: stderr,
+		WaitDelay: 500 * time.Millisecond})
 }
+
+// stderrLimit is how much of go's standard error a run keeps.
+const stderrLimit = 64 << 10
 
 // raceUnavailable runs the race probe and returns the go command's reason
 // that -race cannot run for cw's own target, or "" when it can or when the
@@ -118,14 +120,13 @@ func raceUnavailable(ctx context.Context, goPath, dir string, env []string, mod 
 	if ctx.Err() != nil {
 		return ""
 	}
-	var stderr headBuffer
-	cmd := goCommand(ctx, goPath, dir, env, &stderr, []string{"list", "-mod=" + mod, "-race", "runtime"},
+	stderr := &proc.HeadBuffer{Limit: stderrLimit}
+	got := runGo(ctx, goPath, dir, env, nil, stderr, []string{"list", "-mod=" + mod, "-race", "runtime"},
 		"GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "GOFLAGS=-mod="+mod, "GOPROXY=off")
-	var exit *exec.ExitError
-	if err := cmd.Run(); !errors.As(err, &exit) || exit.ExitCode() != 2 {
+	if got.Code != 2 {
 		return ""
 	}
-	line := stderr.firstLine()
+	line := firstLine(stderr.Bytes())
 	if strings.HasPrefix(line, "-race is not supported on ") || strings.HasPrefix(line, "go: -race requires cgo") {
 		return line
 	}
@@ -155,19 +156,19 @@ func packageGraph(ctx context.Context, goPath, dir string, env []string, mod str
 	}
 	commandCtx, stop := context.WithCancel(ctx)
 	defer stop()
-	var stderr headBuffer
-	cmd := goCommand(commandCtx, goPath, dir, env, &stderr, []string{"list", "-e=false", "-mod=" + mod, "-deps", "-test",
-		"-json=ImportPath,Dir,Module,ForTest,Deps,Incomplete,EmbedFiles,TestEmbedFiles,XTestEmbedFiles,IgnoredGoFiles,IgnoredOtherFiles", "./..."},
-		"GOPROXY=off")
+	stderr := &proc.HeadBuffer{Limit: stderrLimit}
 	// stdout is not an *os.File, so os/exec copies into it from its own
 	// goroutine, which Wait joins, and WaitDelay closes that copy's pipe.
 	stdout := &cappedBuffer{stop: stop}
-	cmd.Stdout = stdout
-	err := cmd.Run()
+	got := runGo(commandCtx, goPath, dir, env, stdout, stderr, []string{"list", "-e=false", "-mod=" + mod, "-deps", "-test",
+		"-json=ImportPath,Dir,Module,ForTest,Deps,Incomplete,EmbedFiles,TestEmbedFiles,XTestEmbedFiles,IgnoredGoFiles,IgnoredOtherFiles", "./..."},
+		"GOPROXY=off")
+	err := got.Err
 	switch {
 	case stdout.over:
 		return nil, nil, nil, errGoListLimit.Error()
-	case err != nil && ctx.Err() != nil:
+	// A run stopped before it started has no error of its own.
+	case got.Stopped, err != nil && ctx.Err() != nil:
 		return nil, nil, nil, unfinished
 	}
 	var entries []listEntry
@@ -175,7 +176,7 @@ func packageGraph(ctx context.Context, goPath, dir string, env []string, mod str
 		entries, err = decodeEntries(stdout.data)
 	}
 	if err != nil {
-		if line := stderr.firstLine(); line != "" {
+		if line := firstLine(stderr.Bytes()); line != "" {
 			return nil, nil, nil, line
 		}
 		return nil, nil, nil, err.Error()
@@ -326,21 +327,9 @@ func parseHeader(root *os.Root, name string) *ast.File {
 	return file
 }
 
-// headBuffer keeps the first 64 KiB written to it and drops the rest; its
-// writes never fail or block. It has no ReadFrom, so io.Copy goes through
-// Write.
-type headBuffer struct{ kept []byte }
-
-func (buffer *headBuffer) Write(data []byte) (int, error) {
-	if room := 64<<10 - len(buffer.kept); room > 0 {
-		buffer.kept = append(buffer.kept, data[:min(len(data), room)]...)
-	}
-	return len(data), nil
-}
-
-// firstLine returns the first line kept, without surrounding white space.
-func (buffer *headBuffer) firstLine() string {
-	line, _, _ := bytes.Cut(buffer.kept, []byte("\n"))
+// firstLine returns the first line of kept, without surrounding white space.
+func firstLine(kept []byte) string {
+	line, _, _ := bytes.Cut(kept, []byte("\n"))
 	return string(bytes.TrimSpace(line))
 }
 
