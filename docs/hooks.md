@@ -33,9 +33,10 @@ other for every one that contains `cw` and then `abandon`
 (`Bash(*cw*abandon*)`, [Abandoning a task](#abandoning-a-task)). Claude Code
 also runs them when it cannot tell which commands a Bash input runs, and Codex
 ignores the conditions and runs the hook for every shell command. Where both
-handlers run for one command, both reach the same decision. `cw hook pre-publish` then finds each
-`git commit` and `git push` in the command and the directory it runs in, and
-each `cw task abandon`, and exits at once, without output, when there is none.
+handlers run for one command, both reach the same decision.
+`cw hook pre-publish` then finds each `git commit` and `git push` in the
+command and the directory it runs in, and each `cw task abandon`, and exits at
+once, without output, when there is none.
 
 The gate asks a cooperative agent to stop when it skipped a step; it is not a
 defence against an agent that sets out to bypass it. See the
@@ -177,8 +178,8 @@ recorded no source digest.
 
 ### Abandoning a task
 
-`cw task abandon` closes a task so that it never gates again, so only the user
-may decide it. With `enforce_verify` on, the hook asks before every
+`cw task abandon` closes a task so that it never gates again, so the decision
+belongs to the user. With `enforce_verify` on, the hook asks before every
 `cw task abandon` it finds (`permissionDecision: "ask"`), naming the task's ID,
 plan title and directory, or the directory alone when it cannot read the
 record there. It finds the command as it finds git
@@ -247,7 +248,6 @@ and the last two let the command run, unless joined with one of the first
 four ([Codex](#codex)).
 
 - A `cw task abandon` ([Abandoning a task](#abandoning-a-task)).
-
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
   verified bytes may then not be what the pushed commits hold.
