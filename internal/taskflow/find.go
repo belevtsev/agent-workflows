@@ -209,6 +209,11 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 		legacy := errors.Is(err, ErrLegacyRecord)
 		switch {
 		case legacy:
+			// Name the directory as Load would: in canonical form, so a
+			// store reached through a symlink (macOS /var) matches.
+			if canonical, err := filepath.EvalSymlinks(directory); err == nil {
+				directory = canonical
+			}
 			record = peeked.legacyRecord(directory)
 			if v := record.Verification; v != nil && v.Complete && v.SourceSHA256 == "" {
 				// cw v2.0.66 to v2.0.96 recorded no source digest, and
