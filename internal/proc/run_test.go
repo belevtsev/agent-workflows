@@ -5,7 +5,12 @@ package proc_test
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -72,5 +77,84 @@ func TestRunStopsAtItsTimeoutOrCancellation(t *testing.T) {
 		if !got.Stopped || got.Cancelled != run.cancelled || got.Code != -1 || got.Cleanup != nil || ctx.Err() != nil {
 			t.Errorf("%s: Stopped=%v Cancelled=%v Code=%d Cleanup=%v guard=%v, want a stop with Cancelled=%v", run.name, got.Stopped, got.Cancelled, got.Code, got.Cleanup, ctx.Err(), run.cancelled)
 		}
+	}
+}
+
+// sessionHelperEnv names the FIFO through which the test binary, started as
+// TestRunSessionHelper, reports that it has left the run's process group.
+const sessionHelperEnv = "CW_PROC_SESSION_HELPER_READY"
+
+// TestRunSessionHelper does nothing in a normal test run. Started by
+// TestRunStopsAtItsTimeoutWhileAnotherSessionHoldsItsOutput, it moves into a
+// session of its own, which the group kill cannot reach, writes its pid to the
+// FIFO and keeps the run's output pipe open until the test kills it.
+func TestRunSessionHelper(t *testing.T) {
+	ready := os.Getenv(sessionHelperEnv)
+	if ready == "" {
+		return
+	}
+	if _, err := syscall.Setsid(); err != nil {
+		os.Exit(2)
+	}
+	if err := os.WriteFile(ready, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		os.Exit(3)
+	}
+	// Bounds the life of a helper the test failed to kill.
+	time.Sleep(30 * time.Second)
+	os.Exit(0)
+}
+
+// Oracle: with WaitDelay unset, a descendant in another session that keeps
+// the output pipe open does not hold Run past its Timeout: Run returns as
+// stopped (not cancelled) within 10 s, while the descendant would hold the
+// pipe for 30 s. The control is the descendant's pid, which it writes only
+// after leaving the group, so it held the pipe when the group was killed.
+func TestRunStopsAtItsTimeoutWhileAnotherSessionHoldsItsOutput(t *testing.T) {
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready := filepath.Join(t.TempDir(), "ready")
+	if err := syscall.Mkfifo(ready, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	helper := 0
+	t.Cleanup(func() {
+		// Release a reader still waiting, then end the helper.
+		if writer, err := os.OpenFile(ready, os.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+			writer.Close()
+		}
+		if helper > 0 {
+			_ = syscall.Kill(helper, syscall.SIGKILL)
+		}
+	})
+	results := make(chan proc.Result, 1)
+	go func() {
+		results <- proc.Run(t.Context(), proc.Spec{Path: "/bin/sh",
+			Args:    []string{"-c", `"$1" -test.run='^TestRunSessionHelper$' & exec sleep 60`, "sh", binary},
+			Env:     []string{"PATH=" + os.Getenv("PATH"), sessionHelperEnv + "=" + ready},
+			Timeout: 2 * time.Second})
+	}()
+	pids := make(chan int, 1)
+	go func() {
+		line, _ := os.ReadFile(ready)
+		pid, _ := strconv.Atoi(strings.TrimSpace(string(line)))
+		pids <- pid
+	}()
+	select {
+	case helper = <-pids:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the helper did not report leaving the process group")
+	}
+	if helper <= 0 {
+		t.Fatal("the helper did not report its pid")
+	}
+	select {
+	case got := <-results:
+		if !got.Stopped || got.Cancelled || got.Code != -1 {
+			t.Fatalf("Stopped=%v Cancelled=%v Code=%d, want a stop at the timeout", got.Stopped, got.Cancelled, got.Code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run (Timeout 2 s) had not returned 10 s after a process in another session took hold of its output")
 	}
 }

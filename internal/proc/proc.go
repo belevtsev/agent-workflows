@@ -22,6 +22,10 @@ import (
 	"time"
 )
 
+// DefaultWaitDelay is how long a bounded run's output may still arrive after
+// the program exits or is stopped when Spec.WaitDelay is zero.
+const DefaultWaitDelay = 100 * time.Millisecond
+
 // Spec says what to run and how to bound it.
 type Spec struct {
 	// Path is the program. A name without a path separator is looked up in
@@ -53,8 +57,10 @@ type Spec struct {
 	// Timeout bounds the run; zero leaves the bound to ctx.
 	Timeout time.Duration
 	// WaitDelay bounds how long output may still arrive after the program
-	// exits, for a descendant that keeps the pipes open (exec.Cmd.WaitDelay).
-	// Zero waits for the end of the output or for the run's bound.
+	// exits or is stopped, for a descendant that keeps the pipes open
+	// (exec.Cmd.WaitDelay); a descendant that left the group survives the
+	// kill. Zero means DefaultWaitDelay when the run has a bound (Timeout, or
+	// a ctx that can end), and the end of the output when it has none.
 	WaitDelay time.Duration
 }
 
@@ -103,6 +109,11 @@ func Run(ctx context.Context, spec Spec) Result {
 	if command.Env == nil {
 		command.Env = []string{}
 	}
+	// Without a delay, a descendant in another session that keeps a pipe
+	// open would hold Run past its bound for as long as it lives.
+	if command.WaitDelay == 0 && (spec.Timeout > 0 || ctx.Done() != nil) {
+		command.WaitDelay = DefaultWaitDelay
+	}
 	stdout := &HeadBuffer{Limit: spec.StdoutLimit}
 	command.Stdout = stdout
 	if spec.Stdout != nil {
@@ -145,8 +156,8 @@ func Run(ctx context.Context, spec Spec) Result {
 		}
 	case <-runCtx.Done():
 		got.Stopped, got.Cancelled = true, interrupted(ctx)
-		// Killing the group closes every pipe a member holds, so Wait returns
-		// without waiting for WaitDelay.
+		// Killing the group closes every pipe a member holds. A descendant
+		// that left the group can still hold one; WaitDelay bounds that wait.
 		got.Cleanup = endGroup(command, true)
 		got.Err = <-done
 	}

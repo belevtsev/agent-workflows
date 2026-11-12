@@ -55,20 +55,26 @@ func executeBounded(ctx context.Context, command Command, limit int) (CommandRes
 		Stdout: out, Stderr: io.Discard,
 		WaitDelay: cmp.Or(command.WaitDelay, defaultProbeWaitDelay),
 	})
-	err := got.Err
+	return CommandResult{Stdout: out.Bytes(), Truncated: out.Overflow()}, probeError(ctx.Err(), got, out.complete)
+}
+
+// probeError is the error a probe returns. The caller's context error comes
+// first and stays matchable with errors.Is when it is joined with a group
+// member that survived the kill; a survivor fails an otherwise clean probe;
+// a completed protocol exchange succeeds whatever the stopped process
+// reported; otherwise the error is os/exec's.
+func probeError(ctxErr error, got proc.Result, complete bool) error {
 	switch {
-	case ctx.Err() != nil:
-		err = ctx.Err()
-		if got.Cleanup != nil {
-			err = errors.Join(err, got.Cleanup)
-		}
+	case ctxErr != nil && got.Cleanup != nil:
+		return errors.Join(ctxErr, got.Cleanup)
+	case ctxErr != nil:
+		return ctxErr
 	case got.Cleanup != nil:
-		// A probe process outlived the group kill; never pass that as clean.
-		err = got.Cleanup
-	case out.complete:
-		err = nil
+		return got.Cleanup
+	case complete:
+		return nil
 	}
-	return CommandResult{Stdout: out.Bytes(), Truncated: out.Overflow()}, err
+	return got.Err
 }
 
 func hasJSONResponse(output []byte, id int) bool {
