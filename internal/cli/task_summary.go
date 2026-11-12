@@ -9,7 +9,8 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
-// The --summary results below are printed as one JSON line. Each names the task
+// The summaries below are the default output, one JSON line each; --full
+// prints the whole value instead. Each names the task
 // directory and only what the coordinator needs for its next step; the whole
 // record stays available through 'cw task show'.
 

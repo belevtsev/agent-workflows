@@ -80,7 +80,7 @@ func (f *bindingFixture) execute(t *testing.T, input string, args ...string) map
 
 func (f *bindingFixture) start(t *testing.T, plan string, flags ...string) (taskflow.Record, map[string]any) {
 	t.Helper()
-	document := f.execute(t, plan, append([]string{"task", "start", "--plan", "-"}, flags...)...)
+	document := f.execute(t, plan, append([]string{"task", "start", "--full", "--plan", "-"}, flags...)...)
 	var record taskflow.Record
 	if err := json.Unmarshal(f.out.Bytes(), &record); err != nil || record.Directory == "" {
 		t.Fatalf("task start record: %v: %s", err, f.out)
@@ -178,7 +178,7 @@ func TestTaskStartRefusesUnusablePolicyBeforeCreatingATask(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newBindingFixture(t, test.release, nil, fixtureCredentials("subq_snap", "openai_decisions"))
-			args := []string{"task", "start", "--plan", "-"}
+			args := []string{"task", "start", "--full", "--plan", "-"}
 			switch {
 			case test.explicit > 0:
 				args = append(args, "--policy", writePolicyFixture(t, filepath.Join(t.TempDir(), "explicit"), test.explicit, nil))

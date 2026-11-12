@@ -199,6 +199,17 @@ type CheckRun struct {
 	// rule credits only a run that has it (evidenceRun). It is absent when Tool
 	// is, and for runs recorded before cw read it (record version 4).
 	GoEnv *langpack.GoEnv `json:"go_env,omitempty"`
+	// SourceSHA256 is SourceDigest of the source when the run started, read
+	// in its start revision; the task holds that source's manifest as
+	// sourceManifestName of it; a source whose manifest exceeds
+	// maxSourceManifestBytes leaves it empty. EnvKey is runKey of the
+	// configuration the run started under (runConfig): an HMAC under the
+	// task's secret of its go env read and env_passthrough values, never a
+	// value; a run refused before it ran has none. Runs recorded before they
+	// existed omit both (record version 5); a run without both is never
+	// reused.
+	SourceSHA256 string `json:"source_sha256,omitempty"`
+	EnvKey       string `json:"env_key,omitempty"`
 }
 
 type Attachment struct {
@@ -222,6 +233,11 @@ type Verification struct {
 	Problems     []string  `json:"problems"`
 	Limitations  []string  `json:"limitations"`
 	CheckedAt    time.Time `json:"checked_at"`
+	// ProblemFindings and LimitationFindings are Problems and Limitations
+	// with their codes, in the same order. Verify sets them; the JSON output
+	// and the record carry only the text, so a loaded record has none.
+	ProblemFindings    []Finding `json:"-"`
+	LimitationFindings []Finding `json:"-"`
 }
 
 type Record struct {

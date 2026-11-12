@@ -185,6 +185,14 @@ the task commands set it in `cli`'s `taskEnv`. `cli.Config.Now` is the clock of
 the task commands, the gate and `cw publish`. A rule test passes a fake
 `Source`, clock or `Artifacts` instead of building a Git repository or waiting.
 
+`cw task verify` runs a list of rules (`internal/taskflow/verify_rules.go`), in
+a fixed order. Each rule returns findings: a stable `FindingCode` and the
+message that the JSON output prints in `problems` or `limitations`. A new
+check is a new rule, or a new code in an existing one. Code that picks out
+entries, such as the `--summary` view, selects them by code, never by text, so
+rewording a message changes no caller. The JSON output and the task record
+keep the text only.
+
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow
 [Task record format](#task-record-format). Tests must cover wrong
@@ -249,7 +257,9 @@ run `status` or context phase, fails validation with "invalid stored …".
 
   The check run member `go_env` (F1) was the first record change after rc.2
   and bumped `Version` to 5; later changes before rc.3, such as R1's
-  `profile`, keep 5. `v3.0.0-rc.1` was never tagged, but the code at
+  `profile`, keep 5. Members version 5 adds so far: on a check run, `go_env`
+  (F1), `source_sha256` and `env_key` (X1); on a worker result,
+  `source_sha256` (X1). `v3.0.0-rc.1` was never tagged, but the code at
   `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
   a record it wrote, which must keep loading and verifying.
 

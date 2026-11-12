@@ -21,6 +21,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -204,7 +205,7 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
 
-	full := compactExecute(h, nil, "task", "verify", "--task", h.task)
+	full := compactExecute(h, nil, "task", "verify", "--full", "--task", h.task)
 	if ExitCode(full.err) != 5 {
 		t.Fatalf("verify of a fresh task should be incomplete (exit 5): %v (exit %d): %s", full.err, ExitCode(full.err), full.text())
 	}
@@ -268,7 +269,12 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 func TestCompactVerifySummaryListsRejectedFindingsFirst(t *testing.T) {
 	rejected := "rejected finding f1 (blocker) of worker assignment review1: Source contradicts it."
 	other := "worker assignment review1 finding f2 deferred: Later."
-	value := taskflow.Verification{TaskID: "task", Problems: []string{"a problem"}, Limitations: append(taskflow.FixedVerifyLimitations(), other, rejected)}
+	findings := []taskflow.Finding{}
+	for _, fixed := range taskflow.FixedVerifyLimitations() {
+		findings = append(findings, taskflow.Finding{Code: taskflow.CodeFixedLimitation, Message: fixed})
+	}
+	findings = append(findings, taskflow.Finding{Code: taskflow.CodeDeferredFinding, Message: other}, taskflow.Finding{Code: taskflow.CodeRejectedFinding, Message: rejected})
+	value := taskflow.Verification{TaskID: "task", Problems: []string{"a problem"}, LimitationFindings: findings}
 	data, err := jsonv2.Marshal(summarizeVerification(value))
 	if err != nil {
 		t.Fatal(err)
@@ -285,6 +291,33 @@ func TestCompactVerifySummaryListsRejectedFindingsFirst(t *testing.T) {
 	}
 	if strings.Index(string(data), `"rejected_findings"`) > strings.Index(string(data), `"problems"`) {
 		t.Fatalf("rejected_findings is not printed before problems: %s", data)
+	}
+}
+
+// The summaries select the fixed entries by code or by the producer's exported
+// value, never by a copy of their text, so rewording one changes no summary.
+// Oracle: a fixed limitation and a rejected finding reworded to text no
+// summary has seen are still dropped and moved; the projectctx caveat, read
+// from projectctx itself, is still dropped and counted.
+func TestSummariesHideFixedEntriesWhateverTheirWording(t *testing.T) {
+	reworded := "a reworded fixed limitation"
+	rejected := "a reworded rejection of f1"
+	other := "a task-specific limitation"
+	value := taskflow.Verification{TaskID: "task", Problems: []string{}, LimitationFindings: []taskflow.Finding{
+		{Code: taskflow.CodeFixedLimitation, Message: reworded},
+		{Code: taskflow.CodeRejectedFinding, Message: rejected},
+		{Code: taskflow.CodeTrace, Message: other},
+	}}
+	verify := summarizeVerification(value)
+	if verify.OmittedFixedLimitations != 1 || !slices.Equal(verify.Limitations, []string{other}) || !slices.Equal(verify.RejectedFindings, []string{rejected}) {
+		t.Fatalf("verify summary = %+v, want the reworded fixed limitation omitted, the rejection moved and only %q kept", verify, other)
+	}
+
+	report := doctor.DoctorReport{Checks: map[string]doctor.Check{}}
+	report.Profile.Warnings = []string{projectctx.DirtyComparisonWarning}
+	doctorLine := summarizeDoctor(report)
+	if doctorLine.OmittedFixed != 1 || len(doctorLine.Warnings) != 0 || doctorLine.Status != "ok" {
+		t.Fatalf("doctor summary = %+v, want the projectctx caveat omitted and counted", doctorLine)
 	}
 }
 
@@ -613,7 +646,7 @@ func TestCompactRunSummaryReportsFailingGoTests(t *testing.T) {
 	}
 
 	// DEF-UNCHANGED: without --summary the run prints the CheckRun record and keeps exit 5.
-	plain := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe")
+	plain := compactExecute(h, nil, "task", "run", "--full", "--task", h.task, "--check", "probe")
 	if ExitCode(plain.err) != 5 {
 		t.Fatalf("failed check run without --summary is not exit 5: %v (exit %d)", plain.err, ExitCode(plain.err))
 	}
@@ -778,7 +811,7 @@ func TestCompactRunSummaryOfPassedRunHasNoExcerpts(t *testing.T) {
 // ---------------------------------------------------------------------------
 // DOC-SUMMARY and DEF-UNCHANGED (doctor).
 
-const compactDirtyCaveat = "Dirty compares raw on-disk bytes and index/tree metadata without executing Git filters; filtered or normalized files may be conservatively marked dirty"
+const compactDirtyCaveat = projectctx.DirtyComparisonWarning
 
 type compactDoctorFixture struct {
 	repo, home, skills, codex string
@@ -1283,4 +1316,161 @@ func compactAllCredentials() map[string]string {
 	return map[string]string{
 		"TYPESAFE_API_KEY": "fixture-secret-jev", "SUBQ_API_KEY": "fixture-secret-subq", "OPENAI_API_KEY": "fixture-secret-openai",
 	}
+}
+
+// ---------------------------------------------------------------------------
+// The summary is the default output of the task commands that change state.
+
+// compactJSONLineOf is what writeJSON prints for value: the bytes a task
+// command prints for it.
+func compactJSONLineOf(t *testing.T, value any) string {
+	t.Helper()
+	var line bytes.Buffer
+	if err := writeJSON(&line, value); err != nil {
+		t.Fatal(err)
+	}
+	return line.String()
+}
+
+// compactOutputMode is how a task command is asked for its output.
+type compactOutputMode struct {
+	name  string
+	flags []string
+}
+
+// compactTaskFlow runs start, assign, handoff, accept, run, assess, verify and
+// consult on a fresh task in one output mode, and calls want after each with
+// the command and what it printed.
+func compactTaskFlow(t *testing.T, mode compactOutputMode, want func(h *summaryCLIHarness, command, printed string)) {
+	t.Helper()
+	h := newSummaryCLIHarness(t)
+	run := func(command string, input []byte, args ...string) string {
+		t.Helper()
+		args = append(append([]string{"task", command}, args...), mode.flags...)
+		outcome := compactExecute(h, input, args...)
+		// A fresh task's verification is incomplete: exit 5 with output.
+		if outcome.err != nil && (command != "verify" || ExitCode(outcome.err) != 5) {
+			t.Fatalf("cw %s: %s", strings.Join(args, " "), outcome.text())
+		}
+		return outcome.stdout
+	}
+	inputRun := func(command string, input any) string {
+		t.Helper()
+		encoded, err := json.Marshal(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return run(command, encoded, "--task", h.task, "--input", "-")
+	}
+
+	printed := run("start", []byte(summaryCLITestPlan), "--plan", "-", "--policy", shippedPolicyPath)
+	h.task = compactStartedTask(t, printed)
+	want(h, "start", printed)
+	want(h, "assign", inputRun("assign", summaryCLIBrief()))
+	want(h, "handoff", inputRun("handoff", summaryCLIResult()))
+	want(h, "accept", inputRun("accept", summaryCLIAcceptance()))
+	want(h, "run", run("run", nil, "--task", h.task, "--check", "version"))
+	run("run", nil, "--task", h.task, "--check", "again")
+	want(h, "assess", inputRun("assess", summaryCLIAssessment(h.fileSHA256(), []string{"zeta"}, false)))
+	want(h, "verify", run("verify", nil, "--task", h.task))
+	want(h, "consult", run("consult", nil, "--task", h.task, "--phase", "before", "--input", h.adjudicatedConsultation()))
+}
+
+// compactStartedTask is the task directory start printed: the summary names
+// it as "task", the record as "directory".
+func compactStartedTask(t *testing.T, printed string) string {
+	t.Helper()
+	var members struct {
+		Task      string `json:"task"`
+		Directory string `json:"directory"`
+	}
+	if err := json.Unmarshal([]byte(printed), &members); err != nil {
+		t.Fatalf("start did not print one JSON object: %v: %q", err, printed)
+	}
+	if members.Task != "" {
+		return members.Task
+	}
+	if members.Directory == "" {
+		t.Fatalf("start printed no task directory: %q", printed)
+	}
+	return members.Directory
+}
+
+// compactFormerSummary is what command printed with --summary before the
+// summary became the default: the summary view of the record it left.
+func compactFormerSummary(t *testing.T, h *summaryCLIHarness, command string) any {
+	t.Helper()
+	record := h.load()
+	switch command {
+	case "start":
+		return startSummary(record)
+	case "assign":
+		return assignSummary(record, "inspect")
+	case "handoff":
+		return handoffSummary(record, "inspect")
+	case "accept":
+		return acceptSummary(record, "inspect")
+	case "run":
+		return runSummary(h.task, lastCheckRunForTest(t, record, "version"))
+	case "assess":
+		return assessSummary(record, summaryCLIAssessment(h.fileSHA256(), []string{"zeta"}, false))
+	case "consult":
+		return consultSummary(record, "before")
+	}
+	t.Fatalf("no former summary for %s", command)
+	return nil
+}
+
+// Oracle: without a flag each command prints, byte for byte, what it printed
+// with --summary before (the summary view of the record it left; for verify,
+// the summary of the verification it produces), and --summary, now a
+// no-op, prints the same bytes. add-checks is covered by aclTestSummary.
+func TestTaskCommandsPrintTheSummaryByDefault(t *testing.T) {
+	for _, mode := range []compactOutputMode{{"default", nil}, {"--summary", []string{"--summary"}}} {
+		t.Run(mode.name, func(t *testing.T) {
+			compactTaskFlow(t, mode, func(h *summaryCLIHarness, command, printed string) {
+				t.Helper()
+				var want string
+				if command == "verify" {
+					// The finding codes the summary selects by are not in the
+					// JSON, so verify again in process on the same source.
+					verification, err := taskEnv(h.config).Verify(t.Context(), h.task)
+					if verification.TaskID == "" {
+						t.Fatalf("verify produced no verification: %v", err)
+					}
+					want = compactJSONLineOf(t, summarizeVerification(verification))
+				} else {
+					want = compactJSONLineOf(t, compactFormerSummary(t, h, command))
+				}
+				if printed != want {
+					t.Errorf("%s (%s) printed\n%s\nwant the former --summary output\n%s", command, mode.name, printed, want)
+				}
+			})
+		})
+	}
+}
+
+// Oracle: with --full each command prints, byte for byte, what it printed
+// without a flag before: the whole record it left, for run the whole check
+// run, and for verify the whole verification it stored.
+func TestTaskCommandsPrintTheWholeRecordWithFull(t *testing.T) {
+	compactTaskFlow(t, compactOutputMode{"--full", []string{"--full"}}, func(h *summaryCLIHarness, command, printed string) {
+		t.Helper()
+		record := h.load()
+		var want string
+		switch command {
+		case "run":
+			want = compactJSONLineOf(t, lastCheckRunForTest(t, record, "version"))
+		case "verify":
+			if record.Verification == nil {
+				t.Fatalf("verify --full stored no verification; printed %q", printed)
+			}
+			want = compactJSONLineOf(t, *record.Verification)
+		default:
+			want = compactJSONLineOf(t, record)
+		}
+		if printed != want {
+			t.Errorf("%s --full printed\n%s\nwant the former default output\n%s", command, printed, want)
+		}
+	})
 }

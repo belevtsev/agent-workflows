@@ -116,6 +116,14 @@ func (artifacts fakeArtifacts) Read(name string, limit int64) ([]byte, error) {
 	return data, nil
 }
 
+func (artifacts fakeArtifacts) Write(name string, data []byte) error {
+	if _, ok := artifacts[name]; ok {
+		return fs.ErrExist
+	}
+	artifacts[name] = slices.Clone(data)
+	return nil
+}
+
 // fakeSourceTask is fixtureTask without git: it starts plan, bound to the
 // shipped default advisers, with an Env whose Source is a fakeSource and
 // whose clock is fixed at at. The fake's snapshot is a clean checkout of

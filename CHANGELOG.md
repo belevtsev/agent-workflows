@@ -14,11 +14,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
 - `cw consult` sends a task-bound request only when its task, not abandoned, holds that task context in the store the hook reads,
   so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
+- `cw task` `start`, `run`, `assess`, `assign`, `handoff`, `accept`, `consult`, `verify` and `add-checks` print their one-line summary by default:
+  a script that reads the whole record passes `--full`; `--summary` is still accepted ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ### Added
 
 - `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;
   run it again where an older `cw` wrote the hooks, which `cw doctor` and the session-start line then name ([git hooks](docs/hooks.md#git-hooks)).
+- Each check run records the digest of the source it ran at and a key of its go and `env_passthrough` configuration, keyed per task,
+  and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 
 ### Changed
 
@@ -36,9 +40,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `internal/taskflow` no longer links the adviser HTTP providers or `net/http` ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
+- `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
+  message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 
 ### Fixed
 
+- `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
+  is not owner-only: they skip the saved keys, use the environment ones and warn ([adviser keys](docs/operations.md#adviser-keys)).
 - `cw publish --help` says a run appends its `started` entry only once its checks pass, so a run they deny or refuse
   appends none, as the docs do ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
@@ -57,6 +65,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   runs both handlers and adds the conventions again on each resume ([recorded host runs](docs/hooks.md#recorded-host-runs)).
 - The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
   three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
+- `cw publish` refuses a remote Git hands to a remote helper (`foo::…`, `remote.<name>.vcs`, or a scheme other than https, http, ssh,
+  git+ssh, ssh+git, git or file in lower case) as 4 `remote-split` ([publish](docs/operations.md#global-project-diagnostics-and-evidence)).
+- Resuming a Codex thread no longer adds the conventions again, nor a second `cw gate install` line beside the compaction that
+  can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

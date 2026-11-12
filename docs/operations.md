@@ -290,10 +290,10 @@ the adviser binding fixed at `cw task start`, two substantial-task decision
 checkpoints (unless the plan declares them not required, with a reason that
 verify lists) and the coordinator's decisions in a private
 external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
-`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `trace` commands accept `--summary` for a
-one-line result instead of the whole record (`run`: the whole check run, plus failing
+`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `add-checks` commands print a
+one-line result by default and the whole record with `--full` (`run`: the check run's status and log, plus failing
 test names, from a `go test -json` run's per-test results when it recorded them, and first error lines when it failed; `verify`: without its fixed
-limitations), `cw doctor` and `cw consult` accept it too, `cw task show
+limitations); `--summary` is still accepted there and changes nothing. `cw task trace`, `cw doctor` and `cw consult` accept `--summary` for a one-line view, `cw task show
 --field <dotted.path>` prints only selected values, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
@@ -417,6 +417,12 @@ Its known limitations:
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
   with a pull request any host alias is refused as 4 `repo-mismatch`.
+- A remote that Git hands to a remote helper is refused as 4
+  `remote-split`, since the helper picks where the push goes: a
+  `<transport>::<address>` URL, a scheme other than `https`, `http`, `ssh`,
+  `git+ssh`, `ssh+git`, `git` or `file`, in lower case, or a remote with
+  `remote.<name>.vcs` set. `host:path`, `[user@host:port]:path` and local
+  paths are accepted.
 
 A task check cannot run `cw publish`: `cw task start` refuses such a plan. This
 is a guard, not a sandbox, since a check can still run another program that
@@ -515,9 +521,11 @@ each passed go check ran as a limitation. A run recorded before this has no
 `tool`, and verify says so.
 
 Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
-GOHOSTARCH`, with the check's environment and in the selected path, and the
-run records what it printed under `go_env` (`GOFLAGS` redacted as in
-`goflags`). The check then runs with that `GOFLAGS` (a single space when it is
+GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX`, with the
+check's environment and in the selected path, and the run records the first
+five values it printed under `go_env` (`GOFLAGS` redacted as in `goflags`);
+the others go only into the run's `env_key` ([run keys](#what-a-check-run-records)).
+The check then runs with that `GOFLAGS` (a single space when it is
 empty), `GOOS` and `GOARCH` at the end of its environment, where they win over
 a go env file, so a go env file changed after `cw` read it changes nothing;
 the test binaries see them too. The Go rule credits a `go test` run only by that record: the
@@ -546,6 +554,32 @@ answer the `-race` probe with "not supported" to waive `-race`. When no go
 command verifies, the facts are unavailable: verify lists the refusal, which
 names the candidate, as a limitation, asks for a `go test ./...` run, and still
 requires `-race`.
+
+### What a check run records
+
+Besides its log, exit code and the go command, each check run records two keys
+in its start revision:
+
+- `source_sha256`: the SHA-256 of the source manifest (path, mode and content
+  hash of each eligible file) when the run started, the same digest a verified
+  record stores as `verification.source_sha256`. Committing, staging or
+  switching branches over the same bytes leaves it unchanged. The task
+  directory keeps that manifest as `manifest-<source_sha256>.json`, written
+  once per digest. A worker result records the same member for the source it
+  was submitted at. When that manifest would exceed 8 MiB, the run or result
+  is recorded without `source_sha256` and no manifest is kept.
+- `env_key`: an HMAC-SHA256 of what the run's environment selects: for a go
+  check, every value its `go env` read printed; for any check, each variable
+  its `env_passthrough` names, set to its value or unset. Its key is a random
+  32-byte secret of the task, kept in the task directory as `run-key-secret`
+  (mode 0600) from the first run. No value is stored, and without that file a
+  printed `env_key` does not confirm a guessed value, even a weak password.
+  Within one task, two runs share a key exactly when those values are equal;
+  keys of different tasks are not comparable.
+
+Runs and results recorded before these members existed, or without them,
+lack them, so they are never reused. No rule reads the keys yet: they are the identity that reuse of a
+passed run will compare.
 
 ### Merging the base branch during a task
 
@@ -577,7 +611,7 @@ Checks can only be added this way, never removed, replaced or narrowed.
 3. Add the checks:
 
    ```sh
-   cw task add-checks --task <task-dir> --input amend.json --summary
+   cw task add-checks --task <task-dir> --input amend.json
    ```
 
    with `amend.json` naming the merge commit (its ID or `HEAD`), the base ref, a
@@ -593,10 +627,10 @@ Checks can only be added this way, never removed, replaced or narrowed.
    ```
 
    `timeout_seconds` may be omitted (300). `--input -` reads standard input.
-   `--summary` prints the task, the amendment index, the added check IDs and
-   the resolved merge and base commits.
+   It prints the task, the amendment index, the added check IDs and
+   the resolved merge and base commits; `--full` prints the whole record.
 4. Run each added check: `cw task run --task <task-dir> --check widened`.
-5. Run `cw task verify --task <task-dir> --summary`.
+5. Run `cw task verify --task <task-dir>`.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 
@@ -827,7 +861,10 @@ cw keys unset SUBQ_API_KEY
 break, or with `--from-env VAR` from that environment variable; it never takes the
 key from the command line. Saved keys live in a plaintext `credentials.json` in the
 configuration directory; the directory must have mode `0700` and the file `0600`,
-both owned by you and not linked. A key in the environment takes precedence over a
+both owned by you and not linked. When they are not, `cw task start` and
+`cw consult` use no saved key and opt in to no adviser through one: they go on with
+the keys in the environment alone and print a warning on stderr that names the
+problem. A key in the environment takes precedence over a
 saved one. `cw keys status` reports whether each key comes from the environment,
 the saved file or neither, without any value or provider call.
 

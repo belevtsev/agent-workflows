@@ -93,7 +93,7 @@ func (h *hkHarness) start(t *testing.T, repo, plan string) taskflow.Record {
 	h.config.WorkingDir = func() (string, error) { return repo, nil }
 	h.config.In = strings.NewReader(plan)
 	h.out.Reset()
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, h.config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, h.config); err != nil {
 		t.Fatalf("task start: %v", err)
 	}
 	var record taskflow.Record
@@ -280,7 +280,7 @@ func (h *hkHarness) assess(t *testing.T, record taskflow.Record, source []byte) 
 	}
 	h.config.In = bytes.NewReader(encoded)
 	h.out.Reset()
-	if err := Execute(t.Context(), []string{"task", "assess", "--task", record.Directory, "--input", "-"}, h.config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "assess", "--full", "--task", record.Directory, "--input", "-"}, h.config); err != nil {
 		t.Fatalf("task assess: %v\n%s", err, h.out.String())
 	}
 }
@@ -289,7 +289,7 @@ func (h *hkHarness) assess(t *testing.T, record taskflow.Record, source []byte) 
 func (h *hkHarness) verify(t *testing.T, record taskflow.Record) {
 	t.Helper()
 	h.out.Reset()
-	if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, h.config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "verify", "--full", "--task", record.Directory}, h.config); err != nil {
 		t.Fatalf("task verify: %v\n%s", err, h.out.String())
 	}
 	var gate taskflow.Verification

@@ -275,11 +275,11 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			env := gtEnv(gtRealGo(t), c.env...)
-			got, pin, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
+			got, pin, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
 			if err != nil || got != c.want || !slices.Equal(pin, c.pin) {
 				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; want %+v, pin %q", got, pin, err, c.want, c.pin)
 			}
-			again, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, append(append(env, pin...), "GOENV="+rewritten))
+			again, _, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, append(append(env, pin...), "GOENV="+rewritten))
 			if err != nil || again != c.want {
 				t.Errorf("ReadGoEnv with the pin and a go env file that says otherwise = %+v, %v; want %+v", again, err, c.want)
 			}
@@ -287,14 +287,59 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	}
 }
 
+// GoEnvKey of a ReadGoEnv read follows the configuration and holds none of
+// it. Oracle (X1): cmd/go reports CGO_ENABLED and CC from the environment,
+// so reads under the same environment give the same key, a different
+// CGO_ENABLED or CC a different one; the key is a hex SHA-256 and contains
+// no value read, such as a CC path; and it is an HMAC (review finding 1 on
+// #146): another secret gives another key for the same read.
+func TestReadGoEnvKeyFollowsTheConfigurationWithoutItsValues(t *testing.T) {
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, gtEnv(gtRealGo(t)))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	secret := []byte("0123456789abcdef0123456789abcdef")
+	const compiler = "/opt/cw-x1-compiler-marker/bin/cc"
+	read := func(overrides ...string) string {
+		_, _, config, err := langpack.ReadGoEnv(t.Context(), tool, dir, gtEnv(gtRealGo(t), append([]string{"GOENV=off"}, overrides...)...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := langpack.GoEnvKey(secret, config)
+		if sum, err := hex.DecodeString(key); err != nil || len(sum) != sha256.Size {
+			t.Fatalf("key %q is not a hex SHA-256", key)
+		}
+		if other := langpack.GoEnvKey([]byte("another secret, also 32 bytes!!!"), config); other == key {
+			t.Fatalf("two secrets gave the same key %s", key)
+		}
+		return key
+	}
+	off, on := read("CGO_ENABLED=0", "CC="+compiler), read("CGO_ENABLED=1", "CC="+compiler)
+	if again := read("CGO_ENABLED=0", "CC="+compiler); again != off {
+		t.Errorf("the same configuration gave keys %s and %s", off, again)
+	}
+	if off == on {
+		t.Errorf("CGO_ENABLED 0 and 1 gave the same key %s", off)
+	}
+	if other := read("CGO_ENABLED=0", "CC=/usr/bin/other-cc"); other == off {
+		t.Errorf("two CC values gave the same key %s", off)
+	}
+	if strings.Contains(off, "cw-x1-compiler-marker") || strings.Contains(off, hex.EncodeToString([]byte(compiler))) {
+		t.Errorf("key %s holds the CC value", off)
+	}
+}
+
 // ReadGoEnv fails closed. Oracle (F1): a go env that cannot be read gives no
 // configuration, so the check does not run and earns no credit: a failing or
-// stopped command, and output that is not exactly the five values with the
-// four platform values set, are errors naming the go command.
+// stopped command, and output that is not exactly the values asked for with
+// the four platform values set, are errors naming the go command, with no
+// configuration (X1).
 func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	stopped, cancel := context.WithCancel(t.Context())
 	cancel()
-	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux"`
+	const shape = "not exactly GOFLAGS, GOOS, GOARCH, GOHOSTOS, GOHOSTARCH, CGO_ENABLED, GOEXPERIMENT, GOWORK, GOAMD64, GOARM64, CC, CXX with the four platform values set"
+	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux","CGO_ENABLED":"1","GOEXPERIMENT":"","GOWORK":"","GOAMD64":"v1","GOARM64":"v8.0","CC":"gcc","CXX":"g++"`
 	for _, c := range []struct {
 		name, body, want string
 		ctx              context.Context
@@ -302,15 +347,15 @@ func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 		{"failed", "echo 'go: cannot read env' >&2\nexit 1\n", "`go env` failed: \"go: cannot read env\"", t.Context()},
 		{"stopped", "echo '{}'\n", "`go env` did not finish", stopped},
 		{"not JSON", "echo ok\n", "not a JSON object of strings", t.Context()},
-		{"a value missing", "echo '{" + complete + "}'\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
-		{"an empty platform", "echo '{" + complete + `,"GOHOSTARCH":""}'` + "\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
-		{"another value", "echo '{" + complete + `,"GOHOSTARCH":"amd64","CC":"gcc"}'` + "\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
+		{"a value missing", "echo '{" + complete + "}'\n", shape, t.Context()},
+		{"an empty platform", "echo '{" + complete + `,"GOHOSTARCH":""}'` + "\n", shape, t.Context()},
+		{"another value", "echo '{" + complete + `,"GOHOSTARCH":"amd64","GOROOT":"/x"}'` + "\n", shape, t.Context()},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tool := langpack.GoTool{Path: gtScript(t, t.TempDir(), "go", c.body), GOROOT: t.TempDir()}
-			got, pin, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
-			if err == nil || pin != nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
-				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; want no pin and an error naming %s and containing %q", got, pin, err, tool.Path, c.want)
+			got, pin, config, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
+			if err == nil || pin != nil || config != nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; config %q; want no pin, no config and an error naming %s and containing %q", got, pin, err, config, tool.Path, c.want)
 			}
 		})
 	}

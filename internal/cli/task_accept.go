@@ -8,7 +8,7 @@ import (
 // newTaskAcceptCommand returns cw task accept.
 func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
-	var summary bool
+	var full bool
 	accept := &cobra.Command{Use: "accept", Short: "Record the coordinator's source-backed disposition of an exact worker result", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.guard(); err != nil {
 			return err
@@ -24,13 +24,13 @@ func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		if summary {
+		if !full {
 			return writeJSON(cmd.OutOrStdout(), acceptSummary(value, input.AssignmentID))
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(accept, &directory)
 	accept.Flags().StringVar(&inputFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
-	summaryFlag(accept, &summary)
+	fullFlag(accept, &full, "the whole task record")
 	return accept
 }
