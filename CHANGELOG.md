@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`chore!:`) stays ([releases](docs/development.md#releases)).
 - Three links in the Go documentation and gopls skills now land on their section, and `go test ./internal/skillcheck`
   checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
+- The docs say what a refused `cw publish` leaves: nothing when its checks refuse, even for one file of the set, and the commit
+  or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
