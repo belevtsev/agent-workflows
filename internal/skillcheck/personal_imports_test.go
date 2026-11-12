@@ -81,6 +81,9 @@ func TestPersonalImportHashesAndCompleteOriginalInventories(t *testing.T) {
 					t.Fatal("duplicate imported file")
 				}
 				files[file.Path] = file
+				if file.Mode != 0o644 && file.Mode != 0o755 {
+					t.Fatalf("recorded mode %#o is not a mode git stores: %s", file.Mode, file.Path)
+				}
 				if file.SourceSHA != file.ImportedSHA && file.Adaptation == "" {
 					t.Fatalf("unexplained adaptation: %s", file.Path)
 				}
@@ -121,7 +124,11 @@ func TestPersonalImportHashesAndCompleteOriginalInventories(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				if !info.Mode().IsRegular() || int(info.Mode().Perm()) != file.Mode || digest(data) != file.ImportedSHA {
+				// Oracle: git stores a regular file as 0644 or 0755 and checks
+				// it out under the user's umask, so the bytes and the owner's
+				// executable bit (the bit git reads) are all a checkout keeps
+				// of the recorded mode; 0664 under umask 002 is still 0644.
+				if !info.Mode().IsRegular() || info.Mode().Perm()&0o100 != fs.FileMode(file.Mode)&0o100 || digest(data) != file.ImportedSHA {
 					t.Fatalf("import changed without provenance: %s", path)
 				}
 				delete(files, filepath.ToSlash(relative))

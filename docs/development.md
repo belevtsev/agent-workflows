@@ -8,9 +8,13 @@ out of `cw`'s build and test package discovery.
 
 `cmd/cw` is a thin command entrypoint over `internal/cli`, which has injectable
 I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
-`internal/projectctx`, `internal/graphify`, `internal/outcomes` and
+`internal/projectctx`, `internal/doctor`, `internal/graphify`, `internal/outcomes` and
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
-and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
+and `cw uninstall --host codex`. `internal/projectctx` captures the source
+snapshot that task records and the gate bind; `internal/doctor` runs `cw doctor`
+and the session-start summary. The doctor reads the credential store, Codex's
+TOML config and Graphify, and `TestGateImportClosureExcludesDoctorDependencies`
+keeps it and those packages out of the gate's imports. `internal/gate` decides the commit gate's
 answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
 and `cw hook git` asks `gate.DecideGitHook` for git's own hooks,
 so gate rules are unit-tested with a fake git, clock and task store. Under
@@ -85,6 +89,9 @@ GOWORK=off go test ./internal/skillcheck
   discoverable;
 - the skill routing and import-provenance fixtures under
   `internal/skillcheck/testdata` hold their contracts;
+- each file of an imported skill matches the SHA-256 and the executable bit
+  recorded in `third_party/personal-skill-imports.json`; the other permission
+  bits follow the checkout's umask and are not compared;
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer

@@ -15,6 +15,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
+- `cw doctor` lives in `internal/doctor`, so the commit gate no longer imports the credential store, Graphify or go-toml;
+  `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
+
+### Fixed
+
+- `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
+  and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
