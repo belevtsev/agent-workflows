@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
 - `cw consult` sends a task-bound request only when its task, not abandoned, holds that task context in the store the hook reads,
   so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
+- `cw task` `start`, `run`, `assess`, `assign`, `handoff`, `accept`, `consult`, `verify` and `add-checks` print their one-line summary by default:
+  a script that reads the whole record passes `--full`; `--summary` is still accepted ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ### Added
 

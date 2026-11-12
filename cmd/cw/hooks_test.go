@@ -410,7 +410,7 @@ func TestHooksEndToEnd(t *testing.T) {
 	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	start := exec.CommandContext(t.Context(), binary, "task", "start", "--repo", repo, "--plan", plan,
+	start := exec.CommandContext(t.Context(), binary, "task", "start", "--full", "--repo", repo, "--plan", plan,
 		"--policy", filepath.Join(root, "skills", "task-orchestration", "model-policy.yaml"), "--summary", "--store", store)
 	start.Env = []string{"HOME=" + home, "PATH=" + withoutCW}
 	start.Dir = t.TempDir()

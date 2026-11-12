@@ -203,7 +203,7 @@ func TestTaskAbandonCommand(t *testing.T) {
 			t.Fatalf("task abandon: %v", err)
 		}
 		abandoned := taLoad(t, record.Directory)
-		if _, err := h.taRun(t, "task", "verify", "--task", record.Directory); err == nil {
+		if _, err := h.taRun(t, "task", "verify", "--full", "--task", record.Directory); err == nil {
 			t.Fatal("task verify of an abandoned record returned nil")
 		}
 		taExpectUnchanged(t, abandoned)

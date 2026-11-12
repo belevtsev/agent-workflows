@@ -8,7 +8,7 @@ import (
 // newTaskAddChecksCommand returns cw task add-checks.
 func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
-	var summary bool
+	var full bool
 	addChecks := &cobra.Command{
 		Use:   "add-checks",
 		Short: "Add go test checks to a started substantial task after merging its base branch",
@@ -33,7 +33,7 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if summary {
+			if !full {
 				amendment := record.Amendments[len(record.Amendments)-1]
 				ids := []string{}
 				for _, check := range amendment.Checks {
@@ -46,11 +46,11 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 	}
 	taskFlag(addChecks, &directory)
 	addChecks.Flags().StringVar(&inputFile, "input", "", "Amendment JSON file, or - for standard input")
-	summaryFlag(addChecks, &summary)
+	fullFlag(addChecks, &full, "the whole task record")
 	return addChecks
 }
 
-// addChecksSummary is the --summary line of cw task add-checks.
+// addChecksSummary is the default summary line of cw task add-checks.
 type addChecksSummary struct {
 	Task        string   `json:"task"`
 	TaskID      string   `json:"task_id"`

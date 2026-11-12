@@ -52,11 +52,11 @@ brief with a unique immutable assignment ID:
 ```
 
 ```sh
-cw task assign --task /private/task --input /private/brief.json --summary
+cw task assign --task /private/task --input /private/brief.json
 ```
 
 The record retains the brief's task ID, exact source snapshot and SHA-256;
-`--summary` prints the assignment ID, its SHA-256 and the snapshot fingerprint.
+It prints the assignment ID, its SHA-256 and the snapshot fingerprint.
 Record the assignment and dispatch the worker in the same turn, `assign` first,
 with its brief, relevant input and the result contract; it needs only the
 assignment ID, as `handoff` fills the assignment hash and snapshot. Successive
@@ -134,7 +134,7 @@ behaviour, fails no gate and loses no rule (`cw task verify` lists it as a
 limitation; never defer a defect in changed behaviour or any finding with a
 concrete failure scenario, unless the defect predates the change and the change neither causes,
 touches nor newly exposes it). `verify` lists each rejected `blocker` or `major`
-finding as a limitation (with `--summary`, first, as `rejected_findings`); a
+finding as a limitation (in its summary, first, as `rejected_findings`); a
 rejected `blocker` is a problem until a later accepted
 independent review whose bundle lists the rejection and whose result does not
 re-raise its `id`. An `accepted` disposition
@@ -153,8 +153,8 @@ acceptance JSON and record both in one shell call:
 ```
 
 ```sh
-cw task handoff --task /private/task --input /private/result.json --summary &&
-cw task accept --task /private/task --input /private/acceptance.json --summary
+cw task handoff --task /private/task --input /private/result.json &&
+cw task accept --task /private/task --input /private/acceptance.json
 ```
 
 When a finding needs a fix, follow the [record order](#follow-up-review-after-a-fix-revision).

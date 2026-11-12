@@ -24,7 +24,7 @@ phase (`before` or `final`); use new file paths for each phase.
    `check:` or `observation:` and never name an adviser; give a reason for each
    differing adviser and a note for each differing one at confidence 0.7 or more.
 5. Adjudicate and attach in one shell call:
-   `cw consult --adjudicate consult.json --decision decision.json --output final.json && cw task consult --task T --phase P --input final.json --summary`.
+   `cw consult --adjudicate consult.json --decision decision.json --output final.json && cw task consult --task T --phase P --input final.json`.
 
 Read the rest of this file only for a case the quick path does not cover.
 It validates a prepared Choice-only request, sends the same shared input to every

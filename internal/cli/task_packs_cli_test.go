@@ -42,7 +42,7 @@ func tpRepo(t *testing.T, files map[string]string) string {
 // start runs cw task start with the store <base>/store (created by cw).
 func (e *pkEnv) start(t *testing.T, repo, plan string) (directory string, packs json.RawMessage, err error) {
 	t.Helper()
-	out, err := e.run(t, plan, "task", "start", "--plan", "-", "--repo", repo, "--store", filepath.Join(e.base, "store"))
+	out, err := e.run(t, plan, "task", "start", "--full", "--plan", "-", "--repo", repo, "--store", filepath.Join(e.base, "store"))
 	if err != nil {
 		return "", nil, err
 	}

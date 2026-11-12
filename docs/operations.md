@@ -290,10 +290,10 @@ the adviser binding fixed at `cw task start`, two substantial-task decision
 checkpoints (unless the plan declares them not required, with a reason that
 verify lists) and the coordinator's decisions in a private
 external task directory, by default `STATE/workflow-tasks`. Its `start`, `assign`,
-`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `trace` commands accept `--summary` for a
-one-line result instead of the whole record (`run`: the whole check run, plus failing
+`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `add-checks` commands print a
+one-line result by default and the whole record with `--full` (`run`: the check run's status and log, plus failing
 test names, from a `go test -json` run's per-test results when it recorded them, and first error lines when it failed; `verify`: without its fixed
-limitations), `cw doctor` and `cw consult` accept it too, `cw task show
+limitations); `--summary` is still accepted there and changes nothing. `cw task trace`, `cw doctor` and `cw consult` accept `--summary` for a one-line view, `cw task show
 --field <dotted.path>` prints only selected values, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
@@ -577,7 +577,7 @@ Checks can only be added this way, never removed, replaced or narrowed.
 3. Add the checks:
 
    ```sh
-   cw task add-checks --task <task-dir> --input amend.json --summary
+   cw task add-checks --task <task-dir> --input amend.json
    ```
 
    with `amend.json` naming the merge commit (its ID or `HEAD`), the base ref, a
@@ -593,10 +593,10 @@ Checks can only be added this way, never removed, replaced or narrowed.
    ```
 
    `timeout_seconds` may be omitted (300). `--input -` reads standard input.
-   `--summary` prints the task, the amendment index, the added check IDs and
-   the resolved merge and base commits.
+   It prints the task, the amendment index, the added check IDs and
+   the resolved merge and base commits; `--full` prints the whole record.
 4. Run each added check: `cw task run --task <task-dir> --check widened`.
-5. Run `cw task verify --task <task-dir> --summary`.
+5. Run `cw task verify --task <task-dir>`.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 

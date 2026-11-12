@@ -8,7 +8,7 @@ import (
 // newTaskHandoffCommand returns cw task handoff.
 func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
-	var summary bool
+	var full bool
 	handoff := &cobra.Command{Use: "handoff", Short: "Validate a worker result against its assignment, source and actual checks", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.guard(); err != nil {
 			return err
@@ -24,13 +24,13 @@ func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		if summary {
+		if !full {
 			return writeJSON(cmd.OutOrStdout(), handoffSummary(value, input.AssignmentID))
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(handoff, &directory)
 	handoff.Flags().StringVar(&inputFile, "input", "", "Worker result JSON file, or - for standard input")
-	summaryFlag(handoff, &summary)
+	fullFlag(handoff, &full, "the whole task record")
 	return handoff
 }
