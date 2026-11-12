@@ -15,10 +15,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A new [packs](docs/packs.md) page documents `cw pack` and `pack.yaml` as they ship, with the steps and a proposal
+  template for adding a language pack; the language-packs design is marked as history.
 - The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
-- File locks get one shared implementation, `internal/fslock`: a `flock` lock that is released when its holder
-  dies, for contributors adding a lock ([development](docs/development.md)).
+- The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
+  released when its holder dies; new locks reuse it ([development](docs/development.md)).
+
+### Fixed
+
+- Worker agents can no longer dispatch subagents or run workflows, and the README states the minimum Claude Code version:
+  2.1.292, for per-dispatch `effort`; below 2.1.271 `omitClaudeMd` is also ignored silently ([agents](docs/agents.md)).
+
+### Fixed
+
+- A relative `XDG_STATE_HOME` is refused with exit status 1, and the commit hook asks, instead of joining it to the working
+  directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 

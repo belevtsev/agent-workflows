@@ -222,5 +222,9 @@ func defaultHistoryPath(command *cobra.Command, config Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(roots.state, "metrics", "history.jsonl"), nil
+	state, err := roots.stateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(state, "metrics", "history.jsonl"), nil
 }

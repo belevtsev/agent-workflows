@@ -1,4 +1,4 @@
-# Go language pack. cw embeds this file (docs/design/language-packs.md).
+# Go language pack. cw embeds this file (docs/packs.md).
 schema: 1
 id: go
 kind: language
