@@ -1,0 +1,33 @@
+package cli
+
+import (
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
+	"github.com/spf13/cobra"
+)
+
+// newTaskAcceptCommand returns cw task accept.
+func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
+	var directory, inputFile string
+	var summary bool
+	accept := &cobra.Command{Use: "accept", Short: "Record the coordinator's source-backed disposition of an exact worker result", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := deps.guard(); err != nil {
+			return err
+		}
+		var input taskflow.WorkerAcceptance
+		if err := readTaskInput(cmd, inputFile, &input); err != nil {
+			return err
+		}
+		value, err := taskflow.AcceptWorkerResult(cmd.Context(), directory, input)
+		if err != nil {
+			return err
+		}
+		if summary {
+			return writeJSON(cmd.OutOrStdout(), acceptSummary(value, input.AssignmentID))
+		}
+		return writeJSON(cmd.OutOrStdout(), value)
+	}}
+	accept.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	accept.Flags().StringVar(&inputFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
+	summaryFlag(accept, &summary)
+	return accept
+}
