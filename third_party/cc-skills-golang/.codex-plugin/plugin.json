@@ -1,6 +1,6 @@
 {
   "name": "cc-skills-golang",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "AI Agent Skills for production-ready Go projects (fork with rewritten entrypoints; see UPSTREAM)",
   "author": { "name": "Samuel Berthe", "email": "hey@samuel-berthe.fr" },
   "homepage": "https://github.com/samber/cc-skills-golang",

@@ -8,9 +8,13 @@ out of `cw`'s build and test package discovery.
 
 `cmd/cw` is a thin command entrypoint over `internal/cli`, which has injectable
 I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
-`internal/projectctx`, `internal/graphify`, `internal/outcomes` and
+`internal/projectctx`, `internal/doctor`, `internal/graphify`, `internal/outcomes` and
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
-and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
+and `cw uninstall --host codex`. `internal/projectctx` captures the source
+snapshot that task records and the gate bind; `internal/doctor` runs `cw doctor`
+and the session-start summary. The doctor reads the credential store, Codex's
+TOML config and Graphify, and `TestGateImportClosureExcludesDoctorDependencies`
+keeps it and those packages out of the gate's imports. `internal/gate` decides the commit gate's
 answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
 and `cw hook git` asks `gate.DecideGitHook` for git's own hooks,
 so gate rules are unit-tested with a fake git, clock and task store. Under
@@ -70,7 +74,8 @@ GOWORK=off go test ./internal/skillcheck
 - each skill's `name` is at most 64 lowercase letters, digits and hyphens and
   matches its directory, and its `description` has 1 to 1024 characters;
 - relative Markdown links in skills, top-level Markdown files, `docs/` and
-  `.github/` resolve;
+  `.github/` resolve, and a link's `#anchor`, to the same file or to another
+  Markdown file, names one of that file's headings as GitHub slugs them;
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
@@ -87,6 +92,9 @@ GOWORK=off go test ./internal/skillcheck
   discoverable;
 - the skill routing and import-provenance fixtures under
   `internal/skillcheck/testdata` hold their contracts;
+- each file of an imported skill matches the SHA-256 and the executable bit
+  recorded in `third_party/personal-skill-imports.json`; the other permission
+  bits follow the checkout's umask and are not compared;
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
@@ -303,8 +311,9 @@ its leading `v`: `version` in `.claude-plugin/plugin.json` and
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
 `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64 (each with
 `LICENSE`, `THIRD_PARTY.md` and `licenses/`), `SHA256SUMS`, and a changelog from
-the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.2`
-as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
+the commit history that leaves out `docs`, `test` and `chore` commits, with or
+without a scope (a breaking one, marked `!`, stays); `prerelease: auto` marks a
+tag with a suffix such as `-rc.2` as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
 `cw version` reports the tag, commit and commit date.
 
 The plugin marketplace installs from the default branch, and the
@@ -317,7 +326,7 @@ release to the next and never see `main` between them
 from the vendor documentation, not tested here). Every merge must still leave
 `main` releasable, because new installs take it.
 
-`third_party/cc-skills-golang` pins its own `version` (2.0.0) in its
+`third_party/cc-skills-golang` pins its own `version` (2.0.1) in its
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and the release
 pull request does not change it. When its content changes, bump that version
 in the same pull request; otherwise existing users keep their cached copy.

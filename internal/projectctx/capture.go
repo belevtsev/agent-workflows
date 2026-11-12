@@ -170,7 +170,9 @@ func CaptureManifest(ctx context.Context, repo string) (Snapshot, []FileState, e
 	return got.snapshot, got.files, nil
 }
 
-func canonicalDirectory(path string) (string, error) {
+// CanonicalDirectory returns the absolute, symlink-free, clean form of an
+// existing directory, the form Snapshot.Root and SelectedPath take.
+func CanonicalDirectory(path string) (string, error) {
 	if path == "" {
 		path = "."
 	}
@@ -191,7 +193,7 @@ func canonicalDirectory(path string) (string, error) {
 
 // capture inspects repo, giving each Git command at most probeBudget.
 func capture(ctx context.Context, repo string, probeBudget time.Duration) (captured, error) {
-	selected, err := canonicalDirectory(repo)
+	selected, err := CanonicalDirectory(repo)
 	if err != nil {
 		return captured{}, err
 	}
@@ -204,7 +206,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 		// Read-only Git inspection must not invoke a configured filesystem
 		// monitor hook or update the untracked cache as a side effect.
 		gitArgs := []string{"-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-C", dir}
-		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: minimalEnvironment(os.Getenv), WaitDelay: gitProbeWaitDelay}, maxGitOutput)
+		result, runErr := executeBounded(probeCtx, Command{Executable: "git", Args: append(gitArgs, args...), Dir: dir, Env: MinimalEnvironment(os.Getenv), WaitDelay: gitProbeWaitDelay}, maxGitOutput)
 		if runErr != nil {
 			probe := strings.Join(args, " ")
 			// The caller's context is checked first: its deadline can end
@@ -243,7 +245,7 @@ func capture(ctx context.Context, repo string, probeBudget time.Duration) (captu
 	}
 	gitRepo := gitErr == nil
 	if gitRepo {
-		got.snapshot.Root, err = canonicalDirectory(strings.TrimSuffix(strings.TrimSuffix(root, "\n"), "\r"))
+		got.snapshot.Root, err = CanonicalDirectory(strings.TrimSuffix(strings.TrimSuffix(root, "\n"), "\r"))
 		if err != nil {
 			return captured{}, errors.New("Git worktree root is unavailable")
 		}

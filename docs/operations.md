@@ -367,21 +367,48 @@ start under `start` and its durations, omitting `task`, `submitted_at`,
 `cw publish` commits a verified task's files, pushes the commit and, with
 `--pr create` or `--pr edit`, creates or edits its pull request. It runs only
 after `cw task verify` passed on the current source and no other open task record
-gates the repository, commits whole files of the task's verified change set,
-reads every step back, appends a `started` and a `finished` entry
-(`publication-NNNNNN.json`) to the task directory, and continues from the
-observed state when the same command runs again. `--summary` prints one line.
+gates the repository, commits whole files of the task's verified change set, or
+of the part of it that `--path` names, reads every step back, and continues from
+the observed state when the same command runs again. Once its checks pass, it
+appends a `started` entry (`publication-NNNNNN.json`) to the task directory, and
+a `finished` entry when it ends. `--summary` prints one line.
 Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
 6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
 which also names the cases that go to the GitHub worker instead. It needs Git
-2.24 or newer. Its known limitations:
+2.24 or newer.
+
+A refusal (exit 4, status `refused`) never commits part of the file set, but it
+can come after steps that are already done:
+
+- **At the checks, nothing is committed or recorded.** One file refuses them
+  all: a `--path` outside the verified change set (`path-not-verified`), a file
+  whose staged state is neither `--expect-head`'s nor the verified one
+  (`hunk-scope`), or a file Git would convert (`content-conversion`).
+  `cw publish` then makes no commit and no push, runs no git command that
+  changes the repository or its index, and appends no publication entry, so
+  the report's `record` is empty.
+  The report's `detail`, also printed to stderr as
+  `agent-workflows: publish refused (REASON): DETAIL`, names the first such file,
+  for example `u.txt is not in the task's verified change set`; with
+  `--summary`, the JSON line carries only the reason.
+- **At a later step, the steps before it stay.** Each step checks again before
+  it runs, and refuses when, for example, HEAD moved (`head-moved`), a Git lock
+  appeared (`git-locked`), the remote branch moved (`remote-moved`) or a pull
+  request for the branch appeared (`pr-exists`). A commit already made, and a
+  push already done, are kept, never amended or reset: the report's `steps`
+  shows them as `done` and the refused step as `refused`, and the `finished`
+  entry records the refusal. Run the command again once the cause is fixed: it
+  finds the commit, and the push if done, `already-present` and continues.
+
+Its known limitations:
 
 - A new file that the user's ignore rules exclude only through `XDG_CONFIG_HOME`
   or `GIT_CONFIG_*` makes `git add --intent-to-add` fail on every run
   (1 `commit-failed`), because the source capture does not read those rules.
-- With `core.autocrlf` set to `input` or true, every commit-set file that
-  contains a CR byte, binaries included, is refused as 4 `content-conversion`.
+- With `core.autocrlf` set to `input` or true, a commit-set file that contains
+  a CR byte, binaries included, refuses the publication as 4
+  `content-conversion`.
 - A Git lock that a concurrent git process holds for more than about two seconds
   reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
   commit), so check that no git process runs before removing one.

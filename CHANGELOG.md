@@ -12,6 +12,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
+- `cw doctor` lives in `internal/doctor`, so the commit gate no longer imports the credential store, Graphify or go-toml;
+  `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
+
+### Fixed
+
+- `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
+  and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
+- `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory
+  the command is given, as `cw` does, not the test's own ([paths](docs/operations.md#paths)).
+- Release notes also leave out scoped `docs`, `test` and `chore` commits, such as `chore(release):`; a breaking one
+  (`chore!:`) stays ([releases](docs/development.md#releases)).
+- Three links in the Go documentation and gopls skills now land on their section, and `go test ./internal/skillcheck`
+  checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
+- The docs say what a refused `cw publish` leaves: nothing when its checks refuse, even for one file of the set, and the commit
+  or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
