@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
@@ -76,5 +80,45 @@ func TestReportingCommandOutcomesMapToTableRows(t *testing.T) {
 	}
 	if got := graphifyExit(fmt.Errorf("cache: %w", errors.New("permission denied"))); got != ExitFailure {
 		t.Errorf("graphify filesystem error exits %d, want %d", got, ExitFailure)
+	}
+}
+
+// cw publish --help lists each of its exit statuses with the table's code,
+// and no other, so the help and the table cannot drift apart. Oracle: the
+// table constants and publish.Report.ExitCode.
+func TestPublishHelpListsItsStatusesFromTheTable(t *testing.T) {
+	config, out := testConfig(t)
+	if err := Execute(t.Context(), []string{"publish", "--help"}, config); err != nil {
+		t.Fatal(err)
+	}
+	_, section, found := strings.Cut(out.String(), "Exit statuses:\n")
+	if !found {
+		t.Fatalf("cw publish --help has no exit statuses section:\n%s", out)
+	}
+	row := regexp.MustCompile(`^  ([0-9]+) +([a-z]+)`)
+	listed := map[string]int{}
+	for line := range strings.Lines(section) {
+		match := row.FindStringSubmatch(line)
+		if match == nil {
+			break
+		}
+		code, err := strconv.Atoi(match[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		listed[match[2]] = code
+	}
+	want := map[string]int{
+		publish.StatusPublished: ExitOK, publish.StatusFailed: ExitFailure, "usage": ExitUsage,
+		publish.StatusDenied: ExitDenied, publish.StatusRefused: ExitRefused, publish.StatusUnknown: ExitUnknown,
+		publish.StatusMismatch: ExitMismatch, publish.StatusCancelled: ExitCancelled,
+	}
+	if !maps.Equal(listed, want) {
+		t.Fatalf("cw publish --help lists %v, want %v", listed, want)
+	}
+	for status, code := range want {
+		if status != "usage" && (publish.Report{Status: status}).ExitCode() != code {
+			t.Errorf("publish status %q exits %d, but the help lists %d", status, (publish.Report{Status: status}).ExitCode(), code)
+		}
 	}
 }
