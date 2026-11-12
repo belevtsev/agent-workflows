@@ -15,6 +15,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Task records move to version 4, which `cw` v3.0.0-rc.1 cannot read (its hook skips such a task): run the same `cw` on every host and hook sharing a task store;
   a `cw task` command on a record from a newer `cw`, or without `packs`, `test_rules` or `baseline_manifest`, exits 4 ([format](docs/development.md#task-record-format)).
 
+### Added
+
+- `cw hook git pre-commit` and `cw hook git pre-push` run the commit gate from git's own hooks, which also see aliases and scripts:
+  a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
+
 ### Changed
 
 - A new [packs](docs/packs.md) page documents `cw pack` and `pack.yaml` as they ship, with the steps and a proposal

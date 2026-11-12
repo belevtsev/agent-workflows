@@ -2,7 +2,8 @@
 // publish: it finds each git commit and git push in the command, the
 // repository each one publishes from and the task records that govern it,
 // and answers allow, ask or deny with the reason shown to the agent and the
-// user. The hook's input and output formats belong to the caller; the gate
+// user. DecideGitHook answers the same for git's own pre-commit and pre-push
+// hooks. The hook's input and output formats belong to the caller; the gate
 // reaches git, the clock and the task store only through Deps.
 //
 // The gate fails open: every condition that is not a positive decision,
@@ -119,8 +120,44 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 			asks = append(asks, question)
 		}
 	}
+	return conclude(in.Enforce, gating, asks)
+}
+
+// GitHookInput is the git commit or git push that git is about to run, as its
+// pre-commit or pre-push hook sees it.
+type GitHookInput struct {
+	// Dir is the directory git runs the hook in: the top of the worktree.
+	Dir string
+	// Push is true for the pre-push hook and false for pre-commit.
+	Push bool
+	// Enforce and Prompt are Input's.
+	Enforce, Prompt bool
+}
+
+// DecideGitHook returns the decision for in, as Decide returns it for one
+// git commit or git push run in in.Dir: the hook knows the directory, so
+// nothing asks about a directory change. A commit is measured by the index
+// git commits, which git's pre-commit hook names in GIT_INDEX_FILE and the
+// gate's git inherits, so a commit with -a or with paths counts what it
+// records.
+func DecideGitHook(ctx context.Context, in GitHookInput, deps Deps) Decision {
+	if !in.Enforce && !in.Prompt {
+		return Decision{}
+	}
+	d := decider{in: Input{Enforce: in.Enforce, Prompt: in.Prompt}, deps: deps, found: map[string][]taskflow.OpenRecord{}}
+	gating, question := d.check(ctx, publication{dir: in.Dir, push: in.Push})
+	var asks []ask
+	if question.reason != "" {
+		asks = append(asks, question)
+	}
+	return conclude(in.Enforce, gating, asks)
+}
+
+// conclude returns the decision for the records that gate a command's
+// publications and the asks they raise.
+func conclude(enforce bool, gating []taskflow.OpenRecord, asks []ask) Decision {
 	switch {
-	case in.Enforce && len(gating) > 0:
+	case enforce && len(gating) > 0:
 		return Decision{Permission: Deny, Reason: denyReason(gating)}
 	case len(asks) > 0:
 		decision := Decision{Permission: Ask, ProceedWithoutAsk: true}

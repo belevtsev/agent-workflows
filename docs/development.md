@@ -12,6 +12,7 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
 and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
 answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
+and `cw hook git` asks `gate.DecideGitHook` for git's own hooks,
 so gate rules are unit-tested with a fake git, clock and task store. Under
 Codex, which cannot ask, the hook turns an ask into a deny unless the gate sets
 `ProceedWithoutAsk` on it ([Codex](hooks.md#codex)).
