@@ -68,7 +68,7 @@ func Run(ctx context.Context, req Request, deps Deps) Report {
 	r.conclude(f)
 	if r.task != nil {
 		if err := r.task.Close(); err != nil {
-			r.rep.Detail = strings.TrimPrefix(r.rep.Detail+"; .publish-lock could not be removed: "+err.Error(), "; ")
+			r.rep.Detail = strings.TrimPrefix(r.rep.Detail+"; .publish-lock could not be released: "+err.Error(), "; ")
 		}
 	}
 	return r.rep
