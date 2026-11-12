@@ -105,7 +105,7 @@ limitation only.
 ### Start with a fresh context
 
 Codex uses `fork_turns: "none"`; Claude Code uses a fresh Agent invocation of
-the `agent-workflows:test-engineer` type, which has no Skill or Agent tool. List the
+the `agent-workflows:test-engineer` type, which has no Skill, Agent or Workflow tool. List the
 `SKILL.md` path of any skill to apply among the approved inputs. Never reuse an
 implementer, coordinator or source-aware reviewer as the test engineer. Pass no
 implementation conversations, source excerpts, diffs, Git history,

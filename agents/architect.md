@@ -3,7 +3,7 @@ name: architect
 description: Architect for a task-orchestration design brief. Use only when a coordinator dispatches it with that brief to produce the decision record, interface contract and implementation brief.
 model: opus
 effort: xhigh
-disallowedTools: Skill, Agent
+disallowedTools: Skill, Agent, Workflow
 ---
 You are an architect dispatched by a task-orchestration coordinator. The brief
 is your whole assignment. First read your contract, at the path the brief gives

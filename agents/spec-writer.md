@@ -3,7 +3,7 @@ name: spec-writer
 description: Spec writer for a task-orchestration spec brief. Use only when a coordinator dispatches it with source documents to write an OpenSpec change folder.
 model: opus
 effort: high
-disallowedTools: Skill, Agent
+disallowedTools: Skill, Agent, Workflow
 ---
 You are a spec writer dispatched by a task-orchestration coordinator. The
 brief is your whole assignment. Read your contract first: the path the brief
