@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -146,9 +146,9 @@ func gateInstallNote(ctx context.Context, root *cobra.Command, config Config, di
 // open there and the gate is on; a hook cw gate install did not write, and a
 // hooks directory other repositories use too, are reported as detected, with
 // a hint.
-func gitHooksCheck(ctx context.Context, root *cobra.Command, config Config, dir string) projectctx.Check {
-	check := func(status, detail, source string) projectctx.Check {
-		return projectctx.Check{Status: status, Detail: detail, Source: source}
+func gitHooksCheck(ctx context.Context, root *cobra.Command, config Config, dir string) doctor.Check {
+	check := func(status, detail, source string) doctor.Check {
+		return doctor.Check{Status: status, Detail: detail, Source: source}
 	}
 	if config.Getenv(enforceVerifyOption) == "false" {
 		return check("not_applicable", "The commit gate is off ("+enforceVerifyOption+"=false), so git's hooks were not inspected", "plugin_option")

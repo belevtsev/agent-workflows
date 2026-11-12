@@ -8,18 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addTaskAbandonCommand adds `cw task abandon` to the task command that
-// addTaskCommands registered on root.
-func addTaskAbandonCommand(root *cobra.Command) {
-	var task *cobra.Command
-	for _, command := range root.Commands() {
-		if command.Name() == "task" {
-			task = command
-		}
-	}
-	if task == nil {
-		return
-	}
+// newTaskAbandonCommand returns cw task abandon.
+func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 	var directory, reason string
 	var summary bool
 	abandon := &cobra.Command{
@@ -27,15 +17,10 @@ func addTaskAbandonCommand(root *cobra.Command) {
 		Short: "Mark a task given up with a terminal revision, so it no longer gates git commit and push",
 		Long: "Append the record's last revision, which stores the reason and time it was abandoned. " +
 			"An abandoned record accepts no further revisions and never gates publication; start a new task to continue the work.",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if err := cobra.NoArgs(cmd, args); err != nil {
-				return usage(err)
-			}
-			return nil
-		},
+		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
-				return usage(errors.New("task state commands reject --dry-run; no files or checks were changed"))
+			if err := deps.guard(); err != nil {
+				return err
 			}
 			if directory == "" {
 				return usage(errors.New("--task DIR is required"))
@@ -55,6 +40,6 @@ func addTaskAbandonCommand(root *cobra.Command) {
 	}
 	abandon.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
 	abandon.Flags().StringVar(&reason, "reason", "", "Why the task was given up")
-	abandon.Flags().BoolVar(&summary, "summary", false, "Print a one-line summary instead of the whole task record")
-	task.AddCommand(abandon)
+	summaryFlag(abandon, &summary)
+	return abandon
 }
