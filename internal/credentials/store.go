@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 )
 
 type document struct {
@@ -138,89 +140,38 @@ func (store Store) Read() (Snapshot, error) {
 	return readAt(directory)
 }
 
-func verifyLock(directory, lock *os.File) error {
-	var held, named unix.Stat_t
-	if unix.Fstat(int(lock.Fd()), &held) != nil || !safeFileStat(&held) || unix.Fstatat(int(directory.Fd()), lockName, &named, unix.AT_SYMLINK_NOFOLLOW) != nil || !safeFileStat(&named) || !sameInode(&held, &named) {
+// checkLock admits only a private lock file: mode 0600, owned by this user,
+// with one link. fslock checks that it is a regular file the lock name still
+// names.
+func checkLock(lock *os.File) error {
+	var stat unix.Stat_t
+	if unix.Fstat(int(lock.Fd()), &stat) != nil || !safeFileStat(&stat) {
 		return ErrUnsafeStore
 	}
 	return nil
 }
 
-func lockDirectory(ctx context.Context, directory *os.File) (*os.File, error) {
-	deadline := time.NewTimer(5 * time.Second)
-	defer deadline.Stop()
-	descriptor := -1
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		select {
-		case <-deadline.C:
-			return nil, ErrBusy
-		default:
-		}
-		flags := unix.O_RDWR | unix.O_NOFOLLOW | unix.O_NONBLOCK | unix.O_CLOEXEC
-		var err error
-		descriptor, err = unix.Openat(int(directory.Fd()), lockName, flags, 0)
-		if errors.Is(err, unix.ENOENT) {
-			descriptor, err = unix.Openat(int(directory.Fd()), lockName, flags|unix.O_CREAT|unix.O_EXCL, 0600)
-		}
-		if err == nil {
-			break
-		}
-		// APFS can return ENOENT to simultaneous nonexclusive O_CREAT opens. An
-		// exclusive creator arbitrates absence; every contender then opens the one
-		// existing inode. Never replace or unlink the stable lock.
-		if !errors.Is(err, unix.EEXIST) && !errors.Is(err, unix.EINTR) {
-			return nil, ErrUnsafeStore
-		}
-		pause := time.NewTimer(time.Millisecond)
-		select {
-		case <-ctx.Done():
-			pause.Stop()
-			return nil, ctx.Err()
-		case <-deadline.C:
-			pause.Stop()
-			return nil, ErrBusy
-		case <-pause.C:
-		}
+// lockDirectory takes the stable lock file in the anchored directory, waiting
+// at most five seconds for another writer.
+func lockDirectory(ctx context.Context, directory *os.File) (*fslock.Lock, error) {
+	lock, err := fslock.Acquire(ctx, lockName, fslock.Options{Dir: directory, Wait: 5 * time.Second, Check: checkLock})
+	if err != nil {
+		return nil, lockFailure(err)
 	}
-	lock := os.NewFile(uintptr(descriptor), "credential-lock")
-	acquired := false
-	defer func() {
-		if !acquired {
-			lock.Close()
-		}
-	}()
-	if err := verifyLock(directory, lock); err != nil {
-		return nil, err
+	return lock, nil
+}
+
+// lockFailure maps an fslock error onto the store's errors by cause.
+func lockFailure(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return err
+	case errors.Is(err, fslock.ErrBusy):
+		return ErrBusy
+	case errors.Is(err, errors.ErrUnsupported):
+		return ErrLockUnsupported
 	}
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		err := unix.Flock(descriptor, unix.LOCK_EX|unix.LOCK_NB)
-		if err == nil {
-			if err := verifyLock(directory, lock); err != nil {
-				return nil, err
-			}
-			acquired = true
-			return lock, nil
-		}
-		if !errors.Is(err, unix.EWOULDBLOCK) && !errors.Is(err, unix.EAGAIN) && !errors.Is(err, unix.EINTR) {
-			return nil, ErrUnsafeStore
-		}
-		pause := time.NewTimer(25 * time.Millisecond)
-		select {
-		case <-ctx.Done():
-			pause.Stop()
-			return nil, ctx.Err()
-		case <-deadline.C:
-			pause.Stop()
-			return nil, ErrBusy
-		case <-pause.C:
-		}
-	}
+	return ErrUnsafeStore
 }
 
 func (store Store) verifyAnchor(directory *os.File) error {
@@ -336,8 +287,8 @@ func (store Store) Save(ctx context.Context, changes map[string]*string, expecte
 	if err := store.verifyAnchor(directory); err != nil {
 		return result, err
 	}
-	if err := verifyLock(directory, lock); err != nil {
-		return result, err
+	if err := lock.Verify(); err != nil {
+		return result, ErrUnsafeStore
 	}
 	latest, err := readAt(directory)
 	if err != nil {
