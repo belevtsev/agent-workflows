@@ -1,4 +1,4 @@
-package projectctx
+package doctor
 
 import (
 	"context"

@@ -32,7 +32,7 @@ type Deps struct {
 	// HookStore returns the task store cw hook pre-publish reads.
 	HookStore func() (string, error)
 	// Now is the clock: the time of each publication entry, and the time
-	// open records age against.
+	// open records age against. Nil selects time.Now.
 	Now func() time.Time
 }
 
@@ -66,6 +66,9 @@ type run struct {
 // Run carries out the request and returns its report. It never panics on
 // external state and always releases the task's .publish-lock it took.
 func Run(ctx context.Context, req Request, deps Deps) Report {
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
 	r := &run{req: req, deps: deps, rep: newReport(req)}
 	f := r.execute(ctx)
 	r.conclude(f)

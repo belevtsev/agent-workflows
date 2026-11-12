@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -394,7 +394,7 @@ func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config
 	if err != nil {
 		return "", false
 	}
-	report, err := projectctx.Doctor(ctx, projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, ConfigDir: directory, Timeout: hookDoctorTimeout, Getenv: config.Getenv})
+	report, err := doctor.Doctor(ctx, doctor.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, ConfigDir: directory, Timeout: hookDoctorTimeout, Getenv: config.Getenv})
 	if err != nil {
 		return "", false
 	}
