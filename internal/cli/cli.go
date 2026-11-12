@@ -114,6 +114,7 @@ func NewCommand(config Config) *cobra.Command {
 	addConsultCommand(root, config)
 	addKeysCommand(root, config)
 	addHookCommands(root, config)
+	addGateCommands(root, config)
 	addGraphifyCommands(root, config)
 	addHostCommands(root, config)
 	addPackCommands(root, config)

@@ -171,10 +171,13 @@ the command and asks the agent to stop and verify first. Editing a verified
 file reopens the task. With no task at all, a large change gets a prompt
 suggesting `cw task start`.
 
-It does not stop git run by a script, an alias or a command form the hook does
-not parse, an edited or damaged task store, a fake toolchain on `PATH`, or
-`cw task abandon` run by the agent. See the [threat model](SECURITY.md#threat-model)
-and the [known bypasses](docs/hooks.md#known-bypasses).
+It does not stop an edited or damaged task store, a fake toolchain on `PATH`,
+or `cw task abandon` run by the agent, nor git run by a script, an alias or a
+command form the hook does not parse, unless `cw gate install` added git's own
+pre-commit and pre-push hooks to the repository
+([git hooks](docs/hooks.md#installing-the-git-hooks)). See the
+[threat model](SECURITY.md#threat-model) and the
+[known bypasses](docs/hooks.md#known-bypasses).
 
 `cw publish` commits a verified task's files, pushes them and creates or edits
 the pull request, and applies the same gate itself, so it holds under Codex as

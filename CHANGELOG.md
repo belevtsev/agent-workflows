@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw hook git pre-commit` and `cw hook git pre-push` run the commit gate from git's own hooks, which also see aliases and scripts:
   a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
+- `cw gate install`, `uninstall` and `status` write, remove and report a repository's git pre-commit and pre-push hooks that run that gate;
+  a hook it did not write stays unchanged, and install prints the line to add to it and exits 4 ([installing](docs/hooks.md#installing-the-git-hooks)).
 
 ### Changed
 
