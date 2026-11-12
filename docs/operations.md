@@ -305,7 +305,7 @@ which also names the cases that go to the GitHub worker instead. It needs Git
 - With `core.autocrlf` set to `input` or true, every commit-set file that
   contains a CR byte, binaries included, is refused as 4 `content-conversion`.
 - A Git lock that a concurrent git process holds for more than about two seconds
-  reads as a stale lock (4 `git-locked`, or 5 `commit-unknown` after a failed
+  reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
   commit), so check that no git process runs before removing one.
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
