@@ -140,6 +140,10 @@ type versionReport struct {
 	Version  string `json:"version"`
 }
 
+// errRelativeStateHome is the state root's error for a relative
+// XDG_STATE_HOME. The pre-publish hook asks on it rather than allow.
+var errRelativeStateHome = errors.New("XDG_STATE_HOME must be an absolute path")
+
 // directories are the roots cw reads and writes, after flags and the
 // environment are applied. Read the state root through stateDir.
 type directories struct {
@@ -183,7 +187,7 @@ func resolveRoots(root *cobra.Command, config Config) (directories, error) {
 		case filepath.IsAbs(xdg):
 			dirs.state = filepath.Join(xdg, "agent-workflows")
 		default:
-			dirs.stateErr = errors.New("XDG_STATE_HOME must be an absolute path")
+			dirs.stateErr = errRelativeStateHome
 		}
 	}
 	roots := []*string{&dirs.home, &dirs.codex, &dirs.claude}

@@ -166,6 +166,13 @@ read `CW_TASK_STORE`; give it the same directory with `--store` when you use
 the variable. `cw publish` reads both the store of the task it publishes (the
 task directory's parent) and this store, once each when they are the same.
 
+A relative `$XDG_STATE_HOME` names no store ([paths](operations.md#paths)).
+Without `$CW_TASK_STORE`, the hook then asks before each `git commit` and
+`git push` it would otherwise judge, with the reason "XDG_STATE_HOME must be
+an absolute path; set it, or set CW_TASK_STORE", instead of letting the
+command through unchecked. Commands that the rules below let through without
+reading the store, such as one outside a Git repository, still go ahead.
+
 ## Fail-open rules
 
 The gate only ever blocks or asks on a positive decision. `cw hook pre-publish`
@@ -179,9 +186,8 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
   a failed source capture, a missing `git`, a git command that fails or times
-  out, or a relative `$XDG_STATE_HOME` without `$CW_TASK_STORE`, which names
-  no store ([paths](operations.md#paths)). Damaged records are skipped rather
-  than reported.
+  out. Damaged records are skipped rather than reported. A relative
+  `$XDG_STATE_HOME` is the exception: it asks ([task store](#task-store)).
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record

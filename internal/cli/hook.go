@@ -17,6 +17,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,10 @@ import (
 // stdin and write the hook's JSON decision to stdout. They fail open: every
 // condition that is not a positive gate decision, including any internal
 // error, exits 0 without output, so a damaged record, an unreadable store or a
-// missing git never blocks the user's own commands.
+// missing git never blocks the user's own commands. The one exception is a
+// task store that a relative XDG_STATE_HOME leaves unknown: then each git
+// commit and git push the gate would judge asks, because allowing it would
+// skip the gate without a word.
 const (
 	hookInputLimit = 1 << 20
 	// hookPublishTimeout bounds the pre-publish hook's Git and source-capture
@@ -117,16 +121,46 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if err != nil {
 		return hookOutput{}, false
 	}
-	store, err := hookTaskStore(root, config)
-	if err != nil {
+	path, err := hookTaskStore(root, config)
+	var store gate.Store = gate.TaskStore(path)
+	var unlocated *unlocatedStore
+	switch {
+	case errors.Is(err, errRelativeStateHome):
+		// The store cannot be located, but the gate still runs: it decides
+		// which commands publish from a repository, and each of those asks.
+		unlocated = &unlocatedStore{err: err}
+		store = unlocated
+	case err != nil:
 		return hookOutput{}, false
 	}
 	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Enforce: enforce, Prompt: prompt},
-		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: gate.TaskStore(store)})
+		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
+	if unlocated != nil && unlocated.consulted && decision.Permission == gate.Allow {
+		decision = gate.Decision{Permission: gate.Ask, Reason: relativeStateHomeReason}
+	}
 	if decision.Permission == gate.Allow {
 		return hookOutput{}, false
 	}
 	return preToolUseDecision(string(decision.Permission), decision.Reason), true
+}
+
+// relativeStateHomeReason is the ask for a publication when a relative
+// XDG_STATE_HOME leaves the task store unknown.
+const relativeStateHomeReason = "agent-workflows: XDG_STATE_HOME must be an absolute path; set it, or set CW_TASK_STORE. " +
+	"Until then the commit and push gate cannot read the task records; confirm to run this command without it."
+
+// unlocatedStore is the gate's store when the hook cannot locate the task
+// store. Every lookup fails with err, so the gate itself allows; consulted
+// reports that the gate reached a publication it would have judged against
+// the records, which the hook then asks about.
+type unlocatedStore struct {
+	err       error
+	consulted bool
+}
+
+func (s *unlocatedStore) FindOpen(context.Context, taskflow.Repository, time.Time) ([]taskflow.OpenRecord, error) {
+	s.consulted = true
+	return nil, s.err
 }
 
 func preToolUseDecision(decision, reason string) hookOutput {

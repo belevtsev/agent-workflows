@@ -140,8 +140,9 @@ Global flags apply to every command:
 Base Directory specification requires. A command that needs the state or the
 configuration directory refuses a relative value with exit status 1, rather
 than resolve it against the working directory and move the task store with
-every `cd`. A relative `--state-dir` or `--home` resolves against the working
-directory; `--config-dir` must be absolute.
+every `cd`; the commit and push hook asks instead
+([task store](hooks.md#task-store)). A relative `--state-dir` or `--home`
+resolves against the working directory; `--config-dir` must be absolute.
 
 The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
