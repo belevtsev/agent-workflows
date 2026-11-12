@@ -1,9 +1,6 @@
 package cli
 
-import (
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 // newTaskContextCommand returns cw task context.
 func newTaskContextCommand(deps taskDeps) *cobra.Command {
@@ -15,7 +12,7 @@ func newTaskContextCommand(deps taskDeps) *cobra.Command {
 		if err := requireTask(directory); err != nil {
 			return err
 		}
-		value, err := taskflow.PrepareContext(cmd.Context(), directory, phase)
+		value, err := taskEnv(deps.config).PrepareContext(cmd.Context(), directory, phase)
 		if err != nil {
 			return err
 		}
