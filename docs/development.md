@@ -13,6 +13,11 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 and `cw uninstall --host codex`. `cmd/cwdev` holds the maintainer
 evaluation.
 
+`internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
+stable lock file, waits under a context and an optional bound, and the kernel
+releases it when the holder dies. Take a new lock with it rather than another
+`flock` or `mkdir` loop.
+
 ## Verification
 
 ```sh
