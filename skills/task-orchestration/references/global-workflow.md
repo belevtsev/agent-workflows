@@ -120,7 +120,7 @@ selection. `cw pack remove go` writes an explicit
 `packs.json`, which drops the Go rule for all of that user's repositories and
 leaves only the fallback rule (any passed check); `cw pack add go`, or deleting
 `packs.json`, restores it. Under the Go rule (`go.package-test/v2`; a task keeps the rule it recorded at
-start, so tasks started earlier keep `go.package-test/v1`) each changed
+start) each changed
 package needs a check whose argv is a direct `go test -race` naming `./...`,
 the package (`./pkg`) or a parent (`./dir/...`); where `-race` cannot run on
 the host (its own platform, with the cgo setting `cw task verify` sees), a
@@ -445,7 +445,8 @@ recorded.
 every new record. A `cw` built before this rule cannot load such a record (its
 commit and push hook skips it), so finish a task with the `cw` that started it.
 `cw` refuses a record without `test_rules`, `packs` or `baseline_manifest`,
-as `cw` v2.0.66 to v2.0.96 and builds before v3.0.0-rc.1 wrote; an open one
+or one that binds `go.package-test/v1`, as `cw` v2.0.66 to v2.0.96 and builds
+before v3.0.0-rc.1 wrote; an open one
 still gates until its directory is moved out of the task store: move it, then
 start a new task. The test rules:
 

@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   released when its holder dies; new locks reuse it ([development](docs/development.md)).
 - One table compares the Codex install shapes and recommends the plugin with its hooks trusted; untrusted, it gives
   skills only, and `cw install --host codex` adds archify but no commit hook ([Codex](docs/operations.md#codex)).
+- Task checks run on the shared `internal/proc` runner through `taskflow.RunCheck` (was `taskflow.Run`), so contributors change
+  a check's program, environment or bounds in one function, `checkSpec`; check records are unchanged ([development](docs/development.md)).
 
 ### Fixed
 
@@ -34,12 +36,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
 - The commit gate no longer denies `echo`, `printf`, `cat`, `rg`, `grep` or `jq` commands that only mention git in quotes, heredoc input
   or comments, such as `echo "todo; git commit later"`, and follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
-- Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
-  now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
+- A task record `cw` cannot read makes the commit hook ask and `cw publish` exit 3, where both let it through: remove or move its directory to clear it.
+  So does a store the hook cannot locate or read. Under Codex both go ahead, reversing the Codex deny for a relative `XDG_STATE_HOME` ([records](docs/hooks.md#records-that-cannot-be-read)).
+- Under Codex the commit hook denies where Claude Code asks, except about a record or store it cannot read, because Codex ran an asked-about command
+  without asking; the docs say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - A killed `cw` no longer leaves its task, or the task's `cw publish`, locked, and a second task writer waits up to 10 s instead of failing.
   `cw` v3.0.0-rc.1 does not see the new task lock: do not mix `cw` versions on one task ([task locks](docs/operations.md#task-locks)).
+
+### Removed
+
+- The Go rule `go.package-test/v1` is gone: `cw` refuses a task that binds it, which only development builds before
+  v3.0.0-rc.1 started, and an open one gates until moved; start a new task ([format](docs/development.md#task-record-format)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 

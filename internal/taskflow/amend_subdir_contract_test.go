@@ -223,7 +223,7 @@ func subDirState(t *testing.T, dir string) map[string]string {
 }
 
 func subWidened() taskflow.Check {
-	return taskflow.Check{ID: "widened", Argv: []string{"go", "test", "./..."}}
+	return taskflow.Check{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}
 }
 
 // subRefused asserts the "Refused" meaning of section 1.5 for AddChecks: a
@@ -272,12 +272,12 @@ func subAccepted(t *testing.T, dir string, input taskflow.AmendmentInput) taskfl
 
 func subRunPassed(t *testing.T, dir, checkID string) {
 	t.Helper()
-	run, err := taskflow.Run(context.Background(), dir, checkID)
+	run, err := taskflow.RunCheck(context.Background(), dir, checkID)
 	if err != nil {
-		t.Fatalf("Run(%s): %v", checkID, err)
+		t.Fatalf("RunCheck(%s): %v", checkID, err)
 	}
 	if run.Status != "passed" || run.CheckID != checkID {
-		t.Fatalf("Run(%s) = check %q status %q (failure %q), want a passed run of %s",
+		t.Fatalf("RunCheck(%s) = check %q status %q (failure %q), want a passed run of %s",
 			checkID, run.CheckID, run.Status, run.Failure, checkID)
 	}
 }

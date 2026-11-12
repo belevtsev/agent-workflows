@@ -64,7 +64,7 @@ func reachRunsFixture(t *testing.T) Record {
 	if assigned := findAssignment(record, reachRunsReview); assigned == nil || assigned.BundleFile == "" {
 		t.Fatalf("fixture precondition: review assignment has no stored bundle: %+v", assigned)
 	}
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	record, err := Load(record.Directory)
@@ -335,7 +335,7 @@ func TestReachRunsZeroRowBundle(t *testing.T) {
 	}
 	ref, _ := bundleTestWriteBundle(t, bundle)
 	record = mustAssignWorker(t, record, bundleTestReviewBrief(reachRunsReview, ref))
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	record, err := Load(record.Directory)

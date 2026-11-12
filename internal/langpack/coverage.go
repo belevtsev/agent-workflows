@@ -2,8 +2,8 @@ package langpack
 
 import "slices"
 
-// CreditsGoTest reports whether go.package-test/v1 credits a passed run of
-// argv with empty GOFLAGS.
+// CreditsGoTest reports whether the Go rule credits a passed run of argv with
+// empty GOFLAGS (see credited).
 func CreditsGoTest(argv []string) bool { return credited(Run{Argv: argv}) != nil }
 
 // GoWork is Go work the Go rule tracks: package directories and module files,
@@ -19,7 +19,8 @@ type GoWork struct {
 // relative to the selected path.
 func AddedGoCoverage(source Source, merged []string, prior, added [][]string) []GoWork {
 	// A qualifying item is changed since the baseline and holds a merged
-	// file; both sides are mapped with the current files, as GoTests maps them.
+	// file; both sides are mapped with the current files, as changedWork maps
+	// them.
 	changedPackages, changedModuleFiles := changedWork(source)
 	mergedPackages, mergedModuleFiles := changedWork(Source{Current: source.Current, Changed: merged})
 	packages := intersect(changedPackages, mergedPackages)

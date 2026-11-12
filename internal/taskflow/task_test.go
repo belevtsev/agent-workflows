@@ -144,9 +144,9 @@ func TestCheckSubprocess(t *testing.T) {
 const (
 	// pgStormDescendantScript is one short-lived storm-forker descendant. If
 	// its forker ($1) is still alive after a short wait it exits at once.
-	// Otherwise it waits up to three seconds for the test to report that Run
+	// Otherwise it waits up to three seconds for the test to report that RunCheck
 	// returned ($2) and then creates its unique marker ($3). Only a process
-	// that outlived the return of Run can create a marker.
+	// that outlived the return of RunCheck can create a marker.
 	pgStormDescendantScript = `sleep 0.2
 kill -0 "$1" 2>/dev/null && exit 0
 i=0
@@ -291,7 +291,7 @@ func assessment(ref SourceRef, checks ...string) AssessmentInput {
 
 func mustAssess(t *testing.T, record Record, ref SourceRef) {
 	t.Helper()
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Assess(t.Context(), record.Directory, assessment(ref, "focused")); err != nil {
@@ -366,7 +366,7 @@ func TestCheckOutcomesNeverBecomePasses(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			run, err := Run(t.Context(), record.Directory, "focused")
+			run, err := RunCheck(t.Context(), record.Directory, "focused")
 			if mode == "output" {
 				if err != nil || run.Status != "passed" || !run.Truncated || run.OutputBytes != MaxLogBytes+2048 {
 					t.Fatalf("bounded output: %+v %v", run, err)
@@ -394,7 +394,7 @@ func TestCancellationPreservesTerminalRecord(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	timer := time.AfterFunc(200*time.Millisecond, cancel)
 	defer timer.Stop()
-	run, err := Run(ctx, record.Directory, "focused")
+	run, err := RunCheck(ctx, record.Directory, "focused")
 	if !errors.Is(err, context.Canceled) || run.Status != "cancelled" {
 		t.Fatalf("cancellation: %+v %v", run, err)
 	}
@@ -410,10 +410,10 @@ func TestNormalCheckExitStopsRedirectedBackgroundDescendants(t *testing.T) {
 	}
 	marker := filepath.Join(t.TempDir(), "descendant-marker")
 	record, _ := fixtureTask(t, helperPlan(t, "small", "spawn-background", marker))
-	if run, err := Run(t.Context(), record.Directory, "focused"); err != nil || run.Status != "passed" {
+	if run, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil || run.Status != "passed" {
 		t.Fatalf("normal check exit: %+v %v", run, err)
 	}
-	// The redirected child would outlive command.Run without explicit cleanup;
+	// The redirected child would outlive the check without explicit cleanup;
 	// it must never reach its delayed write after a passed terminal record.
 	time.Sleep(2200 * time.Millisecond)
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
@@ -423,7 +423,7 @@ func TestNormalCheckExitStopsRedirectedBackgroundDescendants(t *testing.T) {
 
 func TestInvalidEvidenceCannotBeMarkedSatisfied(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	for _, change := range []func(*AssessmentInput){
@@ -439,7 +439,7 @@ func TestInvalidEvidenceCannotBeMarkedSatisfied(t *testing.T) {
 			t.Fatal("invalid evidence accepted")
 		}
 	}
-	if _, err := Run(t.Context(), record.Directory, "not-approved"); err == nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "not-approved"); err == nil {
 		t.Fatal("unplanned check accepted")
 	}
 }
@@ -546,7 +546,7 @@ func TestFinalCheckpointBindsCompletedEvidenceAtUnchangedSource(t *testing.T) {
 	if _, err := AttachConsultation(t.Context(), record.Directory, "final", writeConsultation(t, refreshed, nil)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Assess(t.Context(), record.Directory, assessment(ref, "focused")); err != nil {
@@ -585,7 +585,7 @@ func TestFinalCheckpointInvalidAfterLaterFailedRun(t *testing.T) {
 	if err := os.Remove(marker); err != nil {
 		t.Fatal(err)
 	}
-	if run, err := Run(t.Context(), record.Directory, "focused"); err == nil || run.Status != "failed" {
+	if run, err := RunCheck(t.Context(), record.Directory, "focused"); err == nil || run.Status != "failed" {
 		t.Fatalf("later failure: %+v %v", run, err)
 	}
 	if result, err := Verify(t.Context(), record.Directory); err == nil || result.Complete {
@@ -607,7 +607,7 @@ func TestCompletionWaitsForEveryOwnedRunAndRefusesSameCheckConcurrency(t *testin
 	plan.Checks = append(plan.Checks, background)
 	record, ref := fixtureTask(t, plan)
 	done := make(chan error, 1)
-	go func() { _, err := Run(t.Context(), record.Directory, "background"); done <- err }()
+	go func() { _, err := RunCheck(t.Context(), record.Directory, "background"); done <- err }()
 	t.Cleanup(func() {
 		_ = os.WriteFile(release, []byte("release"), 0600)
 		select {
@@ -625,7 +625,7 @@ func TestCompletionWaitsForEveryOwnedRunAndRefusesSameCheckConcurrency(t *testin
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if _, err := Run(t.Context(), record.Directory, "background"); err == nil || !strings.Contains(err.Error(), "already has an owned running") {
+	if _, err := RunCheck(t.Context(), record.Directory, "background"); err == nil || !strings.Contains(err.Error(), "already has an owned running") {
 		t.Fatalf("same-check concurrency was not refused: %v", err)
 	}
 	mustAssess(t, record, ref)
@@ -988,7 +988,7 @@ func TestExecutablePathWithSpaces(t *testing.T) {
 	}
 	plan.Checks[0].Argv[0] = path
 	record, _ := fixtureTask(t, plan)
-	if run, err := Run(t.Context(), record.Directory, "focused"); err != nil || run.Status != "passed" {
+	if run, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil || run.Status != "passed" {
 		t.Fatalf("spaced executable: %+v %v", run, err)
 	}
 }
@@ -1058,10 +1058,10 @@ func mustVerifyReport(t *testing.T, record Record) Verification {
 
 // Verify applies the evidence rule the task's pack set names to a changed
 // substantial task, given paths relative to the selected path: under the Go
-// rule go.package-test/v1 a changed package needs a passed go test run
+// rule go.package-test/v2 a changed package needs a passed go test -race run
 // covering it. The rules themselves are tested in internal/langpack.
 func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
-	goPack := []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV1}}
+	goPack := []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV2}}
 	const problem = "changed package internal/pkg has no passed go test run at the current source"
 	for _, tc := range []struct {
 		name    string
@@ -1083,12 +1083,12 @@ func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
 				module[path.Join(tc.module, name)] = data
 			}
 			repo := bundleTestRepo(t, module, true)
-			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
+			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-race", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
 			if err != nil {
 				t.Fatal(err)
 			}
 			bundleTestWrite(t, repo, path.Join(tc.module, "internal/pkg/pkg.go"), "package pkg\n\nconst Changed = true\n")
-			run, _ := Run(t.Context(), record.Directory, "unit")
+			run, _ := RunCheck(t.Context(), record.Directory, "unit")
 			if want := map[int]string{0: "passed", 1: "failed"}[tc.exit]; run.Status != want {
 				t.Fatalf("check run status %q, want %q", run.Status, want)
 			}
@@ -1134,7 +1134,7 @@ func TestVerifyRequiresAPassedRunForChangedSubstantialSource(t *testing.T) {
 				changedWorkerSource(t, record)
 			}
 			if tc.mode != "" {
-				_, _ = Run(t.Context(), record.Directory, "focused") // the verify report below is the oracle
+				_, _ = RunCheck(t.Context(), record.Directory, "focused") // the verify report below is the oracle
 			}
 			verified := mustVerifyReport(t, record)
 			if got := slices.Contains(verified.Problems, problem); got != tc.problem {

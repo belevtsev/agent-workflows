@@ -119,7 +119,7 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	if err != nil || rec.Packs == nil {
 		t.Fatalf("A19 violated: packs %+v, %v", rec.Packs, err)
 	}
-	if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
+	if _, err := taskflow.RunCheck(ctx, rec.Directory, "unit"); err != nil {
 		t.Fatal(err)
 	}
 	later, err := taskflow.Load(rec.Directory)
@@ -131,14 +131,14 @@ func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	// file is gone (packs are detected at start only).
 	repo2, store2 := spRepo(t, map[string]string{"go.mod": ""})
 	c, err := taskflow.StartWithPacks(ctx, repo2, store2, spPlan("true"), nil, taskflow.SelectionExplicit,
-		[]langpack.Manifest{spManifest("go", langpack.GoPackageTestV1, "go.mod")})
+		[]langpack.Manifest{spManifest("go", langpack.GoPackageTestV2, "go.mod")})
 	if err != nil || c.Packs == nil || len(c.Packs.Applied) != 1 {
 		t.Fatalf("A19 violated: packs %+v, %v", c.Packs, err)
 	}
 	if err := os.Remove(filepath.Join(repo2, "go.mod")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := taskflow.Run(ctx, c.Directory, "unit"); err != nil {
+	if _, err := taskflow.RunCheck(ctx, c.Directory, "unit"); err != nil {
 		t.Fatal(err)
 	}
 	if later, err := taskflow.Load(c.Directory); err != nil || later.Revision <= c.Revision || !reflect.DeepEqual(later.Packs, c.Packs) {

@@ -369,19 +369,26 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 }
 
 // ErrLegacyRecord reports a task record without packs, test_rules or
-// baseline_manifest. cw v2.0.66 to v2.0.96 wrote version 3 records without
-// packs and test_rules (v2.0.66 also without baseline_manifest), and so did v3
-// builds before v3.0.0-rc.1. This cw keeps no rules for such records and
-// refuses to load them; FindOpen still lets one gate publication until its
-// task directory is moved out of the store.
+// baseline_manifest, or one whose packs bind retiredGoRule. cw v2.0.66 to
+// v2.0.96 wrote version 3 records without packs and test_rules (v2.0.66 also
+// without baseline_manifest), and so did v3 builds before v3.0.0-rc.1; the
+// last of those builds wrote all three members with the Go pack bound to
+// retiredGoRule. This cw keeps no rules for such records and refuses to load
+// them; FindOpen still lets one gate publication until its task directory is
+// moved out of the store.
 var ErrLegacyRecord = errors.New("task record predates v3.0.0-rc.1")
 
-// legacyRecordError is the refusal for a record without start members; it
-// matches ErrLegacyRecord.
-type legacyRecordError struct{ missing string }
+// retiredGoRule is the Go package-test rule that v3 builds before
+// v3.0.0-rc.1 recorded and this cw no longer applies.
+const retiredGoRule = "go.package-test/v1"
+
+// legacyRecordError is the refusal for a record without start members or
+// with a retired rule; it matches ErrLegacyRecord. reason says what the
+// record holds and which cw wrote it.
+type legacyRecordError struct{ reason string }
 
 func (e legacyRecordError) Error() string {
-	return "task record has no " + e.missing + ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
+	return "task record " + e.reason + "; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
 }
 
 func (e legacyRecordError) Is(target error) bool { return target == ErrLegacyRecord }
@@ -407,7 +414,8 @@ var errVersionDecreased = errors.New("task record version decreases along its re
 
 // requireStartMembers refuses, with ErrLegacyRecord, a record without the
 // members cw task start has always written since v3.0.0-rc.1: packs,
-// test_rules and baseline_manifest.
+// test_rules and baseline_manifest; and one whose packs bind retiredGoRule,
+// which no release wrote.
 func requireStartMembers(record Record) error {
 	var missing []string
 	if record.Packs == nil {
@@ -419,14 +427,17 @@ func requireStartMembers(record Record) error {
 	if record.BaselineManifest == nil {
 		missing = append(missing, "baseline_manifest")
 	}
-	if len(missing) == 0 {
-		return nil
+	if len(missing) > 0 {
+		names := missing[0]
+		if n := len(missing); n > 1 {
+			names = strings.Join(missing[:n-1], ", ") + " or " + missing[n-1]
+		}
+		return legacyRecordError{reason: "has no " + names + ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it"}
 	}
-	names := missing[0]
-	if n := len(missing); n > 1 {
-		names = strings.Join(missing[:n-1], ", ") + " or " + missing[n-1]
+	if slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool { return pack.EvidenceRule == retiredGoRule }) {
+		return legacyRecordError{reason: "binds evidence rule " + retiredGoRule + ", which only v3 builds before v3.0.0-rc.1 recorded and this cw no longer applies"}
 	}
-	return legacyRecordError{missing: names}
+	return nil
 }
 
 func validateRecord(record Record) error {

@@ -6,7 +6,8 @@
 // reaches git, the clock and the task store only through Deps.
 //
 // The gate fails open: every condition that is not a positive decision,
-// including any git or store failure, allows the command.
+// including any git or store failure, allows the command. A governing task
+// record that cannot be read is not such a failure: it asks.
 package gate
 
 import (
@@ -83,8 +84,8 @@ type Decision struct {
 	// ProceedWithoutAsk marks an Ask that a host unable to ask, such as
 	// Codex, lets run instead of denying, because a deny would block the
 	// user on something they cannot fix there, such as a task record that
-	// cannot be read. No ask sets it yet; one that joins asks sets it only
-	// when every joined ask does.
+	// cannot be read. The ask for such a record sets it; one that joins asks
+	// sets it only when every joined ask does.
 	ProceedWithoutAsk bool
 }
 
@@ -100,25 +101,39 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	}
 	d := decider{in: in, deps: deps, found: map[string][]taskflow.OpenRecord{}}
 	var gating []taskflow.OpenRecord
-	var asks []string
+	var asks []ask
 	for _, publication := range publications {
-		blocking, ask := d.check(ctx, publication)
+		blocking, question := d.check(ctx, publication)
 		for _, record := range blocking {
 			if !slices.ContainsFunc(gating, func(seen taskflow.OpenRecord) bool { return seen.Record.ID == record.Record.ID }) {
 				gating = append(gating, record)
 			}
 		}
-		if ask != "" && !slices.Contains(asks, ask) {
-			asks = append(asks, ask)
+		if question.reason != "" && !slices.Contains(asks, question) {
+			asks = append(asks, question)
 		}
 	}
 	switch {
 	case in.Enforce && len(gating) > 0:
 		return Decision{Permission: Deny, Reason: denyReason(gating)}
 	case len(asks) > 0:
-		return Decision{Permission: Ask, Reason: strings.Join(asks, " ")}
+		decision := Decision{Permission: Ask, ProceedWithoutAsk: true}
+		reasons := make([]string, 0, len(asks))
+		for _, question := range asks {
+			reasons = append(reasons, question.reason)
+			decision.ProceedWithoutAsk = decision.ProceedWithoutAsk && question.proceed
+		}
+		decision.Reason = strings.Join(reasons, " ")
+		return decision
 	}
 	return Decision{}
+}
+
+// ask is one publication's question for the user, and whether a host that
+// cannot ask lets the command run instead (Decision.ProceedWithoutAsk).
+type ask struct {
+	reason  string
+	proceed bool
 }
 
 // decider holds one Decide call's state.
@@ -133,38 +148,59 @@ type decider struct {
 
 // check returns the records that gate one publication and, when none does,
 // the ask it raises, if any. A repository that cannot be resolved, or whose
-// records cannot be read, yields neither.
-func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, string) {
+// store cannot be read, yields neither. With enforce on, a governing record
+// that cannot be read asks, unless another record gates, joined with any ask
+// the publication raises without it; with enforce off, such a record counts
+// as no record.
+func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
 	repo, err := taskflow.ResolveRepository(ctx, publication.dir, d.deps.Git.output)
 	if err != nil {
-		return nil, ""
+		return nil, ask{}
 	}
 	open, seen := d.found[repo.Worktree]
 	if !seen {
 		if open, err = d.deps.Store.FindOpen(ctx, repo, d.deps.Now()); err != nil {
-			return nil, ""
+			return nil, ask{}
 		}
 		d.found[repo.Worktree] = open
 	}
-	var gating []taskflow.OpenRecord
+	var gating, unreadable, verified []taskflow.OpenRecord
 	for _, record := range open {
-		if record.Gates() {
+		switch {
+		case record.Gates():
 			gating = append(gating, record)
+		case record.NeedsConfirmation():
+			unreadable = append(unreadable, record)
+		default:
+			verified = append(verified, record)
 		}
 	}
+	if len(gating) > 0 {
+		return gating, ask{}
+	}
+	// other is the ask the publication raises as if the unreadable records
+	// did not exist.
+	other := ""
 	switch {
-	case len(gating) > 0:
-		return gating, ""
-	case len(open) > 0:
+	case len(verified) > 0:
 		if d.in.Enforce && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree) {
-			return nil, uncommittedReason(open)
+			other = uncommittedReason(verified)
 		}
 	case d.in.Prompt:
 		if signs := substantialChangeSigns(ctx, d.deps.Git, repo.Worktree, publication); len(signs) >= 2 {
-			return nil, unrecordedChangeReason(repo.Worktree, publication, signs)
+			other = unrecordedChangeReason(repo.Worktree, publication, signs, len(unreadable) > 0)
 		}
 	}
-	return nil, ""
+	switch {
+	case !d.in.Enforce || len(unreadable) == 0:
+		return nil, ask{reason: other}
+	case other != "":
+		// The other ask keeps its effect: a host that cannot ask denies.
+		return nil, ask{reason: other + " " + unreadableReason(unreadable)}
+	}
+	// A deny would block the user on a file the agent's host may give them
+	// no way to repair, so a host that cannot ask lets it run.
+	return nil, ask{reason: unreadableReason(unreadable), proceed: true}
 }
 
 // denyReason names every gating record, why it gates, and how to verify or
@@ -182,6 +218,25 @@ func denyReason(gating []taskflow.OpenRecord) string {
 		fmt.Fprintf(&reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
 	}
 	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")
+	return reason.String()
+}
+
+// unreadableReason explains the ask for a publication that records cw cannot
+// read may gate: it names each one's directory and load error, and how to
+// clear it.
+func unreadableReason(unreadable []taskflow.OpenRecord) string {
+	var reason strings.Builder
+	reason.WriteString("agent-workflows: cw cannot read a task record for this repository, so the commit and push gate cannot tell whether it allows this command.")
+	for _, open := range unreadable {
+		fmt.Fprintf(&reason, " Task directory %s: %s", open.Record.Directory, open.Unreadable)
+		if open.Newer {
+			// The load error already says to upgrade cw.
+			reason.WriteString(".")
+			continue
+		}
+		reason.WriteString("; if the record is damaged, remove the directory or move it out of the task store, then start a new task with `cw task start` if the work is still open.")
+	}
+	reason.WriteString(" Confirm to run this command without the gate.")
 	return reason.String()
 }
 

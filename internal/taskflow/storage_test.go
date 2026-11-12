@@ -126,7 +126,7 @@ func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
 	record, _ := fixtureTask(t, helperPlan(t, "small", "mutate", marker))
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
 	names := taskArtifactNames(t, record.Directory)
-	run, err := Run(t.Context(), record.Directory, "focused")
+	run, err := RunCheck(t.Context(), record.Directory, "focused")
 	if !errors.Is(err, errTaskRevisionLimit) || run.ID != "" || run.Log != "" {
 		t.Fatalf("check started without terminal capacity: id=%q log=%q err=%v", run.ID, run.Log, err)
 	}
@@ -217,7 +217,7 @@ func checkBarrier(t *testing.T, lifetime context.Context) *net.TCPListener {
 
 // checkBarrierIODeadline bounds barrier I/O by the test's own lifetime only.
 // A shorter fixed budget is a timing assumption: under -race on a loaded
-// runner, Run's locked revision write plus the instrumented child's startup can
+// runner, RunCheck's locked revision write plus the instrumented child's startup can
 // outlast any small constant before the child dials back.
 func checkBarrierIODeadline(t *testing.T, lifetime context.Context) time.Time {
 	t.Helper()
@@ -234,7 +234,7 @@ type acceptedBarrier struct {
 }
 
 // acceptCheckBarrier waits until check id's child reaches its execution
-// barrier. If Run returns first, it fails with that outcome at once, so a check
+// barrier. If RunCheck returns first, it fails with that outcome at once, so a check
 // that never spawns or loses its child cannot hide behind an accept timeout.
 func acceptCheckBarrier(t *testing.T, lifetime context.Context, listener *net.TCPListener, id string, done <-chan checkOutcome) net.Conn {
 	t.Helper()
@@ -287,7 +287,7 @@ func startBarrierCheck(t *testing.T, ctx context.Context, record Record, id stri
 	t.Helper()
 	done := make(chan checkOutcome, 1)
 	go func() {
-		run, err := Run(ctx, record.Directory, id)
+		run, err := RunCheck(ctx, record.Directory, id)
 		done <- checkOutcome{run: run, err: err}
 	}()
 	return done
@@ -333,7 +333,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		if _, err := update(record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
 			t.Fatalf("metadata writer spent a terminal slot: called=%t err=%v", called, err)
 		}
-		if run, err := Run(lifetime, record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
+		if run, err := RunCheck(lifetime, record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
 			t.Fatalf("new check spent another check's terminal slot: id=%q err=%v", run.ID, err)
 		}
 		if !slices.Equal(names, taskArtifactNames(t, record.Directory)) {

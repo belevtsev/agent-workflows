@@ -30,10 +30,10 @@ import (
 )
 
 // acPacks is the explicit pack selection the amendment fixtures start with: a
-// Go pack detected by go.mod that names go.package-test/v1, the Go rule these
+// Go pack detected by go.mod that names go.package-test/v2, the Go rule these
 // contracts state their verify problems in.
 func acPacks() []langpack.Manifest {
-	return []langpack.Manifest{spManifest("go", langpack.GoPackageTestV1, "go.mod")}
+	return []langpack.Manifest{spManifest("go", langpack.GoPackageTestV2, "go.mod")}
 }
 
 const (
@@ -46,7 +46,9 @@ const (
 	acB3Phrase        = "checks can be added only to a task whose evidence rules include the Go package-test rule"
 )
 
-var acWidenedArgv = []string{"go", "test", "./..."}
+// acWidenedArgv runs under -race, which go.package-test/v2 needs for each
+// changed package.
+var acWidenedArgv = []string{"go", "test", "-race", "./..."}
 
 // ---------------------------------------------------------------------------
 // Environment and fixture (contract section 2).
@@ -818,7 +820,7 @@ func acRewriteLatest(t *testing.T, dir string, mutate func(*taskflow.Record)) {
 func acRun(t *testing.T, dir, id string) taskflow.CheckRun {
 	t.Helper()
 	before := len(acLoad(t, dir).Checks)
-	run, err := taskflow.Run(context.Background(), dir, id)
+	run, err := taskflow.RunCheck(context.Background(), dir, id)
 	if run.ID != "" {
 		return run
 	}
@@ -830,7 +832,7 @@ func acRun(t *testing.T, dir, id string) taskflow.CheckRun {
 			}
 		}
 	}
-	t.Fatalf("Run(%s) recorded no run: %v", id, err)
+	t.Fatalf("RunCheck(%s) recorded no run: %v", id, err)
 	return taskflow.CheckRun{}
 }
 
@@ -1887,9 +1889,9 @@ func acTestRunAddedCheck(t *testing.T) {
 		_, dir := acStandardTask(t, acPlanOpts{})
 		acExpectAccepted(t, dir, acInput("HEAD", acWidened()))
 		prev := acLoad(t, dir)
-		_, err := taskflow.Run(context.Background(), dir, "nonexistent")
+		_, err := taskflow.RunCheck(context.Background(), dir, "nonexistent")
 		if err == nil || !strings.Contains(err.Error(), "check is not in the explicit coordinator plan") {
-			t.Errorf("R11.b: Run(nonexistent) error = %v, want %q", err, "check is not in the explicit coordinator plan")
+			t.Errorf("R11.b: RunCheck(nonexistent) error = %v, want %q", err, "check is not in the explicit coordinator plan")
 		}
 		after := acLoad(t, dir)
 		if len(after.Checks) != len(prev.Checks) || after.Revision != prev.Revision {

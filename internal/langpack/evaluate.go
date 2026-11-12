@@ -6,9 +6,6 @@ import (
 	"slices"
 )
 
-// GoPackageTestV1 names GoTests, the Go package-test rule, unchanged.
-const GoPackageTestV1 = "go.package-test/v1"
-
 // GoPackageTestV2 names the Go package-test rule that GoEvidence applies:
 // it also requires -race, reverse-dependency and full runs, and gives no
 // credit to reruns.
@@ -19,7 +16,7 @@ func KnownRule(id string) bool { return slices.Contains(builtInRules, id) }
 
 // builtInRules are the evidence rule ids Evaluate dispatches; each has a case
 // there.
-var builtInRules = []string{GoPackageTestV1, GoPackageTestV2}
+var builtInRules = []string{GoPackageTestV2}
 
 // Evidence is what Evaluate reports: problems fail verify, limitations are
 // listed.
@@ -31,8 +28,8 @@ type Evidence struct {
 // Evaluate applies AnyPassedRun, then the rule each distinct id names, in
 // order. An id this cw does not know adds a limitation and only the fallback
 // applies for it. dir is the selected path and env the environment for rules
-// that run toolchain commands; go.package-test/v1 runs none.
-// go.package-test/v2 runs go through LoadGoFacts, with ctx.
+// that run toolchain commands: go.package-test/v2 runs go through
+// LoadGoFacts, with ctx.
 func Evaluate(ctx context.Context, dir string, env []string, ruleIDs []string, source Source, passed []Run) Evidence {
 	evidence := Evidence{Problems: AnyPassedRun{}.Problems(source, passed)}
 	for i, id := range ruleIDs {
@@ -40,10 +37,6 @@ func Evaluate(ctx context.Context, dir string, env []string, ruleIDs []string, s
 			continue
 		}
 		switch id {
-		case GoPackageTestV1:
-			if (GoTests{}).Applies(source) {
-				evidence.Problems = append(evidence.Problems, GoTests{}.Problems(source, passed)...)
-			}
 		case GoPackageTestV2:
 			switch {
 			case !slices.Contains(source.Current, "go.mod"):

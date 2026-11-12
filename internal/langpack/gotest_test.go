@@ -529,10 +529,10 @@ func TestGoTestsCredited(t *testing.T) {
 	}
 }
 
-// TestGoTestsCreditedMatchesGoTestsRule fails when, for argv with -json as a
-// flag argument and ./... as a package argument, credit differs from whether
-// the existing GoTests rule raises no problem (R23 equivalence).
-func TestGoTestsCreditedMatchesGoTestsRule(t *testing.T) {
+// TestGoTestsCreditedMatchesGoRule fails when, for argv with -json as a flag
+// argument and ./... as a package argument, credit differs from whether the
+// Go rule, with no -race on the host, raises no problem (R23 equivalence).
+func TestGoTestsCreditedMatchesGoRule(t *testing.T) {
 	t.Parallel()
 	flags := [][]string{
 		{"-race"}, {"-count=1"}, {"-count=0"}, {"-count", "2"}, {"-v"}, {"-short"}, {"-failfast"},
@@ -565,9 +565,9 @@ func TestGoTestsCreditedMatchesGoTestsRule(t *testing.T) {
 		// -json right after "test" is a flag argument, and no token is
 		// -json=<value>, so condition 2 holds for every generated run.
 		credited := l3Safe(t, func() bool { return langpack.GoTestsCredited(run) })
-		clean := len(langpack.GoTests{}.Problems(src, []langpack.Run{run})) == 0
+		clean := len(langpack.GoEvidence(src, []langpack.Run{run}, langpack.GoFacts{NoRace: "not needed"}).Problems) == 0
 		if credited != clean {
-			t.Errorf("argv %q GOFLAGS %q: GoTestsCredited = %v, GoTests problems empty = %v (R23)", argv, run.GOFLAGS, credited, clean)
+			t.Errorf("argv %q GOFLAGS %q: GoTestsCredited = %v, Go rule problems empty = %v (R23)", argv, run.GOFLAGS, credited, clean)
 		}
 		seen[credited]++
 	}

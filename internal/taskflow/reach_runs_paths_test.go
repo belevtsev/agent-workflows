@@ -46,7 +46,7 @@ func reachPathsR3Fixture(t *testing.T) Record {
 	if assigned := findAssignment(record, "review"); assigned == nil || assigned.BundleFile == "" {
 		t.Fatalf("fixture precondition: review assignment has no stored bundle: %+v", assigned)
 	}
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	record, err := Load(record.Directory)

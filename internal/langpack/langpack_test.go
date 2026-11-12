@@ -1,7 +1,6 @@
 package langpack
 
 import (
-	"reflect"
 	"slices"
 	"testing"
 )
@@ -9,24 +8,6 @@ import (
 // goModule is a module with two packages, a test-only directory, a testdata
 // file and a nested module.
 var goModule = []string{"go.mod", "a.go", "internal/pkg/pkg.go", "internal/pkg/pkg_test.go", "internal/pkg/testdata/fixture.go", "internal/other/other.go", "nested/go.mod", "nested/nested.go"}
-
-func TestRulesSelectsLanguageRulesByProject(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		current []string
-		want    []EvidenceRule
-	}{
-		{"Go module", goModule, []EvidenceRule{AnyPassedRun{}, GoTests{}}},
-		{"go.mod below the selected path only", []string{"tools/go.mod", "tools/main.go"}, []EvidenceRule{AnyPassedRun{}}},
-		{"no language pack", []string{"README.md", "main.py"}, []EvidenceRule{AnyPassedRun{}}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := Rules(Source{Current: tc.current}); !reflect.DeepEqual(got, tc.want) {
-				t.Fatalf("Rules = %#v, want %#v", got, tc.want)
-			}
-		})
-	}
-}
 
 // argvRuns wraps each argv as a passed run without GOFLAGS.
 func argvRuns(argvs [][]string) []Run {
@@ -47,7 +28,10 @@ func TestAnyPassedRunNeedsOnePassedRun(t *testing.T) {
 	}
 }
 
-func TestGoTestsNeedsACoveringRunPerChangedPackage(t *testing.T) {
+// The Go rule needs a passed run covering each changed package (oracle: the
+// listed problems). The facts add nothing: -race cannot run on the host, and
+// no test binary links a changed package of another directory.
+func TestGoRuleNeedsACoveringRunPerChangedPackage(t *testing.T) {
 	const pkgProblem = "changed package internal/pkg has no passed go test run at the current source"
 	for _, tc := range []struct {
 		name    string
@@ -72,7 +56,7 @@ func TestGoTestsNeedsACoveringRunPerChangedPackage(t *testing.T) {
 		{"changed files unknown", nil, nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := (GoTests{}).Problems(Source{Current: goModule, Changed: tc.changed}, argvRuns(tc.passed))
+			got := GoEvidence(Source{Current: goModule, Changed: tc.changed}, argvRuns(tc.passed), GoFacts{NoRace: "not needed"}).Problems
 			if !slices.Equal(got, tc.want) {
 				t.Fatalf("problems %q, want %q", got, tc.want)
 			}

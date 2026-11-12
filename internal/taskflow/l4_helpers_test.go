@@ -3,7 +3,7 @@ package taskflow_test
 // Shared fixtures for the L4 contract tests (interface contract L4, third
 // version). They extend the L3 fixtures (l3_helpers_test.go): every fixture is
 // a real Git repository holding a small Go module in t.TempDir(), a separate
-// task store, and real go test runs through taskflow.Run. Records are started
+// task store, and real go test runs through taskflow.RunCheck. Records are started
 // with taskflow.StartWithPacks and an explicit empty pack selection.
 // Expectations live in the tests, never here.
 
