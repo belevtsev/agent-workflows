@@ -38,7 +38,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 		Long: "With --request, validate a shared Choice request (at most 8 questions) and send it once to each configured adviser under the policy's batch deadline, writing a new private version 4 record. " +
 			"The participating advisers are the task's adviser binding when the request state holds task_context or task_contexts, and otherwise the policy's enabled providers. " +
 			"Without a task, an adviser disabled in your saved preferences (advisers.disabled in preferences.json of the configuration directory) is recorded as not_configured and never contacted, even with --policy; so is one you have not opted in to, unless --policy is given: opt in by listing it under advisers.enabled or saving its key with 'cw keys set'. A task keeps its binding. " +
-			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. " +
+			"A participating adviser is configured when its credential is set (TYPESAFE_API_KEY, SUBQ_API_KEY or OPENAI_API_KEY, from the environment or saved keys); one that is not is recorded as not_configured and never contacted. Saved keys that cannot be read are not used, and a warning on stderr names the problem. " +
 			"With no configured adviser, nothing is sent and the record status is no_advisers_configured. " +
 			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
 			"With --adjudicate and --decision, validate the coordinator's decision against a saved version 4 record, using no network, credentials or policy.\n\n" +
@@ -60,14 +60,16 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			// A dry run also resolves credentials, only to report which advisers
 			// are configured; no credential value is written or sent.
 			if options.Request != "" {
-				getenv, err := credentialEnvironment(root, config)
+				getenv, unread, err := credentialEnvironment(root, config, cmd.ErrOrStderr())
 				if err != nil {
 					return err
 				}
 				options.Getenv = getenv
 				// consult reads the withheld advisers only for a request
 				// without a task binding.
-				options.Disabled = func() ([]string, error) { return withheldAdvisers(root, config, policy != "", cmd.ErrOrStderr()) }
+				options.Disabled = func() ([]string, error) {
+					return withheldAdvisers(root, config, policy != "", unread, cmd.ErrOrStderr())
+				}
 			}
 			if !summary {
 				outcome, err := consult.Run(cmd.Context(), options)
