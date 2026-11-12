@@ -6,10 +6,11 @@
 // kernel has walked it, and that child survives. Linux redirects or restarts
 // such a fork, but the same loop is correct there too. KillGroup therefore
 // kills until the group has no live member, and Run calls it whenever a run
-// ends, after a normal exit as well, so no descendant outlives its run.
+// ends, after a normal exit as well (unless Spec.KeepGroupOnExit), so no
+// descendant outlives its run.
 //
 // Process groups are used on Linux and macOS only. Elsewhere Run stops only
-// the program itself, and KillGroup fails with errors.ErrUnsupported.
+// the program itself, at once, and KillGroup fails with errors.ErrUnsupported.
 package proc
 
 import (
@@ -56,6 +57,18 @@ type Spec struct {
 	StderrLimit int
 	// Timeout bounds the run; zero leaves the bound to ctx.
 	Timeout time.Duration
+	// Grace, when set, lets a stopped program clean up: Run sends SIGTERM to
+	// the group and kills it only if the program has not exited and the group
+	// emptied within Grace, so git, for example, can remove its lock files.
+	// Zero kills the group at once.
+	Grace time.Duration
+	// KeepGroupOnExit leaves the group's other members running when the
+	// program exits on its own, for a program such as git whose hooks may
+	// start background work on purpose. A stop still ends the whole group.
+	KeepGroupOnExit bool
+	// Session starts the program in a session of its own rather than only a
+	// process group, so it has no controlling terminal to read or signal.
+	Session bool
 	// WaitDelay bounds how long output may still arrive after the program
 	// exits or is stopped, for a descendant that keeps the pipes open
 	// (exec.Cmd.WaitDelay); a descendant that left the group survives the
@@ -71,7 +84,8 @@ type Result struct {
 	// Code is the exit status, or -1 when the program did not exit on its
 	// own: it never started, or a signal ended it, such as the kill when the
 	// run was stopped. A program that exited before the stop, while a
-	// descendant held its output open, keeps its status.
+	// descendant held its output open, or within Grace after the SIGTERM,
+	// keeps its status.
 	Code int
 	// Stopped is set when ctx ended or Timeout passed, so the process group
 	// was killed or the program was never started.
@@ -93,9 +107,9 @@ type Result struct {
 
 // Run starts the program in a process group of its own and waits for it.
 // When the program exits, Run kills whatever is left in the group; when ctx
-// ends or Timeout passes first, Run kills the group at once. Either way Run
-// returns only once no member of the group is alive, or with Result.Cleanup
-// set.
+// ends or Timeout passes first, Run stops the group, after Grace if one is
+// set. Either way Run returns only once no member of the group is alive, or
+// with Result.Cleanup set; KeepGroupOnExit lifts this after a normal exit.
 func Run(ctx context.Context, spec Spec) Result {
 	runCtx := ctx
 	if spec.Timeout > 0 {
@@ -135,7 +149,7 @@ func Run(ctx context.Context, spec Spec) Result {
 	} else {
 		command.Stdin = spec.Stdin
 	}
-	ownGroup(command)
+	ownGroup(command, spec.Session)
 	if err := command.Start(); err != nil {
 		return Result{Code: -1, Err: err}
 	}
@@ -152,7 +166,9 @@ func Run(ctx context.Context, spec Spec) Result {
 	got := Result{Code: -1}
 	select {
 	case got.Err = <-done:
-		got.Cleanup = endGroup(command, false)
+		if !spec.KeepGroupOnExit {
+			got.Cleanup = endGroup(command)
+		}
 		if state := command.ProcessState; state != nil && state.Exited() {
 			got.Code = state.ExitCode()
 		}
@@ -160,10 +176,10 @@ func Run(ctx context.Context, spec Spec) Result {
 		got.Stopped, got.Cancelled = true, interrupted(ctx)
 		// Killing the group closes every pipe a member holds. A descendant
 		// that left the group can still hold one; WaitDelay bounds that wait.
-		got.Cleanup = endGroup(command, true)
-		got.Err = <-done
+		got.Err, got.Cleanup = stopGroup(command, spec.Grace, done)
 		// The program may have exited on its own before the stop, while a
-		// descendant held its output open; it keeps its status.
+		// descendant held its output open, or within the grace after
+		// SIGTERM; it keeps its status.
 		if state := command.ProcessState; state != nil && state.Exited() {
 			got.Code = state.ExitCode()
 		}

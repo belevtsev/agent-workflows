@@ -717,9 +717,10 @@ func TestHookPrePublishTargetDirectory(t *testing.T) {
 }
 
 func TestHookPrePublishDirectoryChangeScope(t *testing.T) {
-	// R-CMD rev 3, R-PRE rev 3: directory changes the hook cannot follow make
-	// the target unknown, `pushd DIR` moves like `cd DIR`, and parentheses and
-	// backticks scope a directory change. gated (A) has an open record;
+	// R-CMD rev 3, R-PRE rev 3: after a directory change the hook cannot
+	// follow, a commit is checked in the session's directory, `pushd DIR`
+	// moves like `cd DIR`, and parentheses and backticks scope a directory
+	// change. gated (A) has an open record;
 	// ungated (B) is a Git repository without one. All directories come from
 	// the top-level test so their paths hold no spaces or shell separators,
 	// except the deliberate `sp ace` directory inside B.
@@ -742,17 +743,12 @@ func TestHookPrePublishDirectoryChangeScope(t *testing.T) {
 		command string
 		deny    bool
 	}{
-		// R-PRE rev 3 required: from A, a directory change the hook cannot
-		// follow makes the target unknown, so the commit is not gated.
-		{"cd -P makes the target unknown", gated, "cd -P " + ungated + " && git commit -m x", false},
-		{"cd -- makes the target unknown", gated, "cd -- " + ungated + " && git commit -m x", false},
-		{"cd - makes the target unknown", gated, "cd - && git commit -m x", false},
-		{"cd without an argument makes the target unknown", gated, "cd && git commit -m x", false},
-		{"cd ~ makes the target unknown", gated, "cd ~ && git commit -m x", false},
-		{"cd $HOME makes the target unknown", gated, "cd $HOME && git commit -m x", false},
+		// G3: from A, cd -P and cd -- move to B like cd; pushd -n adds B to
+		// the directory stack and stays in A.
+		{"cd -P moves to the ungated repository", gated, "cd -P " + ungated + " && git commit -m x", false},
+		{"cd -- moves to the ungated repository", gated, "cd -- " + ungated + " && git commit -m x", false},
+		{"pushd -n stays in the gated repository", gated, "pushd -n " + ungated + " && git commit -m x", true},
 		{"quoted cd path with a space makes the target unknown", gated, `cd "` + ungated + `/sp ace" && git commit -m x`, false},
-		{"popd makes the target unknown", gated, "popd && git commit -m x", false},
-		{"pushd -n makes the target unknown", gated, "pushd -n " + ungated + " && git commit -m x", false},
 		// R-PRE rev 3 required: from B, an absolute cd or pushd, or an
 		// absolute -C, gives an unknown target a directory again.
 		{"absolute cd after an unknown target", ungated, "cd - && cd " + gated + " && git commit -m x", true},
@@ -788,6 +784,53 @@ func TestHookPrePublishDirectoryChangeScope(t *testing.T) {
 				hkExpectAllow(t, got)
 			}
 		})
+	}
+	// G3: from A, after a directory change the hook does not follow, the
+	// commit is checked in A, the session's directory, and asks, naming the
+	// change and the gating task. R-PRE rev 3 required allow for these.
+	for _, change := range []string{"cd -", "popd"} {
+		t.Run(change+" asks", func(t *testing.T) {
+			got := h.prePublish(t, gated, change+" && git commit -m x")
+			hkExpectAsk(t, got, "cannot tell which directory `"+change+"` leads to", record.ID)
+		})
+	}
+}
+
+func TestHookPrePublishFollowsHomeAndAsksAboutAnUnresolvedDirectory(t *testing.T) {
+	// A gated repository under the harness's home directory, and a session
+	// directory outside it.
+	h := newHKHarness(t)
+	repo := filepath.Join(h.home, "proj")
+	if err := os.Mkdir(repo, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	hkGit(t, repo, "init", "-q")
+	record := h.start(t, repo, hkSubstantialPlan)
+	elsewhere := hkCanonicalTempDir(t)
+
+	// Oracle: the hook gives the gate its home directory (Config.HomeDir,
+	// $HOME in the shell), so a bare cd, `~` and `$HOME` reach the
+	// repository.
+	for _, command := range []string{
+		"cd ~/proj && git commit -m x",
+		`git -C "$HOME/proj" push`,
+		"cd && cd proj && git commit -m x",
+		"cd ~ && cd proj && git commit -m x",
+		"cd $HOME && cd proj && git push",
+	} {
+		t.Run(command, func(t *testing.T) {
+			hkExpectDeny(t, h.prePublish(t, elsewhere, command), record)
+		})
+	}
+
+	// Oracle: after a cd the gate cannot resolve, a commit from the gated
+	// session directory asks, naming the argument and the task, and Codex,
+	// which cannot ask, denies it.
+	unresolved := "cd $OTHER && git commit -m x"
+	hkExpectAsk(t, h.prePublish(t, repo, unresolved), "$OTHER", record.ID)
+	codex := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": unresolved}})
+	if decision, reason := hkDecision(t, h.runPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "$OTHER") {
+		t.Fatalf("Codex decision %q with reason %q, want a deny naming $OTHER", decision, reason)
 	}
 }
 
@@ -834,9 +877,9 @@ func TestHookPrePublishDirectoryChangeRedirectionAndToplevel(t *testing.T) {
 		{"unquoted toplevel substitution with inner spaces", gatedSub, "cd $( git rev-parse --show-toplevel ) && git commit -m x", true},
 		// R-PRE rev 4 required: from B, the toplevel substitution stays in B.
 		{"toplevel substitution from the ungated repository", ungated, `cd "$(git rev-parse --show-toplevel)" && git push`, false},
-		// R-PRE rev 4 required: an option still makes the directory unknown
-		// when a redirection follows.
-		{"cd -P with a redirection makes the target unknown", ungated, "cd -P " + gated + " 2>/dev/null && git push", false},
+		// G3 (was R-PRE rev 4: an option makes the directory unknown): cd -P
+		// moves to A when a redirection follows, as cd does.
+		{"cd -P with a redirection moves to the gated repository", ungated, "cd -P " + gated + " 2>/dev/null && git push", true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

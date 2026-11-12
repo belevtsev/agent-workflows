@@ -26,6 +26,10 @@ type Input struct {
 	Command string
 	// CWD is the directory the command starts in.
 	CWD string
+	// Home is the shell's HOME, which a leading `~` or `$HOME` in a cd or
+	// -C argument names; "" when unknown, which leaves such an argument
+	// unresolved.
+	Home string
 	// Enforce turns on the deny while a record gates and the ask before
 	// pushing uncommitted changes over a verified record.
 	Enforce bool
@@ -90,12 +94,14 @@ type Decision struct {
 }
 
 // Decide returns the decision for in. A deny for any publication in the
-// command wins over an ask for another.
+// command wins over an ask for another. A record that gates only
+// publications after a directory change the gate cannot follow asks
+// instead of denying.
 func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	if !in.Enforce && !in.Prompt {
 		return Decision{}
 	}
-	publications := gitPublications(in.Command, in.CWD)
+	publications := gitPublications(in.Command, in.CWD, in.Home)
 	if len(publications) == 0 {
 		return Decision{}
 	}
@@ -151,7 +157,9 @@ type decider struct {
 // store cannot be read, yields neither. With enforce on, a governing record
 // that cannot be read asks, unless another record gates, joined with any ask
 // the publication raises without it; with enforce off, such a record counts
-// as no record.
+// as no record. Records that gate a publication marked unresolved, which
+// the gate checks in the session's directory for want of its own, ask
+// instead of gating; a host that cannot ask denies.
 func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
 	repo, err := taskflow.ResolveRepository(ctx, publication.dir, d.deps.Git.output)
 	if err != nil {
@@ -176,7 +184,10 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 		}
 	}
 	if len(gating) > 0 {
-		return gating, ask{}
+		if publication.unresolved == "" || !d.in.Enforce {
+			return gating, ask{}
+		}
+		return nil, ask{reason: unresolvedReason(publication.unresolved, repo.Worktree, gating)}
 	}
 	// other is the ask the publication raises as if the unreadable records
 	// did not exist.
@@ -208,16 +219,33 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 func denyReason(gating []taskflow.OpenRecord) string {
 	var reason strings.Builder
 	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
+	writeGating(&reason, gating)
+	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")
+	return reason.String()
+}
+
+// writeGating writes, for each gating record, why it gates and how to verify
+// or abandon it.
+func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 	for _, open := range gating {
 		record := open.Record
 		if open.Legacy {
 			// Verify and abandon cannot load it; the problem names the way out.
-			fmt.Fprintf(&reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
+			fmt.Fprintf(reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
 			continue
 		}
-		fmt.Fprintf(&reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
+		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
 	}
-	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")
+}
+
+// unresolvedReason explains the ask for a publication after the directory
+// change unresolved, which the gate could not follow: it checked the session
+// directory's repository repo instead, where gating records gate.
+func unresolvedReason(unresolved, repo string, gating []taskflow.OpenRecord) string {
+	var reason strings.Builder
+	fmt.Fprintf(&reason, "agent-workflows: the commit and push gate cannot tell which directory `%s` leads to, so it checked the session's repository %s instead, where a task is open:", unresolved, repo)
+	writeGating(&reason, gating)
+	fmt.Fprintf(&reason, " Confirm only if the git commit or push does not run in %s.", repo)
 	return reason.String()
 }
 
