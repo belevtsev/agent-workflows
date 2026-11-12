@@ -423,7 +423,7 @@ func productionHistoricalFixture(test *testing.T, denied []string) Record {
 	plan.Checks = append(plan.Checks, Check{ID: "historical", Argv: slices.Clone(plan.Checks[0].Argv), TimeoutSeconds: 10})
 	plan.Requirements[0].CheckIDs = append(plan.Requirements[0].CheckIDs, "historical")
 	record, _ := fixtureTask(test, plan)
-	run, err := Run(test.Context(), record.Directory, "historical")
+	run, err := RunCheck(test.Context(), record.Directory, "historical")
 	if err != nil || run.ExitCode == nil || *run.ExitCode != 0 {
 		test.Fatalf("cannot seed completed harmless fixture: %#v %v", run, err)
 	}
@@ -472,7 +472,7 @@ func TestProductionHistoricalDeniedPlansStayReadable(test *testing.T) {
 			if !terminalFound || !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
 				test.Fatal("load mutated history or omitted terminal fixture")
 			}
-			if _, err := Run(test.Context(), record.Directory, "historical"); err == nil {
+			if _, err := RunCheck(test.Context(), record.Directory, "historical"); err == nil {
 				test.Fatal("historical readability authorized denied execution")
 			}
 			if !reflect.DeepEqual(productionTaskBytes(test, record.Directory), original) {
@@ -485,7 +485,7 @@ func TestProductionHistoricalDeniedPlansStayReadable(test *testing.T) {
 			if err != nil || prepared.TaskID != loaded.ID || prepared.Phase != "before" {
 				test.Fatalf("safe metadata update denied: %#v %v", prepared, err)
 			}
-			run, err := Run(test.Context(), record.Directory, "focused")
+			run, err := RunCheck(test.Context(), record.Directory, "focused")
 			expectedOutput := "path with spaces|$(literal)|;literal||push"
 			if err != nil || run.ExitCode == nil || *run.ExitCode != 0 || run.OutputSHA256 != digest([]byte(expectedOutput)) || run.OutputBytes != int64(len(expectedOutput)) || run.Truncated {
 				test.Fatalf("allowed sibling did not preserve literal output: %#v %v", run, err)
@@ -541,7 +541,7 @@ func productionIntegrityFixture(test *testing.T) Record {
 	plan := helperPlan(test, "small", "pass", "integrity fixture")
 	plan.CoordinatorID = "production-test-author"
 	record, _ := fixtureTask(test, plan)
-	if _, err := Run(test.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(test.Context(), record.Directory, "focused"); err != nil {
 		test.Fatal(err)
 	}
 	record, err := Load(record.Directory)

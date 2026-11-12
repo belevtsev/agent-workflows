@@ -238,7 +238,8 @@ func jsonString(value jsontext.Value) (string, bool) {
 }
 
 // GoTestsCredited reports whether run's per-test results may prove tests: the
-// GoTests flag rule, whatever packages it names, with -json in argv.
+// Go rule's flag rule (credited), whatever packages it names, with -json in
+// argv.
 func GoTestsCredited(run Run) bool {
 	if credited(run) == nil {
 		return false

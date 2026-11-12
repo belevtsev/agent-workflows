@@ -527,21 +527,21 @@ func aclPlan() taskflow.Plan {
 	return taskflow.Plan{
 		Title: "contract fixture", Kind: "substantial", CoordinatorID: "/root/coord",
 		Requirements: []taskflow.Requirement{{ID: "r1", Description: "the fixture requirement", CheckIDs: []string{"unit"}}},
-		Checks:       []taskflow.Check{{ID: "unit", Argv: []string{"go", "test", "./internal/a"}, TimeoutSeconds: 300}},
+		Checks:       []taskflow.Check{{ID: "unit", Argv: []string{"go", "test", "-race", "./internal/a"}, TimeoutSeconds: 300}},
 		Checkpoints:  &taskflow.CheckpointPolicy{Required: false, Reason: "contract fixture: checkpoints are independent of amendments"},
 	}
 }
 
-// aclV1Packs is an explicit selection of a Go pack, detected by go.mod, that
-// names go.package-test/v1.
-func aclV1Packs() []langpack.Manifest {
-	return []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV1}}
+// aclGoPacks is an explicit selection of a Go pack, detected by go.mod, that
+// names go.package-test/v2.
+func aclGoPacks() []langpack.Manifest {
+	return []langpack.Manifest{{Schema: langpack.SchemaVersion, ID: "go", Kind: langpack.KindLanguage, Detect: []string{"go.mod"}, EvidenceRule: langpack.GoPackageTestV2}}
 }
 
-// start begins the task through taskflow.StartWithPacks with aclV1Packs.
+// start begins the task through taskflow.StartWithPacks with aclGoPacks.
 func (r *aclRepo) start(t *testing.T) string {
 	t.Helper()
-	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, aclPlan(), map[string]string{}, taskflow.SelectionExplicit, aclV1Packs())
+	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, aclPlan(), map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
 	if err != nil {
 		t.Fatalf("setup: taskflow.StartWithPacks: %v", err)
 	}
@@ -565,14 +565,14 @@ func (r *aclRepo) cliStart(t *testing.T) string {
 	return rec.Directory
 }
 
-func (r *aclRepo) startWith(t *testing.T, v2Pack bool) string {
+func (r *aclRepo) startWith(t *testing.T, cliStart bool) string {
 	t.Helper()
-	if !v2Pack {
+	if !cliStart {
 		return r.start(t)
 	}
 	dir := r.cliStart(t)
 	if !aclHasGoRule(aclLoad(t, dir)) {
-		t.Fatalf("setup: cw task start under the default selection recorded no Go package-test pack (v1 or v2): %+v", aclLoad(t, dir).Packs)
+		t.Fatalf("setup: cw task start under the default selection recorded no Go package-test pack: %+v", aclLoad(t, dir).Packs)
 	}
 	return dir
 }
@@ -582,7 +582,7 @@ func aclHasGoRule(rec taskflow.Record) bool {
 		return false
 	}
 	for _, p := range rec.Packs.Applied {
-		if p.EvidenceRule == "go.package-test/v1" || p.EvidenceRule == "go.package-test/v2" {
+		if p.EvidenceRule == "go.package-test/v2" {
 			return true
 		}
 	}
@@ -639,10 +639,10 @@ func (r *aclRepo) mark(t *testing.T, pkg string, fail bool) {
 	r.cw.env[key] = v
 }
 
-func aclStandardTask(t *testing.T, v2Pack bool) (*aclRepo, string) {
+func aclStandardTask(t *testing.T, cliStart bool) (*aclRepo, string) {
 	t.Helper()
 	r := aclNewRepo(t)
-	dir := r.startWith(t, v2Pack)
+	dir := r.startWith(t, cliStart)
 	r.standard(t)
 	return r, dir
 }
@@ -653,7 +653,9 @@ type aclCheck struct {
 	TimeoutSeconds int      `json:"timeout_seconds,omitempty"`
 }
 
-var aclWidened = aclCheck{ID: "widened", Argv: []string{"go", "test", "./..."}}
+// aclWidened runs under -race, which go.package-test/v2 needs for each changed
+// package.
+var aclWidened = aclCheck{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}
 
 func aclInputJSON(t *testing.T, merge string, checks ...aclCheck) string {
 	t.Helper()
@@ -1052,7 +1054,7 @@ var aclCases = []struct {
 	fn   func(*testing.T)
 }{
 	{"DoneCriterion", aclTestDoneCriterion},
-	{"DoneCriterionV1Pack", aclTestDoneCriterionV1Pack},
+	{"DoneCriterionStartWithPacks", aclTestDoneCriterionStartWithPacks},
 	{"PackSetWithoutGoRule", aclTestPackSetWithoutGoRule},
 	{"MergedFileWithoutCoverage", aclTestMergedFileWithoutCoverage},
 	{"CiteAddedCheckInWorkerRecords", aclTestCiteAddedCheckInWorkerRecords},
@@ -1072,27 +1074,22 @@ var aclCases = []struct {
 // aclDoneCriterion runs the done criterion through cw: after the base merge,
 // verify fails; after add-checks, a passed run of widened, an assessment and
 // decision citing widened and an accepted independent review, verify is
-// complete. v2Pack selects the cw task start fixture (R13.a, R13.b) or the
-// taskflow.StartWithPacks one with a go.package-test/v1 pack (R13.c, R13.d).
-func aclDoneCriterion(t *testing.T, v2Pack bool) {
+// complete. cliStart selects the cw task start fixture (R13.a, R13.b) or the
+// taskflow.StartWithPacks one with an explicit Go pack (R13.c, R13.d).
+func aclDoneCriterion(t *testing.T, cliStart bool) {
 	t.Helper()
-	r, dir := aclStandardTask(t, v2Pack)
+	r, dir := aclStandardTask(t, cliStart)
 	r.runPassed(t, dir, "unit")
 	aclAssess(t, dir, r.root, []string{"unit"}, []string{"unit"})
 	v1 := r.verify(t, dir)
 	if v1.Complete || !aclHasProblem(v1, aclGoModProblem) {
 		t.Errorf("R13.a/R13.c: verify after the base merge complete=%v problems %q; want incomplete with %q", v1.Complete, v1.Problems, aclGoModProblem)
 	}
-	if v2Pack && !aclHasProblem(v1, aclPkgBProblem) {
+	if !aclHasProblem(v1, aclPkgBProblem) {
 		t.Errorf("R13.a: verify problems %q lack %q", v1.Problems, aclPkgBProblem)
 	}
 
-	// The built-in go pack applies go.package-test/v2, which credits only
-	// -race runs; the v1 pack applies go.package-test/v1.
 	widened := aclWidened
-	if v2Pack {
-		widened = aclCheck{ID: "widened", Argv: []string{"go", "test", "-race", "./..."}}
-	}
 	res := r.addChecks(t, dir, widened)
 	line := aclOneLine(t, "R18.d", res.stdout)
 	stored := aclLoad(t, dir)
@@ -1155,7 +1152,7 @@ func aclDoneCriterion(t *testing.T, v2Pack bool) {
 }
 
 // aclTestDoneCriterion fails when, for a task started by cw
-// task start (pack set with go.package-test/v1), a base merge changing go.mod
+// task start (pack set with go.package-test/v2), a base merge changing go.mod
 // and internal/b does not fail verify (R13.a), or add-checks plus a passed run
 // of widened does not let verify complete (R13.b, R11.a, R12.a, R12.b), or the
 // amendment is not visible in cw task show (R8.a), or add-checks does not print
@@ -1166,16 +1163,16 @@ func aclTestDoneCriterion(t *testing.T) {
 	aclDoneCriterion(t, true)
 }
 
-// aclTestDoneCriterionV1Pack is the done criterion for a record whose pack
-// set names go.package-test/v1: R13.c, R13.d.
-func aclTestDoneCriterionV1Pack(t *testing.T) {
+// aclTestDoneCriterionStartWithPacks is the done criterion for a task that
+// taskflow.StartWithPacks started with an explicit Go pack: R13.c, R13.d.
+func aclTestDoneCriterionStartWithPacks(t *testing.T) {
 	aclSetup(t)
 	t.Parallel()
 	aclDoneCriterion(t, false)
 }
 
 // aclTestPackSetWithoutGoRule fails when a task whose pack set
-// names no go.package-test/v1 accepts an amendment (R2.c, B3).
+// names no Go package-test rule accepts an amendment (R2.c, B3).
 func aclTestPackSetWithoutGoRule(t *testing.T) {
 	aclSetup(t)
 	t.Parallel()
@@ -1256,15 +1253,16 @@ func aclTestCiteAddedCheckInWorkerRecords(t *testing.T) {
 }
 
 // aclTestVerifyCredit fails when verify credits an added
-// check's run wrongly, on a v2 pack record (cw task start) and on a v1 pack
-// record (R13.e, R13.f, R13.g, R15.a, R16.a). The R13.f, R13.g
-// and R16.a subtests vary the environment and therefore run sequentially.
+// check's run wrongly, on a record cw task start wrote and on one
+// taskflow.StartWithPacks wrote (R13.e, R13.f, R13.g, R15.a, R16.a). The
+// R13.f, R13.g and R16.a subtests vary the environment and therefore run
+// sequentially.
 func aclTestVerifyCredit(t *testing.T) {
 	aclSetup(t)
-	for _, v2Pack := range []bool{true, false} {
-		name := map[bool]string{true: "v2 pack", false: "v1 pack"}[v2Pack]
+	for _, cliStart := range []bool{true, false} {
+		name := map[bool]string{true: "cw task start", false: "StartWithPacks"}[cliStart]
 		t.Run("R13.g "+name+" widened passed with compiler GOFLAGS", func(t *testing.T) {
-			r, dir := aclStandardTask(t, v2Pack)
+			r, dir := aclStandardTask(t, cliStart)
 			r.runPassed(t, dir, "unit")
 			r.addChecks(t, dir)
 			t.Setenv("GOFLAGS", "-gcflags=all=-N")
@@ -1278,7 +1276,7 @@ func aclTestVerifyCredit(t *testing.T) {
 		})
 		t.Run("R13.e "+name+" passed added check satisfies the fallback", func(t *testing.T) {
 			t.Parallel()
-			r, dir := aclStandardTask(t, v2Pack)
+			r, dir := aclStandardTask(t, cliStart)
 			r.addChecks(t, dir)
 			r.runPassed(t, dir, "widened")
 			if v := r.verify(t, dir); aclHasProblem(v, aclFallbackProblm) {
@@ -1286,7 +1284,7 @@ func aclTestVerifyCredit(t *testing.T) {
 			}
 		})
 		t.Run("R13.f and R15.a "+name+" widened passed then failed", func(t *testing.T) {
-			r, dir := aclStandardTask(t, v2Pack)
+			r, dir := aclStandardTask(t, cliStart)
 			r.runPassed(t, dir, "unit")
 			r.addChecks(t, dir)
 			r.runPassed(t, dir, "widened")
@@ -1304,7 +1302,7 @@ func aclTestVerifyCredit(t *testing.T) {
 			}
 		})
 		t.Run("R16.a "+name+" failed unit still blocks", func(t *testing.T) {
-			r, dir := aclStandardTask(t, v2Pack)
+			r, dir := aclStandardTask(t, cliStart)
 			r.addChecks(t, dir)
 			r.runPassed(t, dir, "widened")
 			r.mark(t, "a", true)
@@ -1518,7 +1516,7 @@ func (r *aclRepo) commitOFiles(t *testing.T, files map[string]string) {
 }
 
 // aclFinalConsultation prepares a final context and its adjudicated
-// consultation on a task with required checkpoints and a go.package-test/v1
+// consultation on a task with required checkpoints and a go.package-test/v2
 // pack (section 5 item 9: a resolved before consultation and complete local
 // evidence first).
 // The base merge changes only internal/b (not go.mod) and no plan check
@@ -1531,7 +1529,7 @@ func aclFinalConsultation(t *testing.T, amend bool) {
 	r := aclNewRepo(t)
 	plan := aclPlan()
 	plan.Checkpoints = nil
-	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, plan, map[string]string{}, taskflow.SelectionExplicit, aclV1Packs())
+	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, plan, map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
 	if err != nil {
 		t.Fatalf("setup: taskflow.StartWithPacks: %v", err)
 	}
@@ -1652,7 +1650,7 @@ func aclTestRefusals(t *testing.T) {
 			}
 			rec := aclLoad(t, dir)
 			if len(rec.Plan.Checks) != 1 || rec.Plan.Checks[0].ID != "unit" ||
-				!reflect.DeepEqual(rec.Plan.Checks[0].Argv, []string{"go", "test", "./internal/a"}) {
+				!reflect.DeepEqual(rec.Plan.Checks[0].Argv, []string{"go", "test", "-race", "./internal/a"}) {
 				t.Errorf("%s: plan checks %+v, want unit unchanged", tc.name, rec.Plan.Checks)
 			}
 		})

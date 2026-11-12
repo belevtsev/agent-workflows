@@ -3,7 +3,7 @@ package taskflow_test
 // Shared fixtures for the L3 contract tests (interface contract L3, revision 3).
 // Every fixture is a real Git repository holding a small Go module in
 // t.TempDir(), a separate task store, and real go test runs through
-// taskflow.Run. Expectations live in the tests, never here.
+// taskflow.RunCheck. Expectations live in the tests, never here.
 
 import (
 	"context"
@@ -469,9 +469,9 @@ func (f *l3Fix) run(check string) taskflow.CheckRun {
 	f.t.Helper()
 	ctx, cancel := context.WithTimeout(f.ctx, l3Wait)
 	defer cancel()
-	run, err := taskflow.Run(ctx, f.dir, check)
+	run, err := taskflow.RunCheck(ctx, f.dir, check)
 	if run.ID == "" {
-		f.t.Fatalf("Run(%s): %v", check, err)
+		f.t.Fatalf("RunCheck(%s): %v", check, err)
 	}
 	return f.recordedRun(run.ID)
 }

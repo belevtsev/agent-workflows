@@ -152,7 +152,7 @@ func fixtureReviewBundle(t *testing.T, record Record, reviewID string) *BundleRe
 func bundleTestSubmitReview(t *testing.T, record Record, id, status string, findings []WorkerFinding) Record {
 	t.Helper()
 	record = mustAssignWorker(t, record, workerBrief(id, "/root/reviewer", "review", []string{"."}, "focused"))
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	record, err := Load(record.Directory)
@@ -539,11 +539,11 @@ func TestBundleChecksDescribeLatestRuns(t *testing.T) {
 		Checks:       []Check{{ID: "zeta", Argv: pass, TimeoutSeconds: 10}, {ID: "focused", Argv: pass, TimeoutSeconds: 10}, {ID: "flaky", Argv: fail, TimeoutSeconds: 10}},
 	}
 	record, _ := fixtureTask(t, plan)
-	flaky, err := Run(t.Context(), record.Directory, "flaky")
+	flaky, err := RunCheck(t.Context(), record.Directory, "flaky")
 	if err == nil || flaky.Status != "failed" {
 		t.Fatalf("failing fixture check: %+v %v", flaky, err)
 	}
-	focused, err := Run(t.Context(), record.Directory, "focused")
+	focused, err := RunCheck(t.Context(), record.Directory, "focused")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -564,7 +564,7 @@ func TestBundleChecksDescribeLatestRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertChecks("after edit", []BundleCheck{notRun, entry(focused, &zero, false), entry(flaky, &nine, false)})
-	rerun, err := Run(t.Context(), record.Directory, "focused")
+	rerun, err := RunCheck(t.Context(), record.Directory, "focused")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -744,7 +744,7 @@ func TestReviewAssignmentRefusesEditedOrStaleBundle(t *testing.T) {
 	t.Run("later check run", func(t *testing.T) {
 		record, bundle := bundleTestAssignFixture(t)
 		ref, _ := bundleTestWriteBundle(t, bundle)
-		if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+		if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 			t.Fatal(err)
 		}
 		record, err := Load(record.Directory)

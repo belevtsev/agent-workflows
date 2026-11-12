@@ -183,7 +183,7 @@ func TestAutofillFillsBlankAssessmentAndDecisionHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := changedWorkerSource(t, record)
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	blank := ref
@@ -264,7 +264,7 @@ func TestAutofillReviewRejectsOmittedSnapshotAfterSourceChanged(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(record.Baseline.Root, "source.txt"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	ref := SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: digest(data)}
@@ -326,7 +326,7 @@ func TestAutofillStillValidatesExplicitAssessmentHashes(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := changedWorkerSource(t, record)
-	if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+	if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
 	before := autofillTestLoad(t, record.Directory)
@@ -526,7 +526,7 @@ func TestAutofillFindingDispositionEvidenceHash(t *testing.T) {
 func TestAutofillHandoffBindsPlannedCheckRuns(t *testing.T) {
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	record = mustAssignWorker(t, record, workerBrief("inspect", "/root/project_explorer", "evidence", []string{"source.txt"}, "focused"))
-	run, err := Run(t.Context(), record.Directory, "focused")
+	run, err := RunCheck(t.Context(), record.Directory, "focused")
 	if err != nil {
 		t.Fatal(err)
 	}

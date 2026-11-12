@@ -289,13 +289,13 @@ func requireRefusedWithoutWrites(t *testing.T, record Record, ref SourceRef, mar
 		{"context_final", func() error { _, err := PrepareContext(t.Context(), record.Directory, "final"); return err }},
 		{"assess", func() error { _, err := Assess(t.Context(), record.Directory, assessment(ref, "focused")); return err }},
 		{"run_probe", func() error {
-			run, err := Run(t.Context(), record.Directory, "probe")
+			run, err := RunCheck(t.Context(), record.Directory, "probe")
 			if run.ID != "" || run.Log != "" {
 				t.Errorf("refused run returned a check record: id=%q log=%q", run.ID, run.Log)
 			}
 			return err
 		}},
-		{"run_focused", func() error { _, err := Run(t.Context(), record.Directory, "focused"); return err }},
+		{"run_focused", func() error { _, err := RunCheck(t.Context(), record.Directory, "focused"); return err }},
 		{"consult", func() error {
 			_, err := AttachConsultation(t.Context(), record.Directory, "before", consultation)
 			return err

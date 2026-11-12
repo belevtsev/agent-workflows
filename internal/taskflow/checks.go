@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -29,6 +30,10 @@ const (
 	// the task lock. Without it a stalled capture could use the whole
 	// budget and leave the run recorded as running.
 	checkRecordWriteReserve = 10 * time.Second
+	// checkWaitDelay bounds how long a check's output may still arrive after
+	// the check exits or is stopped, for a descendant that keeps the output
+	// pipe open.
+	checkWaitDelay = 2 * time.Second
 )
 
 // validateCommandShape checks the bounded representation shared by immutable
@@ -287,18 +292,49 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 	return capture.tests.ResultsWithRuns()
 }
 
-// Run executes only argv recorded in the immutable plan or added by an
+// checkSpec builds the proc.Spec that runs check in dir: its argv directly,
+// without a shell, with the filtered environment of checkEnvironment, no
+// input, the check's timeout and checkWaitDelay. It is the one place that
+// decides which program a check runs and what that program sees; RunCheck
+// records the environment's GOFLAGS from it and attaches the log as both
+// outputs.
+func checkSpec(check Check, dir string) proc.Spec {
+	return proc.Spec{
+		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(),
+		Timeout:   time.Duration(check.TimeoutSeconds) * time.Second,
+		WaitDelay: checkWaitDelay,
+	}
+}
+
+// checkExitCode returns the exit code a run records, as os.ProcessState's
+// ExitCode reported it: the program's own status whenever it exited, also
+// when the run was stopped afterwards while a descendant held the output
+// open; -1 when a signal ended it, such as the kill at a timeout or a
+// cancellation; and nil when it never started (it could not be started, or
+// the run was stopped first). proc.Result.Code is -1 both when a signal ended
+// the program and when it never started; only the first has an
+// *exec.ExitError.
+func checkExitCode(got proc.Result) *int {
+	var exit *exec.ExitError
+	if got.Code < 0 && !errors.As(got.Err, &exit) {
+		return nil
+	}
+	code := got.Code
+	return &code
+}
+
+// RunCheck executes only argv recorded in the immutable plan or added by an
 // amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
-func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
+func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
-	var check Check
+	var spec proc.Spec
 	var logFile *os.File
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
 	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
-		var found bool
-		if check, found = findCheck(*record, checkID); !found {
+		check, found := findCheck(*record, checkID)
+		if !found {
 			return errors.New("check is not in the explicit coordinator plan")
 		}
 		if err := validateCommand(check.Argv); err != nil {
@@ -317,7 +353,8 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(), "GOFLAGS"))}
+		spec = checkSpec(check, snapshot.SelectedPath)
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS"))}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -334,18 +371,12 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 		return run, err
 	}
 	capture := &logCapture{file: logFile, full: sha256.New(), saved: sha256.New()}
-	runCtx, cancel := context.WithTimeout(ctx, time.Duration(check.TimeoutSeconds)*time.Second)
-	defer cancel()
-	command := exec.CommandContext(runCtx, check.Argv[0], check.Argv[1:]...) //nolint:gosec // G204: running the check argv the user declared in the plan is this function's purpose; no shell.
-	command.Dir = run.Before.SelectedPath
-	command.Env = checkEnvironment()
-	command.Stdout = capture
-	command.Stderr = capture
-	command.Stdin = nil
-	command.WaitDelay = 2 * time.Second
-	configureCheckProcess(command)
-	runErr := command.Run()
-	cleanupErr := cleanupCheckProcess(command)
+	// One writer takes both outputs, so os/exec gives the check a single pipe
+	// and the log keeps stdout and stderr in the order the check wrote them.
+	spec.Stdout, spec.Stderr = capture, capture
+	// proc.Run kills the check's process group until it is empty, after a
+	// normal exit as well as at the timeout or cancellation.
+	got := proc.Run(ctx, spec)
 	syncErr := logFile.Sync()
 	closeErr := logFile.Close()
 	finished := time.Now().UTC()
@@ -354,20 +385,18 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	run.OutputSHA256 = hex.EncodeToString(capture.full.Sum(nil))
 	run.OutputBytes = capture.bytes
 	run.Truncated = capture.bytes > int64(capture.written)
-	if command.ProcessState != nil {
-		code := command.ProcessState.ExitCode()
-		run.ExitCode = &code
-	}
+	run.ExitCode = checkExitCode(got)
 	switch {
 	case errors.Is(ctx.Err(), context.Canceled):
 		run.Status = "cancelled"
 		run.Failure = "cancelled"
-	case errors.Is(runCtx.Err(), context.DeadlineExceeded):
+	case got.Stopped:
+		// The check's timeout, or a deadline on ctx, stopped the run.
 		run.Status = "timed_out"
 		run.Failure = "timeout"
-	case cleanupErr != nil:
+	case got.Cleanup != nil:
 		run.Status = "failed"
-	case runErr != nil:
+	case got.Err != nil:
 		run.Status = "failed"
 		run.Failure = "command_failed"
 	case capture.failure != nil || syncErr != nil || closeErr != nil:
@@ -376,7 +405,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	default:
 		run.Status = "passed"
 	}
-	if cleanupErr != nil {
+	if got.Cleanup != nil {
 		// A check process outlived the group kill; keep a cancelled or timed-out
 		// status, but never let the leak go unrecorded.
 		run.Failure = "process_cleanup_failed"

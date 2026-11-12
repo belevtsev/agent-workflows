@@ -31,6 +31,9 @@ in a process group of its own, with an explicit environment, keeps the head of
 its output and the tail of its error output, and when the run ends, normally
 or at its deadline, kills the group until no member is alive. Run a new
 subprocess with it rather than another `exec.Cmd` and group kill.
+`cw task run` runs a check on it through `taskflow.RunCheck`, and only
+`checkSpec` turns a planned check into its `proc.Spec`: change the program,
+environment or bounds of every check there.
 
 ## Verification
 
@@ -192,8 +195,9 @@ run `status` or context phase, fails validation with "invalid stored …".
   the task by an older revision.
 - A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
   says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
-  `baseline_manifest` is refused with `taskflow.ErrLegacyRecord`, which says to
-  start a new task. A `cw task` command on either record exits 4;
+  `baseline_manifest`, or binds the removed rule `go.package-test/v1`, is
+  refused with `taskflow.ErrLegacyRecord`, which says to start a new task. A
+  `cw task` command on either record exits 4;
   `cw publish --task` reports `task-unreadable` and exits 1. A version below
   `MinVersion`, or a revision with a lower version than the one before it, does
   not load either, and exits 1.

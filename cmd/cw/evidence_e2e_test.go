@@ -255,9 +255,9 @@ func anyRunProblem(t *testing.T) string {
 func packageProblem(t *testing.T, pkg string) string {
 	t.Helper()
 	source := langpack.Source{Current: []string{"go.mod", pkg + "/x.go"}, Changed: []string{pkg + "/x.go"}}
-	problems := (langpack.GoTests{}).Problems(source, nil)
+	problems := langpack.GoEvidence(source, nil, langpack.GoFacts{NoRace: "not needed"}).Problems
 	if len(problems) != 1 || !strings.Contains(problems[0], pkg) || !strings.Contains(problems[0], "has no passed go test run at the current source") {
-		t.Fatalf("GoTests problems %q, want one naming %s", problems, pkg)
+		t.Fatalf("Go rule problems %q, want one naming %s", problems, pkg)
 	}
 	return problems[0]
 }
@@ -417,19 +417,19 @@ func TestEvidenceE2EGoPackagesNeedCoveringPassedRuns(t *testing.T) {
 	expect("go.mod changed, ./... passed", nil, append([]string{anyRun, alpha, beta}, module...))
 }
 
-// moduleFileProblems returns the problems GoTests reports for a go.mod change
-// in a module without a root package once every package has its own passed
-// run: exactly the module-file rule's problems.
+// moduleFileProblems returns the problems the Go rule reports for a go.mod
+// change in a module without a root package once every package has its own
+// passed run: exactly the module-file rule's problems.
 func moduleFileProblems(t *testing.T) []string {
 	t.Helper()
 	source := langpack.Source{
 		Current: []string{"go.mod", "alpha/alpha.go", "alpha/alpha_test.go", "beta/beta.go", "beta/beta_test.go"},
 		Changed: []string{"go.mod"},
 	}
-	problems := (langpack.GoTests{}).Problems(source, []langpack.Run{{Argv: []string{"go", "test", "./alpha"}}, {Argv: []string{"go", "test", "./beta"}}})
+	problems := langpack.GoEvidence(source, []langpack.Run{{Argv: []string{"go", "test", "./alpha"}}, {Argv: []string{"go", "test", "./beta"}}}, langpack.GoFacts{NoRace: "not needed"}).Problems
 	want := []string{"changed go.mod has no passed go test ./... run at the current source"}
 	if !slices.Equal(problems, want) {
-		t.Errorf("GoTests problems for a go.mod change with per-package runs %q, want %q", problems, want)
+		t.Errorf("Go rule problems for a go.mod change with per-package runs %q, want %q", problems, want)
 	}
 	return want
 }
