@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
+  without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 - Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
   so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 
