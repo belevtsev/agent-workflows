@@ -173,11 +173,14 @@ the command and asks the agent to stop and verify first. Editing a verified
 file reopens the task. With no task at all, a large change gets a prompt
 suggesting `cw task start`.
 
-It does not stop git run by a script, an alias or a command form the hook does
-not parse, an edited or damaged task store, a fake toolchain on `PATH`, or
-`cw task abandon` run by the agent from a script; the hook asks you before one
-it can see. See the [threat model](SECURITY.md#threat-model)
-and the [known bypasses](docs/hooks.md#known-bypasses).
+It does not stop an edited or damaged task store, a fake toolchain on `PATH`,
+or `cw task abandon` run by the agent from a script (the hook asks you before
+one it can see), nor git run by a script, an alias or a command form the hook
+does not parse, unless `cw gate install` added git's own pre-commit and
+pre-push hooks to the repository
+([git hooks](docs/hooks.md#installing-the-git-hooks)). See the
+[threat model](SECURITY.md#threat-model) and the
+[known bypasses](docs/hooks.md#known-bypasses).
 
 `cw publish` commits a verified task's files, pushes them and creates or edits
 the pull request, and applies the same gate itself, so it holds under Codex as
@@ -210,8 +213,9 @@ check with `cw task add-checks` after `git merge --no-ff <base>`; the plan
 itself never changes. See
 [Merging the base branch during a task](docs/operations.md#merging-the-base-branch-during-a-task).
 
-**See why a commit is blocked.** The denial names each blocking task. This lists
-its problems, such as a missing review or an unmet requirement:
+**See why a commit is blocked.** The denial names up to three blocking tasks
+and counts the rest. This lists a task's problems, such as a missing review or
+an unmet requirement:
 
 ```sh
 cw task verify --task <task-dir> --summary

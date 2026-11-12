@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
 - A check can name variables such as `DB_PASSWORD` in `env_passthrough` to receive them, where `cw` otherwise drops names with `KEY`, `TOKEN`,
   `SECRET`, `PASSWORD` or `CREDENTIAL`; `cw task verify` lists each as a limitation ([check environment](docs/operations.md#what-a-check-runs-with)).
+- `cw gate install`, `uninstall` and `status` write, remove and report a repository's git pre-commit and pre-push hooks that run that gate;
+  they never change a hook cw did not write, or a hooks directory other repositories use without `--shared` ([installing](docs/hooks.md#installing-the-git-hooks)).
 - The session-start context gains one line when the plugin and `cw` versions differ, naming the one to update, and one
   when Claude Code is older than 2.1.292; a `cw` built between tags is not compared ([session start](docs/hooks.md#session-start)).
 
@@ -161,6 +163,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The overview diagram ends with `cw publish`, with the GitHub worker as fallback, and shows the opt-in adversarial
   tester ([how it works](README.md#how-it-works)).
 - Security fixes go to the newest v3 release, release candidates included ([supported versions](SECURITY.md#supported-versions)).
+- The commit gate's deny names at most three open tasks, each directory once, and counts the rest with their task store,
+  so it stays short with many open tasks; the Codex deny and git hook stderr follow ([which records gate](docs/hooks.md#which-records-gate)).
 
 ### Fixed
 
