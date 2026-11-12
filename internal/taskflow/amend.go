@@ -70,7 +70,7 @@ func parseAmendmentInput(input AmendmentInput) (amendmentRequest, error) {
 		if check.TimeoutSeconds == 0 {
 			check.TimeoutSeconds = 300
 		}
-		checks = append(checks, Check{ID: check.ID, Argv: slices.Clone(check.Argv), TimeoutSeconds: check.TimeoutSeconds})
+		checks = append(checks, Check{ID: check.ID, Argv: slices.Clone(check.Argv), TimeoutSeconds: check.TimeoutSeconds, EnvPassthrough: slices.Clone(check.EnvPassthrough)})
 	}
 	seen := map[string]bool{}
 	for _, check := range checks {
@@ -86,6 +86,9 @@ func parseAmendmentInput(input AmendmentInput) (amendmentRequest, error) {
 	}
 	for _, check := range checks {
 		if err := validateCommand(check.Argv); err != nil {
+			return amendmentRequest{}, fmt.Errorf("check %s: %w", check.ID, err)
+		}
+		if err := validateEnvPassthrough(check.EnvPassthrough); err != nil {
 			return amendmentRequest{}, fmt.Errorf("check %s: %w", check.ID, err)
 		}
 	}
@@ -253,7 +256,7 @@ func validateAmendments(record Record) error {
 			return invalid
 		}
 		for _, check := range amendment.Checks {
-			if !identifier.MatchString(check.ID) || ids[check.ID] || check.TimeoutSeconds < 1 || check.TimeoutSeconds > 3600 || validateCommandShape(check.Argv) != nil {
+			if !identifier.MatchString(check.ID) || ids[check.ID] || check.TimeoutSeconds < 1 || check.TimeoutSeconds > 3600 || validateCommandShape(check.Argv) != nil || validateEnvPassthroughShape(check.EnvPassthrough) != nil {
 				return invalid
 			}
 			ids[check.ID] = true

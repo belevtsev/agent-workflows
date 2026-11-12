@@ -442,6 +442,76 @@ and an empty log, and `cw task run` exits 5 with an error that names the
 candidate. Put the real `go` first on `PATH`. This shows what the binary is, not
 that it reports honestly ([threat model](../SECURITY.md#threat-model)).
 
+### What a check runs with
+
+`cw task run` runs a check's argv directly, without a shell, in the selected
+path, with no input and `timeout_seconds` as its bound. `cw task start`,
+`cw task add-checks` and `cw task run` refuse some programs by name: shells,
+`env`, `sudo`, network and deployment tools, git other than inspection commands,
+and `cw publish`. That denylist is an accident guard, not a sandbox: `make`,
+`python3 -c`, `go run` or a script can still do anything the user can
+([threat model](../SECURITY.md#threat-model)).
+
+The check gets `cw`'s environment without the variables whose names contain
+`KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, in any case, and without
+`BASH_ENV` and `ENV`. A check that needs one of them, such as an integration
+test that reads `DB_PASSWORD` or `GOOGLE_APPLICATION_CREDENTIALS`, names it in
+its `env_passthrough`: at most 32 names matching `^[A-Z_][A-Z0-9_]*$`, each
+matched exactly.
+
+```json
+{"id": "integration", "argv": ["go", "test", "-race", "./..."], "env_passthrough": ["DB_PASSWORD"]}
+```
+
+`cw` then passes that variable with its value when its own environment sets
+it; every other variable the filter drops stays out. The plan records the
+names, never the values, and `cw task verify` lists each check whose passed run
+had them as a limitation, such as `check integration received DB_PASSWORD
+through env_passthrough, where cw's environment set them`. A value the check
+prints lands in its log in the task directory.
+
+`env_passthrough` cannot name `BASH_ENV` or `ENV` (a shell that the check starts
+would run the file they name), `GOROOT` or `GOTOOLCHAIN` (`cw` sets them for a
+go check, [below](#which-go-a-check-runs)), or `GH_TOKEN`, `GITHUB_TOKEN`,
+`GH_ENTERPRISE_TOKEN` and `GITHUB_ENTERPRISE_TOKEN`: `gh` publishes with them,
+and publication is outside task checks. `cw task start`, `cw task add-checks`
+and `cw task run` refuse such a check. Like the denylist, this guards against
+accidents: a test that calls the GitHub API can read a token under a name of
+its own, which the plan and verify then show.
+
+Variables the filter keeps, `GOFLAGS` among them, reach every check whether or
+not `env_passthrough` names them. The run records the `GOFLAGS` the check saw,
+and the Go rule credits only allowlisted flags, so a `GOFLAGS` with `-exec` or
+`-toolexec` earns no credit.
+
+### Which go a check runs
+
+A check whose program is `go` (or `go.exe`), named bare or by a path, runs only
+a go command that `cw` verified. `cw` takes the `go` the check's `PATH` names
+(or the path given) and runs it once as `go env GOROOT`, in the selected path,
+with the check's environment and within its timeout, before it takes the task
+lock. That follows a version manager's shim, a `golang.org/dl` wrapper and a
+`GOTOOLCHAIN` switch to the go command that would really run; `cmd/go` looks
+for a switched toolchain such as `go1.27.4` on `PATH` before it downloads one
+into the module cache. `cw` then reads `$GOROOT/bin/go` without running it and
+accepts it only when its build information names `cmd/go` and the printed
+`GOROOT` resolves to that file's own tree, the directory above its `bin`. The
+check runs that file by its absolute path with `GOROOT` set to that tree and
+`GOTOOLCHAIN=local`, after the check's own environment, so neither a `GOROOT`
+variable nor a go env file can pick another tree's `go.env`, and the go command
+cannot switch again. The run records it under `tool` (`path`, `version`,
+`sha256`, `goroot`), and `cw task verify` lists the go command and `GOROOT` that
+each passed go check ran as a limitation. A run recorded before this has no
+`tool` and keeps its credit.
+
+When no go command verifies, such as a script named `go` first on `PATH`, a
+`GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
+downloaded, the check does not run:
+the run is recorded as `failed` with failure `untrusted_toolchain`, no exit code
+and an empty log, and `cw task run` exits 5 with an error that names the
+candidate. Put the real `go` first on `PATH`. This shows what the binary is, not
+that it reports honestly ([threat model](../SECURITY.md#threat-model)).
+
 `cw task verify` reads the Go rule's facts, the package graph and whether
 `-race` can run on the host, from a go command it verifies the same way: it
 runs the `go` its `PATH` names once as `go env GOROOT`, offline
@@ -502,6 +572,8 @@ Checks can only be added this way, never removed, replaced or narrowed.
   would exceed 256, or an argv is not a direct `go test` that the Go rule
   credits (flags outside the allowlist, such as `-run`, and wrappers such as
   `make` earn no credit); `GOFLAGS` in `cw`'s environment plays no part here;
+- an added check's `env_passthrough` breaks the plan's rules for it
+  ([what a check runs with](#what-a-check-runs-with));
 - the merge does not qualify: `merge_commit` must resolve to a commit with at
   least two parents that is reachable from HEAD and not from the task's
   baseline HEAD or from `base_ref`, and a parent after the first must be
