@@ -165,6 +165,52 @@ func TestGoEvidenceFlagValuesB4(t *testing.T) {
 	})
 }
 
+// F1: the Go rule credits a run only under a go configuration that shows its
+// tests ran. Oracle: a run without a recorded go env, or one whose GOOS or
+// GOARCH is not its go command's host's (go test hands such test binaries to
+// a go_<goos>_<goarch>_exec program from PATH), has a reason withheld; the
+// rule then gives it no credit (T1 for its package, no per-test credit, a run
+// limit of 0) and lists the reason once, only for a run its argv and GOFLAGS
+// would credit; a host build withholds nothing; argv-only judgements are
+// unchanged.
+func TestGoEvidenceWithholdsCreditOutsideTheHostsGoConfiguration(t *testing.T) {
+	host := langpack.GoEnv{GOFLAGS: "-v", GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}
+	if got := langpack.GoEnvWithheld(&host); got != "" {
+		t.Errorf("GoEnvWithheld(host build) = %q, want nothing withheld", got)
+	}
+	crossArch, crossOS := host, host
+	crossArch.GOARCH = "arm64"
+	crossOS.GOOS = "windows"
+	for _, c := range []struct {
+		name     string
+		env      *langpack.GoEnv
+		withheld string
+	}{
+		{"no go env", nil, "cw did not record the configuration its go command applied (go env); run it again"},
+		{"another architecture", &crossArch, "it built its tests for linux/arm64, not for its go command's host linux/amd64, so go test may have handed them to a go_linux_arm64_exec program instead of running them"},
+		{"another system", &crossOS, "it built its tests for windows/amd64, not for its go command's host linux/amd64, so go test may have handed them to a go_windows_amd64_exec program instead of running them"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := langpack.GoEnvWithheld(c.env); got != c.withheld {
+				t.Fatalf("GoEnvWithheld = %q, want %q", got, c.withheld)
+			}
+			run := geRun("unit", "-race", "-json", "./a")
+			run.Withheld = c.withheld
+			if langpack.GoTestsCredited(run) || langpack.GoTestRunLimit(run) != 0 {
+				t.Errorf("a withheld run is per-test credited (limit %d)", langpack.GoTestRunLimit(run))
+			}
+			if !langpack.CreditsGoTest(run.Argv) {
+				t.Error("precondition: the argv alone earns no credit")
+			}
+			vet := langpack.Run{CheckID: "vet", Argv: []string{"go", "vet", "./..."}, Withheld: c.withheld}
+			geCheck(t, "F1", []geCase{
+				{c.name, geSrc("a/a.go"), []langpack.Run{run}, geA, []string{geT1("a")}, []string{"check unit passed, but earns no Go evidence credit: " + c.withheld}},
+				{c.name + ", not go test", geSrc("a/a.go"), []langpack.Run{vet}, geA, []string{geT1("a")}, nil},
+			})
+		})
+	}
+}
+
 // B5: each changed package needs a clean covering run (T1) and, while -race
 // can run, a clean raced covering run (T2), with or without the graph.
 func TestGoEvidenceChangedPackagesB5(t *testing.T) {

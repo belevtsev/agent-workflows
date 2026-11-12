@@ -29,13 +29,13 @@ func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 	t.Setenv("CW_SPEC_PROBE_TOKEN", "hidden")
 	t.Setenv("CW_SPEC_PROBE_VISIBLE", "shown")
 	check := Check{ID: "unit", Argv: []string{"make", "test", "-j", "4"}, TimeoutSeconds: 42}
-	got, tool, err := checkSpec(t.Context(), check, "/repo/selected")
+	got, tool, goEnv, err := checkSpec(t.Context(), check, "/repo/selected")
 	want := proc.Spec{
 		Path: "make", Args: []string{"test", "-j", "4"}, Dir: "/repo/selected", Env: checkEnvironment(check),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
 	}
-	if err != nil || tool != nil || !reflect.DeepEqual(got, want) {
-		t.Fatalf("checkSpec = %+v, %v, %v\nwant %+v, no tool, no error", got, tool, err, want)
+	if err != nil || tool != nil || goEnv != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("checkSpec = %+v, %v, %v, %v\nwant %+v, no tool, no go env, no error", got, tool, goEnv, err, want)
 	}
 	if !slices.Contains(got.Env, "CW_SPEC_PROBE_VISIBLE=shown") {
 		t.Errorf("environment lacks an ordinary variable: %q", got.Env)
@@ -49,8 +49,9 @@ func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 // program is go a PATH that names the real go and one that names a script.
 // Oracle: G6's design: a go check runs the go command langpack.ResolveGo
 // verified, by its absolute path, with GOROOT and GOTOOLCHAIN=local appended
-// to the same environment, and returns that go command; when ResolveGo
-// refuses, checkSpec returns its error and no go command.
+// to the same environment, and returns that go command and (F1) what
+// langpack.ReadGoEnv reports for it under that final environment; when
+// ResolveGo refuses, checkSpec returns its error and neither.
 func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	dir := t.TempDir()
 	check := Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 42}
@@ -59,7 +60,7 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("precondition: the real go does not verify: %v", err)
 	}
-	got, tool, err := checkSpec(t.Context(), check, dir)
+	got, tool, goEnv, err := checkSpec(t.Context(), check, dir)
 	if err != nil || tool == nil || *tool != want {
 		t.Fatalf("checkSpec tool = %+v, %v; want %+v", tool, err, want)
 	}
@@ -70,14 +71,17 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	if !reflect.DeepEqual(got, wantSpec) {
 		t.Fatalf("checkSpec = %+v\nwant %+v", got, wantSpec)
 	}
+	if read, err := langpack.ReadGoEnv(t.Context(), want, dir, wantSpec.Env); err != nil || goEnv == nil || *goEnv != read {
+		t.Fatalf("checkSpec go env = %+v, want %+v (%v)", goEnv, read, err)
+	}
 
 	fake := t.TempDir()
 	if err := os.WriteFile(filepath.Join(fake, "go"), []byte("#!/bin/sh\necho ok\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, tool, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
-		t.Fatalf("checkSpec with a script first on PATH: tool %+v, error %v; want no tool and an error naming %s", tool, err, filepath.Join(fake, "go"))
+	if _, tool, goEnv, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || goEnv != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
+		t.Fatalf("checkSpec with a script first on PATH: tool %+v, go env %+v, error %v; want neither and an error naming %s", tool, goEnv, err, filepath.Join(fake, "go"))
 	}
 }
 
@@ -124,6 +128,46 @@ func TestRunCheckResolvesGoWithoutHoldingTheTaskLock(t *testing.T) {
 	}
 }
 
+// TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead verifies the go command
+// of a go check, which would create marker if it ran, and fails to read its
+// go env. Oracle (F1): without the configuration the go command applies, cw
+// gives the check no credit by not running it: the run is failed with failure
+// untrusted_toolchain, ErrCheckFailed names the go env error, the stored run
+// has no tool, no go env and an empty log, and the go command never ran.
+func TestRunCheckRefusesAGoCheckWhoseGoEnvCannotBeRead(t *testing.T) {
+	plan := helperPlan(t, "small", "pass")
+	plan.Checks = append(plan.Checks, Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 10})
+	plan.Requirements[0].CheckIDs = append(plan.Requirements[0].CheckIDs, "unit")
+	record, _ := fixtureTask(t, plan)
+	marker := filepath.Join(t.TempDir(), "ran")
+	program := filepath.Join(t.TempDir(), "go")
+	if err := os.WriteFile(program, []byte("#!/bin/sh\ntouch '"+marker+"'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) {
+		return langpack.GoTool{Path: program, Version: "go1.27.4", GOROOT: filepath.Dir(program)}, nil
+	}
+	readGoEnv = func(context.Context, langpack.GoTool, string, []string) (langpack.GoEnv, error) {
+		return langpack.GoEnv{}, errors.New("cannot read the configuration of the go command: test reader")
+	}
+	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
+	run, err := RunCheck(t.Context(), record.Directory, "unit")
+	if run.Status != "failed" || run.Failure != "untrusted_toolchain" || !errors.Is(err, ErrCheckFailed) || !strings.Contains(err.Error(), "test reader") {
+		t.Fatalf("RunCheck = %s/%s, %v; want failed/untrusted_toolchain and ErrCheckFailed naming the go env error", run.Status, run.Failure, err)
+	}
+	loaded, err := Load(record.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := loaded.Checks[len(loaded.Checks)-1]
+	if stored.Tool != nil || stored.GoEnv != nil || stored.ExitCode != nil || stored.LogSHA256 != digest(nil) {
+		t.Errorf("stored refused run %+v, want no tool, no go env, no exit code and an empty log", stored)
+	}
+	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the go command ran although its go env could not be read: %v", err)
+	}
+}
+
 // TestCheckExitCodeRecordsOnlyAStartedProgramsStatus runs real programs
 // through proc.Run as RunCheck does. Oracle: the runner before proc.Run
 // recorded os.ProcessState.ExitCode() whenever the program had started (its
@@ -153,7 +197,7 @@ func TestCheckExitCodeRecordsOnlyAStartedProgramsStatus(t *testing.T) {
 		{name: "stopped before the start", ctx: cancelled, check: helper("pass")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			spec, _, err := checkSpec(t.Context(), tc.check, t.TempDir())
+			spec, _, _, err := checkSpec(t.Context(), tc.check, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -180,7 +224,7 @@ func TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout(t *test
 			// sh prints its pid, which is the id of the check's process group,
 			// and exits; the background sleep holds the output pipe open.
 			script := fmt.Sprintf("sleep 30 & echo $$; exit %d", status)
-			spec, _, err := checkSpec(t.Context(), Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
+			spec, _, _, err := checkSpec(t.Context(), Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}

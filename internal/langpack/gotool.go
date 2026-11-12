@@ -7,12 +7,14 @@ import (
 	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/proc"
@@ -105,6 +107,79 @@ func ResolveGo(ctx context.Context, program, dir string, env []string) (GoTool, 
 	}
 	tool.GOROOT = tree
 	return tool, nil
+}
+
+// GoEnv is the configuration that a verified go command reported, with
+// `go env`, for the environment and directory of a check run (ReadGoEnv).
+type GoEnv struct {
+	// GOFLAGS is the GOFLAGS the go command applies: the environment's when
+	// it is not empty, otherwise a go env file's (GOENV, `go env -w`) or its
+	// GOROOT's go.env. It is stored with compiler and linker flag values
+	// redacted (RedactGOFLAGS).
+	GOFLAGS string `json:"goflags"`
+	// GOOS and GOARCH are the platform the go command builds for.
+	GOOS   string `json:"goos"`
+	GOARCH string `json:"goarch"`
+	// GOHOSTOS and GOHOSTARCH are the platform the go command itself was
+	// built for, which go test compares with GOOS and GOARCH.
+	GOHOSTOS   string `json:"gohostos"`
+	GOHOSTARCH string `json:"gohostarch"`
+}
+
+// goEnvLimit bounds the output of the go env probe.
+const goEnvLimit = 64 << 10
+
+// ReadGoEnv runs tool.Path once, within ctx, as
+// `go env -json GOFLAGS GOOS GOARCH GOHOSTOS GOHOSTARCH` in dir with env
+// followed by tool.Env, which is the environment that a check runs tool with,
+// and returns what it printed, GOFLAGS redacted. The values are those that go
+// command applies to a run started with the same environment and directory,
+// from the environment or from a go env file. It fails when the command fails,
+// stops, prints more than goEnvLimit bytes or prints anything but the five
+// values, with GOOS, GOARCH, GOHOSTOS and GOHOSTARCH not empty.
+func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (GoEnv, error) {
+	refuse := func(format string, args ...any) (GoEnv, error) {
+		return GoEnv{}, fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
+	}
+	got := proc.Run(ctx, proc.Spec{Path: tool.Path, Args: []string{"env", "-json", "GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH"}, Dir: dir, Env: append(slices.Clip(env), tool.Env()...), StdoutLimit: goEnvLimit, StderrLimit: goRootLimit})
+	switch {
+	case got.Stopped:
+		return refuse("`go env` did not finish (%v)", context.Cause(ctx))
+	case got.Err != nil || got.Code != 0:
+		line, _, _ := bytes.Cut(bytes.TrimSpace(got.Stderr), []byte("\n"))
+		reason := string(bytes.TrimSpace(line))
+		if reason == "" && got.Err != nil {
+			reason = got.Err.Error()
+		}
+		return refuse("`go env` failed: %s", quoteLimited(reason))
+	case got.Overflow:
+		return refuse("`go env` printed more than %d bytes", goEnvLimit)
+	}
+	var printed map[string]string
+	if err := json.Unmarshal(got.Stdout, &printed); err != nil {
+		return refuse("`go env -json` printed %s, not a JSON object of strings", quoteLimited(string(got.Stdout)))
+	}
+	read := GoEnv{GOFLAGS: RedactGOFLAGS(printed["GOFLAGS"]), GOOS: printed["GOOS"], GOARCH: printed["GOARCH"], GOHOSTOS: printed["GOHOSTOS"], GOHOSTARCH: printed["GOHOSTARCH"]}
+	if _, ok := printed["GOFLAGS"]; !ok || len(printed) != 5 || read.GOOS == "" || read.GOARCH == "" || read.GOHOSTOS == "" || read.GOHOSTARCH == "" {
+		return refuse("`go env -json` printed %s, not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", quoteLimited(string(got.Stdout)))
+	}
+	return read, nil
+}
+
+// GoEnvWithheld returns why the Go rule credits no go test run made under env,
+// whatever its argv and GOFLAGS, or "" when env allows credit. A run without
+// env does not show what its go command applied. A run whose GOOS or GOARCH
+// is not its go command's host's earns none either: go test hands each such
+// test binary to a go_<goos>_<goarch>_exec program it finds on PATH, which
+// need not run it.
+func GoEnvWithheld(env *GoEnv) string {
+	switch {
+	case env == nil:
+		return "cw did not record the configuration its go command applied (go env); run it again"
+	case env.GOOS != env.GOHOSTOS || env.GOARCH != env.GOHOSTARCH:
+		return fmt.Sprintf("it built its tests for %s/%s, not for its go command's host %s/%s, so go test may have handed them to a go_%s_%s_exec program instead of running them", env.GOOS, env.GOARCH, env.GOHOSTOS, env.GOHOSTARCH, env.GOOS, env.GOARCH)
+	}
+	return ""
 }
 
 // readGoTool resolves path's links and reads the file once, for its build

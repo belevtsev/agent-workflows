@@ -3,6 +3,7 @@
 package langpack_test
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"go/version"
@@ -224,5 +225,77 @@ func TestLoadGoFactsReadsTheRaceProbeOnlyFromAVerifiedGo(t *testing.T) {
 			got.NoRace != "" || got.Tested != nil || got.Embedded != nil || got.Excluded != nil {
 			t.Errorf("facts through a shim reporting its own GOROOT = %+v; want a GraphError refusing %s, NoRace \"\" and no graph facts", got, shim)
 		}
+	}
+}
+
+// ReadGoEnv runs the verified go command under the environment it is given
+// and reports the configuration a check run with that environment gets.
+// Oracle: cmd/go's cfg.Getenv: a GOFLAGS variable that is not empty wins, and
+// otherwise the go env file GOENV names supplies it; GOOS and GOARCH follow
+// the environment, and GOHOSTOS and GOHOSTARCH are the go command's own
+// platform, the one this test runs on; GOFLAGS is stored redacted
+// (RedactGOFLAGS).
+func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, gtEnv(gtRealGo(t)))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	file := filepath.Join(t.TempDir(), "env")
+	if err := os.WriteFile(file, []byte("GOFLAGS=-exec=/bin/true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	other := "arm64"
+	if runtime.GOARCH == "arm64" {
+		other = "amd64"
+	}
+	host := func(goflags, goarch string) langpack.GoEnv {
+		return langpack.GoEnv{GOFLAGS: goflags, GOOS: runtime.GOOS, GOARCH: goarch, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH}
+	}
+	for _, c := range []struct {
+		name string
+		env  []string
+		want langpack.GoEnv
+	}{
+		{"GOFLAGS from the go env file", []string{"GOENV=" + file}, host("-exec=/bin/true", runtime.GOARCH)},
+		{"GOFLAGS from the environment over the file", []string{"GOENV=" + file, "GOFLAGS=-count=1 -v"}, host("-count=1 -v", runtime.GOARCH)},
+		{"another architecture", []string{"GOENV=off", "GOARCH=" + other}, host("", other)},
+		{"linker values redacted", []string{"GOENV=off", "GOFLAGS=-ldflags=-X=main.k=secret -count=1"}, host("-ldflags=<redacted> -count=1", runtime.GOARCH)},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := langpack.ReadGoEnv(t.Context(), tool, dir, gtEnv(gtRealGo(t), c.env...))
+			if err != nil || got != c.want {
+				t.Fatalf("ReadGoEnv = %+v, %v; want %+v", got, err, c.want)
+			}
+		})
+	}
+}
+
+// ReadGoEnv fails closed. Oracle (F1): a go env that cannot be read gives no
+// configuration, so the check does not run and earns no credit: a failing or
+// stopped command, and output that is not exactly the five values with the
+// four platform values set, are errors naming the go command.
+func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
+	stopped, cancel := context.WithCancel(t.Context())
+	cancel()
+	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux"`
+	for _, c := range []struct {
+		name, body, want string
+		ctx              context.Context
+	}{
+		{"failed", "echo 'go: cannot read env' >&2\nexit 1\n", "`go env` failed: \"go: cannot read env\"", t.Context()},
+		{"stopped", "echo '{}'\n", "`go env` did not finish", stopped},
+		{"not JSON", "echo ok\n", "not a JSON object of strings", t.Context()},
+		{"a value missing", "echo '{" + complete + "}'\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
+		{"an empty platform", "echo '{" + complete + `,"GOHOSTARCH":""}'` + "\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
+		{"another value", "echo '{" + complete + `,"GOHOSTARCH":"amd64","CC":"gcc"}'` + "\n", "not GOFLAGS, GOOS, GOARCH, GOHOSTOS and GOHOSTARCH", t.Context()},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tool := langpack.GoTool{Path: gtScript(t, t.TempDir(), "go", c.body), GOROOT: t.TempDir()}
+			got, err := langpack.ReadGoEnv(c.ctx, tool, t.TempDir(), gtEnv(gtRealGo(t)))
+			if err == nil || !strings.Contains(err.Error(), "cannot read the configuration of the go command "+tool.Path) || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("ReadGoEnv = %+v, %v; want an error naming %s and containing %q", got, err, tool.Path, c.want)
+			}
+		})
 	}
 }
