@@ -234,10 +234,14 @@ func markdownTargets(data []byte) []string {
 	return targets
 }
 
-func TestRelativeMarkdownLinksResolve(t *testing.T) {
+// linkCheckedDocuments are the Markdown files whose links must resolve: those
+// in skill directories, at the top level, under docs/ and under .github/.
+func linkCheckedDocuments(t *testing.T) []string {
+	t.Helper()
+	roots := skillRoots(t)
 	var documents []string
 	for _, file := range repoFiles(t) {
-		inSkill := slices.ContainsFunc(skillRoots(t), func(root string) bool { return strings.HasPrefix(file, root+"/") })
+		inSkill := slices.ContainsFunc(roots, func(root string) bool { return strings.HasPrefix(file, root+"/") })
 		topLevel := !strings.Contains(file, "/") || strings.HasPrefix(file, "docs/") || strings.HasPrefix(file, ".github/")
 		// Templates link to files of the project they are copied into.
 		template := strings.Contains(file, "/assets/templates/")
@@ -245,6 +249,11 @@ func TestRelativeMarkdownLinksResolve(t *testing.T) {
 			documents = append(documents, file)
 		}
 	}
+	return documents
+}
+
+func TestRelativeMarkdownLinksResolve(t *testing.T) {
+	documents := linkCheckedDocuments(t)
 	root, err := filepath.Abs(repoRoot)
 	if err != nil {
 		t.Fatal(err)

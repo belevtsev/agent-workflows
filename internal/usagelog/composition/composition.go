@@ -1,4 +1,9 @@
-package usagelog
+// Package composition attributes each agent's input in a Claude Code session
+// to the context blocks that produced it, for cw metrics import --composition.
+// It is experimental, like the cw metrics commands: outside the semver
+// promise. It observes a usagelog import (usagelog.Observer); package
+// usagelog, which task budgets build on, does not depend on it.
+package composition
 
 import (
 	"cmp"
@@ -6,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"math/bits"
 	"path"
@@ -18,6 +24,7 @@ import (
 	json "encoding/json/v2"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/shellwords"
+	"github.com/belevtsev/agent-workflows/v3/internal/usagelog"
 )
 
 // Composition statuses.
@@ -198,6 +205,10 @@ var (
 	evidencePattern   = regexp.MustCompile(`fetch|research|investigat|explor|look ?up|search|\bfind`)
 )
 
+// lenient decodes transcript lines as package usagelog does: duplicate names
+// and invalid UTF-8 do not make a line unreadable.
+var lenient = json.JoinOptions(jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true))
+
 // block is one appended item of an agent's context.
 type block struct {
 	source, category, label string
@@ -277,7 +288,7 @@ type compAgent struct {
 
 // composer collects context composition for a Claude session.
 type composer struct {
-	prices     *PriceTable
+	prices     *usagelog.PriceTable
 	session    string
 	agents     []*compAgent
 	links      map[string]*agentLink // subagent id -> Agent call
@@ -285,11 +296,11 @@ type composer struct {
 	briefBytes int
 }
 
-func newComposer(prices *PriceTable, session string) *composer {
-	return &composer{prices: prices, session: session, links: make(map[string]*agentLink)}
+func newComposer(prices *usagelog.PriceTable) *composer {
+	return &composer{prices: prices, links: make(map[string]*agentLink)}
 }
 
-func (c *composer) addAgent(agent Agent, main bool) *compAgent {
+func (c *composer) addAgent(agent usagelog.Agent, main bool) *compAgent {
 	a := &compAgent{id: agent.AgentID, stem: strings.TrimPrefix(agent.AgentID, "agent-"), main: main,
 		calls: make(map[string]toolCall), repeats: make(map[string]*repeatGroup), missingRates: make(map[string]bool),
 		written: make(map[string]string), writtenBase: make(map[string]string)}
@@ -367,8 +378,8 @@ func resultBytes(raw jsontext.Value) int64 {
 }
 
 // request processes a newly recorded request of agent a.
-func (c *composer) request(a *compAgent, key, model string, r request) {
-	total := r.uncached + r.write5m + r.write1h + r.writeUnsplit + r.read
+func (c *composer) request(a *compAgent, key, model string, r usagelog.Tokens) {
+	total := r.TotalInputTokens
 	a.requests++
 	k := a.requests
 	if k == 1 {
@@ -433,7 +444,7 @@ func (c *composer) request(a *compAgent, key, model string, r request) {
 	}
 	a.account(c.prices, model, r, k)
 	a.pending = nil
-	a.prevOut = r.output
+	a.prevOut = r.OutputTokens
 	a.lastKey = key
 	a.out = a.add(&block{source: "assistant_output", category: catAssistantOutput})
 }
@@ -493,7 +504,7 @@ type segment struct {
 }
 
 // account adds one request's resident tokens and dollars to its blocks.
-func (a *compAgent) account(prices *PriceTable, model string, r request, k int64) {
+func (a *compAgent) account(prices *usagelog.PriceTable, model string, r usagelog.Tokens, k int64) {
 	rates := modelRates(prices, model)
 	rate := func(name string, value *float64, tokens int64) float64 {
 		if value == nil {
@@ -505,27 +516,27 @@ func (a *compAgent) account(prices *PriceTable, model string, r request, k int64
 		return *value
 	}
 	unsplit := 0.0
-	if r.writeUnsplit > 0 {
+	if r.CacheWriteUnsplitTokens > 0 {
 		if rates.CacheWrite5mPerMillion != nil && rates.CacheWrite1hPerMillion != nil && *rates.CacheWrite5mPerMillion == *rates.CacheWrite1hPerMillion {
 			unsplit = *rates.CacheWrite5mPerMillion
 		} else {
 			a.missingRates["equal 5m/1h cache write rates for "+model] = true
 		}
 	}
-	read := rate("cache_read_per_million", rates.CacheReadPerMillion, r.read)
+	read := rate("cache_read_per_million", rates.CacheReadPerMillion, r.CacheReadTokens)
 	readRate := 0.0
 	if rates.CacheReadPerMillion != nil {
 		readRate = *rates.CacheReadPerMillion
 	}
 	segments := []segment{
-		{r.read, read},
-		{r.write1h, rate("cache_write_1h_per_million", rates.CacheWrite1hPerMillion, r.write1h)},
-		{r.write5m, rate("cache_write_5m_per_million", rates.CacheWrite5mPerMillion, r.write5m)},
-		{r.writeUnsplit, unsplit},
-		{r.uncached, rate("input_per_million", rates.InputPerMillion, r.uncached)},
+		{r.CacheReadTokens, read},
+		{r.CacheWrite1hTokens, rate("cache_write_1h_per_million", rates.CacheWrite1hPerMillion, r.CacheWrite1hTokens)},
+		{r.CacheWrite5mTokens, rate("cache_write_5m_per_million", rates.CacheWrite5mPerMillion, r.CacheWrite5mTokens)},
+		{r.CacheWriteUnsplitTokens, unsplit},
+		{r.UncachedInputTokens, rate("input_per_million", rates.InputPerMillion, r.UncachedInputTokens)},
 	}
-	a.outputTokens += r.output
-	a.outputDollars += float64(r.output) / 1e6 * rate("output_per_million", rates.OutputPerMillion, r.output)
+	a.outputTokens += r.OutputTokens
+	a.outputDollars += float64(r.OutputTokens) / 1e6 * rate("output_per_million", rates.OutputPerMillion, r.OutputTokens)
 	index := 0
 	for _, b := range a.resident {
 		t := b.tokens
@@ -576,9 +587,9 @@ func (a *compAgent) account(prices *PriceTable, model string, r request, k int64
 	a.resident = slices.DeleteFunc(a.resident, func(b *block) bool { return b.tokens == 0 && !b.initial })
 }
 
-func modelRates(prices *PriceTable, model string) ModelRates {
+func modelRates(prices *usagelog.PriceTable, model string) usagelog.ModelRates {
 	if prices == nil {
-		return ModelRates{}
+		return usagelog.ModelRates{}
 	}
 	return prices.Models[model]
 }
@@ -586,7 +597,7 @@ func modelRates(prices *PriceTable, model string) ModelRates {
 // assistant handles one assistant line; recorded reports whether it started
 // a new request of this agent, and history whether the line is another
 // session's, copied into a resumed one (context, but it sets no boundary).
-func (c *composer) assistant(a *compAgent, line []byte, key, model string, r request, recorded, history bool) {
+func (c *composer) assistant(a *compAgent, line []byte, key, model string, r usagelog.Tokens, recorded, history bool) {
 	if recorded {
 		c.request(a, key, model, r)
 	}
@@ -1273,7 +1284,7 @@ func (a *compAgent) splitInitial(ratio *float64) {
 }
 
 // build assembles the composition after the import report is final.
-func (c *composer) build(report *Report, cost *costState) *Composition {
+func (c *composer) build(report *Report) *Composition {
 	comp := &Composition{Notes: []string{
 		"Each request's new input (its total input minus the previous request's) is assigned to the blocks appended since then: the previous request's output gets its output_tokens (all of the new input when that is smaller) and the rest is split by byte share; new input with no visible block is 'unrecorded'.",
 		"The first request is split into the visible first-turn blocks, estimated with the agent's bytes_per_token (median of its later requests, else of the session), and system_and_tools (the remainder: system prompt and tool definitions).",
@@ -1314,7 +1325,7 @@ func (c *composer) build(report *Report, cost *costState) *Composition {
 			recon.Status = "exceeds_tolerance"
 		}
 	}
-	if reason := c.withheldReason(report, cost, recon); reason != "" {
+	if reason := c.withheldReason(report, recon); reason != "" {
 		comp.Status, comp.Reason = CompositionWithheld, reason
 		return comp
 	}
@@ -1323,21 +1334,24 @@ func (c *composer) build(report *Report, cost *costState) *Composition {
 	return comp
 }
 
-func (c *composer) withheldReason(report *Report, cost *costState, recon *CompositionReconciliation) string {
-	if report.Status != StatusComplete {
+func (c *composer) withheldReason(report *Report, recon *CompositionReconciliation) string {
+	if report.Status != usagelog.StatusComplete {
 		return "the import is incomplete (" + strings.Join(report.IncompleteReasons, ", ") + "); the composition is withheld"
 	}
-	if cost == nil || report.Dollars.Recorded == nil {
+	// Dollars.Recorded is the import's last cost-state: nil when it has none,
+	// and its HasUnknownModelCost is the cost-state's.
+	recorded := report.Dollars.Recorded
+	if recorded == nil {
 		return "the transcript has no recorded cost-state, so the composition cannot be reconciled and is withheld"
 	}
-	if cost.HasUnknownModelCost != nil && *cost.HasUnknownModelCost {
+	if recorded.HasUnknownModelCost != nil && *recorded.HasUnknownModelCost {
 		return "cost-state reports hasUnknownModelCost=true, so the recorded total is incomplete and the composition is withheld"
 	}
 	// Recorded tokens above the transcript's are requests the transcript does
 	// not carry (background calls); the 1% dollar check bounds them. Transcript
 	// tokens the recorded cost lacks mean the two describe different requests.
 	var mismatched []string
-	for _, item := range report.Dollars.Recorded.Reconciliation {
+	for _, item := range recorded.Reconciliation {
 		exceeds := item.Status == "transcript_only"
 		for _, delta := range item.TranscriptMinusRecorded {
 			exceeds = exceeds || delta > 0
@@ -1470,14 +1484,14 @@ func (c *composer) fill(comp *Composition, report *Report) {
 		total.Dollars += item.InputDollars + item.OutputDollars
 	}
 	var roleList []RoleComposition
-	for _, name := range sortedKeys(roleTotals) {
+	for _, name := range slices.Sorted(maps.Keys(roleTotals)) {
 		roleList = append(roleList, *roleTotals[name])
 	}
 	slices.SortStableFunc(roleList, func(x, y RoleComposition) int {
 		return cmp.Or(cmp.Compare(y.Dollars, x.Dollars), strings.Compare(x.Role, y.Role))
 	})
 	var categories []CategoryComposition
-	for _, name := range sortedKeys(categoryTotals) {
+	for _, name := range slices.Sorted(maps.Keys(categoryTotals)) {
 		cat := *categoryTotals[name]
 		cat.InputShare = share(cat.InputTokens, sessionInput)
 		categories = append(categories, cat)
@@ -1537,7 +1551,7 @@ func repeated(groups map[string]*repeatGroup, resultTokens map[string]int64) []R
 	return list
 }
 
-func (a *compAgent) phases(prices *PriceTable) *Phases {
+func (a *compAgent) phases(prices *usagelog.PriceTable) *Phases {
 	if len(a.boundaries) == 0 {
 		return nil
 	}
@@ -1584,7 +1598,7 @@ func (c *composer) roles(report *Report) []roleChoice {
 			}
 			continue
 		}
-		var agent Agent
+		var agent usagelog.Agent
 		if i < len(report.Agents) {
 			agent = report.Agents[i]
 		}
@@ -1669,7 +1683,7 @@ func describedRole(description, agentType string) roleChoice {
 // unsupportedComposition is the Codex result: no recorded cost exists to
 // reconcile a composition with.
 func unsupportedComposition(report Report) *Composition {
-	if report.Status != StatusComplete {
+	if report.Status != usagelog.StatusComplete {
 		return &Composition{Status: CompositionWithheld,
 			Reason: "the import is incomplete (" + strings.Join(report.IncompleteReasons, ", ") + "); the composition is withheld",
 			Notes:  []string{}}
