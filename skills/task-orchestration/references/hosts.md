@@ -41,8 +41,8 @@ only bounded evidence gathering. A compatible subworker does not repair the main
 worker's mismatch.
 
 Substantive coding, testing, planning, review, diagnosis, documentation, new
-acceptance claims and final verification use the configured non-Luna substantive
-profile. Routine execution requires fixed files, revision, verified facts, action
+acceptance claims and final verification use the role's configured non-Luna
+substantive profile. Routine execution requires fixed files, revision, verified facts, action
 bounds and authorization from the coordinator; routine GitHub wording can be
 drafted from fixed verified facts under the [GitHub worker contract](github-worker.md).
 New claims, ambiguous scope, conflicts or uncertain verification return to
