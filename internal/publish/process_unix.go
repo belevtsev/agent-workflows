@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/procgroup"
+	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
 // ownProcessGroup puts the command in a process group of its own, so a
@@ -36,7 +36,7 @@ func stopProcessGroup(command *exec.Cmd, done <-chan error) error {
 			waited = true
 		case <-poll.C:
 		case <-grace.C:
-			killErr := procgroup.Kill(pgid)
+			killErr := proc.KillGroup(pgid)
 			if !waited {
 				waitErr = <-done
 			}

@@ -27,10 +27,45 @@ refused with a pointer to the plugin.
 
 ### Codex
 
-Use either the Codex plugin or `cw install --host codex`, not both, so each skill
-is listed once. The plugin installs the skills and the two
-[hooks](hooks.md#codex), which load the working conventions at session start and
-gate `git commit` and `git push`, but writes no `AGENTS.md` block:
+Codex takes agent-workflows in one of two shapes: the Codex plugin, or
+[`cw install --host codex`](#codex-install-and-uninstall) from a checkout. The
+plugin has two rows because Codex runs none of its [hooks](hooks.md#codex)
+until you trust them. "Conventions" is the text of `global/AGENTS.md`, which
+holds the definition of a substantial task and the Code Review Rules.
+
+| Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask; needs the hooks trusted in `/hooks` | The conventions, plus a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables |
+| Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
+| `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
+
+**Recommended: the plugin, with its hooks trusted.** It is the only shape whose
+gate covers a plain `git commit` or `git push`, and it loads the same
+conventions at session start. Use `cw install --host codex` instead when you
+need archify, typesafe-ai or the Docker skills, which the plugin does not carry:
+the architect contract and the `software-architecture` and
+`security-threat-model` skills draw their diagrams with archify. There only
+`cw publish` applies the gate.
+
+- **Gate.** In every shape `cw publish` applies the gate itself and refuses
+  with exit 3 `open-record`. Where no hook runs, a plain `git commit` or
+  `git push` goes unchecked. Without `cw` on `PATH` there is no gate: the hook
+  lets the command through.
+- **Trust.** Codex runs neither plugin hook until you trust them, and `codex exec`
+  does not say it skipped them. Per Codex's documentation, trust is recorded
+  against the hook's hash, so trust them again when an update changes
+  `hooks/hooks.json`.
+- **Plugin options.** Codex has no plugin configuration and sets no
+  `CLAUDE_PLUGIN_OPTION_*` variable; the hooks read the environment Codex was
+  started with. Unset, the gate and the prompt for unrecorded changes are on
+  and the doctor summary is off. A recorded run turned the gate off with
+  `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
+  same lookup but were not run. No option affects `cw publish`.
+- **Evidence.** The plugin rows come from one recorded run with codex-cli
+  0.167.2 ([Codex hooks](hooks.md#codex)); the last column lists what it did
+  not cover.
+
+To install the plugin:
 
 ```sh
 codex plugin marketplace add belevtsev/agent-workflows
@@ -38,11 +73,19 @@ codex plugin marketplace add belevtsev/agent-workflows
 
 Then run `codex`, open `/plugins`, and install `agent-workflows` (and
 `cc-skills-golang` for the Go pack); open `/hooks` and trust the two
-agent-workflows hooks, which Codex otherwise does not run; start a new session
-afterwards. For the skills plus the shared instruction block without hooks, use
-[`cw install --host codex`](#codex-install-and-uninstall) instead. The vendored
-Docker skills in `third_party/docker-skills` are in neither plugin; only
-`cw install --host codex` links them.
+agent-workflows hooks; start a new session afterwards.
+
+#### Both at once
+
+Not supported: use one shape. `cw install --host codex` does not detect the
+plugin, so nothing stops you, and the two write different files (the plugin
+lives under `$CODEX_HOME/plugins`, while `cw install` writes `~/.agents/skills`
+and `$CODEX_HOME/AGENTS.md`), so neither overwrites the other. But they
+overlap: every skill under `skills/` is installed twice, and so is the Go pack
+when its plugin is installed; with the hooks trusted, the conventions load
+twice (the block and the session-start context); and the plugin and the
+checkout update separately, so the two copies can differ. How Codex lists a
+skill installed twice is unverified.
 
 ### Get cw
 
@@ -80,19 +123,12 @@ v2 installer. The old path without `/v3` gets no updates: its `@main` and
 Then check the build with `cw version`, which prints JSON with `version`,
 `revision`, `built_at`, `os` and `arch`. Bare `cw` prints help.
 
-Upgrade every `cw` that shares a task store at once, including the one the
-commit hook runs. The first revision a newer `cw` writes to a task can raise
-the record's version; an older `cw` then cannot read the record, and its hook
-skips the task instead of gating it. `cw` v3.0.0-rc.1 cannot read the version 4
-records this release writes and calls them unsupported; in later releases a
-`cw task` command on a record from a newer `cw` exits 4 and says to upgrade
-`cw` ([task record format](development.md#task-record-format)).
-
 ## Codex install and uninstall
 
-`cw install --host codex` is an alternative to the Codex plugin for users who also
-want the shared instruction block. Use one or the other, not both, so each skill
-is listed once.
+`cw install --host codex` is the alternative to the Codex plugin: it links every
+registered skill, including archify, typesafe-ai and the Docker skills, and
+writes the instruction block, but installs no hook ([install shapes](#codex)).
+Use one or the other, not both ([both at once](#both-at-once)).
 
 ```sh
 git clone https://github.com/belevtsev/agent-workflows "${XDG_DATA_HOME:-$HOME/.local/share}/agent-workflows/src"
@@ -163,14 +199,10 @@ global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
 
-v2.x used the same state and configuration directories. v3 reads the saved
-adviser keys (`credentials.json`) and `preferences.json` that v2.x left; keep
-those. It does not read the task records in `<state>/workflow-tasks` that
-v2.0.66 to v2.0.96 wrote, yet an open substantial one still gates commits and
-pushes in its repository until its directory is moved out of that store
-([which records gate](hooks.md#which-records-gate)). Before upgrading, finish
-each open v2 task with `cw task verify`, or move its directory out of the
-store. Anything else v2.x left behind can be removed by hand.
+v2.x used the same state and configuration directories, and v3 reads what v2.x
+left in them: the task records in `<state>/workflow-tasks`, the saved adviser
+keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
+left behind can be removed by hand.
 
 ## Exit statuses
 
@@ -224,8 +256,10 @@ requiring a clean project. It reports the target worktree/content identity,
 discovered capabilities, repository contract paths, optional tool executables and
 adviser key presence. `--live` explicitly enables bounded local integration checks;
 ordinary metadata does not prove semantic retrieval, dirty-source freshness or
-runtime call targets. Missing or unsupported tooling is qualified and retains normal
-source discovery. Neither mode installs dependencies, changes watcher enrollment or
+runtime call targets. Each live probe and each Git inspection runs in a process
+group of its own; when it answers, exits or reaches its deadline, `cw` kills the
+group until no member is alive, and a member that survives fails the probe.
+Missing or unsupported tooling is qualified and retains normal source discovery. Neither mode installs dependencies, changes watcher enrollment or
 calls advisers. `--summary` prints one line with only the checks that are missing,
 degraded or stale.
 
@@ -391,8 +425,10 @@ Checks can only be added this way, never removed, replaced or narrowed.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 
-- the task is `small`, or its evidence rules do not include the Go
-  package-test rule (the task started after `cw pack remove go`);
+- the task is `small`, its record has no baseline manifest, or its evidence
+  rules do not include the Go package-test rule (the task started after
+  `cw pack remove go`, or a record without a pack set has no `go.mod` at the
+  top of the selected path);
 - an added check ID is already a plan or added check, the plan and added checks
   would exceed 256, or an argv is not a direct `go test` that the Go rule
   credits (flags outside the allowlist, such as `-run`, and wrappers such as
