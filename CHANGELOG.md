@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Release notes also leave out scoped `docs`, `test` and `chore` commits, such as `chore(release):`; a breaking one
+  (`chore!:`) stays ([releases](docs/development.md#releases)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.

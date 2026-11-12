@@ -34,10 +34,13 @@ changelog:
   use: github
   sort: asc
   filters:
+    # Drop docs, test and chore commits, with or without a scope: chore: and
+    # chore(release): both go. A breaking one (chore!: or chore(x)!:) stays,
+    # since users need to see it.
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
+      - '^docs(\([^)]*\))?:'
+      - '^test(\([^)]*\))?:'
+      - '^chore(\([^)]*\))?:'
 
 release:
   draft: false

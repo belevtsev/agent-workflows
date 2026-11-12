@@ -296,8 +296,9 @@ its leading `v`: `version` in `.claude-plugin/plugin.json` and
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
 `cw_<tag>_<os>_<arch>.tar.gz` for darwin and linux on amd64 and arm64 (each with
 `LICENSE`, `THIRD_PARTY.md` and `licenses/`), `SHA256SUMS`, and a changelog from
-the commit history; `prerelease: auto` marks a tag with a suffix such as `-rc.2`
-as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
+the commit history that leaves out `docs`, `test` and `chore` commits, with or
+without a scope (a breaking one, marked `!`, stays); `prerelease: auto` marks a
+tag with a suffix such as `-rc.2` as a prerelease. The binaries are built with CGO disabled and trimmed paths, and
 `cw version` reports the tag, commit and commit date.
 
 The plugin marketplace installs from the default branch, and the
