@@ -151,6 +151,26 @@ func taskBinding(state any) (binding map[string]string, bound bool, err error) {
 	return nil, false, nil
 }
 
+// taskContexts returns the task contexts of a task-bound state, the one in
+// state.task_context or each in state.task_contexts, as compact JSON in
+// request order. taskBinding has already validated the state.
+func taskContexts(state any) ([][]byte, error) {
+	fields, _ := mapping(state)
+	contexts := []any{fields.get("task_context")}
+	if fields.has("task_contexts") {
+		contexts, _ = fields.get("task_contexts").([]any)
+	}
+	encoded := make([][]byte, 0, len(contexts))
+	for _, context := range contexts {
+		data, err := wireFormat.marshal(context)
+		if err != nil {
+			return nil, err
+		}
+		encoded = append(encoded, data)
+	}
+	return encoded, nil
+}
+
 // checkUntrusted validates the optional state.untrusted marking of text that
 // came from untrusted sources.
 func checkUntrusted(state any) error {

@@ -12,9 +12,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
+- `cw consult` sends a task-bound request only when its task, not abandoned, holds that task context in the store the hook reads,
+  so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
+
+### Added
+
+- `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;
+  run it again where an older `cw` wrote the hooks, which `cw doctor` and the session-start line then name ([git hooks](docs/hooks.md#git-hooks)).
 
 ### Changed
 
+- The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
+  commit it takes in, so merging the fetched base branch, or `git pull`, keeps working; a merge of a local branch still stops ([git hooks](docs/hooks.md#git-hooks)).
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
   its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
@@ -46,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   without hard links ([diagnostics][diag]).
 - The hook docs record live runs: Claude Code asks before `cw task aban''don` too, so it is no longer listed as a bypass, and Codex
   runs both handlers and adds the conventions again on each resume ([recorded host runs](docs/hooks.md#recorded-host-runs)).
+- The hook's asks about a record cw cannot read, a `cw task abandon` and a push of uncommitted changes name at most
+  three tasks and count the rest, as the deny does ([asking](docs/hooks.md#asking-instead-of-denying)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

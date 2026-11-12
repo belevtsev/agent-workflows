@@ -4,7 +4,8 @@
 //
 // Advisers participate by configuration: a task-bound request uses the adviser
 // binding in state.task_context (or the identical bindings in
-// state.task_contexts), any other request uses the policy's enabled providers.
+// state.task_contexts), once Options.TaskRecords confirms that task records
+// back those contexts; any other request uses the policy's enabled providers.
 // A participating adviser is attempted only when its credential is set and,
 // for a request without a task binding, Options.Disabled does not list it;
 // with none attempted, no network call is made.
@@ -39,8 +40,15 @@ type Options struct {
 	// run before any output is written. A task-bound request keeps its
 	// binding and never calls it.
 	Disabled func() ([]string, error)
-	Stdout   io.Writer
-	Stderr   io.Writer
+	// TaskRecords, when set, checks a task-bound request against the task
+	// records: it receives each task context of the request's state, as
+	// compact JSON in request order, and fails unless a task record backs
+	// every one. It is called only for a task-bound request, before anything
+	// is written or sent, and its error fails the run as invalid input.
+	// Unset, the contexts' binding is taken as given.
+	TaskRecords func(contexts [][]byte) error
+	Stdout      io.Writer
+	Stderr      io.Writer
 	// Unset outside package tests, which keeps the endpoints and budget fixed.
 	collect  collector
 	deadline time.Duration
@@ -98,6 +106,15 @@ func (o Options) plan() (*plan, error) {
 	participants, bound, err := taskBinding(shared.get("state"))
 	if err != nil {
 		return nil, err
+	}
+	if bound && o.TaskRecords != nil {
+		contexts, err := taskContexts(shared.get("state"))
+		if err != nil {
+			return nil, err
+		}
+		if err := o.TaskRecords(contexts); err != nil {
+			return nil, err
+		}
 	}
 	var disabled []string
 	if !bound {

@@ -243,9 +243,9 @@ line, or with `--summary` the one-line view, and writes the record to the
 than `verify` and `run` still exit 1 when the record's state refuses them, for
 example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
 (`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
-([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit or
-push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
-when a hook it did not write is in the way, and still writes the other hook;
+([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit,
+merge commit or push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
+when a hook it did not write is in the way, and still writes the other hooks;
 `cw gate install` and `uninstall` exit 4 without changing anything when the
 hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
@@ -564,7 +564,16 @@ Checks can only be added this way, never removed, replaced or narrowed.
    not `git commit`. In a non-interactive shell (agents, CI) always use
    `GIT_EDITOR=true git merge --continue`, which keeps the prepared merge
    message; plain `git merge --continue` opens an editor, so use it only in an
-   interactive terminal.
+   interactive terminal. Where `cw gate install` has run, git's
+   `pre-merge-commit` hook lets a merge without conflicts through when every
+   commit it takes in is on a remote-tracking branch, as `origin/main` is after
+   `git fetch`. It stops any other merge while the record is unverified, such
+   as one of a local branch, and `pre-commit` stops `git merge --continue`
+   after conflicts ([git hooks](hooks.md#git-hooks)). When git stops a merge,
+   the agent stops and asks the user how to go on; without an answer it undoes
+   the merge with `git merge --abort`. The agent never sets `CW_GATE=off`
+   itself: letting a merge through that way, as in
+   `CW_GATE=off git merge --no-ff origin/main`, is the user's decision.
 3. Add the checks:
 
    ```sh
@@ -731,7 +740,12 @@ When they differ:
 `cw consult` calls the configured advisers: the task's bound set for a task-bound
 request, otherwise the providers enabled in the [selected policy](#model-policy)
 that you opted in to and did not disable in your preferences, each only with its
-key present. It works
+key present. A task-bound request is sent only when the task's record holds
+its task context exactly as `cw task context` printed it, read from the task
+store the hook reads (`$CW_TASK_STORE`, else the state directory's
+`workflow-tasks`, [task store](hooks.md#task-store)), and the task was not
+abandoned; otherwise `cw consult` exits 1 and writes and sends nothing. For a
+task started with `--store DIR`, set `CW_TASK_STORE=DIR`. It works
 from any directory. With no adviser configured it writes a
 `no_advisers_configured` record without network access:
 
