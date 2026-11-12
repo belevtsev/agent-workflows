@@ -126,13 +126,14 @@ func carveoutPersonalSymlink(t *testing.T, home, target string) {
 func TestCarveoutConsultPolicySelection(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		// setup prepares policies and returns root flags and consult flags.
-		setup func(t *testing.T, home string, env map[string]string) (root, flags []string)
+		// setup prepares policies and returns root flags and consult flags;
+		// it may also replace the configuration's working directory.
+		setup func(t *testing.T, home string, env map[string]string, config *Config) (root, flags []string)
 		want  []string
 	}{
 		{
 			name: "a flag beats environment and personal file",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				flag := writePolicyFixture(t, t.TempDir(), 3, []fixturePin{pinJev})
 				env["CW_MODEL_POLICY"] = writePolicyFixture(t, t.TempDir(), 3, []fixturePin{pinSnap})
 				personalPolicyFixture(t, home, 3, []fixturePin{pinOpenAI})
@@ -142,7 +143,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 		{
 			name: "b environment beats personal file",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				env["CW_MODEL_POLICY"] = writePolicyFixture(t, t.TempDir(), 3, []fixturePin{pinSnap})
 				personalPolicyFixture(t, home, 3, []fixturePin{pinOpenAI})
 				return nil, nil
@@ -151,7 +152,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 		{
 			name: "c personal file",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				personalPolicyFixture(t, home, 3, []fixturePin{pinOpenAI})
 				return nil, nil
 			},
@@ -159,14 +160,14 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 		{
 			name: "d embedded default",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				return nil, nil
 			},
 			want: carveoutEmbeddedProviders,
 		},
 		{
 			name: "e home flag selects its personal file",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				personalPolicyFixture(t, home, 3, []fixturePin{pinSnap})
 				other := t.TempDir()
 				personalPolicyFixture(t, other, 3, []fixturePin{pinJev})
@@ -176,7 +177,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 		{
 			name: "g personal path is a symlink to a policy file",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				target := writePolicyFixture(t, t.TempDir(), 3, []fixturePin{pinOpenAI})
 				carveoutPersonalSymlink(t, home, target)
 				return nil, nil
@@ -185,7 +186,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 		},
 		{
 			name: "i home flag with trailing slash",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			setup: func(t *testing.T, home string, env map[string]string, _ *Config) ([]string, []string) {
 				personalPolicyFixture(t, home, 3, []fixturePin{pinSnap})
 				other := t.TempDir()
 				personalPolicyFixture(t, other, 3, []fixturePin{pinJev})
@@ -194,26 +195,24 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 			want: []string{"jev"},
 		},
 		{
-			name: "i relative home flag resolves against the process working directory",
-			setup: func(t *testing.T, home string, env map[string]string) ([]string, []string) {
+			name: "i relative home flag resolves against the working directory",
+			setup: func(t *testing.T, home string, env map[string]string, config *Config) ([]string, []string) {
 				personalPolicyFixture(t, home, 3, []fixturePin{pinSnap})
-				cwd, err := os.Getwd()
-				if err != nil {
+				// Oracle: cw joins a relative --home to its working directory
+				// (os.Getwd in production, config.WorkingDir here), so a path
+				// relative to that directory selects other's policy. Both
+				// directories are temporary, so the path climbs a fixed
+				// three levels wherever the checkout sits.
+				working := filepath.Join(t.TempDir(), "work", "dir")
+				if err := os.MkdirAll(working, 0o700); err != nil {
 					t.Fatal(err)
 				}
-				// filepath.Rel is lexical; it names the same directory only
-				// when the working directory has no symlink component.
-				if resolved, err := filepath.EvalSymlinks(cwd); err != nil || resolved != cwd {
-					t.Skipf("working directory %q has a symlink component; a relative --home is not deterministic", cwd)
-				}
-				other, err := filepath.EvalSymlinks(t.TempDir())
-				if err != nil {
-					t.Fatal(err)
-				}
+				config.WorkingDir = func() (string, error) { return working, nil }
+				other := t.TempDir()
 				personalPolicyFixture(t, other, 3, []fixturePin{pinJev})
-				relative, err := filepath.Rel(cwd, other)
-				if err != nil || filepath.IsAbs(relative) {
-					t.Skipf("no relative path from %q to %q", cwd, other)
+				relative, err := filepath.Rel(working, other)
+				if err != nil || !strings.HasPrefix(relative, "..") {
+					t.Fatalf("relative path from %q to %q = %q, %v; want one that climbs", working, other, relative, err)
 				}
 				return []string{"--home", relative}, nil
 			},
@@ -224,7 +223,7 @@ func TestCarveoutConsultPolicySelection(t *testing.T) {
 			config, _ := testConfig(t)
 			env := carveoutWithCredentials(map[string]string{})
 			config.Getenv = fixtureEnvironment(env)
-			root, flags := tc.setup(t, homeOf(t, config), env)
+			root, flags := tc.setup(t, homeOf(t, config), env, &config)
 			result := carveoutRunConsult(t, config, root, flags...)
 			if result.err != nil {
 				t.Fatalf("consult error = %v; stderr: %s", result.err, result.stderr)

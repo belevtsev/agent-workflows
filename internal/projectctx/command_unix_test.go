@@ -18,7 +18,7 @@ import (
 )
 
 func TestNormalProbeExitStopsDetachedOwnedChildren(t *testing.T) {
-	result, err := executeBounded(t.Context(), Command{Executable: "/bin/sh", Args: []string{"-c", "sleep 30 </dev/null >/dev/null 2>&1 & child=$!; printf '%s' \"$child\""}, Dir: t.TempDir(), Env: minimalEnvironment(os.Getenv)}, 1024)
+	result, err := executeBounded(t.Context(), Command{Executable: "/bin/sh", Args: []string{"-c", "sleep 30 </dev/null >/dev/null 2>&1 & child=$!; printf '%s' \"$child\""}, Dir: t.TempDir(), Env: MinimalEnvironment(os.Getenv)}, 1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestProbeEndedWhileForkingLeavesNoLiveProcessInItsGroup(t *testing.T) {
 	defer cancel()
 	ended := make(chan error, 1)
 	go func() {
-		_, err := executeBounded(ctx, Command{Executable: "/bin/sh", Args: []string{"-c", forkingProbeScript, "sh", dir, forkingMemberScript}, Dir: dir, Env: minimalEnvironment(os.Getenv)}, 1024)
+		_, err := executeBounded(ctx, Command{Executable: "/bin/sh", Args: []string{"-c", forkingProbeScript, "sh", dir, forkingMemberScript}, Dir: dir, Env: MinimalEnvironment(os.Getenv)}, 1024)
 		ended <- err
 		// A probe that ended before its member opened the FIFO releases the
 		// read below; otherwise no reader waits and this open fails.

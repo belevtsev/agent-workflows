@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/spf13/cobra"
 )
 
@@ -44,9 +44,9 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 				return err
 			}
 			// --timeout bounds the whole inspection, the git_hooks check
-			// included, which gets what projectctx.Doctor leaves.
+			// included, which gets what doctor.Doctor leaves.
 			deadline := time.Now().Add(timeout)
-			report, err := projectctx.Doctor(cmd.Context(), projectctx.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, ConfigDir: directory, Live: live, Timeout: timeout, Getenv: config.Getenv})
+			report, err := doctor.Doctor(cmd.Context(), doctor.DoctorOptions{Repo: selected, Home: roots.home, CodexHome: roots.codex, ClaudeHome: roots.claude, SkillsHome: skillsHome, ConfigDir: directory, Live: live, Timeout: timeout, Getenv: config.Getenv})
 			if err != nil {
 				return err
 			}
