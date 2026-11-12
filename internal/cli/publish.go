@@ -74,10 +74,9 @@ func addPublishCommand(root *cobra.Command, config Config) {
 				return usage(err)
 			}
 			report := publish.Run(cmd.Context(), req, publish.Deps{
-				LookPath:   exec.LookPath,
-				Environ:    os.Environ(),
-				HookStore:  func() (string, error) { return hookTaskStore(root, config) },
-				Repository: resolveRepository,
+				LookPath:  exec.LookPath,
+				Environ:   os.Environ(),
+				HookStore: func() (string, error) { return hookTaskStore(root, config) },
 			})
 			var printed any = report
 			if summary {

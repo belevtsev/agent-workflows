@@ -59,6 +59,45 @@ type Repository struct {
 	Roots []string
 }
 
+// GitOutput runs git in dir and returns its output without trailing line
+// ends; empty output is an error.
+type GitOutput func(ctx context.Context, dir string, args ...string) (string, error)
+
+// ResolveRepository returns where a command in dir publishes from: the
+// canonical root of the worktree that contains dir and, for a linked
+// worktree, the main worktree's root as well, so a record started in either
+// location gates both. gitOutput runs git.
+func ResolveRepository(ctx context.Context, dir string, gitOutput GitOutput) (Repository, error) {
+	toplevel, err := gitOutput(ctx, dir, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return Repository{}, err
+	}
+	roots := []string{}
+	add := func(path string) {
+		if canonical, err := filepath.EvalSymlinks(path); err == nil && !slices.Contains(roots, canonical) {
+			roots = append(roots, canonical)
+		}
+	}
+	add(toplevel)
+	if len(roots) == 0 {
+		return Repository{}, errors.New("worktree root is unavailable")
+	}
+	common, err := gitOutput(ctx, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		// Git before 2.31 has no --path-format; its plain form is relative to dir.
+		common, err = gitOutput(ctx, dir, "rev-parse", "--git-common-dir")
+	}
+	if err == nil {
+		if !filepath.IsAbs(common) {
+			common = filepath.Join(dir, common)
+		}
+		if filepath.Base(common) == ".git" {
+			add(filepath.Dir(common))
+		}
+	}
+	return Repository{Worktree: roots[0], Roots: roots}, nil
+}
+
 // OpenRecord is a record that still governs publication for a repository.
 type OpenRecord struct {
 	Record Record
