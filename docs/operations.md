@@ -855,7 +855,10 @@ cw keys unset SUBQ_API_KEY
 break, or with `--from-env VAR` from that environment variable; it never takes the
 key from the command line. Saved keys live in a plaintext `credentials.json` in the
 configuration directory; the directory must have mode `0700` and the file `0600`,
-both owned by you and not linked. A key in the environment takes precedence over a
+both owned by you and not linked. When they are not, `cw task start` and
+`cw consult` use no saved key and opt in to no adviser through one: they go on with
+the keys in the environment alone and print a warning on stderr that names the
+problem. A key in the environment takes precedence over a
 saved one. `cw keys status` reports whether each key comes from the environment,
 the saved file or neither, without any value or provider call.
 

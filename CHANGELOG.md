@@ -41,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
+  is not owner-only: they skip the saved keys, use the environment ones and warn ([adviser keys](docs/operations.md#adviser-keys)).
 - `cw publish --help` says a run appends its `started` entry only once its checks pass, so a run they deny or refuse
   appends none, as the docs do ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
