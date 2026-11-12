@@ -12,11 +12,12 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"unicode/utf8"
 
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/shellwords"
 )
 
 // Composition statuses.
@@ -185,13 +186,11 @@ const (
 
 var (
 	redirectPattern   = regexp.MustCompile(`(?:>|\btee)\s*(\S+)\s*<<|<<-?\s*['"]?[A-Za-z_][A-Za-z0-9_]*['"]?\s*(?:>|\|\s*tee)\s*(\S+)`)
-	separatorPattern  = regexp.MustCompile(`&&|\|\||[;|&(){}]`)
 	assignmentPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=\S*$`)
 	agentNotification = regexp.MustCompile(`<summary>Agent\b`)
 	// Brief keys may be quoted JSON ("role": "x") or jq object syntax (role:"x").
 	briefRolePattern  = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])"?role"?\s*:\s*"([A-Za-z_]+)"`)
 	briefIDPattern    = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])"?id"?\s*:\s*"([^"\s]+)"`)
-	redirectTarget    = regexp.MustCompile(`>>?\s*([^\s>&|;<]+)`)
 	testAuthorPattern = regexp.MustCompile(`(?i)test[-_ ]?author`)
 	followupPattern   = regexp.MustCompile(`follow[- ]?up|re-?review|scoped|confirm|re-?bind`)
 	githubPattern     = regexp.MustCompile(`\bcommit|github|pull request|\bpr\b|publish`)
@@ -921,19 +920,19 @@ var cwCommands = map[string]bool{"consult": true, "doctor": true, "graphify": tr
 var readPrograms = map[string]bool{"cat": true, "sed": true, "head": true, "tail": true, "less": true, "nl": true}
 
 // shellCall is one simple command: its words with quoted text that contains
-// whitespace replaced by "_", and the logical line it is on.
+// whitespace replaced by "_", and the lines it is on.
 type shellCall struct {
 	fields []string
 	text   string
-	raw    string // the whole logical line, quotes kept
-	line   int    // first and last physical (non-heredoc) line of that logical line
+	raw    string // the whole lines the command is on, quotes kept
+	line   int    // first and last line of the command
 	last   int
 }
 
 type heredoc struct {
 	line         int
 	target, body string
-	redirect     bool // a redirected line rather than a heredoc body
+	redirect     bool // a redirected command's lines rather than a heredoc body
 }
 
 // shellCommand is a Bash tool command split into simple commands. Heredoc
@@ -956,146 +955,100 @@ func (call shellCall) isCw() bool {
 	return program == "cw" || strings.HasSuffix(program, "/cw") || program == "$CW" || program == "${CW}"
 }
 
-// parseShell approximates shell word splitting well enough to find which
-// programs a command runs. It is not a shell parser: unusual quoting can
-// still be misread, but text in heredoc bodies and quoted strings is ignored.
+// parseShell splits a Bash tool command with shellwords.Split, well enough to
+// find which programs it runs. Heredoc bodies stay apart from the calls; a
+// heredoc's target is the file its line redirects to, and a command that
+// redirects its output to a file is kept as a redirect entry whose body is
+// its lines.
 func parseShell(command string) shellCommand {
-	shell, _ := splitShell(command)
+	commands := shellwords.Split(command)
+	starts := []int{0} // where each line of command starts
+	for i := range len(command) {
+		if command[i] == '\n' {
+			starts = append(starts, i+1)
+		}
+	}
+	// lines returns lines first to last of command, without copying them.
+	lines := func(first, last int) string {
+		end := len(command)
+		if last+1 < len(starts) {
+			end = starts[last+1] - 1
+		}
+		return command[starts[first]:end]
+	}
+	var shell shellCommand
+	targets := make(map[int]string) // per line holding a heredoc: its first redirect target
+	for _, simple := range commands {
+		for _, redirect := range simple.Redirects {
+			if !isHeredoc(redirect) {
+				continue
+			}
+			target, seen := targets[redirect.Line]
+			if !seen { // once per line
+				if match := redirectPattern.FindStringSubmatch(lines(redirect.Line, redirect.Line)); match != nil {
+					target = strings.Trim(cmp.Or(match[1], match[2]), `"'`)
+				}
+				targets[redirect.Line] = target
+			}
+			shell.heredocs = append(shell.heredocs, heredoc{line: redirect.Line, body: redirect.Body, target: target})
+		}
+	}
+	for _, simple := range commands {
+		raw := lines(simple.Line, simple.EndLine)
+		// A command that redirects to a file (jq -n '{...}' > FILE) may write a brief.
+		if target := outputTarget(simple.Redirects); target != "" {
+			shell.heredocs = append(shell.heredocs, heredoc{line: simple.Line, target: target, body: raw, redirect: true})
+		}
+		if fields := commandFields(callFields(simple)); len(fields) > 0 {
+			shell.calls = append(shell.calls, shellCall{fields: fields, text: strings.Join(fields, " "), raw: raw, line: simple.Line, last: simple.EndLine})
+		}
+	}
 	return shell
 }
 
-// splitShell is parseShell that also returns its work: the bytes it passed
-// through its quote scanner, the bytes of each line it searched for a
-// redirect target, and the quote-nesting frames that any step copied or
-// searched. The work must stay linear in len(command): the quote state at
-// each "<<" of a line carries on from the previous one and is never rescanned
-// from the line's start, a line is searched for a redirect at most once, and
-// no per-line or per-marker step may copy or search the whole nesting.
-func splitShell(command string) (shellCommand, int) {
-	var shell shellCommand
-	work := 0
-	lines := strings.Split(strings.ReplaceAll(command, "\\\n", " "), "\n")
-	var kept []string
-	quotes := quoteScanner{work: &work} // the quoting state after the kept lines
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		var markers [][2]int
-		within, scanned := quotes.clone(), 0
-		target, targetKnown := "", false
-		for from := 0; ; {
-			at := strings.Index(line[from:], "<<")
-			if at < 0 {
-				break
-			}
-			at += from
-			from = at + 1
-			// <<< is a here-string; << inside a quoted string (but not in a
-			// $(...) or `...` substitution within one) is text, and inside
-			// $((...)) it is a shift. The quote state is only needed when the
-			// << is not a here-string, and the marker only matched outside
-			// quotes. quoted and arithmetic take constant time, so the order
-			// of the marker and arithmetic checks below does not affect cost.
-			if at > 0 && line[at-1] == '<' {
-				continue
-			}
-			within.feed(line[scanned:at])
-			scanned = at
-			if within.quoted() {
-				continue
-			}
-			end, delimiter, ok := heredocMarker(line, at)
-			if !ok || within.arithmetic() {
-				continue
-			}
-			from = end
-			markers = append(markers, [2]int{at, end})
-			var body []string
-			for i+1 < len(lines) {
-				i++
-				if strings.TrimSpace(lines[i]) == delimiter {
-					break
-				}
-				body = append(body, lines[i])
-			}
-			if !targetKnown { // once per line: the line's first redirect
-				work += len(line)
-				if match := redirectPattern.FindStringSubmatch(line); match != nil {
-					target = strings.Trim(cmp.Or(match[1], match[2]), `"'`)
-				}
-				targetKnown = true
-			}
-			doc := heredoc{line: len(kept), body: strings.Join(body, "\n"), target: target}
-			shell.heredocs = append(shell.heredocs, doc)
-		}
-		if len(markers) == 0 {
-			// The line is kept as it is, so the scan of its start carries on.
-			within.feed(line[scanned:])
-			within.feed("\n")
-			quotes = within
-			kept = append(kept, line)
-			continue
-		}
-		var b strings.Builder
-		from := 0
-		for _, m := range markers {
-			b.WriteString(line[from:m[0]])
-			from = m[1]
-		}
-		b.WriteString(line[from:])
-		line = b.String()
-		kept = append(kept, line)
-		quotes.feed(line)
-		quotes.feed("\n")
-	}
-	for _, logical := range splitLogical(strings.Join(kept, "\n")) {
-		// A line that redirects to a file (jq -n '{...}' > FILE) may write a brief.
-		if targets := redirectTarget.FindAllStringSubmatch(logical.words, -1); targets != nil {
-			shell.heredocs = append(shell.heredocs, heredoc{line: logical.first, target: targets[len(targets)-1][1], body: logical.raw, redirect: true})
-		}
-		for _, segment := range separatorPattern.Split(logical.words, -1) {
-			fields := commandFields(strings.Fields(segment))
-			if len(fields) > 0 {
-				shell.calls = append(shell.calls, shellCall{fields: fields, text: strings.Join(fields, " "), raw: logical.raw, line: logical.first, last: logical.last})
-			}
-		}
-	}
-	return shell, work
+func isHeredoc(redirect shellwords.Redirect) bool {
+	return strings.HasSuffix(redirect.Op, "<<") || strings.HasSuffix(redirect.Op, "<<-")
 }
 
-// heredocMarker matches a heredoc marker at line[at:], which starts with
-// "<<": an optional "-", blanks, an optional quote, the delimiter word and an
-// optional quote, the shape of <<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)['"]?.
-// It reads only the marker's own bytes, so finding every marker of a line
-// stays linear.
-func heredocMarker(line string, at int) (end int, delimiter string, ok bool) {
-	i := at + 2
-	if i < len(line) && line[i] == '-' {
-		i++
+// outputTarget returns the last file a command's output is redirected to,
+// not counting a duplicated descriptor such as 2>&1.
+func outputTarget(redirects []shellwords.Redirect) string {
+	target := ""
+	for _, redirect := range redirects {
+		op := strings.TrimLeft(redirect.Op, "0123456789")
+		if (op == ">" || op == ">>" || op == "&>" || op == "&>>") && redirect.Target.Text != "" {
+			target = redirect.Target.Text
+		}
 	}
-	for i < len(line) && strings.IndexByte(" \t\n\f\r", line[i]) >= 0 {
-		i++
-	}
-	if i < len(line) && (line[i] == '\'' || line[i] == '"') {
-		i++
-	}
-	start := i
-	for i < len(line) && isDelimiterByte(line[i], i == start) {
-		i++
-	}
-	if i == start {
-		return 0, "", false
-	}
-	delimiter = line[start:i]
-	if i < len(line) && (line[i] == '\'' || line[i] == '"') {
-		i++
-	}
-	return i, delimiter, true
+	return target
 }
 
-// isDelimiterByte reports whether ch can be part of a heredoc delimiter word
-// ([A-Za-z_] first, then [A-Za-z0-9_]).
-func isDelimiterByte(ch byte, first bool) bool {
-	return ch == '_' || 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || !first && '0' <= ch && ch <= '9'
+// callFields returns a simple command's words and then its redirections
+// other than heredocs, each operator and target a field of its own.
+func callFields(simple shellwords.SimpleCommand) []string {
+	fields := make([]string, 0, len(simple.Words)+2*len(simple.Redirects))
+	for _, word := range simple.Words {
+		fields = append(fields, field(word.Text))
+	}
+	for _, redirect := range simple.Redirects {
+		if !isHeredoc(redirect) {
+			fields = append(fields, redirect.Op, field(redirect.Target.Text))
+		}
+	}
+	return fields
+}
+
+// field is a word as the classification reads it: a word whose text holds
+// whitespace, or is empty, becomes "_" after any NAME= or --option= prefix,
+// so its words cannot be commands.
+func field(text string) string {
+	if text != "" && !strings.ContainsAny(text, " \t\n") {
+		return text
+	}
+	if name, _, ok := strings.Cut(text, "="); ok && !strings.ContainsAny(name, " \t\n") {
+		return name + "=_"
+	}
+	return "_"
 }
 
 // commandFields drops what precedes a command word: assignments, compound
@@ -1132,6 +1085,7 @@ func commandFields(fields []string) []string {
 
 var shellKeywords = map[string]bool{
 	"!": true, "if": true, "then": true, "else": true, "elif": true, "do": true, "while": true, "until": true,
+	"{": true, "}": true,
 }
 
 // wrapperValueFlags lists the wrappers that run their arguments and, for each,
@@ -1146,232 +1100,6 @@ var wrapperValueFlags = map[string]map[string]bool{
 	"nice":    {"-n": true, "--adjustment": true},
 	"sudo":    {"-u": true, "-g": true, "-C": true, "-D": true, "-h": true, "-p": true, "-r": true, "-t": true, "-U": true, "-T": true, "--user": true, "--group": true, "--chdir": true, "--host": true, "--prompt": true, "--role": true, "--type": true, "--other-user": true, "--command-timeout": true},
 	"timeout": {"-k": true, "-s": true, "--kill-after": true, "--signal": true},
-}
-
-// logicalLine is one shell line; a quoted string may span several physical
-// lines (first..last). words has quotes removed: a quoted string without
-// whitespace keeps its text, one with whitespace becomes "_" so its words
-// cannot be commands. Comments are dropped.
-type logicalLine struct {
-	words, raw  string
-	first, last int
-}
-
-// quoteScanner follows shell quoting through text fed to it in pieces, in
-// one pass: '...', "...", $'...' (with backslash escapes), $(...), (...),
-// $((...)), ((...)) and `...` (whose text is unquoted, even within double
-// quotes), backslash escapes (an escaped byte opens nothing) and comments.
-type quoteScanner struct {
-	frames   *quoteFrame // the innermost open frame; nil outside any
-	prev     byte        // the previous byte, 0 at the start
-	escaped  bool        // the next byte is escaped
-	comment  bool        // inside a comment, until the newline
-	opened   bool        // the previous byte opened a $( or ( frame
-	closeArg bool        // the previous byte closed a $((...)); its second ) is due
-	work     *int        // counts the bytes fed to this scanner and its clones; nil: strayScanBytes
-}
-
-// quoteFrame is one open quote or parenthesis, linked to the frame it opened
-// in. Frames are never changed once made, so a scanner and its clones share
-// them: a clone takes constant time however deep the nesting is.
-type quoteFrame struct {
-	up    *quoteFrame
-	ch    byte // ' " C ($'...') S ($( ) ( A ($(( ) `
-	arith int  // the A frames at or below this one
-}
-
-// strayScanBytes counts the bytes fed to quote scanners that no splitShell
-// call counts (a zero quoteScanner, or one whose work was cleared). Splitting
-// never adds to it; tests check that it stays zero, so no scan escapes the
-// work count.
-var strayScanBytes atomic.Int64
-
-// strayScanWork reports strayScanBytes.
-func strayScanWork() int64 { return strayScanBytes.Load() }
-
-// count adds n to the scanner's work, or to strayScanBytes when it has none.
-func (q *quoteScanner) count(n int) {
-	if q.work != nil {
-		*q.work += n
-	} else {
-		strayScanBytes.Add(int64(n))
-	}
-}
-
-// clone copies the scanner. The copy shares the immutable frames, so it
-// copies no frame and adds no work.
-func (q *quoteScanner) clone() quoteScanner { return *q }
-
-func (q *quoteScanner) top() byte {
-	if q.frames == nil {
-		return 0
-	}
-	return q.frames.ch
-}
-
-// push opens a frame inside the current one.
-func (q *quoteScanner) push(ch byte) {
-	arith := 0
-	if q.frames != nil {
-		arith = q.frames.arith
-	}
-	if ch == 'A' {
-		arith++
-	}
-	q.frames = &quoteFrame{up: q.frames, ch: ch, arith: arith}
-}
-
-// replace turns the innermost frame into ch. It makes a new frame rather than
-// changing the old one, which a clone may share. Changing it in place would
-// give the same results today, so no test can tell the two apart: a frame is
-// replaced only by the byte right after the one that pushed it, and splitShell
-// clones only after a newline, so the frame is never shared yet. Keeping every
-// frame immutable does not depend on that.
-func (q *quoteScanner) replace(ch byte) {
-	q.pop()
-	q.push(ch)
-}
-
-func (q *quoteScanner) pop() { q.frames = q.frames.up }
-
-// quoted reports whether the text so far ends inside a quoted string.
-func (q *quoteScanner) quoted() bool {
-	top := q.top()
-	return top == '\'' || top == '"' || top == 'C'
-}
-
-// arithmetic reports whether the text so far ends inside $((...)). Each frame
-// records how many A frames lie at or below it, so this searches no frame and
-// adds no work.
-func (q *quoteScanner) arithmetic() bool { return q.frames != nil && q.frames.arith > 0 }
-
-func (q *quoteScanner) feed(text string) {
-	q.count(len(text))
-	for i := 0; i < len(text); i++ {
-		ch := text[i]
-		opened := false
-		if q.closeArg {
-			// The second ) of $((...)) or ((...)), whatever the context.
-			q.closeArg = false
-			if ch == ')' {
-				q.prev = ch
-				continue
-			}
-		}
-		switch {
-		case q.escaped:
-			q.escaped = false
-			ch = '\\' // an escaped byte opens nothing: \$( is no substitution
-		case q.comment:
-			q.comment = ch != '\n'
-		case q.top() == '\'':
-			if ch == '\'' {
-				q.pop()
-			}
-		case q.top() == 'C':
-			switch ch {
-			case '\\':
-				q.escaped = true
-			case '\'':
-				q.pop()
-			}
-		case q.top() == '"':
-			switch {
-			case ch == '\\':
-				q.escaped = true
-			case ch == '"':
-				q.pop()
-			case ch == '(' && q.prev == '$':
-				q.push('S')
-				opened = true
-			case ch == '`':
-				q.push('`')
-			}
-		default:
-			switch {
-			case ch == '\\':
-				q.escaped = true
-			case ch == '\'' && q.prev == '$':
-				q.push('C')
-			case ch == '\'' || ch == '"':
-				q.push(ch)
-			case ch == '#' && (q.prev == 0 || strings.IndexByte(" \t\n;&|()", q.prev) >= 0):
-				q.comment = true
-			case ch == '(' && q.opened:
-				q.replace('A')
-			case ch == '(' && q.prev == '$':
-				q.push('S')
-				opened = true
-			case ch == '(':
-				q.push('(')
-				opened = true // (( starts an arithmetic command
-			case ch == ')' && q.top() == 'A':
-				q.pop()
-				q.closeArg = true
-			case ch == ')' && (q.top() == 'S' || q.top() == '('):
-				q.pop()
-			case ch == '`' && q.top() == '`':
-				q.pop()
-			case ch == '`':
-				q.push('`')
-			}
-		}
-		q.opened = opened
-		q.prev = ch
-	}
-}
-
-func splitLogical(text string) []logicalLine {
-	var out []logicalLine
-	var words strings.Builder
-	start, physical, first := 0, 0, 0
-	escapedAt := -1 // index of the last byte escaped by a backslash
-	flush := func(end int) {
-		out = append(out, logicalLine{words: words.String(), raw: text[start:end], first: first, last: physical})
-		words.Reset()
-	}
-	for i := 0; i < len(text); i++ {
-		switch ch := text[i]; {
-		case ch == '\n':
-			flush(i)
-			physical++
-			start, first = i+1, physical
-		case ch == '#' && (i == 0 || strings.ContainsRune(" \t\n;&|()", rune(text[i-1]))):
-			for i+1 < len(text) && text[i+1] != '\n' {
-				i++
-			}
-		case ch == '\\' && i+1 < len(text) && text[i+1] != '\n':
-			// An escaped byte is literal: it neither quotes nor separates.
-			i++
-			escapedAt = i
-			if strings.IndexByte(" \t;&|(){}<>#'\"`$", text[i]) >= 0 {
-				words.WriteByte('_')
-			} else {
-				words.WriteByte(text[i])
-			}
-		case ch == '\'' || ch == '"':
-			end := i + 1
-			escapes := ch == '"' || i > 0 && text[i-1] == '$' && escapedAt != i-1 // "..." and $'...'
-			for end < len(text) && text[end] != ch {
-				if escapes && text[end] == '\\' {
-					end++
-				}
-				end++
-			}
-			content := text[i+1 : min(end, len(text))]
-			physical += strings.Count(content, "\n")
-			if content == "" || strings.ContainsAny(content, " \t\n") {
-				words.WriteString("_")
-			} else {
-				words.WriteString(content)
-			}
-			i = end
-		default:
-			words.WriteByte(ch)
-		}
-	}
-	flush(len(text))
-	return out
 }
 
 // cwSource names the first cw call, with its subcommand for the task,
