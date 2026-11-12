@@ -108,7 +108,8 @@ effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed.
 Quoted and escaped characters are literal, so `git -C "…/com~apple~CloudDocs/proj"`
 and `cd '/tmp/price$5'` are followed as written. A bare `cd` moves to `HOME`;
 `cd -L DIR`, `cd -P DIR` and `cd -- DIR` move to `DIR`, and `pushd -n DIR`
-stays where it is.
+stays where it is. A git `-C DIR` is also checked as plain text, unexpanded,
+as earlier versions of the hook read it.
 
 The hook never skips a git command after a directory change it cannot
 follow: `cd -`, `cd ""`, `popd`, `pushd` without a directory, a directory

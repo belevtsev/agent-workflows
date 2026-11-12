@@ -181,10 +181,18 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 	if subcommand == 0 || (texts[subcommand] != "commit" && texts[subcommand] != "push") {
 		return at
 	}
+	plain := runs.dir // each -C directory read as plain text, as the gate read it before expandDir
 	for _, index := range moves {
 		runs = move(runs, words[index], words[index].Raw, vars)
+		plain = resolveDir(plain, texts[index])
 	}
-	s.add(runs, publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])})
+	next := publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])}
+	s.add(runs, next)
+	if plain != "" && plain != runs.dir {
+		// Where the two readings differ, the gate also checks the plain one,
+		// so it denies at least every -C directory it denied before.
+		s.add(place{dir: plain}, next)
+	}
 	return at
 }
 

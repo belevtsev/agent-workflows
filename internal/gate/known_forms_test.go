@@ -26,7 +26,8 @@ func TestPrePublishKnownForms(t *testing.T) {
 	icloud := filepath.Join(canonicalDir(t), "Mobile Documents", "com~apple~CloudDocs", "proj")
 	dollar := filepath.Join(canonicalDir(t), "price$5")
 	glob := filepath.Join(canonicalDir(t), "a *b?[c]")
-	for _, dir := range []string{spaced, icloud, dollar, glob} {
+	plainDollar := filepath.Join(spaced, "price$5")
+	for _, dir := range []string{spaced, icloud, dollar, glob, plainDollar} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -37,7 +38,7 @@ func TestPrePublishKnownForms(t *testing.T) {
 		return []taskflow.OpenRecord{record(id, "Open", "it has no passing cw task verify")}
 	}
 	store := &fakeStore{open: map[string][]taskflow.OpenRecord{repo: open("task-k"), spaced: open("task-s"),
-		icloud: open("task-i"), dollar: open("task-d"), glob: open("task-g")}}
+		icloud: open("task-i"), dollar: open("task-d"), glob: open("task-g"), plainDollar: open("task-p")}}
 	rows := []struct {
 		name    string
 		cwd     string
@@ -186,6 +187,10 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"cd to a single-quoted path with $", "{O}", "cd '{D}' && git push", gate.Deny},
 		{"cd to a path with an escaped $", "{O}", `cd {P}/price\$5 && git push`, gate.Deny},
 		{"git -C a double-quoted path with glob characters", "{O}", `git -C "{G}" push`, gate.Deny},
+		// The shell expands $5 here, but the gate read every -C directory as
+		// plain text before it expanded ~ and variables; it keeps that reading
+		// too, so it denies at least where it denied before.
+		{"git -C a path with an unquoted $ read as plain text", "{O}", `git -C "{S}"/price$5 push`, gate.Deny},
 
 		// Directories the gate cannot resolve: the git command is checked in
 		// the session's directory, {R}, and asks. Where the shell does not
@@ -225,7 +230,7 @@ func TestPrePublishKnownForms(t *testing.T) {
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
 			git := &fakeGit{}
-			for _, dir := range []string{repo, spaced, icloud, dollar, glob} {
+			for _, dir := range []string{repo, spaced, icloud, dollar, glob, plainDollar} {
 				git.repository(dir)
 			}
 			command := paths.Replace(row.command)
