@@ -14,31 +14,69 @@ import (
 	"testing"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
 // TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds pins how a
-// check becomes a process. Oracle: the runner before proc.Run executed
+// check whose program is not go becomes a process, with no go command
+// resolved. Oracle: the runner before proc.Run executed
 // exec.CommandContext(argv[0], argv[1:]...) in the snapshot's selected path
 // with checkEnvironment(), no input, timeout_seconds as its bound and a 2 s
 // WaitDelay, and gave both outputs to the log capture, which RunCheck attaches.
 func TestCheckSpecRunsTheArgvWithTheFilteredEnvironmentAndBounds(t *testing.T) {
 	t.Setenv("CW_SPEC_PROBE_TOKEN", "hidden")
 	t.Setenv("CW_SPEC_PROBE_VISIBLE", "shown")
-	check := Check{ID: "unit", Argv: []string{"go", "test", "-run", "TestX", "./..."}, TimeoutSeconds: 42}
-	got := checkSpec(check, "/repo/selected")
+	check := Check{ID: "unit", Argv: []string{"make", "test", "-j", "4"}, TimeoutSeconds: 42}
+	got, tool, err := checkSpec(t.Context(), check, "/repo/selected")
 	want := proc.Spec{
-		Path: "go", Args: []string{"test", "-run", "TestX", "./..."}, Dir: "/repo/selected", Env: checkEnvironment(),
+		Path: "make", Args: []string{"test", "-j", "4"}, Dir: "/repo/selected", Env: checkEnvironment(),
 		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("checkSpec = %+v\nwant %+v", got, want)
+	if err != nil || tool != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("checkSpec = %+v, %v, %v\nwant %+v, no tool, no error", got, tool, err, want)
 	}
 	if !slices.Contains(got.Env, "CW_SPEC_PROBE_VISIBLE=shown") {
 		t.Errorf("environment lacks an ordinary variable: %q", got.Env)
 	}
 	if slices.ContainsFunc(got.Env, func(entry string) bool { return strings.HasPrefix(entry, "CW_SPEC_PROBE_TOKEN=") }) {
 		t.Errorf("environment passes a TOKEN variable: %q", got.Env)
+	}
+}
+
+// TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand gives a check whose
+// program is go a PATH that names the real go and one that names a script.
+// Oracle: G6's design: a go check runs the go command langpack.ResolveGo
+// verified, by its absolute path, with GOROOT and GOTOOLCHAIN=local appended
+// to the same environment, and returns that go command; when ResolveGo
+// refuses, checkSpec returns its error and no go command.
+func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
+	dir := t.TempDir()
+	check := Check{ID: "unit", Argv: []string{"go", "test", "./..."}, TimeoutSeconds: 42}
+	// go test puts the go command that runs it first on the test's PATH.
+	want, err := langpack.ResolveGo(t.Context(), "go", dir, checkEnvironment())
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	got, tool, err := checkSpec(t.Context(), check, dir)
+	if err != nil || tool == nil || *tool != want {
+		t.Fatalf("checkSpec tool = %+v, %v; want %+v", tool, err, want)
+	}
+	wantSpec := proc.Spec{
+		Path: want.Path, Args: []string{"test", "./..."}, Dir: dir, Env: append(checkEnvironment(), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local"),
+		Timeout: 42 * time.Second, WaitDelay: 2 * time.Second,
+	}
+	if !reflect.DeepEqual(got, wantSpec) {
+		t.Fatalf("checkSpec = %+v\nwant %+v", got, wantSpec)
+	}
+
+	fake := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fake, "go"), []byte("#!/bin/sh\necho ok\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if _, tool, err := checkSpec(t.Context(), check, dir); err == nil || tool != nil || !strings.Contains(err.Error(), filepath.Join(fake, "go")) {
+		t.Fatalf("checkSpec with a script first on PATH: tool %+v, error %v; want no tool and an error naming %s", tool, err, filepath.Join(fake, "go"))
 	}
 }
 
@@ -71,7 +109,10 @@ func TestCheckExitCodeRecordsOnlyAStartedProgramsStatus(t *testing.T) {
 		{name: "stopped before the start", ctx: cancelled, check: helper("pass")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			spec := checkSpec(tc.check, t.TempDir())
+			spec, _, err := checkSpec(t.Context(), tc.check, t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
 			if tc.timeout != 0 {
 				spec.Timeout = tc.timeout
 			}
@@ -95,7 +136,10 @@ func TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout(t *test
 			// sh prints its pid, which is the id of the check's process group,
 			// and exits; the background sleep holds the output pipe open.
 			script := fmt.Sprintf("sleep 30 & echo $$; exit %d", status)
-			spec := checkSpec(Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
+			spec, _, err := checkSpec(t.Context(), Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
 			// sh exits within milliseconds of its start, so the timeout falls
 			// inside checkSpec's 2 s output wait.
 			spec.Timeout, spec.StdoutLimit = 500*time.Millisecond, 64

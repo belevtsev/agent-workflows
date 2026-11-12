@@ -1023,26 +1023,12 @@ func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
 	}
 }
 
-// fakeGo writes an executable named go that ignores its arguments and exits
-// with code, so a check is a `go test` invocation without building anything.
-func fakeGo(t *testing.T, code int) string {
-	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("the fake go tool is a shell script")
-	}
-	path := filepath.Join(t.TempDir(), "go")
-	if err := os.WriteFile(path, fmt.Appendf(nil, "#!/bin/sh\nexit %d\n", code), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
 // executionPlan is a substantial plan without required checkpoints whose one
 // requirement is bound to the check "unit" running argv.
 func executionPlan(argv []string) Plan {
 	return Plan{Title: "Change source", Kind: "substantial", Checkpoints: &CheckpointPolicy{Required: false, Reason: "execution rule test"},
 		Requirements: []Requirement{{ID: "behavior", Description: "Verified source behavior", CheckIDs: []string{"unit"}}},
-		Checks:       []Check{{ID: "unit", Argv: argv, TimeoutSeconds: 10}}}
+		Checks:       []Check{{ID: "unit", Argv: argv, TimeoutSeconds: 300}}}
 }
 
 // mustVerifyReport runs Verify and returns its report whether or not the task
@@ -1077,17 +1063,25 @@ func TestVerifyAppliesLanguageEvidenceRules(t *testing.T) {
 		{"module below the repository root, covered", "svc", "./internal/pkg", 0, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			files := map[string]string{"go.mod": "module example.test\n", "internal/pkg/pkg.go": "package pkg\n", "internal/other/other.go": "package other\n"}
+			// A check named go runs only a verified go command, so the run is
+			// a real go test; its test fails when CW_EVIDENCE_FAIL is set,
+			// which the check inherits from cw's environment.
+			const test = "import (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestRun(t *testing.T) {\n\tif os.Getenv(\"CW_EVIDENCE_FAIL\") != \"\" {\n\t\tt.Fatal(\"failing on request\")\n\t}\n}\n"
+			files := map[string]string{"go.mod": "module example.test\n\ngo 1.21\n", "internal/pkg/pkg.go": "package pkg\n", "internal/pkg/pkg_test.go": "package pkg\n\n" + test,
+				"internal/other/other.go": "package other\n", "internal/other/other_test.go": "package other\n\n" + test}
 			module := map[string]string{}
 			for name, data := range files {
 				module[path.Join(tc.module, name)] = data
 			}
 			repo := bundleTestRepo(t, module, true)
-			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{fakeGo(t, tc.exit), "test", "-race", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
+			record, err := StartWithPacks(t.Context(), filepath.Join(repo, tc.module), filepath.Join(t.TempDir(), "tasks"), executionPlan([]string{"go", "test", "-race", "-count=1", tc.pattern}), fixtureBinding(), SelectionExplicit, goPack)
 			if err != nil {
 				t.Fatal(err)
 			}
 			bundleTestWrite(t, repo, path.Join(tc.module, "internal/pkg/pkg.go"), "package pkg\n\nconst Changed = true\n")
+			if tc.exit != 0 {
+				t.Setenv("CW_EVIDENCE_FAIL", "1")
+			}
 			run, _ := RunCheck(t.Context(), record.Directory, "unit")
 			if want := map[int]string{0: "passed", 1: "failed"}[tc.exit]; run.Status != want {
 				t.Fatalf("check run status %q, want %q", run.Status, want)

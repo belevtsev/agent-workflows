@@ -251,7 +251,9 @@ in a `check:` entry. An `argv` cannot start with a shell, `env` or a privilege
 wrapper. Checks inherit the environment of the shell that runs `cw task run`, so
 export variables such as `GOWORK=off` there instead. Variables whose names contain
 `KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, and `BASH_ENV` and `ENV`, are
-removed.
+removed. A check named `go` runs only a `go` built from `cmd/go`; otherwise its run
+is `failed` with failure `untrusted_toolchain`: put the real `go` first on `PATH`
+([which go](../../../docs/operations.md#which-go-a-check-runs)).
 
 ```sh
 cw task start --repo /absolute/path/to/project --plan /private/path/plan.json --summary

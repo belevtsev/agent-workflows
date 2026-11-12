@@ -294,16 +294,36 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 
 // checkSpec builds the proc.Spec that runs check in dir: its argv directly,
 // without a shell, with the filtered environment of checkEnvironment, no
-// input, the check's timeout and checkWaitDelay. It is the one place that
-// decides which program a check runs and what that program sees; RunCheck
-// records the environment's GOFLAGS from it and attaches the log as both
-// outputs.
-func checkSpec(check Check, dir string) proc.Spec {
-	return proc.Spec{
+// input, the check's timeout and checkWaitDelay. A check whose program is
+// named go (or go.exe, as the Go evidence rule names it) runs instead the go
+// command that langpack.ResolveGo verified, by its absolute path and with
+// GoTool.Env added, and tool is that go command; err says why no go command
+// could be verified, and then the check must not run. Resolving runs the
+// candidate once, within ctx and the check's timeout. checkSpec is the one
+// place that decides which program a check runs and what that program sees;
+// RunCheck records the environment's GOFLAGS from it and attaches the log as
+// both outputs.
+func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, err error) {
+	spec = proc.Spec{
 		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(),
 		Timeout:   time.Duration(check.TimeoutSeconds) * time.Second,
 		WaitDelay: checkWaitDelay,
 	}
+	if strings.TrimSuffix(filepath.Base(spec.Path), ".exe") != "go" {
+		return spec, nil, nil
+	}
+	if spec.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, spec.Timeout)
+		defer cancel()
+	}
+	resolved, err := langpack.ResolveGo(ctx, spec.Path, dir, spec.Env)
+	if err != nil {
+		return spec, nil, err
+	}
+	spec.Path = resolved.Path
+	spec.Env = append(spec.Env, resolved.Env()...)
+	return spec, &resolved, nil
 }
 
 // checkExitCode returns the exit code a run records, as os.ProcessState's
@@ -330,6 +350,9 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
 	var spec proc.Spec
 	var logFile *os.File
+	// refused says why no verified go command could run the check; the start
+	// revision then records the run as failed, and nothing runs.
+	var refused error
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
 	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
@@ -353,11 +376,22 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		if err != nil {
 			return err
 		}
-		spec = checkSpec(check, snapshot.SelectedPath)
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS"))}
+		var tool *langpack.GoTool
+		spec, tool, refused = checkSpec(ctx, check, snapshot.SelectedPath)
+		if refused != nil && ctx.Err() != nil {
+			return ctx.Err()
+		}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: time.Now().UTC(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS")), Tool: tool}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
+		}
+		if refused != nil {
+			// The start revision is also the terminal one: the run failed
+			// without executing anything, and its log stays empty.
+			finished := time.Now().UTC()
+			run.Status, run.Failure, run.FinishedAt = "failed", "untrusted_toolchain", &finished
+			run.LogSHA256, run.OutputSHA256 = digest(nil), digest(nil)
 		}
 		record.Checks = append(record.Checks, run)
 		record.EvidenceRevision++
@@ -369,6 +403,12 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 			logFile.Close()
 		}
 		return run, err
+	}
+	if refused != nil {
+		if err := logFile.Close(); err != nil {
+			return run, err
+		}
+		return run, fmt.Errorf("%w: %s (%s): %v", ErrCheckFailed, run.Status, run.Failure, refused)
 	}
 	capture := &logCapture{file: logFile, full: sha256.New(), saved: sha256.New()}
 	// One writer takes both outputs, so os/exec gives the check a single pipe
@@ -468,6 +508,41 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 		return run, fmt.Errorf("%w: %s", ErrCheckFailed, run.Status)
 	}
 	return run, nil
+}
+
+// toolLimitations names, for the checks whose latest run passed at snapshot
+// and ran go, the go command that ran them: one line per go command, in check
+// order, and one for runs recorded before cw verified go, which name none.
+func toolLimitations(record Record, snapshot projectctx.Snapshot) []string {
+	var order []string
+	checks := map[string][]string{}
+	for _, check := range allChecks(record) {
+		run := latestRun(record, check.ID)
+		if run == nil || !passedAt(*run, snapshot) || strings.TrimSuffix(filepath.Base(run.Argv[0]), ".exe") != "go" {
+			continue
+		}
+		key := ""
+		if run.Tool != nil {
+			key = run.Tool.Version + " at " + run.Tool.Path
+		}
+		if _, seen := checks[key]; !seen {
+			order = append(order, key)
+		}
+		checks[key] = append(checks[key], check.ID)
+	}
+	limitations := make([]string, 0, len(order))
+	for _, key := range order {
+		ids := "check " + checks[key][0]
+		if len(checks[key]) > 1 {
+			ids = "checks " + strings.Join(checks[key], ", ")
+		}
+		if key == "" {
+			limitations = append(limitations, ids+" ran a go command that cw did not verify (recorded before cw verified go)")
+			continue
+		}
+		limitations = append(limitations, ids+" ran "+key+"; cw verified that it is a build of cmd/go, not that it or its GOROOT is unmodified")
+	}
+	return limitations
 }
 
 var _ io.Writer = (*logCapture)(nil)

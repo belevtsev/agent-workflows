@@ -477,6 +477,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
+		result.Limitations = append(result.Limitations, toolLimitations(*record, snapshot)...)
 		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
 		findingIssues, findingNotes := rejectedFindingReport(root, *record)
 		result.Problems = append(result.Problems, findingIssues...)
