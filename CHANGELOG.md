@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory
+  the command is given, as `cw` does, not the test's own ([paths](docs/operations.md#paths)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.
