@@ -139,8 +139,8 @@ func agentFrontmatterProblems(file string, data []byte) []string {
 	if strings.TrimSpace(fields.Description) == "" {
 		problems = append(problems, file+": description is empty")
 	}
-	if tools, ok := fields.DisallowedTools.(string); !ok || tools != "Skill" {
-		problems = append(problems, fmt.Sprintf("%s: disallowedTools = %#v, want Skill", file, fields.DisallowedTools))
+	if !workerToolLimits(fields.DisallowedTools) {
+		problems = append(problems, fmt.Sprintf("%s: disallowedTools = %#v, want %q", file, fields.DisallowedTools, workerDisallowedTools))
 	}
 	if !slices.Contains([]string{"opus", "sonnet", "haiku"}, fields.Model) {
 		problems = append(problems, fmt.Sprintf("%s: model %q is not opus, sonnet or haiku", file, fields.Model))
@@ -149,6 +149,29 @@ func agentFrontmatterProblems(file string, data []byte) []string {
 		problems = append(problems, fmt.Sprintf("%s: effort %q is not low, medium, high, xhigh or max", file, fields.Effort))
 	}
 	return problems
+}
+
+// workerDisallowedTools is the disallowedTools value every worker agent sets.
+// Claude Code then withholds the Skill tool, so a worker reads a SKILL.md only
+// at a path its brief gives; the Agent tool, so a worker cannot dispatch
+// subagents of its own (by default the host allows three levels); and the
+// Workflow tool, so a worker cannot run a multi-agent script either. Only the
+// coordinator dispatches.
+const workerDisallowedTools = "Skill, Agent, Workflow"
+
+// workerToolLimits reports whether value, a comma-separated disallowedTools
+// string, names exactly Skill, Agent and Workflow, each once, in any order.
+func workerToolLimits(value any) bool {
+	text, ok := value.(string)
+	if !ok {
+		return false
+	}
+	var tools []string
+	for tool := range strings.SplitSeq(text, ",") {
+		tools = append(tools, strings.TrimSpace(tool))
+	}
+	slices.Sort(tools)
+	return slices.Equal(tools, []string{"Agent", "Skill", "Workflow"})
 }
 
 // listedAgentFrontmatterProblems applies A2 to every listed agent file that
@@ -334,7 +357,7 @@ func agentDoc(name, model, effort string) string {
 func agentDocWith(name, model, effort string, extra ...string) string {
 	var b strings.Builder
 	b.WriteString("---\nname: " + name + "\ndescription: Synthetic " + name + " agent.\nmodel: " + model +
-		"\neffort: " + effort + "\ndisallowedTools: Skill\n")
+		"\neffort: " + effort + "\ndisallowedTools: " + workerDisallowedTools + "\n")
 	for _, line := range extra {
 		b.WriteString(line + "\n")
 	}
@@ -464,8 +487,8 @@ func TestA1_SyntheticViolationsAreReported(t *testing.T) {
 // --- A2 ----------------------------------------------------------------------
 
 // A2 fails when a listed agent's frontmatter has a wrong name, an empty
-// description, disallowedTools other than Skill, or a model or effort outside
-// the allowed sets.
+// description, disallowedTools other than Skill, Agent and Workflow, or a
+// model or effort outside the allowed sets.
 func TestA2_ListedAgentFrontmatter(t *testing.T) {
 	listed, err := pluginAgents(repoRoot)
 	if err != nil {
@@ -494,7 +517,7 @@ func TestA2_SyntheticViolationsNameFileAndField(t *testing.T) {
 		"description":     "Synthetic worker.",
 		"model":           "opus",
 		"effort":          "high",
-		"disallowedTools": "Skill",
+		"disallowedTools": workerDisallowedTools,
 	}
 	doc := func(override map[string]string, drop string) []byte {
 		var b strings.Builder
@@ -525,6 +548,13 @@ func TestA2_SyntheticViolationsNameFileAndField(t *testing.T) {
 			t.Errorf("effort %s rejected: %q", effort, problems)
 		}
 	}
+	// Oracle: the host reads a comma-separated tool list, so order and the
+	// space after a comma do not change which tools are withheld.
+	for _, tools := range []string{"Workflow, Agent, Skill", "Skill,Agent,Workflow"} {
+		if problems := agentFrontmatterProblems(file, doc(map[string]string{"disallowedTools": tools}, "")); len(problems) != 0 {
+			t.Errorf("disallowedTools %q rejected: %q", tools, problems)
+		}
+	}
 	for _, test := range []struct {
 		name     string
 		override map[string]string
@@ -536,6 +566,15 @@ func TestA2_SyntheticViolationsNameFileAndField(t *testing.T) {
 		{"description empty", map[string]string{"description": `""`}, "", "description"},
 		{"description missing", nil, "description", "description"},
 		{"disallowedTools other tool", map[string]string{"disallowedTools": "Bash"}, "", "disallowedTools"},
+		// Oracle: a worker that keeps the Agent or the Workflow tool can
+		// dispatch agents of its own.
+		{"disallowedTools without Agent", map[string]string{"disallowedTools": "Skill, Workflow"}, "", "disallowedTools"},
+		{"disallowedTools without Workflow", map[string]string{"disallowedTools": "Skill, Agent"}, "", "disallowedTools"},
+		{"disallowedTools without Skill", map[string]string{"disallowedTools": "Agent, Workflow"}, "", "disallowedTools"},
+		{"disallowedTools with an extra tool", map[string]string{"disallowedTools": "Skill, Agent, Workflow, Bash"}, "", "disallowedTools"},
+		{"disallowedTools listing a tool twice", map[string]string{"disallowedTools": "Skill, Agent, Agent"}, "", "disallowedTools"},
+		// Oracle: the agent files use one form, the comma-separated string.
+		{"disallowedTools as a YAML list", map[string]string{"disallowedTools": "[Skill, Agent, Workflow]"}, "", "disallowedTools"},
 		{"disallowedTools missing", nil, "disallowedTools", "disallowedTools"},
 		{"model unknown", map[string]string{"model": "gpt-5"}, "", "model"},
 		{"model missing", nil, "model", "model"},

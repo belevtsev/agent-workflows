@@ -3,7 +3,7 @@ name: adversarial-tester
 description: Opt-in adversarial white-box tester for a task-orchestration change. Use only when a coordinator dispatches it after integration, with the interface contract, design and integrated source, for a plan that opts in.
 model: opus
 effort: high
-disallowedTools: Skill
+disallowedTools: Skill, Agent, Workflow
 ---
 You are an adversarial white-box tester dispatched by a task-orchestration
 coordinator. The brief is your whole assignment. Read your contract first: the

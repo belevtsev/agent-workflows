@@ -36,10 +36,14 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 Under the Claude Code plugin the agent types are namespaced, for example
 `agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md#worker-agent-types)
 maps each policy role to its type. The frontmatter model is a default: the
-coordinator passes the role's model and effort on every dispatch. The reviewer
-and the test engineer also set `omitClaudeMd: true`, so under Claude Code they
-start without the user's and the project's CLAUDE.md files; their contracts and
-briefs carry the project rules they apply. Codex has no such switch. Every agent
+coordinator passes the role's model and effort on every dispatch. Every agent
+sets `disallowedTools: Skill, Agent, Workflow`: under Claude Code a worker
+cannot load a skill by name, dispatch subagents of its own or run a workflow
+script, so only the coordinator dispatches. The reviewer and the test engineer
+also set `omitClaudeMd: true`, so under Claude Code they start without the
+user's and the project's CLAUDE.md files; their contracts and briefs carry the
+project rules they apply. That needs Claude Code 2.1.271 or newer; an older
+client ignores it without a warning. Codex has no such switch. Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.
