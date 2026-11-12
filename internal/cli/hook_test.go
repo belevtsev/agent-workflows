@@ -168,20 +168,21 @@ func hkDecision(t *testing.T, got string) (decision, reason string) {
 	return decision, reason
 }
 
-// hkExpectDeny requires a deny whose reason names every record in gating:
-// its ID, its plan title and both the verify and the abandon command for its
-// directory (H1).
+// hkExpectDeny requires a deny whose reason names every record in gating, at
+// most three: its ID, its plan title and the verify command for its
+// directory, which it names once (H1); and the abandon command once for
+// them all.
 func hkExpectDeny(t *testing.T, got string, gating ...taskflow.Record) string {
 	t.Helper()
-	if len(gating) == 0 {
-		t.Fatal("hkExpectDeny needs at least one gating record")
+	if len(gating) == 0 || len(gating) > 3 {
+		t.Fatal("hkExpectDeny needs one to three gating records")
 	}
 	decision, reason := hkDecision(t, got)
 	if decision != "deny" {
 		t.Fatalf("permissionDecision %q, want deny; reason %q", decision, reason)
 	}
 	// H1 wording (rev 5): the reason says to close a finished task with
-	// cw task abandon.
+	// cw task abandon, which needs the user's confirmation (D2).
 	if !strings.Contains(reason, hkFinishedPhrase) {
 		t.Fatalf("deny reason %q does not contain %q", reason, hkFinishedPhrase)
 	}
@@ -190,11 +191,13 @@ func hkExpectDeny(t *testing.T, got string, gating ...taskflow.Record) string {
 			record.ID,
 			record.Plan.Title,
 			fmt.Sprintf("cw task verify --task %s --summary", record.Directory),
-			fmt.Sprintf("cw task abandon --task %s", record.Directory),
 		} {
 			if !strings.Contains(reason, want) {
 				t.Fatalf("deny reason %q does not contain %q", reason, want)
 			}
+		}
+		if n := strings.Count(reason, record.Directory); n != 1 {
+			t.Fatalf("deny reason %q names %s %d times, want once", reason, record.Directory, n)
 		}
 	}
 	return reason
@@ -213,8 +216,10 @@ func hkExpectDenyOnly(t *testing.T, got string, gating []taskflow.Record, curren
 	return reason
 }
 
-// hkFinishedPhrase is the exact H1 wording (rev 5) every deny reason holds.
-const hkFinishedPhrase = "if it is finished or was given up"
+// hkFinishedPhrase is the exact H1 wording (rev 5), as D2 amended it, that
+// every deny reason holds.
+const hkFinishedPhrase = "For a task that is finished or was given up, ask the user before abandoning it: " +
+	"`cw task abandon --task <task-dir> --reason TEXT` needs their confirmation."
 
 // H15 (rev 4): the commit and push ask reason wording.
 const (
@@ -387,7 +392,7 @@ func (h *hkHarness) abandon(t *testing.T, record taskflow.Record, reason string)
 func TestHookPrePublishEveryOpenRecordGates(t *testing.T) {
 	t.Run("deny names every open record", func(t *testing.T) {
 		// H1: with two open records the deny reason names both, each with
-		// its verify and abandon command.
+		// its verify command.
 		repo := hkRepo(t)
 		h := newHKHarness(t)
 		older := h.start(t, repo, hkTitled("Older"))

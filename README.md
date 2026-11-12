@@ -213,8 +213,9 @@ check with `cw task add-checks` after `git merge --no-ff <base>`; the plan
 itself never changes. See
 [Merging the base branch during a task](docs/operations.md#merging-the-base-branch-during-a-task).
 
-**See why a commit is blocked.** The denial names each blocking task. This lists
-its problems, such as a missing review or an unmet requirement:
+**See why a commit is blocked.** The denial names up to three blocking tasks
+and counts the rest. This lists a task's problems, such as a missing review or
+an unmet requirement:
 
 ```sh
 cw task verify --task <task-dir> --summary

@@ -16,6 +16,7 @@ package gate
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -273,8 +274,9 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 	return nil, ask{reason: unreadableReason(unreadable), proceed: true}
 }
 
-// denyReason names every gating record, why it gates, how to verify it, and
-// that abandoning it needs the user's confirmation.
+// denyReason names the first gating records, why each gates, how to verify
+// it, and that abandoning it needs the user's confirmation, and counts the
+// rest.
 func denyReason(gating []taskflow.OpenRecord) string {
 	var reason strings.Builder
 	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
@@ -283,18 +285,53 @@ func denyReason(gating []taskflow.OpenRecord) string {
 	return reason.String()
 }
 
-// writeGating writes, for each gating record, why it gates, how to verify it,
-// and that abandoning it needs the user's confirmation.
+// namedGating is how many gating records a reason names. The rest are
+// counted, so that the reason stays short however many tasks are open.
+const namedGating = 3
+
+// writeGating writes, for each of the first namedGating gating records, why
+// it gates and how to verify it, naming its directory once; then that
+// abandoning a task needs the user's confirmation; then how many more gate,
+// and the task store they are in.
 func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
-	for _, open := range gating {
+	n := min(len(gating), namedGating)
+	named, rest := gating[:n], gating[n:]
+	abandonable := false
+	for _, open := range named {
 		record := open.Record
 		if open.Legacy {
 			// Verify and abandon cannot load it; the problem names the way out.
 			fmt.Fprintf(reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
 			continue
 		}
-		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task %s --reason TEXT` needs their confirmation.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
+		abandonable = true
+		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`.", record.ID, record.Plan.Title, open.Problem, record.Directory)
 	}
+	if abandonable {
+		reason.WriteString(" For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation.")
+	}
+	if len(rest) == 0 {
+		return
+	}
+	var stores []string
+	legacy := false
+	for _, open := range rest {
+		if store := filepath.Dir(open.Record.Directory); !slices.Contains(stores, store) {
+			stores = append(stores, store)
+		}
+		legacy = legacy || open.Legacy
+	}
+	tasks := "tasks"
+	if len(rest) == 1 {
+		tasks = "task"
+	}
+	// U1 (`cw task list`) should point here at `cw task list` instead of the
+	// task store, once it exists.
+	fmt.Fprintf(reason, " And %d more open %s in %s; each needs `cw task verify` or the user's confirmation to abandon", len(rest), tasks, strings.Join(stores, ", "))
+	if legacy {
+		reason.WriteString(", or, if this cw cannot read its record, moving its directory out of the task store")
+	}
+	reason.WriteString(".")
 }
 
 // unresolvedReason explains the ask for a publication after the directory

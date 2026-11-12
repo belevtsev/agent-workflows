@@ -119,11 +119,13 @@ func TestDecideDeniesWhileARecordGates(t *testing.T) {
 	// Oracle: the deny text cw hook pre-publish printed before the gate left
 	// internal/cli, byte for byte, for one gating record, except that it no
 	// longer tells the agent to run cw task abandon: abandoning needs the
-	// user's confirmation (D2).
+	// user's confirmation (D2); and that it names the task directory once,
+	// in the verify command, and gives the abandon command once for every
+	// task it names.
 	want := gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: git commit and push stay blocked while a task for this repository is open: " +
 		"each must pass cw task verify on the source being published, or be closed. " +
-		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task /store/task-1 --summary`, " +
-		"or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task /store/task-1 --reason TEXT` needs their confirmation. " +
+		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task /store/task-1 --summary`. " +
+		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation. " +
 		"To turn the gate off, set enforce_verify=false in the plugin config."}
 	if got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)
@@ -345,8 +347,8 @@ func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
 	// host that cannot ask must not run it: it is not ProceedWithoutAsk.
 	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot tell which directory `cd \"$OTHER\"` leads to, " +
 		"so it checked the session's repository " + repo + " instead, where a task is open: " +
-		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`, " +
-		"or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task /store/task-8 --reason TEXT` needs their confirmation. " +
+		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`. " +
+		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation. " +
 		"Confirm only if the git commit or push does not run in " + repo + "."}
 	if got := decide(command, repo, true, true, git, store); got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)
