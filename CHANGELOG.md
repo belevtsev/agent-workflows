@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the command is given, as `cw` does, not the test's own ([paths](docs/operations.md#paths)).
 - Release notes also leave out scoped `docs`, `test` and `chore` commits, such as `chore(release):`; a breaking one
   (`chore!:`) stays ([releases](docs/development.md#releases)).
+- Three links in the Go documentation and gopls skills now land on their section, and `go test ./internal/skillcheck`
+  checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

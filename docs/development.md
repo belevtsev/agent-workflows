@@ -72,7 +72,8 @@ GOWORK=off go test ./internal/skillcheck
 - each skill's `name` is at most 64 lowercase letters, digits and hyphens and
   matches its directory, and its `description` has 1 to 1024 characters;
 - relative Markdown links in skills, top-level Markdown files, `docs/` and
-  `.github/` resolve;
+  `.github/` resolve, and a link's `#anchor`, to the same file or to another
+  Markdown file, names one of that file's headings as GitHub slugs them;
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
@@ -323,7 +324,7 @@ release to the next and never see `main` between them
 from the vendor documentation, not tested here). Every merge must still leave
 `main` releasable, because new installs take it.
 
-`third_party/cc-skills-golang` pins its own `version` (2.0.0) in its
+`third_party/cc-skills-golang` pins its own `version` (2.0.1) in its
 `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`, and the release
 pull request does not change it. When its content changes, bump that version
 in the same pull request; otherwise existing users keep their cached copy.

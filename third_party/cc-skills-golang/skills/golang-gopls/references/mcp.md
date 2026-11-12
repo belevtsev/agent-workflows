@@ -43,7 +43,7 @@ Eight tools, all keyed by name/path/query rather than cursor position — this i
 | `go_diagnostics` | Build/analysis errors for the given files — useful after a coherent edit or when diagnosing a failure. | `go_diagnostics({"files":["/path/to/server.go"]})` |
 | `go_rename_symbol` | Rename a symbol and every reference to it, workspace-wide, with the same safety checks as LSP rename (blocks changes that would break interface satisfaction). | — |
 
-See [SKILL.md](../SKILL.md#efficient-workflows) for the Read/Edit workflow order these tools are designed to be chained in.
+See [Efficient workflows](practices.md#efficient-workflows) for the Read/Edit workflow order these tools are designed to be chained in.
 
 ## The native `LSP` tool
 
