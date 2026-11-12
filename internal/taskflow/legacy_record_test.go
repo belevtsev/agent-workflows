@@ -310,7 +310,7 @@ func requireRefusedWithoutWrites(t *testing.T, record Record, ref SourceRef, mar
 		if err == nil || !strings.Contains(err.Error(), message) {
 			t.Errorf("%s: chain not refused with %q: %v", operation.name, message, err)
 		}
-		if errors.Is(err, errTaskLocked) || errors.Is(err, errTaskRevisionLimit) {
+		if errors.Is(err, ErrTaskLocked) || errors.Is(err, ErrRevisionLimit) {
 			t.Errorf("%s: refusal reported as lock or capacity: %v", operation.name, err)
 		}
 		if after := productionTaskBytes(t, record.Directory); !reflect.DeepEqual(after, before) {

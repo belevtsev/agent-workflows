@@ -95,18 +95,18 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 		t.Fatal(err)
 	}
 	names := taskArtifactNames(t, record.Directory)
-	if result, err := Verify(t.Context(), record.Directory); !errors.Is(err, errTaskRevisionLimit) || result.Complete {
+	if result, err := Verify(t.Context(), record.Directory); !errors.Is(err, ErrRevisionLimit) || result.Complete {
 		t.Fatalf("exhausted verification claimed success: complete=%t err=%v", result.Complete, err)
 	}
 	called := false
 	if _, err := update(t.Context(), Env{}, record.Directory, func(root *os.Root, _ *Record) error {
 		called = true
 		return writeNew(root, "unexpected-callback-artifact.json", []byte("{}"))
-	}); !errors.Is(err, errTaskRevisionLimit) || called {
+	}); !errors.Is(err, ErrRevisionLimit) || called {
 		t.Fatalf("exhausted history invoked callback: called=%t err=%v", called, err)
 	}
 	consultation := writeConsultation(t, beforeContext, nil)
-	if _, err := AttachConsultation(t.Context(), record.Directory, "before", consultation); !errors.Is(err, errTaskRevisionLimit) {
+	if _, err := AttachConsultation(t.Context(), record.Directory, "before", consultation); !errors.Is(err, ErrRevisionLimit) {
 		t.Fatalf("consultation copied despite exhausted history: %v", err)
 	}
 	stored, err := Load(record.Directory)
@@ -127,7 +127,7 @@ func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
 	names := taskArtifactNames(t, record.Directory)
 	run, err := RunCheck(t.Context(), record.Directory, "focused")
-	if !errors.Is(err, errTaskRevisionLimit) || run.ID != "" || run.Log != "" {
+	if !errors.Is(err, ErrRevisionLimit) || run.ID != "" || run.Log != "" {
 		t.Fatalf("check started without terminal capacity: id=%q log=%q err=%v", run.ID, run.Log, err)
 	}
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
@@ -174,7 +174,7 @@ func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
 	if !errors.Is(secondErr, context.DeadlineExceeded) || called {
 		t.Fatalf("competing writer bypassed the lock: called=%t err=%v", called, secondErr)
 	}
-	if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
+	if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil }); !errors.Is(err, ErrRevisionLimit) || called {
 		t.Fatalf("competing retry consumed exhausted capacity: called=%t err=%v", called, err)
 	}
 	stored, err := Load(record.Directory)
@@ -328,10 +328,10 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 		t.Helper()
 		names := taskArtifactNames(t, record.Directory)
 		called := false
-		if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, errTaskRevisionLimit) || called {
+		if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, record *Record) error { called = true; record.EvidenceRevision++; return nil }); !errors.Is(err, ErrRevisionLimit) || called {
 			t.Fatalf("metadata writer spent a terminal slot: called=%t err=%v", called, err)
 		}
-		if run, err := RunCheck(lifetime, record.Directory, "third"); !errors.Is(err, errTaskRevisionLimit) || run.ID != "" {
+		if run, err := RunCheck(lifetime, record.Directory, "third"); !errors.Is(err, ErrRevisionLimit) || run.ID != "" {
 			t.Fatalf("new check spent another check's terminal slot: id=%q err=%v", run.ID, err)
 		}
 		if !slices.Equal(names, taskArtifactNames(t, record.Directory)) {
@@ -416,7 +416,7 @@ func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing
 		record.Checks[0].Status, record.Checks[0].FinishedAt = "cancelled", &now
 		return nil
 	}
-	if _, err := updateWhenUnlocked(t.Context(), Env{}, record.Directory, strings.Repeat("b", 32), finish); err == nil || errors.Is(err, errTaskRevisionLimit) || called {
+	if _, err := updateWhenUnlocked(t.Context(), Env{}, record.Directory, strings.Repeat("b", 32), finish); err == nil || errors.Is(err, ErrRevisionLimit) || called {
 		t.Fatalf("unowned terminal reservation was accepted: called=%t err=%v", called, err)
 	}
 	lock := filepath.Join(record.Directory, ".lock")
@@ -623,7 +623,7 @@ func TestWriterWaitsForLegacyLockDirectory(t *testing.T) {
 }
 
 // TestLegacyLockDirectoryOutlastingTheWaitFailsLocked: a .lock directory that
-// stays for the whole wait fails with errTaskLocked, whose message says to
+// stays for the whole wait fails with ErrTaskLocked, whose message says to
 // inspect the interrupted writer, and is never removed. Oracle: the error, the
 // directory still in place, and .lockfile released for the next writer.
 func TestLegacyLockDirectoryOutlastingTheWaitFailsLocked(t *testing.T) {
@@ -638,8 +638,8 @@ func TestLegacyLockDirectoryOutlastingTheWaitFailsLocked(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	if unlock, err := lockTask(t.Context(), root, 50*time.Millisecond); !errors.Is(err, errTaskLocked) || unlock != nil {
-		t.Fatalf("lock with a .lock directory that stays: err=%v, want errTaskLocked", err)
+	if unlock, err := lockTask(t.Context(), root, 50*time.Millisecond); !errors.Is(err, ErrTaskLocked) || errors.Is(err, errTaskBusy) || unlock != nil {
+		t.Fatalf("lock with a .lock directory that stays: err=%v, want ErrTaskLocked", err)
 	}
 	if info, err := os.Lstat(legacy); err != nil || !info.IsDir() {
 		t.Fatalf("the .lock directory was removed or replaced: %v", err)
@@ -656,8 +656,8 @@ func TestLegacyLockDirectoryOutlastingTheWaitFailsLocked(t *testing.T) {
 
 // TestWriterBehindALegacyLockDirectoryFailsLocked: when a .lock directory of
 // cw v3.0.0-rc.1 exists, a writer whose wait for .lockfile ends fails with
-// errTaskLocked, which names .lock, like the writer ahead of it that holds
-// .lockfile while it waits for .lock. Oracle: errTaskLocked, not errTaskBusy.
+// ErrTaskLocked, which names .lock, like the writer ahead of it that holds
+// .lockfile while it waits for .lock. Oracle: ErrTaskLocked, not errTaskBusy.
 func TestWriterBehindALegacyLockDirectoryFailsLocked(t *testing.T) {
 	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
@@ -676,8 +676,8 @@ func TestWriterBehindALegacyLockDirectoryFailsLocked(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	if unlock, err := lockTask(t.Context(), root, 50*time.Millisecond); !errors.Is(err, errTaskLocked) || unlock != nil {
-		t.Fatalf("writer behind a .lock directory: err=%v, want errTaskLocked", err)
+	if unlock, err := lockTask(t.Context(), root, 50*time.Millisecond); !errors.Is(err, ErrTaskLocked) || errors.Is(err, errTaskBusy) || unlock != nil {
+		t.Fatalf("writer behind a .lock directory: err=%v, want ErrTaskLocked", err)
 	}
 }
 

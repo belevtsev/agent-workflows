@@ -139,7 +139,7 @@ func (env Env) validateCheckpoint(data []byte, expected Context) (consultrecord.
 
 func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath string) (Record, error) {
 	if !phaseValid(phase) {
-		return Record{}, errors.New("phase must be before or final")
+		return Record{}, invalid("phase must be before or final")
 	}
 	abs, err := filepath.Abs(inputPath)
 	if err != nil {

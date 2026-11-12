@@ -3,7 +3,6 @@ package taskflow
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -38,14 +37,14 @@ func CheckRequestContexts(store string, contexts [][]byte) error {
 			Phase  string `json:"phase"`
 		}
 		if err := json.Unmarshal(context, &named); err != nil || !taskIDPattern.MatchString(named.TaskID) {
-			return errors.New("a task context names no task that cw task start created; put the context that 'cw task context' printed in the request")
+			return invalid("a task context names no task that cw task start created; put the context that 'cw task context' printed in the request")
 		}
 		record, err := Load(filepath.Join(store, named.TaskID))
 		if err != nil {
 			return fmt.Errorf("no task record in the task store %s backs task context %s: %w; a task started with --store DIR needs CW_TASK_STORE=DIR", store, named.TaskID, err)
 		}
 		if record.Abandonment != nil {
-			return fmt.Errorf("task %s was abandoned; start a new task with 'cw task start'", named.TaskID)
+			return kindError{kind: ErrAbandoned, msg: fmt.Sprintf("task %s was abandoned; start a new task with 'cw task start'", named.TaskID)}
 		}
 		prepared, ok := record.Contexts[named.Phase]
 		if !ok || prepared.TaskID != record.ID || prepared.Phase != named.Phase {
