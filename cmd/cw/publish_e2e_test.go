@@ -1783,7 +1783,7 @@ func pubTestHappyPath(t *testing.T, tl *pubTools) {
 	preCommit := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{Probe: []string{filepath.Join(e.task, "publication-000001.json"), filepath.Join(e.task, ".publish-lock")}})
 	commitMsg := e.hook(filepath.Join(e.gitDir, "hooks"), "commit-msg", pubHookConf{})
 	prePush := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-push", pubHookConf{})
-	show := e.cwOK("task", "show", "--task", e.task)
+	show := e.cwOK("task", "show", "--full", "--task", e.task)
 	records := e.taskRecordFiles()
 
 	r := e.publish()
@@ -1899,7 +1899,7 @@ func pubTestHappyPath(t *testing.T, tl *pubTools) {
 	if d := pubDiffMaps(records, e.taskRecordFiles()); len(d) > 0 {
 		t.Errorf("task record files changed: %q (R21.a)", d)
 	}
-	if got := e.cwOK("task", "show", "--task", e.task); got != show {
+	if got := e.cwOK("task", "show", "--full", "--task", e.task); got != show {
 		t.Errorf("cw task show changed after publishing (R21.a)")
 	}
 	e.cwOK("task", "abandon", "--task", e.task, "--reason", "published elsewhere") // R21.c
@@ -3570,7 +3570,7 @@ func pubTestCommitFailed(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{Exit: 1})
 	_, complete, problems := e.verifySummary(e.task)
-	show := e.cwOK("task", "show", "--task", e.task)
+	show := e.cwOK("task", "show", "--full", "--task", e.task)
 	records := e.taskRecordFiles()
 	index := e.git("ls-files", "-s", "-z")
 	rep := pubWant(t, e.publish(), 1, "failed", "commit-failed")
@@ -3583,7 +3583,7 @@ func pubTestCommitFailed(t *testing.T, tl *pubTools) {
 	if d := pubDiffMaps(records, e.taskRecordFiles()); len(d) > 0 {
 		t.Errorf("task record files changed: %q", d)
 	}
-	if got := e.cwOK("task", "show", "--task", e.task); got != show {
+	if got := e.cwOK("task", "show", "--full", "--task", e.task); got != show {
 		t.Errorf("cw task show changed")
 	}
 	_, complete2, problems2 := e.verifySummary(e.task)

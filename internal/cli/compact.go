@@ -102,21 +102,21 @@ type verifySummary struct {
 	Complete bool   `json:"complete"`
 	// RejectedFindings holds the limitations that report a rejected blocker
 	// or major finding, ahead of everything else; Limitations omits them.
-	RejectedFindings        []string `json:"rejected_findings,omitempty"`
-	Problems                []string `json:"problems"`
+	RejectedFindings []string `json:"rejected_findings,omitempty"`
+	Problems         []string `json:"problems"`
+	// OmittedProblems counts the problems past maxSummaryProblems.
+	OmittedProblems         int      `json:"omitted_problems,omitzero"`
 	Limitations             []string `json:"limitations"`
 	OmittedFixedLimitations int      `json:"omitted_fixed_limitations"`
 }
 
 // summarizeVerification drops the fixed limitations, moves rejected-finding
-// limitations to RejectedFindings, and keeps every problem and every other
-// task-specific limitation in order. It selects limitations by their finding
-// code, never by their text.
+// limitations to RejectedFindings, keeps every other task-specific limitation
+// in order, and lists the problems grouped and capped by groupProblems. It
+// selects limitations by their finding code, never by their text.
 func summarizeVerification(value taskflow.Verification) verifySummary {
-	result := verifySummary{TaskID: value.TaskID, Complete: value.Complete, Problems: value.Problems, Limitations: []string{}}
-	if result.Problems == nil {
-		result.Problems = []string{}
-	}
+	result := verifySummary{TaskID: value.TaskID, Complete: value.Complete, Limitations: []string{}}
+	result.Problems, result.OmittedProblems = groupProblems(value.Problems)
 	for _, limitation := range value.LimitationFindings {
 		switch limitation.Code {
 		case taskflow.CodeFixedLimitation:

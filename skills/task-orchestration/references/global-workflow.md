@@ -277,7 +277,8 @@ and check IDs on one line. The `start`, `assign`, `handoff`, `accept`,
 `assess`, `consult`, `run`, `verify` and `add-checks` commands all print such a
 summary; `--full` prints the whole record instead, which grows past 80 KB
 (`run` prints the check run). Read a stored value missing from a summary with
-`cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`).
+`cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`);
+`cw task show` alone prints the task's state and the field names.
 `cw task trace` accepts `--summary` too.
 
 When a test engineer will be dispatched with a contract, give the plan a check
