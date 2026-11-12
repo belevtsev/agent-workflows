@@ -60,6 +60,8 @@ See [agents](docs/agents.md) and the
 Below 2.1.271 the client also ignores `omitClaudeMd` without a warning, so the
 reviewer and the test engineer start with your CLAUDE.md files
 ([worker agent types](skills/task-orchestration/references/hosts.md#worker-agent-types)).
+The session-start hook says when it finds an older client, or a plugin and
+`cw` whose versions differ ([session start](docs/hooks.md#session-start)).
 
 **Languages.** Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in [`cw task verify`](#the-verify-gate); other

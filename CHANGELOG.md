@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw hook git pre-commit` and `cw hook git pre-push` run the commit gate from git's own hooks, which also see aliases and scripts:
   a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
+- The session-start context gains one line when the plugin and `cw` versions differ, naming the one to update, and one
+  when Claude Code is older than 2.1.292; a `cw` built between tags is not compared ([session start](docs/hooks.md#session-start)).
 
 ### Changed
 
