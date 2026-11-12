@@ -45,6 +45,8 @@ func TestCheckSubprocess(t *testing.T) {
 		}
 	case "fail":
 		os.Exit(9)
+	case "environ":
+		fmt.Print(strings.Join(os.Environ(), "\n"))
 	case "marker":
 		if _, err := os.Stat(args[1]); err != nil {
 			os.Exit(9)
