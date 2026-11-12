@@ -117,7 +117,7 @@ review:
   - Every goroutine has an owner that waits for it and gets its error.
   - Changed concurrent code ran under the race command.
   - Reachable dependency vulnerabilities checked with govulncheck.
-evidence_rule: go.package-test/v1
+evidence_rule: go.package-test/v2
 ```
 
 Versioning: `schema` is an integer. A new optional field keeps it; removing,
