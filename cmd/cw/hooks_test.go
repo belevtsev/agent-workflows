@@ -549,6 +549,22 @@ func TestHooksEndToEnd(t *testing.T) {
 		}
 	})
 
+	t.Run("session-start adds nothing when Codex resumes", func(t *testing.T) {
+		// Oracle: under Codex, which sets PLUGIN_ROOT, a resume prints one
+		// SessionStart JSON line without additionalContext, exactly as cw
+		// wrote it: not the file, which the command prints when cw prints
+		// nothing, and not the instructions, which the resumed thread holds.
+		resume, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "resume", "cwd": repo, "model": "m"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		const want = `{"hookSpecificOutput":{"hookEventName":"SessionStart"}}` + "\n"
+		code, stdout, stderr := hooksSh(t, sessionCommand, resume, env(withCW, "PLUGIN_ROOT="+root))
+		if code != 0 || stdout != want {
+			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and %q", code, stderr, stdout, want)
+		}
+	})
+
 	t.Run("session-start without cw adds the inactive-gate line", func(t *testing.T) {
 		// E4: without cw on PATH, the raw file verbatim followed by exactly
 		// one line saying the gate is inactive, newline-terminated.
