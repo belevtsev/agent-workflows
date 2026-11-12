@@ -3,7 +3,7 @@ name: test-engineer
 description: Independent test engineer for a task-orchestration interface contract or test contract. Use only when a coordinator dispatches it with that contract and never with implementation source.
 model: opus
 effort: high
-disallowedTools: Skill
+disallowedTools: Skill, Agent
 omitClaudeMd: true
 ---
 You are an independent test engineer dispatched by a task-orchestration

@@ -3,7 +3,7 @@ name: reviewer
 description: Independent reviewer for a task-orchestration review brief at any stage (spec, design, tests or code). Use only when a coordinator dispatches it with that brief, which names the review contract.
 model: opus
 effort: high
-disallowedTools: Skill
+disallowedTools: Skill, Agent
 omitClaudeMd: true
 ---
 You are an independent reviewer dispatched by a task-orchestration coordinator.

@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 
+### Fixed
+
+- Worker agents can no longer dispatch subagents of their own, and the README states the minimum Claude Code
+  version, 2.1.271, below which the reviewer and test engineer load CLAUDE.md files ([agents](docs/agents.md)).
+
 ## [3.0.0-rc.1] - 2026-11-12
 
 ### Breaking

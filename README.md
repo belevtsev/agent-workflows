@@ -54,6 +54,12 @@ See [agents](docs/agents.md) and the
 
 **Platforms.** macOS and Linux; Windows is not supported.
 
+**Claude Code version.** 2.1.271 or newer. An older client ignores
+`omitClaudeMd` without a warning, so the reviewer and the test engineer start
+with your CLAUDE.md files ([worker agent types](skills/task-orchestration/references/hosts.md#worker-agent-types)).
+The coordinator's per-dispatch `effort` needs 2.1.292
+([dispatching workers](skills/task-orchestration/references/hosts.md#dispatching-workers-under-claude-code)).
+
 **Languages.** Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in [`cw task verify`](#the-verify-gate); other
 repositories need any one passed check.
