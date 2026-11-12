@@ -478,88 +478,18 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		if err != nil {
 			return err
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), Problems: []string{}, CheckedAt: env.now(), Limitations: FixedVerifyLimitations()}
-		problem := func(format string, args ...any) {
-			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
-		}
-		artifacts := taskDirectory{root}
-		result.Problems = append(result.Problems, localEvidenceProblems(artifacts, *record, snapshot)...)
-		result.Limitations = append(result.Limitations, toolLimitations(*record, snapshot)...)
-		result.Limitations = append(result.Limitations, passthroughLimitations(*record, snapshot)...)
-		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
-		findingIssues, findingNotes := rejectedFindingReport(artifacts, *record)
-		result.Problems = append(result.Problems, findingIssues...)
-		result.Limitations = append(result.Limitations, findingNotes...)
-		contractIssues, contractNotes := contractProblems(artifacts, *record)
-		result.Problems = append(result.Problems, contractIssues...)
-		result.Limitations = append(result.Limitations, contractNotes...)
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
 		view := newSourceView(snapshot, files)
 		defer view.close()
-		traceIssues, traceNotes := traceVerifyEntries(artifacts, *record, view)
-		result.Problems = append(result.Problems, traceIssues...)
-		result.Limitations = append(result.Limitations, traceNotes...)
-		if gated(*record) {
-			// R16, R15 and R14, then R23's limitation, before the
-			// substantial-task block.
-			authorshipIssues, authorshipNotes := authorshipVerifyEntries(view.authorship(artifacts, *record), *record)
-			result.Problems = append(result.Problems, authorshipIssues...)
-			result.Limitations = append(result.Limitations, authorshipNotes...)
-		}
-		if record.Plan.Kind == "substantial" {
-			if !equalSnapshot(record.Baseline, snapshot) {
-				executionIssues, executionNotes := executionProblems(ctx, artifacts, *record, snapshot, files)
-				result.Problems = append(result.Problems, executionIssues...)
-				result.Limitations = append(result.Limitations, executionNotes...)
-			}
-			if len(record.Advisers) == 0 {
-				result.Limitations = append(result.Limitations, noAdvisersLimitation)
-			}
-			required := checkpointsRequired(record.Plan)
-			if !required {
-				result.Limitations = append(result.Limitations, "adviser checkpoints not required: "+record.Plan.Checkpoints.Reason)
-			}
-			_, beforeAttached := record.Consultations["before"]
-			_, finalAttached := record.Consultations["final"]
-			if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
-				// A usable before checkpoint is the one final-context preparation accepts.
-				_, beforeErr := readConsultation(artifacts, *record, "before", record.Baseline)
-				switch {
-				case beforeErr == nil:
-					conflict += "; attach the final checkpoint"
-				case equalSnapshot(record.Baseline, snapshot):
-					conflict += "; attach the before and final checkpoints, or ask the user before abandoning this record and starting a corrected one"
-				default:
-					conflict += "; the source changed since start, so the before checkpoint can no longer be attached and a new record must not start over the changed source: stop and ask the user how to proceed"
-				}
-				result.Problems = append(result.Problems, conflict)
-			}
-			for _, phase := range []string{"before", "final"} {
-				// A checkpoint attached although not required is still validated.
-				if _, attached := record.Consultations[phase]; !required && !attached {
-					continue
-				}
-				expected := snapshot
-				if phase == "before" {
-					expected = record.Baseline
-				}
-				consultation, err := readConsultation(artifacts, *record, phase, expected)
-				if err != nil {
-					problem("%s consultation: %v", phase, err)
-					continue
-				}
-				for _, provider := range slices.Sorted(maps.Keys(record.Advisers)) {
-					if status := consultation.Providers[provider].Status; status != "success" {
-						result.Limitations = append(result.Limitations, fmt.Sprintf("%s %s coverage is %s; the coordinator's recorded source/check decision supplies the fallback.", phase, provider, status))
-					}
-				}
-			}
-		}
+		found := runVerifyRules(ctx, verifyInput{artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view})
+		result.report(found)
 		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
 		if !equalSnapshot(snapshot, after) {
-			problem("source changed during completion verification")
+			found.problem(CodeSourceChanged, "source changed during completion verification")
+			result.report(found)
 		}
 		result.Complete = len(result.Problems) == 0
 		record.Verification = &result
