@@ -21,9 +21,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Claude Code plugin hooks. Both commands read the hook's JSON input from
-// stdin and write the hook's JSON decision to stdout. They fail open: every
-// condition that is not a positive gate decision, including any internal
+// Claude Code and Codex plugin hooks. Both commands read the hook's JSON input
+// from stdin and write the hook's JSON decision to stdout. Under Codex, which
+// does not support an ask, the pre-publish hook denies instead. They fail
+// open: every condition that is not a positive gate decision, including any internal
 // error, exits 0 without output, so a damaged record, an unreadable store or a
 // missing git never blocks the user's own commands. The one exception is a
 // task store that a relative XDG_STATE_HOME leaves unknown: then each git
@@ -45,10 +46,19 @@ const (
 )
 
 type hookInput struct {
-	CWD       string `json:"cwd"`
+	CWD string `json:"cwd"`
+	// TurnID is sent by Codex and not by Claude Code: Codex documents
+	// turn_id as its own extension of the hook input
+	// (testdata/codex-pre-tool-use.json is a recorded Codex input).
+	TurnID    string `json:"turn_id"`
 	ToolInput struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
+}
+
+// fromCodex reports whether Codex, not Claude Code, ran the hook.
+func (input hookInput) fromCodex() bool {
+	return input.TurnID != ""
 }
 
 type hookOutput struct {
@@ -72,7 +82,8 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"substantial, unabandoned records for that repository written within 14 days, it prints a deny decision naming every one whose verification has not passed " +
 			"on the source being published, and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
-			"code changed without tests). Every other case, including any internal error, exits 0 without output. " +
+			"code changed without tests). Under Codex, which cannot ask, each ask is a deny that carries the question. " +
+			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
 		Args: cobra.NoArgs,
@@ -141,7 +152,24 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if decision.Permission == gate.Allow {
 		return hookOutput{}, false
 	}
+	if input.fromCodex() {
+		decision = codexDecision(decision)
+	}
 	return preToolUseDecision(string(decision.Permission), decision.Reason), true
+}
+
+// codexDecision adapts a decision to Codex, which parses an ask but runs the
+// command without asking: an ask becomes a deny that carries the question.
+// Codex has no plugin config, so every reason also says where its options are.
+func codexDecision(decision gate.Decision) gate.Decision {
+	if decision.Permission == gate.Ask {
+		decision = gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: " +
+			strings.TrimPrefix(decision.Reason, "agent-workflows: ") +
+			" Put the question to the user; to go ahead, the user runs the command outside Codex."}
+	}
+	decision.Reason += " Under Codex the plugin options are environment variables of the shell that starts Codex, such as " +
+		enforceVerifyOption + "=false or " + smallTaskPromptOption + "=false."
+	return decision
 }
 
 // relativeStateHomeReason is the ask for a publication when a relative

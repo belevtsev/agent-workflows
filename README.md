@@ -95,9 +95,10 @@ claude plugin install agent-workflows@agent-workflows
 codex plugin marketplace add belevtsev/agent-workflows
 ```
 
-Then run `codex`, open `/plugins`, install `agent-workflows` and start a new
-session. For the `AGENTS.md` instruction block, use `cw install --host codex`
-instead ([details](docs/operations.md#codex-install-and-uninstall)).
+Then run `codex`, open `/plugins`, install `agent-workflows`, trust its two
+hooks in `/hooks` and start a new session. The alternative,
+`cw install --host codex`, writes the `AGENTS.md` instruction block but installs
+no hooks ([details](docs/operations.md#codex-install-and-uninstall)).
 
 Check that `cw` can read your repository:
 
@@ -224,9 +225,13 @@ cw task abandon --task <task-dir> --reason "replaced by a new task"
 echo '{"enforce_verify":"false"}' | claude plugin configure agent-workflows@agent-workflows --values-stdin
 ```
 
+On Codex, start Codex with `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` (and
+`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) in its environment instead.
+
 The gate fails open: without `cw` on `PATH`, or on an internal error, the
-command goes ahead. Codex has no hook; there the skill claims completion only
-after verify passes. Details: [hooks](docs/hooks.md).
+command goes ahead. Codex runs the same hooks once you trust them in `/hooks`;
+it cannot ask, so there the hook denies where Claude Code asks. Details:
+[hooks](docs/hooks.md#codex).
 
 ## Language packs
 

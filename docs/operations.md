@@ -28,16 +28,18 @@ refused with a pointer to the plugin.
 ### Codex
 
 Use either the Codex plugin or `cw install --host codex`, not both, so each skill
-is listed once. The plugin installs the skills only, without the `AGENTS.md`
-block:
+is listed once. The plugin installs the skills and the two
+[hooks](hooks.md#codex), which load the working conventions at session start and
+gate `git commit` and `git push`, but writes no `AGENTS.md` block:
 
 ```sh
 codex plugin marketplace add belevtsev/agent-workflows
 ```
 
 Then run `codex`, open `/plugins`, and install `agent-workflows` (and
-`cc-skills-golang` for the Go pack); start a new session afterwards. For the
-skills plus the shared instruction block, use
+`cc-skills-golang` for the Go pack); open `/hooks` and trust the two
+agent-workflows hooks, which Codex otherwise does not run; start a new session
+afterwards. For the skills plus the shared instruction block without hooks, use
 [`cw install --host codex`](#codex-install-and-uninstall) instead. The vendored
 Docker skills in `third_party/docker-skills` are in neither plugin; only
 `cw install --host codex` links them.

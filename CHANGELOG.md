@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - A relative `XDG_STATE_HOME` is refused with exit status 1, and the commit hook asks, instead of joining it to the working
   directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
+- Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
+  now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 
 ## [3.0.0-rc.1] - 2026-11-12
 
