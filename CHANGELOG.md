@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   finish open v2 tasks before upgrading, or move them out of the task store ([which records gate](docs/hooks.md#which-records-gate)).
 - Exit statuses follow one table: an incomplete `cw task verify`, a failed `cw task run` check and a partial `cw consult` exit 5,
   Graphify unavailable exits 4, `cw publish` unknown and mismatch exit 6 and 7: update scripts that test them ([exit statuses](docs/operations.md#exit-statuses)).
+- Task records move to version 4, which `cw` v3.0.0-rc.1 cannot read (its hook skips such a task), and a record from a newer or pre-rc.1 `cw` exits 4:
+  run the same `cw` on every host and hook that shares a task store ([task record format](docs/development.md#task-record-format)).
 
 ### Changed
 

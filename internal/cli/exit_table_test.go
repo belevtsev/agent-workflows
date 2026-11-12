@@ -31,6 +31,8 @@ func TestExitCodeMapsEachErrorToItsTableRow(t *testing.T) {
 		{"wrapped incomplete verification", fmt.Errorf("verify: %w", taskflow.ErrIncomplete), ExitNegative},
 		{"wrapped failed check", fmt.Errorf("run: %w", taskflow.ErrCheckFailed), ExitNegative},
 		{"wrapped cancellation", fmt.Errorf("run: %w", context.Canceled), ExitCancelled},
+		{"wrapped record from a newer cw", fmt.Errorf("load: %w", taskflow.ErrNewerRecord), ExitRefused},
+		{"wrapped legacy record", fmt.Errorf("load: %w", taskflow.ErrLegacyRecord), ExitRefused},
 	} {
 		if got := ExitCode(row.err); got != row.want {
 			t.Errorf("%s: ExitCode(%v) = %d, want %d", row.name, row.err, got, row.want)

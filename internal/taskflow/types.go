@@ -18,8 +18,17 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
+// Version is the task record version this cw writes; it reads versions
+// MinVersion to Version. A new member, or any other change that a released cw
+// reading Version could not decode, bumps Version (docs/development.md, "Task
+// record format"). Every new revision is written with Version, so a record
+// started by an older cw takes this version at its next revision.
 const (
-	Version       = 3
+	Version    = 4
+	MinVersion = 3
+)
+
+const (
 	MaxInputBytes = 8 << 20
 	MaxLogBytes   = 128 << 10
 )

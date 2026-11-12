@@ -82,11 +82,12 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 }
 
-// D5 (task records, version 3): a task record chain whose revisions hold any
-// other version is refused with the restart guidance, and its record files
-// stay byte-identical.
+// D5 and D11 (task records, versions 3 to 4): a task record chain whose
+// revisions hold an older version is refused with the restart guidance, one
+// with a newer version with the upgrade guidance, and its record files stay
+// byte-identical.
 func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
-	for _, version := range []int{1, 2, 4} {
+	for _, version := range []int{1, 2, 5} {
 		t.Run(fmt.Sprintf("version_%d", version), func(t *testing.T) {
 			repo, home := t.TempDir(), t.TempDir()
 			if err := os.WriteFile(filepath.Join(repo, "source.txt"), []byte("source\n"), 0600); err != nil {
@@ -123,8 +124,8 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 				if err := json.Unmarshal(data, &document); err != nil {
 					t.Fatal(err)
 				}
-				if document["version"] != float64(3) || taskflow.Version != 3 {
-					t.Fatalf("%s is not a version-3 record: version %v (taskflow.Version %d)", path, document["version"], taskflow.Version)
+				if document["version"] != float64(taskflow.Version) {
+					t.Fatalf("%s is not a version %d record: version %v", path, taskflow.Version, document["version"])
 				}
 				document["version"] = version
 				if data, err = json.Marshal(document); err != nil {
@@ -157,7 +158,10 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 				return files
 			}
 			before := snapshot()
-			refusal := fmt.Sprintf("task record version %d is not supported; this cw reads version 3 records; start a new task with 'cw task start'", version)
+			refusal := fmt.Sprintf("task record version %d is not supported; this cw reads versions 3 to 4; start a new task with 'cw task start'", version)
+			if version > 4 {
+				refusal = fmt.Sprintf("task record version %d was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it", version)
+			}
 			for _, command := range []string{"show", "verify"} {
 				t.Run(command, func(t *testing.T) {
 					out.Reset()

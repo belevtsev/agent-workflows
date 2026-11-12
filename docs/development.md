@@ -130,13 +130,12 @@ hosted providers. Real-project read-only diagnostics, synthetic acceptance pilot
 and productivity comparisons are separate evidence; preserve that distinction in
 reports.
 
-Task records use version 3 for the adviser binding, typed worker assignments,
-results and coordinator acceptance. An older task record is refused with guidance
-to start a new task;
-never silently upgrade an old task or permit a version change inside its chain.
-Tests must cover wrong task/brief/agent bindings, ownership overlap and unsafe
-paths, false check claims, incomplete or cancelled work, finding dispositions,
-independent review identity, and stale source/check/worker evidence.
+Task records hold the adviser binding, typed worker assignments, results and
+coordinator acceptance; their versions follow
+[Task record format](#task-record-format). Tests must cover wrong
+task/brief/agent bindings, ownership overlap and unsafe paths, false check
+claims, incomplete or cancelled work, finding dispositions, independent review
+identity, and stale source/check/worker evidence.
 Substantial-change gates apply to new tasks; small and unchanged read-only tasks
 keep their existing path. Use project-neutral fixtures, including a non-Go
 project, for API and CLI coverage. Worker records remain separate from adviser
@@ -151,6 +150,30 @@ limits explicitly. Exercise red-test handoffs, ownership conflicts, missing
 contracts/seams, changed interfaces, contaminated feedback and prohibited assertion
 weakening. These are synthetic workflow checks, not measured project-quality
 improvements, and they must not modify personal host configuration.
+
+### Task record format
+
+A task record's `version` says which `cw` can read it. `cw` writes
+`taskflow.Version` (4) and reads `taskflow.MinVersion` (3) to `Version`, and it
+decodes strictly: a member it does not know fails the load.
+
+- Any new member, or any other change that a released `cw` reading the current
+  version could not decode, bumps `Version` in the same pull request, goes under
+  Breaking in the CHANGELOG, and gets upgrade steps in the release notes
+  ([Releases](#releases)). Changes to a version no release has written yet ride
+  on it. Raise `MinVersion` only to drop a version on purpose.
+- Every new revision is written with `Version`, so the first revision this `cw`
+  appends to a record an older `cw` started raises its version. From then on
+  that older `cw` cannot read the record, and its hook skips the task instead of
+  gating it: run the same `cw` on every host and hook that shares a task store.
+- A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
+  says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
+  `baseline_manifest` is refused with `taskflow.ErrLegacyRecord`, which says to
+  start a new task. Both exit 4. A version below `MinVersion`, or a revision
+  with a lower version than the one before it, does not load either.
+- `cw` v3.0.0-rc.1 writes version 3. Version 4 has the same members and marks
+  the records rc.1 must not read; `internal/taskflow/testdata/rc1-small-task`
+  holds a record rc.1 wrote, which must keep loading and verifying.
 
 ### Graphify
 

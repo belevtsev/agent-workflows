@@ -42,6 +42,10 @@ var sentinelExits = []struct {
 	{context.Canceled, ExitCancelled},
 	{taskflow.ErrIncomplete, ExitNegative},
 	{taskflow.ErrCheckFailed, ExitNegative},
+	// A task record this cw cannot read: upgrade cw, or move the record
+	// out of the task store and start a new task.
+	{taskflow.ErrNewerRecord, ExitRefused},
+	{taskflow.ErrLegacyRecord, ExitRefused},
 }
 
 type usageError struct{ error }
