@@ -104,8 +104,15 @@ func addHookCommands(root *cobra.Command, config Config) {
 }
 
 // prePublishDecision returns the gate's deny or ask decision for the hook
-// input on stdin, or false when the command may proceed silently.
+// input on stdin, or false when the command may proceed silently. With both
+// plugin options off it returns before reading stdin, which
+// hookPublishTimeout does not bound.
 func prePublishDecision(ctx context.Context, root *cobra.Command, config Config) (hookOutput, bool) {
+	enforce := config.Getenv(enforceVerifyOption) != "false"
+	prompt := config.Getenv(smallTaskPromptOption) != "false"
+	if !enforce && !prompt {
+		return hookOutput{}, false
+	}
 	input, err := readHookInput(config.In)
 	if err != nil {
 		return hookOutput{}, false
@@ -114,12 +121,8 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	if err != nil {
 		return hookOutput{}, false
 	}
-	decision := gate.Decide(ctx, gate.Input{
-		Command: input.ToolInput.Command,
-		CWD:     input.CWD,
-		Enforce: config.Getenv(enforceVerifyOption) != "false",
-		Prompt:  config.Getenv(smallTaskPromptOption) != "false",
-	}, gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: gate.TaskStore(store)})
+	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Enforce: enforce, Prompt: prompt},
+		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: gate.TaskStore(store)})
 	if decision.Permission == gate.Allow {
 		return hookOutput{}, false
 	}
