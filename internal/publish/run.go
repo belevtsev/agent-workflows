@@ -223,7 +223,7 @@ func (r *run) openRecords(ctx context.Context) *failure {
 	}
 	now := time.Now()
 	seen := map[string]bool{r.record.ID: true}
-	legacy := false
+	legacy, unreadable := false, false
 	for _, store := range stores {
 		open, err := taskflow.FindOpen(ctx, store, repo, now, taskflow.SourceDigest)
 		if err != nil {
@@ -233,18 +233,26 @@ func (r *run) openRecords(ctx context.Context) *failure {
 			return failf("read-failed", "read the task store %s: %v", store, err)
 		}
 		for _, record := range open {
-			if !record.Gates() || seen[record.Record.ID] {
+			// A record cw cannot read may gate, and publish cannot ask.
+			if !(record.Gates() || record.NeedsConfirmation()) || seen[record.Record.ID] {
 				continue
 			}
 			seen[record.Record.ID] = true
 			legacy = legacy || record.Legacy
-			r.rep.OpenRecords = append(r.rep.OpenRecords, OpenRecord{TaskID: record.Record.ID, Title: record.Record.Plan.Title, Directory: record.Record.Directory, Problem: record.Problem})
+			unreadable = unreadable || record.NeedsConfirmation()
+			problem := record.Problem
+			if record.NeedsConfirmation() {
+				problem = "this cw cannot read its record: " + record.Unreadable
+			}
+			r.rep.OpenRecords = append(r.rep.OpenRecords, OpenRecord{TaskID: record.Record.ID, Title: record.Record.Plan.Title, Directory: record.Record.Directory, Problem: problem})
 		}
 	}
 	if interrupted(ctx) {
 		return failf("cancelled", "interrupted while reading task records")
 	}
 	switch {
+	case unreadable:
+		return failf("open-record", "another task record for this repository cannot be read, so it may gate: upgrade cw if a newer cw wrote it, else remove its directory or move it out of the task store; verify or abandon any other open record, as each problem says")
 	case legacy:
 		return failf("open-record", "another open task record gates this repository; verify or abandon it, or move a record this cw cannot read out of the task store, as its problem says")
 	case len(r.rep.OpenRecords) > 0:

@@ -219,6 +219,47 @@ func TestDecideDenyWinsOverAsk(t *testing.T) {
 	}
 }
 
+func TestDecideAsksWhenARecordCannotBeRead(t *testing.T) {
+	repo, unrecorded := canonicalDir(t), canonicalDir(t)
+	damaged := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-5", Directory: "/store/task-5"}, Unreadable: "invalid task JSON: unexpected EOF"}
+	newer := taskflow.OpenRecord{Record: taskflow.Record{ID: "task-6", Directory: "/store/task-6"}, Newer: true,
+		Unreadable: "task record version 5 was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it"}
+	// Oracle (D4, OD-11): an ask naming each directory and load error, with
+	// the way out for a damaged record and the error's own advice for a newer
+	// one, that a host which cannot ask lets run.
+	ask := gate.Decision{Permission: gate.Ask, ProceedWithoutAsk: true, Reason: "agent-workflows: cw cannot read a task record for this repository, " +
+		"so the commit and push gate cannot tell whether it allows this command. " +
+		"Task directory /store/task-5: invalid task JSON: unexpected EOF; if the record is damaged, remove the directory or move it out of the task store, " +
+		"then start a new task with `cw task start` if the work is still open. " +
+		"Task directory /store/task-6: task record version 5 was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it. " +
+		"Confirm to run this command without the gate."}
+	git := &fakeGit{}
+	git.repository(repo)
+	git.repository(unrecorded)
+	git.answer(unrecorded, "diff --numstat -z --no-renames --no-ext-diff --no-textconv --cached", "400\t0\tpkg/a.go\x001\t0\tcmd/b.go\x00")
+	gating := record("task-7", "Gated", "it has no passing cw task verify")
+
+	if got := decide("git commit -m x", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {damaged, newer}}}); got != ask {
+		t.Fatalf("Decide = %+v\nwant %+v", got, ask)
+	}
+	// Oracle: a readable gating record for the repository still denies, and
+	// the deny names only that record.
+	got := decide("git commit -m x", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {damaged, gating}}})
+	if got.Permission != gate.Deny || !strings.Contains(got.Reason, "Task task-7 (Gated)") || strings.Contains(got.Reason, "task-5") {
+		t.Fatalf("Decide = %+v, want a deny naming only task-7", got)
+	}
+	// Oracle: enforce_verify=false turns this ask off, as it does the deny.
+	if got := decide("git commit -m x", repo, false, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {damaged}}}); got != (gate.Decision{}) {
+		t.Fatalf("Decide with enforce off = %+v, want allow", got)
+	}
+	// Oracle: joined with an ask for an unrecorded change, which a host that
+	// cannot ask must not run, the joined ask is not ProceedWithoutAsk.
+	got = decide("git -C "+unrecorded+" commit -m y; git commit -m x", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: {damaged}}})
+	if got.Permission != gate.Ask || got.ProceedWithoutAsk || !strings.Contains(got.Reason, "substantial change") || !strings.Contains(got.Reason, "/store/task-5") {
+		t.Fatalf("Decide = %+v, want an ask about both that is not ProceedWithoutAsk", got)
+	}
+}
+
 func TestDecideFailsOpen(t *testing.T) {
 	repo := canonicalDir(t)
 	gating := map[string][]taskflow.OpenRecord{repo: {record("task-4", "T", "it has no passing cw task verify")}}
@@ -235,7 +276,8 @@ func TestDecideFailsOpen(t *testing.T) {
 	t.Run("store fails", func(t *testing.T) {
 		git := &fakeGit{}
 		git.repository(repo)
-		// Oracle: records that cannot be read never gate.
+		// Oracle: a store that cannot be read is not checked; the hook
+		// asks itself when it cannot locate the store.
 		if got := decide("git commit -m x", repo, true, true, git, &fakeStore{err: errors.New("unreadable")}); got != (gate.Decision{}) {
 			t.Fatalf("Decide = %+v, want allow", got)
 		}

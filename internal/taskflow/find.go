@@ -106,13 +106,28 @@ type OpenRecord struct {
 	// gates.
 	Problem string
 	// Legacy reports a record that Load refuses with ErrLegacyRecord. Its
-	// Record holds only what the latest revision shows (legacyRecord), and
-	// neither verify nor abandon can close it: Problem names the way out.
+	// Record holds only what its newest decodable revision shows
+	// (peekedRecord), and neither verify nor abandon can close it: Problem
+	// names the way out.
 	Legacy bool
+	// Unreadable is the text of the error Load returns for a governing
+	// record it cannot read for any reason other than ErrLegacyRecord, and
+	// empty for every other record. Whether such a record gates is unknown,
+	// so it never gates; it needs confirmation. Its Record holds only what
+	// its newest decodable revision shows (peekedRecord).
+	Unreadable string
+	// Newer reports that Load refused the record with ErrNewerRecord: a
+	// newer cw wrote it, and upgrading cw reads it.
+	Newer bool
 }
 
 // Gates reports whether the record blocks publication.
 func (o OpenRecord) Gates() bool { return o.Problem != "" }
+
+// NeedsConfirmation reports whether the record could not be read, so that
+// whether it gates is unknown: the hook asks before publishing, and
+// cw publish refuses.
+func (o OpenRecord) NeedsConfirmation() bool { return o.Unreadable != "" }
 
 // FindOpen returns every record in store that governs publication from
 // repo, newest latest revision first: each substantial, unabandoned,
@@ -139,16 +154,21 @@ func (o OpenRecord) Gates() bool { return o.Problem != "" }
 // before either was verified do not finish each other.
 //
 // A record that Load refuses with ErrLegacyRecord is judged the same way
-// from its latest revision, unvalidated, and returned with Legacy set, so a
-// record written by cw v2.0.66 to v2.0.96 keeps gating as it did under
+// from its newest decodable revision, unvalidated, and returned with Legacy
+// set, so a record written by cw v2.0.66 to v2.0.96 keeps gating as it did under
 // v3.0.0-rc.1 until its directory is moved out of the store. One whose
 // verification passed without a source_sha256, which those releases never
 // recorded, is finished.
 //
-// A store that does not exist is empty. A task directory whose record does
-// not load for another reason, and a verified record whose current source
-// identity cannot be captured, are skipped: the hook that calls this fails
-// open and must never block on a damaged or unreadable record.
+// A record that Load refuses for any other reason, such as a revision that
+// is not JSON or not private to its owner, a broken chain or ErrNewerRecord,
+// is returned with Unreadable set when its newest revision that decodes
+// governs by the rules above: a garbage newest revision does not hide the
+// record, and the caller asks rather than denies on a record it cannot judge.
+//
+// A store that does not exist is empty. A task directory with no revision
+// that decodes, and a verified record whose current source identity cannot be
+// captured, are skipped.
 func FindOpen(ctx context.Context, store string, repo Repository, now time.Time, identify SourceIdentifier) ([]OpenRecord, error) {
 	if identify == nil {
 		return nil, errors.New("a source identifier is required")
@@ -173,15 +193,15 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 		captured[worktree] = capture{value, err == nil}
 		return value, err == nil
 	}
-	// Peek at every latest revision first; loading and checking a whole
-	// revision chain is only worth it for a candidate or a successor.
+	// Peek at every newest decodable revision first; loading and checking a
+	// whole revision chain is only worth it for a candidate or a successor.
 	heads := map[string]head{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		directory := filepath.Join(store, entry.Name())
-		if peeked, ok := peekLatest(directory); ok && slices.Contains(repo.Roots, peeked.root) {
+		if peeked, ok := peekNewestReadable(directory); ok && slices.Contains(repo.Roots, peeked.root) {
 			heads[directory] = peeked
 		}
 	}
@@ -209,13 +229,16 @@ func FindOpen(ctx context.Context, store string, repo Repository, now time.Time,
 		legacy := errors.Is(err, ErrLegacyRecord)
 		switch {
 		case legacy:
-			record = peeked.legacyRecord(directory)
+			record = peeked.peekedRecord(directory)
 			if v := record.Verification; v != nil && v.Complete && v.SourceSHA256 == "" {
 				// cw v2.0.66 to v2.0.96 recorded no source digest, and
 				// a passing verification was the end of its task.
 				continue
 			}
-		case err != nil || !headOf(record).governs(repo.Roots, now):
+		case err != nil:
+			open = append(open, OpenRecord{Record: peeked.peekedRecord(directory), Unreadable: err.Error(), Newer: errors.Is(err, ErrNewerRecord)})
+			continue
+		case !headOf(record).governs(repo.Roots, now):
 			continue
 		}
 		problem, ok := verificationProblem(record, repo.Worktree, digestOf)
@@ -283,8 +306,8 @@ type head struct {
 	// baseline is baseline_manifest.sha256, the digest of the source the
 	// record started from ("" for records without a manifest).
 	baseline string
-	// title, selectedPath and verification are read only by peekLatest, for
-	// a record this cw refuses to load (legacyRecord).
+	// title, selectedPath and verification are read only by peekRevision,
+	// for a record this cw refuses to load (peekedRecord).
 	title        string
 	selectedPath string
 	verification *Verification
@@ -294,11 +317,11 @@ func headOf(record Record) head {
 	return head{updatedAt: record.UpdatedAt, kind: record.Plan.Kind, root: record.Baseline.Root, abandoned: record.Abandonment != nil, baseline: record.BaselineManifest.SHA256}
 }
 
-// legacyRecord is what FindOpen knows of a record in directory that Load
-// refuses with ErrLegacyRecord: the members of its latest revision that
-// select and gate it, unvalidated. Its ID is the directory name, as Load
-// requires of every record.
-func (h head) legacyRecord(directory string) Record {
+// peekedRecord is what FindOpen knows of a record in directory that Load
+// refuses: the members of its newest decodable revision that select and gate
+// it, unvalidated. Its ID is the directory name, as Load requires of every
+// record.
+func (h head) peekedRecord(directory string) Record {
 	return Record{ID: filepath.Base(directory), Directory: directory, UpdatedAt: h.updatedAt,
 		Plan:     Plan{Title: h.title, Kind: h.kind},
 		Baseline: projectctx.Snapshot{Root: h.root, SelectedPath: h.selectedPath}, Verification: h.verification}
@@ -339,29 +362,44 @@ type storedHead struct {
 	Abandonment *struct{} `json:"abandonment"`
 }
 
-// peekLatest decodes the selecting members of the highest revision file in
-// directory without validating the chain.
-func peekLatest(directory string) (head, bool) {
+// peekNewestReadable returns the head of the highest revision file in
+// directory that peekRevision decodes, walking down from the newest, so a
+// newest revision that is garbage, unreadable or empty still attributes the
+// directory to its repository. It reports false when no revision decodes.
+func peekNewestReadable(directory string) (head, bool) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return head{}, false
 	}
-	latest := ""
+	var names []string
 	for _, entry := range entries {
-		if name := entry.Name(); revisionName.MatchString(name) && strings.Compare(name, latest) > 0 {
-			latest = name
+		if revisionName.MatchString(entry.Name()) {
+			names = append(names, entry.Name())
 		}
 	}
-	if latest == "" {
-		return head{}, false
+	slices.Sort(names)
+	for _, name := range slices.Backward(names) {
+		if value, ok := peekRevision(filepath.Join(directory, name)); ok {
+			return value, true
+		}
 	}
-	file, err := os.Open(filepath.Join(directory, latest))
+	return head{}, false
+}
+
+// peekRevision decodes the selecting members of one revision file without
+// validating it. A file without a plan kind, baseline root or update time,
+// which every revision cw writes has, does not decode.
+func peekRevision(path string) (head, bool) {
+	file, err := os.Open(path)
 	if err != nil {
 		return head{}, false
 	}
 	defer file.Close()
 	var stored storedHead
 	if err := json.UnmarshalRead(io.LimitReader(file, MaxInputBytes), &stored); err != nil {
+		return head{}, false
+	}
+	if stored.Plan.Kind == "" || stored.Baseline.Root == "" || stored.UpdatedAt.IsZero() {
 		return head{}, false
 	}
 	value := head{updatedAt: stored.UpdatedAt, kind: stored.Plan.Kind, root: stored.Baseline.Root, abandoned: stored.Abandonment != nil,

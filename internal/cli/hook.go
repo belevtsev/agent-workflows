@@ -23,13 +23,14 @@ import (
 
 // Claude Code and Codex plugin hooks. Both commands read the hook's JSON input
 // from stdin and write the hook's JSON decision to stdout. Under Codex, which
-// does not support an ask, the pre-publish hook denies instead. They fail
-// open: every condition that is not a positive gate decision, including any internal
-// error, exits 0 without output, so a damaged record, an unreadable store or a
-// missing git never blocks the user's own commands. The one exception is a
-// task store that a relative XDG_STATE_HOME leaves unknown: then each git
-// commit and git push the gate would judge asks, because allowing it would
-// skip the gate without a word.
+// does not support an ask, the pre-publish hook denies instead, except where
+// the ask is about a record or store it cannot read. They fail open: every
+// condition that is not a positive gate decision, including any internal
+// error, exits 0 without output, so an unreadable store or a missing git never
+// blocks the user's own commands. Two exceptions ask, because allowing would
+// skip the gate without a word: a governing task record that cannot be read,
+// and a task store that cannot be located, for each git commit and git push
+// the gate would judge.
 const (
 	hookInputLimit = 1 << 20
 	// hookPublishTimeout bounds the pre-publish hook's Git and source-capture
@@ -83,9 +84,10 @@ func addHookCommands(root *cobra.Command, config Config) {
 		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",
 		Long: "Reads the PreToolUse JSON from stdin. When the Bash command runs git commit or git push inside a Git repository and the task store holds " +
 			"substantial, unabandoned records for that repository written within 14 days, it prints a deny decision naming every one whose verification has not passed " +
-			"on the source being published, and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
+			"on the source being published, an ask decision when none gates but one cannot be read or the task store cannot be located, " +
+			"and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
-			"code changed without tests). Under Codex, which cannot ask, each ask is a deny that carries the question. " +
+			"code changed without tests). Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
 			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
@@ -138,19 +140,18 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 	path, err := hookTaskStore(root, config)
 	var store gate.Store = gate.TaskStore(path)
 	var unlocated *unlocatedStore
-	switch {
-	case errors.Is(err, errRelativeStateHome):
+	if err != nil {
 		// The store cannot be located, but the gate still runs: it decides
 		// which commands publish from a repository, and each of those asks.
 		unlocated = &unlocatedStore{err: err}
 		store = unlocated
-	case err != nil:
-		return hookOutput{}, false
 	}
 	decision := gate.Decide(ctx, gate.Input{Command: input.ToolInput.Command, CWD: input.CWD, Enforce: enforce, Prompt: prompt},
 		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
 	if unlocated != nil && unlocated.consulted && decision.Permission == gate.Allow {
-		decision = gate.Decision{Permission: gate.Ask, Reason: relativeStateHomeReason}
+		// Like a record that cannot be read, a store that cannot be located
+		// is nothing the user can fix from Codex, so Codex lets it run.
+		decision = gate.Decision{Permission: gate.Ask, Reason: unlocatedStoreReason(err), ProceedWithoutAsk: true}
 	}
 	if input.fromCodex() {
 		decision = codexDecision(decision)
@@ -181,10 +182,16 @@ func codexDecision(decision gate.Decision) gate.Decision {
 	return decision
 }
 
-// relativeStateHomeReason is the ask for a publication when a relative
-// XDG_STATE_HOME leaves the task store unknown.
-const relativeStateHomeReason = "agent-workflows: XDG_STATE_HOME must be an absolute path; set it, or set CW_TASK_STORE. " +
-	"Until then the commit and push gate cannot read the task records; confirm to run this command without it."
+// unlocatedStoreReason is the ask for a publication when err leaves the task
+// store unknown: a relative XDG_STATE_HOME, or any other failure to resolve
+// the state directory, such as a home directory that cannot be resolved.
+func unlocatedStoreReason(err error) string {
+	fix := "cw cannot locate the task store (" + err.Error() + "); set CW_TASK_STORE to it."
+	if errors.Is(err, errRelativeStateHome) {
+		fix = "XDG_STATE_HOME must be an absolute path; set it, or set CW_TASK_STORE."
+	}
+	return "agent-workflows: " + fix + " Until then the commit and push gate cannot read the task records; confirm to run this command without it."
+}
 
 // unlocatedStore is the gate's store when the hook cannot locate the task
 // store. Every lookup fails with err, so the gate itself allows; consulted

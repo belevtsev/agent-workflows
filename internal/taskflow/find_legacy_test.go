@@ -85,6 +85,23 @@ func TestFindOpenGatesOnLegacyRecords(t *testing.T) {
 		}
 	})
 
+	t.Run("an open legacy record with a garbage newest revision still gates", func(t *testing.T) {
+		// Oracle: Load refuses the record at revision 1 as legacy, so it
+		// gates from that revision with the move-it-out problem, and does
+		// not turn into an unreadable record; before, the garbage revision
+		// hid it.
+		store, repo := foFixture(t)
+		now := time.Now()
+		open := foStartAt(t, store, repo, "v2 open work", "substantial", now.Add(-time.Hour))
+		toV2096Shape(t, open, false)
+		foWrite(t, open.Directory, "record-000002.json", "{\n")
+		got := foFind(t, store, foAtRoot(open.Baseline.Root), now, (&foStub{digest: foDigestA}).identify())
+		foExpect(t, got, foGating(open))
+		if !got[0].Legacy || got[0].Problem != legacyGateProblem(open.Directory) {
+			t.Fatalf("legacy record returned with Legacy %v, problem %q; want Legacy and %q", got[0].Legacy, got[0].Problem, legacyGateProblem(open.Directory))
+		}
+	})
+
 	t.Run("finished legacy records do not gate", func(t *testing.T) {
 		// Oracle: beside an open legacy record, which still gates, a record
 		// verified by cw v2.0.96 (complete, no source digest) and one a
