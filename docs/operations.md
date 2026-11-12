@@ -677,6 +677,37 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
   model, UTC day and session. Without `--prices` every amount is unknown, with a
   reason.
 
+### Usage stores
+
+The session transcript is the source of a session's usage; the cost history is a
+copy of its token counts. No command reads both, so none reconciles them:
+
+| Command | Reads | Writes |
+| --- | --- | --- |
+| `cw metrics import` | the transcript: a Claude Code session with its subagents, or a Codex rollout with its descendants | nothing |
+| `cw metrics import --append` | the transcript, then the request identities in the history | requests the history lacks |
+| `cw metrics history` | the cost history only | nothing |
+| `cw metrics summarize` | the observation files you name | nothing |
+
+When they differ:
+
+- **Transcript and history.** The stored request wins: if the transcript's
+  counts for the same identity differ, the history keeps its own and `--append`
+  counts the request as `conflicting`; `cw metrics history` reads only the first
+  line of an identity. `cw metrics import` reports the transcript as it is now,
+  `cw metrics history` what was appended; only the history keeps a session after
+  its transcript expires.
+- **Within one import.** Recorded dollars come only from the session's last
+  cost-state in the main Claude transcript, price-table dollars only from
+  `--prices`, and both are reported apart. When transcript tokens and the cost-state differ for a model,
+  neither wins: `usage` and `cost` are withheld with `usage_unknown_reason`, and
+  an incomplete import also leaves `usage` unknown, never zero. Codex rollouts
+  and the history record no dollars, so their only dollars are price-table
+  estimates.
+- **Task records.** A task record holds no session usage. A consultation record
+  keeps each adviser call's provider-reported tokens, which no command adds to
+  session usage.
+
 ## Consultation command
 
 `cw consult` calls the configured advisers: the task's bound set for a task-bound

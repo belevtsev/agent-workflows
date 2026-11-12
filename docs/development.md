@@ -21,8 +21,10 @@ so gate rules are unit-tested with a fake git, clock and task store. Under
 Codex, which cannot ask, the hook turns an ask into a deny unless the gate sets
 `ProceedWithoutAsk` on it ([Codex](hooks.md#codex)).
 `internal/shellwords` splits a shell command into simple commands and words
-for both the gate and `internal/usagelog`; extend it there rather than
-splitting commands again.
+for both the gate and `internal/usagelog/composition`; extend it there rather
+than splitting commands again. That package, behind `cw metrics import
+--composition`, is experimental: it observes a Claude import through
+`usagelog.Observer`, and `internal/usagelog` does not import it.
 `cmd/cwdev` holds the maintainer evaluation.
 
 Each `cw task` subcommand has its own constructor, `newTaskXCommand(taskDeps)`,
