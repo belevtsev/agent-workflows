@@ -79,19 +79,23 @@ func summarizeDoctor(report projectctx.DoctorReport) doctorSummary {
 			value.Problems[id] = checkProblem{Status: check.Status, Detail: check.Detail}
 		}
 	}
-	for _, warning := range slices.Concat(report.Warnings, report.Profile.Warnings) {
+	attention := len(value.Problems) > 0
+	for index, warning := range slices.Concat(report.Warnings, report.Profile.Warnings) {
 		if warning == dirtyComparisonWarning {
 			value.OmittedFixed++
 			continue
 		}
 		value.Warnings = append(value.Warnings, warning)
+		// Doctor's own note of a key without an opt-in is information only;
+		// a profile warning, whose text can come from the project, never is.
+		attention = attention || index >= len(report.Warnings) || !isKeyWithoutOptInWarning(warning)
 	}
 	for _, name := range slices.Sorted(maps.Keys(report.Credentials.Effective)) {
 		if !report.Credentials.Effective[name] {
 			value.MissingCredentials = append(value.MissingCredentials, name)
 		}
 	}
-	if len(value.Problems) > 0 || len(value.Warnings) > 0 {
+	if attention {
 		value.Status = "attention"
 	}
 	return value

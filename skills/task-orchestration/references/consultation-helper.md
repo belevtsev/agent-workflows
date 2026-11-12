@@ -94,7 +94,7 @@ An interim consultation (points a to c) is an ad hoc request: follow the
 [quick path](#quick-path) without `cw task context` in step 3 (the before
 context matches only the baseline source), pass the `--policy` the task started
 with, if any, and stop after `cw consult --adjudicate`: there is no task phase
-to attach it to. Ad hoc participation applies the same three conditions, so it
+to attach it to. Ad hoc participation applies the same four conditions, so it
 matches the binding unless the policy, preferences or keys changed since
 `cw task start`; consult only when the binding is not empty. Keep its files with the task's other private records, outside
 source, and cite its path and outcome in the ledger, or for point c in the

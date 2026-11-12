@@ -78,6 +78,9 @@ a public preview alias. Records retain the requested and returned model IDs.
 SubQ [retains request data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/);
 organization-level zero data retention is available for Decisions.
 
+Then opt in: `cw keys set SUBQ_API_KEY --from-env SUBQ_API_KEY` saves the key and
+opts in, or list `subq_snap` under `advisers.enabled` to use the exported key alone.
+
 ### Set up OpenAI Decisions
 
 Obtain an API key from the [OpenAI Platform](https://platform.openai.com/api-keys)
@@ -105,6 +108,10 @@ export OPENAI_API_KEY
 
 Keep request content within the task's permitted sharing and the account's
 [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
+
+Then opt in: `cw keys set OPENAI_API_KEY --from-env OPENAI_API_KEY` saves the key
+and opts in, or list `openai_decisions` under `advisers.enabled` to use the exported
+key alone.
 
 ### Optional: set up Jev
 
@@ -202,7 +209,10 @@ Add `TYPESAFE_API_KEY` the same way if you opted in to Jev. Fully quit and
 relaunch the app, then open a fresh session and verify key presence without
 displaying values. This launch environment applies to GUI processes started later
 in the current login session; it is not persistent secret storage. Check keys
-before `cw task start`, because the task binds only the advisers configured then.
+before `cw task start`, because the task binds only the advisers configured then,
+and make sure each one is opted in (`cw keys set` or `advisers.enabled`): a key that
+is only visible to the agent binds nothing, and `cw doctor` says
+"key present, adviser not enabled".
 
 ## Consult advisers and let the coordinator decide
 

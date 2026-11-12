@@ -83,7 +83,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 				options.Getenv = getenv
 				// consult reads the withheld advisers only for a request
 				// without a task binding.
-				options.Disabled = func() ([]string, error) { return withheldAdvisers(root, config, policy != "") }
+				options.Disabled = func() ([]string, error) { return withheldAdvisers(root, config, policy != "", cmd.ErrOrStderr()) }
 			}
 			if !summary {
 				return finish(consult.Run(cmd.Context(), options))
@@ -110,7 +110,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Adjudicate, "adjudicate", "", "Saved consultation record to finalize offline")
 	flags.StringVar(&options.Decision, "decision", "", "Coordinator decision JSON file, with --adjudicate")
 	flags.StringVar(&options.Output, "output", "", "New private record path; an existing file is never replaced")
-	flags.StringVar(&policy, "policy", "", policyFlagHelp)
+	flags.StringVar(&policy, "policy", "", "Model policy; without a task, it also opts in to every adviser it enables; "+policyFlagHelp)
 	flags.BoolVar(&summary, "summary", false, "After writing the record, print a one-line JSON view of it (statuses, answers, comparison) without the request body")
 	root.AddCommand(command)
 }

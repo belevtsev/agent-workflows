@@ -227,7 +227,7 @@ the deadline, attempt and retry settings, the
 path, ownership, reuse, sharing, `comparison: coordinator_evidence_and_verification`,
 and `providers`: a possibly empty mapping of enabled provider IDs to pinned models.
 The Claude Code policy has no consultation section; participation follows the
-shared policy and the keys present. Policy changes require their own authorized
+shared policy, the keys present and the user's opt-in. Policy changes require their own authorized
 change. Which advisers participate, how `cw task start` binds them, what
 `--policy` does and how to opt in to Jev are in
 [participation](../skills/task-orchestration/references/consultation-helper.md#participation);

@@ -298,6 +298,9 @@ policy embedded in `cw`. A `--policy` copy still honours
 invalid, including an older policy version, `start` fails before creating a task
 directory. The binding is fixed for the task's
 lifetime: later policy or credential changes do not alter its checkpoints.
+Never opt advisers in for the user: pass `--policy`, edit `advisers.enabled` or run
+`cw keys set` only when the user asked for it. A `cw doctor` warning "key present,
+adviser not enabled" is for the user to act on, not a step of the flow.
 `context` prints `{"task_id", "phase", "snapshot", "evidence_sha256", "advisers"}`.
 To opt in to Jev, pass a policy copy that enables it; see
 [opt in to Jev](consultation-helper.md#opt-in-to-jev).
