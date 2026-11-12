@@ -93,6 +93,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   as a plain folder ([diagnostics][diag]).
 - `cw metrics import --composition` no longer slows down on long or deeply nested Bash commands
   ([diagnostics][diag]).
+- `cw consult` reports a failed close of its output record instead of exiting 0 with a record that
+  may be incomplete.
+- `THIRD_PARTY.md` lists go-toml v2.4.3, the version `cw` links; a test keeps the table in step with `go.mod`.
 
 ### Removed
 

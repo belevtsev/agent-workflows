@@ -169,12 +169,16 @@ func reserve(path string) (*os.File, error) {
 	return file, nil
 }
 
-func writeRecord(output *os.File, record *object) error {
+// writeRecord writes the record to the reserved output and closes it. A failed
+// Close is a failed write: the data may not have reached the file.
+func writeRecord(output io.WriteCloser, record *object) error {
 	data, err := recordFormat.marshal(record)
-	if err != nil {
-		return err
+	if err == nil {
+		_, err = output.Write(append(data, '\n'))
 	}
-	_, err = output.Write(append(data, '\n'))
+	if closeErr := output.Close(); err == nil {
+		err = closeErr
+	}
 	return err
 }
 
@@ -206,9 +210,9 @@ func Run(ctx context.Context, o Options) (int, error) {
 		fmt.Fprintln(o.Stderr, "Decision consultation validation failed: "+err.Error())
 		return 1, nil
 	}
-	defer output.Close()
 	if request != nil {
 		if record, err = o.execute(ctx, request); err != nil {
+			_ = output.Close() // the run failed; the reserved file stays empty
 			return 1, err
 		}
 	}
