@@ -541,7 +541,7 @@ func aclGoPacks() []langpack.Manifest {
 // start begins the task through taskflow.StartWithPacks with aclGoPacks.
 func (r *aclRepo) start(t *testing.T) string {
 	t.Helper()
-	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, aclPlan(), map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
+	rec, err := taskflow.Env{}.StartWithPacks(context.Background(), r.root, r.store, aclPlan(), map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
 	if err != nil {
 		t.Fatalf("setup: taskflow.StartWithPacks: %v", err)
 	}
@@ -792,7 +792,7 @@ func aclAssess(t *testing.T, dir, root string, checkIDs, decisionIDs []string) {
 		Requirements: []taskflow.Assessment{{ID: "r1", Status: "satisfied", Evidence: []taskflow.SourceRef{ref}, CheckIDs: checkIDs}},
 		Decision:     &taskflow.Decision{Status: "resolved", Reason: "the implementation meets the plan", Evidence: []taskflow.SourceRef{ref}, CheckIDs: decisionIDs},
 	}
-	if _, err := taskflow.Assess(context.Background(), dir, in); err != nil {
+	if _, err := (taskflow.Env{}).Assess(context.Background(), dir, in); err != nil {
 		t.Fatalf("R12.a/R12.b: assess citing %q, decision citing %q: %v", checkIDs, decisionIDs, err)
 	}
 }
@@ -1534,7 +1534,7 @@ func aclFinalConsultation(t *testing.T, amend bool) {
 	r := aclNewRepo(t)
 	plan := aclPlan()
 	plan.Checkpoints = nil
-	rec, err := taskflow.StartWithPacks(context.Background(), r.root, r.store, plan, map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
+	rec, err := taskflow.Env{}.StartWithPacks(context.Background(), r.root, r.store, plan, map[string]string{}, taskflow.SelectionExplicit, aclGoPacks())
 	if err != nil {
 		t.Fatalf("setup: taskflow.StartWithPacks: %v", err)
 	}

@@ -15,7 +15,7 @@ import (
 
 // Authorship lists each changed test file with its authorship status (R19).
 // It changes nothing.
-func Authorship(ctx context.Context, taskPath string) (AuthorshipReport, error) {
+func (env Env) Authorship(ctx context.Context, taskPath string) (AuthorshipReport, error) {
 	root, directory, err := openTask(taskPath)
 	if err != nil {
 		return AuthorshipReport{}, err
@@ -25,14 +25,14 @@ func Authorship(ctx context.Context, taskPath string) (AuthorshipReport, error) 
 	if err != nil {
 		return AuthorshipReport{}, err
 	}
-	snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+	snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return AuthorshipReport{}, err
 	}
 	view := newSourceView(snapshot, files)
-	report := authorshipReport(view.authorship(root, record), record, snapshot)
+	report := authorshipReport(view.authorship(taskDirectory{root}, record), record, snapshot)
 	view.close()
-	after, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+	after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return AuthorshipReport{}, err
 	}
@@ -130,10 +130,10 @@ func (view *sourceView) testSource() *testSource {
 }
 
 // authorship returns the view's classifier for record, built once.
-func (view *sourceView) authorship(taskRoot *os.Root, record Record) *authorship {
+func (view *sourceView) authorship(artifacts Artifacts, record Record) *authorship {
 	if view.authors == nil {
 		state := baselineState{}
-		state.files, state.err = readBaselineManifest(taskRoot, *record.BaselineManifest)
+		state.files, state.err = readBaselineManifest(artifacts, *record.BaselineManifest)
 		source := view.testSource()
 		view.authors = newAuthorship(record, state, view.files, func(name string) ([]byte, error) {
 			return source.readFile(projectctx.ManifestRawPath(name))

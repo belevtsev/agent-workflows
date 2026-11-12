@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +27,7 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 			if strings.TrimSpace(reason) == "" {
 				return usage(errors.New("--reason TEXT is required"))
 			}
-			record, err := taskflow.Abandon(directory, reason)
+			record, err := taskEnv(deps.config).Abandon(directory, reason)
 			if err != nil {
 				return err
 			}

@@ -135,7 +135,7 @@ retry failures or continue a contaminated session.
 
    ```sh
    codex exec --ignore-user-config --skip-git-repo-check --ephemeral \
-     --model gpt-6.1-sol -c 'model_reasoning_effort="max"' \
+     --model gpt-6.1-sol -c 'model_reasoning_effort="high"' \
      -c 'approval_policy="never"' --sandbox read-only \
      --cd "$case_input_dir" --json - \
      < "$case_input_dir/prompt.md" > "$case_record_dir/events.jsonl"
@@ -143,9 +143,9 @@ retry failures or continue a contaminated session.
 
    Configure the isolated discovery home in the launcher's process environment;
    keep existing authentication available without relocating its files. The model
-   and `max` effort are explicit for comparison, and `ultra` is not selected by
-   escalation. Do not resume sessions, enable hooks/plugins that perform effects,
-   or provide a hidden answer through an output schema. Enforce the timeout in the
+   and `high` effort, the shipped coordinator profile, are explicit for comparison,
+   and `ultra` is not selected by escalation. Do not resume sessions, enable
+   hooks/plugins that perform effects, or provide a hidden answer through an output schema. Enforce the timeout in the
    launcher and record a timeout as an incomplete attempt.
 5. Retain actual tool/file-read traces, the final answer, exit/error status, elapsed
    time, and reported token usage. Normalize actual skill paths to suite-relative

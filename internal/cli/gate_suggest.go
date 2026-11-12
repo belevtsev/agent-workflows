@@ -85,7 +85,7 @@ func openTasks(ctx context.Context, root *cobra.Command, config Config, dir stri
 	if err != nil {
 		return nil, err
 	}
-	return taskflow.FindOpen(ctx, store, repo, time.Now(), func(context.Context, string) (string, error) { return "", nil })
+	return taskflow.FindOpen(ctx, store, repo, config.Now(), func(context.Context, string) (string, error) { return "", nil })
 }
 
 // gateSuggestedMarker is the file that records that session start suggested

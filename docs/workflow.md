@@ -28,19 +28,22 @@ adviser or review requirements.
 The table shows the Codex defaults. Under Claude Code, the `github` profile uses
 `claude-sonnet-5-5` at `medium`, and the Claude-only `review_followup` role (every
 later review of a stage, after that stage's first full review) uses it at `high`;
-Codex keeps every review on its stage's role. Other roles use `claude-opus-5-5` at `high`, except
+Codex keeps every review on its stage's role. Summarization uses `claude-sonnet-5-5`
+and lookup `claude-haiku-5-5`, both at `high`. Other roles use `claude-opus-5-5` at `high`, except
 the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 
 | Work | Default model | Effort |
 | --- | --- | --- |
-| Coordination and substantive implementation, review, planning, or diagnosis | `gpt-6.1-sol` | `max` |
+| Coordination and substantive implementation, testing, review, or documentation | `gpt-6.1-sol` | `high` |
+| Planning, architecture, or diagnosis (`decision`) | `gpt-6.1-sol` | `max` |
 | Routine commits, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` | `high` |
 | Other bounded execution profiles | `gpt-6-luna` | `xhigh` |
 | Bounded read-only lookup or summarization | `gpt-6-luna` | `high` |
 
 The policy preserves fixed specialist settings and describes availability
-fallbacks. Sol 6.1 `max` is configured; Sol `ultra` requires an explicit user request.
+fallbacks. Sol 6.1 `max` is configured for the decision roles, and other Sol work
+uses it on explicit user request; Sol `ultra` requires an explicit user request.
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
@@ -114,7 +117,7 @@ yourself if you want them. In Codex `config.toml`:
 
 ```toml
 model = "gpt-6.1-sol"
-model_reasoning_effort = "max"
+model_reasoning_effort = "high"
 ```
 
 In Claude Code `settings.json`:
@@ -136,8 +139,8 @@ The shared policy is version 3. Its `sol` profile, `sol_unavailable` fallback an
 `max_for_sol` rule keep their names as schema identifiers; the `sol` profile now
 runs `gpt-6.1-sol`. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
-Max-default profile. Older `explicit_user_request` policies remain readable and
-continue rejecting configured Max for Sol models. The repository check
+Max-default profile; today that is `decision`. Older `explicit_user_request`
+policies remain readable and continue rejecting configured Max for Sol models. The repository check
 (`go test ./internal/skillcheck`) loads the policies.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to

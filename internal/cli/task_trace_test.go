@@ -83,7 +83,7 @@ func l3cNew(t *testing.T, reqs []string, checks ...taskflow.Check) *l3cFix {
 	for _, id := range reqs {
 		plan.Requirements = append(plan.Requirements, taskflow.Requirement{ID: id, Description: "criterion " + id, CheckIDs: []string{checks[0].ID}})
 	}
-	rec, err := taskflow.StartWithPacks(f.ctx, f.repo, store, plan, nil, taskflow.SelectionExplicit, nil)
+	rec, err := taskflow.Env{}.StartWithPacks(f.ctx, f.repo, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("StartWithPacks: %v", err)
 	}
@@ -195,7 +195,7 @@ func (f *l3cFix) assign(id string, owned []string, reqs ...taskflow.ContractRequ
 	b := taskflow.WorkerBrief{ID: id, AgentID: "agent-" + id, Role: "implementation", Goal: "fixture work",
 		OwnedPaths: owned, Constraints: []string{}, CheckIDs: []string{}, StopCondition: "done",
 		Contract: &c, Requirements: reqs}
-	if _, err := taskflow.AssignWorker(f.ctx, f.dir, b); err != nil {
+	if _, err := (taskflow.Env{}).AssignWorker(f.ctx, f.dir, b); err != nil {
 		f.t.Fatalf("AssignWorker(%s): %v", id, err)
 	}
 }
@@ -219,7 +219,7 @@ func (f *l3cFix) submit(id string, changed []string, rmap ...taskflow.Requiremen
 			a = x
 		}
 	}
-	v, err := taskflow.Verify(f.ctx, f.dir)
+	v, err := taskflow.Env{}.Verify(f.ctx, f.dir)
 	if v.TaskID == "" {
 		f.t.Fatalf("Verify: %v", err)
 	}
@@ -234,7 +234,7 @@ func (f *l3cFix) submit(id string, changed []string, rmap ...taskflow.Requiremen
 		}
 		res.ChangedFiles = append(res.ChangedFiles, taskflow.WorkerChangedFile{Path: c, SHA256: l3cSum(data)})
 	}
-	if _, err := taskflow.SubmitWorkerResult(f.ctx, f.dir, res); err != nil {
+	if _, err := (taskflow.Env{}).SubmitWorkerResult(f.ctx, f.dir, res); err != nil {
 		f.t.Fatalf("SubmitWorkerResult(%s): %v", id, err)
 	}
 }
@@ -247,7 +247,7 @@ func (f *l3cFix) accept(id, status string) {
 			sha = r.SHA256
 		}
 	}
-	_, err := taskflow.AcceptWorkerResult(f.ctx, f.dir, taskflow.WorkerAcceptance{TaskID: f.id, AssignmentID: id, ResultSHA256: sha,
+	_, err := taskflow.Env{}.AcceptWorkerResult(f.ctx, f.dir, taskflow.WorkerAcceptance{TaskID: f.id, AssignmentID: id, ResultSHA256: sha,
 		CoordinatorID: l3cCoordinator, Status: status, Reason: "fixture judgment", Evidence: []taskflow.SourceRef{f.goModRef()},
 		CheckIDs: []string{}, Findings: []taskflow.FindingDisposition{}})
 	if err != nil {
@@ -259,7 +259,7 @@ func (f *l3cFix) run(check string) taskflow.CheckRun {
 	f.t.Helper()
 	ctx, cancel := context.WithTimeout(f.ctx, l3cWait)
 	defer cancel()
-	run, err := taskflow.RunCheck(ctx, f.dir, check)
+	run, err := taskflow.Env{}.RunCheck(ctx, f.dir, check)
 	if run.ID == "" {
 		f.t.Fatalf("RunCheck(%s): %v", check, err)
 	}
@@ -403,7 +403,7 @@ func TestTaskTraceCLIPrintsReport(t *testing.T) {
 	if want := map[string]string{"C1": "proven", "C2": "open", "C3": "unmapped"}; !l3cEqualMaps(statuses, want) {
 		t.Errorf("printed criterion statuses %v, want %v", statuses, want)
 	}
-	direct, err := taskflow.Trace(f.ctx, f.dir)
+	direct, err := taskflow.Env{}.Trace(f.ctx, f.dir)
 	if err != nil {
 		t.Fatalf("taskflow.Trace: %v", err)
 	}
