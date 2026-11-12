@@ -47,6 +47,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
   without hard links ([diagnostics][diag]).
+- The hook docs record live runs: Claude Code asks before `cw task aban''don` too, so it is no longer listed as a bypass, and Codex
+  runs both handlers and adds the conventions again on each resume ([recorded host runs](docs/hooks.md#recorded-host-runs)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

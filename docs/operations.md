@@ -35,7 +35,7 @@ holds the definition of a substantial task and the Code Review Rules.
 
 | Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask, except that the asks about a task record that is damaged or from a newer `cw`, or a task store it cannot locate or read, let the command go ahead ([Codex](hooks.md#codex)); needs the hooks trusted in `/hooks` | The conventions, a line when the plugin and `cw` versions differ, a line suggesting `cw gate install` once per task open in a repository without git's hooks, and a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `clear` and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables; the version line, which reads `.codex-plugin/plugin.json` |
 | Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
 | `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
 
@@ -61,9 +61,10 @@ the architect contract and the `software-architecture` and
   and the doctor summary is off. A recorded run turned the gate off with
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
-- **Evidence.** The plugin rows come from one recorded run with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex)); the last column lists what it did
-  not cover.
+- **Evidence.** The plugin rows come from runs recorded with codex-cli
+  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  the last column lists what they did not cover. The session-start context
+  is added again on each resume and after each compaction.
 
 To install the plugin:
 
