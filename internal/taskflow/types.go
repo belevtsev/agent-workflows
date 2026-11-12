@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -181,6 +182,10 @@ type CheckRun struct {
 	// event.
 	TestResults       string `json:"test_results,omitempty"`
 	TestResultsSHA256 string `json:"test_results_sha256,omitempty"`
+	// Tool is the verified go command that ran a check whose program is go
+	// (checkSpec). It is absent for other programs, for a run refused with
+	// failure untrusted_toolchain, and for runs recorded before cw verified go.
+	Tool *langpack.GoTool `json:"tool,omitempty"`
 }
 
 type Attachment struct {
