@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/publish"
@@ -117,4 +119,62 @@ func TestGraphifyUnavailableReportExitsRefusedForEveryCode(t *testing.T) {
 			}
 		})
 	}
+}
+
+// rewriteStartedRecord starts a task through the CLI and rewrites the members
+// of its one revision, which chains to nothing, so only the change is tested.
+func rewriteStartedRecord(t *testing.T, change func(members map[string]jsontext.Value)) *summaryCLIHarness {
+	t.Helper()
+	h := newSummaryCLIHarness(t)
+	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
+	if _, err := os.Stat(filepath.Join(h.task, "record-000002.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("a started task holds more than one revision: %v", err)
+	}
+	path := filepath.Join(h.task, "record-000001.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	members := map[string]jsontext.Value{}
+	if err := json.Unmarshal(data, &members); err != nil {
+		t.Fatal(err)
+	}
+	change(members)
+	if data, err = json.Marshal(members, json.Deterministic(true)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// requireTaskCommandsRefused requires task show and task verify to exit 4
+// with message in the error and nothing on stdout.
+func requireTaskCommandsRefused(t *testing.T, h *summaryCLIHarness, message string) {
+	t.Helper()
+	for _, command := range []string{"show", "verify"} {
+		got := compactExecute(h, nil, "task", command, "--task", h.task)
+		if code := ExitCode(got.err); code != 4 || got.stdout != "" || got.err == nil || !strings.Contains(got.err.Error(), message) {
+			t.Errorf("task %s: exit %d, stdout %q, error %v; want 4 (refused), no output and an error containing %q", command, code, got.stdout, got.err, message)
+		}
+	}
+}
+
+// A task record with a revision newer than this cw reads is refused, not
+// failed: the task commands exit 4 and say to upgrade cw.
+func TestTaskCommandsExitRefusedForARecordFromANewerCw(t *testing.T) {
+	h := rewriteStartedRecord(t, func(members map[string]jsontext.Value) { members["version"] = jsontext.Value("5") })
+	requireTaskCommandsRefused(t, h, "task record version 5 was written by a newer cw; this cw reads versions 3 to 4; upgrade cw to read it")
+}
+
+// A task record without packs or test_rules, which cw v2.0.66 to v2.0.96
+// wrote, is refused, not failed: the task commands exit 4 and say to start a
+// new task.
+func TestTaskCommandsExitRefusedForALegacyRecord(t *testing.T) {
+	h := rewriteStartedRecord(t, func(members map[string]jsontext.Value) {
+		delete(members, "packs")
+		delete(members, "test_rules")
+	})
+	requireTaskCommandsRefused(t, h, "task record has no packs or test_rules, so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'")
 }

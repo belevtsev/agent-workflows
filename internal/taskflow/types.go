@@ -18,8 +18,19 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
+// Version is the task record version this cw writes; it reads versions
+// MinVersion to Version. Once a release has written version N, a new member
+// or a new value of a validated member (a change a cw reading N could not
+// load, by decode or by validation) makes the next release write N+1
+// (docs/development.md, "Task record format"). Every new revision is written
+// with Version, so a record started by an older cw takes this version at its
+// next revision.
 const (
-	Version       = 3
+	Version    = 4
+	MinVersion = 3
+)
+
+const (
 	MaxInputBytes = 8 << 20
 	MaxLogBytes   = 128 << 10
 )
@@ -208,16 +219,14 @@ type Record struct {
 	// Amendments lists, in order, the checks added after start (amend.go).
 	Amendments []Amendment         `json:"amendments,omitempty"`
 	Baseline   projectctx.Snapshot `json:"baseline"`
-	// BaselineManifest lists every eligible file at start. Records written
-	// before reviewer bundles existed omit it and are exempt from the bundle
-	// requirement on review assignments.
+	// BaselineManifest lists every eligible file at start. BaselineManifest,
+	// Packs and TestRules are required: Load refuses a record without one
+	// (requireStartMembers), so code that reads a loaded record may rely on
+	// them.
 	BaselineManifest *ManifestRef `json:"baseline_manifest,omitempty"`
-	// Packs is the pack set fixed at start. It is nil for records started by
-	// Start or by a cw that predates packs; such records verify with the
-	// legacy rules.
+	// Packs is the pack set fixed at start.
 	Packs *PackSet `json:"packs,omitempty"`
-	// TestRules names the test rule set fixed at start. Records started by
-	// Start, or by a cw before this change, omit it and keep the earlier rules.
+	// TestRules names the test rule set fixed at start: TestRulesV1.
 	TestRules         string                     `json:"test_rules,omitempty"`
 	Advisers          map[string]string          `json:"advisers"`
 	Contexts          map[string]Context         `json:"contexts"`

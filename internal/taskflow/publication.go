@@ -325,9 +325,6 @@ func (t *PublicationTask) Append(entry PublicationEntry) (string, error) {
 // manifest at its selected path. A capture failure wraps ErrSourceCapture;
 // any other error concerns the baseline manifest.
 func (t *PublicationTask) Source(ctx context.Context, record Record) (PublicationSource, error) {
-	if record.BaselineManifest == nil {
-		return PublicationSource{}, errors.New("task record has no baseline manifest")
-	}
 	baseline, err := readBaselineManifest(t.root, *record.BaselineManifest)
 	if err != nil {
 		return PublicationSource{}, err

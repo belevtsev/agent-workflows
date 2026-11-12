@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -332,21 +333,22 @@ func TestNotRequiredCheckpointsStillValidateAttachments(t *testing.T) {
 	})
 }
 
-// C7: records stay version 3; a plan without a policy stores no checkpoints
-// member, loads with a nil policy and verifies as before; a plan with a policy
+// C7: a checkpoints policy needs no record version of its own: records carry
+// the current Version; a plan without a policy stores no checkpoints member,
+// loads with a nil policy and verifies as before; a plan with a policy
 // round-trips through the stored record.
-func TestCheckpointPolicyRecordsStayVersion3(t *testing.T) {
+func TestCheckpointPolicyRecordsKeepTheCurrentVersion(t *testing.T) {
 	t.Run("omitted", func(t *testing.T) {
 		record, ref := fixtureTask(t, substantialPlan(t))
 		fields, plan := checkpointsTestRecordFields(t, record.Directory, "000001")
-		if string(fields["version"]) != "3" {
+		if string(fields["version"]) != strconv.Itoa(Version) {
 			t.Fatalf("stored version = %s", fields["version"])
 		}
 		if _, ok := plan["checkpoints"]; ok {
 			t.Fatalf("plan without a policy stored a checkpoints member: %s", plan["checkpoints"])
 		}
 		loaded, err := Load(record.Directory)
-		if err != nil || loaded.Version != 3 || loaded.Plan.Checkpoints != nil {
+		if err != nil || loaded.Version != Version || loaded.Plan.Checkpoints != nil {
 			t.Fatalf("load without checkpoints: version=%d checkpoints=%+v %v", loaded.Version, loaded.Plan.Checkpoints, err)
 		}
 		mustAssess(t, record, ref)
@@ -357,7 +359,7 @@ func TestCheckpointPolicyRecordsStayVersion3(t *testing.T) {
 	t.Run("not_required", func(t *testing.T) {
 		record, _ := fixtureTask(t, checkpointsTestOptional(t))
 		fields, plan := checkpointsTestRecordFields(t, record.Directory, "000001")
-		if string(fields["version"]) != "3" {
+		if string(fields["version"]) != strconv.Itoa(Version) {
 			t.Fatalf("stored version = %s", fields["version"])
 		}
 		var stored CheckpointPolicy
@@ -365,7 +367,7 @@ func TestCheckpointPolicyRecordsStayVersion3(t *testing.T) {
 			t.Fatalf("stored checkpoints = %s (%+v) %v", plan["checkpoints"], stored, err)
 		}
 		loaded, err := Load(record.Directory)
-		if err != nil || loaded.Version != 3 || loaded.Plan.Checkpoints == nil || loaded.Plan.Checkpoints.Required || loaded.Plan.Checkpoints.Reason != checkpointsTestReason {
+		if err != nil || loaded.Version != Version || loaded.Plan.Checkpoints == nil || loaded.Plan.Checkpoints.Required || loaded.Plan.Checkpoints.Reason != checkpointsTestReason {
 			t.Fatalf("load with checkpoints: %+v %v", loaded.Plan.Checkpoints, err)
 		}
 	})

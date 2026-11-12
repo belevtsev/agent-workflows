@@ -499,8 +499,8 @@ func l4WorkFiles() map[string]string {
 // TestVerifyNoGoModAtSelectedPath fails when a gated record whose selected
 // path has go.work or a .go file but no go.mod lacks R23's limitation right
 // after the trace's limitations, adds a problem for it, or judges test files;
-// or when a path with neither, or a small or legacy record, gets it from
-// verify; or when Authorship does not report it in any record (R23, R19).
+// or when a path with neither, or a small record, gets it from verify; or
+// when Authorship does not report it in any record (R23, R19).
 func TestVerifyNoGoModAtSelectedPath(t *testing.T) {
 	t.Parallel()
 	f := l4New(t, l4Opts{bare: true, contract: "m", files: l4WorkFiles(), checks: []taskflow.Check{l3Check("ok", l3JSONAll...)}})
@@ -538,21 +538,15 @@ func TestVerifyNoGoModAtSelectedPath(t *testing.T) {
 	if !l3Has(g.verify().Limitations, l4R23) {
 		t.Errorf("a .go file and no go.mod: verify lacks R23's limitation (R23)")
 	}
-	var others []*l3Fix
-	for _, o := range []l4Opts{{small: true}, {legacy: true}} {
-		o.bare, o.contract, o.files, o.checks = true, "m", l4WorkFiles(), []taskflow.Check{l3Check("ok", l3JSONAll...)}
-		x := l4New(t, o)
-		if l3Has(x.verify().Limitations, l4R23) {
-			t.Errorf("small %v legacy %v: verify added R23's limitation (R23 applies to gated records)", o.small, o.legacy)
-		}
-		others = append(others, x)
+	small := l4New(t, l4Opts{small: true, bare: true, contract: "m", files: l4WorkFiles(), checks: []taskflow.Check{l3Check("ok", l3JSONAll...)}})
+	if l3Has(small.verify().Limitations, l4R23) {
+		t.Errorf("small: verify added R23's limitation (R23 applies to gated records)")
 	}
 	// Authorship reports R23 in any record whose baseline manifest can be
 	// read, and lists no file (no go.mod: no test file).
 	f.l4Report("go.work root", f.authorship(), l4Rules, true, []string{l4R23})
 	g.l4Report(".go file at the root", g.authorship(), l4Rules, true, []string{l4R23})
-	others[0].l4Report("small plan at a go.work root", others[0].authorship(), l4Rules, false, []string{l4R23})
-	others[1].l4Report("legacy record at a go.work root", others[1].authorship(), "", false, []string{l4R23})
+	small.l4Report("small plan at a go.work root", small.authorship(), l4Rules, false, []string{l4R23})
 }
 
 // TestVerifyNoR23WithoutGoFiles fails when a gated record whose selected path
@@ -632,11 +626,10 @@ func TestAuthorshipSourceCannotBeCaptured(t *testing.T) {
 	}
 }
 
-// TestAuthorshipSmallAndLegacyRecords fails when the report of a record with
-// test rules and a small plan, or of a legacy record with a baseline
-// manifest, differs from R19: gated false, the record's test_rules, and the
-// R11 and R12 rules applied though verify does not apply them (R19).
-func TestAuthorshipSmallAndLegacyRecords(t *testing.T) {
+// TestAuthorshipSmallRecords fails when the report of a record with a small
+// plan differs from R19: gated false, the record's test_rules, and the R11
+// and R12 rules applied though verify does not apply them (R19).
+func TestAuthorshipSmallRecords(t *testing.T) {
 	t.Parallel()
 	small := l4New(t, l4Opts{small: true})
 	small.te("te1", "", "completed", map[string]string{"p/a_test.go": l4Test("p", "TestA")})
@@ -645,27 +638,6 @@ func TestAuthorshipSmallAndLegacyRecords(t *testing.T) {
 	if got := l4AuthorshipProblems(small.verify()); len(got) != 0 {
 		t.Errorf("small plan: verify added %v; the report applies R11 and R12 that verify does not (R19)", got)
 	}
-
-	legacy := l4New(t, l4Opts{legacy: true})
-	legacy.te("te1", "", "completed", map[string]string{"p/a_test.go": l4Test("p", "TestA")})
-	legacy.accept("te1", "accepted")
-	legacy.l4Report("legacy record", legacy.authorship(), "", false, nil,
-		legacy.l4File("p/a_test.go", false, "independent", fmt.Sprintf(l4ReasonBytes, "te1"), "te1", ""))
-
-}
-
-// TestAuthorshipLegacyWithoutManifest fails when a legacy record without a
-// baseline manifest does not report R19's "task predates the baseline
-// manifest" problem with no files (R19).
-func TestAuthorshipLegacyWithoutManifest(t *testing.T) {
-	t.Parallel()
-	old := l4New(t, l4Opts{legacy: true})
-	old.write("p/a_test.go", l4Test("p", "TestA"))
-	old.rewrite(func(_ int, doc map[string]any) { delete(doc, "baseline_manifest") })
-	if _, err := taskflow.Load(old.dir); err != nil {
-		t.Fatalf("fixture: a legacy record without a baseline manifest does not load: %v", err)
-	}
-	old.l4Report("legacy record without a baseline manifest", old.authorship(), "", false, []string{l4NoManifest})
 }
 
 // l4BreakChain sets the newest revision's previous_sha256 to a value that is
@@ -759,20 +731,26 @@ func (f *l3Fix) l4Normalize(s string) string {
 // TestHandoffGofmtAfterExistingFileCheck fails when a gofmt-eligible entry
 // with an explicit sha256 and no gofmt_sha256, whose file is absent without
 // being marked deleted or is a symlink, is not refused by the existing
-// changed-file check: the refusal must be the one a legacy record (where
-// R13.b does not apply) gives for the same handoff, name no gofmt rule, and
-// record no revision (R13.b ordering, R3f).
+// changed-file check: the refusal must be the one a result without a contract
+// (where R13.b does not apply) gives for the same entry, name no gofmt rule,
+// and record no revision (R13.b ordering).
 func TestHandoffGofmtAfterExistingFileCheck(t *testing.T) {
 	t.Parallel()
 	const path = "p/x_test.go"
 	body := l4Test("p", "TestX")
-	refuse := func(t *testing.T, legacy bool, kind string) string {
-		f := l4New(t, l4Opts{legacy: legacy})
-		f.mustAssign(f.brief("te1", []string{path}, l3Req("R1", "C1")))
+	refuse := func(t *testing.T, contract bool, kind string) string {
+		f := l4New(t, l4Opts{})
+		var rmap []taskflow.RequirementMapping
+		if contract {
+			f.mustAssign(f.brief("te1", []string{path}, l3Req("R1", "C1")))
+			rmap = append(rmap, l3Uncovered("R1", l4UncoveredReason))
+		} else {
+			f.mustAssign(f.plainBrief("te1", []string{path}))
+		}
 		f.write(path, body)
 		// An explicit sha256 of the bytes written, no gofmt_sha256, and
 		// evidence that stays current.
-		res := f.fastResult("te1", "completed", []string{path}, l3Uncovered("R1", l4UncoveredReason))
+		res := f.fastResult("te1", "completed", []string{path}, rmap...)
 		res.Evidence = []taskflow.SourceRef{f.goModRef()}
 		if len(res.ChangedFiles) != 1 || res.ChangedFiles[0].SHA256 != l3Sum([]byte(body)) || res.ChangedFiles[0].GofmtSHA256 != "" {
 			t.Fatalf("fixture: changed files %+v", res.ChangedFiles)
@@ -787,29 +765,29 @@ func TestHandoffGofmtAfterExistingFileCheck(t *testing.T) {
 		before := f.revision()
 		err := f.submit(res)
 		if err == nil {
-			t.Fatalf("legacy %v, %s: the handoff succeeded, want the existing changed-file refusal", legacy, kind)
+			t.Fatalf("contract %v, %s: the handoff succeeded, want the existing changed-file refusal", contract, kind)
 		}
 		if after := f.revision(); after != before {
-			t.Errorf("legacy %v, %s: the refused handoff moved the record from revision %d to %d (R13)", legacy, kind, before, after)
+			t.Errorf("contract %v, %s: the refused handoff moved the record from revision %d to %d (R13)", contract, kind, before, after)
 		}
 		for _, r := range f.load().WorkerResults {
 			if r.Result.AssignmentID == "te1" {
-				t.Errorf("legacy %v, %s: the refused handoff stored a result", legacy, kind)
+				t.Errorf("contract %v, %s: the refused handoff stored a result", contract, kind)
 			}
 		}
-		t.Logf("legacy %v, %s: refusal %q", legacy, kind, err)
+		t.Logf("contract %v, %s: refusal %q", contract, kind, err)
 		return f.l4Normalize(err.Error())
 	}
 	for _, kind := range []string{"absent", "symlink"} {
 		t.Run(kind, func(t *testing.T) {
 			t.Parallel()
-			gated := refuse(t, false, kind)
-			legacy := refuse(t, true, kind)
+			gated := refuse(t, true, kind)
+			existing := refuse(t, false, kind)
 			if strings.Contains(strings.ToLower(gated), "gofmt") {
 				t.Errorf("%s: refusal %q names a gofmt rule; the existing changed-file check comes first (R13.b)", kind, gated)
 			}
-			if gated != legacy {
-				t.Errorf("%s: refusal with test rules %q differs from the existing refusal %q (R13.b runs after the existing checks)", kind, gated, legacy)
+			if gated != existing {
+				t.Errorf("%s: refusal of a contract-bearing result %q differs from the existing refusal %q (R13.b runs after the existing checks)", kind, gated, existing)
 			}
 		})
 	}

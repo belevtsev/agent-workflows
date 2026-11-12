@@ -279,16 +279,12 @@ func (capture *logCapture) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-// testResults reports the per-test results of the output written so far:
-// with each test's run and marked counts for a record with test rules (R6),
-// and as before for a legacy record.
-func (capture *logCapture) testResults(testRules string) langpack.GoTestResults {
+// testResults reports the per-test results of the output written so far,
+// with each test's run and marked counts (R6).
+func (capture *logCapture) testResults() langpack.GoTestResults {
 	capture.mu.Lock()
 	defer capture.mu.Unlock()
-	if testRules != "" {
-		return capture.tests.ResultsWithRuns()
-	}
-	return capture.tests.Results()
+	return capture.tests.ResultsWithRuns()
 }
 
 // Run executes only argv recorded in the immutable plan or added by an
@@ -298,11 +294,9 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	var run CheckRun
 	var check Check
 	var logFile *os.File
-	var testRules string
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
 	_, err := updateWithCapacity(path, 2, "", func(root *os.Root, record *Record) error {
-		testRules = record.TestRules
 		var found bool
 		if check, found = findCheck(*record, checkID); !found {
 			return errors.New("check is not in the explicit coordinator plan")
@@ -409,7 +403,7 @@ func Run(ctx context.Context, path, checkID string) (CheckRun, error) {
 	// The results file is written before the terminal revision names it. A
 	// write failure leaves the run without results and fails only a run that
 	// would otherwise pass.
-	if results := capture.testResults(testRules); len(results.Tests) > 0 {
+	if results := capture.testResults(); len(results.Tests) > 0 {
 		if name, sum, err := writeTestResults(path, run.ID, results); err == nil {
 			run.TestResults, run.TestResultsSHA256 = name, sum
 		} else if run.Status == "passed" {

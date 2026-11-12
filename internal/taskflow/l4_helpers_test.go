@@ -3,9 +3,9 @@ package taskflow_test
 // Shared fixtures for the L4 contract tests (interface contract L4, third
 // version). They extend the L3 fixtures (l3_helpers_test.go): every fixture is
 // a real Git repository holding a small Go module in t.TempDir(), a separate
-// task store, and real go test runs through taskflow.Run. Records with test
-// rules are started with taskflow.StartWithPacks, legacy records with
-// taskflow.Start. Expectations live in the tests, never here.
+// task store, and real go test runs through taskflow.Run. Records are started
+// with taskflow.StartWithPacks and an explicit empty pack selection.
+// Expectations live in the tests, never here.
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ const (
 	l4R15             = "test files changed, but the plan has no go test check whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag), so no test engineer can carry a contract; the plan cannot change: stop and ask the user how to proceed"
 	l4R17             = "a brief with a contract needs a go test check in the plan whose argv earns per-test credit (it needs -json in its own argv and only flags the Go evidence rule allows: no -args, -run, -skip or other refused flag); this task's plan has none"
 	l4R23             = "test authorship not judged: the selected path has no go.mod, so no file counts as a Go test file; a go.work workspace root is not supported"
-	l4NoManifest      = "task predates the baseline manifest; changed test files cannot be listed"
+	l4NewTask         = ", so cw v2.0.66 to v2.0.96 or a v3 build before v3.0.0-rc.1 wrote it; this cw cannot read it: move the task directory out of the task store, then start a new task with 'cw task start'"
 	l4CannotJudge     = "test authorship cannot be judged: "
 	l4SourceChanged   = "source changed during authorship; run it again"
 	l4CitationNoHold  = "finding %s of worker assignment %s cites it as a reproduction test, but the citation does not hold: a reproduction test is a new file whose current bytes the citation names, in an acceptance that lists a check"
@@ -62,7 +62,6 @@ type l4Opts struct {
 	reqs   []string          // plan requirement IDs, description "criterion <id>"
 	checks []taskflow.Check
 	sub    bool // the selected path is "mod/" below the Git root
-	legacy bool // taskflow.Start: a legacy record without test rules
 	small  bool // plan kind small instead of substantial
 	// bare omits the default go.mod and p/p.go; contract names the
 	// module-relative package directory of the contract extract ("p").
@@ -72,9 +71,8 @@ type l4Opts struct {
 	ownGOFLAGS bool
 }
 
-// l4New builds the repository, starts the task (with test rules unless
-// legacy) and saves a contract extract of the contract package outside the
-// project.
+// l4New builds the repository, starts the task and saves a contract extract
+// of the contract package outside the project.
 func l4New(t *testing.T, o l4Opts) *l3Fix {
 	t.Helper()
 	if !o.ownGOFLAGS {
@@ -126,13 +124,7 @@ func l4New(t *testing.T, o l4Opts) *l3Fix {
 	for _, id := range reqs {
 		plan.Requirements = append(plan.Requirements, taskflow.Requirement{ID: id, Description: "criterion " + id, CheckIDs: []string{checks[0].ID}})
 	}
-	var rec taskflow.Record
-	var err error
-	if o.legacy {
-		rec, err = taskflow.Start(f.ctx, f.sel, store, plan, nil)
-	} else {
-		rec, err = taskflow.StartWithPacks(f.ctx, f.sel, store, plan, nil, taskflow.SelectionExplicit, nil)
-	}
+	rec, err := taskflow.StartWithPacks(f.ctx, f.sel, store, plan, nil, taskflow.SelectionExplicit, nil)
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}

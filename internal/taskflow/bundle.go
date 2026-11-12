@@ -153,9 +153,6 @@ func EncodeBundle(bundle Bundle) ([]byte, error) {
 // buildBundle generates the bundle at the current source. When want is set,
 // the source must still be that snapshot.
 func buildBundle(ctx context.Context, root *os.Root, record Record, reviewID string, want *projectctx.Snapshot) (Bundle, error) {
-	if record.BaselineManifest == nil {
-		return Bundle{}, errors.New("this task has no baseline manifest (it was started by an older cw); reviewer bundles need a task started by this cw")
-	}
 	baseline, err := readBaselineManifest(root, *record.BaselineManifest)
 	if err != nil {
 		return Bundle{}, err
@@ -501,9 +498,6 @@ func validFacet(value string) bool {
 func storeReviewBundle(ctx context.Context, root *os.Root, record Record, brief WorkerBrief, snapshot projectctx.Snapshot) (string, error) {
 	if brief.Bundle == nil {
 		return "", errors.New("a review assignment needs its reviewer bundle: run cw task bundle, fill every reach facet, and give its path and sha256 as the brief's bundle")
-	}
-	if record.BaselineManifest == nil {
-		return "", errors.New("this task has no baseline manifest (it was started by an older cw), so its reviews take no bundle")
 	}
 	resolved := brief.Bundle.Path
 	if parent, err := filepath.EvalSymlinks(filepath.Dir(resolved)); err == nil {
