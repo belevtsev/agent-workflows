@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -49,6 +50,25 @@ func TestHookPrePublishAsksOnRelativeXDGStateHome(t *testing.T) {
 		h.env["XDG_STATE_HOME"] = "rel"
 		hkExpectAsk(t, h.prePublish(t, proj, "git commit -m x"), want)
 		hkExpectAsk(t, h.prePublish(t, proj, "git push origin main"), want)
+	})
+
+	t.Run("an abandon beside a commit names the store too", func(t *testing.T) {
+		// Oracle: the commit's check cannot read the store, which asks
+		// whatever else the command does; the ask before cw task abandon
+		// does not replace that ask but is joined with it.
+		repo := hkRepo(t)
+		h := newHKHarness(t)
+		h.config.WorkingDir = func() (string, error) { return repo, nil }
+		h.env["XDG_STATE_HOME"] = "rel"
+		command := "cw task abandon --task /store/task-1 --reason x && git commit -m x"
+		hkExpectAsk(t, h.prePublish(t, repo, command), "This command abandons the task in /store/task-1.", want)
+		// Oracle: the store's ask alone would let Codex run the command, but
+		// joined with the abandon's, which the user must answer, it is not
+		// ProceedWithoutAsk, so Codex denies it.
+		codex := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": command}})
+		if decision, reason := hkDecision(t, h.runPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "This command abandons the task in /store/task-1.") || !strings.Contains(reason, want) {
+			t.Fatalf("Codex decision %q with reason %q, want a deny naming the abandon and the store", decision, reason)
+		}
 	})
 
 	t.Run("commands the gate does not judge still pass", func(t *testing.T) {

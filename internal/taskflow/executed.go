@@ -43,7 +43,8 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 			ruleIDs = append(ruleIDs, pack.EvidenceRule)
 		}
 	}
-	evidence := langpack.Evaluate(ctx, snapshot.SelectedPath, checkEnvironment(), ruleIDs, source, passed)
+	// The rule's go list runs are not a check, so no env_passthrough applies.
+	evidence := langpack.Evaluate(ctx, snapshot.SelectedPath, checkEnvironment(Check{}), ruleIDs, source, passed)
 	return evidence.Problems, evidence.Limitations
 }
 

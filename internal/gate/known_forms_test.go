@@ -224,6 +224,40 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"cd --", "{O}", "cd -- {R} && git push", gate.Deny},
 		{"pushd -n stays", "{R}", "pushd -n {O} && git push", gate.Deny},
 		{"a bare cd, then a relative cd", "{O}", "cd && cd {N} && git push", gate.Deny},
+
+		// cw task abandon closes a task so it no longer gates, which needs the
+		// user's confirmation (D2): each form that runs it under bash, zsh or
+		// dash asks. The gate does not trust cw, so a line that runs it falls
+		// back on the flat split, which asks wherever it shows cw, task and
+		// abandon: cw run by xargs, by go run or named through a variable,
+		// and `--help`, which only prints help, too.
+		{"abandon", "{R}", "cw task abandon --task /store/task-k --reason x", gate.Ask},
+		{"abandon with --task=DIR", "{R}", "cw task abandon --task=/store/task-k --reason=x", gate.Ask},
+		{"abandon with a quoted directory and reason", "{R}", `cw task abandon --task "{S}/task k" --reason 'done; superseded'`, gate.Ask},
+		{"abandon through sh -c", "{R}", "sh -c 'cw task abandon --task /store/task-k --reason x'", gate.Ask},
+		{"abandon with eval", "{R}", `eval "cw task abandon --task /store/task-k --reason x"`, gate.Ask},
+		{"abandon inside && chains", "{O}", "cd /store && cw task abandon --task task-k --reason x && echo done", gate.Ask},
+		{"abandon by a path in a substitution", "{R}", `echo "$(/usr/local/bin/cw task abandon --task /store/task-k --reason x)"`, gate.Ask},
+		{"abandon through xargs", "{R}", "echo /store/task-k | xargs cw task abandon --reason x --task", gate.Ask},
+		{"abandon through a variable", "{R}", "C=cw; $C task abandon --task /store/task-k --reason x", gate.Ask},
+		{"abandon through go run", "{R}", "go run github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1 task abandon --task /store/task-k --reason x", gate.Ask},
+		{"abandon --help", "{R}", "cw task abandon --help", gate.Ask},
+		// A known false positive: a line with a command the gate does not
+		// trust (git add) that only mentions cw, task and abandon.
+		{"abandon in a commit message after git add", "{O}", `git add -A && git commit -m "docs: cw task abandon asks first"`, gate.Ask},
+		// A gated commit beside it denies, as a deny wins over any ask.
+		{"abandon before a gated commit", "{R}", "cw task abandon --task /store/task-k --reason x && git commit -m x", gate.Deny},
+		// Oracle: these close no task. cw task show reads one; the rest only
+		// mention abandon, in commands the gate trusts.
+		{"cw task show", "{R}", "cw task show --task /store/task-k", gate.Allow},
+		{"abandon mentioned by echo", "{R}", `echo "then run cw task abandon --task x"`, gate.Allow},
+		{"abandon in a commit message outside a repository", "{O}", `git commit -m "docs: cw task abandon asks first"`, gate.Allow},
+		// Oracle: no word of these lines is task, so the flat split does not
+		// read a `cw task abandon` in them, although the gate trusts neither
+		// go, head nor git log.
+		{"go test of cw filtered by abandon", "{R}", "go test ./cmd/cw -run abandon", gate.Allow},
+		{"rg for abandon in cw piped to head", "{R}", "rg -n abandon cmd/cw internal/cli | head", gate.Allow},
+		{"git log grepping abandon in cw", "{R}", "git log --grep=abandon -- cmd/cw", gate.Allow},
 	}
 	paths := strings.NewReplacer("{R}", repo, "{S}", spaced, "{O}", elsewhere, "{N}", filepath.Base(repo),
 		"{I}", icloud, "{D}", dollar, "{P}", filepath.Dir(dollar), "{G}", glob)

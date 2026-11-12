@@ -127,10 +127,11 @@ func TestHooksJSONShape(t *testing.T) {
 
 	t.Run("events matchers and conditions", func(t *testing.T) {
 		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
-		// PreToolUse has one Bash group with exactly one handler whose if is
-		// Bash(*git*) and whose command is the agreed inline command;
-		// SessionStart calls cw hook and references the plugin root and data
-		// directory.
+		// PreToolUse has one Bash group with exactly two handlers, whose ifs
+		// are Bash(*git*) and Bash(*abandon*) and whose commands are both
+		// the agreed inline command, so both reach the same decision where
+		// both run; SessionStart calls cw hook and references the plugin
+		// root and data directory.
 		events := make([]string, 0, len(file.Hooks))
 		for event := range file.Hooks {
 			events = append(events, event)
@@ -153,24 +154,41 @@ func TestHooksJSONShape(t *testing.T) {
 		if len(pre) != 1 || pre[0].Matcher != "Bash" {
 			t.Fatalf("PreToolUse groups %+v", pre)
 		}
-		if len(pre[0].Hooks) != 1 {
-			t.Fatalf("PreToolUse has %d handlers, want exactly one: %+v", len(pre[0].Hooks), pre[0].Hooks)
+		ifs := make([]string, 0, len(pre[0].Hooks))
+		for _, entry := range pre[0].Hooks {
+			ifs = append(ifs, entry.If)
+			if entry.Command != preToolUseCommand {
+				t.Fatalf("PreToolUse command %q, want %q", entry.Command, preToolUseCommand)
+			}
 		}
-		entry := pre[0].Hooks[0]
-		if entry.If != preToolUseIf {
-			t.Fatalf("PreToolUse if %q, want %q", entry.If, preToolUseIf)
-		}
-		if entry.Command != preToolUseCommand {
-			t.Fatalf("PreToolUse command %q, want %q", entry.Command, preToolUseCommand)
+		if !slices.Equal(ifs, []string{preToolUseIf, preToolUseAbandonIf}) {
+			t.Fatalf("PreToolUse handler conditions %q, want %q", ifs, []string{preToolUseIf, preToolUseAbandonIf})
 		}
 	})
 }
 
-// The agreed PreToolUse handler (E1).
+// The agreed PreToolUse handlers (E1): one runs the gate for git commands, the
+// other for cw task abandon, with the same command.
 const (
-	preToolUseIf      = "Bash(*git*)"
-	preToolUseCommand = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
+	preToolUseIf        = "Bash(*git*)"
+	preToolUseAbandonIf = "Bash(*abandon*)"
+	preToolUseCommand   = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
 )
+
+// hooksPreToolUse returns the command of the PreToolUse handler whose if is
+// condition.
+func hooksPreToolUse(t *testing.T, file hooksFile, condition string) string {
+	t.Helper()
+	for _, group := range file.Hooks["PreToolUse"] {
+		for _, entry := range group.Hooks {
+			if entry.If == condition {
+				return entry.Command
+			}
+		}
+	}
+	t.Fatalf("no PreToolUse handler with if %q in %+v", condition, file.Hooks["PreToolUse"])
+	return ""
+}
 
 // gateInactiveLine returns the line SessionStart appends when cw is not on
 // PATH (E4): the gate is inactive, and how to install cw at the plugin's
@@ -345,11 +363,8 @@ func TestHooksEndToEnd(t *testing.T) {
 		}, extra...)
 	}
 
-	pre := file.Hooks["PreToolUse"]
-	if len(pre) != 1 || len(pre[0].Hooks) != 1 {
-		t.Fatalf("PreToolUse groups %+v, want one group with one handler", pre)
-	}
-	preCommand := pre[0].Hooks[0].Command
+	preCommand := hooksPreToolUse(t, file, preToolUseIf)
+	abandonCommand := hooksPreToolUse(t, file, preToolUseAbandonIf)
 	// preStdin is a PreToolUse payload for a Bash command run in cwd.
 	preStdin := func(t *testing.T, cwd, bash string) []byte {
 		t.Helper()
@@ -418,6 +433,25 @@ func TestHooksEndToEnd(t *testing.T) {
 			if !strings.Contains(reason, record.ID) {
 				t.Fatalf("%s: deny reason %q does not name task %s", bash, reason, record.ID)
 			}
+		}
+	})
+
+	t.Run("pre-publish asks before cw task abandon", func(t *testing.T) {
+		// Acceptance (G5, D2): the handler for cw task abandon answers the
+		// abandon of the open record with an ask naming its ID and plan
+		// title, and lets cw task show run without output.
+		stdin := preStdin(t, outside, "cw task abandon --task "+record.Directory+" --reason x")
+		code, stdout, stderr := hooksSh(t, abandonCommand, stdin, env(withCW))
+		if code != 0 {
+			t.Fatalf("exit %d stderr %q", code, stderr)
+		}
+		reason := hooksExpectDecision(t, stdout, "ask")
+		if want := "task " + record.ID + " (" + record.Plan.Title + ") in " + record.Directory; !strings.Contains(reason, want) {
+			t.Fatalf("ask reason %q does not contain %q", reason, want)
+		}
+		code, stdout, stderr = hooksSh(t, abandonCommand, preStdin(t, outside, "cw task show --task "+record.Directory), env(withCW))
+		if code != 0 || stdout != "" {
+			t.Fatalf("cw task show: exit %d stdout %q stderr %q; want exit 0 and no output", code, stdout, stderr)
 		}
 	})
 

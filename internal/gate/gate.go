@@ -2,7 +2,9 @@
 // publish: it finds each git commit and git push in the command, the
 // repository each one publishes from and the task records that govern it,
 // and answers allow, ask or deny with the reason shown to the agent and the
-// user. DecideGitHook answers the same for git's own pre-commit and pre-push
+// user. It also asks before each `cw task abandon` in the command, which
+// closes a task so it no longer gates: only the user may decide that.
+// DecideGitHook answers the same for git's own pre-commit and pre-push
 // hooks. The hook's input and output formats belong to the caller; the gate
 // reaches git, the clock and the task store only through Deps.
 //
@@ -56,6 +58,9 @@ type Store interface {
 	// FindOpen returns the records that govern publication from repo at
 	// now, as taskflow.FindOpen does.
 	FindOpen(ctx context.Context, repo taskflow.Repository, now time.Time) ([]taskflow.OpenRecord, error)
+	// Lookup returns the record in the task directory dir, an absolute
+	// path, as `cw task abandon --task dir` reads it.
+	Lookup(dir string) (taskflow.Record, error)
 }
 
 // TaskStore is the Store over a task store directory as cw task start
@@ -65,6 +70,12 @@ type TaskStore string
 // FindOpen returns taskflow.FindOpen for the directory.
 func (s TaskStore) FindOpen(ctx context.Context, repo taskflow.Repository, now time.Time) ([]taskflow.OpenRecord, error) {
 	return taskflow.FindOpen(ctx, string(s), repo, now, taskflow.SourceDigest)
+}
+
+// Lookup returns taskflow.Load for dir, which need not be in the store
+// directory: cw task abandon takes any task directory.
+func (TaskStore) Lookup(dir string) (taskflow.Record, error) {
+	return taskflow.Load(dir)
 }
 
 // Permission is the gate's answer for a command. Ask and Deny are spelled
@@ -97,13 +108,19 @@ type Decision struct {
 // Decide returns the decision for in. A deny for any publication in the
 // command wins over an ask for another. A record that gates only
 // publications after a directory change the gate cannot follow asks
-// instead of denying.
+// instead of denying. With enforce on, a `cw task abandon` in the command
+// asks, joined with any ask its publications raise, unless a record gates
+// one of them; a host that cannot ask denies it.
 func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	if !in.Enforce && !in.Prompt {
 		return Decision{}
 	}
 	publications := gitPublications(in.Command, in.CWD, in.Home)
-	if len(publications) == 0 {
+	var abandons []abandonment
+	if in.Enforce {
+		abandons = abandonments(in.Command, in.CWD, in.Home)
+	}
+	if len(publications) == 0 && len(abandons) == 0 {
 		return Decision{}
 	}
 	d := decider{in: in, deps: deps, found: map[string][]taskflow.OpenRecord{}}
@@ -119,6 +136,11 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 		if question.reason != "" && !slices.Contains(asks, question) {
 			asks = append(asks, question)
 		}
+	}
+	if len(abandons) > 0 && len(gating) == 0 {
+		// A gating record denies anyway, so the abandoned records need no
+		// reading then.
+		asks = append([]ask{{reason: abandonReason(deps.Store, abandons)}}, asks...)
 	}
 	return conclude(in.Enforce, gating, asks)
 }
@@ -251,8 +273,8 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 	return nil, ask{reason: unreadableReason(unreadable), proceed: true}
 }
 
-// denyReason names every gating record, why it gates, and how to verify or
-// abandon it.
+// denyReason names every gating record, why it gates, how to verify it, and
+// that abandoning it needs the user's confirmation.
 func denyReason(gating []taskflow.OpenRecord) string {
 	var reason strings.Builder
 	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
@@ -261,8 +283,8 @@ func denyReason(gating []taskflow.OpenRecord) string {
 	return reason.String()
 }
 
-// writeGating writes, for each gating record, why it gates and how to verify
-// or abandon it.
+// writeGating writes, for each gating record, why it gates, how to verify it,
+// and that abandoning it needs the user's confirmation.
 func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 	for _, open := range gating {
 		record := open.Record
@@ -271,7 +293,7 @@ func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 			fmt.Fprintf(reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
 			continue
 		}
-		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
+		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or, if it is finished or was given up, ask the user before abandoning it: `cw task abandon --task %s --reason TEXT` needs their confirmation.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
 	}
 }
 
@@ -303,6 +325,29 @@ func unreadableReason(unreadable []taskflow.OpenRecord) string {
 	}
 	reason.WriteString(" Confirm to run this command without the gate.")
 	return reason.String()
+}
+
+// abandonReason explains the ask for a command that abandons tasks: it names
+// each one's ID, title and directory where store can read it, else what the
+// gate knows of its directory.
+func abandonReason(store Store, abandons []abandonment) string {
+	tasks := make([]string, 0, len(abandons))
+	for _, abandon := range abandons {
+		switch {
+		case abandon.dir != "":
+			if record, err := store.Lookup(abandon.dir); err == nil {
+				tasks = append(tasks, fmt.Sprintf("task %s (%s) in %s", record.ID, record.Plan.Title, abandon.dir))
+				continue
+			}
+			tasks = append(tasks, "the task in "+abandon.dir)
+		case abandon.task != "":
+			tasks = append(tasks, fmt.Sprintf("the task in `%s`, a directory the gate cannot resolve", abandon.task))
+		default:
+			tasks = append(tasks, "a task the gate cannot identify")
+		}
+	}
+	return "agent-workflows: `cw task abandon` closes a task so that it no longer gates git commit and push, and needs the user's confirmation. " +
+		"This command abandons " + strings.Join(tasks, "; ") + ". Confirm only if the user wants it abandoned because it is finished or was given up."
 }
 
 // uncommittedReason explains the ask for a push whose verified records may

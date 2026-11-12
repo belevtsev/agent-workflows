@@ -485,6 +485,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		}
 		result.Problems = append(result.Problems, localEvidenceProblems(root, *record, snapshot)...)
 		result.Limitations = append(result.Limitations, toolLimitations(*record, snapshot)...)
+		result.Limitations = append(result.Limitations, passthroughLimitations(*record, snapshot)...)
 		result.Limitations = append(result.Limitations, deferredFindingLimitations(*record)...)
 		findingIssues, findingNotes := rejectedFindingReport(root, *record)
 		result.Problems = append(result.Problems, findingIssues...)
@@ -526,7 +527,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 				case beforeErr == nil:
 					conflict += "; attach the final checkpoint"
 				case equalSnapshot(record.Baseline, snapshot):
-					conflict += "; attach the before and final checkpoints, or abandon this record and start a corrected one"
+					conflict += "; attach the before and final checkpoints, or ask the user before abandoning this record and starting a corrected one"
 				default:
 					conflict += "; the source changed since start, so the before checkpoint can no longer be attached and a new record must not start over the changed source: stop and ask the user how to proceed"
 				}

@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw hook git pre-commit` and `cw hook git pre-push` run the commit gate from git's own hooks, which also see aliases and scripts:
   a gating task exits 3, and each ask is a warning; `CW_GATE=off` or `--no-verify` skips it ([git hooks](docs/hooks.md#git-hooks)).
+- A check can name variables such as `DB_PASSWORD` in `env_passthrough` to receive them, where `cw` otherwise drops names with `KEY`, `TOKEN`,
+  `SECRET`, `PASSWORD` or `CREDENTIAL`; `cw task verify` lists each as a limitation ([check environment](docs/operations.md#what-a-check-runs-with)).
 - `cw gate install`, `uninstall` and `status` write, remove and report a repository's git pre-commit and pre-push hooks that run that gate;
   they never change a hook cw did not write, or a hooks directory other repositories use without `--shared` ([installing](docs/hooks.md#installing-the-git-hooks)).
 
@@ -53,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `go list` runs behind `cw task verify`'s Go facts kill their process group when they end, so a child of `go` or a `go` wrapper
   no longer outlives them or their time budget; `cw publish` and `cw graphify` share that runner ([development](docs/development.md)).
+- The commit hook asks before `cw task abandon`, which closes a task so it stops gating, and under Codex denies it: Codex users trust the hooks
+  again in `/hooks` after updating. Gate messages say to ask you before abandoning ([abandoning a task](docs/hooks.md#abandoning-a-task)).
 - A killed `cw` no longer leaves its task, or the task's `cw publish`, locked, and a second task writer waits up to 10 s instead of failing. Do not mix
   `cw` versions on one task: v3.0.0-rc.1 does not see the new task lock, and its `cw publish` reports `locked` once this `cw` has published there ([task locks](docs/operations.md#task-locks)).
 - A check named `go` runs only a `go` built from `cmd/go`, with its own GOROOT, through shims and toolchain switches, and records it; a fake `go` on `PATH`

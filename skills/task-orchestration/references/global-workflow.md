@@ -195,6 +195,7 @@ with an amendment, in this order:
 - an added ID is already a plan or added check, plan and added checks would
   exceed 256, or an argv is not a direct `go test` the Go rule credits (the
   allowlist above; `-run` and wrappers earn none);
+- an `env_passthrough` breaks the plan's rules for it (above);
 - the merge conditions fail: `merge_commit` must name a commit with at least
   two parents that is reachable from HEAD, not from the task baseline HEAD and
   not from `base_ref`, and a parent after the first must be reachable from
@@ -254,7 +255,9 @@ in a `check:` entry. An `argv` cannot start with a shell, `env` or a privilege
 wrapper. Checks inherit the environment of the shell that runs `cw task run`, so
 export variables such as `GOWORK=off` there instead. Variables whose names contain
 `KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, and `BASH_ENV` and `ENV`, are
-removed. A check named `go` runs only a `go` built from `cmd/go`; otherwise its run
+removed unless the check lists them in `"env_passthrough": ["DB_PASSWORD"]` (names
+only; verify lists each as a limitation; not `GOROOT`, `GOTOOLCHAIN` or `gh`'s
+tokens; [check environment](../../../docs/operations.md#what-a-check-runs-with)). A check named `go` runs only a `go` built from `cmd/go`; otherwise its run
 is `failed` with failure `untrusted_toolchain`: put the real `go` first on `PATH`
 ([which go](../../../docs/operations.md#which-go-a-check-runs)).
 

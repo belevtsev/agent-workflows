@@ -94,6 +94,11 @@ type Check struct {
 	ID             string   `json:"id"`
 	Argv           []string `json:"argv"`
 	TimeoutSeconds int      `json:"timeout_seconds"`
+	// EnvPassthrough names variables of cw's environment that the check
+	// receives although checkEnvironment would drop them, such as
+	// DB_PASSWORD. It holds names only, never values
+	// (validateEnvPassthrough).
+	EnvPassthrough []string `json:"env_passthrough,omitempty"`
 }
 
 // SourceRef hashes the complete file; the line range identifies the relevant
@@ -306,6 +311,9 @@ func ValidatePlan(plan *Plan) error {
 		if err := validateCommand(check.Argv); err != nil {
 			return fmt.Errorf("check %s: %w", check.ID, err)
 		}
+		if err := validateEnvPassthrough(check.EnvPassthrough); err != nil {
+			return fmt.Errorf("check %s: %w", check.ID, err)
+		}
 	}
 	return nil
 }
@@ -340,6 +348,9 @@ func validateRecordedPlan(plan Plan) error {
 			return errors.New("check timeout must be 1..3600 seconds")
 		}
 		if err := validateCommandShape(check.Argv); err != nil {
+			return fmt.Errorf("check %s: %w", check.ID, err)
+		}
+		if err := validateEnvPassthroughShape(check.EnvPassthrough); err != nil {
 			return fmt.Errorf("check %s: %w", check.ID, err)
 		}
 	}

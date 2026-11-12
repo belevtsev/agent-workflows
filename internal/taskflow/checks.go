@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -229,12 +230,72 @@ func validateGitConfigOverride(value string, fromEnvironment bool) error {
 	return nil
 }
 
-func checkEnvironment() []string {
+// envPassthroughName is the shape of a name in a check's env_passthrough.
+var envPassthroughName = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+
+const (
+	// maxEnvPassthrough bounds the names in one check's env_passthrough.
+	maxEnvPassthrough = 32
+	// maxEnvPassthroughName bounds the length of one of those names.
+	maxEnvPassthroughName = 128
+)
+
+// validateEnvPassthroughShape checks the bounded representation of a check's
+// env_passthrough shared by stored history and new checks: at most
+// maxEnvPassthrough distinct names, each matching envPassthroughName and at
+// most maxEnvPassthroughName bytes long.
+func validateEnvPassthroughShape(names []string) error {
+	if len(names) > maxEnvPassthrough {
+		return fmt.Errorf("env_passthrough names at most %d variables", maxEnvPassthrough)
+	}
+	for i, name := range names {
+		if len(name) > maxEnvPassthroughName {
+			return fmt.Errorf("env_passthrough names a variable of %d bytes, over %d", len(name), maxEnvPassthroughName)
+		}
+		if !envPassthroughName.MatchString(name) {
+			return fmt.Errorf("env_passthrough name %q does not match %s", name, envPassthroughName)
+		}
+		if slices.Contains(names[:i], name) {
+			return fmt.Errorf("env_passthrough names %s twice", name)
+		}
+	}
+	return nil
+}
+
+// validateEnvPassthrough admits a check's env_passthrough for execution: its
+// shape, and none of the names that the environment filter or cw's own
+// settings exist to keep from a check. Like validateCommand it guards against
+// accidents and is no sandbox: the same value exported under another name
+// passes, though the plan and verify then show that name.
+func validateEnvPassthrough(names []string) error {
+	if err := validateEnvPassthroughShape(names); err != nil {
+		return err
+	}
+	for _, name := range names {
+		switch name {
+		case "BASH_ENV", "ENV":
+			return fmt.Errorf("env_passthrough cannot name %s: a shell that the check starts would run the file it names", name)
+		case "GOROOT", "GOTOOLCHAIN":
+			return fmt.Errorf("env_passthrough cannot name %s: cw sets it for a go check to the go command it verified", name)
+		case "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN":
+			return fmt.Errorf("env_passthrough cannot name %s: gh publishes with it, and publication is outside task checks", name)
+		}
+	}
+	return nil
+}
+
+// checkEnvironment returns cw's environment for check without the variables
+// whose names, in any case, contain KEY, TOKEN, SECRET, PASSWORD or
+// CREDENTIAL, or are BASH_ENV or ENV, except those that check's
+// env_passthrough names exactly. The Go rule's own go commands
+// (executionProblems) get it for a check with no env_passthrough.
+func checkEnvironment(check Check) []string {
 	environment := []string{}
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")
 		upper := strings.ToUpper(key)
-		if strings.Contains(upper, "KEY") || strings.Contains(upper, "TOKEN") || strings.Contains(upper, "SECRET") || strings.Contains(upper, "PASSWORD") || strings.Contains(upper, "CREDENTIAL") || upper == "BASH_ENV" || upper == "ENV" {
+		filtered := strings.Contains(upper, "KEY") || strings.Contains(upper, "TOKEN") || strings.Contains(upper, "SECRET") || strings.Contains(upper, "PASSWORD") || strings.Contains(upper, "CREDENTIAL") || upper == "BASH_ENV" || upper == "ENV"
+		if filtered && !slices.Contains(check.EnvPassthrough, key) {
 			continue
 		}
 		environment = append(environment, entry)
@@ -293,7 +354,7 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 }
 
 // checkSpec builds the proc.Spec that runs check in dir: its argv directly,
-// without a shell, with the filtered environment of checkEnvironment, no
+// without a shell, with the environment checkEnvironment filters for it, no
 // input, the check's timeout and checkWaitDelay. A check whose program is
 // named go (or go.exe, as the Go evidence rule names it) runs instead the go
 // command that langpack.ResolveGo verified, by its absolute path and with
@@ -306,7 +367,7 @@ func (capture *logCapture) testResults() langpack.GoTestResults {
 // outputs.
 func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, tool *langpack.GoTool, err error) {
 	spec = proc.Spec{
-		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(),
+		Path: check.Argv[0], Args: check.Argv[1:], Dir: dir, Env: checkEnvironment(check),
 		Timeout:   time.Duration(check.TimeoutSeconds) * time.Second,
 		WaitDelay: checkWaitDelay,
 	}
@@ -364,6 +425,11 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	if !found {
 		return run, errors.New("check is not in the explicit coordinator plan")
 	}
+	// Admitted again, as validateCommand is below, but before checkSpec:
+	// resolving go already runs a program with the check's environment.
+	if err := validateEnvPassthrough(planned.EnvPassthrough); err != nil {
+		return run, fmt.Errorf("check %s: %w", checkID, err)
+	}
 	// refused says why no verified go command could run the check; the start
 	// revision then records the run as failed, and nothing runs.
 	spec, tool, refused := checkSpec(ctx, planned, stored.Baseline.SelectedPath)
@@ -390,7 +456,7 @@ func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 			return err
 		}
 		// Both are immutable once recorded; this guards the resolution above.
-		if !slices.Equal(check.Argv, planned.Argv) || snapshot.SelectedPath != spec.Dir {
+		if !slices.Equal(check.Argv, planned.Argv) || !slices.Equal(check.EnvPassthrough, planned.EnvPassthrough) || snapshot.SelectedPath != spec.Dir {
 			return errors.New("the check or its selected path changed while cw resolved its program; run it again")
 		}
 		id, err := randomID()
@@ -557,6 +623,19 @@ func toolLimitations(record Record, snapshot projectctx.Snapshot) []string {
 			continue
 		}
 		limitations = append(limitations, ids+" ran "+key+"; cw verified that it is a build of cmd/go, not that it or its GOROOT is unmodified")
+	}
+	return limitations
+}
+
+// passthroughLimitations names, for the checks whose latest run passed at
+// snapshot, in check order, the variables their env_passthrough let through
+// from cw's environment. The run does not record which of them were set.
+func passthroughLimitations(record Record, snapshot projectctx.Snapshot) []string {
+	var limitations []string
+	for _, check := range allChecks(record) {
+		if run := latestRun(record, check.ID); len(check.EnvPassthrough) > 0 && run != nil && passedAt(*run, snapshot) {
+			limitations = append(limitations, "check "+check.ID+" received "+strings.Join(check.EnvPassthrough, ", ")+" through env_passthrough, where cw's environment set them")
+		}
 	}
 	return limitations
 }
