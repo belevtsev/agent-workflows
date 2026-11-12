@@ -306,14 +306,17 @@ func checkSpec(check Check, dir string) proc.Spec {
 	}
 }
 
-// checkExitCode returns the exit code a run records: the program's exit
-// status once it has started, -1 when it was stopped or died from a signal,
-// and nil when it never started (it could not be started, or the run was
-// stopped first). A started program always ends with a status or with an
-// *exec.ExitError; exec.ErrWaitDelay follows a clean exit.
+// checkExitCode returns the exit code a run records, as os.ProcessState's
+// ExitCode reported it: the program's own status whenever it exited, also
+// when the run was stopped afterwards while a descendant held the output
+// open; -1 when a signal ended it, such as the kill at a timeout or a
+// cancellation; and nil when it never started (it could not be started, or
+// the run was stopped first). proc.Result.Code is -1 both when a signal ended
+// the program and when it never started; only the first has an
+// *exec.ExitError.
 func checkExitCode(got proc.Result) *int {
 	var exit *exec.ExitError
-	if got.Code < 0 && !errors.As(got.Err, &exit) && !errors.Is(got.Err, exec.ErrWaitDelay) {
+	if got.Code < 0 && !errors.As(got.Err, &exit) {
 		return nil
 	}
 	code := got.Code

@@ -1,11 +1,15 @@
+//go:build unix
+
 package taskflow
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -74,6 +78,49 @@ func TestCheckExitCodeRecordsOnlyAStartedProgramsStatus(t *testing.T) {
 			got := proc.Run(tc.ctx, spec)
 			if code := checkExitCode(got); !reflect.DeepEqual(code, tc.want) {
 				t.Fatalf("checkExitCode = %v, want %v (result %+v)", deref(code), deref(tc.want), got)
+			}
+		})
+	}
+}
+
+// TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout runs a
+// check that exits at once and leaves a background child holding its output,
+// so the timeout stops the run during the output wait, after the exit.
+// Oracle: the runner before proc.Run recorded os.ProcessState.ExitCode(),
+// which is the program's own status for such a run (3 and 0 here), not -1 and
+// not nothing.
+func TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout(t *testing.T) {
+	for _, status := range []int{3, 0} {
+		t.Run(fmt.Sprintf("exits %d", status), func(t *testing.T) {
+			// sh prints its pid, which is the id of the check's process group,
+			// and exits; the background sleep holds the output pipe open.
+			script := fmt.Sprintf("sleep 30 & echo $$; exit %d", status)
+			spec := checkSpec(Check{ID: "focused", Argv: []string{"/bin/sh", "-c", script}, TimeoutSeconds: 10}, t.TempDir())
+			// sh exits within milliseconds of its start, so the timeout falls
+			// inside checkSpec's 2 s output wait.
+			spec.Timeout, spec.StdoutLimit = 500*time.Millisecond, 64
+			got := proc.Run(t.Context(), spec)
+			pgid, err := strconv.Atoi(strings.TrimSpace(string(got.Stdout)))
+			if err != nil {
+				t.Fatalf("check printed %q, want its process group id", got.Stdout)
+			}
+			// proc.Run kills the group, the sleep with it, before it returns. A
+			// group still holding a live member here is killed and fails the
+			// test; only a group shown to be in use is signalled.
+			t.Cleanup(func() {
+				live, probeErr := pgGroupHasLiveMember(pgid)
+				switch {
+				case probeErr != nil:
+					t.Errorf("probe check process group %d: %v", pgid, probeErr)
+				case live:
+					t.Errorf("check process group %d outlived the run; killing it: %v", pgid, proc.KillGroup(pgid))
+				}
+			})
+			if !got.Stopped || got.Cancelled {
+				t.Fatalf("precondition: the timeout did not stop the run: %+v", got)
+			}
+			if code := checkExitCode(got); code == nil || *code != status {
+				t.Fatalf("checkExitCode = %v, want %d (result %+v)", deref(code), status, got)
 			}
 		})
 	}
