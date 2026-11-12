@@ -129,7 +129,7 @@ func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput)
 		if err != nil {
 			return err
 		}
-		source, err := evidenceSource(root, *record, snapshot, files)
+		source, err := evidenceSource(taskDirectory{root}, *record, snapshot, files)
 		if err != nil {
 			return err
 		}

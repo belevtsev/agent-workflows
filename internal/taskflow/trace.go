@@ -366,7 +366,7 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 			continue
 		}
 		isCurrent[run.ID] = true
-		currentRuns = append(currentRuns, judgedRun{run: run, passed: passedAt(*run, snapshot), credited: langpack.GoTestsCredited(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), results: loaded[run.ID]})
+		currentRuns = append(currentRuns, judgedRun{run: run, passed: passedAt(*run, snapshot), credited: langpack.GoTestsCredited(evidenceRun(*run)), results: loaded[run.ID]})
 	}
 	entry := func(results *storedResults, pkg, name string) langpack.GoTestResult {
 		found, _ := results.lookup(pkg, name)
@@ -402,7 +402,7 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 		return counted[test]
 	}
 	limit := func(run *CheckRun, test MappedTest) int {
-		return saturatingProduct(langpack.GoTestRunLimit(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), declarations(test))
+		return saturatingProduct(langpack.GoTestRunLimit(evidenceRun(*run)), declarations(test))
 	}
 	proves := func(run *CheckRun, found langpack.GoTestResult, test MappedTest) bool {
 		return found.Pass >= 1 && found.Run >= found.Pass+found.Fail+found.Skip && found.Run <= limit(run, test) && found.Marked == 0
@@ -422,7 +422,7 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 				if run.After != nil {
 					fingerprint = run.After.Fingerprint
 				}
-				judged.Runs = append(judged.Runs, TraceRun{RunID: run.ID, CheckID: run.CheckID, Status: run.Status, Fingerprint: fingerprint, Current: isCurrent[run.ID], Credited: langpack.GoTestsCredited(langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS}), Pass: found.Pass, Fail: found.Fail, Skip: found.Skip, Run: found.Run, Marked: found.Marked})
+				judged.Runs = append(judged.Runs, TraceRun{RunID: run.ID, CheckID: run.CheckID, Status: run.Status, Fingerprint: fingerprint, Current: isCurrent[run.ID], Credited: langpack.GoTestsCredited(evidenceRun(*run)), Pass: found.Pass, Fail: found.Fail, Skip: found.Skip, Run: found.Run, Marked: found.Marked})
 			}
 		}
 		if missing != "" {
@@ -474,9 +474,12 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 		judged.Status = "not_run"
 		for _, current := range currentRuns {
 			if current.passed && !current.credited && entry(current.results, pkg, test.Name).Pass > 0 {
-				if !langpack.GoTestsCredited(langpack.Run{Argv: current.run.Argv}) {
+				switch withheld := evidenceRun(*current.run).Withheld; {
+				case !langpack.GoTestsCredited(langpack.Run{Argv: current.run.Argv}):
 					judged.Detail = described(current.run, "recorded a PASS, but its argv earns no per-test credit")
-				} else {
+				case withheld != "":
+					judged.Detail = described(current.run, "recorded a PASS, but earns no per-test credit: "+withheld)
+				default:
 					judged.Detail = described(current.run, "recorded a PASS, but the GOFLAGS it ran with earn no per-test credit")
 				}
 				return judged

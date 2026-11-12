@@ -223,11 +223,11 @@ func GoTestRunLimit(run Run) int {
 //     test binary, so `go test ./a -v ./b` tests only ./a;
 //   - every flag in argv and every field of its GOFLAGS (split like cmd/go,
 //     see splitQuoted; a field must be a flag with any value inline) is in
-//     allowedFlags with an acceptable value.
+//     allowedFlags with an acceptable value;
+//   - nothing else withholds credit (Withheld).
 //
 // Patterns are the non-flag arguments that are "." or start with "./",
 // cleaned. Import paths and Windows-style .\pkg patterns are not credited.
-// GOFLAGS set through `go env -w` rather than the environment is not seen.
 //
 // The flag sets target go 1.27, the version this repository targets. A
 // local toolchain that does not know an allowlisted flag ends the package
@@ -235,7 +235,7 @@ func GoTestRunLimit(run Run) int {
 // run is still credited.
 func credited(run Run) []string {
 	argv := run.Argv
-	if len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
+	if run.Withheld != "" || len(argv) < 2 || strings.TrimSuffix(filepath.Base(argv[0]), ".exe") != "go" || argv[1] != "test" {
 		return nil
 	}
 	fields, err := splitQuoted(run.GOFLAGS)

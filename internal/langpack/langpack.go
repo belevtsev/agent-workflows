@@ -18,9 +18,13 @@ type Source struct {
 // its check.
 type Run struct {
 	Argv []string
-	// GOFLAGS is the GOFLAGS of the run's environment; empty when unset or
-	// when the run was recorded before cw recorded it.
+	// GOFLAGS is the GOFLAGS the run's go command applied, as its GoEnv
+	// reported them.
 	GOFLAGS string
+	// Withheld says why the Go rule gives the run no credit whatever its argv
+	// and GOFLAGS (GoEnvWithheld); "" when nothing else withholds credit, as
+	// for an argv judged before it runs.
+	Withheld string
 	// CheckID is the planned check the run belongs to; "" when unknown.
 	CheckID string
 	// Log is the run's stored output, possibly only its start (see
@@ -30,7 +34,7 @@ type Run struct {
 	// Truncated reports that the output was longer than the stored log.
 	Truncated bool
 	// Rerun reports that an earlier run of the same check failed with an
-	// exit code at the same before-snapshot and the same recorded GOFLAGS.
+	// exit code at the same before-snapshot and the same applied GOFLAGS.
 	Rerun bool
 }
 

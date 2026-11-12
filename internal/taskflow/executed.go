@@ -2,7 +2,6 @@ package taskflow
 
 import (
 	"context"
-	"os"
 	"slices"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
@@ -20,8 +19,8 @@ func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
 // changed since the baseline and, for each planned or added check whose
 // latest run passed at the current snapshot, that run. files is the current
 // manifest.
-func executionProblems(ctx context.Context, root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
-	source, err := evidenceSource(root, record, snapshot, files)
+func executionProblems(ctx context.Context, artifacts Artifacts, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
+	source, err := evidenceSource(artifacts, record, snapshot, files)
 	if err != nil {
 		return []string{err.Error()}, nil
 	}
@@ -30,8 +29,9 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 	passed := []langpack.Run{}
 	for _, check := range allChecks(record) {
 		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
-			entry := langpack.Run{Argv: run.Argv, GOFLAGS: run.GOFLAGS, CheckID: run.CheckID, Truncated: run.Truncated, Rerun: rerun(record, *run)}
-			if data, err := privateRead(root, run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
+			entry := evidenceRun(*run)
+			entry.Rerun = rerun(record, *run)
+			if data, err := artifacts.Read(run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
 				entry.Log = data
 			}
 			passed = append(passed, entry)
@@ -49,18 +49,39 @@ func executionProblems(ctx context.Context, root *os.Root, record Record, snapsh
 }
 
 // rerun reports whether another run of run's check failed with an exit code
-// at the same before-snapshot and with the same recorded GOFLAGS. A passed
-// run is never failed, so run never matches itself.
+// at the same before-snapshot and with the same applied GOFLAGS. A failed run
+// recorded without go_env (record version 4) shows only its environment's
+// GOFLAGS, not a go env file's, so it also matches a run whose environment
+// gave the same. A passed run is never failed, so run never matches itself.
 func rerun(record Record, run CheckRun) bool {
 	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
-		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && other.GOFLAGS == run.GOFLAGS
+		sameFlags := appliedGOFLAGS(other) == appliedGOFLAGS(run) || other.GoEnv == nil && other.GOFLAGS == run.GOFLAGS
+		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && sameFlags
 	})
+}
+
+// evidenceRun returns run as the Go evidence rule judges it: its argv, the
+// GOFLAGS its go command applied, and why credit is withheld when its go_env
+// is missing or names another platform than its go command's host
+// (langpack.GoEnvWithheld). Every judgement of a recorded run goes through it.
+func evidenceRun(run CheckRun) langpack.Run {
+	return langpack.Run{Argv: run.Argv, GOFLAGS: appliedGOFLAGS(run), Withheld: langpack.GoEnvWithheld(run.GoEnv), CheckID: run.CheckID, Truncated: run.Truncated}
+}
+
+// appliedGOFLAGS returns the GOFLAGS run's go command applied, as its go_env
+// reported them, or for a run recorded without go_env, which earns no credit,
+// the GOFLAGS of its environment.
+func appliedGOFLAGS(run CheckRun) string {
+	if run.GoEnv != nil {
+		return run.GoEnv.GOFLAGS
+	}
+	return run.GOFLAGS
 }
 
 // evidenceSource describes the selected project for the evidence rules: the
 // current files and the files changed since the baseline manifest, both
 // relative to the selected path. files is the current manifest.
-func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (langpack.Source, error) {
+func evidenceSource(artifacts Artifacts, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (langpack.Source, error) {
 	relative, err := selectedRelative(snapshot)
 	if err != nil {
 		return langpack.Source{}, err
@@ -71,7 +92,7 @@ func evidenceSource(root *os.Root, record Record, snapshot projectctx.Snapshot, 
 			source.Current = append(source.Current, name)
 		}
 	}
-	baseline, err := readBaselineManifest(taskDirectory{root}, *record.BaselineManifest)
+	baseline, err := readBaselineManifest(artifacts, *record.BaselineManifest)
 	if err != nil {
 		return langpack.Source{}, err
 	}

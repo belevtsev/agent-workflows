@@ -507,7 +507,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		}
 		if record.Plan.Kind == "substantial" {
 			if !equalSnapshot(record.Baseline, snapshot) {
-				executionIssues, executionNotes := executionProblems(ctx, root, *record, snapshot, files)
+				executionIssues, executionNotes := executionProblems(ctx, artifacts, *record, snapshot, files)
 				result.Problems = append(result.Problems, executionIssues...)
 				result.Limitations = append(result.Limitations, executionNotes...)
 			}

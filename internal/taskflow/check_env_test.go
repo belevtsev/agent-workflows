@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // passthroughPlan returns plan with names as the env_passthrough of each of
@@ -156,17 +157,70 @@ func TestRunCheckRefusesAStoredEnvPassthroughThatAdmissionRefuses(t *testing.T) 
 	}
 }
 
+// TestEvidenceRunJudgesARunByTheGoEnvItRecorded builds stored runs of a
+// credited argv. Oracle (F1): the Go rule reads the GOFLAGS that go_env
+// recorded, not the environment's, so a go env file's -exec earns no credit;
+// a run without go_env (record version 4) or with a GOOS or GOARCH other than
+// its go command's host's earns none either; a host run with allowlisted
+// GOFLAGS keeps its credit. A rerun is a failure at the same before-snapshot
+// with the same applied GOFLAGS, wherever the go command took them from.
+// Review finding 3 on #139: a failure recorded without go_env (version 4)
+// shows only its environment's GOFLAGS, so a pass whose environment gave the
+// same is a rerun too, whatever GOFLAGS a go env file added.
+func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
+	argv := []string{"go", "test", "-json", "./..."}
+	env := func(goflags, goarch string) *langpack.GoEnv {
+		return &langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: goarch, GOHOSTOS: "linux", GOHOSTARCH: "amd64"}
+	}
+	for _, c := range []struct {
+		name     string
+		run      CheckRun
+		credited bool
+	}{
+		{"a go env file's -exec", CheckRun{Argv: argv, GoEnv: env("-exec=/bin/true", "amd64")}, false},
+		{"no go env", CheckRun{Argv: argv, GOFLAGS: "-count=1"}, false},
+		{"another architecture", CheckRun{Argv: argv, GoEnv: env("", "arm64")}, false},
+		{"host with allowlisted flags", CheckRun{Argv: argv, GoEnv: env("-count=1 -v", "amd64")}, true},
+	} {
+		got := evidenceRun(c.run)
+		if langpack.GoTestsCredited(got) != c.credited || (got.Withheld == "") != (c.run.GoEnv != nil && c.run.GoEnv.GOARCH == "amd64") {
+			t.Errorf("%s: evidenceRun = %+v; want credited %v", c.name, got, c.credited)
+		}
+	}
+	exit, before := 1, projectctx.Snapshot{Fingerprint: "source"}
+	failed := CheckRun{CheckID: "unit", Status: "failed", ExitCode: &exit, Before: before, GoEnv: env("-count=1", "amd64")}
+	same := CheckRun{CheckID: "unit", Status: "passed", Before: before, GOFLAGS: "-count=1", GoEnv: env("-count=1", "amd64")}
+	other := CheckRun{CheckID: "unit", Status: "passed", Before: before, GoEnv: env("-count=2", "amd64")}
+	record := Record{Checks: []CheckRun{failed, same, other}}
+	if !rerun(record, same) || rerun(record, other) {
+		t.Errorf("rerun: same applied GOFLAGS %v, other %v; want true and false", rerun(record, same), rerun(record, other))
+	}
+	legacy := CheckRun{CheckID: "unit", Status: "failed", ExitCode: &exit, Before: before}
+	fromFile := CheckRun{CheckID: "unit", Status: "passed", Before: before, GoEnv: env("-count=1", "amd64")}
+	fromEnvironment := CheckRun{CheckID: "unit", Status: "passed", Before: before, GOFLAGS: "-count=2", GoEnv: env("-count=2", "amd64")}
+	record = Record{Checks: []CheckRun{legacy, fromFile, fromEnvironment}}
+	if !rerun(record, fromFile) || rerun(record, fromEnvironment) {
+		t.Errorf("rerun after a version 4 failure: same environment GOFLAGS %v, other %v; want true and false", rerun(record, fromFile), rerun(record, fromEnvironment))
+	}
+}
+
 // TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough builds a go
 // check whose env_passthrough names GOROOT, GOTOOLCHAIN and GOFLAGS, as a
 // record that bypassed admission could. Oracle: os/exec uses the last value
 // of a repeated variable, so GOROOT and GOTOOLCHAIN=local of the verified go
 // command (G6) still win over cw's environment; GOFLAGS, which reaches every
-// check whether named or not, is recorded as the check sees it, and the Go
-// rule gives a run with -exec or -toolexec in it no credit.
+// check whether named or not, is recorded as cw's environment gave it, the
+// check sees it as go env reported it (F1), and the Go rule gives a run with
+// -exec or -toolexec in it no credit. The go env reader stands in for the
+// verified go command and reports the GOFLAGS it is given.
 func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T) {
 	verified := langpack.GoTool{Path: "/verified/bin/go", Version: "go1.27.4", GOROOT: "/verified"}
 	resolveGo = func(context.Context, string, string, []string) (langpack.GoTool, error) { return verified, nil }
-	t.Cleanup(func() { resolveGo = langpack.ResolveGo })
+	readGoEnv = func(_ context.Context, _ langpack.GoTool, _ string, env []string) (langpack.GoEnv, []string, error) {
+		goflags := environmentValue(env, "GOFLAGS")
+		return langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}, []string{"GOFLAGS=" + goflags, "GOOS=linux", "GOARCH=amd64"}, nil
+	}
+	t.Cleanup(func() { resolveGo, readGoEnv = langpack.ResolveGo, langpack.ReadGoEnv })
 	t.Setenv("GOROOT", "/elsewhere")
 	t.Setenv("GOTOOLCHAIN", "go1.99.0+path")
 	argv := []string{"go", "test", "-json", "./..."}
@@ -184,9 +238,9 @@ func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T)
 	}
 	for _, goflags := range []string{"-exec=/bin/true", "-toolexec=/bin/true"} {
 		t.Setenv("GOFLAGS", goflags)
-		spec, tool, err := checkSpec(t.Context(), check, t.TempDir())
-		if err != nil || tool == nil || *tool != verified {
-			t.Fatalf("checkSpec: tool %+v, %v; want %+v", tool, err, verified)
+		spec, tool, goEnv, err := checkSpec(t.Context(), check, t.TempDir())
+		if err != nil || tool == nil || *tool != verified || goEnv == nil {
+			t.Fatalf("checkSpec: tool %+v, go env %+v, %v; want %+v and a go env", tool, goEnv, err, verified)
 		}
 		if got := last(spec.Env, "GOROOT"); got != "/verified" {
 			t.Errorf("the go check runs with GOROOT %q, want the verified tree", got)
@@ -194,15 +248,15 @@ func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T)
 		if got := last(spec.Env, "GOTOOLCHAIN"); got != "local" {
 			t.Errorf("the go check runs with GOTOOLCHAIN %q, want local", got)
 		}
-		recorded := langpack.RedactGOFLAGS(environmentValue(spec.Env, "GOFLAGS"))
+		recorded := langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS"))
 		if recorded != goflags || last(spec.Env, "GOFLAGS") != goflags {
 			t.Errorf("GOFLAGS recorded %q, seen %q; want %q for both", recorded, last(spec.Env, "GOFLAGS"), goflags)
 		}
-		if langpack.GoTestsCredited(langpack.Run{Argv: argv, GOFLAGS: recorded}) {
+		if langpack.GoTestsCredited(evidenceRun(CheckRun{Argv: argv, GOFLAGS: recorded, GoEnv: goEnv})) {
 			t.Errorf("a run with GOFLAGS %q earns Go rule credit", goflags)
 		}
 	}
-	if !langpack.GoTestsCredited(langpack.Run{Argv: argv}) {
+	if !langpack.GoTestsCredited(evidenceRun(CheckRun{Argv: argv, GoEnv: &langpack.GoEnv{GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}})) {
 		t.Fatal("precondition: the argv without GOFLAGS earns no credit")
 	}
 }

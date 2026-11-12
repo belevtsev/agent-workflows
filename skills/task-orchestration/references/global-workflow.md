@@ -148,11 +148,12 @@ binary) earn credit; `-run`, `-skip`, `-args`, `-c`, `-n`, `-exec`,
 `-toolexec`, `-overlay`, `-ldflags`, `-gcflags`, `-asmflags`, `-C`, unknown flags,
 a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` hands
 `./b` to the test binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style
-`.\pkg` patterns earn none. The rule reads `GOFLAGS` from the environment only:
-keep it out of go env files (`GOENV`, `go env -w`) and run Go checks for the
-host `GOOS`/`GOARCH`. The run records `GOFLAGS` with compiler and linker
-flag values redacted, but stores the check's argv verbatim: keep secrets out of
-check argv.
+`.\pkg` patterns earn none. The rule reads the `GOFLAGS`, `GOOS` and `GOARCH`
+that the check's go command reports with `go env` just before the run, so a go
+env file's `GOFLAGS` (`GOENV`, `go env -w`) counts too, and a run for another
+`GOOS`/`GOARCH` than the host's earns none. The run records `GOFLAGS` with
+compiler and linker flag values redacted, but stores the check's argv verbatim:
+keep secrets out of check argv.
 
 When the change touches concurrency, parsing or untrusted input, security or
 data integrity, or the user asks, the plan opts in to the
@@ -257,7 +258,7 @@ export variables such as `GOWORK=off` there instead. Variables whose names conta
 `KEY`, `TOKEN`, `SECRET`, `PASSWORD` or `CREDENTIAL`, and `BASH_ENV` and `ENV`, are
 removed unless the check lists them in `"env_passthrough": ["DB_PASSWORD"]` (names
 only; verify lists each as a limitation; not `GOROOT`, `GOTOOLCHAIN` or `gh`'s
-tokens; [check environment](../../../docs/operations.md#what-a-check-runs-with)). A check named `go` runs only a `go` built from `cmd/go`; otherwise its run
+tokens; [check environment](../../../docs/operations.md#what-a-check-runs-with)). A check named `go` runs only a `go` built from `cmd/go` whose `go env` cw can read; otherwise its run
 is `failed` with failure `untrusted_toolchain`: put the real `go` first on `PATH`
 ([which go](../../../docs/operations.md#which-go-a-check-runs)).
 
@@ -287,11 +288,12 @@ without one, it refuses `requirements`. Records made before brief `inputs` and
 of them: each is "not required" for those records, which load, hash and verify as
 before. A new contract brief without requirements is refused only when the plan
 has a per-test-credited `-json` `go test` check. Compatibility runs one way only:
-every revision this `cw` writes is record version 4, which a `cw` older than
-v3.0.0-rc.2 cannot read, so once this `cw` touches a task only this `cw` or a later one can
-read it. That includes the `cw hook pre-publish` binary, whose commit gate then
-fails open. Update every installed `cw`, including the one the hook runs, before
-running tasks with this one.
+every revision this `cw` writes is record version 5, which v3.0.0-rc.2 and
+older cannot read, so once this `cw` touches a task only this `cw` or a later one can
+read it. That includes the `cw hook pre-publish` binary: an rc.2 hook asks
+before a commit or push that such a record governs instead of checking it, and
+under Codex the command goes ahead. Update every installed `cw`, including the
+one the hook runs, before running tasks with this one.
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, opted in to with `advisers.enabled`, a key saved with `cw keys set` or
@@ -383,7 +385,7 @@ and its decision is resolved. A small
 task can use `kind: "small"` without adviser checkpoints. Use that path only for
 the existing small-task scope.
 
-Task records use version 4; this `cw` also reads the version 3 records that v3
+Task records use version 5; this `cw` also reads the version 3 and 4 records that v3
 development builds wrote from v3.0.0-rc.1 (`13b6103`, never published) on. A
 record from an earlier release is refused, so start a new task; a
 record from a newer `cw` is refused until you upgrade `cw`. Set the plan's
