@@ -197,10 +197,11 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
   a record written by a newer `cw`, a failed source capture, a missing `git`, a
-  git command that fails or times out. Damaged records are skipped rather than reported, except a record
-  written by v2.0.66 to v2.0.96: `cw` refuses it at its first revision, so it
-  gates even when a later revision is damaged. A relative `$XDG_STATE_HOME`
-  is the other exception: it asks ([task store](#task-store)).
+  git command that fails or times out. Damaged records are skipped rather than
+  reported, except a record written by v2.0.66 to v2.0.96: `cw` refuses it at
+  its first revision, so it gates even when a later revision is damaged. A
+  relative `$XDG_STATE_HOME` is the other exception: it asks
+  ([task store](#task-store)).
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record
