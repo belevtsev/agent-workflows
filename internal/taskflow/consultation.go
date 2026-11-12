@@ -180,7 +180,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 				}
 			}
 		}
-		current, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		current, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -195,7 +195,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 			return errors.New("before consultation differs from task baseline")
 		}
 		if phase == "final" {
-			if problems := localEvidenceProblems(root, *record, current); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, current); len(problems) > 0 {
 				return fmt.Errorf("final consultation requires completed evidence: %v", problems)
 			}
 			binding, err := evidenceBinding(*record)
@@ -231,7 +231,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 // readConsultation revalidates an attached checkpoint against the current
 // expected context (including the adviser binding) and requires a resolved
 // decision. ProviderStatuses holds exactly the bound advisers' outcomes.
-func readConsultation(root *os.Root, record Record, phase string, snapshot projectctx.Snapshot) (consult.Record, error) {
+func readConsultation(artifacts Artifacts, record Record, phase string, snapshot projectctx.Snapshot) (consult.Record, error) {
 	attachment, ok := record.Consultations[phase]
 	if !ok {
 		return consult.Record{}, errors.New("required phase artifact is missing")
@@ -247,7 +247,7 @@ func readConsultation(root *os.Root, record Record, phase string, snapshot proje
 	if attachment.Phase != phase || !sameContext(attachment.Context, expected) {
 		return consult.Record{}, errors.New("phase artifact is bound to stale or mismatched source or completed task evidence")
 	}
-	data, err := privateRead(root, attachment.File, MaxInputBytes)
+	data, err := artifacts.Read(attachment.File, MaxInputBytes)
 	if err != nil {
 		return consult.Record{}, err
 	}

@@ -55,7 +55,7 @@ func traceSummary(directory string, report taskflow.TraceReport) taskTraceSummar
 }
 
 // newTaskTraceCommand returns cw task trace.
-func newTaskTraceCommand(taskDeps) *cobra.Command {
+func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var summary bool
 	trace := &cobra.Command{
@@ -69,7 +69,7 @@ func newTaskTraceCommand(taskDeps) *cobra.Command {
 			if err := requireTask(directory); err != nil {
 				return err
 			}
-			report, err := taskflow.Trace(cmd.Context(), directory)
+			report, err := taskEnv(deps.config).Trace(cmd.Context(), directory)
 			if err != nil {
 				return err
 			}

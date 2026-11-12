@@ -333,20 +333,25 @@ func TestSmallTaskCompletionAndDrift(t *testing.T) {
 	}
 }
 
+// A requirement that allows non-execution is satisfied without a check only
+// with a non-blank reason, and the task then verifies complete. The rule runs
+// on a fake Source and a fixed clock: no git, no check, no wall clock. Oracle:
+// the plan's allow_non_execution rule, and checked_at is the clock's time.
 func TestNonExecutionMustBeExplicitlyPermitted(t *testing.T) {
 	plan := Plan{Title: "Read-only source check", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read actual source", AllowNonExecution: true}}}
-	record, ref := fixtureTask(t, plan)
+	now := time.Date(2031, time.February, 3, 4, 5, 6, 0, time.UTC)
+	record, ref, _, env := fakeSourceTask(t, plan, now)
 	input := assessment(ref)
-	if _, err := Assess(t.Context(), record.Directory, input); err == nil {
+	if _, err := env.Assess(t.Context(), record.Directory, input); err == nil {
 		t.Fatal("empty rationale accepted")
 	}
 	input.Requirements[0].NonExecutionReason = "Read-only change; inspected the complete referenced file."
 	input.Decision.NonExecutionReason = input.Requirements[0].NonExecutionReason
-	if _, err := Assess(t.Context(), record.Directory, input); err != nil {
+	if _, err := env.Assess(t.Context(), record.Directory, input); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := Verify(t.Context(), record.Directory); err != nil || !result.Complete {
-		t.Fatalf("explicit non-execution rejected: %+v %v", result, err)
+	if result, err := env.Verify(t.Context(), record.Directory); err != nil || !result.Complete || !result.CheckedAt.Equal(now) {
+		t.Fatalf("explicit non-execution rejected or checked at another time than %v: %+v %v", now, result, err)
 	}
 }
 
@@ -995,33 +1000,31 @@ func TestExecutablePathWithSpaces(t *testing.T) {
 	}
 }
 
+// Evidence bound on one branch is stale after a branch change at the same
+// head. A fake Source stands in for git: after `git checkout -b different`
+// Capture returns the same head on another branch with another fingerprint
+// (projectctx's tests cover that capture). Oracle: verify is complete before
+// the change, and after it reports the requirement and the decision stale.
 func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git unavailable")
-	}
-	plan := helperPlan(t, "small", "pass")
-	record, ref := fixtureTask(t, plan)
-	git := func(args ...string) {
-		t.Helper()
-		command := exec.Command("git", append([]string{"-C", record.Baseline.Root}, args...)...)
-		if output, err := command.CombinedOutput(); err != nil {
-			t.Fatalf("git: %v %s", err, output)
-		}
-	}
-	git("init", "-b", "main")
-	git("config", "user.name", "Fixture")
-	git("config", "user.email", "fixture@example.invalid")
-	git("add", ".")
-	git("commit", "-qm", "baseline")
-	var err error
-	record, err = StartWithPacks(t.Context(), record.Baseline.Root, filepath.Dir(record.Directory), plan, record.Advisers, SelectionExplicit, nil)
-	if err != nil {
+	record, ref, source, env := fakeSourceTask(t, helperPlan(t, "small", "pass"), time.Date(2031, time.February, 3, 4, 5, 6, 0, time.UTC))
+	if _, err := env.RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
 	}
-	mustAssess(t, record, ref)
-	git("checkout", "-qb", "different")
-	if result, err := Verify(t.Context(), record.Directory); err == nil || result.Complete {
+	if _, err := env.Assess(t.Context(), record.Directory, assessment(ref, "focused")); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := env.Verify(t.Context(), record.Directory); err != nil || !result.Complete {
+		t.Fatalf("verify on the bound branch: %+v %v", result, err)
+	}
+	source.snapshot.Branch, source.snapshot.Fingerprint = "different", "sha256:"+strings.Repeat("b", 64)
+	result, err := env.Verify(t.Context(), record.Directory)
+	if err == nil || result.Complete {
 		t.Fatalf("branch drift accepted: %+v %v", result, err)
+	}
+	for _, want := range []string{"requirement behavior evidence is stale", "Codex task decision is stale"} {
+		if !slices.Contains(result.Problems, want) {
+			t.Errorf("branch drift problems %q lack %q", result.Problems, want)
+		}
 	}
 }
 

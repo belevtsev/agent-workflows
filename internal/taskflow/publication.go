@@ -340,11 +340,11 @@ func (t *PublicationTask) Append(entry PublicationEntry) (string, error) {
 // manifest at its selected path. A capture failure wraps ErrSourceCapture;
 // any other error concerns the baseline manifest.
 func (t *PublicationTask) Source(ctx context.Context, record Record) (PublicationSource, error) {
-	baseline, err := readBaselineManifest(t.root, *record.BaselineManifest)
+	baseline, err := readBaselineManifest(taskDirectory{t.root}, *record.BaselineManifest)
 	if err != nil {
 		return PublicationSource{}, err
 	}
-	_, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
+	_, files, err := projectSource{}.Manifest(ctx, record.Baseline.SelectedPath)
 	if err != nil {
 		return PublicationSource{}, fmt.Errorf("%w: %w", ErrSourceCapture, err)
 	}

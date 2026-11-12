@@ -560,11 +560,11 @@ func storeContract(root *os.Root, record Record, brief WorkerBrief) (string, err
 	return name, nil
 }
 
-func readStoredContract(root *os.Root, assigned WorkerAssignment) (Contract, error) {
+func readStoredContract(artifacts Artifacts, assigned WorkerAssignment) (Contract, error) {
 	if assigned.ContractFile == "" || assigned.Brief.Contract == nil {
 		return Contract{}, errors.New("assignment has no stored contract")
 	}
-	data, err := privateRead(root, assigned.ContractFile, MaxInputBytes)
+	data, err := artifacts.Read(assigned.ContractFile, MaxInputBytes)
 	if err != nil {
 		return Contract{}, err
 	}
@@ -604,12 +604,12 @@ func contractSuperseded(record Record, index int) bool {
 // missing declaration is a problem: the tests were authored against a contract
 // the source no longer has. Source files whose bytes changed while every
 // declaration stayed the same are only noted.
-func contractProblems(root *os.Root, record Record) (problems, notes []string) {
+func contractProblems(artifacts Artifacts, record Record) (problems, notes []string) {
 	for index, assigned := range record.Assignments {
 		if assigned.ContractFile == "" {
 			continue
 		}
-		saved, err := readStoredContract(root, assigned)
+		saved, err := readStoredContract(artifacts, assigned)
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("worker assignment %s contract: %v", assigned.Brief.ID, err))
 			continue

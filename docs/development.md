@@ -170,10 +170,13 @@ and productivity comparisons are separate evidence; preserve that distinction in
 reports.
 
 `internal/taskflow` declares the ports its use cases read, where they are
-used: `Clock` gives every time a task record stores. Each use case that
-writes a revision is a method on `taskflow.Env`, whose zero value is the
-production ports; `cli.Config.Now` is the clock of the task commands, the gate
-and `cw publish`. A test that needs a time sets the clock instead of waiting.
+used: `Source` captures the selected source (production: `projectctx`, which
+runs git), `Clock` gives every time a task record stores, and the rules read a
+task's logs, results, consultations, copies, contracts and bundles through
+`Artifacts`. Each use case is a method on `taskflow.Env`, whose zero value is
+the production ports; `cli.Config.Now` is the clock of the task commands, the
+gate and `cw publish`. A rule test passes a fake `Source`, clock or
+`Artifacts` instead of building a Git repository or waiting.
 
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow

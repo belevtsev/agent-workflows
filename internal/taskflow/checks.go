@@ -463,7 +463,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 				return errors.New("the same check already has an owned running attempt; wait for its terminal record")
 			}
 		}
-		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
+		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
@@ -552,7 +552,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	// probe cannot leave the terminal record write without time to wait for
 	// the task lock; a capture that runs out marks the run source_changed.
 	captureCtx, captureCancel := context.WithTimeout(finishCtx, checkFinishTimeout-checkRecordWriteReserve)
-	after, snapshotErr := projectctx.Capture(captureCtx, run.Before.SelectedPath)
+	after, snapshotErr := env.source().Snapshot(captureCtx, run.Before.SelectedPath)
 	captureCancel()
 	if snapshotErr == nil {
 		run.After = &after
