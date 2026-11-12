@@ -223,16 +223,20 @@ after verify passes. Details: [hooks](docs/hooks.md).
 
 ## Language packs
 
-Core skills are language-neutral; language practice comes from opt-in packs.
-Go is first: today the `cc-skills-golang` plugin in the same marketplace, plus a
-few Go skills in core. On Codex, install it from `/plugins`; on Claude Code:
+A pack tells `cw task verify` what a changed task in one language must have
+run. Packs are built into `cw`; today there is one, `go`, selected by default.
+`cw pack list` shows the built-in packs and your selection, and
+`cw pack add <id>` and `cw pack remove <id>` change it for tasks started
+afterwards (`cw lang` is an alias). See [packs](docs/packs.md), which also
+covers adding a pack.
+
+The Go skills are separate: the `cc-skills-golang` plugin in the same
+marketplace, plus a few Go skills in core. On Codex, install it from
+`/plugins`; on Claude Code:
 
 ```sh
 claude plugin install cc-skills-golang@agent-workflows
 ```
-
-Coming: the Go pack as its own plugin with `cw lang`, then a UI pack. See the
-[design](docs/design/language-packs.md).
 
 ## Skills
 

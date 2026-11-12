@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A new [packs](docs/packs.md) page documents `cw pack` and `pack.yaml` as they ship, with the steps and a proposal
+  template for adding a language pack; the language-packs design is marked as history.
 - The commit gate's decision moved out of the CLI into `internal/gate`, so contributors unit-test gate rules with a fake git,
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 - The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
