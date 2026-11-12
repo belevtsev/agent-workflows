@@ -242,6 +242,10 @@ func TestPrePublishKnownForms(t *testing.T) {
 		{"abandon through a variable", "{R}", "C=cw; $C task abandon --task /store/task-k --reason x", gate.Ask},
 		{"abandon through go run", "{R}", "go run github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2 task abandon --task /store/task-k --reason x", gate.Ask},
 		{"abandon --help", "{R}", "cw task abandon --help", gate.Ask},
+		// The shell removes the quotes, so this runs cw task abandon. Claude
+		// Code 2.1.311 ran the abandon handler for it in a recorded run
+		// (docs/hooks.md, Recorded host runs), so the hook's reading decides.
+		{"abandon split by quotes", "{R}", "cw task aban''don --task /store/task-k --reason x", gate.Ask},
 		// A known false positive: a line with a command the gate does not
 		// trust (git add) that only mentions cw, task and abandon.
 		{"abandon in a commit message after git add", "{O}", `git add -A && git commit -m "docs: cw task abandon asks first"`, gate.Ask},
