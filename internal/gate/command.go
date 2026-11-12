@@ -41,7 +41,11 @@ type publication struct {
 	all bool
 }
 
-// gitPublications returns every git commit or push in a shell command line,
+// flatPublications is the flat split the gate used before shellwords, kept
+// as its fallback: gitPublications adds what it finds whenever the shellwords
+// reading is not certain, so a command the flat split denies is never
+// allowed on an uncertain reading. It returns every git commit or push in a
+// shell command line,
 // with the directory it runs in resolved from cwd through any preceding
 // `cd DIR` or `pushd DIR`, a wrapper's `env -C DIR` or `sudo -D DIR` and
 // git's own -C DIR options, without duplicates and in command order. The
@@ -59,7 +63,7 @@ type publication struct {
 // fails open. Redirections on a cd (`cd DIR >/dev/null 2>&1`) are ignored,
 // and `"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` stays in the same
 // repository.
-func gitPublications(command, cwd string) []publication {
+func flatPublications(command, cwd string) []publication {
 	// NUL is reserved for substitution markers; a command that carries one
 	// could otherwise make a substitution reference itself.
 	command = strings.ReplaceAll(command, "\x00", "")

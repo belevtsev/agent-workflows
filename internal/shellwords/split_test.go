@@ -1,4 +1,4 @@
-package usagelog
+package shellwords
 
 import (
 	"reflect"
@@ -7,32 +7,34 @@ import (
 	"testing"
 )
 
-// Behavioural tests for the Bash command splitter written from test contract
-// linear-split, revision 5 (requirements R1, R3 and R4). They use only
-// splitShell, parseShell, strayScanWork, calls[i].fields, heredocs[i].body,
-// heredocs[i].redirect and the work count.
+// Behavioural tests for the command splitter written from test contract
+// linear-split, revision 5 (requirements R1, R3 and R4), first for the
+// splitter in internal/usagelog that Split replaces. They use only split,
+// Split, the words' Text, the heredoc bodies and the work count.
 
-// splitTestBodies returns the heredoc bodies of sh, ignoring redirect entries
-// (`> FILE` lines are not heredoc bodies).
-func splitTestBodies(sh shellCommand) []string {
+// splitTestBodies returns the heredoc bodies of sh in order (a `> FILE`
+// redirection has no body).
+func splitTestBodies(sh []SimpleCommand) []string {
 	var bodies []string
-	for _, h := range sh.heredocs {
-		if !h.redirect {
-			bodies = append(bodies, h.body)
+	for _, c := range sh {
+		for _, r := range c.Redirects {
+			if r.Op == "<<" || r.Op == "<<-" {
+				bodies = append(bodies, r.Body)
+			}
 		}
 	}
 	return bodies
 }
 
-// splitTestHasCall reports whether some call's fields start with prefix.
-func splitTestHasCall(sh shellCommand, prefix ...string) bool {
-	for _, c := range sh.calls {
-		if len(c.fields) < len(prefix) {
+// splitTestHasCall reports whether some command's words start with prefix.
+func splitTestHasCall(sh []SimpleCommand, prefix ...string) bool {
+	for _, c := range sh {
+		if len(c.Words) < len(prefix) {
 			continue
 		}
 		match := true
 		for i, p := range prefix {
-			if c.fields[i] != p {
+			if c.Words[i].Text != p {
 				match = false
 				break
 			}
@@ -44,10 +46,14 @@ func splitTestHasCall(sh shellCommand, prefix ...string) bool {
 	return false
 }
 
-func splitTestCallFields(sh shellCommand) [][]string {
-	out := make([][]string, 0, len(sh.calls))
-	for _, c := range sh.calls {
-		out = append(out, c.fields)
+func splitTestCallFields(sh []SimpleCommand) [][]string {
+	out := make([][]string, 0, len(sh))
+	for _, c := range sh {
+		var fields []string
+		for _, w := range c.Words {
+			fields = append(fields, w.Text)
+		}
+		out = append(out, fields)
 	}
 	return out
 }
@@ -102,35 +108,25 @@ func splitTestDeepRows() []splitTestDeepRow {
 // work stays linear in the command length, including for deeply nested
 // commands. It does not measure time and is not an end-to-end timing check.
 //
-// What it guards: `work` grows with every byte fed through the call's own quote
-// scanner and its clones, with each once-per-line redirect-target search of a
-// line that holds a heredoc marker, and (revision 5) with the number of nesting
-// levels (open quotes, `(`, `$(`, `$((`, `((`, backquotes) that any operation
-// copies or searches. A splitter that rescans the line prefix for every "<<"
-// through that scanner (or a clone of it) does work quadratic in the number of
-// markers: about 10 million bytes at 2000 words and about 160 million at 8000
-// words, against bounds of about 40 KB and 160 KB, and work(4n)/work(n) is
-// about 16 instead of about 4. Likewise, the deep_* rows open n nesting levels
-// and then end n lines or present n heredoc markers, so a splitter that copies
-// the whole nesting state for every line, or searches it for every marker, and
-// counts those levels as work, does work quadratic in the depth and fails the
-// bound and the ratio. Separately, strayScanWork grows with bytes fed through a
-// quote scanner that has no counter at all, so a rescan through such a scanner
-// makes it non-zero. deep_arithmetic also checks that no << inside $(( ... ))
-// is taken as a heredoc, and the other deep rows check their exact body counts.
+// What it guards: `work` grows with the bytes each step of the lexer moves
+// over, which it does only forwards, with the bytes of each heredoc body line
+// it compares with the delimiter, and with each line it searches for the
+// closing quote of a heredoc delimiter. A splitter whose search for a
+// delimiter line or closing quote at every "<<" runs over the rest of the
+// command, or that compares a body line more than once, does work quadratic
+// in the number of markers or lines: about 10 million bytes at 2000 words and
+// about 160 million at 8000 words, against bounds of about 40 KB and 160 KB,
+// and work(4n)/work(n) is about 16 instead of about 4. deep_arithmetic also
+// checks that no << inside $(( ... )) is taken as a heredoc, and the other
+// deep rows check their exact body counts.
 //
-// What it does not detect: anything outside the counted scanner bytes, the
-// once-per-line redirect-search count and the counted nesting levels is
-// invisible to both counts. Examples (not a complete list): a rescan through a
-// scanner clone given its own private counter; prefix logic that does not use
-// the quote scanner (for example counting quote bytes in line[:at] with
-// strings.Count); a quadratic marker matcher; other quadratic steps such as
-// rebuilding kept lines; copying the nesting state without adding the copied
-// levels to work, which only R4d's allocation bound
-// (TestSplitShellDeepNestingAllocations) can catch, and only when the copy
-// allocates; and searching the nesting state without adding the searched
-// levels to work, which no test here detects.
-func TestSplitShellWorkLinear(t *testing.T) {
+// What it does not detect: work the lexer does without counting it, such as
+// a separate scan back over bytes already passed, or searching or copying the
+// stack of open quotes and parentheses for every line or marker, which only
+// R4d's allocation bound (TestSplitDeepNestingAllocations) can catch, and
+// only when the copy allocates; a quadratic marker matcher; and pattern
+// matching against the rest of the command.
+func TestSplitWorkLinear(t *testing.T) {
 	t.Parallel()
 	const n = 2000
 	type input struct {
@@ -166,16 +162,17 @@ func TestSplitShellWorkLinear(t *testing.T) {
 			var work [2]int
 			for i, words := range []int{n, 4 * n} {
 				cmd := in.cmd(words)
-				sh, w := splitShell(cmd)
+				result, w := split(cmd)
+				sh := result.Commands
 				work[i] = w
 				if w > splitTestWorkBound(cmd) {
 					t.Errorf("%d words: work = %d, want <= 4*len+16 = %d (len %d)", words, w, splitTestWorkBound(cmd), len(cmd))
 				}
 				if w <= 0 {
-					t.Errorf("%d words: work = %d, want > 0 (the scanner reads the command)", words, w)
+					t.Errorf("%d words: work = %d, want > 0 (the lexer reads the command)", words, w)
 				}
 				if in.cwStart && !splitTestHasCall(sh, "cw", "task", "start") {
-					t.Errorf("%d words: no call starts with cw task start; calls %d", words, len(sh.calls))
+					t.Errorf("%d words: no call starts with cw task start; calls %d", words, len(sh))
 				}
 				if in.quoted {
 					if b := splitTestBodies(sh); len(b) != 0 {
@@ -194,11 +191,6 @@ func TestSplitShellWorkLinear(t *testing.T) {
 						}
 					}
 				}
-			}
-			// Bytes fed through a quote scanner with no counter at all
-			// (process-wide, atomic): correct splitting never adds to it.
-			if stray := strayScanWork(); stray != 0 {
-				t.Errorf("strayScanWork() = %d after the splits, want 0 (bytes fed through a quote scanner with no counter)", stray)
 			}
 			// Linear: about 4x for 4x the words; a rescanning splitter gives about 16x.
 			if work[0] > 0 {
@@ -226,8 +218,8 @@ type splitTestHeredocCase struct {
 	want      splitTestHeredocWant
 }
 
-// splitTestHeredocCases are the cases of TestSplitShellHeredocMarkers (R3 and
-// R4b); FuzzSplitShellWork also uses their commands as seeds.
+// splitTestHeredocCases are the cases of TestSplitHeredocMarkers (R3 and
+// R4b); FuzzSplitWork also uses their commands as seeds.
 func splitTestHeredocCases() []splitTestHeredocCase {
 	heredocA := splitTestHeredocWant{bodies: []string{"cw task start"}, verifyCall: true}
 	plain := splitTestHeredocWant{startCall: true}
@@ -283,12 +275,13 @@ func splitTestHeredocCases() []splitTestHeredocCase {
 
 // R3 and R4b: heredoc marker recognition, including arithmetic and heredoc
 // nesting.
-func TestSplitShellHeredocMarkers(t *testing.T) {
+func TestSplitHeredocMarkers(t *testing.T) {
 	t.Parallel()
 	for _, c := range splitTestHeredocCases() {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			sh, work := splitShell(c.cmd)
+			result, work := split(c.cmd)
+			sh := result.Commands
 			if work > splitTestWorkBound(c.cmd) {
 				t.Errorf("work = %d, want <= %d", work, splitTestWorkBound(c.cmd))
 			}
@@ -315,16 +308,16 @@ func TestSplitShellHeredocMarkers(t *testing.T) {
 	}
 }
 
-// R4c: for any command, splitShell does not panic, its work stays within
-// 4*len+16, and its result equals parseShell's. Run as a normal test, it
-// checks the seeds: the R4a inputs at n = 20 and every command of
-// TestSplitShellHeredocMarkers.
+// R4c: for any command, split does not panic, its work stays within
+// 4*len+16, and its result equals Split's. Run as a normal test, it checks
+// the seeds: the R4a inputs at n = 20 and every command of
+// TestSplitHeredocMarkers.
 //
-// The parseShell == splitShell check is not a check of splitting: parseShell
-// is defined as splitShell's first result, so it cannot detect a defect inside
-// splitShell. It guards that parseShell keeps returning exactly splitShell's
-// result if either of them is changed later.
-func FuzzSplitShellWork(f *testing.F) {
+// The Split == split check is not a check of splitting: Split is defined as
+// split's first result, so it cannot detect a defect inside split. It guards
+// that Split keeps returning exactly split's result if either of them is
+// changed later.
+func FuzzSplitWork(f *testing.F) {
 	for _, d := range splitTestDeepRows() {
 		f.Add(d.cmd(20))
 	}
@@ -332,18 +325,18 @@ func FuzzSplitShellWork(f *testing.F) {
 		f.Add(c.cmd)
 	}
 	f.Fuzz(func(t *testing.T, command string) {
-		shell, work := splitShell(command)
+		commands, work := split(command)
 		if bound := splitTestWorkBound(command); work > bound {
 			t.Errorf("work = %d, want <= 4*len+16 = %d (len %d)", work, bound, len(command))
 		}
-		if parsed := parseShell(command); !reflect.DeepEqual(parsed, shell) {
-			t.Errorf("parseShell(%q) differs from splitShell's result", command)
+		if exported := Split(command); !reflect.DeepEqual(exported, commands) {
+			t.Errorf("Split(%q) differs from split's result", command)
 		}
 	})
 }
 
 // splitTestSink keeps the R4d split result alive across the second reading.
-var splitTestSink shellCommand
+var splitTestSink Result
 
 // R4d (contract revision 5, amendments 5 and 6): splitting a deeply nested
 // input allocates at most 300 bytes per input byte more than splitting a
@@ -354,35 +347,35 @@ var splitTestSink shellCommand
 // and n/2 ")", so nesting depth 0 on the following lines), and fails if their
 // lengths differ. The two inputs do not have the same parentheses; what is
 // equal is the input length, the number of parenthesis bytes (n), the spaces
-// (n), the newlines (n) and the number of separator matches on the first line.
-// For each input it runs runtime.GC twice, reads runtime.MemStats.TotalAlloc,
-// calls splitShell once (keeping the result alive in splitTestSink) and reads
-// TotalAlloc again; the difference is alloc(input). It asserts that the excess
-// alloc(deep) - alloc(control), a signed number that can be negative, is at
-// most 300 * len(deep).
+// (n), the newlines (n) and the number of command separators on the first
+// line. For each input it runs runtime.GC twice, reads
+// runtime.MemStats.TotalAlloc, calls split once (keeping the result alive in
+// splitTestSink) and reads TotalAlloc again; the difference is alloc(input).
+// It asserts that the excess alloc(deep) - alloc(control), a signed number
+// that can be negative, is at most 300 * len(deep).
 //
 // Its purpose is to catch allocation that grows with the nesting depth on every
 // line, in both modes, such as a splitter that copies its whole nesting state
 // for every line without counting it as work; it is not a tight allocation
 // budget. Both inputs make the splitter do the same line handling, so the
 // control cancels the allocation that does not depend on nesting depth, and the
-// check holds with and without the race detector and is never skipped. The
-// control pushes half as many nesting frames as the deep input, which is the
-// steady excess of about 4 bytes per input byte without -race.
-// Measured excess in bytes per input byte at n = 16000 (48,000 input bytes): a
-// splitter that meets R4a, about 4 without -race and about -25 to +40 under
-// -race, and about -145 to +190 under -race (standard deviation about 60) in
-// the noisiest variant measured (a simpler separator pattern whose line
-// handling stays in the regexp's backtracking regime under -race), so 300 is
-// about 1.6x the largest reading seen (about 4.7 standard deviations), not 3x;
-// a splitter that copies its nesting state per line in a compact form (one bit
-// per nesting level), about 570-720 in both modes, and any copy that keeps each
-// level's kind needs more; one that copies it per line as a byte slice, about
-// 5,460 in both modes; one that copies it per line as linked frames, about
-// 318,850 in both modes.
+// check holds with and without the race detector and is never skipped.
+// Measured excess in bytes per input byte at n = 16000 (48,000 input bytes):
+// this package's splitter, about 0 in both modes, because directly nested
+// subshells share one frame, and about 95 in both modes with one 56-byte frame
+// per open parenthesis. The splitter in internal/usagelog that this package
+// replaced: about 4 without -race and about -25 to +40 under -race, and about
+// -145 to +190 under -race (standard deviation about 60) in its noisiest
+// variant (a simpler separator pattern whose line handling stayed in the
+// regexp's backtracking regime under -race), so 300 was about 1.6x the largest
+// reading seen. A splitter that copies its nesting state per line in a compact
+// form (one bit per nesting level), about 570-720 in both modes, and any copy
+// that keeps each level's kind needs more; one that copies it per line as a
+// byte slice, about 5,460 in both modes; one that copies it per line as linked
+// frames, about 318,850 in both modes.
 //
 // It does not call t.Parallel: TotalAlloc is process-wide.
-func TestSplitShellDeepNestingAllocations(t *testing.T) {
+func TestSplitDeepNestingAllocations(t *testing.T) {
 	const (
 		n          = 16000
 		perByteMax = 300
@@ -395,17 +388,17 @@ func TestSplitShellDeepNestingAllocations(t *testing.T) {
 	}
 	measure := func(command string) int64 {
 		var before, after runtime.MemStats
-		splitTestSink = shellCommand{}
+		splitTestSink = Result{}
 		runtime.GC()
 		runtime.GC()
 		runtime.ReadMemStats(&before)
-		splitTestSink, _ = splitShell(command)
+		splitTestSink, _ = split(command)
 		runtime.ReadMemStats(&after)
 		return int64(after.TotalAlloc - before.TotalAlloc)
 	}
 	allocDeep := measure(deep)
 	allocControl := measure(control)
-	splitTestSink = shellCommand{}
+	splitTestSink = Result{}
 	excess := allocDeep - allocControl
 	if excess > perByteMax*int64(len(deep)) {
 		t.Errorf("alloc(deep) = %d bytes, alloc(control) = %d bytes: excess %.1f bytes per input byte (%d input bytes), want <= %d",
