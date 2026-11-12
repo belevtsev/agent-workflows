@@ -13,6 +13,9 @@ func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		var input taskflow.WorkerAcceptance
 		if err := readTaskInput(cmd, inputFile, &input); err != nil {
 			return err
@@ -26,7 +29,7 @@ func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	accept.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(accept, &directory)
 	accept.Flags().StringVar(&inputFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
 	summaryFlag(accept, &summary)
 	return accept

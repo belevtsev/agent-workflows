@@ -99,7 +99,7 @@ Common badges for Go projects:
 [![Go Version](https://img.shields.io/github/go-mod/go-version/{owner}/{repo})](https://go.dev/) [![License](https://img.shields.io/github/license/{owner}/{repo})](./LICENSE) [![Build Status](https://img.shields.io/github/actions/workflow/status/{owner}/{repo}/test.yml?branch=main)](https://github.com/{owner}/{repo}/actions) [![Coverage](https://img.shields.io/codecov/c/github/{owner}/{repo})](https://codecov.io/gh/{owner}/{repo}) [![Go Report Card](https://goreportcard.com/badge/github.com/{owner}/{repo})](https://goreportcard.com/report/github.com/{owner}/{repo}) [![Go Reference](https://pkg.go.dev/badge/github.com/{owner}/{repo}.svg)](https://pkg.go.dev/github.com/{owner}/{repo})
 ```
 
-For the full README guidance and application-specific sections, see [Project Docs](project-docs.md#readme).
+For the full README guidance and application-specific sections, see [Project Docs](project-docs.md#readmemd).
 
 ## Step 5: CONTRIBUTING & Changelog
 
@@ -174,4 +174,4 @@ go install github.com/{owner}/{repo}@latest
 docker pull {registry}/{owner}/{repo}:latest
 ```
 
-See [Project Docs](project-docs.md#delivery) for Dockerfile best practices and Homebrew tap setup.
+See [Project Docs](project-docs.md#distribution) for Dockerfile best practices and Homebrew tap setup.

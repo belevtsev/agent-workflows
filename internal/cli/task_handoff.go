@@ -13,6 +13,9 @@ func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		var input taskflow.WorkerResult
 		if err := readTaskInput(cmd, inputFile, &input); err != nil {
 			return err
@@ -26,7 +29,7 @@ func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	handoff.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(handoff, &directory)
 	handoff.Flags().StringVar(&inputFile, "input", "", "Worker result JSON file, or - for standard input")
 	summaryFlag(handoff, &summary)
 	return handoff

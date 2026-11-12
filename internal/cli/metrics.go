@@ -7,6 +7,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 	"github.com/belevtsev/agent-workflows/v3/internal/usagelog"
+	usagecomposition "github.com/belevtsev/agent-workflows/v3/internal/usagelog/composition"
 	"github.com/spf13/cobra"
 )
 
@@ -98,7 +99,7 @@ func importCommand(config Config) *cobra.Command {
 			if err := absolutePaths(config, &claudeTranscript, &codexSession, &codexRoot, &pricesPath, &historyPath); err != nil {
 				return err
 			}
-			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, CodexSessionsRoot: codexRoot, Composition: composition}
+			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, CodexSessionsRoot: codexRoot}
 			if appendHistory {
 				if historyPath == "" {
 					var err error
@@ -122,15 +123,25 @@ func importCommand(config Config) *cobra.Command {
 				}
 				options.Prices = &table
 			}
+			if composition {
+				report, err := usagecomposition.Import(command.Context(), options)
+				if err != nil {
+					if errors.Is(err, usagelog.ErrInvalidOptions) {
+						return usage(err)
+					}
+					return err
+				}
+				if summary {
+					return usagecomposition.WriteCompositionSummary(command.OutOrStdout(), report)
+				}
+				return writeJSON(command.OutOrStdout(), report)
+			}
 			report, err := usagelog.Import(command.Context(), options)
 			if err != nil {
 				if errors.Is(err, usagelog.ErrInvalidOptions) {
 					return usage(err)
 				}
 				return err
-			}
-			if summary {
-				return usagelog.WriteCompositionSummary(command.OutOrStdout(), report)
 			}
 			return writeJSON(command.OutOrStdout(), report)
 		},

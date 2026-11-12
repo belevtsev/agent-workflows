@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"errors"
-
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -18,8 +16,8 @@ func newTaskAuthorshipCommand(taskDeps) *cobra.Command {
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if directory == "" {
-				return usage(errors.New("authorship needs --task"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			report, err := taskflow.Authorship(cmd.Context(), directory)
 			if err != nil {
@@ -28,6 +26,6 @@ func newTaskAuthorshipCommand(taskDeps) *cobra.Command {
 			return writeJSON(cmd.OutOrStdout(), report)
 		},
 	}
-	authorship.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(authorship, &directory)
 	return authorship
 }

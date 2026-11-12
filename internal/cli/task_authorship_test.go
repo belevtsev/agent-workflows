@@ -132,8 +132,8 @@ func TestTaskAuthorshipCLIErrors(t *testing.T) {
 	t.Parallel()
 	f := l4cNew(t)
 	out, stderr, err := f.execute("task", "authorship")
-	if err == nil || cli.ExitCode(err) != 2 || !strings.Contains(err.Error()+stderr, "authorship needs --task") {
-		t.Errorf("cw task authorship without --task: %v (exit %d), stderr %q; want usage error %q, exit 2 (R20)", err, cli.ExitCode(err), stderr, "authorship needs --task")
+	if err == nil || cli.ExitCode(err) != 2 || !strings.Contains(err.Error()+stderr, "--task DIR is required") {
+		t.Errorf("cw task authorship without --task: %v (exit %d), stderr %q; want usage error %q, exit 2 (R20)", err, cli.ExitCode(err), stderr, "--task DIR is required")
 	}
 	if out != "" {
 		t.Errorf("usage error printed %q on stdout (R20)", out)

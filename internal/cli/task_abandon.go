@@ -22,8 +22,8 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 			if err := deps.guard(); err != nil {
 				return err
 			}
-			if directory == "" {
-				return usage(errors.New("--task DIR is required"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			if strings.TrimSpace(reason) == "" {
 				return usage(errors.New("--reason TEXT is required"))
@@ -38,7 +38,7 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 			return writeJSON(cmd.OutOrStdout(), record)
 		},
 	}
-	abandon.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(abandon, &directory)
 	abandon.Flags().StringVar(&reason, "reason", "", "Why the task was given up")
 	summaryFlag(abandon, &summary)
 	return abandon
