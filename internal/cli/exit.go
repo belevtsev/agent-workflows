@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
-	"github.com/belevtsev/agent-workflows/v3/internal/graphify"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
@@ -95,14 +94,4 @@ func consultExit(outcome int) int {
 	default:
 		return ExitFailure
 	}
-}
-
-// graphifyExit is the exit status of a graphify command that reported itself
-// unavailable with err: Graphify's own refusals (no runtime, no current graph,
-// a limit or an unsafe path) are refused; any other error is a failure.
-func graphifyExit(err error) int {
-	if _, ok := errors.AsType[*graphify.Error](err); ok {
-		return ExitRefused
-	}
-	return ExitFailure
 }

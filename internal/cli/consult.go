@@ -125,7 +125,9 @@ func addGraphifyCommands(root *cobra.Command, config Config) {
 		if err := writeJSON(cmd.OutOrStdout(), graphifyFailure{"unavailable", code, err.Error(), graphify.Fallback}); err != nil {
 			return err
 		}
-		return reportedExit(graphifyExit(err))
+		// Every unavailable report is a refusal, whatever its code; a failure
+		// to write the report above stays a failure.
+		return reportedExit(ExitRefused)
 	}
 	define := func(use, short string, timeout float64, positional cobra.PositionalArgs, execute func(*cobra.Command, []string, graphify.Options) error) *cobra.Command {
 		options := &graphify.Options{}

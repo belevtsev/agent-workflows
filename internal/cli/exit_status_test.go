@@ -2,6 +2,7 @@ package cli
 
 import (
 	json "encoding/json/v2"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -86,5 +87,34 @@ func TestPublishStatusesExitOnTheSharedTable(t *testing.T) {
 		if got := (publish.Report{Status: status}).ExitCode(); got != code {
 			t.Errorf("publish status %q exits %d, want %d", status, got, code)
 		}
+	}
+}
+
+// Every Graphify unavailable report exits 4, whatever its code, with the
+// report on stdout and no error line: a Graphify refusal (code repository)
+// and an error of cw's own (code filesystem, here a home directory that
+// cannot be resolved for "~/repo") alike.
+func TestGraphifyUnavailableReportExitsRefusedForEveryCode(t *testing.T) {
+	for _, test := range []struct {
+		name, repo, code string
+		home             func() (string, error)
+	}{
+		{"graphify_refusal", filepath.Join(t.TempDir(), "missing"), "repository", nil},
+		{"filesystem_error", "~/repo", "filesystem", func() (string, error) { return "", errors.New("home directory unavailable") }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config, out := testConfig(t)
+			if test.home != nil {
+				config.HomeDir = test.home
+			}
+			err := Execute(t.Context(), []string{"graphify", "build", "--repo", test.repo}, config)
+			if code := ExitCode(err); code != 4 || err.Error() != "" {
+				t.Fatalf("graphify build --repo %s: exit %d, error %v; want 4 (refused) and no error line", test.repo, code, err)
+			}
+			var report graphifyFailure
+			if decodeErr := json.Unmarshal(out.Bytes(), &report); decodeErr != nil || report.Status != "unavailable" || report.Code != test.code {
+				t.Fatalf("report = %+v (%v), want status unavailable with code %s: %s", report, decodeErr, test.code, out)
+			}
+		})
 	}
 }

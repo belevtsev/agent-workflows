@@ -161,7 +161,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw graphify` `unavailable` with a Graphify code. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass; `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -173,8 +173,7 @@ line, or with `--summary` the one-line view, and writes the record to the
 `--output` path. The task commands other
 than `verify` and `run` still exit 1 when the record's state refuses them, for
 example an abandoned task or a `cw task add-checks` refusal. The hooks
-(`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)); `cw graphify`
-prints its `unavailable` report on 4 and on 1 (code `filesystem`).
+(`cw hook ...`) answer in JSON and exit 0 ([hooks](hooks.md)).
 
 ## Model policy
 

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
-	"github.com/belevtsev/agent-workflows/v3/internal/graphify"
 	"github.com/belevtsev/agent-workflows/v3/internal/publish"
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
@@ -56,10 +55,10 @@ func TestTaskVerifyAndRunReturnTheNegativeResultSentinels(t *testing.T) {
 	}
 }
 
-// consult, graphify and publish report their own result; their outcomes land
-// on the table: an incomplete consultation is a negative result, Graphify's
-// own refusal is refused, any other Graphify error is a failure, and each
-// publish status takes the row of the same name.
+// consult and publish report their own result; their outcomes land on the
+// table: an incomplete consultation is a negative result, and each publish
+// status takes the row of the same name. (Graphify's unavailable report is
+// always refused; TestGraphifyUnavailableReportExitsRefusedForEveryCode.)
 func TestReportingCommandOutcomesMapToTableRows(t *testing.T) {
 	for status, want := range map[string]int{
 		publish.StatusPublished: ExitOK, publish.StatusFailed: ExitFailure, publish.StatusDenied: ExitDenied,
@@ -74,12 +73,6 @@ func TestReportingCommandOutcomesMapToTableRows(t *testing.T) {
 		if got := consultExit(outcome); got != want {
 			t.Errorf("consult outcome %d exits %d, want %d", outcome, got, want)
 		}
-	}
-	if got := graphifyExit(&graphify.Error{Code: "runtime_missing", Detail: "install the runtime"}); got != ExitRefused {
-		t.Errorf("graphify refusal exits %d, want %d", got, ExitRefused)
-	}
-	if got := graphifyExit(fmt.Errorf("cache: %w", errors.New("permission denied"))); got != ExitFailure {
-		t.Errorf("graphify filesystem error exits %d, want %d", got, ExitFailure)
 	}
 }
 

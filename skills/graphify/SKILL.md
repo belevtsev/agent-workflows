@@ -29,8 +29,8 @@ cw graphify query --repo /path/to/repo 'Which packages and symbols relate to the
 ```
 
 Both print one JSON object. When no current graph is available they report
-`status: unavailable` with a `code` and exit `4` (`1` with code `filesystem`); use
-the normal source discovery it names. Build the
+`status: unavailable` with a `code` and exit `4`; use the normal source discovery it
+names. Build the
 snapshot for the intended worktree, then ask a focused structural question.
 Prefer a narrow relationship question after locating candidate symbols. Broad
 prose can produce noisy, truncated context. Treat omitted relationships as
