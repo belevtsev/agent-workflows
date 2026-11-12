@@ -1,7 +1,6 @@
 package taskflow_test
 
-// Contract currency (interface contract L4, third version): R18, with I8
-// and R3d.
+// Contract currency (interface contract L4, third version): R18, with I8.
 
 import (
 	"fmt"
@@ -9,40 +8,34 @@ import (
 )
 
 // TestContractSupersession fails when, after the contract package changes,
-// verify's staleness report of the earlier round A does not follow R18: in a
-// record with test rules only a later covering round B with an accepted and
-// no rejected acceptance supersedes A (an accepted round later closed unused
-// still does); in a legacy record any later covering round does (R18, R3d,
-// I8).
+// verify's staleness report of the earlier round A does not follow R18: only
+// a later covering round B with an accepted and no rejected acceptance
+// supersedes A (an accepted round later closed unused still does) (R18, I8).
 func TestContractSupersession(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name       string
-		legacy     bool
 		aOwned     []string
 		bOwned     []string
 		judge      []string // acceptances of B, in order; nil records none
 		bFirst     bool     // B is assigned before A
 		superseded bool
 	}{
-		{"accepted covering round", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, false, true},
-		{"covering by directory", false, []string{"p/a_test.go", "p/b_test.go"}, []string{"p"}, []string{"accepted"}, false, true},
-		{"accepted then unused", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted", "unused"}, false, true},
-		{"never judged", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, nil, false, false},
-		{"closed unused, never accepted", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"unused"}, false, false},
-		{"accepted then rejected", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted", "rejected"}, false, false},
-		{"rejected then accepted", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"rejected", "accepted"}, false, false},
-		{"rejected", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"rejected"}, false, false},
-		{"partly covering", false, []string{"p/a_test.go", "p/b_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, false, false},
-		{"earlier round does not supersede", false, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, true, false},
-		{"legacy: never judged", true, []string{"p/a_test.go"}, []string{"p/a_test.go"}, nil, false, true},
-		{"legacy: rejected", true, []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"rejected"}, false, true},
-		{"legacy: partly covering", true, []string{"p/a_test.go", "p/b_test.go"}, []string{"p/a_test.go"}, nil, false, false},
+		{"accepted covering round", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, false, true},
+		{"covering by directory", []string{"p/a_test.go", "p/b_test.go"}, []string{"p"}, []string{"accepted"}, false, true},
+		{"accepted then unused", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted", "unused"}, false, true},
+		{"never judged", []string{"p/a_test.go"}, []string{"p/a_test.go"}, nil, false, false},
+		{"closed unused, never accepted", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"unused"}, false, false},
+		{"accepted then rejected", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted", "rejected"}, false, false},
+		{"rejected then accepted", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"rejected", "accepted"}, false, false},
+		{"rejected", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"rejected"}, false, false},
+		{"partly covering", []string{"p/a_test.go", "p/b_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, false, false},
+		{"earlier round does not supersede", []string{"p/a_test.go"}, []string{"p/a_test.go"}, []string{"accepted"}, true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			f := l4New(t, l4Opts{legacy: c.legacy})
+			f := l4New(t, l4Opts{})
 			round := func(id string, owned []string) {
 				files := map[string]string{}
 				for _, p := range owned {

@@ -1,0 +1,14 @@
+{
+  "session_id": "01a1cf2a-80a6-7222-bf67-94654c1b8bf5",
+  "turn_id": "01a1cf2a-81d9-7e83-9ee9-695c44c0d5ff",
+  "transcript_path": "<codex-home>/sessions/2026/11/12/rollout-2026-11-12T11-50-31-01a1cf2a-80a6-7222-bf67-94654c1b8bf5.jsonl",
+  "cwd": "<repo>",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-6.1-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git commit --allow-empty -m ask-probe"
+  },
+  "tool_use_id": "exec-addf1bd0-b804-4110-8878-e9a1af07f5b7"
+}

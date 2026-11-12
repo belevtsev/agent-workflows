@@ -8,8 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking
 
+- `cw` refuses task records from cw v2.0.66 to v2.0.96 (no `packs` or `test_rules`), and an open one gates until moved:
+  finish open v2 tasks before upgrading, or move them out of the task store ([which records gate](docs/hooks.md#which-records-gate)).
 - Exit statuses follow one table: an incomplete `cw task verify`, a failed `cw task run` check and a partial `cw consult` exit 5,
   Graphify unavailable exits 4, `cw publish` unknown and mismatch exit 6 and 7: update scripts that test them ([exit statuses](docs/operations.md#exit-statuses)).
+- Task records move to version 4, which `cw` v3.0.0-rc.1 cannot read (its hook skips such a task): run the same `cw` on every host and hook sharing a task store;
+  a `cw task` command on a record from a newer `cw`, or without `packs`, `test_rules` or `baseline_manifest`, exits 4 ([format](docs/development.md#task-record-format)).
 
 ### Changed
 
@@ -28,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directory, which moved the task store, and the gate with it, on every `cd`; set an absolute path ([paths](docs/operations.md#paths)).
 - The commit gate no longer denies `echo`, `printf`, `cat`, `rg`, `grep` or `jq` commands that only mention git in quotes, heredoc input
   or comments, such as `echo "todo; git commit later"`, and follows a quoted `cd "/a b"` ([recognised commands](docs/hooks.md#recognised-commands)).
+- Under Codex the commit hook denies where Claude Code asks, because Codex ran an asked-about command without asking; the docs
+  now say Codex runs the plugin hooks once you trust them in `/hooks`, and how to set options there ([Codex](docs/hooks.md#codex)).
 - `cw doctor --live` probes and Git inspection kill their process group until it is empty, as checks already did, so a child forked
   as the kill lands cannot outlive them (one kill can miss it on macOS) ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 

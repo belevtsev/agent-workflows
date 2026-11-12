@@ -103,10 +103,7 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 		if record.Plan.Kind != "substantial" {
 			return errors.New("checks can be added only to a substantial task")
 		}
-		if record.BaselineManifest == nil {
-			return errors.New("checks can be added only to a task with a baseline manifest")
-		}
-		if record.Packs != nil && !slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool {
+		if !slices.ContainsFunc(record.Packs.Applied, func(pack PackBinding) bool {
 			return pack.EvidenceRule == langpack.GoPackageTestV1 || pack.EvidenceRule == langpack.GoPackageTestV2
 		}) {
 			return errNoGoRule
@@ -129,12 +126,9 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 		if err != nil {
 			return err
 		}
-		source, _, err := evidenceSource(root, *record, snapshot, files)
+		source, err := evidenceSource(root, *record, snapshot, files)
 		if err != nil {
 			return err
-		}
-		if record.Packs == nil && !(langpack.GoTests{}).Applies(source) {
-			return errNoGoRule
 		}
 		if snapshot.Head == "" {
 			return errors.New("adding checks needs a Git repository with a committed HEAD")

@@ -12,7 +12,9 @@ I/O. The runtime packages are `internal/taskflow`, `internal/consult`,
 `internal/usagelog`; `internal/codexinstall` implements `cw install --host codex`
 and `cw uninstall --host codex`. `internal/gate` decides the commit gate's
 answer; `cw hook pre-publish` only reads the hook JSON and prints that answer,
-so gate rules are unit-tested with a fake git, clock and task store.
+so gate rules are unit-tested with a fake git, clock and task store. Under
+Codex, which cannot ask, the hook turns an ask into a deny unless the gate sets
+`ProceedWithoutAsk` on it ([Codex](hooks.md#codex)).
 `internal/shellwords` splits a shell command into simple commands and words
 for both the gate and `internal/usagelog`; extend it there rather than
 splitting commands again.
@@ -140,13 +142,12 @@ hosted providers. Real-project read-only diagnostics, synthetic acceptance pilot
 and productivity comparisons are separate evidence; preserve that distinction in
 reports.
 
-Task records use version 3 for the adviser binding, typed worker assignments,
-results and coordinator acceptance. An older task record is refused with guidance
-to start a new task;
-never silently upgrade an old task or permit a version change inside its chain.
-Tests must cover wrong task/brief/agent bindings, ownership overlap and unsafe
-paths, false check claims, incomplete or cancelled work, finding dispositions,
-independent review identity, and stale source/check/worker evidence.
+Task records hold the adviser binding, typed worker assignments, results and
+coordinator acceptance; their versions follow
+[Task record format](#task-record-format). Tests must cover wrong
+task/brief/agent bindings, ownership overlap and unsafe paths, false check
+claims, incomplete or cancelled work, finding dispositions, independent review
+identity, and stale source/check/worker evidence.
 Substantial-change gates apply to new tasks; small and unchanged read-only tasks
 keep their existing path. Use project-neutral fixtures, including a non-Go
 project, for API and CLI coverage. Worker records remain separate from adviser
@@ -161,6 +162,41 @@ limits explicitly. Exercise red-test handoffs, ownership conflicts, missing
 contracts/seams, changed interfaces, contaminated feedback and prohibited assertion
 weakening. These are synthetic workflow checks, not measured project-quality
 improvements, and they must not modify personal host configuration.
+
+### Task record format
+
+A task record's `version` says which `cw` can read it. `cw` writes
+`taskflow.Version` (4) and reads `taskflow.MinVersion` (3) to `Version`. It
+loads strictly: a member it does not know fails the decode, and a value that a
+validated member did not allow before, such as a new `test_rules` set, check
+run `status` or context phase, fails validation with "invalid stored …".
+
+- Once a release has written version N, a new member or a new value of a
+  validated member (any change that a `cw` reading version N could not load,
+  by decode or by validation) makes the next release write N+1. The pull
+  request that adds the first such change bumps `Version` to N+1; later ones
+  before the next release keep N+1. The bump goes under Breaking in the
+  CHANGELOG and gets upgrade steps in the release notes
+  ([Releases](#releases)). Raise `MinVersion` only to drop a version on purpose.
+- Every new revision is written with `Version`, so the first revision this `cw`
+  appends to a record an older `cw` started raises its version. From then on
+  that older `cw` cannot read the record, and its hook skips the task instead of
+  gating it: run the same `cw` on every host and hook that shares a task store.
+- A revision above `Version` is refused with `taskflow.ErrNewerRecord`, which
+  says to upgrade `cw`. A record that lacks `packs`, `test_rules` or
+  `baseline_manifest` is refused with `taskflow.ErrLegacyRecord`, which says to
+  start a new task. A `cw task` command on either record exits 4;
+  `cw publish --task` reports `task-unreadable` and exits 1. A version below
+  `MinVersion`, or a revision with a lower version than the one before it, does
+  not load either, and exits 1.
+- The version each release writes (release step 1 appends a line):
+  - v3.0.0-rc.1: 3.
+  - v3.0.0-rc.2 (planned): 4.
+
+  Record changes merged before rc.2 is tagged stay on 4; the first one after
+  it, such as R1's `profile`, bumps `Version` to 5.
+  `internal/taskflow/testdata/rc1-small-task` holds a record rc.1 wrote, which
+  must keep loading and verifying.
 
 ### Graphify
 
@@ -266,8 +302,9 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
    strings to `X`, sets the tag in the install commands and release links of
    `README.md`, [Get cw](operations.md#get-cw), `global/AGENTS.md`, the
    `task-orchestration` skill and `hooks/hooks.json`
-   (`TestInstallCommandsNameTheRelease` fails when one names another tag), and
-   lists upgrade steps for any task record version change.
+   (`TestInstallCommandsNameTheRelease` fails when one names another tag),
+   lists upgrade steps for any task record version change, and appends the
+   record version the release writes to [Task record format](#task-record-format).
 2. After it merges, confirm CI is green on that commit.
 3. Tag and push: `git tag vX && git push origin vX`. `release.yml` runs the
    tests and goreleaser.

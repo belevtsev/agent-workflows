@@ -28,16 +28,18 @@ refused with a pointer to the plugin.
 ### Codex
 
 Use either the Codex plugin or `cw install --host codex`, not both, so each skill
-is listed once. The plugin installs the skills only, without the `AGENTS.md`
-block:
+is listed once. The plugin installs the skills and the two
+[hooks](hooks.md#codex), which load the working conventions at session start and
+gate `git commit` and `git push`, but writes no `AGENTS.md` block:
 
 ```sh
 codex plugin marketplace add belevtsev/agent-workflows
 ```
 
 Then run `codex`, open `/plugins`, and install `agent-workflows` (and
-`cc-skills-golang` for the Go pack); start a new session afterwards. For the
-skills plus the shared instruction block, use
+`cc-skills-golang` for the Go pack); open `/hooks` and trust the two
+agent-workflows hooks, which Codex otherwise does not run; start a new session
+afterwards. For the skills plus the shared instruction block without hooks, use
 [`cw install --host codex`](#codex-install-and-uninstall) instead. The vendored
 Docker skills in `third_party/docker-skills` are in neither plugin; only
 `cw install --host codex` links them.
@@ -77,6 +79,14 @@ v2 installer. The old path without `/v3` gets no updates: its `@main` and
 
 Then check the build with `cw version`, which prints JSON with `version`,
 `revision`, `built_at`, `os` and `arch`. Bare `cw` prints help.
+
+Upgrade every `cw` that shares a task store at once, including the one the
+commit hook runs. The first revision a newer `cw` writes to a task can raise
+the record's version; an older `cw` then cannot read the record, and its hook
+skips the task instead of gating it. `cw` v3.0.0-rc.1 cannot read the version 4
+records this release writes and calls them unsupported; in later releases a
+`cw task` command on a record from a newer `cw` exits 4 and says to upgrade
+`cw` ([task record format](development.md#task-record-format)).
 
 ## Codex install and uninstall
 
@@ -153,10 +163,14 @@ global flag; commands that would write without a preview reject it with exit
 status 2: `cw install`, `cw uninstall`, `cw keys set|unset`, `cw graphify build`,
 the `cw task` state commands and `cw metrics import --append`.
 
-v2.x used the same state and configuration directories, and v3 reads what v2.x
-left in them: the task records in `<state>/workflow-tasks`, the saved adviser
-keys (`credentials.json`) and `preferences.json`. Keep those. Anything else v2.x
-left behind can be removed by hand.
+v2.x used the same state and configuration directories. v3 reads the saved
+adviser keys (`credentials.json`) and `preferences.json` that v2.x left; keep
+those. It does not read the task records in `<state>/workflow-tasks` that
+v2.0.66 to v2.0.96 wrote, yet an open substantial one still gates commits and
+pushes in its repository until its directory is moved out of that store
+([which records gate](hooks.md#which-records-gate)). Before upgrading, finish
+each open v2 task with `cw task verify`, or move its directory out of the
+store. Anything else v2.x left behind can be removed by hand.
 
 ## Exit statuses
 
@@ -169,7 +183,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -379,10 +393,8 @@ Checks can only be added this way, never removed, replaced or narrowed.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 
-- the task is `small`, its record has no baseline manifest, or its evidence
-  rules do not include the Go package-test rule (the task started after
-  `cw pack remove go`, or a record without a pack set has no `go.mod` at the
-  top of the selected path);
+- the task is `small`, or its evidence rules do not include the Go
+  package-test rule (the task started after `cw pack remove go`);
 - an added check ID is already a plan or added check, the plan and added checks
   would exceed 256, or an argv is not a direct `go test` that the Go rule
   credits (flags outside the allowlist, such as `-run`, and wrappers such as

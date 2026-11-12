@@ -334,11 +334,10 @@ type judgedEntry struct {
 
 // judgeTrace judges the mapped tests of every current map-bearing assignment
 // with a completed result, and the coverage closed ones lost, from the record,
-// the task directory and the current source. In a record with test rules a
-// PASS counts only when the run proves it (R7, R8).
+// the task directory and the current source. A PASS counts only when the run
+// proves it (R7, R8).
 func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgement {
 	snapshot := view.snapshot
-	rules := record.TestRules != ""
 	judgement := traceJudgement{report: TraceReport{TaskID: record.ID, Fingerprint: snapshot.Fingerprint, Criteria: []TraceCriterion{}, Problems: []string{}}}
 	loaded := map[string]*storedResults{}
 	for i := range record.Checks {
@@ -443,14 +442,14 @@ func judgeTrace(taskRoot *os.Root, record Record, view *sourceView) traceJudgeme
 			}
 		}
 		for _, current := range currentRuns {
-			if found := entry(current.results, pkg, test.Name); current.passed && current.credited && found.Pass > 0 && (!rules || proves(current.run, found, test)) {
+			if found := entry(current.results, pkg, test.Name); current.passed && current.credited && found.Pass > 0 && proves(current.run, found, test) {
 				judged.Status = "passed"
 				return judged
 			}
 		}
 		for _, current := range currentRuns {
 			found := entry(current.results, pkg, test.Name)
-			if !rules || !current.passed || !current.credited || found.Pass < 1 {
+			if !current.passed || !current.credited || found.Pass < 1 {
 				continue
 			}
 			judged.Status = "pass_unproven"

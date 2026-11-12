@@ -105,6 +105,7 @@ func TestPublishE2E(t *testing.T) {
 		{"R6c_capture_failed", pubTestCaptureFailed},
 		{"R6a_R6b_task_not_verified_or_abandoned", pubTestGateNotVerified},
 		{"R7a_R7b_R7d_other_open_records", pubTestOpenRecords},
+		{"R7_open_record_from_cw_v2_0_96", pubTestOpenLegacyRecord},
 		{"R7c_hook_store_and_task_store", pubTestOpenRecordStores},
 		{"R7e_unreadable_store", pubTestStoreUnreadable},
 		{"R7_R10c_linked_worktree", pubTestLinkedWorktree},
@@ -2098,6 +2099,79 @@ func pubTestOpenRecords(t *testing.T, tl *pubTools) {
 		t.Errorf("open record %+v, want task %s title %q directory %s and a problem", o, otherID, "Other open work", otherDir)
 	}
 	e.cwOK("task", "abandon", "--task", otherDir, "--reason", "not needed")
+	pubWant(t, e.publish(), 0, "published", "")
+}
+
+// pubToV2096Shape rewrites every revision file of the task at directory into
+// the shape cw v2.0.96 writes (no packs, no test_rules, no verification
+// source_sha256), chained again by SHA-256, and requires cw task show to
+// refuse it as a record this cw cannot read.
+func (e *pubEnv) pubToV2096Shape(directory string) {
+	e.t.Helper()
+	names, err := filepath.Glob(filepath.Join(directory, "record-*.json"))
+	if err != nil || len(names) == 0 {
+		e.t.Fatalf("no revision files in %s: %v", directory, err)
+	}
+	sort.Strings(names)
+	previous := ""
+	for _, name := range names {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			e.t.Fatal(err)
+		}
+		members := map[string]json.RawMessage{}
+		if err := json.Unmarshal(data, &members); err != nil {
+			e.t.Fatal(err)
+		}
+		delete(members, "packs")
+		delete(members, "test_rules")
+		if raw, ok := members["verification"]; ok {
+			verification := map[string]json.RawMessage{}
+			if err := json.Unmarshal(raw, &verification); err != nil {
+				e.t.Fatal(err)
+			}
+			delete(verification, "source_sha256")
+			if members["verification"], err = json.Marshal(verification); err != nil {
+				e.t.Fatal(err)
+			}
+		}
+		if members["previous_sha256"], err = json.Marshal(previous); err != nil {
+			e.t.Fatal(err)
+		}
+		if data, err = json.Marshal(members); err != nil {
+			e.t.Fatal(err)
+		}
+		pubWriteFile(e.t, name, data, 0o600)
+		sum := sha256.Sum256(data)
+		previous = hex.EncodeToString(sum[:])
+	}
+	if r := e.cw(nil, "task", "show", "--task", directory); r.code == 0 || !strings.Contains(r.stderr, "start a new task") {
+		e.t.Fatalf("cw task show of the v2.0.96-shaped record: exit %d, stderr %q; want the legacy-record refusal", r.code, r.stderr)
+	}
+}
+
+// pubTestOpenLegacyRecord: R7 for a record cw v2.0.66 to v2.0.96 wrote. This
+// cw refuses to load it, yet an open substantial one still denies the
+// publication (exit 3, open-record), names its directory and the way out,
+// and moving it out of the store lets the publication through.
+func pubTestOpenLegacyRecord(t *testing.T, tl *pubTools) {
+	e := pubNewEnv(t, tl)
+	e.startTask(pubPlanSmall)
+	e.standardChange()
+	e.verifyTask()
+	otherDir, otherID := e.startOther(pubPlanOther, e.repo, "")
+	e.pubToV2096Shape(otherDir)
+	rep := e.refuse("open record from cw v2.0.96", e.flags(), 3, "denied", "open-record")
+	if len(rep.OpenRecords) != 1 {
+		t.Fatalf("open_records %+v, want the one legacy record", rep.OpenRecords)
+	}
+	if o := rep.OpenRecords[0]; o.TaskID != otherID || o.Title != "Other open work" || !pubSamePath(o.Directory, otherDir) ||
+		!strings.Contains(o.Problem, "out of the task store, then start a new task with `cw task start`") {
+		t.Errorf("open record %+v, want task %s title %q directory %s and the move-it-out problem", o, otherID, "Other open work", otherDir)
+	}
+	if err := os.Rename(otherDir, filepath.Join(e.root, "moved v2 task")); err != nil {
+		t.Fatal(err)
+	}
 	pubWant(t, e.publish(), 0, "published", "")
 }
 

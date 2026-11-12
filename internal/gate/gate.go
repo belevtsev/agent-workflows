@@ -80,6 +80,12 @@ type Decision struct {
 	// Reason tells the agent and the user why the command is asked about or
 	// denied, and what to do; it is empty for Allow.
 	Reason string
+	// ProceedWithoutAsk marks an Ask that a host unable to ask, such as
+	// Codex, lets run instead of denying, because a deny would block the
+	// user on something they cannot fix there, such as a task record that
+	// cannot be read. No ask sets it yet; one that joins asks sets it only
+	// when every joined ask does.
+	ProceedWithoutAsk bool
 }
 
 // Decide returns the decision for in. A deny for any publication in the
@@ -168,6 +174,11 @@ func denyReason(gating []taskflow.OpenRecord) string {
 	reason.WriteString("agent-workflows: git commit and push stay blocked while a task for this repository is open: each must pass cw task verify on the source being published, or be closed.")
 	for _, open := range gating {
 		record := open.Record
+		if open.Legacy {
+			// Verify and abandon cannot load it; the problem names the way out.
+			fmt.Fprintf(&reason, " Task %s (%s): %s.", record.ID, record.Plan.Title, open.Problem)
+			continue
+		}
 		fmt.Fprintf(&reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`, or close it with `cw task abandon --task %s --reason TEXT` if it is finished or was given up.", record.ID, record.Plan.Title, open.Problem, record.Directory, record.Directory)
 	}
 	reason.WriteString(" To turn the gate off, set enforce_verify=false in the plugin config.")

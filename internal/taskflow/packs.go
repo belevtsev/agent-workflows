@@ -33,19 +33,18 @@ type PackBinding struct {
 	EvidenceRule string `json:"evidence_rule,omitempty"`
 }
 
-// StartWithPacks is Start that also records the pack set: selection is
-// SelectionDefault or SelectionExplicit, and Applied holds the selected
-// manifests detected among the baseline files at the top of the selected
-// path. Verify then applies the rules those packs name instead of the legacy
-// rules.
+// StartWithPacks starts a task and records its pack set and test rules:
+// selection is SelectionDefault or SelectionExplicit, and Applied holds the
+// selected manifests detected among the baseline files at the top of the
+// selected path. Verify then applies the rules those packs name.
 func StartWithPacks(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, selection string, selected []langpack.Manifest) (Record, error) {
 	if selection != SelectionDefault && selection != SelectionExplicit {
 		return Record{}, errors.New("pack selection must be default or explicit")
 	}
-	return start(ctx, repo, store, plan, advisers, &packChoice{selection: selection, selected: selected})
+	return start(ctx, repo, store, plan, advisers, packChoice{selection: selection, selected: selected})
 }
 
-// packChoice is the selection StartWithPacks records; Start passes none.
+// packChoice is the selection StartWithPacks records.
 type packChoice struct {
 	selection string
 	selected  []langpack.Manifest
@@ -53,11 +52,7 @@ type packChoice struct {
 
 // bind returns the pack set of a task whose baseline is snapshot and files:
 // the chosen packs detected among the files at the top of the selected path.
-// A nil choice binds no pack set.
-func (choice *packChoice) bind(snapshot projectctx.Snapshot, files []projectctx.FileState) (*PackSet, error) {
-	if choice == nil {
-		return nil, nil
-	}
+func (choice packChoice) bind(snapshot projectctx.Snapshot, files []projectctx.FileState) (*PackSet, error) {
 	relative, err := selectedRelative(snapshot)
 	if err != nil {
 		return nil, err
