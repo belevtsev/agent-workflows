@@ -150,13 +150,13 @@ profiles come in a later release candidate.
 5. Checks run through `cw`, so the record holds the real result:
 
    ```sh
-   cw task run --task <task-dir> --check unit --summary
+   cw task run --task <task-id> --check unit --summary
    ```
 
 6. An independent reviewer reviews the code, then the agent runs the gate:
 
    ```sh
-   cw task verify --task <task-dir> --summary
+   cw task verify --task <task-id> --summary
    ```
 
 7. You approve the commit. It goes through once verify passes on the current
@@ -219,13 +219,13 @@ and counts the rest. This lists a task's problems, such as a missing review or
 an unmet requirement:
 
 ```sh
-cw task verify --task <task-dir> --summary
+cw task verify --task <task-id> --summary
 ```
 
 **Give a task up** so it stops blocking:
 
 ```sh
-cw task abandon --task <task-dir> --reason "replaced by a new task"
+cw task abandon --task <task-id> --reason "replaced by a new task"
 ```
 
 **Let git run the gate too.** `cw gate install` writes git's pre-commit,

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking
 
+- `cw task` summaries and the commit gate's deny reason name the task by `task_id` instead of its directory, and a log path is relative
+  to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - Pass `--task DIR` to every `cw task` command that takes it: the working directory is no longer used as the task,
   and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task

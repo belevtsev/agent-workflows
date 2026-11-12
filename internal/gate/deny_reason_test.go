@@ -68,10 +68,10 @@ func TestDenyReasonNamesAtMostThreeTasks(t *testing.T) {
 					}
 					continue
 				}
-				if n := strings.Count(reason, directory); n != 1 {
-					t.Errorf("deny reason names %s %d times, want once:\n%s", directory, n, reason)
+				if strings.Contains(reason, directory) {
+					t.Errorf("deny reason names the task directory %s, want only its ID:\n%s", directory, reason)
 				}
-				verify := fmt.Sprintf("Task %s (%s): %s; run `cw task verify --task %s --summary`.", record.Record.ID, record.Record.Plan.Title, record.Problem, directory)
+				verify := fmt.Sprintf("Task %s (%s): %s; run `cw task verify --task %s`.", record.Record.ID, record.Record.Plan.Title, record.Problem, record.Record.ID)
 				index := strings.Index(reason, verify)
 				if index <= at {
 					t.Errorf("deny reason does not name record %d of %d as %q after record %d:\n%s", i+1, count, verify, i, reason)
@@ -79,7 +79,7 @@ func TestDenyReasonNamesAtMostThreeTasks(t *testing.T) {
 				at = index
 			}
 			// Oracle: abandoning needs the user's confirmation, said once.
-			const abandon = " For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation."
+			const abandon = " For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-id> --reason TEXT` needs their confirmation."
 			if n := strings.Count(reason, abandon); n != 1 {
 				t.Errorf("deny reason gives the abandon sentence %d times, want once:\n%s", n, reason)
 			}

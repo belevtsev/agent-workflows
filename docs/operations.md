@@ -614,7 +614,7 @@ Checks can only be added this way, never removed, replaced or narrowed.
 3. Add the checks:
 
    ```sh
-   cw task add-checks --task <task-dir> --input amend.json --summary
+   cw task add-checks --task <task-id> --input amend.json --summary
    ```
 
    with `amend.json` naming the merge commit (its ID or `HEAD`), the base ref, a
@@ -630,10 +630,10 @@ Checks can only be added this way, never removed, replaced or narrowed.
    ```
 
    `timeout_seconds` may be omitted (300). `--input -` reads standard input.
-   `--summary` prints the task, the amendment index, the added check IDs and
+   `--summary` prints the task ID, the amendment index, the added check IDs and
    the resolved merge and base commits.
-4. Run each added check: `cw task run --task <task-dir> --check widened`.
-5. Run `cw task verify --task <task-dir> --summary`.
+4. Run each added check: `cw task run --task <task-id> --check widened`.
+5. Run `cw task verify --task <task-id> --summary`.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 

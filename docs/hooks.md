@@ -204,10 +204,10 @@ A record governs the command when all of the following hold:
 Starting a new record does not hide an older one: every governing record gates
 until `cw task verify` passes on the source being published, and the hook
 denies the command with a reason that names up to three gating records, why
-each gates, and both ways out: `cw task verify --task <dir> --summary`, or, for
-a task that is finished or was given up, `cw task abandon --task <dir> --reason TEXT`,
+each gates, and both ways out: `cw task verify --task <task-id>`, or, for
+a task that is finished or was given up, `cw task abandon --task <task-id> --reason TEXT`,
 which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
-The reason names each directory once, in its verify command. Past three, it
+The reason names each task by its ID, which `--task` takes, not by its directory. Past three, it
 gives the number of other gating records and the task store they are in.
 An abandoned record accepts no further revisions and never gates.
 

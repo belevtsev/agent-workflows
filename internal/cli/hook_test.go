@@ -198,14 +198,16 @@ func hkExpectDeny(t *testing.T, got string, gating ...taskflow.Record) string {
 		for _, want := range []string{
 			record.ID,
 			record.Plan.Title,
-			fmt.Sprintf("cw task verify --task %s --summary", record.Directory),
+			fmt.Sprintf("cw task verify --task %s`", record.ID),
 		} {
 			if !strings.Contains(reason, want) {
 				t.Fatalf("deny reason %q does not contain %q", reason, want)
 			}
 		}
-		if n := strings.Count(reason, record.Directory); n != 1 {
-			t.Fatalf("deny reason %q names %s %d times, want once", reason, record.Directory, n)
+		// Oracle: the reason names the task by its ID, which --task takes,
+		// never by its directory.
+		if strings.Contains(reason, record.Directory) {
+			t.Fatalf("deny reason %q names the task directory %s", reason, record.Directory)
 		}
 	}
 	return reason
@@ -227,7 +229,7 @@ func hkExpectDenyOnly(t *testing.T, got string, gating []taskflow.Record, curren
 // hkFinishedPhrase is the exact H1 wording (rev 5), as D2 amended it, that
 // every deny reason holds.
 const hkFinishedPhrase = "For a task that is finished or was given up, ask the user before abandoning it: " +
-	"`cw task abandon --task <task-dir> --reason TEXT` needs their confirmation."
+	"`cw task abandon --task <task-id> --reason TEXT` needs their confirmation."
 
 // H15 (rev 4): the commit and push ask reason wording.
 const (

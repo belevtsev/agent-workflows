@@ -294,30 +294,17 @@ func TestHostfilesE2E(t *testing.T) {
 				t.Fatalf("task start exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 			}
 			var res struct {
-				Task   string `json:"task"`
 				TaskID string `json:"task_id"`
 			}
-			if err := json.NewDecoder(strings.NewReader(stdout)).Decode(&res); err != nil {
-				t.Fatalf("task start stdout is not a JSON object: %v\n%s", err, stdout)
+			if err := json.NewDecoder(strings.NewReader(stdout)).Decode(&res); err != nil || res.TaskID == "" {
+				t.Fatalf("task start stdout is not a JSON object with a task_id: %v\n%s", err, stdout)
 			}
-			if !filepath.IsAbs(res.Task) {
-				t.Fatalf("task path %q is not absolute\n%s", res.Task, stdout)
-			}
-			info, err := os.Stat(res.Task)
-			if err != nil || !info.IsDir() {
-				t.Fatalf("task path %q is not a directory (err %v)\n%s", res.Task, err, stdout)
-			}
+			// The summary names the task by ID: its directory in the store
+			// under the relative --state-dir.
 			store := filepath.Join(e.root, "custom", "agent-workflows", "workflow-tasks")
-			realTask, err1 := filepath.EvalSymlinks(res.Task)
-			realStore, err2 := filepath.EvalSymlinks(store)
-			if err1 != nil || err2 != nil {
-				t.Fatalf("resolve task %q (%v) or store %q (%v)", res.Task, err1, store, err2)
-			}
-			if filepath.Dir(realTask) != realStore {
-				t.Errorf("task path %q is not directly under %q", res.Task, store)
-			}
-			if res.TaskID != "" && filepath.Base(realTask) != res.TaskID {
-				t.Errorf("task path %q does not end in task_id %q", res.Task, res.TaskID)
+			info, err := os.Stat(filepath.Join(store, res.TaskID))
+			if err != nil || !info.IsDir() {
+				t.Fatalf("task %q is not a directory under %q (err %v)\n%s", res.TaskID, store, err, stdout)
 			}
 			hfe2eAssertAbsent(t, filepath.Join(e.stateHome, "agent-workflows", "workflow-tasks"))
 		})

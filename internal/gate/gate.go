@@ -388,7 +388,8 @@ func recordDirs(records []taskflow.OpenRecord) []string {
 }
 
 // writeGating writes, for each of the first namedTasks gating records, why
-// it gates and how to verify it, naming its directory once; then that
+// it gates and how to verify it, naming it by its ID, which --task takes in
+// the task store the gate read; then that
 // abandoning a task needs the user's confirmation; then how many more gate,
 // and the task store they are in.
 func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
@@ -402,10 +403,10 @@ func writeGating(reason *strings.Builder, gating []taskflow.OpenRecord) {
 			continue
 		}
 		abandonable = true
-		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s --summary`.", record.ID, record.Plan.Title, open.Problem, record.Directory)
+		fmt.Fprintf(reason, " Task %s (%s): %s; run `cw task verify --task %s`.", record.ID, record.Plan.Title, open.Problem, record.ID)
 	}
 	if abandonable {
-		reason.WriteString(" For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation.")
+		reason.WriteString(" For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-id> --reason TEXT` needs their confirmation.")
 	}
 	if len(rest) == 0 {
 		return

@@ -269,13 +269,13 @@ is `failed` with failure `untrusted_toolchain`: put the real `go` first on `PATH
 
 ```sh
 cw task start --repo /absolute/path/to/project --plan /private/path/plan.json --summary
-cw task context --task /path/returned/by/start --phase before
+cw task context --task <task-id> --phase before
 ```
 
 `--task` also takes the task ID that `start` printed, found in the default task
 store, or in `$CW_TASK_STORE` for a task started with `--store DIR`.
 
-With `--summary`, `start` prints the task directory, task ID, adviser binding,
+With `--summary`, `start` prints the task ID, adviser binding,
 requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
 `accept`, `assess`, `consult` and `run` commands all accept `--summary`; without
 it they print the whole record, which grows past 80 KB (`run` prints the check
@@ -321,8 +321,9 @@ adviser not enabled" is for the user to act on, not a step of the flow.
 To opt in to Jev, pass a policy copy that enables it; see
 [opt in to Jev](consultation-helper.md#opt-in-to-jev).
 
-Use the task directory returned by `start`. Its private append-only records and
-check logs belong outside project source. The
+Pass the task ID that `start` printed as `--task`; it names the task's directory in
+the task store, whose private append-only records and check logs belong outside
+project source. The
 baseline identifies the selected worktree, revision and current source content,
 including relevant dirty and untracked files. Do not edit old revision files.
 
@@ -363,7 +364,7 @@ context in the shared consultation request's `state.task_context`, in the same
 shell call that runs `cw consult`:
 
 ```sh
-cw task context --task /path/returned/by/start --phase before >context.json &&
+cw task context --task <task-id> --phase before >context.json &&
 jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json &&
 cw consult --request request.final.json --output consult.json
 ```
@@ -377,7 +378,7 @@ each judgment against sources and finalizes a new adjudicated record under the
 [adjudication rules](consultation-helper.md#adjudicate-without-network-access).
 
 ```sh
-cw task consult --task /path/returned/by/start --phase before --input /private/path/before-final.json --summary
+cw task consult --task <task-id> --phase before --input /private/path/before-final.json --summary
 ```
 
 The task command validates the adviser artifact and its binding: the record's
@@ -426,7 +427,7 @@ not runtime availability or automatic dispatch.
 ## Execute and record evidence
 
 ```sh
-cw task run --task /path/returned/by/start --check unit --summary
+cw task run --task <task-id> --check unit --summary
 ```
 
 This runs the explicitly declared argv, captures actual exit status and duration,
@@ -435,7 +436,7 @@ interpret command text through a shell. A failed, cancelled, timed-out, or
 source-changing check cannot become a passing result.
 Checks execute approved local code without a sandbox. Select them within the
 user's authorized scope; a task plan is not permission for external side effects.
-`--summary` prints the status and log path, plus failing test names and the first
+`--summary` prints the status and the log's path relative to the task directory, plus failing test names and the first
 error lines when the check failed; read the log only when those are not enough.
 Outside `cw task run`, send long output to a file and print only the exit status,
 result lines and failures; for Go,
@@ -531,7 +532,7 @@ every check the plan lists for it or, when the plan permits non-execution, gives
 ```
 
 ```sh
-cw task assess --task /path/returned/by/start --input /private/path/assessment.json --summary
+cw task assess --task <task-id> --input /private/path/assessment.json --summary
 ```
 
 Assess requirements and the decision together, after the last source change and
@@ -545,7 +546,7 @@ against source evidence, and keep within the review cap in
 review. Small and unchanged read-only tasks keep their existing path.
 
 ```sh
-cw task context --task /path/returned/by/start --phase final
+cw task context --task <task-id> --phase final
 ```
 
 When checkpoints are required, use that new final context and the completed
@@ -553,8 +554,8 @@ diff/check evidence for a fresh final-review request to the bound advisers. Atta
 adjudicated result:
 
 ```sh
-cw task consult --task /path/returned/by/start --phase final --input /private/path/review-final.json
-cw task verify --task /path/returned/by/start --summary
+cw task consult --task <task-id> --phase final --input /private/path/review-final.json
+cw task verify --task <task-id> --summary
 ```
 
 Verification rejects stale source, missing requirements/checks, invalid references

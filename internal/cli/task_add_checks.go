@@ -39,7 +39,7 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 				for _, check := range amendment.Checks {
 					ids = append(ids, check.ID)
 				}
-				return writeJSON(cmd.OutOrStdout(), addChecksSummary{Task: record.Directory, TaskID: record.ID, Amendment: len(record.Amendments) - 1, Checks: ids, MergeCommit: amendment.MergeCommit, BaseRef: amendment.BaseRef, BaseCommit: amendment.BaseCommit})
+				return writeJSON(cmd.OutOrStdout(), addChecksSummary{TaskID: record.ID, Amendment: len(record.Amendments) - 1, Checks: ids, MergeCommit: amendment.MergeCommit, BaseRef: amendment.BaseRef, BaseCommit: amendment.BaseCommit})
 			}
 			return writeJSON(cmd.OutOrStdout(), record)
 		},
@@ -52,7 +52,6 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 
 // addChecksSummary is the --summary line of cw task add-checks.
 type addChecksSummary struct {
-	Task        string   `json:"task"`
 	TaskID      string   `json:"task_id"`
 	Amendment   int      `json:"amendment"`
 	Checks      []string `json:"checks"`

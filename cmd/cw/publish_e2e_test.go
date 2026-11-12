@@ -617,13 +617,16 @@ func (e *pubEnv) startOther(plan, repo, store string) (string, string) {
 	}
 	out := e.cwOK(args...)
 	var s struct {
-		Task   string `json:"task"`
 		TaskID string `json:"task_id"`
 	}
-	if err := json.Unmarshal([]byte(out), &s); err != nil || s.Task == "" || s.TaskID == "" {
+	if err := json.Unmarshal([]byte(out), &s); err != nil || s.TaskID == "" {
 		e.t.Fatalf("task start summary %q: %v", out, err)
 	}
-	task, err := filepath.EvalSymlinks(s.Task)
+	// The summary names the task by ID, its directory's name in the store.
+	if store == "" {
+		store = filepath.Join(e.state, "workflow-tasks")
+	}
+	task, err := filepath.EvalSymlinks(filepath.Join(store, s.TaskID))
 	if err != nil {
 		e.t.Fatal(err)
 	}

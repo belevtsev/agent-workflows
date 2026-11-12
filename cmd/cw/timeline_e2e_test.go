@@ -134,13 +134,21 @@ func (env tle2xEnv) startTaskWithPlan(t *testing.T, planName, planJSON string) s
 	t.Helper()
 	plan := env.writeInput(t, planName, planJSON)
 	var started struct {
-		Task string `json:"task"`
+		TaskID string `json:"task_id"`
 	}
 	output := env.mustRun(t, "task", "start", "--repo", env.repo, "--plan", plan, "--summary")
-	if err := json.Unmarshal([]byte(output), &started); err != nil || started.Task == "" {
+	if err := json.Unmarshal([]byte(output), &started); err != nil || started.TaskID == "" {
 		t.Fatalf("task start summary %q: %v", output, err)
 	}
-	return started.Task
+	// The summary names the task by ID; show resolves it to the directory.
+	var shown struct {
+		Directory string `json:"directory"`
+	}
+	output = env.mustRun(t, "task", "show", "--task", started.TaskID, "--field", "directory")
+	if err := json.Unmarshal([]byte(output), &shown); err != nil || shown.Directory == "" {
+		t.Fatalf("task show --field directory %q: %v", output, err)
+	}
+	return shown.Directory
 }
 
 func (env tle2xEnv) assign(t *testing.T, dir, id, agent, role, owned string) {

@@ -147,7 +147,7 @@ func unrecordedChangeReason(worktree string, publication publication, signs []st
 		record = "readable cw task record"
 	}
 	return fmt.Sprintf("agent-workflows: %s like a substantial change with no %s for %s: %s. "+
-		"Consider recording it with `cw task start --repo %s --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. "+
+		"Consider recording it with `cw task start --repo %s --plan PLAN.json` and a passing cw task verify before publishing, or confirm to continue. "+
 		"Set small_task_prompt=false in the plugin config to stop this prompt.", subject, record, worktree, strings.Join(signs, "; "), worktree)
 }
 

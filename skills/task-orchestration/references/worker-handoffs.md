@@ -52,7 +52,7 @@ brief with a unique immutable assignment ID:
 ```
 
 ```sh
-cw task assign --task /private/task --input /private/brief.json --summary
+cw task assign --task <task-id> --input /private/brief.json --summary
 ```
 
 The record retains the brief's task ID, exact source snapshot and SHA-256;
@@ -122,7 +122,7 @@ source reference or changed file, from its current bytes. A filled hash binds th
 bytes present when the record is written, so give it explicitly when the worker
 computed it and a later edit must be detected. Collections (`evidence`, `changed_files`, `check_ids`,
 `findings`, `uncertainties`) are never filled: give `[]` when empty.
-`cw task trace --task /private/task --summary` shows, for each plan requirement,
+`cw task trace --task <task-id> --summary` shows, for each plan requirement,
 the mapped tests and the `-json` runs that proved or failed them.
 
 The coordinator independently checks meaning, scope, source and results. Its
@@ -153,8 +153,8 @@ acceptance JSON and record both in one shell call:
 ```
 
 ```sh
-cw task handoff --task /private/task --input /private/result.json --summary &&
-cw task accept --task /private/task --input /private/acceptance.json --summary
+cw task handoff --task <task-id> --input /private/result.json --summary &&
+cw task accept --task <task-id> --input /private/acceptance.json --summary
 ```
 
 When a finding needs a fix, follow the [record order](#follow-up-review-after-a-fix-revision).
@@ -369,7 +369,7 @@ reviewer starts there instead of exploring (measured reviews spent about 49% of 
 requests on orientation reads):
 
 ```sh
-cw task bundle --task /private/task --review-id review-1 --output /private/review-1-bundle.json
+cw task bundle --task <task-id> --review-id review-1 --output /private/review-1-bundle.json
 ```
 
 From the record and current source it writes the requirements, prior findings with
