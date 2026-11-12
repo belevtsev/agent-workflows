@@ -17,11 +17,6 @@ so gate rules are unit-tested with a fake git, clock and task store.
 
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
 stable lock file, waits under a context and an optional bound, and the kernel
-releases it when the holder dies. Take a new lock with it rather than another
-`flock` or `mkdir` loop.
-
-`internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
-stable lock file, waits under a context and an optional bound, and the kernel
 releases it when the holder dies. The credential store, the cost history and
 the Graphify cache use it; take a new lock with it rather than another
 `flock` or `mkdir` loop.
