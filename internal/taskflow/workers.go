@@ -317,7 +317,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
-			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
+			if _, err := env.readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("adjudicate and attach the before checkpoint before dispatching workers: %w", err)
 			}
 		}

@@ -45,12 +45,6 @@ var (
 	openAIModel, _ = modelpolicy.PinnedModel(openAIProvider)
 )
 
-var credentialNames = map[string]string{
-	jevProvider:    "TYPESAFE_API_KEY",
-	snapProvider:   "SUBQ_API_KEY",
-	openAIProvider: "OPENAI_API_KEY",
-}
-
 var fixedEndpoints = map[string]string{
 	jevProvider:    jevEndpoint,
 	snapProvider:   snapEndpoint,

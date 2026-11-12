@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -49,7 +49,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	if advisers == nil {
 		advisers = map[string]string{}
 	}
-	if err := consult.ValidateBinding(advisers); err != nil {
+	if err := consultrecord.ValidateBinding(advisers); err != nil {
 		return Record{}, err
 	}
 	if conflict, ok := adviserClaimConflict(plan, advisers); ok {
@@ -143,7 +143,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 			return errors.New("before context no longer matches the baseline; start a new task")
 		}
 		if phase == "final" && record.Plan.Kind == "substantial" {
-			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
+			if _, err := env.readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("final context needs resolved before consultation: %w", err)
 			}
 		}
@@ -481,7 +481,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
 		view := newSourceView(snapshot, files)
 		defer view.close()
-		found := runVerifyRules(ctx, verifyInput{artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view})
+		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view})
 		result.report(found)
 		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {

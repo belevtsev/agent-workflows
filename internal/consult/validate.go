@@ -3,31 +3,18 @@ package consult
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 )
 
-// ProviderOutcome is one participating adviser's outcome in a consultation record.
-type ProviderOutcome struct {
-	// Status is success, partial, refusal, unavailable or not_configured.
-	Status string
-	// RequestedModel is the pinned model the adviser was (or would have been) asked.
-	RequestedModel string
-}
+// ProviderOutcome is one participating adviser's outcome in a consultation
+// record; the type lives in internal/consult/record.
+type ProviderOutcome = record.ProviderOutcome
 
-// Record is the validated summary of a version 4 consultation record.
-type Record struct {
-	// Version is always 4.
-	Version int
-	// Status is success, partial, unavailable or no_advisers_configured.
-	Status string
-	// State is request.state exactly as its JSON text appears in the record.
-	State json.RawMessage
-	// Providers holds one outcome for each participating adviser, keyed by
-	// provider ID (jev, subq_snap, openai_decisions). It is empty, never nil,
-	// when no adviser participated.
-	Providers map[string]ProviderOutcome
-	// DecisionStatus is the final_decision status: pending, resolved or unresolved.
-	DecisionStatus string
-}
+// Record is the validated summary of a version 4 consultation record; the
+// type lives in internal/consult/record, so the task flow can read it without
+// linking the adviser providers.
+type Record = record.Record
 
 // ValidateRecord fully revalidates a consultation record written by cw consult
 // (and, when decided, by cw consult --adjudicate), using no network, policy or

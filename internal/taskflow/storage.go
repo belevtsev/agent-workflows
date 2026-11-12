@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 )
 
@@ -468,7 +468,7 @@ func validateRecord(record Record) error {
 	if record.TestRules != TestRulesV1 {
 		return errors.New("invalid stored test rules")
 	}
-	if err := consult.ValidateBinding(record.Advisers); err != nil {
+	if err := consultrecord.ValidateBinding(record.Advisers); err != nil {
 		return err
 	}
 	baseline, ok := record.Contexts["before"]

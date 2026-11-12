@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
 	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
@@ -29,7 +29,7 @@ func adviserPreferences(directory string) (userconfig.Advisers, error) {
 // advisers.enabled lists it, or its key was saved with cw keys set. A key in
 // the environment alone is not an opt-in.
 func optedIn(provider string, preferences userconfig.Advisers, saved func(variable string) bool) bool {
-	variable, _ := consult.CredentialVariable(provider)
+	variable, _ := consultrecord.CredentialVariable(provider)
 	return slices.Contains(preferences.Enabled, provider) || saved(variable)
 }
 
@@ -114,7 +114,7 @@ func keyWithoutOptInWarnings(root *cobra.Command, config Config, directory strin
 	saved := func(variable string) bool { return report.Credentials.Stored[variable] }
 	var warnings []string
 	for _, provider := range modelpolicy.Providers() {
-		variable, _ := consult.CredentialVariable(provider)
+		variable, _ := consultrecord.CredentialVariable(provider)
 		if _, enabled := selected.Providers[provider]; !enabled || !report.Credentials.Environment[variable] ||
 			slices.Contains(preferences.Disabled, provider) || optedIn(provider, preferences, saved) {
 			continue
