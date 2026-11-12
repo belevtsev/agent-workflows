@@ -29,7 +29,11 @@ bounded worker. Repository instructions and user authorization still govern.
 Five states in order; no required state is skipped, and earlier evidence never
 satisfies a later state.
 
-1. **Classify.** Run `cw doctor --summary --repo /absolute/path` at the start
+1. **Classify.** If `cw` is not on `PATH`, stop and give the install command:
+   `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.1` with
+   Go 1.27 or newer, or the release archive
+   ([get `cw`](../../docs/operations.md#get-cw)).
+   Run `cw doctor --summary --repo /absolute/path` at the start
    and after material workspace changes; resolve profiles from the
    [host mapping](references/hosts.md). `cw task start` records the plan and
    binds the configured advisers. Checkpoints are required for an open decision

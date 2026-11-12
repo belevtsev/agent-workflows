@@ -364,6 +364,60 @@ func TestPluginVersionsAgree(t *testing.T) {
 	}
 }
 
+// pinnedInstall matches a cw install command pinned to a concrete tag; a
+// placeholder such as @vX does not match.
+var pinnedInstall = regexp.MustCompile("agent-workflows/v3/cmd/cw@(v[0-9][^\\s`'\")\\]]*)")
+
+// installCommandFiles tell a user without cw how to install it: the
+// quick start, Get cw, the always-on conventions, the task-orchestration
+// skill's first step and the session-start hook's missing-cw line.
+var installCommandFiles = []string{"README.md", "docs/operations.md", "global/AGENTS.md", "skills/task-orchestration/SKILL.md", "hooks/hooks.json"}
+
+// Every place that tells a user without cw how to install it gives the
+// go install command for the next release tag, and no first-party file but
+// the changelog pins another tag (docs/development.md, Releases).
+// oracle: each of installCommandFiles contains the go install command for
+// "v" + the .claude-plugin/plugin.json version, and every pinned cw install
+// command outside CHANGELOG.md and third_party/ names that same tag.
+func TestInstallCommandsNameTheRelease(t *testing.T) {
+	var plugin struct {
+		Version string `json:"version"`
+	}
+	readJSON(t, ".claude-plugin/plugin.json", &plugin)
+	if plugin.Version == "" {
+		t.Fatal(".claude-plugin/plugin.json has no version")
+	}
+	tag := "v" + plugin.Version
+	want := "go install github.com/belevtsev/agent-workflows/v3/cmd/cw@" + tag
+	for _, file := range installCommandFiles {
+		data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(file)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s does not give the install command %q", file, want)
+		}
+	}
+	for _, file := range repoFiles(t) {
+		if file == "CHANGELOG.md" || strings.HasPrefix(file, "third_party/") {
+			continue
+		}
+		path := filepath.Join(repoRoot, filepath.FromSlash(file))
+		if info, err := os.Stat(path); err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range pinnedInstall.FindAllStringSubmatch(string(data), -1) {
+			if match[1] != tag {
+				t.Errorf("%s: a cw install command names %s, want %s", file, match[1], tag)
+			}
+		}
+	}
+}
+
 // Contract roster-tests, revision 1, requirement A5: the manifest no longer
 // carries claude_agents; the plugin's agents array is the only roster.
 func TestA5_ManifestHasNoClaudeAgents(t *testing.T) {

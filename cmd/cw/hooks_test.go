@@ -172,8 +172,26 @@ const (
 	preToolUseCommand = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
 )
 
-// gateInactiveLine is the line SessionStart appends when cw is not on PATH (E4).
-const gateInactiveLine = "agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH."
+// gateInactiveLine returns the line SessionStart appends when cw is not on
+// PATH (E4): the gate is inactive, and how to install cw at the plugin's
+// release tag ("v" + the .claude-plugin/plugin.json version) or from the
+// release archive.
+func gateInactiveLine(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", ".claude-plugin", "plugin.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plugin struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &plugin); err != nil || plugin.Version == "" {
+		t.Fatalf(".claude-plugin/plugin.json has no version (%v)", err)
+	}
+	return "agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH." +
+		" Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v" + plugin.Version + "` (Go 1.27 or newer)" +
+		" or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw"
+}
 
 // hooksCanonicalTempDir returns a fresh temporary directory in canonical form.
 func hooksCanonicalTempDir(t *testing.T) string {
@@ -495,13 +513,16 @@ func TestHooksEndToEnd(t *testing.T) {
 	t.Run("session-start without cw adds the inactive-gate line", func(t *testing.T) {
 		// E4: without cw on PATH, the raw file verbatim followed by exactly
 		// one line saying the gate is inactive, newline-terminated.
+		// oracle: stdout equals global/AGENTS.md followed by gateInactiveLine,
+		// whose install command names the plugin's release tag.
 		if !strings.HasSuffix(string(agents), "\n") {
 			t.Fatal("global/AGENTS.md does not end with a newline; the expected output below assumes it does")
 		}
-		want := string(agents) + gateInactiveLine + "\n"
+		line := gateInactiveLine(t)
+		want := string(agents) + line + "\n"
 		code, stdout, stderr := hooksSh(t, sessionCommand, sessionStdin, env(withoutCW))
 		if code != 0 || stdout != want {
-			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and the %d-byte file followed by %q", code, stderr, stdout, len(agents), gateInactiveLine+"\n")
+			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and the %d-byte file followed by %q", code, stderr, stdout, len(agents), line+"\n")
 		}
 	})
 

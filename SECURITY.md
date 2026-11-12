@@ -42,4 +42,4 @@ Non-goals. The gate does not try to stop:
 
 ## Supported versions
 
-Only the latest release receives security fixes. v2.x is end-of-life and receives no fixes; v3 is a fresh install with no upgrade path from it.
+Only the newest v3 release, release candidates included, receives security fixes. v2.x is end-of-life and receives no fixes; v3 is a fresh install with no upgrade path from it.

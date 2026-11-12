@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1017 1024" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 8.384s; width: 1017px; height: 1024px; min-width: 0px;" width="1017" height="1024" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 1069 1170" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 8.916s; width: 1069px; height: 1170px; min-width: 0px;" width="1069" height="1170" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -399,378 +399,423 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-ripple { 
   0% { r: 2px; opacity: var(--flow-peak, 0.6); }
-  8.946%, 100% { r: 20px; opacity: 0; }
+  8.412%, 100% { r: 20px; opacity: 0; }
 }
 @keyframes archify-relay-comet-0 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-0 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-1 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  9.396% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.19%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-1 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.819% { opacity: 0; }
+  9.396% { opacity: var(--flow-peak, 0.3); }
+  19.49%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-2 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-2 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-3 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  7.851% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.646%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-3 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.355% { opacity: 0; }
+  7.851% { opacity: var(--flow-peak, 0.3); }
+  17.946%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-4 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  7.851% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.646%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-4 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.355% { opacity: 0; }
+  7.851% { opacity: var(--flow-peak, 0.3); }
+  17.946%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-5 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-5 { 
-  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-6 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-6 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-7 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  13.715% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  15.623%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-7 { 
-  0%, 4.114% { opacity: 0; }
-  13.715% { opacity: var(--flow-peak, 0.3); }
-  24.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-8 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  9.268% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.177%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  16.824% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  18.618%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-8 { 
-  0%, 2.781% { opacity: 0; }
-  9.268% { opacity: var(--flow-peak, 0.3); }
-  20.004%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 5.047% { opacity: 0; }
+  16.824% { opacity: var(--flow-peak, 0.3); }
+  26.918%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-9 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  8.748% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.657%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  8.715% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  10.51%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-9 { 
-  0%, 2.624% { opacity: 0; }
-  8.748% { opacity: var(--flow-peak, 0.3); }
-  19.483%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.615% { opacity: 0; }
+  8.715% { opacity: var(--flow-peak, 0.3); }
+  18.81%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-10 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  7.283% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  9.191%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  11.031% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.825%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-10 { 
-  0%, 2.185% { opacity: 0; }
-  7.283% { opacity: var(--flow-peak, 0.3); }
-  18.018%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 3.309% { opacity: 0; }
+  11.031% { opacity: var(--flow-peak, 0.3); }
+  21.125%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-11 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  9.268% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.177%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  12.296% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  14.09%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-11 { 
-  0%, 2.781% { opacity: 0; }
-  9.268% { opacity: var(--flow-peak, 0.3); }
-  20.004%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 3.689% { opacity: 0; }
+  12.296% { opacity: var(--flow-peak, 0.3); }
+  22.39%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-12 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  11.414% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  13.323%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.31% { opacity: var(--flow-peak, 0.9); }
+  6.551% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  8.346%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-12 { 
-  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  11.414% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  22.149%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.965% { opacity: 0; }
+  6.551% { opacity: var(--flow-peak, 0.3); }
+  16.645%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-13 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  10.733% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.528%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-13 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  10.733% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  20.827%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-14 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-14 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-15 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  8.246% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.155%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-15 { 
-  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.246% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  18.981%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-16 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  7.754% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.548%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-16 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  7.754% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  17.848%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-17 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-17 { 
-  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-18 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  15.608% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  17.516%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-18 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  15.608% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  26.343%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-19 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-19 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-20 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  8.246% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.155%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  14.676% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  16.471%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-20 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.246% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  18.981%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  14.676% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  24.771%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-21 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-21 { 
-  0%, 1.503% { opacity: 0; }
-  5.01% { opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-22 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  8.706% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  10.615%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  7.754% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.548%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-22 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.706% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  19.441%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  7.754% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  17.848%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-23 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.002% { opacity: var(--flow-peak, 0.9); }
-  5.01% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  6.918%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-23 { 
-  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  5.01% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  15.745%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-24 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.431% { opacity: var(--flow-peak, 0.9); }
-  10.069% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.977%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  8.187% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  9.981%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-24 { 
-  0%, 3.021% { opacity: 0; }
-  10.069% { opacity: var(--flow-peak, 0.3); }
-  20.804%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  8.187% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  18.281%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-25 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-25 { 
+  0%, 1.413% { opacity: 0; }
+  4.711% { opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-26 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  0.942% { opacity: var(--flow-peak, 0.9); }
+  4.711% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  6.505%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-26 { 
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  4.711% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  14.805%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-27 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  1.346% { opacity: var(--flow-peak, 0.9); }
+  9.468% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.262%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-27 { 
+  0%, 2.84% { opacity: 0; }
+  9.468% { opacity: var(--flow-peak, 0.3); }
+  19.562%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-node-0 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  1.431%, 5.01% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  14.313% { filter: var(--ambient-node-base-filter, none); }
+  1.346%, 4.711% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  13.459% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-1 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  5.01% { filter: var(--ambient-node-base-filter, none); }
-  6.441%, 10.019% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  19.323% { filter: var(--ambient-node-base-filter, none); }
+  4.711% { filter: var(--ambient-node-base-filter, none); }
+  6.057%, 9.421% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  18.17% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-2 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  14.449% { filter: var(--ambient-node-base-filter, none); }
-  15.88%, 19.458% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  28.762% { filter: var(--ambient-node-base-filter, none); }
+  13.586% { filter: var(--ambient-node-base-filter, none); }
+  14.932%, 18.297% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  27.045% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-3 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  24.91% { filter: var(--ambient-node-base-filter, none); }
-  26.341%, 29.919% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  39.223% { filter: var(--ambient-node-base-filter, none); }
+  21.259% { filter: var(--ambient-node-base-filter, none); }
+  22.605%, 25.97% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  34.718% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-4 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  20.651% { filter: var(--ambient-node-base-filter, none); }
-  22.082%, 25.661% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  34.964% { filter: var(--ambient-node-base-filter, none); }
+  19.418% { filter: var(--ambient-node-base-filter, none); }
+  20.764%, 24.129% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  32.878% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-5 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  31.112% { filter: var(--ambient-node-base-filter, none); }
-  32.544%, 36.122% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  45.426% { filter: var(--ambient-node-base-filter, none); }
+  29.255% { filter: var(--ambient-node-base-filter, none); }
+  30.601%, 33.966% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  42.714% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-6 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  30.09% { filter: var(--ambient-node-base-filter, none); }
-  31.521%, 35.1% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  44.403% { filter: var(--ambient-node-base-filter, none); }
+  28.294% { filter: var(--ambient-node-base-filter, none); }
+  29.64%, 33.005% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  41.753% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-7 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  42.697% { filter: var(--ambient-node-base-filter, none); }
-  44.128%, 47.707% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  57.01% { filter: var(--ambient-node-base-filter, none); }
+  40.149% { filter: var(--ambient-node-base-filter, none); }
+  41.494%, 44.859% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  53.608% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-8 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  36.292% { filter: var(--ambient-node-base-filter, none); }
-  37.724%, 41.302% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  50.606% { filter: var(--ambient-node-base-filter, none); }
+  34.126% { filter: var(--ambient-node-base-filter, none); }
+  35.472%, 38.837% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  47.585% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-9 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  46.191% { filter: var(--ambient-node-base-filter, none); }
-  47.623%, 51.201% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  60.505% { filter: var(--ambient-node-base-filter, none); }
+  43.434% { filter: var(--ambient-node-base-filter, none); }
+  44.78%, 48.145% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  56.894% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-10 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  48.899% { filter: var(--ambient-node-base-filter, none); }
-  50.331%, 53.909% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  63.213% { filter: var(--ambient-node-base-filter, none); }
+  45.981% { filter: var(--ambient-node-base-filter, none); }
+  47.327%, 50.692% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  59.44% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-11 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  55.102% { filter: var(--ambient-node-base-filter, none); }
-  56.533%, 60.112% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  69.415% { filter: var(--ambient-node-base-filter, none); }
+  51.813% { filter: var(--ambient-node-base-filter, none); }
+  53.159%, 56.524% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  65.272% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-12 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  61.304% { filter: var(--ambient-node-base-filter, none); }
-  62.736%, 66.314% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  75.618% { filter: var(--ambient-node-base-filter, none); }
+  51.813% { filter: var(--ambient-node-base-filter, none); }
+  53.159%, 56.524% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  65.272% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-13 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  65.043% { filter: var(--ambient-node-base-filter, none); }
-  66.474%, 70.053% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  79.356% { filter: var(--ambient-node-base-filter, none); }
+  57.645% { filter: var(--ambient-node-base-filter, none); }
+  58.991%, 62.356% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  71.105% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-14 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  63.577% { filter: var(--ambient-node-base-filter, none); }
-  65.009%, 68.587% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  77.891% { filter: var(--ambient-node-base-filter, none); }
+  63.965% { filter: var(--ambient-node-base-filter, none); }
+  65.311%, 68.676% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  77.424% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-15 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  67.507% { filter: var(--ambient-node-base-filter, none); }
-  68.938%, 72.517% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  81.82% { filter: var(--ambient-node-base-filter, none); }
+  65.231% { filter: var(--ambient-node-base-filter, none); }
+  66.576%, 69.941% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  78.69% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-16 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  63.478% { filter: var(--ambient-node-base-filter, none); }
+  64.824%, 68.188% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  76.937% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-17 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  69.31% { filter: var(--ambient-node-base-filter, none); }
+  70.656%, 74.021% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  82.769% { filter: var(--ambient-node-base-filter, none); }
 }
 svg[data-node-ui] [data-node-id] &gt; rect:not(.c-mask) { stroke-width: 1.25px; }
 :is([data-theme="dark"] svg[data-node-ui], svg[data-node-ui][data-theme="dark"]) [data-node-id] &gt; rect:not(.c-mask).c-frontend { fill: color-mix(in srgb, var(--frontend-stroke) 13%, var(--mask)); stroke: color-mix(in srgb, var(--frontend-stroke) 72%, var(--mask)); }
@@ -796,7 +841,7 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
 svg[data-theme="light"] { --bg: #f4f5f7; --grid: #e9edf2; --canvas-dot: #e2e7ec; --text: #111827; --text-muted: #5b6474; --text-dim: #9aa3b2; --text-faint: #6b7280; --panel: #ffffff; --panel-border: #e5e7eb; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #64748b; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 svg[data-theme="dark"] { --bg: #020617; --grid: #1e293b; --canvas-dot: rgba(148, 163, 184, 0.16); --text: #ffffff; --text-muted: #94a3b8; --text-dim: #475569; --text-faint: #7d8da1; --panel: rgba(15, 23, 42, 0.5); --panel-border: #1e293b; --lane-fill: rgba(15, 23, 42, 0.22); --lane-stroke: #334155; --arrow: #94a3b8; --arrow-emphasis: #34d399; --mask: #0f172a; --frontend-fill: rgba(8, 51, 68, 0.4); --frontend-stroke: #22d3ee; --backend-fill: rgba(6, 78, 59, 0.4); --backend-stroke: #34d399; --database-fill: rgba(76, 29, 149, 0.4); --database-stroke: #a78bfa; --cloud-fill: rgba(120, 53, 15, 0.3); --cloud-stroke: #fbbf24; --security-fill: rgba(136, 19, 55, 0.4); --security-stroke: #fb7185; --messagebus-fill: rgba(251, 146, 60, 0.3); --messagebus-stroke: #fb923c; --external-fill: rgba(30, 41, 59, 0.5); --external-stroke: #94a3b8; --toolbar-bg: rgba(15, 23, 42, 0.8); --toolbar-border: #334155; --toolbar-text: #e2e8f0; --toolbar-hover: rgba(15, 23, 42, 0.95); --toolbar-menu-bg: #0f172a; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 rect.c-bg-rect { fill: var(--bg); }
-</style><rect x="0" y="0" width="1017" height="1024" class="c-bg-rect"/>
+</style><rect x="0" y="0" width="1069" height="1170" class="c-bg-rect"/>
         <title id="archify-diagram-title">agent-workflows: a substantial change with review loops</title>
         <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
         <!-- Definitions -->
@@ -843,26 +888,30 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect width="100%" height="100%" fill="url(#grid)"/>
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / Spec (skipped for a small task or a reviewed spec)</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / Spec (skipped with a reviewed spec or a precise request)</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / Design (skipped for a small task)</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / Design and contract</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Tests, in parallel with implementation</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="446" class="t-muted" font-size="10" font-weight="600">04 / Implementation</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="570" class="t-muted" font-size="10" font-weight="600">05 / Integrate and run</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="694" class="t-muted" font-size="10" font-weight="600">06 / Code review, verify and commit</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="694" class="t-muted" font-size="10" font-weight="600">06 / Code review, verify and publish</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="961" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="818" class="t-muted" font-size="10" font-weight="600">07 / Advisers via cw consult: optional; the coordinator decides</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-6" x="40" y="796" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-6-exception" x="46" y="802" width="1001" height="92" rx="8" class="c-security-group" stroke-width="1"/>
+        <text x="54" y="818" class="t-security" font-size="10" font-weight="600">EX / Fallback when cw publish does not fit</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-7" x="40" y="920" width="1013" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="942" class="t-muted" font-size="10" font-weight="600">08 / Advisers via cw consult: optional; the coordinator decides</text>
 
         <!-- Phase headers -->
 
@@ -871,35 +920,38 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="701.2,739;757.6,739" d="M 701.2 739 L 757.6 739" class="a-emphasis" data-animate="edge" style="--step: 0;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="1" data-edge-id="advice-design" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="280,243;363.6,243" d="M 280 243 L 363.6 243" class="a-dashed" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-final" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="803.6,837;803.6,765" d="M 803.6 837 L 803.6 765" class="a-dashed" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-review" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="601.2,837;601.2,765" d="M 601.2 837 L 601.2 765" class="a-dashed" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="adv_spec" data-edge-to="spec_review" data-edge-label="advice" data-edge-key="4" data-edge-id="advice-spec" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="539.2,119;455.6,119" d="M 539.2 119 L 455.6 119" class="a-dashed" data-animate="edge" style="--step: 4;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="request" data-edge-to="spec_writer" data-edge-key="5" data-edge-id="ask" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="140,119;172,119" d="M 140 119 L 172 119" class="a-emphasis" data-animate="edge" style="--step: 5;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="6" data-edge-id="change" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,517;601.2,589" d="M 601.2 517 L 601.2 589" class="a-emphasis" data-animate="edge" style="--step: 6;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="7" data-edge-id="code-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="501.20000000000005,739;485.20000000000005,739;485.20000000000005,588;539.2,588;539.2,491;555.2,491" d="M 501.20000000000005 739 L 493.20000000000005 739 Q 485.20000000000005 739 485.20000000000005 731 L 485.20000000000005 596 Q 485.20000000000005 588 493.20000000000005 588 L 531.2 588 Q 539.2 588 539.2 580 L 539.2 499 Q 539.2 491 547.2 491 L 555.2 491" class="a-dashed" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="8" data-edge-id="consult-design" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="409.6,269;409.6,285;218,285;218,269" d="M 409.6 269 L 409.6 277 Q 409.6 285 401.6 285 L 226 285 Q 218 285 218 277 L 218 269" class="a-dashed" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="9" data-edge-id="consult-final" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="625.2,765;625.2,781;695.4000000000001,781;695.4000000000001,863;741.6,863" d="M 625.2 765 L 625.2 773 Q 625.2 781 633.2 781 L 687.4000000000001 781 Q 695.4000000000001 781 695.4000000000001 789 L 695.4000000000001 855 Q 695.4000000000001 863 703.4000000000001 863 L 741.6 863" class="a-dashed" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="10" data-edge-id="consult-review" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="565.2,765;565.2,786;499.20000000000005,786;499.20000000000005,863;515.2,863" d="M 565.2 765 L 565.2 778 Q 565.2 786 557.2 786 L 507.20000000000005 786 Q 499.20000000000005 786 499.20000000000005 794 L 499.20000000000005 855 Q 499.20000000000005 863 507.20000000000005 863 L 515.2 863" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="11" data-edge-id="consult-spec" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="409.6,93;409.6,77;601.2,77;601.2,93" d="M 409.6 93 L 409.6 85 Q 409.6 77 417.6 77 L 593.2 77 Q 601.2 77 601.2 85 L 601.2 93" class="a-dashed" data-animate="edge" style="--step: 11;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="12" data-edge-id="contract-to-implementer" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="577.2,269;577.2,285;547.2,285;547.2,449;601.2,449;601.2,465" d="M 577.2 269 L 577.2 277 Q 577.2 285 569.2 285 L 555.2 285 Q 547.2 285 547.2 293 L 547.2 441 Q 547.2 449 555.2 449 L 593.2 449 Q 601.2 449 601.2 457 L 601.2 465" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,269;601.2,341" d="M 601.2 269 L 601.2 341" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="14" data-edge-id="design-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="555.2,243;455.6,243" d="M 555.2 243 L 455.6 243" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="architect" data-edge-to="design_review" data-edge-label="design" data-edge-key="15" data-edge-id="design-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="433.6,217;433.6,201;601.2,201;601.2,217" d="M 433.6 217 L 433.6 209 Q 433.6 201 441.6 201 L 593.2 201 Q 601.2 201 601.2 209 L 601.2 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="verify" data-edge-to="commit" data-edge-label="passes" data-edge-key="16" data-edge-id="passes" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="849.6,739;896.4000000000001,739" d="M 849.6 739 L 896.4000000000001 739" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="17" data-edge-id="reviewed-spec" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="409.6,145;409.6,217" d="M 409.6 145 L 409.6 217" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="18" data-edge-id="reviewed-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="803.6,393;803.6,608;649.2,608" d="M 803.6 393 L 803.6 600 Q 803.6 608 795.6 608 L 649.2 608" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="19" data-edge-id="spec-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="363.6,119;264,119" d="M 363.6 119 L 264 119" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="spec_writer" data-edge-to="spec_review" data-edge-label="change" data-edge-key="20" data-edge-id="spec-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="218,145;218,161;385.6,161;385.6,145" d="M 218 145 L 218 153 Q 218 161 226 161 L 377.6 161 Q 385.6 161 385.6 153 L 385.6 145" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="test-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="757.6,367;647.2,367" d="M 757.6 367 L 647.2 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="22" data-edge-id="tests-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,393;601.2,409;779.6,409;779.6,393" d="M 601.2 393 L 601.2 401 Q 601.2 409 609.2 409 L 771.6 409 Q 779.6 409 779.6 401 L 779.6 393" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="23" data-edge-id="to-code-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="601.2,641;601.2,713" d="M 601.2 641 L 601.2 713" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="24" data-edge-id="verify-problems" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="803.6,713;803.6,662;665.2,662;665.2,622;649.2,622" d="M 803.6 713 L 803.6 670 Q 803.6 662 795.6 662 L 673.2 662 Q 665.2 662 665.2 654 L 665.2 630 Q 665.2 622 657.2 622 L 649.2 622" class="a-security" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="697.2,739;753.6,739" d="M 697.2 739 L 753.6 739" class="a-emphasis" data-animate="edge" style="--step: 0;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="adversarial" data-edge-to="implementer" data-edge-label="failing tests" data-edge-key="1" data-edge-id="adversarial-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="405.6,589;405.6,538;535.2,538;535.2,491;551.2,491" d="M 405.6 589 L 405.6 546 Q 405.6 538 413.6 538 L 527.2 538 Q 535.2 538 535.2 530 L 535.2 499 Q 535.2 491 543.2 491 L 551.2 491" class="a-dashed" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-design" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="276,243;359.6,243" d="M 276 243 L 359.6 243" class="a-dashed" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-final" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="799.6,961;799.6,765" d="M 799.6 961 L 799.6 765" class="a-dashed" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="4" data-edge-id="advice-review" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="597.2,961;597.2,765" d="M 597.2 961 L 597.2 765" class="a-dashed" data-animate="edge" style="--step: 4;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="adv_spec" data-edge-to="spec_review" data-edge-label="advice" data-edge-key="5" data-edge-id="advice-spec" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="535.2,119;451.6,119" d="M 535.2 119 L 451.6 119" class="a-dashed" data-animate="edge" style="--step: 5;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="request" data-edge-to="spec_writer" data-edge-key="6" data-edge-id="ask" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="140,119;168,119" d="M 140 119 L 168 119" class="a-emphasis" data-animate="edge" style="--step: 6;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="7" data-edge-id="change" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="597.2,517;597.2,589" d="M 597.2 517 L 597.2 589" class="a-emphasis" data-animate="edge" style="--step: 7;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="8" data-edge-id="code-findings" data-edge-role="return" data-composition-points="497.20000000000005,739;320,739;320,491;551.2,491" d="M 497.20000000000005 739 L 328 739 Q 320 739 320 731 L 320 499 Q 320 491 328 491 L 551.2 491" class="a-dashed" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="9" data-edge-id="consult-design" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="405.6,269;405.6,285;214,285;214,269" d="M 405.6 269 L 405.6 277 Q 405.6 285 397.6 285 L 222 285 Q 214 285 214 277 L 214 269" class="a-dashed" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="10" data-edge-id="consult-final" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="697.2,746;717.4000000000001,746;717.4000000000001,987;737.6,987" d="M 697.2 746 L 709.4000000000001 746 Q 717.4000000000001 746 717.4000000000001 754 L 717.4000000000001 979 Q 717.4000000000001 987 725.4000000000001 987 L 737.6 987" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="11" data-edge-id="consult-review" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="573.2,765;573.2,836;495.20000000000005,836;495.20000000000005,987;511.20000000000005,987" d="M 573.2 765 L 573.2 828 Q 573.2 836 565.2 836 L 503.20000000000005 836 Q 495.20000000000005 836 495.20000000000005 844 L 495.20000000000005 979 Q 495.20000000000005 987 503.20000000000005 987 L 511.20000000000005 987" class="a-dashed" data-animate="edge" style="--step: 11;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="12" data-edge-id="consult-spec" data-composition-routing="workflow-v2-auto" data-edge-role="async" data-composition-points="451.6,126;467.6,126;467.6,172;519.2,172;519.2,126;535.2,126" d="M 451.6 126 L 459.6 126 Q 467.6 126 467.6 134 L 467.6 164 Q 467.6 172 475.6 172 L 511.20000000000005 172 Q 519.2 172 519.2 164 L 519.2 134 Q 519.2 126 527.2 126 L 535.2 126" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-implementer" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="573.2,269;573.2,285;543.2,285;543.2,449;597.2,449;597.2,465" d="M 573.2 269 L 573.2 277 Q 573.2 285 565.2 285 L 551.2 285 Q 543.2 285 543.2 293 L 543.2 441 Q 543.2 449 551.2 449 L 589.2 449 Q 597.2 449 597.2 457 L 597.2 465" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="14" data-edge-id="contract-to-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="597.2,269;597.2,341" d="M 597.2 269 L 597.2 341" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="15" data-edge-id="design-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="551.2,243;451.6,243" d="M 551.2 243 L 451.6 243" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="architect" data-edge-to="design_review" data-edge-label="design" data-edge-key="16" data-edge-id="design-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="429.6,217;429.6,201;597.2,201;597.2,217" d="M 429.6 217 L 429.6 209 Q 429.6 201 437.6 201 L 589.2 201 Q 597.2 201 597.2 209 L 597.2 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="publish" data-edge-to="github_worker" data-edge-label="does not fit" data-edge-key="17" data-edge-id="fallback-worker" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="968.4000000000001,765;968.4000000000001,837" d="M 968.4000000000001 765 L 968.4000000000001 837" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="verify" data-edge-to="publish" data-edge-label="passes" data-edge-key="18" data-edge-id="passes" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="845.6,739;892.4000000000001,739" d="M 845.6 739 L 892.4000000000001 739" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="19" data-edge-id="reviewed-spec" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="405.6,145;405.6,217" d="M 405.6 145 L 405.6 217" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="20" data-edge-id="reviewed-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="799.6,393;799.6,608;645.2,608" d="M 799.6 393 L 799.6 600 Q 799.6 608 791.6 608 L 645.2 608" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="spec-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="359.6,119;260,119" d="M 359.6 119 L 260 119" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="spec_writer" data-edge-to="spec_review" data-edge-label="change" data-edge-key="22" data-edge-id="spec-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="214,145;214,161;381.6,161;381.6,145" d="M 214 145 L 214 153 Q 214 161 222 161 L 373.6 161 Q 381.6 161 381.6 153 L 381.6 145" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="23" data-edge-id="test-findings" data-composition-routing="workflow-v2-auto" data-edge-role="return" data-composition-points="753.6,367;643.2,367" d="M 753.6 367 L 643.2 367" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="24" data-edge-id="tests-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="597.2,393;597.2,409;775.6,409;775.6,393" d="M 597.2 393 L 597.2 401 Q 597.2 409 605.2 409 L 767.6 409 Q 775.6 409 775.6 401 L 775.6 393" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="integrate" data-edge-to="adversarial" data-edge-label="if opted in" data-edge-key="25" data-edge-id="to-adversarial" data-composition-routing="workflow-v2-auto" data-edge-role="branch" data-composition-points="549.2,615;465.6,615" d="M 549.2 615 L 465.6 615" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="26" data-edge-id="to-code-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="597.2,641;597.2,713" d="M 597.2 641 L 597.2 713" class="a-emphasis" data-animate="edge" style="--step: 12;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="27" data-edge-id="verify-problems" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="799.6,713;799.6,662;661.2,662;661.2,622;645.2,622" d="M 799.6 713 L 799.6 670 Q 799.6 662 791.6 662 L 669.2 662 Q 661.2 662 661.2 654 L 661.2 630 Q 661.2 622 653.2 622 L 645.2 622" class="a-security" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
 
         <!-- Nodes -->
-        <g id="node-request" data-node-id="request" data-node-label="Your request" tabindex="0" role="button" aria-label="Focus Your request, substantial task, Spec (skipped for a small task or a reviewed spec)" aria-pressed="false" data-node-kind="external" data-node-sublabel="substantial task" data-node-context="Spec (skipped for a small task or a reviewed spec)">
-          <title>Your request · substantial task · Spec (skipped for a small task or a reviewed spec)</title>
+        <g id="node-request" data-node-id="request" data-node-label="Your request" tabindex="0" role="button" aria-label="Focus Your request, substantial task, Spec (skipped with a reviewed spec or a precise request)" aria-pressed="false" data-node-kind="external" data-node-sublabel="substantial task" data-node-context="Spec (skipped with a reviewed spec or a precise request)">
+          <title>Your request · substantial task · Spec (skipped with a reviewed spec or a precise request)</title>
           <rect x="48" y="93" width="92" height="52" rx="8" class="c-mask"/>
           <rect x="48" y="93" width="92" height="52" rx="8" class="c-external" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(54 99) scale(0.6875)">
@@ -910,329 +962,366 @@ rect.c-bg-rect { fill: var(--bg); }
           <text x="94" y="140.1" class="t-muted" font-size="8" text-anchor="middle">substantial task</text>
         </g>
 
-        <g id="node-spec_writer" data-node-id="spec_writer" data-node-label="spec-writer" tabindex="0" role="button" aria-label="Focus spec-writer, OpenSpec change, Spec (skipped for a small task or a reviewed spec)" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="OpenSpec change" data-node-context="Spec (skipped for a small task or a reviewed spec)">
-          <title>spec-writer · OpenSpec change · Spec (skipped for a small task or a reviewed spec)</title>
-          <rect x="172" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="172" y="93" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(178 99) scale(0.6875)">
+        <g id="node-spec_writer" data-node-id="spec_writer" data-node-label="spec-writer" tabindex="0" role="button" aria-label="Focus spec-writer, OpenSpec change, Spec (skipped with a reviewed spec or a precise request)" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="OpenSpec change" data-node-context="Spec (skipped with a reviewed spec or a precise request)">
+          <title>spec-writer · OpenSpec change · Spec (skipped with a reviewed spec or a precise request)</title>
+          <rect x="168" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="168" y="93" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(174 99) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="218" y="125.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">spec-writer</text>
-          <text x="218" y="140.1" class="t-muted" font-size="8" text-anchor="middle">OpenSpec change</text>
+          <text data-node-label="" x="214" y="125.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">spec-writer</text>
+          <text x="214" y="140.1" class="t-muted" font-size="8" text-anchor="middle">OpenSpec change</text>
         </g>
 
-        <g id="node-spec_review" data-node-id="spec_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, spec review, Spec (skipped for a small task or a reviewed spec)" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="spec review" data-node-context="Spec (skipped for a small task or a reviewed spec)">
-          <title>reviewer · spec review · Spec (skipped for a small task or a reviewed spec)</title>
-          <rect x="363.6" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="363.6" y="93" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(369.6 99) scale(0.6875)">
+        <g id="node-spec_review" data-node-id="spec_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, spec review, Spec (skipped with a reviewed spec or a precise request)" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="spec review" data-node-context="Spec (skipped with a reviewed spec or a precise request)">
+          <title>reviewer · spec review · Spec (skipped with a reviewed spec or a precise request)</title>
+          <rect x="359.6" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="359.6" y="93" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(365.6 99) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="409.6" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="409.6" y="131" class="t-muted" font-size="8" text-anchor="middle">spec review</text>
+          <text data-node-label="" x="405.6" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="405.6" y="131" class="t-muted" font-size="8" text-anchor="middle">spec review</text>
         </g>
 
-        <g id="node-adv_spec" data-node-id="adv_spec" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), open question, Spec (skipped for a small task or a reviewed spec)" aria-pressed="false" data-node-kind="database" data-node-sublabel="open question" data-node-context="Spec (skipped for a small task or a reviewed spec)">
-          <title>advisers (optional) · open question · Spec (skipped for a small task or a reviewed spec)</title>
-          <rect x="539.2" y="93" width="124" height="52" rx="8" class="c-mask"/>
-          <rect x="539.2" y="93" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(545.2 99) scale(0.6875)">
+        <g id="node-adv_spec" data-node-id="adv_spec" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), open question, Spec (skipped with a reviewed spec or a precise request)" aria-pressed="false" data-node-kind="database" data-node-sublabel="open question" data-node-context="Spec (skipped with a reviewed spec or a precise request)">
+          <title>advisers (optional) · open question · Spec (skipped with a reviewed spec or a precise request)</title>
+          <rect x="535.2" y="93" width="124" height="52" rx="8" class="c-mask"/>
+          <rect x="535.2" y="93" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(541.2 99) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="601.2" y="124.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
-          <text x="601.2" y="138.9" class="t-muted" font-size="8" text-anchor="middle">open question</text>
+          <text data-node-label="" x="597.2" y="124.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
+          <text x="597.2" y="138.9" class="t-muted" font-size="8" text-anchor="middle">open question</text>
         </g>
 
-        <g id="node-adv_design" data-node-id="adv_design" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), design choice, Design (skipped for a small task)" aria-pressed="false" data-node-kind="database" data-node-sublabel="design choice" data-node-context="Design (skipped for a small task)">
-          <title>advisers (optional) · design choice · Design (skipped for a small task)</title>
-          <rect x="156" y="217" width="124" height="52" rx="8" class="c-mask"/>
-          <rect x="156" y="217" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(162 223) scale(0.6875)">
+        <g id="node-adv_design" data-node-id="adv_design" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), design choice, Design and contract" aria-pressed="false" data-node-kind="database" data-node-sublabel="design choice" data-node-context="Design and contract">
+          <title>advisers (optional) · design choice · Design and contract</title>
+          <rect x="152" y="217" width="124" height="52" rx="8" class="c-mask"/>
+          <rect x="152" y="217" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(158 223) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="218" y="248.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
-          <text x="218" y="262.9" class="t-muted" font-size="8" text-anchor="middle">design choice</text>
+          <text data-node-label="" x="214" y="248.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
+          <text x="214" y="262.9" class="t-muted" font-size="8" text-anchor="middle">design choice</text>
         </g>
 
-        <g id="node-architect" data-node-id="architect" data-node-label="architect" tabindex="0" role="button" aria-label="Focus architect, design + contract, Design (skipped for a small task)" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="design + contract" data-node-context="Design (skipped for a small task)">
-          <title>architect · design + contract · Design (skipped for a small task)</title>
-          <rect x="363.6" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="363.6" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(369.6 223) scale(0.6875)">
+        <g id="node-architect" data-node-id="architect" data-node-label="architect" tabindex="0" role="button" aria-label="Focus architect, design + contract, Design and contract" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="design + contract" data-node-context="Design and contract">
+          <title>architect · design + contract · Design and contract</title>
+          <rect x="359.6" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="359.6" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(365.6 223) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="412.3" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">architect</text>
-          <text x="409.6" y="255" class="t-muted" font-size="8" text-anchor="middle">design + contract</text>
+          <text data-node-label="" x="408.3" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">architect</text>
+          <text x="405.6" y="255" class="t-muted" font-size="8" text-anchor="middle">design + contract</text>
         </g>
 
-        <g id="node-design_review" data-node-id="design_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, design review, Design (skipped for a small task)" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="design review" data-node-context="Design (skipped for a small task)">
-          <title>reviewer · design review · Design (skipped for a small task)</title>
-          <rect x="555.2" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="555.2" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(561.2 223) scale(0.6875)">
+        <g id="node-design_review" data-node-id="design_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, design review, Design and contract" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="design review" data-node-context="Design and contract">
+          <title>reviewer · design review · Design and contract</title>
+          <rect x="551.2" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="551.2" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(557.2 223) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="601.2" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="601.2" y="255" class="t-muted" font-size="8" text-anchor="middle">design review</text>
+          <text data-node-label="" x="597.2" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="597.2" y="255" class="t-muted" font-size="8" text-anchor="middle">design review</text>
         </g>
 
         <g id="node-test_engineer" data-node-id="test_engineer" data-node-label="test-engineer" tabindex="0" role="button" aria-label="Focus test-engineer, never sees code, Tests, in parallel with implementation" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="never sees code" data-node-context="Tests, in parallel with implementation">
           <title>test-engineer · never sees code · Tests, in parallel with implementation</title>
-          <rect x="555.2" y="341" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="555.2" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(561.2 347) scale(0.6875)">
+          <rect x="551.2" y="341" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="551.2" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(557.2 347) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="601.2" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">test-engineer</text>
-          <text x="601.2" y="387.8" class="t-muted" font-size="8" text-anchor="middle">never sees code</text>
+          <text data-node-label="" x="597.2" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">test-engineer</text>
+          <text x="597.2" y="387.8" class="t-muted" font-size="8" text-anchor="middle">never sees code</text>
         </g>
 
         <g id="node-test_review" data-node-id="test_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, test review, Tests, in parallel with implementation" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="test review" data-node-context="Tests, in parallel with implementation">
           <title>reviewer · test review · Tests, in parallel with implementation</title>
-          <rect x="757.6" y="341" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="757.6" y="341" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(763.6 347) scale(0.6875)">
+          <rect x="753.6" y="341" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="753.6" y="341" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(759.6 347) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="803.6" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="803.6" y="379" class="t-muted" font-size="8" text-anchor="middle">test review</text>
+          <text data-node-label="" x="799.6" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="799.6" y="379" class="t-muted" font-size="8" text-anchor="middle">test review</text>
         </g>
 
         <g id="node-implementer" data-node-id="implementer" data-node-label="implementer" tabindex="0" role="button" aria-label="Focus implementer, the change, Implementation" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="the change" data-node-context="Implementation">
           <title>implementer · the change · Implementation</title>
-          <rect x="555.2" y="465" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="555.2" y="465" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 9; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(561.2 471) scale(0.6875)">
+          <rect x="551.2" y="465" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="551.2" y="465" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 9; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(557.2 471) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="601.2" y="497.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">implementer</text>
-          <text x="601.2" y="512.1" class="t-muted" font-size="8" text-anchor="middle">the change</text>
+          <text data-node-label="" x="597.2" y="497.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">implementer</text>
+          <text x="597.2" y="512.1" class="t-muted" font-size="8" text-anchor="middle">the change</text>
         </g>
 
-        <g id="node-integrate" data-node-id="integrate" data-node-label="Integrate + run" tabindex="0" role="button" aria-label="Focus Integrate + run, coordinator, Integrate and run" aria-pressed="false" data-node-kind="backend" data-node-sublabel="coordinator" data-node-context="Integrate and run">
-          <title>Integrate + run · coordinator · Integrate and run</title>
-          <rect x="553.2" y="589" width="96" height="52" rx="8" class="c-mask"/>
-          <rect x="553.2" y="589" width="96" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 10; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(559.2 595) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" x="601.2" y="619.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Integrate + run</text>
-          <text x="601.2" y="634.3" class="t-muted" font-size="8" text-anchor="middle">coordinator</text>
-        </g>
-
-        <g id="node-code_review" data-node-id="code_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, code review: vs contract, design, coverage, Code review, verify and commit" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="code review: vs contract, design, coverage" data-node-context="Code review, verify and commit">
-          <title>reviewer · code review: vs contract, design, coverage · Code review, verify and commit</title>
-          <rect x="501.20000000000005" y="713" width="200" height="52" rx="8" class="c-mask"/>
-          <rect x="501.20000000000005" y="713" width="200" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(507.20000000000005 719) scale(0.6875)">
+        <g id="node-adversarial" data-node-id="adversarial" data-node-label="adversarial-tester" tabindex="0" role="button" aria-label="Focus adversarial-tester, opt-in: tests that fail, Integrate and run" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="opt-in: tests that fail" data-node-context="Integrate and run">
+          <title>adversarial-tester · opt-in: tests that fail · Integrate and run</title>
+          <rect x="345.6" y="589" width="120" height="52" rx="8" class="c-mask"/>
+          <rect x="345.6" y="589" width="120" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 10; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(351.6 595) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="601.2" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="601.2" y="751" class="t-muted" font-size="7.6" text-anchor="middle">code review: vs contract, design, coverage</text>
+          <text data-node-label="" x="405.6" y="620.4" class="t-primary" font-size="10.3" font-weight="600" text-anchor="middle">adversarial-tester</text>
+          <text x="405.6" y="635.1" class="t-muted" font-size="8" text-anchor="middle">opt-in: tests that fail</text>
         </g>
 
-        <g id="node-verify" data-node-id="verify" data-node-label="cw task verify" tabindex="0" role="button" aria-label="Focus cw task verify, records current, Code review, verify and commit" aria-pressed="false" data-node-kind="security" data-node-sublabel="records current" data-node-context="Code review, verify and commit">
-          <title>cw task verify · records current · Code review, verify and commit</title>
-          <rect x="757.6" y="713" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="757.6" y="713" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(763.6 719) scale(0.6875)">
+        <g id="node-integrate" data-node-id="integrate" data-node-label="Integrate + run" tabindex="0" role="button" aria-label="Focus Integrate + run, coordinator, Integrate and run" aria-pressed="false" data-node-kind="backend" data-node-sublabel="coordinator" data-node-context="Integrate and run">
+          <title>Integrate + run · coordinator · Integrate and run</title>
+          <rect x="549.2" y="589" width="96" height="52" rx="8" class="c-mask"/>
+          <rect x="549.2" y="589" width="96" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(555.2 595) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="597.2" y="619.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Integrate + run</text>
+          <text x="597.2" y="634.3" class="t-muted" font-size="8" text-anchor="middle">coordinator</text>
+        </g>
+
+        <g id="node-code_review" data-node-id="code_review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, code review: vs contract, design, coverage, Code review, verify and publish" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="code review: vs contract, design, coverage" data-node-context="Code review, verify and publish">
+          <title>reviewer · code review: vs contract, design, coverage · Code review, verify and publish</title>
+          <rect x="497.20000000000005" y="713" width="200" height="52" rx="8" class="c-mask"/>
+          <rect x="497.20000000000005" y="713" width="200" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(503.20000000000005 719) scale(0.6875)">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
+            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
+            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
+            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" x="597.2" y="734" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="597.2" y="751" class="t-muted" font-size="7.6" text-anchor="middle">code review: vs contract, design, coverage</text>
+        </g>
+
+        <g id="node-verify" data-node-id="verify" data-node-label="cw task verify" tabindex="0" role="button" aria-label="Focus cw task verify, records current, Code review, verify and publish" aria-pressed="false" data-node-kind="security" data-node-sublabel="records current" data-node-context="Code review, verify and publish">
+          <title>cw task verify · records current · Code review, verify and publish</title>
+          <rect x="753.6" y="713" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="753.6" y="713" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(759.6 719) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" x="803.6" y="744" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">cw task verify</text>
-          <text x="803.6" y="758.6" class="t-muted" font-size="8" text-anchor="middle">records current</text>
+          <text data-node-label="" x="799.6" y="744" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">cw task verify</text>
+          <text x="799.6" y="758.6" class="t-muted" font-size="8" text-anchor="middle">records current</text>
         </g>
 
-        <g id="node-commit" data-node-id="commit" data-node-label="github-worker" tabindex="0" role="button" aria-label="Focus github-worker, gated commit, Code review, verify and commit" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="gated commit" data-node-context="Code review, verify and commit">
-          <title>github-worker · gated commit · Code review, verify and commit</title>
-          <rect x="896.4000000000001" y="713" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="896.4000000000001" y="713" width="92" height="52" rx="8" class="c-cloud" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(902.4000000000001 719) scale(0.6875)">
+        <g id="node-publish" data-node-id="publish" data-node-label="coordinator: cw publish" tabindex="0" role="button" aria-label="Focus coordinator: cw publish, with your approval, Code review, verify and publish" aria-pressed="false" data-node-kind="backend" data-node-sublabel="with your approval" data-node-context="Code review, verify and publish">
+          <title>coordinator: cw publish · with your approval · Code review, verify and publish</title>
+          <rect x="892.4000000000001" y="713" width="152" height="52" rx="8" class="c-mask"/>
+          <rect x="892.4000000000001" y="713" width="152" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-16;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(898.4000000000001 719) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="968.4000000000001" y="744.5" class="t-primary" font-size="10.4" font-weight="600" text-anchor="middle">coordinator: cw publish</text>
+          <text x="968.4000000000001" y="759.3" class="t-muted" font-size="8" text-anchor="middle">with your approval</text>
+        </g>
+
+        <g id="node-github_worker" data-node-id="github_worker" data-node-label="github-worker" tabindex="0" role="button" aria-label="Focus github-worker, commit, push, PR, Fallback when cw publish does not fit" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="commit, push, PR" data-node-context="Fallback when cw publish does not fit">
+          <title>github-worker · commit, push, PR · Fallback when cw publish does not fit</title>
+          <rect x="922.4000000000001" y="837" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="922.4000000000001" y="837" width="92" height="52" rx="8" class="c-cloud" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-17;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(928.4000000000001 843) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" x="942.4000000000001" y="744.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">github-worker</text>
-          <text x="942.4000000000001" y="759.8" class="t-muted" font-size="8" text-anchor="middle">gated commit</text>
+          <text data-node-label="" x="968.4000000000001" y="868.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">github-worker</text>
+          <text x="968.4000000000001" y="883.8" class="t-muted" font-size="8" text-anchor="middle">commit, push, PR</text>
         </g>
 
         <g id="node-adv_review" data-node-id="adv_review" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), rejected blocker/major, any review, Advisers via cw consult: optional; the coordinator decides" aria-pressed="false" data-node-kind="database" data-node-sublabel="rejected blocker/major, any review" data-node-context="Advisers via cw consult: optional; the coordinator decides">
           <title>advisers (optional) · rejected blocker/major, any review · Advisers via cw consult: optional; the coordinator decides</title>
-          <rect x="515.2" y="837" width="172" height="52" rx="8" class="c-mask"/>
-          <rect x="515.2" y="837" width="172" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(521.2 843) scale(0.6875)">
+          <rect x="511.20000000000005" y="961" width="172" height="52" rx="8" class="c-mask"/>
+          <rect x="511.20000000000005" y="961" width="172" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(517.2 967) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="601.2" y="858" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">advisers (optional)</text>
-          <text x="601.2" y="875" class="t-muted" font-size="8" text-anchor="middle">rejected blocker/major, any review</text>
+          <text data-node-label="" x="597.2" y="982" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">advisers (optional)</text>
+          <text x="597.2" y="999" class="t-muted" font-size="8" text-anchor="middle">rejected blocker/major, any review</text>
         </g>
 
         <g id="node-adv_final" data-node-id="adv_final" data-node-label="advisers (optional)" tabindex="0" role="button" aria-label="Focus advisers (optional), final checkpoint, Advisers via cw consult: optional; the coordinator decides" aria-pressed="false" data-node-kind="database" data-node-sublabel="final checkpoint" data-node-context="Advisers via cw consult: optional; the coordinator decides">
           <title>advisers (optional) · final checkpoint · Advisers via cw consult: optional; the coordinator decides</title>
-          <rect x="741.6" y="837" width="124" height="52" rx="8" class="c-mask"/>
-          <rect x="741.6" y="837" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(747.6 843) scale(0.6875)">
+          <rect x="737.6" y="961" width="124" height="52" rx="8" class="c-mask"/>
+          <rect x="737.6" y="961" width="124" height="52" rx="8" class="c-database" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(743.6 967) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" x="803.6" y="868.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
-          <text x="803.6" y="882.9" class="t-muted" font-size="8" text-anchor="middle">final checkpoint</text>
+          <text data-node-label="" x="799.6" y="992.2" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">advisers (optional)</text>
+          <text x="799.6" y="1006.9" class="t-muted" font-size="8" text-anchor="middle">final checkpoint</text>
         </g>
 
         <!-- Edge labels -->
         <g data-edge-from="code_review" data-edge-to="verify" data-edge-label="accepted" data-edge-key="0" data-edge-id="accepted">
-          <rect x="705.2" y="719" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="729.4000000000001" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted</text>
+          <rect x="701.2" y="719" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="725.4000000000001" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted</text>
         </g>
-        <g data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="1" data-edge-id="advice-design">
-          <rect x="302.40000000000003" y="223" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="321.8" y="233" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+        <g data-edge-from="adversarial" data-edge-to="implementer" data-edge-label="failing tests" data-edge-key="1" data-edge-id="adversarial-findings">
+          <rect x="434.20000000000005" y="518" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="470.40000000000003" y="528" class="t-edge-dashed" font-size="8" text-anchor="middle">failing tests</text>
         </g>
-        <g data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-final">
-          <rect x="784.2" y="791" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="803.6" y="801" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+        <g data-edge-from="adv_design" data-edge-to="architect" data-edge-label="advice" data-edge-key="2" data-edge-id="advice-design">
+          <rect x="298.40000000000003" y="223" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="317.8" y="233" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
         </g>
-        <g data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-review">
-          <rect x="581.8000000000001" y="791" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="601.2" y="801" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+        <g data-edge-from="adv_final" data-edge-to="verify" data-edge-label="advice" data-edge-key="3" data-edge-id="advice-final">
+          <rect x="780.2" y="853" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="799.6" y="863" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
         </g>
-        <g data-edge-from="adv_spec" data-edge-to="spec_review" data-edge-label="advice" data-edge-key="4" data-edge-id="advice-spec">
-          <rect x="478.00000000000006" y="99" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="497.40000000000003" y="109" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+        <g data-edge-from="adv_review" data-edge-to="code_review" data-edge-label="advice" data-edge-key="4" data-edge-id="advice-review">
+          <rect x="577.8000000000001" y="853" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="597.2" y="863" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
+        </g>
+        <g data-edge-from="adv_spec" data-edge-to="spec_review" data-edge-label="advice" data-edge-key="5" data-edge-id="advice-spec">
+          <rect x="474.00000000000006" y="99" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="493.40000000000003" y="109" class="t-edge-dashed" font-size="8" text-anchor="middle">advice</text>
         </g>
 
-        <g data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="6" data-edge-id="change">
-          <rect x="581.8000000000001" y="543" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="601.2" y="553" class="t-edge-emphasis" font-size="8" text-anchor="middle">change</text>
+        <g data-edge-from="implementer" data-edge-to="integrate" data-edge-label="change" data-edge-key="7" data-edge-id="change">
+          <rect x="577.8000000000001" y="543" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="597.2" y="553" class="t-edge-emphasis" font-size="8" text-anchor="middle">change</text>
         </g>
-        <g data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="7" data-edge-id="code-findings">
-          <rect x="466.40000000000003" y="568" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="512.2" y="578" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+        <g data-edge-from="code_review" data-edge-to="implementer" data-edge-label="findings (capped)" data-edge-key="8" data-edge-id="code-findings">
+          <rect x="389.8" y="471" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="435.6" y="481" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
-        <g data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="8" data-edge-id="consult-design">
-          <rect x="280" y="265" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="313.8" y="275" class="t-edge-dashed" font-size="8" text-anchor="middle">real options</text>
+        <g data-edge-from="architect" data-edge-to="adv_design" data-edge-label="real options" data-edge-key="9" data-edge-id="consult-design">
+          <rect x="276" y="265" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="309.8" y="275" class="t-edge-dashed" font-size="8" text-anchor="middle">real options</text>
         </g>
-        <g data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="9" data-edge-id="consult-final">
-          <rect x="652.0000000000001" y="812" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="695.4000000000001" y="822" class="t-edge-dashed" font-size="8" text-anchor="middle">final checkpoint</text>
+        <g data-edge-from="code_review" data-edge-to="adv_final" data-edge-label="final checkpoint" data-edge-key="10" data-edge-id="consult-final">
+          <rect x="674.0000000000001" y="856.5" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="717.4000000000001" y="866.5" class="t-edge-dashed" font-size="8" text-anchor="middle">final checkpoint</text>
         </g>
-        <g data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="10" data-edge-id="consult-review">
-          <rect x="488.80000000000007" y="766" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="532.2" y="776" class="t-edge-dashed" font-size="8" text-anchor="middle">finding rejected</text>
+        <g data-edge-from="code_review" data-edge-to="adv_review" data-edge-label="finding rejected" data-edge-key="11" data-edge-id="consult-review">
+          <rect x="490.80000000000007" y="816" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="534.2" y="826" class="t-edge-dashed" font-size="8" text-anchor="middle">finding rejected</text>
         </g>
-        <g data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="11" data-edge-id="consult-spec">
-          <rect x="469.20000000000005" y="57" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="505.40000000000003" y="67" class="t-edge-dashed" font-size="8" text-anchor="middle">open question</text>
+        <g data-edge-from="spec_review" data-edge-to="adv_spec" data-edge-label="open question" data-edge-key="12" data-edge-id="consult-spec">
+          <rect x="457.20000000000005" y="152" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="493.40000000000003" y="162" class="t-edge-dashed" font-size="8" text-anchor="middle">open question</text>
         </g>
-        <g data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="12" data-edge-id="contract-to-implementer">
-          <rect x="550" y="429" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="574.2" y="439" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
+        <g data-edge-from="design_review" data-edge-to="implementer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-implementer">
+          <rect x="546" y="429" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="570.2" y="439" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
         </g>
-        <g data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="13" data-edge-id="contract-to-tests">
-          <rect x="577" y="295" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="601.2" y="305" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
+        <g data-edge-from="design_review" data-edge-to="test_engineer" data-edge-label="contract" data-edge-key="14" data-edge-id="contract-to-tests">
+          <rect x="573" y="295" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="597.2" y="305" class="t-edge-emphasis" font-size="8" text-anchor="middle">contract</text>
         </g>
-        <g data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="14" data-edge-id="design-findings">
-          <rect x="459.6" y="223" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="505.40000000000003" y="233" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+        <g data-edge-from="design_review" data-edge-to="architect" data-edge-label="findings (capped)" data-edge-key="15" data-edge-id="design-findings">
+          <rect x="455.6" y="223" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="501.40000000000003" y="233" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
-        <g data-edge-from="architect" data-edge-to="design_review" data-edge-label="design" data-edge-key="15" data-edge-id="design-to-review">
-          <rect x="498.0000000000001" y="181" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="517.4000000000001" y="191" class="t-muted" font-size="8" text-anchor="middle">design</text>
+        <g data-edge-from="architect" data-edge-to="design_review" data-edge-label="design" data-edge-key="16" data-edge-id="design-to-review">
+          <rect x="494.0000000000001" y="181" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="513.4000000000001" y="191" class="t-muted" font-size="8" text-anchor="middle">design</text>
         </g>
-        <g data-edge-from="verify" data-edge-to="commit" data-edge-label="passes" data-edge-key="16" data-edge-id="passes">
-          <rect x="853.6" y="719" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="873" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">passes</text>
+        <g data-edge-from="publish" data-edge-to="github_worker" data-edge-label="does not fit" data-edge-key="17" data-edge-id="fallback-worker">
+          <rect x="934.6000000000001" y="791" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="968.4000000000001" y="801" class="t-edge-dashed" font-size="8" text-anchor="middle">does not fit</text>
         </g>
-        <g data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="17" data-edge-id="reviewed-spec">
-          <rect x="373.40000000000003" y="171" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="409.6" y="181" class="t-edge-emphasis" font-size="8" text-anchor="middle">reviewed spec</text>
+        <g data-edge-from="verify" data-edge-to="publish" data-edge-label="passes" data-edge-key="18" data-edge-id="passes">
+          <rect x="849.6" y="719" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="869" y="729" class="t-edge-emphasis" font-size="8" text-anchor="middle">passes</text>
         </g>
-        <g data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="18" data-edge-id="reviewed-tests">
-          <rect x="687.8000000000001" y="588" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="726.4000000000001" y="598" class="t-muted" font-size="8" text-anchor="middle">reviewed tests</text>
+        <g data-edge-from="spec_review" data-edge-to="architect" data-edge-label="reviewed spec" data-edge-key="19" data-edge-id="reviewed-spec">
+          <rect x="369.40000000000003" y="171" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="405.6" y="181" class="t-edge-emphasis" font-size="8" text-anchor="middle">reviewed spec</text>
         </g>
-        <g data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="19" data-edge-id="spec-findings">
-          <rect x="268" y="99" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="313.8" y="109" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+        <g data-edge-from="test_review" data-edge-to="integrate" data-edge-label="reviewed tests" data-edge-key="20" data-edge-id="reviewed-tests">
+          <rect x="683.8000000000001" y="588" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="722.4000000000001" y="598" class="t-muted" font-size="8" text-anchor="middle">reviewed tests</text>
         </g>
-        <g data-edge-from="spec_writer" data-edge-to="spec_review" data-edge-label="change" data-edge-key="20" data-edge-id="spec-to-review">
-          <rect x="282.40000000000003" y="141" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="301.8" y="151" class="t-muted" font-size="8" text-anchor="middle">change</text>
+        <g data-edge-from="spec_review" data-edge-to="spec_writer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="spec-findings">
+          <rect x="264" y="99" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="309.8" y="109" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
-        <g data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="21" data-edge-id="test-findings">
-          <rect x="656.6000000000001" y="347" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="702.4000000000001" y="357" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
+        <g data-edge-from="spec_writer" data-edge-to="spec_review" data-edge-label="change" data-edge-key="22" data-edge-id="spec-to-review">
+          <rect x="278.40000000000003" y="141" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="297.8" y="151" class="t-muted" font-size="8" text-anchor="middle">change</text>
         </g>
-        <g data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="22" data-edge-id="tests-to-review">
-          <rect x="673.4000000000001" y="389" width="34" height="14" rx="3" class="c-mask"/>
-          <text x="690.4000000000001" y="399" class="t-muted" font-size="8" text-anchor="middle">tests</text>
+        <g data-edge-from="test_review" data-edge-to="test_engineer" data-edge-label="findings (capped)" data-edge-key="23" data-edge-id="test-findings">
+          <rect x="652.6000000000001" y="347" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="698.4000000000001" y="357" class="t-edge-dashed" font-size="8" text-anchor="middle">findings (capped)</text>
         </g>
-        <g data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="23" data-edge-id="to-code-review">
-          <rect x="579.4000000000001" y="667" width="43.6" height="14" rx="3" class="c-mask"/>
-          <text x="601.2" y="677" class="t-edge-emphasis" font-size="8" text-anchor="middle">results</text>
+        <g data-edge-from="test_engineer" data-edge-to="test_review" data-edge-label="tests" data-edge-key="24" data-edge-id="tests-to-review">
+          <rect x="669.4000000000001" y="389" width="34" height="14" rx="3" class="c-mask"/>
+          <text x="686.4000000000001" y="399" class="t-muted" font-size="8" text-anchor="middle">tests</text>
         </g>
-        <g data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="24" data-edge-id="verify-problems">
-          <rect x="710.2" y="642" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="734.4000000000001" y="652" class="t-edge-security" font-size="8" text-anchor="middle">problems</text>
+        <g data-edge-from="integrate" data-edge-to="adversarial" data-edge-label="if opted in" data-edge-key="25" data-edge-id="to-adversarial">
+          <rect x="476.00000000000006" y="595" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="507.40000000000003" y="605" class="t-edge-dashed" font-size="8" text-anchor="middle">if opted in</text>
+        </g>
+        <g data-edge-from="integrate" data-edge-to="code_review" data-edge-label="results" data-edge-key="26" data-edge-id="to-code-review">
+          <rect x="575.4000000000001" y="667" width="43.6" height="14" rx="3" class="c-mask"/>
+          <text x="597.2" y="677" class="t-edge-emphasis" font-size="8" text-anchor="middle">results</text>
+        </g>
+        <g data-edge-from="verify" data-edge-to="integrate" data-edge-label="problems" data-edge-key="27" data-edge-id="verify-problems">
+          <rect x="706.2" y="642" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="730.4000000000001" y="652" class="t-edge-security" font-size="8" text-anchor="middle">problems</text>
         </g>
 
         <!-- Legend -->
         <g data-legend="">
-          <text x="20" y="924" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="944" data-legend-width="99">
-            <rect x="20" y="936" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="944" class="t-muted" font-size="7.5" font-weight="500">Author agent</text>
+          <text x="20" y="1048" class="t-primary" font-size="12" font-weight="650">Legend</text>
+          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="1068" data-legend-width="99">
+            <rect x="20" y="1060" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
+            <text x="42" y="1068" class="t-muted" font-size="7.5" font-weight="500">Author agent</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="126" data-legend-baseline="944" data-legend-width="95">
-            <rect x="126" y="936" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="148" y="944" class="t-muted" font-size="7.5" font-weight="500">Coordinator</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="126" data-legend-baseline="1068" data-legend-width="95">
+            <rect x="126" y="1060" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="148" y="1068" class="t-muted" font-size="7.5" font-weight="500">Coordinator</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-x="228" data-legend-baseline="944" data-legend-width="95">
-            <rect x="228" y="936" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="250" y="944" class="t-muted" font-size="7.5" font-weight="500">Verify gate</text>
+          <g data-legend-semantic-kind="security" data-legend-x="228" data-legend-baseline="1068" data-legend-width="95">
+            <rect x="228" y="1060" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="250" y="1068" class="t-muted" font-size="7.5" font-weight="500">Verify gate</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-x="330" data-legend-baseline="944" data-legend-width="109">
-            <rect x="330" y="936" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="352" y="944" class="t-muted" font-size="7.5" font-weight="500">reviewer agent</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-x="330" data-legend-baseline="1068" data-legend-width="183">
+            <rect x="330" y="1060" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="352" y="1068" class="t-muted" font-size="7.5" font-weight="500">reviewer or adversarial tester</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-x="446" data-legend-baseline="944" data-legend-width="336">
-            <rect x="446" y="936" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-            <text x="468" y="944" class="t-muted" font-size="7.5" font-weight="500">Advisers: optional, if available, else 'no advisers configured'</text>
+          <g data-legend-semantic-kind="database" data-legend-x="520" data-legend-baseline="1068" data-legend-width="336">
+            <rect x="520" y="1060" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+            <text x="542" y="1068" class="t-muted" font-size="7.5" font-weight="500">Advisers: optional, if available, else 'no advisers configured'</text>
           </g>
-          <g data-legend-semantic-kind="cloud" data-legend-x="789" data-legend-baseline="944" data-legend-width="104">
-            <rect x="789" y="936" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
-            <text x="811" y="944" class="t-muted" font-size="7.5" font-weight="500">GitHub worker</text>
+          <g data-legend-semantic-kind="cloud" data-legend-x="863" data-legend-baseline="1068" data-legend-width="155">
+            <rect x="863" y="1060" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
+            <text x="885" y="1068" class="t-muted" font-size="7.5" font-weight="500">GitHub worker (fallback)</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="900" data-legend-baseline="944" data-legend-width="57">
-            <rect x="900" y="936" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="922" y="944" class="t-muted" font-size="7.5" font-weight="500">You</text>
+          <g data-legend-semantic-kind="external" data-legend-x="20" data-legend-baseline="1090" data-legend-width="57">
+            <rect x="20" y="1082" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="42" y="1090" class="t-muted" font-size="7.5" font-weight="500">You</text>
           </g>
         </g>
       </svg>

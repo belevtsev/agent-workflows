@@ -17,9 +17,12 @@ summary is produced with a 5 second deadline and cached for one hour under
 produced in time, the conventions are returned alone.
 
 When `cw` is not on `PATH`, the hook command prints the file followed by one
-line, `agent-workflows: the commit and push verify gate is inactive because cw
-was not found on PATH.`, so the session knows the gate below is off. When `cw`
-is present but fails or prints nothing, the hook command prints the file alone.
+line that starts `agent-workflows: the commit and push verify gate is inactive
+because cw was not found on PATH.` and goes on with the `go install` command for
+the plugin's release tag and a link to [Get cw](operations.md#get-cw), so the
+session knows the gate below is off and can give the user the install command.
+When `cw` is present but fails or prints nothing, the hook command prints the
+file alone.
 
 ## Publication gate
 

@@ -235,8 +235,10 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
 1. Open a pull request `chore(release): vX` that moves `[Unreleased]` in
    [CHANGELOG.md](../CHANGELOG.md) to `## [X] - date`, sets the three version
    strings to `X`, sets the tag in the install commands and release links of
-   `README.md` and [Get cw](operations.md#get-cw), and lists upgrade steps for
-   any task record version change.
+   `README.md`, [Get cw](operations.md#get-cw), `global/AGENTS.md`, the
+   `task-orchestration` skill and `hooks/hooks.json`
+   (`TestInstallCommandsNameTheRelease` fails when one names another tag), and
+   lists upgrade steps for any task record version change.
 2. After it merges, confirm CI is green on that commit.
 3. Tag and push: `git tag vX && git push origin vX`. `release.yml` runs the
    tests and goreleaser.

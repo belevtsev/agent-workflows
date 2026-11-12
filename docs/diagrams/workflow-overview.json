@@ -9,22 +9,23 @@
       "entries": {
         "external": { "label": "You" },
         "frontend": { "label": "Author agent" },
-        "messagebus": { "label": "reviewer agent" },
+        "messagebus": { "label": "reviewer or adversarial tester" },
         "backend": { "label": "Coordinator" },
         "security": { "label": "Verify gate" },
-        "cloud": { "label": "GitHub worker" },
+        "cloud": { "label": "GitHub worker (fallback)" },
         "database": { "label": "Advisers: optional, if available, else 'no advisers configured'" }
       }
     },
     "output": "docs/diagrams/workflow-overview.html"
   },
   "lanes": [
-    { "id": "spec", "label": "Spec (skipped for a small task or a reviewed spec)" },
-    { "id": "design", "label": "Design (skipped for a small task)" },
+    { "id": "spec", "label": "Spec (skipped with a reviewed spec or a precise request)" },
+    { "id": "design", "label": "Design and contract" },
     { "id": "tests", "label": "Tests, in parallel with implementation" },
     { "id": "build", "label": "Implementation" },
     { "id": "integrate_lane", "label": "Integrate and run" },
-    { "id": "gate", "label": "Code review, verify and commit" },
+    { "id": "gate", "label": "Code review, verify and publish" },
+    { "id": "fallback", "label": "Fallback when cw publish does not fit", "variant": "exception" },
     { "id": "advice", "label": "Advisers via cw consult: optional; the coordinator decides" }
   ],
   "nodes": [
@@ -36,14 +37,16 @@
     { "id": "test_engineer", "lane": "tests", "col": 3, "type": "frontend", "label": "test-engineer", "sublabel": "never sees code" },
     { "id": "test_review", "lane": "tests", "col": 4, "type": "messagebus", "label": "reviewer", "sublabel": "test review" },
     { "id": "implementer", "lane": "build", "col": 3, "type": "frontend", "label": "implementer", "sublabel": "the change" },
-    { "id": "integrate", "lane": "integrate_lane", "col": 3, "type": "backend", "label": "Integrate + run", "sublabel": "coordinator" },
-    { "id": "code_review", "lane": "gate", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "code review: vs contract, design, coverage" },
+    { "id": "integrate", "lane": "integrate_lane", "col": 3, "type": "backend", "label": "Integrate + run", "sublabel": "coordinator", "width": 96 },
+    { "id": "adversarial", "lane": "integrate_lane", "col": 2, "type": "messagebus", "label": "adversarial-tester", "sublabel": "opt-in: tests that fail", "width": 120 },
+    { "id": "code_review", "lane": "gate", "col": 3, "type": "messagebus", "label": "reviewer", "sublabel": "code review: vs contract, design, coverage", "width": 200 },
     { "id": "verify", "lane": "gate", "col": 4, "type": "security", "label": "cw task verify", "sublabel": "records current" },
-    { "id": "commit", "lane": "gate", "col": 5, "type": "cloud", "label": "github-worker", "sublabel": "gated commit" },
-    { "id": "adv_spec", "lane": "spec", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "open question" },
-    { "id": "adv_design", "lane": "design", "col": 1, "type": "database", "label": "advisers (optional)", "sublabel": "design choice" },
-    { "id": "adv_review", "lane": "advice", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "rejected blocker/major, any review" },
-    { "id": "adv_final", "lane": "advice", "col": 4, "type": "database", "label": "advisers (optional)", "sublabel": "final checkpoint" }
+    { "id": "publish", "lane": "gate", "col": 5, "type": "backend", "label": "coordinator: cw publish", "sublabel": "with your approval", "width": 152 },
+    { "id": "github_worker", "lane": "fallback", "col": 5, "type": "cloud", "label": "github-worker", "sublabel": "commit, push, PR" },
+    { "id": "adv_spec", "lane": "spec", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "open question", "width": 124 },
+    { "id": "adv_design", "lane": "design", "col": 1, "type": "database", "label": "advisers (optional)", "sublabel": "design choice", "width": 124 },
+    { "id": "adv_review", "lane": "advice", "col": 3, "type": "database", "label": "advisers (optional)", "sublabel": "rejected blocker/major, any review", "width": 172 },
+    { "id": "adv_final", "lane": "advice", "col": 4, "type": "database", "label": "advisers (optional)", "sublabel": "final checkpoint", "width": 124 }
   ],
   "edges": [
     { "id": "ask", "from": "request", "to": "spec_writer", "variant": "emphasis" },
@@ -59,10 +62,13 @@
     { "id": "reviewed-tests", "from": "test_review", "to": "integrate", "label": "reviewed tests" },
     { "id": "change", "from": "implementer", "to": "integrate", "label": "change", "variant": "emphasis" },
     { "id": "to-code-review", "from": "integrate", "to": "code_review", "label": "results", "variant": "emphasis" },
-    { "id": "code-findings", "from": "code_review", "to": "implementer", "label": "findings (capped)", "variant": "dashed", "role": "return" },
+    { "id": "to-adversarial", "from": "integrate", "to": "adversarial", "label": "if opted in", "variant": "dashed", "role": "branch" },
+    { "id": "adversarial-findings", "from": "adversarial", "to": "implementer", "label": "failing tests", "variant": "dashed", "role": "return" },
+    { "id": "code-findings", "from": "code_review", "to": "implementer", "label": "findings (capped)", "variant": "dashed", "role": "return", "fromSide": "left", "toSide": "left", "channelX": 320 },
     { "id": "accepted", "from": "code_review", "to": "verify", "label": "accepted", "variant": "emphasis" },
     { "id": "verify-problems", "from": "verify", "to": "integrate", "label": "problems", "variant": "security", "role": "error" },
-    { "id": "passes", "from": "verify", "to": "commit", "label": "passes", "variant": "emphasis" },
+    { "id": "passes", "from": "verify", "to": "publish", "label": "passes", "variant": "emphasis" },
+    { "id": "fallback-worker", "from": "publish", "to": "github_worker", "label": "does not fit", "variant": "dashed", "role": "branch" },
     { "id": "consult-spec", "from": "spec_review", "to": "adv_spec", "label": "open question", "variant": "dashed", "role": "async" },
     { "id": "advice-spec", "from": "adv_spec", "to": "spec_review", "label": "advice", "variant": "dashed", "role": "return" },
     { "id": "consult-design", "from": "architect", "to": "adv_design", "label": "real options", "variant": "dashed", "role": "async" },
@@ -80,15 +86,17 @@
         "Findings go back to the author of that stage",
         "The review cap applies per stage",
         "Test review runs before integration, without the code",
-        "Code review reads the integrated source against the contract, the design and the coverage profile"
+        "Code review reads the integrated source against the contract, the design and the coverage profile",
+        "Each test the adversarial tester keeps fails on that source and is a finding for the implementer"
       ]
     },
     {
       "dot": "cyan",
-      "title": "Skips",
+      "title": "When stages run",
       "items": [
-        "A small task skips the spec and design stages",
-        "A reviewed spec or a precise request skips the spec stage"
+        "A small task runs none of these stages: its author writes the tests and a reviewer checks them",
+        "A reviewed spec or a precise request skips the spec stage",
+        "The adversarial tester runs only when the plan opts in at classify, in parallel with the code review"
       ]
     }
   ]
