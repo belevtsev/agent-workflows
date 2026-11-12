@@ -21,6 +21,11 @@ for both the gate and `internal/usagelog`; extend it there rather than
 splitting commands again.
 `cmd/cwdev` holds the maintainer evaluation.
 
+Each `cw task` subcommand has its own constructor, `newTaskXCommand(taskDeps)`,
+in `internal/cli/task_<name>.go`, listed in `taskCommands`. Add a subcommand
+there: reject `--dry-run` with `taskDeps.guard`, read a JSON input with
+`readTaskInput` and print with `writeJSON`.
+
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
 stable lock file, waits under a context and an optional bound, and the kernel
 releases it when the holder dies. The credential store, the cost history, the
@@ -215,9 +220,9 @@ run `status` or context phase, fails validation with "invalid stored …".
 
   The check run member `go_env` (F1) was the first record change after rc.2
   and bumped `Version` to 5; later changes before rc.3, such as R1's
-  `profile`, keep 5. `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version
-  3: `internal/taskflow/testdata/rc1-small-task` holds a record it wrote, which
-  must keep loading and verifying.
+  `profile`, keep 5. `v3.0.0-rc.1` was never tagged, but the code at
+  `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
+  a record it wrote, which must keep loading and verifying.
 
 ### Graphify
 

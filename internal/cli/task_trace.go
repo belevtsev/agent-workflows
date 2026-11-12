@@ -56,18 +56,8 @@ func traceSummary(directory string, report taskflow.TraceReport) taskTraceSummar
 	return value
 }
 
-// addTaskTraceCommand adds `cw task trace` to the task command that
-// addTaskCommands registered on root.
-func addTaskTraceCommand(root *cobra.Command) {
-	var task *cobra.Command
-	for _, command := range root.Commands() {
-		if command.Name() == "task" {
-			task = command
-		}
-	}
-	if task == nil {
-		return
-	}
+// newTaskTraceCommand returns cw task trace.
+func newTaskTraceCommand(taskDeps) *cobra.Command {
 	var directory string
 	var summary bool
 	trace := &cobra.Command{
@@ -76,12 +66,7 @@ func addTaskTraceCommand(root *cobra.Command) {
 		Long: "Read the task and report, for each plan requirement, the contract requirements test-engineer briefs link to it, " +
 			"their mapped tests judged at the current source, and the check runs whose -json results recorded each test. " +
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if err := cobra.NoArgs(cmd, args); err != nil {
-				return usage(err)
-			}
-			return nil
-		},
+		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if directory == "" {
 				return usage(errors.New("trace needs --task"))
@@ -102,5 +87,5 @@ func addTaskTraceCommand(root *cobra.Command) {
 	}
 	trace.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
 	trace.Flags().BoolVar(&summary, "summary", false, "Print a short summary instead of the whole report")
-	task.AddCommand(trace)
+	return trace
 }
