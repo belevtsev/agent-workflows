@@ -171,7 +171,9 @@ A `cw` release older than these fields rejects the unknown `source_sha256` and
 abandoned; keep every host that shares a task store on the same `cw`. The same
 holds for `amendments`, which `cw task add-checks` writes: an older `cw` cannot
 read a record carrying it, and its hook skips such a record instead of gating
-it.
+it. It also holds for the record version: every revision this release writes
+is version 4, which `cw` v3.0.0-rc.1 cannot read
+([task record format](development.md#task-record-format)).
 
 ### Asking instead of denying
 
@@ -225,11 +227,12 @@ exits 0 without output, and the command proceeds, when:
 - the task store holds no governing record and the change does not look
   substantial;
 - anything fails internally: unreadable input, an unreadable or damaged record,
-  a failed source capture, a missing `git`, a git command that fails or times
-  out. Damaged records are skipped rather than reported, except a record
-  written by v2.0.66 to v2.0.96: `cw` refuses it at its first revision, so it
-  gates even when a later revision is damaged. A relative `$XDG_STATE_HOME`
-  is the other exception: it asks ([task store](#task-store)).
+  a record written by a newer `cw`, a failed source capture, a missing `git`, a
+  git command that fails or times out. Damaged records are skipped rather than
+  reported, except a record written by v2.0.66 to v2.0.96: `cw` refuses it at
+  its first revision, so it gates even when a later revision is damaged. A
+  relative `$XDG_STATE_HOME` is the other exception: it asks
+  ([task store](#task-store)).
 
 A 20 second deadline bounds the hook's Git and source-capture work. A record
 whose source identity cannot be captured in time is skipped, like a record
@@ -259,7 +262,7 @@ push through today while the repository has an open substantial task, or lets
 | Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
-| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules` ([Which source counts](#which-source-counts)). |
+| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under `cw` v3.0.0-rc.1, any version 4 record ([Which source counts](#which-source-counts)). The current hook skips a record from a newer `cw` the same way. |
 | An unreadable newest revision: `echo '{' > <task>/record-000002.json` | Allowed. A task whose record does not load is skipped, and a task directory whose newest revision does not decode is ignored. Removing the file restores the deny. |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
 | `cw task abandon --task <task> --reason TEXT` | Allowed. An abandoned task never gates, and the deny text names this command as a way out. |

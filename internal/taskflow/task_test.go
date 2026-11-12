@@ -858,7 +858,7 @@ func TestPrivateStorageAndInterruptedWritesPreserveOriginals(t *testing.T) {
 	}
 	// The truncated bytes begin with a version-1 member but never decode, so
 	// this is malformed history rather than an unsupported version (D5).
-	if _, err := Load(record.Directory); err == nil || strings.Contains(err.Error(), "this cw reads version 3 records") {
+	if _, err := Load(record.Directory); err == nil || strings.Contains(err.Error(), "this cw reads versions 3 to 4") {
 		t.Fatalf("truncated published revision ignored or misreported as an unsupported version: %v", err)
 	}
 }

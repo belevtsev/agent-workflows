@@ -601,9 +601,6 @@ func substantialPlan(t *testing.T) Plan {
 // empty map, as the record's "advisers" object; Load returns it; both
 // checkpoint contexts emit it; later revisions keep it unchanged.
 func TestStartStoresAdviserBindingAndContextsEmitIt(t *testing.T) {
-	if Version != 3 {
-		t.Fatalf("D5: task record Version = %d, want 3", Version)
-	}
 	for name, binding := range map[string]map[string]string{
 		"shipped_default": fixtureBinding(),
 		"jev_opt_in":      {"jev": "jev-1.14.0", "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"},
@@ -612,8 +609,8 @@ func TestStartStoresAdviserBindingAndContextsEmitIt(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			expected := maps.Clone(binding)
 			record, ref := fixtureTaskBound(t, substantialPlan(t), binding)
-			if record.Version != 3 || !maps.Equal(record.Advisers, expected) {
-				t.Fatalf("Start record: version=%d advisers=%v, want 3 %v", record.Version, record.Advisers, expected)
+			if record.Version != Version || !maps.Equal(record.Advisers, expected) {
+				t.Fatalf("Start record: version=%d advisers=%v, want %d %v", record.Version, record.Advisers, Version, expected)
 			}
 			assertStoredBinding := func(revision int) {
 				t.Helper()

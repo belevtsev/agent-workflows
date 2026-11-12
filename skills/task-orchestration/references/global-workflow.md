@@ -279,11 +279,11 @@ without one, it refuses `requirements`. Records made before brief `inputs` and
 of them: each is "not required" for those records, which load, hash and verify as
 before. A new contract brief without requirements is refused only when the plan
 has a per-test-credited `-json` `go test` check. Compatibility runs one way only:
-records stay version 3, so once a record gains any of the new members (`inputs`
-and `input_files`, `requirements`, `requirement_map`, `test_results`), only this
-`cw` or a later one can read it, and an older `cw` fails to load it. That includes
-the `cw hook pre-publish` binary, whose commit gate then fails open. Update every
-installed `cw`, including the one the hook runs, before running tasks with this one.
+every revision this `cw` writes is record version 4, which `cw` v3.0.0-rc.1
+cannot read, so once this `cw` touches a task only this `cw` or a later one can
+read it. That includes the `cw hook pre-publish` binary, whose commit gate then
+fails open. Update every installed `cw`, including the one the hook runs, before
+running tasks with this one.
 
 `start` binds the configured advisers (enabled in the policy, with a credential
 present, opted in to with `advisers.enabled`, a key saved with `cw keys set` or
@@ -375,9 +375,10 @@ and its decision is resolved. A small
 task can use `kind: "small"` without adviser checkpoints. Use that path only for
 the existing small-task scope.
 
-Task records use version 3; a record from an earlier release is refused, so start
-a new task. Set the plan's `coordinator_id` when the coordinating agent differs from the
-`/root` default. For delegated work, record the [worker brief, handoff and
+Task records use version 4; this `cw` also reads the version 3 records of
+v3.0.0-rc.1. A record from an earlier release is refused, so start a new task; a
+record from a newer `cw` is refused until you upgrade `cw`. Set the plan's
+`coordinator_id` when the coordinating agent differs from the `/root` default. For delegated work, record the [worker brief, handoff and
 coordinator acceptance](worker-handoffs.md) through `cw task assign`, `cw task
 handoff` and `cw task accept` before relying on its output. These commands
 validate records rather than launch agents or expand their permissions.

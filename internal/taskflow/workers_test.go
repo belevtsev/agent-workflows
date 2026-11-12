@@ -140,7 +140,7 @@ func completeIndependentReview(t *testing.T, record Record, ref SourceRef, id st
 
 func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *testing.T) {
 	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
-	if Version != 3 || record.Version != Version || record.Plan.CoordinatorID != "/root" {
+	if record.Version != Version || record.Plan.CoordinatorID != "/root" {
 		t.Fatalf("new task version/default: %+v", record.Plan)
 	}
 	if _, err := AttachConsultation(t.Context(), record.Directory, "before", writeConsultation(t, record.Contexts["before"], nil)); err != nil {
@@ -549,12 +549,13 @@ func rewriteInitialRevision(t *testing.T, record Record, mutate func(*Record)) R
 }
 
 func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testing.T) {
-	// D5: a revision of any other version anywhere in a chain is refused with
-	// the D5 message naming that version, not a generic version-switch error.
+	// D5: a revision of a version this cw does not read, anywhere in a chain,
+	// is refused with the message naming that version, not a generic
+	// version-switch error.
 	for _, test := range []struct {
 		name          string
 		first, second int
-	}{{"v1_then_v3", 1, Version}, {"v2_then_v3", 2, Version}, {"v3_then_v2", Version, 2}, {"v3_then_v4", Version, Version + 1}} {
+	}{{"v1_then_current", 1, Version}, {"v2_then_current", 2, Version}, {"current_then_v2", Version, 2}, {"current_then_next", Version, Version + 1}} {
 		t.Run(test.name, func(t *testing.T) {
 			record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 			coordinator := func(version int) string {
@@ -580,7 +581,7 @@ func TestWorkerPersistedStateRejectsVersionSwitchesAndRewrittenHistory(t *testin
 			if unsupported == Version {
 				unsupported = test.second
 			}
-			if message := unsupportedTaskVersionMessage(unsupported); !strings.Contains(err.Error(), message) {
+			if message := refusedVersionMessage(unsupported); !strings.Contains(err.Error(), message) {
 				t.Fatalf("version %d revision not refused with %q: %v", unsupported, message, err)
 			}
 			if after := productionTaskBytes(t, record.Directory); !reflect.DeepEqual(after, before) {
