@@ -1,0 +1,35 @@
+package cli
+
+import (
+	"errors"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
+	"github.com/spf13/cobra"
+)
+
+// newTaskConsultCommand returns cw task consult.
+func newTaskConsultCommand(deps taskDeps) *cobra.Command {
+	var directory, phase, inputFile string
+	var summary bool
+	command := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := deps.guard(); err != nil {
+			return err
+		}
+		if inputFile == "" || inputFile == "-" {
+			return usage(errors.New("consult needs a distinct original artifact file via --input"))
+		}
+		value, err := taskflow.AttachConsultation(cmd.Context(), directory, phase, inputFile)
+		if err != nil {
+			return err
+		}
+		if summary {
+			return writeJSON(cmd.OutOrStdout(), consultSummary(value, phase))
+		}
+		return writeJSON(cmd.OutOrStdout(), value)
+	}}
+	command.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	command.Flags().StringVar(&phase, "phase", "", "before or final")
+	command.Flags().StringVar(&inputFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
+	summaryFlag(command, &summary)
+	return command
+}

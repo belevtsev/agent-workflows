@@ -57,7 +57,7 @@ func TestDoctorProbeHelper(t *testing.T) {
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
 	case "mcp":
-		fmt.Println(`{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}`)
+		fmt.Println(mcpInitialized)
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
 	case "mcp-delayed-open":
@@ -77,7 +77,7 @@ func TestDoctorProbeHelper(t *testing.T) {
 			os.Exit(17)
 		case <-time.After(75 * time.Millisecond):
 		}
-		fmt.Println(`{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}`)
+		fmt.Println(mcpInitialized)
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
 	}
@@ -91,7 +91,7 @@ func TestMCPProbeKeepsInputOpenUntilDelayedResponse(t *testing.T) {
 	defer cancel()
 	started := time.Now()
 	result, err := executeBounded(ctx, command, 1024)
-	if err != nil || !validMCPInitialization(result.Stdout) || time.Since(started) > time.Second {
+	if err != nil || !strings.Contains(string(result.Stdout), mcpInitialized) || time.Since(started) > time.Second {
 		t.Fatalf("delayed MCP initialization did not retain its input stream or stop promptly: %v", err)
 	}
 	ctx, cancel = context.WithTimeout(t.Context(), 30*time.Millisecond)
@@ -102,6 +102,9 @@ func TestMCPProbeKeepsInputOpenUntilDelayedResponse(t *testing.T) {
 		t.Fatalf("waiting MCP input did not close on its deadline: %v", err)
 	}
 }
+
+// mcpInitialized is the response line the helper's MCP modes print.
+const mcpInitialized = `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}`
 
 func helperCommand(mode string) Command {
 	return Command{Executable: os.Args[0], Args: []string{"-test.run=^TestDoctorProbeHelper$"}, Env: []string{"CW_DOCTOR_TEST_PROBE=" + mode}}
@@ -125,7 +128,7 @@ func TestProbeOutputAndProcessLifetimeAreBounded(t *testing.T) {
 	defer cancel()
 	start = time.Now()
 	result, err = executeBounded(ctx, command, 1024)
-	if err != nil || !validMCPInitialization(result.Stdout) || time.Since(start) > time.Second {
+	if err != nil || !strings.Contains(string(result.Stdout), mcpInitialized) || time.Since(start) > time.Second {
 		t.Fatalf("MCP initialization did not close its probe process: %v", err)
 	}
 }

@@ -8,8 +8,8 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
+	"github.com/belevtsev/agent-workflows/v3/internal/doctor"
 	"github.com/belevtsev/agent-workflows/v3/internal/modelpolicy"
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/belevtsev/agent-workflows/v3/internal/userconfig"
 	"github.com/spf13/cobra"
 )
@@ -91,7 +91,7 @@ func isKeyWithoutOptInWarning(warning string) bool {
 // When the saved keys could not be read it returns none, since any of them
 // may be saved; the credentials_stored check reports the store. An unusable
 // policy or preferences file yields one warning instead.
-func keyWithoutOptInWarnings(root *cobra.Command, config Config, directory string, report projectctx.DoctorReport) []string {
+func keyWithoutOptInWarnings(root *cobra.Command, config Config, directory string, report doctor.DoctorReport) []string {
 	source, err := selectPolicy(root, config, "")
 	if err != nil {
 		return []string{"adviser opt-in was not checked: " + err.Error()}

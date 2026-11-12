@@ -1,4 +1,4 @@
-package projectctx
+package doctor
 
 // Contract: verify-adviser-claim, interface contract revision 4, R7 (cw doctor
 // credential wording). Every credential value below is a fake fixture value;
@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // The known provider credential variables (<m> = 3): TYPESAFE_API_KEY,
@@ -53,9 +55,9 @@ func acDoctorReport(t *testing.T, environment map[string]string, codexConfig str
 		Repo: t.TempDir(), Home: home, CodexHome: codex, ClaudeHome: t.TempDir(), SkillsHome: t.TempDir(),
 		Getenv:   func(name string) string { return environment[name] },
 		LookPath: func(string) (string, error) { return "", os.ErrNotExist },
-		Run: func(context.Context, Command) (CommandResult, error) {
+		Run: func(context.Context, projectctx.Command) (projectctx.CommandResult, error) {
 			t.Error("metadata inspection ran a command")
-			return CommandResult{}, errors.New("not allowed")
+			return projectctx.CommandResult{}, errors.New("not allowed")
 		},
 	})
 	if err != nil {
