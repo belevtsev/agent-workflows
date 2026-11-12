@@ -18,7 +18,14 @@ activation:
 profiles:
   # Profile names and the sol_* keys below are stable identifiers the validator
   # requires. `sol` is the substantive profile, whichever model it runs.
+  # `decision` runs the same model at `max` for planning, architecture and
+  # diagnosis, so `sol_unavailable` covers it too.
   sol:
+    model: gpt-6.1-sol
+    reasoning_effort: high
+    user_requested_efforts: [xhigh, max, ultra]
+    scope: substantive
+  decision:
     model: gpt-6.1-sol
     reasoning_effort: max
     user_requested_efforts: [xhigh, ultra]
@@ -40,28 +47,29 @@ profiles:
     scope: bounded_evidence
 
 effort_policy:
-  default_substantive: max
+  default_substantive: high
   max_for_sol: configured_or_explicit_user_request
-  configured_max_profiles: [sol]
+  configured_max_profiles: [decision]
   automatic_escalation: false
 
 effort_guidance:
   ultra: Available for Sol only on explicit user request; task-directed delegation remains available at other efforts.
-  max: Configured default for substantive Sol 6.1 work; delegate useful independent assignments according to the task.
+  max: Configured default for Sol 6.1 planning, architecture and diagnosis; other Sol work uses it only on explicit user request.
   xhigh: Configured default for other bounded execution; GitHub execution uses high. Promote uncertain scope or new consequential claims to substantive ownership.
+  high: Configured default for other substantive Sol 6.1 work, bounded evidence and GitHub execution; delegate useful independent assignments according to the task.
   comparison: Compare actual quality, total tokens, and elapsed time for equivalent work; effort labels alone do not establish depth, cost, or savings.
 
 roles:
   coordinator: sol
   coding: sol
-  planning: sol
-  architecture: sol
+  planning: decision
+  architecture: decision
   # Contract roles for the flow (references/contracts/README.md). Every review
   # stage runs the reviewer agent: spec_review, design_review, test_review and
   # review (code review).
   spec_writer: sol
   spec_review: sol
-  architect: sol
+  architect: decision
   design_review: sol
   implementer: sol
   test_engineer: sol
@@ -69,7 +77,7 @@ roles:
   # Opt-in adversarial white-box tester (contracts/adversarial-tester.md).
   adversarial_tester: sol
   review: sol
-  diagnosis: sol
+  diagnosis: decision
   documentation: sol
   issue_management: sol
   pr_authoring: sol

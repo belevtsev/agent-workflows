@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
@@ -39,7 +38,7 @@ func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitati
 // the advisers configured when the task starts. Later policy or credential
 // changes never change it. Every record it writes carries the pack set, the
 // test rules and the baseline manifest.
-func start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs packChoice) (Record, error) {
+func (env Env) start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
@@ -96,7 +95,7 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 		return Record{}, initializationError(err)
 	}
 	defer root.Close()
-	now := time.Now().UTC()
+	now := env.now()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
 	record.TestRules = TestRulesV1
@@ -130,12 +129,12 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 // PrepareContext emits the exact phase/source binding shared with advisers.
 // A final-phase context may be refreshed after further source changes; any old
 // final consultation, assessment and checks then remain visibly stale.
-func PrepareContext(ctx context.Context, path, phase string) (Context, error) {
+func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context, error) {
 	if !phaseValid(phase) {
 		return Context{}, errors.New("phase must be before or final")
 	}
 	var result Context
-	_, err := update(ctx, path, func(root *os.Root, record *Record) error {
+	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
@@ -256,11 +255,11 @@ func permittedNonExecution(record Record) bool {
 	return true
 }
 
-func Assess(ctx context.Context, path string, input AssessmentInput) (Record, error) {
+func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (Record, error) {
 	if len(input.Requirements) == 0 && input.Decision == nil {
 		return Record{}, errors.New("assessment must update a requirement or the Coordinator decision")
 	}
-	return update(ctx, path, func(_ *os.Root, record *Record) error {
+	return update(ctx, env, path, func(_ *os.Root, record *Record) error {
 		snapshot, err := projectctx.Capture(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
@@ -468,9 +467,9 @@ func localEvidenceProblems(root *os.Root, record Record, snapshot projectctx.Sna
 
 // Verify records a mechanical completion gate. It does not claim to prove the
 // meaning of source, the adequacy of tests, or the truth of Codex's reasoning.
-func Verify(ctx context.Context, path string) (Verification, error) {
+func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
-	_, err := update(ctx, path, func(root *os.Root, record *Record) error {
+	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, files, err := projectctx.CaptureManifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return fmt.Errorf("completion requires a complete current source snapshot: %w", err)
@@ -479,7 +478,7 @@ func Verify(ctx context.Context, path string) (Verification, error) {
 		if err != nil {
 			return err
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), Problems: []string{}, CheckedAt: time.Now().UTC(), Limitations: FixedVerifyLimitations()}
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), Problems: []string{}, CheckedAt: env.now(), Limitations: FixedVerifyLimitations()}
 		problem := func(format string, args ...any) {
 			result.Problems = append(result.Problems, fmt.Sprintf(format, args...))
 		}

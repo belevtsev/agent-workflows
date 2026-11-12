@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
 	"github.com/spf13/cobra"
@@ -83,7 +82,7 @@ func gitHookDecision(ctx context.Context, root *cobra.Command, config Config, co
 		store.store = gate.TaskStore(path)
 	}
 	decision := gate.DecideGitHook(ctx, gate.GitHookInput{Dir: dir, Push: command == "push", Enforce: enforce, Prompt: prompt},
-		gate.Deps{Git: gate.ExecGit, Now: time.Now, Store: store})
+		gate.Deps{Git: gate.ExecGit, Now: config.Now, Store: store})
 	if store.failed && decision.Permission == gate.Allow {
 		decision = gate.Decision{Permission: gate.Ask, Reason: storeFailureReason(store.err, store.store != nil)}
 	}
