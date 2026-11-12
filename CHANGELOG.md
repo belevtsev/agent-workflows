@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `cw publish --help` says a run appends its `started` entry only once its checks pass, so a run they deny or refuse
+  appends none, as the docs do ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
   and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
 - `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory
