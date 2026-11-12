@@ -1,4 +1,4 @@
-package projectctx
+package doctor
 
 import (
 	"bytes"
@@ -17,10 +17,9 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
 	graphifyrunner "github.com/belevtsev/agent-workflows/v3/internal/graphify"
+	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 	"github.com/pelletier/go-toml/v2"
 )
-
-const maxProbeOutput = 64 << 10
 
 var credentialKeys = []string{"TYPESAFE_API_KEY", "SUBQ_API_KEY", "OPENAI_API_KEY"}
 
@@ -44,9 +43,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		options.LookPath = exec.LookPath
 	}
 	if options.Run == nil {
-		options.Run = func(ctx context.Context, command Command) (CommandResult, error) {
-			return executeBounded(ctx, command, maxProbeOutput)
-		}
+		options.Run = projectctx.Probe
 	}
 	if options.Home == "" {
 		var err error
@@ -71,7 +68,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 	if options.SkillsHome != "" {
 		skillRoots = []string{options.SkillsHome}
 	}
-	profile, err := Inspect(ctx, options.Repo)
+	profile, err := projectctx.Inspect(ctx, options.Repo)
 	if err != nil {
 		return DoctorReport{}, err
 	}
@@ -179,8 +176,9 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		if runtime.GOOS == "windows" {
 			name, directory = "graphify.exe", "Scripts"
 		}
-		graphify = filepath.Join(options.Home, ".venvs", "agent-graphify", directory, name)
-		if !executableFile(graphify) {
+		// The dedicated runtime cw graphify prefers, then graphify on PATH.
+		graphify = lookup(filepath.Join(options.Home, ".venvs", "agent-graphify", directory, name))
+		if graphify == "" {
 			graphify = lookup("graphify")
 		}
 		if graphify == "" {
@@ -196,19 +194,19 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			}
 			return options.Getenv(key)
 		}
-		probe := func(executable string, args []string, stdin string, responseID int) (CommandResult, error) {
+		probe := func(executable string, args []string, stdin string, responseID int) (projectctx.CommandResult, error) {
 			if ctx.Err() != nil {
-				return CommandResult{}, ctx.Err()
+				return projectctx.CommandResult{}, ctx.Err()
 			}
 			probeCtx, probeCancel := context.WithTimeout(ctx, 3*time.Second)
 			defer probeCancel()
-			result, probeErr := options.Run(probeCtx, Command{Executable: executable, Args: args, Dir: profile.Snapshot.SelectedPath, Env: minimalEnvironment(getenv), Stdin: stdin, StopAfterJSONID: responseID})
-			if len(result.Stdout) > maxProbeOutput {
-				result.Stdout = result.Stdout[:maxProbeOutput]
+			result, probeErr := options.Run(probeCtx, projectctx.Command{Executable: executable, Args: args, Dir: profile.Snapshot.SelectedPath, Env: projectctx.MinimalEnvironment(getenv), Stdin: stdin, StopAfterJSONID: responseID})
+			if len(result.Stdout) > projectctx.MaxProbeOutput {
+				result.Stdout = result.Stdout[:projectctx.MaxProbeOutput]
 				result.Truncated = true
 			}
 			if result.Truncated {
-				return CommandResult{Truncated: true}, errors.New("probe exceeded its output limit")
+				return projectctx.CommandResult{Truncated: true}, errors.New("probe exceeded its output limit")
 			}
 			return result, probeErr
 		}
@@ -288,7 +286,7 @@ func readCodexMetadata(ctx context.Context, codexHome string, report *DoctorRepo
 		report.Checks["codex_config"] = Check{Status: "degraded", Detail: "Selected Codex config changed while opening or was not a regular file", Source: "selected_codex_home"}
 		return
 	}
-	data, readErr := io.ReadAll(io.LimitReader(sourceReader{ctx, file}, 1<<20+1))
+	data, readErr := io.ReadAll(io.LimitReader(contextReader{ctx, file}, 1<<20+1))
 	closeErr := file.Close()
 	var config map[string]any
 	if readErr != nil || closeErr != nil || len(data) > 1<<20 || toml.Unmarshal(data, &config) != nil {
@@ -364,12 +362,20 @@ func credentialPresence(values map[string]any, result map[string]bool) {
 	}
 }
 
-func executableFile(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode().Perm()&0111 != 0)
+// contextReader stops a configuration read once ctx is done.
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
 }
 
-func checkIndex(result CommandResult, probeErr error, snapshot Snapshot, report *DoctorReport) {
+func (reader contextReader) Read(data []byte) (int, error) {
+	if err := reader.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return reader.reader.Read(data)
+}
+
+func checkIndex(result projectctx.CommandResult, probeErr error, snapshot projectctx.Snapshot, report *DoctorReport) {
 	check := Check{Status: "degraded", Detail: "Bounded index status probe failed or returned an unsupported response; raw diagnostics were suppressed", Source: "live_jbcontext_status"}
 	defer func() { report.Checks["jbcontext_index"] = check }()
 	if probeErr != nil || result.Truncated {
@@ -404,7 +410,7 @@ func checkIndex(result CommandResult, probeErr error, snapshot Snapshot, report 
 	check.Status, check.Detail = "stale", "No reported index snapshot matches the selected Git HEAD; no automatic indexing was started"
 }
 
-func checkWatch(result CommandResult, probeErr error, root string, report *DoctorReport) {
+func checkWatch(result projectctx.CommandResult, probeErr error, root string, report *DoctorReport) {
 	check := Check{Status: "degraded", Detail: "Bounded watch-status probe failed or returned an unsupported response; raw diagnostics were suppressed", Source: "live_jbcontext_watch_status"}
 	defer func() { report.Checks["jbcontext_watch"] = check }()
 	if probeErr != nil || result.Truncated {
@@ -422,7 +428,7 @@ func checkWatch(result CommandResult, probeErr error, root string, report *Docto
 		if !ok {
 			continue
 		}
-		canonical, err := canonicalDirectory(strings.TrimSuffix(strings.TrimLeft(path, " "), "\r"))
+		canonical, err := projectctx.CanonicalDirectory(strings.TrimSuffix(strings.TrimLeft(path, " "), "\r"))
 		if err == nil && canonical == root {
 			check.Status, check.Detail = "verified", "Watch daemon reports this exact canonical worktree enrolled; source processing and semantic retrieval remain unchecked"
 			return

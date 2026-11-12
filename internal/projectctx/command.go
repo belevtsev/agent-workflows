@@ -13,6 +13,9 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/proc"
 )
 
+// MaxProbeOutput bounds a probe's standard input and the output Probe keeps.
+const MaxProbeOutput = 64 << 10
+
 // defaultProbeWaitDelay is how long a probe's output may still arrive after
 // the process exits or is stopped, unless the Command sets its own.
 const defaultProbeWaitDelay = 100 * time.Millisecond
@@ -35,10 +38,16 @@ func (out *probeOutput) Write(data []byte) (int, error) {
 	return count, err
 }
 
+// Probe runs one read-only probe of an optional tool, keeping at most
+// MaxProbeOutput bytes of its output. cw doctor's live checks use it.
+func Probe(ctx context.Context, command Command) (CommandResult, error) {
+	return executeBounded(ctx, command, MaxProbeOutput)
+}
+
 // executeBounded runs one probe with proc.Run, in a process group of its own
 // that is killed until it is empty when the probe ends, normally or not.
 func executeBounded(ctx context.Context, command Command, limit int) (CommandResult, error) {
-	if len(command.Stdin) > maxProbeOutput {
+	if len(command.Stdin) > MaxProbeOutput {
 		return CommandResult{}, errors.New("probe input exceeded its size limit")
 	}
 	probeCtx, cancel := context.WithCancel(ctx)
@@ -90,7 +99,9 @@ func hasJSONResponse(output []byte, id int) bool {
 	return false
 }
 
-func minimalEnvironment(getenv func(string) string) []string {
+// MinimalEnvironment is the allowlisted environment of a probe: fixed locale,
+// Git and Go settings, and only the path and home variables getenv returns.
+func MinimalEnvironment(getenv func(string) string) []string {
 	result := []string{"LC_ALL=C", "LANG=C", "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOTELEMETRY=off"}
 	for _, key := range []string{"PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "WINDIR", "TMPDIR", "TMP", "TEMP"} {
 		if value := getenv(key); value != "" {
