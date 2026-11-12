@@ -34,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   so a rule test uses fakes instead of a Git repository or waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
+- `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
+  message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 
 ### Fixed
 
