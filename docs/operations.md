@@ -27,10 +27,45 @@ refused with a pointer to the plugin.
 
 ### Codex
 
-Use either the Codex plugin or `cw install --host codex`, not both, so each skill
-is listed once. The plugin installs the skills and the two
-[hooks](hooks.md#codex), which load the working conventions at session start and
-gate `git commit` and `git push`, but writes no `AGENTS.md` block:
+Codex takes agent-workflows in one of two shapes: the Codex plugin, or
+[`cw install --host codex`](#codex-install-and-uninstall) from a checkout. The
+plugin has two rows because Codex runs none of its [hooks](hooks.md#codex)
+until you trust them. "Conventions" is the text of `global/AGENTS.md`, which
+holds the definition of a substantial task and the Code Review Rules.
+
+| Shape | Skills | Conventions | Definition of "substantial" | Commit and push gate | Session-start context | archify | Plugin options | Unverified |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Plugin, hooks trusted (recommended) | Every skill under `skills/`; the Go pack is the separate `cc-skills-golang` plugin | Added by the session-start hook; no `AGENTS.md` file is written | Yes, in the conventions | The pre-publish hook denies, and denies where Claude Code would ask; needs the hooks trusted in `/hooks` | The conventions, plus a cached `cw doctor` summary when `session_doctor` is on | No | Environment variables of the shell that starts Codex | Session start on `resume`, `clear` and `compact`, and in spawned agents; the session-start fallback without `cw` on `PATH`; the `small_task_prompt` and `session_doctor` variables |
+| Plugin, hooks not trusted: skills only | Every skill under `skills/` | None | Only in the `task-orchestration` skill, once loaded | `cw publish` only | None | No | No effect | Whether the interactive CLI warns about untrusted hooks; `codex exec` does not |
+| `cw install --host codex` | Every registration in `skills-manifest.json`: the skills under `skills/`, the Go pack, archify, typesafe-ai and the Docker skills | Managed block in `$CODEX_HOME/AGENTS.md` | Yes, in the block | `cw publish` only; no hook, so no trust | None: no hook | Yes | No effect: no hook reads them | No recorded Codex run of this shape; that Codex reads `~/.agents/skills` and `$CODEX_HOME/AGENTS.md` rests on its documentation |
+
+**Recommended: the plugin, with its hooks trusted.** It is the only shape whose
+gate covers a plain `git commit` or `git push`, and it loads the same
+conventions at session start. Use `cw install --host codex` instead when you
+need archify, typesafe-ai or the Docker skills, which the plugin does not carry:
+the architect contract and the `software-architecture` and
+`security-threat-model` skills draw their diagrams with archify. There only
+`cw publish` applies the gate.
+
+- **Gate.** In every shape `cw publish` applies the gate itself and refuses
+  with exit 3 `open-record`. Where no hook runs, a plain `git commit` or
+  `git push` goes unchecked. Without `cw` on `PATH` there is no gate: the hook
+  lets the command through.
+- **Trust.** Codex runs neither plugin hook until you trust them, and `codex exec`
+  does not say it skipped them. Per Codex's documentation, trust is recorded
+  against the hook's hash, so trust them again when an update changes
+  `hooks/hooks.json`.
+- **Plugin options.** Codex has no plugin configuration and sets no
+  `CLAUDE_PLUGIN_OPTION_*` variable; the hooks read the environment Codex was
+  started with. Unset, the gate and the prompt for unrecorded changes are on
+  and the doctor summary is off. A recorded run turned the gate off with
+  `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
+  same lookup but were not run. No option affects `cw publish`.
+- **Evidence.** The plugin rows come from one recorded run with codex-cli
+  0.167.2 ([Codex hooks](hooks.md#codex)); the last column lists what it did
+  not cover.
+
+To install the plugin:
 
 ```sh
 codex plugin marketplace add belevtsev/agent-workflows
@@ -38,11 +73,19 @@ codex plugin marketplace add belevtsev/agent-workflows
 
 Then run `codex`, open `/plugins`, and install `agent-workflows` (and
 `cc-skills-golang` for the Go pack); open `/hooks` and trust the two
-agent-workflows hooks, which Codex otherwise does not run; start a new session
-afterwards. For the skills plus the shared instruction block without hooks, use
-[`cw install --host codex`](#codex-install-and-uninstall) instead. The vendored
-Docker skills in `third_party/docker-skills` are in neither plugin; only
-`cw install --host codex` links them.
+agent-workflows hooks; start a new session afterwards.
+
+#### Both at once
+
+Not supported: use one shape. `cw install --host codex` does not detect the
+plugin, so nothing stops you, and the two write different files (the plugin
+lives under `$CODEX_HOME/plugins`, while `cw install` writes `~/.agents/skills`
+and `$CODEX_HOME/AGENTS.md`), so neither overwrites the other. But they
+overlap: every skill under `skills/` is installed twice, and so is the Go pack
+when its plugin is installed; with the hooks trusted, the conventions load
+twice (the block and the session-start context); and the plugin and the
+checkout update separately, so the two copies can differ. How Codex lists a
+skill installed twice is unverified.
 
 ### Get cw
 
@@ -82,9 +125,10 @@ Then check the build with `cw version`, which prints JSON with `version`,
 
 ## Codex install and uninstall
 
-`cw install --host codex` is an alternative to the Codex plugin for users who also
-want the shared instruction block. Use one or the other, not both, so each skill
-is listed once.
+`cw install --host codex` is the alternative to the Codex plugin: it links every
+registered skill, including archify, typesafe-ai and the Docker skills, and
+writes the instruction block, but installs no hook ([install shapes](#codex)).
+Use one or the other, not both ([both at once](#both-at-once)).
 
 ```sh
 git clone https://github.com/belevtsev/agent-workflows "${XDG_DATA_HOME:-$HOME/.local/share}/agent-workflows/src"

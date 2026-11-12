@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   clock and task store; hook decisions and texts are unchanged ([development](docs/development.md)).
 - The credential store, cost history and Graphify cache share one `flock` lock in `internal/fslock`,
   released when its holder dies; new locks reuse it ([development](docs/development.md)).
+- One table compares the Codex install shapes and recommends the plugin with its hooks trusted; untrusted, it gives
+  skills only, and `cw install --host codex` adds archify but no commit hook ([Codex](docs/operations.md#codex)).
 
 ### Fixed
 
