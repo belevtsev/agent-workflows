@@ -99,7 +99,7 @@ func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, 
 	if err != nil {
 		return Record{}, err
 	}
-	return update(path, func(root *os.Root, record *Record) error {
+	return update(ctx, path, func(root *os.Root, record *Record) error {
 		if record.Plan.Kind != "substantial" {
 			return errors.New("checks can be added only to a substantial task")
 		}

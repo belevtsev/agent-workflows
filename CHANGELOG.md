@@ -48,6 +48,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   no longer outlives them or their time budget; `cw publish` and `cw graphify` share that runner ([development](docs/development.md)).
 - A check named `go` runs only a `go` built from `cmd/go`, with its own GOROOT, through shims and toolchain switches, and records it; a fake `go` on `PATH`
   is recorded `failed` (`untrusted_toolchain`) instead of passing: put the real `go` first on `PATH` ([which go](docs/operations.md#which-go-a-check-runs)).
+- A killed `cw` no longer leaves its task, or the task's `cw publish`, locked, and a second task writer waits up to 10 s instead of failing. Do not mix
+  `cw` versions on one task: v3.0.0-rc.1 does not see the new task lock, and its `cw publish` reports `locked` once this `cw` has published there ([task locks](docs/operations.md#task-locks)).
 
 ### Removed
 
