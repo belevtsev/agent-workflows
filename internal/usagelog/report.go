@@ -77,8 +77,6 @@ type Report struct {
 	// Dollars so measured and estimated amounts remain distinct.
 	Cost  *outcomes.Cost `json:"cost,omitempty"`
 	Notes []string       `json:"notes"`
-	// Composition is present only when requested (Options.Composition).
-	Composition *Composition `json:"composition,omitempty"`
 }
 
 // FileRead identifies one transcript file that contributed to the report.

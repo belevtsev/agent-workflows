@@ -1,10 +1,6 @@
 package cli
 
-import (
-	"errors"
-
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 // newTaskAuthorshipCommand returns cw task authorship.
 func newTaskAuthorshipCommand(deps taskDeps) *cobra.Command {
@@ -17,8 +13,8 @@ func newTaskAuthorshipCommand(deps taskDeps) *cobra.Command {
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if directory == "" {
-				return usage(errors.New("authorship needs --task"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			report, err := taskEnv(deps.config).Authorship(cmd.Context(), directory)
 			if err != nil {
@@ -27,6 +23,6 @@ func newTaskAuthorshipCommand(deps taskDeps) *cobra.Command {
 			return writeJSON(cmd.OutOrStdout(), report)
 		},
 	}
-	authorship.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(authorship, &directory)
 	return authorship
 }

@@ -1309,9 +1309,7 @@ func TestHistoryInvalidOptions(t *testing.T) {
 	main := cleanSession(t, false)
 	prices := rateTable(map[string][5]float64{hOpus: {4, 20, 5, 8, 0.2}})
 	for name, options := range map[string]usagelog.Options{
-		"prices":              {ClaudeTranscript: main, Prices: prices},
-		"composition":         {ClaudeTranscript: main, Composition: true},
-		"composition, prices": {ClaudeTranscript: main, Composition: true, Prices: prices},
+		"prices": {ClaudeTranscript: main, Prices: prices},
 	} {
 		t.Run("append "+name, func(t *testing.T) {
 			history := filepath.Join(t.TempDir(), "history.jsonl")

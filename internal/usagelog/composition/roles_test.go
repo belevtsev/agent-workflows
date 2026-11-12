@@ -1,4 +1,4 @@
-package usagelog
+package composition
 
 import "testing"
 

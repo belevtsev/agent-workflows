@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
@@ -21,8 +20,8 @@ func newTaskTimelineCommand(taskDeps) *cobra.Command {
 		Args: noPositional,
 		// The command only reads, so the global --dry-run changes nothing.
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if directory == "" {
-				return usage(errors.New("--task DIR is required"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			record, err := taskflow.Load(directory)
 			if err != nil {
@@ -41,7 +40,7 @@ func newTaskTimelineCommand(taskDeps) *cobra.Command {
 			return err
 		},
 	}
-	timeline.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(timeline, &directory)
 	timeline.Flags().BoolVar(&summary, "summary", false, "Print JSON Lines instead of one JSON object: one compact object for the task, then one per entry")
 	return timeline
 }

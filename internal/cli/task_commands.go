@@ -56,6 +56,22 @@ func (deps taskDeps) guard() error {
 	return nil
 }
 
+// taskFlag adds --task, the task directory a command reads or changes, which
+// requireTask checks.
+func taskFlag(cmd *cobra.Command, directory *string) {
+	cmd.Flags().StringVar(directory, "task", "", "Task directory returned by start")
+}
+
+// requireTask is the usage error of a command run without --task. Each task
+// command checks it before reading its input or the task: an empty task path
+// would otherwise resolve to the working directory.
+func requireTask(directory string) error {
+	if directory == "" {
+		return usage(errors.New("--task DIR is required"))
+	}
+	return nil
+}
+
 // readTaskInput decodes the JSON input file at path, or standard input for
 // "-", into value.
 func readTaskInput(cmd *cobra.Command, path string, value any) error {

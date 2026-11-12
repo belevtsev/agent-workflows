@@ -2,11 +2,7 @@ package cli
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
 
@@ -20,44 +16,19 @@ func newTaskBundleCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		if reviewID == "" || outputFile == "" {
 			return usage(errors.New("bundle needs --review-id and --output"))
 		}
-		target, err := filepath.Abs(outputFile)
+		written, err := taskEnv(deps.config).WriteBundle(cmd.Context(), directory, reviewID, outputFile)
 		if err != nil {
 			return err
 		}
-		value, err := taskEnv(deps.config).BuildBundle(cmd.Context(), directory, reviewID)
-		if err != nil {
-			return err
-		}
-		// Resolve the parent so a symlinked spelling of a path inside the
-		// project (such as /tmp for /private/tmp) is still recognized.
-		resolved := target
-		if parent, parentErr := filepath.EvalSymlinks(filepath.Dir(target)); parentErr == nil {
-			resolved = filepath.Join(parent, filepath.Base(target))
-		}
-		if relative, relErr := filepath.Rel(value.Snapshot.Root, resolved); relErr == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return errors.New("write the reviewer bundle outside the project source; a file inside it changes the source the review is bound to")
-		}
-		data, err := taskflow.EncodeBundle(value)
-		if err != nil {
-			return err
-		}
-		file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-		if err != nil {
-			return err
-		}
-		if _, err := file.Write(data); err != nil {
-			file.Close()
-			return err
-		}
-		if err := file.Close(); err != nil {
-			return err
-		}
-		return writeJSON(cmd.OutOrStdout(), bundleSummary(target, data, value))
+		return writeJSON(cmd.OutOrStdout(), bundleSummary(written.Path, written.Data, written.Bundle))
 	}}
-	bundle.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(bundle, &directory)
 	bundle.Flags().StringVar(&reviewID, "review-id", "", "Assignment ID the review will use")
 	bundle.Flags().StringVar(&outputFile, "output", "", "New file for the bundle, outside the project source")
 	return bundle

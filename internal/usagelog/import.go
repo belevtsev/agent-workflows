@@ -19,8 +19,18 @@ type Options struct {
 	CodexSession      string
 	CodexSessionsRoot string
 	Prices            *PriceTable
-	// Composition adds the context-composition report; it needs Prices.
-	Composition bool
+}
+
+// CheckOptions returns an error wrapping ErrInvalidOptions when options do
+// not select exactly one source as Import needs.
+func CheckOptions(options Options) error {
+	switch {
+	case (options.ClaudeTranscript == "") == (options.CodexSession == ""):
+		return fmt.Errorf("%w: supply exactly one of a Claude transcript or a Codex session", ErrInvalidOptions)
+	case options.ClaudeTranscript != "" && options.CodexSessionsRoot != "":
+		return fmt.Errorf("%w: a Codex sessions root applies only to a Codex session", ErrInvalidOptions)
+	}
+	return nil
 }
 
 // Import reads the selected transcript read-only and returns the report. It
@@ -28,28 +38,26 @@ type Options struct {
 // or unrecognised source; bounded reads that stop early yield a report with
 // status incomplete instead.
 func Import(ctx context.Context, options Options) (Report, error) {
-	return importSession(ctx, options, nil)
+	return importSession(ctx, options, nil, nil)
+}
+
+// ImportObserved is Import that also passes each line of a Claude transcript
+// to observer as it is read. A Codex rollout is imported without it.
+func ImportObserved(ctx context.Context, options Options, observer Observer) (Report, error) {
+	return importSession(ctx, options, nil, observer)
 }
 
 // importSession is Import that also appends every recorded request to
-// collected when it is non-nil.
-func importSession(ctx context.Context, options Options, collected *[]collectedRequest) (Report, error) {
-	switch {
-	case (options.ClaudeTranscript == "") == (options.CodexSession == ""):
-		return Report{}, fmt.Errorf("%w: supply exactly one of a Claude transcript or a Codex session", ErrInvalidOptions)
-	case options.ClaudeTranscript != "" && options.CodexSessionsRoot != "":
-		return Report{}, fmt.Errorf("%w: a Codex sessions root applies only to a Codex session", ErrInvalidOptions)
-	case options.Composition && options.Prices == nil:
-		return Report{}, fmt.Errorf("%w: a composition needs a price table to reconcile with the recorded cost", ErrInvalidOptions)
-	case options.ClaudeTranscript != "":
-		return importClaude(ctx, options.ClaudeTranscript, options.Prices, options.Composition, collected)
-	default:
-		report, err := importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices, collected)
-		if err == nil && options.Composition {
-			report.Composition = unsupportedComposition(report)
-		}
-		return report, err
+// collected when it is non-nil, and observes a Claude transcript when
+// observer is non-nil.
+func importSession(ctx context.Context, options Options, collected *[]collectedRequest, observer Observer) (Report, error) {
+	if err := CheckOptions(options); err != nil {
+		return Report{}, err
 	}
+	if options.ClaudeTranscript != "" {
+		return importClaude(ctx, options.ClaudeTranscript, options.Prices, observer, collected)
+	}
+	return importCodex(ctx, options.CodexSession, options.CodexSessionsRoot, options.Prices, collected)
 }
 
 func newReport(source string) Report {

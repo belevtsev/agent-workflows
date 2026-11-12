@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"errors"
-
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -68,8 +66,8 @@ func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if directory == "" {
-				return usage(errors.New("trace needs --task"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			report, err := taskEnv(deps.config).Trace(cmd.Context(), directory)
 			if err != nil {
@@ -85,7 +83,7 @@ func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 			return writeJSON(cmd.OutOrStdout(), traceSummary(record.Directory, report))
 		},
 	}
-	trace.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(trace, &directory)
 	trace.Flags().BoolVar(&summary, "summary", false, "Print a short summary instead of the whole report")
 	return trace
 }

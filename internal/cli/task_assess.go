@@ -13,6 +13,9 @@ func newTaskAssessCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		var input taskflow.AssessmentInput
 		if err := readTaskInput(cmd, inputFile, &input); err != nil {
 			return err
@@ -26,7 +29,7 @@ func newTaskAssessCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	assess.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(assess, &directory)
 	assess.Flags().StringVar(&inputFile, "input", "", "Assessment JSON file, or - for standard input")
 	summaryFlag(assess, &summary)
 	return assess
