@@ -185,13 +185,21 @@ func TestConversionNamesWhyGitWouldNotStoreThePath(t *testing.T) {
 	}
 }
 
-// oracle: reduceURL's comment: scheme URLs give the lowercased host without
-// user and port, [user@]host:path with the colon before any slash gives host
-// and path, and anything else is a clean absolute local path.
+// oracle: reduceURL's comment: URLs with a scheme Git serves itself give the
+// lowercased host without user and port, [user@]host:path with the colon
+// before any slash gives host and path, and anything else is a clean absolute
+// local path. In the scp form the host may sit in brackets, after an optional
+// user@, and the path starts after the first colon that follows the closing
+// bracket; the host drops its user and a :port, and an IPv6 host keeps its
+// brackets (Git's parse_connect_url, host_end and get_port in connect.c).
 func TestReduceURLSplitsHostAndPath(t *testing.T) {
 	cases := []struct{ name, url, host, path string }{
 		{"https with user and port", "https://User@GitHub.COM:443/Owner/Repo.git", "github.com", "/Owner/Repo.git"},
+		{"http scheme", "http://host.example/r.git", "host.example", "/r.git"},
 		{"ssh scheme", "ssh://git@host.example/srv/r.git", "host.example", "/srv/r.git"},
+		{"git+ssh scheme", "git+ssh://git@host.example/srv/r.git", "host.example", "/srv/r.git"},
+		{"ssh+git scheme", "ssh+git://host.example/srv/r.git", "host.example", "/srv/r.git"},
+		{"git scheme", "git://host.example:9418/r.git", "host.example", "/r.git"},
 		{"IPv6 host with port keeps its brackets", "ssh://git@[::1]:2222/r.git", "[::1]", "/r.git"},
 		{"IPv6 host without port keeps its brackets", "ssh://[::1]/r.git", "[::1]", "/r.git"},
 		{"no path", "https://host.example", "host.example", ""},
@@ -200,14 +208,50 @@ func TestReduceURLSplitsHostAndPath(t *testing.T) {
 		{"scp form without user", "host:path/r.git", "host", "path/r.git"},
 		{"scp form without a slash", "host:r.git", "host", "r.git"},
 		{"scp form with absolute path", "host:/srv/r.git", "host", "/srv/r.git"},
+		{"scp form with a bracket in its path", "h:22]:repo", "h", "22]:repo"},
+		{"scp form with a bracketed user, host and port", "[git@h:22]:repo", "h", "repo"},
+		{"scp form with a user before a bracketed host and port", "git@[h:22]:repo", "h", "repo"},
+		{"scp form with a bracketed IPv6 host", "[::1]:r.git", "[::1]", "r.git"},
+		{"scp form with a user before a bracketed IPv6 host", "git@[::1]:r.git", "[::1]", "r.git"},
+		{"scp form whose bracket does not close", "[h:r.git", "[h", "r.git"},
 		{"colon after a slash is local", "./dir:x/r.git", "", "/w/repo/dir:x/r.git"},
 		{"leading colon is local", ":r.git", "", "/w/repo/:r.git"},
 		{"absolute local is cleaned", "/srv/./r.git/", "", "/srv/r.git"},
 		{"relative local", "../remote.git", "", "/w/remote.git"},
 	}
 	for _, c := range cases {
-		if host, path := reduceURL(c.url, "/w/repo"); host != c.host || path != c.path {
-			t.Errorf("%s: reduceURL(%q) = %q, %q; want %q, %q", c.name, c.url, host, path, c.host, c.path)
+		if host, path, ok := reduceURL(c.url, "/w/repo"); host != c.host || path != c.path || !ok {
+			t.Errorf("%s: reduceURL(%q) = %q, %q, %v; want %q, %q, true", c.name, c.url, host, path, ok, c.host, c.path)
+		}
+	}
+}
+
+// oracle: Git hands a URL to a remote helper when its leading letters,
+// digits, +, - and . are followed by "::" (transport.c, transport_get), or
+// when its scheme is none of ssh, git+ssh, ssh+git, git, file (served
+// natively) or http, https (Git's curl helper), compared case-sensitively.
+// reduceURL reduces none of them, since the helper decides where a push
+// goes, nor an scp form with no colon after its bracketed host, in which Git
+// finds no path.
+func TestReduceURLRefusesRemoteHelperURLs(t *testing.T) {
+	for _, url := range []string{
+		"pubhelper://github.com/o/r",
+		"pubhelper::https://github.com/o/r",
+		"pubhelper::file:///w/remote.git",
+		"pubhelper::/w/remote.git",
+		"ext::ssh -i key github.com %S o/r",
+		"git-remote.v2+x::anything",
+		"::/w/remote.git",
+		"HTTPS://github.com/o/r",
+		"Ssh://github.com/o/r",
+		"ftp://github.com/o/r",
+		"ftps://github.com/o/r",
+		"git@host://github.com/o/r",
+		"[git@h:22]",
+		"git@[::1]",
+	} {
+		if host, path, ok := reduceURL(url, "/w/repo"); ok {
+			t.Errorf("reduceURL(%q) = %q, %q, true; want false", url, host, path)
 		}
 	}
 }
@@ -234,10 +278,33 @@ func TestSameRepositoryComparesReducedURLs(t *testing.T) {
 		{"other IPv6 host", "ssh://[::1]/o/r", "ssh://[::2]/o/r", false},
 		{"other repository", "https://github.com/o/r", "https://github.com/o/s", false},
 		{"host against local path", "ssh://host.example/w/remote.git", "/w/remote.git", false},
+		{"bracket in the path against a bracketed host", "h:22]:repo", "[git@h:22]:repo", false},
+		{"bracketed scp form and ssh URL", "[git@h:22]:repo", "ssh://git@h:22/repo", true},
+		{"bracketed IPv6 scp form and ssh URL", "[::1]:r.git", "ssh://[::1]/r.git", true},
 	}
 	for _, c := range cases {
 		if got := sameRepository(c.a, c.b, "/w/repo"); got != c.want {
 			t.Errorf("%s: sameRepository(%q, %q) = %v, want %v", c.name, c.a, c.b, got, c.want)
+		}
+	}
+}
+
+// oracle: a URL Git hands to a remote helper (another scheme, any case but
+// lower, or <transport>::<address>) names no repository, so it never matches
+// the URL it imitates, nor itself.
+func TestSameRepositoryNeverMatchesRemoteHelperURLs(t *testing.T) {
+	cases := []struct{ name, a, b string }{
+		{"unknown scheme", "pubhelper://github.com/o/r", "https://github.com/o/r"},
+		{"transport before an https URL", "pubhelper::https://github.com/o/r", "https://github.com/o/r"},
+		{"transport before a file URL", "pubhelper::file:///w/remote.git", "/w/remote.git"},
+		{"transport before an scp form", "pubhelper::git@github.com:o/r.git", "git@github.com:o/r.git"},
+		{"upper-case scheme", "HTTPS://github.com/o/r", "https://github.com/o/r"},
+		{"fetch-only ftp", "ftp://github.com/o/r", "https://github.com/o/r"},
+		{"helper URL against itself", "pubhelper://github.com/o/r", "pubhelper://github.com/o/r"},
+	}
+	for _, c := range cases {
+		if sameRepository(c.a, c.b, "/w/repo") || sameRepository(c.b, c.a, "/w/repo") {
+			t.Errorf("%s: sameRepository(%q, %q) = true, want false", c.name, c.a, c.b)
 		}
 	}
 }

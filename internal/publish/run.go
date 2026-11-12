@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -638,6 +639,20 @@ func (r *run) oneRepository(ctx context.Context) *failure {
 	push, f := r.git.remoteURLs(ctx, r.req.remote, true)
 	if f != nil {
 		return f
+	}
+	// remote.<name>.vcs makes Git hand every URL of the remote to that
+	// helper (transport_get), which get-url does not show.
+	vcs, f := r.git.config(ctx, `^remote\.`+regexp.QuoteMeta(r.req.remote)+`\.vcs$`)
+	if f != nil {
+		return f
+	}
+	if vcs.set {
+		return failf("remote-split", "%s sets remote.%s.vcs, so Git hands it to a remote helper, which picks where the push goes: unset it", r.req.remote, r.req.remote)
+	}
+	for _, url := range slices.Concat(fetch, push) {
+		if _, _, ok := reduceURL(url, r.worktree); !ok {
+			return failf("remote-split", "%s has the URL %s, which Git hands to a remote helper or finds no path in: use an https, http, ssh, git or file URL, host:path or a local path", r.req.remote, url)
+		}
 	}
 	if len(fetch) != 1 || len(push) != 1 || !sameRepository(fetch[0], push[0], r.worktree) {
 		return failf("remote-split", "%s must fetch from and push to one repository: fetch %s, push %s", r.req.remote, strings.Join(fetch, " "), strings.Join(push, " "))
