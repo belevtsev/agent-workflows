@@ -558,7 +558,7 @@ func TestContractSubSelectedSubdirThroughCLI(t *testing.T) {
 		t.Errorf("--summary output %q is not one line", out)
 	}
 	var summary struct {
-		Task        string   `json:"task"`
+		TaskID      string   `json:"task_id"`
 		Amendment   *int     `json:"amendment"`
 		Checks      []string `json:"checks"`
 		MergeCommit string   `json:"merge_commit"`
@@ -570,9 +570,9 @@ func TestContractSubSelectedSubdirThroughCLI(t *testing.T) {
 	}
 	if summary.Amendment == nil || *summary.Amendment != 0 || !reflect.DeepEqual(summary.Checks, []string{"widened"}) ||
 		summary.MergeCommit != merge || summary.BaseRef != "origin/main" || summary.BaseCommit != r.upstream ||
-		summary.Task != dir {
-		t.Errorf("--summary = %+v, want amendment 0, checks [widened], merge %s, base origin/main %s, task %s",
-			summary, merge, r.upstream, dir)
+		summary.TaskID != filepath.Base(dir) {
+		t.Errorf("--summary = %+v, want amendment 0, checks [widened], merge %s, base origin/main %s, task_id %s",
+			summary, merge, r.upstream, filepath.Base(dir))
 	}
 	if got := subLoad(t, dir).Revision; got != before+1 {
 		t.Errorf("accepted cw task add-checks: revision %d -> %d, want one new revision", before, got)
