@@ -103,7 +103,7 @@ func vvStart(t *testing.T, timeout int, git bool, argv ...string) *vvTask {
 	plan := `{"title":"t","kind":"substantial","checkpoints":{"required":false,"reason":"test"},` +
 		`"requirements":[{"id":"r1","description":"d","check_ids":["unit"],"allow_non_execution":false}],` +
 		`"checks":[{"id":"unit","argv":` + string(a) + `,"timeout_seconds":` + strconv.Itoa(timeout) + `}]}`
-	out, err := v.cw(context.Background(), plan, "task", "start", "--plan", "-", "--repo", v.repo, "--store", filepath.Join(v.e.base, "store"))
+	out, err := v.cw(context.Background(), plan, "task", "start", "--full", "--plan", "-", "--repo", v.repo, "--store", filepath.Join(v.e.base, "store"))
 	var rec struct{ Directory string }
 	if err != nil || json.Unmarshal([]byte(out), &rec) != nil || rec.Directory == "" {
 		t.Fatalf("precondition: cw task start: %v %s", err, out)
@@ -138,7 +138,7 @@ func (v *vvTask) cw(ctx context.Context, stdin string, args ...string) (string, 
 // run runs the check and requires it to pass or not.
 func (v *vvTask) run(t *testing.T, pass bool) {
 	t.Helper()
-	if _, err := v.cw(context.Background(), "", "task", "run", "--task", v.dir, "--check", "unit"); (err == nil) != pass {
+	if _, err := v.cw(context.Background(), "", "task", "run", "--full", "--task", v.dir, "--check", "unit"); (err == nil) != pass {
 		t.Fatalf("precondition: check unit gave %v, want passed=%v", err, pass)
 	}
 }
@@ -147,7 +147,7 @@ func (v *vvTask) verify(t *testing.T) taskflow.Verification {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	out, err := v.cw(ctx, "", "task", "verify", "--task", v.dir)
+	out, err := v.cw(ctx, "", "task", "verify", "--full", "--task", v.dir)
 	var ver taskflow.Verification
 	if json.Unmarshal([]byte(out), &ver) != nil || ver.TaskID == "" {
 		t.Fatalf("verify printed no verification: %v %s", err, out)

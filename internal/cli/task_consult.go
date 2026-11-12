@@ -9,7 +9,7 @@ import (
 // newTaskConsultCommand returns cw task consult.
 func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 	var directory, phase, inputFile string
-	var summary bool
+	var full bool
 	command := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.guard(); err != nil {
 			return err
@@ -24,7 +24,7 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		if summary {
+		if !full {
 			return writeJSON(cmd.OutOrStdout(), consultSummary(value, phase))
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
@@ -32,6 +32,6 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 	taskFlag(command, &directory)
 	command.Flags().StringVar(&phase, "phase", "", "before or final")
 	command.Flags().StringVar(&inputFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
-	summaryFlag(command, &summary)
+	fullFlag(command, &full, "the whole task record")
 	return command
 }

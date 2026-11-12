@@ -47,7 +47,7 @@ func TestRelativeXDGStateHomeIsRefused(t *testing.T) {
 		t.Helper()
 		config, out := configure(t)
 		config.In = strings.NewReader(`{"title":"Relative state","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
-		args := append([]string{"task", "start", "--repo", repo, "--plan", "-", "--policy", shippedPolicyPath}, flags...)
+		args := append([]string{"task", "start", "--full", "--repo", repo, "--plan", "-", "--policy", shippedPolicyPath}, flags...)
 		err := Execute(t.Context(), args, config)
 		return out.Bytes(), err
 	}

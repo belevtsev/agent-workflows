@@ -28,7 +28,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	config.Getenv = func(string) string { return "" }
 	plan := `{"title":"Inspect real source","kind":"small","requirements":[{"id":"source","description":"Existing source inspected","check_ids":[],"allow_non_execution":true}],"checks":[]}`
 	config.In = strings.NewReader(plan)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	var record taskflow.Record
@@ -50,7 +50,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 		t.Fatalf("task start bound %v without credentials", record.Advisers)
 	}
 	out.Reset()
-	if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, config); err == nil {
+	if err := Execute(t.Context(), []string{"task", "verify", "--full", "--task", record.Directory}, config); err == nil {
 		t.Fatal("incomplete task was completed")
 	}
 	var gate taskflow.Verification
@@ -66,11 +66,11 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 	}
 	config.In = bytes.NewReader(encoded)
 	out.Reset()
-	if err := Execute(t.Context(), []string{"task", "assess", "--task", record.Directory, "--input", "-"}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "assess", "--full", "--task", record.Directory, "--input", "-"}, config); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()
-	if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "verify", "--full", "--task", record.Directory}, config); err != nil {
 		t.Fatal(err)
 	}
 	if err := json.Unmarshal(out.Bytes(), &gate); err != nil || !gate.Complete {
@@ -99,7 +99,7 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 			config.HomeDir = func() (string, error) { return home, nil }
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.In = strings.NewReader(`{"title":"Inspect source","kind":"small","requirements":[{"id":"source","description":"Read source","allow_non_execution":true}],"checks":[]}`)
-			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+			if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 				t.Fatal(err)
 			}
 			var record taskflow.Record
@@ -205,7 +205,7 @@ func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
 func TestTaskCLIRejectsUnknownPlanFields(t *testing.T) {
 	config, _ := testConfig(t)
 	config.In = strings.NewReader(`{"title":"x","kind":"small","commands_from_agents_md":true}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err == nil || !strings.Contains(err.Error(), "unknown") {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err == nil || !strings.Contains(err.Error(), "unknown") {
 		t.Fatalf("unknown plan accepted: %v", err)
 	}
 }
@@ -261,7 +261,7 @@ func TestTaskStoreUsesActiveCodexProfilePrecedence(t *testing.T) {
 				}
 				return ""
 			}
-			args := append([]string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, item.flags...)
+			args := append([]string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, item.flags...)
 			if err := Execute(t.Context(), args, config); err != nil {
 				t.Fatal(err)
 			}
@@ -291,7 +291,7 @@ func TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository(t *testing.T) {
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
 	config.In = strings.NewReader(`{"title":"Inspect project source","kind":"small","requirements":[{"id":"source","description":"Inspect source","allow_non_execution":true}],"checks":[]}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	var record taskflow.Record
@@ -307,7 +307,7 @@ func TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository(t *testing.T) {
 		}
 		config.In = bytes.NewReader(encoded)
 		out.Reset()
-		if err := Execute(t.Context(), []string{"task", command, "--task", task, "--input", "-"}, config); err != nil {
+		if err := Execute(t.Context(), []string{"task", command, "--full", "--task", task, "--input", "-"}, config); err != nil {
 			t.Fatal(err)
 		}
 		if err := json.Unmarshal(out.Bytes(), &record); err != nil {
@@ -341,7 +341,7 @@ func TestWorkerCLIValidatesHandoffsOutsideTheManagerRepository(t *testing.T) {
 	}
 	config.In = bytes.NewReader(encoded)
 	out.Reset()
-	if err := Execute(t.Context(), []string{"task", "handoff", "--task", task, "--input", "-"}, config); err == nil {
+	if err := Execute(t.Context(), []string{"task", "handoff", "--full", "--task", task, "--input", "-"}, config); err == nil {
 		t.Fatal("handoff from the wrong worker was accepted")
 	}
 	stored, err := taskflow.Load(task)
@@ -392,7 +392,7 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 			config.WorkingDir = func() (string, error) { return repo, nil }
 			config.Getenv = func(string) string { return "" }
 			config.In = strings.NewReader(`{"title":"Inspect selected project","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`)
-			if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+			if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 				t.Fatal(err)
 			}
 			var record taskflow.Record
@@ -405,7 +405,7 @@ func TestSubstantialCLIReviewGateAppliesToSourceChanges(t *testing.T) {
 				}
 			}
 			out.Reset()
-			if err := Execute(t.Context(), []string{"task", "verify", "--task", record.Directory}, config); err == nil {
+			if err := Execute(t.Context(), []string{"task", "verify", "--full", "--task", record.Directory}, config); err == nil {
 				t.Fatal("incomplete task passed completion")
 			}
 			var result taskflow.Verification
@@ -440,7 +440,7 @@ func TestSubstantialAssignRequiresResolvedBeforeCheckpoint(t *testing.T) {
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
 	config.In = strings.NewReader(`{"title":"Change project source","kind":"substantial","requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	var record taskflow.Record
@@ -458,7 +458,7 @@ func TestSubstantialAssignRequiresResolvedBeforeCheckpoint(t *testing.T) {
 	}
 	config.In = bytes.NewReader(encoded)
 	out.Reset()
-	err = Execute(t.Context(), []string{"task", "assign", "--task", record.Directory, "--input", "-"}, config)
+	err = Execute(t.Context(), []string{"task", "assign", "--full", "--task", record.Directory, "--input", "-"}, config)
 	if err == nil {
 		t.Fatal("a substantial task dispatched a worker before its before checkpoint")
 	}

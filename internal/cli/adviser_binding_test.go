@@ -86,7 +86,7 @@ func adviserBindingRun(t *testing.T, f *bindingFixture, flags ...string) (map[st
 	var stdout, stderr bytes.Buffer
 	config.In = strings.NewReader(bindingSmallPlan)
 	config.Out, config.Err = &stdout, &stderr
-	if err := Execute(t.Context(), append([]string{"task", "start", "--plan", "-"}, flags...), config); err != nil {
+	if err := Execute(t.Context(), append([]string{"task", "start", "--full", "--plan", "-"}, flags...), config); err != nil {
 		return nil, fmt.Errorf("%w (stderr %q)", err, stderr.String())
 	}
 	var document map[string]any

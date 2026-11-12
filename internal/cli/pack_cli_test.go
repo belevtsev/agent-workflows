@@ -256,7 +256,7 @@ func TestPackDefaultConfigDir(t *testing.T) {
 		}
 		// A18: task start reads the same default directory.
 		run("", "pack", "remove", "go")
-		out := run(tpPlan("go", "version"), "task", "start", "--plan", "-", "--repo", tpRepo(t, map[string]string{"go.mod": "module m\n"}),
+		out := run(tpPlan("go", "version"), "task", "start", "--full", "--plan", "-", "--repo", tpRepo(t, map[string]string{"go.mod": "module m\n"}),
 			"--store", filepath.Join(e.base, "store"))
 		var rec struct{ Packs json.RawMessage }
 		pkOneLine(t, out, &rec)
