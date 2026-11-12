@@ -164,13 +164,12 @@ type HistoryReport struct {
 // keyed request that the history does not already hold, as one line per
 // request, under an exclusive lock that every writer takes. The history and
 // its parent directory are created when missing, with modes 0600 and 0700. It
-// fails with ErrInvalidOptions when options request a composition or carry a
-// price table, and fails without writing when the import fails, the history
-// path is not a regular file (a symlink included), or the append would exceed
-// MaxHistoryBytes.
+// fails with ErrInvalidOptions when options carry a price table, and fails
+// without writing when the import fails, the history path is not a regular
+// file (a symlink included), or the append would exceed MaxHistoryBytes.
 func AppendHistory(ctx context.Context, path string, options Options) (AppendResult, error) {
 	switch {
-	case options.Composition || options.Prices != nil:
+	case options.Prices != nil:
 		return AppendResult{}, fmt.Errorf("%w: the cost history stores token counts only; it takes no composition or price table", ErrInvalidOptions)
 	case path == "":
 		return AppendResult{}, fmt.Errorf("%w: a cost history path is required", ErrInvalidOptions)
@@ -181,7 +180,7 @@ func AppendHistory(ctx context.Context, path string, options Options) (AppendRes
 	}
 	// Import before touching the history, so a failed import writes nothing.
 	var collected []collectedRequest
-	report, err := importSession(ctx, options, &collected)
+	report, err := importSession(ctx, options, &collected, nil)
 	if err != nil {
 		return AppendResult{}, err
 	}

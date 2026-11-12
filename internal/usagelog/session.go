@@ -22,6 +22,13 @@ func (r request) snapshot() [7]int64 {
 	return [7]int64{r.uncached, r.write5m, r.write1h, r.writeUnsplit, r.read, r.output, thinking}
 }
 
+// tokens returns r as the counts of one request.
+func (r request) tokens() Tokens {
+	var t Tokens
+	t.add(r)
+	return t
+}
+
 func validCount(value int64) bool { return value >= 0 && value <= int64(outcomes.MaxMetric) }
 
 func (t *Tokens) add(r request) {

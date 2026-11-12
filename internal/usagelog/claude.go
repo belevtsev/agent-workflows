@@ -149,7 +149,7 @@ func metaText(value jsontext.Value) string {
 	return text
 }
 
-func importClaude(ctx context.Context, path string, prices *PriceTable, composition bool, collected *[]collectedRequest) (Report, error) {
+func importClaude(ctx context.Context, path string, prices *PriceTable, observer Observer, collected *[]collectedRequest) (Report, error) {
 	report := newReport(SourceClaude)
 	absolute, err := filepath.Abs(path)
 	if err != nil {
@@ -212,9 +212,8 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 		files = append(files, agentFile{newAgentState(agent), filepath.Join(subagents, name)})
 	}
 
-	var comp *composer
-	if composition {
-		comp = newComposer(prices, sessionID)
+	if observer != nil {
+		observer.Session(sessionID)
 	}
 	var lastCost *costState
 	costStates := 0
@@ -223,9 +222,9 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 	for index, file := range files {
 		s.agents = append(s.agents, file.state)
 		main := index == 0
-		var compAgent *compAgent
-		if comp != nil {
-			compAgent = comp.addAgent(file.state.agent, main)
+		var lines LineObserver
+		if observer != nil {
+			lines = observer.Agent(file.state.agent, main)
 		}
 		if r.exhausted {
 			continue
@@ -266,10 +265,10 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 					key = "message:" + entry.Message.ID
 				}
 				// Lines that are not requests (synthetic, no usage, another
-				// session's copied history) are still context for the composer.
+				// session's copied history) are still context for an observer.
 				context := func(history bool) {
-					if compAgent != nil {
-						comp.assistant(compAgent, line, key, "", request{}, false, history)
+					if lines != nil {
+						lines.Assistant(line, key, "", Tokens{}, false, history)
 					}
 				}
 				if entry.Message != nil && entry.Message.Model == "<synthetic>" {
@@ -297,20 +296,20 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 				if effort := metaText(entry.Effort); recorded && effort != "" {
 					file.state.efforts[effort] = true
 				}
-				if compAgent != nil {
-					comp.assistant(compAgent, line, key, entry.Message.Model, req, recorded, false)
+				if lines != nil {
+					lines.Assistant(line, key, entry.Message.Model, req.tokens(), recorded, false)
 				}
 			case "user":
-				if compAgent != nil {
-					comp.user(compAgent, line)
+				if lines != nil {
+					lines.User(line)
 				}
 			case "attachment":
-				if compAgent != nil {
-					comp.attachment(compAgent, line)
+				if lines != nil {
+					lines.Attachment(line)
 				}
 			case "system":
-				if compAgent != nil {
-					comp.system(compAgent, line)
+				if lines != nil {
+					lines.System(line)
 				}
 			}
 		})
@@ -338,9 +337,6 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, composit
 	s.finish(prices)
 	applyClaudeDollars(&report, lastCost, costStates, prices)
 	finishReport(&report, lastCost)
-	if comp != nil {
-		report.Composition = comp.build(&report, lastCost)
-	}
 	return report, nil
 }
 

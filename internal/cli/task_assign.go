@@ -13,6 +13,9 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		var input taskflow.WorkerBrief
 		if err := readTaskInput(cmd, inputFile, &input); err != nil {
 			return err
@@ -26,7 +29,7 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	assign.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(assign, &directory)
 	assign.Flags().StringVar(&inputFile, "input", "", "Worker brief JSON file, or - for standard input")
 	summaryFlag(assign, &summary)
 	return assign

@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"errors"
-
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 	"github.com/spf13/cobra"
 )
@@ -24,8 +22,8 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 			if err := deps.guard(); err != nil {
 				return err
 			}
-			if directory == "" {
-				return usage(errors.New("--task DIR is required"))
+			if err := requireTask(directory); err != nil {
+				return err
 			}
 			var input taskflow.AmendmentInput
 			if err := readTaskInput(cmd, inputFile, &input); err != nil {
@@ -46,7 +44,7 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 			return writeJSON(cmd.OutOrStdout(), record)
 		},
 	}
-	addChecks.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(addChecks, &directory)
 	addChecks.Flags().StringVar(&inputFile, "input", "", "Amendment JSON file, or - for standard input")
 	summaryFlag(addChecks, &summary)
 	return addChecks

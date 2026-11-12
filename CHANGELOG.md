@@ -6,14 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Pass `--task DIR` to every `cw task` command that takes it: the working directory is no longer used as the task,
+  and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
+
 ### Changed
 
+- The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
+  its own experimental package, so the usage import stands alone, with `cw metrics` output unchanged ([usage stores](docs/operations.md#usage-stores)).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 - `cw doctor` lives in `internal/doctor`, so the commit gate no longer imports the credential store, Graphify or go-toml;
   `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
 - Task records and publication entries take their times from one injected clock (`taskflow.Env`, `cli.Config.Now`),
   so tests of time-dependent task rules set the time instead of waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+
+### Fixed
+
+- `go test ./internal/skillcheck` passes in a checkout made under umask 002: it checks an imported file's bytes
+  and executable bit, not its other permission bits ([content checks](docs/development.md#repository-content-checks)).
+- `go test ./internal/cli` passes wherever the checkout sits: the relative `--home` test resolves against the working directory
+  the command is given, as `cw` does, not the test's own ([paths](docs/operations.md#paths)).
+- Release notes also leave out scoped `docs`, `test` and `chore` commits, such as `chore(release):`; a breaking one
+  (`chore!:`) stays ([releases](docs/development.md#releases)).
+- Three links in the Go documentation and gopls skills now land on their section, and `go test ./internal/skillcheck`
+  checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
+- The docs say what a refused `cw publish` leaves: nothing when its checks refuse, even for one file of the set, and the commit
+  or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+
+### Fixed
+
+- A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
+  without hard links ([diagnostics][diag]).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

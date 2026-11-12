@@ -14,6 +14,9 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		if inputFile == "" || inputFile == "-" {
 			return usage(errors.New("consult needs a distinct original artifact file via --input"))
 		}
@@ -26,7 +29,7 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	command.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(command, &directory)
 	command.Flags().StringVar(&phase, "phase", "", "before or final")
 	command.Flags().StringVar(&inputFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
 	summaryFlag(command, &summary)
