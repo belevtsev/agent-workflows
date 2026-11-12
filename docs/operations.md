@@ -344,10 +344,8 @@ Checks can only be added this way, never removed, replaced or narrowed.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 
-- the task is `small`, its record has no baseline manifest, or its evidence
-  rules do not include the Go package-test rule (the task started after
-  `cw pack remove go`, or a record without a pack set has no `go.mod` at the
-  top of the selected path);
+- the task is `small`, or its evidence rules do not include the Go
+  package-test rule (the task started after `cw pack remove go`);
 - an added check ID is already a plan or added check, the plan and added checks
   would exceed 256, or an argv is not a direct `go test` that the Go rule
   credits (flags outside the allowlist, such as `-run`, and wrappers such as

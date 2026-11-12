@@ -301,6 +301,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if err := decodeBytes(data, &current); err != nil {
 			return Record{}, "", err
 		}
+		if err := requireStartMembers(current); err != nil {
+			return Record{}, "", err
+		}
 		if current.Revision != number || current.PreviousSHA256 != previous || current.Directory != directory || current.ID != filepath.Base(directory) || current.Baseline.Fingerprint == "" {
 			return Record{}, "", errors.New("invalid task record identity or revision chain")
 		}
@@ -338,6 +341,31 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 	return record, previous, nil
 }
 
+// requireStartMembers refuses a record without the members cw task start has
+// always written since v3.0.0-rc.1: packs, test_rules and baseline_manifest.
+// Only pre-release builds wrote records without them, and this cw keeps no
+// rules for such records.
+func requireStartMembers(record Record) error {
+	var missing []string
+	if record.Packs == nil {
+		missing = append(missing, "packs")
+	}
+	if record.TestRules == "" {
+		missing = append(missing, "test_rules")
+	}
+	if record.BaselineManifest == nil {
+		missing = append(missing, "baseline_manifest")
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	names := missing[0]
+	if n := len(missing); n > 1 {
+		names = strings.Join(missing[:n-1], ", ") + " or " + missing[n-1]
+	}
+	return fmt.Errorf("task record has no %s; a cw build before v3.0.0-rc.1 wrote it, and this cw does not read such records; start a new task with 'cw task start'", names)
+}
+
 func validateRecord(record Record) error {
 	if err := validateRecordedPlan(record.Plan); err != nil {
 		return err
@@ -357,10 +385,13 @@ func validateRecord(record Record) error {
 	if _, err := hex.DecodeString(record.ID); err != nil {
 		return errors.New("invalid task ID")
 	}
-	if manifest := record.BaselineManifest; manifest != nil && (manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0) {
+	if err := requireStartMembers(record); err != nil {
+		return err
+	}
+	if manifest := record.BaselineManifest; manifest.File != baselineManifestFile || !validSHA256(manifest.SHA256) || manifest.Files < 0 {
 		return errors.New("invalid stored baseline manifest reference")
 	}
-	if record.TestRules != "" && (record.TestRules != TestRulesV1 || record.BaselineManifest == nil) {
+	if record.TestRules != TestRulesV1 {
 		return errors.New("invalid stored test rules")
 	}
 	if err := consult.ValidateBinding(record.Advisers); err != nil {

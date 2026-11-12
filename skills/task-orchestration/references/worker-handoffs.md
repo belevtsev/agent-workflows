@@ -166,8 +166,8 @@ assignment is closed; these commands do not stop the runtime process.
 ## Test rules and test authorship
 
 `cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
-record; a record without it (one started by an older `cw`) keeps the earlier
-rules. A record with test rules whose plan `kind` is `substantial` is *gated*:
+record; `cw` refuses a record without it (one from a build before
+v3.0.0-rc.1): start a new task. A record whose plan `kind` is `substantial` is *gated*:
 `verify` and `assign` apply the rules below to it.
 
 - **A contract needs a provable plan.** In a gated record, `assign` refuses a
@@ -402,9 +402,8 @@ and SHA-256 (`shasum -a 256`) as the brief's `bundle`:
 
 `assign` regenerates the bundle and refuses a missing row, an empty facet or a bare
 `n/a`, and any other difference, including a check run or record added after
-`bundle`; it keeps an immutable copy for the next bundle. Tasks started by an older
-cw take no bundle. The brief points at the bundle and adds only the effort bound and
-what the bundle cannot hold.
+`bundle`; it keeps an immutable copy for the next bundle. The brief points at the
+bundle and adds only the effort bound and what the bundle cannot hold.
 
 ### Run every reach-row mode
 

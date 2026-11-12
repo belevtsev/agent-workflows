@@ -113,8 +113,7 @@ The Go rule applies when the task applies the `go` pack. That pack is selected b
 default. A task records it when `go.mod` or `go.work` is at the top of the selected
 path at start, and the rule then checks packages whenever `go.mod` is at the top at
 verify. A task that started with neither file gets no Go rule, even if it creates
-`go.mod` later; a record with no pack set (started by a `cw` before packs) gets
-the earlier Go package rule whenever `go.mod` is at the top at verify.
+`go.mod` later.
 `cw pack add` and `cw pack remove` affect only tasks started
 afterwards; an open task keeps the pack set it recorded. `cw pack list` shows the
 selection. `cw pack remove go` writes an explicit
@@ -188,9 +187,8 @@ with an amendment, in this order:
 
 `add-checks` refuses, and writes nothing, when:
 
-- the task is `small`, has no baseline manifest, or its evidence rules do not
-  include the Go package-test rule (`cw pack remove go` before start, or, for a
-  record without a pack set, no `go.mod` at the top of the selected path);
+- the task is `small`, or its evidence rules do not include the Go
+  package-test rule (`cw pack remove go` before start);
 - an added ID is already a plan or added check, plan and added checks would
   exceed 256, or an argv is not a direct `go test` the Go rule credits (the
   allowlist above; `-run` and wrappers earn none);
@@ -445,7 +443,8 @@ recorded.
 **Test rules.** `cw task start` records `"test_rules": "go.test-evidence/v1"` in
 every new record. A `cw` built before this rule cannot load such a record (its
 commit and push hook skips it), so finish a task with the `cw` that started it.
-Records without `test_rules` keep the rules above. In a record with test rules:
+`cw` refuses a record without `test_rules`, `packs` or `baseline_manifest`,
+which only builds before v3.0.0-rc.1 wrote: start a new task. The test rules:
 
 - **Proven PASS (a mitigation).** Each run's results also count the `run` events
   and the output lines beginning with byte 0x16 of each test. A mapped test is

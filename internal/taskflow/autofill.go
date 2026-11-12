@@ -95,16 +95,16 @@ func completeWorkerResult(record Record, assigned WorkerAssignment, snapshot pro
 	if input.ChangedFiles, err = fillChangedFileHashes(root, input.ChangedFiles); err != nil {
 		return input, err
 	}
-	fillGofmtHashes(root, record, assigned, input.ChangedFiles)
+	fillGofmtHashes(root, assigned, input.ChangedFiles)
 	return input, nil
 }
 
 // fillGofmtHashes sets each omitted gofmt_sha256 of a gofmt-eligible entry
 // whose current bytes format to the hash of the formatted bytes (R13.b).
 // Entries that cannot be read or do not format are left for validation.
-func fillGofmtHashes(root *os.Root, record Record, assigned WorkerAssignment, changes []WorkerChangedFile) {
+func fillGofmtHashes(root *os.Root, assigned WorkerAssignment, changes []WorkerChangedFile) {
 	for i := range changes {
-		if changes[i].GofmtSHA256 != "" || !cleanWorkerPath(changes[i].Path, false) || !gofmtEligible(record, assigned, changes[i]) {
+		if changes[i].GofmtSHA256 != "" || !cleanWorkerPath(changes[i].Path, false) || !gofmtEligible(assigned, changes[i]) {
 			continue
 		}
 		data, err := readWorkerFile(root, changes[i].Path)

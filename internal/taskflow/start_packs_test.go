@@ -92,15 +92,16 @@ func TestStartWithPacksRecordsPackSet(t *testing.T) {
 	}
 }
 
-// A19: StartWithPacks behaves as Start, errors included; an unknown selection
-// is refused without a task; Start leaves Packs nil.
-func TestStartWithPacksMatchesStart(t *testing.T) {
+// A19: StartWithPacks refuses a missing project alike for either selection;
+// an unknown selection is refused without a task; later revisions keep the
+// pack set.
+func TestStartWithPacksKeepsPackSet(t *testing.T) {
 	ctx := context.Background()
 	repo, store := spRepo(t, map[string]string{"go.mod": ""})
-	_, errA := taskflow.Start(ctx, filepath.Join(repo, "absent"), store, spPlan("true"), nil)
+	_, errA := taskflow.StartWithPacks(ctx, filepath.Join(repo, "absent"), store, spPlan("true"), nil, taskflow.SelectionExplicit, nil)
 	_, errB := taskflow.StartWithPacks(ctx, filepath.Join(repo, "absent"), store, spPlan("true"), nil, taskflow.SelectionDefault, nil)
 	if errA == nil || errB == nil || errA.Error() != errB.Error() {
-		t.Fatalf("A19 violated: missing project gives Start %v, StartWithPacks %v", errA, errB)
+		t.Fatalf("A19 violated: missing project gives explicit %v, default %v", errA, errB)
 	}
 	_, err := taskflow.StartWithPacks(ctx, repo, store, spPlan("true"), nil, "auto", nil)
 	if err == nil || err.Error() != "pack selection must be default or explicit" {
@@ -112,24 +113,19 @@ func TestStartWithPacksMatchesStart(t *testing.T) {
 			t.Fatalf("A19 violated: a refused selection created the task directory %s", d.Name())
 		}
 	}
-	a, errA := taskflow.Start(ctx, repo, store, spPlan("true"), nil)
-	b, errB := taskflow.StartWithPacks(ctx, repo, store, spPlan("true"), nil, taskflow.SelectionExplicit, nil)
-	if errA != nil || errB != nil || a.Packs != nil || !reflect.DeepEqual(a.Plan, b.Plan) || a.Baseline.SelectedPath != b.Baseline.SelectedPath ||
-		a.Revision != b.Revision || a.Version != b.Version {
-		t.Fatalf("A19 violated: Start %+v (%v) and StartWithPacks %+v (%v) differ", a, errA, b, errB)
+	// A22, I2: StartWithPacks keeps its pack set, with [] for no applied pack,
+	// in later revisions.
+	rec, err := taskflow.StartWithPacks(ctx, repo, store, spPlan("true"), nil, taskflow.SelectionExplicit, nil)
+	if err != nil || rec.Packs == nil {
+		t.Fatalf("A19 violated: packs %+v, %v", rec.Packs, err)
 	}
-	// A22, I2: no packs member in any Start revision; StartWithPacks keeps its
-	// pack set, with [] for no applied pack, in later revisions.
-	for _, rec := range []taskflow.Record{a, b} {
-		if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
-			t.Fatal(err)
-		}
-		later, err := taskflow.Load(rec.Directory)
-		data, _ := json.Marshal(later)
-		if err != nil || later.Revision <= rec.Revision || !reflect.DeepEqual(later.Packs, rec.Packs) ||
-			strings.Contains(string(data), `"packs"`) != (rec.Packs != nil) || (rec.Packs != nil && !strings.Contains(string(data), `"applied":[]`)) {
-			t.Fatalf("A22/I2 violated: later revision %s (%v)", data, err)
-		}
+	if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
+		t.Fatal(err)
+	}
+	later, err := taskflow.Load(rec.Directory)
+	data, _ := json.Marshal(later)
+	if err != nil || later.Revision <= rec.Revision || !reflect.DeepEqual(later.Packs, rec.Packs) || !strings.Contains(string(data), `"applied":[]`) {
+		t.Fatalf("A22/I2 violated: later revision %s (%v)", data, err)
 	}
 	// I2: a non-empty pack set survives a later revision even after its detect
 	// file is gone (packs are detected at start only).

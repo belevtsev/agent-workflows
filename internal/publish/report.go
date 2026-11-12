@@ -18,7 +18,7 @@ var reasonStatus = map[string]string{
 	"git-missing": StatusFailed, "locked": StatusFailed, "task-unreadable": StatusFailed, "record-invalid": StatusFailed,
 	"capture-failed": StatusFailed, "read-failed": StatusFailed, "record-write-failed": StatusFailed, "commit-failed": StatusFailed,
 
-	"task-abandoned": StatusDenied, "no-baseline-manifest": StatusDenied, "task-not-verified": StatusDenied,
+	"task-abandoned": StatusDenied, "task-not-verified": StatusDenied,
 	"source-changed": StatusDenied, "open-record": StatusDenied,
 
 	"not-a-repository": StatusRefused, "nothing-to-publish": StatusRefused, "path-not-verified": StatusRefused,

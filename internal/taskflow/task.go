@@ -33,16 +33,13 @@ var fixedVerifyLimitations = [...]string{
 // these exact strings and keep only the task-specific limitations.
 func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitations[:]) }
 
-// Start captures the immutable before-work baseline and creates private records
+// start captures the immutable before-work baseline and creates private records
 // outside the selected project. No project files are written. advisers is the
 // task's immutable adviser binding (provider -> pinned model, possibly empty):
 // the advisers configured when the task starts. Later policy or credential
-// changes never change it.
-func Start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string) (Record, error) {
-	return start(ctx, repo, store, plan, advisers, nil)
-}
-
-func start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs *packChoice) (Record, error) {
+// changes never change it. Every record it writes carries the pack set, the
+// test rules and the baseline manifest.
+func start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
@@ -102,10 +99,7 @@ func start(ctx context.Context, repo, store string, plan Plan, advisers map[stri
 	now := time.Now().UTC()
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
-	if packs != nil {
-		// StartWithPacks fixes the test rules; Start keeps the earlier ones (R1).
-		record.TestRules = TestRulesV1
-	}
+	record.TestRules = TestRulesV1
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {

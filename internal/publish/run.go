@@ -164,8 +164,6 @@ func gate(record taskflow.Record) *failure {
 	switch {
 	case record.Abandonment != nil:
 		return failf("task-abandoned", "the task was abandoned")
-	case record.BaselineManifest == nil:
-		return failf("no-baseline-manifest", "the task record has no baseline manifest; publish it with the GitHub worker")
 	case verification == nil || !verification.Complete:
 		return failf("task-not-verified", "the task has no passing cw task verify")
 	case verification.SourceSHA256 == "":

@@ -521,17 +521,6 @@ func (r *acRepo) start(t *testing.T, o acPlanOpts) string {
 	return rec.Directory
 }
 
-// startLegacy begins the task with taskflow.Start, which records no pack set
-// (section 2 recipe "Record without a pack set").
-func (r *acRepo) startLegacy(t *testing.T) string {
-	t.Helper()
-	rec, err := taskflow.Start(context.Background(), r.root, r.store, acPlan(acPlanOpts{}), map[string]string{})
-	if err != nil {
-		t.Fatalf("setup: taskflow.Start: %v", err)
-	}
-	return rec.Directory
-}
-
 func acStandardTask(t *testing.T, o acPlanOpts) (*acRepo, string) {
 	t.Helper()
 	r := acNewRepo(t)
@@ -1063,40 +1052,17 @@ func acTestEligibility(t *testing.T) {
 		_, dir := acStandardTask(t, acPlanOpts{small: true})
 		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "checks can be added only to a substantial task")
 	})
-	t.Run("R2.b no baseline manifest refused (B2)", func(t *testing.T) {
+	t.Run("R2.b no baseline manifest refused at load (B2, OD-5)", func(t *testing.T) {
 		t.Parallel()
 		r := acNewRepo(t)
-		dir := r.startLegacy(t)
+		dir := r.start(t, acPlanOpts{})
 		rec := acLoad(t, dir)
 		if rec.Revision != 1 || rec.BaselineManifest == nil {
 			t.Fatalf("setup: started record revision %d, baseline manifest present %v; want revision 1 with a manifest", rec.Revision, rec.BaselineManifest != nil)
 		}
 		acRewriteLatest(t, dir, func(rec *taskflow.Record) { rec.BaselineManifest = nil })
-		if got := acLoad(t, dir); got.BaselineManifest != nil {
-			t.Fatalf("setup: rewritten revision 1 still has a baseline manifest")
-		}
 		r.standard(t)
-		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "checks can be added only to a task with a baseline manifest")
-	})
-	t.Run("R2.d no pack set and no go.mod now refused (C2)", func(t *testing.T) {
-		t.Parallel()
-		r := acNewRepo(t)
-		dir := r.startLegacy(t)
-		r.standard(t)
-		if err := os.Remove(filepath.Join(r.root, "go.mod")); err != nil {
-			t.Fatalf("setup: %v", err)
-		}
-		acExpectRefused(t, dir, acInput("HEAD", acWidened()), acB3Phrase)
-	})
-	t.Run("R2.e no pack set with go.mod accepted", func(t *testing.T) {
-		t.Parallel()
-		r := acNewRepo(t)
-		dir := r.startLegacy(t)
-		r.standard(t)
-		if rec := acLoad(t, dir); rec.Packs != nil {
-			t.Fatalf("setup: taskflow.Start recorded a pack set %+v", rec.Packs)
-		}
-		acExpectAccepted(t, dir, acInput("HEAD", acWidened()))
+		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "task record has no baseline_manifest; "+l4NewTask)
 	})
 	t.Run("R2.f abandoned record refused (B0)", func(t *testing.T) {
 		t.Parallel()

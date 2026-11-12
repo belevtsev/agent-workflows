@@ -63,7 +63,7 @@ user's authorization still covers it.
 | 0 | `published` | none | Report the commit, remote ref and PR from the report. |
 | 1 | `failed` | `git-missing`, `locked`, `task-unreadable`, `record-invalid`, `capture-failed`, `read-failed`, `record-write-failed`, `commit-failed` | Fix the cause and re-run. After `commit-failed`, check the index (`git ls-files -s`): intent-to-add entries for new files may remain. `locked` means another run holds `.publish-lock` in the task directory, or an interrupted one left it. |
 | 2 | usage error | none | Fix the command line; nothing ran. |
-| 3 | `denied` | `task-abandoned`, `no-baseline-manifest`, `task-not-verified`, `source-changed`, `open-record` | Verify the task on the current source, or abandon the record named in `open_records`. A record without a baseline manifest uses the fallback. |
+| 3 | `denied` | `task-abandoned`, `task-not-verified`, `source-changed`, `open-record` | Verify the task on the current source, or abandon the record named in `open_records`. |
 | 4 | `refused` | `not-a-repository`, `nothing-to-publish`, `path-not-verified`, `branch-mismatch`, `head-moved`, `hunk-scope`, `content-conversion`, `git-locked`, `remote-unknown`, `remote-split`, `remote-moved`, `not-fast-forward`, `gh-missing`, `repo-mismatch`, `pr-exists`, `pr-missing`, `pr-ambiguous` | Fix the precondition, or use the fallback. Remove a Git lock in `locks_left` only after checking that no git process runs in the repository. |
 | 5 | `unknown` | `commit-unknown`, `push-unknown`, `pr-unknown` | Read the reconciliation in the report (`steps`, `locks_left`), then re-run the same command only while the authorization still covers it. After an unknown PR create, check the PR list first. A `commit-unknown` with locks left may be a definite failure behind a live git process's lock. |
 | 6 | `mismatch` | `commit-mismatch`, `push-mismatch`, `pr-mismatch` | Inspect what was written: a hook or conversion changed the commit, the remote moved, or the PR differs. Never amend or force-push; repair it through the fallback. |
@@ -87,7 +87,7 @@ Dispatch `agent-workflows:github-worker` when `cw publish` does not fit:
   (`remote-split`, `repo-mismatch`);
 - content conversions (`content-conversion`) and hooks that rewrite the
   commit message or content;
-- records without a baseline manifest or a source digest;
+- records without a source digest;
 - repairing a status 6;
 - `cw` unavailable, or the user asks for a bounded worker.
 

@@ -347,7 +347,7 @@ func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Reco
 		if err := validateWorkerOwnership(*record, after, brief); err != nil {
 			return err
 		}
-		if record.BaselineManifest != nil && brief.Role == "review" || brief.Bundle != nil {
+		if brief.Role == "review" || brief.Bundle != nil {
 			if assignment.BundleFile, err = storeReviewBundle(ctx, root, *record, brief, after); err != nil {
 				return err
 			}
@@ -450,7 +450,7 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 		if !cleanWorkerPath(changed.Path, false) || seen[changed.Path] || changed.Deleted && changed.SHA256 != "" || !changed.Deleted && !validSHA256(changed.SHA256) || changed.GofmtSHA256 != "" && (changed.Deleted || !validSHA256(changed.GofmtSHA256)) {
 			return errors.New("changed files need distinct clean paths and SHA256, or explicit deletion without SHA256")
 		}
-		if changed.GofmtSHA256 != "" && !gofmtEligible(record, assigned, changed) {
+		if changed.GofmtSHA256 != "" && !gofmtEligible(assigned, changed) {
 			return fmt.Errorf("changed file %s: %s", changed.Path, gofmtOnlyMessage)
 		}
 		seen[changed.Path] = true
@@ -591,10 +591,9 @@ func readWorkerFile(root *os.Root, name string) ([]byte, error) {
 const gofmtOnlyMessage = "cw records gofmt_sha256 only for a Go test file that parses, in a contract-bearing result of a task with test rules; omit it"
 
 // gofmtEligible reports whether cw records a gofmt hash for the entry: a Go
-// test source file, not deleted, in a contract-bearing result of a record with
-// test rules (R13).
-func gofmtEligible(record Record, assigned WorkerAssignment, changed WorkerChangedFile) bool {
-	return record.TestRules != "" && assigned.Brief.Contract != nil && !changed.Deleted && goTestSourcePath(changed.Path)
+// test source file, not deleted, in a contract-bearing result (R13).
+func gofmtEligible(assigned WorkerAssignment, changed WorkerChangedFile) bool {
+	return assigned.Brief.Contract != nil && !changed.Deleted && goTestSourcePath(changed.Path)
 }
 
 // validateChangedFiles checks each declared file against the current source.
@@ -786,7 +785,7 @@ func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult
 		if err := reachRunCoverage(root, *assigned, input); err != nil {
 			return err
 		}
-		eligible := func(changed WorkerChangedFile) bool { return gofmtEligible(*record, *assigned, changed) }
+		eligible := func(changed WorkerChangedFile) bool { return gofmtEligible(*assigned, changed) }
 		if err := validateLiveWorkerRefs(snapshot, input, eligible); err != nil {
 			return err
 		}
