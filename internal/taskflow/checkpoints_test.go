@@ -224,7 +224,7 @@ func TestNotRequiredCheckpointsVerifyWithoutCheckpoints(t *testing.T) {
 func TestNotRequiredCheckpointsKeepOtherGates(t *testing.T) {
 	t.Run("requirements", func(t *testing.T) {
 		record, _ := fixtureTask(t, checkpointsTestOptional(t))
-		if _, err := Run(t.Context(), record.Directory, "focused"); err != nil {
+		if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 			t.Fatal(err)
 		}
 		if verified, _ := Verify(t.Context(), record.Directory); verified.Complete || len(verified.Problems) == 0 {
@@ -235,7 +235,7 @@ func TestNotRequiredCheckpointsKeepOtherGates(t *testing.T) {
 		plan := helperPlan(t, "substantial", "fail")
 		plan.Checkpoints = &CheckpointPolicy{Required: false, Reason: checkpointsTestReason}
 		record, ref := fixtureTask(t, plan)
-		if run, err := Run(t.Context(), record.Directory, "focused"); err == nil || run.Status != "failed" {
+		if run, err := RunCheck(t.Context(), record.Directory, "focused"); err == nil || run.Status != "failed" {
 			t.Fatalf("failure fixture did not fail: %+v %v", run, err)
 		}
 		_, _ = Assess(t.Context(), record.Directory, assessment(ref, "focused"))

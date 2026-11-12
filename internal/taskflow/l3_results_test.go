@@ -196,7 +196,7 @@ func TestHang(t *testing.T) {
 	}
 	done := make(chan outcome, 1)
 	go func() {
-		run, err := taskflow.Run(ctx, f.dir, "hang")
+		run, err := taskflow.RunCheck(ctx, f.dir, "hang")
 		done <- outcome{run, err}
 	}()
 
@@ -234,7 +234,7 @@ func TestHang(t *testing.T) {
 	select {
 	case o = <-done:
 	case <-time.After(l3Wait):
-		t.Fatal("Run did not return after cancellation")
+		t.Fatal("RunCheck did not return after cancellation")
 	}
 	run := f.recordedRun(running.ID)
 	if run.Status != "cancelled" {

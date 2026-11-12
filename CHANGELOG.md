@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   released when its holder dies; new locks reuse it ([development](docs/development.md)).
 - One table compares the Codex install shapes and recommends the plugin with its hooks trusted; untrusted, it gives
   skills only, and `cw install --host codex` adds archify but no commit hook ([Codex](docs/operations.md#codex)).
+- Task checks run on the shared `internal/proc` runner through `taskflow.RunCheck` (was `taskflow.Run`), so contributors change
+  a check's program, environment or bounds in one function, `checkSpec`; check records are unchanged ([development](docs/development.md)).
 
 ### Fixed
 

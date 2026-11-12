@@ -56,7 +56,7 @@ func TestPackSetImmutableInStorageB25(t *testing.T) {
 			if err != nil || rec.Packs == nil || len(rec.Packs.Applied) != 1 {
 				t.Fatalf("precondition: start with the go pack applied: %+v, %v", rec.Packs, err)
 			}
-			if _, err := taskflow.Run(ctx, rec.Directory, "unit"); err != nil {
+			if _, err := taskflow.RunCheck(ctx, rec.Directory, "unit"); err != nil {
 				t.Fatalf("precondition: run a planned check: %v", err)
 			}
 			revisions, _ := filepath.Glob(filepath.Join(rec.Directory, "record-*.json"))
