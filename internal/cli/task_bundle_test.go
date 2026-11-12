@@ -157,6 +157,10 @@ func TestTaskBundleWritesBundleAndSummary(t *testing.T) {
 	if after := taskBundleFiles(t, h.record.Directory); !reflect.DeepEqual(after, before) {
 		t.Fatal("cw task bundle changed the task directory")
 	}
+	// The write goes through a temporary file, which must not remain.
+	if files := taskBundleFiles(t, filepath.Dir(path)); len(files) != 1 {
+		t.Fatalf("output directory holds %v; want only bundle.json", slices.Sorted(maps.Keys(files)))
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

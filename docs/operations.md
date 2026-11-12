@@ -227,7 +227,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | --- | --- | --- |
 | 0 | ok | The command did what was asked. |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
-| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option, or `--dry-run` where it is rejected. Nothing ran. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
@@ -303,7 +303,8 @@ changed since start with its authorship status (`independent`, `source_aware`,
 `lost` or `unowned`), its reason and the assignment it rests on, plus problems
 such as a missing or unreadable baseline manifest, and exits 0
 whatever the statuses (1 when the task cannot be loaded), `cw task bundle` writes the
-reviewer bundle a review assignment must carry (one reach row per changed file),
+reviewer bundle a review assignment must carry (one reach row per changed file) to a
+new file, whole or not at all: a failed write leaves no file at `--output`,
 `cw task contract-extract` prints requested Go declarations without bodies for a
 test engineer's contract, and
 `handoff`, `accept` and `assess` fill omitted fields that have exactly one valid

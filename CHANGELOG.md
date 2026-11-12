@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Each `cw task` subcommand is built by its own constructor in its own file, so contributors change one command
   without touching the others; help, flags, output and exit statuses are unchanged ([development](docs/development.md)).
 
+### Fixed
+
+- Every `cw task` command run without `--task` exits 2, `--task DIR is required`, instead of exiting 1 or using the working directory
+  as the task; a failed `cw task bundle` write leaves no partial bundle ([exit statuses](docs/operations.md#exit-statuses)).
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.

@@ -12,13 +12,16 @@ func newTaskContextCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		value, err := taskflow.PrepareContext(cmd.Context(), directory, phase)
 		if err != nil {
 			return err
 		}
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
-	command.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(command, &directory)
 	command.Flags().StringVar(&phase, "phase", "", "before or final")
 	return command
 }
