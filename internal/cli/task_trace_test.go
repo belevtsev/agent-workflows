@@ -453,8 +453,8 @@ func TestTaskTraceCLIErrors(t *testing.T) {
 			extra = []string{"--summary"}
 		}
 		out, stderr, err := f.execute(append([]string{"task", "trace"}, extra...)...)
-		if cli.ExitCode(err) != 2 || err == nil || !strings.Contains(err.Error()+stderr, "trace needs --task") {
-			t.Errorf("cw task trace %v without --task: %v (exit %d), stderr %q; want usage error %q, exit 2 (R36)", extra, err, cli.ExitCode(err), stderr, "trace needs --task")
+		if cli.ExitCode(err) != 2 || err == nil || !strings.Contains(err.Error()+stderr, "--task DIR is required") {
+			t.Errorf("cw task trace %v without --task: %v (exit %d), stderr %q; want usage error %q, exit 2 (R36)", extra, err, cli.ExitCode(err), stderr, "--task DIR is required")
 		}
 		if out != "" {
 			t.Errorf("usage error printed %q on stdout", out)

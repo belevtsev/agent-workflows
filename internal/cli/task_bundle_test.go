@@ -157,6 +157,10 @@ func TestTaskBundleWritesBundleAndSummary(t *testing.T) {
 	if after := taskBundleFiles(t, h.record.Directory); !reflect.DeepEqual(after, before) {
 		t.Fatal("cw task bundle changed the task directory")
 	}
+	// The write goes through a temporary file, which must not remain.
+	if files := taskBundleFiles(t, filepath.Dir(path)); len(files) != 1 {
+		t.Fatalf("output directory holds %v; want only bundle.json", slices.Sorted(maps.Keys(files)))
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -204,6 +208,10 @@ func TestTaskBundleRefusesExistingOutput(t *testing.T) {
 	_, err := h.bundle(t, "--task", h.record.Directory, "--review-id", "review1", "--output", path)
 	if err == nil || ExitCode(err) == 0 {
 		t.Fatalf("existing output accepted: %v", err)
+	}
+	// The refusal speaks of the reviewer bundle, not of a task artifact.
+	if !strings.HasPrefix(err.Error(), "write the reviewer bundle to ") || strings.Contains(err.Error(), "task artifact") {
+		t.Fatalf("existing output refused with %q; want it to start %q and not name a task artifact", err, "write the reviewer bundle to ")
 	}
 	if data, readErr := os.ReadFile(path); readErr != nil || string(data) != "keep\n" {
 		t.Fatalf("existing output changed: %q %v", data, readErr)

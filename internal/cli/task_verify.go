@@ -14,6 +14,9 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
+		if err := requireTask(directory); err != nil {
+			return err
+		}
 		value, err := taskflow.Verify(cmd.Context(), directory)
 		if value.TaskID != "" {
 			var printed any = value
@@ -26,7 +29,7 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		}
 		return err
 	}}
-	verify.Flags().StringVar(&directory, "task", "", "Task directory returned by start")
+	taskFlag(verify, &directory)
 	verify.Flags().BoolVar(&summary, "summary", false, "Print one line with every problem and only the task-specific limitations")
 	return verify
 }

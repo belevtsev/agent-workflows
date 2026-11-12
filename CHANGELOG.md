@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Breaking
+
+- Pass `--task DIR` to every `cw task` command that takes it: the working directory is no longer used as the task,
+  and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
+
 ### Changed
 
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
@@ -27,6 +32,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   checks each Markdown `#anchor` against the target's headings ([content checks](docs/development.md#repository-content-checks)).
 - The docs say what a refused `cw publish` leaves: nothing when its checks refuse, even for one file of the set, and the commit
   or push already done when a later step refuses ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+
+### Fixed
+
+- A failed `cw task bundle` write leaves no partial bundle, and the bundle is still written on a filesystem
+  without hard links ([diagnostics][diag]).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
