@@ -9,6 +9,8 @@ import (
 	"math"
 	"slices"
 	"time"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 )
 
 // recordVersion is the only consultation record version this cw writes or reads.
@@ -273,7 +275,7 @@ func validHTTPStatus(code integer) bool {
 func attempted(providers *object) int {
 	count := 0
 	for _, name := range providers.names {
-		if status, _ := providers.get(name).(*object).get("status").(string); AttemptedStatus(status) {
+		if status, _ := providers.get(name).(*object).get("status").(string); record.AttemptedStatus(status) {
 			count++
 		}
 	}
@@ -326,7 +328,7 @@ func availability(providers *object) string {
 	tried, succeeded, answered := 0, 0, 0
 	for _, name := range providers.names {
 		status, _ := providers.get(name).(*object).get("status").(string)
-		if !AttemptedStatus(status) {
+		if !record.AttemptedStatus(status) {
 			continue
 		}
 		tried++

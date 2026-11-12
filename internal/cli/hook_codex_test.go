@@ -170,7 +170,8 @@ func TestHookSessionStartReadsTheDirectoryFromCodexInput(t *testing.T) {
 	// Oracle: Codex sent this SessionStart input, with cwd, on startup,
 	// resume and compact. Under Codex's PLUGIN_ROOT, cw reads the session's
 	// directory from it, so the context carries hkGateLine for a repository
-	// with an open substantial task and no git hooks, whichever the source;
+	// with an open substantial task and no git hooks, on startup and compact
+	// (a resume adds nothing: TestHookSessionStartAddsNothingWhenCodexResumes);
 	// each source has a cache of its own, so no earlier suggestion silences
 	// it. The control, a repository without a task, gives the instructions
 	// alone. The input has no turn_id, so fromCodex cannot tell the hosts
@@ -200,7 +201,7 @@ func TestHookSessionStartReadsTheDirectoryFromCodexInput(t *testing.T) {
 		}
 		return hkSessionContext(t, got)
 	}
-	for _, source := range []string{"startup", "resume", "compact"} {
+	for _, source := range []string{"startup", "compact"} {
 		if got, want := context(t, gated, source), instructions+"\n\n"+hkGateLine; got != want {
 			t.Fatalf("source %s: additionalContext %q, want %q", source, got, want)
 		}

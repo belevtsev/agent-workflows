@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 )
 
@@ -468,7 +468,7 @@ func validateRecord(record Record) error {
 	if record.TestRules != TestRulesV1 {
 		return errors.New("invalid stored test rules")
 	}
-	if err := consult.ValidateBinding(record.Advisers); err != nil {
+	if err := consultrecord.ValidateBinding(record.Advisers); err != nil {
 		return err
 	}
 	baseline, ok := record.Contexts["before"]
@@ -496,6 +496,9 @@ func validateRecord(record Record) error {
 		}
 		if (run.TestResults != "" || run.TestResultsSHA256 != "") && (run.TestResults != testResultsName(run.ID) || !validSHA256(run.TestResultsSHA256) || run.Status == "running") {
 			return errors.New("invalid stored check run test results binding")
+		}
+		if run.SourceSHA256 != "" && !validSHA256(run.SourceSHA256) || run.EnvKey != "" && !validSHA256(run.EnvKey) {
+			return errors.New("invalid stored check run source digest or environment key")
 		}
 	}
 	requirements := map[string]bool{}

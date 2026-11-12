@@ -95,8 +95,9 @@ Every request re-sends the whole conversation. These rules never decide whether
 a task is substantial or replace a gate.
 
 - Read a reference when its step starts, and only the section needed.
-- Pass `--summary` to every `cw` command that accepts it; read a missing value
-  with `cw task show --field <dotted.path>`, not the whole record.
+- The `cw task` commands print a one-line summary by default; pass `--summary`
+  to `cw doctor` and `cw task trace`. Read a missing value with
+  `cw task show --field <dotted.path>`, not the whole record.
 - Send long build and test output to a file and print only the exit status,
   result lines and failures.
 - Batch each step: `assign` then dispatch in one turn, `handoff && accept` in

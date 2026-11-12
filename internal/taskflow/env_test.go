@@ -11,68 +11,74 @@ import (
 	"testing"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/consult"
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
-// The package-level forms below run each use case with the zero Env, the
+// The package-level forms below run each use case with productionEnv, the
 // production ports, for the tests written before the ports existed. A test
 // that needs a fake port calls the method on its own Env instead.
 
+// productionEnv is the Env cw's task commands use: the zero Env's production
+// Source and Clock, and cw consult's record validator, which taskflow cannot
+// default to because it must not import internal/consult.
+var productionEnv = Env{Consultation: consult.ValidateRecord}
+
 func StartWithPacks(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, selection string, selected []langpack.Manifest) (Record, error) {
-	return Env{}.StartWithPacks(ctx, repo, store, plan, advisers, selection, selected)
+	return productionEnv.StartWithPacks(ctx, repo, store, plan, advisers, selection, selected)
 }
 
 func PrepareContext(ctx context.Context, path, phase string) (Context, error) {
-	return Env{}.PrepareContext(ctx, path, phase)
+	return productionEnv.PrepareContext(ctx, path, phase)
 }
 
 func Assess(ctx context.Context, path string, input AssessmentInput) (Record, error) {
-	return Env{}.Assess(ctx, path, input)
+	return productionEnv.Assess(ctx, path, input)
 }
 
 func Verify(ctx context.Context, path string) (Verification, error) {
-	return Env{}.Verify(ctx, path)
+	return productionEnv.Verify(ctx, path)
 }
 
 func Abandon(path, reason string) (Record, error) {
-	return Env{}.Abandon(path, reason)
+	return productionEnv.Abandon(path, reason)
 }
 
 func RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
-	return Env{}.RunCheck(ctx, path, checkID)
+	return productionEnv.RunCheck(ctx, path, checkID)
 }
 
 func AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, error) {
-	return Env{}.AddChecks(ctx, path, input)
+	return productionEnv.AddChecks(ctx, path, input)
 }
 
 func AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
-	return Env{}.AssignWorker(ctx, taskPath, brief)
+	return productionEnv.AssignWorker(ctx, taskPath, brief)
 }
 
 func SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
-	return Env{}.SubmitWorkerResult(ctx, taskPath, input)
+	return productionEnv.SubmitWorkerResult(ctx, taskPath, input)
 }
 
 func AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
-	return Env{}.AcceptWorkerResult(ctx, taskPath, input)
+	return productionEnv.AcceptWorkerResult(ctx, taskPath, input)
 }
 
 func AttachConsultation(ctx context.Context, path, phase, inputPath string) (Record, error) {
-	return Env{}.AttachConsultation(ctx, path, phase, inputPath)
+	return productionEnv.AttachConsultation(ctx, path, phase, inputPath)
 }
 
 func Trace(ctx context.Context, taskPath string) (TraceReport, error) {
-	return Env{}.Trace(ctx, taskPath)
+	return productionEnv.Trace(ctx, taskPath)
 }
 
 func Authorship(ctx context.Context, taskPath string) (AuthorshipReport, error) {
-	return Env{}.Authorship(ctx, taskPath)
+	return productionEnv.Authorship(ctx, taskPath)
 }
 
 func BuildBundle(ctx context.Context, taskPath, reviewID string) (Bundle, error) {
-	return Env{}.BuildBundle(ctx, taskPath, reviewID)
+	return productionEnv.BuildBundle(ctx, taskPath, reviewID)
 }
 
 // fixedClock is a Clock that always returns at.
@@ -110,6 +116,14 @@ func (artifacts fakeArtifacts) Read(name string, limit int64) ([]byte, error) {
 	return data, nil
 }
 
+func (artifacts fakeArtifacts) Write(name string, data []byte) error {
+	if _, ok := artifacts[name]; ok {
+		return fs.ErrExist
+	}
+	artifacts[name] = slices.Clone(data)
+	return nil
+}
+
 // fakeSourceTask is fixtureTask without git: it starts plan, bound to the
 // shipped default advisers, with an Env whose Source is a fakeSource and
 // whose clock is fixed at at. The fake's snapshot is a clean checkout of
@@ -128,7 +142,7 @@ func fakeSourceTask(t *testing.T, plan Plan, at time.Time) (Record, SourceRef, *
 		snapshot: projectctx.Snapshot{Root: repo, SelectedPath: repo, Head: strings.Repeat("a", 40), Branch: "main", Fingerprint: "sha256:" + digest(data), FileCount: 1},
 		files:    []projectctx.FileState{{Path: "source.txt", Mode: "100644", SHA256: digest(data)}},
 	}
-	env := Env{Source: source, Clock: fixedClock(at)}
+	env := Env{Source: source, Clock: fixedClock(at), Consultation: consult.ValidateRecord}
 	record, err := env.StartWithPacks(t.Context(), repo, filepath.Join(t.TempDir(), "tasks"), plan, fixtureBinding(), SelectionExplicit, nil)
 	if err != nil {
 		t.Fatal(err)

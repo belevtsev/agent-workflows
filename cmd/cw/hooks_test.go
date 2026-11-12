@@ -410,7 +410,7 @@ func TestHooksEndToEnd(t *testing.T) {
 	if err := os.WriteFile(plan, []byte(`{"title":"T","kind":"substantial","checkpoints":{"required":false,"reason":"test"},"requirements":[{"id":"source","description":"Inspect actual source","check_ids":["unit"],"allow_non_execution":true}],"checks":[{"id":"unit","argv":["go","test","./..."]}]}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	start := exec.CommandContext(t.Context(), binary, "task", "start", "--repo", repo, "--plan", plan,
+	start := exec.CommandContext(t.Context(), binary, "task", "start", "--full", "--repo", repo, "--plan", plan,
 		"--policy", filepath.Join(root, "skills", "task-orchestration", "model-policy.yaml"), "--summary", "--store", store)
 	start.Env = []string{"HOME=" + home, "PATH=" + withoutCW}
 	start.Dir = t.TempDir()
@@ -546,6 +546,22 @@ func TestHooksEndToEnd(t *testing.T) {
 		if want := strings.TrimRight(string(agents), "\n") + "\n\n" + gateLine; got != want {
 			t.Fatalf("additionalContext differs from global/AGENTS.md without trailing newlines, a blank line and %q (got %d bytes ending %q, want %d)",
 				gateLine, len(got), got[max(0, len(got)-200):], len(want))
+		}
+	})
+
+	t.Run("session-start adds nothing when Codex resumes", func(t *testing.T) {
+		// Oracle: under Codex, which sets PLUGIN_ROOT, a resume prints one
+		// SessionStart JSON line without additionalContext, exactly as cw
+		// wrote it: not the file, which the command prints when cw prints
+		// nothing, and not the instructions, which the resumed thread holds.
+		resume, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "resume", "cwd": repo, "model": "m"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		const want = `{"hookSpecificOutput":{"hookEventName":"SessionStart"}}` + "\n"
+		code, stdout, stderr := hooksSh(t, sessionCommand, resume, env(withCW, "PLUGIN_ROOT="+root))
+		if code != 0 || stdout != want {
+			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and %q", code, stderr, stdout, want)
 		}
 	})
 

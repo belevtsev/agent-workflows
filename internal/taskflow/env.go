@@ -2,9 +2,11 @@ package taskflow
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -28,24 +30,40 @@ type Clock func() time.Time
 // revisions: check logs and test results, the baseline manifest,
 // consultations, worker input copies, contracts and review bundles. Read
 // returns the named private regular file, and refuses one over limit bytes.
-// The rules that judge a record read its artefacts only through it.
+// The rules that judge a record read its artefacts only through it. Write
+// stores data as a new private file named name, whole or not at all, and
+// fails with an error matching fs.ErrExist when name exists.
 type Artifacts interface {
 	Read(name string, limit int64) ([]byte, error)
+	Write(name string, data []byte) error
 }
+
+// ConsultationValidator fully revalidates a stored consultation record and
+// returns its summary; production is consult.ValidateRecord. It is a port so
+// the task flow does not link the adviser HTTP providers that cw consult
+// carries beside the validator.
+type ConsultationValidator func(data []byte) (consultrecord.Record, error)
+
+// errNoConsultationValidator refuses a consultation check when the Env has no
+// validator: a stored consultation is never trusted unchecked.
+var errNoConsultationValidator = errors.New("no consultation validator is configured, so the consultation record cannot be checked")
 
 // Env carries the ports a task use case reads instead of reaching the machine
 // directly, so a rule can run in a unit test with fakes. The ports are
 // declared here, at their consumer. A nil port selects its production
 // implementation, so the zero Env is production: projectctx captures the
-// source and time.Now is the clock.
+// source and time.Now is the clock. The consultation validator is the
+// exception: its implementation lives in internal/consult, which taskflow must
+// not import, so a nil one fails closed and every consultation check refuses.
 //
 // Each use case is a method on Env; one that writes a task revision passes
 // the Env to update, which stamps the revision. Artifacts belong to one task
 // directory, so they are not in Env: a use case hands its rules the directory
 // it opened (taskDirectory).
 type Env struct {
-	Source Source
-	Clock  Clock
+	Source       Source
+	Clock        Clock
+	Consultation ConsultationValidator
 }
 
 // source returns the Env's Source; a nil one captures with projectctx.
@@ -62,6 +80,15 @@ func (env Env) now() time.Time {
 		return time.Now().UTC()
 	}
 	return env.Clock().UTC()
+}
+
+// validateConsultation revalidates a consultation record with the Env's
+// validator; a nil validator refuses.
+func (env Env) validateConsultation(data []byte) (consultrecord.Record, error) {
+	if env.Consultation == nil {
+		return consultrecord.Record{}, errNoConsultationValidator
+	}
+	return env.Consultation(data)
 }
 
 // projectSource is the production Source.
@@ -81,4 +108,8 @@ type taskDirectory struct{ root *os.Root }
 
 func (directory taskDirectory) Read(name string, limit int64) ([]byte, error) {
 	return privateRead(directory.root, name, limit)
+}
+
+func (directory taskDirectory) Write(name string, data []byte) error {
+	return writeNew(directory.root, name, data)
 }

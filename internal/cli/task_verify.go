@@ -6,7 +6,7 @@ import "github.com/spf13/cobra"
 // whenever one was produced, then returns the verification's error.
 func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 	var directory string
-	var summary bool
+	var full bool
 	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.guard(); err != nil {
 			return err
@@ -17,7 +17,7 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		value, err := taskEnv(deps.config).Verify(cmd.Context(), directory)
 		if value.TaskID != "" {
 			var printed any = value
-			if summary {
+			if !full {
 				printed = summarizeVerification(value)
 			}
 			if outputErr := writeJSON(cmd.OutOrStdout(), printed); outputErr != nil {
@@ -27,6 +27,6 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		return err
 	}}
 	taskFlag(verify, &directory)
-	verify.Flags().BoolVar(&summary, "summary", false, "Print one line with every problem and only the task-specific limitations")
+	fullFlag(verify, &full, "the whole verification, with every fixed limitation,")
 	return verify
 }

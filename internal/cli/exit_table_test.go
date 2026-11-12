@@ -51,13 +51,13 @@ func TestExitCodeMapsEachErrorToItsTableRow(t *testing.T) {
 func TestTaskVerifyAndRunReturnTheNegativeResultSentinels(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
-	verify := compactExecute(h, nil, "task", "verify", "--task", h.task)
+	verify := compactExecute(h, nil, "task", "verify", "--full", "--task", h.task)
 	if !errors.Is(verify.err, taskflow.ErrIncomplete) || verify.err.Error() != "task completion evidence is incomplete; inspect problems" {
 		t.Fatalf("verify of an unassessed task returned %v, want taskflow.ErrIncomplete", verify.err)
 	}
 
 	h = compactCheckHarness(t, nil, []string{"cat", "exit-status-missing-input"})
-	run := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe")
+	run := compactExecute(h, nil, "task", "run", "--full", "--task", h.task, "--check", "probe")
 	if !errors.Is(run.err, taskflow.ErrCheckFailed) || run.err.Error() != "check did not pass: failed" {
 		t.Fatalf("failed check run returned %v, want taskflow.ErrCheckFailed with the run status", run.err)
 	}

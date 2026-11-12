@@ -71,6 +71,8 @@ type Finding struct {
 // snapshot and manifest captured once for the whole verification, and the
 // task directory's artefacts.
 type verifyInput struct {
+	// env checks consultations with its validator.
+	env       Env
 	artifacts Artifacts
 	record    Record
 	snapshot  projectctx.Snapshot
@@ -217,7 +219,7 @@ func adviserBindingRule(_ context.Context, in verifyInput) verifyFindings {
 	_, finalAttached := record.Consultations["final"]
 	if conflict, ok := adviserClaimConflict(record.Plan, record.Advisers); ok && !(beforeAttached && finalAttached) {
 		// A usable before checkpoint is the one final-context preparation accepts.
-		_, beforeErr := readConsultation(in.artifacts, record, "before", record.Baseline)
+		_, beforeErr := in.env.readConsultation(in.artifacts, record, "before", record.Baseline)
 		switch {
 		case beforeErr == nil:
 			conflict += "; attach the final checkpoint"
@@ -249,7 +251,7 @@ func consultationsRule(_ context.Context, in verifyInput) verifyFindings {
 		if phase == "before" {
 			expected = record.Baseline
 		}
-		consultation, err := readConsultation(in.artifacts, record, phase, expected)
+		consultation, err := in.env.readConsultation(in.artifacts, record, phase, expected)
 		if err != nil {
 			found.problem(CodeConsultation, "%s consultation: %v", phase, err)
 			continue

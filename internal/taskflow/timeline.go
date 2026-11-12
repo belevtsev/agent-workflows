@@ -26,6 +26,19 @@ type Timeline struct {
 	// Entries holds one entry per worker assignment and one per check run,
 	// ordered by start time; it is empty, never nil, when there are none.
 	Entries []TimelineEntry `json:"entries"`
+	// OmittedEntries counts the earlier entries that Last left out.
+	OmittedEntries int `json:"omitted_entries,omitzero"`
+}
+
+// Last keeps the last n entries, the latest by start time, and counts the
+// earlier ones in OmittedEntries. n of 0 or less keeps every entry.
+func (timeline Timeline) Last(n int) Timeline {
+	if n <= 0 || len(timeline.Entries) <= n {
+		return timeline
+	}
+	timeline.OmittedEntries += len(timeline.Entries) - n
+	timeline.Entries = slices.Clone(timeline.Entries[len(timeline.Entries)-n:])
+	return timeline
 }
 
 // TimelineEntry is one assignment (Kind "assignment") or one check run (Kind
@@ -189,10 +202,11 @@ func timelineDuration(from, to time.Time) string {
 // The summary objects fix the key order of each 'cw task timeline --summary'
 // line by their field order.
 type timelineSummaryTask struct {
-	TaskID    string `json:"task_id"`
-	StartedAt string `json:"started_at"`
-	UpdatedAt string `json:"updated_at"`
-	Elapsed   string `json:"elapsed"`
+	TaskID         string `json:"task_id"`
+	StartedAt      string `json:"started_at"`
+	UpdatedAt      string `json:"updated_at"`
+	Elapsed        string `json:"elapsed"`
+	OmittedEntries int    `json:"omitted_entries,omitzero"`
 }
 
 type timelineSummaryAssignment struct {
@@ -247,6 +261,7 @@ func (timeline Timeline) SummaryLines() []string {
 	lines := make([]string, 0, 1+len(timeline.Entries))
 	lines = append(lines, mustEncodeTimelineLine(timelineSummaryTask{
 		TaskID: timeline.TaskID, StartedAt: timeline.StartedAt, UpdatedAt: timeline.UpdatedAt, Elapsed: timeline.Elapsed,
+		OmittedEntries: timeline.OmittedEntries,
 	}))
 	for _, entry := range timeline.Entries {
 		lines = append(lines, mustEncodeTimelineLine(timelineSummaryEntry(entry)))

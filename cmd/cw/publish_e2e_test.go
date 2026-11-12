@@ -1783,7 +1783,7 @@ func pubTestHappyPath(t *testing.T, tl *pubTools) {
 	preCommit := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{Probe: []string{filepath.Join(e.task, "publication-000001.json"), filepath.Join(e.task, ".publish-lock")}})
 	commitMsg := e.hook(filepath.Join(e.gitDir, "hooks"), "commit-msg", pubHookConf{})
 	prePush := e.hook(filepath.Join(e.gitDir, "hooks"), "pre-push", pubHookConf{})
-	show := e.cwOK("task", "show", "--task", e.task)
+	show := e.cwOK("task", "show", "--full", "--task", e.task)
 	records := e.taskRecordFiles()
 
 	r := e.publish()
@@ -1899,7 +1899,7 @@ func pubTestHappyPath(t *testing.T, tl *pubTools) {
 	if d := pubDiffMaps(records, e.taskRecordFiles()); len(d) > 0 {
 		t.Errorf("task record files changed: %q (R21.a)", d)
 	}
-	if got := e.cwOK("task", "show", "--task", e.task); got != show {
+	if got := e.cwOK("task", "show", "--full", "--task", e.task); got != show {
 		t.Errorf("cw task show changed after publishing (R21.a)")
 	}
 	e.cwOK("task", "abandon", "--task", e.task, "--reason", "published elsewhere") // R21.c
@@ -2621,6 +2621,10 @@ func pubTestRemoteSplit(t *testing.T, tl *pubTools) {
 		{"pushurl on another host", []func(){cfg("remote.origin.pushurl", "ssh://host.example"+e.remote)}, true},
 		{"pushurl with a second .git", []func(){cfg("remote.origin.pushurl", e.remote+".git")}, true},
 		{"pushurl file scheme", []func(){cfg("remote.origin.pushurl", "file://"+e.remote)}, false},
+		// Git hands these to a remote helper, which picks the destination.
+		{"pushurl through a remote helper", []func(){cfg("remote.origin.pushurl", "pubhelper::file://"+e.remote)}, true},
+		{"pushurl with an unknown scheme", []func(){cfg("remote.origin.pushurl", "pubhelper://"+e.remote)}, true},
+		{"remote served by a vcs helper", []func(){cfg("remote.origin.vcs", "pubhelper")}, true},
 		{"pushurl trailing slash", []func(){cfg("remote.origin.pushurl", e.remote+"/")}, false},
 		{"pushurl without .git", []func(){cfg("remote.origin.pushurl", strings.TrimSuffix(e.remote, ".git"))}, false},
 		// The path is compared case-insensitively, and the one trailing .git
@@ -2641,6 +2645,12 @@ func pubTestRemoteSplit(t *testing.T, tl *pubTools) {
 			rep := e.refuse(c.name, e.flags(), 4, "refused", "remote-split")
 			if c.name == "pushurl names another repository" && !strings.Contains(rep.Detail, second) {
 				t.Errorf("detail %q does not name the push URL %s", rep.Detail, second)
+			}
+			if c.name == "pushurl through a remote helper" && !strings.Contains(rep.Detail, "pubhelper::file://"+e.remote+", which Git hands to a remote helper") {
+				t.Errorf("detail %q does not name the helper URL", rep.Detail)
+			}
+			if c.name == "remote served by a vcs helper" && !strings.Contains(rep.Detail, "origin sets remote.origin.vcs, so Git hands it to a remote helper") {
+				t.Errorf("detail %q does not name remote.origin.vcs", rep.Detail)
 			}
 		} else {
 			e.refuse(c.name, e.flags().add("--expect-remote", bogus), 4, "refused", "remote-moved")
@@ -3570,7 +3580,7 @@ func pubTestCommitFailed(t *testing.T, tl *pubTools) {
 	e.verifyTask()
 	e.hook(filepath.Join(e.gitDir, "hooks"), "pre-commit", pubHookConf{Exit: 1})
 	_, complete, problems := e.verifySummary(e.task)
-	show := e.cwOK("task", "show", "--task", e.task)
+	show := e.cwOK("task", "show", "--full", "--task", e.task)
 	records := e.taskRecordFiles()
 	index := e.git("ls-files", "-s", "-z")
 	rep := pubWant(t, e.publish(), 1, "failed", "commit-failed")
@@ -3583,7 +3593,7 @@ func pubTestCommitFailed(t *testing.T, tl *pubTools) {
 	if d := pubDiffMaps(records, e.taskRecordFiles()); len(d) > 0 {
 		t.Errorf("task record files changed: %q", d)
 	}
-	if got := e.cwOK("task", "show", "--task", e.task); got != show {
+	if got := e.cwOK("task", "show", "--full", "--task", e.task); got != show {
 		t.Errorf("cw task show changed")
 	}
 	_, complete2, problems2 := e.verifySummary(e.task)

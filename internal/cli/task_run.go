@@ -6,7 +6,7 @@ import "github.com/spf13/cobra"
 // was recorded, then returns the run's error.
 func newTaskRunCommand(deps taskDeps) *cobra.Command {
 	var directory, check string
-	var summary bool
+	var full bool
 	run := &cobra.Command{Use: "run", Short: "Execute one planned argv check with bounded private logs", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.guard(); err != nil {
 			return err
@@ -17,7 +17,7 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 		value, err := taskEnv(deps.config).RunCheck(cmd.Context(), directory, check)
 		if value.ID != "" {
 			var printed any = value
-			if summary {
+			if !full {
 				printed = runSummary(directory, value)
 			}
 			if outputErr := writeJSON(cmd.OutOrStdout(), printed); outputErr != nil {
@@ -28,6 +28,6 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 	}}
 	taskFlag(run, &directory)
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan or added by 'cw task add-checks'")
-	summaryFlag(run, &summary)
+	fullFlag(run, &full, "the whole check run record")
 	return run
 }

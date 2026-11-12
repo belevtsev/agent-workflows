@@ -126,7 +126,11 @@ type BoundWorkerResult struct {
 	CheckRuns            []string     `json:"check_runs"`
 	ScopeSHA256          string       `json:"scope_sha256"`
 	ReviewEvidenceSHA256 string       `json:"review_evidence_sha256,omitempty"`
-	SubmittedAt          time.Time    `json:"submitted_at"`
+	// SourceSHA256 is SourceDigest of the source the result was submitted
+	// at; the task holds that source's manifest as sourceManifestName of it.
+	// Results submitted before it existed omit it (record version 5).
+	SourceSHA256 string    `json:"source_sha256,omitempty"`
+	SubmittedAt  time.Time `json:"submitted_at"`
 }
 
 // FindingDisposition records the coordinator's judgment. The reviewer has no
@@ -260,7 +264,8 @@ func workerResultHash(bound BoundWorkerResult) (string, error) {
 		CheckRuns            []string     `json:"check_runs"`
 		ScopeSHA256          string       `json:"scope_sha256"`
 		ReviewEvidenceSHA256 string       `json:"review_evidence_sha256"`
-	}{bound.Result, bound.CheckRuns, bound.ScopeSHA256, bound.ReviewEvidenceSHA256})
+		SourceSHA256         string       `json:"source_sha256,omitempty"`
+	}{bound.Result, bound.CheckRuns, bound.ScopeSHA256, bound.ReviewEvidenceSHA256, bound.SourceSHA256})
 	if err != nil {
 		return "", err
 	}
@@ -312,7 +317,7 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		_, attached := record.Consultations["before"]
 		if record.Plan.Kind == "substantial" && (checkpointsRequired(record.Plan) || attached) {
-			if _, err := readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
+			if _, err := env.readConsultation(taskDirectory{root}, *record, "before", record.Baseline); err != nil {
 				return fmt.Errorf("adjudicate and attach the before checkpoint before dispatching workers: %w", err)
 			}
 		}
@@ -812,7 +817,11 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 				return err
 			}
 		}
-		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SubmittedAt: env.now()}
+		manifest, sourceSHA256, err := sourceManifest(files)
+		if err != nil {
+			return err
+		}
+		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SourceSHA256: sourceSHA256, SubmittedAt: env.now()}
 		if input.Status == "completed" {
 			bound.ScopeSHA256, err = scopeBinding(snapshot, assigned.Brief.OwnedPaths)
 		} else {
@@ -842,6 +851,9 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			if err := validateWorkerOwnership(*record, after, assigned.Brief); err != nil {
 				return err
 			}
+		}
+		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
+			return err
 		}
 		record.WorkerResults = append(record.WorkerResults, bound)
 		record.EvidenceRevision++

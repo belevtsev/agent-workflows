@@ -139,7 +139,7 @@ profiles come in a later release candidate.
    ([plan format](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)):
 
    ```sh
-   cw task start --repo /absolute/path/to/repo --plan plan.json --summary
+   cw task start --repo /absolute/path/to/repo --plan plan.json
    ```
 
 3. The spec writer and a reviewer produce a change under
@@ -150,13 +150,13 @@ profiles come in a later release candidate.
 5. Checks run through `cw`, so the record holds the real result:
 
    ```sh
-   cw task run --task <task-dir> --check unit --summary
+   cw task run --task <task-dir> --check unit
    ```
 
 6. An independent reviewer reviews the code, then the agent runs the gate:
 
    ```sh
-   cw task verify --task <task-dir> --summary
+   cw task verify --task <task-dir>
    ```
 
 7. You approve the commit. It goes through once verify passes on the current
@@ -219,7 +219,7 @@ and counts the rest. This lists a task's problems, such as a missing review or
 an unmet requirement:
 
 ```sh
-cw task verify --task <task-dir> --summary
+cw task verify --task <task-dir>
 ```
 
 **Give a task up** so it stops blocking:

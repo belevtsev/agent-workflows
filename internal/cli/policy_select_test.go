@@ -349,7 +349,7 @@ func carveoutTaskStartAdvisers(t *testing.T, config Config) map[string]string {
 	var out, stderr bytes.Buffer
 	config.Out = &out
 	config.Err = &stderr
-	args := []string{"--config-dir", carveoutOptedInDir(t), "task", "start", "--plan", "-", "--store", carveoutPrivateDir(t)}
+	args := []string{"--config-dir", carveoutOptedInDir(t), "task", "start", "--full", "--plan", "-", "--store", carveoutPrivateDir(t)}
 	if err := Execute(context.Background(), args, config); err != nil {
 		t.Fatalf("task start error = %v; stderr: %s", err, stderr.String())
 	}
