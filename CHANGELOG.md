@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.0.0-rc.1] - 2026-11-12
+
 ### Breaking
 
 - The v2 installer is removed: install the Claude Code or Codex plugin instead; `cw install --host claude`
@@ -124,5 +126,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Last release published automatically from main.
 
-[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v2.0.96...HEAD
+[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v3.0.0-rc.1...HEAD
+[3.0.0-rc.1]: https://github.com/belevtsev/agent-workflows/compare/v2.0.96...v3.0.0-rc.1
 [2.0.96]: https://github.com/belevtsev/agent-workflows/releases/tag/v2.0.96
