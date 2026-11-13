@@ -630,7 +630,10 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 	syncErr := logFile.Sync()
 	closeErr := logFile.Close()
 	// The run ends no earlier than it started, even if the clock stepped back
-	// while it ran; the terminal revision is stamped no earlier than its end.
+	// while it ran or is behind the stamp it started at. No record rule
+	// orders finished_at against updated_at, so this reading, taken outside
+	// the lock, never raises updated_at: one wrong forward reading here would
+	// otherwise hold every later stamp.
 	finished := env.now()
 	if finished.Before(run.StartedAt) {
 		finished = run.StartedAt
@@ -702,9 +705,6 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 					return errors.New("check already has a terminal result")
 				}
 				record.Checks[i] = run
-				if record.UpdatedAt.Before(finished) {
-					record.UpdatedAt = finished
-				}
 				record.EvidenceRevision++
 				record.Verification = nil
 				return nil

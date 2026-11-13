@@ -507,7 +507,10 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		if err != nil {
 			return err
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.stamp(record)}
+		// checked_at is the clock's reading, not a monotonic stamp: the gate
+		// compares it only with a successor's created_at, which is the clock
+		// too (FindOpen), and no record rule orders it against updated_at.
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
 		view := newSourceView(snapshot, files)
 		defer view.close()
 		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view, credit: env.credit(ctx, taskDirectory{root}, snapshot, files, probes)})

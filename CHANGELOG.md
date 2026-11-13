@@ -107,8 +107,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- After the wall clock steps back, `cw task` commands keep writing: each revision is stamped no earlier than the one before,
-  instead of every worker write being refused until the clock caught up ([task record format](docs/development.md#task-record-format)).
+- After the wall clock steps back, `cw task` commands keep writing: stored times run ahead of the clock until it catches up, so runs
+  made meanwhile show equal starts and `0s` in the timeline ([task record format](docs/development.md#task-record-format)).
 - A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;
   an existing file there is still never replaced ([consultation](docs/advisers.md#consult-advisers-and-let-the-coordinator-decide)).
 - `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
