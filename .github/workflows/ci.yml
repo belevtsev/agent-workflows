@@ -52,34 +52,7 @@ jobs:
       # 10-minute default for one package.
       - name: Test
         if: runner.os != 'Linux'
-        run: |
-          # TEMPORARY (Q2 measurement, reverted in the next commit): print the
-          # slowest tests and the cost of a process start on this runner.
-          status=0
-          go test -json -count=1 -timeout=15m ./... > "$RUNNER_TEMP/test.json" || status=$?
-          echo "Q2-PACKAGES"
-          jq -r 'select(.Test == null and (.Action == "pass" or .Action == "fail")) | "\(.Elapsed)\t\(.Action)\t\(.Package)"' "$RUNNER_TEMP/test.json" | sort -rn | head -20
-          echo "Q2-SLOWEST"
-          jq -r 'select(.Test != null and (.Action == "pass" or .Action == "fail")) | select(.Test | contains("/") | not) | "\(.Elapsed)\t\(.Package)\t\(.Test)"' "$RUNNER_TEMP/test.json" | sort -rn | head -120
-          echo "Q2-SLOWEST-SUBTESTS"
-          jq -r 'select(.Test != null and (.Action == "pass" or .Action == "fail")) | select(.Test | contains("/")) | "\(.Elapsed)\t\(.Package)\t\(.Test)"' "$RUNNER_TEMP/test.json" | sort -rn | head -40
-          if [ "$status" -ne 0 ]; then
-            echo "Q2-FAILURES"
-            jq -r 'select(.Action == "fail") | "\(.Package)\t\(.Test)"' "$RUNNER_TEMP/test.json"
-            jq -r 'select(.Action == "output") | .Output' "$RUNNER_TEMP/test.json" | grep -E '^\s*(--- FAIL|FAIL|panic:)|_test\.go:[0-9]+:' | head -200 || true
-          fi
-          echo "Q2-PROCESS-STARTS (20 of each)"
-          go build -o "$RUNNER_TEMP/cw" ./cmd/cw
-          time (for i in $(seq 20); do git init -q "$RUNNER_TEMP/repo$i"; done)
-          time (for i in $(seq 20); do git -C "$RUNNER_TEMP/repo1" status --porcelain > /dev/null; done)
-          time (for i in $(seq 20); do go version > /dev/null; done)
-          time (for i in $(seq 20); do go env GOROOT > /dev/null; done)
-          time (for i in $(seq 20); do "$RUNNER_TEMP/cw" --help > /dev/null 2>&1 || true; done)
-          time (for i in $(seq 20); do cp "$RUNNER_TEMP/cw" "$RUNNER_TEMP/cw-copy$i"; "$RUNNER_TEMP/cw-copy$i" --help > /dev/null 2>&1 || true; done)
-          time (for i in $(seq 5); do go list ./... > /dev/null; done)
-          time (go build -o "$RUNNER_TEMP/cw2" ./cmd/cw)
-          sysctl -n hw.ncpu || true
-          exit "$status"
+        run: go test -count=1 -timeout=15m ./...
 
   lint:
     name: Lint and vulnerabilities
