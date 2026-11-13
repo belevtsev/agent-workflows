@@ -61,10 +61,13 @@ policies without it retain their fallback behavior.
 
 ## Review loops
 
-Substantial work that builds new behaviour has a review loop at every stage:
-spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
-test engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
-implementer → `cw task verify` → gated commit. One `reviewer` agent runs every
+A substantial task runs the `lite` profile by default: implementer ∥ test
+engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
+implementer → `cw task verify` → gated commit. `standard` adds architect ⇄
+reviewer (design) first, for an open design choice or a public interface
+change; `strict` also adds spec writer ⇄ reviewer (spec), when the user asks or
+the change touches security, data integrity or concurrency
+([profiles](operations.md#profiles)). One `reviewer` agent runs every
 stage with the contract its brief names; findings go back to that stage's
 author; the severity grades and the per-stage review cap are in
 [review stages](../skills/task-orchestration/references/worker-handoffs.md#review-stages).
@@ -77,9 +80,9 @@ requirement reaches a fresh one only as its requirement ID, contract-level
 inputs and expected outcome. Such a reproduction test stays as a regression
 test authored with source access: it is not requirement coverage and needs
 no test-engineer dispatch.
-A small task skips the flow, the spec and design stages included, and the
+A task that is not substantial skips the flow, and the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)
-says when a substantial task skips the spec stage. After the before checkpoint,
+says when a `strict` task skips the spec stage. After the before checkpoint,
 which is unchanged, advisers join only at four decision points and only when
 available
 ([adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)).

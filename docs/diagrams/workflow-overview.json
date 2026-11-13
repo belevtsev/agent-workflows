@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "agent-workflows: a substantial change with review loops",
+    "title": "agent-workflows: a substantial change, lite by default, with review loops",
     "locale": "en",
     "quality_profile": "showcase",
     "legend": {
@@ -19,8 +19,8 @@
     "output": "docs/diagrams/workflow-overview.html"
   },
   "lanes": [
-    { "id": "spec", "label": "Spec (skipped with a reviewed spec or a precise request)" },
-    { "id": "design", "label": "Design and contract" },
+    { "id": "spec", "label": "Spec (strict only; skipped for a fix, refactor or test-only task)" },
+    { "id": "design", "label": "Design (standard and strict) and contract" },
     { "id": "tests", "label": "Tests, in parallel with implementation" },
     { "id": "build", "label": "Implementation" },
     { "id": "integrate_lane", "label": "Integrate and run" },
@@ -94,7 +94,8 @@
       "dot": "cyan",
       "title": "When stages run",
       "items": [
-        "A small task runs none of these stages: its author writes the tests and a reviewer checks them",
+        "lite, the default, runs tests, implementation, test review and code review; standard adds design, strict adds spec",
+        "A task that is not substantial runs none of these stages: the agent writes the tests and checks its own diff",
         "A reviewed spec or a precise request skips the spec stage",
         "The adversarial tester runs only when the plan opts in at classify, in parallel with the code review"
       ]
