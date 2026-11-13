@@ -507,7 +507,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		if err != nil {
 			return err
 		}
-		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
+		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.stamp(record)}
 		view := newSourceView(snapshot, files)
 		defer view.close()
 		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view, credit: env.credit(ctx, taskDirectory{root}, snapshot, files, probes)})

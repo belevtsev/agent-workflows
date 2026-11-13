@@ -248,6 +248,12 @@ run `status` or context phase, fails validation with "invalid stored …".
   v3.0.0-rc.2 skips the task instead of gating it, and the hook of v3.0.0-rc.2
   or later asks before each commit and push. Run the same `cw` on every host
   and hook that shares a task store.
+- A revision's `updated_at`, and every time it adds (an assignment, handoff,
+  acceptance, approval, amendment, check start, verification, usage sample or
+  abandonment), is the later of the clock and the previous `updated_at`, and a
+  check's `finished_at` is no earlier than its `started_at`. A wall clock that
+  steps back therefore cannot leave a stored time after the next revision's
+  `updated_at`, which the worker and amendment rules refuse.
 - The hook selects a task by the newest revision it can decode, reading
   `plan.kind`, `baseline.root` and `updated_at` without loading the chain, so
   that an older hook can still ask about a record it cannot read. Those three

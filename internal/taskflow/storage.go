@@ -637,7 +637,7 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 	record.Version = Version
 	record.Revision++
 	record.PreviousSHA256 = previous
-	record.UpdatedAt = env.now()
+	env.stamp(&record)
 	if err := requireRevisionCapacity(record, 0, ""); err != nil {
 		return Record{}, err
 	}
