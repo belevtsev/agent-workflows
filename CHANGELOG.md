@@ -122,6 +122,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
+- The task-orchestration skill starts every stage with a fresh worker from `cw task brief` and names one file per step, and each agent
+  returns at most the capped 6 KiB result, the rest in its report file ([skill](skills/task-orchestration/SKILL.md#keep-the-coordinator-lean)).
 
 ### Fixed
 

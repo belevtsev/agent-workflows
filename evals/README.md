@@ -46,6 +46,13 @@ names:
   also plants a behaviour defect in executed code whose grader needs a
   failing reproduction test and its command.
 
+Every reviewer case also grades the size of `artefacts/handoff.json`
+(`graders/handoff-size.md`): at most 6,144 bytes, the cap `cw task handoff`
+puts on a result. The regex never passes a larger file; it fails a smaller one
+that holds more than 64 characters outside ASCII, or any within 128 bytes of
+the cap. It reads the file as written, so indentation counts. The
+test-engineer cases write no handoff file and have no such grader.
+
 Each case's `testdata/` holds the scenario inputs the brief names; the case's
 `scaffold.sh` copies it into the run's workspace, so pass `--scaffold`. Some
 cases also hold an input the brief must never pass on, and `tool_used` and
