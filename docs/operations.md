@@ -226,7 +226,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 
 | Status | Meaning | Where |
 | --- | --- | --- |
-| 0 | ok | The command did what was asked. |
+| 0 | ok | The command did what was asked, including `cw task run` reusing a passed run ([reuse](#reusing-a-passed-run)). |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
@@ -493,6 +493,54 @@ assignment as `owner_approval` (`text`, `for: "round-budget"`, `at`), shown by
 With `enforce_verify` on, the plugin hook asks the user to confirm the words
 before such a command runs ([hooks](hooks.md#owner-approval)).
 
+### Cost budget
+
+`cw task usage --task DIR (--claude-transcript FILE | --codex-session FILE)
+[--prices FILE]` reads the session's transcript, read-only, as `cw metrics
+import` does, and stores what the session has used since the task started in
+the task record as a usage sample. Only requests stamped at or after the task's
+`created_at` count, from the main transcript, its sidechain lines and its
+subagent transcripts alike, so a session that began before the task counts
+only its later requests. A sample keeps the session, its tokens (uncached
+input, cache writes, cache reads and output, apart) and its dollars with their
+source.
+
+- **Dollars are estimates.** Each request is priced from its tokens with a price
+  table: input, output and cache reads at their own rates, cache writes at the
+  5-minute or 1-hour write rate from the request's own split. A write without
+  that split is priced at the 1-hour rate, the higher one, so the budget never
+  under-counts. A Claude Haiku 5.5 request whose prompt (its input, cache reads
+  and cache writes) is over 100,000 tokens takes that model's long-prompt rates.
+  The `cost-state` line Claude Code writes when a session exits is not used,
+  whether it is missing, stale or does not match the requests.
+- **The table** is cw's built-in one, dated 2026-11-13 and read from
+  [Claude's pricing page](https://platform.claude.com/docs/en/about-claude/pricing),
+  or the one `--prices FILE` names, which replaces it whole (same format as
+  `cw metrics import --prices`, with an optional `date` and per-model
+  `long_prompt`). A sample's `dollar_source` names the table's kind
+  (`built_in` or `file`), its date and the SHA-256 of its bytes, and
+  `usd_estimated` is true.
+- **Unknown, never zero.** An incomplete or unreadable transcript, or a request
+  without a readable timestamp, leaves tokens and dollars unknown with the
+  reason. One request the table cannot price makes
+  the session's dollars unknown: a model it does not list (dated model IDs
+  included), a `speed` other than `standard`, or an `inference_geo` other than
+  `global`. An unknown value is never counted as 0.
+- **Task usage** is, per session, its latest sample, summed over the sessions;
+  one sample of a session is enough. Within a session, every pair of consecutive known amounts
+  must come from the same table and never fall; a different table, or a stale
+  or truncated transcript copy that reads lower than the sample before it,
+  makes the usage unknown.
+- **Few revisions.** A sample is judged against its own session's stored
+  samples. It is stored when it is the session's first, when its
+  dollars turn known or unknown, change table, fall, or rise by at least 5% of
+  the budget, and, while the session's dollars are unknown, when its tokens
+  turn known or unknown, fall, or grow by at least 5%. The default output says
+  whether it was stored and gives the task's usage; `--full` prints the record.
+- A task started before profiles has no budget, and `cw task usage` refuses it.
+
+Nothing stops a task at its budget yet; the budget counts dollars only.
+
 ### Task locks
 
 Every `cw` command that writes a task record takes an exclusive `flock` on
@@ -617,16 +665,20 @@ Besides its log, exit code and the go command, each check run records two keys
 in its start revision:
 
 - `source_sha256`: the SHA-256 of the source manifest (path, mode and content
-  hash of each eligible file) when the run started, the same digest a verified
+  hash of each eligible file; the mode keeps only the owner-executable bit)
+  when the run started, the same digest a verified
   record stores as `verification.source_sha256`. Committing, staging or
   switching branches over the same bytes leaves it unchanged. The task
   directory keeps that manifest as `manifest-<source_sha256>.json`, written
   once per digest. A worker result records the same member for the source it
   was submitted at. When that manifest would exceed 8 MiB, the run or result
   is recorded without `source_sha256` and no manifest is kept.
+- `modes_sha256`: the SHA-256 of each eligible file's path and full permission
+  bits when the run started, which `source_sha256` does not cover.
 - `env_key`: an HMAC-SHA256 of what the run's environment selects: for a go
-  check, every value its `go env` read printed; for any check, each variable
-  its `env_passthrough` names, set to its value or unset. Its key is a random
+  check, every value its `go env` read printed; for any check, the `GOFLAGS`
+  of `cw`'s environment, unredacted, and each variable its `env_passthrough`
+  names, set to its value or unset. Its key is a random
   32-byte secret of the task, kept in the task directory as `run-key-secret`
   (mode 0600) from the first run. No value is stored, and without that file a
   printed `env_key` does not confirm a guessed value, even a weak password.
@@ -634,8 +686,58 @@ in its start revision:
   keys of different tasks are not comparable.
 
 Runs and results recorded before these members existed, or without them,
-lack them, so they are never reused. No rule reads the keys yet: they are the identity that reuse of a
-passed run will compare.
+lack them, so they are never reused.
+
+### Reusing a passed run
+
+A passed check run stays creditable across commits, staging, branch switches
+and merges that leave the source bytes as they were. A run at the current
+snapshot earns credit as before. A run at another snapshot is reused when it is
+the latest run of its check, passed with exit status 0 without the source
+changing while it ran, its program is not `git`, and its `source_sha256`,
+`modes_sha256`, go command (`tool`: path, version, SHA-256 and `GOROOT`),
+`goflags` and `env_key` equal what the check would run under now. `cw task
+verify` lists each reused run as a limitation, `check <id> reuses run
+<run-id>, which passed at the same source digest, permission bits, go command,
+GOFLAGS and environment key at commit <head>; it was not run again`, and `cw
+task assess` binds it. `cw task run` then runs nothing: it prints the run's
+summary with `"status":"reused"` and its `reason`, also under `--full`,
+records nothing and exits 0. Verify, assess and the final context read the go
+command, its `go env` and the key before they take the task lock, as `cw task
+run` does. Worker results and acceptances, and the requirement
+trace, still bind only a run at the current snapshot.
+
+Any one of these ends the reuse:
+
+- a check whose program is `git`: its answer can depend on `HEAD`, the index
+  or history, which `source_sha256` does not cover, so it is never reused;
+- a change to an eligible source byte, path or owner-executable bit (a
+  different `source_sha256`), or to any file's permission bits (a different
+  `modes_sha256`);
+- a different go binary or version, or another `GOROOT`;
+- a different `GOFLAGS` in `cw`'s environment, for any program, compared
+  redacted in `goflags` and whole in `env_key`;
+- a different environment key: a value its `go env` read prints, such as a go
+  env file's `GOFLAGS`, `CGO_ENABLED`, `GOOS` or `CC`, or a variable its
+  `env_passthrough` names;
+- a newer run of the same check that did not pass;
+- a truncated log, or a log that is missing or differs from its hash;
+- a run recorded without `source_sha256`, `modes_sha256` or `env_key`, or a configuration
+  `cw` cannot read now (no verified go, no `run-key-secret`).
+
+For a check whose program is not `go`, `cw` records no go command, so a
+program it starts in turn, such as the go a `make` target runs, is not compared;
+a script in the source is, through `source_sha256`. Any program that reads git
+state, such as a script or `make` target that runs `git diff`, is reused
+across a commit or staging of the same bytes: run it with `cw task run
+--force`. Other variables `cw` passes
+to a check are not part of the key: a test that
+reads one of them, other than through `env_passthrough`, is reused when it
+changes. Run it again with `cw task run --force`. `CW_NO_REUSE=1` turns reuse
+off for every command: only a run at the current snapshot earns credit, and
+`cw task run` always runs. A pass after a failed run of the same check at the
+same `source_sha256` and `GOFLAGS` is a rerun and earns no Go evidence credit,
+also across a commit of the same bytes.
 
 ### Merging the base branch during a task
 
@@ -797,7 +899,8 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
 ### Usage stores
 
 The session transcript is the source of a session's usage; the cost history is a
-copy of its token counts. No command reads both, so none reconciles them:
+copy of its token counts, and a task record keeps usage samples taken from it.
+No command reads two of them, so none reconciles them:
 
 | Command | Reads | Writes |
 | --- | --- | --- |
@@ -805,6 +908,7 @@ copy of its token counts. No command reads both, so none reconciles them:
 | `cw metrics import --append` | the transcript, then the request identities in the history | requests the history lacks |
 | `cw metrics history` | the cost history only | nothing |
 | `cw metrics summarize` | the observation files you name | nothing |
+| `cw task usage` | the transcript, then the task record | a usage sample in the task record, when it matters ([cost budget](#cost-budget)) |
 
 When they differ:
 
@@ -821,9 +925,13 @@ When they differ:
   an incomplete import also leaves `usage` unknown, never zero. Codex rollouts
   and the history record no dollars, so their only dollars are price-table
   estimates.
-- **Task records.** A task record holds no session usage. A consultation record
-  keeps each adviser call's provider-reported tokens, which no command adds to
-  session usage.
+- **Task records.** A task record holds the usage samples `cw task usage`
+  stored; the task's budget stop, when it lands, reads them, not the cost
+  history. A sample is the transcript as it was when sampled, and its dollars
+  are estimates from a dated price table, never the cost-state, so they may
+  differ from what `cw metrics import` reports for the same transcript. A
+  consultation record keeps each adviser call's provider-reported tokens, which
+  no command adds to session usage.
 
 ## Consultation command
 

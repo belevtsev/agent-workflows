@@ -1,0 +1,17 @@
+{
+  "currency": "USD",
+  "date": "2026-11-13",
+  "evidence": "https://platform.claude.com/docs/en/about-claude/pricing, read 2026-11-13; standard speed, global inference, USD per million tokens",
+  "models": {
+    "claude-fable-5-2": {"input_per_million": 8, "cache_write_5m_per_million": 10, "cache_write_1h_per_million": 16, "cache_read_per_million": 0.20, "output_per_million": 40},
+    "claude-opus-5-5": {"input_per_million": 4, "cache_write_5m_per_million": 5, "cache_write_1h_per_million": 8, "cache_read_per_million": 0.20, "output_per_million": 20},
+    "claude-opus-5": {"input_per_million": 5, "cache_write_5m_per_million": 6.25, "cache_write_1h_per_million": 10, "cache_read_per_million": 0.50, "output_per_million": 25},
+    "claude-opus-4-8": {"input_per_million": 5, "cache_write_5m_per_million": 6.25, "cache_write_1h_per_million": 10, "cache_read_per_million": 0.50, "output_per_million": 25},
+    "claude-sonnet-5-5": {"input_per_million": 2, "cache_write_5m_per_million": 2.50, "cache_write_1h_per_million": 4, "cache_read_per_million": 0.10, "output_per_million": 10},
+    "claude-sonnet-5": {"input_per_million": 2, "cache_write_5m_per_million": 2.50, "cache_write_1h_per_million": 4, "cache_read_per_million": 0.20, "output_per_million": 10},
+    "claude-sonnet-4-6": {"input_per_million": 3, "cache_write_5m_per_million": 3.75, "cache_write_1h_per_million": 6, "cache_read_per_million": 0.30, "output_per_million": 15},
+    "claude-haiku-5-5": {"input_per_million": 0.10, "cache_write_5m_per_million": 0.125, "cache_write_1h_per_million": 0.20, "cache_read_per_million": 0.01, "output_per_million": 0.50,
+      "long_prompt": {"above_tokens": 100000, "rates": {"input_per_million": 0.50, "cache_write_5m_per_million": 0.625, "cache_write_1h_per_million": 1, "cache_read_per_million": 0.05, "output_per_million": 2.50}}},
+    "claude-haiku-4-5": {"input_per_million": 1, "cache_write_5m_per_million": 1.25, "cache_write_1h_per_million": 2, "cache_read_per_million": 0.10, "output_per_million": 5}
+  }
+}
