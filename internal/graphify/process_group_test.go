@@ -52,8 +52,14 @@ wait`
 	// itself, or a forker had stopped before the kill. A host that fails
 	// more starts than that cannot run the swarm.
 	pgSwarmRestarts = 10
-	pgRunTimeout    = 30 * time.Second
-	pgRunLimit      = 1 << 20
+	// pgSelfEndGrace is how long after the cancellation a call may still
+	// return without an error because the leader ended by itself just before
+	// the cancellation took effect. A call that returns without an error
+	// later than that ignored the cancellation and ran until the forkers
+	// stopped, which they do stormDuration after they start.
+	pgSelfEndGrace = time.Second
+	pgRunTimeout   = 30 * time.Second
+	pgRunLimit     = 1 << 20
 )
 
 // pgFakeEnv is the exact environment of every leader in these tests. The race
@@ -240,12 +246,12 @@ func pgAwaitRun(t *testing.T, done <-chan pgRunAttempt, limit time.Duration) pgR
 
 // pgAwaitForkers polls until want forkers report themselves forking in
 // directory at the same time, and reports whether they did. A forker that
-// stops by itself withdraws its report. It reports false when the call
-// returned first without an error: the leader ended by itself, because a fork
-// failed or forkers stopped before all of them were forking. That start
-// measured nothing, so the caller starts the trial again. It fails the test if
-// the call returned an error or the deadline passes.
-func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunAttempt, limit time.Duration) bool {
+// stops by itself withdraws its report. It returns the result of the call and
+// false when the call returned first without an error: the leader ended by
+// itself, because a fork failed or forkers stopped before all of them were
+// forking. That start measured nothing, so the caller starts the trial again.
+// It fails the test if the call returned an error or the deadline passes.
+func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunAttempt, limit time.Duration) (pgRunAttempt, bool) {
 	t.Helper()
 	deadline := time.After(limit)
 	tick := time.NewTicker(2 * time.Millisecond)
@@ -256,7 +262,7 @@ func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunA
 			t.Fatal(err)
 		}
 		if len(entries) >= want {
-			return true
+			return pgRunAttempt{}, true
 		}
 		select {
 		case attempt := <-done:
@@ -264,7 +270,7 @@ func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunA
 				t.Fatalf("runWithOutputLimit returned with %d of %d forkers running: %d %v", len(entries), want, attempt.code, attempt.err)
 			}
 			t.Logf("the leader exited %d by itself with %d of %d forkers running", attempt.code, len(entries), want)
-			return false
+			return attempt, false
 		case <-deadline:
 			t.Fatalf("%d of %d forkers running after %v", len(entries), want, limit)
 		case <-tick.C:
@@ -273,19 +279,22 @@ func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunA
 }
 
 // pgSwarm is one started fork swarm: the call that runs its leader and the
-// files of that start.
+// files of that start. When forking is false the leader ended by itself
+// before every forker was forking, and early is the result of the call.
 type pgSwarm struct {
 	done     <-chan pgRunAttempt
 	cancel   context.CancelFunc
 	running  string
 	returned string
 	pidFile  string
+	forking  bool
+	early    pgRunAttempt
 }
 
 // pgStartSwarm starts a leader with pgSwarmForkers fork-swarm forkers, names
-// the files of this start after name and waits until every forker is forking.
-// It reports false when the leader ended by itself before that.
-func pgStartSwarm(t *testing.T, root, binary, markers, name string) (pgSwarm, bool) {
+// the files of this start after name and waits until every forker is forking
+// or the leader has ended by itself.
+func pgStartSwarm(t *testing.T, root, binary, markers, name string) pgSwarm {
 	t.Helper()
 	swarm := pgSwarm{
 		running:  filepath.Join(root, "swarm-running-"+name),
@@ -299,25 +308,34 @@ func pgStartSwarm(t *testing.T, root, binary, markers, name string) (pgSwarm, bo
 		fakeConfig{Mode: "fork-swarm", Running: swarm.running, Returned: swarm.returned, Markers: markers})
 	arguments := []string{"/bin/sh", "-c", pgSwarmLeaderScript, "sh", binary, config, strconv.Itoa(pgSwarmForkers), swarm.pidFile}
 	swarm.done, swarm.cancel = pgStartRun(t, arguments, root)
-	return swarm, pgAwaitForkers(t, swarm.running, pgSwarmForkers, swarm.done, 20*time.Second)
+	swarm.early, swarm.forking = pgAwaitForkers(t, swarm.running, pgSwarmForkers, swarm.done, 20*time.Second)
+	return swarm
 }
 
 // pgSwarmTrial starts one swarm, cancels the call once every forker is
-// forking and fails the test when a member of the group outlives the return.
-// It returns "" when the kill found every forker forking, and otherwise why
-// this start measured nothing. The restarts so far keep the files of each
-// start of a trial apart.
+// forking and fails the test when a member of the group outlives the return,
+// however the call returned. It returns "" when the kill found every forker
+// forking, and otherwise why this start measured nothing. The restarts so far
+// keep the files of each start of a trial apart.
 func pgSwarmTrial(t *testing.T, root, binary, markers string, trial, restarts int) string {
-	swarm, forking := pgStartSwarm(t, root, binary, markers, fmt.Sprintf("%d-%d", trial, restarts))
-	if !forking {
-		return "the leader ended by itself before every forker was forking"
+	swarm := pgStartSwarm(t, root, binary, markers, fmt.Sprintf("%d-%d", trial, restarts))
+	attempt, weak := swarm.early, "the leader ended by itself before every forker was forking"
+	if swarm.forking {
+		// Vary the phase of the fork loops the cancellation lands in.
+		time.Sleep(time.Duration(trial%4) * 2 * time.Millisecond)
+		cancelled := time.Now()
+		swarm.cancel()
+		attempt, weak = pgAwaitRun(t, swarm.done, 15*time.Second), ""
+		if took := time.Since(cancelled); attempt.err == nil {
+			if took > pgSelfEndGrace {
+				t.Fatalf("trial %d: runWithOutputLimit returned without an error %v after the cancellation, "+
+					"want context.Canceled: it ran on until the forkers stopped", trial, took)
+			}
+			weak = "the leader ended by itself before the cancellation"
+		}
 	}
-	// Vary the phase of the fork loops the cancellation lands in.
-	time.Sleep(time.Duration(trial%4) * 2 * time.Millisecond)
-	swarm.cancel()
-	attempt := pgAwaitRun(t, swarm.done, 15*time.Second)
 	live, probeErr := pgLeaderGroupLive(swarm.pidFile)
-	// From here on, any descendant of this trial still running outlived the call.
+	// From here on, any descendant of this start still running outlived the call.
 	if err := os.WriteFile(swarm.returned, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -331,8 +349,8 @@ func pgSwarmTrial(t *testing.T, root, binary, markers string, trial, restarts in
 	if live {
 		t.Fatalf("trial %d: a member of the leader's process group was alive after runWithOutputLimit returned", trial)
 	}
-	if attempt.err == nil {
-		return "the leader ended by itself before the cancellation"
+	if weak != "" {
+		return weak
 	}
 	reports, err := os.ReadDir(swarm.running)
 	if err != nil {
@@ -419,7 +437,8 @@ func TestNormalExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
 // detection. A trial counts only when the kill found all 32 forkers forking:
 // when the leader ends by itself first, or a forker had stopped by itself
 // and withdrawn its report, the trial starts again after the same checks, at
-// most pgSwarmRestarts times in one run.
+// most pgSwarmRestarts times in one run. A call that returns without an error
+// more than pgSelfEndGrace after the cancellation fails the test.
 func TestCancellationKillsNonLeaderForkersUntilEmpty(t *testing.T) {
 	pgRequireRegressionPlatform(t)
 	const trials, observation = 100, 1500 * time.Millisecond
@@ -449,5 +468,5 @@ func TestCancellationKillsNonLeaderForkersUntilEmpty(t *testing.T) {
 	}
 	// A survivor reports within about 0.2 s of its trial's return marker.
 	time.Sleep(observation)
-	pgRequireNoMarkers(t, markers, "swarm descendants outlived a cancelled runWithOutputLimit")
+	pgRequireNoMarkers(t, markers, "swarm descendants outlived runWithOutputLimit")
 }
