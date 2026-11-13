@@ -18,7 +18,6 @@ Core commands:
 
 Experimental commands (may change in a minor release):
   consult     Collect independent adviser judgments, or validate a recorded decision offline
-  graphify    Build and query a guarded local structural graph of tracked Go source
   keys        Save, remove or report the adviser keys in the private configuration directory
   metrics     Summarize explicit local workflow observations; only import --append writes, to the cost history
 

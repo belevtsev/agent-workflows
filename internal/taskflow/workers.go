@@ -393,14 +393,15 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		// the assignment binds, judged as load judges them.
 		// The budget: at 100% nothing continues; at the stop the owner's
 		// cost-budget words go on the record, the rest on the assignment.
-		approvals, err := approveNewWork(record, limitsOver(*record, assignmentCredit(assignment), brief), "worker brief "+brief.ID, ownerWords, env.now())
+		at := env.stamp(record)
+		approvals, err := approveNewWork(record, limitsOver(*record, assignmentCredit(assignment), brief), "worker brief "+brief.ID, ownerWords, at)
 		if err != nil {
 			return err
 		}
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment.AssignedAt, assignment.OwnerApprovals = env.now(), approvals
+		assignment.AssignedAt, assignment.OwnerApprovals = at, approvals
 		for i := range assignment.OwnerApprovals {
 			assignment.OwnerApprovals[i].At = assignment.AssignedAt
 		}
@@ -907,7 +908,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if err != nil {
 			return err
 		}
-		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SourceSHA256: sourceSHA256, SubmittedAt: env.now()}
+		bound := BoundWorkerResult{Result: input, CheckRuns: runs, SourceSHA256: sourceSHA256, SubmittedAt: env.stamp(record)}
 		if input.Status == "completed" {
 			bound.ScopeSHA256, err = scopeBinding(snapshot, assigned.Brief.OwnedPaths)
 		} else {
@@ -1095,7 +1096,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				return err
 			}
 		}
-		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: env.now(), SourceSHA256: sourceSHA256})
+		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: env.stamp(record), SourceSHA256: sourceSHA256})
 		record.EvidenceRevision++
 		record.Verification = nil
 		return nil

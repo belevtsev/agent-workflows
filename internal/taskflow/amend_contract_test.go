@@ -952,6 +952,28 @@ var acCases = []struct {
 	{"NoRecheckAfterAdmission", acTestNoRecheckAfterAdmission},
 	{"NeverAmendedHasNoMember", acTestNeverAmendedHasNoMember},
 	{"ConcurrentAdmission", acTestConcurrentAdmission},
+	{"AmendmentAfterTheClockStepsBack", acTestAmendmentAfterTheClockStepsBack},
+}
+
+// acTestAmendmentAfterTheClockStepsBack amends under a clock that stepped
+// back to an hour before the task started.
+// Oracle: the amendment is accepted; its at is the later of the clock and the
+// previous revision's updated_at, so it equals that updated_at, and so does
+// the amendment revision's updated_at; the record loads. An at taken from the
+// clock alone lies before created_at, which the amendment rules refuse.
+func acTestAmendmentAfterTheClockStepsBack(t *testing.T) {
+	acSetup(t)
+	t.Parallel()
+	_, dir := acStandardTask(t, acPlanOpts{})
+	before := acLoad(t, dir)
+	behind := taskflow.Env{Clock: func() time.Time { return before.CreatedAt.Add(-time.Hour) }}
+	if _, err := behind.AddChecks(context.Background(), dir, acInput("HEAD", acWidened())); err != nil {
+		t.Fatalf("add-checks after the clock stepped back: %v", err)
+	}
+	after := acLoad(t, dir)
+	if len(after.Amendments) != 1 || !after.Amendments[0].At.Equal(before.UpdatedAt) || !after.UpdatedAt.Equal(before.UpdatedAt) {
+		t.Fatalf("amendments %d, at %v, updated_at %s; want one amendment with both times the previous updated_at %s", len(after.Amendments), after.Amendments, after.UpdatedAt, before.UpdatedAt)
+	}
 }
 
 // acTestDoneCriterionMergeFailsVerifyThenPasses fails when a
