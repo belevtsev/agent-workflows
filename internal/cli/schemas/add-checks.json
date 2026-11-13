@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task add-checks --input",
+  "description": "Go test checks added to a started substantial task after a merge of its base branch. cw also checks rules this schema does not state; cw task add-checks --help lists them.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "merge_commit": {"type": "string", "description": "The merge commit that took in the base branch."},
+    "base_ref": {"type": "string", "description": "The base branch ref merged, such as origin/main."},
+    "reason": {"type": "string", "description": "Why the checks are added, 1 to 16384 bytes."},
+    "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}, "description": "At least one check."}
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"},
+        "argv": {"type": "array", "items": {"type": "string"}, "description": "The command, run without a shell."},
+        "timeout_seconds": {"type": "integer"},
+        "env_passthrough": {"type": "array", "items": {"type": "string"}, "description": "Names of variables cw would otherwise drop that the check receives; never values."}
+      }
+    }
+  }
+}

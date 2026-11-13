@@ -72,6 +72,7 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 		},
 	}
 	taskFlag(command, &directory)
+	command.Example = helpText("task-usage-example")
 	command.Flags().StringVar(&claudeTranscript, "claude-transcript", "", "Claude Code session transcript (.jsonl) to sample")
 	command.Flags().StringVar(&codexSession, "codex-session", "", "Codex rollout file to sample")
 	command.Flags().StringVar(&pricesPath, "prices", "", "Price table JSON that replaces cw's built-in table; its SHA-256 becomes the dollar source")

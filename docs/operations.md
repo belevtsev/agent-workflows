@@ -299,6 +299,8 @@ one-line result by default and the whole record with `--full` (`run`: the check 
 test names, from a `go test -json` run's per-test results when it recorded them, and first error lines when it failed; `verify`: without its fixed
 limitations, with problems that differ only in a requirement, assignment or check ID joined into one line,
 and at most 20 problem lines, the rest counted as `omitted_problems`); `--summary` is still accepted there and changes nothing.
+The `--help` of each of these commands, and of `usage`, ends with an example. `cw task schema <start|assign|handoff|accept|assess|add-checks>`
+prints the JSON Schema of that command's JSON input: every member and its type, while the command checks further rules.
 `cw task trace`, `cw doctor` and `cw consult` accept `--summary` for a one-line view. `cw task show` prints one line with the
 task's state (each requirement's assessment, each check's latest run status, each assignment's state, the stored
 verification in brief) and `fields`, the record's top-level members; `cw task show

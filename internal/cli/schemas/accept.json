@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task accept --input",
+  "description": "The coordinator's disposition of one worker result and each of its findings. cw also checks rules this schema does not state.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {"type": "string", "description": "cw fills it when omitted."},
+    "assignment_id": {"type": "string"},
+    "result_sha256": {"type": "string", "description": "cw fills it from the assignment's result when omitted."},
+    "coordinator_id": {"type": "string", "description": "cw fills it from the plan when omitted."},
+    "status": {"enum": ["accepted", "unused", "rejected"]},
+    "reason": {"type": "string"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}},
+    "check_ids": {"type": "array", "items": {"type": "string"}},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "finding_id": {"type": "string"},
+          "status": {"enum": ["accepted", "rejected", "resolved", "deferred"], "description": "An accepted finding stays unresolved and blocks completion."},
+          "reason": {"type": "string"},
+          "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A line range of a repository file.",
+      "properties": {
+        "path": {"type": "string", "description": "Repository-relative path."},
+        "start_line": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "description": "SHA-256 of the whole file; cw fills it from the current bytes when omitted."}
+      }
+    }
+  }
+}

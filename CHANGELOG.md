@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `cw task schema <command>` prints the JSON Schema of a task command's JSON input, and the `--help` of each task command that reads
+  JSON, and of `run` and `verify`, ends with an example ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
   stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; `cw task assign` enforces the round caps
   and fix rounds, and it and `cw task run` stop new work at the budget's stop ([profiles](docs/operations.md#profiles)).
