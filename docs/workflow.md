@@ -25,25 +25,27 @@ No policy edit grants
 publication authority or relaxes substantive role scopes, independent authorship,
 adviser or review requirements.
 
-The table shows the Codex defaults. Under Claude Code, the `github` profile uses
-`claude-sonnet-5-5` at `medium`, and the Claude-only `review_followup` role (every
+The table shows the Codex defaults by profile; each profile's model is in
+[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml). Under Claude
+Code, which names models by alias, the `github` profile uses `sonnet` at `medium`,
+and the Claude-only `review_followup` role (every
 later review of a stage, after that stage's first full review) uses it at `high`;
-Codex keeps every review on its stage's role. Summarization uses `claude-sonnet-5-5`
-and lookup `claude-haiku-5-5`, both at `high`. Other roles use `claude-opus-5-5` at `high`, except
+Codex keeps every review on its stage's role. Summarization uses `sonnet`
+and lookup `haiku`, both at `high`. Other roles use `opus` at `high`, except
 the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
 [host mapping](../skills/task-orchestration/references/hosts.md).
 
-| Work | Default model | Effort |
+| Work | Codex profile | Effort |
 | --- | --- | --- |
-| Coordination and substantive implementation, testing, review, or documentation | `gpt-6.1-sol` | `high` |
-| Planning, architecture, or diagnosis (`decision`) | `gpt-6.1-sol` | `max` |
-| Routine commits, PR drafting from verified facts, and submission (`github`) | `gpt-6-luna` | `high` |
-| Other bounded execution profiles | `gpt-6-luna` | `xhigh` |
-| Bounded read-only lookup or summarization | `gpt-6-luna` | `high` |
+| Coordination and substantive implementation, testing, review, or documentation | `sol` | `high` |
+| Planning, architecture, or diagnosis | `decision` | `max` |
+| Routine commits, PR drafting from verified facts, and submission | `github` | `high` |
+| Other bounded execution | `luna_execution` | `xhigh` |
+| Bounded read-only lookup or summarization | `luna` | `high` |
 
 The policy preserves fixed specialist settings and describes availability
-fallbacks. Sol 6.1 `max` is configured for the decision roles, and other Sol work
-uses it on explicit user request; Sol `ultra` requires an explicit user request.
+fallbacks. `max` is configured for the decision roles, and other `sol` work
+uses it on explicit user request; `ultra` requires an explicit user request.
 The coordinator still delegates useful independent assignments and obtains
 required independent design challenges. Automatic escalation is disabled. A
 worker's evidence does not authorize an external action, and consultation
@@ -113,18 +115,20 @@ coverage, and the test engineer never sees it.
 
 Neither the plugins nor `cw install --host codex` edit a host's model settings.
 The coordinator profiles in the policies correspond to these values, which you set
-yourself if you want them. In Codex `config.toml`:
+yourself if you want them. In Codex `config.toml`, with `model` set to the `sol`
+profile's model in
+[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml):
 
 ```toml
-model = "gpt-6.1-sol"
+model = "<the sol profile's model>"
 model_reasoning_effort = "high"
 ```
 
-In Claude Code `settings.json`:
+In Claude Code `settings.json`, which accepts the alias:
 
 ```json
 {
-  "model": "claude-opus-5-5",
+  "model": "opus",
   "effortLevel": "high"
 }
 ```
@@ -136,11 +140,11 @@ authentication remain local decisions. A running session keeps its existing
 settings.
 
 The shared policy is version 3. Its `sol` profile, `sol_unavailable` fallback and
-`max_for_sol` rule keep their names as schema identifiers; the `sol` profile now
-runs `gpt-6.1-sol`. `max_for_sol: configured_or_explicit_user_request`
+`max_for_sol` rule keep their names as schema identifiers, whichever model the
+`sol` profile runs. `max_for_sol: configured_or_explicit_user_request`
 permits a configured Max default when `configured_max_profiles` exactly lists every
 Max-default profile; today that is `decision`. Older `explicit_user_request`
-policies remain readable and continue rejecting configured Max for Sol models. The repository check
+policies remain readable and continue rejecting configured Max for the `sol` profile. The repository check
 (`go test ./internal/skillcheck`) loads the policies.
 
 Use compact skill triggers, relevant references, and bounded worker briefs to
@@ -264,7 +268,7 @@ Responses; this helper does not claim it for Decisions.
 
 **OpenAI Decisions.** The adviser uses `gpt-6-luna` through the dedicated
 [Decisions API](https://developers.openai.com/api/docs/guides/decisions), separately
-from dispatching a Luna worker profile. The adapter sends deterministic text for the
+from dispatching a `luna` worker profile. The adapter sends deterministic text for the
 same shared state, maps questions to named Choice arrays, and normalizes named
 answers and probability arrays. A question refusal is missing coverage; valid
 choices from the same response remain usable. Read the current

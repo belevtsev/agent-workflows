@@ -119,8 +119,8 @@ verified facts, then execute the authorized commit, push and `gh pr create` or
 
 Read the current policy and [host mapping](hosts.md). The three roles
 `commit_execution`, `pr_authoring_routine` and `pr_submission` default to the
-`github` profile: Codex `gpt-6-luna` at `high`, Claude `claude-sonnet-5-5` at
-`medium`, with `bounded_execution` scope. These are dispatch instructions, not a
+`github` profile: on Codex its model from [model-policy.yaml](../model-policy.yaml) at
+`high`, on Claude Code `sonnet` at `medium`, with `bounded_execution` scope. These are dispatch instructions, not a
 native agent registration or automatic model switch.
 
 This bounded step alone does not activate full orchestration, new adviser calls
@@ -146,9 +146,9 @@ Give the worker a fresh, minimal context containing:
 - Why `cw publish` does not fit, with its report when it ran.
 - Required output, stopping conditions and applicable repository instructions.
 
-Under Codex, explicitly pass `model: "gpt-6-luna"`,
+Under Codex, explicitly pass the `github` profile's `model` from [model-policy.yaml](../model-policy.yaml),
 `reasoning_effort: "high"` and `fork_turns: "none"` for the default profile.
-Under Claude Code 2.1.292 or newer, use Agent with
+Under Claude Code, use Agent with
 `subagent_type: "agent-workflows:github-worker"`, `model: "sonnet"` and `effort: "medium"`;
 standard subagents start fresh. Without that type, use `general-purpose` with the
 same model and effort, as the [host mapping](hosts.md#worker-agent-types)

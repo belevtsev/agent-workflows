@@ -2047,16 +2047,16 @@ func TestHookSessionStartNamesAClaudeCodeOlderThanTheMinimum(t *testing.T) {
 	}
 }
 
-func TestMinimumClaudeCodeVersionIsTheREADMEs(t *testing.T) {
-	// Oracle: README.md's Quick start states minClaudeCodeVersion as the
-	// minimum Claude Code version, so the session-start line and the README
-	// cannot drift apart.
-	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+func TestMinimumClaudeCodeVersionIsTheHostRequirements(t *testing.T) {
+	// Oracle: the host requirements table in docs/operations.md states
+	// minClaudeCodeVersion as the minimum Claude Code version, so the
+	// session-start line and the docs cannot drift apart.
+	operations, err := os.ReadFile(filepath.Join("..", "..", "docs", "operations.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "**Claude Code version.** " + minClaudeCodeVersion + " or newer"; !strings.Contains(string(readme), want) {
-		t.Fatalf("README.md does not contain %q", want)
+	if want := "| Host version | " + minClaudeCodeVersion + " or newer"; !strings.Contains(string(operations), want) {
+		t.Fatalf("docs/operations.md does not contain %q", want)
 	}
 }
 

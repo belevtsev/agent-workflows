@@ -7,6 +7,20 @@ the Codex instruction block, paths, the model policy lookup and adviser keys.
 
 ## Install
 
+### Host requirements
+
+Other pages link here rather than repeat these versions.
+
+| Requirement | Claude Code | Codex |
+| --- | --- | --- |
+| Platform | macOS or Linux; Windows is not supported | macOS or Linux; Windows is not supported |
+| Host version | 2.1.292 or newer, because the coordinator passes `effort` on every dispatch; that also covers `omitClaudeMd` for the reviewer and the test engineer (2.1.271). The session-start hook names an older client ([session start](hooks.md#session-start)) | No minimum is checked; the hooks were recorded on 0.167.2 ([recorded host runs](hooks.md#recorded-host-runs)) |
+| `cw` on `PATH` | The release that matches the plugin version ([get `cw`](#get-cw)); the session-start hook names a mismatch | Same |
+| Go | 1.27.1 or newer, to build `cw` and for the Go rule of `cw task verify` | Same |
+| git | On `PATH`; the task record and the commit gate read it | Same |
+| Hooks | Run once the plugin is installed | Run only after you trust them in `/hooks` ([Codex](#codex)) |
+| Worker models | Aliases `opus`, `sonnet` and `haiku` from [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml); an alias resolves to the host's current release | The `sol` and `luna` profiles of [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) name the models |
+
 ### Claude Code plugin
 
 ```sh
