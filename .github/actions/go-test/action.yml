@@ -46,7 +46,7 @@ runs:
         all="$(go list ./...)"
         if [ "$(grep -Ec "$first" <<<"$all")" != 1 ] || [ "$(grep -Ec "$second" <<<"$all")" != 1 ] ||
           [ "$(grep -Ec "$third" <<<"$all")" != 2 ]; then
-          echo "a shard names a package that go list ./... does not print: update the lists in .github/actions/go-test/action.yml"
+          echo "the patterns of shards 1, 2 and 3 must match exactly 1, 1 and 2 packages of go list ./...: update them in .github/actions/go-test/action.yml"
           exit 1
         fi
         case "$SHARD" in
@@ -66,10 +66,10 @@ runs:
     - name: Test with the race detector
       if: runner.os == 'Linux'
       shell: bash
-      run: go test -race -count=1 $SHARD_PACKAGES
+      run: go test -race -count=1 ${SHARD_PACKAGES:?}
     # A package can take over eight minutes on a macOS runner, near go test's
     # 10-minute default for one package.
     - name: Test
       if: runner.os != 'Linux'
       shell: bash
-      run: go test -count=1 -timeout=15m $SHARD_PACKAGES
+      run: go test -count=1 -timeout=15m ${SHARD_PACKAGES:?}
