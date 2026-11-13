@@ -800,7 +800,7 @@ func aclAssess(t *testing.T, dir, root string, checkIDs, decisionIDs []string) {
 func (r *aclRepo) runCheck(t *testing.T, dir, id string) taskflow.CheckRun {
 	t.Helper()
 	before := len(aclLoad(t, dir).Checks)
-	res := r.cw.run("", "task", "run", "--full", "--task", dir, "--check", id)
+	res := r.cw.run("", "task", "run", "--full", "--force", "--task", dir, "--check", id)
 	rec := aclLoad(t, dir)
 	if len(rec.Checks) <= before {
 		t.Fatalf("cw task run --check %s recorded no run: %s", id, res.message())

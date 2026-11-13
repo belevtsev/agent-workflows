@@ -28,6 +28,10 @@ const (
 	// CodeEnvPassthrough names the variables a passed check's env_passthrough
 	// let through.
 	CodeEnvPassthrough FindingCode = "env-passthrough"
+	// CodeReusedRun names a check whose passed run at an earlier snapshot is
+	// reused: the source digest, go command, GOFLAGS and environment key are
+	// unchanged.
+	CodeReusedRun FindingCode = "reused-run"
 	// CodeDeferredFinding reports a deferred worker finding.
 	CodeDeferredFinding FindingCode = "deferred-finding"
 	// CodeRejectedFinding reports a rejected blocker or major worker finding.
@@ -78,6 +82,8 @@ type verifyInput struct {
 	snapshot  projectctx.Snapshot
 	files     []projectctx.FileState
 	view      *sourceView
+	// credit decides which check runs earn credit at snapshot.
+	credit *creditSource
 }
 
 // verifyFindings is what one rule reports. Problems block completion;
@@ -115,6 +121,7 @@ var verifyRules = [...]verifyRule{
 	localEvidenceRule,
 	goToolRule,
 	envPassthroughRule,
+	reusedRunsRule,
 	deferredFindingsRule,
 	rejectedFindingsRule,
 	contractRule,
@@ -150,15 +157,19 @@ func fixedLimitationsRule(context.Context, verifyInput) verifyFindings {
 }
 
 func localEvidenceRule(_ context.Context, in verifyInput) verifyFindings {
-	return verifyFindings{problems: coded(CodeLocalEvidence, localEvidenceProblems(in.artifacts, in.record, in.snapshot))}
+	return verifyFindings{problems: coded(CodeLocalEvidence, localEvidenceProblems(in.artifacts, in.record, in.credit))}
 }
 
 func goToolRule(_ context.Context, in verifyInput) verifyFindings {
-	return verifyFindings{limitations: coded(CodeGoTool, toolLimitations(in.record, in.snapshot))}
+	return verifyFindings{limitations: coded(CodeGoTool, toolLimitations(in.record, in.credit))}
 }
 
 func envPassthroughRule(_ context.Context, in verifyInput) verifyFindings {
-	return verifyFindings{limitations: coded(CodeEnvPassthrough, passthroughLimitations(in.record, in.snapshot))}
+	return verifyFindings{limitations: coded(CodeEnvPassthrough, passthroughLimitations(in.record, in.credit))}
+}
+
+func reusedRunsRule(_ context.Context, in verifyInput) verifyFindings {
+	return verifyFindings{limitations: coded(CodeReusedRun, reusedLimitations(in.record, in.credit))}
 }
 
 func deferredFindingsRule(_ context.Context, in verifyInput) verifyFindings {
@@ -196,7 +207,7 @@ func executionRule(ctx context.Context, in verifyInput) verifyFindings {
 	if in.record.Plan.Kind != "substantial" || equalSnapshot(in.record.Baseline, in.snapshot) {
 		return verifyFindings{}
 	}
-	problems, notes := executionProblems(ctx, in.artifacts, in.record, in.snapshot, in.files)
+	problems, notes := executionProblems(ctx, in.artifacts, in.record, in.credit, in.files)
 	return verifyFindings{problems: coded(CodeExecution, problems), limitations: coded(CodeExecution, notes)}
 }
 

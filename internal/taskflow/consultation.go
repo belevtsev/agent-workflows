@@ -196,7 +196,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 			return errors.New("before consultation differs from task baseline")
 		}
 		if phase == "final" {
-			if problems := localEvidenceProblems(taskDirectory{root}, *record, current); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, env.credit(ctx, taskDirectory{root}, *record, current, nil)); len(problems) > 0 {
 				return fmt.Errorf("final consultation requires completed evidence: %v", problems)
 			}
 			binding, err := evidenceBinding(*record)

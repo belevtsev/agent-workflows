@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   run it again where an older `cw` wrote the hooks, which `cw doctor` and the session-start line then name ([git hooks](docs/hooks.md#git-hooks)).
 - Each check run records the digest of the source it ran at and a key of its go and `env_passthrough` configuration, keyed per task,
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
+- A passed check run stays credited across commits and merges that keep the source bytes, go command, `GOFLAGS` and run key, and
+  `cw task run` then reuses it without running; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
 
 ### Changed
 

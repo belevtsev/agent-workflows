@@ -226,7 +226,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 
 | Status | Meaning | Where |
 | --- | --- | --- |
-| 0 | ok | The command did what was asked. |
+| 0 | ok | The command did what was asked, including `cw task run` reusing a passed run ([reuse](#reusing-a-passed-run)). |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
@@ -587,8 +587,47 @@ in its start revision:
   keys of different tasks are not comparable.
 
 Runs and results recorded before these members existed, or without them,
-lack them, so they are never reused. No rule reads the keys yet: they are the identity that reuse of a
-passed run will compare.
+lack them, so they are never reused.
+
+### Reusing a passed run
+
+A passed check run stays creditable across commits, staging, branch switches
+and merges that leave the source bytes as they were. A run at the current
+snapshot earns credit as before. A run at another snapshot is reused when it is
+the latest run of its check, passed with exit status 0 without the source
+changing while it ran, and its `source_sha256`, go command (`tool`: path,
+version, SHA-256 and `GOROOT`), `goflags` and `env_key` equal what the check
+would run under now. `cw task verify` lists each reused run as a limitation,
+`check <id> reuses run <run-id>, which passed at the same source digest, go
+command, GOFLAGS and environment key at commit <head>; it was not run again`,
+and `cw task assess` binds it. `cw task run` then runs nothing: it prints the
+run with `"status":"reused"` and its `reason`, also under `--full`, records
+nothing and exits 0. Worker results and acceptances, and the requirement
+trace, still bind only a run at the current snapshot.
+
+Any one of these ends the reuse:
+
+- a change to an eligible source byte, path or mode (a different `source_sha256`);
+- a different go binary or version, or another `GOROOT`;
+- a different `GOFLAGS` in `cw`'s environment;
+- a different environment key: a value its `go env` read prints, such as a go
+  env file's `GOFLAGS`, `CGO_ENABLED`, `GOOS` or `CC`, or a variable its
+  `env_passthrough` names;
+- a newer run of the same check that did not pass;
+- a truncated log, or a log that is missing or differs from its hash;
+- a run recorded without `source_sha256` or `env_key`, or a configuration
+  `cw` cannot read now (no verified go, no `run-key-secret`).
+
+For a check whose program is not `go`, `cw` records no go command, so a
+program it starts in turn, such as the go a `make` target runs, is not compared;
+a script in the source is, through `source_sha256`. Other variables `cw` passes
+to a check are not part of the key: a test that
+reads one of them, other than through `env_passthrough`, is reused when it
+changes. Run it again with `cw task run --force`. `CW_NO_REUSE=1` turns reuse
+off for every command: only a run at the current snapshot earns credit, and
+`cw task run` always runs. A pass after a failed run of the same check at the
+same `source_sha256` and `GOFLAGS` is a rerun and earns no Go evidence credit,
+also across a commit of the same bytes.
 
 ### Merging the base branch during a task
 

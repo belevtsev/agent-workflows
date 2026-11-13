@@ -41,6 +41,8 @@ type taskRunSummary struct {
 	Status   string `json:"status"`
 	ExitCode *int   `json:"exit_code,omitempty"`
 	Failure  string `json:"failure,omitempty"`
+	// Reason says why a reused run (status reused) needs no new run.
+	Reason string `json:"reason,omitempty"`
 	// Log is the run's log file, relative to the task directory.
 	Log string `json:"log"`
 	// A failed or timed-out run also quotes bounded excerpts of its stored log.

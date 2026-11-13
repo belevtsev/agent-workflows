@@ -497,7 +497,7 @@ func (h *summaryCLIHarness) runCheck(summary bool) []byte {
 	if summary {
 		args = append(args, "--summary")
 	} else {
-		args = append(args, "--full")
+		args = append(args, "--full", "--force")
 	}
 	return h.execute(nil, args...)
 }
