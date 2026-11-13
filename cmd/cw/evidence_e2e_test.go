@@ -471,7 +471,7 @@ func (e *evidenceE2E) assignReview(reviewID, agent string) taskflow.Bundle {
 	e.t.Helper()
 	bundle, ref := e.bundle(reviewID)
 	brief := map[string]any{
-		"id": reviewID, "agent_id": agent, "role": "review",
+		"id": reviewID, "agent_id": agent, "role": "review", "stage": "code-review",
 		"goal":           "Review the change against the contract.",
 		"owned_paths":    []string{"."},
 		"constraints":    []string{"Read only."},

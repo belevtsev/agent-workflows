@@ -1130,6 +1130,7 @@ func TestContractAuthorVerifySupersession(t *testing.T) {
 			if tc.contract {
 				second = contractAuthorContractBrief(t, repo, "bravo", tc.owned...)
 			}
+			second.Repeats = "alpha"
 			contractAuthorAssign(t, task, second)
 			if tc.contract {
 				// R18: only an accepted round supersedes.
