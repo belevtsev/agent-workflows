@@ -283,8 +283,18 @@ runtime call targets. Each live probe and each Git inspection runs in a process
 group of its own; when it answers, exits or reaches its deadline, `cw` kills the
 group until no member is alive, and a member that survives fails the probe.
 Missing or unsupported tooling is qualified and retains normal source discovery. Neither mode installs dependencies, changes watcher enrollment or
-calls advisers. `--summary` prints one line with only the checks that are missing,
-degraded or stale.
+calls advisers.
+
+`--summary` prints one line. Its `problems` lists the required checks that are
+missing, degraded or stale, which block the workflow: `git_cli` and `cw_cli`
+(git and `cw` on `PATH`), `workflow_skills` (the three core skills, in a skill
+root or the agent-workflows plugin in Claude Code's or Codex's plugin cache),
+`project_source`, `project_contracts` and `git_hooks`. Only those, and a warning,
+make `status` `attention`; otherwise it is `ok`. `optional_missing` counts the
+optional checks (Codex and Claude Code configuration, credentials, MCP servers,
+gopls, Graphify, jbcontext) that are missing, degraded or stale, and
+`--summary --all` lists them under `optional`. The full report, without
+`--summary`, keeps every check.
 
 `cw task` keeps source-bound requirements, actual argv check execution, references,
 the adviser binding fixed at `cw task start`, two substantial-task decision
