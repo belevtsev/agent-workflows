@@ -217,7 +217,7 @@ func (f *m1Fixture) assignTestEngineer() {
 	f.t.Helper()
 	contractPath, contractSHA := f.extractContract()
 	raw := fmt.Sprintf(`{
-		"id": %q, "agent_id": %q, "role": "implementation",
+		"id": %q, "agent_id": %q, "role": "implementation", "stage": "tests",
 		"goal": "Write tests for M1 from the contract",
 		"owned_paths": [%q], "constraints": ["contract only"], "check_ids": [],
 		"stop_condition": "Return tests and the requirement map",

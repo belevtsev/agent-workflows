@@ -241,7 +241,7 @@ prohibited material before reading it and return it to the coordinator.
 ## Record and complete
 
 Use the [worker handoff contract](../worker-handoffs.md). The native brief uses
-`role: "implementation"`, exact test-artefact `owned_paths`, and `check_ids: []`:
+`role: "implementation"`, `stage: "tests"`, exact test-artefact `owned_paths`, and `check_ids: []`:
 completed handoffs require their assigned checks to pass, so assigning execution
 gates to you would prevent a valid red-test handoff. Execution checks stay in
 the task plan, owned by the coordinator or a separate `verification`

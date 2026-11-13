@@ -118,7 +118,8 @@ just ask.
 You ask, answer questions and approve the commit. The agent runs the rest,
 including the `cw` commands below; you can run them yourself to inspect a task.
 
-Cost per task is not yet measured. The planned caps, set by the task's profile,
+`cw task usage` estimates a task's dollars from its session transcripts with a
+dated price table ([cost budget](docs/operations.md#cost-budget)). The planned caps, set by the task's profile,
 are unmeasured placeholders: 15 USD or 6M tokens (`lite`), 40 USD or 15M
 (`standard`) and 100 USD or 40M (`strict`). `cw` does not enforce them yet;
 profiles come in a later release candidate.

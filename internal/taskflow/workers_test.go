@@ -18,7 +18,20 @@ func workerBrief(id, agent, role string, owned []string, checks ...string) Worke
 	if checks == nil {
 		checks = []string{}
 	}
-	return WorkerBrief{ID: id, AgentID: agent, Role: role, Goal: "Complete the bounded assigned work.", OwnedPaths: owned, Constraints: []string{"Preserve other workers' edits."}, CheckIDs: checks, StopCondition: "Return a terminal source-bound handoff with actual evidence."}
+	return WorkerBrief{ID: id, AgentID: agent, Role: role, Stage: fixtureStage(role), Goal: "Complete the bounded assigned work.", OwnedPaths: owned, Constraints: []string{"Preserve other workers' edits."}, CheckIDs: checks, StopCondition: "Return a terminal source-bound handoff with actual evidence."}
+}
+
+// fixtureStage is the stage a fixture brief of role takes under every
+// built-in profile: code-review for a review, implementation for an
+// implementation brief, and none for the roles that need no stage.
+func fixtureStage(role string) string {
+	switch role {
+	case "review":
+		return StageCodeReview
+	case "implementation":
+		return StageImplementation
+	}
+	return ""
 }
 
 // mustAssignWorker assigns the brief. A review brief without a bundle in a
@@ -302,7 +315,9 @@ func TestBlockedCancelledAndUnusedHandoffsNeverClaimCompletion(t *testing.T) {
 			}
 			acceptance.Reason = "The worker stopped without usable completion evidence; coordinator will reassign the work."
 			record = mustAcceptWorker(t, record, acceptance)
-			record = mustAssignWorker(t, record, workerBrief("replacement", "/root/replacement", "implementation", []string{"source.txt"}))
+			replacement := workerBrief("replacement", "/root/replacement", "implementation", []string{"source.txt"})
+			replacement.Repeats = "worker"
+			record = mustAssignWorker(t, record, replacement)
 			if verified, err := Verify(t.Context(), record.Directory); err == nil || verified.Complete {
 				t.Fatal("cancelled/blocked work supplied missing completion evidence")
 			}
@@ -760,7 +775,9 @@ func TestConservativeScopeFailureCanBeCancelledAndReplaced(t *testing.T) {
 	input := workerAcceptance(t, record, "broad", "unused")
 	input.CheckIDs = []string{}
 	record = mustAcceptWorker(t, record, input)
-	record = mustAssignWorker(t, record, workerBrief("precise", "/root/web", "implementation", []string{"web/app.js"}, "focused"))
+	precise := workerBrief("precise", "/root/web", "implementation", []string{"web/app.js"}, "focused")
+	precise.Repeats = "broad"
+	record = mustAssignWorker(t, record, precise)
 	record = mustSubmitWorker(t, record, workerResult(t, record, "precise", "completed", ref))
 	record = mustAcceptWorker(t, record, workerAcceptance(t, record, "precise", "accepted", ref))
 	if verified, err := Verify(t.Context(), record.Directory); err != nil || !verified.Complete {
