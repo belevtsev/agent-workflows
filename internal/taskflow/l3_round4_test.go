@@ -230,6 +230,7 @@ func (f *l3Fix) checkCopiesR5(rb r4Brief, before, after map[string]string) {
 // control, when an accepted assign of the same shape stores no copies (then
 // the absent copies would prove nothing).
 func TestR5aAssignOverRevisionSizeLimit(t *testing.T) {
+	t.Parallel()
 	planIDs := r4PlanIDs()
 	f := r4Fixture(t)
 

@@ -80,6 +80,25 @@ change the user's configuration, consult hosted decision models, or require serv
 credentials.
 Host smokes are synthetic acceptance evidence; keep live model calls out of CI.
 
+### Tests
+
+`cmd/cw` builds its `cw` binary once per test run (`buildPlainCW`), so a test
+runs or copies that file and never moves or changes it. Every top-level test
+there calls `t.Parallel()`; a new one must own its directories and must not
+call `t.Setenv`.
+
+A task holds at most 4,096 revisions, and every load decodes and re-checks
+each one. The `internal/taskflow` tests that walk a record to that limit call
+`lowerRevisionLimit`, which runs them at 64 revisions, so they must not call
+`t.Parallel()`. `TestShippedRevisionLimitIs4096` alone runs at the shipped
+value and fails if it changes. Only that package's tests can lower the limit.
+
+In `internal/taskflow`, a top-level test that takes 0.2 s or more calls
+`t.Parallel()` unless it sets the environment, changes directory or sets a
+package variable; a new slow test should do the same. The `internal/graphify`
+tests stay serial: they bound process timing, and one missed its 2 s bound on
+the macOS runner when they ran beside each other.
+
 ### Repository content checks
 
 ```sh

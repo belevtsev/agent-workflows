@@ -601,6 +601,7 @@ func substantialPlan(t *testing.T) Plan {
 // empty map, as the record's "advisers" object; Load returns it; both
 // checkpoint contexts emit it; later revisions keep it unchanged.
 func TestStartStoresAdviserBindingAndContextsEmitIt(t *testing.T) {
+	t.Parallel()
 	for name, binding := range map[string]map[string]string{
 		"shipped_default": fixtureBinding(),
 		"jev_opt_in":      {"jev": "jev-1.14.0", "subq_snap": "subq-snap-preview", "openai_decisions": "gpt-6-luna"},

@@ -79,6 +79,7 @@ func reusedLimitation(verification taskflow.Verification, check string) bool {
 // as at the pass, with no new run, and lists the pass as reused; cw task run prints status reused, exits 0
 // and records nothing, unless --force; CW_NO_REUSE=1 withdraws the credit.
 func TestReuseE2EPassCommitVerifyNeedsNoRerun(t *testing.T) {
+	t.Parallel()
 	e, alpha, passed := newReuseE2E(t)
 	e.git("add", "-A")
 	e.git("commit", "-qm", "alpha")
@@ -104,6 +105,7 @@ func TestReuseE2EPassCommitVerifyNeedsNoRerun(t *testing.T) {
 // Oracle: one changed byte after the pass makes verify demand a run, and cw
 // task run executes the check.
 func TestReuseE2EOneByteEditDemandsARun(t *testing.T) {
+	t.Parallel()
 	e, alpha, _ := newReuseE2E(t)
 	e.write("alpha/alpha.go", alphaSource+"\nfunc Other() string { return \"otheR\" }\n")
 	runs := e.executedRuns()
@@ -124,6 +126,7 @@ const reuseGitPlan = `{"title":"Whitespace","kind":"small",
 // after git commit -am of the same bytes, cw task run does not reuse the pass
 // but runs the check, which now fails (exit 5), and verify lists no reuse.
 func TestReuseE2EGitCheckIsNeverReused(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	e.git("tag", "base")
@@ -149,6 +152,7 @@ func TestReuseE2EGitCheckIsNeverReused(t *testing.T) {
 // Oracle: under another GOFLAGS the committed pass earns no credit, and cw
 // task run executes the check.
 func TestReuseE2EOtherGOFLAGSGetNoCredit(t *testing.T) {
+	t.Parallel()
 	e, alpha, _ := newReuseE2E(t)
 	e.git("add", "-A")
 	e.git("commit", "-qm", "alpha")

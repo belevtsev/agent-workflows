@@ -51,6 +51,7 @@ func (e *goToolchainE2E) systemCC() string {
 // fails; the run still passes (the repro is real), verify says why it earns
 // no credit, and go_env records the wrapper by its path.
 func TestTaskRunWithAWrapperCCompilerThatFakesAPassEarnsNoCredit(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	header := e.file("pass.h", "long write(int, const void *, unsigned long);\nvoid _exit(int);\n__attribute__((constructor)) static void cw_fake_pass(void) { if (write(1, \"PASS\\n\", 5) < 0) {} _exit(0); }\n")
 	// The wrapper adds the header to C sources only: runtime/cgo also has
@@ -81,6 +82,7 @@ func TestTaskRunWithAWrapperCCompilerThatFakesAPassEarnsNoCredit(t *testing.T) {
 // so a cgo package's passing run keeps its credit, and go_env records cgo on,
 // that compiler and nothing unverified.
 func TestTaskRunWithTheSystemCCompilerEarnsCredit(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	e.write("alpha/cgo.go", cgoAlpha(t))
 	e.runExpect(true, "alpha", "CGO_ENABLED=1")

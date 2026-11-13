@@ -23,6 +23,7 @@ import (
 // taskflow.MaxLogBytes (128 KiB), while each record revision stays far below
 // the limit.
 func TestTaskRunExitsFailureWhenTheCheckLogCannotBeWritten(t *testing.T) {
+	t.Parallel()
 	e := tle2eNewEnv(t, buildPlainCW(t))
 	tle2eWrite(t, filepath.Join(e.repo, "big.txt"), strings.Repeat(strings.Repeat("x", 127)+"\n", 768))
 	// The check is named ok because the shared start helper expects that ID.

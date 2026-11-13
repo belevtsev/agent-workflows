@@ -181,6 +181,7 @@ func TestNotRequiredCheckpointsAllowDispatchWithoutBefore(t *testing.T) {
 // checkpoints and adds exactly one limitation; with required:true or omitted
 // the same flow stays incomplete and carries no such limitation.
 func TestNotRequiredCheckpointsVerifyWithoutCheckpoints(t *testing.T) {
+	t.Parallel()
 	for _, flow := range []string{"unchanged_source", "changed_source_with_review"} {
 		for bindingName, binding := range map[string]map[string]string{"bound_advisers": fixtureBinding(), "no_advisers": {}} {
 			for policyName, policy := range map[string]*CheckpointPolicy{
@@ -222,6 +223,7 @@ func TestNotRequiredCheckpointsVerifyWithoutCheckpoints(t *testing.T) {
 
 // C4: with required:false every other gate is unchanged.
 func TestNotRequiredCheckpointsKeepOtherGates(t *testing.T) {
+	t.Parallel()
 	t.Run("requirements", func(t *testing.T) {
 		record, _ := fixtureTask(t, checkpointsTestOptional(t))
 		if _, err := RunCheck(t.Context(), record.Directory, "focused"); err != nil {
@@ -267,6 +269,7 @@ func TestNotRequiredCheckpointsKeepOtherGates(t *testing.T) {
 
 // C5: with required:false a checkpoint attached anyway is validated as today.
 func TestNotRequiredCheckpointsStillValidateAttachments(t *testing.T) {
+	t.Parallel()
 	for name, mutate := range map[string]func(*checkpointDraft){
 		"pending_before":    pendingDecision,
 		"unresolved_before": unresolvedDecision,

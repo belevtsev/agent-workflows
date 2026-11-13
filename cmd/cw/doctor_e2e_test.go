@@ -15,6 +15,7 @@ import (
 // Codex config, Claude settings, MCP server, credential or optional tool), the
 // built cw prints status ok and an empty problems object, and exits 0.
 func TestDoctorSummaryIsOkInAFreshGoModule(t *testing.T) {
+	t.Parallel()
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatalf("git is needed for the fixture: %v", err)

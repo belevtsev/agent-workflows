@@ -120,6 +120,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `internal/taskflow` no longer links the adviser HTTP providers or `net/http` ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 - `taskflow` types its refusals (locked, abandoned, revision limit, invalid input), so code and tests tell them from failures with
   `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
+- `cmd/cw` tests build `cw` once per run and run in parallel (about 90 s to 25 s locally), and the `internal/taskflow` tests of the
+  4,096-revision limit run at 64 revisions, with one test pinning the shipped value ([development](docs/development.md#tests)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 - [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
@@ -167,6 +169,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
 - The checkpoint reference again says how a task across several repositories sends one adviser request (`state.task_contexts`),
   a rule the first cut of the skill dropped ([advisers](docs/advisers.md)).
+
+- The four test-engineer eval prompts name the `test-strategy` references to apply by path; they still pointed at
+  links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
 
 ## [3.0.0-rc.2] - 2026-11-12
 

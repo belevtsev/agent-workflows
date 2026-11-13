@@ -362,6 +362,7 @@ func TestBundleFollowUpListsChangesSincePreviousReview(t *testing.T) {
 
 // B3: which closed reviews count as the previous reviewed source.
 func TestBundlePreviousReviewRequiresCompletedUnrejectedResult(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name        string
 		result      string
@@ -400,6 +401,7 @@ func TestBundlePreviousReviewRequiresCompletedUnrejectedResult(t *testing.T) {
 // B3: the most recent counted review wins; a later cancelled review does not
 // replace it.
 func TestBundlePreviousReviewIsMostRecentCountedReview(t *testing.T) {
+	t.Parallel()
 	repo := bundleTestRepo(t, map[string]string{"source.txt": "first line\nsecond line\n", "a.txt": "a0\n", "c.txt": "c0\n"}, false)
 	record := bundleTestStart(t, repo, helperPlan(t, "small", "pass"))
 	bundleTestWrite(t, repo, "a.txt", "a1\n")
@@ -502,6 +504,7 @@ func TestBundleReachHintsAndIdentity(t *testing.T) {
 // B7: prior findings follow record order and take the disposition of the
 // latest acceptance that lists them, else pending.
 func TestBundlePriorFindingsUseLatestDisposition(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	first := WorkerFinding{ID: "f1", Summary: "First concern about the source.", Severity: "major", Evidence: []SourceRef{ref}}
 	second := WorkerFinding{ID: "f2", Summary: "Second concern about the source.", Severity: "major", Evidence: []SourceRef{ref}}
@@ -665,6 +668,7 @@ func TestNonReviewAssignmentRefusesBundle(t *testing.T) {
 // A3: the bundle file must be an absolute, existing regular file (not a
 // symlink) whose bytes match sha256 and decode as a strict bundle.
 func TestReviewAssignmentRefusesInvalidBundleFile(t *testing.T) {
+	t.Parallel()
 	record, bundle := bundleTestAssignFixture(t)
 	valid, data := bundleTestWriteBundle(t, bundle)
 	dir := bundleTestDir(t)
@@ -709,6 +713,7 @@ func TestReviewAssignmentRefusesBundleForAnotherReview(t *testing.T) {
 // A5: anything but the four facets must equal what BuildBundle generates at
 // assign time.
 func TestReviewAssignmentRefusesEditedOrStaleBundle(t *testing.T) {
+	t.Parallel()
 	edits := map[string]func(*Bundle){
 		"finding reason": func(b *Bundle) { b.PriorFindings[0].Reason = "A different reason." },
 		"finding status": func(b *Bundle) { b.PriorFindings[0].Disposition = "rejected" },
@@ -758,6 +763,7 @@ func TestReviewAssignmentRefusesEditedOrStaleBundle(t *testing.T) {
 // A6: every facet must be nonblank, and n/a needs "n/a:" plus a reason; the
 // refusal names the row path and the facet's JSON name.
 func TestReviewAssignmentValidatesFacets(t *testing.T) {
+	t.Parallel()
 	record, bundle := bundleTestAssignFixture(t)
 	facets := []struct {
 		name string

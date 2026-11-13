@@ -43,6 +43,7 @@ func codexHooksRead(t *testing.T) hooksFile {
 }
 
 func TestCodexHooksFileShape(t *testing.T) {
+	t.Parallel()
 	// Oracle: .codex-plugin/plugin.json names ./hooks/codex-hooks.json,
 	// which Codex runs instead of hooks/hooks.json. The file has a
 	// description; SessionStart with the matcher startup|resume|clear|compact
@@ -133,6 +134,7 @@ exit 1
 `
 
 func TestCodexHooksEndToEnd(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("builds cmd/cw")
 	}

@@ -22,6 +22,7 @@ import (
 // created (`git rev-parse`). Uninstall then leaves the hooks directory as it
 // was, byte for byte.
 func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
+	t.Parallel()
 	binary := buildPlainCW(t)
 	module, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -156,6 +157,7 @@ func gateSnapshot(t *testing.T, dir string) string {
 // make a merge commit whose second parent is the remote's commit, while the
 // local branch's merge leaves HEAD where it was.
 func TestGateInstallLetsAMergeOfTheFetchedBaseBranchThrough(t *testing.T) {
+	t.Parallel()
 	binary := buildPlainCW(t)
 	module, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

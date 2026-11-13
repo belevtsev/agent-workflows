@@ -39,6 +39,7 @@ func TestEvidenceWithoutRunsStaysTiedToItsSnapshot(t *testing.T) {
 // bind that run; the stored record loads again (its bindings validate) and
 // records the acceptance's source digest.
 func TestWorkerBindsAReusedRunAfterStaging(t *testing.T) {
+	t.Parallel()
 	record := committedTask(t, helperPlan(t, "small", "pass"))
 	record = mustAssignWorker(t, record, workerBrief("implement", "/root/implementation", "implementation", []string{"source.txt"}, "focused"))
 	ref := changedWorkerSource(t, record)

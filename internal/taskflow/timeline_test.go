@@ -1115,6 +1115,7 @@ func TestTimelinePropertyMatchesContractModel(t *testing.T) {
 // entries equal in start and kind, which follow the record's order: the
 // result is the contract model of the shuffled record.
 func TestTimelinePropertyDeterministicAndPure(t *testing.T) {
+	t.Parallel()
 	for seed := uint64(1); seed <= tlnPropertySeeds; seed++ {
 		record := tlnRandomRecord(seed)
 		first := tlnBuild(t, record)

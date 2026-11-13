@@ -263,6 +263,7 @@ func packageProblem(t *testing.T, pkg string) string {
 }
 
 func TestEvidenceE2EStartRequiresBoundCheck(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	unbound := `{"title":"Unbound","kind":"%s",%s
@@ -310,6 +311,7 @@ func TestEvidenceE2EStartRequiresBoundCheck(t *testing.T) {
 }
 
 func TestEvidenceE2EGoPackagesNeedCoveringPassedRuns(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	task, code, output := e.start(e.store, "plan.json", evidencePlan)
@@ -552,6 +554,7 @@ func evidenceMentions(lines []string, fragment string) []string {
 }
 
 func TestEvidenceE2EReviewSeverityAndRejectedBlocker(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	task, code, output := e.start(e.store, "plan.json", evidencePlan)
@@ -790,6 +793,7 @@ func (e *evidenceE2E) recordFilesContain(fragment string) []string {
 // allowlist refuses, earns no credit; GOFLAGS is split like cmd/go splits it
 // and recorded with build-flag values redacted.
 func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
@@ -878,6 +882,7 @@ func TestEvidenceE2EStrictFlagAllowlist(t *testing.T) {
 // A changed asset in a directory without Go files belongs to the nearest
 // ancestor package.
 func TestEvidenceE2EAssetMapsToAncestorPackage(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.write("beta/static/index.html", "<p>beta</p>\n")
 	e.setUpModule()
@@ -908,6 +913,7 @@ func TestEvidenceE2EAssetMapsToAncestorPackage(t *testing.T) {
 // pattern ends the package list: go test ./alpha -v ./beta passes running only
 // alpha and earns no credit for either package.
 func TestEvidenceE2EPackageListEnds(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	task, code, output := e.start(e.store, "plan.json", allowlistPlan)
@@ -943,6 +949,7 @@ const testPrefixPlan = `{"title":"test. prefix","kind":"substantial",
 // tests the module root instead. Both runs below pass, because the fixture's
 // test binaries define a test.race flag, and neither covers beta.
 func TestEvidenceE2ETestPrefixedBuildFlag(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.write("root_test.go", "package evidence\n\nimport (\n\t\"flag\"\n\t\"testing\"\n)\n\nvar _ = flag.String(\"test.race\", \"\", \"\")\n\nfunc TestRoot(t *testing.T) {}\n")
 	e.write("beta/flag_test.go", "package beta\n\nimport \"flag\"\n\nvar _ = flag.Bool(\"test.race\", false, \"\")\n")
