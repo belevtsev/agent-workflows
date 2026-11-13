@@ -15,7 +15,7 @@ import (
 // needs a minimum Claude Code client. Each note is one short line, because
 // the session-start context is paid for in every session.
 const (
-	// minClaudeCodeVersion is the oldest Claude Code client README.md
+	// minClaudeCodeVersion is the oldest Claude Code client docs/operations.md
 	// supports: the coordinator passes effort on every dispatch.
 	minClaudeCodeVersion = "2.1.292"
 	// pluginManifestLimit bounds the plugin manifest read at session start.

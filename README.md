@@ -29,15 +29,15 @@ more than about 300 changed lines, or a design choice with real alternatives.
 Smaller changes stay lightweight. The spec stage is skipped when a reviewed
 spec exists or the request states every behaviour.
 
-| Agent | Gets | Produces | Claude Code model |
+| Agent | Gets | Produces | Claude Code model alias |
 | --- | --- | --- | --- |
-| spec-writer | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | Opus 5.5, high |
-| architect | the reviewed spec or request | design, interface contract, implementation brief | Opus 5.5, xhigh |
-| implementer | brief and contract | the change, a self-review | Opus 5.5, high |
-| test-engineer | contract and interface, never the code | test matrix, tests, requirement map | Opus 5.5, high |
-| adversarial-tester (opt-in) | contract, design, the integrated source and its coverage | tests that fail on the code, each a finding | Opus 5.5, high |
-| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | Opus 5.5, high |
-| github-worker | verified facts, your approval | commit, push, PR when `cw publish` does not fit (hunk-level scopes, fork PRs, conversions) | Sonnet 5.5, medium |
+| spec-writer | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | `opus`, high |
+| architect | the reviewed spec or request | design, interface contract, implementation brief | `opus`, xhigh |
+| implementer | brief and contract | the change, a self-review | `opus`, high |
+| test-engineer | contract and interface, never the code | test matrix, tests, requirement map | `opus`, high |
+| adversarial-tester (opt-in) | contract, design, the integrated source and its coverage | tests that fail on the code, each a finding | `opus`, high |
+| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | `opus`, high |
+| github-worker | verified facts, your approval | commit, push, PR when `cw publish` does not fit (hunk-level scopes, fork PRs, conversions) | `sonnet`, medium |
 
 The table is not a one-way pipeline: every review loops back to its stage's
 author, except that a code review finding about a test goes to a fresh test
@@ -46,22 +46,19 @@ the implementer and the test engineer run in parallel from the same
 contract. Small tasks skip this staged flow: their author writes the tests and
 a reviewer checks them.
 
-Codex uses [model-policy.yaml](skills/task-orchestration/model-policy.yaml).
+An alias resolves to Claude Code's current release of that model; the
+[Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) sets
+each role. Codex uses [model-policy.yaml](skills/task-orchestration/model-policy.yaml).
 See [agents](docs/agents.md) and the
 [role contracts](skills/task-orchestration/references/contracts/README.md).
 
 ## Quick start
 
-**Platforms.** macOS and Linux; Windows is not supported.
-
-**Claude Code version.** 2.1.292 or newer, because the coordinator passes
-`effort` on every dispatch
-([dispatching workers](skills/task-orchestration/references/hosts.md#dispatching-workers-under-claude-code)).
-Below 2.1.271 the client also ignores `omitClaudeMd` without a warning, so the
-reviewer and the test engineer start with your CLAUDE.md files
-([worker agent types](skills/task-orchestration/references/hosts.md#worker-agent-types)).
-The session-start hook says when it finds an older client, or a plugin and
-`cw` whose versions differ ([session start](docs/hooks.md#session-start)).
+**Requirements.** macOS or Linux (Windows is not supported), Claude Code or
+Codex, git and Go; the [host requirements](docs/operations.md#host-requirements)
+table gives the minimum versions and why. The session-start hook says when it finds an
+older client, or a plugin and `cw` whose versions differ
+([session start](docs/hooks.md#session-start)).
 
 **Languages.** Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in [`cw task verify`](#the-verify-gate); other

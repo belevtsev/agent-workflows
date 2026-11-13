@@ -61,6 +61,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
+  and link the model policies instead of model releases, and drop unmeasured token counts ([host requirements](docs/operations.md#host-requirements)).
 - `pack.yaml` keeps only the fields `cw` reads (`commands.race` among them), dropping `tests`, `skills`, `review` and the
   other unread slots, and `cw pack list` prints each pack's declared fields, now with `commands` ([pack.yaml](docs/packs.md#packyaml)).
 - `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
