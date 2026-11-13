@@ -15,18 +15,18 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The Go packages are tested in three shards per system, so that each job
-  # takes about a third as long as one job for all of them. The shards are not
-  # required checks: the two jobs named "Native Go / <system>" below are, and each
+  # The Go packages are tested in four shards per system, so that each job
+  # takes well under half as long as one job for all of them. The shards are
+  # not required checks: the two jobs named "Native Go / <system>" below are, and each
   # passes only when all of its shards pass.
   go-linux:
-    name: Go shard ${{ matrix.shard }} of 3 / ubuntu-latest
+    name: Go shard ${{ matrix.shard }} of 4 / ubuntu-latest
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
       GOWORK: 'off'
     steps:
@@ -40,13 +40,13 @@ jobs:
           shard: ${{ matrix.shard }}
 
   go-macos:
-    name: Go shard ${{ matrix.shard }} of 3 / macos-latest
+    name: Go shard ${{ matrix.shard }} of 4 / macos-latest
     runs-on: macos-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
       GOWORK: 'off'
     steps:
