@@ -8,6 +8,7 @@
   "license": "MIT",
   "keywords": ["codex", "plugin", "skills", "code-review", "go", "workflow"],
   "skills": "./skills/",
+  "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Agent Workflows",
     "shortDescription": "Reviews at every stage, independent test engineers and a verify gate",

@@ -79,7 +79,7 @@ func TestDoctorMetadataNeverRunsOptionalToolsAndSeparatesCredentials(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(lookups, []string{"jbcontext"}) || report.Checks["gopls_cli"].Status != "not_applicable" || report.Checks["graphify_cli"].Status != "not_applicable" {
+	if !reflect.DeepEqual(lookups, []string{"git", "cw", "jbcontext"}) || report.Checks["gopls_cli"].Status != "not_applicable" || report.Checks["graphify_cli"].Status != "not_applicable" {
 		t.Fatalf("non-Go profile assumed global Go tools: %+v %+v", lookups, report.Checks)
 	}
 	if !report.Credentials.Environment["SUBQ_API_KEY"] || report.Credentials.Environment["OPENAI_API_KEY"] || !report.Credentials.Launcher["TYPESAFE_API_KEY"] || !report.Credentials.CodexShell["OPENAI_API_KEY"] {
@@ -256,7 +256,7 @@ func TestDoctorGraphifyPresenceIsAnExecutableLookup(t *testing.T) {
 			}
 			var asked []string
 			lookPath := func(name string) (string, error) {
-				if name == "jbcontext" || name == "gopls" {
+				if name == "jbcontext" || name == "gopls" || name == "git" || name == "cw" {
 					return "", exec.ErrNotFound
 				}
 				asked = append(asked, name)

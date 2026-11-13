@@ -644,10 +644,12 @@ func TestHooksEndToEnd(t *testing.T) {
 	})
 
 	t.Run("session-start adds nothing when Codex resumes", func(t *testing.T) {
-		// Oracle: under Codex, which sets PLUGIN_ROOT, a resume prints one
-		// SessionStart JSON line without additionalContext, exactly as cw
-		// wrote it: not the file, which the command prints when cw prints
-		// nothing, and not the instructions, which the resumed thread holds.
+		// Oracle: a Codex that still runs hooks/hooks.json, which passes no
+		// --host, sets PLUGIN_ROOT, and cw takes that as Codex: a resume
+		// prints one SessionStart JSON line without additionalContext,
+		// exactly as cw wrote it: not the file, which the command prints when
+		// cw prints nothing, and not the instructions, which the resumed
+		// thread holds.
 		resume, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "resume", "cwd": repo, "model": "m"})
 		if err != nil {
 			t.Fatal(err)

@@ -1,9 +1,10 @@
 # Plugin hooks
 
-`hooks/hooks.json` registers the agent-workflows plugin's hooks: one at
-session start and two before each Bash command. Claude Code runs them, and so
-does Codex once you trust them; [Codex](#codex) covers what differs there.
-Each runs `cw`; when `cw` is not on `PATH` they degrade to printing the
+`hooks/hooks.json` registers the agent-workflows plugin's hooks for Claude
+Code: one at session start and four before each Bash command. Codex runs
+`hooks/codex-hooks.json` instead, which `.codex-plugin/plugin.json` names, once
+you trust it: the same hooks with `--host codex`; [Codex](#codex) covers what
+differs there. Each runs `cw`; when `cw` is not on `PATH` they degrade to printing the
 conventions file or doing nothing. No hook uses a script file: every command is
 inline, which keeps the repository's automation policy (`go test ./internal/skillcheck`)
 satisfied.
@@ -18,7 +19,7 @@ summary is produced with a 5 second deadline and cached for one hour under
 `${CLAUDE_PLUGIN_DATA}/doctor/<sha256 of the directory>.json`; when it cannot be
 produced in time, the conventions are returned alone.
 
-Under Codex, which sets `PLUGIN_ROOT`, a `resume` adds nothing. A resumed
+Under Codex ([which host](#codex)), a `resume` adds nothing. A resumed
 Codex thread keeps all that earlier session starts added, and after a
 compaction, which drops it, Codex runs the hook again with `compact`
 ([Codex](#codex)). `cw` then prints a SessionStart object without
@@ -98,10 +99,11 @@ against each command of a compound line, so neither of the last two requires
 `C=cw; $C task abandon`; quotes inside
 the word do not hide it, so `cw task aban''don` runs the second handler too;
 and it runs both when it cannot tell which commands a Bash input runs, as for
-`echo "$(printf x)"`. Codex ignores the conditions and runs both handlers, at
-the same time, for every shell command. Where both handlers run for one
-command, both reach the same decision, and the host applies it once
-([Recorded host runs](#recorded-host-runs)). `cw hook pre-publish` then
+`echo "$(printf x)"`. Where several handlers run for one command, they reach
+the same decision, and the host applies it once
+([Recorded host runs](#recorded-host-runs)). Codex ignores the conditions, so
+its hooks file has one gate handler, `cw hook pre-publish --host codex`,
+without a condition, which runs for every shell command ([Codex](#codex)). `cw hook pre-publish` then
 finds each `git commit` and `git push` in the command and the directory it
 runs in, each `cw task abandon` and each `--owner-approval` of a `cw` command,
 and exits at once, without output, when there is none.
@@ -222,7 +224,8 @@ each gates, and both ways out: `cw task verify --task <task-id>`, or, for
 a task that is finished or was given up, `cw task abandon --task <task-id> --reason TEXT`,
 which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
 The reason names each task by its ID, which `--task` takes, not by its directory. Past three, it
-gives the number of other gating records and the task store they are in.
+gives the number of other gating records and points at
+[`cw task list`](operations.md#listing-tasks), which lists them.
 An abandoned record accepts no further revisions and never gates.
 
 A record is finished, and no longer governs, once another governing record
@@ -303,7 +306,7 @@ newer `cw` wrote. When that revision says the record governs the repository
 by the rules above, and no readable record gates, the hook asks
 (`permissionDecision: "ask"`) instead of letting the command through, with a
 reason that names the task directory and the load error of up to three such
-records and counts the others with the task store they are in, and `cw publish`
+records and counts the others, which `cw task list` lists, and `cw publish`
 refuses with exit 3 `open-record`. To clear it, remove the task directory or
 move it out of the task store; for a record from a newer `cw`, upgrade `cw`
 instead. A task directory in which no revision decodes is ignored
@@ -710,13 +713,14 @@ and the last row lists what still gets past git's hooks.
 | `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Caught when `cw gate install` has run: a merge commit, from `git merge`, `git merge --continue` or `git pull`, runs `pre-merge-commit` or, after conflicts, `pre-commit`, except that `pre-merge-commit` lets through a merge of commits on remote-tracking branches ([Git hooks](#git-hooks)). The agent's own `git merge --no-verify`, `git pull --no-verify` or `CW_GATE=off git merge` still gets past both hooks, since the plugin hook does not check a merge. The others can still make their commits, since git does not run `pre-commit` for them as it does for `git commit`; pushing them is caught. |
 | A remote-tracking ref pointed at local work, as in `git update-ref refs/remotes/origin/x side` or `git fetch . side:refs/remotes/origin/x`, followed by `git merge origin/x` | Allowed where `cw gate install` has run. `pre-merge-commit` lets through a merge of commits a remote-tracking ref contains, and nothing checks how the ref got there: rewriting one, which the plugin hook does not see, makes local work look published ([Git hooks](#git-hooks)). |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
-| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x` or `cat saved > .git/index && git commit -m x`; `git commit -i PATH`; or another index, git directory or work tree, as in `GIT_INDEX_FILE=… git commit` or `git --git-dir=… commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run: `pre-commit` judges the index git commits. |
-| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
+| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x` or `cat saved > .git/index && git commit -m x`; `git commit -i PATH`; or another index, git directory or work tree, as in `GIT_INDEX_FILE=… git commit` or `git --git-dir=… commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run and the commit does not also pass `--no-verify`: `pre-commit` judges the index git commits. |
+| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks (again after an update that changes `hooks/codex-hooks.json`), or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under a `cw` older than v3.0.0-rc.2, any record of version 4 or later ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | `chmod 000 <task>`, or `chmod 000` on every revision file of a task (its only one, for a new task) | Allowed. A task directory the hook cannot list, or whose revision files it cannot open, has no revision to read and is ignored, like one in which no revision decodes. |
 | A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |
+| Codex running `hooks/hooks.json` (a plugin installed before `hooks/codex-hooks.json`, or a Codex that ignores the manifest's `hooks` entry) and sending PreToolUse input without `turn_id` or without `model` | Allowed: the asks before `cw task abandon`, before an `--owner-approval`, for an unrecorded substantial change, for a push with uncommitted changes and after a directory the hook cannot resolve. That file passes no `--host`, so `cw` tells Codex apart by those two members, and without both it answers as for Claude Code, whose ask Codex does not honour. The recorded Codex inputs carry both. The denies still deny. Commit and push are caught when `cw gate install` has run ([Codex](#codex)). |
 | A record that cannot be read, under Codex: `echo '{' > <task>/record-000002.json` | Allowed. Codex cannot ask, and the hook lets the command go ahead there rather than block the user on a file it cannot judge ([Codex](#codex)). |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
 | `cw task abandon --task <task> --reason TEXT` run where the hook cannot see it: from a script, `make` or a plan check; through a name that no word of the command spells, such as `X=c; ${X}w task abandon …`; or through a renamed copy of `cw`, such as `cw-g5 task abandon …` | Allowed. An abandoned task never gates. The hook asks before every `cw task abandon` whose words it can see ([Abandoning a task](#abandoning-a-task)), and under Codex it denies one. |
@@ -743,10 +747,19 @@ hooks that `cw gate install` wrote.
 
 ## Codex
 
-Codex runs the hooks from the installed plugin's `hooks/hooks.json`. What
-follows was recorded on 2026-11-12 with codex-cli 0.167.2, `codex exec` and a
-wrapper in place of `cw` that saved each hook's input and environment
-([Recorded host runs](#recorded-host-runs) has the later runs);
+Codex runs the hooks file that `.codex-plugin/plugin.json` names in `hooks`,
+`hooks/codex-hooks.json`, in place of `hooks/hooks.json`. Each of its commands
+passes `--host codex`, and a given `--host` (`codex` or `claude-code`) decides
+the host. Without one, as `hooks/hooks.json` runs `cw`, `cw` tells Codex apart
+as it did before `--host`: by `turn_id` and `model` in the PreToolUse input,
+and at session start, whose input has no `turn_id`, by `PLUGIN_ROOT`, which
+Codex sets and Claude Code does not. So a Codex that still runs
+`hooks/hooks.json`, from a plugin installed before the Codex file or because
+it ignores the manifest's `hooks` entry, keeps the Codex decisions below.
+What follows was recorded with codex-cli 0.167.2 on 2026-11-12 and
+0.168.0 on 2026-11-13, `codex exec` and a wrapper in place of `cw` that saved
+each hook's arguments, input and environment
+([Recorded host runs](#recorded-host-runs));
 [`codex-pre-tool-use.json`](../internal/cli/testdata/codex-pre-tool-use.json)
 and [`codex-session-start.json`](../internal/cli/testdata/codex-session-start.json)
 are recorded inputs, with paths replaced by placeholders.
@@ -756,49 +769,56 @@ are recorded inputs, with paths replaced by placeholders.
   `--dangerously-bypass-hook-trust` runs untrusted hooks for one invocation.
   Per the Codex hooks documentation, you trust hooks with `/hooks` in the CLI
   or **Review hooks** in the desktop app, and trust is recorded against the
-  hook's hash, so review again when an update changes `hooks/hooks.json`. No
+  hook's hash, so review again when an update changes `hooks/codex-hooks.json`.
+  The update that added that file changed every Codex hook: trust them again
+  after it, or Codex runs none of them and only `cw publish` and git's hooks
+  ([Installing the git hooks](#installing-the-git-hooks)) apply the gate. No
   feature flag is needed: `codex features list` shows `hooks` stable and on,
   and `plugin_hooks` removed.
+- **Hooks file.** In the recorded runs Codex ran only the handlers of
+  `hooks/codex-hooks.json`: every call carried `--host codex`, and none came
+  from `hooks/hooks.json`. Claude Code does not read that manifest.
 - **Input.** The PreToolUse input names the shell tool `Bash` and holds `cwd`
   and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`,
   which Codex documents as its own extensions. Claude Code's PreToolUse input
-  has neither, so `cw` takes the two together as the sign that Codex ran the
-  hook; one of them alone is not enough.
-- **Matcher.** Codex matches `Bash` but ignores the `if` condition, so
-  `cw hook pre-publish` runs for every shell command; it exits at once, without
-  output, for a command with no `git commit`, `git push` or `cw task abandon`.
-  `cw hook task-usage` also runs for every shell command; it samples the
-  rollout in `transcript_path` before a `cw task` command and otherwise exits
-  at once ([Usage sampling](#usage-sampling)).
-  Codex runs both handlers for each command, at the same time, so `cw` runs
-  twice; for `cw task abandon` both denied, and Codex blocked the command once.
-- **Hooks file.** A `hooks` entry in `.codex-plugin/plugin.json` replaces
-  `hooks/hooks.json` for Codex: in a copy of the plugin whose manifest named
-  `./hooks/codex-hooks.json`, Codex ran only that file's handlers. Claude Code
-  does not read that manifest. The plugin names no such file yet.
+  has neither; without `--host`, `cw` takes the two together as the sign of
+  Codex, and one of them alone is not enough.
+- **Matcher.** Codex matches `Bash` but ignores the `if` condition, so the
+  Codex file has two PreToolUse handlers without one, each run for every shell
+  command, at the same time. `cw hook pre-publish --host codex` exits at once,
+  without output, for a command with no `git commit`, `git push`,
+  `cw task abandon` or `--owner-approval`; `cw hook task-usage --host codex`
+  samples the rollout in `transcript_path` before a `cw task` command and
+  otherwise exits at once ([Usage sampling](#usage-sampling)).
+- **An older `cw`.** A `cw` from before `--host` rejects the flag with exit 2
+  before it reads its input. Each command of the Codex file then runs the
+  same hook again without the flag, on the same input, so the gate stays on:
+  that `cw` tells Codex apart by the input's `turn_id` and `model`, and at
+  session start by `PLUGIN_ROOT`, as a current `cw` does without `--host`.
+  Any other exit status runs nothing more.
 - **Decisions.** A deny blocks the command, and the agent sees
   `Command blocked by PreToolUse hook:` and the reason. No output lets the
   command run. An ask is not supported: Codex ran the command without asking
   and told the agent nothing.
-- **Environment.** Codex sets `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA`
-  (also as `PLUGIN_ROOT` and `PLUGIN_DATA`) to the plugin's copy under
+- **Environment.** Codex sets `PLUGIN_ROOT` and `PLUGIN_DATA` (also as
+  `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA`) to the plugin's copy under
   `$CODEX_HOME/plugins/cache` and its data directory under
-  `$CODEX_HOME/plugins/data`. It sets no `CLAUDE_PLUGIN_OPTION_*` variable, and
-  the hook inherits the environment Codex was started with.
+  `$CODEX_HOME/plugins/data`; the Codex file reads the first two. It sets no
+  `CLAUDE_PLUGIN_OPTION_*` variable, and the hook inherits the environment
+  Codex was started with.
 - **Session start.** On `startup` the session-start hook adds
   `global/AGENTS.md` to the session as developer context, so the trusted
   plugin also loads the working conventions. Codex runs it again on `resume`,
-  and the block is added again: after one `codex exec resume` the thread held
-  two identical copies. Compaction drops it from the thread's history, and the
+  where `cw hook session-start --host codex` adds nothing
+  ([Session start](#session-start)): after a `codex exec resume` the thread
+  held one copy. Compaction drops it from the thread's history, and the
   `compact` run adds it back before the next request. A thread from
   `codex exec fork` carries its parent's history, conventions included; Codex
   names that source `fork`, which the matcher does not list, and no
-  session-start hook ran. Its SessionStart input has `model` but no `turn_id`, so
-  `cw` takes `PLUGIN_ROOT`, which Codex set for every hook and Claude Code does
-  not set, as the sign of Codex there: it then compares `cw` with
-  `.codex-plugin/plugin.json` and skips the Claude Code version
-  ([Session start](#session-start)). That version line is not recorded under
-  Codex: the runs used a `cw` built between tags, which is not compared.
+  session-start hook ran. Under Codex, `cw` compares itself with
+  `.codex-plugin/plugin.json` and skips the Claude Code version. That version
+  line is not recorded under Codex: the runs used a `cw` built between tags,
+  which is not compared.
 
 So under Codex the pre-publish hook turns five asks into denies: a
 `cw task abandon`, an unrecorded substantial change, a push with uncommitted
@@ -861,6 +881,18 @@ and `codex plugin add`, as in [Codex](#codex).
 
 The Codex runs used a `cw` from before F19: since then a Codex `resume` adds nothing, so the conventions are not
 added again on resume, and after a compaction only the `compact` run adds them ([Session start](#session-start)).
+
+**Codex 0.168.0**, 2026-11-13, with the plugin's own `hooks/codex-hooks.json`,
+otherwise set up as above. The task was open and unverified; the prompt ran
+`echo`, then `cw task abandon --task <task> --reason probe`, then
+`git commit --allow-empty -m probe`.
+
+| Run | Hook calls | Result |
+| --- | --- | --- |
+| New session, the `cw` with `--host` | SessionStart `--host codex` once; for each command `pre-publish --host codex` and `task-usage --host codex` once each | The echo ran; the abandon and the commit were blocked, the abandon with the reason that starts `agent-workflows: Codex cannot ask for confirmation`. |
+| The same, with a `cw` from before `--host` | each hook once with `--host codex`, exit 2, then once without it, exit 0 | The same three results: the older `cw` read the input on the second call and denied both. |
+| `codex exec resume` of the first session | SessionStart `--host codex` once, with no context | The thread held one copy of the conventions. |
+| A new session without `--dangerously-bypass-hook-trust` | none | `pwd` ran; Codex did not say it skipped the untrusted hooks. |
 
 These runs did not cover SessionStart on `clear` under either host (neither
 headless mode can clear), on `resume` and `compact` under Claude Code, or in

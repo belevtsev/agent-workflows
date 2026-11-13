@@ -11,7 +11,7 @@ import (
 
 func addDoctorCommand(root *cobra.Command, config Config) {
 	var repo, skillsHome string
-	var live, summary bool
+	var live, summary, all bool
 	var timeout time.Duration
 	command := &cobra.Command{
 		Use:   "doctor",
@@ -24,6 +24,9 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if all && !summary {
+				return usage(errors.New("--all applies only with --summary; the full report already lists every check"))
+			}
 			if timeout < 100*time.Millisecond || timeout > time.Minute {
 				return usage(errors.New("--timeout must be between 100ms and 1m"))
 			}
@@ -55,7 +58,7 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 			report.Checks["git_hooks"] = gitHooksCheck(ctx, root, config, report.Profile.Snapshot.SelectedPath)
 			report.Warnings = append(report.Warnings, keyWithoutOptInWarnings(root, config, directory, report)...)
 			if summary {
-				return writeJSON(cmd.OutOrStdout(), summarizeDoctor(report))
+				return writeJSON(cmd.OutOrStdout(), summarizeDoctor(report, all))
 			}
 			return writeJSON(cmd.OutOrStdout(), report)
 		},
@@ -64,6 +67,7 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 	command.Flags().StringVar(&skillsHome, "skills-home", "", "Skill entrypoint directory (defaults to the Codex and Claude Code skill roots)")
 	command.Flags().BoolVar(&live, "live", false, "Run bounded optional local status, protocol and package-version probes")
 	command.Flags().DurationVar(&timeout, "timeout", 15*time.Second, "Complete inspection deadline (100ms to 1m)")
-	command.Flags().BoolVar(&summary, "summary", false, "Print one line: snapshot essentials, contract paths and only the checks that are missing, degraded or stale")
+	command.Flags().BoolVar(&summary, "summary", false, "Print one line: snapshot essentials, contract paths, the required checks that are missing, degraded or stale, and how many optional checks are")
+	command.Flags().BoolVar(&all, "all", false, "With --summary, also list the optional checks that are missing, degraded or stale")
 	root.AddCommand(command)
 }
