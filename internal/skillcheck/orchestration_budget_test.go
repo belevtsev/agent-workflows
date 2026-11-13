@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 186700
+	orchestrationSumCap    = 181896
 	orchestrationSumTarget = 90000
 )
 
@@ -40,8 +40,8 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/base-merge.md":                    {10240, 10240, "S4b"},
 	"references/connected-sources.md":             {10240, 10240, "S4f"},
 	"references/consultation-helper.md":           {10240, 10240, "S4d"},
-	"references/contract-amendment.md":            {10240, 10240, "S3"},
-	"references/contracts/README.md":              {8192, 8192, "S3, S4e"},
+	"references/contract-amendment.md":            {4803, 3900, "S4l"},
+	"references/contracts/README.md":              {4759, 4100, "S4l"},
 	"references/contracts/adversarial-tester.md":  {4089, 8192, "S4e"},
 	"references/contracts/architect.md":           {7418, 8192, "S4e"},
 	"references/contracts/code-review.md":         {8192, 8192, "S4e"},
