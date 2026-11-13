@@ -12,8 +12,9 @@ below. With no `packs.json` every built-in language pack is selected
 even an empty one, overrides it, and a domain pack is never selected by default.
 `cw task start` records the selected packs whose `detect` file is at the top of
 the selected path, and verify applies their rules by id. Schema 1 has `schema`,
-`id`, `kind`, `detect`, `commands`, `tests`, `interface_extract`, `skills`,
-`review` and `evidence_rule`. The Go pack's rule is `go.package-test/v2` (P3a-2); a task keeps the rule it
+`id`, `kind`, `detect`, `commands.race` and `evidence_rule`; the `tests`,
+`interface_extract`, `skills` and `review` fields and the other command slots
+below were dropped because nothing read them. The Go pack's rule is `go.package-test/v2` (P3a-2); a task keeps the rule it
 recorded at start. `go.package-test/v1` is gone: `cw` refuses a record that
 binds it, so start a new task. v2
 runs `go list` offline at verify, inside the task lock, for at most 6 s;
