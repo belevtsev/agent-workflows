@@ -3,7 +3,8 @@
 Claude Code gets the skills and worker agents from the plugin in
 `.claude-plugin/`, and Codex from `.codex-plugin/` and
 `.agents/plugins/marketplace.json`. This page covers installing them and `cw`,
-the Codex instruction block, paths, the model policy lookup and adviser keys.
+the Codex instruction block, paths, exit statuses, what each version promises
+([stability](#stability)), the model policy lookup and adviser keys.
 
 ## Install
 
@@ -51,10 +52,12 @@ the architect contract and the `software-architecture` and
   with exit 3 `open-record`. Where no hook runs, a plain `git commit` or
   `git push` goes unchecked. Without `cw` on `PATH` there is no gate: the hook
   lets the command through.
-- **Trust.** Codex runs neither plugin hook until you trust them, and `codex exec`
-  does not say it skipped them. Per Codex's documentation, trust is recorded
-  against the hook's hash, so trust them again when an update changes
-  `hooks/hooks.json`.
+- **Trust.** Codex runs no plugin hook until you trust it, and `codex exec`
+  does not say it skipped them. Codex runs `hooks/codex-hooks.json`, which
+  `.codex-plugin/plugin.json` names. Per Codex's documentation, trust is
+  recorded against the hook's hash, so trust the hooks again in `/hooks` when
+  an update changes that file, as the update that added it did
+  ([Codex hooks](hooks.md#codex)).
 - **Plugin options.** Codex has no plugin configuration and sets no
   `CLAUDE_PLUGIN_OPTION_*` variable; the hooks read the environment Codex was
   started with. Unset, the gate and the prompt for unrecorded changes are on
@@ -62,9 +65,9 @@ the architect contract and the `software-architecture` and
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
 - **Evidence.** The plugin rows come from runs recorded with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  0.167.2 and 0.168.0 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
   the last column lists what they did not cover. The session-start context
-  is added again on each resume and after each compaction.
+  is added at startup and after each compaction, not on a resume.
 
 To install the plugin:
 
@@ -251,6 +254,37 @@ when a hook it did not write is in the way, and still writes the other hooks;
 hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
 
+## Stability
+
+From `v3.0.0`, `cw` follows [semantic versioning](https://semver.org) for
+its core commands. `cw --help` lists the two groups.
+
+| Group | Commands | Promise |
+| --- | --- | --- |
+| Core | `doctor`, `gate`, `help`, `hook`, `install`, `pack`, `publish`, `task`, `uninstall`, `version` | Their names, flags, [exit statuses](#exit-statuses) and JSON output, the plan and other JSON input formats, the [task record format](development.md#task-record-format) and the hook decisions change incompatibly only in a major release. |
+| Experimental | `consult`, `graphify`, `keys`, `metrics` | Any of these may change or go away in a minor release. `cw task consult` and the consultation record it keeps belong to `cw consult`, so they are experimental too. |
+
+Before `v3.0.0`, a release candidate may still break the core commands; the
+[CHANGELOG](../CHANGELOG.md) lists each such change under Breaking.
+
+The other version numbers follow these rules:
+
+- **Plugin version.** The Claude Code and Codex plugins carry the version of
+  the `cw` release they ship with, the tag without its leading `v`. Use the
+  same version of both: at session start the plugin adds a line when the
+  two differ ([session start](hooks.md#session-start)).
+- **`pack.yaml` `schema`.** An integer, now 1. A `cw` reads the schemas it
+  knows and refuses a newer one rather than read it partly; a key or value an
+  older `cw` would refuse raises it ([`pack.yaml`](packs.md#packyaml)).
+- **Task record `version`.** Raised on every change that a `cw` reading the
+  previous version could not load; a `cw` reads its own version and older
+  ones down to 3. A raise is listed under Breaking
+  ([task record format](development.md#task-record-format)).
+- **Skill wording.** The text of the skills, agents, references and
+  `global/` conventions is outside semver: any release may reword it. What
+  `cw` reads or prints, such as the model policy members `cw` reads, follows
+  the rules above.
+
 ## Model policy
 
 `cw consult` and `cw task start` select the model policy in this order:
@@ -283,8 +317,18 @@ runtime call targets. Each live probe and each Git inspection runs in a process
 group of its own; when it answers, exits or reaches its deadline, `cw` kills the
 group until no member is alive, and a member that survives fails the probe.
 Missing or unsupported tooling is qualified and retains normal source discovery. Neither mode installs dependencies, changes watcher enrollment or
-calls advisers. `--summary` prints one line with only the checks that are missing,
-degraded or stale.
+calls advisers.
+
+`--summary` prints one line. Its `problems` lists the required checks that are
+missing, degraded or stale, which block the workflow: `git_cli` and `cw_cli`
+(git and `cw` on `PATH`), `workflow_skills` (the three core skills, in a skill
+root or the agent-workflows plugin in Claude Code's or Codex's plugin cache),
+`project_source`, `project_contracts` and `git_hooks`. Only those, and a warning,
+make `status` `attention`; otherwise it is `ok`. `optional_missing` counts the
+optional checks (Codex and Claude Code configuration, credentials, MCP servers,
+gopls, Graphify, jbcontext) that are missing, degraded or stale, and
+`--summary --all` lists them under `optional`. The full report, without
+`--summary`, keeps every check.
 
 `cw task` keeps source-bound requirements, actual argv check execution, references,
 the adviser binding fixed at `cw task start`, two substantial-task decision
@@ -446,6 +490,30 @@ measurement input and model advice do not authorize publication or deployment.
 passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
+
+### Listing tasks
+
+`cw task list` prints the tasks in the task store (`$CW_TASK_STORE`, else the state
+directory's `workflow-tasks`) that belong to the Git repository of the working
+directory, or of `--repo DIR`, and to its main worktree when run in a linked one:
+one line each, newest first, with the task ID, state, kind, last update (UTC) and
+title, and a last line counting the hidden ones. A state is one of:
+
+| State | Meaning |
+| --- | --- |
+| `open` | Readable, not verified, abandoned or stale. |
+| `verified` | Its last `cw task verify` passed. The source may have changed since: the commit gate checks that, the list does not. |
+| `abandoned` | Closed with `cw task abandon`. |
+| `stale` | Not abandoned and untouched for 14 days, so it no longer gates commits. |
+| `unreadable` | `cw` cannot load its record (damaged, from a newer `cw`, or from v2); `--json` gives the load error. |
+
+By default it hides abandoned and stale tasks. `--all` lists them too and, without
+`--repo`, lists every task directory in the store, adding a repository column.
+Outside a Git repository, pass `--repo DIR` or `--all`. `--json` prints one object:
+`tasks`, each with `task_id`, `directory`, `title`, `kind`, `root`, `updated_at`,
+`state` and, for an unreadable task, `error`; and `hidden`, the number left out
+when it is above zero. The command is read-only. When the commit gate names three
+tasks and counts more, it points here.
 
 ### Profiles
 

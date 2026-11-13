@@ -227,3 +227,35 @@ func TestImportClaudeRefusesARenamedCopy(t *testing.T) {
 		t.Fatalf("Import of a renamed copy: %v; want the no-lines-for-session error", err)
 	}
 }
+
+// Oracle (review finding 2): a file with no line of any Claude Code session,
+// here a Codex rollout and an empty file passed as Claude transcripts, is an
+// incomplete import with the reason no_claude_entries and unknown usage,
+// never a complete one of zero tokens. A transcript with a line of its
+// session stays complete.
+func TestClaudeImportWithoutClaudeEntriesIsIncomplete(t *testing.T) {
+	dir := t.TempDir()
+	rollout := filepath.Join(dir, "rollout.jsonl")
+	writeLines(t, rollout,
+		`{"timestamp":"2100-01-01T00:00:00Z","type":"session_meta","payload":{"id":"c1"}}`,
+		`{"timestamp":"2100-01-01T00:00:00Z","type":"token_usage_record","payload":{"response_id":"r1","usage":{"input_tokens":100,"cached_input_tokens":0,"output_tokens":20}}}`)
+	empty := filepath.Join(dir, "empty.jsonl")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{rollout, empty} {
+		report, err := Import(t.Context(), Options{ClaudeTranscript: path})
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if report.Status != StatusIncomplete || !reflect.DeepEqual(report.IncompleteReasons, []string{"no_claude_entries"}) || report.UsageUnknownReason == "" {
+			t.Fatalf("%s: status %q, reasons %v, usage unknown reason %q; want incomplete for no_claude_entries with usage unknown",
+				path, report.Status, report.IncompleteReasons, report.UsageUnknownReason)
+		}
+	}
+	session := filepath.Join(dir, "s1.jsonl")
+	writeLines(t, session, assistantLine("s1", "r1", "m1", "claude-opus-5-5", usageJSON(1, 0, 0, 0, 0, 2)))
+	if report, err := Import(t.Context(), Options{ClaudeTranscript: session}); err != nil || report.Status != StatusComplete {
+		t.Fatalf("control: status %q (%v), want complete", report.Status, err)
+	}
+}

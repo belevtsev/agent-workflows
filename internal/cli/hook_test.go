@@ -136,6 +136,18 @@ func (h *hkHarness) runPrePublish(t *testing.T, stdin []byte) string {
 	return h.out.String()
 }
 
+// runCodexPrePublish runs `cw hook pre-publish --host codex`, the command
+// hooks/codex-hooks.json gives Codex, with stdin as the hook input.
+func (h *hkHarness) runCodexPrePublish(t *testing.T, stdin []byte) string {
+	t.Helper()
+	h.config.In = bytes.NewReader(stdin)
+	h.out.Reset()
+	if err := Execute(t.Context(), []string{"hook", "pre-publish", "--host", "codex"}, h.config); err != nil {
+		t.Fatalf("hook pre-publish --host codex returned %v; it must always return nil", err)
+	}
+	return h.out.String()
+}
+
 func (h *hkHarness) prePublish(t *testing.T, cwd, command string) string {
 	t.Helper()
 	return h.runPrePublish(t, hkPrePublishInput(t, cwd, command))
@@ -844,7 +856,7 @@ func TestHookPrePublishFollowsHomeAndAsksAboutAnUnresolvedDirectory(t *testing.T
 	unresolved := "cd $OTHER && git commit -m x"
 	hkExpectAsk(t, h.prePublish(t, repo, unresolved), "$OTHER", record.ID)
 	codex := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": unresolved}})
-	if decision, reason := hkDecision(t, h.runPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "$OTHER") {
+	if decision, reason := hkDecision(t, h.runCodexPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "$OTHER") {
 		t.Fatalf("Codex decision %q with reason %q, want a deny naming $OTHER", decision, reason)
 	}
 }
@@ -1873,7 +1885,7 @@ func hkPluginRoot(t *testing.T, manifests map[string]string) (string, string) {
 // root holding manifests, and returns what follows the instructions and a
 // blank line: "" when the context is the instructions alone. In env, <root>
 // stands for the plugin root.
-func hkVersionNotes(t *testing.T, cwVersion string, manifests, env map[string]string) string {
+func hkVersionNotes(t *testing.T, cwVersion string, manifests, env map[string]string, args ...string) string {
 	t.Helper()
 	root, instructions := hkPluginRoot(t, manifests)
 	h := newHKHarness(t)
@@ -1881,7 +1893,7 @@ func hkVersionNotes(t *testing.T, cwVersion string, manifests, env map[string]st
 	for name, value := range env {
 		h.env[name] = strings.ReplaceAll(value, "<root>", root)
 	}
-	got, err := h.runSessionStart(t, "", "--instructions", instructions, "--cache", hkCanonicalTempDir(t))
+	got, err := h.runSessionStart(t, "", append([]string{"--instructions", instructions, "--cache", hkCanonicalTempDir(t)}, args...)...)
 	if err != nil {
 		t.Fatalf("session-start: %v", err)
 	}
@@ -1980,25 +1992,31 @@ func TestHookSessionStartSaysNothingWhenVersionsMatchOrCWIsADevBuild(t *testing.
 }
 
 func TestHookSessionStartComparesTheManifestOfTheHost(t *testing.T) {
-	// Oracle: under Codex, which sets PLUGIN_ROOT, cw compares
-	// .codex-plugin/plugin.json; under Claude Code, .claude-plugin/plugin.json.
-	// Each case gives the two manifests different versions, so the line
-	// appears exactly when the host's manifest differs from cw.
-	codex := map[string]string{"PLUGIN_ROOT": "<root>"}
+	// Oracle: under Codex (--host codex, or no --host with PLUGIN_ROOT set,
+	// which Codex sets), cw compares .codex-plugin/plugin.json; under Claude
+	// Code (no --host and no PLUGIN_ROOT, or --host claude-code even with
+	// PLUGIN_ROOT), .claude-plugin/plugin.json. Each case gives the two
+	// manifests different versions, so the line appears exactly when the
+	// host's manifest differs from cw.
+	pluginRoot := map[string]string{"PLUGIN_ROOT": "<root>"}
+	codex := []string{"--host", "codex"}
 	tests := []struct {
 		name, claude, codex string
 		env                 map[string]string
+		args                []string
 		want                string
 	}{
-		{"Codex reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", codex, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
-		{"Claude Code reads its own manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
-		{"Codex ignores the Claude Code manifest", "3.0.0-rc.2", "3.0.0-rc.1", codex, ""},
-		{"Claude Code ignores the Codex manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, ""},
+		{"Codex reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, codex, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Claude Code reads its own manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Codex without --host reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", pluginRoot, nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"--host claude-code reads its own manifest with PLUGIN_ROOT set", "3.0.0-rc.2", "3.0.0-rc.1", pluginRoot, []string{"--host", "claude-code"}, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Codex ignores the Claude Code manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, codex, ""},
+		{"Claude Code ignores the Codex manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, nil, ""},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			manifests := map[string]string{".claude-plugin": hkManifest(test.claude), ".codex-plugin": hkManifest(test.codex)}
-			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, test.env); got != test.want {
+			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, test.env, test.args...); got != test.want {
 				t.Fatalf("version notes %q, want %q", got, test.want)
 			}
 		})
@@ -2036,11 +2054,12 @@ func TestHookSessionStartNamesAClaudeCodeOlderThanTheMinimum(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			env := map[string]string{"AI_AGENT": test.agent}
 			manifests := test.manifests
+			var args []string
 			if test.codex {
-				env["PLUGIN_ROOT"] = "<root>"
+				args = []string{"--host", "codex"}
 				manifests = map[string]string{".codex-plugin": manifests[".claude-plugin"]}
 			}
-			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, env); got != test.want {
+			if got := hkVersionNotes(t, "v3.0.0-rc.1", manifests, env, args...); got != test.want {
 				t.Fatalf("version notes %q, want %q", got, test.want)
 			}
 		})

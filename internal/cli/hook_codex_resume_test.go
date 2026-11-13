@@ -17,14 +17,13 @@ import (
 // the SessionStart input codex-cli 0.167.2 sent on compact, with its paths
 // replaced by placeholders; it sent the same members on startup and resume.
 
-// hkCodexSessionStart runs session-start under Codex, which sets
-// PLUGIN_ROOT, with the recorded input for repo and source, the instructions
-// file and the cache, and returns what the hook printed.
+// hkCodexSessionStart runs session-start as hooks/codex-hooks.json does,
+// with --host codex, the recorded input for repo and source, the
+// instructions file and the cache, and returns what the hook printed.
 func hkCodexSessionStart(t *testing.T, h *hkHarness, repo, source, instructions, cache string) string {
 	t.Helper()
-	h.env[codexPluginRoot] = filepath.Dir(instructions)
 	stdin := hkRecordedInput(t, "codex-session-start.json", repo, map[string]any{"source": source})
-	got, err := h.runSessionStart(t, string(stdin), "--instructions", instructions, "--cache", cache)
+	got, err := h.runSessionStart(t, string(stdin), "--host", "codex", "--instructions", instructions, "--cache", cache)
 	if err != nil {
 		t.Fatalf("session-start on %s: %v", source, err)
 	}
@@ -68,8 +67,11 @@ func TestHookSessionStartAddsNothingWhenCodexResumes(t *testing.T) {
 	// suggestion, with the plugin options at their defaults and with both
 	// gate and doctor options off, when cw reads stdin only for the source.
 	// Printing nothing would make the hook command print the file instead.
-	// The controls keep their context: Codex on startup and compact, Claude
-	// Code (no PLUGIN_ROOT) on resume, and Codex input that cannot be read,
+	// The same holds without --host where PLUGIN_ROOT is set, which names
+	// Codex when no --host is given (a Codex running hooks/hooks.json). The
+	// controls keep their context: Codex on startup and compact, Claude Code
+	// (no --host, no PLUGIN_ROOT) on resume, --host claude-code on resume
+	// even where PLUGIN_ROOT is set, and Codex input that cannot be read,
 	// which gives no source. Each case has a cache of its own, in a
 	// repository with an open substantial task and no git hooks.
 	const instructions = "# Rules\n\nWork carefully."
@@ -100,24 +102,38 @@ func TestHookSessionStartAddsNothingWhenCodexResumes(t *testing.T) {
 			}
 		})
 	}
-	t.Run("Claude Code resume", func(t *testing.T) {
-		delete(h.env, codexPluginRoot)
-		// The members Claude Code 2.1.311 sent on startup, with source resume.
-		stdin, err := json.Marshal(map[string]any{"session_id": "s", "transcript_path": "t", "cwd": repo, "hook_event_name": "SessionStart", "source": "resume"})
-		if err != nil {
-			t.Fatal(err)
-		}
+	t.Run("Codex resume without --host", func(t *testing.T) {
+		h.env[codexPluginRoot] = filepath.Dir(file)
+		defer delete(h.env, codexPluginRoot)
+		stdin := hkRecordedInput(t, "codex-session-start.json", repo, map[string]any{"source": "resume"})
 		got, err := h.runSessionStart(t, string(stdin), "--instructions", file, "--cache", hkCanonicalTempDir(t))
 		if err != nil {
 			t.Fatalf("session-start: %v", err)
 		}
-		if context := hkSessionContext(t, got); context != withLine {
-			t.Fatalf("additionalContext %q, want %q", context, withLine)
-		}
+		hkExpectNoSessionContext(t, got)
 	})
+	for name, args := range map[string][]string{"Claude Code resume": nil, "--host claude-code resume with PLUGIN_ROOT set": {"--host", "claude-code"}} {
+		t.Run(name, func(t *testing.T) {
+			if args != nil {
+				h.env[codexPluginRoot] = filepath.Dir(file)
+				defer delete(h.env, codexPluginRoot)
+			}
+			// The members Claude Code 2.1.311 sent on startup, with source resume.
+			stdin, err := json.Marshal(map[string]any{"session_id": "s", "transcript_path": "t", "cwd": repo, "hook_event_name": "SessionStart", "source": "resume"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := h.runSessionStart(t, string(stdin), append([]string{"--instructions", file, "--cache", hkCanonicalTempDir(t)}, args...)...)
+			if err != nil {
+				t.Fatalf("session-start: %v", err)
+			}
+			if context := hkSessionContext(t, got); context != withLine {
+				t.Fatalf("additionalContext %q, want %q", context, withLine)
+			}
+		})
+	}
 	t.Run("Codex input that cannot be read", func(t *testing.T) {
-		h.env[codexPluginRoot] = filepath.Dir(file)
-		got, err := h.runSessionStart(t, `{"source":"resume"`, "--instructions", file, "--cache", hkCanonicalTempDir(t))
+		got, err := h.runSessionStart(t, `{"source":"resume"`, "--host", "codex", "--instructions", file, "--cache", hkCanonicalTempDir(t))
 		if err != nil {
 			t.Fatalf("session-start: %v", err)
 		}

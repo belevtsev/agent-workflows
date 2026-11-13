@@ -64,7 +64,9 @@ drive it as a user or a host would, through its process boundary only.
   `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`), a temporary Git repository and
   the hook's JSON on stdin. It covers `cw` on `PATH`, a missing `cw` and a stub
   older than the hook command, and asserts the exit status and the exact stdout
-  the host reads.
+  the host reads. `cmd/cw/codex_hooks_test.go` does the same for Codex's
+  `hooks/codex-hooks.json` (`PLUGIN_ROOT`, `PLUGIN_DATA`), adding a stub `cw`
+  that rejects `--host`, which the commands must run again without it.
 - `cmd/cw/hostfiles_e2e_test.go` runs `cw install --host codex`, a repeat
   install and `cw uninstall --host codex` against temporary `HOME`,
   `CODEX_HOME` and XDG directories and a fixture checkout. It snapshots the
