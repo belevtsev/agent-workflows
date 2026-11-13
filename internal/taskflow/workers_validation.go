@@ -50,12 +50,15 @@ func validateWorkerRecord(record Record) error {
 		return errors.New("stored worker collections exceed their bounds")
 	}
 	assignments := map[string]bool{}
-	for _, assigned := range record.Assignments {
+	for i, assigned := range record.Assignments {
 		if assigned.TaskID != record.ID || assignments[assigned.Brief.ID] || !validWorkerSnapshot(record, assigned.Snapshot) || assigned.AssignedAt.Before(record.CreatedAt) || assigned.AssignedAt.After(record.UpdatedAt) {
 			return errors.New("invalid stored worker assignment identity, snapshot or time")
 		}
 		assignments[assigned.Brief.ID] = true
 		if err := validateBrief(record, assigned.Brief); err != nil {
+			return err
+		}
+		if err := validateBriefStage(record, record.Assignments[:i], assigned.Brief); err != nil {
 			return err
 		}
 		hash, err := assignmentHash(assigned)

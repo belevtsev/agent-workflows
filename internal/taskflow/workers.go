@@ -43,6 +43,13 @@ type WorkerBrief struct {
 	// covers; it is required when the plan can prove tests and refused when it
 	// cannot.
 	Requirements []ContractRequirement `json:"requirements,omitempty"`
+	// Stage is the flow stage the brief answers (stages.go). A task with a
+	// profile requires one of its stages; Fixes names the findings or
+	// requirements a later round of an author stage answers, and Repeats the
+	// earlier assignment of the same stage a replacement repeats.
+	Stage   string   `json:"stage,omitempty"`
+	Fixes   []FixRef `json:"fixes,omitempty"`
+	Repeats string   `json:"repeats,omitempty"`
 }
 
 type WorkerAssignment struct {
@@ -322,6 +329,9 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 			}
 		}
 		if err := validateBrief(*record, brief); err != nil {
+			return asInvalid(err)
+		}
+		if err := validateBriefStage(*record, record.Assignments, brief); err != nil {
 			return asInvalid(err)
 		}
 		if findAssignment(*record, brief.ID) != nil {
