@@ -230,7 +230,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap without `--owner-approval` ([round caps](#round-caps)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -241,7 +241,8 @@ check run on stdout, which names the reason. `cw consult` prints its status
 line, or with `--summary` the one-line view, and writes the record to the
 `--output` path. The task commands other
 than `verify` and `run` still exit 1 when the record's state refuses them, for
-example an abandoned task or a `cw task add-checks` refusal. The plugin hooks
+example an abandoned task or a `cw task add-checks` refusal; a round past its
+cap exits 4. The plugin hooks
 (`cw hook pre-publish` and `cw hook session-start`) answer in JSON and exit 0
 ([hooks](hooks.md)). `cw hook git` exits 3 when the gate blocks the commit,
 merge commit or push, which stops git ([git hooks](hooks.md#git-hooks)). `cw gate install` exits 4
@@ -453,9 +454,9 @@ plan's `profile` member, or `lite` when the plan names none. `start` writes the
 resolved name into the stored plan and prints it as `profile` in its summary. The profile holds
 the stages the task may assign, the author round caps per stage, the fix rounds
 allowed per finding or requirement, and the budget in US dollars, with the share
-(80%) at which the task is to stop taking new work. `cw` records these limits but
-does not enforce them yet: no command refuses a round past its cap or stops a
-task at its budget. A plan's `budget` member (`{"max_usd": 10}`) may lower the
+(80%) at which the task is to stop taking new work. `cw task assign` enforces the
+round caps ([round caps](#round-caps)); the fix rounds and the budget are recorded
+but not enforced yet. A plan's `budget` member (`{"max_usd": 10}`) may lower the
 profile's budget, never raise it; it may also set `stop_at`, the share at which
 the task stops, up to the profile's 0.8. A higher value of either is refused and
 no task is created. A later revision that changes the profile fails to load. A record
@@ -479,6 +480,36 @@ Each stage starts a fresh worker: `assign` refuses a brief with a stage whose
 `repeats` an assignment ([stage briefs](#stage-briefs)). Under `strict` the adviser
 checkpoints also apply when the task binds advisers. A `spec` or `design` cap
 counts revisions after the first draft; a `tests` cap counts every round.
+
+#### Round caps
+
+`cw task assign` counts the author rounds of each capped stage:
+
+- The briefs of a stage assigned before any of them returned, those with
+  neither `fixes` nor `repeats`, are one round, the first.
+- Each brief with `fixes` is a round, a refreshed brief after an amendment
+  included. A brief may not carry both `fixes` and `repeats`.
+- A brief with `repeats` replaces the round of the assignment it names, so it
+  is no new round; when that assignment does not count, the repeat takes its
+  place.
+- An assignment closed `unused` whose handoff was not `completed` returned no
+  work and does not count; one whose completed work was closed `unused`, such as
+  a superseded round, still does.
+- A `tests` cap counts the first round; a `spec` or `design` cap does not, since
+  the first draft is not a revision. `implementation` briefs (implementer fixes)
+  and reviews never count.
+
+A brief that would take its stage past the cap is refused with exit 4 and no
+revision, and `cw` prints the rounds used, the cap and each finding or
+requirement the brief `fixes`. Ask the owner; only their own words go to
+`cw task assign --owner-approval "<the owner's words>"`, which records them on the
+assignment in `owner_approvals`, one entry (`text`, `for`, `at`) per limit it
+goes past, shown by `cw task show --field assignments`. The round cap's limit is
+`round-budget`. A brief past two limits takes the flag once per limit, each as
+`LIMIT=TEXT`, such as `--owner-approval "round-budget=<the owner's words>"`;
+words for a limit the brief does not go past are refused.
+With `enforce_verify` on, the plugin hook asks the user to confirm the words
+before such a command runs ([hooks](hooks.md#owner-approval)).
 
 #### Stage briefs
 
