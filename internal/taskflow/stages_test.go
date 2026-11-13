@@ -19,7 +19,7 @@ func stageTask(t *testing.T, legacy bool) (Record, SourceRef) {
 		t.Fatalf("precondition: task records lite, got %+v", record.Profile)
 	}
 	if legacy {
-		record = rewriteInitialRevision(t, record, func(r *Record) { r.Profile = nil })
+		record = rewriteInitialRevision(t, record, func(r *Record) { r.Profile, r.Plan.Profile = nil, "" })
 	}
 	return record, ref
 }
