@@ -2,7 +2,10 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 	"strings"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 
 	"github.com/spf13/cobra"
 )
@@ -15,7 +18,8 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 		Use:   "abandon",
 		Short: "Mark a task given up with a terminal revision, so it no longer gates git commit and push",
 		Long: "Append the record's last revision, which stores the reason and time it was abandoned. " +
-			"An abandoned record accepts no further revisions and never gates publication; start a new task to continue the work.",
+			"An abandoned record accepts no further revisions and never gates publication; start a new task to continue the work. " +
+			"The task receipt (cw task receipt) follows on stderr.",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.guard(); err != nil {
@@ -31,10 +35,16 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			printed := any(record)
 			if summary {
-				return writeJSON(cmd.OutOrStdout(), map[string]string{"task_id": record.ID, "status": "abandoned"})
+				printed = map[string]string{"task_id": record.ID, "status": "abandoned"}
 			}
-			return writeJSON(cmd.OutOrStdout(), record)
+			if err := writeJSON(cmd.OutOrStdout(), printed); err != nil {
+				return err
+			}
+			// The receipt goes to stderr, so stdout keeps one JSON document.
+			fmt.Fprint(cmd.ErrOrStderr(), taskflow.Receipt(record).Text())
+			return nil
 		},
 	}
 	taskFlag(abandon, &directory)

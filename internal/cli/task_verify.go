@@ -3,7 +3,8 @@ package cli
 import "github.com/spf13/cobra"
 
 // newTaskVerifyCommand returns cw task verify. It prints the verification
-// whenever one was produced, then returns the verification's error.
+// whenever one was produced, and the task receipt on stderr after it, so
+// stdout keeps one JSON document; then it returns the verification's error.
 func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var full bool
@@ -23,6 +24,7 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 			if outputErr := writeJSON(cmd.OutOrStdout(), printed); outputErr != nil {
 				return outputErr
 			}
+			writeReceipt(cmd.ErrOrStderr(), directory)
 		}
 		return err
 	}}

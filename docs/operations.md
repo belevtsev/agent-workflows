@@ -623,7 +623,7 @@ skill runs `cw task usage` before each `cw task assign` and `cw task run`.
   reaches `stop_at` (80%) of `max_usd`, `cw task assign` and `cw task run` take
   no new work: they exit 4 and write nothing. `cw` prints the usage, the budget
   and the share used, marks the dollars as estimated ("at least" when the rest
-  is unknown), and asks: "continue with a higher budget, or stop with the
+  is unknown), prints the [task receipt](#task-receipt), and asks: "continue with a higher budget, or stop with the
   partial result?" A sample that crosses the stop or `max_usd` is always
   stored, whatever the 5% rule says.
 - **Continue.** Only the owner's own words go to `--owner-approval
@@ -645,6 +645,38 @@ skill runs `cw task usage` before each `cw task assign` and `cw task run`.
   stop, `cw task verify` lists "task usage is unknown: REASON" as a limitation,
   which does not block completion. A task started before profiles has no
   budget and never stops.
+
+#### Task receipt
+
+`cw task receipt --task DIR [--json]` prints what a task used and where it
+stands. It reads the record only and stores nothing, so `--dry-run` changes
+nothing. `cw task verify` (pass or fail), `cw task abandon` and a
+[budget stop](#budget-stop) print the same text after their own output, on
+stderr, so their stdout stays one JSON document and their exit statuses do not
+change. The receipt holds:
+
+- the task ID, its state (`open`, `complete` or `incomplete` as the stored
+  verification says, or `abandoned`) and its profile, or `none` for a task
+  started before profiles;
+- the author rounds each capped stage used against its cap, and the fix rounds
+  each still open finding or requirement took against the profile's allowance;
+- every owner approval, on an assignment or on the task (`cost-budget`), with
+  what it was for, when, and the owner's words in quotes;
+- the estimated dollars with the price table that priced them, against the
+  budget and its stop, and the tokens with uncached input, cache writes, cache
+  reads and output apart. Usage that cannot be measured reads
+  `unknown (REASON)`, never 0; a known part above 0 is given as "at least";
+- the checks planned, the runs executed and how many of them did not pass, and
+  how many checks the stored verification credited by reuse (`n/a` before a
+  verification);
+- the findings counted by severity and status, the open ones (pending or
+  accepted) listed newest first with one line each, and the wall time from
+  `created_at` to `updated_at`, as [`cw task timeline`](#global-project-diagnostics-and-evidence) gives it.
+
+The text, and the `--json` object, are each at most 4,096 bytes. Every entry is
+listed whole or not at all: the open findings, then the fix rounds, then the
+approvals each take at most an equal share of the room left when their turn
+comes, and the last line (`omitted` in JSON) counts what is not listed.
 
 ### Task locks
 

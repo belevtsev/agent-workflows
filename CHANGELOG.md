@@ -48,6 +48,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   at 400, and stores the report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
 - `cw task brief --stage S` prints, in at most 4 KiB, what a fresh worker of a stage starts from, and `cw task assign` refuses an `agent_id`
   that worked on another stage unless the brief `repeats` an assignment ([stage briefs](docs/operations.md#stage-briefs)).
+- `cw task receipt` prints, in at most 4 KiB, a task's rounds, owner approvals, estimated dollars and tokens (or unknown, never 0),
+  checks, findings and wall time; `verify`, `abandon` and a budget stop print it on stderr ([task receipt](docs/operations.md#task-receipt)).
 
 ### Changed
 

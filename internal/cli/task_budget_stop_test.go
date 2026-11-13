@@ -139,7 +139,7 @@ func TestAssignAtTheBudgetStopAsksAndVerifyStillRuns(t *testing.T) {
 	h.sampleUSD(0.85)
 	before := h.revisions()
 	expectStopped(t, map[string]compactOutcome{"assign": h.assignBrief("second"), "run": h.runBudgetCheck()},
-		"estimated 0.85 USD, 85% of its 1.00 USD budget, which stops new work at 80%", "cw wrote nothing", `"usd_estimated":true`,
+		"estimated 0.85 USD, 85% of its 1.00 USD budget, which stops new work at 80%", "cw wrote nothing", "usage: an estimated 0.85 USD",
 		"continue with a higher budget, or stop with the partial result?", `on this cw task assign or cw task run as --owner-approval "cost-budget=`)
 	if after := h.revisions(); after != before {
 		t.Fatalf("the refused assign and run wrote %d revisions", after-before)
