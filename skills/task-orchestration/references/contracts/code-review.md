@@ -79,7 +79,7 @@ as an independent reviewer).
 Findings go back to the implementer, except a finding about a test, which goes
 to a fresh test engineer through the coordinator's
 [feedback limits](test-engineer.md#separate-authorship-from-execution); rounds
-and dispositions follow the [review cap](../worker-handoffs.md#review-stages).
+and dispositions follow the [review cap](../worker-handoffs.md#review-cap).
 The implementer never receives `design.md`
 ([implementer inputs](implementer.md#inputs-you-must-never-receive)), so a
 finding that only `design.md` supports names the `design.md` rule for the

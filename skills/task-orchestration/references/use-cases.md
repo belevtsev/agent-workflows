@@ -53,7 +53,7 @@ fixing failures caused by the change. Substantial source changes require an
 independent substantive worker review of the completed source, recorded through
 the [worker handoff contract](worker-handoffs.md) before the final adviser checkpoint.
 The coordinator resolves, defers or rejects each finding against evidence and
-stays within the [review cap](worker-handoffs.md#review-stages);
+stays within the [review cap](worker-handoffs.md#review-cap);
 keep small and unchanged read-only tasks lightweight.
 
 To publish a verified substantial task, run `cw publish` under the user's

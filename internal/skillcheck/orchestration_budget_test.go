@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 241871
+	orchestrationSumCap    = 216127
 	orchestrationSumTarget = 90000
 )
 
@@ -54,7 +54,7 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/hosts.md":                        {12030, 10240, "S4f"},
 	"references/question-patterns.md":            {1883, 10240, "S4a"},
 	"references/use-cases.md":                    {7935, 10240, "S4f"},
-	"references/worker-handoffs.md":              {35954, 10240, "S4c"},
+	"references/worker-handoffs.md":              {10240, 10240, "S4c"},
 }
 
 // fileLimit is the most bytes OD-7 allows the file at rel.
