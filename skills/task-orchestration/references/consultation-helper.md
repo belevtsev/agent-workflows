@@ -9,16 +9,6 @@ spec, design and finding-rejection points, and at a checkpoint `cw consult`
 makes no network call and writes a `no_advisers_configured` record, which you
 adjudicate and attach under the same rules.
 
-Contents:
-
-- [Quick path](#quick-path)
-- [Task checkpoints](#task-checkpoints)
-- [Prepare a request](#prepare-a-request)
-- [Records and exit codes](#records-and-exit-codes)
-- [Adjudicate without network access](#adjudicate-without-network-access)
-- [Attach to the task](#attach-to-the-task)
-- [Sharing and recording](#sharing-and-recording)
-
 ## Quick path
 
 A normal checkpoint needs only this section. `T` is the task ID, `P` the phase
@@ -31,6 +21,9 @@ A normal checkpoint needs only this section. `T` is the task ID, `P` the phase
 2. Embed the context and consult in one shell call:
    `cw task context --task T --phase P >context.json && jq --slurpfile c context.json '.state.task_context=$c[0]' request.json >request.final.json && cw consult --request request.final.json --output consult.json --summary`.
    Read `consult.json` only for a field the summary omits.
+   A coordinated multi-repository task can instead put its contexts in
+   `state.task_contexts`; each task's context must occur once and all bindings
+   must be identical.
    Exit `5` means partial coverage (disclose it) or a bound adviser without its key
    (set it and consult again).
 3. Check every judgment against source and write `decision.json` in the
@@ -147,7 +140,7 @@ names every question ID exactly once; this shape is to adapt, not evidence:
   cannot be cited, `snapshot-tests` can. `source:` paths are exempt.
 - **Rejected judgments:** keys are exactly the providers whose recorded choice
   differs from `choice`, each with a non-blank reason, in a `partial` comparison
-  as in `disagreement`. Missing or refused judgments need none.
+  as in `disagreement` ([comparison states](adviser-providers.md#statuses)). Missing or refused judgments need none.
 - **Investigations:** keys include every differing provider whose answer
   confidence is 0.7 or higher, each with a non-blank note, and no other provider.
 - **Untrusted agreement:** with `state.untrusted` in the request and an

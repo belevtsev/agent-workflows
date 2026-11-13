@@ -20,7 +20,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 141897
+	orchestrationSumCap    = 141780
 )
 
 type budgetRow struct {
@@ -33,10 +33,10 @@ type budgetRow struct {
 // the table landed keeps the cap it had then.
 var orchestrationBudget = map[string]budgetRow{
 	"SKILL.md":                                    {6466, "H4"},
-	"references/adviser-providers.md":             {10240, "S4d"},
+	"references/adviser-providers.md":             {8646, "S4d"},
 	"references/base-merge.md":                    {1873, "S4h"},
-	"references/connected-sources.md":             {10240, "S4f"},
-	"references/consultation-helper.md":           {10240, "S4d"},
+	"references/connected-sources.md":             {8634, "S4f"},
+	"references/consultation-helper.md":           {10040, "S4d"},
 	"references/contract-amendment.md":            {4803, "S4l"},
 	"references/contracts/README.md":              {4813, "S4l"},
 	"references/contracts/adversarial-tester.md":  {3191, "S4i"},

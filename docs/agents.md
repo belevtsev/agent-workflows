@@ -47,7 +47,25 @@ script, so only the coordinator dispatches. The reviewer and the test engineer
 also set `omitClaudeMd: true`, so under Claude Code they start without the
 user's and the project's CLAUDE.md files; their contracts and briefs carry the
 project rules they apply. The Claude Code version in the [host requirements](operations.md#host-requirements) honours it; an older
-client ignores it without a warning. Codex has no such switch. Every agent
+client ignores it without a warning. Codex has no such switch.
+
+Neither agent sets `isolation: worktree`, although Claude Code honours it for
+plugin agents, because it would not enforce their rules and would break the
+flow ([subagent frontmatter](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields),
+[worktree isolation](https://code.claude.com/docs/en/worktrees#how-claude-code-enforces-isolation)).
+The worktree is a fresh checkout of tracked files from the remote default
+branch (or `HEAD` under `worktree.baseRef: "head"`), so it lacks the
+uncommitted change that code review reads: a reviewer there would review and
+test the wrong source. Isolation blocks
+edits and git commands aimed at the main checkout, but not reads, so the test
+engineer could still read implementation source, in its worktree or by
+absolute path. And frontmatter isolation is ignored when agent teams launch the
+agent as a teammate. "Never edit what you review" and "never read
+implementation source" therefore rest on the contracts, the briefs and the
+coordinator's check of the transcript
+([dispatching the test engineer](../skills/task-orchestration/references/dispatching-reviews-and-tests.md#dispatch-a-test-engineer)).
+
+Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
 is not listed there does not load.
