@@ -112,58 +112,14 @@ cw doctor --summary --repo "$PWD"
 
 ## Your first task
 
-The steps below are for a substantial task. A small change needs none of this;
-just ask.
+The [quick start](docs/quickstart.md) takes one task by hand, in ten minutes, from `cw task init` to a verified
+commit. In daily use you ask, answer questions and approve the commit, and the agent runs those commands:
 
-You ask, answer questions and approve the commit. The agent runs the rest,
-including the `cw` commands below; you can run them yourself to inspect a task.
-
-`cw task usage` estimates a task's dollars from its session transcripts with a
-dated price table ([cost budget](docs/operations.md#cost-budget)). At 80% of the
-budget the task's profile sets, an unmeasured placeholder of 15 USD (`lite`),
-40 USD (`standard`) or 100 USD (`strict`), the task stops taking new work and
-asks you; usage `cw` cannot measure never stops it ([budget stop](docs/operations.md#budget-stop)).
-
-1. Ask for the change in your repository. Naming the skill starts the workflow;
-   a plain request also works, because the skill loads when the task matches.
-
-   ```text
-   /agent-workflows:task-orchestration Add retries with backoff to the HTTP client and the job queue, sharing one retry policy
-   ```
-
-   This request meets two of the [criteria for a substantial task](#how-it-works):
-   it changes more than one package, and the shared retry policy is a design
-   choice with real alternatives that the source cannot settle.
-
-2. The agent runs `cw doctor`, decides whether the task is substantial and
-   records the requirements and the checks that prove them
-   ([plan format](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
-   `cw task init` writes a [starter plan](docs/operations.md#starter-plan):
-
-   ```sh
-   cw task init --title "Add retries to the HTTP client"
-   cw task start --plan plan.json
-   ```
-
-3. The spec writer and a reviewer produce a change under
-   `openspec/changes/`. The agent brings you the open questions.
-4. The architect's design passes a design review, then the implementer and the
-   test engineer work in parallel, isolated; a reviewer checks the tests
-   against the contract before integration.
-5. Checks run through `cw`, so the record holds the real result:
-
-   ```sh
-   cw task run --task <task-id> --check unit
-   ```
-
-6. An independent reviewer reviews the code, then the agent runs the gate:
-
-   ```sh
-   cw task verify --task <task-id>
-   ```
-
-7. You approve the commit. It goes through once verify passes on the current
-   source.
+1. Ask in your repository, for example `/agent-workflows:task-orchestration Add retries to the HTTP client`.
+2. The agent writes the plan ([starter plan](docs/operations.md#starter-plan)) and starts the task under a [profile](docs/operations.md#profiles).
+3. Workers implement and test the change, and checks run through `cw task run`, so the record holds the real result.
+4. An independent reviewer reviews the change, then `cw task verify` runs the gate; past 80% of the budget the task stops and asks you.
+5. You approve the commit, which goes through once verify passes on the current source.
 
 ## The verify gate
 
