@@ -16,14 +16,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// argsHint is the annotation that adds a hint to noArgs's message.
+const argsHint = "args-hint"
+
 // noArgs is the Args rule of every command that takes no positional
-// arguments, parents included: an argument is a usage error, exit 2, with
-// one message.
+// arguments: an argument is a usage error, exit 2. On a command with
+// subcommands it is an unknown command; on any other command an unexpected
+// argument, followed by the command's argsHint annotation when it has one.
 func noArgs(cmd *cobra.Command, args []string) error {
-	if len(args) > 0 {
-		return usage(fmt.Errorf("unexpected argument %q for %q", args[0], cmd.CommandPath()))
+	if len(args) == 0 {
+		return nil
 	}
-	return nil
+	if cmd.HasSubCommands() {
+		return usage(fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath()))
+	}
+	message := fmt.Sprintf("unexpected argument %q for %q", args[0], cmd.CommandPath())
+	if hint := cmd.Annotations[argsHint]; hint != "" {
+		message += "; " + hint
+	}
+	return usage(errors.New(message))
 }
 
 func selectedHome(root *cobra.Command, config Config) (string, error) {

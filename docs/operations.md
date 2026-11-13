@@ -225,8 +225,9 @@ an alias of `cw pack`; absent means the default selection).
 
 `--dry-run` is not a global flag. Only the commands that can preview a write
 have it, after the command name: `cw consult` (a validated preview without
-network access) and `cw pack add|remove` (the new selection, without writing
-`packs.json`). Every other command rejects it as an unknown flag with exit
+network access), `cw pack add|remove` (the new selection, without writing
+`packs.json`) and `cw task init` (the starter plan's report, without writing
+the plan). Every other command rejects it as an unknown flag with exit
 status 2.
 
 v2.x used the same state and configuration directories. v3 reads the saved
@@ -247,7 +248,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | --- | --- | --- |
 | 0 | ok | The command did what was asked, including `cw task run` reusing a passed run ([reuse](#reusing-a-passed-run)). |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
-| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, or a positional argument the command does not take (`unexpected argument "X" for "cw ..."`). Nothing ran. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, an unknown subcommand (`unknown command "X" for "cw ..."`), or a positional argument the command does not take (`unexpected argument "X" for "cw ..."`). Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap or a third fix round on an open finding or requirement without `--owner-approval` ([round caps](#round-caps), [fix rounds](#fix-rounds)); `cw task assign` and `cw task run` at the budget's stop ([budget stop](#budget-stop)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |

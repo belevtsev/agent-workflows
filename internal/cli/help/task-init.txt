@@ -4,4 +4,4 @@ The check is the race command of the first selected pack whose detect file is at
 Without such a pack the check is test, which runs false and fails until you replace its argv with the command that tests your change.
 Under lite and standard the plan marks the adviser checkpoints not required, with a reason verify lists; strict keeps them required.
 --out names the file to create, plan.json in the current directory by default; cw task init never replaces an existing file.
-It prints text, or one JSON object with --json; with the global --dry-run it prints the same and writes nothing.
+It prints text, or one JSON object with --json; with --dry-run it prints the same and writes nothing.

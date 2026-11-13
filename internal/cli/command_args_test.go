@@ -29,6 +29,14 @@ var honoursDryRun = map[string]bool{
 	"cw consult":     true,
 	"cw pack add":    true,
 	"cw pack remove": true,
+	"cw task init":   true,
+}
+
+// hasSubcommands are the commands with subcommands, whose arguments name an
+// unknown command.
+var hasSubcommands = map[string]bool{
+	"cw": true, "cw task": true, "cw pack": true, "cw gate": true, "cw hook": true, "cw hook git": true,
+	"cw graphify": true, "cw keys": true, "cw metrics": true,
 }
 
 // commandPaths lists every command in the cw tree as its argv after "cw".
@@ -51,8 +59,9 @@ func commandPaths(t *testing.T) map[string][]string {
 }
 
 // Oracle: docs/operations.md, Exit statuses: an argument a command does not
-// take is a usage error, exit 2, for every command, and the message names
-// the argument and the command. The arguments are rejected before the
+// take is a usage error, exit 2, for every command. On a command with
+// subcommands it is an unknown command; on any other an unexpected argument,
+// and cw doctor adds its --repo hint. The arguments are rejected before the
 // command runs, so nothing is read or written.
 func TestEveryCommandWithoutArgumentsRejectsOneWithUsage(t *testing.T) {
 	paths := commandPaths(t)
@@ -67,7 +76,13 @@ func TestEveryCommandWithoutArgumentsRejectsOneWithUsage(t *testing.T) {
 			if got := ExitCode(err); got != ExitUsage {
 				t.Fatalf("exit %d (%v), want %d", got, err, ExitUsage)
 			}
-			if want := `unexpected argument "extra-argument" for "` + path + `"`; err.Error() != want {
+			want := `unexpected argument "extra-argument" for "` + path + `"`
+			if hasSubcommands[path] {
+				want = `unknown command "extra-argument" for "` + path + `"`
+			} else if path == "cw doctor" {
+				want += "; use --repo PATH"
+			}
+			if err.Error() != want {
 				t.Fatalf("error %q, want %q", err, want)
 			}
 		})
@@ -80,7 +95,7 @@ func TestEveryCommandWithoutArgumentsRejectsOneWithUsage(t *testing.T) {
 }
 
 // Oracle: docs/operations.md, Paths: --dry-run belongs to cw consult,
-// cw pack add and cw pack remove only; on any other command it is an
+// cw pack add, cw pack remove and cw task init only; on any other command it is an
 // unknown flag, exit 2. The second unknown flag shows which one the parser
 // stopped at, so neither command runs. The git hook commands are left out:
 // they ignore unknown flags, because git may pass a remote URL that starts

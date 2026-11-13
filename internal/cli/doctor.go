@@ -14,10 +14,11 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 	var live, summary, all bool
 	var timeout time.Duration
 	command := &cobra.Command{
-		Use:   "doctor",
-		Short: "Inspect the selected project and optional local capabilities without changing it",
-		Long:  "Inspect the current project or --repo PATH independently of where the workflow skills are installed. Default inspection reads local metadata only. --live permits bounded status, protocol and package-version probes; it does not provision packages, index sources, enroll watchers or call models.",
-		Args:  noArgs,
+		Use:         "doctor",
+		Short:       "Inspect the selected project and optional local capabilities without changing it",
+		Long:        "Inspect the current project or --repo PATH independently of where the workflow skills are installed. Default inspection reads local metadata only. --live permits bounded status, protocol and package-version probes; it does not provision packages, index sources, enroll watchers or call models.",
+		Args:        noArgs,
+		Annotations: map[string]string{argsHint: "use --repo PATH"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if all && !summary {
 				return usage(errors.New("--all applies only with --summary; the full report already lists every check"))
