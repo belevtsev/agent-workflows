@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record, with its stages, round caps and a
+  provisional dollar budget that a plan's `budget` may lower but not raise; nothing enforces the limits yet ([profiles](docs/operations.md#profiles)).
 - Every `cw task` command takes the task ID for `--task` as well as the directory, found in the default task store
   or in `$CW_TASK_STORE`, so a call need not repeat the absolute path ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;

@@ -15,7 +15,9 @@ import (
 // record stays available through 'cw task show'.
 
 type taskStartSummary struct {
-	TaskID       string            `json:"task_id"`
+	TaskID string `json:"task_id"`
+	// Profile is the name of the profile the task records.
+	Profile      string            `json:"profile,omitempty"`
 	Advisers     map[string]string `json:"advisers"`
 	Requirements []string          `json:"requirements"`
 	Checks       []string          `json:"checks"`
@@ -23,6 +25,9 @@ type taskStartSummary struct {
 
 func startSummary(record taskflow.Record) taskStartSummary {
 	value := taskStartSummary{TaskID: record.ID, Advisers: record.Advisers, Requirements: []string{}, Checks: []string{}}
+	if record.Profile != nil {
+		value.Profile = record.Profile.Name
+	}
 	if value.Advisers == nil {
 		value.Advisers = map[string]string{}
 	}

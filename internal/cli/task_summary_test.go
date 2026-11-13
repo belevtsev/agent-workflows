@@ -227,7 +227,7 @@ func summaryCompactForTest(t *testing.T, raw json.RawMessage) string {
 func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 
-	start := parseSummaryLineForTest(t, "start", h.start(true), "task_id", "advisers", "requirements", "checks")
+	start := parseSummaryLineForTest(t, "start", h.start(true), "task_id", "profile", "advisers", "requirements", "checks")
 	h.task = h.directoryOf(summaryStringForTest(t, start, "task_id"))
 	stored := h.load()
 	if stored.Directory != h.task || h.task == "" {
@@ -412,7 +412,7 @@ func (h *summaryCLIHarness) adjudicatedConsultation() string {
 func TestTaskSummaryFlagReportsAttachedConsultation(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = h.directoryOf(summaryStringForTest(t, parseSummaryLineForTest(t, "start", h.start(true),
-		"task_id", "advisers", "requirements", "checks"), "task_id"))
+		"task_id", "profile", "advisers", "requirements", "checks"), "task_id"))
 	final := h.adjudicatedConsultation()
 
 	consult := parseSummaryLineForTest(t, "consult",

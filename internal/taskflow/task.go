@@ -37,13 +37,17 @@ func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitati
 // task's immutable adviser binding (provider -> pinned model, possibly empty):
 // the advisers configured when the task starts. Later policy or credential
 // changes never change it. Every record it writes carries the pack set, the
-// test rules and the baseline manifest.
+// test rules and the baseline manifest, and the profile the plan selects.
 func (env Env) start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
 	}
 	if err := ValidatePlan(&plan); err != nil {
 		return Record{}, err
+	}
+	profile, err := resolveProfile(plan)
+	if err != nil {
+		return Record{}, asInvalid(err)
 	}
 	advisers = maps.Clone(advisers)
 	if advisers == nil {
@@ -99,6 +103,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
 	record.TestRules = TestRulesV1
+	record.Profile = profile
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {

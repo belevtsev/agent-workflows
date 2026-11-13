@@ -446,6 +446,32 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### Profiles
+
+`cw task start` fixes one profile in the task record, as it fixes the packs: the
+plan's `profile` member, or `lite` when the plan names none. The profile holds
+the stages the task may assign, the author round caps per stage, the fix rounds
+allowed per finding or requirement, and the budget in US dollars, with the share
+(80%) at which the task is to stop taking new work. `cw` records these limits but
+does not enforce them yet: no command refuses a round past its cap or stops a
+task at its budget. A plan's `budget` member (`{"max_usd": 10}`)
+may lower the profile's budget, never raise it: a higher one is refused and no
+task is created. A later revision that changes the profile fails to load. A record
+started before profiles existed has none, and no caps or budget apply to it.
+
+The budgets are provisional: they are not measured yet, and the evaluation runs
+replace them before v3.0.0. The budget counts dollars only; there is no token cap.
+
+| Profile | Stages | Author round caps | Fix rounds per finding or requirement | Budget (USD), stop at 80% | Used when |
+| --- | --- | --- | --- | --- | --- |
+| `lite` (default) | `tests`, `implementation`, `test-review`, `code-review` | `tests` 2 | 2 | 15 | no open design choice |
+| `standard` | `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review` | `design` 2, `tests` 2 | 2 | 40 | an open design choice or a public interface change |
+| `strict` | `spec`, `spec-review`, `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review`, `adversarial` | `spec` 2, `design` 2, `tests` 2 | 2 | 100 | the user asks, or the change touches security, data integrity or concurrency |
+
+`tests` runs in parallel with `implementation`. Under `strict` the adviser
+checkpoints also apply when the task binds advisers. A `spec` or `design` cap
+counts revisions after the first draft; a `tests` cap counts every round.
+
 ### Task locks
 
 Every `cw` command that writes a task record takes an exclusive `flock` on
