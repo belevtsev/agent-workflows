@@ -2309,6 +2309,11 @@ func TestHookPrePublishAsksBeforeAnOwnerApproval(t *testing.T) {
 		{`cw task assign --task t1 --input brief.json --owner-approval "one more round"`, `records "one more round" as the owner's approval`},
 		{`/usr/local/bin/cw task assign --owner-approval='one more round' --task t1`, `records "one more round" as the owner's approval`},
 		{`C=cw; $C task assign --task t1 --owner-approval "x"`, "records words the gate cannot read as the owner's approval"},
+		// The shell expands these, so the text as written is not what cw
+		// records.
+		{`cw task assign --task t1 --owner-approval "$(cat words.txt)"`, "records words the gate cannot read as the owner's approval"},
+		{`W=yes; cw task assign --task t1 --owner-approval "$W"`, "records words the gate cannot read as the owner's approval"},
+		{"cw task assign --task t1 --owner-approval=`cat words.txt`", "records words the gate cannot read as the owner's approval"},
 	} {
 		hkExpectAsk(t, h.prePublish(t, repo, c.command), "only the user may give them", c.quoted, "Confirm only if these are the user's own words.")
 	}

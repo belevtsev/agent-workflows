@@ -480,16 +480,31 @@ counts revisions after the first draft; a `tests` cap counts every round.
 
 #### Round caps
 
-`cw task assign` counts each capped stage's assignments: every `tests` one, and
-every `spec` or `design` one after the first. A brief with `repeats` (a
-replacement) and an assignment whose latest acceptance is `unused` do not count;
-`implementation` briefs (implementer fixes) and reviews never do. A brief that
-would take its stage past the cap is refused with exit 4 and no revision, and
-`cw` prints the rounds used, the cap and each finding or requirement the brief
-`fixes`. Ask the owner; only their own words go to
+`cw task assign` counts the author rounds of each capped stage:
+
+- The briefs of a stage assigned before any of them returned, those with
+  neither `fixes` nor `repeats`, are one round, the first.
+- Each brief with `fixes` is a round, a refreshed brief after an amendment
+  included. A brief may not carry both `fixes` and `repeats`.
+- A brief with `repeats` replaces the round of the assignment it names, so it
+  is no new round; when that assignment does not count, the repeat takes its
+  place.
+- An assignment closed `unused` whose handoff was not `completed` returned no
+  work and does not count; one whose completed work was closed `unused`, such as
+  a superseded round, still does.
+- A `tests` cap counts the first round; a `spec` or `design` cap does not, since
+  the first draft is not a revision. `implementation` briefs (implementer fixes)
+  and reviews never count.
+
+A brief that would take its stage past the cap is refused with exit 4 and no
+revision, and `cw` prints the rounds used, the cap and each finding or
+requirement the brief `fixes`. Ask the owner; only their own words go to
 `cw task assign --owner-approval "<the owner's words>"`, which records them on the
-assignment as `owner_approval` (`text`, `for: "round-budget"`, `at`), shown by
-`cw task show --field assignments`. Words on a round within the cap are refused.
+assignment in `owner_approvals`, one entry (`text`, `for`, `at`) per limit it
+goes past, shown by `cw task show --field assignments`. The round cap's limit is
+`round-budget`. A brief past two limits takes the flag once per limit, each as
+`LIMIT=TEXT`, such as `--owner-approval "round-budget=<the owner's words>"`;
+words for a limit the brief does not go past are refused.
 With `enforce_verify` on, the plugin hook asks the user to confirm the words
 before such a command runs ([hooks](hooks.md#owner-approval)).
 

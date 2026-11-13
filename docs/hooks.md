@@ -92,10 +92,10 @@ Three `PreToolUse` handlers run the same command, `cw hook pre-publish`: one for
 every Bash command whose text contains `git` (the condition `Bash(*git*)`), one
 for every one that contains `abandon` (`Bash(*abandon*)`,
 [Abandoning a task](#abandoning-a-task)), and one for every one that contains
-`cw` and then `owner-approval` (`Bash(*cw*owner-approval*)`,
-[Owner approval](#owner-approval)). Claude Code checks a condition
-against each command of a compound line, so the second does not require `cw`
-in the same command as `abandon`, as in `C=cw; $C task abandon`; quotes inside
+`owner-approval` (`Bash(*owner-approval*)`, [Owner approval](#owner-approval)). Claude Code checks a condition
+against each command of a compound line, so neither of the last two requires
+`cw` in the same command as `abandon` or `owner-approval`, as in
+`C=cw; $C task abandon`; quotes inside
 the word do not hide it, so `cw task aban''don` runs the second handler too;
 and it runs both when it cannot tell which commands a Bash input runs, as for
 `echo "$(printf x)"`. Codex ignores the conditions and runs both handlers, at
@@ -281,10 +281,13 @@ stage's cap through and records the words ([round caps](operations.md#round-caps
 The agent supplies that text, so with `enforce_verify` on the hook asks before
 every `cw` command it finds with `--owner-approval TEXT` or
 `--owner-approval=TEXT`, quoting each text (three at most, counting the rest),
-so a person confirms the words are theirs. It finds `cw` as it finds
+so a person confirms the words are theirs. Text the shell expands, with a `$`
+outside single quotes or a backtick, as in `"$(cat words.txt)"` or `"$W"`, is not
+quoted: the ask says the gate cannot read those words. It finds `cw` as it finds
 `cw task abandon`, and fails closed the same way: a line whose words include `cw`
-and `owner-approval` that it cannot read asks about words it cannot read, while
-trusted commands that only mention them, such as `echo`, are allowed. Under
+and `owner-approval` that it cannot read, such as `C=cw; $C task assign
+--owner-approval x`, asks about words it cannot read, while trusted commands
+that only mention them, such as `echo`, are allowed. Under
 Codex the ask is a deny, and the user runs the command themselves.
 
 ### Records that cannot be read

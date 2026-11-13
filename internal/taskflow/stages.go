@@ -32,7 +32,10 @@ var stagedRoles = []string{"implementation", "review"}
 // repeats. Several first-round briefs of one stage, such as parallel
 // implementers on separate paths, need neither. A record without a profile
 // accepts a brief without them, as before profiles existed; what a brief does
-// carry is checked either way.
+// carry is checked either way, and a brief never carries both fixes and
+// repeats: a repeat replaces a round, a fix is a new one. So under a profile
+// a brief with neither was assigned before any brief of its stage returned,
+// in the stage's first round (roundsUsed).
 func validateBriefStage(record Record, prior []WorkerAssignment, returned func(assignment string) bool, brief WorkerBrief) error {
 	if brief.Stage != "" && !slices.Contains(stageOrder, brief.Stage) {
 		return fmt.Errorf("worker brief stage %q is not one of %s", brief.Stage, strings.Join(stageOrder, ", "))
@@ -47,6 +50,9 @@ func validateBriefStage(record Record, prior []WorkerAssignment, returned func(a
 	}
 	if err := validateFixes(record, brief.Fixes); err != nil {
 		return err
+	}
+	if len(brief.Fixes) > 0 && brief.Repeats != "" {
+		return fmt.Errorf("worker brief %s carries both fixes and repeats: a repeat replaces an exposed worker or makes a correction round cw task verify requires, and counts as no new round, so a brief that fixes findings or requirements names no repeats", brief.ID)
 	}
 	if brief.Repeats != "" {
 		index := slices.IndexFunc(prior, func(a WorkerAssignment) bool { return a.Brief.ID == brief.Repeats })

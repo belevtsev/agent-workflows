@@ -67,9 +67,10 @@ type WorkerAssignment struct {
 	// InputFiles are the stored copies of Brief.Inputs in the task directory,
 	// in the same order.
 	InputFiles []string `json:"input_files,omitempty"`
-	// OwnerApproval holds the owner's words for an assignment past its
-	// stage's round cap (rounds.go); no other assignment carries one.
-	OwnerApproval *OwnerApproval `json:"owner_approval,omitempty"`
+	// OwnerApprovals hold the owner's words for each limit of the profile
+	// the assignment went past, one per limit (rounds.go); an assignment
+	// within every limit carries none.
+	OwnerApprovals []OwnerApproval `json:"owner_approvals,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -258,11 +259,11 @@ func validateBrief(record Record, brief WorkerBrief) error {
 
 func assignmentHash(assignment WorkerAssignment) (string, error) {
 	data, err := encode(struct {
-		TaskID        string              `json:"task_id"`
-		Brief         WorkerBrief         `json:"brief"`
-		Snapshot      projectctx.Snapshot `json:"snapshot"`
-		OwnerApproval *OwnerApproval      `json:"owner_approval,omitempty"`
-	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApproval})
+		TaskID         string              `json:"task_id"`
+		Brief          WorkerBrief         `json:"brief"`
+		Snapshot       projectctx.Snapshot `json:"snapshot"`
+		OwnerApprovals []OwnerApproval     `json:"owner_approvals,omitempty"`
+	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals})
 	if err != nil {
 		return "", err
 	}
@@ -318,13 +319,14 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // that would take its stage past the profile's round cap is refused with
 // ErrRoundBudget; see AssignApprovedWorker.
 func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
-	return env.AssignApprovedWorker(ctx, taskPath, brief, "")
+	return env.AssignApprovedWorker(ctx, taskPath, brief, nil)
 }
 
-// AssignApprovedWorker is AssignWorker that, when ownerWords is not empty,
-// records them as the owner's approval of a round past the stage's cap. It
-// refuses the words when the brief goes past no cap.
-func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief WorkerBrief, ownerWords string) (Record, error) {
+// AssignApprovedWorker is AssignWorker that records ownerWords, each a
+// --owner-approval value, as the owner's approval of a limit of the profile
+// the brief goes past (ownerApprovals): "LIMIT=TEXT", or TEXT alone when it
+// goes past one. It refuses words for a limit the brief does not go past.
+func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief WorkerBrief, ownerWords []string) (Record, error) {
 	// stored names the copies a successful closure wrote; the update removes
 	// them if it then fails, unless the revision name exists or its absence
 	// cannot be confirmed afterwards (see updateDiscarding).
@@ -351,14 +353,8 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
-		var approval *OwnerApproval
-		if ownerWords != "" {
-			if !validApprovalText(ownerWords) {
-				return invalidf("owner approval text must be 1..%d bytes without control characters", maxApprovalText)
-			}
-			approval = &OwnerApproval{Text: ownerWords, For: ApprovalRoundBudget}
-		}
-		if err := checkRoundApproval(*record, brief, approval); err != nil {
+		approvals, err := ownerApprovals(limitsOver(*record, brief), brief.ID, ownerWords)
+		if err != nil {
 			return err
 		}
 		if len(record.Assignments) >= 256 {
@@ -371,9 +367,9 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now(), OwnerApproval: approval}
-		if approval != nil {
-			approval.At = assignment.AssignedAt
+		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now(), OwnerApprovals: approvals}
+		for i := range assignment.OwnerApprovals {
+			assignment.OwnerApprovals[i].At = assignment.AssignedAt
 		}
 		assignment.SHA256, err = assignmentHash(assignment)
 		if err != nil {

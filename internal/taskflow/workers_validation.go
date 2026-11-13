@@ -79,7 +79,7 @@ func validateWorkerRecord(record Record) error {
 		if err := validateInputFiles(assigned); err != nil {
 			return err
 		}
-		if err := validateStoredApproval(record, assigned); err != nil {
+		if err := validateStoredApprovals(record, assigned); err != nil {
 			return err
 		}
 	}
@@ -146,8 +146,8 @@ func validateWorkerTransition(previous, current Record) error {
 		}
 		// Like the round rule, the budget depends on the assignments and
 		// acceptances the previous revision holds.
-		if checkRoundApproval(previous, assigned.Brief, assigned.OwnerApproval) != nil {
-			return fmt.Errorf("stored worker assignment %s goes past its stage's round cap without the owner's approval, or carries one it does not need", assigned.Brief.ID)
+		if !approvalsMatch(previous, assigned.Brief, assigned.OwnerApprovals) {
+			return fmt.Errorf("stored worker assignment %s goes past a limit of its profile without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {
