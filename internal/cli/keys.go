@@ -37,6 +37,9 @@ func keyName(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+// errKeyRule is the message for a key credentials.ValidKey refuses.
+var errKeyRule = errors.New("A key is one line of text without spaces or control characters.")
+
 // maxKeyInput bounds what readKey accepts: a key of the store's 64 KiB limit
 // plus one CRLF. Anything longer is refused rather than truncated.
 const maxKeyInput = 64<<10 + 2
@@ -55,8 +58,8 @@ func readKey(in io.Reader) (string, error) {
 	if key == "" {
 		return "", errors.New("no key was read from standard input")
 	}
-	if message := validKey(key); message != "" {
-		return "", errors.New(message)
+	if !credentials.ValidKey(key) {
+		return "", errKeyRule
 	}
 	return key, nil
 }
@@ -117,8 +120,8 @@ func addKeysCommand(root *cobra.Command, config Config) {
 				if value == "" {
 					return fmt.Errorf("environment variable %s is not set", fromEnv)
 				}
-				if message := validKey(value); message != "" {
-					return errors.New(message)
+				if !credentials.ValidKey(value) {
+					return errKeyRule
 				}
 			} else {
 				var err error

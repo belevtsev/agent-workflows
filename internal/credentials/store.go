@@ -120,7 +120,7 @@ func readAt(directory *os.File) (Snapshot, error) {
 		return Snapshot{}, ErrInvalidStore
 	}
 	for name, value := range contents.Keys {
-		if !knownName(name) || !validValue(value) {
+		if !knownName(name) || !ValidKey(value) {
 			return Snapshot{}, ErrInvalidStore
 		}
 	}
@@ -229,7 +229,7 @@ func temporaryAt(directory *os.File) (*os.File, string, error) {
 // The stable lock and the final generation recheck protect concurrent writers.
 func (store Store) Save(ctx context.Context, changes map[string]*string, expectedGeneration *string) (SaveResult, error) {
 	for name, value := range changes {
-		if !knownName(name) || value != nil && !validValue(*value) {
+		if !knownName(name) || value != nil && !ValidKey(*value) {
 			return SaveResult{}, ErrInvalidChanges
 		}
 	}

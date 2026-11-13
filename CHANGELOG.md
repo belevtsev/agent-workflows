@@ -94,6 +94,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;
+  an existing file there is still never replaced ([consultation](docs/advisers.md#consult-advisers-and-let-the-coordinator-decide)).
 - `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
   is not owner-only: they skip the saved keys, use the environment ones and warn ([adviser keys](docs/operations.md#adviser-keys)).
 - `cw publish --help` says a run appends its `started` entry only once its checks pass, so a run they deny or refuse
