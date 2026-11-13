@@ -172,6 +172,56 @@ func TestHandoffSummaryAndFindingCaps(t *testing.T) {
 	}
 }
 
+// Oracle: under a profile each free-text member of a reach run (mode,
+// command, observed, reason) is capped at 400 bytes like a finding: 401 bytes
+// in any one is refused as invalid input with the exact error naming the
+// row's path, the member, the limit and the report, and writes nothing; 400
+// bytes in each is accepted. Without a profile 401 bytes is accepted.
+func TestHandoffReachRunTextIsCapped(t *testing.T) {
+	review := func(t *testing.T, legacy bool) (Record, WorkerResult) {
+		t.Helper()
+		record, _ := stageTask(t, legacy)
+		ref := changedWorkerSource(t, record)
+		record = mustAssignWorker(t, record, workerBrief("rv", "/root/rv", "review", []string{"."}))
+		result := workerResult(t, record, "rv", "completed", ref)
+		if len(result.ReachRuns) == 0 {
+			t.Fatal("precondition: the review's bundle has a reach row")
+		}
+		return record, result
+	}
+	set := func(run *ReachRun, member string, value string) {
+		switch member {
+		case "mode":
+			run.Mode = value
+		case "command":
+			run.Command = value
+		case "observed":
+			run.Observed = value
+		case "reason":
+			run.Status, run.Command, run.Observed, run.Reason = "not_run", "", "", value
+		}
+	}
+	for _, member := range []string{"mode", "command", "observed", "reason"} {
+		t.Run(member, func(t *testing.T) {
+			record, result := review(t, false)
+			set(&result.ReachRuns[0], member, strings.Repeat("x", 401))
+			before := revisions(t, record)
+			want := fmt.Sprintf("reach_runs entry %s %s is 401 bytes, over the 400-byte limit; move the detail into the file the result's report member names", result.ReachRuns[0].Path, member)
+			if _, err := SubmitWorkerResult(t.Context(), record.Directory, result); !errors.Is(err, ErrInvalidInput) || !strings.HasSuffix(err.Error(), want) {
+				t.Fatalf("SubmitWorkerResult = %v; want invalid input %q", err, want)
+			}
+			if after := revisions(t, record); after != before {
+				t.Fatalf("revisions = %d, want %d", after, before)
+			}
+			set(&result.ReachRuns[0], member, strings.Repeat("x", 400))
+			mustSubmitWorker(t, record, result)
+		})
+	}
+	record, result := review(t, true)
+	set(&result.ReachRuns[0], "observed", strings.Repeat("x", 401))
+	mustSubmitWorker(t, record, result)
+}
+
 // Oracle: a task without a profile keeps the limits it had: a 7 KiB result
 // with a 1,201-byte summary and a 401-byte finding on two lines is accepted
 // and loads, and a report member, which such a task never took, is refused.

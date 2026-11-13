@@ -182,7 +182,8 @@ assignment is closed; these commands do not stop the runtime process.
 In a task with a profile, `cw task handoff` refuses a result whose `summary`
 exceeds 1,200 bytes, whose finding `summary` spans lines or exceeds 400 bytes,
 or which encodes to more than 6 KiB without `changed_files`, `reach_runs` and
-`requirement_map`. A finding keeps its ID, severity, one line and source
+`requirement_map`; a reach run's `mode`, `command`, `observed` and `reason`,
+and a requirement's `uncovered` reason, are at most 400 bytes each. A finding keeps its ID, severity, one line and source
 `evidence`; the reasoning goes in a report file of at most 512 KiB that
 `report` names. `handoff` stores a copy as `report-<assignment>.md` in the task
 directory and prints that path as `report`; loading the task checks the copy

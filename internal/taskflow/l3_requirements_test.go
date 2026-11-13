@@ -297,7 +297,10 @@ func TestHandoffRequirementMapEntries(t *testing.T) {
 }
 
 // TestHandoffRequirementMapBounds fails when a map at its bounds (256 tests,
-// a 16384-byte uncovered reason) is refused (R11).
+// a 16384-byte uncovered reason) is refused (R11). Under a profile the 256
+// tests still fit, since the 6 KiB handoff cap leaves requirement_map out,
+// but an uncovered reason is capped at 400 bytes: 400 is accepted and 16384
+// refused with the exact error naming the entry, the limit and the report.
 func TestHandoffRequirementMapBounds(t *testing.T) {
 	t.Parallel()
 	f := l3New(t, l3Opts{})
@@ -312,8 +315,20 @@ func TestHandoffRequirementMapBounds(t *testing.T) {
 	}
 	f.mustAssign(f.brief("te2", []string{"p/te_test.go"}, l3Req("R1", "C1")))
 	f.write("p/te_test.go", l3PTests+"\nfunc TestMore(t *testing.T) {}\n")
-	if err := f.submit(f.result("te2", "completed", []string{"p/te_test.go"}, l3Uncovered("R1", strings.Repeat("u", 16384)))); err != nil {
-		t.Errorf("16384-byte uncovered reason refused: %v (R11 bound)", err)
+	want := "requirement_map entry R1 uncovered is 16384 bytes, over the 400-byte limit; move the reasoning into the file the result's report member names"
+	if err := f.submit(f.result("te2", "completed", []string{"p/te_test.go"}, l3Uncovered("R1", strings.Repeat("u", 16384)))); err == nil || err.Error() != want {
+		t.Errorf("16384-byte uncovered reason under a profile: %v, want %q", err, want)
+	}
+	if err := f.submit(f.result("te2", "completed", []string{"p/te_test.go"}, l3Uncovered("R1", strings.Repeat("u", 400)))); err != nil {
+		t.Errorf("400-byte uncovered reason under a profile refused: %v", err)
+	}
+
+	// Without a profile the old R11 bound holds.
+	g := l3New(t, l3Opts{noProfile: true})
+	g.mustAssign(g.brief("te1", []string{"p/te_test.go"}, l3Req("R1", "C1")))
+	g.write("p/te_test.go", l3PTests)
+	if err := g.submit(g.result("te1", "completed", []string{"p/te_test.go"}, l3Uncovered("R1", strings.Repeat("u", 16384)))); err != nil {
+		t.Errorf("16384-byte uncovered reason without a profile refused: %v (R11 bound)", err)
 	}
 }
 

@@ -69,7 +69,22 @@ func handoffCaps(record Record, result WorkerResult) error {
 	// The change sets how many changed_files and reach_runs entries a result
 	// needs, and the brief how many requirement_map entries (R11 allows 256
 	// tests per requirement); cw checks each against the source, the bundle or
-	// the brief, and none can move to the report, so the cap leaves them out.
+	// the brief, and none can move to the report, so the 6 KiB cap leaves them
+	// out. Their free text is capped like a finding's instead (coordinator
+	// decision on #167): a reach run's mode, command, observed and reason, and
+	// a requirement's uncovered reason. changed_files holds no free text.
+	for _, run := range result.ReachRuns {
+		for _, field := range []struct{ name, value string }{{"mode", run.Mode}, {"command", run.Command}, {"observed", run.Observed}, {"reason", run.Reason}} {
+			if len(field.value) > MaxFindingBytes {
+				return fmt.Errorf("reach_runs entry %s %s is %d bytes, over the %d-byte limit; move the detail into the file the result's report member names", run.Path, field.name, len(field.value), MaxFindingBytes)
+			}
+		}
+	}
+	for _, mapping := range result.RequirementMap {
+		if len(mapping.Uncovered) > MaxFindingBytes {
+			return fmt.Errorf("requirement_map entry %s uncovered is %d bytes, over the %d-byte limit; move the reasoning into the file the result's report member names", mapping.Requirement, len(mapping.Uncovered), MaxFindingBytes)
+		}
+	}
 	measured := result
 	measured.ChangedFiles, measured.ReachRuns, measured.RequirementMap = []WorkerChangedFile{}, nil, nil
 	data, err := encode(measured)

@@ -35,8 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
 - A passed check run stays credited across commits and merges that keep the source bytes and modes, go command, `GOFLAGS` and run key, and
   `cw task run` then reuses it without running, except a `git` check; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
-- Under a profile `cw task handoff` caps a result at 6 KiB, its summary at 1,200 bytes and each finding at one 400-byte line, and stores
-  the full report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
+- Under a profile `cw task handoff` caps a result at 6 KiB, its summary at 1,200 bytes and each finding, reach-run or `uncovered` text
+  at 400, and stores the report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
 
 ### Changed
 
