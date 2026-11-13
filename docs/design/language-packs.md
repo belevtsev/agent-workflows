@@ -18,10 +18,10 @@ recorded at start. `go.package-test/v1` is gone: `cw` refuses a record that
 binds it, so start a new task. v2
 runs `go list` offline at verify, inside the task lock, for at most 6 s;
 when the package graph is not ready within 5 s, as on a slow host, verify
-asks for `go test ./...` instead. Known gaps, each with its follow-up: a
-rerun is a failure at the same before-snapshot and `GOFLAGS`, so a
-content-neutral commit between a failure and a pass restores credit
-(follow-up: a per-run content digest); gathering facts inside the lock can
+asks for `go test ./...` instead. A rerun is a failure at the same
+before-snapshot or source digest and `GOFLAGS`, so a content-neutral commit
+between a failure and a pass does not restore credit. Known gaps, each with
+its follow-up: gathering facts inside the lock can
 cost a finishing check its terminal record when both source captures take
 about 8 s or more (follow-up: gather facts before the lock, which would also
 allow a longer budget); `-race` availability is probed for the host at

@@ -506,7 +506,7 @@ func validateRecord(record Record) error {
 		if (run.TestResults != "" || run.TestResultsSHA256 != "") && (run.TestResults != testResultsName(run.ID) || !validSHA256(run.TestResultsSHA256) || run.Status == "running") {
 			return errors.New("invalid stored check run test results binding")
 		}
-		if run.SourceSHA256 != "" && !validSHA256(run.SourceSHA256) || run.EnvKey != "" && !validSHA256(run.EnvKey) {
+		if run.SourceSHA256 != "" && !validSHA256(run.SourceSHA256) || run.EnvKey != "" && !validSHA256(run.EnvKey) || run.ModesSHA256 != "" && !validSHA256(run.ModesSHA256) {
 			return errors.New("invalid stored check run source digest or environment key")
 		}
 	}

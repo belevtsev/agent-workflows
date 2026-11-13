@@ -142,6 +142,10 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 		return Context{}, invalid("phase must be before or final")
 	}
 	var result Context
+	var probes map[string]probedIdentity
+	if phase == "final" {
+		probes = env.probeReuse(ctx, path)
+	}
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
@@ -157,7 +161,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 		}
 		result = Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot, Advisers: record.Advisers}
 		if phase == "final" {
-			if problems := localEvidenceProblems(taskDirectory{root}, *record, snapshot); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, env.credit(ctx, taskDirectory{root}, snapshot, nil, probes)); len(problems) > 0 {
 				return fmt.Errorf("final context requires completed applicable evidence: %s", strings.Join(problems, "; "))
 			}
 			result.EvidenceSHA256, err = evidenceBinding(*record)
@@ -239,14 +243,16 @@ func latestRun(record Record, id string) *CheckRun {
 	return nil
 }
 
-func bindChecks(record Record, snapshot projectctx.Snapshot, ids []string) ([]string, error) {
+// bindChecks returns the latest run of each check in ids, each of which must
+// earn credit at source (credited).
+func bindChecks(record Record, source *creditSource, ids []string) ([]string, error) {
 	if !uniqueIDs(ids) {
 		return nil, errors.New("check references must be distinct check IDs")
 	}
 	runs := []string{}
 	for _, id := range ids {
-		run := latestRun(record, id)
-		if run == nil || !passedAt(*run, snapshot) {
+		run := creditedRun(record, id, source)
+		if run == nil {
 			return nil, fmt.Errorf("check %s lacks a passed run at the current source snapshot", id)
 		}
 		runs = append(runs, run.ID)
@@ -267,11 +273,13 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 	if len(input.Requirements) == 0 && input.Decision == nil {
 		return Record{}, invalid("assessment must update a requirement or the Coordinator decision")
 	}
-	return update(ctx, env, path, func(_ *os.Root, record *Record) error {
+	probes := env.probeReuse(ctx, path)
+	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
+		credit := env.credit(ctx, taskDirectory{root}, snapshot, nil, probes)
 		if input, err = completeAssessment(snapshot, input); err != nil {
 			return err
 		}
@@ -308,7 +316,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 					}
 				}
 				var bindErr error
-				runs, bindErr = bindChecks(*record, snapshot, assessment.CheckIDs)
+				runs, bindErr = bindChecks(*record, credit, assessment.CheckIDs)
 				if bindErr != nil {
 					return bindErr
 				}
@@ -330,7 +338,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 				if len(decision.CheckIDs) == 0 && (!permittedNonExecution(*record) || !nonblank(decision.NonExecutionReason)) {
 					return invalid("resolved Coordinator decision needs check evidence or permitted non-execution reasoning")
 				}
-				runs, err = bindChecks(*record, snapshot, decision.CheckIDs)
+				runs, err = bindChecks(*record, credit, decision.CheckIDs)
 				if err != nil {
 					return err
 				}
@@ -350,7 +358,7 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 	})
 }
 
-func checkStoredRun(artifacts Artifacts, record Record, snapshot projectctx.Snapshot, id string) error {
+func checkStoredRun(artifacts Artifacts, record Record, source *creditSource, id string) error {
 	var run *CheckRun
 	for i := range record.Checks {
 		if record.Checks[i].ID == id {
@@ -363,7 +371,7 @@ func checkStoredRun(artifacts Artifacts, record Record, snapshot projectctx.Snap
 	if run == nil {
 		return errors.New("referenced check run is missing")
 	}
-	ids, err := bindChecks(record, snapshot, []string{run.CheckID})
+	ids, err := bindChecks(record, source, []string{run.CheckID})
 	if err != nil || len(ids) != 1 || ids[0] != id {
 		return errors.New("referenced check run is no longer the current passed run")
 	}
@@ -401,7 +409,8 @@ func evidenceBinding(record Record) (string, error) {
 
 // localEvidenceProblems is shared by final-context preparation and completion.
 // The final adviser checkpoint can only bind already completed evidence.
-func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectctx.Snapshot) []string {
+func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSource) []string {
+	snapshot := source.snapshot
 	problems := workerEvidenceProblems(artifacts, record, snapshot)
 	problem := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 	for _, run := range record.Checks {
@@ -422,7 +431,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectc
 		if err := validateRefs(snapshot, bound.Assessment.Evidence); err != nil {
 			problem("requirement %s: %v", requirement.ID, err)
 		}
-		runs, err := bindChecks(record, snapshot, bound.Assessment.CheckIDs)
+		runs, err := bindChecks(record, source, bound.Assessment.CheckIDs)
 		if err != nil || !slices.Equal(runs, bound.CheckRuns) {
 			problem("requirement %s check references are invalid", requirement.ID)
 		}
@@ -437,7 +446,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectc
 			}
 		}
 		for _, id := range bound.CheckRuns {
-			if err := checkStoredRun(artifacts, record, snapshot, id); err != nil {
+			if err := checkStoredRun(artifacts, record, source, id); err != nil {
 				problem("requirement %s: %v", requirement.ID, err)
 			}
 		}
@@ -457,7 +466,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectc
 		if err := validateRefs(snapshot, decision.Decision.Evidence); err != nil {
 			problem("Codex task decision: %v", err)
 		}
-		runs, err := bindChecks(record, snapshot, decision.Decision.CheckIDs)
+		runs, err := bindChecks(record, source, decision.Decision.CheckIDs)
 		if err != nil || !slices.Equal(runs, decision.CheckRuns) {
 			problem("Codex task decision has invalid check references")
 		}
@@ -465,7 +474,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectc
 			problem("Codex task decision lacks permitted non-execution reasoning")
 		}
 		for _, id := range decision.CheckRuns {
-			if err := checkStoredRun(artifacts, record, snapshot, id); err != nil {
+			if err := checkStoredRun(artifacts, record, source, id); err != nil {
 				problem("Codex task decision: %v", err)
 			}
 		}
@@ -477,6 +486,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, snapshot projectc
 // meaning of source, the adequacy of tests, or the truth of Codex's reasoning.
 func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
+	probes := env.probeReuse(ctx, path)
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
@@ -489,7 +499,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
 		view := newSourceView(snapshot, files)
 		defer view.close()
-		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view})
+		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view, credit: env.credit(ctx, taskDirectory{root}, snapshot, files, probes)})
 		result.report(found)
 		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {

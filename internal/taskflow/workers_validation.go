@@ -179,7 +179,7 @@ func validateWorkerTransition(previous, current Record) error {
 		if result == nil {
 			return errors.New("worker acceptance must follow its result revision")
 		}
-		runs, err := bindChecks(previous, bound.Snapshot, bound.Acceptance.CheckIDs)
+		runs, err := bindChecks(previous, exactCredit(bound.Snapshot), bound.Acceptance.CheckIDs)
 		if err != nil || !slices.Equal(runs, bound.CheckRuns) {
 			return errors.New("stored acceptance did not bind actual latest passed checks")
 		}
