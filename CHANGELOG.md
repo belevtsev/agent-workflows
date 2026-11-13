@@ -78,6 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
 - The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
   and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
+- The architect, design-review, spec-writer and spec-review contracts stand alone: each states the handoff caps and, for the two reviews,
+  the severity grades and the whole growth check, with no link into a coordinator reference ([contracts](skills/task-orchestration/references/contracts/README.md)).
 - The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
   part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
 - The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,

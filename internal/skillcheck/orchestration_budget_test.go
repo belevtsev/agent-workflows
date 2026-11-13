@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 186700
+	orchestrationSumCap    = 184354
 	orchestrationSumTarget = 90000
 )
 
@@ -43,12 +43,12 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/contract-amendment.md":            {10240, 10240, "S3"},
 	"references/contracts/README.md":              {8192, 8192, "S3, S4e"},
 	"references/contracts/adversarial-tester.md":  {4089, 8192, "S4e"},
-	"references/contracts/architect.md":           {7418, 8192, "S4e"},
+	"references/contracts/architect.md":           {6103, 4800, "S4k"},
 	"references/contracts/code-review.md":         {8192, 8192, "S4e"},
-	"references/contracts/design-review.md":       {6851, 8192, "S4e"},
+	"references/contracts/design-review.md":       {6314, 4100, "S4k"},
 	"references/contracts/implementer.md":         {5374, 8192, "S4e"},
-	"references/contracts/spec-review.md":         {5196, 8192, "S4e"},
-	"references/contracts/spec-writer.md":         {4420, 8192, "S4e"},
+	"references/contracts/spec-review.md":         {4891, 3400, "S4k"},
+	"references/contracts/spec-writer.md":         {4225, 3400, "S4k"},
 	"references/contracts/test-engineer.md":       {8192, 8192, "S4e"},
 	"references/contracts/test-review.md":         {5638, 8192, "S4e"},
 	"references/dispatching-reviews-and-tests.md": {10240, 10240, "S4e"},
