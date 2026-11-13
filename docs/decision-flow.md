@@ -25,10 +25,10 @@ truth.
 
 ## Task flow and rework
 
-This diagram covers substantial tasks: independent workstreams, cross-component
-changes (including code that must behave alike on several platforms or shells) or
-consequential uncertainty, and any task when unsure. Small edits and direct factual answers
-retain the lightweight path, including relevant verification and user authorization.
+This diagram covers [substantial tasks](../global/AGENTS.md#substantial-tasks),
+as the working conventions define them. Every other task follows the rule in the
+same section: the agent writes the tests itself, checks its diff against the Code
+Review Rules and commits or pushes only with the user's authorization.
 No required state is skipped, and an unresolved decision blocks the next state.
 
 <img src="diagrams/decision-flow.svg" alt="Decision flow of a substantial task: classify, then the before checkpoint when an open decision requires it, then the authorized work (implement, or plan, draft or review only), check and independent review, the final checkpoint when required, and cw task verify; an unresolved checkpoint leads to investigating the gap and consulting again, and a needed revision leads to revise and recheck" width="820">

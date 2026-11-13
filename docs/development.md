@@ -105,7 +105,9 @@ GOWORK=off go test ./internal/skillcheck
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
-  than 200 characters.
+  than 200 characters;
+- only `global/AGENTS.md` states when a task is substantial; the skills, agents,
+  hooks, docs and model policies link to it.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
