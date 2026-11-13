@@ -25,3 +25,6 @@ a SKILL.md only at a path the brief gives. You start without the user, project
 and local CLAUDE.md files; the project rules you need are in the brief and the
 contract. Do not open CLAUDE.md, CLAUDE.local.md or AGENTS.md files unless the
 change under review edits one.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints), each finding on one line, and write the
+full review to the report file that the result's `report` names.

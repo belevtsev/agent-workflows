@@ -6,30 +6,25 @@ this page links to it instead of restating it.
 ## Tasks
 
 - **Substantial task**: defined once, in the
-  [working conventions](../../../global/AGENTS.md#substantial-tasks). Only a
-  substantial task runs this skill.
+  [working conventions](../../../global/AGENTS.md#substantial-tasks).
 - **Small task**: any other task. Its rule is in the same section.
 - **Open decision**: a design choice with real alternatives that the source
   cannot settle.
 - **Task record**: what `cw task` writes for one task: the plan, assignments,
   handoffs, checks and consultations.
 - **Profile**: `lite` (the default), `standard` or `strict`, fixed at
-  `cw task start`. It sets the stages, round caps and dollar budget
-  ([profiles](../../../docs/operations.md#profiles)).
+  `cw task start` ([profiles](../../../docs/operations.md#profiles)).
 - **Stage**: one step of the [flow](contracts/README.md#flow), such as tests,
   implementation or code review, with its own worker and review.
 - **Checkpoint**: the `before` and `final` consultations of the
-  [decision flow](../SKILL.md#follow-the-decision-flow). The plan requires them
-  or gives a reason to skip them.
-- **Verified**: `cw task verify` passed on the current source. A task is
-  complete, or publishable, only when verified.
+  [decision flow](../SKILL.md#follow-the-decision-flow).
+- **Verified**: `cw task verify` passed on the current source.
 
 ## Roles
 
 One name per role. Do not call a role "the coder" or "the agent".
 
-- **Coordinator**: the agent that loaded this skill. It owns the outcome,
-  consultations, dispatch, integration and verification.
+- **Coordinator**: the agent that loaded this skill.
 - **Worker**: a fresh agent the coordinator dispatches for one stage, with one
   [contract](contracts/README.md).
 - **Spec writer**: writes the spec ([contract](contracts/spec-writer.md)).
@@ -43,8 +38,7 @@ One name per role. Do not call a role "the coder" or "the agent".
 - **Reviewer**: reviews one stage: [spec](contracts/spec-review.md),
   [design](contracts/design-review.md), [tests](contracts/test-review.md) or
   [code](contracts/code-review.md).
-- **Stage author**: the worker whose output a review checks. Findings go back
-  to it.
+- **Stage author**: the worker whose output a review checks.
 - **GitHub worker**: commits, pushes and opens a PR when `cw publish` does not
   fit ([publication](github-worker.md)).
 - **Adviser**: an optional outside model consulted at a checkpoint
