@@ -25,6 +25,10 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 			return err
 		}
 		value, err := taskEnv(deps.config).AssignApprovedWorker(cmd.Context(), directory, input, ownerApproval)
+		if escalation, ok := errors.AsType[taskflow.ErrEscalation](err); ok {
+			writeEscalation(cmd.ErrOrStderr(), escalation)
+			return reportedExit(ExitRefused)
+		}
 		if over, ok := errors.AsType[taskflow.ErrRoundBudget](err); ok {
 			writeRoundBudget(cmd.ErrOrStderr(), over)
 			return reportedExit(ExitRefused)
@@ -39,7 +43,7 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 	}}
 	taskFlag(assign, &directory)
 	assign.Flags().StringVar(&inputFile, "input", "", "Worker brief JSON file, or - for standard input")
-	assign.Flags().StringVar(&ownerApproval, "owner-approval", "", "The owner's own words approving a round past the stage's cap; a person must give them, and cw records them on the assignment")
+	assign.Flags().StringVar(&ownerApproval, "owner-approval", "", "The owner's own words approving a round past the stage's cap, or one more fix round on a finding or requirement still open; a person must give them, and cw records them on the assignment")
 	fullFlag(assign, &full, "the whole task record")
 	return assign
 }
@@ -55,4 +59,18 @@ func writeRoundBudget(w io.Writer, over taskflow.ErrRoundBudget) {
 		}
 	}
 	fmt.Fprintln(w, `Ask the owner whether to spend another round. A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>".`)
+}
+
+// writeEscalation explains a fix round refused on a finding or requirement
+// still open after its fix rounds: each earlier round and the owner's two
+// options.
+func writeEscalation(w io.Writer, escalation taskflow.ErrEscalation) {
+	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", escalation)
+	fmt.Fprintln(w, "Earlier fix rounds:")
+	for _, round := range escalation.History {
+		fmt.Fprintf(w, "  - %s: %s\n", round.Assignment, round.Summary)
+	}
+	fmt.Fprintln(w, "Ask the owner to choose:")
+	fmt.Fprintln(w, `  - approve one more fix round: a person must give the words; only then pass them, unchanged, as --owner-approval "<the owner's words>";`)
+	fmt.Fprintln(w, "  - change the approach: revise the design or the plan instead of fixing the same thing again.")
 }

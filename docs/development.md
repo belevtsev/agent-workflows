@@ -270,7 +270,8 @@ run `status` or context phase, fails validation with "invalid stored …".
   (F1), `source_sha256` and `env_key` (X1); on a worker result,
   `source_sha256` (X1); on the record, `profile`, and on its plan,
   `profile` and `budget` (R1); on a worker brief, `stage`, `fixes` and
-  `repeats` (R2); on a worker assignment, `owner_approval` (R3).
+  `repeats` (R2); on a worker assignment, `owner_approval` (R3); on a
+  worker finding, `reopens` (R4).
   `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
   a record it wrote, which must keep loading and verifying.
 

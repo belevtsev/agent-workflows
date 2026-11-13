@@ -59,7 +59,8 @@ as an independent reviewer).
 1. The handoff result in the shape [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
    describes, under the `review` role, with every finding in `findings`, graded
    under the [shared grading](../worker-handoffs.md#review-stages), and
-   `changed_files: []`.
+   `changed_files: []`. Set `reopens` (`<assignment id>/<finding id>`) when a
+   finding is the earlier one again, so its fix rounds count as one.
 2. When the brief carries a bundle, `reach_runs`: run each changed file in a
    scratch copy in every invocation mode and on every platform and shell its
    reach row names, and record each mode as `ran` (command, what you observed)

@@ -314,7 +314,7 @@ or touches components the last review did not cover, the follow-up reviews those
 closes each superseded round's author and reviewer assignments as `unused`, with
 dispositions, before `cw task verify`.
 
-**Round budget.** `cw task assign` counts author rounds and refuses one past the profile's cap ([round caps](../../../docs/operations.md#round-caps)).
+**Round budget.** `cw task assign` counts author rounds and refuses one past the profile's cap ([round caps](../../../docs/operations.md#round-caps)), and a third fix round on a finding or requirement still open ([fix rounds](../../../docs/operations.md#fix-rounds)): the owner then chooses another round or a change of approach.
 At the cap, the implementer fixes what needs no counted round; every other `blocker` and `major` stays `accepted`, never `deferred`.
 Ask the user, giving each open finding, its evidence and the round it needs; pass only their own words to `--owner-approval`.
 Nothing is published until every open `blocker` and `major` is resolved or rejected; never edit an artefact yourself to stay within the budget.

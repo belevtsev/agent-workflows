@@ -52,7 +52,8 @@ so; the coordinator replaces you with a fresh reviewer.
      contradiction with contract.
 2. The handoff result in the shape [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
    describes, under the `evidence` role, with every finding in `findings` and
-   `changed_files: []`.
+   `changed_files: []`. Set `reopens` (`<assignment id>/<finding id>`) when a
+   finding is the earlier one again, so its fix rounds count as one.
 
 Findings go back to the test engineer through the coordinator's [feedback
 limits](test-engineer.md#separate-authorship-from-execution); review rounds and

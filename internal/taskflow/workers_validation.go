@@ -84,13 +84,16 @@ func validateWorkerRecord(record Record) error {
 		}
 	}
 	results := map[string]bool{}
-	for _, bound := range record.WorkerResults {
+	for i, bound := range record.WorkerResults {
 		assigned := findAssignment(record, bound.Result.AssignmentID)
 		if assigned == nil || results[bound.Result.AssignmentID] || bound.SubmittedAt.Before(assigned.AssignedAt) || bound.SubmittedAt.After(record.UpdatedAt) {
 			return errors.New("stored worker result has a missing/duplicate assignment or invalid time")
 		}
 		results[bound.Result.AssignmentID] = true
 		if err := validateResult(record, *assigned, bound.Result); err != nil {
+			return err
+		}
+		if err := validateReopens(record.WorkerResults[:i], bound.Result); err != nil {
 			return err
 		}
 		if !validSHA256(bound.ScopeSHA256) || bound.SourceSHA256 != "" && !validSHA256(bound.SourceSHA256) || assigned.Brief.Role == "review" && !validSHA256(bound.ReviewEvidenceSHA256) || assigned.Brief.Role != "review" && bound.ReviewEvidenceSHA256 != "" {
@@ -144,9 +147,13 @@ func validateWorkerTransition(previous, current Record) error {
 		if err := validateBriefStage(current, previous.Assignments, returned, assigned.Brief); err != nil {
 			return err
 		}
-		// Like the round rule, the budget depends on the assignments and
-		// acceptances the previous revision holds.
-		if checkRoundApproval(previous, assigned.Brief, assigned.OwnerApproval) != nil {
+		// Like the round rule, the limits depend on the assignments, results
+		// and acceptances the previous revision holds, and on the source the
+		// assignment bound.
+		if err := checkApproval(previous, assigned.Snapshot, assigned.Brief, assigned.OwnerApproval); err != nil {
+			if _, escalation := errors.AsType[ErrEscalation](err); escalation {
+				return fmt.Errorf("stored worker assignment %s fixes a finding or requirement past its fix rounds without the owner's approval", assigned.Brief.ID)
+			}
 			return fmt.Errorf("stored worker assignment %s goes past its stage's round cap without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}
 		if assigned.Brief.Role == "implementation" {

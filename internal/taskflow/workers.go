@@ -92,6 +92,10 @@ type WorkerFinding struct {
 	// non-review findings without it, read as major (see severity).
 	Severity string      `json:"severity,omitempty"`
 	Evidence []SourceRef `json:"evidence"`
+	// Reopens names a finding of an earlier result, as "<assignment
+	// id>/<finding id>", that this one files again, so fix rounds on both
+	// count as one (rounds.go). Record version 5.
+	Reopens string `json:"reopens,omitempty"`
 }
 
 type WorkerResult struct {
@@ -316,14 +320,17 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // attached with a resolved decision, unless its plan declares checkpoints not
 // required; a before checkpoint attached anyway is still validated. A brief
 // that would take its stage past the profile's round cap is refused with
-// ErrRoundBudget; see AssignApprovedWorker.
+// ErrRoundBudget, and one that fixes a finding or requirement still open
+// after the profile's fix rounds with ErrEscalation; see AssignApprovedWorker.
 func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
 	return env.AssignApprovedWorker(ctx, taskPath, brief, "")
 }
 
 // AssignApprovedWorker is AssignWorker that, when ownerWords is not empty,
-// records them as the owner's approval of a round past the stage's cap. It
-// refuses the words when the brief goes past no cap.
+// records them as the owner's approval of the limit the brief passes: a
+// round past the stage's cap, or a fix round past the fix rounds of a
+// finding or requirement still open. It refuses the words when the brief
+// passes no limit.
 func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief WorkerBrief, ownerWords string) (Record, error) {
 	// stored names the copies a successful closure wrote; the update removes
 	// them if it then fails, unless the revision name exists or its absence
@@ -351,21 +358,24 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
-		var approval *OwnerApproval
-		if ownerWords != "" {
-			if !validApprovalText(ownerWords) {
-				return invalidf("owner approval text must be 1..%d bytes without control characters", maxApprovalText)
-			}
-			approval = &OwnerApproval{Text: ownerWords, For: ApprovalRoundBudget}
-		}
-		if err := checkRoundApproval(*record, brief, approval); err != nil {
-			return err
+		if ownerWords != "" && !validApprovalText(ownerWords) {
+			return invalidf("owner approval text must be 1..%d bytes without control characters", maxApprovalText)
 		}
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
 		}
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
+			return err
+		}
+		// A requirement's fix rounds depend on its checks at the source
+		// the assignment binds.
+		var approval *OwnerApproval
+		if ownerWords != "" {
+			limit, _ := passedLimit(*record, snapshot, brief)
+			approval = &OwnerApproval{Text: ownerWords, For: limit}
+		}
+		if err := checkApproval(*record, snapshot, brief, approval); err != nil {
 			return err
 		}
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
@@ -811,6 +821,9 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		if err := validateResult(*record, *assigned, input); err != nil {
+			return asInvalid(err)
+		}
+		if err := validateReopens(record.WorkerResults, input); err != nil {
 			return asInvalid(err)
 		}
 		if err := reviewSeverities(assigned.Brief.Role, input.Findings); err != nil {
