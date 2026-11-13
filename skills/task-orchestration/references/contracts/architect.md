@@ -31,7 +31,7 @@ Write exactly these, in the artefact directory except item 6:
 
 Draw a diagram where it shows boundaries, call direction or ordering better than prose: with the `archify` skill at the `SKILL.md` path the brief gives, as a JSON spec and a static SVG export in the artefact directory, or beside the ADR for one in it. Use no other diagram format.
 
-Keep the handoff result at most 6 KiB, its `summary` at most 1,200 bytes. Put the full reasoning in a report file of at most 512 KiB that the result's `report` names; `cw task handoff` refuses a larger result.
+Keep the handoff result at most 6 KiB, not counting `changed_files`, its `summary` at most 1,200 bytes and each finding one line of at most 400 bytes with its ID, severity and `evidence`. Put the full reasoning in a report file of at most 512 KiB that the result's `report` names; `cw task handoff` refuses a larger result.
 
 ## Quality bar
 

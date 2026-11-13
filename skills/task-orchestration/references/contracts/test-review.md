@@ -65,6 +65,9 @@ finding one line of at most 400 bytes with its ID, severity and source
 
 ## Quality bar
 
+- On a follow-up, say for each previous finding whether the revision resolves
+  it. Review only the diff, but in full any part the earlier review missed or a
+  new approach touched.
 - Every requirement in the contract maps to at least one test in
   `requirement-map.md`, and that test exercises the requirement: read it, do not
   trust the map. `uncovered` needs a reason the contract supports.

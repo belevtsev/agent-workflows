@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 144062
+	orchestrationSumCap    = 144680
 	orchestrationSumTarget = 90000
 )
 
@@ -41,25 +41,25 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/connected-sources.md":             {10240, 10240, "S4f"},
 	"references/consultation-helper.md":           {10240, 10240, "S4d"},
 	"references/contract-amendment.md":            {4803, 3900, "S4l"},
-	"references/contracts/README.md":              {4759, 4100, "S4l"},
+	"references/contracts/README.md":              {4813, 4100, "S4l"},
 	"references/contracts/adversarial-tester.md":  {3191, 2700, "S4i"},
-	"references/contracts/architect.md":           {6103, 4800, "S4k"},
+	"references/contracts/architect.md":           {6217, 4800, "S4k"},
 	"references/contracts/code-review.md":         {8183, 6000, "S4j"},
 	"references/contracts/design-review.md":       {6314, 4100, "S4k"},
-	"references/contracts/implementer.md":         {5128, 3700, "S4j"},
+	"references/contracts/implementer.md":         {5158, 3700, "S4j"},
 	"references/contracts/spec-review.md":         {4891, 3400, "S4k"},
-	"references/contracts/spec-writer.md":         {4225, 3400, "S4k"},
-	"references/contracts/test-engineer.md":       {7245, 5400, "S4j"},
-	"references/contracts/test-review.md":         {4959, 3600, "S4j"},
+	"references/contracts/spec-writer.md":         {4339, 3400, "S4k"},
+	"references/contracts/test-engineer.md":       {7297, 5400, "S4j"},
+	"references/contracts/test-review.md":         {5141, 3600, "S4j"},
 	"references/dispatching-reviews-and-tests.md": {9270, 6600, "S4i"},
 	"references/github-worker-fallback.md":        {4132, 3700, "S4g"},
 	"references/github-worker.md":                 {4000, 3000, "S4g"},
 	"references/global-workflow.md":               {6311, 6000, "S4h"},
 	"references/glossary.md":                      {3010, 4096, "S4a"},
-	"references/hosts.md":                         {7303, 4600, "S4g"},
+	"references/hosts.md":                         {7336, 4600, "S4g"},
 	"references/measure-outcomes.md":              {1304, 800, "S4h"},
 	"references/question-patterns.md":             {1883, 10240, "S4a"},
-	"references/worker-handoffs.md":               {8803, 6900, "S4i"},
+	"references/worker-handoffs.md":               {8842, 6900, "S4i"},
 }
 
 // fileLimit is the most bytes OD-7 allows the file at rel.

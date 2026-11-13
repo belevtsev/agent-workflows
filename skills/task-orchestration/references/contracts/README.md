@@ -43,8 +43,9 @@ advisers, consult them only at the
    integrated source under `code-review.md`, from the
    [brief and bundle](../worker-handoffs.md#review-substantial-changes);
    [route its findings](../dispatching-reviews-and-tests.md#route-code-review-findings).
-   When the plan opted in at classify, dispatch a fresh adversarial tester on
-   the same source beside this review.
+   When the plan opted in at classify, dispatch a fresh
+   [adversarial tester](../dispatching-reviews-and-tests.md#adversarial) on the
+   same source beside this review.
 6. **Final checkpoint**, when required, then **`cw task verify`**.
 7. **Publish** as the [GitHub worker reference](../github-worker.md) says.
 

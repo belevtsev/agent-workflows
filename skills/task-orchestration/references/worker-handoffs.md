@@ -100,7 +100,8 @@ The cap never excuses a defect: fix what the last allowed review finds. A fix
 to code or a gate gets one review limited to it. Check a prose-only fix
 yourself (diff, cited checks, failure scenario); a fresh reviewer's
 confirmation pass, outside the cap, then reports only a fix that fails its
-finding, a code or gate defect, a contradiction, a lost rule or scope creep.
+finding, a code or gate defect, a contradiction, a lost rule or scope creep;
+state that limit in its brief.
 Report any extra review. Before `cw task verify`, close each superseded author
 and reviewer assignment `unused`, with dispositions.
 
@@ -152,7 +153,7 @@ review, outside the cap.
 
 Under Claude Code, each review of a stage after its first uses the
 `review_followup` role. Spec, design and test follow-ups take no bundle. A code
-follow-up asks whether each finding is resolved, whether the changed hunks hold
+follow-up's brief asks whether each finding is resolved, whether the changed hunks hold
 for every caller, consumer and mode in the rows, and what was not re-reviewed;
 it may report beyond the diff. Continue a reviewer only to re-bind unchanged
 source or run missed modes; neither counts against the cap. Order:
