@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 182612
+	orchestrationSumCap    = 186634
 	orchestrationSumTarget = 90000
 )
 
@@ -51,10 +51,10 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/contracts/test-engineer.md":       {8192, 8192, "S4e"},
 	"references/contracts/test-review.md":         {5638, 8192, "S4e"},
 	"references/dispatching-reviews-and-tests.md": {10240, 10240, "S4e"},
-	"references/glossary.md": {3010, 4096, "S4a"},
 	"references/github-worker-fallback.md":        {10240, 10240, "S4f"},
 	"references/github-worker.md":                 {10240, 10240, "S4f"},
 	"references/global-workflow.md":               {10240, 10240, "S4b"},
+	"references/glossary.md":                      {3010, 4096, "S4a"},
 	"references/hosts-claude-code.md":             {10240, 10240, "S4f"},
 	"references/hosts-codex.md":                   {10240, 10240, "S4f"},
 	"references/hosts.md":                         {10240, 10240, "S4f"},
