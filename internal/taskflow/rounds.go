@@ -408,14 +408,16 @@ func fixRounds(record Record) map[FixRef]int {
 // until the latest acceptance of its result disposes it as other than
 // accepted (acknowledged but unresolved): one without a disposition yet is
 // open. A requirement is open while one of its checks lacks a passed run at
-// snapshot (bindChecks).
+// snapshot itself (bindChecks): an assignment stores no source digest, so a
+// run reused at another snapshot does not close it, and load judges the
+// same way.
 func stillOpen(record Record, snapshot projectctx.Snapshot, fix FixRef) bool {
 	if fix.Requirement != "" {
 		at := slices.IndexFunc(record.Plan.Requirements, func(r Requirement) bool { return r.ID == fix.Requirement })
 		if at < 0 {
 			return false
 		}
-		_, err := bindChecks(record, exactCredit(snapshot), record.Plan.Requirements[at].CheckIDs)
+		_, err := bindChecks(record, recordedCredit(snapshot, ""), record.Plan.Requirements[at].CheckIDs)
 		return err != nil
 	}
 	assignment, id, _ := strings.Cut(fix.Finding, "/")
