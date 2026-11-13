@@ -69,7 +69,7 @@ func TestCheckSpecRunsAGoCheckWithTheVerifiedGoCommand(t *testing.T) {
 	}
 	verified := append(checkEnvironment(check), "GOROOT="+want.GOROOT, "GOTOOLCHAIN=local")
 	read, pin, _, err := langpack.ReadGoEnv(t.Context(), want, dir, verified)
-	if err != nil || goEnv == nil || *goEnv != read {
+	if err != nil || goEnv == nil || !reflect.DeepEqual(*goEnv, read) {
 		t.Fatalf("checkSpec go env = %+v, want %+v (%v)", goEnv, read, err)
 	}
 	wantSpec := proc.Spec{
@@ -222,12 +222,36 @@ func TestCheckSpecHoldsTheRunToTheGoEnvItRead(t *testing.T) {
 	if err != nil || tool == nil || goEnv == nil {
 		t.Fatalf("checkSpec: tool %+v, go env %+v, %v", tool, goEnv, err)
 	}
-	want := langpack.GoEnv{GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH}
-	if *goEnv != want {
-		t.Fatalf("precondition: go env read before the rewrite = %+v, want %+v", *goEnv, want)
+	want := langpack.GoEnv{GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH, C: goEnv.C}
+	if goEnv.C == nil || *goEnv != want {
+		t.Fatalf("precondition: go env read before the rewrite = %+v, want %+v with a judged C toolchain", *goEnv, want)
 	}
-	if got, _, _, err := langpack.ReadGoEnv(t.Context(), *tool, dir, spec.Env); err != nil || got != *goEnv {
-		t.Errorf("the run's go command reports %+v (%v), want what go_env recorded, %+v", got, err, *goEnv)
+	// The run's go command must report the go env that go_env recorded. The
+	// C toolchain is cw's own judgement, not a value go reports: the run is
+	// held to it by the pinned CC, CXX and FC, so those pins are compared
+	// instead. Judging spec.Env again would not reproduce it on a host whose
+	// compiler finds its assembler on PATH (gcc on Debian 12 and Ubuntu
+	// 24.04): cw pins COMPILER_PATH there, which a second judgement counts as
+	// a steering variable.
+	reread, _, _, err := langpack.ReadGoEnv(t.Context(), *tool, dir, spec.Env)
+	reported, recorded := reread, *goEnv
+	reported.C, recorded.C = nil, nil
+	if err != nil || reported != recorded {
+		t.Errorf("the run's go command reports %+v (%v), want what go_env recorded, %+v", reported, err, recorded)
+	}
+	for name, judged := range map[string]*langpack.CTool{"CC": goEnv.C.CC, "CXX": goEnv.C.CXX, "FC": goEnv.C.FC} {
+		pinned := ""
+		for _, entry := range spec.Env {
+			if variable, value, ok := strings.Cut(entry, "="); ok && variable == name {
+				pinned = value
+			}
+		}
+		if judged != nil && pinned != judged.Path {
+			t.Errorf("the run's %s is %q, want the judged %q", name, pinned, judged.Path)
+		}
+		if _, statErr := os.Stat(pinned); judged == nil && (pinned == "" || statErr == nil) {
+			t.Errorf("the run's %s is %q for a compiler cw did not record, want a path that does not exist", name, pinned)
+		}
 	}
 	spec.StdoutLimit, spec.StderrLimit = 1<<20, 1<<20
 	got := proc.Run(t.Context(), spec)

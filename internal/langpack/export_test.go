@@ -26,3 +26,27 @@ func TrustGoOnPath(t testing.TB) {
 	}
 	t.Cleanup(func() { resolveGo = saved })
 }
+
+// JudgeHelpers is judgeHelpers: it judges the assembler and linker a
+// compiler at cc names, which a test can fake with a script.
+var JudgeHelpers = judgeHelpers
+
+// JudgeDeveloperDir is judgeDeveloperDir, which a test drives for any system.
+var JudgeDeveloperDir = judgeDeveloperDir
+
+// PretendHost makes judgeC, until t ends, take goos's branch and read the
+// user namespace's ID map from uidMap, and returns whether it has since asked
+// a compiler for its assembler and linker. Call it only from a test that is
+// not parallel, as it replaces package variables.
+func PretendHost(t testing.TB, goos, uidMap string) *bool {
+	t.Helper()
+	savedOS, savedMap, savedRun := hostOS, uidMapFile, runHelpers
+	asked := false
+	hostOS, uidMapFile = goos, uidMap
+	runHelpers = func(ctx context.Context, cc, dir string, env []string) ([]string, []string) {
+		asked = true
+		return savedRun(ctx, cc, dir, env)
+	}
+	t.Cleanup(func() { hostOS, uidMapFile, runHelpers = savedOS, savedMap, savedRun })
+	return &asked
+}

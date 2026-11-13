@@ -1,0 +1,7 @@
+Write a starter plan that cw task start accepts unedited, then print the cw task start command to run next.
+The plan is a substantial task with the --title, the --profile (lite by default; standard or strict), one requirement r1 that repeats the title, and one check bound to it.
+The check is the race command of the first selected pack whose detect file is at the top of --repo: for a Go module, check race runs `go test -race -shuffle=on ./...`.
+Without such a pack the check is test, which runs false and fails until you replace its argv with the command that tests your change.
+Under lite and standard the plan marks the adviser checkpoints not required, with a reason verify lists; strict keeps them required.
+--out names the file to create, plan.json in the current directory by default; cw task init never replaces an existing file.
+It prints text, or one JSON object with --json; with the global --dry-run it prints the same and writes nothing.

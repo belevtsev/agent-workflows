@@ -108,7 +108,7 @@ a task is substantial or replace a gate.
 - Batch each step: `assign` then dispatch in one turn, `handoff && accept` in
   one shell call, embed-and-consult and adjudicate-and-attach in one call each.
 - Delegate investigations over many files or long logs to fresh bounded workers
-  returning conclusions and exact references; past about 200K tokens, hand
+  returning conclusions and exact references; past about 150K tokens, hand
   remaining independent pieces to fresh workers.
 - Rerun a passed check only after the source, inputs or environment change, or
   to resolve a recorded risk. Commit after `cw task verify` and compare trees

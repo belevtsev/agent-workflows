@@ -19,6 +19,7 @@ type taskDeps struct {
 
 // taskCommands are the constructors of the cw task subcommands, one per file.
 var taskCommands = []func(deps taskDeps) *cobra.Command{
+	newTaskInitCommand,
 	newTaskStartCommand,
 	newTaskContextCommand,
 	newTaskRunCommand,

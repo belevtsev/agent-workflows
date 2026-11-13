@@ -8,6 +8,20 @@ the Codex instruction block, paths, exit statuses, what each version promises
 
 ## Install
 
+### Host requirements
+
+Other pages link here rather than repeat these versions.
+
+| Requirement | Claude Code | Codex |
+| --- | --- | --- |
+| Platform | macOS or Linux; Windows is not supported | macOS or Linux; Windows is not supported |
+| Host version | 2.1.292 or newer, because the coordinator passes `effort` on every dispatch; that also covers `omitClaudeMd` for the reviewer and the test engineer (2.1.271). The session-start hook names an older client ([session start](hooks.md#session-start)) | No minimum is checked; the hooks were recorded on 0.167.2 ([recorded host runs](hooks.md#recorded-host-runs)) |
+| `cw` on `PATH` | The release that matches the plugin version ([get `cw`](#get-cw)); the session-start hook names a mismatch | Same |
+| Go | 1.27.1 or newer, to build `cw` and for the Go rule of `cw task verify` | Same |
+| git | On `PATH`; the task record and the commit gate read it | Same |
+| Hooks | Run once the plugin is installed | Run only after you trust them in `/hooks` ([Codex](#codex)) |
+| Worker models | Aliases `opus`, `sonnet` and `haiku` from [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml); an alias resolves to the host's current release | The `sol` and `luna` profiles of [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) name the models |
+
 ### Claude Code plugin
 
 ```sh
@@ -494,6 +508,30 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### Starter plan
+
+`cw task init --title T [--repo DIR] [--profile lite|standard|strict] [--out FILE] [--json]`
+writes a plan that `cw task start` accepts unedited, then prints the
+`cw task start` command to run next:
+
+```sh
+cw task init --title "Add a greeting"
+cw task start --plan plan.json
+```
+
+The plan is a substantial task with the title, the profile (`lite` by default,
+written as the plan's `profile` member), one requirement `r1` that repeats the
+title, and one check bound to it. The check is the `commands.race` of the first
+selected [pack](packs.md) whose `detect` file is at the top of `--repo` (default:
+the current directory); in a Go module it is `race`,
+`go test -race -shuffle=on ./...`. Without such a pack the check is `test`, which
+runs `false` and fails until you replace its argv. Under `lite` and `standard`
+the plan sets `checkpoints.required` to false with a reason, which verify lists;
+`strict` leaves the checkpoints required. `--out` defaults to `plan.json` in the
+current directory, and `cw task init` never replaces an existing file (exit 1).
+It prints text, or one JSON object with `--json`; with `--dry-run` it prints the
+same and writes nothing.
+
 ### Listing tasks
 
 `cw task list` prints the tasks in the task store (`$CW_TASK_STORE`, else the state
@@ -831,7 +869,8 @@ each passed go check ran as a limitation. A run recorded before this has no
 `tool`, and verify says so.
 
 Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
-GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX`, with the
+GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX FC CGO_CFLAGS
+CGO_CPPFLAGS CGO_CXXFLAGS CGO_FFLAGS CGO_LDFLAGS`, with the
 check's environment and in the selected path, and the run records the first
 five values it printed under `go_env` (`GOFLAGS` redacted as in `goflags`);
 the others go only into the run's `env_key` ([run keys](#what-a-check-run-records)).
@@ -846,6 +885,78 @@ for another platform to a `go_<goos>_<goarch>_exec` program on `PATH`. A run
 recorded without `go_env` (record version 4) earns no Go rule credit either:
 run its check again. Verify lists such a run, and one built for another
 platform, as `check <id> passed, but earns no Go evidence credit: …`.
+
+#### The C toolchain of a go check
+
+With cgo on (`CGO_ENABLED=1`, cmd/go's default when it finds a C compiler,
+and needed by `go test -race` on Linux), go builds C code into test binaries
+with the `CC` that `go env` reports, from the environment, a go env file or
+the default `gcc` (Linux) or `clang` (macOS) on `PATH`; C++ files with its
+`CXX`, Fortran files with its `FC` (`gfortran` when empty) and `.swig` files
+with the `swig` on `PATH`. A wrapper compiler can add code that prints `PASS`
+and exits 0 before any test runs. So `cw` judges that toolchain after the
+`go env` read and records it on `go_env` under `c`: `cgo`, the programs `cc`,
+`cxx`, `fc` and `swig` (`path`, `sha256`) and, when it did not verify,
+`unverified` with the reasons. It verifies when:
+
+- `CC`, `CXX` and `FC` are each one program without arguments, named bare and
+  looked up on the check's `PATH`, or by an absolute path. `CC` must be found;
+  `CXX`, `FC` and `swig` are judged when found.
+- No program is a compiler launcher (`ccache`, `sccache`, `distcc`,
+  `distcc-pump`, `icecc`, `buildcache`), by the name it is started by or the
+  file it resolves to: a launcher runs the compiler its configuration chooses,
+  or serves objects from a cache the user can write.
+- Every step from `/` to each program, links included and walked as the
+  kernel walks them (`..` after a link climbs from where the link led), is
+  owned by root or another user, and no directory or file on the way is
+  writable by its group or others. `/usr/bin/gcc` on Linux and the
+  `/usr/bin/clang` shim on macOS pass; a program in a directory the user owns,
+  or reached through a link there, does not.
+- On Linux, `cw` runs in the initial user namespace (`/proc/self/uid_map` is
+  `0 0 4294967295`): in a namespace such as `bwrap --unshare-user --uid 0`,
+  the user's own files appear owned by root.
+- On Linux, the assembler and linker the compiler names with
+  `-print-prog-name=as` and `=ld` pass the same test. When it names a bare
+  program, `cw` looks it up on `PATH` as gcc does (an empty entry is the
+  directory the compiler runs in, a relative entry is taken there).
+- `CGO_CFLAGS`, `CGO_CPPFLAGS`, `CGO_CXXFLAGS`, `CGO_FFLAGS` and
+  `CGO_LDFLAGS` hold only `-O` and `-g` flags, as cmd/go's default `-O2 -g`
+  does.
+- None of `COMPILER_PATH`, `GCC_EXEC_PREFIX`, `LIBRARY_PATH`, `CPATH`,
+  `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`, `OBJC_INCLUDE_PATH`,
+  `CCC_OVERRIDE_OPTIONS`, `GCONV_PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`,
+  `LD_AUDIT`, `LD_RUN_PATH`, `SDKROOT`, `TOOLCHAINS` or a `DYLD_` variable is
+  set, and on macOS `DEVELOPER_DIR` is unset or names the directory
+  `xcode-select` chose.
+
+An `FC` that does not pass leaves the toolchain verified but is not run.
+
+The check then runs, at the end of its environment, with `CGO_ENABLED` as
+read and, with cgo on, the `CGO_*FLAGS` as read, `CC`, `CXX` and `FC` set to
+the paths judged, and `COMPILER_PATH` naming the directories of an assembler
+or linker found on `PATH`. A `CXX` or `FC` that was not found, or an `FC`
+that did not pass, is set to a path under `/nonexistent`, so a package with
+C++ or Fortran files then fails to build. A go env file or `PATH` entry
+changed later changes nothing.
+
+A run with cgo on whose toolchain did not verify still runs and can pass, but
+earns no Go rule credit, and verify lists it as `check <id> passed, but earns
+no Go evidence credit: cgo was on, and cw could not verify its C toolchain:
+…`, followed by how to earn credit: run the check again with the system
+compiler first on `PATH` and `CC` unset, with the variables named unset and
+the `CGO_*FLAGS` holding only `-O` and `-g`, or with `CGO_ENABLED=0` where
+`-race` is not needed. A run recorded before `cw` judged the C toolchain
+earns none either: run its check again. With cgo off nothing is judged.
+
+This shows who can change the toolchain, not what it does. When `cw` runs as
+root, every file passes. On macOS, `cw` checks the `/usr/bin/clang` shim, not
+the Xcode or Command Line Tools toolchain it runs: xcrun picks that from the
+directory `xcode-select` chose, which may be an `Xcode.app` the user owns, and
+keeps a per-user cache of its lookups (`xcrun_db` in the user's temporary
+directory) that the user can write. Nor does it check the assembler or
+linker there. The compiler's own temporary files, a `swig` added to `PATH`
+during the run, a package's `#cgo` directives (which cmd/go checks itself)
+and `pkg-config` are not judged.
 
 When no go command verifies, such as a script named `go` first on `PATH`, a
 `GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
@@ -929,8 +1040,9 @@ Any one of these ends the reuse:
 - a different `GOFLAGS` in `cw`'s environment, for any program, compared
   redacted in `goflags` and whole in `env_key`;
 - a different environment key: a value its `go env` read prints, such as a go
-  env file's `GOFLAGS`, `CGO_ENABLED`, `GOOS` or `CC`, or a variable its
-  `env_passthrough` names;
+  env file's `GOFLAGS`, `CGO_ENABLED`, `GOOS` or `CC`, the path, hash or
+  verdict of the C toolchain it judged, or a variable its `env_passthrough`
+  names;
 - a newer run of the same check that did not pass;
 - a truncated log, or a log that is missing or differs from its hash;
 - a run recorded without `source_sha256`, `modes_sha256` or `env_key`, or a configuration

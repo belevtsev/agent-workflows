@@ -160,7 +160,10 @@ a pattern after a flag that follows a pattern (`./a -v ./b`, where `go test` han
 `.\pkg` patterns earn none. The rule reads the `GOFLAGS`, `GOOS` and `GOARCH`
 that the check's go command reports with `go env` just before the run, so a go
 env file's `GOFLAGS` (`GOENV`, `go env -w`) counts too, and a run for another
-`GOOS`/`GOARCH` than the host's earns none. The run records `GOFLAGS` with
+`GOOS`/`GOARCH` than the host's earns none. With cgo on, a run earns none
+unless `cw` verified its C compiler, assembler, linker, `CGO_*FLAGS` and loader
+variables ([the C toolchain](../../../docs/operations.md#the-c-toolchain-of-a-go-check)).
+The run records `GOFLAGS` with
 compiler and linker flag values redacted, but stores the check's argv verbatim:
 keep secrets out of check argv.
 
