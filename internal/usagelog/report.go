@@ -1,9 +1,10 @@
 // Package usagelog reads one Claude Code session transcript or one Codex
-// rollout, read-only, and reports per-agent token usage. Dollars come only
-// from an amount the transcript itself recorded (Claude cost-state) or from an
-// explicitly supplied price table; prices are never built in, and recorded and
-// price-table dollars are reported separately so an estimate is never
-// presented as a recorded amount.
+// rollout, read-only, and reports per-agent token usage. Import's dollars come
+// only from an amount the transcript itself recorded (Claude cost-state) or
+// from an explicitly supplied price table, reported separately so an estimate
+// is never presented as a recorded amount. EstimateSession prices each request
+// from a table, by default the dated built-in one (BuiltInPrices), and never
+// uses the cost-state.
 package usagelog
 
 import "github.com/belevtsev/agent-workflows/v3/internal/outcomes"

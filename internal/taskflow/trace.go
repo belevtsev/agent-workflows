@@ -366,7 +366,9 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 			continue
 		}
 		isCurrent[run.ID] = true
-		currentRuns = append(currentRuns, judgedRun{run: run, passed: passedAt(*run, snapshot), credited: langpack.GoTestsCredited(evidenceRun(*run)), results: loaded[run.ID]})
+		// Trace judges only runs at the current snapshot; a reused run is not one.
+		passed, _ := credited(record, *run, exactCredit(snapshot))
+		currentRuns = append(currentRuns, judgedRun{run: run, passed: passed, credited: langpack.GoTestsCredited(evidenceRun(*run)), results: loaded[run.ID]})
 	}
 	entry := func(results *storedResults, pkg, name string) langpack.GoTestResult {
 		found, _ := results.lookup(pkg, name)

@@ -356,6 +356,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 			if err := validateAmendmentTransition(record, current); err != nil {
 				return Record{}, "", err
 			}
+			if err := validateUsageTransition(record, current); err != nil {
+				return Record{}, "", err
+			}
 			a, _ := encode(current.Plan)
 			b, _ := encode(record.Plan)
 			if string(a) != string(b) {
@@ -456,6 +459,9 @@ func validateRecord(record Record) error {
 	if err := validateAbandonment(record); err != nil {
 		return err
 	}
+	if err := validateUsage(record); err != nil {
+		return err
+	}
 	if len(record.ID) != 32 || record.EvidenceRevision < 0 || record.CreatedAt.IsZero() || record.UpdatedAt.Before(record.CreatedAt) || record.Advisers == nil || record.Contexts == nil || record.Assessments == nil || record.Consultations == nil || record.Checks == nil || !filepath.IsAbs(record.Baseline.Root) || !filepath.IsAbs(record.Baseline.SelectedPath) {
 		return errors.New("task record is missing required identity or collection fields")
 	}
@@ -503,7 +509,7 @@ func validateRecord(record Record) error {
 		if (run.TestResults != "" || run.TestResultsSHA256 != "") && (run.TestResults != testResultsName(run.ID) || !validSHA256(run.TestResultsSHA256) || run.Status == "running") {
 			return errors.New("invalid stored check run test results binding")
 		}
-		if run.SourceSHA256 != "" && !validSHA256(run.SourceSHA256) || run.EnvKey != "" && !validSHA256(run.EnvKey) {
+		if run.SourceSHA256 != "" && !validSHA256(run.SourceSHA256) || run.EnvKey != "" && !validSHA256(run.EnvKey) || run.ModesSHA256 != "" && !validSHA256(run.ModesSHA256) {
 			return errors.New("invalid stored check run source digest or environment key")
 		}
 	}
@@ -637,6 +643,9 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 		return Record{}, err
 	}
 	if err := validateAmendmentTransition(before, record); err != nil {
+		return Record{}, err
+	}
+	if err := validateUsageTransition(before, record); err != nil {
 		return Record{}, err
 	}
 	data, err := encode(record)

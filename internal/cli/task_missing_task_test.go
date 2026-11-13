@@ -39,6 +39,7 @@ func TestTaskCommandsWithoutTaskAreUsageErrors(t *testing.T) {
 		"show":       {},
 		"timeline":   {},
 		"trace":      {},
+		"usage":      {"--claude-transcript", input},
 		"verify":     {},
 	}
 	task, _, err := NewCommand(h.config).Find([]string{"task"})

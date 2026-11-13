@@ -214,6 +214,10 @@ type CheckRun struct {
 	// reused.
 	SourceSHA256 string `json:"source_sha256,omitempty"`
 	EnvKey       string `json:"env_key,omitempty"`
+	// ModesSHA256 is modesDigest of the source when the run started: each
+	// file's full permission bits, of which source_sha256 keeps only the
+	// owner-executable one. A run without it is never reused.
+	ModesSHA256 string `json:"modes_sha256,omitempty"`
 }
 
 type Attachment struct {
@@ -280,6 +284,9 @@ type Record struct {
 	Assignments       []WorkerAssignment         `json:"assignments,omitempty"`
 	WorkerResults     []BoundWorkerResult        `json:"worker_results,omitempty"`
 	WorkerAcceptances []BoundWorkerAcceptance    `json:"worker_acceptances,omitempty"`
+	// Usage holds the usage samples cw task usage stored, append-only
+	// (usage.go); UsageOf turns them into the task's usage.
+	Usage []UsageSample `json:"usage,omitempty"`
 	// Abandonment, once set, is the record's terminal revision (abandon.go).
 	Abandonment *Abandonment `json:"abandonment,omitempty"`
 }

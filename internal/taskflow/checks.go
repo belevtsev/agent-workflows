@@ -403,11 +403,12 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 
 // runConfig is the configuration a check runs under beyond its argv, its
 // program and its source: every value of a go check's go env read
-// (langpack.ReadGoEnv; none for another program), and each variable the
-// check's env_passthrough names, set to its value in environment or unset.
-// It holds values, so it is only ever keyed (runKey), never stored.
+// (langpack.ReadGoEnv; none for another program), the unredacted GOFLAGS of
+// environment, for any program, and each variable the check's
+// env_passthrough names, set to its value in environment or unset. It holds
+// values, so it is only ever keyed (runKey), never stored.
 func runConfig(goConfig map[string]string, check Check, environment []string) map[string]string {
-	config := map[string]string{}
+	config := map[string]string{"env GOFLAGS": environmentValue(environment, "GOFLAGS")}
 	for name, value := range goConfig {
 		config["go env "+name] = value
 	}
@@ -429,11 +430,12 @@ const runKeySecretFile = "run-key-secret"
 
 // runKey returns env_key for config: langpack.GoEnvKey of it under the
 // task's secret, which it reads from artifacts or, for the task's first
-// keyed run, creates there. A key is comparable only with keys of the same
-// task, and without the secret it confirms no guessed value.
-func runKey(artifacts Artifacts, config map[string]string) (string, error) {
+// keyed run and when create is set, creates there. A key is comparable only
+// with keys of the same task, and without the secret it confirms no guessed
+// value.
+func runKey(artifacts Artifacts, config map[string]string, create bool) (string, error) {
 	secret, err := artifacts.Read(runKeySecretFile, 64)
-	if errors.Is(err, fs.ErrNotExist) {
+	if errors.Is(err, fs.ErrNotExist) && create {
 		secret = make([]byte, 32)
 		if _, err := rand.Read(secret); err != nil {
 			return "", err
@@ -477,6 +479,26 @@ func checkExitCode(got proc.Result) *int {
 // amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
 func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
+	return env.executeCheck(ctx, path, checkID, false)
+}
+
+// RunOrReuseCheck is RunCheck, except that when the check's latest run is
+// reusable now (credited, under the configuration the check would run with)
+// it records and runs nothing and returns that run and why it is reused.
+// CW_NO_REUSE=1 turns reuse off.
+func (env Env) RunOrReuseCheck(ctx context.Context, path, checkID string) (run CheckRun, reused string, err error) {
+	run, err = env.executeCheck(ctx, path, checkID, !reuseOff())
+	if errors.Is(err, errReused) {
+		return run, reasonReused, nil
+	}
+	return run, "", err
+}
+
+// errReused stops executeCheck before it records anything: the check's latest
+// run, which it returns, is reused.
+var errReused = errors.New("reused")
+
+func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse bool) (CheckRun, error) {
 	var run CheckRun
 	var logFile *os.File
 	// The program is resolved before the task lock is taken: resolving a go
@@ -499,6 +521,11 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	spec, tool, goEnv, config, refused := checkSpec(ctx, planned, stored.Baseline.SelectedPath)
 	if refused != nil && ctx.Err() != nil {
 		return run, ctx.Err()
+	}
+	if reuse && refused == nil {
+		if latest, ok := env.reusable(ctx, path, stored, planned, tool, config); ok {
+			return latest, errReused
+		}
 	}
 	// The start revision also reserves its terminal revision before the callback
 	// can create a log or the planned child can execute.
@@ -530,9 +557,13 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
 			return err
 		}
+		modes := ""
+		if sourceSHA256 != "" {
+			modes = modesDigest(snapshot.Root, files)
+		}
 		key := ""
 		if refused == nil {
-			if key, err = runKey(taskDirectory{root}, config); err != nil {
+			if key, err = runKey(taskDirectory{root}, config, true); err != nil {
 				return err
 			}
 		}
@@ -540,7 +571,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key, ModesSHA256: modes}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -669,6 +700,34 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	return run, nil
 }
 
+// reusable returns the latest run of check when credited reuses it under
+// the go command and configuration checkSpec resolved for it now; a run at
+// the current snapshot under another configuration is not reused.
+func (env Env) reusable(ctx context.Context, path string, record Record, check Check, tool *langpack.GoTool, config map[string]string) (CheckRun, bool) {
+	latest := latestRun(record, check.ID)
+	if latest == nil {
+		return CheckRun{}, false
+	}
+	snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
+	if err != nil {
+		return CheckRun{}, false
+	}
+	root, _, err := openTask(path)
+	if err != nil {
+		return CheckRun{}, false
+	}
+	defer root.Close()
+	source := env.credit(ctx, taskDirectory{root}, snapshot, files, nil)
+	source.exact = false
+	source.identity = func(Check) (runIdentity, error) {
+		identity := currentIdentity(check, tool)
+		identity.envKey, err = runKey(taskDirectory{root}, config, false)
+		return identity, err
+	}
+	ok, _ := credited(record, *latest, source)
+	return *latest, ok
+}
+
 // sourceManifestName is the task artefact that lists the source files whose
 // encoded manifest has this SHA-256: SourceDigest of that source.
 func sourceManifestName(sum string) string { return "manifest-" + sum + ".json" }
@@ -710,15 +769,15 @@ func storeSourceManifest(artifacts Artifacts, data []byte, sum string) error {
 	return nil
 }
 
-// toolLimitations names, for the checks whose latest run passed at snapshot
-// and ran go, the go command that ran them: one line per go command, in check
+// toolLimitations names, for the checks whose latest run earns credit at
+// source and ran go, the go command that ran them: one line per go command, in check
 // order, and one for runs recorded before cw verified go, which name none.
-func toolLimitations(record Record, snapshot projectctx.Snapshot) []string {
+func toolLimitations(record Record, source *creditSource) []string {
 	var order []string
 	checks := map[string][]string{}
 	for _, check := range allChecks(record) {
-		run := latestRun(record, check.ID)
-		if run == nil || !passedAt(*run, snapshot) || strings.TrimSuffix(filepath.Base(run.Argv[0]), ".exe") != "go" {
+		run := creditedRun(record, check.ID, source)
+		if run == nil || strings.TrimSuffix(filepath.Base(run.Argv[0]), ".exe") != "go" {
 			continue
 		}
 		key := ""
@@ -745,13 +804,13 @@ func toolLimitations(record Record, snapshot projectctx.Snapshot) []string {
 	return limitations
 }
 
-// passthroughLimitations names, for the checks whose latest run passed at
-// snapshot, in check order, the variables their env_passthrough let through
+// passthroughLimitations names, for the checks whose latest run earns credit
+// at source, in check order, the variables their env_passthrough let through
 // from cw's environment. The run does not record which of them were set.
-func passthroughLimitations(record Record, snapshot projectctx.Snapshot) []string {
+func passthroughLimitations(record Record, source *creditSource) []string {
 	var limitations []string
 	for _, check := range allChecks(record) {
-		if run := latestRun(record, check.ID); len(check.EnvPassthrough) > 0 && run != nil && passedAt(*run, snapshot) {
+		if len(check.EnvPassthrough) > 0 && creditedRun(record, check.ID, source) != nil {
 			limitations = append(limitations, "check "+check.ID+" received "+strings.Join(check.EnvPassthrough, ", ")+" through env_passthrough, where cw's environment set them")
 		}
 	}

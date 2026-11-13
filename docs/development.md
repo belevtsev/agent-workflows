@@ -25,6 +25,10 @@ for both the gate and `internal/usagelog/composition`; extend it there rather
 than splitting commands again. That package, behind `cw metrics import
 --composition`, is experimental: it observes a Claude import through
 `usagelog.Observer`, and `internal/usagelog` does not import it.
+`internal/usagelog` is a core dependency: `cw task usage` imports a transcript
+through it and maps the report to a task usage sample in `internal/cli`, so
+`internal/taskflow` does not import it. The `cw metrics` commands stay
+experimental.
 `cmd/cwdev` holds the maintainer evaluation.
 
 Each `cw task` subcommand has its own constructor, `newTaskXCommand(taskDeps)`,
@@ -267,10 +271,11 @@ run `status` or context phase, fails validation with "invalid stored …".
   The check run member `go_env` (F1) was the first record change after rc.2
   and bumped `Version` to 5; later changes before rc.3, such as R1's
   `profile`, keep 5. Members version 5 adds so far: on a check run, `go_env`
-  (F1), `source_sha256` and `env_key` (X1); on a worker result,
+  (F1), `source_sha256` and `env_key` (X1), `modes_sha256` (X2); on a worker result,
   `source_sha256` (X1); on the record, `profile`, and on its plan,
   `profile` and `budget` (R1); on a worker brief, `stage`, `fixes` and
-  `repeats` (R2); on a worker assignment, `owner_approval` (R3).
+  `repeats` (R2); on a worker assignment, `owner_approval` (R3); on the record,
+  `usage` (C1).
   `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
   a record it wrote, which must keep loading and verifying.
 

@@ -397,7 +397,8 @@ func vvCredited(t *testing.T, id string, ver taskflow.Verification) {
 }
 
 // B22, B23.c: only an earlier failed run with an exit code, at the same
-// before-snapshot and recorded GOFLAGS, makes a pass a rerun.
+// source (before-snapshot or source digest) and recorded GOFLAGS, makes a
+// pass a rerun.
 func TestVerifyV2RerunB22(t *testing.T) {
 	marker := func(t *testing.T) string {
 		m := filepath.Join(t.TempDir(), "fail")
@@ -492,7 +493,9 @@ func TestVerifyV2RerunB22(t *testing.T) {
 		}
 		vvCredited(t, "B22.b", v.verify(t))
 	})
-	t.Run("B22.c a commit between failure and pass", func(t *testing.T) {
+	// Oracle: a commit that leaves the bytes as they were keeps the source
+	// digest, so the pass after it is still a rerun of the failure.
+	t.Run("B22.c a commit of the same bytes between failure and pass", func(t *testing.T) {
 		if _, err := exec.LookPath("git"); err != nil {
 			t.Skip("git is not on PATH")
 		}
@@ -502,6 +505,6 @@ func TestVerifyV2RerunB22(t *testing.T) {
 		_ = os.Remove(m)
 		v.git(t, "commit", "-q", "--allow-empty", "-m", "empty")
 		v.run(t, true)
-		vvCredited(t, "B22.c", v.verify(t))
+		vvWant(t, "B22.c", v.verify(t), []string{vvT1("a")}, []string{vvRerun}, nil)
 	})
 }
