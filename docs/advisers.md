@@ -286,7 +286,9 @@ unavailable coverage, an unresolved adjudication or a task-bound adviser without
 its key (also in a dry run); `2` for a command-line usage error such as an unknown
 flag (including the removed `--with-openai`) or conflicting or missing options,
 reported before any file is read; and `1` for an invalid request, record,
-decision or policy file or an existing output path. Attaching a new
+decision or policy file or an existing output path. The record appears at
+`--output` only when the run writes it in full: a failed or interrupted run
+leaves nothing there, so a retry can use the same path. Attaching a new
 record for the same phase with `cw task consult` replaces the earlier one, as
 long as the record is a new file distinct from the other phase's.
 

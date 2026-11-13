@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/credentials"
 	"github.com/belevtsev/agent-workflows/v3/internal/userconfig"
@@ -64,18 +61,4 @@ func credentialEnvironment(root *cobra.Command, config Config, stderr io.Writer)
 // could not be read.
 func warnUnreadKeys(stderr io.Writer, err error) {
 	fmt.Fprintf(stderr, "warning: saved adviser keys were not read, so none of them is used or opts in an adviser: %v\n", err)
-}
-
-func validKey(key string) string {
-	if key == "" {
-		return ""
-	}
-	invalid := len(key) > 64<<10 || !utf8.ValidString(key) || strings.TrimSpace(key) != key
-	for _, r := range key {
-		invalid = invalid || unicode.IsSpace(r) || unicode.IsControl(r)
-	}
-	if invalid {
-		return "A key is one line of text without spaces or control characters."
-	}
-	return ""
 }

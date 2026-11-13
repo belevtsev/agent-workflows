@@ -889,6 +889,42 @@ func TestCancellationStopsTheRunWithoutARecord(t *testing.T) {
 	}
 }
 
+// Oracle: a cancelled run leaves nothing at --output and nothing else in its
+// directory, so a retry with the same --output writes the record (exit 0).
+func TestCancelledConsultLeavesNoOutputAndTheRetrySucceeds(t *testing.T) {
+	t.Parallel()
+	request, output := fxFiles(t, fxSample)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	server := fxServe(t, func(_ string, _ []byte, _ http.ResponseWriter, request *http.Request) {
+		cancel()
+		<-request.Context().Done()
+	})
+	options := Options{Request: request, Output: output, Policy: fxPolicy("all"), Getenv: fxEnv(fxProviders...),
+		Stdout: new(bytes.Buffer), Stderr: new(bytes.Buffer), collect: server.sender.collect}
+	if code, err := Run(ctx, options); !errors.Is(err, context.Canceled) || code == 0 {
+		t.Fatalf("cancelled run: code %d err %v", code, err)
+	}
+	if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("cancelled run left %s: %v", output, err)
+	}
+	entries, err := os.ReadDir(filepath.Dir(output))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != filepath.Base(request) {
+		t.Fatalf("cancelled run left %v next to the request", entries)
+	}
+	options.DryRun = true
+	retry := fxRun(t, options)
+	if retry.code != 0 {
+		t.Fatalf("retry with the same --output = %+v", retry)
+	}
+	if record := fxRecordAt(t, output); record.get("status") != "dry_run" {
+		t.Fatalf("retry wrote status %v", record.get("status"))
+	}
+}
+
 // Unchanged JSON reader bound: deep nesting is refused instead of exhausting the stack.
 func TestDeepNestingIsRefused(t *testing.T) {
 	t.Parallel()

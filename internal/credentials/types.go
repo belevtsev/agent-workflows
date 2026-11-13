@@ -80,7 +80,10 @@ func knownName(name string) bool {
 	}
 }
 
-func validValue(value string) bool {
+// ValidKey reports whether value can be saved as an adviser key: 1 byte to
+// 64 KiB of UTF-8 text without whitespace or control characters. cw keys set
+// and the store apply this one rule.
+func ValidKey(value string) bool {
 	if len(value) == 0 || len(value) > maxKeyBytes || !utf8.ValidString(value) {
 		return false
 	}

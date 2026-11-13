@@ -16,7 +16,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -178,14 +180,81 @@ func (p *plan) preview() (*object, error) {
 		"providers", previews, "final_decision", pendingDecision()), nil
 }
 
-// reserve claims a private output before network access; earlier evidence is
-// never replaced.
-func reserve(path string) (*os.File, error) {
+var (
+	errOutputExists = errors.New("cannot create a new output file")
+	errNoStatus     = errors.New("consultation record has no status")
+)
+
+// pendingOutput is a private temporary file next to the output. The record is
+// written to it and linked to the output name only when the run succeeds, so
+// a failed or cancelled run leaves no output and a retry can use the same
+// path. A link, unlike a rename, never replaces a file that appeared at the
+// output path meanwhile: earlier evidence is never replaced.
+type pendingOutput struct {
+	*os.File
+	path string
+}
+
+// reserve refuses an output path that already exists and creates the private
+// temporary file in its directory, both before any network access.
+func reserve(path string) (*pendingOutput, error) {
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		return nil, errOutputExists
+	}
+	file, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return nil, errOutputExists
+	}
+	return &pendingOutput{File: file, path: path}, nil
+}
+
+// link is os.Link; a test replaces it to stand for a file system without
+// hard links.
+var link = os.Link
+
+// publish links the written temporary file to the output path. A file system
+// without hard links gets the output created exclusively and written instead.
+// The temporary name is removed in every case.
+func (p *pendingOutput) publish() error {
+	defer p.discard()
+	err := link(p.Name(), p.path)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, fs.ErrExist):
+		return errOutputExists
+	}
+	data, err := os.ReadFile(p.Name())
+	if err != nil {
+		return err
+	}
+	return writeNew(p.path, data)
+}
+
+// writeNew creates path, which must not exist, as a private file holding
+// data, synced to disk. A failed write removes the file it created.
+func writeNew(path string, data []byte) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
-		return nil, errors.New("cannot create a new output file")
+		return errOutputExists
 	}
-	return file, nil
+	_, err = file.Write(data)
+	if err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(path)
+	}
+	return err
+}
+
+// discard closes and removes the temporary file; the output path is untouched.
+func (p *pendingOutput) discard() {
+	_ = p.Close()
+	_ = os.Remove(p.Name())
 }
 
 // writeRecord writes the record to the reserved output and closes it. A failed
@@ -216,8 +285,8 @@ const (
 )
 
 // Run executes one consultation or adjudication and returns its outcome:
-// Complete, Invalid or Incomplete. The error is only for cancellation or a
-// failed write of the reserved record.
+// Complete, Invalid or Incomplete. The error is only for cancellation, a
+// record without a status, or a failed write or link of the record.
 func Run(ctx context.Context, o Options) (int, error) {
 	var record *object
 	var request *plan
@@ -232,7 +301,7 @@ func Run(ctx context.Context, o Options) (int, error) {
 	} else {
 		request, err = o.plan()
 	}
-	var output *os.File
+	var output *pendingOutput
 	if err == nil {
 		output, err = reserve(o.Output)
 	}
@@ -242,22 +311,29 @@ func Run(ctx context.Context, o Options) (int, error) {
 	}
 	if request != nil {
 		if record, err = o.execute(ctx, request); err != nil {
-			_ = output.Close() // the run failed; the reserved file stays empty
+			output.discard() // the run failed; nothing is left at the output path
 			return Invalid, err
 		}
 	}
+	status, err := recordStatus(record, o.Adjudicate != "")
+	if err != nil {
+		output.discard()
+		return Invalid, err
+	}
 	if err := writeRecord(output, record); err != nil {
+		output.discard()
+		return Invalid, err
+	}
+	if err := output.publish(); err != nil {
 		return Invalid, err
 	}
 	if o.Adjudicate != "" {
-		status := record.get("final_decision").(*object).get("status").(string)
 		fmt.Fprintln(o.Stdout, "Coordinator decision "+status)
 		if status != "resolved" {
 			return Incomplete, nil
 		}
 		return Complete, nil
 	}
-	status := record.get("status").(string)
 	fmt.Fprintln(o.Stdout, "Decision consultation "+status+"; Coordinator decision pending")
 	code := Complete
 	if status != "success" && status != "no_advisers_configured" && status != "dry_run" {
@@ -270,6 +346,24 @@ func Run(ctx context.Context, o Options) (int, error) {
 		}
 	}
 	return code, nil
+}
+
+// recordStatus is the record's status, or for an adjudication its final
+// decision's status, read through the typed accessors: a record of another
+// shape is an error, not a panic, and is never written.
+func recordStatus(record *object, adjudication bool) (string, error) {
+	if adjudication {
+		decision, ok := mapping(record.get("final_decision"))
+		if !ok {
+			return "", errNoStatus
+		}
+		record = decision
+	}
+	status, ok := text(record.get("status"))
+	if !ok {
+		return "", errNoStatus
+	}
+	return status, nil
 }
 
 // execute previews the plan, or sends it once to each configured adviser. The
