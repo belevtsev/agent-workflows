@@ -27,7 +27,9 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 		}
 		value, err := taskEnv(deps.config).AssignApprovedWorker(cmd.Context(), directory, input, ownerApprovals)
 		if errors.Is(err, taskflow.ErrOverBudget) {
-			writeOverBudget(cmd.ErrOrStderr(), err)
+			if !writeBudgetStop(cmd.ErrOrStderr(), directory, err) {
+				writeOverBudget(cmd.ErrOrStderr(), err)
+			}
 			return reportedExit(ExitRefused)
 		}
 		if err != nil {
@@ -52,6 +54,14 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 // approves.
 func writeOverBudget(w io.Writer, err error) {
 	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", err)
+	writeRoundNeeds(w, err)
+	fmt.Fprintln(w, `Ask the owner whether to go on. A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>".`)
+}
+
+// writeRoundNeeds explains the assignment-level limits a brief goes past:
+// what a round past its cap would answer, and each earlier fix round on a
+// finding or requirement still open with the owner's two options.
+func writeRoundNeeds(w io.Writer, err error) {
 	if over, ok := errors.AsType[taskflow.ErrRoundBudget](err); ok && len(over.Needs) > 0 {
 		fmt.Fprintln(w, "The round would answer:")
 		for _, need := range over.Needs {
@@ -72,5 +82,4 @@ func writeOverBudget(w io.Writer, err error) {
 		fmt.Fprintln(w, `  - one more fix round: the owner's words, passed as --owner-approval "escalation=<the owner's words>";`)
 		fmt.Fprintln(w, `  - or a change of approach: the owner's words naming the new approach, passed the same way, or the owner disposes of the finding: rejected against evidence, or deferred with the owner's reason.`)
 	}
-	fmt.Fprintln(w, `Ask the owner whether to go on. A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>".`)
 }

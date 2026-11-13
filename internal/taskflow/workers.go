@@ -391,7 +391,9 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, SourceSHA256: sourceSHA256}
 		// A requirement's fix rounds depend on its checks at the source
 		// the assignment binds, judged as load judges them.
-		approvals, err := ownerApprovals(limitsOver(*record, assignmentCredit(assignment), brief), brief.ID, ownerWords)
+		// The budget: at 100% nothing continues; at the stop the owner's
+		// cost-budget words go on the record, the rest on the assignment.
+		approvals, err := approveNewWork(record, limitsOver(*record, assignmentCredit(assignment), brief), "worker brief "+brief.ID, ownerWords, env.now())
 		if err != nil {
 			return err
 		}

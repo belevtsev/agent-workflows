@@ -478,8 +478,22 @@ func checkExitCode(got proc.Result) *int {
 // RunCheck executes only argv recorded in the immutable plan or added by an
 // amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
+// A task at its budget's stop runs nothing and returns ErrBudgetStop, which
+// matches ErrOverBudget; see RunApprovedCheck.
 func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
-	return env.executeCheck(ctx, path, checkID, false)
+	return env.executeCheck(ctx, path, checkID, false, nil)
+}
+
+// RunApprovedCheck is RunCheck, or RunOrReuseCheck when reuse is set and
+// ownerWords is empty, that reads ownerWords, --owner-approval values, as the
+// owner's cost-budget approval at the budget's stop and stores it on the
+// record (approveNewWork). Words given below the stop are refused.
+func (env Env) RunApprovedCheck(ctx context.Context, path, checkID string, reuse bool, ownerWords []string) (run CheckRun, reused string, err error) {
+	run, err = env.executeCheck(ctx, path, checkID, reuse && len(ownerWords) == 0 && !reuseOff(), ownerWords)
+	if errors.Is(err, errReused) {
+		return run, reasonReused, nil
+	}
+	return run, "", err
 }
 
 // RunOrReuseCheck is RunCheck, except that when the check's latest run is
@@ -487,7 +501,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 // it records and runs nothing and returns that run and why it is reused.
 // CW_NO_REUSE=1 turns reuse off.
 func (env Env) RunOrReuseCheck(ctx context.Context, path, checkID string) (run CheckRun, reused string, err error) {
-	run, err = env.executeCheck(ctx, path, checkID, !reuseOff())
+	run, err = env.executeCheck(ctx, path, checkID, !reuseOff(), nil)
 	if errors.Is(err, errReused) {
 		return run, reasonReused, nil
 	}
@@ -498,7 +512,7 @@ func (env Env) RunOrReuseCheck(ctx context.Context, path, checkID string) (run C
 // run, which it returns, is reused.
 var errReused = errors.New("reused")
 
-func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse bool) (CheckRun, error) {
+func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse bool, ownerWords []string) (CheckRun, error) {
 	var run CheckRun
 	var logFile *os.File
 	// The program is resolved before the task lock is taken: resolving a go
@@ -533,6 +547,12 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		check, found := findCheck(*record, checkID)
 		if !found {
 			return invalid("check is not in the explicit coordinator plan")
+		}
+		// A task at its budget's stop runs no new check without the
+		// owner's cost-budget words, and none at 100% (budget.go); a reused
+		// run above runs and records nothing, so it is not new work.
+		if _, err := approveNewWork(record, nil, "check "+checkID, ownerWords, env.now()); err != nil {
+			return err
 		}
 		if err := validateCommand(check.Argv); err != nil {
 			return err

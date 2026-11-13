@@ -342,6 +342,10 @@ At the cap, the implementer fixes what needs no counted round; every other `bloc
 Ask the user, giving each open finding, its evidence and the round it needs; pass only their own words to `--owner-approval`.
 Nothing is published until every open `blocker` and `major` is resolved or rejected; never edit an artefact yourself to stay within the budget.
 
+**Cost budget.** The plugin hook samples the session's usage before each `cw task` command, under Claude Code and, once its hooks are trusted, under Codex. Where no hook runs, run `cw task usage --task <task-id> --codex-session <rollout>` before each `cw task assign` and `cw task run`. Codex keeps the rollout at `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-<time>-<session id>.jsonl`, dated the day the session started; take the file whose name ends with this session's ID, or, when only this session runs, the newest: `ls -t ${CODEX_HOME:-~/.codex}/sessions/*/*/*/rollout-*.jsonl | head -n 1`. Without a sample the task's usage is unknown: nothing stops it, and verify lists it.
+At 80% of the profile's budget ([cost budget](../../../docs/operations.md#cost-budget)) `cw task assign` and `cw task run` exit 4 with the usage. Ask the user: "continue with a higher budget, or stop with the partial result?"
+To continue, pass only their own words, as `--owner-approval "cost-budget=<their words>"` on that `assign` or `run`; cw records them on the task, which raises the stop to 100% once; at 100% only a new task continues. To stop, `verify`, `handoff`, `accept`, `show` and `abandon` still run, but no check runs again, so verify credits only earlier or reused runs.
+
 **Fast paths.** These follow from the rules above and change none of them:
 
 - A first review with no `blocker` or `major` finding needs no follow-up

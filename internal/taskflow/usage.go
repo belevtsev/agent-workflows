@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"time"
 )
 
@@ -145,8 +146,16 @@ func (env Env) RecordUsage(ctx context.Context, path string, sample UsageSample)
 // sample whose dollars turn known or unknown, change source or fall, or rise
 // by at least 5% of the budget; and, while the session's dollars are
 // unknown, one whose tokens turn known or unknown, fall, or grow by at least
-// 5%.
+// 5%. Before all of these, it stores a sample that changes budgetBand.
 func usageWorthStoring(record Record, sample UsageSample) bool {
+	// A sample that moves the task across the budget's stop or its whole
+	// budget is always stored, judged on the task's known total, so the
+	// stop never waits for the 5% rule (budget.go).
+	next := record
+	next.Usage = append(slices.Clip(record.Usage), sample)
+	if budgetBand(next) != budgetBand(record) {
+		return true
+	}
 	var last *UsageSample
 	for i, earlier := range record.Usage {
 		if earlier.Source == sample.Source && earlier.SessionID == sample.SessionID {

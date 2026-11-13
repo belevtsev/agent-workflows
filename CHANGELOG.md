@@ -24,11 +24,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
-  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; only the round caps and fix rounds are enforced so far ([profiles](docs/operations.md#profiles)).
+  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; `cw task assign` enforces the round caps
+  and fix rounds, and it and `cw task run` stop new work at the budget's stop ([profiles](docs/operations.md#profiles)).
 - `cw task assign` refuses a round past its stage's cap with exit 4 and no revision, unless `--owner-approval "<the owner's words>"`
   records the owner's words on the assignment; the plugin hook asks the user to confirm them ([round caps](docs/operations.md#round-caps)).
 - `cw task assign` refuses a third fix round on a finding or requirement still open (exit 4); the owner decides, by words given with
   `--owner-approval escalation=…`, between one more round and a new approach, or disposes of the finding ([fix rounds](docs/operations.md#fix-rounds)).
+- At 80% of the task's estimated dollar budget, `cw task assign` and `cw task run` exit 4 and ask the owner, whose `cost-budget` words go on
+  the task; the plugin hook samples Claude Code and Codex usage before `cw task` commands ([budget stop](docs/operations.md#budget-stop)).
 - Every `cw task` command takes the task ID for `--task` as well as the directory, found in the default task store
   or in `$CW_TASK_STORE`, so a call need not repeat the absolute path ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw gate install` also writes git's `pre-merge-commit` hook, so a merge commit without conflicts meets the gate as a commit does;

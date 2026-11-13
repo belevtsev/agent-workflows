@@ -1,5 +1,5 @@
 {
-  "description": "agent-workflows: load the working conventions at session start, gate git commit and push on a passing cw task verify, and ask before cw task abandon and before cw records an owner approval",
+  "description": "agent-workflows: load the working conventions at session start, gate git commit and push on a passing cw task verify, ask before cw task abandon and before cw records an owner approval, and sample the session's usage before cw task commands",
   "hooks": {
     "SessionStart": [
       {
@@ -34,6 +34,12 @@
             "if": "Bash(*owner-approval*)",
             "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(*cw*task*)",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook task-usage >/dev/null 2>&1; exit 0",
+            "timeout": 15
           }
         ]
       }

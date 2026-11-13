@@ -119,10 +119,10 @@ You ask, answer questions and approve the commit. The agent runs the rest,
 including the `cw` commands below; you can run them yourself to inspect a task.
 
 `cw task usage` estimates a task's dollars from its session transcripts with a
-dated price table ([cost budget](docs/operations.md#cost-budget)). The planned caps, set by the task's profile,
-are unmeasured placeholders: 15 USD or 6M tokens (`lite`), 40 USD or 15M
-(`standard`) and 100 USD or 40M (`strict`). `cw` does not enforce them yet;
-profiles come in a later release candidate.
+dated price table ([cost budget](docs/operations.md#cost-budget)). At 80% of the
+budget the task's profile sets, an unmeasured placeholder of 15 USD (`lite`),
+40 USD (`standard`) or 100 USD (`strict`), the task stops taking new work and
+asks you; usage `cw` cannot measure never stops it ([budget stop](docs/operations.md#budget-stop)).
 
 1. Ask for the change in your repository. Naming the skill starts the workflow;
    a plain request also works, because the skill loads when the task matches.

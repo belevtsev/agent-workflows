@@ -287,6 +287,10 @@ type Record struct {
 	// Usage holds the usage samples cw task usage stored, append-only
 	// (usage.go); UsageOf turns them into the task's usage.
 	Usage []UsageSample `json:"usage,omitempty"`
+	// OwnerApprovals holds the owner's cost-budget approval, which raises
+	// the budget's stop to 100% (budget.go); cost is task-level, so it is
+	// stored here rather than on an assignment.
+	OwnerApprovals []OwnerApproval `json:"owner_approvals,omitempty"`
 	// Abandonment, once set, is the record's terminal revision (abandon.go).
 	Abandonment *Abandonment `json:"abandonment,omitempty"`
 }

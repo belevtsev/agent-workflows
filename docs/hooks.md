@@ -278,7 +278,9 @@ deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
 
 `cw task assign --owner-approval "<the owner's words>"` lets a round past its
 stage's cap, or a third fix round on an open finding or requirement, through and
-records the words ([round caps](operations.md#round-caps), [fix rounds](operations.md#fix-rounds)).
+records the words ([round caps](operations.md#round-caps), [fix rounds](operations.md#fix-rounds)),
+and `cw task assign` or `cw task run --owner-approval "cost-budget=<words>"` lets
+the task go past its budget's stop ([budget stop](operations.md#budget-stop)).
 The agent supplies that text, so with `enforce_verify` on the hook asks before
 every `cw` command it finds with `--owner-approval TEXT` or
 `--owner-approval=TEXT`, quoting each text (three at most, counting the rest),
@@ -402,6 +404,35 @@ regular file in its place, with the reason "cw cannot read the task store
 Codex the command goes ahead ([Codex](#codex)). Commands that the rules below
 let through without reading the store, such as one outside a Git repository,
 still go ahead. A store that does not exist holds no records.
+
+## Usage sampling
+
+A fourth `PreToolUse` handler, for every Bash command whose text contains `cw`
+and then `task` (`Bash(*cw*task*)`), runs `cw hook task-usage` with its output
+discarded, so it never adds a decision to the gate's. Before each `cw task`
+command that names a task with `--task DIR`, `--task=DIR` or a task ID, it
+imports the session's transcript (`transcript_path` in the hook input: a
+Claude Code transcript, or under Codex the session's rollout) within 10
+seconds, with cw's built-in price table, as `cw task usage` does, and stores
+the sample in that task's record when it matters
+([cost budget](operations.md#cost-budget)). The
+[budget stop](operations.md#budget-stop) of the `cw task assign` or
+`cw task run` that follows then reads it. A task ID is looked up in the task
+store that command would use: a `CW_TASK_STORE`, `XDG_STATE_HOME` or `HOME`
+assignment before `cw`, then cw's `--state-dir` and `--home`, then the hook's
+own environment.
+
+It reads no transcript, stores nothing and exits 0 when the command names no
+open task with a budget (none, abandoned, unreadable or started before
+profiles), when the import fails, is incomplete, or skips a malformed line or
+an unreadable file, as for a broken or missing transcript, and on any other
+error; a session's known usage then stays as last sampled. It runs alongside
+the gate's handlers and takes the task's lock only to store a sample. Codex
+ignores the condition and runs it for every shell command; it exits at once
+for a command that names no task. Where Codex has not been told to trust the
+plugin's hooks, nothing samples, and the skill runs
+`cw task usage --codex-session FILE` itself ([Codex](#codex)). A hook timeout
+(15 seconds) stores nothing.
 
 ## Fail-open rules
 
@@ -678,6 +709,9 @@ are recorded inputs, with paths replaced by placeholders.
 - **Matcher.** Codex matches `Bash` but ignores the `if` condition, so
   `cw hook pre-publish` runs for every shell command; it exits at once, without
   output, for a command with no `git commit`, `git push` or `cw task abandon`.
+  `cw hook task-usage` also runs for every shell command; it samples the
+  rollout in `transcript_path` before a `cw task` command and otherwise exits
+  at once ([Usage sampling](#usage-sampling)).
   Codex runs both handlers for each command, at the same time, so `cw` runs
   twice; for `cw task abandon` both denied, and Codex blocked the command once.
 - **Hooks file.** A `hooks` entry in `.codex-plugin/plugin.json` replaces

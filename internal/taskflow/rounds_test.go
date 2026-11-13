@@ -148,7 +148,7 @@ func TestOwnerApprovalsApproveEachLimitOnce(t *testing.T) {
 		{"two limits without words", both, nil, nil, "worker brief b goes past round-budget and cost-budget; each needs the owner's approval"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			approvals, err := ownerApprovals(c.over, "b", c.words)
+			approvals, err := ownerApprovals(c.over, "worker brief b", c.words)
 			if c.refused != "" {
 				if err == nil || !strings.HasPrefix(err.Error(), c.refused) {
 					t.Fatalf("ownerApprovals = %v, want a refusal starting %q", err, c.refused)
