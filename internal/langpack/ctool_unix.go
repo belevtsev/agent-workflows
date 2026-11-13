@@ -24,6 +24,42 @@ const maxLinkHops = 40
 // directory the user owns. It shows who can change the file, not what the
 // file does, and it shows nothing when cw runs as root.
 func trustedFile(path string) (string, error) {
+	current, err := trustedPath(path)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Lstat(current)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+		return "", fmt.Errorf("%s is not an executable regular file", current)
+	}
+	return current, nil
+}
+
+// trustedDir is trustedFile for a directory: it resolves the absolute path to
+// a directory that, like every directory and link on the way, only root or
+// another user can change.
+func trustedDir(path string) (string, error) {
+	current, err := trustedPath(path)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Lstat(current)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("%s is not a directory", current)
+	}
+	return current, nil
+}
+
+// trustedPath resolves the absolute path, following links as the kernel
+// does, and returns it when every entry on the way, the last included,
+// passes trustedEntry.
+func trustedPath(path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", fmt.Errorf("%s is not an absolute path", path)
 	}
@@ -70,13 +106,6 @@ func trustedFile(path string) (string, error) {
 			return "", fmt.Errorf("%s is not a directory", next)
 		}
 		current = next
-	}
-	info, err := os.Lstat(current)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
-		return "", fmt.Errorf("%s is not an executable regular file", current)
 	}
 	return current, nil
 }

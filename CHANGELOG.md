@@ -107,6 +107,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- On macOS, a cgo Go check earns credit only when the developer directory `xcode-select -p` prints is one the user cannot change,
+  and it runs with xcrun's lookup cache off, so a user-owned `Xcode.app` no longer earns it ([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)).
 - A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;
   an existing file there is still never replaced ([consultation](docs/advisers.md#consult-advisers-and-let-the-coordinator-decide)).
 - `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory

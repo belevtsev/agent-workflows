@@ -3,6 +3,7 @@
 package langpack_test
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -201,6 +202,7 @@ func TestReadGoEnvJudgesTheSystemSpecificSteps(t *testing.T) {
 		t.Errorf("Linux with the identity map: unverified %q, helpers asked %v; want no namespace reason and the compiler asked", got, *asked)
 	}
 	asked = langpack.PretendHost(t, "darwin", mapped)
+	langpack.PretendDeveloperDir(t, "/usr", nil)
 	if got := unverified(t, ctEnv(t)); got != "" || *asked {
 		t.Errorf("macOS: unverified %q, helpers asked %v; want verified without reading the ID map or asking the compiler", got, *asked)
 	}
@@ -226,5 +228,51 @@ func TestReadGoEnvJudgesTheSystemSpecificSteps(t *testing.T) {
 		if got := langpack.JudgeDeveloperDir(c.goos, c.value, link); (got != "") != c.refused {
 			t.Errorf("%s: JudgeDeveloperDir = %q, want refused %v", c.name, got, c.refused)
 		}
+	}
+}
+
+// The macOS developer directory (F23, #181 review finding 7): the
+// /usr/bin/clang shim runs the clang of the directory xcode-select -p prints,
+// found through a per-user lookup cache. Oracles: on macOS the run's pin turns
+// xcrun's cache off (xcrun_nocache=1); a developer directory that only root
+// can change, such as /usr, leaves the toolchain verified; one the user owns,
+// as a dragged-in Xcode.app is, or one xcode-select cannot print leaves it
+// unverified, naming why; other systems neither pin the variable nor ask.
+func TestReadGoEnvJudgesTheMacOSDeveloperDirectory(t *testing.T) {
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, ctEnv(t))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	identity := filepath.Join(t.TempDir(), "identity")
+	if err := os.WriteFile(identity, []byte("0 0 4294967295\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	judge := func(t *testing.T) (string, []string) {
+		t.Helper()
+		got, pin, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, ctEnv(t))
+		if err != nil || got.C == nil || !got.C.CGO {
+			t.Fatalf("ReadGoEnv = %+v, %v; want a judged C toolchain with cgo on", got, err)
+		}
+		return got.C.Unverified, pin
+	}
+	langpack.PretendHost(t, "darwin", identity)
+	langpack.PretendDeveloperDir(t, "/usr", nil)
+	if unverified, pin := judge(t); unverified != "" || !slices.Contains(pin, "xcrun_nocache=1") {
+		t.Errorf("macOS, root's developer directory: unverified %q, pin %q; want verified and xcrun_nocache=1 pinned", unverified, pin)
+	}
+	owned := t.TempDir()
+	langpack.PretendDeveloperDir(t, owned, nil)
+	if unverified, _ := judge(t); !strings.Contains(unverified, "the developer directory "+owned) {
+		t.Errorf("macOS, a developer directory the user owns: unverified %q, want it named", unverified)
+	}
+	langpack.PretendDeveloperDir(t, "", errors.New("xcode-select failed"))
+	if unverified, _ := judge(t); !strings.Contains(unverified, "cw cannot read the active developer directory") {
+		t.Errorf("macOS, xcode-select -p failing: unverified %q, want the failure named", unverified)
+	}
+	langpack.PretendHost(t, "linux", identity)
+	langpack.PretendDeveloperDir(t, owned, nil)
+	if unverified, pin := judge(t); strings.Contains(unverified, "developer directory") || slices.Contains(pin, "xcrun_nocache=1") {
+		t.Errorf("Linux: unverified %q, pin %q; want no developer directory judged or pinned", unverified, pin)
 	}
 }

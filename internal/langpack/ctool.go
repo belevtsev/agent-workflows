@@ -98,6 +98,9 @@ var (
 	// runHelpers is judgeHelpers; a test replaces it to see whether judgeC
 	// asks the compiler for its assembler and linker.
 	runHelpers = judgeHelpers
+	// activeDeveloperDir is xcodeSelectPrint; a test replaces it to judge a
+	// developer directory of its choosing on any system.
+	activeDeveloperDir = xcodeSelectPrint
 )
 
 // judgeC judges the C toolchain that the go command which printed values runs
@@ -138,6 +141,15 @@ func judgeC(ctx context.Context, printed map[string]string, dir string, env []st
 	}
 	if reason := judgeDeveloperDir(hostOS, lastValue(env, "DEVELOPER_DIR"), xcodeSelectLink); reason != "" {
 		reasons = append(reasons, reason)
+	}
+	if hostOS == "darwin" {
+		// xcrun caches its tool lookups per user, in a file the user can
+		// write; with the cache off it finds clang in the developer
+		// directory, which must then pass like a compiler.
+		pin = append(pin, "xcrun_nocache=1")
+		if reason := judgeActiveDeveloperDir(ctx, dir, env); reason != "" {
+			reasons = append(reasons, reason)
+		}
 	}
 	if hostOS == "linux" {
 		if reason := judgeUserNamespace(uidMapFile); reason != "" {
@@ -322,6 +334,37 @@ func judgeDeveloperDir(goos, value, selectLink string) string {
 	selected, err := filepath.EvalSymlinks(selectLink)
 	if named, namedErr := filepath.EvalSymlinks(value); err != nil || namedErr != nil || named != selected {
 		return "DEVELOPER_DIR names a developer directory other than the one xcode-select chose"
+	}
+	return ""
+}
+
+// xcodeSelect is macOS's xcode-select, on the sealed system volume.
+const xcodeSelect = "/usr/bin/xcode-select"
+
+// xcodeSelectPrint returns the developer directory that `xcode-select -p`
+// prints in dir with env: the one the xcrun shims, /usr/bin/clang among
+// them, run the C toolchain from (DEVELOPER_DIR, judged before, or the one
+// xcode-select chose).
+func xcodeSelectPrint(ctx context.Context, dir string, env []string) (string, error) {
+	got := proc.Run(ctx, proc.Spec{Path: xcodeSelect, Args: []string{"-p"}, Dir: dir, Env: env, StdoutLimit: goRootLimit, StderrLimit: goRootLimit})
+	printed := string(bytes.TrimSpace(got.Stdout))
+	if got.Stopped || got.Err != nil || got.Code != 0 || got.Overflow || !filepath.IsAbs(printed) || strings.ContainsAny(printed, "\r\n") {
+		return "", fmt.Errorf("`%s -p` did not print one absolute directory", xcodeSelect)
+	}
+	return printed, nil
+}
+
+// judgeActiveDeveloperDir returns why the developer directory that xcrun
+// runs the C toolchain from (activeDeveloperDir) does not pass trustedDir,
+// as a compiler must not: a user-owned Xcode.app holds a clang the user can
+// replace behind the /usr/bin/clang shim. "" when it passes.
+func judgeActiveDeveloperDir(ctx context.Context, dir string, env []string) string {
+	developer, err := activeDeveloperDir(ctx, dir, env)
+	if err != nil {
+		return "cw cannot read the active developer directory: " + err.Error()
+	}
+	if _, err := trustedDir(developer); err != nil {
+		return fmt.Sprintf("the developer directory %s that xcrun runs the C toolchain from is not one that only root or another user can change: %v", developer, err)
 	}
 	return ""
 }

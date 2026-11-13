@@ -50,3 +50,13 @@ func PretendHost(t testing.TB, goos, uidMap string) *bool {
 	t.Cleanup(func() { hostOS, uidMapFile, runHelpers = savedOS, savedMap, savedRun })
 	return &asked
 }
+
+// PretendDeveloperDir makes judgeC, until t ends, take developer as the
+// directory xcode-select -p prints, or fail with err. Call it only from a
+// test that is not parallel, as it replaces a package variable.
+func PretendDeveloperDir(t testing.TB, developer string, err error) {
+	t.Helper()
+	saved := activeDeveloperDir
+	activeDeveloperDir = func(context.Context, string, []string) (string, error) { return developer, err }
+	t.Cleanup(func() { activeDeveloperDir = saved })
+}

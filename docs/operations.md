@@ -929,12 +929,16 @@ and exits 0 before any test runs. So `cw` judges that toolchain after the
   `LD_AUDIT`, `LD_RUN_PATH`, `SDKROOT`, `TOOLCHAINS` or a `DYLD_` variable is
   set, and on macOS `DEVELOPER_DIR` is unset or names the directory
   `xcode-select` chose.
+- On macOS, the developer directory that `xcode-select -p` prints, where the
+  `/usr/bin/clang` shim finds the toolchain it runs, passes the same test as
+  a compiler: a user-owned `Xcode.app` does not.
 
 An `FC` that does not pass leaves the toolchain verified but is not run.
 
 The check then runs, at the end of its environment, with `CGO_ENABLED` as
 read and, with cgo on, the `CGO_*FLAGS` as read, `CC`, `CXX` and `FC` set to
-the paths judged, and `COMPILER_PATH` naming the directories of an assembler
+the paths judged, on macOS `xcrun_nocache=1` (xcrun then skips its per-user
+lookup cache), and `COMPILER_PATH` naming the directories of an assembler
 or linker found on `PATH`. A `CXX` or `FC` that was not found, or an `FC`
 that did not pass, is set to a path under `/nonexistent`, so a package with
 C++ or Fortran files then fails to build. A go env file or `PATH` entry
@@ -950,12 +954,9 @@ the `CGO_*FLAGS` holding only `-O` and `-g`, or with `CGO_ENABLED=0` where
 earns none either: run its check again. With cgo off nothing is judged.
 
 This shows who can change the toolchain, not what it does. When `cw` runs as
-root, every file passes. On macOS, `cw` checks the `/usr/bin/clang` shim, not
-the Xcode or Command Line Tools toolchain it runs: xcrun picks that from the
-directory `xcode-select` chose, which may be an `Xcode.app` the user owns, and
-keeps a per-user cache of its lookups (`xcrun_db` in the user's temporary
-directory) that the user can write. Nor does it check the assembler or
-linker there. The compiler's own temporary files, a `swig` added to `PATH`
+root, every file passes. On macOS, `cw` checks the `/usr/bin/clang` shim and
+the developer directory it runs the toolchain from, down to that directory
+only: not the files inside it, nor the assembler or linker there. The compiler's own temporary files, a `swig` added to `PATH`
 during the run, a package's `#cgo` directives (which cmd/go checks itself)
 and `pkg-config` are not judged.
 
