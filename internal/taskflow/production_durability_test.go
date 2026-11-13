@@ -75,7 +75,7 @@ func TestProductionWriteNewUncertainPublication(test *testing.T) {
 		}
 		return syncFailure
 	})
-	if err == nil || !errors.Is(err, syncFailure) || errors.Is(err, errTaskLocked) || syncCalls != 1 {
+	if err == nil || !errors.Is(err, syncFailure) || errors.Is(err, ErrTaskLocked) || syncCalls != 1 {
 		test.Fatalf("uncertain publication err=%v, sync calls=%d", err, syncCalls)
 	}
 	message := strings.ToLower(err.Error())
@@ -94,7 +94,7 @@ func TestProductionWriteNewUncertainPublication(test *testing.T) {
 		retrySyncs++
 		return nil
 	})
-	if err == nil || errors.Is(err, errTaskLocked) || retrySyncs != 0 || !bytes.Equal(productionReadNamed(test, root, name), data) {
+	if err == nil || errors.Is(err, ErrTaskLocked) || retrySyncs != 0 || !bytes.Equal(productionReadNamed(test, root, name), data) {
 		test.Fatalf("blind retry overwrote/replayed publication: err=%v syncs=%d", err, retrySyncs)
 	}
 	productionOnlyNamed(test, directory, name)
@@ -131,7 +131,7 @@ func TestProductionWriteNewSuccessAndExistingDestination(test *testing.T) {
 			} else if err != nil || syncCalls != 1 || !bytes.Equal(productionReadNamed(test, root, name), candidate) {
 				test.Fatalf("successful no-replace publication = %v, syncs=%d", err, syncCalls)
 			}
-			if errors.Is(err, errTaskLocked) {
+			if errors.Is(err, ErrTaskLocked) {
 				test.Fatal("artifact refusal was misclassified as task lock contention")
 			}
 			productionOnlyNamed(test, directory, name)
@@ -179,7 +179,7 @@ func TestProductionWriteNewConcurrentNoReplace(test *testing.T) {
 		}
 		if err == nil {
 			winners++
-		} else if errors.Is(err, errTaskLocked) {
+		} else if errors.Is(err, ErrTaskLocked) {
 			test.Fatal("no-replace collision was reported as task lock contention")
 		}
 	}

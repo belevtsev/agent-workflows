@@ -40,6 +40,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cw doctor` counts a Graphify runtime as `graphify_cli` only when you may execute it ([development](docs/development.md)).
 - Task rules read the source, the clock and task artefacts through ports (`taskflow.Env`, `cli.Config.Now`),
   so a rule test uses fakes instead of a Git repository or waiting ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- Task rules check consultation records through a validator port and the `internal/consult/record` summary, so
+  `internal/taskflow` no longer links the adviser HTTP providers or `net/http` ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
+- `taskflow` types its refusals (locked, abandoned, revision limit, invalid input), so code and tests tell them from failures with
+  `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 - `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a

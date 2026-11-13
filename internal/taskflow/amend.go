@@ -100,7 +100,7 @@ func parseAmendmentInput(input AmendmentInput) (amendmentRequest, error) {
 func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput) (Record, error) {
 	request, err := parseAmendmentInput(input)
 	if err != nil {
-		return Record{}, err
+		return Record{}, asInvalid(err)
 	}
 	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		if record.Plan.Kind != "substantial" {

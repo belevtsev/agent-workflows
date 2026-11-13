@@ -2,6 +2,7 @@ package cli
 
 import (
 	json "encoding/json/v2"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -160,10 +161,18 @@ func TestTaskAbandonCommand(t *testing.T) {
 			t.Fatalf("first abandon: %v", err)
 		}
 		abandoned := taLoad(t, record.Directory)
-		if _, err := h.taRun(t, "task", "abandon", "--task", record.Directory, "--reason", "second"); err == nil {
-			t.Fatal("second abandon returned nil")
+		// Oracle: through Execute the refusal still matches
+		// taskflow.ErrAbandoned, with its message and exit status 1 unchanged.
+		_, err := h.taRun(t, "task", "abandon", "--task", record.Directory, "--reason", "second")
+		if !errors.Is(err, taskflow.ErrAbandoned) || err.Error() != "task was abandoned; start a new task with 'cw task start'" || ExitCode(err) != ExitFailure {
+			t.Fatalf("second abandon returned %v, want taskflow.ErrAbandoned exiting %d", err, ExitFailure)
 		}
 		taExpectUnchanged(t, abandoned)
+		// A check outside the plan is invalid input, through Execute too.
+		_, err = h.taRun(t, "task", "run", "--task", record.Directory, "--check", "absent")
+		if !errors.Is(err, taskflow.ErrInvalidInput) || ExitCode(err) != ExitFailure {
+			t.Fatalf("run of a check outside the plan returned %v, want taskflow.ErrInvalidInput exiting %d", err, ExitFailure)
+		}
 	})
 
 	t.Run("dry-run is rejected", func(t *testing.T) {

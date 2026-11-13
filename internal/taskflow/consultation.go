@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
+	consultrecord "github.com/belevtsev/agent-workflows/v3/internal/consult/record"
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
@@ -94,12 +94,13 @@ func requestContext(state jsontext.Value, expected Context) error {
 	return nil
 }
 
-// validateCheckpoint revalidates a consultation record with cw consult's own
-// validator, then binds it to this task: the request must carry the expected
-// context, the record must cover exactly the bound advisers at their bound
-// models, and every bound adviser must have been attempted.
-func validateCheckpoint(data []byte, expected Context) (consult.Record, error) {
-	checkpoint, err := consult.ValidateRecord(data)
+// validateCheckpoint revalidates a consultation record with the Env's
+// validator (cw consult's own in production), then binds it to this task: the
+// request must carry the expected context, the record must cover exactly the
+// bound advisers at their bound models, and every bound adviser must have been
+// attempted.
+func (env Env) validateCheckpoint(data []byte, expected Context) (consultrecord.Record, error) {
+	checkpoint, err := env.validateConsultation(data)
 	if err != nil {
 		return checkpoint, err
 	}
@@ -121,9 +122,9 @@ func validateCheckpoint(data []byte, expected Context) (consult.Record, error) {
 		case outcome.RequestedModel != binding[name]:
 			return checkpoint, fmt.Errorf("consultation asked %s for model %s, but the task binds %s", name, outcome.RequestedModel, binding[name])
 		case outcome.Status == "not_configured":
-			variable, _ := consult.CredentialVariable(name)
+			variable, _ := consultrecord.CredentialVariable(name)
 			notConfigured = append(notConfigured, fmt.Sprintf("%s (set %s)", name, variable))
-		case !consult.AttemptedStatus(outcome.Status):
+		case !consultrecord.AttemptedStatus(outcome.Status):
 			return checkpoint, fmt.Errorf("consultation records bound adviser %s as %s", name, outcome.Status)
 		}
 	}
@@ -138,7 +139,7 @@ func validateCheckpoint(data []byte, expected Context) (consult.Record, error) {
 
 func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath string) (Record, error) {
 	if !phaseValid(phase) {
-		return Record{}, errors.New("phase must be before or final")
+		return Record{}, invalid("phase must be before or final")
 	}
 	abs, err := filepath.Abs(inputPath)
 	if err != nil {
@@ -206,7 +207,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 				return errors.New("final consultation context is stale against completed task evidence")
 			}
 		}
-		checkpoint, err := validateCheckpoint(raw, expected)
+		checkpoint, err := env.validateCheckpoint(raw, expected)
 		if err != nil {
 			return err
 		}
@@ -231,30 +232,30 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 // readConsultation revalidates an attached checkpoint against the current
 // expected context (including the adviser binding) and requires a resolved
 // decision. ProviderStatuses holds exactly the bound advisers' outcomes.
-func readConsultation(artifacts Artifacts, record Record, phase string, snapshot projectctx.Snapshot) (consult.Record, error) {
+func (env Env) readConsultation(artifacts Artifacts, record Record, phase string, snapshot projectctx.Snapshot) (consultrecord.Record, error) {
 	attachment, ok := record.Consultations[phase]
 	if !ok {
-		return consult.Record{}, errors.New("required phase artifact is missing")
+		return consultrecord.Record{}, errors.New("required phase artifact is missing")
 	}
 	expected := Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot, Advisers: record.Advisers}
 	if phase == "final" {
 		var err error
 		expected.EvidenceSHA256, err = evidenceBinding(record)
 		if err != nil {
-			return consult.Record{}, err
+			return consultrecord.Record{}, err
 		}
 	}
 	if attachment.Phase != phase || !sameContext(attachment.Context, expected) {
-		return consult.Record{}, errors.New("phase artifact is bound to stale or mismatched source or completed task evidence")
+		return consultrecord.Record{}, errors.New("phase artifact is bound to stale or mismatched source or completed task evidence")
 	}
 	data, err := artifacts.Read(attachment.File, MaxInputBytes)
 	if err != nil {
-		return consult.Record{}, err
+		return consultrecord.Record{}, err
 	}
 	if digest(data) != attachment.SHA256 {
-		return consult.Record{}, errors.New("consultation artifact hash differs")
+		return consultrecord.Record{}, errors.New("consultation artifact hash differs")
 	}
-	checkpoint, err := validateCheckpoint(data, expected)
+	checkpoint, err := env.validateCheckpoint(data, expected)
 	if err != nil {
 		return checkpoint, err
 	}

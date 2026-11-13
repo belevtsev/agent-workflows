@@ -2,7 +2,6 @@
 package taskflow
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	json "encoding/json/v2"
@@ -278,11 +277,18 @@ type Record struct {
 
 // Decode rejects unknown members, duplicate members, trailing JSON and partial
 // input. It is intentionally independent of installer codecs.
+// Its refusals match ErrInvalidInput; a read error does not.
 func Decode(reader io.Reader, value any) error {
 	data, err := io.ReadAll(io.LimitReader(reader, MaxInputBytes+1))
 	if err != nil {
 		return err
 	}
+	return asInvalid(decodeBytes(data, value))
+}
+
+// decodeBytes is Decode of data, untyped: a stored record that it refuses is
+// damaged, not invalid input.
+func decodeBytes(data []byte, value any) error {
 	if len(data) > MaxInputBytes {
 		return errors.New("task JSON exceeds the 8 MiB limit")
 	}
@@ -316,7 +322,13 @@ func uniqueIDs(ids []string) bool {
 	return true
 }
 
+// ValidatePlan applies the plan's defaults and checks it as new input; its
+// refusals match ErrInvalidInput.
 func ValidatePlan(plan *Plan) error {
+	return asInvalid(validatePlan(plan))
+}
+
+func validatePlan(plan *Plan) error {
 	for i := range plan.Checks {
 		if plan.Checks[i].TimeoutSeconds == 0 {
 			plan.Checks[i].TimeoutSeconds = 300
@@ -398,5 +410,3 @@ func validateRecordedPlan(plan Plan) error {
 	}
 	return nil
 }
-
-func decodeBytes(data []byte, value any) error { return Decode(bytes.NewReader(data), value) }

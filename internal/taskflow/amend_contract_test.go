@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -671,6 +672,19 @@ func acExpectRefused(t *testing.T, dir string, in taskflow.AmendmentInput, phras
 	}
 }
 
+// acExpectRefusedIs is acExpectRefused for a refusal whose kind is the
+// point: the error matches target with errors.Is, whatever its wording.
+func acExpectRefusedIs(t *testing.T, dir string, in taskflow.AmendmentInput, target error) {
+	t.Helper()
+	before := acDirState(t, dir)
+	if rec, err := acAdd(dir, in); !errors.Is(err, target) {
+		t.Fatalf("AddChecks = revision %d, %v; want a refusal matching %v", rec.Revision, err, target)
+	}
+	if diff := acStateDiff(before, acDirState(t, dir)); diff != "" {
+		t.Errorf("refused AddChecks changed the task directory: %s", diff)
+	}
+}
+
 // acExpectAccepted asserts acceptance writes exactly one new revision that
 // appends exactly one amendment (R3.a, invariant 7) and returns the loaded
 // record.
@@ -1087,7 +1101,7 @@ func acTestEligibility(t *testing.T) {
 		if _, err := taskflow.Abandon(dir, "contract fixture abandons the task"); err != nil {
 			t.Fatalf("setup: Abandon: %v", err)
 		}
-		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "task was abandoned")
+		acExpectRefusedIs(t, dir, acInput("HEAD", acWidened()), taskflow.ErrAbandoned)
 	})
 	t.Run("B0 precedes B1: abandoned small plan names abandonment", func(t *testing.T) {
 		t.Parallel()
@@ -1095,7 +1109,7 @@ func acTestEligibility(t *testing.T) {
 		if _, err := taskflow.Abandon(dir, "contract fixture abandons the task"); err != nil {
 			t.Fatalf("setup: Abandon: %v", err)
 		}
-		acExpectRefused(t, dir, acInput("HEAD", acWidened()), "task was abandoned")
+		acExpectRefusedIs(t, dir, acInput("HEAD", acWidened()), taskflow.ErrAbandoned)
 	})
 }
 
