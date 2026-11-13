@@ -1,6 +1,6 @@
 ---
 name: task-orchestration
-description: Coordinate substantial work with bounded workers; dispatch independent test engineers, reviewers at every stage and routine GitHub workers.
+description: "Runs a substantial code change as a recorded `cw` task: independent tests, review at every stage, then `cw task verify` before the commit. Use when a change spans several packages or components, must behave alike across platforms or shells, runs to several hundred lines, or has a design choice the code cannot settle, so that it meets the substantial-task rule of the working conventions; or when the user asks for the staged flow. Not for small edits, questions or a review alone."
 ---
 
 # Task orchestration
@@ -63,21 +63,17 @@ satisfies a later state.
    `cw task show --field advisers` is not empty, read the
    [adviser guidance](references/adviser-providers.md), which also applies in
    states 3 and 4 and when checkpoints are not required.
-3. **Implement and verify.** Build new behaviour along the
-   [flow](references/contracts/README.md#flow), with a review loop at every
-   stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
-   implementer ∥ test engineer ⇄ reviewer (tests) → integrate and run →
-   reviewer (code) ⇄ implementer, with an opt-in
-   [adversarial tester](references/contracts/adversarial-tester.md) beside the
-   code review for concurrency, parsing or untrusted input, security or data
-   integrity, or when the user asks. Findings go back to that stage's author; the
+3. **Implement and verify.** Run the [flow](references/contracts/README.md#flow)
+   of the task's profile. The default, `lite`, is implementer ∥ test engineer ⇄
+   reviewer (tests) → integrate and run → reviewer (code) ⇄ implementer.
+   `standard` adds the design stage first, for an open design choice or a
+   public interface change; `strict` adds the spec stage before it, when the
+   user asks or the change touches security, data integrity or concurrency.
+   An opt-in [adversarial tester](references/contracts/adversarial-tester.md)
+   runs beside the code review. Findings go back to that stage's author; the
    [review cap](references/worker-handoffs.md#review-cap) applies per stage,
    and the round budget in the same section bounds spec, design, contract and
-   test-engineer rounds across the whole task (implementer fixes never count);
-   that file says when a small task skips the spec and design stages.
-   Assign and
-   dispatch workers, integrate, run the selected checks and obtain the
-   independent code review.
+   test-engineer rounds across the task (implementer fixes never count).
 4. **Fresh final checkpoint** (when required). Consult with a new request from
    the completed work, current diff, check results and remaining limitations,
    using the `final` context; adjudicate and attach it as in state 2.

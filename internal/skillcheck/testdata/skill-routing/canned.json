@@ -475,6 +475,106 @@
         "effects": [],
         "oracle_accessed": false
       }
+    },
+    {
+      "id": "orchestration-lite-pass",
+      "case_id": "orchestration-lite",
+      "expected_pass": true,
+      "expected_reasons": [],
+      "observation": {
+        "reads": [
+          "skills/task-orchestration/SKILL.md",
+          "skills/task-orchestration/references/contracts/README.md"
+        ],
+        "claims": [
+          "lite-profile",
+          "implementer-parallel-test-engineer",
+          "test-review-then-code-review",
+          "no-spec-or-design-stage"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "orchestration-lite-spec-dispatched",
+      "case_id": "orchestration-lite",
+      "expected_pass": false,
+      "expected_reasons": [
+        "forbidden read: skills/task-orchestration/references/contracts/spec-writer.md",
+        "forbidden claim: spec-writer-dispatched"
+      ],
+      "observation": {
+        "reads": [
+          "skills/task-orchestration/SKILL.md",
+          "skills/task-orchestration/references/contracts/README.md",
+          "skills/task-orchestration/references/contracts/spec-writer.md"
+        ],
+        "claims": [
+          "lite-profile",
+          "implementer-parallel-test-engineer",
+          "test-review-then-code-review",
+          "no-spec-or-design-stage",
+          "spec-writer-dispatched"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "orchestration-design-pass",
+      "case_id": "orchestration-design",
+      "expected_pass": true,
+      "expected_reasons": [],
+      "observation": {
+        "reads": [
+          "skills/task-orchestration/SKILL.md",
+          "skills/task-orchestration/references/contracts/README.md",
+          "skills/task-orchestration/references/contracts/architect.md"
+        ],
+        "claims": [
+          "standard-profile",
+          "architect-and-design-review-first",
+          "design-summary-shown-to-user",
+          "interface-change-noted"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "orchestration-adjacent-pass",
+      "case_id": "orchestration-adjacent",
+      "expected_pass": true,
+      "expected_reasons": [],
+      "observation": {
+        "reads": [],
+        "claims": [
+          "typo-fix-line-8",
+          "no-workers-dispatched"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
+    },
+    {
+      "id": "orchestration-adjacent-false-activation",
+      "case_id": "orchestration-adjacent",
+      "expected_pass": false,
+      "expected_reasons": [
+        "forbidden read: skills/task-orchestration/SKILL.md"
+      ],
+      "observation": {
+        "reads": [
+          "skills/task-orchestration/SKILL.md"
+        ],
+        "claims": [
+          "typo-fix-line-8",
+          "no-workers-dispatched"
+        ],
+        "effects": [],
+        "oracle_accessed": false
+      }
     }
   ]
 }

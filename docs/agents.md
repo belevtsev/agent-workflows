@@ -16,10 +16,14 @@ reviewer never reviews its own work.
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | `opus`, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
 | [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | `sonnet`, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker-fallback.md) |
 
-Substantial work that builds new behaviour has a review loop at every stage:
-spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
-test engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
-implementer → `cw task verify` → a commit with `cw publish`, run by the
+A substantial task runs the `lite` profile by default: implementer ∥ test
+engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
+implementer → `cw task verify`. `standard` adds architect ⇄ reviewer (design)
+first, for an open design choice or a public interface change; `strict` also
+adds spec writer ⇄ reviewer (spec), when the user asks or the change touches
+security, data integrity or concurrency
+([profiles](operations.md#profiles)). Every review loops back to its stage's
+author. The task ends with a commit with `cw publish`, run by the
 coordinator under the user's authorization (the GitHub worker for the fallback
 cases). Findings go
 back to the author of that stage, and the review cap applies to each stage. The
@@ -62,9 +66,10 @@ choice.
 **Why not merge the spec writer and the architect?** The spec is settled, and
 reviewed against its sources, before any design starts. Keeping the authors
 apart is meant to stop the requirements from being bent to fit a design the
-author already has in mind. The spec stage is skipped for a small task, when a
-reviewed spec already exists, or when the request is precise enough to be its
-own spec
+author already has in mind. The spec stage runs only under the `strict`
+profile, and is skipped there for a bug fix, a refactor or a test-only task,
+when a reviewed spec already exists, or when the request is precise enough to
+be its own spec
 ([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
 
 **Why does the test engineer never see the code?** So that the tests cannot
@@ -142,9 +147,10 @@ worker remains an agent for the fallback cases the command refuses, such as
 hunk-level scopes, fork pull requests and content conversions
 ([publication](../skills/task-orchestration/references/github-worker-fallback.md)).
 
-**Why not run design review and test review in parallel?** The tests are
-written from the fixed interface contract, and the contract is fixed only after
-the design review passes, so test review has nothing to review until then
+**Why not run design review and test review in parallel?** Under `standard`
+and `strict` the tests are written from the fixed interface contract, and the
+contract is fixed only after the design review passes, so test review has
+nothing to review until then
 ([contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)).
 What does run in parallel is the implementer and the test engineer, from the
 same contract; test review then runs before integration.

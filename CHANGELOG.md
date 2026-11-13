@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A substantial task runs the `lite` flow by default: implementer and test engineer in parallel, test review, code review; `standard`
+  adds the design stage and `strict` the spec stage ([profiles](docs/operations.md#profiles)); reviewers skip style.
 - "Substantial task" is defined only in the working conventions; a task that is not substantial dispatches no workers, and the agent
   checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
 - The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,

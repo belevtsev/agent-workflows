@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 186634
+	orchestrationSumCap    = 186700
 	orchestrationSumTarget = 90000
 )
 
@@ -35,12 +35,13 @@ type budgetRow struct {
 // slash path relative to the skill directory. S4f covers the four files S4
 // had no item for; S4d gives consultation-helper.md the per-file limit.
 var orchestrationBudget = map[string]budgetRow{
-	"SKILL.md":                                    {8947, 10240, "S3, S4a"},
+	"SKILL.md":                                    {9143, 10240, "S3, S4a"},
 	"references/adviser-providers.md":             {10240, 10240, "S4d"},
 	"references/base-merge.md":                    {10240, 10240, "S4b"},
 	"references/connected-sources.md":             {10240, 10240, "S4f"},
 	"references/consultation-helper.md":           {10240, 10240, "S4d"},
-	"references/contracts/README.md":              {14497, 8192, "S3, S4e"},
+	"references/contract-amendment.md":            {10240, 10240, "S3"},
+	"references/contracts/README.md":              {8192, 8192, "S3, S4e"},
 	"references/contracts/adversarial-tester.md":  {4089, 8192, "S4e"},
 	"references/contracts/architect.md":           {7418, 8192, "S4e"},
 	"references/contracts/code-review.md":         {8192, 8192, "S4e"},
