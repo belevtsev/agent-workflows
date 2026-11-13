@@ -33,7 +33,7 @@ inherited model. See
 [Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
 The coordinator profile's effort is `high` by default; `settings.json`
 `effortLevel` is the user's to set. `settings.json` rejects `max`; use
-`/effort max` or `/effort xhigh` for a session.
+`/effort max` or `/effort xhigh` for a session when the user asks for it.
 
 Codex has no per-agent switch to keep instruction files out of a worker: it
 injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
