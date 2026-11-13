@@ -115,6 +115,37 @@ func TestReuseE2EOneByteEditDemandsARun(t *testing.T) {
 	}
 }
 
+const reuseGitPlan = `{"title":"Whitespace","kind":"small",
+ "requirements":[{"id":"clean","description":"No whitespace errors since base","check_ids":["whitespace"],"allow_non_execution":false}],
+ "checks":[{"id":"whitespace","argv":["git","diff","--check","base","HEAD"],"timeout_seconds":60}]}`
+
+// Oracle: a git check reads HEAD, which the source digest does not cover.
+// git diff --check base HEAD passes while trailing whitespace is uncommitted;
+// after git commit -am of the same bytes, cw task run does not reuse the pass
+// but runs the check, which now fails (exit 5), and verify lists no reuse.
+func TestReuseE2EGitCheckIsNeverReused(t *testing.T) {
+	e := newEvidenceE2E(t)
+	e.setUpModule()
+	e.git("tag", "base")
+	task, code, output := e.start(e.store, "plan.json", reuseGitPlan)
+	if code != 0 {
+		t.Fatalf("start: exit %d: %s", code, output)
+	}
+	e.task = task
+	e.write("alpha/alpha.go", alphaSource+"func Spaced() {}   \n")
+	if code, status := e.runStatus("whitespace", nil); code != 0 || status != "passed" {
+		t.Fatalf("whitespace before the commit: exit %d, status %q; want 0, passed", code, status)
+	}
+	e.git("commit", "-qam", "trailing whitespace")
+	runs := e.executedRuns()
+	if code, status := e.runStatus("whitespace", nil); code != 5 || status != "failed" || e.executedRuns() != runs+1 {
+		t.Errorf("whitespace after the commit: exit %d, status %q, %d runs; want 5, failed, %d", code, status, e.executedRuns(), runs+1)
+	}
+	if verification := e.verifyEnv(); reusedLimitation(verification, "whitespace") {
+		t.Errorf("verify lists the git check as reused: %q", verification.Limitations)
+	}
+}
+
 // Oracle: under another GOFLAGS the committed pass earns no credit, and cw
 // task run executes the check.
 func TestReuseE2EOtherGOFLAGSGetNoCredit(t *testing.T) {
