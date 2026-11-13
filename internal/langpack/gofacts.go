@@ -79,10 +79,20 @@ func LoadGoFacts(ctx context.Context, dir string, env []string, source Source) G
 	return facts
 }
 
-// findGo returns the first usable go file in env's search list (its last
-// PATH entry, else the process PATH), or "" when there is none. Empty and
-// relative entries are skipped.
+// findGo returns the first usable go file in env's search list (findOnPath),
+// or "" when there is none.
 func findGo(env []string) string {
+	name := "go"
+	if runtime.GOOS == "windows" {
+		name = "go.exe"
+	}
+	return findOnPath(env, name)
+}
+
+// findOnPath returns the first usable file named name in env's search list
+// (its last PATH entry, else the process PATH), or "" when there is none.
+// Empty and relative entries are skipped, as cmd/go's lookups skip them.
+func findOnPath(env []string, name string) string {
 	list, found := "", false
 	for _, entry := range env {
 		if value, ok := strings.CutPrefix(entry, "PATH="); ok {
@@ -91,10 +101,6 @@ func findGo(env []string) string {
 	}
 	if !found {
 		list = os.Getenv("PATH")
-	}
-	name := "go"
-	if runtime.GOOS == "windows" {
-		name = "go.exe"
 	}
 	for _, entry := range filepath.SplitList(list) {
 		if entry == "" || !filepath.IsAbs(entry) {

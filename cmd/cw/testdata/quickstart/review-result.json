@@ -1,0 +1,6 @@
+{"assignment_id": "review-1", "status": "completed",
+ "summary": "Goodbye mirrors Hello and the race check covers the package. No findings.",
+ "evidence": [{"path": "greet.go", "start_line": 7, "end_line": 8}],
+ "changed_files": [], "check_ids": [], "findings": [], "uncertainties": [],
+ "reach_runs": [{"path": "greet.go", "mode": "go test", "status": "ran",
+                 "command": "go test ./...", "observed": "ok"}]}
