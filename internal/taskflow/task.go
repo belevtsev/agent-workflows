@@ -134,6 +134,10 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 		return Context{}, invalid("phase must be before or final")
 	}
 	var result Context
+	var probes map[string]probedIdentity
+	if phase == "final" {
+		probes = env.probeReuse(ctx, path)
+	}
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
@@ -149,7 +153,7 @@ func (env Env) PrepareContext(ctx context.Context, path, phase string) (Context,
 		}
 		result = Context{TaskID: record.ID, Phase: phase, Snapshot: snapshot, Advisers: record.Advisers}
 		if phase == "final" {
-			if problems := localEvidenceProblems(taskDirectory{root}, *record, env.credit(ctx, taskDirectory{root}, *record, snapshot, nil)); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, env.credit(ctx, taskDirectory{root}, snapshot, nil, probes)); len(problems) > 0 {
 				return fmt.Errorf("final context requires completed applicable evidence: %s", strings.Join(problems, "; "))
 			}
 			result.EvidenceSHA256, err = evidenceBinding(*record)
@@ -261,12 +265,13 @@ func (env Env) Assess(ctx context.Context, path string, input AssessmentInput) (
 	if len(input.Requirements) == 0 && input.Decision == nil {
 		return Record{}, invalid("assessment must update a requirement or the Coordinator decision")
 	}
+	probes := env.probeReuse(ctx, path)
 	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
-		credit := env.credit(ctx, taskDirectory{root}, *record, snapshot, nil)
+		credit := env.credit(ctx, taskDirectory{root}, snapshot, nil, probes)
 		if input, err = completeAssessment(snapshot, input); err != nil {
 			return err
 		}
@@ -473,6 +478,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 // meaning of source, the adequacy of tests, or the truth of Codex's reasoning.
 func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
+	probes := env.probeReuse(ctx, path)
 	_, err := update(ctx, env, path, func(root *os.Root, record *Record) error {
 		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
@@ -485,7 +491,7 @@ func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 		result = Verification{TaskID: record.ID, CurrentSnapshot: snapshot, SourceSHA256: digest(manifest), CheckedAt: env.now()}
 		view := newSourceView(snapshot, files)
 		defer view.close()
-		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view, credit: env.credit(ctx, taskDirectory{root}, *record, snapshot, files)})
+		found := runVerifyRules(ctx, verifyInput{env: env, artifacts: taskDirectory{root}, record: *record, snapshot: snapshot, files: files, view: view, credit: env.credit(ctx, taskDirectory{root}, snapshot, files, probes)})
 		result.report(found)
 		after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 		if err != nil {

@@ -45,7 +45,7 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 	}}
 	taskFlag(run, &directory)
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan or added by 'cw task add-checks'")
-	fullFlag(run, &full, "the whole check run record")
+	fullFlag(run, &full, "the whole check run record (a reused run prints its summary with status reused)")
 	run.Flags().BoolVar(&force, "force", false, "Run the check even when its latest passed run is reusable (CW_NO_REUSE=1 does the same)")
 	return run
 }

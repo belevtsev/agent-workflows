@@ -570,16 +570,20 @@ Besides its log, exit code and the go command, each check run records two keys
 in its start revision:
 
 - `source_sha256`: the SHA-256 of the source manifest (path, mode and content
-  hash of each eligible file) when the run started, the same digest a verified
+  hash of each eligible file; the mode keeps only the owner-executable bit)
+  when the run started, the same digest a verified
   record stores as `verification.source_sha256`. Committing, staging or
   switching branches over the same bytes leaves it unchanged. The task
   directory keeps that manifest as `manifest-<source_sha256>.json`, written
   once per digest. A worker result records the same member for the source it
   was submitted at. When that manifest would exceed 8 MiB, the run or result
   is recorded without `source_sha256` and no manifest is kept.
+- `modes_sha256`: the SHA-256 of each eligible file's path and full permission
+  bits when the run started, which `source_sha256` does not cover.
 - `env_key`: an HMAC-SHA256 of what the run's environment selects: for a go
-  check, every value its `go env` read printed; for any check, each variable
-  its `env_passthrough` names, set to its value or unset. Its key is a random
+  check, every value its `go env` read printed; for any check, the `GOFLAGS`
+  of `cw`'s environment, unredacted, and each variable its `env_passthrough`
+  names, set to its value or unset. Its key is a random
   32-byte secret of the task, kept in the task directory as `run-key-secret`
   (mode 0600) from the first run. No value is stored, and without that file a
   printed `env_key` does not confirm a guessed value, even a weak password.
@@ -595,32 +599,43 @@ A passed check run stays creditable across commits, staging, branch switches
 and merges that leave the source bytes as they were. A run at the current
 snapshot earns credit as before. A run at another snapshot is reused when it is
 the latest run of its check, passed with exit status 0 without the source
-changing while it ran, and its `source_sha256`, go command (`tool`: path,
-version, SHA-256 and `GOROOT`), `goflags` and `env_key` equal what the check
-would run under now. `cw task verify` lists each reused run as a limitation,
-`check <id> reuses run <run-id>, which passed at the same source digest, go
-command, GOFLAGS and environment key at commit <head>; it was not run again`,
-and `cw task assess` binds it. `cw task run` then runs nothing: it prints the
-run with `"status":"reused"` and its `reason`, also under `--full`, records
-nothing and exits 0. Worker results and acceptances, and the requirement
+changing while it ran, its program is not `git`, and its `source_sha256`,
+`modes_sha256`, go command (`tool`: path, version, SHA-256 and `GOROOT`),
+`goflags` and `env_key` equal what the check would run under now. `cw task
+verify` lists each reused run as a limitation, `check <id> reuses run
+<run-id>, which passed at the same source digest, permission bits, go command,
+GOFLAGS and environment key at commit <head>; it was not run again`, and `cw
+task assess` binds it. `cw task run` then runs nothing: it prints the run's
+summary with `"status":"reused"` and its `reason`, also under `--full`,
+records nothing and exits 0. Verify, assess and the final context read the go
+command, its `go env` and the key before they take the task lock, as `cw task
+run` does. Worker results and acceptances, and the requirement
 trace, still bind only a run at the current snapshot.
 
 Any one of these ends the reuse:
 
-- a change to an eligible source byte, path or mode (a different `source_sha256`);
+- a check whose program is `git`: its answer can depend on `HEAD`, the index
+  or history, which `source_sha256` does not cover, so it is never reused;
+- a change to an eligible source byte, path or owner-executable bit (a
+  different `source_sha256`), or to any file's permission bits (a different
+  `modes_sha256`);
 - a different go binary or version, or another `GOROOT`;
-- a different `GOFLAGS` in `cw`'s environment;
+- a different `GOFLAGS` in `cw`'s environment, for any program, compared
+  redacted in `goflags` and whole in `env_key`;
 - a different environment key: a value its `go env` read prints, such as a go
   env file's `GOFLAGS`, `CGO_ENABLED`, `GOOS` or `CC`, or a variable its
   `env_passthrough` names;
 - a newer run of the same check that did not pass;
 - a truncated log, or a log that is missing or differs from its hash;
-- a run recorded without `source_sha256` or `env_key`, or a configuration
+- a run recorded without `source_sha256`, `modes_sha256` or `env_key`, or a configuration
   `cw` cannot read now (no verified go, no `run-key-secret`).
 
 For a check whose program is not `go`, `cw` records no go command, so a
 program it starts in turn, such as the go a `make` target runs, is not compared;
-a script in the source is, through `source_sha256`. Other variables `cw` passes
+a script in the source is, through `source_sha256`. Any program that reads git
+state, such as a script or `make` target that runs `git diff`, is reused
+across a commit or staging of the same bytes: run it with `cw task run
+--force`. Other variables `cw` passes
 to a check are not part of the key: a test that
 reads one of them, other than through `env_passthrough`, is reused when it
 changes. Run it again with `cw task run --force`. `CW_NO_REUSE=1` turns reuse

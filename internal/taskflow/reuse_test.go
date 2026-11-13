@@ -18,6 +18,7 @@ type reuseFixture struct {
 	source   *creditSource
 	identity runIdentity
 	err      error
+	modes    string
 }
 
 func newReuseFixture(t *testing.T) *reuseFixture {
@@ -34,13 +35,15 @@ func newReuseFixture(t *testing.T) *reuseFixture {
 	tool := &langpack.GoTool{Path: "/go/bin/go", Version: "go1.27.4", SHA256: strings.Repeat("b", 64), GOROOT: "/go"}
 	exit := 0
 	run := CheckRun{ID: "r1", CheckID: "unit", Status: "passed", Argv: []string{"go", "test", "./..."}, Before: earlier, After: &earlier, ExitCode: &exit,
-		Log: "check-r1.log", LogSHA256: digest(log), Tool: tool, GOFLAGS: "", SourceSHA256: sum, EnvKey: strings.Repeat("c", 64)}
+		Log: "check-r1.log", LogSHA256: digest(log), Tool: tool, GOFLAGS: "", SourceSHA256: sum, EnvKey: strings.Repeat("c", 64), ModesSHA256: strings.Repeat("9", 64)}
 	f := &reuseFixture{
 		record:   Record{Plan: Plan{Checks: []Check{{ID: "unit", Argv: run.Argv}}}, Checks: []CheckRun{run}},
 		identity: runIdentity{tool: new(*tool), goflags: "", envKey: run.EnvKey},
 	}
-	f.source = (Env{}).credit(t.Context(), fakeArtifacts{"check-r1.log": log}, f.record, current, files)
+	f.source = (Env{}).credit(t.Context(), fakeArtifacts{"check-r1.log": log}, current, files, nil)
 	f.source.identity = func(Check) (runIdentity, error) { return f.identity, f.err }
+	f.source.modes = func() string { return f.modes }
+	f.modes = run.ModesSHA256
 	return f
 }
 
@@ -83,6 +86,12 @@ func TestCreditedWithholdsReuse(t *testing.T) {
 		{"the log differs from its hash", func(f *reuseFixture) { f.run().LogSHA256 = strings.Repeat("0", 64) }, reasonLog},
 		{"recorded without a source digest", func(f *reuseFixture) { f.run().SourceSHA256 = "" }, reasonUnkeyed},
 		{"recorded without an environment key", func(f *reuseFixture) { f.run().EnvKey = "" }, reasonUnkeyed},
+		{"recorded without a permission digest", func(f *reuseFixture) { f.run().ModesSHA256 = "" }, reasonUnkeyed},
+		{"a file's permission bits differ", func(f *reuseFixture) { f.modes = strings.Repeat("8", 64) }, reasonModes},
+		{"the check runs git", func(f *reuseFixture) {
+			f.run().Argv = []string{"git", "diff", "--check", "base", "HEAD"}
+			f.record.Plan.Checks[0].Argv = f.run().Argv
+		}, reasonGit},
 		{"the run failed", func(f *reuseFixture) { f.run().Status = "failed" }, reasonNotPassed},
 		{"the run exited non-zero", func(f *reuseFixture) { code := 1; f.run().ExitCode = &code }, reasonNotPassed},
 		{"the source changed during the run", func(f *reuseFixture) {

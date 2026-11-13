@@ -403,11 +403,12 @@ func checkSpec(ctx context.Context, check Check, dir string) (spec proc.Spec, to
 
 // runConfig is the configuration a check runs under beyond its argv, its
 // program and its source: every value of a go check's go env read
-// (langpack.ReadGoEnv; none for another program), and each variable the
-// check's env_passthrough names, set to its value in environment or unset.
-// It holds values, so it is only ever keyed (runKey), never stored.
+// (langpack.ReadGoEnv; none for another program), the unredacted GOFLAGS of
+// environment, for any program, and each variable the check's
+// env_passthrough names, set to its value in environment or unset. It holds
+// values, so it is only ever keyed (runKey), never stored.
 func runConfig(goConfig map[string]string, check Check, environment []string) map[string]string {
-	config := map[string]string{}
+	config := map[string]string{"env GOFLAGS": environmentValue(environment, "GOFLAGS")}
 	for name, value := range goConfig {
 		config["go env "+name] = value
 	}
@@ -556,6 +557,10 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
 			return err
 		}
+		modes := ""
+		if sourceSHA256 != "" {
+			modes = modesDigest(snapshot.Root, files)
+		}
 		key := ""
 		if refused == nil {
 			if key, err = runKey(taskDirectory{root}, config, true); err != nil {
@@ -566,7 +571,7 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key, ModesSHA256: modes}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -712,7 +717,7 @@ func (env Env) reusable(ctx context.Context, path string, record Record, check C
 		return CheckRun{}, false
 	}
 	defer root.Close()
-	source := env.credit(ctx, taskDirectory{root}, record, snapshot, files)
+	source := env.credit(ctx, taskDirectory{root}, snapshot, files, nil)
 	source.exact = false
 	source.identity = func(Check) (runIdentity, error) {
 		identity := currentIdentity(check, tool)
