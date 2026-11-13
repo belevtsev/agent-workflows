@@ -353,7 +353,8 @@ release candidates (`v3.0.0-rc.3` and so on), then `v3.0.0`. The plugin manifest
 its leading `v`: `version` in `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, and `metadata.version` in
 `.claude-plugin/marketplace.json`. `TestPluginVersionsAgree` in
-`internal/skillcheck` fails when the three differ.
+`internal/skillcheck` fails when the three differ. What each version number promises is in
+[Stability](operations.md#stability).
 
 `.github/workflows/release.yml` runs the tests on the tagged commit and then
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
