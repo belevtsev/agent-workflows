@@ -41,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   only requests since the task's start count, task usage sums each session's latest sample, and what cannot be priced stays unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
 - Under a profile `cw task handoff` caps a result at 6 KiB, its summary at 1,200 bytes and each finding, reach-run or `uncovered` text
   at 400, and stores the report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
+- `cw task brief --stage S` prints, in at most 4 KiB, what a fresh worker of a stage starts from, and `cw task assign` refuses an `agent_id`
+  that worked on another stage unless the brief `repeats` an assignment ([stage briefs](docs/operations.md#stage-briefs)).
 
 ### Changed
 

@@ -228,7 +228,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | --- | --- | --- |
 | 0 | ok | The command did what was asked, including `cw task run` reusing a passed run ([reuse](#reusing-a-passed-run)). |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
-| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), or `--dry-run` where it is rejected. Nothing ran. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap without `--owner-approval` ([round caps](#round-caps)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
@@ -474,7 +474,10 @@ replace them before v3.0.0. The budget counts dollars only; there is no token ca
 `tests` runs in parallel with `implementation`. `cw task assign` requires an
 implementation or review brief to name one of the profile's stages, and a later
 round of an author stage to name the findings it fixes or the assignment it
-repeats ([assign before dispatch](../skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)). Under `strict` the adviser
+repeats ([assign before dispatch](../skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
+Each stage starts a fresh worker: `assign` refuses a brief with a stage whose
+`agent_id` an assignment of another stage already used, unless the brief
+`repeats` an assignment ([stage briefs](#stage-briefs)). Under `strict` the adviser
 checkpoints also apply when the task binds advisers. A `spec` or `design` cap
 counts revisions after the first draft; a `tests` cap counts every round.
 
@@ -507,6 +510,31 @@ goes past, shown by `cw task show --field assignments`. The round cap's limit is
 words for a limit the brief does not go past are refused.
 With `enforce_verify` on, the plugin hook asks the user to confirm the words
 before such a command runs ([hooks](hooks.md#owner-approval)).
+
+#### Stage briefs
+
+`cw task brief --task DIR --stage S [--json]` prints what a fresh worker of
+stage `S` starts from, so neither a worker nor the coordinator is continued
+from an earlier context. It reads the record and writes nothing, so
+`--dry-run` changes nothing. The brief holds the task ID and title; the profile
+and, for a capped stage, the author rounds left; the one role contract under
+`skills/task-orchestration/references/contracts/` the worker loads; the stored
+contract, bundle and input files of the stage's latest assignment, as absolute
+paths; the task's check IDs; the plan requirements; and the stage's open
+findings, newest first, each as `<assignment id>/<finding id>` (the form
+`fixes` takes) with its severity, one line and the result's report file. A
+stage's findings are those of its own results and of the review stage that
+reviews it (`test-review` for `tests`, `code-review` and `adversarial` for
+`implementation`); a finding is open until an acceptance resolves, rejects or
+defers it.
+
+The text, and the `--json` object, are each at most 4,096 bytes. Every entry is
+listed whole or not at all: the title, files, checks, requirements and findings
+each take at most an equal share of the room left when their turn comes, the
+findings stop at the first that does not fit, and the last line (`omitted` in
+JSON) counts what is not listed, such as `12 older findings`. A stage that is
+not one of the profile's, or any stage of a task started before profiles, exits
+2.
 
 ### Cost budget
 

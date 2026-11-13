@@ -358,6 +358,9 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if err := validateBriefStage(*record, record.Assignments, returned, brief); err != nil {
 			return asInvalid(err)
 		}
+		if err := freshWorker(record.Assignments, brief); err != nil {
+			return asInvalid(err)
+		}
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}

@@ -74,6 +74,23 @@ func validateBriefStage(record Record, prior []WorkerAssignment, returned func(a
 	return nil
 }
 
+// freshWorker refuses a staged brief whose agent_id an assignment of another
+// stage already used, so that each stage starts a fresh worker (D15); a brief
+// with repeats is exempt. Briefs without a stage, such as evidence briefs,
+// neither take part nor count. AssignWorker applies it to a new brief only, so
+// records written before it still load.
+func freshWorker(prior []WorkerAssignment, brief WorkerBrief) error {
+	if brief.Stage == "" || brief.Repeats != "" {
+		return nil
+	}
+	for _, earlier := range prior {
+		if earlier.Brief.AgentID == brief.AgentID && earlier.Brief.Stage != "" && earlier.Brief.Stage != brief.Stage {
+			return fmt.Errorf("worker brief agent_id %s already worked on stage %s in assignment %s; each stage starts a fresh worker, so give this %s brief a new agent_id", brief.AgentID, earlier.Brief.Stage, earlier.Brief.ID, brief.Stage)
+		}
+	}
+	return nil
+}
+
 // validateFixes checks that each entry names exactly one finding of a
 // recorded worker result or one plan requirement, with no entry twice.
 func validateFixes(record Record, fixes []FixRef) error {

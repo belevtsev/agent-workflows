@@ -76,6 +76,14 @@ assignment of the same stage it replaces. `assign` refuses a brief that lacks
 them and names the member. A task started before profiles accepts briefs
 without them.
 
+Each stage starts a fresh worker. Dispatch it with the output of
+`cw task brief --task <task-id> --stage <stage>` (at most 4 KiB: the open
+findings, files, checks and requirements of the stage, and the one contract the
+worker loads) instead of continuing an earlier worker or pasting the record
+([stage briefs](../../../docs/operations.md#stage-briefs)). `assign` refuses an
+`agent_id` an assignment of another stage already used, unless the brief
+`repeats` an assignment.
+
 Roles are `implementation`, `evidence`, `review` and `verification`; only
 implementation results can declare changes. `owned_paths` holds clean relative
 files or directory prefixes (`.` covers the whole project); active implementation
