@@ -371,9 +371,10 @@ preserved licenses are covered by the import-provenance checks in
 
 | Job | Steps |
 | --- | --- |
-| `Go shard 1 of 2 / <system>` | gofmt check, `go vet ./...`, then the tests of `internal/cli`, `internal/langpack` and `internal/taskflow` |
-| `Go shard 2 of 2 / <system>` | the tests of every other package |
-| `Native Go / ubuntu-latest`, `Native Go / macos-latest` | the required checks: each passes only when both shards of its system passed |
+| `Go shard 1 of 3 / <system>` | gofmt check, `go vet ./...`, then the tests of `internal/cli`, `internal/langpack` and `internal/taskflow` |
+| `Go shard 2 of 3 / <system>` | the tests of `cmd/cw` |
+| `Go shard 3 of 3 / <system>` | the tests of every other package |
+| `Native Go / ubuntu-latest`, `Native Go / macos-latest` | the required checks: each passes only when all three shards of its system passed |
 | `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 
@@ -397,8 +398,8 @@ the code can reach; the fix is a newer toolchain or module version. The
 The shards run for `ubuntu-latest` (`go test -race -count=1`) and
 `macos-latest` (`go test -count=1 -timeout=15m`), so the race detector runs on
 Linux only. [`.github/actions/go-test`](../.github/actions/go-test/action.yml)
-holds their steps and the package list of shard 1; a new package lands in
-shard 2 without a change. Only obsolete pull request runs are
+holds their steps and the package lists of shards 1 and 2; a new package
+lands in shard 3 without a change. Only obsolete pull request runs are
 cancelled. `ci.yml` makes no release and receives no service credentials.
 
 `.github/workflows/evals.yml` is separate: it runs the paid `claude plugin eval`

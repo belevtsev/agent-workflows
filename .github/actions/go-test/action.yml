@@ -1,11 +1,11 @@
 name: Test one shard of the Go packages
 description: >-
-  Set up the pinned Go and test one of the two package shards. Shard 1 also
+  Set up the pinned Go and test one of the three package shards. Shard 1 also
   checks formatting and runs go vet on every package.
 
 inputs:
   shard:
-    description: The shard to test, 1 or 2.
+    description: The shard to test, 1, 2 or 3.
     required: true
 
 runs:
@@ -29,23 +29,26 @@ runs:
       if: inputs.shard == '1'
       shell: bash
       run: go vet ./...
-    # Shard 1 holds the three packages named here, about half of the test
-    # time; shard 2 holds every other package, so a new package is tested
-    # without a change to this list.
+    # Shard 1 holds the three packages named in `first` and shard 2 cmd/cw,
+    # whose tests run the built binary: each is about a third of the test
+    # time. Shard 3 holds every other package, so a new package is tested
+    # without a change to these lists.
     - name: Select the packages of this shard
       shell: bash
       env:
         SHARD: ${{ inputs.shard }}
       run: |
         first='/internal/(cli|langpack|taskflow)$'
+        second='/cmd/cw$'
         all="$(go list ./...)"
-        if [ "$(grep -Ec "$first" <<<"$all")" != 3 ]; then
-          echo "shard 1 names a package that go list ./... does not print: update the list in .github/actions/go-test/action.yml"
+        if [ "$(grep -Ec "$first" <<<"$all")" != 3 ] || [ "$(grep -Ec "$second" <<<"$all")" != 1 ]; then
+          echo "a shard names a package that go list ./... does not print: update the lists in .github/actions/go-test/action.yml"
           exit 1
         fi
         case "$SHARD" in
           1) packages="$(grep -E "$first" <<<"$all")" ;;
-          2) packages="$(grep -Ev "$first" <<<"$all")" ;;
+          2) packages="$(grep -E "$second" <<<"$all")" ;;
+          3) packages="$(grep -Ev "$first|$second" <<<"$all")" ;;
           *) echo "unknown shard: $SHARD"; exit 1 ;;
         esac
         if [ -z "$packages" ]; then
