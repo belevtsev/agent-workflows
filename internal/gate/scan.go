@@ -21,12 +21,32 @@ func gitPublications(command, cwd, home string) []publication {
 	if certain {
 		return found
 	}
-	for _, flat := range flatPublications(command, cwd) {
-		if !slices.Contains(found, flat) {
-			found = append(found, flat)
+	flat := flatPublications(command, cwd)
+	// Where one reading leaves a commit unjudged that the other judges, such
+	// as after a command in a heredoc's substitution, which only the flat
+	// split reads, neither judges it.
+	found = withoutDisputedJudgements(found, flat)
+	for _, each := range withoutDisputedJudgements(flat, found) {
+		if !slices.Contains(found, each) {
+			found = append(found, each)
 		}
 	}
 	return found
+}
+
+// withoutDisputedJudgements returns mine without each commit that it judges
+// by the index (staged) while others has that commit unjudged and does not
+// judge it.
+func withoutDisputedJudgements(mine, others []publication) []publication {
+	kept := make([]publication, 0, len(mine))
+	for _, each := range mine {
+		unjudged := each
+		unjudged.staged = stagedUnknown
+		if each.push || each.staged == stagedUnknown || !slices.Contains(others, unjudged) || slices.Contains(others, each) {
+			kept = append(kept, each)
+		}
+	}
+	return kept
 }
 
 // splitPublications returns every git commit or push in a shell command
@@ -327,6 +347,9 @@ func (s *wordScanner) scan(command string, at place, depth int, vars expansion) 
 			s.certain = false
 		}
 		at = s.visit(simple.Words, at, depth, vars)
+		if slices.ContainsFunc(simple.Redirects, func(redirect shellwords.Redirect) bool { return !trustedRedirect(redirect) }) {
+			s.touched = true // it may write the index, as `cat saved > .git/index` does
+		}
 	}
 	if len(outer) > 0 {
 		return outer[0]
@@ -404,6 +427,9 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 	next := publication{push: texts[subcommand] == "push"}
 	if !next.push {
 		next.all, next.staged = commitsAll(texts[subcommand+1:]), commitStaged(texts[subcommand+1:])
+		if selectsRepository(wordTexts(all)) {
+			next.staged = stagedUnknown
+		}
 	}
 	s.add(runs, next)
 	if plain != "" && plain != runs.dir {

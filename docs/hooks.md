@@ -330,22 +330,42 @@ working tree governs the repository, naming up to three such paths. So
 on disk, then `git commit -m x` is denied, and so is a staged mode change
 alone (`git update-index --chmod=+x`). A path left unstaged keeps `HEAD`'s content
 and is not part of the change, so a partial commit of verified files goes
-ahead. The bytes are compared raw, as `cw task verify` reads them: a path whose
-clean filter or end-of-line conversion makes the staged blob differ from the
-file on disk, such as a Git LFS pointer, counts as differing. A submodule's
-commit, which `cw task verify` does not read, and an unmerged path, which git
-refuses to commit, are not compared. `git commit --amend` is compared with
-`HEAD`, not with the commit it replaces.
+ahead. The mode is the owner's execute bit, as git reads it; where
+`core.fileMode` is `false`, git ignores the bit on disk, so the mode counts
+only for a path whose mode the commit changes.
+
+The gate runs no git filter. It compares the bytes raw, as `cw task verify`
+reads them, and explains a staged blob that differs from them by what git's
+attributes say:
+
+- `filter=lfs`: allowed when the blob is a Git LFS pointer whose `oid` and
+  `size` are the SHA-256 and size of the file on disk, denied otherwise;
+- another `filter`, `ident` or `working-tree-encoding`: the hooks ask, since
+  the gate cannot tell what that conversion makes of the file (under Codex,
+  and in git's hook, as for the other asks);
+- end-of-line conversion, when the `text`, `eol` or `crlf` attribute is set
+  or `auto`, or else `core.autocrlf` is `true` or `input`: allowed when the
+  blob is the file's bytes with each CRLF turned into LF, denied otherwise;
+- anything else is denied.
+
+A submodule's commit, which `cw task verify` does not read, and an unmerged
+path, which git refuses to commit, are not compared. `git commit --amend` is
+compared with `HEAD`, not with the commit it replaces.
 
 The plugin hook judges the agent's command before it runs, so it reads the
 commit's content from the index as it stands: all of it for `git commit`, and
-only the paths it removes for `git commit -a`, which records the working tree
-of every other path. It does not judge a commit that takes paths from the
-working tree (`git commit PATH`, `-i`, `-o`, `--pathspec-from-file`), nor one
-after another command in the same Bash input that may change the index, such
-as `git add -A && git commit`: only `cd`, `pushd`, `popd`, `echo`, `printf`,
-`cat`, `rg`, `grep`, `jq`, `pwd`, `ls`, `test`, `true`, `false`, `:` and
-`git push` keep it. The `pre-commit` hook that `cw gate install` writes
+for `git commit -a`, which records the working tree of every other path, the
+paths it removes and those marked assume-unchanged or skip-worktree, which
+`-a` leaves as staged. It does not judge a commit that takes paths from the
+working tree (`git commit PATH`, `-i`, `-o`, `--pathspec-from-file`); one
+that names another index, git directory or work tree (`GIT_INDEX_FILE=`,
+`GIT_DIR=` or `GIT_WORK_TREE=` in its command, or git's `--git-dir` or
+`--work-tree`); nor one after another command in the same Bash input that
+may change the index, such as `git add -A && git commit`. Only `cd`, `pushd`,
+`popd`, `echo`, `printf`, `cat`, `rg` without `--pre`, `grep`, `jq`, `pwd`,
+`ls`, `test`, `true`, `false`, `:` and `git push` keep the index, and only
+when they redirect no output to a file other than `/dev/null`:
+`cat saved > .git/index` writes it. The `pre-commit` hook that `cw gate install` writes
 judges every commit by the index git commits (`GIT_INDEX_FILE`)
 ([Git hooks](#git-hooks)).
 
@@ -369,15 +389,19 @@ asks about such a record instead of skipping it
 
 These cases ask for confirmation (`permissionDecision: "ask"`) instead of
 denying; a deny for any git command in the same Bash input wins, and asks in
-one input are joined. Codex cannot ask, so there the first four are denies
+one input are joined. Codex cannot ask, so there the first five are denies
 and the last two let the command run, unless joined with one of the first
-four ([Codex](#codex)). Like the deny, a reason names at most three tasks and
+five ([Codex](#codex)). Like the deny, a reason names at most three tasks and
 counts the rest.
 
 - A `cw task abandon` ([Abandoning a task](#abandoning-a-task)).
 - A push from a repository whose governing records all passed verification,
   while the working tree has uncommitted changes to tracked files: the
   verified bytes may then not be what the pushed commits hold.
+- A commit over records that all passed verification, when nothing it stages
+  differs from the working tree except paths whose staged content a git
+  `filter` other than `lfs`, `ident` or `working-tree-encoding` produced,
+  which the gate does not run ([Which source counts](#which-source-counts)).
 - A commit or push from a repository with no governing record at all, when the
   change it publishes meets at least two of: more than 300 changed lines
   (added plus deleted, from `git diff --numstat`), changed files under more than
@@ -470,7 +494,7 @@ exits 0 without output, and the command proceeds, when:
 
 - the plugin options `enforce_verify` and `small_task_prompt` are both `false`
   (`enforce_verify=false` alone removes the deny, the uncommitted-push ask,
-  the ask before `cw task abandon` and the ask for a record that cannot be
+  the ask about content a filter staged, the ask before `cw task abandon` and the ask for a record that cannot be
   read, which then counts as no record);
 - the command contains no `git commit`, `git push` or `cw task abandon` the
   hook recognises;
@@ -540,7 +564,8 @@ judges that repository by the rules above:
   on stderr after `agent-workflows: warning: a git hook cannot ask for
   confirmation`, exits 0 and git goes ahead: a record that cannot be read or
   is from a newer `cw`, a task store that cannot be located or read, a push of
-  uncommitted changes over verified records, and a substantial change with no
+  uncommitted changes over verified records, a commit whose staged content a
+  filter the gate does not run produced, and a substantial change with no
   record. Git names the directory, so the ask about a directory change cannot
   arise.
 - For the substantial-change warning, and for the rule that a commit records
@@ -685,7 +710,7 @@ and the last row lists what still gets past git's hooks.
 | `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Caught when `cw gate install` has run: a merge commit, from `git merge`, `git merge --continue` or `git pull`, runs `pre-merge-commit` or, after conflicts, `pre-commit`, except that `pre-merge-commit` lets through a merge of commits on remote-tracking branches ([Git hooks](#git-hooks)). The agent's own `git merge --no-verify`, `git pull --no-verify` or `CW_GATE=off git merge` still gets past both hooks, since the plugin hook does not check a merge. The others can still make their commits, since git does not run `pre-commit` for them as it does for `git commit`; pushing them is caught. |
 | A remote-tracking ref pointed at local work, as in `git update-ref refs/remotes/origin/x side` or `git fetch . side:refs/remotes/origin/x`, followed by `git merge origin/x` | Allowed where `cw gate install` has run. `pre-merge-commit` lets through a merge of commits a remote-tracking ref contains, and nothing checks how the ref got there: rewriting one, which the plugin hook does not see, makes local work look published ([Git hooks](#git-hooks)). |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
-| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x`, `git commit -i PATH`, or an index named by `GIT_INDEX_FILE=… git commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run: `pre-commit` judges the index git commits. |
+| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x` or `cat saved > .git/index && git commit -m x`; `git commit -i PATH`; or another index, git directory or work tree, as in `GIT_INDEX_FILE=… git commit` or `git --git-dir=… commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run: `pre-commit` judges the index git commits. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under a `cw` older than v3.0.0-rc.2, any record of version 4 or later ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
@@ -775,9 +800,10 @@ are recorded inputs, with paths replaced by placeholders.
   ([Session start](#session-start)). That version line is not recorded under
   Codex: the runs used a `cw` built between tags, which is not compared.
 
-So under Codex the pre-publish hook turns four asks into denies: a
+So under Codex the pre-publish hook turns five asks into denies: a
 `cw task abandon`, an unrecorded substantial change, a push with uncommitted
-changes over a verified record, and a commit or push after a directory the
+changes over a verified record, a commit whose staged content a filter the
+gate does not run produced, and a commit or push after a directory the
 hook cannot resolve ([Asking instead of denying](#asking-instead-of-denying)). The
 reason starts `agent-workflows: Codex cannot ask for confirmation`, carries the
 question Claude Code would ask, and says to put it to the user, who goes ahead

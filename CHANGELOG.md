@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 - While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
-  from the verified working tree for a path it changes; stage the working tree's version ([which source counts](docs/hooks.md#which-source-counts)).
+  from the verified working tree for a path it changes, and ask about one a git filter staged ([which source counts](docs/hooks.md#which-source-counts)).
 
 ### Added
 

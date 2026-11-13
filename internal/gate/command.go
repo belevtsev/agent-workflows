@@ -161,7 +161,7 @@ func (s *publicationScanner) scan(command, cwd string) {
 		next := publication{dir: target, push: words[subcommand] == "push"}
 		if !next.push {
 			next.all, next.staged = commitsAll(words[subcommand+1:]), commitStaged(words[subcommand+1:])
-			if s.touched {
+			if s.touched || selectsRepository(strings.Fields(segment)) {
 				next.staged = stagedUnknown
 			}
 		}
@@ -208,7 +208,7 @@ func commitsAll(arguments []string) bool {
 			if option == 'a' {
 				return true
 			}
-			if strings.ContainsRune("mFcCt", option) {
+			if strings.ContainsRune("mFcCtuS", option) {
 				break // the rest of the cluster is this option's value
 			}
 		}

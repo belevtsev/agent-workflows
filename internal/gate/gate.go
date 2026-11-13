@@ -283,7 +283,8 @@ type decider struct {
 // the publication raises without it; with enforce off, such a record counts
 // as no record. With enforce on, records that passed on the working tree
 // gate a commit that would record content for a path that differs from the
-// working tree's (stagedProblem). Records that gate a publication marked unresolved, which
+// working tree's (stagedProblem), and ask about one whose staged content
+// for a path comes from a conversion the gate does not run. Records that gate a publication marked unresolved, which
 // the gate checks in the session's directory for want of its own, ask
 // instead of gating; a host that cannot ask denies.
 func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
@@ -309,15 +310,20 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 			verified = append(verified, record)
 		}
 	}
+	stagedAsk := ""
 	if len(gating) == 0 && len(verified) > 0 && d.in.Enforce && !publication.push && publication.unresolved == "" {
 		// The records passed on the working tree; a commit that records
 		// other content for a path publishes bytes they never saw.
-		if problem := stagedProblem(ctx, d.deps.Git, repo.Worktree, publication.staged); problem != "" {
+		problem, unsure := stagedProblem(ctx, d.deps.Git, repo.Worktree, publication.staged)
+		if problem != "" {
 			for _, record := range verified {
 				record.Problem = problem
 				gating = append(gating, record)
 			}
 			verified = nil
+		}
+		if len(unsure) > 0 {
+			stagedAsk = stagedUnsureReason(verified, unsure)
 		}
 	}
 	if len(gating) > 0 {
@@ -331,6 +337,7 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 	other := ""
 	switch {
 	case len(verified) > 0:
+		other = stagedAsk
 		if d.in.Enforce && publication.push && uncommittedTrackedChanges(ctx, d.deps.Git, repo.Worktree) {
 			other = uncommittedReason(verified)
 		}
