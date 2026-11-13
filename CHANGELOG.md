@@ -78,6 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   adds the design stage and `strict` the spec stage ([profiles](docs/operations.md#profiles)); reviewers skip style.
 - "Substantial task" is defined only in the working conventions; a task that is not substantial dispatches no workers, and the agent
   checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
+- The orchestration skill is cut a second time, from 187 KB to 144 KB: every worker contract stands alone, the two host pages merge
+  into `hosts.md`, the task presets go, and each `cw publish` status moves to the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
 - The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
   and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
 - The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
@@ -341,7 +343,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts.md
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

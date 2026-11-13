@@ -38,7 +38,7 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md).
 
 Under the Claude Code plugin the agent types are namespaced, for example
-`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types)
+`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md)
 maps each policy role to its type. The frontmatter model is a default: the
 coordinator passes the role's model and effort on every dispatch. Every agent
 sets `disallowedTools: Skill, Agent, Workflow`: under Claude Code a worker
@@ -117,6 +117,10 @@ data integrity, the plan can also opt in to the
 which reads the code but keeps only tests that fail on it; those never count as
 black-box coverage, and the test engineer never sees them.
 
+**Who defines a finding's severity?** Each review contract and the adversarial
+tester's contract grade a finding `blocker`, `major` or `minor`. When writing
+a contract: a contract may define a grade for its artefact, never add one.
+
 **Why doesn't the implementer write its own tests?** Code tested only by its
 author is one of the failures this project exists to prevent: the same
 reasoning that wrote a bug can write a test that misses it. The implementer
@@ -137,6 +141,17 @@ current source
 ([code review](../skills/task-orchestration/references/contracts/code-review.md#inputs-you-receive)).
 Only test review never sees the implementation, so it judges the tests by the
 contract alone.
+
+**Why does a contract change go back to the architect, without the code?** A
+worker reads only the contract its brief names, so each role's output is
+independent evidence. An amendment keeps that: the architect and the re-bind
+reviewer read source only in a separate checkout of what the design was read
+from, so code cannot shape the contract or reach the test engineer through
+it. The implementer's first refreshed assignment only puts the amended
+declarations into source, and the rest of its work waits for the test
+engineer's refreshed assignment, so no implementer edit lands between the
+extract and `cw task assign`
+([contract amendment](../skills/task-orchestration/references/contract-amendment.md)).
 
 **Why not run more agents on a cheaper model?** This project has not measured
 whether a cheaper model keeps the same review and test quality, or how much it

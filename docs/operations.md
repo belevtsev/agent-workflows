@@ -22,6 +22,27 @@ Other pages link here rather than repeat these versions.
 | Hooks | Run once the plugin is installed | Run only after you trust them in `/hooks` ([Codex](#codex)) |
 | Worker models | Aliases `opus`, `sonnet` and `haiku` from [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml); an alias resolves to the host's current release | The `sol` and `luna` profiles of [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) name the models |
 
+Under Claude Code the effective model or effort of a worker can differ from
+what the coordinator passes, which is why the
+[host mapping](../skills/task-orchestration/references/hosts.md) has it check
+runtime metadata. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces
+`CLAUDE_CODE_SUBAGENT_MODEL`, or the inherited model if it is unset, instead of
+the Agent `model` argument. `CLAUDE_CODE_EFFORT_LEVEL` overrides per-invocation
+effort. Organization `availableModels` restrictions can also substitute the
+inherited model. See
+[Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
+The coordinator profile's effort is `high` by default; `settings.json`
+`effortLevel` is the user's to set. `settings.json` rejects `max`; use
+`/effort max` or `/effort xhigh` for a session when the user asks for it.
+
+Codex has no per-agent switch to keep instruction files out of a worker: it
+injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
+agent even with `fork_turns: "none"`, as reported for Codex CLI 0.166.0 in
+[google/elephant-goldfish-model#237](https://github.com/google/elephant-goldfish-model/issues/237)
+(open), so a Codex reviewer or test engineer sees those files. The Claude Code
+reviewer and test engineer set `omitClaudeMd: true` instead, so author priors
+and coordinator instructions stay out of an independent review or test.
+
 ### Claude Code plugin
 
 ```sh
@@ -222,6 +243,14 @@ The task store is `<state>/workflow-tasks` and the cost history is
 saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
 pack selection written by `cw pack add` and `cw pack remove`, where `cw lang` is
 an alias of `cw pack`; absent means the default selection).
+
+Each host keeps its instructions and skills in its own place:
+
+| Concern | Codex | Claude Code |
+| --- | --- | --- |
+| Global instructions | `$CODEX_HOME/AGENTS.md` | `CLAUDE.md` in the Claude config directory |
+| Personal skills | `~/.agents/skills` | `skills/` in the Claude config directory |
+| Explicit skill invocation | `$skill-name` | `/skill-name` |
 
 `--dry-run` is not a global flag. Only the commands that can preview a write
 have it, after the command name: `cw consult` (a validated preview without
@@ -447,6 +476,8 @@ prints JSON Lines rather than a one-line result: one compact object for the task
 start under `start` and its durations, omitting `task`, `submitted_at`,
 `accepted_at` and `finished_at`.
 
+### Publishing a verified task
+
 `cw publish` commits a verified task's files, pushes the commit and, with
 `--pr create` or `--pr edit`, creates or edits its pull request. It runs only
 after `cw task verify` passed on the current source and no other open task record
@@ -454,12 +485,38 @@ gates the repository, commits whole files of the task's verified change set, or
 of the part of it that `--path` names, reads every step back, and continues from
 the observed state when the same command runs again. Once its checks pass, it
 appends a `started` entry (`publication-NNNNNN.json`) to the task directory, and
-a `finished` entry when it ends. `--summary` prints one line.
-Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
-6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
+a `finished` entry when it ends; the entries are hash-chained through
+`previous_sha256` and written beside the task revisions, which it never
+changes. The push sends only the commit to `refs/heads/BRANCH` of REMOTE, never
+tags; the command never amends or force-pushes. `--summary` prints one line with
+the members `status`, `reason`, `task_id`, `commit`, `remote_ref`, `pr_number`,
+`pr_url` and `record` instead of the whole report. It needs Git 2.24 or newer.
+
+The command takes flags only, so the remote and the branch are two flags,
+`--push REMOTE --branch BRANCH`, not `--push REMOTE BRANCH`; the local branch
+must be `BRANCH`. `--path` narrows the commit to files of the task's verified
+change set (by the spelling `cw task bundle` prints); without it the whole
+change set since `cw task start` is committed, whole files only. `--pr create`
+or `--pr edit` needs all of `--repo`, `--base`, `--title` and `--body-file`;
+`--pr none`, the default, takes none of them. The message file must end with a
+newline and start with a non-blank subject line; the title is one line of at
+most 256 characters. `--timeout` bounds each git and gh command (default 10m).
+
+Its exit statuses and reasons follow. The coordinator's action on each status
+is in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
-which also names the cases that go to the GitHub worker instead. It needs Git
-2.24 or newer.
+which also names the cases that go to the GitHub worker instead.
+
+| Exit | Status | Reasons | What to do |
+| --- | --- | --- | --- |
+| 0 | `published` | none | Report the commit, remote ref and PR from the report. |
+| 1 | `failed` | `git-missing`, `locked`, `task-unreadable`, `record-invalid`, `capture-failed`, `read-failed`, `record-write-failed`, `commit-failed` | Fix the cause and re-run. After `commit-failed`, check the index (`git ls-files -s`): intent-to-add entries for new files may remain. `locked` means another run holds `.publish-lock` in the task directory, or a `cw` older than v3.0.0-rc.2 left a `.publish-lock` directory there; a killed run of a later `cw` leaves no lock. |
+| 2 | usage error | none | Fix the command line; nothing ran. |
+| 3 | `denied` | `task-abandoned`, `task-not-verified`, `source-changed`, `open-record` | Verify the task on the current source, or, with the user's confirmation, abandon the record named in `open_records`. A record `cw` cannot read (from `cw` v2.0.66 to v2.0.96, from a newer `cw`, or damaged) cannot be verified or abandoned: as its `problem` says, upgrade `cw` for a newer record, else move its directory out of the task store. |
+| 4 | `refused` | `not-a-repository`, `nothing-to-publish`, `path-not-verified`, `branch-mismatch`, `head-moved`, `hunk-scope`, `content-conversion`, `git-locked`, `remote-unknown`, `remote-split`, `remote-moved`, `not-fast-forward`, `gh-missing`, `repo-mismatch`, `pr-exists`, `pr-missing`, `pr-ambiguous` | Fix the precondition, or use the fallback. A refusal at the checks commits nothing; one at a later step keeps the commit or push before it (`steps`), so re-run once fixed. Remove a Git lock in `locks_left` only after checking that no git process runs in the repository. |
+| 6 | `unknown` | `commit-unknown`, `push-unknown`, `pr-unknown` | Read the reconciliation in the report (`steps`, `locks_left`), then re-run the same command only while the authorization still covers it. After an unknown PR create, check the PR list first. A `commit-unknown` with locks left may be a definite failure behind a live git process's lock. |
+| 7 | `mismatch` | `commit-mismatch`, `push-mismatch`, `pr-mismatch` | Inspect what was written: a hook or conversion changed the commit, the remote moved, or the PR differs. Never amend or force-push; repair it through the fallback. |
+| 130 | `cancelled` | `cancelled` | Interrupted while no commit, push or PR command ran, or during a commit that left HEAD unchanged. Earlier steps may have completed (a commit, or a commit and its push): the report's `steps` shows what did. A 130 during the commit step can leave intent-to-add entries for new files in the index: the report's `intent_to_add` lists the paths passed, so check `git ls-files -s` before handing over to the fallback. Re-run the same command, which continues from the observed state, only while the authorization still covers it. |
 
 A refusal (exit 4, status `refused`) never commits part of the file set, but it
 can come after steps that are already done:
@@ -489,12 +546,13 @@ Its known limitations:
 - A new file that the user's ignore rules exclude only through `XDG_CONFIG_HOME`
   or `GIT_CONFIG_*` makes `git add --intent-to-add` fail on every run
   (1 `commit-failed`), because the source capture does not read those rules.
-- With `core.autocrlf` set to `input` or true, a commit-set file that contains
-  a CR byte, binaries included, refuses the publication as 4
-  `content-conversion`.
-- A Git lock that a concurrent git process holds for more than about two seconds
-  reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
-  commit), so check that no git process runs before removing one.
+- With `core.autocrlf` set to `input` or true, globally or in the repository,
+  every commit-set file that contains a CR byte, binaries such as PNG images
+  included, refuses the publication as 4 `content-conversion`.
+- A Git lock that a concurrent git process (an editor's `git status`) holds for
+  more than about two seconds reads as a stale lock (4 `git-locked` before a
+  step, or 6 `commit-unknown` after a failed commit or intent-to-add), so check
+  that no git process runs before removing one, and treat such a 6 as unknown.
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
   with a pull request any host alias is refused as 4 `repo-mismatch`.
@@ -505,9 +563,11 @@ Its known limitations:
   `remote.<name>.vcs` set. `host:path`, `[user@host:port]:path` and local
   paths are accepted.
 
-A task check cannot run `cw publish`: `cw task start` refuses such a plan. This
-is a guard, not a sandbox, since a check can still run another program that
-publishes.
+A task check cannot run `cw publish`, even after `cw`'s global flags:
+`cw task start` refuses such a plan, and `cw task run` such a check in a
+recorded plan, with "publication and deployment commands are outside task
+checks". This is a guard, not a sandbox, since a check can still run another
+program that publishes.
 
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational
@@ -1667,6 +1727,62 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
   inclusive UTC `--since`/`--until` date range, and prints totals and groups by
   model, UTC day and session. Without `--prices` every amount is unknown, with a
   reason.
+
+#### What an import reports
+
+`import` reads a session read-only and reports each agent (the main session and
+every subagent or child rollout) with requests, uncached input, cache writes (5-minute
+and 1-hour), cache reads, output and thinking tokens. Claude dollars are the
+transcript's recorded `cost-state`, per model and for the session, never allocated to
+agents; a model that `cost-state` lists but no transcript entry carries, such as
+background calls, is reported as unattributed. Codex rollouts record no cost. `--prices` adds
+per-agent estimates from a supplied table
+(`{"currency","evidence","models":{"MODEL":{"input_per_million","output_per_million","cache_write_5m_per_million","cache_write_1h_per_million","cache_read_per_million"}}}`),
+reported separately from recorded dollars; no price is built in. The report's
+`usage` (and `cost`, when recorded) can be copied into an observation; there
+`input_tokens` stays total input, and the optional breakdown counters must add up to
+it. When a model's transcript and recorded totals differ, for example a `cost-state`
+written before the session ended, the report shows the difference and leaves
+`usage` and `cost` out.
+
+`--append` (with `--claude-transcript` or `--codex-session`) keeps the counts after
+the transcript is deleted. It appends one record per de-duplicated request to the cost history,
+`<state>/metrics/history.jsonl` unless `--history` names another file, and prints what
+it appended instead of the report. A record holds token counts, IDs, timestamps, the
+model and agent labels, and no dollars. Requests already stored are skipped, so
+importing again never double-counts. `--append` rejects `--prices`, `--composition`
+and `--summary`. `cw metrics history` aggregates the history by model,
+UTC day and session, and recomputes dollars from `--prices`.
+
+`--composition` (it needs `--prices`) adds where each agent's input came from. Each
+agent is mapped to a role from the `cw task assign` brief whose assignment id its Agent
+prompt names, else from its Agent description or agent type; unmapped agents count as
+`other`, and the role coverage is reported.
+Each request's new input, its total input minus the previous request's, is assigned
+to the blocks appended in between: the previous output gets its output tokens
+(all of the new input when that is smaller), and the rest is split by byte share across tool output (by tool), `cw`
+command output, Skill loads, reference reads, Agent handoffs, user turns and other
+context. New input with no visible block is `unrecorded`. The first request is split
+into its visible blocks, estimated at the agent's measured bytes per token, and
+`system_and_tools`, the remainder. That remainder, the skill listing and the
+CLAUDE.md/AGENTS.md instructions form the fixed prefix. Per source the report gives
+input tokens, input share, input dollars and re-read cost (tokens × later requests ×
+cache-read rate). Input dollars allocate each request's priced input in context order:
+cache reads first, then cache writes, then uncached input. It also lists repeated
+identical tool calls (same tool and input hash). For an agent that ran
+`cw task start`, `cw task consult`, a review `cw task assign` or `cw task verify` (as
+commands, including after `if`, `do`, `env`, `nohup`, `sudo` or `timeout`; not text in
+a heredoc, a comment or a quoted string, nor history copied into a resumed session), it
+gives the stale-phase re-read: earlier-phase blocks, other than the initial context,
+re-read in a later phase, beside an estimate for re-sending the initial context at
+each boundary. The composition is reported only when the price-table total is within
+1% of the recorded `cost-state` and the transcript has no tokens the recorded cost
+lacks; otherwise it is withheld with a reason. Codex rollouts record no cost, so
+their composition is reported as unsupported. `--summary` prints a short table
+instead of JSON.
+
+The agent's rules for recording and comparing observations are in
+[measure outcomes](../skills/task-orchestration/references/measure-outcomes.md).
 
 ### Usage stores
 
