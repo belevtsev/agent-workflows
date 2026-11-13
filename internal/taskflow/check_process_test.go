@@ -135,7 +135,6 @@ func pgRequireStormDescendantScript(t *testing.T, root string) {
 // The check, right after each return, that no member of the check's group is
 // alive only adds detection.
 func TestNormalCheckExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		t.Skip("owned process-group cleanup is available on native Linux and macOS builds")
 	}

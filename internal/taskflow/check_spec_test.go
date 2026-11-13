@@ -311,7 +311,6 @@ func TestCheckExitCodeRecordsOnlyAStartedProgramsStatus(t *testing.T) {
 // which is the program's own status for such a run (3 and 0 here), not -1 and
 // not nothing.
 func TestCheckExitCodeKeepsTheStatusOfAProgramThatExitedBeforeTheTimeout(t *testing.T) {
-	t.Parallel()
 	for _, status := range []int{3, 0} {
 		t.Run(fmt.Sprintf("exits %d", status), func(t *testing.T) {
 			// sh prints its pid, which is the id of the check's process group,

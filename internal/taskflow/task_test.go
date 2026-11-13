@@ -402,7 +402,6 @@ func TestCheckOutcomesNeverBecomePasses(t *testing.T) {
 }
 
 func TestCancellationPreservesTerminalRecord(t *testing.T) {
-	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "wait"))
 	ctx, cancel := context.WithCancel(t.Context())
 	timer := time.AfterFunc(200*time.Millisecond, cancel)
@@ -418,7 +417,6 @@ func TestCancellationPreservesTerminalRecord(t *testing.T) {
 }
 
 func TestNormalCheckExitStopsRedirectedBackgroundDescendants(t *testing.T) {
-	t.Parallel()
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		t.Skip("owned process-group cleanup is available on native Linux and macOS builds")
 	}
