@@ -125,6 +125,7 @@ The result JSON contains:
 | `uncertainties` | Remaining unknowns; `[]` records none |
 | `reach_runs` | Review only: how each reach-row mode was [run](#run-every-reach-row-mode) |
 | `requirement_map` | Completed result of a brief with `requirements` only: for each declared requirement, its `tests` (`path` of a `_test.go` file this result or an earlier test-engineer result changed, and the Go test `name`), or an `uncovered` reason |
+| `report` | Optional, task with a profile only: the full report's absolute `path` and `sha256` ([handoff caps](#handoff-caps)) |
 
 The result must match actual source at submission: never invent a fingerprint or
 copy the original baseline after edits. `cw task` fills omitted single-valued
@@ -175,6 +176,18 @@ After the coordinator stops or supersedes blocked or cancelled work, it can clos
 it as `unused` with an explicit rationale; this neither satisfies requirements nor
 counts as independent review. The worker must stop changing source before its
 assignment is closed; these commands do not stop the runtime process.
+
+### Handoff caps
+
+In a task with a profile, `cw task handoff` refuses a result whose `summary`
+exceeds 1,200 bytes, whose finding `summary` spans lines or exceeds 400 bytes,
+or which encodes to more than 6 KiB without `changed_files`, `reach_runs` and
+`requirement_map`. A finding keeps its ID, severity, one line and source
+`evidence`; the reasoning goes in a report file of at most 512 KiB that
+`report` names. `handoff` stores a copy as `report-<assignment>.md` in the task
+directory and prints that path as `report`; loading the task checks the copy
+against its `sha256`. A task without a profile takes no `report` and keeps the
+old limits.
 
 ## Test rules and test authorship
 

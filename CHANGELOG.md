@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 - `cw task assign` records the stage a brief answers and, for a later round, the findings or requirements it fixes or the assignment it repeats;
   under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
+- Under a profile `cw task handoff` caps a result at 6 KiB, its summary at 1,200 bytes and each finding at one 400-byte line, and stores
+  the full report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
 
 ### Changed
 

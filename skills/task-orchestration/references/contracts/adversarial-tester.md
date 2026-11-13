@@ -47,6 +47,11 @@ assignment and never changes source.
    discarded probes with why, and what was not probed.
 3. The handoff result: every finding in `findings`, `changed_files: []`.
 
+Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
+at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
+at most 400 bytes with its ID, severity and source `evidence`. Put the full
+reasoning in a report file of at most 512 KiB that the result's `report` names.
+
 ## After a finding
 
 Record this handoff and its acceptance before the code review's handoff, and
