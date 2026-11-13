@@ -739,10 +739,15 @@ verify` lists each reused run as a limitation, `check <id> reuses run
 GOFLAGS and environment key at commit <head>; it was not run again`, and `cw
 task assess` binds it. `cw task run` then runs nothing: it prints the run's
 summary with `"status":"reused"` and its `reason`, also under `--full`,
-records nothing and exits 0. Verify, assess and the final context read the go
+records nothing and exits 0. A worker result, a worker acceptance and the
+requirement trace bind a reused run as they bind one at the current snapshot,
+and a stored binding is checked again on load by its recorded
+`source_sha256`. A requirement assessment or the decision that binds check
+runs stays current across a commit of the same bytes while each run it binds
+is still credited; one that binds no run stays tied to its snapshot. Verify,
+assess, the handoff, the acceptance and the final context read the go
 command, its `go env` and the key before they take the task lock, as `cw task
-run` does. Worker results and acceptances, and the requirement
-trace, still bind only a run at the current snapshot.
+run` does.
 
 Any one of these ends the reuse:
 

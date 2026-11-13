@@ -202,7 +202,7 @@ func contractRule(_ context.Context, in verifyInput) verifyFindings {
 }
 
 func traceRule(_ context.Context, in verifyInput) verifyFindings {
-	problems, notes := traceVerifyEntries(in.artifacts, in.record, in.view)
+	problems, notes := traceVerifyEntries(in.artifacts, in.record, in.view, in.credit)
 	return verifyFindings{problems: coded(CodeTrace, problems), limitations: coded(CodeTrace, notes)}
 }
 
