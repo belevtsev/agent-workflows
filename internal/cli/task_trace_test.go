@@ -192,12 +192,39 @@ func l3cReq(id string, criteria ...string) taskflow.ContractRequirement {
 func (f *l3cFix) assign(id string, owned []string, reqs ...taskflow.ContractRequirement) {
 	f.t.Helper()
 	c := *f.contract
-	b := taskflow.WorkerBrief{ID: id, AgentID: "agent-" + id, Role: "implementation", Goal: "fixture work",
+	b := taskflow.WorkerBrief{ID: id, AgentID: "agent-" + id, Role: "implementation", Stage: "tests", Goal: "fixture work",
 		OwnedPaths: owned, Constraints: []string{}, CheckIDs: []string{}, StopCondition: "done",
 		Contract: &c, Requirements: reqs}
-	if _, err := (taskflow.Env{}).AssignWorker(f.ctx, f.dir, b); err != nil {
+	if _, err := (taskflow.Env{}).AssignWorker(f.ctx, f.dir, fixtureRound(f.t, f.dir, b)); err != nil {
 		f.t.Fatalf("AssignWorker(%s): %v", id, err)
 	}
+}
+
+// fixtureRound returns b with repeats set to the latest assignment of its
+// stage that has returned a result, when b is an author-stage brief that
+// names neither fixes nor repeats. These fixtures assign successive rounds to
+// test what the rounds record, not the round rules, which stages_test.go
+// covers; a later round of a stage must name what it repeats or fixes.
+func fixtureRound(t *testing.T, task string, b taskflow.WorkerBrief) taskflow.WorkerBrief {
+	t.Helper()
+	if len(b.Fixes) > 0 || b.Repeats != "" || (b.Stage != "tests" && b.Stage != "implementation") {
+		return b
+	}
+	record, err := taskflow.Load(task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range record.Assignments {
+		if a.Brief.Stage != b.Stage {
+			continue
+		}
+		for _, r := range record.WorkerResults {
+			if r.Result.AssignmentID == a.Brief.ID {
+				b.Repeats = a.Brief.ID
+			}
+		}
+	}
+	return b
 }
 
 func (f *l3cFix) goModRef() taskflow.SourceRef {

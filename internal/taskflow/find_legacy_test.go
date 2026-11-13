@@ -22,7 +22,7 @@ import (
 var v2096Members = []string{"version", "id", "directory", "revision", "evidence_revision", "previous_sha256", "created_at", "updated_at", "plan", "baseline", "baseline_manifest", "advisers", "contexts", "checks", "assessments", "decision", "consultations", "verification", "assignments", "worker_results", "worker_acceptances"}
 
 // toV2096Shape rewrites every revision of record's chain, with valid hash
-// chaining, into the shape cw v2.0.96 writes: no packs or test_rules, and no
+// chaining, into the shape cw v2.0.96 writes: no packs, test_rules or profile, and no
 // verification source_sha256 unless keepDigest (a v3.0.0-rc.1 cw verified
 // it). It requires each revision to hold only v2096Members and abandonment,
 // and Load to refuse the chain as a record to replace with a new task.
@@ -35,7 +35,7 @@ func toV2096Shape(t *testing.T, record Record, keepDigest bool) {
 		if err := Decode(bytes.NewReader(productionTaskRead(t, path)), &historical); err != nil {
 			t.Fatal(err)
 		}
-		historical.Packs, historical.TestRules = nil, ""
+		historical.Packs, historical.TestRules, historical.Profile = nil, "", nil
 		if historical.Verification != nil && !keepDigest {
 			historical.Verification.SourceSHA256 = ""
 		}

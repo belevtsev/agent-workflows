@@ -45,7 +45,7 @@ brief with a unique immutable assignment ID:
 
 ```json
 {"id": "component-change", "agent_id": "/root/implementer", "role": "implementation",
- "goal": "Implement the agreed component behavior", "owned_paths": ["src/component"],
+ "stage": "implementation", "goal": "Implement the agreed component behavior", "owned_paths": ["src/component"],
  "constraints": ["Preserve unrelated changes and the agreed interface"],
  "check_ids": ["unit"],
  "stop_condition": "Return changes, source evidence, actual checks and unresolved questions"}
@@ -63,6 +63,19 @@ assignment ID, as `handoff` fills the assignment hash and snapshot. Successive
 assignments use new IDs, distinct from runtime identity. Pass a bounded brief, not
 the full conversation.
 
+Under the task's [profile](../../../docs/operations.md#profiles), an
+`implementation` or `review` brief names its `stage`, one of the profile's stages
+(a test engineer's is `tests`, a test review's `test-review`, a code review's
+`code-review`); `evidence` and
+`verification` briefs need none. Several first-round briefs of one stage may run
+in parallel on separate paths. Once a brief of a stage has returned a result, a
+later `spec`, `design`, `tests` or `implementation` brief is a fix or a repeat:
+it names `fixes`, each entry one `{"finding": "<assignment id>/<finding id>"}`
+or `{"requirement": "<plan requirement id>"}`, or `repeats`, the earlier
+assignment of the same stage it replaces. `assign` refuses a brief that lacks
+them and names the member. A task started before profiles accepts briefs
+without them.
+
 Roles are `implementation`, `evidence`, `review` and `verification`; only
 implementation results can declare changes. `owned_paths` holds clean relative
 files or directory prefixes (`.` covers the whole project); active implementation
@@ -70,7 +83,7 @@ assignments cannot own overlapping paths, and shared-filesystem workers preserve
 others' edits. `check_ids` selects plan checks or checks added by `cw task add-checks`.
 `cw task run` retains actual execution; a worker's assertion is not a pass. A
 test engineer records as its [contract](contracts/test-engineer.md#record-and-complete)
-says: native `role: "implementation"`, exact test-artifact paths and `check_ids: []`.
+says: native `role: "implementation"`, `stage: "tests"`, exact test-artifact paths and `check_ids: []`.
 
 A brief of any role may carry `inputs`: up to 32 artefacts handed to the worker,
 inside or outside the project, each as an absolute `path` with its `sha256`.
@@ -350,7 +363,7 @@ contract or test itself to stay within the budget.
 New substantial tasks whose source differs from baseline require an independent
 substantive code reviewer, distinct from the coordinator and implementation
 workers, before final adviser context (or completion when checkpoints are not
-required). Its brief uses `role: "review"`, the [code-review](contracts/code-review.md)
+required). Its brief uses `role: "review"`, `stage: "code-review"`, the [code-review](contracts/code-review.md)
 contract and `owned_paths: ["."]` for the full resulting source, and names the
 absolute paths of `interface-contract.md`, `design.md`, the test engineer's
 `test-matrix.md` and `requirement-map.md`, and the final coverage check's
@@ -394,7 +407,7 @@ because no brief asked how the changed installer runs. Give the filled file's pa
 and SHA-256 (`shasum -a 256`) as the brief's `bundle`:
 
 ```json
-{"id": "review-1", "agent_id": "/root/reviewer", "role": "review",
+{"id": "review-1", "agent_id": "/root/reviewer", "role": "review", "stage": "code-review",
  "goal": "Review the change against the requirements", "owned_paths": ["."],
  "constraints": [], "check_ids": [],
  "stop_condition": "Return findings with source evidence and what was not reviewed",

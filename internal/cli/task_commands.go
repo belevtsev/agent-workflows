@@ -37,6 +37,7 @@ var taskCommands = []func(deps taskDeps) *cobra.Command{
 	newTaskAbandonCommand,
 	newTaskAddChecksCommand,
 	newTaskTimelineCommand,
+	newTaskUsageCommand,
 }
 
 // addTaskCommands adds cw task and its subcommands to root.

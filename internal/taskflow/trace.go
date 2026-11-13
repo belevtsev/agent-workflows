@@ -71,6 +71,7 @@ func writeTestResults(path, runID string, results langpack.GoTestResults) (strin
 // it, their mapped tests and the check runs that recorded them, judged at the
 // current source. It changes nothing.
 func (env Env) Trace(ctx context.Context, taskPath string) (TraceReport, error) {
+	probes := env.probeReuse(ctx, taskPath)
 	root, directory, err := openTask(taskPath)
 	if err != nil {
 		return TraceReport{}, err
@@ -85,7 +86,7 @@ func (env Env) Trace(ctx context.Context, taskPath string) (TraceReport, error) 
 		return TraceReport{}, err
 	}
 	view := newSourceView(snapshot, files)
-	report := judgeTrace(taskDirectory{root}, record, view).report
+	report := judgeTrace(taskDirectory{root}, record, view, env.credit(ctx, taskDirectory{root}, snapshot, files, probes)).report
 	view.close()
 	after, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
 	if err != nil {
@@ -336,7 +337,7 @@ type judgedEntry struct {
 // with a completed result, and the coverage closed ones lost, from the record,
 // the task directory and the current source. A PASS counts only when the run
 // proves it (R7, R8).
-func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudgement {
+func judgeTrace(artifacts Artifacts, record Record, view *sourceView, credit *creditSource) traceJudgement {
 	snapshot := view.snapshot
 	judgement := traceJudgement{report: TraceReport{TaskID: record.ID, Fingerprint: snapshot.Fingerprint, Criteria: []TraceCriterion{}, Problems: []string{}}}
 	loaded := map[string]*storedResults{}
@@ -362,12 +363,16 @@ func judgeTrace(artifacts Artifacts, record Record, view *sourceView) traceJudge
 	isCurrent := map[string]bool{}
 	for _, check := range allChecks(record) {
 		run := latestRun(record, check.ID)
-		if run == nil || run.Status == "running" || run.After == nil || !equalSnapshot(run.Before, snapshot) || !equalSnapshot(*run.After, snapshot) {
+		if run == nil || run.Status == "running" || run.After == nil {
+			continue
+		}
+		// A run at the current snapshot is judged whatever its status; a run
+		// at another one only when it is reused.
+		passed, _ := credited(record, *run, credit)
+		if !passed && (!equalSnapshot(run.Before, snapshot) || !equalSnapshot(*run.After, snapshot)) {
 			continue
 		}
 		isCurrent[run.ID] = true
-		// Trace judges only runs at the current snapshot; a reused run is not one.
-		passed, _ := credited(record, *run, exactCredit(snapshot))
 		currentRuns = append(currentRuns, judgedRun{run: run, passed: passed, credited: langpack.GoTestsCredited(evidenceRun(*run)), results: loaded[run.ID]})
 	}
 	entry := func(results *storedResults, pkg, name string) langpack.GoTestResult {
@@ -651,12 +656,12 @@ func (results *storedResults) lookup(pkg, name string) (langpack.GoTestResult, b
 
 // traceVerifyEntries turns the judgement of mapped tests into verify's
 // problems (R6, R32, R30, R42, in that order) and limitations (R31, R41).
-func traceVerifyEntries(artifacts Artifacts, record Record, view *sourceView) (problems, limitations []string) {
+func traceVerifyEntries(artifacts Artifacts, record Record, view *sourceView, credit *creditSource) (problems, limitations []string) {
 	problems = inputCopyProblems(artifacts, record)
 	if !slices.ContainsFunc(record.Assignments, mapBearing) {
 		return problems, nil
 	}
-	judgement := judgeTrace(artifacts, record, view)
+	judgement := judgeTrace(artifacts, record, view, credit)
 	if judgement.judged > 0 {
 		problems = append(problems, judgement.unreadable...)
 	}

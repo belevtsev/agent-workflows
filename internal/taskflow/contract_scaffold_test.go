@@ -72,7 +72,7 @@ func scaffoldTask(t *testing.T, files map[string]string) (repo, task string) {
 // scaffoldBrief returns a valid implementation (test-author) brief owning the
 // given repository-relative paths, with no checks and no contract.
 func scaffoldBrief(id string, owned ...string) taskflow.WorkerBrief {
-	return taskflow.WorkerBrief{ID: id, AgentID: "author-" + id, Role: "implementation", Goal: "Author tests from the contract", OwnedPaths: owned, Constraints: []string{}, CheckIDs: []string{}, StopCondition: "Tests authored"}
+	return taskflow.WorkerBrief{ID: id, AgentID: "author-" + id, Role: "implementation", Stage: "tests", Goal: "Author tests from the contract", OwnedPaths: owned, Constraints: []string{}, CheckIDs: []string{}, StopCondition: "Tests authored"}
 }
 
 // scaffoldBlockedHandoff records a blocked terminal handoff for an assignment,

@@ -18,7 +18,10 @@ func sameEncoded(a, b any) bool {
 	return err == nil && bytes.Equal(left, right)
 }
 
-func validateBoundWorkerChecks(record Record, snapshot projectctx.Snapshot, checkIDs, runIDs []string, completed bool) error {
+// validateBoundWorkerChecks checks the runs a stored result or acceptance
+// binds: each terminal at snapshot or, for completed work, a reuse candidate
+// whose source digest is sourceSHA256, the source the binding was made at.
+func validateBoundWorkerChecks(record Record, snapshot projectctx.Snapshot, sourceSHA256 string, checkIDs, runIDs []string, completed bool) error {
 	if len(checkIDs) != len(runIDs) {
 		return errors.New("worker check bindings differ from declared check IDs")
 	}
@@ -31,7 +34,8 @@ func validateBoundWorkerChecks(record Record, snapshot projectctx.Snapshot, chec
 				break
 			}
 		}
-		if found == nil || seen[id] || found.CheckID != checkIDs[i] || found.FinishedAt == nil || found.Status == "running" || found.After == nil || !equalSnapshot(snapshot, *found.After) {
+		reused := completed && sourceSHA256 != "" && found != nil && reuseCandidate(*found) && found.SourceSHA256 == sourceSHA256
+		if found == nil || seen[id] || found.CheckID != checkIDs[i] || found.FinishedAt == nil || found.Status == "running" || found.After == nil || !equalSnapshot(snapshot, *found.After) && !reused {
 			return errors.New("worker references a missing, nonterminal or mismatched actual check run")
 		}
 		seen[id] = true
@@ -50,12 +54,20 @@ func validateWorkerRecord(record Record) error {
 		return errors.New("stored worker collections exceed their bounds")
 	}
 	assignments := map[string]bool{}
-	for _, assigned := range record.Assignments {
+	for i, assigned := range record.Assignments {
 		if assigned.TaskID != record.ID || assignments[assigned.Brief.ID] || !validWorkerSnapshot(record, assigned.Snapshot) || assigned.AssignedAt.Before(record.CreatedAt) || assigned.AssignedAt.After(record.UpdatedAt) {
 			return errors.New("invalid stored worker assignment identity, snapshot or time")
 		}
 		assignments[assigned.Brief.ID] = true
 		if err := validateBrief(record, assigned.Brief); err != nil {
+			return err
+		}
+		// The round rule needs the results recorded when the brief was
+		// assigned, which only the revision chain knows, not the clock;
+		// validateWorkerTransition applies it to the revision that adds the
+		// brief. Here the rest of the brief's stage rules apply.
+		returned := func(string) bool { return false }
+		if err := validateBriefStage(record, record.Assignments[:i], returned, assigned.Brief); err != nil {
 			return err
 		}
 		hash, err := assignmentHash(assigned)
@@ -89,7 +101,7 @@ func validateWorkerRecord(record Record) error {
 		if err != nil || hash != bound.SHA256 {
 			return errors.New("stored worker result hash differs")
 		}
-		if err := validateBoundWorkerChecks(record, bound.Result.Snapshot, bound.Result.CheckIDs, bound.CheckRuns, bound.Result.Status == "completed"); err != nil {
+		if err := validateBoundWorkerChecks(record, bound.Result.Snapshot, bound.SourceSHA256, bound.Result.CheckIDs, bound.CheckRuns, bound.Result.Status == "completed"); err != nil {
 			return err
 		}
 	}
@@ -101,7 +113,10 @@ func validateWorkerRecord(record Record) error {
 		if err := validateAcceptance(record, *result, bound.Acceptance); err != nil {
 			return err
 		}
-		if err := validateBoundWorkerChecks(record, bound.Snapshot, bound.Acceptance.CheckIDs, bound.CheckRuns, true); err != nil {
+		if bound.SourceSHA256 != "" && !validSHA256(bound.SourceSHA256) {
+			return errors.New("stored worker acceptance source digest is invalid")
+		}
+		if err := validateBoundWorkerChecks(record, bound.Snapshot, bound.SourceSHA256, bound.Acceptance.CheckIDs, bound.CheckRuns, true); err != nil {
 			return err
 		}
 	}
@@ -127,6 +142,12 @@ func validateWorkerTransition(previous, current Record) error {
 		if assigned.Brief.Role == "review" && assigned.BundleFile == "" {
 			return errors.New("stored review assignment lacks its reviewer bundle")
 		}
+		// An assignment is the only worker change of its revision, so the
+		// previous revision holds exactly the results AssignWorker saw.
+		returned := func(id string) bool { return findWorkerResult(previous, id) != nil }
+		if err := validateBriefStage(current, previous.Assignments, returned, assigned.Brief); err != nil {
+			return err
+		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {
 				if other.Brief.Role != "implementation" || findWorkerResult(previous, other.Brief.ID) != nil {
@@ -147,7 +168,7 @@ func validateWorkerTransition(previous, current Record) error {
 		if findAssignment(previous, bound.Result.AssignmentID) == nil {
 			return errors.New("worker result must follow its assignment revision")
 		}
-		runs, err := workerChecks(previous, bound.Result.Snapshot, bound.Result.CheckIDs, bound.Result.Status == "completed")
+		runs, err := workerChecks(previous, recordedCredit(bound.Result.Snapshot, bound.SourceSHA256), bound.Result.CheckIDs, bound.Result.Status == "completed")
 		if err != nil || !slices.Equal(runs, bound.CheckRuns) {
 			return errors.New("stored result did not bind the actual latest check runs")
 		}
@@ -165,7 +186,7 @@ func validateWorkerTransition(previous, current Record) error {
 		if result == nil {
 			return errors.New("worker acceptance must follow its result revision")
 		}
-		runs, err := bindChecks(previous, exactCredit(bound.Snapshot), bound.Acceptance.CheckIDs)
+		runs, err := bindChecks(previous, recordedCredit(bound.Snapshot, bound.SourceSHA256), bound.Acceptance.CheckIDs)
 		if err != nil || !slices.Equal(runs, bound.CheckRuns) {
 			return errors.New("stored acceptance did not bind actual latest passed checks")
 		}

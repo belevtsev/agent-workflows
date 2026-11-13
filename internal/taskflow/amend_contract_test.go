@@ -1977,7 +1977,7 @@ func acTestCitingAddedChecks(t *testing.T) {
 	t.Parallel()
 	brief := func(checkIDs ...string) taskflow.WorkerBrief {
 		return taskflow.WorkerBrief{
-			ID: "impl-1", AgentID: "/root/worker", Role: "implementation", Goal: "extend internal/b",
+			ID: "impl-1", AgentID: "/root/worker", Role: "implementation", Stage: "implementation", Goal: "extend internal/b",
 			OwnedPaths: []string{"internal/b"}, Constraints: []string{"contract fixture"},
 			CheckIDs: checkIDs, StopCondition: "the cited checks pass",
 		}

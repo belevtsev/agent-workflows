@@ -446,6 +446,85 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### Profiles
+
+`cw task start` fixes one profile in the task record, as it fixes the packs: the
+plan's `profile` member, or `lite` when the plan names none. `start` writes the
+resolved name into the stored plan and prints it as `profile` in its summary. The profile holds
+the stages the task may assign, the author round caps per stage, the fix rounds
+allowed per finding or requirement, and the budget in US dollars, with the share
+(80%) at which the task is to stop taking new work. `cw` records these limits but
+does not enforce them yet: no command refuses a round past its cap or stops a
+task at its budget. A plan's `budget` member (`{"max_usd": 10}`) may lower the
+profile's budget, never raise it; it may also set `stop_at`, the share at which
+the task stops, up to the profile's 0.8. A higher value of either is refused and
+no task is created. A later revision that changes the profile fails to load. A record
+started before profiles existed has none, and no caps or budget apply to it.
+
+The budgets are provisional: they are not measured yet, and the evaluation runs
+replace them before v3.0.0. The budget counts dollars only; there is no token cap.
+
+| Profile | Stages | Author round caps | Fix rounds per finding or requirement | Budget (USD), stop at 80% | Used when |
+| --- | --- | --- | --- | --- | --- |
+| `lite` (default) | `tests`, `implementation`, `test-review`, `code-review` | `tests` 2 | 2 | 15 | no open design choice |
+| `standard` | `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review` | `design` 2, `tests` 2 | 2 | 40 | an open design choice or a public interface change |
+| `strict` | `spec`, `spec-review`, `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review`, `adversarial` | `spec` 2, `design` 2, `tests` 2 | 2 | 100 | the user asks, or the change touches security, data integrity or concurrency |
+
+`tests` runs in parallel with `implementation`. `cw task assign` requires an
+implementation or review brief to name one of the profile's stages, and a later
+round of an author stage to name the findings it fixes or the assignment it
+repeats ([assign before dispatch](../skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)). Under `strict` the adviser
+checkpoints also apply when the task binds advisers. A `spec` or `design` cap
+counts revisions after the first draft; a `tests` cap counts every round.
+
+### Cost budget
+
+`cw task usage --task DIR (--claude-transcript FILE | --codex-session FILE)
+[--prices FILE]` reads the session's transcript, read-only, as `cw metrics
+import` does, and stores what the session has used since the task started in
+the task record as a usage sample. Only requests stamped at or after the task's
+`created_at` count, from the main transcript, its sidechain lines and its
+subagent transcripts alike, so a session that began before the task counts
+only its later requests. A sample keeps the session, its tokens (uncached
+input, cache writes, cache reads and output, apart) and its dollars with their
+source.
+
+- **Dollars are estimates.** Each request is priced from its tokens with a price
+  table: input, output and cache reads at their own rates, cache writes at the
+  5-minute or 1-hour write rate from the request's own split. A write without
+  that split is priced at the 1-hour rate, the higher one, so the budget never
+  under-counts. A Claude Haiku 5.5 request whose prompt (its input, cache reads
+  and cache writes) is over 100,000 tokens takes that model's long-prompt rates.
+  The `cost-state` line Claude Code writes when a session exits is not used,
+  whether it is missing, stale or does not match the requests.
+- **The table** is cw's built-in one, dated 2026-11-13 and read from
+  [Claude's pricing page](https://platform.claude.com/docs/en/about-claude/pricing),
+  or the one `--prices FILE` names, which replaces it whole (same format as
+  `cw metrics import --prices`, with an optional `date` and per-model
+  `long_prompt`). A sample's `dollar_source` names the table's kind
+  (`built_in` or `file`), its date and the SHA-256 of its bytes, and
+  `usd_estimated` is true.
+- **Unknown, never zero.** An incomplete or unreadable transcript, or a request
+  without a readable timestamp, leaves tokens and dollars unknown with the
+  reason. One request the table cannot price makes
+  the session's dollars unknown: a model it does not list (dated model IDs
+  included), a `speed` other than `standard`, or an `inference_geo` other than
+  `global`. An unknown value is never counted as 0.
+- **Task usage** is, per session, its latest sample, summed over the sessions;
+  one sample of a session is enough. Within a session, every pair of consecutive known amounts
+  must come from the same table and never fall; a different table, or a stale
+  or truncated transcript copy that reads lower than the sample before it,
+  makes the usage unknown.
+- **Few revisions.** A sample is judged against its own session's stored
+  samples. It is stored when it is the session's first, when its
+  dollars turn known or unknown, change table, fall, or rise by at least 5% of
+  the budget, and, while the session's dollars are unknown, when its tokens
+  turn known or unknown, fall, or grow by at least 5%. The default output says
+  whether it was stored and gives the task's usage; `--full` prints the record.
+- A task started before profiles has no budget, and `cw task usage` refuses it.
+
+Nothing stops a task at its budget yet; the budget counts dollars only.
+
 ### Task locks
 
 Every `cw` command that writes a task record takes an exclusive `flock` on
@@ -607,10 +686,15 @@ verify` lists each reused run as a limitation, `check <id> reuses run
 GOFLAGS and environment key at commit <head>; it was not run again`, and `cw
 task assess` binds it. `cw task run` then runs nothing: it prints the run's
 summary with `"status":"reused"` and its `reason`, also under `--full`,
-records nothing and exits 0. Verify, assess and the final context read the go
+records nothing and exits 0. A worker result, a worker acceptance and the
+requirement trace bind a reused run as they bind one at the current snapshot,
+and a stored binding is checked again on load by its recorded
+`source_sha256`. A requirement assessment or the decision that binds check
+runs stays current across a commit of the same bytes while each run it binds
+is still credited; one that binds no run stays tied to its snapshot. Verify,
+assess, the handoff, the acceptance and the final context read the go
 command, its `go env` and the key before they take the task lock, as `cw task
-run` does. Worker results and acceptances, and the requirement
-trace, still bind only a run at the current snapshot.
+run` does.
 
 Any one of these ends the reuse:
 
@@ -804,7 +888,8 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
 ### Usage stores
 
 The session transcript is the source of a session's usage; the cost history is a
-copy of its token counts. No command reads both, so none reconciles them:
+copy of its token counts, and a task record keeps usage samples taken from it.
+No command reads two of them, so none reconciles them:
 
 | Command | Reads | Writes |
 | --- | --- | --- |
@@ -812,6 +897,7 @@ copy of its token counts. No command reads both, so none reconciles them:
 | `cw metrics import --append` | the transcript, then the request identities in the history | requests the history lacks |
 | `cw metrics history` | the cost history only | nothing |
 | `cw metrics summarize` | the observation files you name | nothing |
+| `cw task usage` | the transcript, then the task record | a usage sample in the task record, when it matters ([cost budget](#cost-budget)) |
 
 When they differ:
 
@@ -828,9 +914,13 @@ When they differ:
   an incomplete import also leaves `usage` unknown, never zero. Codex rollouts
   and the history record no dollars, so their only dollars are price-table
   estimates.
-- **Task records.** A task record holds no session usage. A consultation record
-  keeps each adviser call's provider-reported tokens, which no command adds to
-  session usage.
+- **Task records.** A task record holds the usage samples `cw task usage`
+  stored; the task's budget stop, when it lands, reads them, not the cost
+  history. A sample is the transcript as it was when sampled, and its dollars
+  are estimates from a dated price table, never the cost-state, so they may
+  differ from what `cw metrics import` reports for the same transcript. A
+  consultation record keeps each adviser call's provider-reported tokens, which
+  no command adds to session usage.
 
 ## Consultation command
 

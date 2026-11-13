@@ -62,6 +62,7 @@ adviser checkpoints are not required:
 {
   "title": "Handle the documented empty-input case",
   "kind": "substantial",
+  "profile": "lite",
   "checkpoints": {
     "required": false,
     "reason": "The documented contract fixes the result; no alternative approach is open"
@@ -83,6 +84,10 @@ adviser checkpoints are not required:
   ]
 }
 ```
+
+`profile` fixes the task's stages, round caps and dollar budget: `lite` (the
+default when absent), `standard` or `strict`, as the
+[profiles table](../../../docs/operations.md#profiles) lists them.
 
 The `-covermode=atomic -coverpkg=./... -coverprofile=` flags give the
 [code review](contracts/code-review.md#uncovered-changed-blocks) the coverage
@@ -434,7 +439,11 @@ cw task run --task <task-id> --check unit
 This runs the explicitly declared argv, captures actual exit status and duration,
 and binds the result to source identity before and after execution. It does not
 interpret command text through a shell. A failed, cancelled, timed-out, or
-source-changing check cannot become a passing result.
+source-changing check cannot become a passing result. When the check's latest
+run passed over the same bytes, permission bits, go command, `GOFLAGS` and run
+key, it runs nothing and prints `"status":"reused"`; that run then counts for
+assessments, worker handoffs and acceptances as a fresh one would. Use
+`--force` when the check reads something else that changed, such as git state.
 Checks execute approved local code without a sandbox. Select them within the
 user's authorized scope; a task plan is not permission for external side effects.
 It prints the status and the log's path relative to the task directory, plus failing test names and the first

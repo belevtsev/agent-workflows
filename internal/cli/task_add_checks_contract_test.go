@@ -935,7 +935,7 @@ func (r *aclRepo) acceptedReview(t *testing.T, dir, reviewID string) {
 	sum := sha256.Sum256(filled)
 	ref := []any{map[string]any{"path": "internal/b/b.go", "start_line": 1, "end_line": 4}}
 	brief := map[string]any{
-		"id": reviewID, "agent_id": "/root/reviewer", "role": "review",
+		"id": reviewID, "agent_id": "/root/reviewer", "role": "review", "stage": "code-review",
 		"goal": "Review the change against the requirements", "owned_paths": []string{"."},
 		"constraints": []string{}, "check_ids": []string{},
 		"stop_condition": "Return findings with source evidence and what was not reviewed",

@@ -37,7 +37,7 @@ func FixedVerifyLimitations() []string { return slices.Clone(fixedVerifyLimitati
 // task's immutable adviser binding (provider -> pinned model, possibly empty):
 // the advisers configured when the task starts. Later policy or credential
 // changes never change it. Every record it writes carries the pack set, the
-// test rules and the baseline manifest.
+// test rules and the baseline manifest, and the profile the plan selects.
 func (env Env) start(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, packs packChoice) (Record, error) {
 	if plan.CoordinatorID == "" {
 		plan.CoordinatorID = "/root"
@@ -45,6 +45,13 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	if err := ValidatePlan(&plan); err != nil {
 		return Record{}, err
 	}
+	profile, err := resolveProfile(plan)
+	if err != nil {
+		return Record{}, asInvalid(err)
+	}
+	// The plan records the profile it resolved to, as it records the
+	// coordinator, so a later change of DefaultProfile changes no task.
+	plan.Profile = profile.Name
 	advisers = maps.Clone(advisers)
 	if advisers == nil {
 		advisers = map[string]string{}
@@ -99,6 +106,7 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	record := Record{Version: Version, ID: id, Directory: directory, Revision: 1, CreatedAt: now, UpdatedAt: now, Plan: plan, Baseline: snapshot, BaselineManifest: &ManifestRef{File: baselineManifestFile, SHA256: digest(manifest), Files: len(files)}, Advisers: advisers, Contexts: map[string]Context{}, Checks: []CheckRun{}, Assessments: map[string]BoundAssessment{}, Consultations: map[string]Attachment{}}
 	record.Packs = packSet
 	record.TestRules = TestRulesV1
+	record.Profile = profile
 	record.Contexts["before"] = Context{TaskID: id, Phase: "before", Snapshot: snapshot, Advisers: advisers}
 	data, err := encode(record)
 	if err != nil {
@@ -250,6 +258,17 @@ func bindChecks(record Record, source *creditSource, ids []string) ([]string, er
 		runs = append(runs, run.ID)
 	}
 	return runs, nil
+}
+
+// stillCredited reports whether evidence bound at another snapshot to the
+// runs runIDs of the checks ids is still current: it binds at least one run,
+// and each is still credited at source. A run is credited at another snapshot
+// only over the same bytes and permission bits, and it was credited at the
+// bound snapshot too, so the bytes the evidence judged are the current ones.
+// Evidence that binds no run stays tied to its snapshot.
+func stillCredited(record Record, source *creditSource, ids, runIDs []string) bool {
+	runs, err := bindChecks(record, source, ids)
+	return err == nil && len(runs) > 0 && slices.Equal(runs, runIDs)
 }
 
 func permittedNonExecution(record Record) bool {
@@ -416,7 +435,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 			problem("requirement %s is not satisfied", requirement.ID)
 			continue
 		}
-		if !equalSnapshot(snapshot, bound.Snapshot) {
+		if !equalSnapshot(snapshot, bound.Snapshot) && !stillCredited(record, source, bound.Assessment.CheckIDs, bound.CheckRuns) {
 			problem("requirement %s evidence is stale", requirement.ID)
 			continue
 		}
@@ -452,7 +471,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 	if decision == nil || decision.Decision.Status != "resolved" || !nonblank(decision.Decision.Reason) {
 		problem("Codex task decision is unresolved")
 	} else {
-		if !equalSnapshot(snapshot, decision.Snapshot) {
+		if !equalSnapshot(snapshot, decision.Snapshot) && !stillCredited(record, source, decision.Decision.CheckIDs, decision.CheckRuns) {
 			problem("Codex task decision is stale")
 		}
 		if err := validateRefs(snapshot, decision.Decision.Evidence); err != nil {

@@ -153,9 +153,14 @@ func (env tle2xEnv) startTaskWithPlan(t *testing.T, planName, planJSON string) s
 
 func (env tle2xEnv) assign(t *testing.T, dir, id, agent, role, owned string) {
 	t.Helper()
+	// An implementation brief names its stage under the task's profile.
+	stage := ""
+	if role == "implementation" {
+		stage = `"stage":"implementation",`
+	}
 	input := env.writeInput(t, "brief-"+id+".json", fmt.Sprintf(
-		`{"id":%q,"agent_id":%q,"role":%q,"goal":"g","owned_paths":[%q],"constraints":[],"check_ids":[],"stop_condition":"s"}`,
-		id, agent, role, owned))
+		`{"id":%q,"agent_id":%q,"role":%q,%s"goal":"g","owned_paths":[%q],"constraints":[],"check_ids":[],"stop_condition":"s"}`,
+		id, agent, role, stage, owned))
 	env.mustRun(t, "task", "assign", "--task", dir, "--input", input, "--summary")
 }
 

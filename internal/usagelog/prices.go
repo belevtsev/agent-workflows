@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	json "encoding/json/v2"
@@ -18,9 +19,19 @@ import (
 // PriceTable is an explicitly supplied rate table in USD per million tokens.
 // A missing rate is unknown, never zero.
 type PriceTable struct {
-	Currency string                `json:"currency"`
+	Currency string `json:"currency"`
+	// Date, YYYY-MM-DD, is the day the rates were read from their source.
+	Date     string                `json:"date,omitempty"`
 	Evidence string                `json:"evidence"`
 	Models   map[string]ModelRates `json:"models"`
+}
+
+// LongPromptRates replace a model's rates for a request whose prompt (its
+// uncached input, cache reads and cache writes) exceeds AboveTokens. Only a
+// per-request estimate (EstimateSession) applies them.
+type LongPromptRates struct {
+	AboveTokens int64      `json:"above_tokens"`
+	Rates       ModelRates `json:"rates"`
 }
 
 // ModelRates are per-million-token rates for one model id. For Codex, cached
@@ -32,6 +43,8 @@ type ModelRates struct {
 	CacheWrite5mPerMillion *float64 `json:"cache_write_5m_per_million,omitempty"`
 	CacheWrite1hPerMillion *float64 `json:"cache_write_1h_per_million,omitempty"`
 	CacheReadPerMillion    *float64 `json:"cache_read_per_million,omitempty"`
+	// LongPrompt, when set, prices requests with long prompts.
+	LongPrompt *LongPromptRates `json:"long_prompt,omitempty"`
 }
 
 // LoadPriceTable reads and validates a price table file of at most
@@ -67,11 +80,23 @@ func ParsePriceTable(data []byte) (PriceTable, error) {
 		if strings.TrimSpace(model) == "" || len(model) > 256 || strings.ContainsFunc(model, unicode.IsControl) {
 			return PriceTable{}, errors.New("invalid price table: model ids must be non-blank bounded text")
 		}
-		for _, named := range rates.named() {
+		named := rates.named()
+		if long := rates.LongPrompt; long != nil {
+			if long.AboveTokens <= 0 || long.Rates.LongPrompt != nil {
+				return PriceTable{}, fmt.Errorf("invalid price table: long_prompt for %s needs above_tokens above 0 and no long_prompt of its own", model)
+			}
+			named = append(named, long.Rates.named()...)
+		}
+		for _, named := range named {
 			name, rate := named.name, named.rate
 			if rate != nil && (math.IsNaN(*rate) || math.IsInf(*rate, 0) || *rate < 0 || *rate > outcomes.MaxMetric) {
 				return PriceTable{}, fmt.Errorf("invalid price table: %s for %s must be finite and nonnegative", name, model)
 			}
+		}
+	}
+	if table.Date != "" {
+		if _, err := time.Parse(time.DateOnly, table.Date); err != nil {
+			return PriceTable{}, errors.New("invalid price table: date must be YYYY-MM-DD")
 		}
 	}
 	return table, nil
@@ -122,6 +147,9 @@ func (table *PriceTable) price(model, source string, tokens Tokens) Amount {
 	rates, ok := table.Models[model]
 	if !ok {
 		return Amount{UnknownReason: fmt.Sprintf("price table has no rates for model %q", model)}
+	}
+	if rates.LongPrompt != nil {
+		return Amount{UnknownReason: fmt.Sprintf("model %q's rates depend on each request's prompt length, so its totals cannot be priced", model)}
 	}
 	type part struct {
 		name   string

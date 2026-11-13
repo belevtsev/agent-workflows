@@ -1004,12 +1004,14 @@ func TestExecutablePathWithSpaces(t *testing.T) {
 	}
 }
 
-// Evidence bound on one branch is stale after a branch change at the same
-// head. A fake Source stands in for git: after `git checkout -b different`
-// Capture returns the same head on another branch with another fingerprint
-// (projectctx's tests cover that capture). Oracle: verify is complete before
-// the change, and after it reports the requirement and the decision stale.
-func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
+// Evidence bound on one branch stays current after a branch change at the
+// same head and bytes, because the run it binds is still credited (X2), and
+// is stale once reuse is off. A fake Source stands in for git: after `git
+// checkout -b different` Capture returns the same head on another branch with
+// another fingerprint (projectctx's tests cover that capture). Oracle: verify
+// is complete before and after the change; under CW_NO_REUSE=1 it reports the
+// requirement and the decision stale.
+func TestBranchChangeKeepsEvidenceOverTheSameBytes(t *testing.T) {
 	record, ref, source, env := fakeSourceTask(t, helperPlan(t, "small", "pass"), time.Date(2031, time.February, 3, 4, 5, 6, 0, time.UTC))
 	if _, err := env.RunCheck(t.Context(), record.Directory, "focused"); err != nil {
 		t.Fatal(err)
@@ -1021,9 +1023,13 @@ func TestBranchChangeInvalidatesBoundEvidence(t *testing.T) {
 		t.Fatalf("verify on the bound branch: %+v %v", result, err)
 	}
 	source.snapshot.Branch, source.snapshot.Fingerprint = "different", "sha256:"+strings.Repeat("b", 64)
+	if result, err := env.Verify(t.Context(), record.Directory); err != nil || !result.Complete {
+		t.Fatalf("verify after a branch change over the same bytes: %+v %v", result, err)
+	}
+	t.Setenv("CW_NO_REUSE", "1")
 	result, err := env.Verify(t.Context(), record.Directory)
 	if err == nil || result.Complete {
-		t.Fatalf("branch drift accepted: %+v %v", result, err)
+		t.Fatalf("branch drift accepted with reuse off: %+v %v", result, err)
 	}
 	for _, want := range []string{"requirement behavior evidence is stale", "Codex task decision is stale"} {
 		if !slices.Contains(result.Problems, want) {
