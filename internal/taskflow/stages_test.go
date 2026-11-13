@@ -159,13 +159,13 @@ func TestAssignAcceptsStagedRounds(t *testing.T) {
 }
 
 // Oracle: a record without a profile accepts briefs as before profiles
-// existed: no stage, and a second round of a stage without fixes or
-// repeats, and it still loads.
+// existed: a review without a stage, and a second round of a stage, after
+// the first returned, without fixes or repeats; and it still loads.
 func TestRecordWithoutAProfileAcceptsBriefsAsBefore(t *testing.T) {
 	record, ref := stageTask(t, true)
-	record = mustAssignWorker(t, record, stageBrief("w1", "implementation", "", "source.txt"))
+	record = mustAssignWorker(t, record, stageBrief("w1", "implementation", StageImplementation, "source.txt"))
 	record = returnRound(t, record, ref, "w1")
-	record = mustAssignWorker(t, record, stageBrief("w2", "implementation", "", "source.txt"))
+	record = mustAssignWorker(t, record, stageBrief("w2", "implementation", StageImplementation, "source.txt"))
 	record = mustAssignWorker(t, record, stageBrief("rv", "review", "", "."))
 	if loaded, err := Load(record.Directory); err != nil || loaded.Profile != nil || len(loaded.Assignments) != 3 {
 		t.Fatalf("Load = %d assignments, profile %+v, %v; want 3, none, nil", len(loaded.Assignments), loaded.Profile, err)
