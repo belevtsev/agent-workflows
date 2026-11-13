@@ -5,13 +5,60 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
 
 func usageTestSample(usd float64) taskflow.UsageSample {
-	return taskflow.UsageSample{Source: taskflow.UsageSourceClaude, SessionID: "s1", Tokens: &taskflow.UsageTokens{Output: 1}, USD: &usd, DollarSource: taskflow.DollarsRecorded}
+	return sessionUsageSample("s1", usd)
+}
+
+func sessionUsageSample(session string, usd float64) taskflow.UsageSample {
+	source := &taskflow.DollarSource{Kind: taskflow.PriceTableBuiltIn, Date: "2026-11-13", SHA256: strings.Repeat("ab", 32)}
+	return taskflow.UsageSample{Source: taskflow.UsageSourceClaude, SessionID: session, Tokens: &taskflow.UsageTokens{Output: 1}, USD: &usd, USDEstimated: true, DollarSource: source}
+}
+
+// Oracle: each sample is judged against its own session under lite's 15 USD
+// budget (5% is 0.75 USD). Session A reads 0, 3, 8 and 12 USD, every step at
+// least 0.75, so all four are stored though session B, with one sample, keeps
+// the task's usage unknown between them; B's second sample (0.50) is stored
+// because it gives B's usage. Usage is A's 12 plus B's 0.50. Rows with a
+// session that reads lower than its previous stored sample (1, 13, then 4)
+// store the drop and leave usage unknown, never 3 USD.
+func TestUsageSamplesAreJudgedPerSession(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		samples []taskflow.UsageSample
+		want    *float64
+	}{
+		{"growth while another session is unknown", []taskflow.UsageSample{sessionUsageSample("A", 0), sessionUsageSample("A", 3), sessionUsageSample("B", 0),
+			sessionUsageSample("A", 8), sessionUsageSample("A", 12), sessionUsageSample("B", 0.5)}, new(12.5)},
+		{"a drop below the previous sample", []taskflow.UsageSample{sessionUsageSample("A", 1), sessionUsageSample("A", 13), sessionUsageSample("A", 4)}, nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			repo, store := spRepo(t, map[string]string{"a.txt": "a\n"})
+			record, err := taskflow.StartWithPacks(ctx, repo, store, spPlan("go", "version"), nil, taskflow.SelectionDefault, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result taskflow.UsageResult
+			for i, sample := range c.samples {
+				if result, err = (taskflow.Env{}).RecordUsage(ctx, record.Directory, sample); err != nil || !result.Stored {
+					t.Fatalf("sample %d (%s at %v): stored %v, %v; want stored", i, sample.SessionID, *sample.USD, result.Stored, err)
+				}
+			}
+			usage := taskflow.UsageOf(result.Record)
+			switch {
+			case c.want == nil && (usage.USD != nil || usage.UnknownReason == ""):
+				t.Fatalf("usage %+v, want unknown with a reason", usage)
+			case c.want != nil && (usage.USD == nil || *usage.USD != *c.want):
+				t.Fatalf("usage %+v, want %v USD", usage, *c.want)
+			}
+		})
+	}
 }
 
 // Oracle: stored usage samples are append-only. Load refuses a revision that

@@ -12,6 +12,9 @@ const unknownModel = "unknown"
 type request struct {
 	uncached, write5m, write1h, writeUnsplit, read, output int64
 	thinking                                               *int64
+	// unpriced, when set, says why no standard rate applies to the request:
+	// a speed other than standard or an inference region other than global.
+	unpriced string
 }
 
 func (r request) snapshot() [7]int64 {

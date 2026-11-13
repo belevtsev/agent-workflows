@@ -23,8 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `cw task usage` samples a session's tokens and recorded dollars from its Claude Code or Codex transcript into the task record;
-  task usage is the per-session difference, and an incomplete transcript gives unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
+- `cw task usage` samples a session's tokens into the task record with dollars estimated from a dated built-in price table (or `--prices`);
+  task usage is the per-session difference, and what cannot be priced stays unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record, with its stages, round caps and a
   provisional dollar budget that a plan's `budget` may lower but not raise; nothing enforces the limits yet ([profiles](docs/operations.md#profiles)).
 - Every `cw task` command takes the task ID for `--task` as well as the directory, found in the default task store

@@ -1,7 +1,12 @@
 package cli
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
@@ -19,7 +24,8 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "usage --task DIR (--claude-transcript FILE | --codex-session FILE) [--prices FILE]",
 		Short: "Sample the session's usage from its transcript into the task record",
-		Long: "Read the session's transcript, read-only, and store its cumulative tokens and recorded dollars in the task record when they matter. " +
+		Long: "Read the session's transcript, read-only, price each request from cw's dated price table (or --prices), and store the session's " +
+			"cumulative tokens and estimated dollars in the task record when they matter. A recorded cost-state is not used. " +
 			"Task usage is, per session, the latest sample minus the first; unknown values stay unknown, never 0. See docs/operations.md \"Cost budget\".",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -35,22 +41,19 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 			if err := absolutePaths(deps.config, &claudeTranscript, &codexSession, &pricesPath); err != nil {
 				return err
 			}
-			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession}
-			if pricesPath != "" {
-				table, err := usagelog.LoadPriceTable(pricesPath)
-				if err != nil {
-					return err
-				}
-				options.Prices = &table
+			table, source, err := usagePrices(pricesPath)
+			if err != nil {
+				return err
 			}
-			report, err := usagelog.Import(cmd.Context(), options)
+			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, Prices: &table}
+			report, estimate, err := usagelog.EstimateSession(cmd.Context(), options)
 			if err != nil {
 				if errors.Is(err, usagelog.ErrInvalidOptions) {
 					return usage(err)
 				}
 				return err
 			}
-			result, err := taskEnv(deps.config).RecordUsage(cmd.Context(), directory, usageSample(report))
+			result, err := taskEnv(deps.config).RecordUsage(cmd.Context(), directory, usageSample(report, estimate, source))
 			if err != nil {
 				return err
 			}
@@ -63,7 +66,7 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 	taskFlag(command, &directory)
 	command.Flags().StringVar(&claudeTranscript, "claude-transcript", "", "Claude Code session transcript (.jsonl) to sample")
 	command.Flags().StringVar(&codexSession, "codex-session", "", "Codex rollout file to sample")
-	command.Flags().StringVar(&pricesPath, "prices", "", "Price table JSON; used for dollars only when the transcript records no cost")
+	command.Flags().StringVar(&pricesPath, "prices", "", "Price table JSON that replaces cw's built-in table; its SHA-256 becomes the dollar source")
 	fullFlag(command, &full, "the whole task record")
 	return command
 }
@@ -77,47 +80,26 @@ type taskUsageSummary struct {
 	Usage  taskflow.TaskUsage   `json:"usage"`
 }
 
-// usageSample maps an import report to a usage sample. Tokens come from the
-// report's whole-session usage, with cache writes being total input less
-// uncached input and cache reads. Dollars are the transcript's recorded cost;
-// only a transcript that records none takes a supplied price table's total.
-// An incomplete import, withheld usage or a cost that covers a model of
-// unknown price leaves the value nil with the reason, never 0.
-func usageSample(report usagelog.Report) taskflow.UsageSample {
+// usageSample maps an import report and its estimate to a usage sample.
+// Tokens are the transcript's own totals, cache writes being the 5m, 1h and
+// unsplit writes together; a recorded cost-state changes neither them nor the
+// dollars. An incomplete import, or a request the table cannot price, leaves
+// the value nil with the reason, never 0.
+func usageSample(report usagelog.Report, estimate usagelog.Estimate, source taskflow.DollarSource) taskflow.UsageSample {
 	sample := taskflow.UsageSample{Source: report.Source, SessionID: report.SessionID}
 	if report.Status != usagelog.StatusComplete {
 		sample.UnknownReason = boundReason("the transcript import is incomplete: " + strings.Join(report.IncompleteReasons, "; "))
 		return sample
 	}
-	if report.Usage == nil {
-		sample.UnknownReason = boundReason("the transcript usage is unknown: " + report.UsageUnknownReason)
+	totals := report.Totals
+	sample.Tokens = &taskflow.UsageTokens{UncachedInput: totals.UncachedInputTokens, CacheWrite: totals.CacheWrite5mTokens + totals.CacheWrite1hTokens + totals.CacheWriteUnsplitTokens,
+		CacheRead: totals.CacheReadTokens, Output: totals.OutputTokens}
+	if estimate.USD == nil {
+		sample.UnknownReason = boundReason("the dollars cannot be estimated: " + estimate.UnknownReason)
 		return sample
 	}
-	value := report.Usage
-	if value.InputTokens != nil && value.UncachedInputTokens != nil && value.CacheReadTokens != nil && value.OutputTokens != nil {
-		sample.Tokens = &taskflow.UsageTokens{UncachedInput: *value.UncachedInputTokens, CacheWrite: *value.InputTokens - *value.UncachedInputTokens - *value.CacheReadTokens,
-			CacheRead: *value.CacheReadTokens, Output: *value.OutputTokens}
-	}
-	dollars := report.Dollars
-	var reason string
-	switch {
-	case dollars.Recorded != nil && report.Cost != nil && report.Cost.Amount != nil:
-		amount := *report.Cost.Amount
-		sample.USD, sample.DollarSource = &amount, taskflow.DollarsRecorded
-	case dollars.Recorded != nil:
-		reason = "the recorded cost covers a model of unknown cost"
-	case dollars.PriceTable != nil && dollars.PriceTable.Total != nil:
-		amount := *dollars.PriceTable.Total
-		sample.USD, sample.DollarSource = &amount, taskflow.DollarsPriceTable
-	case dollars.PriceTable != nil:
-		reason = "no recorded cost (" + dollars.RecordedUnknownReason + ") and the price-table total is unknown: " + dollars.PriceTable.TotalUnknownReason
-	default:
-		reason = "no recorded cost (" + dollars.RecordedUnknownReason + ") and no price table supplied"
-	}
-	if sample.Tokens == nil {
-		reason = strings.TrimPrefix(reason+"; the token counts are incomplete", "; ")
-	}
-	sample.UnknownReason = boundReason(reason)
+	amount := *estimate.USD
+	sample.USD, sample.USDEstimated, sample.DollarSource = &amount, true, &source
 	return sample
 }
 
@@ -127,4 +109,43 @@ func boundReason(reason string) string {
 		return reason
 	}
 	return strings.ToValidUTF8(reason[:maxUsageReasonBytes-3], "") + "..."
+}
+
+// usagePrices returns the price table that prices a sample, with the dollar
+// source that names it: the price table at path, read once, or cw's built-in
+// table when path is empty. Either is named by the SHA-256 of its bytes.
+func usagePrices(path string) (usagelog.PriceTable, taskflow.DollarSource, error) {
+	if path == "" {
+		table, data, err := usagelog.BuiltInPrices()
+		return table, priceSource(taskflow.PriceTableBuiltIn, table, data), err
+	}
+	data, err := readUsagePrices(path)
+	if err != nil {
+		return usagelog.PriceTable{}, taskflow.DollarSource{}, fmt.Errorf("read price table: %w", err)
+	}
+	table, err := usagelog.ParsePriceTable(data)
+	return table, priceSource(taskflow.PriceTableFile, table, data), err
+}
+
+func priceSource(kind string, table usagelog.PriceTable, data []byte) taskflow.DollarSource {
+	sum := sha256.Sum256(data)
+	return taskflow.DollarSource{Kind: kind, Date: table.Date, SHA256: hex.EncodeToString(sum[:])}
+}
+
+// readUsagePrices reads the regular file at path, at most
+// usagelog.MaxSmallFileBytes.
+func readUsagePrices(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	if info, err := file.Stat(); err != nil || !info.Mode().IsRegular() {
+		return nil, errors.New("not a regular file")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, usagelog.MaxSmallFileBytes+1))
+	if err == nil && len(data) > usagelog.MaxSmallFileBytes {
+		err = fmt.Errorf("file exceeds %d bytes", usagelog.MaxSmallFileBytes)
+	}
+	return data, err
 }

@@ -480,20 +480,38 @@ import` does, and stores what the session has used so far in the task record as
 a usage sample. A sample keeps the session, its tokens (uncached input, cache
 writes, cache reads and output, apart) and its dollars with their source.
 
+- **Dollars are estimates.** Each request is priced from its tokens with a price
+  table: input, output and cache reads at their own rates, cache writes at the
+  5-minute or 1-hour write rate from the request's own split. A write without
+  that split is priced at the 1-hour rate, the higher one, so the budget never
+  under-counts. A Claude Haiku 5.5 request whose prompt (its input, cache reads
+  and cache writes) is over 100,000 tokens takes that model's long-prompt rates.
+  The `cost-state` line Claude Code writes when a session exits is not used,
+  whether it is missing, stale or does not match the requests.
+- **The table** is cw's built-in one, dated 2026-11-13 and read from
+  [Claude's pricing page](https://platform.claude.com/docs/en/about-claude/pricing),
+  or the one `--prices FILE` names, which replaces it whole (same format as
+  `cw metrics import --prices`, with an optional `date` and per-model
+  `long_prompt`). A sample's `dollar_source` names the table's kind
+  (`built_in` or `file`), its date and the SHA-256 of its bytes, and
+  `usd_estimated` is true.
+- **Unknown, never zero.** An incomplete or unreadable transcript leaves tokens
+  and dollars unknown with the reason. One request the table cannot price makes
+  the session's dollars unknown: a model it does not list (dated model IDs
+  included), a `speed` other than `standard`, or an `inference_geo` other than
+  `global`. An unknown value is never counted as 0.
 - **Task usage** is, per session, the latest sample minus the first, summed over
   the sessions. Sample at task start and again later: a session with one sample
-  gives no usage yet.
-- **Dollars** come from the cost the transcript recorded. cw ships no price
-  table; `--prices` is used only for a transcript that records no cost, such as
-  a Codex rollout. Within one session, dollars from two sources are never
-  subtracted: the usage is then unknown.
-- **Unknown, never zero.** An incomplete or unreadable transcript, usage the
-  import withholds, or a cost that covers a model of unknown price leaves the
-  value unknown with the reason; it is never counted as 0.
-- **Few revisions.** A sample is stored only when it is its session's first,
-  turns the task's dollar usage known or unknown, or moves it by at least 5% of
-  the budget. The default output says whether it was stored and gives the task's
-  usage; `--full` prints the record.
+  gives no usage yet. Within a session, every pair of consecutive known amounts
+  must come from the same table and never fall; a different table, or a stale
+  or truncated transcript copy that reads lower than the sample before it,
+  makes the usage unknown.
+- **Few revisions.** A sample is judged against its own session's stored
+  samples. It is stored when it is the session's first or second, when its
+  dollars turn known or unknown, change table, fall, or rise by at least 5% of
+  the budget, and, while the session's dollars are unknown, when its tokens
+  turn known or unknown, fall, or grow by at least 5%. The default output says
+  whether it was stored and gives the task's usage; `--full` prints the record.
 - A task started before profiles has no budget, and `cw task usage` refuses it.
 
 Nothing stops a task at its budget yet; the budget counts dollars only.
@@ -802,7 +820,8 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
 ### Usage stores
 
 The session transcript is the source of a session's usage; the cost history is a
-copy of its token counts. No command reads both, so none reconciles them:
+copy of its token counts, and a task record keeps usage samples taken from it.
+No command reads two of them, so none reconciles them:
 
 | Command | Reads | Writes |
 | --- | --- | --- |
@@ -810,6 +829,7 @@ copy of its token counts. No command reads both, so none reconciles them:
 | `cw metrics import --append` | the transcript, then the request identities in the history | requests the history lacks |
 | `cw metrics history` | the cost history only | nothing |
 | `cw metrics summarize` | the observation files you name | nothing |
+| `cw task usage` | the transcript, then the task record | a usage sample in the task record, when it matters ([cost budget](#cost-budget)) |
 
 When they differ:
 
@@ -826,9 +846,13 @@ When they differ:
   an incomplete import also leaves `usage` unknown, never zero. Codex rollouts
   and the history record no dollars, so their only dollars are price-table
   estimates.
-- **Task records.** A task record holds no session usage. A consultation record
-  keeps each adviser call's provider-reported tokens, which no command adds to
-  session usage.
+- **Task records.** A task record holds the usage samples `cw task usage`
+  stored; the task's budget stop, when it lands, reads them, not the cost
+  history. A sample is the transcript as it was when sampled, and its dollars
+  are estimates from a dated price table, never the cost-state, so they may
+  differ from what `cw metrics import` reports for the same transcript. A
+  consultation record keeps each adviser call's provider-reported tokens, which
+  no command adds to session usage.
 
 ## Consultation command
 
