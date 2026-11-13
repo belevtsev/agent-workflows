@@ -273,7 +273,8 @@ run `status` or context phase, fails validation with "invalid stored …".
   `profile`, keep 5. Members version 5 adds so far: on a check run, `go_env`
   (F1), `source_sha256` and `env_key` (X1), `modes_sha256` (X2); on a worker acceptance, `source_sha256` (X2); on a worker result,
   `source_sha256` (X1) and, in its result, `report` (H1); on the record, `profile`, and on its plan,
-  `profile` and `budget` (R1); on the record, `usage` (C1).
+  `profile` and `budget` (R1), and `usage` (C1); on a worker brief, `stage`,
+  `fixes` and `repeats` (R2); on a worker assignment, `owner_approvals` (R3).
   `v3.0.0-rc.1` was never tagged, but the code at `13b6103` wrote version 3: `internal/taskflow/testdata/rc1-small-task` holds
   a record it wrote, which must keep loading and verifying.
 

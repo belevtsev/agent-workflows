@@ -2296,3 +2296,27 @@ func TestHookSessionStartReturnsWhileItsWriterKeepsStdinOpen(t *testing.T) {
 		})
 	}
 }
+
+// Oracle: plan R3. A cw command that passes --owner-approval asks
+// (permissionDecision "ask"), quoting the words so a person confirms they are
+// theirs; cw named through a variable asks about words the gate cannot read;
+// a line that only mentions the option with trusted commands, and a cw
+// command without it, are allowed.
+func TestHookPrePublishAsksBeforeAnOwnerApproval(t *testing.T) {
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	for _, c := range []struct{ command, quoted string }{
+		{`cw task assign --task t1 --input brief.json --owner-approval "one more round"`, `records "one more round" as the owner's approval`},
+		{`/usr/local/bin/cw task assign --owner-approval='one more round' --task t1`, `records "one more round" as the owner's approval`},
+		{`C=cw; $C task assign --task t1 --owner-approval "x"`, "records words the gate cannot read as the owner's approval"},
+		// The shell expands these, so the text as written is not what cw
+		// records.
+		{`cw task assign --task t1 --owner-approval "$(cat words.txt)"`, "records words the gate cannot read as the owner's approval"},
+		{`W=yes; cw task assign --task t1 --owner-approval "$W"`, "records words the gate cannot read as the owner's approval"},
+		{"cw task assign --task t1 --owner-approval=`cat words.txt`", "records words the gate cannot read as the owner's approval"},
+	} {
+		hkExpectAsk(t, h.prePublish(t, repo, c.command), "only the user may give them", c.quoted, "Confirm only if these are the user's own words.")
+	}
+	hkExpectAllow(t, h.prePublish(t, repo, `echo "cw task assign --owner-approval x"`))
+	hkExpectAllow(t, h.prePublish(t, repo, "cw task assign --task t1 --input brief.json"))
+}

@@ -136,7 +136,9 @@ and no amendment.
    terms. Strip anything a question carries from any worker's work or the
    review's evidence: implementation source, tests, reproduction tests, diffs,
    logs, coverage and reasoning. Workers keep working on the requirements the
-   questions do not touch.
+   questions do not touch. An amendment needs an architect round and a
+   test-engineer round, so it starts only when both
+   [budgets](../worker-handoffs.md#review-stages) have room.
 2. **Forward to the architect, without implementation.** Continue the original
    architect with that request; when it cannot be continued, give a fresh
    architect the three artefacts and their review history. The coordinator

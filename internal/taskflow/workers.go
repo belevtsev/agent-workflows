@@ -67,6 +67,10 @@ type WorkerAssignment struct {
 	// InputFiles are the stored copies of Brief.Inputs in the task directory,
 	// in the same order.
 	InputFiles []string `json:"input_files,omitempty"`
+	// OwnerApprovals hold the owner's words for each limit of the profile
+	// the assignment went past, one per limit (rounds.go); an assignment
+	// within every limit carries none.
+	OwnerApprovals []OwnerApproval `json:"owner_approvals,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -263,10 +267,11 @@ func validateBrief(record Record, brief WorkerBrief) error {
 
 func assignmentHash(assignment WorkerAssignment) (string, error) {
 	data, err := encode(struct {
-		TaskID   string              `json:"task_id"`
-		Brief    WorkerBrief         `json:"brief"`
-		Snapshot projectctx.Snapshot `json:"snapshot"`
-	}{assignment.TaskID, assignment.Brief, assignment.Snapshot})
+		TaskID         string              `json:"task_id"`
+		Brief          WorkerBrief         `json:"brief"`
+		Snapshot       projectctx.Snapshot `json:"snapshot"`
+		OwnerApprovals []OwnerApproval     `json:"owner_approvals,omitempty"`
+	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals})
 	if err != nil {
 		return "", err
 	}
@@ -318,8 +323,18 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // or authorize a process, and IDs are declarations rather than authentication.
 // A substantial task dispatches no worker before its before checkpoint is
 // attached with a resolved decision, unless its plan declares checkpoints not
-// required; a before checkpoint attached anyway is still validated.
+// required; a before checkpoint attached anyway is still validated. A brief
+// that would take its stage past the profile's round cap is refused with
+// ErrRoundBudget; see AssignApprovedWorker.
 func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
+	return env.AssignApprovedWorker(ctx, taskPath, brief, nil)
+}
+
+// AssignApprovedWorker is AssignWorker that records ownerWords, each a
+// --owner-approval value, as the owner's approval of a limit of the profile
+// the brief goes past (ownerApprovals): "LIMIT=TEXT", or TEXT alone when it
+// goes past one. It refuses words for a limit the brief does not go past.
+func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief WorkerBrief, ownerWords []string) (Record, error) {
 	// stored names the copies a successful closure wrote; the update removes
 	// them if it then fails, unless the revision name exists or its absence
 	// cannot be confirmed afterwards (see updateDiscarding).
@@ -346,6 +361,10 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
+		approvals, err := ownerApprovals(limitsOver(*record, brief), brief.ID, ownerWords)
+		if err != nil {
+			return err
+		}
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
 		}
@@ -356,7 +375,10 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now()}
+		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now(), OwnerApprovals: approvals}
+		for i := range assignment.OwnerApprovals {
+			assignment.OwnerApprovals[i].At = assignment.AssignedAt
+		}
 		assignment.SHA256, err = assignmentHash(assignment)
 		if err != nil {
 			return err
