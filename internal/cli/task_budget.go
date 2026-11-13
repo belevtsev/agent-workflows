@@ -17,7 +17,9 @@ func writeBudgetStop(w io.Writer, directory string, err error) bool {
 	if !ok {
 		return false
 	}
-	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", over)
+	// err names every limit the brief goes past, the round cap too.
+	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", err)
+	writeRoundNeeds(w, err)
 	// TODO(T1): print the task receipt here once cw task receipt exists;
 	// until then the usage summary stands in for it.
 	if record, loadErr := taskflow.Load(directory); loadErr == nil {

@@ -2,6 +2,7 @@ package taskflow
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 )
 
@@ -80,7 +81,7 @@ func percent(share float64) string { return strconv.FormatFloat(share*100, 'f', 
 // approval.
 func costApproved(record Record) bool {
 	for _, assigned := range record.Assignments {
-		if assigned.OwnerApproval != nil && assigned.OwnerApproval.For == ApprovalCostBudget {
+		if slices.ContainsFunc(assigned.OwnerApprovals, func(a OwnerApproval) bool { return a.For == ApprovalCostBudget }) {
 			return true
 		}
 	}
@@ -132,6 +133,16 @@ func overCostBudget(record Record) *ErrBudgetStop {
 func budgetRefusal(record Record) error {
 	if over := overCostBudget(record); over != nil {
 		return kindError{kind: ErrOverBudget, msg: over.Error(), cause: *over}
+	}
+	return nil
+}
+
+// finalCostRefusal is the refusal of any new assignment once the task's
+// estimated dollars reach all of its budget, whatever the owner approved,
+// and nil before.
+func finalCostRefusal(record Record) error {
+	if over := overCostBudget(record); over != nil && over.Final() {
+		return budgetRefusal(record)
 	}
 	return nil
 }

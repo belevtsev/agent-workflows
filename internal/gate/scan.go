@@ -208,26 +208,33 @@ func flatApprovals(command string) (bool, int) {
 
 // cwApproval reports whether words, a simple command from its program on,
 // run cw, by any path, with --owner-approval TEXT or --owner-approval=TEXT,
-// and returns the last TEXT; "" when the option has no value.
-func cwApproval(words []shellwords.Word) (string, bool) {
+// and returns each TEXT in order; "" for one without a value or whose word
+// the shell expands (expands), which the gate cannot read.
+func cwApproval(words []shellwords.Word) ([]string, bool) {
 	if len(words) == 0 || programName(words[0].Text) != "cw" {
-		return "", false
+		return nil, false
 	}
-	text, found := "", false
+	var texts []string
 	for i := 1; i < len(words); i++ {
 		name, value, attached := strings.Cut(words[i].Text, "=")
 		switch {
 		case name == approvalOption && attached:
-			text, found = value, true
+			if expands(words[i : i+1]) {
+				value = ""
+			}
+			texts = append(texts, value)
 		case words[i].Text == approvalOption:
-			text, found = "", true
+			text := ""
 			if i+1 < len(words) {
 				i++
-				text = words[i].Text
+				if !expands(words[i : i+1]) {
+					text = words[i].Text
+				}
 			}
+			texts = append(texts, text)
 		}
 	}
-	return text, found
+	return texts, len(texts) > 0
 }
 
 // splitCommand reads a shell command line as splitPublications describes and
@@ -366,10 +373,12 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 		}
 		return at
 	}
-	if text, ok := cwApproval(words); ok {
-		s.approvalRuns++
-		if !slices.Contains(s.approvals, text) {
-			s.approvals = append(s.approvals, text)
+	if texts, ok := cwApproval(words); ok {
+		for _, text := range texts {
+			s.approvalRuns++
+			if !slices.Contains(s.approvals, text) {
+				s.approvals = append(s.approvals, text)
+			}
 		}
 	}
 	if next, ok := cwAbandon(words, runs, vars); ok {
