@@ -171,6 +171,65 @@ func cwAbandon(words []shellwords.Word, at place, vars expansion) (abandonment, 
 	return next, true
 }
 
+// approvalOption is the cw option that carries the owner's words.
+const approvalOption = "--owner-approval"
+
+// ownerApprovals returns the text of every --owner-approval a cw command in
+// a shell command line passes, read as abandonments reads `cw task abandon`
+// (cwApproval), without duplicates and in command order. It fails closed the
+// same way: when the reading is not certain, and the line shows cw and
+// owner-approval while the reading finds fewer, it adds "", an approval
+// whose words the gate cannot read.
+func ownerApprovals(command, cwd, home string) []string {
+	scanner := splitCommand(command, cwd, home)
+	found := scanner.approvals
+	if !scanner.certain {
+		if shows, count := flatApprovals(command); shows && (len(found) == 0 || count > scanner.approvalRuns) {
+			found = append(found, "")
+		}
+	}
+	return found
+}
+
+// flatApprovals reports whether a command line, split as flatAbandons splits
+// it, holds a token whose program name is cw and the token owner-approval,
+// and counts the latter.
+func flatApprovals(command string) (bool, int) {
+	cw, count := false, 0
+	for _, token := range strings.FieldsFunc(command, func(r rune) bool { return strings.ContainsRune(flatSeparators, r) }) {
+		token = strings.TrimLeft(token, "-")
+		cw = cw || programName(token) == "cw"
+		if token == strings.TrimLeft(approvalOption, "-") {
+			count++
+		}
+	}
+	return cw && count > 0, count
+}
+
+// cwApproval reports whether words, a simple command from its program on,
+// run cw, by any path, with --owner-approval TEXT or --owner-approval=TEXT,
+// and returns the last TEXT; "" when the option has no value.
+func cwApproval(words []shellwords.Word) (string, bool) {
+	if len(words) == 0 || programName(words[0].Text) != "cw" {
+		return "", false
+	}
+	text, found := "", false
+	for i := 1; i < len(words); i++ {
+		name, value, attached := strings.Cut(words[i].Text, "=")
+		switch {
+		case name == approvalOption && attached:
+			text, found = value, true
+		case words[i].Text == approvalOption:
+			text, found = "", true
+			if i+1 < len(words) {
+				i++
+				text = words[i].Text
+			}
+		}
+	}
+	return text, found
+}
+
 // splitCommand reads a shell command line as splitPublications describes and
 // returns the scanner that holds its publications, its abandonments and
 // whether the reading is certain.
@@ -215,7 +274,11 @@ type wordScanner struct {
 	abandoned []abandonment
 	// abandonRuns counts the abandonments found, duplicates included.
 	abandonRuns int
-	certain     bool
+	// approvals holds the owner's words each cw --owner-approval passes,
+	// and approvalRuns counts those options, duplicates included.
+	approvals    []string
+	approvalRuns int
+	certain      bool
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
@@ -302,6 +365,12 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 			return after // eval runs in the current shell
 		}
 		return at
+	}
+	if text, ok := cwApproval(words); ok {
+		s.approvalRuns++
+		if !slices.Contains(s.approvals, text) {
+			s.approvals = append(s.approvals, text)
+		}
 	}
 	if next, ok := cwAbandon(words, runs, vars); ok {
 		s.abandonRuns++

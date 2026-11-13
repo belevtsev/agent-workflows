@@ -88,10 +88,12 @@ file alone.
 
 ## Publication gate
 
-Two `PreToolUse` handlers run the same command, `cw hook pre-publish`: one for
-every Bash command whose text contains `git` (the condition `Bash(*git*)`), the
-other for every one that contains `abandon` (`Bash(*abandon*)`,
-[Abandoning a task](#abandoning-a-task)). Claude Code checks a condition
+Three `PreToolUse` handlers run the same command, `cw hook pre-publish`: one for
+every Bash command whose text contains `git` (the condition `Bash(*git*)`), one
+for every one that contains `abandon` (`Bash(*abandon*)`,
+[Abandoning a task](#abandoning-a-task)), and one for every one that contains
+`cw` and then `owner-approval` (`Bash(*cw*owner-approval*)`,
+[Owner approval](#owner-approval)). Claude Code checks a condition
 against each command of a compound line, so the second does not require `cw`
 in the same command as `abandon`, as in `C=cw; $C task abandon`; quotes inside
 the word do not hide it, so `cw task aban''don` runs the second handler too;
@@ -101,8 +103,8 @@ the same time, for every shell command. Where both handlers run for one
 command, both reach the same decision, and the host applies it once
 ([Recorded host runs](#recorded-host-runs)). `cw hook pre-publish` then
 finds each `git commit` and `git push` in the command and the directory it
-runs in, and each `cw task abandon`, and exits at once, without output, when
-there is none.
+runs in, each `cw task abandon` and each `--owner-approval` of a `cw` command,
+and exits at once, without output, when there is none.
 
 The gate asks a cooperative agent to stop when it skipped a step; it is not a
 defence against an agent that sets out to bypass it. See the
@@ -271,6 +273,19 @@ allowed.
 A `git commit` or `git push` that a record gates in the same Bash input is
 denied, as before: it runs before the task is closed. Under Codex the ask is a
 deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
+
+### Owner approval
+
+`cw task assign --owner-approval "<the owner's words>"` lets a round past its
+stage's cap through and records the words ([round caps](operations.md#round-caps)).
+The agent supplies that text, so with `enforce_verify` on the hook asks before
+every `cw` command it finds with `--owner-approval TEXT` or
+`--owner-approval=TEXT`, quoting each text (three at most, counting the rest),
+so a person confirms the words are theirs. It finds `cw` as it finds
+`cw task abandon`, and fails closed the same way: a line whose words include `cw`
+and `owner-approval` that it cannot read asks about words it cannot read, while
+trusted commands that only mention them, such as `echo`, are allowed. Under
+Codex the ask is a deny, and the user runs the command themselves.
 
 ### Records that cannot be read
 

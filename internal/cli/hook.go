@@ -91,7 +91,8 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"on the source being published, an ask decision when none gates but one cannot be read or the task store cannot be located or read, " +
 			"and an ask decision for a push of a verified repository whose working tree has uncommitted tracked changes. " +
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
-			"code changed without tests). It also prints an ask decision, naming the task, for a cw task abandon, which needs the user's confirmation. " +
+			"code changed without tests). It also prints an ask decision, naming the task, for a cw task abandon, which needs the user's confirmation, " +
+			"and one quoting the words of a cw --owner-approval, which only the user may give. " +
 			"Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
 			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +

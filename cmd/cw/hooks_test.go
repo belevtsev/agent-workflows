@@ -127,10 +127,10 @@ func TestHooksJSONShape(t *testing.T) {
 
 	t.Run("events matchers and conditions", func(t *testing.T) {
 		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
-		// PreToolUse has one Bash group with exactly two handlers, whose ifs
-		// are Bash(*git*) and Bash(*abandon*) and whose commands are both
-		// the agreed inline command, so both reach the same decision where
-		// both run; SessionStart calls cw hook and references the plugin
+		// PreToolUse has one Bash group with exactly three handlers, whose
+		// ifs are Bash(*git*), Bash(*abandon*) and Bash(*cw*owner-approval*)
+		// and whose commands are all the agreed inline command, so they reach
+		// the same decision where several run; SessionStart calls cw hook and references the plugin
 		// root and data directory.
 		events := make([]string, 0, len(file.Hooks))
 		for event := range file.Hooks {
@@ -161,18 +161,20 @@ func TestHooksJSONShape(t *testing.T) {
 				t.Fatalf("PreToolUse command %q, want %q", entry.Command, preToolUseCommand)
 			}
 		}
-		if !slices.Equal(ifs, []string{preToolUseIf, preToolUseAbandonIf}) {
-			t.Fatalf("PreToolUse handler conditions %q, want %q", ifs, []string{preToolUseIf, preToolUseAbandonIf})
+		if want := []string{preToolUseIf, preToolUseAbandonIf, preToolUseApprovalIf}; !slices.Equal(ifs, want) {
+			t.Fatalf("PreToolUse handler conditions %q, want %q", ifs, want)
 		}
 	})
 }
 
-// The agreed PreToolUse handlers (E1): one runs the gate for git commands, the
-// other for cw task abandon, with the same command.
+// The agreed PreToolUse handlers (E1): one runs the gate for git commands,
+// one for cw task abandon and one for cw's --owner-approval, with the same
+// command.
 const (
-	preToolUseIf        = "Bash(*git*)"
-	preToolUseAbandonIf = "Bash(*abandon*)"
-	preToolUseCommand   = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
+	preToolUseIf         = "Bash(*git*)"
+	preToolUseAbandonIf  = "Bash(*abandon*)"
+	preToolUseApprovalIf = "Bash(*cw*owner-approval*)"
+	preToolUseCommand    = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
 )
 
 // hooksPreToolUse returns the command of the PreToolUse handler whose if is
