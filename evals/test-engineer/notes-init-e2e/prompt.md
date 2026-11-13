@@ -25,8 +25,9 @@ never mention or pass `testdata/impl`, which holds the implementation):
   command-line tool against requirements R1 to R7.
 - Owned paths: `e2e/init_test.go` (package `e2e`), `artefacts/test-matrix.md`,
   `artefacts/requirement-map.md`.
-- Approved inputs: the interface contract. Apply the end-to-end reference
-  your contract links. The binary is built by `go build -o <tmp>/notes
+- Approved inputs: the interface contract. Apply the `test-strategy` skill's
+  end-to-end reference, `../../../test-strategy/references/e2e.md` relative to
+  your contract's directory. The binary is built by `go build -o <tmp>/notes
   ./cmd/notes` from the module root `example.com/notes`; the tests build it
   once in `TestMain` into a temporary directory.
 - Scope: end-to-end only. Every test runs the built binary as a subprocess

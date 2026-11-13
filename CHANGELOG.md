@@ -166,6 +166,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The checkpoint reference again says how a task across several repositories sends one adviser request (`state.task_contexts`),
   a rule the first cut of the skill dropped ([advisers](docs/advisers.md)).
 
+- The four test-engineer eval prompts name the `test-strategy` references to apply by path; they still pointed at
+  links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
+
 ## [3.0.0-rc.2] - 2026-11-12
 
 The first published v3 release candidate (`v3.0.0-rc.1` was never published): every change since v2.0.96.
