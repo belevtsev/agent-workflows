@@ -71,6 +71,11 @@ type WorkerAssignment struct {
 	// the assignment went past, one per limit (rounds.go); an assignment
 	// within every limit carries none.
 	OwnerApprovals []OwnerApproval `json:"owner_approvals,omitempty"`
+	// SourceSHA256 is SourceDigest of the source the assignment was made at,
+	// by which a requirement's reused check run counts as a pass for its fix
+	// rounds at assign and again on load (rounds.go). Assignments recorded
+	// before it existed omit it (record version 5).
+	SourceSHA256 string `json:"source_sha256,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -93,6 +98,10 @@ type WorkerFinding struct {
 	// non-review findings without it, read as major (see severity).
 	Severity string      `json:"severity,omitempty"`
 	Evidence []SourceRef `json:"evidence"`
+	// Reopens names a finding of an earlier result, as "<assignment
+	// id>/<finding id>", that this one files again, so fix rounds on both
+	// count as one (rounds.go). Record version 5.
+	Reopens string `json:"reopens,omitempty"`
 }
 
 type WorkerResult struct {
@@ -117,6 +126,10 @@ type WorkerResult struct {
 	// RequirementMap answers every requirement the brief declares; only a
 	// completed result of such an assignment carries it.
 	RequirementMap []RequirementMapping `json:"requirement_map,omitempty"`
+	// Report names the worker's full report, which handoff copies into the
+	// task directory as ReportFileName; only a task with a profile takes one
+	// (report.go).
+	Report *ReportRef `json:"report,omitempty"`
 }
 
 // ReachRun is one mode of one reach row as a reviewer ran it, or did not.
@@ -267,7 +280,8 @@ func assignmentHash(assignment WorkerAssignment) (string, error) {
 		Brief          WorkerBrief         `json:"brief"`
 		Snapshot       projectctx.Snapshot `json:"snapshot"`
 		OwnerApprovals []OwnerApproval     `json:"owner_approvals,omitempty"`
-	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals})
+		SourceSHA256   string              `json:"source_sha256,omitempty"`
+	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals, assignment.SourceSHA256})
 	if err != nil {
 		return "", err
 	}
@@ -321,16 +335,18 @@ func latestAcceptance(record Record, id string) *BoundWorkerAcceptance {
 // attached with a resolved decision, unless its plan declares checkpoints not
 // required; a before checkpoint attached anyway is still validated. A brief
 // that would take its stage past the profile's round cap is refused with
-// ErrRoundBudget, and any brief at the budget's stop with ErrBudgetStop; see
-// AssignApprovedWorker.
+// ErrRoundBudget, and one that fixes a finding or requirement still open
+// after the profile's fix rounds with ErrEscalation; see AssignApprovedWorker.
 func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBrief) (Record, error) {
 	return env.AssignApprovedWorker(ctx, taskPath, brief, nil)
 }
 
 // AssignApprovedWorker is AssignWorker that records ownerWords, each a
 // --owner-approval value, as the owner's approval of a limit of the profile
-// the brief goes past (ownerApprovals): "LIMIT=TEXT", or TEXT alone when it
-// goes past one. It refuses words for a limit the brief does not go past.
+// the brief goes past (ownerApprovals): a round past the stage's cap, or a
+// fix round on a finding or requirement still open after its fix rounds.
+// A value is "LIMIT=TEXT", or TEXT alone when the brief goes past one limit.
+// It refuses words for a limit the brief does not go past.
 func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief WorkerBrief, ownerWords []string) (Record, error) {
 	// stored names the copies a successful closure wrote; the update removes
 	// them if it then fails, unless the revision name exists or its absence
@@ -355,26 +371,36 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if err := validateBriefStage(*record, record.Assignments, returned, brief); err != nil {
 			return asInvalid(err)
 		}
+		if err := freshWorker(record.Assignments, brief); err != nil {
+			return asInvalid(err)
+		}
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
-		}
-		// The budget: at 100% nothing continues; at the stop the owner's
-		// cost-budget words go on the record, the rest on the assignment.
-		approvals, err := approveNewWork(record, limitsOver(*record, brief), "worker brief "+brief.ID, ownerWords, env.now())
-		if err != nil {
-			return err
 		}
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
 		}
-		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
+		if err != nil {
+			return err
+		}
+		_, sourceSHA256, err := sourceManifest(files)
+		if err != nil {
+			return err
+		}
+		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, SourceSHA256: sourceSHA256}
+		// A requirement's fix rounds depend on its checks at the source
+		// the assignment binds, judged as load judges them.
+		// The budget: at 100% nothing continues; at the stop the owner's
+		// cost-budget words go on the record, the rest on the assignment.
+		approvals, err := approveNewWork(record, limitsOver(*record, assignmentCredit(assignment), brief), "worker brief "+brief.ID, ownerWords, env.now())
 		if err != nil {
 			return err
 		}
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now(), OwnerApprovals: approvals}
+		assignment.AssignedAt, assignment.OwnerApprovals = env.now(), approvals
 		for i := range assignment.OwnerApprovals {
 			assignment.OwnerApprovals[i].At = assignment.AssignedAt
 		}
@@ -504,6 +530,9 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 		}
 	}
 	if err := reachRunsShape(assigned.Brief.Role, result.ReachRuns); err != nil {
+		return err
+	}
+	if err := validateReportRef(record, result.Report); err != nil {
 		return err
 	}
 	if len(result.Findings) > 256 {
@@ -801,7 +830,15 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, e
 
 func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
 	probes := env.probeReuse(ctx, taskPath)
-	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
+	// report names the copy of the result's report the closure stored; the
+	// update removes it if it then fails, as AssignWorker does its copies.
+	report := ""
+	discardReport := func(root *os.Root) {
+		if report != "" {
+			root.Remove(report)
+		}
+	}
+	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
 			return invalid("worker result references an unknown assignment")
@@ -817,6 +854,12 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		if err := validateResult(*record, *assigned, input); err != nil {
+			return asInvalid(err)
+		}
+		if err := handoffCaps(*record, input); err != nil {
+			return asInvalid(err)
+		}
+		if err := validateReopens(record.WorkerResults, input); err != nil {
 			return asInvalid(err)
 		}
 		if err := reviewSeverities(assigned.Brief.Role, input.Findings); err != nil {
@@ -898,11 +941,16 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
 			return err
 		}
+		if input.Report != nil {
+			if report, err = storeReport(root, input.AssignmentID, *input.Report); err != nil {
+				return err
+			}
+		}
 		record.WorkerResults = append(record.WorkerResults, bound)
 		record.EvidenceRevision++
 		record.Verification = nil
 		return nil
-	})
+	}, discardReport)
 }
 
 func validateAcceptance(record Record, result BoundWorkerResult, input WorkerAcceptance) error {

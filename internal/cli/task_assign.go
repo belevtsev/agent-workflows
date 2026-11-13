@@ -42,26 +42,44 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 	}}
 	taskFlag(assign, &directory)
 	assign.Flags().StringVar(&inputFile, "input", "", "Worker brief JSON file, or - for standard input")
-	assign.Flags().StringArrayVar(&ownerApprovals, "owner-approval", nil, "The owner's own words approving a limit the brief goes past, such as a round past the stage's cap; "+
+	assign.Flags().StringArrayVar(&ownerApprovals, "owner-approval", nil, "The owner's own words approving a limit the brief goes past: a round past the stage's cap (round-budget) or a third fix round on an open finding or requirement (escalation); "+
 		"a person must give them, and cw records them on the assignment. Past several limits, give it once per limit as LIMIT=TEXT, such as round-budget=TEXT")
 	fullFlag(assign, &full, "the whole task record")
 	return assign
 }
 
 // writeOverBudget explains a brief refused at a limit of the profile: what a
-// round past its cap would answer and how the owner approves it.
+// round past its cap would answer, each earlier fix round on a finding or
+// requirement still open with the owner's two options, and how the owner
+// approves.
 func writeOverBudget(w io.Writer, err error) {
 	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", err)
 	writeRoundNeeds(w, err)
 	fmt.Fprintln(w, `Ask the owner whether to go on. A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>".`)
 }
 
-// writeRoundNeeds lists what a round refused past its cap would answer.
+// writeRoundNeeds explains the assignment-level limits a brief goes past:
+// what a round past its cap would answer, and each earlier fix round on a
+// finding or requirement still open with the owner's two options.
 func writeRoundNeeds(w io.Writer, err error) {
 	if over, ok := errors.AsType[taskflow.ErrRoundBudget](err); ok && len(over.Needs) > 0 {
 		fmt.Fprintln(w, "The round would answer:")
 		for _, need := range over.Needs {
 			fmt.Fprintf(w, "  - %s\n", need)
 		}
+	}
+	if escalation, ok := errors.AsType[taskflow.ErrEscalation](err); ok {
+		for _, key := range escalation.Keys {
+			fmt.Fprintf(w, "Earlier fix rounds on %s:\n", key.Name())
+			if key.Omitted > 0 {
+				fmt.Fprintf(w, "  - (%d earlier rounds not shown)\n", key.Omitted)
+			}
+			for _, round := range key.History {
+				fmt.Fprintf(w, "  - %s: %s\n", round.Assignment, round.Summary)
+			}
+		}
+		fmt.Fprintln(w, "Both choices are the owner's:")
+		fmt.Fprintln(w, `  - one more fix round: the owner's words, passed as --owner-approval "escalation=<the owner's words>";`)
+		fmt.Fprintln(w, `  - or a change of approach: the owner's words naming the new approach, passed the same way, or the owner disposes of the finding: rejected against evidence, or deferred with the owner's reason.`)
 	}
 }

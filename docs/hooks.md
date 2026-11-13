@@ -277,7 +277,8 @@ deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
 ### Owner approval
 
 `cw task assign --owner-approval "<the owner's words>"` lets a round past its
-stage's cap through and records the words ([round caps](operations.md#round-caps)),
+stage's cap, or a third fix round on an open finding or requirement, through and
+records the words ([round caps](operations.md#round-caps), [fix rounds](operations.md#fix-rounds)),
 and `cw task assign` or `cw task run --owner-approval "cost-budget=<words>"` lets
 the task go past its budget's stop ([budget stop](operations.md#budget-stop)).
 The agent supplies that text, so with `enforce_verify` on the hook asks before

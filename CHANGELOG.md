@@ -24,9 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
-  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise ([profiles](docs/operations.md#profiles)).
+  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; `cw task assign` enforces the round caps
+  and fix rounds, and it and `cw task run` stop new work at the budget's stop ([profiles](docs/operations.md#profiles)).
 - `cw task assign` refuses a round past its stage's cap with exit 4 and no revision, unless `--owner-approval "<the owner's words>"`
   records the owner's words on the assignment; the plugin hook asks the user to confirm them ([round caps](docs/operations.md#round-caps)).
+- `cw task assign` refuses a third fix round on a finding or requirement still open (exit 4); the owner decides, by words given with
+  `--owner-approval escalation=…`, between one more round and a new approach, or disposes of the finding ([fix rounds](docs/operations.md#fix-rounds)).
 - At 80% of the task's estimated dollar budget, `cw task assign` and `cw task run` exit 4 and ask the owner, whose `cost-budget` words go on
   the task; the plugin hook samples Claude Code and Codex usage before `cw task` commands ([budget stop](docs/operations.md#budget-stop)).
 - Every `cw task` command takes the task ID for `--task` as well as the directory, found in the default task store
@@ -41,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cw task run` then reuses it without running, except a `git` check; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
 - `cw task usage` samples a session's tokens into the task record with dollars estimated from a dated built-in price table (or `--prices`);
   only requests since the task's start count, task usage sums each session's latest sample, and what cannot be priced stays unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
+- Under a profile `cw task handoff` caps a result at 6 KiB, its summary at 1,200 bytes and each finding, reach-run or `uncovered` text
+  at 400, and stores the report its `report` member names as `report-<assignment>.md`, checked on every load ([handoff caps](skills/task-orchestration/references/worker-handoffs.md#handoff-caps)).
+- `cw task brief --stage S` prints, in at most 4 KiB, what a fresh worker of a stage starts from, and `cw task assign` refuses an `agent_id`
+  that worked on another stage unless the brief `repeats` an assignment ([stage briefs](docs/operations.md#stage-briefs)).
 
 ### Changed
 

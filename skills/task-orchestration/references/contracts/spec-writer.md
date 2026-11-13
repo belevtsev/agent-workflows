@@ -52,6 +52,11 @@ run `openspec init` or `archive`. Write no `design.md`: the architect designs.
    describes, under the `implementation` role with the change folder as
    `owned_paths` and in `changed_files`.
 
+Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
+at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
+at most 400 bytes with its ID, severity and source `evidence`. Put the full
+reasoning in a report file of at most 512 KiB that the result's `report` names.
+
 ## Quality bar
 
 - Never invent a requirement. Every requirement, scenario and task traces to a

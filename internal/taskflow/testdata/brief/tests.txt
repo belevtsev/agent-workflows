@@ -1,0 +1,16 @@
+task bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: Parse empty input
+stage tests, profile lite, 0 of 2 author rounds left
+load skills/task-orchestration/references/contracts/test-engineer.md
+files of assignment t2:
+  /tasks/b/contract-t2-44444444444444444444444444444444.json
+  /tasks/b/input-t2-55555555555555555555555555555555
+checks: unit, vet
+requirements:
+  empty: Parse returns ErrEmpty for empty input.
+  limits: Parse refuses input over 1 MiB.
+open findings, newest first:
+  r2/F1 (minor): The fix-round test has no oracle comment.
+  r1/F1 (major): TestParse does not cover the empty input.
+    report /tasks/b/report-r1.md
+  r1/F3 (blocker): The golden file is written by the test it checks.
+    report /tasks/b/report-r1.md

@@ -166,9 +166,15 @@ changing a test file.
    requirement the brief declares: its `tests`, naming only tests in files this
    round changed or an earlier test-engineer round (one whose brief carried a
    contract) changed and whose latest acceptance is not `rejected` (a round closed
-   `unused` still counts), or its `uncovered` reason.
+   `unused` still counts), or its `uncovered` reason (at most 400 bytes under a
+   profile; the rest goes in the report).
 4. The handoff result as [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
    describes, recorded as [below](#record-and-complete).
+
+Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
+at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
+at most 400 bytes with its ID, severity and source `evidence`. Put the full
+reasoning in a report file of at most 512 KiB that the result's `report` names.
 
 ## Quality bar
 

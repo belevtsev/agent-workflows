@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
 )
@@ -19,6 +20,10 @@ func writeBudgetStop(w io.Writer, directory string, err error) bool {
 	}
 	// err names every limit the brief goes past, the round cap too.
 	fmt.Fprintf(w, "agent-workflows: %s; cw wrote nothing.\n", err)
+	if !strings.Contains(err.Error(), over.Error()) {
+		// Past several limits the first line only names them.
+		fmt.Fprintf(w, "The cost budget: %s\n", over)
+	}
 	writeRoundNeeds(w, err)
 	// TODO(T1): print the task receipt here once cw task receipt exists;
 	// until then the usage summary stands in for it.

@@ -95,6 +95,9 @@ type l3Opts struct {
 	// ownGOFLAGS skips the empty-GOFLAGS guard for a test that sets GOFLAGS
 	// itself.
 	ownGOFLAGS bool
+	// noProfile drops the task's profile after start, as a record started
+	// before profiles existed.
+	noProfile bool
 }
 
 func l3Check(id string, argv ...string) taskflow.Check {
@@ -153,6 +156,9 @@ func l3New(t *testing.T, o l3Opts) *l3Fix {
 		t.Fatalf("taskflow.Start: %v", err)
 	}
 	f.dir = rec.Directory
+	if o.noProfile {
+		taskflow.DropProfile(t, f.dir)
+	}
 	extract, err := taskflow.ExtractContract(filepath.Join(f.sel, "p"), []string{"F"})
 	if err != nil {
 		t.Fatalf("ExtractContract: %v", err)
