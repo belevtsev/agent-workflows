@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `cw task init --title T` writes a starter plan that `cw task start` accepts unedited: profile, one requirement and, in a Go module,
+  the Go pack's race command as its check; it prints text by default and JSON with `--json` ([starter plan](docs/operations.md#starter-plan)).
 - `cw task schema <command>` prints the JSON Schema of a task command's JSON input, and the `--help` of each task command that reads
   JSON, and of `run` and `verify`, ends with an example ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
