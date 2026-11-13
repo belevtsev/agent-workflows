@@ -86,6 +86,7 @@ var (
 )
 
 func TestPublishE2E(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("end-to-end test builds the cw binary and runs git")
 	}

@@ -67,6 +67,13 @@ temporary homes, synthetic Git repositories and local HTTP servers. They never
 change the user's configuration, consult hosted decision models, or require service
 credentials.
 
+### Tests
+
+`cmd/cw` builds its `cw` binary once per test run (`buildPlainCW`), so a test
+runs or copies that file and never moves or changes it. Every top-level test
+there calls `t.Parallel()`; a new one must own its directories and must not
+call `t.Setenv`.
+
 ### Repository content checks
 
 ```sh

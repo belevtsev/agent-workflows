@@ -26,6 +26,7 @@ import (
 // reads the source, and that its digest equals what cw task verify recorded
 // outside git.
 func TestGitPreCommitHookRunsTheGate(t *testing.T) {
+	t.Parallel()
 	binary := buildPlainCW(t)
 	module, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

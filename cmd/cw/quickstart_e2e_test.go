@@ -38,6 +38,7 @@ func quickstartBlocks(page, info string) []string {
 // cw task verify; verify printed "complete":true; and git log -1 in the module
 // shows the quick start's commit.
 func TestQuickstartReachesVerifiedCommit(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("end-to-end test builds the cw binary")
 	}
@@ -77,7 +78,12 @@ func TestQuickstartReachesVerifiedCommit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.Rename(buildPlainCW(t), filepath.Join(bin, "cw")); err != nil {
+	// A copy: other tests share the built binary.
+	built, err := os.ReadFile(buildPlainCW(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "cw"), built, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(work, "review-result.json"), fixture, 0o600); err != nil {
