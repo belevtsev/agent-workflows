@@ -74,6 +74,12 @@ runs or copies that file and never moves or changes it. Every top-level test
 there calls `t.Parallel()`; a new one must own its directories and must not
 call `t.Setenv`.
 
+A task holds at most 4,096 revisions, and every load decodes and re-checks
+each one. The `internal/taskflow` tests that walk a record to that limit call
+`lowerRevisionLimit`, which runs them at 64 revisions, so they must not call
+`t.Parallel()`. `TestShippedRevisionLimitIs4096` alone runs at the shipped
+value and fails if it changes. Only that package's tests can lower the limit.
+
 ### Repository content checks
 
 ```sh

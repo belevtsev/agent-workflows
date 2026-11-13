@@ -72,8 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- `cmd/cw` tests build `cw` once per run and run in parallel: about 90 s to 25 s locally; other slow packages are measured
-  in the Q2 PR ([development](docs/development.md#tests)).
+- `cmd/cw` tests build `cw` once per run and run in parallel (about 90 s to 25 s locally), and the `internal/taskflow` tests of the
+  4,096-revision limit run at 64 revisions, with one test pinning the shipped value ([development](docs/development.md#tests)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
   90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
