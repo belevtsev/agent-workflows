@@ -26,7 +26,7 @@ func TestEvidenceWithoutRunsStaysTiedToItsSnapshot(t *testing.T) {
 	}
 	source.snapshot.Branch, source.snapshot.Fingerprint = "different", "sha256:"+strings.Repeat("b", 64)
 	result, _ := env.Verify(t.Context(), record.Directory)
-	for _, want := range []string{"requirement behavior evidence is stale", "Codex task decision is stale"} {
+	for _, want := range []string{"requirement behavior evidence is stale", "coordinator decision is stale"} {
 		if !slices.Contains(result.Problems, want) {
 			t.Errorf("after the snapshot moved: problems %q lack %q", result.Problems, want)
 		}

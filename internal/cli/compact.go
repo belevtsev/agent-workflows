@@ -25,8 +25,9 @@ import (
 // coordinator acts on and drop what repeats on every call; the full output
 // stays available without the flag.
 
-// problemCheckStatuses are the doctor check statuses that need attention.
-// Many missing checks are optional tools, which are still facts worth listing.
+// problemCheckStatuses are the doctor check statuses that name a problem. A
+// problem in a required check needs attention; one in an optional check is
+// only counted, and listed with --all.
 var problemCheckStatuses = []string{"missing", "degraded", "stale"}
 
 type doctorSnapshotSummary struct {
@@ -49,12 +50,17 @@ type doctorSummary struct {
 	Contracts          []string                `json:"contracts"`
 	Live               bool                    `json:"live,omitzero"`
 	Problems           map[string]checkProblem `json:"problems"`
+	OptionalMissing    int                     `json:"optional_missing"`
+	Optional           map[string]checkProblem `json:"optional,omitempty"`
 	Warnings           []string                `json:"warnings,omitempty"`
 	OmittedFixed       int                     `json:"omitted_fixed_warnings,omitzero"`
 	MissingCredentials []string                `json:"missing_credentials,omitempty"`
 }
 
-func summarizeDoctor(report doctor.DoctorReport) doctorSummary {
+// summarizeDoctor lists the problems of required checks, which set the status
+// to attention, and counts those of optional checks in OptionalMissing; all
+// also lists the optional ones under Optional.
+func summarizeDoctor(report doctor.DoctorReport, all bool) doctorSummary {
 	snapshot := report.Profile.Snapshot
 	value := doctorSummary{
 		Status:    "ok",
@@ -70,9 +76,22 @@ func summarizeDoctor(report doctor.DoctorReport) doctorSummary {
 	for _, contract := range report.Profile.Contracts {
 		value.Contracts = append(value.Contracts, contract.Path)
 	}
+	if all {
+		value.Optional = map[string]checkProblem{}
+	}
 	for id, check := range report.Checks {
-		if slices.Contains(problemCheckStatuses, check.Status) {
-			value.Problems[id] = checkProblem{Status: check.Status, Detail: check.Detail}
+		if !slices.Contains(problemCheckStatuses, check.Status) {
+			continue
+		}
+		problem := checkProblem{Status: check.Status, Detail: check.Detail}
+		switch {
+		case doctor.CheckClass(id) == doctor.ClassRequired:
+			value.Problems[id] = problem
+		case all:
+			value.OptionalMissing++
+			value.Optional[id] = problem
+		default:
+			value.OptionalMissing++
 		}
 	}
 	attention := len(value.Problems) > 0
