@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 216127
+	orchestrationSumCap    = 189055
 	orchestrationSumTarget = 90000
 )
 
@@ -37,6 +37,7 @@ type budgetRow struct {
 var orchestrationBudget = map[string]budgetRow{
 	"SKILL.md":                                   {7940, 10240, "S3, S4a"},
 	"references/adviser-providers.md":            {10240, 10240, "S4d"},
+	"references/base-merge.md":                   {10240, 10240, "S4b"},
 	"references/connected-sources.md":            {9144, 10240, "S4f"},
 	"references/consultation-helper.md":          {10240, 10240, "S4d"},
 	"references/contracts/README.md":             {14497, 8192, "S3, S4e"},
@@ -50,8 +51,9 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/contracts/test-engineer.md":      {18076, 8192, "S4e"},
 	"references/contracts/test-review.md":        {5638, 8192, "S4e"},
 	"references/github-worker.md":                {14393, 10240, "S4f"},
-	"references/global-workflow.md":              {46262, 10240, "S4b"},
+	"references/global-workflow.md":              {10240, 10240, "S4b"},
 	"references/hosts.md":                        {12030, 10240, "S4f"},
+	"references/measure-outcomes.md":             {10240, 10240, "S4b"},
 	"references/question-patterns.md":            {1883, 10240, "S4a"},
 	"references/use-cases.md":                    {7935, 10240, "S4f"},
 	"references/worker-handoffs.md":              {10240, 10240, "S4c"},
