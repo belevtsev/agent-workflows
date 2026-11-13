@@ -24,7 +24,7 @@ and dependent integration. Workers return evidence and questions, never adviser
 consults. The test engineer gets only the contract and scaffold
 ([boundary](contracts/test-engineer.md#author-only-from-the-contract)); the
 coordinator owns the execution gates. Under Claude Code the reviewer and test
-engineer start without CLAUDE.md ([hosts](hosts.md#worker-agent-types)): quote
+engineer start without CLAUDE.md ([hosts](hosts-claude-code.md#worker-agent-types)): quote
 any project constraint their contract lacks word for word.
 
 ## Assign before dispatch
@@ -89,7 +89,7 @@ independent reviewer:
 | Test review | [test-review](contracts/test-review.md) | test engineer | `evidence` |
 | Code review | [code-review](contracts/code-review.md) | implementer; a test finding to a fresh test engineer | `review` |
 
-Dispatch per [hosts](hosts.md#worker-agent-types); name the contract (its
+Dispatch per [hosts](hosts.md); name the contract (its
 Independence section binds the reviewer) and any skill's `SKILL.md` path.
 
 **Severity**, one per finding; a contract may define a grade for its artefact,

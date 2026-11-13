@@ -6,6 +6,11 @@ unrelated services are not prerequisites for local work.
 Discover the current connector and tool schemas from the available catalog; use the
 actual tools rather than obsolete names or examples from another installation.
 
+Contents: [Source and authorization boundaries](#source-and-authorization-boundaries),
+[Atlassian account and site](#atlassian-account-and-site-resolution), [Jira](#jira),
+[Confluence](#confluence), [GitHub](#github),
+[Repository documentation and restricted sharing](#repository-documentation-and-restricted-sharing).
+
 ## Source and authorization boundaries
 
 - Record the source identity and revision, retrieval time, relevant content, and the
@@ -101,19 +106,8 @@ Read enough paginated results to establish completeness for the current question
 - Draft PR titles and descriptions around the final diff, observable behavior, and relevant
   validation. Drafting does not authorize commits, pushes, PR creation, merge, or comments.
   Perform already requested publication without repeating an approval request.
-- Publish a verified substantial task with `cw publish`; dispatch the
-  [GitHub worker](github-worker.md) for its fallback cases or when the user asks
-  for a bounded worker; a small task commits and pushes
-  directly under the user's authorization. Its `commit_execution`,
-  `pr_authoring_routine` and `pr_submission` roles use the `github` profile. It
-  drafts messages and PR text from fixed independently verified facts and executes
-  the scoped authorized commit/push and `gh` PR writes, following the brief,
-  prewrite refresh and readback contract. Substantive `pr_authoring` stays with
-  the coordinator or a substantive worker; new claims, scope changes, conflicts
-  or uncertain verification return there. Publishing verified facts alone does
-  not repeat full orchestration or adviser checkpoints. Bounded evidence profiles
-  remain read-only, and unavailable GitHub workers must not silently fall back to
-  an expensive profile.
+- Publish as the [publication reference](github-worker.md) says. Bounded
+  evidence profiles remain read-only.
 - Read back created or changed issues, PRs, reviews, and comments. If a write times out or
   returns an ambiguous outcome, inspect remote state before retrying. Attach a created PR
   to the current task when the app provides the attachment tool.
