@@ -4,7 +4,9 @@ package langpack_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -62,6 +64,19 @@ func TestReadGoEnvVerifiesOnlyACToolchainThatOnlyRootCanChange(t *testing.T) {
 	if err := os.Symlink(cc, link); err != nil {
 		t.Fatal(err)
 	}
+	// dyld ends a process whose inserted library does not load, go env
+	// included, so on macOS the library is a real one the user built, as an
+	// attack's would be. Other systems ignore the variable.
+	dylib := filepath.Join(users, "x.dylib")
+	if runtime.GOOS == "darwin" {
+		src := filepath.Join(users, "x.c")
+		if err := os.WriteFile(src, []byte("int cw_inserted;\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.CommandContext(t.Context(), cc, "-dynamiclib", "-o", dylib, src).CombinedOutput(); err != nil {
+			t.Fatalf("precondition: building a dylib with %s: %v\n%s", cc, err, out)
+		}
+	}
 	goEnvFile := filepath.Join(users, "env")
 	if err := os.WriteFile(goEnvFile, []byte("CC="+wrapper+"\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -80,7 +95,7 @@ func TestReadGoEnvVerifiesOnlyACToolchainThatOnlyRootCanChange(t *testing.T) {
 		{"LD_PRELOAD", "LD_PRELOAD is set", []string{"LD_PRELOAD=" + filepath.Join(users, "x.so")}},
 		{"CPATH", "CPATH is set", []string{"CPATH=" + users}},
 		{"COMPILER_PATH", "COMPILER_PATH is set", []string{"COMPILER_PATH=" + users}},
-		{"DYLD_INSERT_LIBRARIES", "DYLD_INSERT_LIBRARIES is set", []string{"DYLD_INSERT_LIBRARIES=" + filepath.Join(users, "x.dylib")}},
+		{"DYLD_INSERT_LIBRARIES", "DYLD_INSERT_LIBRARIES is set", []string{"DYLD_INSERT_LIBRARIES=" + dylib}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			got, _ := read(t, ctEnv(t, c.env...))
