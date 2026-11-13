@@ -106,6 +106,10 @@ GOWORK=off go test ./internal/skillcheck
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
   than 200 characters;
+- each `*.md` file under `skills/task-orchestration` stays within its cap in
+  the table of `orchestration_budget_test.go`, and the files within the sum cap.
+  The caps are a ratchet toward 10,240 bytes a file (8,192 a role contract) and
+  90,000 in all: a cut lowers its rows, a new file needs a row;
 - only `global/AGENTS.md` states when a task is substantial; the skills, agents,
   hooks, docs and model policies link to it.
 
