@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 143859
+	orchestrationSumCap    = 143510
 	orchestrationSumTarget = 90000
 )
 
@@ -49,17 +49,17 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/contracts/implementer.md":         {5128, 3700, "S4j"},
 	"references/contracts/spec-review.md":         {4891, 3400, "S4k"},
 	"references/contracts/spec-writer.md":         {4225, 3400, "S4k"},
-	"references/contracts/test-engineer.md":       {7314, 5400, "S4j"},
+	"references/contracts/test-engineer.md":       {7245, 5400, "S4j"},
 	"references/contracts/test-review.md":         {4959, 3600, "S4j"},
-	"references/dispatching-reviews-and-tests.md": {9162, 6600, "S4i"},
+	"references/dispatching-reviews-and-tests.md": {9270, 6600, "S4i"},
 	"references/github-worker-fallback.md":        {4132, 3700, "S4g"},
 	"references/github-worker.md":                 {3883, 3000, "S4g"},
-	"references/global-workflow.md":               {6198, 6000, "S4h"},
+	"references/global-workflow.md":               {6152, 6000, "S4h"},
 	"references/glossary.md":                      {3010, 4096, "S4a"},
-	"references/hosts.md":                         {7287, 4600, "S4g"},
+	"references/hosts.md":                         {7303, 4600, "S4g"},
 	"references/measure-outcomes.md":              {1028, 800, "S4h"},
 	"references/question-patterns.md":             {1883, 10240, "S4a"},
-	"references/worker-handoffs.md":               {9144, 6900, "S4i"},
+	"references/worker-handoffs.md":               {8803, 6900, "S4i"},
 }
 
 // fileLimit is the most bytes OD-7 allows the file at rel.

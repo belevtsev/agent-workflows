@@ -84,9 +84,9 @@ A new Agent call starts with a fresh context.
   `Plugin root:` in the task-orchestration `SKILL.md`). For a test engineer,
   list it among the approved inputs.
 - `reviewer` and `test-engineer` start without the user, project and local
-  CLAUDE.md files; managed policy files still load. Quote in the brief any
-  project constraint the work must meet that the contract lacks. The other
-  five agents keep CLAUDE.md.
+  CLAUDE.md files; managed policy files still load. Quote in the brief, word
+  for word, any project constraint the work must meet that the contract lacks.
+  The other five agents keep CLAUDE.md.
 
 ## Test engineer and GitHub worker
 

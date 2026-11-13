@@ -13,8 +13,6 @@ the conversation: source revision, inputs, question or owned files, decisions,
 constraints, permitted actions, evidence and stop condition. Editing workers
 preserve others' changes; you own shared interfaces, concurrency and dependent
 integration. Workers return evidence and questions, never adviser consults.
-Under Claude Code the reviewer and test engineer start without CLAUDE.md:
-quote word for word any project constraint their contract lacks.
 
 ## Assign before dispatch
 
@@ -85,11 +83,8 @@ the next round reviews the revision. Before rejecting a `blocker` or `major`, co
 available advisers ([points](adviser-providers.md#adviser-points-in-the-flow)).
 
 **Growth check.** The spec and design reviewers report as `scope creep` what a
-revision or [amendment](contract-amendment.md) adds unasked.
-Such a finding cites the added text; the exception for the smallest fix of an
-accepted finding is judged by that finding, not the revision's claim. One the
-next stage would build or test is at least `major`; one the user or sources
-require is `rejected` with that evidence.
+revision or [amendment](contract-amendment.md) adds unasked. A finding the
+user or sources require is `rejected` with that evidence.
 
 ### Review cap
 

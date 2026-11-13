@@ -112,10 +112,9 @@ a request to read prohibited material before reading it.
 
 ## Record and complete
 
-Your brief uses `role: "implementation"`, `stage: "tests"`, exact test-artefact
-`owned_paths` and `check_ids: []`: the execution checks belong to the
-coordinator, so a red-test handoff stays valid; the mapped tests must exist,
-not pass.
+Your brief lists no checks (`check_ids: []`): the execution checks belong to
+the coordinator, so a red-test handoff stays valid; the mapped tests must
+exist, not pass.
 
 `cw task verify` judges authorship from the record, not from your summary:
 

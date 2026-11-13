@@ -95,8 +95,10 @@ and keep execution checks in the plan, owned by you or a separate
 fresh [test review](contracts/test-review.md) follows before integration.
 Record an exposed author's round `rejected`; it never counts again, even
 closed `unused`. A round closed `unused` without a rejection keeps its
-authorship. The brief carries the contract, its `requirements` and the
-`inputs`; its constraints carry the packet identity and the read boundary.
+authorship. The brief uses `role: "implementation"`, `stage: "tests"`, exact
+test-artefact `owned_paths` and `check_ids: []`, and carries the contract, its
+`requirements` and the `inputs`; its constraints carry the packet identity and
+the read boundary.
 Returned hashes and inputs read are workflow records, not proof of who read
 or wrote a file.
 

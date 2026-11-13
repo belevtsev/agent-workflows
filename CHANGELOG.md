@@ -76,24 +76,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   adds the design stage and `strict` the spec stage ([profiles](docs/operations.md#profiles)); reviewers skip style.
 - "Substantial task" is defined only in the working conventions; a task that is not substantial dispatches no workers, and the agent
   checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
-- The flow overview is cut from 8 KB to under 5 KB and the contract amendment procedure from 6 KB to under 5 KB: both keep every step
-  and link the one reference that holds each rule; the reasons move to [agents](docs/agents.md#design-choices).
+- The orchestration skill is cut a second time, from 187 KB to 144 KB: every worker contract stands alone, the two host pages merge
+  into `hosts.md`, the task presets go, and each `cw publish` status moves to the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
 - The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
   and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
-- The architect, design-review, spec-writer and spec-review contracts stand alone: each states the handoff caps and, for the two reviews,
-  the severity grades and the whole growth check, with no link into a coordinator reference ([contracts](skills/task-orchestration/references/contracts/README.md)).
 - The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
   part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
-- The implementer, test-engineer, test-review and code-review contracts stand alone: each states the severity grades and the 6 KiB
-  result cap itself and links no coordinator reference, so a worker needs only its contract and brief ([agents](docs/agents.md)).
 - The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
   and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
-- The orchestration skill drops its task presets and cuts the workflow, base-merge and metrics references from 27 KB to 9 KB; what
-  `cw metrics import` reports moves to [cost history](docs/operations.md#what-an-import-reports).
 - The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
   what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
-- The worker-handoffs and dispatch references drop what `cw` refuses and what each contract states, and name the test authorship statuses;
-  the adversarial tester's contract holds worker rules only ([dispatching](skills/task-orchestration/references/dispatching-reviews-and-tests.md#adversarial)).
 - The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
   [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
@@ -130,8 +122,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
-- The orchestration skill has one host reference: `hosts-claude-code.md` and `hosts-codex.md` merge into `hosts.md`, and the
-  publication references shrink; every `cw publish` status and reason is now in the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
 
 ### Fixed
 

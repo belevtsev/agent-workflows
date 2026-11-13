@@ -59,8 +59,7 @@ the path it names before retrying.
 
 ## Dispatch workers
 
-Dispatch each worker as [hosts](hosts.md) says. Stop an incompatible worker
-before it writes.
+Dispatch each worker as [hosts](hosts.md) says.
 
 ## Execute and record evidence
 

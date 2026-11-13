@@ -6,7 +6,7 @@ description: "Runs a substantial code change as a recorded `cw` task: independen
 # Task orchestration
 
 Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty outside the Claude Code plugin; see the
-[host mapping](references/hosts.md) for paths and agent types).
+[host mapping](references/hosts.md) for agent types).
 
 The coordinator owns the outcome, consultation, dispatch, integration and final
 verification. Use this skill for a
@@ -124,7 +124,7 @@ found.
 | Step | Reference |
 | --- | --- |
 | Terms and role names | [glossary](references/glossary.md) |
-| Host, profiles, policy, paths | [hosts](references/hosts.md) |
+| Host, profiles, policy | [hosts](references/hosts.md) |
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
 | Checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
