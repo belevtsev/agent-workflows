@@ -27,6 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A ten-minute [quick start](docs/quickstart.md) takes one task by hand from `cw task init` to a verified commit, and a test runs
+  its commands, so the page stays true; README "Your first task" now links it.
+- `cw task init --title T` writes a starter plan that `cw task start` accepts unedited: profile, one requirement and, in a Go module,
+  the Go pack's race command as its check; it prints text by default and JSON with `--json` ([starter plan](docs/operations.md#starter-plan)).
 - `cw task init --title T` writes a starter plan that `cw task start` accepts unedited: profile, one requirement and, in a Go module,
   the Go pack's race command as its check; it prints text by default and JSON with `--json` ([starter plan](docs/operations.md#starter-plan)).
 - `cw task schema <command>` prints the JSON Schema of a task command's JSON input, and the `--help` of each task command that reads
