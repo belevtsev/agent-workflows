@@ -280,6 +280,9 @@ type Record struct {
 	Assignments       []WorkerAssignment         `json:"assignments,omitempty"`
 	WorkerResults     []BoundWorkerResult        `json:"worker_results,omitempty"`
 	WorkerAcceptances []BoundWorkerAcceptance    `json:"worker_acceptances,omitempty"`
+	// Usage holds the usage samples cw task usage stored, append-only
+	// (usage.go); UsageOf turns them into the task's usage.
+	Usage []UsageSample `json:"usage,omitempty"`
 	// Abandonment, once set, is the record's terminal revision (abandon.go).
 	Abandonment *Abandonment `json:"abandonment,omitempty"`
 }

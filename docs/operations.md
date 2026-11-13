@@ -472,6 +472,32 @@ replace them before v3.0.0. The budget counts dollars only; there is no token ca
 checkpoints also apply when the task binds advisers. A `spec` or `design` cap
 counts revisions after the first draft; a `tests` cap counts every round.
 
+### Cost budget
+
+`cw task usage --task DIR (--claude-transcript FILE | --codex-session FILE)
+[--prices FILE]` reads the session's transcript, read-only, as `cw metrics
+import` does, and stores what the session has used so far in the task record as
+a usage sample. A sample keeps the session, its tokens (uncached input, cache
+writes, cache reads and output, apart) and its dollars with their source.
+
+- **Task usage** is, per session, the latest sample minus the first, summed over
+  the sessions. Sample at task start and again later: a session with one sample
+  gives no usage yet.
+- **Dollars** come from the cost the transcript recorded. cw ships no price
+  table; `--prices` is used only for a transcript that records no cost, such as
+  a Codex rollout. Within one session, dollars from two sources are never
+  subtracted: the usage is then unknown.
+- **Unknown, never zero.** An incomplete or unreadable transcript, usage the
+  import withholds, or a cost that covers a model of unknown price leaves the
+  value unknown with the reason; it is never counted as 0.
+- **Few revisions.** A sample is stored only when it is its session's first,
+  turns the task's dollar usage known or unknown, or moves it by at least 5% of
+  the budget. The default output says whether it was stored and gives the task's
+  usage; `--full` prints the record.
+- A task started before profiles has no budget, and `cw task usage` refuses it.
+
+Nothing stops a task at its budget yet; the budget counts dollars only.
+
 ### Task locks
 
 Every `cw` command that writes a task record takes an exclusive `flock` on
