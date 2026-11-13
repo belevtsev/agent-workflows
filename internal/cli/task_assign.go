@@ -14,10 +14,7 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
 	var ownerApprovals []string
 	var full bool
-	assign := &cobra.Command{Use: "assign", Short: "Bind a worker brief and exclusive writer scope to the current source", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	assign := &cobra.Command{Use: "assign", Short: "Bind a worker brief and exclusive writer scope to the current source", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

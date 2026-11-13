@@ -77,7 +77,7 @@ func TestTaskCLIUsesSelectedProjectAndPrivateExternalStorage(t *testing.T) {
 		t.Fatalf("gate failed: %s %v", out.String(), err)
 	}
 	out.Reset()
-	if err := Execute(t.Context(), []string{"--dry-run", "task", "show", "--task", record.Directory}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "show", "--task", record.Directory}, config); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -188,14 +188,16 @@ func TestTaskCLIRefusesOtherRecordVersionsWithoutWrites(t *testing.T) {
 	}
 }
 
-func TestTaskMutationsRejectInheritedDryRunBeforeWrites(t *testing.T) {
+// Oracle: the task commands have no --dry-run; the unknown flag is a usage
+// error (exit 2) before any storage is touched.
+func TestTaskMutationsRejectDryRunBeforeWrites(t *testing.T) {
 	for _, command := range []string{"start", "context", "run", "assess", "assign", "handoff", "accept", "consult", "verify"} {
 		t.Run(command, func(t *testing.T) {
 			config, _ := testConfig(t)
 			config.HomeDir = func() (string, error) { t.Fatal("dry-run accessed storage"); return "", nil }
 			config.WorkingDir = config.HomeDir
-			err := Execute(t.Context(), []string{"--dry-run", "task", command}, config)
-			if err == nil || ExitCode(err) != 2 || !strings.Contains(err.Error(), "reject --dry-run") {
+			err := Execute(t.Context(), []string{"task", command, "--dry-run"}, config)
+			if err == nil || ExitCode(err) != 2 || !strings.Contains(err.Error(), "unknown flag: --dry-run") {
 				t.Fatalf("dry-run was not rejected explicitly: %v", err)
 			}
 		})

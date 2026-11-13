@@ -10,10 +10,7 @@ import (
 func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 	var directory, phase, inputFile string
 	var full bool
-	command := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	command := &cobra.Command{Use: "consult", Short: "Preserve and validate a version 4 consultation record that covers the task's bound advisers", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

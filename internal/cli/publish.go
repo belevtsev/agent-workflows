@@ -37,12 +37,9 @@ func addPublishCommand(root *cobra.Command, config Config) {
 		Use:   "publish",
 		Short: "Commit, push and open or edit the pull request for a task verified on the current source",
 		Long:  publishLong,
-		Args:  noPositional,
+		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			flags := cmd.Flags()
-			if flags.Changed("dry-run") {
-				return usage(errors.New("cw publish has no dry run; nothing was changed"))
-			}
 			given := func(name string, value *string) *string {
 				if flags.Changed(name) {
 					return value

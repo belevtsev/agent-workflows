@@ -43,11 +43,11 @@ type taskInitReport struct {
 }
 
 // newTaskInitCommand returns cw task init. It writes a plan file and no task
-// state; with the global --dry-run it writes nothing.
+// state; with --dry-run it writes nothing.
 func newTaskInitCommand(deps taskDeps) *cobra.Command {
 	var title, repo, profile, out string
-	var asJSON bool
-	command := &cobra.Command{Use: "init", Short: "Write a starter plan for cw task start", Long: helpText("task-init"), Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
+	var asJSON, dryRun bool
+	command := &cobra.Command{Use: "init", Short: "Write a starter plan for cw task start", Long: helpText("task-init"), Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if strings.TrimSpace(title) == "" {
 			return usage(errors.New("--title T is required"))
 		}
@@ -73,7 +73,7 @@ func newTaskInitCommand(deps taskDeps) *cobra.Command {
 		}
 		report := taskInitReport{Plan: out, Profile: profile, Pack: pack, CheckID: plan.Checks[0].ID, CheckArgv: argv, Placeholder: pack == "",
 			Next: []string{"cw", "task", "start", "--repo", repo, "--plan", out}}
-		if dryRun, _ := deps.root.PersistentFlags().GetBool("dry-run"); !dryRun {
+		if !dryRun {
 			if err := writeNewFile(out, append(data, '\n')); err != nil {
 				return err
 			}
@@ -88,6 +88,7 @@ func newTaskInitCommand(deps taskDeps) *cobra.Command {
 	command.Flags().StringVar(&repo, "repo", "", "Selected project directory whose top-level files choose the pack (default: current working directory)")
 	command.Flags().StringVar(&profile, "profile", taskflow.DefaultProfile, "The profile the plan names: lite, standard or strict")
 	command.Flags().StringVar(&out, "out", "", "The plan file to create; an existing file is not replaced (default: plan.json in the current working directory)")
+	command.Flags().BoolVar(&dryRun, "dry-run", false, "Print the result without writing the plan file")
 	command.Flags().BoolVar(&asJSON, "json", false, "Print the result as one JSON object instead of text")
 	return command
 }

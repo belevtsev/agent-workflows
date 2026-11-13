@@ -8,8 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newTaskReceiptCommand returns cw task receipt. It only reads, so the global
-// --dry-run changes nothing.
+// newTaskReceiptCommand returns cw task receipt. It only reads.
 func newTaskReceiptCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var asJSON bool
@@ -22,7 +21,7 @@ func newTaskReceiptCommand(deps taskDeps) *cobra.Command {
 			"the checks planned, the runs executed and failed and the checks verify credited by reuse, the findings by severity and status with the open ones listed, " +
 			"and the wall time. The output is at most 4,096 bytes: every entry is listed whole or not at all, and the last line counts what is not listed. " +
 			"cw task verify, cw task abandon and a budget stop print the same text on stderr. --json prints the receipt as one JSON object. The command is read-only.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.requireTask(&directory); err != nil {
 				return err

@@ -8,10 +8,7 @@ import "github.com/spf13/cobra"
 func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var full bool
-	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	verify := &cobra.Command{Use: "verify", Short: "Gate completion against current source, requirements, checks and Coordinator decisions", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

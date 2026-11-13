@@ -12,18 +12,8 @@ import (
 )
 
 func addMetricsCommand(root *cobra.Command, config Config) {
-	metrics := &cobra.Command{Use: "metrics", Short: "Summarize explicit local workflow observations; only import --append writes, to the cost history", Args: func(_ *cobra.Command, args []string) error {
-		if len(args) > 0 {
-			return usage(fmt.Errorf("unknown metrics command: %s", args[0]))
-		}
-		return nil
-	}, RunE: func(command *cobra.Command, _ []string) error { return command.Help() }}
-	metrics.AddCommand(&cobra.Command{Use: "schema", Short: "Print the versioned observation JSON Schema and example", Args: func(_ *cobra.Command, args []string) error {
-		if len(args) != 0 {
-			return usage(errors.New("metrics schema accepts no arguments"))
-		}
-		return nil
-	}, RunE: func(command *cobra.Command, _ []string) error {
+	metrics := &cobra.Command{Use: "metrics", Short: "Summarize explicit local workflow observations; only import --append writes, to the cost history", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error { return command.Help() }}
+	metrics.AddCommand(&cobra.Command{Use: "schema", Short: "Print the versioned observation JSON Schema and example", Args: noArgs, RunE: func(command *cobra.Command, _ []string) error {
 		_, err := fmt.Fprintln(command.OutOrStdout(), string(outcomes.Schema()))
 		return err
 	}})
@@ -67,12 +57,7 @@ func importCommand(config Config) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "import (--claude-transcript FILE | --codex-session FILE) [--codex-sessions-root DIR] ([--prices FILE] [--composition [--summary]] | --append [--history FILE])",
 		Short: "Report per-agent token usage and dollars from a Claude transcript or Codex rollout as JSON, or append it to the cost history",
-		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) != 0 {
-				return usage(errors.New("metrics import accepts no positional arguments"))
-			}
-			return nil
-		},
+		Args:  noArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
 			if (claudeTranscript == "") == (codexSession == "") {
 				return usage(errors.New("metrics import requires exactly one of --claude-transcript or --codex-session"))
@@ -85,9 +70,6 @@ func importCommand(config Config) *cobra.Command {
 			}
 			if appendHistory && (composition || summary || pricesPath != "") {
 				return usage(errors.New("--append stores token counts only and takes no --prices, --composition or --summary; pass --prices to cw metrics history"))
-			}
-			if dryRun, _ := command.Root().PersistentFlags().GetBool("dry-run"); dryRun && appendHistory {
-				return usage(errors.New("metrics import --append rejects --dry-run; nothing was written (run it without --append to see the report)"))
 			}
 			if composition && pricesPath == "" {
 				return usage(errors.New("--composition requires --prices: its totals are reconciled with the recorded cost"))
@@ -164,12 +146,7 @@ func historyCommand(config Config) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "history [--history FILE] [--session ID] [--model MODEL] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--prices FILE]",
 		Short: "Aggregate the cost history written by import --append as JSON, by model, UTC day and session",
-		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) != 0 {
-				return usage(errors.New("metrics history accepts no positional arguments"))
-			}
-			return nil
-		},
+		Args:  noArgs,
 		RunE: func(command *cobra.Command, _ []string) error {
 			if err := absolutePaths(config, &historyPath, &pricesPath); err != nil {
 				return err

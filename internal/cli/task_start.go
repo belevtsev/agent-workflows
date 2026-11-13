@@ -15,10 +15,7 @@ func newTaskStartCommand(deps taskDeps) *cobra.Command {
 	var flags taskStartFlags
 	var planFile string
 	var full bool
-	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: helpText("task-start"), Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	start := &cobra.Command{Use: "start", Short: "Capture a baseline, an explicit JSON requirement/check plan and the configured adviser binding", Long: helpText("task-start"), Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		var plan taskflow.Plan
 		if err := readTaskInput(cmd, planFile, &plan); err != nil {
 			return err

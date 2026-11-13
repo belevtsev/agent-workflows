@@ -113,7 +113,7 @@ func addPackCommands(root *cobra.Command, config Config) {
 		Long: "Manage the pack selection in packs.json of the configuration directory: --config-dir, else $XDG_CONFIG_HOME/agent-workflows, else ~/.config/agent-workflows. " +
 			"With no packs.json every built-in language pack is selected; 'cw pack add' and 'cw pack remove' write an explicit packs.json that replaces that default for all your repositories, and deleting the file restores it. " +
 			"'cw task start' records the selected packs whose detect file is at the top of the selected path, and 'cw task verify' applies their evidence rules. 'cw lang' is an alias.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
 	oneID := func(cmd *cobra.Command, args []string) error {
@@ -122,7 +122,7 @@ func addPackCommands(root *cobra.Command, config Config) {
 		}
 		return nil
 	}
-	pack.AddCommand(&cobra.Command{Use: "list", Short: "Print the built-in packs and which are selected", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
+	pack.AddCommand(&cobra.Command{Use: "list", Short: "Print the built-in packs and which are selected", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		selection, err := effectiveSelection(root, config)
 		if err != nil {
 			return err
@@ -140,7 +140,7 @@ func addPackCommands(root *cobra.Command, config Config) {
 		}
 		return writeJSON(cmd.OutOrStdout(), report)
 	}})
-	change := func(cmd *cobra.Command, edit func([]string) []string) error {
+	change := func(cmd *cobra.Command, dryRun bool, edit func([]string) []string) error {
 		selection, err := effectiveSelection(root, config)
 		if err != nil {
 			return err
@@ -148,7 +148,6 @@ func addPackCommands(root *cobra.Command, config Config) {
 		next := edit(slices.Clone(selection.ids))
 		slices.Sort(next)
 		report := packChangeReport{Selected: next}
-		dryRun, _ := root.PersistentFlags().GetBool("dry-run")
 		if (!selection.explicit || !slices.Equal(next, selection.ids)) && !dryRun {
 			if err := userconfig.SavePacks(selection.directory, next); err != nil {
 				return fmt.Errorf("cannot save the pack selection: %w", err)
@@ -157,7 +156,8 @@ func addPackCommands(root *cobra.Command, config Config) {
 		}
 		return writeJSON(cmd.OutOrStdout(), report)
 	}
-	pack.AddCommand(&cobra.Command{Use: "add ID", Short: "Select a built-in pack", Args: oneID, RunE: func(cmd *cobra.Command, args []string) error {
+	var addDryRun, removeDryRun bool
+	add := &cobra.Command{Use: "add ID", Short: "Select a built-in pack", Args: oneID, RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
 		builtIn, err := builtInPacks()
 		if err != nil {
@@ -170,21 +170,25 @@ func addPackCommands(root *cobra.Command, config Config) {
 			}
 			return usage(fmt.Errorf("unknown pack %q; built-in packs: %s", id, strings.Join(names, ", ")))
 		}
-		return change(cmd, func(ids []string) []string {
+		return change(cmd, addDryRun, func(ids []string) []string {
 			if slices.Contains(ids, id) {
 				return ids
 			}
 			return append(ids, id)
 		})
-	}})
-	pack.AddCommand(&cobra.Command{Use: "remove ID", Short: "Deselect a pack", Args: oneID, RunE: func(cmd *cobra.Command, args []string) error {
+	}}
+	add.Flags().BoolVar(&addDryRun, "dry-run", false, "Print the new selection without writing packs.json")
+	pack.AddCommand(add)
+	remove := &cobra.Command{Use: "remove ID", Short: "Deselect a pack", Args: oneID, RunE: func(cmd *cobra.Command, args []string) error {
 		id := args[0]
 		if !langpack.ValidID(id) {
 			return usage(fmt.Errorf("invalid pack id %q", id))
 		}
-		return change(cmd, func(ids []string) []string {
+		return change(cmd, removeDryRun, func(ids []string) []string {
 			return slices.DeleteFunc(ids, func(selected string) bool { return selected == id })
 		})
-	}})
+	}}
+	remove.Flags().BoolVar(&removeDryRun, "dry-run", false, "Print the new selection without writing packs.json")
+	pack.AddCommand(remove)
 	root.AddCommand(pack)
 }

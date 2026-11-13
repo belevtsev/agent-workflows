@@ -176,12 +176,13 @@ func TestTaskAbandonCommand(t *testing.T) {
 	})
 
 	t.Run("dry-run is rejected", func(t *testing.T) {
-		// C3: the root --dry-run flag is rejected and nothing is written.
+		// C3: --dry-run, which task abandon does not have, is a usage error
+		// and nothing is written.
 		repo := hkRepo(t)
 		h := newHKHarness(t)
 		record := h.start(t, repo, hkSubstantialPlan)
-		if _, err := h.taRun(t, "--dry-run", "task", "abandon", "--task", record.Directory, "--reason", "x"); err == nil {
-			t.Fatal("--dry-run task abandon returned nil")
+		if _, err := h.taRun(t, "task", "abandon", "--dry-run", "--task", record.Directory, "--reason", "x"); ExitCode(err) != ExitUsage {
+			t.Fatalf("task abandon --dry-run returned %v, want the usage error for an unknown flag", err)
 		}
 		taExpectUnchanged(t, record)
 	})

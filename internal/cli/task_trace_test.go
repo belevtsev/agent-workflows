@@ -406,7 +406,7 @@ func l3cTraceFixture(t *testing.T) *l3cFix {
 
 // TestTaskTraceCLIPrintsReport fails when cw task trace does not print the
 // TraceReport as one JSON line, exits non-zero because a criterion is open,
-// writes to the task, or behaves differently with --dry-run (R36, R33).
+// writes to the task, or accepts --dry-run, which it does not have (R36, R33).
 func TestTaskTraceCLIPrintsReport(t *testing.T) {
 	t.Parallel()
 	f := l3cTraceFixture(t)
@@ -438,11 +438,8 @@ func TestTaskTraceCLIPrintsReport(t *testing.T) {
 	if !l3cSameJSON(line, string(want)) {
 		t.Errorf("printed report differs from taskflow.Trace's:\n got  %s\n want %s (R36)", line, want)
 	}
-	dry, _, err := f.execute("task", "trace", "--task", f.dir, "--dry-run")
-	if err != nil {
-		t.Errorf("cw task trace --dry-run: %v, want it accepted (R36)", err)
-	} else if dry != out {
-		t.Errorf("--dry-run changed the output:\n got  %s\n want %s (R36)", dry, out)
+	if _, _, err := f.execute("task", "trace", "--task", f.dir, "--dry-run"); cli.ExitCode(err) != cli.ExitUsage {
+		t.Errorf("cw task trace --dry-run: %v, want the usage error for an unknown flag", err)
 	}
 	l3cSameTree(t, "cw task trace", before, l3cTree(t, f.dir))
 }

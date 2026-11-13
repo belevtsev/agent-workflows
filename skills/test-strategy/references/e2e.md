@@ -70,8 +70,8 @@ drive it as a user or a host would, through its process boundary only.
 - `cmd/cw/hostfiles_e2e_test.go` runs `cw install --host codex`, a repeat
   install and `cw uninstall --host codex` against temporary `HOME`,
   `CODEX_HOME` and XDG directories and a fixture checkout. It snapshots the
-  trees before and after, so a repeat install or a rejected `--dry-run` that
-  writes anything fails, and checks usage errors (exit 2) leave `HOME` empty.
+  trees before and after, so a repeat install or a rejected unknown flag
+  (`--dry-run`) that writes anything fails, and checks usage errors (exit 2) leave `HOME` empty.
 - `cmd/cw/task_e2e_test.go` drives `cw task start`, `run`, `assess` and `verify`
   in a temporary repository and state directory, and asserts `verify`'s exit
   code and summary: complete after passing evidence, and incomplete with the

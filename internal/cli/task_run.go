@@ -13,10 +13,7 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 	var directory, check string
 	var full, force bool
 	var ownerApprovals []string
-	run := &cobra.Command{Use: "run", Short: "Execute one planned argv check with bounded private logs", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	run := &cobra.Command{Use: "run", Short: "Execute one planned argv check with bounded private logs", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

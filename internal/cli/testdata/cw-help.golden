@@ -26,7 +26,6 @@ Flags:
       --claude-home string   Claude Code configuration directory
       --codex-home string    Codex configuration directory
       --config-dir string    Private preferences and credential directory
-      --dry-run              Report without writing
   -h, --help                 help for cw
       --home string          Home directory
       --state-dir string     State directory holding the task store

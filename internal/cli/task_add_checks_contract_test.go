@@ -1663,7 +1663,7 @@ func aclTestRefusals(t *testing.T) {
 }
 
 // aclTestUsageAndInputErrors fails when usage errors, the
-// global --dry-run, unknown or oversized input are not refused without
+// unknown flag --dry-run, unknown or oversized input are not refused without
 // writing a revision (R18.a, R18.b, R18.c, section 1.1, section 5 item 2).
 func aclTestUsageAndInputErrors(t *testing.T) {
 	aclSetup(t)
@@ -1685,7 +1685,7 @@ func aclTestUsageAndInputErrors(t *testing.T) {
 		{"R18.a missing --task", []string{"task", "add-checks", "--full", "--input", good}, ""},
 		{"R18.a missing --input", []string{"task", "add-checks", "--full", "--task", dir}, ""},
 		{"positional argument", []string{"task", "add-checks", "--full", "--task", dir, "--input", good, "extra"}, ""},
-		{"R18.b global --dry-run", []string{"--dry-run", "task", "add-checks", "--full", "--task", dir, "--input", good}, "task state commands reject --dry-run"},
+		{"R18.b --dry-run", []string{"task", "add-checks", "--dry-run", "--full", "--task", dir, "--input", good}, "unknown flag: --dry-run"},
 		{"R18.c unknown member", []string{"task", "add-checks", "--full", "--task", dir, "--input", unknown}, "invalid task JSON"},
 		{"duplicate member", []string{"task", "add-checks", "--full", "--task", dir, "--input", duplicate}, "invalid task JSON"},
 		{"trailing data", []string{"task", "add-checks", "--full", "--task", dir, "--input", trailing}, "invalid task JSON"},
@@ -1740,8 +1740,8 @@ func aclTestExitStatus(t *testing.T) {
 		{"2 positional argument", "", func(r *aclRepo, dir, good string) []string {
 			return []string{"task", "add-checks", "--full", "--task", dir, "--input", good, "extra"}
 		}, 2},
-		{"2 global --dry-run", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"--dry-run", "task", "add-checks", "--full", "--task", dir, "--input", good}
+		{"2 --dry-run", "", func(r *aclRepo, dir, good string) []string {
+			return []string{"task", "add-checks", "--dry-run", "--full", "--task", dir, "--input", good}
 		}, 2},
 		{"1 unknown member", `{"merge_commit":"HEAD","base_ref":"origin/main","reason":"x","coordinator_id":"/root/x","checks":[{"id":"widened","argv":["go","test","./..."]}]}`,
 			func(r *aclRepo, dir, in string) []string {

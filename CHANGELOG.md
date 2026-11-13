@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - Codex runs the plugin's new `hooks/codex-hooks.json` (`cw hook … --host codex`) instead of `hooks/hooks.json`: trust the hooks again in
   `/hooks` after updating, or Codex runs none; a given `--host` decides the host over the hook input ([Codex hooks](docs/hooks.md#codex)).
+- `--dry-run` is a flag of `cw consult`, `cw pack add|remove` and `cw task init` only, after the command name: drop it from any other command,
+  which now exits 2 (`task show --dry-run` did not); so does an extra argument on every command, `cw hook` included ([paths](docs/operations.md#paths)).
 
 - While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
   from the verified working tree for a path it changes, and ask about one a git filter staged ([which source counts](docs/hooks.md#which-source-counts)).

@@ -11,7 +11,7 @@ func newTaskAuthorshipCommand(deps taskDeps) *cobra.Command {
 		Long: "Read the task and report each Go test file changed since the task's baseline, with its authorship status " +
 			"(independent, source_aware, lost or unowned), the reason and the worker assignment the record names for it. " +
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.requireTask(&directory); err != nil {
 				return err

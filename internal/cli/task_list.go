@@ -20,8 +20,7 @@ type taskList struct {
 	Hidden int `json:"hidden,omitzero"`
 }
 
-// newTaskListCommand returns cw task list. It only reads, so the global
-// --dry-run changes nothing.
+// newTaskListCommand returns cw task list. It only reads.
 func newTaskListCommand(deps taskDeps) *cobra.Command {
 	var repoDir string
 	var all, asJSON bool
@@ -34,7 +33,7 @@ func newTaskListCommand(deps taskDeps) *cobra.Command {
 			"By default it lists the tasks of the Git repository the working directory, or --repo DIR, is in (its main worktree's too) and hides abandoned and stale ones; " +
 			"--all lists them, and without --repo lists the tasks of every repository. --json prints one JSON object. The command is read-only.",
 		Example: "  cw task list\n  cw task list --all --json\n  cw task list --repo ../other-checkout",
-		Args:    noPositional,
+		Args:    noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			store, err := hookTaskStore(deps.root, deps.config)
 			if err != nil {

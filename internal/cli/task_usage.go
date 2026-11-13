@@ -28,11 +28,8 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 			"(or --prices), and store those tokens and estimated dollars in the task record when they matter. A recorded cost-state is not used. " +
 			"Task usage is the sum of each session's latest sample, so one sample of a session is enough; unknown values stay unknown, never 0. " +
 			"See docs/operations.md \"Cost budget\".",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := deps.guard(); err != nil {
-				return err
-			}
 			if err := deps.requireTask(&directory); err != nil {
 				return err
 			}

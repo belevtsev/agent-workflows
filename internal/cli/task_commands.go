@@ -11,8 +11,7 @@ import (
 )
 
 // taskDeps is what the cw task subcommands share: the root command, whose
-// persistent flags select the directories and --dry-run, and the
-// configuration.
+// persistent flags select the directories, and the configuration.
 type taskDeps struct {
 	root   *cobra.Command
 	config Config
@@ -47,20 +46,12 @@ var taskCommands = []func(deps taskDeps) *cobra.Command{
 
 // addTaskCommands adds cw task and its subcommands to root.
 func addTaskCommands(root *cobra.Command, config Config) {
-	task := &cobra.Command{Use: "task", Short: "Record source-bound requirements, worker handoffs, checks and completion", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
+	task := &cobra.Command{Use: "task", Short: "Record source-bound requirements, worker handoffs, checks and completion", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	root.AddCommand(task)
 	deps := taskDeps{root: root, config: config}
 	for _, constructor := range taskCommands {
 		task.AddCommand(constructor(deps))
 	}
-}
-
-// guard rejects the global --dry-run: a task state command always writes.
-func (deps taskDeps) guard() error {
-	if dryRun, _ := deps.root.PersistentFlags().GetBool("dry-run"); dryRun {
-		return usage(errors.New("task state commands reject --dry-run; no files or checks were changed"))
-	}
-	return nil
 }
 
 // taskFlag adds --task, the task directory a command reads or changes, or its

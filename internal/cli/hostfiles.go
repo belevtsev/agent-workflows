@@ -24,7 +24,7 @@ func addHostCommands(root *cobra.Command, config Config) {
 			Short: "Remove the Codex skill links and the AGENTS.md block",
 			Long: "Remove the symlinks in ~/.agents/skills that point into the checkout and the managed block from $CODEX_HOME/AGENTS.md. " +
 				"Entries that do not point into the checkout stay.",
-			Args: noPositional,
+			Args: noArgs,
 		}
 		if install {
 			command.Use = "install --host codex [--from DIR]"
@@ -40,9 +40,6 @@ func addHostCommands(root *cobra.Command, config Config) {
 				return usage(errors.New(claudePluginHint))
 			case host != "codex":
 				return usage(errors.New("--host codex is required"))
-			}
-			if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
-				return usage(fmt.Errorf("%s rejects --dry-run", cmd.Name()))
 			}
 			dirs, err := resolveRoots(root, config)
 			if err != nil {

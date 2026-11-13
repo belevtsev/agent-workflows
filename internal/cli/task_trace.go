@@ -63,7 +63,7 @@ func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 		Long: "Read the task and report, for each plan requirement, the contract requirements test-engineer briefs link to it, " +
 			"their mapped tests judged at the current source, and the check runs whose -json results recorded each test. " +
 			"It changes nothing, works on an abandoned task and exits 0 whatever the statuses.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.requireTask(&directory); err != nil {
 				return err

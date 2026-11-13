@@ -101,8 +101,8 @@ func validateCommand(argv []string) error {
 }
 
 // cwSubcommand returns the first argument after cw's global flags: the
-// directory flags take a value (separate or after =), --dry-run takes none
-// or an attached one, and any other argument starting with - stands alone.
+// directory flags take a value (separate or after =), and any other argument
+// starting with - stands alone.
 func cwSubcommand(args []string) string {
 	valued := []string{"--config-dir", "--home", "--codex-home", "--claude-home", "--state-dir"}
 	for i := 0; i < len(args); i++ {

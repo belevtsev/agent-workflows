@@ -20,8 +20,7 @@ func newTaskTimelineCommand(deps taskDeps) *cobra.Command {
 			"the duration of each check run, and the task's elapsed time from creation to its last stored revision (updated_at), not to now. " +
 			"A timestamp the record does not hold, and every duration computed from one, is n/a. " +
 			"It lists the last 20 entries by start time and counts the earlier ones as omitted_entries; --last 0 lists every entry. The command is read-only.",
-		Args: noPositional,
-		// The command only reads, so the global --dry-run changes nothing.
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.requireTask(&directory); err != nil {
 				return err

@@ -25,7 +25,7 @@ const gateOffVariable = "CW_GATE"
 // ask becomes a warning on stderr with exit 0. Every other case, including
 // any internal error, exits 0 without output, as cw hook pre-publish does.
 func addGitHookCommand(root, hook *cobra.Command, config Config) {
-	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit, merge and push on cw task verify from git's own pre-commit, pre-push and pre-merge-commit hooks", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
+	git := &cobra.Command{Use: "git", Short: "Git hooks: gate git commit, merge and push on cw task verify from git's own pre-commit, pre-push and pre-merge-commit hooks", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	hook.AddCommand(git)
 	// command is what the gate judges, a commit or a push; what is the git
 	// command that runs the hook, as the help names it.

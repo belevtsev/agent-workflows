@@ -681,8 +681,8 @@ the transcript is deleted. It appends one record per de-duplicated request to th
 `<state>/metrics/history.jsonl` unless `--history` names another file, and prints what
 it appended instead of the report. A record holds token counts, IDs, timestamps, the
 model and agent labels, and no dollars. Requests already stored are skipped, so
-importing again never double-counts. `--append` rejects `--prices`, `--composition`,
-`--summary` and `--dry-run`. `cw metrics history` aggregates the history by model,
+importing again never double-counts. `--append` rejects `--prices`, `--composition`
+and `--summary`. `cw metrics history` aggregates the history by model,
 UTC day and session, and recomputes dollars from `--prices`. `docs/operations.md`
 (Cost history) covers the schema, locking and damaged lines.
 

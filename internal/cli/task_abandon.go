@@ -20,11 +20,8 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 		Long: "Append the record's last revision, which stores the reason and time it was abandoned. " +
 			"An abandoned record accepts no further revisions and never gates publication; start a new task to continue the work. " +
 			"The task receipt (cw task receipt) follows on stderr.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := deps.guard(); err != nil {
-				return err
-			}
 			if err := deps.requireTask(&directory); err != nil {
 				return err
 			}

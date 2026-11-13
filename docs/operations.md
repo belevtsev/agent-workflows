@@ -193,8 +193,8 @@ not point into the checkout stay. It works after the checkout has been deleted.
 Pass the same `--from` you installed with: when no link points into the selected
 checkout, it still removes the block and prints a line saying so.
 
-There is no state file, journal, snapshot or rollback. Both commands reject
-`--dry-run`. `cw install --host claude` and `cw uninstall --host claude` are usage
+There is no state file, journal, snapshot or rollback, and no `--dry-run`.
+`cw install --host claude` and `cw uninstall --host claude` are usage
 errors that point at the Claude Code plugin.
 
 ## Paths
@@ -221,11 +221,14 @@ The task store is `<state>/workflow-tasks` and the cost history is
 `<state>/metrics/history.jsonl`. The configuration directory holds the
 saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (the
 pack selection written by `cw pack add` and `cw pack remove`, where `cw lang` is
-an alias of `cw pack`; absent means the default selection). `--dry-run` is a
-global flag; commands that would write without a preview reject it with exit
-status 2: `cw install`, `cw uninstall`, `cw gate install|uninstall`,
-`cw keys set|unset`, `cw graphify build`, the `cw task` state commands and
-`cw metrics import --append`.
+an alias of `cw pack`; absent means the default selection).
+
+`--dry-run` is not a global flag. Only the commands that can preview a write
+have it, after the command name: `cw consult` (a validated preview without
+network access), `cw pack add|remove` (the new selection, without writing
+`packs.json`) and `cw task init` (the starter plan's report, without writing
+the plan). Every other command rejects it as an unknown flag with exit
+status 2.
 
 v2.x used the same state and configuration directories. v3 reads the saved
 adviser keys (`credentials.json`) and `preferences.json` that v2.x left; keep
@@ -245,7 +248,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | --- | --- | --- |
 | 0 | ok | The command did what was asked, including `cw task run` reusing a passed run ([reuse](#reusing-a-passed-run)). |
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
-| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, or `--dry-run` where it is rejected. Nothing ran. |
+| 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, an unknown subcommand (`unknown command "X" for "cw ..."`), or a positional argument the command does not take (`unexpected argument "X" for "cw ..."`). Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
 | 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap or a third fix round on an open finding or requirement without `--owner-approval` ([round caps](#round-caps), [fix rounds](#fix-rounds)); `cw task assign` and `cw task run` at the budget's stop ([budget stop](#budget-stop)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
@@ -414,8 +417,7 @@ capture failed or ran out is recorded as `source_changed`.
 
 `cw task timeline --task DIR [--last N] [--summary]` reports the wall time a task spent, from
 timestamps the record already stores, and is read-only: it loads the record with
-the same validation as `cw task show` and writes nothing, so `--dry-run` changes
-nothing. It prints one JSON object with `task`, `task_id`, `started_at` (the
+the same validation as `cw task show` and writes nothing. It prints one JSON object with `task`, `task_id`, `started_at` (the
 record's `created_at`), `updated_at`, `elapsed` and `entries`. `elapsed` runs from
 `started_at` to `updated_at`, the record's last stored revision, not to the current
 time, so it does not grow while the task sits idle. `entries` holds one entry per
@@ -649,8 +651,7 @@ words for each.
 
 `cw task brief --task DIR --stage S [--json]` prints what a fresh worker of
 stage `S` starts from, so neither a worker nor the coordinator is continued
-from an earlier context. It reads the record and writes nothing, so
-`--dry-run` changes nothing. The brief holds the task ID and title; the profile
+from an earlier context. It reads the record and writes nothing. The brief holds the task ID and title; the profile
 and, for a capped stage, the author rounds left; the one role contract under
 `skills/task-orchestration/references/contracts/` the worker loads; the stored
 contract, bundle and input files of the stage's latest assignment, as absolute
@@ -757,8 +758,7 @@ skill runs `cw task usage` before each `cw task assign` and `cw task run`.
 #### Task receipt
 
 `cw task receipt --task DIR [--json]` prints what a task used and where it
-stands. It reads the record only and stores nothing, so `--dry-run` changes
-nothing. `cw task verify` (pass or fail), `cw task abandon` and a
+stands. It reads the record only and stores nothing. `cw task verify` (pass or fail), `cw task abandon` and a
 [budget stop](#budget-stop) print the same text after their own output, on
 stderr, so their stdout stays one JSON document and their exit statuses do not
 change. The receipt holds:

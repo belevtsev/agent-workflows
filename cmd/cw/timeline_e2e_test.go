@@ -459,7 +459,7 @@ func tle2xExpectError(t *testing.T, label string, result tle2xResult, code int, 
 // a result; rejected then unused), a passed and a failed check, then the same
 // task abandoned. The output must equal, byte for byte, the line computed from
 // `cw task show` timestamps; --summary must equal the JSON Lines form; runs
-// are repeatable and independent of TZ and --dry-run; usage and runtime errors
+// are repeatable and independent of TZ; usage and runtime errors
 // print nothing on stdout; and nothing on disk changes.
 func TestTimelineE2ERealTask(t *testing.T) {
 	env := tle2xSetup(t)
@@ -536,9 +536,6 @@ func TestTimelineE2ERealTask(t *testing.T) {
 	if again := env.run(t, nil, "task", "timeline", "--summary", "--task", dir); again.stdout != summary.stdout {
 		t.Errorf("repeated --summary differs (TL-9):\n%q\n%q", again.stdout, summary.stdout)
 	}
-	// TL-8: the global --dry-run changes nothing.
-	tle2xExpectSuccess(t, "--dry-run timeline", env.run(t, nil, "--dry-run", "task", "timeline", "--task", dir), wantFull)
-	tle2xExpectSuccess(t, "--dry-run timeline --summary", env.run(t, nil, "--dry-run", "task", "timeline", "--task", dir, "--summary"), wantSummary)
 	// TL-5: the TZ environment changes nothing.
 	for _, zone := range []string{"UTC", "Asia/Kolkata", "America/St_Johns", "Pacific/Chatham"} {
 		tle2xExpectSuccess(t, "TZ="+zone, env.run(t, []string{"TZ=" + zone}, "task", "timeline", "--task", dir), wantFull)
@@ -734,8 +731,8 @@ func TestTimelineE2EVerifiedTask(t *testing.T) {
 // file is valid, so the directory holds no valid task record: the command must
 // fail with exit status 1, print nothing on standard output, write an
 // "agent-workflows: <message>" line to standard error, and leave the task
-// directory's entries, modes and bytes unchanged, with and without --summary
-// and --dry-run. Fails if the loader drops or skips an undecodable revision
+// directory's entries, modes and bytes unchanged, with and without
+// --summary. Fails if the loader drops or skips an undecodable revision
 // file when it lists the revisions and so loads revision 1 alone (printing a
 // timeline and exiting 0), or rewrites, repairs or removes the corrupt file.
 func TestTimelineE2ECorruptRevisionAfterValid(t *testing.T) {
@@ -770,8 +767,6 @@ func TestTimelineE2ECorruptRevisionAfterValid(t *testing.T) {
 			for _, args := range [][]string{
 				{"task", "timeline", "--task", dir},
 				{"task", "timeline", "--task", dir, "--summary"},
-				{"--dry-run", "task", "timeline", "--task", dir},
-				{"--dry-run", "task", "timeline", "--task", dir, "--summary"},
 			} {
 				label := fmt.Sprintf("corrupt revision 2 (%s): cw %v", corruption.name, args)
 				tle2xExpectError(t, label, env.run(t, nil, args...), 1, "")

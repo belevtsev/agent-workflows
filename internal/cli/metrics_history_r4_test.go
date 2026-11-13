@@ -14,8 +14,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/belevtsev/agent-workflows/v3/internal/usagelog"
 )
 
 // mh4Entries lists every path under root (relative, sorted), so a lock file,
@@ -45,14 +43,14 @@ func mh4Entries(t *testing.T, root string) []string {
 	return entries
 }
 
-// mh4Rejected asserts the R23 rejection: exit 2, an error naming --dry-run,
-// and no AppendResult (nothing at all) on stdout.
+// mh4Rejected asserts the rejection of --dry-run, which no metrics command
+// has: exit 2, an unknown-flag error naming it, and nothing on stdout.
 func mh4Rejected(t *testing.T, stdout string, err error) {
 	t.Helper()
 	if err == nil || ExitCode(err) != 2 {
-		t.Fatalf("R23: --dry-run with --append: err %v exit %d, want a usage error (exit 2)", err, ExitCode(err))
+		t.Fatalf("R23: --dry-run: err %v exit %d, want a usage error (exit 2)", err, ExitCode(err))
 	}
-	if !strings.Contains(err.Error(), "--dry-run") {
+	if !strings.Contains(err.Error(), "unknown flag: --dry-run") {
 		t.Fatalf("R23: error %q does not mention --dry-run", err.Error())
 	}
 	if stdout != "" {
@@ -68,10 +66,10 @@ func mh4ExistingLines(t *testing.T) []string {
 	}
 }
 
-// R23: --dry-run metrics import --append on a fresh state is a usage error that
+// --dry-run metrics import --append on a fresh state is a usage error that
 // creates nothing. Fails when the flag is ignored (exit 0, an AppendResult, a
-// history written), when the rejection is a runtime error (exit 1) or does not
-// name --dry-run, or when the history, its lock or the metrics directory is
+// history written), when the rejection is a runtime error (exit 1) or is not
+// the unknown flag --dry-run, or when the history, its lock or the metrics directory is
 // created before (or despite) the rejection.
 func TestMetricsHistoryDryRunAppendRejectedCreatesNothing(t *testing.T) {
 	_, main := writeClaudeSession(t)
@@ -79,7 +77,7 @@ func TestMetricsHistoryDryRunAppendRejectedCreatesNothing(t *testing.T) {
 		env := newMHEnv(t)
 		state := filepath.Join(t.TempDir(), "state")
 		history := filepath.Join(state, "metrics", "history.jsonl")
-		stdout, _, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "import", "--claude-transcript", main, "--append")
+		stdout, _, err := env.run(t, "--state-dir", state, "metrics", "import", "--dry-run", "--claude-transcript", main, "--append")
 		mh4Rejected(t, stdout, err)
 		mhAbsent(t, history, "R23 history")
 		mhAbsent(t, history+".lock", "R23 history lock")
@@ -88,7 +86,7 @@ func TestMetricsHistoryDryRunAppendRejectedCreatesNothing(t *testing.T) {
 	t.Run("default history under the home state directory", func(t *testing.T) {
 		env := newMHEnv(t)
 		state := filepath.Join(env.home, ".local", "state", "agent-workflows")
-		stdout, _, err := env.run(t, "--dry-run", "metrics", "import", "--claude-transcript", main, "--append")
+		stdout, _, err := env.run(t, "metrics", "import", "--dry-run", "--claude-transcript", main, "--append")
 		mh4Rejected(t, stdout, err)
 		mhAbsent(t, filepath.Join(state, "metrics", "history.jsonl"), "R23 history")
 		mhAbsent(t, filepath.Join(state, "metrics", "history.jsonl.lock"), "R23 history lock")
@@ -99,7 +97,7 @@ func TestMetricsHistoryDryRunAppendRejectedCreatesNothing(t *testing.T) {
 		state := filepath.Join(t.TempDir(), "state")
 		dir := t.TempDir()
 		history := filepath.Join(dir, "costs", "h.jsonl")
-		stdout, _, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "import", "--claude-transcript", main, "--append", "--history", history)
+		stdout, _, err := env.run(t, "--state-dir", state, "metrics", "import", "--dry-run", "--claude-transcript", main, "--append", "--history", history)
 		mh4Rejected(t, stdout, err)
 		mhAbsent(t, history, "R23 history")
 		mhAbsent(t, history+".lock", "R23 history lock")
@@ -122,7 +120,7 @@ func TestMetricsHistoryDryRunAppendLeavesExistingHistoryUnchanged(t *testing.T) 
 		history := filepath.Join(state, "metrics", "history.jsonl")
 		writeLines(t, history, mh4ExistingLines(t)...)
 		before, entries := mhRead(t, history), mh4Entries(t, state)
-		stdout, _, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "import", "--claude-transcript", main, "--append")
+		stdout, _, err := env.run(t, "--state-dir", state, "metrics", "import", "--dry-run", "--claude-transcript", main, "--append")
 		mh4Rejected(t, stdout, err)
 		if after := mhRead(t, history); !bytes.Equal(after, before) {
 			t.Fatalf("R23: history changed by a rejected append:\nbefore %q\nafter  %q", before, after)
@@ -138,7 +136,7 @@ func TestMetricsHistoryDryRunAppendLeavesExistingHistoryUnchanged(t *testing.T) 
 		history := mhWriteHistory(t, mh4ExistingLines(t)...)
 		dir := filepath.Dir(history)
 		before, entries := mhRead(t, history), mh4Entries(t, dir)
-		stdout, _, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "import", "--claude-transcript", main, "--append", "--history", history)
+		stdout, _, err := env.run(t, "--state-dir", state, "metrics", "import", "--dry-run", "--claude-transcript", main, "--append", "--history", history)
 		mh4Rejected(t, stdout, err)
 		if after := mhRead(t, history); !bytes.Equal(after, before) {
 			t.Fatalf("R23: history changed by a rejected append:\nbefore %q\nafter  %q", before, after)
@@ -151,67 +149,26 @@ func TestMetricsHistoryDryRunAppendLeavesExistingHistoryUnchanged(t *testing.T) 
 	})
 }
 
-// R23: --dry-run metrics import without --append is accepted and prints the
-// normal import report. Fails when --dry-run is rejected for every import
-// rather than only with --append, or when it changes the report. Expected
-// totals are writeClaudeSession's session sums (requests 6, uncached 16, w5 22,
-// w1 26, read 400, out 38, total input 464).
-func TestMetricsHistoryDryRunImportWithoutAppendAccepted(t *testing.T) {
+// --dry-run is not a metrics flag: metrics import without --append and
+// metrics history reject it as an unknown flag (exit 2), print nothing and
+// write nothing. Fails while a global --dry-run is accepted and ignored.
+func TestMetricsImportAndHistoryRejectDryRun(t *testing.T) {
 	_, main := writeClaudeSession(t)
-	env := newMHEnv(t)
-	state := filepath.Join(t.TempDir(), "state")
-	stdout, stderr, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "import", "--claude-transcript", main)
-	if err != nil || ExitCode(err) != 0 {
-		t.Fatalf("R23: --dry-run metrics import: err %v exit %d, want exit 0\nstderr %s", err, ExitCode(err), stderr)
-	}
-	var report usagelog.Report
-	mhOne(t, stdout, &report)
-	if report.Kind != usagelog.ReportKind || report.Source != usagelog.SourceClaude || report.SessionID != sessionID {
-		t.Fatalf("R23: report identity kind %q source %q session %q, want the normal import report of %s", report.Kind, report.Source, report.SessionID, sessionID)
-	}
-	checkTokens(t, "R23 totals", report.Totals, 6, 16, 22, 26, 400, 38, 464)
-	mhAbsent(t, filepath.Join(state, "metrics"), "R23 import without --append")
-}
-
-// R23: --dry-run metrics history on an existing history is accepted and prints
-// the normal history report. Fails when --dry-run is rejected for metrics
-// history, or when the report differs from the one R12 defines for the two
-// stored records (uncached 7+5, output 3+4).
-func TestMetricsHistoryDryRunHistoryAccepted(t *testing.T) {
-	t.Run("--history H", func(t *testing.T) {
+	t.Run("import without --append", func(t *testing.T) {
+		env := newMHEnv(t)
+		state := filepath.Join(t.TempDir(), "state")
+		stdout, _, err := env.run(t, "--state-dir", state, "metrics", "import", "--dry-run", "--claude-transcript", main)
+		mh4Rejected(t, stdout, err)
+		mhAbsent(t, filepath.Join(state, "metrics"), "<state>/metrics")
+	})
+	t.Run("history --history H", func(t *testing.T) {
 		env := newMHEnv(t)
 		history := mhWriteHistory(t, mh4ExistingLines(t)...)
 		before := mhRead(t, history)
-		stdout, stderr, err := env.run(t, "--dry-run", "metrics", "history", "--history", history)
-		mh4CheckHistoryReport(t, history, stdout, stderr, err)
+		stdout, _, err := env.run(t, "metrics", "history", "--dry-run", "--history", history)
+		mh4Rejected(t, stdout, err)
 		if after := mhRead(t, history); !bytes.Equal(after, before) {
-			t.Fatalf("R23: metrics history changed the history:\nbefore %q\nafter  %q", before, after)
+			t.Fatalf("metrics history changed the history:\nbefore %q\nafter  %q", before, after)
 		}
 	})
-	t.Run("default history under --state-dir", func(t *testing.T) {
-		env := newMHEnv(t)
-		state := filepath.Join(t.TempDir(), "state")
-		history := filepath.Join(state, "metrics", "history.jsonl")
-		writeLines(t, history, mh4ExistingLines(t)...)
-		stdout, stderr, err := env.run(t, "--dry-run", "--state-dir", state, "metrics", "history")
-		mh4CheckHistoryReport(t, history, stdout, stderr, err)
-	})
-}
-
-func mh4CheckHistoryReport(t *testing.T, history, stdout, stderr string, err error) {
-	t.Helper()
-	if err != nil || ExitCode(err) != 0 {
-		t.Fatalf("R23: --dry-run metrics history: err %v exit %d, want exit 0\nstderr %s", err, ExitCode(err), stderr)
-	}
-	var report usagelog.HistoryReport
-	mhOne(t, stdout, &report)
-	if report.SchemaVersion != 1 || report.Kind != "cw.metrics_history" || !filepath.IsAbs(report.History) || !samePath(report.History, history) {
-		t.Fatalf("R23: report identity schema %d kind %q history %q, want the normal history report of %s", report.SchemaVersion, report.Kind, report.History, history)
-	}
-	if report.Lines != 2 || report.Records != 2 || report.DamagedLines != 0 || report.DuplicateLines != 0 {
-		t.Fatalf("R23: lines %d records %d damaged %d duplicates %d, want 2 2 0 0", report.Lines, report.Records, report.DamagedLines, report.DuplicateLines)
-	}
-	if report.Totals.Requests != 2 || report.Totals.UncachedInputTokens != 12 || report.Totals.OutputTokens != 7 {
-		t.Fatalf("R23: totals %+v, want requests 2 uncached 12 output 7", report.Totals)
-	}
 }
