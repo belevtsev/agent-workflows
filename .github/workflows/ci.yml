@@ -17,7 +17,7 @@ concurrency:
 jobs:
   # The Go packages are tested in four shards per system, so that the required
   # checks finish in about four minutes on Linux and five on macOS; one job
-  # for all packages took six to eight and ten to fourteen. The shards are not
+  # for all packages took six to ten and eight to sixteen. The shards are not
   # required checks: the two jobs named "Native Go / <system>" below are, and
   # each passes only when all of its shards pass. Both matrices list every
   # shard the go-test action selects (TestCIShardJobsRunEveryShard).
