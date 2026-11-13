@@ -159,6 +159,12 @@ var commandGroup = map[string]string{
 	"consult": groupExperimental, "graphify": groupExperimental, "keys": groupExperimental, "metrics": groupExperimental,
 }
 
+// unlisted names the commands cw --help leaves out although they run and
+// keep their group: graphify needs an external Python runtime that cw does
+// not install (docs/operations.md, Optional Graphify runtime), so a user
+// without it would see a command that only reports unavailable.
+var unlisted = map[string]bool{"graphify": true}
+
 // groupCommands sorts the top-level commands into the core and experimental
 // help groups. Cobra adds the help command only when the command runs, so
 // NewCommand sets its group where it defines it.
@@ -169,6 +175,7 @@ func groupCommands(root *cobra.Command) {
 	)
 	for _, command := range root.Commands() {
 		command.GroupID = commandGroup[command.Name()]
+		command.Hidden = unlisted[command.Name()]
 	}
 }
 

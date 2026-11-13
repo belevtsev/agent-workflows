@@ -274,7 +274,9 @@ hooks directory can serve other repositories and `--shared` is not given
 ## Stability
 
 From `v3.0.0`, `cw` follows [semantic versioning](https://semver.org) for
-its core commands. `cw --help` lists the two groups.
+its core commands. `cw --help` lists the two groups. It leaves out
+`cw graphify`, which needs the [optional Graphify runtime](#optional-graphify-runtime)
+that `cw` does not install; `cw graphify --help` still shows its help.
 
 | Group | Commands | Promise |
 | --- | --- | --- |

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -34,8 +35,9 @@ func assertGolden(t *testing.T, name string, got []byte) {
 // cw --help and cw help list every top-level command under "Core commands"
 // or "Experimental commands" (docs/operations.md, Stability), and none under
 // cobra's "Additional Commands".
-// oracle: the text equals testdata/cw-help.golden, which lists consult,
-// graphify, keys and metrics as experimental and every other command as core.
+// oracle: the text equals testdata/cw-help.golden, which lists consult, keys
+// and metrics as experimental, every other listed command as core, and leaves
+// graphify out (it needs an external runtime cw does not install).
 func TestRootHelpGroupsCommandsAsCoreAndExperimental(t *testing.T) {
 	for _, args := range [][]string{{"--help"}, {"help"}} {
 		t.Run(args[0], func(t *testing.T) {
@@ -45,5 +47,29 @@ func TestRootHelpGroupsCommandsAsCoreAndExperimental(t *testing.T) {
 			}
 			assertGolden(t, "cw-help.golden", out.Bytes())
 		})
+	}
+}
+
+// graphify is left out of cw --help but still runs: cw graphify --help and
+// cw help graphify print its own help.
+// oracle: both outputs show "cw graphify [command]" and list build and query,
+// and the command keeps the experimental group docs/operations.md (Stability)
+// gives it.
+func TestUnlistedGraphifyStillShowsItsHelp(t *testing.T) {
+	for _, args := range [][]string{{"graphify", "--help"}, {"help", "graphify"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			config, out := testConfig(t)
+			if err := Execute(t.Context(), args, config); err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"cw graphify [command]", "\n  build ", "\n  query "} {
+				if !strings.Contains(out.String(), want) {
+					t.Errorf("output lacks %q:\n%s", want, out)
+				}
+			}
+		})
+	}
+	if commandGroup["graphify"] != groupExperimental {
+		t.Errorf("graphify group = %q, want %q", commandGroup["graphify"], groupExperimental)
 	}
 }
