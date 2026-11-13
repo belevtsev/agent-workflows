@@ -270,6 +270,7 @@ func pgAwaitForkers(t *testing.T, directory string, want int, done <-chan pgRunA
 // 0.8% even at 15%). The check, right after each return, that no member of
 // the group is alive only adds detection.
 func TestNormalExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
+	t.Parallel()
 	pgRequireRegressionPlatform(t)
 	const trials, observation = 30, 1500 * time.Millisecond
 	root := t.TempDir()
@@ -333,6 +334,7 @@ func TestNormalExitKillsForkingBackgroundGroupUntilEmpty(t *testing.T) {
 // right after each return, that no member of the group is alive only adds
 // detection.
 func TestCancellationKillsNonLeaderForkersUntilEmpty(t *testing.T) {
+	t.Parallel()
 	pgRequireRegressionPlatform(t)
 	const trials, observation = 100, 1500 * time.Millisecond
 	root := t.TempDir()

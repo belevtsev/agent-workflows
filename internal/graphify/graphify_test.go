@@ -900,6 +900,7 @@ func TestCacheChildRedirectsCannotWriteIntoRepositoryOrRelease(t *testing.T) {
 }
 
 func TestFailedPartialForeignAndBadLineBuildsNeverPublishReady(t *testing.T) {
+	t.Parallel()
 	for mode, code := range map[string]string{"fail": "extraction_failed", "omit": "graph_incomplete", "foreign": "graph_reference", "location": "graph_reference", "change": "source_changed"} {
 		t.Run(mode, func(t *testing.T) {
 			h := newHarness(t)
@@ -1007,6 +1008,7 @@ func requireNoLateWrite(t *testing.T, late string, until time.Time, message stri
 }
 
 func TestTimeoutKillsOwnedDelayedChildAndLeavesNoActiveGraph(t *testing.T) {
+	t.Parallel()
 	// The descendant's delay exceeds the timeout, so only a kill stops it.
 	const timeout, delay, margin = 2 * time.Second, 3 * time.Second, time.Second
 	h := newHarness(t)
@@ -1032,6 +1034,7 @@ func TestTimeoutKillsOwnedDelayedChildAndLeavesNoActiveGraph(t *testing.T) {
 }
 
 func TestCancellationKillsTheRuntimeGroup(t *testing.T) {
+	t.Parallel()
 	const delay, margin = 2 * time.Second, time.Second
 	h := newHarness(t)
 	requireDelayedDescendantScript(t, h.root)
@@ -1086,6 +1089,7 @@ func requireStormDescendantScript(t *testing.T, root string) {
 // about 11-14% of trials leave a survivor; at 12% such a runner survives all
 // trials with probability 0.88^26 < 4% (0.89^26 < 5% at 11%).
 func TestCancellationDuringForkStormLeavesNoSurvivor(t *testing.T) {
+	t.Parallel()
 	const trials, observation = 26, 1500 * time.Millisecond
 	h := newHarness(t)
 	requireStormDescendantScript(t, h.root)

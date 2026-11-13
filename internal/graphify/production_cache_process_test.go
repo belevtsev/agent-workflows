@@ -1287,6 +1287,7 @@ func TestProductionOutputCancellationPreservesContextError(test *testing.T) {
 }
 
 func TestProductionProcessGroupLifetimeAndPipeJoin(test *testing.T) {
+	test.Parallel()
 	for _, scenario := range []string{"overflow-leader-live", "overflow-leader-exited", "cancel", "timeout", "context-deadline"} {
 		test.Run(scenario, func(test *testing.T) {
 			listener := productionListen(test)
@@ -1379,6 +1380,7 @@ func TestProductionProcessGroupLifetimeAndPipeJoin(test *testing.T) {
 }
 
 func TestProductionProcessCompletionOwnsDescendants(test *testing.T) {
+	test.Parallel()
 	for _, scenario := range []string{"inherited-nonzero", "redirected-success"} {
 		test.Run(scenario, func(test *testing.T) {
 			listener := productionListen(test)
@@ -1467,6 +1469,7 @@ func TestProductionProcessCompletionOwnsDescendants(test *testing.T) {
 }
 
 func TestProductionCacheLockProcessDeathAndRefusals(test *testing.T) {
+	test.Parallel()
 	root := test.TempDir()
 	lockPath := filepath.Join(root, "entry.lock")
 	listener := productionListen(test)
