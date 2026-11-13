@@ -2253,11 +2253,13 @@ func TestHookSessionStartReturnsWhileItsWriterKeepsStdinOpen(t *testing.T) {
 	// well within the 10 second wait below. With enforce_verify false and
 	// session_doctor off it reads no stdin and its context is the
 	// instructions alone. With the gate on it stops reading stdin after its
-	// bound and takes the working directory as the session's, so the
-	// repository's open task gets hkGateLine.
+	// bound, set here to 100 ms (cw ships 2 s), and takes the working
+	// directory as the session's, so the repository's open task gets
+	// hkGateLine.
 	const instructions = "# Rules\n\nWork carefully."
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	withSessionInputTimeout(t, 100*time.Millisecond)
 	file := hkWriteInstructions(t, instructions)
 	run := func(t *testing.T, h *hkHarness) string {
 		t.Helper()
