@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
 - A passed check run stays credited across commits and merges that keep the source bytes and modes, go command, `GOFLAGS` and run key, and
   `cw task run` then reuses it without running, except a `git` check; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
+- `cw task usage` samples a session's tokens into the task record with dollars estimated from a dated built-in price table (or `--prices`);
+  only requests since the task's start count, task usage sums each session's latest sample, and what cannot be priced stays unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
 
 ### Changed
 
