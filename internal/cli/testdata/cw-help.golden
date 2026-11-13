@@ -1,0 +1,34 @@
+cw records and verifies substantial tasks, publishes verified ones (commit, push and pull request, run by a coordinator that carries the user's authorization), consults configured advisers, inspects projects and installs the Codex instruction block. The skills themselves ship as Claude Code and Codex plugins.
+
+Usage:
+  cw [flags]
+  cw [command]
+
+Core commands:
+  doctor      Inspect the selected project and optional local capabilities without changing it
+  gate        Install, remove or show the git pre-commit, pre-push and pre-merge-commit hooks that run the commit gate
+  help        Show help for a command
+  hook        Claude Code plugin and git hooks: load conventions and gate git commit and push on cw task verify
+  install     Link the skills into Codex and write the AGENTS.md block
+  pack        List, add or remove the language and domain packs selected for your tasks
+  publish     Commit, push and open or edit the pull request for a task verified on the current source
+  task        Record source-bound requirements, worker handoffs, checks and completion
+  uninstall   Remove the Codex skill links and the AGENTS.md block
+  version     Show the build identity as JSON
+
+Experimental commands (may change in a minor release):
+  consult     Collect independent adviser judgments, or validate a recorded decision offline
+  graphify    Build and query a guarded local structural graph of tracked Go source
+  keys        Save, remove or report the adviser keys in the private configuration directory
+  metrics     Summarize explicit local workflow observations; only import --append writes, to the cost history
+
+Flags:
+      --claude-home string   Claude Code configuration directory
+      --codex-home string    Codex configuration directory
+      --config-dir string    Private preferences and credential directory
+      --dry-run              Report without writing
+  -h, --help                 help for cw
+      --home string          Home directory
+      --state-dir string     State directory holding the task store
+
+Use "cw [command] --help" for more information about a command.
