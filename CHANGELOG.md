@@ -72,8 +72,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
-  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
+- The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
+  and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
+- The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
+  part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
+- The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
+  and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
+- The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
+  what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
+- The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
+  [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
   90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
@@ -108,6 +116,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
+- Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
+  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
 
 ### Fixed
 
@@ -317,7 +327,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

@@ -316,11 +316,11 @@ func TestExistingOutputIsNeverOverwritten(t *testing.T) {
 	}
 }
 
-// Unchanged: output inside the evaluated skill is refused before any request.
+// Output inside the evaluated skill or its corpus is refused before any request.
 func TestOutputInsideSourceIsRejected(t *testing.T) {
 	t.Parallel()
 	source := fxEvalSource(t, t.TempDir(), "")
-	for _, output := range []string{filepath.Join(source, "skills", "task-orchestration", "output"), filepath.Join(source, "skills", "task-orchestration", "evals", "output")} {
+	for _, output := range []string{filepath.Join(source, "skills", "task-orchestration", "output"), filepath.Join(source, "evals", "multilingual", "output")} {
 		run, _, _ := fxEvaluation(t, source, fxEnv(fxProviders...))
 		server := fxServe(t, fxHandler(t, nil, nil))
 		run.collect = server.sender.collect
@@ -429,7 +429,7 @@ func TestOracleNeverEntersTransportPayloads(t *testing.T) {
 			Rationale string `json:"rationale"`
 		} `json:"labels"`
 	}
-	if err := json.Unmarshal(fxRead(t, filepath.Join(source, "skills", "task-orchestration", "evals", "multilingual", "oracle.json")), &oracle); err != nil {
+	if err := json.Unmarshal(fxRead(t, filepath.Join(source, "evals", "multilingual", "oracle.json")), &oracle); err != nil {
 		t.Fatal(err)
 	}
 	run, _, stderr := fxEvaluation(t, source, fxEnv(fxProviders...))
@@ -503,7 +503,7 @@ func TestInvalidCorpusIsRejected(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			source := fxEvalSource(t, t.TempDir(), "")
-			corpus := filepath.Join(source, "skills", "task-orchestration", "evals", "multilingual")
+			corpus := filepath.Join(source, "evals", "multilingual")
 			inputs := fxNativeBytes(t, fxRead(t, filepath.Join(corpus, "inputs.json"))).(map[string]any)
 			oracle := fxNativeBytes(t, fxRead(t, filepath.Join(corpus, "oracle.json"))).(map[string]any)
 			alter(inputs, oracle)
