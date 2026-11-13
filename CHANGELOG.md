@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
+  and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
   ([CI](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
@@ -313,7 +315,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

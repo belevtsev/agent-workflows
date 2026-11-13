@@ -32,7 +32,7 @@ environments. The test engineer receives only the agreed contract and approved
 scaffold ([boundary](contracts/test-engineer.md#author-only-from-the-contract));
 the coordinator or verifier inspects implementation and owns the execution gates.
 Under Claude Code the reviewer and the test engineer start without CLAUDE.md
-files ([host mapping](hosts.md#worker-agent-types)): their contracts carry the
+files ([host mapping](hosts-claude-code.md#worker-agent-types)): their contracts carry the
 project rules they apply, and their briefs quote, word for word, any other
 project constraint the work must meet, such as a check command or a naming rule.
 
@@ -272,7 +272,7 @@ names:
 | Code review | [code-review](contracts/code-review.md) | the integrated source against `interface-contract.md` and `design.md`, with the final check's coverage profile when one exists | implementer; a finding about a test goes to a fresh test engineer | `review` |
 
 Under Claude Code, dispatch each with the `agent-workflows:reviewer` agent type
-and the stage's role, model and effort ([host mapping](hosts.md#worker-agent-types)),
+and the stage's role, model and effort ([host mapping](hosts-claude-code.md#worker-agent-types)),
 and name the contract in the brief; give the `SKILL.md` path of any skill the
 review should apply, such as `code-review`. Each stage's independence rules are
 in its contract: a reviewer is never the author it reviews, and the test

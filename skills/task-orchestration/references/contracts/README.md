@@ -15,7 +15,7 @@ evidence.
 | Test review | `reviewer` | [test-review.md](test-review.md) | contract, extract, tests, stub | `test-review.md` |
 | Adversarial tester (opt-in) | `adversarial-tester` | [adversarial-tester.md](adversarial-tester.md) | contract, `design.md`, integrated source, coverage profile | failing tests, `adversarial-findings.md` |
 | Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle, interface contract, `design.md`, test matrix and requirement map, coverage profile | findings, a failing test per behaviour finding |
-| GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
+| GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker-fallback.md](../github-worker-fallback.md) | verified facts, carried authorization | commit, push, pull request |
 
 ## Flow
 
@@ -102,7 +102,7 @@ only when available; without them every step runs unchanged.
    run and review is recorded and current.
 9. **Commit** with `cw publish` under the user's authorization, which the
    coordinator carries; the GitHub worker is the
-   [fallback](../github-worker.md#fallback-the-github-worker).
+   [fallback](../github-worker-fallback.md).
 
 The skip rules are unchanged. A small task stays lightweight and runs none of
 these stages, the spec and design stages included: the coder writes the tests

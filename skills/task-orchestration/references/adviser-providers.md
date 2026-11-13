@@ -96,9 +96,9 @@ is `refusal`.
 
 `cwdev eval multilingual` provides a small synthetic baseline for the configured
 advisers. It is separate from task consultations, skill-discovery evaluations and
-the repository checks. The bundled corpus lives in `evals/multilingual` relative to
-the skill; `cwdev` is a maintainer tool that reads it from a source checkout,
-selected with `--source` (by default the current directory).
+the repository checks. The corpus lives in `evals/multilingual` of the source checkout,
+not in the installed skill; `cwdev` is a maintainer tool that reads it from that
+checkout, selected with `--source` (by default the current directory).
 
 The twelve neutral case IDs cover durable acknowledgement, tenant isolation,
 cancellation and release identity. Each family has supporting, contradictory and

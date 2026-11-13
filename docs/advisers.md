@@ -311,7 +311,7 @@ details and source links.
 
 ### Evaluate multilingual judgments
 
-The bundled [multilingual evaluation](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation)
+The [multilingual evaluation](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation)
 uses 12 synthetic scenarios translated into English, Ukrainian and German.
 Expected answers stay with the local scorer. Each adviser is scored independently;
 agreement and confidence do not choose the correct answer.

@@ -86,7 +86,7 @@ GOWORK=off go test ./internal/skillcheck
 - the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
   summarization on `sonnet`, and Codex `max` for planning, architecture and
   diagnosis only; the recommended Codex memory passes use `luna`; and the profile
-  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
+  table in `references/hosts-claude-code.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
@@ -145,8 +145,8 @@ and untrusted agreement.
 
 ### Multilingual evaluation
 
-The multilingual corpus is a skill resource, and `cwdev eval multilingual` is its
-runner:
+The multilingual corpus lives in `evals/multilingual/`, outside the shipped skill,
+and `cwdev eval multilingual` is its runner:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual

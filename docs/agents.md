@@ -14,7 +14,7 @@ reviewer never reviews its own work.
 | [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | `opus`, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
 | [adversarial-tester](https://github.com/belevtsev/agent-workflows/blob/main/agents/adversarial-tester.md) | `opus`, high | Opt-in, beside code review: white-box tests that must fail on the integrated source, each a finding for the implementer; kept as source-access regression tests, never black-box coverage | [adversarial-tester](../skills/task-orchestration/references/contracts/adversarial-tester.md) |
 | [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | `opus`, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
-| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | `sonnet`, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker.md) |
+| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | `sonnet`, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker-fallback.md) |
 
 Substantial work that builds new behaviour has a review loop at every stage:
 spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
@@ -34,7 +34,7 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md).
 
 Under the Claude Code plugin the agent types are namespaced, for example
-`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md#worker-agent-types)
+`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types)
 maps each policy role to its type. The frontmatter model is a default: the
 coordinator passes the role's model and effort on every dispatch. Every agent
 sets `disallowedTools: Skill, Agent, Workflow`: under Claude Code a worker
@@ -139,7 +139,7 @@ repository check rejects `.sh` and `.py` files outside `skills/` and
 `third_party/` ([contributing](../CONTRIBUTING.md#go-only-automation)). The
 worker remains an agent for the fallback cases the command refuses, such as
 hunk-level scopes, fork pull requests and content conversions
-([publication](../skills/task-orchestration/references/github-worker.md#fallback-the-github-worker)).
+([publication](../skills/task-orchestration/references/github-worker-fallback.md)).
 
 **Why not run design review and test review in parallel?** The tests are
 written from the fixed interface contract, and the contract is fixed only after
