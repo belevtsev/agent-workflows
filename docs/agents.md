@@ -120,6 +120,17 @@ current source
 Only test review never sees the implementation, so it judges the tests by the
 contract alone.
 
+**Why does a contract change go back to the architect, without the code?** A
+worker reads only the contract its brief names, so each role's output is
+independent evidence. An amendment keeps that: the architect and the re-bind
+reviewer read source only in a separate checkout of what the design was read
+from, so code cannot shape the contract or reach the test engineer through
+it. The implementer's first refreshed assignment only puts the amended
+declarations into source, and the rest of its work waits for the test
+engineer's refreshed assignment, so no implementer edit lands between the
+extract and `cw task assign`
+([contract amendment](../skills/task-orchestration/references/contract-amendment.md)).
+
 **Why not run more agents on a cheaper model?** This project has not measured
 whether a cheaper model keeps the same review and test quality, or how much it
 would save; the agents under test in its eval suites run on `opus` by default
