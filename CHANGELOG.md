@@ -59,6 +59,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
+  ([CI](docs/development.md#continuous-integration)).
 - `pack.yaml` keeps only the fields `cw` reads (`commands.race` among them), dropping `tests`, `skills`, `review` and the
   other unread slots, and `cw pack list` prints each pack's declared fields, now with `commands` ([pack.yaml](docs/packs.md#packyaml)).
 - `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
