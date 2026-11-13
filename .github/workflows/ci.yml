@@ -15,14 +15,18 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  go:
-    name: Native Go / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  # The Go packages are tested in two shards per system, so that a run takes
+  # about half the time. The shards are not required checks: the two jobs
+  # named "Native Go / <system>" below are, and each passes only when both of
+  # its shards pass.
+  go-linux:
+    name: Go shard ${{ matrix.shard }} of 2 / ubuntu-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        shard: [1, 2]
     env:
       GOWORK: 'off'
     steps:
@@ -30,29 +34,60 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up pinned Go with dependency cache
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Test this shard
+        uses: ./.github/actions/go-test
         with:
-          go-version-file: go.mod
-          cache: true
-      - name: Check formatting
+          shard: ${{ matrix.shard }}
+
+  go-macos:
+    name: Go shard ${{ matrix.shard }} of 2 / macos-latest
+    runs-on: macos-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      GOWORK: 'off'
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test this shard
+        uses: ./.github/actions/go-test
+        with:
+          shard: ${{ matrix.shard }}
+
+  # always() makes these run after a failed or cancelled shard too: a skipped
+  # required check would count as passed.
+  go-linux-result:
+    name: Native Go / ubuntu-latest
+    needs: go-linux
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both shards to pass
+        env:
+          RESULT: ${{ needs.go-linux.result }}
         run: |
-          unformatted="$(git ls-files -z '*.go' ':!:third_party/**' | xargs -0 gofmt -l)"
-          if [ -n "$unformatted" ]; then
-            printf 'gofmt needed:\n%s\n' "$unformatted"
-            exit 1
-          fi
-      - name: Vet
-        run: go vet ./...
-      # Race checks run once, on Linux, where they cover every package.
-      - name: Test with the race detector
-        if: runner.os == 'Linux'
-        run: go test -race -count=1 ./...
-      # cmd/cw takes over eight minutes on macOS runners, near go test's
-      # 10-minute default for one package.
-      - name: Test
-        if: runner.os != 'Linux'
-        run: go test -count=1 -timeout=15m ./...
+          echo "Go shards on ubuntu-latest: $RESULT"
+          test "$RESULT" = success
+
+  go-macos-result:
+    name: Native Go / macos-latest
+    needs: go-macos
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both shards to pass
+        env:
+          RESULT: ${{ needs.go-macos.result }}
+        run: |
+          echo "Go shards on macos-latest: $RESULT"
+          test "$RESULT" = success
 
   lint:
     name: Lint and vulnerabilities

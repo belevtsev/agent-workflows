@@ -1,0 +1,67 @@
+name: Test one shard of the Go packages
+description: >-
+  Set up the pinned Go and test one of the two package shards. Shard 1 also
+  checks formatting and runs go vet on every package.
+
+inputs:
+  shard:
+    description: The shard to test, 1 or 2.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pinned Go with dependency cache
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.mod
+        cache: true
+    - name: Check formatting
+      if: inputs.shard == '1'
+      shell: bash
+      run: |
+        unformatted="$(git ls-files -z '*.go' ':!:third_party/**' | xargs -0 gofmt -l)"
+        if [ -n "$unformatted" ]; then
+          printf 'gofmt needed:\n%s\n' "$unformatted"
+          exit 1
+        fi
+    - name: Vet
+      if: inputs.shard == '1'
+      shell: bash
+      run: go vet ./...
+    # Shard 1 holds the three packages named here, about half of the test
+    # time; shard 2 holds every other package, so a new package is tested
+    # without a change to this list.
+    - name: Select the packages of this shard
+      shell: bash
+      env:
+        SHARD: ${{ inputs.shard }}
+      run: |
+        first='/internal/(cli|langpack|taskflow)$'
+        all="$(go list ./...)"
+        if [ "$(grep -Ec "$first" <<<"$all")" != 3 ]; then
+          echo "shard 1 names a package that go list ./... does not print: update the list in .github/actions/go-test/action.yml"
+          exit 1
+        fi
+        case "$SHARD" in
+          1) packages="$(grep -E "$first" <<<"$all")" ;;
+          2) packages="$(grep -Ev "$first" <<<"$all")" ;;
+          *) echo "unknown shard: $SHARD"; exit 1 ;;
+        esac
+        if [ -z "$packages" ]; then
+          echo "shard $SHARD holds no package"
+          exit 1
+        fi
+        printf '%s\n' "$packages"
+        echo "SHARD_PACKAGES=$(tr '\n' ' ' <<<"$packages")" >>"$GITHUB_ENV"
+    # Race checks run once, on Linux, where they cover every package.
+    - name: Test with the race detector
+      if: runner.os == 'Linux'
+      shell: bash
+      run: go test -race -count=1 $SHARD_PACKAGES
+    # A package can take over eight minutes on a macOS runner, near go test's
+    # 10-minute default for one package.
+    - name: Test
+      if: runner.os != 'Linux'
+      shell: bash
+      run: go test -count=1 -timeout=15m $SHARD_PACKAGES
