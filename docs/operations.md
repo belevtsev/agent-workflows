@@ -447,6 +447,30 @@ passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
 
+### Starter plan
+
+`cw task init --title T [--repo DIR] [--profile lite|standard|strict] [--out FILE] [--json]`
+writes a plan that `cw task start` accepts unedited, then prints the
+`cw task start` command to run next:
+
+```sh
+cw task init --title "Add a greeting"
+cw task start --plan plan.json
+```
+
+The plan is a substantial task with the title, the profile (`lite` by default,
+written as the plan's `profile` member), one requirement `r1` that repeats the
+title, and one check bound to it. The check is the `commands.race` of the first
+selected [pack](packs.md) whose `detect` file is at the top of `--repo` (default:
+the current directory); in a Go module it is `race`,
+`go test -race -shuffle=on ./...`. Without such a pack the check is `test`, which
+runs `false` and fails until you replace its argv. Under `lite` and `standard`
+the plan sets `checkpoints.required` to false with a reason, which verify lists;
+`strict` leaves the checkpoints required. `--out` defaults to `plan.json` in the
+current directory, and `cw task init` never replaces an existing file (exit 1).
+It prints text, or one JSON object with `--json`; with `--dry-run` it prints the
+same and writes nothing.
+
 ### Profiles
 
 `cw task start` fixes one profile in the task record, as it fixes the packs: the

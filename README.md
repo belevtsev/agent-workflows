@@ -137,10 +137,12 @@ asks you; usage `cw` cannot measure never stops it ([budget stop](docs/operation
 
 2. The agent runs `cw doctor`, decides whether the task is substantial and
    records the requirements and the checks that prove them
-   ([plan format](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)):
+   ([plan format](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
+   `cw task init` writes a [starter plan](docs/operations.md#starter-plan):
 
    ```sh
-   cw task start --repo /absolute/path/to/repo --plan plan.json
+   cw task init --title "Add retries to the HTTP client"
+   cw task start --plan plan.json
    ```
 
 3. The spec writer and a reviewer produce a change under

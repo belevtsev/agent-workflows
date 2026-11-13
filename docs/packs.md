@@ -85,7 +85,7 @@ other key and refuses a schema newer than the one it knows.
 | `kind` | yes | `language` or `domain` | the default selection |
 | `detect` | yes | 1 to 16 distinct file names, without `/` | `cw task start` |
 | `evidence_rule` | no | a rule id such as `go.package-test/v2`, ending in `/v<N>` | `cw task verify` |
-| `commands` | no | `build`, `test`, `race`, `lint`, `format`: each a non-empty argv | nothing yet |
+| `commands` | no | `build`, `test`, `race`, `lint`, `format`: each a non-empty argv | `race`: [`cw task init`](operations.md#starter-plan); the others nothing yet |
 | `tests` | no | `unit`, `integration`, `e2e`: each an `argv` and optional `files` patterns | nothing yet |
 | `interface_extract` | no | a non-empty argv | nothing yet |
 | `skills` | no | `implement`, `test`, `security`: skill names or `plugin:skill`, each once | nothing yet |
