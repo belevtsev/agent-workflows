@@ -174,6 +174,10 @@ type BoundWorkerAcceptance struct {
 	Snapshot   projectctx.Snapshot `json:"snapshot"`
 	CheckRuns  []string            `json:"check_runs"`
 	AcceptedAt time.Time           `json:"accepted_at"`
+	// SourceSHA256 is SourceDigest of the source the acceptance was made at,
+	// by which a reused check run it binds is validated again on load.
+	// Acceptances recorded before it existed omit it (record version 5).
+	SourceSHA256 string `json:"source_sha256,omitempty"`
 }
 
 func validAgentID(value string) bool {
@@ -566,12 +570,14 @@ func reachRunCoverage(artifacts Artifacts, assigned WorkerAssignment, result Wor
 }
 
 // workerChecks preserves the status of actual terminal check runs. A completed
-// result uses the normal passed-check binder; blocked/cancelled results may cite
-// failed or cancelled runs without ever upgrading them to success.
-func workerChecks(record Record, snapshot projectctx.Snapshot, ids []string, completed bool) ([]string, error) {
+// result uses the normal passed-check binder, which credits a reused run;
+// blocked/cancelled results may cite failed or cancelled runs at the current
+// snapshot without ever upgrading them to success.
+func workerChecks(record Record, source *creditSource, ids []string, completed bool) ([]string, error) {
 	if completed {
-		return bindChecks(record, exactCredit(snapshot), ids)
+		return bindChecks(record, source, ids)
 	}
+	snapshot := source.snapshot
 	runs := []string{}
 	for _, id := range ids {
 		run := latestRun(record, id)
@@ -776,6 +782,7 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, e
 }
 
 func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
+	probes := env.probeReuse(ctx, taskPath)
 	// report names the copy of the result's report the closure stored; the
 	// update removes it if it then fails, as AssignWorker does its copies.
 	report := ""
@@ -823,7 +830,7 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if err := validateLiveWorkerRefs(snapshot, input, eligible); err != nil {
 			return err
 		}
-		runs, err := workerChecks(*record, snapshot, input.CheckIDs, input.Status == "completed")
+		runs, err := workerChecks(*record, env.credit(ctx, taskDirectory{root}, snapshot, files, probes), input.CheckIDs, input.Status == "completed")
 		if err != nil {
 			return err
 		}
@@ -970,15 +977,21 @@ func workerResultFresh(record Record, assigned WorkerAssignment, bound BoundWork
 // result. Rejudgment appends another acceptance. Unused handoffs require a reason
 // and never satisfy a completed-work or independent-review gate.
 func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input WorkerAcceptance) (Record, error) {
+	probes := env.probeReuse(ctx, taskPath)
 	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
 		result := findWorkerResult(*record, input.AssignmentID)
 		if result == nil {
 			return invalid("acceptance references a missing worker result; record a terminal handoff first")
 		}
-		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
+		_, sourceSHA256, err := sourceManifest(files)
+		if err != nil {
+			return err
+		}
+		credit := env.credit(ctx, taskDirectory{root}, snapshot, files, probes)
 		if input, err = completeAcceptance(*record, *result, snapshot, input); err != nil {
 			return err
 		}
@@ -1011,12 +1024,12 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				}
 			}
 		}
-		runs, err := bindChecks(*record, exactCredit(snapshot), input.CheckIDs)
+		runs, err := bindChecks(*record, credit, input.CheckIDs)
 		if err != nil {
 			return err
 		}
 		for _, id := range runs {
-			if err := checkStoredRun(taskDirectory{root}, *record, exactCredit(snapshot), id); err != nil {
+			if err := checkStoredRun(taskDirectory{root}, *record, credit, id); err != nil {
 				return err
 			}
 		}
@@ -1032,7 +1045,7 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				return err
 			}
 		}
-		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: env.now()})
+		record.WorkerAcceptances = append(record.WorkerAcceptances, BoundWorkerAcceptance{Acceptance: input, Snapshot: snapshot, CheckRuns: runs, AcceptedAt: env.now(), SourceSHA256: sourceSHA256})
 		record.EvidenceRevision++
 		record.Verification = nil
 		return nil
