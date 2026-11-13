@@ -77,7 +77,7 @@ func boundedShow(t *testing.T, h *summaryCLIHarness, args ...string) map[string]
 func TestTaskShowPrintsTheSummaryAndFieldList(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
-	h.execute(nil, "task", "run", "--task", h.task, "--check", "version")
+	h.execute(nil, "task", "run", "--force", "--task", h.task, "--check", "version")
 
 	record := boundedShow(t, h, "--full")
 	want := map[string]any{
@@ -95,7 +95,7 @@ func TestTaskShowPrintsTheSummaryAndFieldList(t *testing.T) {
 	}
 
 	for range 4 {
-		h.execute(nil, "task", "run", "--task", h.task, "--check", "version")
+		h.execute(nil, "task", "run", "--force", "--task", h.task, "--check", "version")
 	}
 	later := boundedShow(t, h)
 	if later["revision"] == first["revision"] {
@@ -142,7 +142,7 @@ func TestTaskTimelineListsTheLastEntries(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
 	for range 22 {
-		h.execute(nil, "task", "run", "--task", h.task, "--check", "version")
+		h.execute(nil, "task", "run", "--force", "--task", h.task, "--check", "version")
 	}
 
 	every := boundedTimeline(t, h, "--last", "0")

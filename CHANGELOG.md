@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 - `cw task assign` records the stage a brief answers and, for a later round, the findings or requirements it fixes or the assignment it repeats;
   under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
+- A passed check run stays credited across commits and merges that keep the source bytes and modes, go command, `GOFLAGS` and run key, and
+  `cw task run` then reuses it without running, except a `git` check; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
 
 ### Changed
 

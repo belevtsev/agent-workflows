@@ -563,7 +563,7 @@ func reachRunCoverage(artifacts Artifacts, assigned WorkerAssignment, result Wor
 // failed or cancelled runs without ever upgrading them to success.
 func workerChecks(record Record, snapshot projectctx.Snapshot, ids []string, completed bool) ([]string, error) {
 	if completed {
-		return bindChecks(record, snapshot, ids)
+		return bindChecks(record, exactCredit(snapshot), ids)
 	}
 	runs := []string{}
 	for _, id := range ids {
@@ -988,12 +988,12 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				}
 			}
 		}
-		runs, err := bindChecks(*record, snapshot, input.CheckIDs)
+		runs, err := bindChecks(*record, exactCredit(snapshot), input.CheckIDs)
 		if err != nil {
 			return err
 		}
 		for _, id := range runs {
-			if err := checkStoredRun(taskDirectory{root}, *record, snapshot, id); err != nil {
+			if err := checkStoredRun(taskDirectory{root}, *record, exactCredit(snapshot), id); err != nil {
 				return err
 			}
 		}

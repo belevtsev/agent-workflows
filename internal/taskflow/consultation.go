@@ -172,6 +172,10 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 	if len(raw) > MaxInputBytes {
 		return Record{}, errors.New("consultation exceeds the 8 MiB input limit")
 	}
+	var probes map[string]probedIdentity
+	if phase == "final" {
+		probes = env.probeReuse(ctx, path)
+	}
 	return update(ctx, env, path, func(root *os.Root, record *Record) error {
 		for other, attachment := range record.Consultations {
 			if other != phase {
@@ -196,7 +200,7 @@ func (env Env) AttachConsultation(ctx context.Context, path, phase, inputPath st
 			return errors.New("before consultation differs from task baseline")
 		}
 		if phase == "final" {
-			if problems := localEvidenceProblems(taskDirectory{root}, *record, current); len(problems) > 0 {
+			if problems := localEvidenceProblems(taskDirectory{root}, *record, env.credit(ctx, taskDirectory{root}, current, nil, probes)); len(problems) > 0 {
 				return fmt.Errorf("final consultation requires completed evidence: %v", problems)
 			}
 			binding, err := evidenceBinding(*record)
