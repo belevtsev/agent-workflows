@@ -20,6 +20,7 @@ const reuseSmallAssessment = `{"requirements":[{"id":"behaviour","status":"satis
 // a commit of the same bytes verify is still complete, with no new run and no
 // new assessment, and lists the reuse; one changed byte makes it incomplete.
 func TestReuseE2EAssessCommitVerifyStaysComplete(t *testing.T) {
+	t.Parallel()
 	e := newEvidenceE2E(t)
 	e.setUpModule()
 	task, code, output := e.start(e.store, "plan.json", reuseSmallPlan)

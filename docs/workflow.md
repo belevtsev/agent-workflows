@@ -17,7 +17,7 @@ which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
 a running chat's model automatically. How the coordinator resolves profiles,
 overrides and mismatches is in
-[profiles and policy](../skills/task-orchestration/references/hosts.md#profiles-and-policy).
+[profiles and policy](../skills/task-orchestration/references/hosts.md).
 
 The skill reads the routing from the policy files it ships with; `cw` reads only
 the consultation part of a policy (see [model policy](operations.md#model-policy)).
@@ -99,7 +99,7 @@ agent writes the tests itself and checks its diff against the Code Review Rules.
 That contract holds the
 input boundary, the Go declaration extract, feedback, replacement and record
 rules; the
-[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)
+[host mapping](../skills/task-orchestration/references/hosts.md)
 says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
 checks its tests before integration.
 
@@ -256,7 +256,8 @@ complete only after `cw task verify`. When the checkpoints are required, how eac
 request is prepared, sent, recorded and reused is in
 [task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
 and the sections after it; the plan shape that declares them not required is in
-[start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+state 1 of the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow)
+and in the example `cw task start --help` prints.
 After the before checkpoint, advisers join only at the four
 [adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow),
 and only when the task's binding holds one; otherwise each point is skipped and

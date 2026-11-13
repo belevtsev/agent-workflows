@@ -422,6 +422,7 @@ func TestRunCheckRefusesAStoredManifestThatDiffersFromItsName(t *testing.T) {
 // that is not a hex SHA-256 fails validation. The result's hash is
 // recomputed, so only the member's own check can refuse it.
 func TestLoadValidatesTheRunAndResultKeys(t *testing.T) {
+	t.Parallel()
 	record, ref := preparedChangedTask(t)
 	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
 	record = mustSubmitWorker(t, record, workerResult(t, record, "review", "completed", ref))

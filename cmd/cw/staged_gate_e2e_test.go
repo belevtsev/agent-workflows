@@ -28,6 +28,7 @@ import (
 // over a stale index, is allowed by both: no pre-publish output, git exits 0
 // and HEAD holds the working tree's bytes of what it committed.
 func TestGateJudgesTheContentACommitRecords(t *testing.T) {
+	t.Parallel()
 	binary := buildPlainCW(t)
 	module, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

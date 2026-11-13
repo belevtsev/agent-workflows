@@ -46,6 +46,7 @@ const (
 var hfe2eRegs = map[string]string{"alpha": "skills/alpha", "beta": "skills/group/beta"}
 
 func TestHostfilesE2E(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("end-to-end test builds the cw binary")
 	}

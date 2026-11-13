@@ -462,6 +462,7 @@ func wantEscalation(t *testing.T, err error, key FixRef) {
 // writes no revision. The owner's words let it through, stored with For
 // "escalation"; a repeat of that round needs none; and the record loads.
 func TestAssignRefusesAThirdFixRoundOnAnOpenFindingUntilTheOwnerApproves(t *testing.T) {
+	t.Parallel()
 	f1 := FixRef{Finding: "i0/f1"}
 	record, ref := fixRoundTask(t, f1, false)
 	before := revisions(t, record)
@@ -556,6 +557,7 @@ func TestAssignRefusesAFixRoundOnTheThirdFindingOfAReopensChain(t *testing.T) {
 // rejected or deferred does not, and its third fix round is assigned
 // without words.
 func TestAssignEscalatesOnlyAFindingStillOpen(t *testing.T) {
+	t.Parallel()
 	f1 := FixRef{Finding: "i0/f1"}
 	for _, c := range []struct {
 		status string
@@ -643,6 +645,7 @@ func TestStoredReopensMustNameAnEarlierFinding(t *testing.T) {
 // round on an open finding fails to load without an approval or with one
 // for round-budget, and loads with one for escalation.
 func TestStoredThirdFixRoundNeedsTheOwnersWords(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name      string
 		approvals []OwnerApproval
@@ -705,6 +708,7 @@ func closeFindings(t *testing.T, record Record, ref SourceRef, ids ...string) Re
 // rounds, with i0/f1 resolved but i2/f1 open, a brief fixing i0/f1 is
 // refused; once i1/f1 and i2/f1 are resolved too, it is assigned.
 func TestAssignEscalatesWhileAnyFindingOfTheChainIsOpen(t *testing.T) {
+	t.Parallel()
 	record, ref := fixRoundTask(t, FixRef{}, true)
 	record = closeFindings(t, record, ref, "i0")
 	_, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", FixRef{Finding: "i0/f1"}))
@@ -721,6 +725,7 @@ func TestAssignEscalatesWhileAnyFindingOfTheChainIsOpen(t *testing.T) {
 // third fix round on behavior is assigned without words, stores the
 // source's digest, and the record loads. Before the pass it is refused.
 func TestAReusedPassClosesARequirement(t *testing.T) {
+	t.Parallel()
 	record := committedTask(t, helperPlan(t, "small", "pass"))
 	data := []byte("first line\n")
 	ref := SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: digest(data)}

@@ -463,6 +463,7 @@ func tle2xExpectError(t *testing.T, label string, result tle2xResult, code int, 
 // are repeatable and independent of TZ; usage and runtime errors
 // print nothing on stdout; and nothing on disk changes.
 func TestTimelineE2ERealTask(t *testing.T) {
+	t.Parallel()
 	env := tle2xSetup(t)
 	dir := env.startTask(t, "plan.json")
 	env.assign(t, dir, "a1", "/root/worker", "evidence", ".")
@@ -638,6 +639,7 @@ func TestTimelineE2ERealTask(t *testing.T) {
 // TL-1, TL-6, TL-7: a fresh task with no assignments and no check runs prints
 // "entries":[] and a one-line summary.
 func TestTimelineE2EEmptyTask(t *testing.T) {
+	t.Parallel()
 	env := tle2xSetup(t)
 	dir := env.startTask(t, "plan.json")
 	_, record := env.show(t, dir)
@@ -699,6 +701,7 @@ func tle2xSummaryUsage(help string) string {
 // stays read-only (TL-9). Fails if the command refuses or mishandles a record
 // that holds a verification.
 func TestTimelineE2EVerifiedTask(t *testing.T) {
+	t.Parallel()
 	env := tle2xSetup(t)
 	dir := env.startTask(t, "plan.json")
 	env.mustRun(t, "task", "run", "--task", dir, "--check", "ok", "--summary")
@@ -737,6 +740,7 @@ func TestTimelineE2EVerifiedTask(t *testing.T) {
 // file when it lists the revisions and so loads revision 1 alone (printing a
 // timeline and exiting 0), or rewrites, repairs or removes the corrupt file.
 func TestTimelineE2ECorruptRevisionAfterValid(t *testing.T) {
+	t.Parallel()
 	env := tle2xSetup(t)
 	corruptions := []struct{ name, content string }{
 		{"invalid JSON", "{not json"},
@@ -789,6 +793,7 @@ func TestTimelineE2ECorruptRevisionAfterValid(t *testing.T) {
 // if either form HTML-escapes `<>&` (as encoding/json v1 does), escapes
 // non-ASCII text, or the two forms use different encoders.
 func TestTimelineE2EEscapedAgent(t *testing.T) {
+	t.Parallel()
 	env := tle2xSetup(t)
 	dir := env.startTask(t, "plan.json")
 	const agent = `/root/<a> & b é "q" \ x`
@@ -823,6 +828,7 @@ func TestTimelineE2EEscapedAgent(t *testing.T) {
 // revision and the wait after the release, never the work, and no process
 // outlives the test.
 func TestTimelineE2ERunningCheck(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("the waiting check reads a FIFO")
 	}

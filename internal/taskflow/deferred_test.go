@@ -90,6 +90,7 @@ func TestDeferredDispositionAcceptedInAcceptedAndUnusedAcceptances(t *testing.T)
 // D2: deferred needs a non-blank reason and at least one valid source
 // reference; otherwise accept fails and records nothing.
 func TestDeferredDispositionNeedsReasonAndValidSourceEvidence(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"accepted", "unused"} {
 		t.Run(status, func(t *testing.T) {
 			record, ref := deferredTestInspection(t, false, "concern")
@@ -121,6 +122,7 @@ func TestDeferredDispositionNeedsReasonAndValidSourceEvidence(t *testing.T) {
 
 // D2 bounds: a deferred reason is bounded exactly as a rejected reason is.
 func TestDeferredReasonBoundsMatchRejectedReason(t *testing.T) {
+	t.Parallel()
 	candidates := map[string]string{
 		"oversized":      strings.Repeat("x", 100_000),
 		"nul_byte":       "reason with \x00 byte",
@@ -158,6 +160,7 @@ func TestDeferredReasonBoundsMatchRejectedReason(t *testing.T) {
 // satisfies the independent-review gate; an accepted disposition still counts
 // as unresolved.
 func TestDeferredFindingsSatisfyIndependentReviewGate(t *testing.T) {
+	t.Parallel()
 	for name, statuses := range map[string][]string{
 		"all_deferred": {"deferred", "deferred", "deferred"},
 		"mixed":        {"deferred", "rejected", "resolved"},
@@ -219,6 +222,7 @@ func TestDeferredFindingsSatisfyIndependentReviewGate(t *testing.T) {
 // acceptance as one exact limitation; deferred findings are not problems, and
 // earlier acceptances' deferrals are not listed.
 func TestVerifyListsLatestDeferredDispositionsAsLimitations(t *testing.T) {
+	t.Parallel()
 	record, ref := deferredTestInspection(t, true, "first", "second", "third")
 	reasonFirst, reasonSecond := "First deferral reason.", "Second deferral reason."
 	mustAcceptWorker(t, record, deferredTestAcceptance(t, record, "accepted", ref,
@@ -281,6 +285,7 @@ func TestVerifyListsDeferredDispositionOfUnusedAcceptance(t *testing.T) {
 // (which then changes) or other.txt (which does not). The control shows that
 // the source.txt change by itself does not block completion.
 func TestDeferredEvidenceFreshnessMatchesResolved(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name, status string
 		citeChanged  bool

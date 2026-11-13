@@ -78,6 +78,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   adds the design stage and `strict` the spec stage ([profiles](docs/operations.md#profiles)); reviewers skip style.
 - "Substantial task" is defined only in the working conventions; a task that is not substantial dispatches no workers, and the agent
   checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
+- The orchestration skill is cut a second time, from 187 KB to 144 KB: every worker contract stands alone, the two host pages merge
+  into `hosts.md`, the task presets go, and each `cw publish` status moves to the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
 - The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
   and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
 - The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
@@ -119,6 +121,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `internal/taskflow` no longer links the adviser HTTP providers or `net/http` ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 - `taskflow` types its refusals (locked, abandoned, revision limit, invalid input), so code and tests tell them from failures with
   `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
+- `cmd/cw` tests build `cw` once per run and run in parallel (about 90 s to 25 s locally), and the `internal/taskflow` tests of the
+  4,096-revision limit run at 64 revisions, with one test pinning the shipped value ([development](docs/development.md#tests)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 - [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
@@ -164,6 +168,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
 - The checkpoint reference again says how a task across several repositories sends one adviser request (`state.task_contexts`),
   a rule the first cut of the skill dropped ([advisers](docs/advisers.md)).
+
+- The four test-engineer eval prompts name the `test-strategy` references to apply by path; they still pointed at
+  links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
 
 ## [3.0.0-rc.2] - 2026-11-12
 
@@ -344,7 +351,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts.md
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

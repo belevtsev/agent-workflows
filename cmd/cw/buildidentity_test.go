@@ -15,6 +15,7 @@ import (
 )
 
 func TestBuildIdentityFromBuildInfoTC1(t *testing.T) {
+	t.Parallel()
 	const (
 		pseudo  = "v0.0.0-20261107120000-abcdef123456"
 		infoRev = "abcdef1234567890abcdef1234567890abcdef12"

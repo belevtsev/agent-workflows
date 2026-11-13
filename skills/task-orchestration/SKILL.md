@@ -6,7 +6,7 @@ description: "Runs a substantial code change as a recorded `cw` task: independen
 # Task orchestration
 
 Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty outside the Claude Code plugin; see the
-[host mapping](references/hosts-claude-code.md#worker-agent-types) for paths and agent types).
+[host mapping](references/hosts.md) for agent types).
 
 The coordinator owns the outcome, consultation, dispatch, integration and final
 verification. Use this skill for a
@@ -48,7 +48,7 @@ satisfies a later state.
       `"checkpoints": {"required": false, "reason": "..."}`; states 2 and 4 are
       then skipped.
    5. Decide whether the plan opts in to the
-      [adversarial tester](references/contracts/adversarial-tester.md#opt-in-and-record).
+      [adversarial tester](references/dispatching-reviews-and-tests.md#adversarial).
    6. Hand a consequential planning, architecture or diagnosis question that
       source does not settle to a `decision`-profile worker.
    7. If an open decision, or a change to code that must behave alike on
@@ -124,8 +124,7 @@ found.
 | Step | Reference |
 | --- | --- |
 | Terms and role names | [glossary](references/glossary.md) |
-| Host, profiles, policy, paths | [hosts](references/hosts.md), [Claude Code](references/hosts-claude-code.md), [Codex](references/hosts-codex.md) |
-| Preset for the kind of work | [use-cases](references/use-cases.md) |
+| Host, profiles, policy | [hosts](references/hosts.md) |
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
 | Checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |

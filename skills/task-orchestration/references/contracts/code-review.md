@@ -1,11 +1,5 @@
 # Code review contract
 
-Contents: [purpose](#purpose), [independence](#independence),
-[inputs](#inputs-you-receive), [outputs](#required-outputs),
-[quality bar](#quality-bar), [uncovered blocks](#uncovered-changed-blocks),
-[reproduction](#reproduce-every-behaviour-finding),
-[backstops](#backstops-cw-cannot-check), [stopping](#stopping-conditions).
-
 ## Purpose
 
 The last review stage, on the integrated source after the tests have run.
@@ -22,9 +16,8 @@ implementation assignment to land them.
 
 ## Inputs you receive
 
-- The brief, with the requirements and the
-  [reviewer bundle](../worker-handoffs.md#review-substantial-changes): changed
-  files, each check's latest run and log path, prior findings with their
+- The brief, with the requirements and the reviewer bundle: changed files,
+  each check's latest run and log path, prior findings with their
   dispositions, and one reach row per changed file.
 - `interface-contract.md` (requirement IDs) and `design.md` (the ownership,
   lifecycle and failure behaviour the change must follow).
@@ -44,14 +37,19 @@ systems.
 
 ## Required outputs
 
-1. The [handoff result](../worker-handoffs.md#return-and-accept-evidence)
-   under the `review` role, findings [graded](../worker-handoffs.md#review-stages),
-   `changed_files: []`, and `reopens` (`<assignment id>/<finding id>`) when a
-   finding is an earlier one again.
+1. The handoff result in the shape `cw task schema handoff` prints, under the
+   `review` role, with `changed_files: []`, and `reopens`
+   (`<assignment id>/<finding id>`) when a finding is an earlier one again.
+   Grade each finding `blocker` (relying on the artefact as written yields
+   wrong, unsafe or unverifiable behaviour), `major` (the next stage cannot
+   work correctly from it, such as an untestable or unguarded requirement or
+   a defect in changed behaviour) or `minor` (clarity that changes no test
+   and no behaviour).
 2. With a bundle, `reach_runs`: run each changed file in a scratch copy in
-   every mode, platform and shell its [reach row](../worker-handoffs.md#run-every-reach-row-mode)
-   names, each `ran` (command, observation) or `not_run` (why). Reasoning
-   about a mode, or running a fragment or stand-in, is not running it.
+   every mode, platform and shell its reach row names, each `ran` (command,
+   observation) or `not_run` (why this host cannot run it; "looks safe" or
+   "out of scope" is no reason). Reasoning about a mode, or running a
+   fragment or stand-in, is not running it.
 3. For every behaviour finding, its [reproduction test](#reproduce-every-behaviour-finding).
 4. With a coverage profile, every uncovered changed block in exactly one
    finding that names its [class](#uncovered-changed-blocks).
@@ -63,9 +61,10 @@ the `summary` or under the finding's ID in the report. A finding only
 constraint (who starts, stops or closes what; which lock is not held across
 which call; which failure is returned), which is all the implementer gets.
 
-Keep the result within the [handoff caps](../worker-handoffs.md#handoff-caps)
-(6 KiB; a 1,200-byte `summary`; each finding one line of at most 400 bytes);
-the full reasoning goes in the file `report` names.
+The result is at most 6 KiB without `reach_runs`, its `summary` at most 1,200
+bytes, and each finding (one line) and each `reach_runs` field at most 400
+bytes. Put the full reasoning in the report file that the result's `report`
+names, at most 512 KiB. `cw task handoff` refuses a larger result.
 
 ## Quality bar
 
@@ -103,8 +102,8 @@ modified. Give each one with count 0 exactly one class, in this order:
 2. **Unrequested behaviour.** No requirement asks for it and some input
    reaches it (an unrequested fallback, out-of-scope code), or it does the
    opposite of what a requirement asks: an implementation finding graded by
-   effect, or a [contract question](README.md#contract-amendment) when the
-   contract seems to miss a needed behaviour.
+   effect, or a contract question when the contract seems to miss a needed
+   behaviour.
 3. **Unreachable defence.** No input through any public entry point reaches
    it, such as an error check on a call documented never to fail: `minor`.
 
@@ -136,10 +135,11 @@ on the current code and the command that runs it alone, for example
 
 - **Forged test framing.** Code in the test binary can print a forged
   `=== RUN` and `--- PASS` pair for a mapped test that never runs. Look for
-  code printing that framing (in non-test and source-aware test files) and
-  for a mapped test that cannot run: a subtest never created, a
-  build-constrained file, `os.Exit` before `m.Run`, or a same-named
-  declaration in another package of the directory that does not run it.
+  code printing that framing (in non-test files and in test files the test
+  engineer did not author) and for a mapped test that cannot run: a subtest
+  never created, a build-constrained file, `os.Exit` before `m.Run`, or a
+  same-named declaration in another package of the directory that does not
+  run it.
 - **Unguarded test code.** Non-test helper packages (such as `testutil`) and
   test files outside the root module (nested modules, a `go.work` root)
   escape the authorship rule: review them as source.
