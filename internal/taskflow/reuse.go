@@ -267,11 +267,15 @@ func reusedLimitations(record Record, source *creditSource) []string {
 	var limitations []string
 	for _, check := range allChecks(record) {
 		if run := creditedRun(record, check.ID, source); run != nil && !equalSnapshot(source.snapshot, *run.After) {
-			limitations = append(limitations, "check "+check.ID+" reuses run "+run.ID+", which "+reasonReused+" at commit "+shortHead(run.After.Head)+"; it was not run again")
+			limitations = append(limitations, reuseLimitationPrefix(check.ID)+run.ID+", which "+reasonReused+" at commit "+shortHead(run.After.Head)+"; it was not run again")
 		}
 	}
 	return limitations
 }
+
+// reuseLimitationPrefix starts the limitation that names a check verify
+// credited by reuse; a receipt counts those checks by it.
+func reuseLimitationPrefix(check string) string { return "check " + check + " reuses run " }
 
 func shortHead(head string) string {
 	if len(head) > 12 {

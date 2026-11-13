@@ -36,6 +36,7 @@ func TestTaskCommandsWithoutTaskAreUsageErrors(t *testing.T) {
 		"consult":    {"--phase", "before", "--input", input},
 		"context":    {"--phase", "before"},
 		"handoff":    {"--input", input},
+		"receipt":    {},
 		"run":        {"--check", "check1"},
 		"show":       {},
 		"timeline":   {},

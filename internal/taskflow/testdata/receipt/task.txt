@@ -1,0 +1,19 @@
+receipt of task bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: incomplete
+profile: lite
+author rounds: tests 2 of 2
+usage: an estimated 12.75 USD, 85% of the budget 15.00 USD, new work stops at 100% (raised by the owner's cost-budget approval)
+dollars priced by: built-in price table 2026-11-13 (sha256 abababababab)
+tokens: 1210 uncached input, 3420 cache writes, 56030 cache reads, 820 output
+checks: 2 planned, 3 runs executed, 1 failed, 1 reused at verify
+findings: blocker 1 accepted, major 1 pending, minor 1 pending, 1 resolved
+wall time: 2h0m0s, from 2026-11-13T09:00:00Z to 2026-11-13T11:00:00Z
+open findings, newest first:
+  r2/F1 (minor, pending): The fix-round test has no oracle comment.
+  r1/F1 (major, pending): TestParse does not cover the empty input.
+  r1/F3 (blocker, accepted): The golden file is written by the test it checks.
+fix rounds on open findings and requirements:
+  finding r1/F1: 1 of 2 allowed
+  requirement limits: 1 of 2 allowed
+owner approvals:
+  round-budget on assignment t2 at 2026-11-13T09:30:00Z: "One more tests round; keep the oracle comments."
+  cost-budget at 2026-11-13T10:30:00Z: "Go on to the full 15 dollars."

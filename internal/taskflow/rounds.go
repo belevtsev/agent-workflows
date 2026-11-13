@@ -349,18 +349,22 @@ func (e ErrEscalation) Error() string {
 
 // historySummary is the first line of summary without control characters,
 // cut to at most maxHistorySummary bytes of whole runes.
-func historySummary(summary string) string {
-	line, _, _ := strings.Cut(summary, "\n")
+func historySummary(summary string) string { return clipLine(summary, maxHistorySummary) }
+
+// clipLine is the first line of text without control characters, cut to at
+// most limit bytes of whole runes.
+func clipLine(text string, limit int) string {
+	line, _, _ := strings.Cut(text, "\n")
 	line = strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) || r == utf8.RuneError {
 			return -1
 		}
 		return r
 	}, line)
-	if len(line) <= maxHistorySummary {
+	if len(line) <= limit {
 		return line
 	}
-	cut := maxHistorySummary - len("…")
+	cut := limit - len("…")
 	for cut > 0 && !utf8.RuneStart(line[cut]) {
 		cut--
 	}

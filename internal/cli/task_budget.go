@@ -10,9 +10,8 @@ import (
 )
 
 // writeBudgetStop explains new work refused at the budget's stop, when err is
-// that refusal, and reports whether it was: the refusal, the task's usage,
-// the question for the owner and the way on. A failure to read the usage
-// only leaves it out.
+// that refusal, and reports whether it was: the refusal, the task receipt,
+// the question for the owner and the way on.
 func writeBudgetStop(w io.Writer, directory string, err error) bool {
 	over, ok := errors.AsType[taskflow.ErrBudgetStop](err)
 	if !ok {
@@ -25,12 +24,7 @@ func writeBudgetStop(w io.Writer, directory string, err error) bool {
 		fmt.Fprintf(w, "The cost budget: %s\n", over)
 	}
 	writeRoundNeeds(w, err)
-	// TODO(T1): print the task receipt here once cw task receipt exists;
-	// until then the usage summary stands in for it.
-	if record, loadErr := taskflow.Load(directory); loadErr == nil {
-		fmt.Fprint(w, "Task usage (dollars are estimates): ")
-		_ = writeJSON(w, taskflow.UsageOf(record))
-	}
+	writeReceipt(w, directory)
 	fmt.Fprintln(w, "Ask the owner: continue with a higher budget, or stop with the partial result?")
 	if over.Final() {
 		fmt.Fprintln(w, "The task has used its whole budget: to continue, start a new task with a higher budget.")

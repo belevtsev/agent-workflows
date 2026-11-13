@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var updateGolden = flag.Bool("update", false, "rewrite the stage brief golden files")
+var updateGolden = flag.Bool("update", false, "rewrite the stage brief and task receipt golden files")
 
 // briefRecord is an in-memory lite task at /tasks/b: a first tests round t1,
 // two test reviews r1 and r2, and a fix round t2 of r1's finding F1. r1's
@@ -57,7 +57,14 @@ func briefRecord() Record {
 // -update.
 func checkGolden(t *testing.T, name string, got []byte) {
 	t.Helper()
-	path := filepath.Join("testdata", "brief", name)
+	checkGoldenIn(t, "brief", name, got)
+}
+
+// checkGoldenIn compares got with testdata/dir/name, or rewrites it under
+// -update.
+func checkGoldenIn(t *testing.T, dir, name string, got []byte) {
+	t.Helper()
+	path := filepath.Join("testdata", dir, name)
 	if *updateGolden {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
