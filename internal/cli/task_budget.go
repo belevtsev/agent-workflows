@@ -30,8 +30,8 @@ func writeBudgetStop(w io.Writer, directory string, err error) bool {
 	if over.Final() {
 		fmt.Fprintln(w, "The task has used its whole budget: to continue, start a new task with a higher budget.")
 	} else {
-		fmt.Fprintln(w, `To continue in this task, a person must give the words: only then pass them, unchanged, on the next cw task assign as --owner-approval "cost-budget=<the owner's words>", which raises the stop to 100% of the budget once.`)
+		fmt.Fprintln(w, `To continue in this task, a person must give the words: only then pass them, unchanged, on this cw task assign or cw task run as --owner-approval "cost-budget=<the owner's words>"; cw records them on the task, which raises the stop to 100% of the budget once.`)
 	}
-	fmt.Fprintln(w, "To stop, cw task verify, handoff, accept, show and abandon still run.")
+	fmt.Fprintln(w, "To stop, cw task verify, handoff, accept, show and abandon still run; no check runs again, so verify credits only check runs made before the stop or reused on unchanged source.")
 	return true
 }

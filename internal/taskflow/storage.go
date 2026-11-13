@@ -359,6 +359,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 			if err := validateUsageTransition(record, current); err != nil {
 				return Record{}, "", err
 			}
+			if err := validateBudgetTransition(record, current); err != nil {
+				return Record{}, "", err
+			}
 			a, _ := encode(current.Plan)
 			b, _ := encode(record.Plan)
 			if string(a) != string(b) {
@@ -460,6 +463,9 @@ func validateRecord(record Record) error {
 		return err
 	}
 	if err := validateUsage(record); err != nil {
+		return err
+	}
+	if err := validateCostApprovals(record); err != nil {
 		return err
 	}
 	if len(record.ID) != 32 || record.EvidenceRevision < 0 || record.CreatedAt.IsZero() || record.UpdatedAt.Before(record.CreatedAt) || record.Advisers == nil || record.Contexts == nil || record.Assessments == nil || record.Consultations == nil || record.Checks == nil || !filepath.IsAbs(record.Baseline.Root) || !filepath.IsAbs(record.Baseline.SelectedPath) {
@@ -646,6 +652,9 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 		return Record{}, err
 	}
 	if err := validateUsageTransition(before, record); err != nil {
+		return Record{}, err
+	}
+	if err := validateBudgetTransition(before, record); err != nil {
 		return Record{}, err
 	}
 	data, err := encode(record)

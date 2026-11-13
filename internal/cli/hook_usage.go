@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -25,39 +27,36 @@ const hookUsageTasks = 4
 var cwGlobalValueOptions = map[string]bool{"--config-dir": true, "--home": true, "--codex-home": true, "--claude-home": true, "--state-dir": true}
 
 // addTaskUsageHook adds cw hook task-usage.
-func addTaskUsageHook(hook, root *cobra.Command, config Config) {
+func addTaskUsageHook(hook *cobra.Command, config Config) {
 	hook.AddCommand(&cobra.Command{
 		Use:   "task-usage",
-		Short: "PreToolUse hook: before a cw task command, sample the Claude Code session's usage into that task's record; never decides anything",
+		Short: "PreToolUse hook: before a cw task command, sample the session's usage into that task's record; never decides anything",
 		Long: "Reads the PreToolUse JSON from stdin. For each cw task command in the Bash command that names an open task with a budget by --task DIR or task ID, " +
-			"it imports the session's transcript (transcript_path) within 10 seconds, as cw task usage --claude-transcript does with cw's built-in price table, " +
-			"and stores the sample when it matters. It prints nothing and exits 0 in every case: an incomplete or unreadable transcript, " +
-			"a command without an open task, Codex (which runs cw task usage --codex-session itself) and any error store nothing. See docs/hooks.md \"Usage sampling\".",
+			"it imports the session's transcript (transcript_path: a Claude Code transcript, or under Codex its rollout) within 10 seconds, " +
+			"as cw task usage does with cw's built-in price table, and stores the sample when it matters. It prints nothing and exits 0 in every case: " +
+			"an incomplete or broken transcript, a command without an open task and any error store nothing. See docs/hooks.md \"Usage sampling\".",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			sampleHookUsage(cmd.Context(), root, config)
+			sampleHookUsage(cmd.Context(), config)
 			return nil
 		},
 	})
 }
 
 // sampleHookUsage stores a usage sample from the hook input's transcript in
-// each open task with a budget that a cw task command of the input names.
-// It reads no transcript when no such task is open, and stores nothing from
-// an import that is incomplete or skipped a malformed line or an unreadable
-// file: a broken transcript would read as unknown, or as too little, and
-// replace the session's last sample.
-func sampleHookUsage(ctx context.Context, root *cobra.Command, config Config) {
+// each open task with a budget that a cw task command of the input names:
+// a Claude Code transcript, or under Codex the session's rollout. It reads
+// no transcript when no such task is open, and stores nothing from an import
+// that is incomplete or skipped a malformed line or an unreadable file: a
+// broken transcript would read as unknown, or as too little, and replace the
+// session's last sample.
+func sampleHookUsage(ctx context.Context, config Config) {
 	input, err := readHookInput(config.In)
-	if err != nil || input.fromCodex() || !filepath.IsAbs(input.TranscriptPath) {
+	if err != nil || !filepath.IsAbs(input.TranscriptPath) {
 		return
 	}
-	home, err := config.HomeDir()
-	if err != nil {
-		home = ""
-	}
 	var open []taskflow.Record
-	for _, dir := range hookTaskDirs(input.ToolInput.Command, input.CWD, home, func() (string, error) { return hookTaskStore(root, config) }) {
+	for _, dir := range hookTaskDirs(input.ToolInput.Command, input.CWD, config) {
 		record, err := taskflow.Load(dir)
 		if err == nil && record.Abandonment == nil && record.Profile != nil {
 			open = append(open, record)
@@ -74,6 +73,9 @@ func sampleHookUsage(ctx context.Context, root *cobra.Command, config Config) {
 	}
 	for _, record := range open {
 		options := usagelog.Options{ClaudeTranscript: input.TranscriptPath, Prices: &table, Since: record.CreatedAt}
+		if input.fromCodex() {
+			options.ClaudeTranscript, options.CodexSession = "", input.TranscriptPath
+		}
 		report, estimate, err := usagelog.EstimateSession(ctx, options)
 		if err != nil || report.Status != usagelog.StatusComplete || report.Skipped.MalformedLines > 0 || report.Skipped.UnreadableFiles > 0 {
 			return
@@ -86,34 +88,37 @@ func sampleHookUsage(ctx context.Context, root *cobra.Command, config Config) {
 	}
 }
 
+// taskCommand is one cw task command of a shell command line: the value of
+// its last --task, and the words that choose the task store a task ID is
+// read from: its NAME=value assignments and cw's global options.
+type taskCommand struct {
+	task    string
+	env     map[string]string
+	globals map[string]string
+}
+
 // hookTaskDirs returns the task directory each cw task command in a shell
 // command line names with --task DIR or --task=DIR (the last one of a
 // command), in command order and without duplicates, at most hookUsageTasks.
-// A task ID becomes its directory in the task store; a relative directory is
-// read from cwd and a leading ~/ from home. A directory written with a
-// variable is skipped, as is everything when store is needed and fails.
-func hookTaskDirs(command, cwd, home string, store func() (string, error)) []string {
+// A relative directory is read from cwd and a leading ~/ from the home
+// directory. A task ID becomes its directory in the task store the command
+// itself would read (commandTaskStore). A value written with a variable is
+// skipped.
+func hookTaskDirs(command, cwd string, config Config) []string {
 	var dirs []string
 	for _, simple := range shellwords.Split(command).Commands {
-		value, ok := cwTaskOption(simple.Words)
-		if !ok || strings.Contains(value, "$") {
+		found, ok := cwTaskCommand(simple.Words)
+		if !ok {
 			continue
 		}
-		var dir string
-		switch {
-		case taskflow.IsTaskID(value):
-			path, err := store()
+		dir := ""
+		if taskflow.IsTaskID(found.task) {
+			store, err := commandTaskStore(found, cwd, config)
 			if err != nil {
 				continue
 			}
-			dir = filepath.Join(path, value)
-		case strings.HasPrefix(value, "~/") && home != "":
-			dir = filepath.Join(home, value[2:])
-		case filepath.IsAbs(value):
-			dir = filepath.Clean(value)
-		case cwd != "":
-			dir = filepath.Join(cwd, value)
-		default:
+			dir = filepath.Join(store, found.task)
+		} else if dir = commandPath(found.task, cwd, found.home(config)); dir == "" {
 			continue
 		}
 		if !slices.Contains(dirs, dir) {
@@ -126,41 +131,120 @@ func hookTaskDirs(command, cwd, home string, store func() (string, error)) []str
 	return dirs
 }
 
-// cwTaskOption returns the value of the last --task of words, a simple
-// command, when it runs cw task: leading NAME=value assignments, then a
-// program named cw, by any path, whose first operand, past cw's global
-// options, is task.
-func cwTaskOption(words []shellwords.Word) (string, bool) {
+// home is the home directory the command runs cw with: its --home, else a
+// HOME assignment, else the hook's.
+func (c taskCommand) home(config Config) string {
+	if home := cmp.Or(c.globals["--home"], c.env["HOME"]); home != "" {
+		return home
+	}
+	home, err := config.HomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
+}
+
+// commandPath resolves a path word of the command: "" when it holds a
+// variable or cannot be resolved, a leading ~/ from home, a relative one
+// from cwd.
+func commandPath(word, cwd, home string) string {
+	switch {
+	case word == "" || strings.Contains(word, "$"):
+		return ""
+	case strings.HasPrefix(word, "~/"):
+		if home == "" {
+			return ""
+		}
+		return filepath.Join(home, word[2:])
+	case filepath.IsAbs(word):
+		return filepath.Clean(word)
+	case cwd != "":
+		return filepath.Join(cwd, word)
+	}
+	return ""
+}
+
+// errCommandStore: the command's task store cannot be resolved.
+var errCommandStore = errors.New("the command's task store cannot be resolved")
+
+// commandTaskStore is the task store the cw task command reads a task ID
+// from, resolved as hookTaskStore and resolveRoots resolve cw's own:
+// CW_TASK_STORE, else --state-dir's workflow-tasks, else XDG_STATE_HOME's or
+// the home directory's state directory. An assignment on the command line
+// overrides the hook's environment, and --home or HOME the home directory.
+func commandTaskStore(command taskCommand, cwd string, config Config) (string, error) {
+	getenv := func(name string) string {
+		if value, ok := command.env[name]; ok {
+			return value
+		}
+		return config.Getenv(name)
+	}
+	home := commandPath(command.home(config), cwd, "")
+	if store := getenv("CW_TASK_STORE"); store != "" {
+		if path := commandPath(store, cwd, home); path != "" {
+			return path, nil
+		}
+		return "", errCommandStore
+	}
+	state := command.globals["--state-dir"]
+	switch xdg := getenv("XDG_STATE_HOME"); {
+	case state != "":
+	case home == "":
+		return "", errCommandStore
+	case xdg == "":
+		state = filepath.Join(home, ".local", "state", "agent-workflows")
+	case filepath.IsAbs(xdg):
+		state = filepath.Join(xdg, "agent-workflows")
+	default:
+		return "", errCommandStore
+	}
+	if state = commandPath(state, cwd, home); state == "" {
+		return "", errCommandStore
+	}
+	return filepath.Join(state, "workflow-tasks"), nil
+}
+
+// cwTaskCommand reads words, a simple command, as a cw task command:
+// leading NAME=value assignments, then a program named cw, by any path,
+// whose first operand, past cw's global options, is task, with a --task.
+func cwTaskCommand(words []shellwords.Word) (taskCommand, bool) {
+	found := taskCommand{env: map[string]string{}, globals: map[string]string{}}
 	for len(words) > 0 && isAssignment(words[0].Text) {
+		name, value, _ := strings.Cut(words[0].Text, "=")
+		found.env[name] = value
 		words = words[1:]
 	}
 	if len(words) == 0 {
-		return "", false
+		return found, false
 	}
 	if name, _, _ := strings.Cut(filepath.Base(words[0].Text), "@"); name != "cw" {
-		return "", false
+		return found, false
 	}
 	i := 1
 	for ; i < len(words) && strings.HasPrefix(words[i].Text, "-"); i++ {
-		if cwGlobalValueOptions[words[i].Text] {
+		name, value, attached := strings.Cut(words[i].Text, "=")
+		switch {
+		case attached && cwGlobalValueOptions[name]:
+			found.globals[name] = value
+		case cwGlobalValueOptions[name] && i+1 < len(words):
 			i++
+			found.globals[name] = words[i].Text
 		}
 	}
 	if i >= len(words) || words[i].Text != "task" {
-		return "", false
+		return found, false
 	}
-	value, found := "", false
 	for i++; i < len(words); i++ {
-		name, attached, ok := strings.Cut(words[i].Text, "=")
+		name, value, attached := strings.Cut(words[i].Text, "=")
 		switch {
-		case ok && name == "--task":
-			value, found = attached, true
+		case attached && name == "--task":
+			found.task = value
 		case words[i].Text == "--task" && i+1 < len(words):
 			i++
-			value, found = words[i].Text, true
+			found.task = words[i].Text
 		}
 	}
-	return value, found && value != ""
+	return found, found.task != ""
 }
 
 // isAssignment reports whether word is a shell assignment, NAME=value.

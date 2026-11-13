@@ -183,11 +183,6 @@ func limitsOver(record Record, brief WorkerBrief) []overLimit {
 	if round := overRoundBudget(record, brief); round != nil {
 		over = append(over, overLimit{For: ApprovalRoundBudget, refusal: kindError{kind: ErrOverBudget, msg: round.Error(), cause: *round}})
 	}
-	// At the budget's stop and below 100% the owner may approve the cost;
-	// at 100% assignCostRefusal refuses before any approval is read.
-	if cost := overCostBudget(record); cost != nil && !cost.Final() {
-		over = append(over, overLimit{For: ApprovalCostBudget, refusal: budgetRefusal(record)})
-	}
 	return over
 }
 
@@ -197,8 +192,9 @@ func limitsOver(record Record, brief WorkerBrief) []overLimit {
 // goes past, and is refused when it goes past several. Words for a limit it
 // does not go past, or twice for one limit, are refused as invalid input; a
 // limit without words is refused with its own refusal, or, for several,
-// with one that names them all.
-func ownerApprovals(over []overLimit, briefID string, words []string) ([]OwnerApproval, error) {
+// with one that names them all. subject names the work in a refusal, such
+// as "worker brief ID".
+func ownerApprovals(over []overLimit, subject string, words []string) ([]OwnerApproval, error) {
 	names := make([]string, 0, len(over))
 	for _, limit := range over {
 		names = append(names, limit.For)
@@ -217,16 +213,16 @@ func ownerApprovals(over []overLimit, briefID string, words []string) ([]OwnerAp
 		case len(over) == 1:
 			limit = over[0].For
 		case len(over) > 1:
-			return nil, invalidf("worker brief %s goes past %d limits (%s); give the owner's words for each as --owner-approval LIMIT=TEXT", briefID, len(over), strings.Join(names, ", "))
+			return nil, invalidf("%s goes past %d limits (%s); give the owner's words for each as --owner-approval LIMIT=TEXT", subject, len(over), strings.Join(names, ", "))
 		}
 		if !slices.Contains(names, limit) {
 			if limit == "" {
-				return nil, invalidf("worker brief %s goes past no limit of the task, so it takes no owner approval", briefID)
+				return nil, invalidf("%s goes past no limit of the task, so it takes no owner approval", subject)
 			}
-			return nil, invalidf("worker brief %s does not go past %s, so it takes no owner approval for it", briefID, limit)
+			return nil, invalidf("%s does not go past %s, so it takes no owner approval for it", subject, limit)
 		}
 		if slices.ContainsFunc(approvals, func(a OwnerApproval) bool { return a.For == limit }) {
-			return nil, invalidf("worker brief %s has the owner's approval for %s twice", briefID, limit)
+			return nil, invalidf("%s has the owner's approval for %s twice", subject, limit)
 		}
 		approvals = append(approvals, OwnerApproval{Text: text, For: limit})
 	}
@@ -243,7 +239,7 @@ func ownerApprovals(over []overLimit, briefID string, words []string) ([]OwnerAp
 	case 1:
 		return nil, missing[0]
 	}
-	return nil, kindError{kind: ErrOverBudget, msg: fmt.Sprintf("worker brief %s goes past %s; each needs the owner's approval as --owner-approval LIMIT=TEXT", briefID, strings.Join(missingNames, " and ")), cause: errors.Join(missing...)}
+	return nil, kindError{kind: ErrOverBudget, msg: fmt.Sprintf("%s goes past %s; each needs the owner's approval as --owner-approval LIMIT=TEXT", subject, strings.Join(missingNames, " and ")), cause: errors.Join(missing...)}
 }
 
 // validateStoredApprovals checks a stored assignment's approvals: for each,

@@ -87,7 +87,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	hook := &cobra.Command{Use: "hook", Short: "Claude Code plugin and git hooks: load conventions and gate git commit and push on cw task verify", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	root.AddCommand(hook)
 	addGitHookCommand(root, hook, config)
-	addTaskUsageHook(hook, root, config)
+	addTaskUsageHook(hook, config)
 	hook.AddCommand(&cobra.Command{
 		Use:   "pre-publish",
 		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",

@@ -153,9 +153,6 @@ func validateWorkerTransition(previous, current Record) error {
 		}
 		// Like the round rule, the budget depends on the assignments and
 		// acceptances the previous revision holds.
-		if finalCostRefusal(previous) != nil {
-			return fmt.Errorf("stored worker assignment %s was made after the task used its whole budget", assigned.Brief.ID)
-		}
 		if !approvalsMatch(previous, assigned.Brief, assigned.OwnerApprovals) {
 			return fmt.Errorf("stored worker assignment %s goes past a limit of its profile without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}

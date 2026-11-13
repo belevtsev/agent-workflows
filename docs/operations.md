@@ -550,33 +550,47 @@ source.
   samples. It is stored when it is the session's first, when its
   dollars turn known or unknown, change table, fall, or rise by at least 5% of
   the budget, and, while the session's dollars are unknown, when its tokens
-  turn known or unknown, fall, or grow by at least 5%. The default output says
+  turn known or unknown, fall, or grow by at least 5%. A sample that moves the
+  task's known dollars across the budget's stop or `max_usd` is always
+  stored ([budget stop](#budget-stop)). The default output says
   whether it was stored and gives the task's usage; `--full` prints the record.
 - A task started before profiles has no budget, and `cw task usage` refuses it.
 
 #### Budget stop
 
-The budget counts dollars only; tokens never stop a task. Under Claude Code the
-plugin hook samples the session before each `cw task` command
-([usage sampling](hooks.md#usage-sampling)); Codex has no such hook, so the
-skill runs `cw task usage --codex-session FILE` before each assignment.
+The budget counts dollars only; tokens never stop a task. The plugin hook
+samples the session before each `cw task` command, from a Claude Code
+transcript or, under Codex, the session's rollout
+([usage sampling](hooks.md#usage-sampling)). Where the hook does not run, the
+skill runs `cw task usage` before each `cw task assign` and `cw task run`.
 
-- **The stop.** When the task's estimated dollars reach `stop_at` (80%) of
-  `max_usd`, `cw task assign` and `cw task run` take no new work: they exit 4
-  and write nothing. `cw` prints the usage, the budget and the share used,
-  marks the dollars as estimated, and asks: "continue with a higher budget, or
-  stop with the partial result?"
-- **Continue.** Only the owner's own words go to the next
-  `cw task assign --owner-approval "cost-budget=<the owner's words>"`, recorded
-  on the assignment with `for: "cost-budget"`. It raises the stop to 100% of
-  `max_usd`, once; words given below the stop are refused. At 100% only a new
-  task, with a higher budget, continues.
+- **The stop** is judged on a known lower bound of the task's dollars: per
+  session, the highest dollars any of its samples knew, summed. When that
+  reaches `stop_at` (80%) of `max_usd`, `cw task assign` and `cw task run` take
+  no new work: they exit 4 and write nothing. `cw` prints the usage, the budget
+  and the share used, marks the dollars as estimated ("at least" when the rest
+  is unknown), and asks: "continue with a higher budget, or stop with the
+  partial result?" A sample that crosses the stop or `max_usd` is always
+  stored, whatever the 5% rule says.
+- **Continue.** Only the owner's own words go to `--owner-approval
+  "cost-budget=<the owner's words>"` (or the words alone when the cost is the
+  only limit passed) on that `cw task assign` or `cw task run`. Cost is
+  task-level, so `cw` records them on the task as `owner_approvals`
+  (`text`, `for: "cost-budget"`, `at`), not on an assignment. They raise the
+  stop to 100% of `max_usd`, once; words given below the stop, or a second
+  time, are refused. At 100% only a new task, with a higher budget, continues.
+  A stored revision that adds an assignment or a check run past the stop the
+  record's approvals set fails to load.
 - **Stop.** `cw task verify`, `abandon`, `show`, `handoff`, `accept` and `usage`
-  are never stopped, so the partial result can still be recorded and verified.
-- **Unknown usage never stops a task.** With no sample, or a session whose
-  latest dollars are unknown, `cw task verify` lists "task usage is unknown:
-  REASON" as a limitation, which does not block completion. A task started
-  before profiles has no budget and never stops.
+  are never stopped, so the partial result can still be recorded and verify
+  still reports on it. No check runs again, though: verify credits only the
+  check runs made before the stop, or reused on unchanged source, so a source
+  change after the last run leaves verify incomplete.
+- **Unknown usage never starts a stop, and never lifts one.** With no sample,
+  or a session whose latest dollars are unknown, and a known part below the
+  stop, `cw task verify` lists "task usage is unknown: REASON" as a limitation,
+  which does not block completion. A task started before profiles has no
+  budget and never stops.
 
 ### Task locks
 

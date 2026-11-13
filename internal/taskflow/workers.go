@@ -358,11 +358,9 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
-		// At 100% of the budget no approval continues the task.
-		if err := finalCostRefusal(*record); err != nil {
-			return err
-		}
-		approvals, err := ownerApprovals(limitsOver(*record, brief), brief.ID, ownerWords)
+		// The budget: at 100% nothing continues; at the stop the owner's
+		// cost-budget words go on the record, the rest on the assignment.
+		approvals, err := approveNewWork(record, limitsOver(*record, brief), "worker brief "+brief.ID, ownerWords, env.now())
 		if err != nil {
 			return err
 		}
