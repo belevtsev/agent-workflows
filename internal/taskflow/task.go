@@ -252,6 +252,17 @@ func bindChecks(record Record, source *creditSource, ids []string) ([]string, er
 	return runs, nil
 }
 
+// stillCredited reports whether evidence bound at another snapshot to the
+// runs runIDs of the checks ids is still current: it binds at least one run,
+// and each is still credited at source. A run is credited at another snapshot
+// only over the same bytes and permission bits, and it was credited at the
+// bound snapshot too, so the bytes the evidence judged are the current ones.
+// Evidence that binds no run stays tied to its snapshot.
+func stillCredited(record Record, source *creditSource, ids, runIDs []string) bool {
+	runs, err := bindChecks(record, source, ids)
+	return err == nil && len(runs) > 0 && slices.Equal(runs, runIDs)
+}
+
 func permittedNonExecution(record Record) bool {
 	for _, requirement := range record.Plan.Requirements {
 		if !requirement.AllowNonExecution {
@@ -416,7 +427,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 			problem("requirement %s is not satisfied", requirement.ID)
 			continue
 		}
-		if !equalSnapshot(snapshot, bound.Snapshot) {
+		if !equalSnapshot(snapshot, bound.Snapshot) && !stillCredited(record, source, bound.Assessment.CheckIDs, bound.CheckRuns) {
 			problem("requirement %s evidence is stale", requirement.ID)
 			continue
 		}
@@ -452,7 +463,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 	if decision == nil || decision.Decision.Status != "resolved" || !nonblank(decision.Decision.Reason) {
 		problem("Codex task decision is unresolved")
 	} else {
-		if !equalSnapshot(snapshot, decision.Snapshot) {
+		if !equalSnapshot(snapshot, decision.Snapshot) && !stillCredited(record, source, decision.Decision.CheckIDs, decision.CheckRuns) {
 			problem("Codex task decision is stale")
 		}
 		if err := validateRefs(snapshot, decision.Decision.Evidence); err != nil {

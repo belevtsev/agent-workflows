@@ -61,6 +61,19 @@ type creditSource struct {
 	digest, modes func() string
 	// identity returns what check would run under now.
 	identity func(check Check) (runIdentity, error)
+	// recorded replays a stored binding (recordedCredit): the comparisons
+	// past the source digest were made when it was bound.
+	recorded bool
+}
+
+// recordedCredit replays, when a stored record loads, a binding made at
+// snapshot over the source whose digest is sourceSHA256: it credits a run at
+// snapshot, or a reuse candidate (reuseCandidate) with that digest. The
+// permission bits, log and configuration the run was reused by were compared
+// when the binding was made and cannot be read again; CW_NO_REUSE does not
+// make a stored record invalid.
+func recordedCredit(snapshot projectctx.Snapshot, sourceSHA256 string) *creditSource {
+	return &creditSource{snapshot: snapshot, exact: true, reuse: sourceSHA256 != "", recorded: true, digest: func() string { return sourceSHA256 }}
 }
 
 // probedIdentity is what probeReuse read for one check.
@@ -217,6 +230,8 @@ func credited(record Record, run CheckRun, source *creditSource) (bool, string) 
 		return false, reasonUnkeyed
 	case run.SourceSHA256 != source.digest():
 		return false, reasonSourceChanged
+	case source.recorded:
+		return true, reasonReused
 	case run.ModesSHA256 != source.modes():
 		return false, reasonModes
 	}
