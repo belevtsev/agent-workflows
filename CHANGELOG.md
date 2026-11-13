@@ -175,8 +175,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The four test-engineer eval prompts name the `test-strategy` references to apply by path; they still pointed at
   links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
-- The fork-swarm cancellation test of `internal/graphify` starts a trial again, at most ten times a run, when the leader ends
-  before all 32 forkers are forking; a loaded macOS runner failed it twice when one forker never reported.
+- The fork-swarm cancellation test of `internal/graphify` counts a trial only when the kill finds all 32 forkers forking and
+  starts it again otherwise, at most ten times a run; a loaded macOS runner failed it twice when one forker never reported.
 
 ## [3.0.0-rc.2] - 2026-11-12
 
