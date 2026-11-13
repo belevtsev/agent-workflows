@@ -24,7 +24,7 @@ and dependent integration. Workers return evidence and questions, never adviser
 consults. The test engineer gets only the contract and scaffold
 ([boundary](contracts/test-engineer.md#author-only-from-the-contract)); the
 coordinator owns the execution gates. Under Claude Code the reviewer and test
-engineer start without CLAUDE.md ([hosts](hosts-claude-code.md#worker-agent-types)): quote
+engineer start without CLAUDE.md ([hosts](hosts.md)): quote
 any project constraint their contract lacks word for word.
 
 ## Assign before dispatch
