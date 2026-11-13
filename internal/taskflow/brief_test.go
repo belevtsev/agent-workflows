@@ -113,6 +113,7 @@ func TestStageBriefMatchesGolden(t *testing.T) {
 // caps) that does not fit, and F14 to F1 60-byte ones that would: they are
 // counted, never slipped in after F15.
 func TestStageBriefWithTwentyFindingsListsTheNewestAndCountsTheRest(t *testing.T) {
+	t.Parallel()
 	record := briefRecord()
 	record.WorkerAcceptances = nil
 	record.Assignments, record.WorkerResults = record.Assignments[:1], record.WorkerResults[:1]

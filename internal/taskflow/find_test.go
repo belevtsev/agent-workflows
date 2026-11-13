@@ -198,6 +198,7 @@ func foExpectCallsAtMostOnce(t *testing.T, stub *foStub, path string) {
 }
 
 func TestFindOpen(t *testing.T) {
+	t.Parallel()
 	const day = 24 * time.Hour
 
 	t.Run("no store", func(t *testing.T) {
@@ -750,6 +751,7 @@ func foManifest(t *testing.T, record Record) string {
 }
 
 func TestFindOpenFinishedRecords(t *testing.T) {
+	t.Parallel()
 	const day = 24 * time.Hour
 
 	// F10 with a stub identify: record A carries a complete verification
@@ -1035,6 +1037,7 @@ func TestFindOpenIdentifyOncePerWorktree(t *testing.T) {
 }
 
 func TestFindOpenOrderTieBreak(t *testing.T) {
+	t.Parallel()
 	// Result order: newest UpdatedAt first; equal UpdatedAt orders by record
 	// ID ascending. F12 (rev 6): with twenty-four tied records and the order
 	// asserted over twenty FindOpen calls, an order that does not use the ID

@@ -218,6 +218,7 @@ func TestReachRunsValidatorAcceptsLimits(t *testing.T) {
 
 // RR1: SubmitWorkerResult refuses malformed entries without writing.
 func TestReachRunsSubmissionRefusesMalformedEntries(t *testing.T) {
+	t.Parallel()
 	record := reachRunsFixture(t)
 	for _, test := range reachRunsBadShapes() {
 		t.Run(test.name, func(t *testing.T) {
@@ -250,6 +251,7 @@ func TestReachRunsRefusedForNonReviewRole(t *testing.T) {
 // RR2: a completed bundled review must answer every non-deleted reach row by
 // its exact path, and may name only paths of the bundle's reach rows.
 func TestReachRunsSubmissionRequiresEveryLiveRow(t *testing.T) {
+	t.Parallel()
 	record := reachRunsFixture(t)
 	for _, test := range []struct {
 		name string
@@ -313,6 +315,7 @@ func TestReachRunsSubmissionAllowsDeletedRowEntry(t *testing.T) {
 // RR2: blocked and cancelled reviews need no entries; RR1 shape still applies
 // to any entries they carry.
 func TestReachRunsNotRequiredForIncompleteReview(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"blocked", "cancelled"} {
 		t.Run(status, func(t *testing.T) {
 			record := reachRunsFixture(t)

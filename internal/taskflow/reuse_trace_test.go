@@ -10,6 +10,7 @@ import (
 // commits the same bytes. Oracle: the criterion is proven by that run before
 // and after the commit, because the trace judges a reused run as current.
 func TestTraceJudgesAReusedRun(t *testing.T) {
+	t.Parallel()
 	f := l4New(t, l4Opts{reqs: []string{"C1"}, checks: []taskflow.Check{l3Check("ok", l3JSONP...)}})
 	f.forgeRound(true, l3Map("R1", l3Mapped("p/te_test.go", "TestPass")))
 	if run := f.run("ok"); run.Status != "passed" {

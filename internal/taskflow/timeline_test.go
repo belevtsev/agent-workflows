@@ -1113,6 +1113,7 @@ func TestTimelinePropertyMatchesContractModel(t *testing.T) {
 // every timestamp to another location, or calling twice gives an equal
 // timeline, and the argument is left unchanged.
 func TestTimelinePropertyDeterministicAndPure(t *testing.T) {
+	t.Parallel()
 	for seed := uint64(1); seed <= tlnPropertySeeds; seed++ {
 		record := tlnRandomRecord(seed)
 		first := tlnBuild(t, record)
