@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Codex runs the plugin's new `hooks/codex-hooks.json` (`cw hook … --host codex`) instead of `hooks/hooks.json`: trust the hooks again in
   `/hooks` after updating, or Codex runs none; a given `--host` decides the host over the hook input ([Codex hooks](docs/hooks.md#codex)).
 
+- While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
+  from the verified working tree for a path it changes, and ask about one a git filter staged ([which source counts](docs/hooks.md#which-source-counts)).
+
 ### Added
 
 - A ten-minute [quick start](docs/quickstart.md) takes one task by hand from `cw task init` to a verified commit, and a test runs

@@ -21,12 +21,32 @@ func gitPublications(command, cwd, home string) []publication {
 	if certain {
 		return found
 	}
-	for _, flat := range flatPublications(command, cwd) {
-		if !slices.Contains(found, flat) {
-			found = append(found, flat)
+	flat := flatPublications(command, cwd)
+	// Where one reading leaves a commit unjudged that the other judges, such
+	// as after a command in a heredoc's substitution, which only the flat
+	// split reads, neither judges it.
+	found = withoutDisputedJudgements(found, flat)
+	for _, each := range withoutDisputedJudgements(flat, found) {
+		if !slices.Contains(found, each) {
+			found = append(found, each)
 		}
 	}
 	return found
+}
+
+// withoutDisputedJudgements returns mine without each commit that it judges
+// by the index (staged) while others has that commit unjudged and does not
+// judge it.
+func withoutDisputedJudgements(mine, others []publication) []publication {
+	kept := make([]publication, 0, len(mine))
+	for _, each := range mine {
+		unjudged := each
+		unjudged.staged = stagedUnknown
+		if each.push || each.staged == stagedUnknown || !slices.Contains(others, unjudged) || slices.Contains(others, each) {
+			kept = append(kept, each)
+		}
+	}
+	return kept
 }
 
 // splitPublications returns every git commit or push in a shell command
@@ -286,6 +306,8 @@ type wordScanner struct {
 	approvals    []string
 	approvalRuns int
 	certain      bool
+	// touched is publicationScanner's.
+	touched bool
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
@@ -325,6 +347,9 @@ func (s *wordScanner) scan(command string, at place, depth int, vars expansion) 
 			s.certain = false
 		}
 		at = s.visit(simple.Words, at, depth, vars)
+		if slices.ContainsFunc(simple.Redirects, func(redirect shellwords.Redirect) bool { return !trustedRedirect(redirect) }) {
+			s.touched = true // it may write the index, as `cat saved > .git/index` does
+		}
 	}
 	if len(outer) > 0 {
 		return outer[0]
@@ -339,6 +364,7 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 	if !known {
 		s.certain = false
 	}
+	defer func(keeps bool) { s.touched = s.touched || !keeps }(keepsIndex(wordTexts(words)))
 	if len(words) > 0 && (words[0].Text == "cd" || words[0].Text == "pushd" || words[0].Text == "popd") {
 		change := strings.Join(wordRaws(words), " ")
 		if slices.ContainsFunc(all, func(word shellwords.Word) bool { return word.Text == "" }) {
@@ -398,7 +424,13 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 		runs = move(runs, words[index], words[index].Raw, vars)
 		plain = resolveDir(plain, texts[index])
 	}
-	next := publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])}
+	next := publication{push: texts[subcommand] == "push"}
+	if !next.push {
+		next.all, next.staged = commitsAll(texts[subcommand+1:]), commitStaged(texts[subcommand+1:])
+		if selectsRepository(wordTexts(all)) {
+			next.staged = stagedUnknown
+		}
+	}
 	s.add(runs, next)
 	if plain != "" && plain != runs.dir {
 		// Where the two readings differ, the gate also checks the plain one,
@@ -468,8 +500,12 @@ func move(at place, word shellwords.Word, change string, vars expansion) place {
 
 // add records next as run at: in its directory, or, after a directory change
 // the scanner could not follow, in the session's directory, marked unresolved.
+// A commit after a command that may change the index is stagedUnknown.
 func (s *wordScanner) add(at place, next publication) {
 	next.dir = at.dir
+	if !next.push && s.touched {
+		next.staged = stagedUnknown
+	}
 	if next.dir == "" && at.unresolved != "" {
 		next.dir, next.unresolved = s.session, at.unresolved
 	}
