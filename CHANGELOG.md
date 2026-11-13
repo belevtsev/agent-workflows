@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
+  and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
   ([CI](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles

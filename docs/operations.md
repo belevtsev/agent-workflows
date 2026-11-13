@@ -110,7 +110,7 @@ skill installed twice is unverified.
 `cw` runs on macOS and Linux; Windows is not supported (`cw` does not build
 there). Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in `cw task verify`; other repositories need any
-one passed check (see [evidence rules](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
+one passed check (see [evidence rules](#the-go-package-test-rule)).
 
 Download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
@@ -334,7 +334,10 @@ runtime call targets. Each live probe and each Git inspection runs in a process
 group of its own; when it answers, exits or reaches its deadline, `cw` kills the
 group until no member is alive, and a member that survives fails the probe.
 Missing or unsupported tooling is qualified and retains normal source discovery. Neither mode installs dependencies, changes watcher enrollment or
-calls advisers.
+calls advisers. Saved-file tools cannot see unsaved editor buffers. Graphify
+stays an optional map of tracked Go with its stale-cache guard. Coverage limits
+and unknown checks stay visible in the report. A multi-module Go project can
+need module-local checks.
 
 `--summary` prints one line. Its `problems` lists the required checks that are
 missing, degraded or stale, which block the workflow: `git_cli` and `cw_cli`
@@ -400,7 +403,7 @@ Unknown metrics remain unknown, and synthetic observations are never described a
 production savings. With go1.27.3, a line that a test writes straight to stdout or
 stderr starting with byte 0x16 becomes a `-json` result event for any test name it
 gives, so it can forge a PASS; it cannot hide a real FAIL, because a FAIL of the same
-test in a latest run at the current source makes that test `failed`. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
+test in a latest run at the current source makes that test `failed`. See [test evidence rules](#test-evidence-rules).
 
 Source capture treats a path as a plain folder only when Git exits with a failure
 status or no `git` is on `PATH`. Any other end of a Git probe stops the capture
@@ -1062,6 +1065,207 @@ off for every command: only a run at the current snapshot earns credit, and
 `cw task run` always runs. A pass after a failed run of the same check at the
 same `source_sha256` and `GOFLAGS` is a rerun and earns no Go evidence credit,
 also across a commit of the same bytes.
+
+### The Go package-test rule
+
+A substantial plan binds at least one check to a requirement. Once its source
+changes, `cw task verify` needs the latest run of some check passed at the
+current source (the fallback rule). The Go rule applies on top of it when the
+task applies the `go` pack, which is selected by default. A task records the
+pack when `go.mod` or `go.work` is at the top of the selected path at start,
+and the rule then checks packages whenever `go.mod` is at the top at verify. A
+task that started with neither file gets no Go rule, even if it creates
+`go.mod` later. `cw pack add` and `cw pack remove` affect only tasks started
+afterwards; an open task keeps the pack set it recorded, and `cw pack list`
+shows the selection. `cw pack remove go` writes an explicit `packs.json`, which
+drops the Go rule for all of that user's repositories and leaves only the
+fallback rule; `cw pack add go`, or deleting `packs.json`, restores it.
+
+Under the Go rule (`go.package-test/v2`; a task keeps the rule it recorded at
+start):
+
+- Each changed package needs a check whose argv is a direct `go test -race`
+  naming `./...`, the package (`./pkg`) or a parent (`./dir/...`). Where
+  `-race` cannot run on the host (its own platform, with the cgo setting
+  `cw task verify` sees), a plain `go test` run counts and verify records why.
+- A file belongs to the package of its directory (or of the directory holding
+  its `testdata/`); a non-Go file in a directory without Go files belongs to
+  the nearest ancestor package.
+- Each package whose test binary links a changed package needs a passed
+  `go test` run covering it, unless only that changed package's `_test.go` or
+  `testdata/` files changed.
+- A changed `go.mod`, `go.sum`, `go.work`, `go.work.sum` or vendored file, a
+  changed file with a build constraint line or a generated-code header, a
+  changed embedded file, changed testdata outside any package directory, or a
+  package graph that `go list` cannot compute at verify within 5 s needs
+  `./...`. Verify runs `go list` offline (`GOPROXY=off`), inside the task
+  lock, for at most 6 s, so a cold module cache can be the reason. It runs
+  only a go it verified ([which go](#which-go-a-check-runs)), so a fake `go`
+  first on `PATH` is another reason, and `-race` stays required.
+- A pass after a failed run of the same check at the same source and
+  `GOFLAGS` earns no credit until the source changes.
+- Skipped tests are listed as limitations, which needs `-v` or `-json` on the
+  run; a run without either gets a limitation saying they are not listed.
+- Only runs whose every flag, in argv and in `GOFLAGS` (split as `go` splits
+  it), is on the allowlist earn credit: `v`, `race`, `count` of at least 1,
+  `timeout`, `cover*`, `tags` and the other flags in
+  `internal/langpack/golang.go` that cannot skip or replace tests, with a
+  `test.` prefix only on flags `go test` passes to the test binary. `-run`,
+  `-skip`, `-args`, `-c`, `-n`, `-exec`, `-toolexec`, `-overlay`, `-ldflags`,
+  `-gcflags`, `-asmflags`, `-C`, unknown flags, a pattern after a flag that
+  follows a pattern (`./a -v ./b`, where `go test` hands `./b` to the test
+  binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style `.\pkg`
+  patterns earn none.
+- The rule reads the `GOFLAGS`, `GOOS` and `GOARCH` that the check's go
+  command reports with `go env` just before the run, so a go env file's
+  `GOFLAGS` (`GOENV`, `go env -w`) counts too, and a run for another
+  `GOOS`/`GOARCH` than the host's earns none. With cgo on, a run earns none
+  unless `cw` verified its C toolchain
+  ([the C toolchain](#the-c-toolchain-of-a-go-check)).
+- The run records `GOFLAGS` with compiler and linker flag values redacted, but
+  stores the check's argv verbatim: keep secrets out of check argv.
+
+### Test evidence rules
+
+Every run records the per-test results of its `-json` events, read from its
+complete output, as `test_results`. A `-json` run's stored log holds JSON event
+lines, so its summary takes `failing_tests` from those results, while the error
+lines and log tail still come from the log. Only a `go test -json` run with
+flags the Go rule allows proves a mapped test. A `GOFLAGS=-json` in the shell
+that runs `cw task run` reaches every check, and `go vet` then exits 0 on
+findings, so `-json` belongs in argv.
+
+For each current test-engineer assignment with a completed handoff, `verify`
+judges every mapped test at the current source: it fails a test that is
+missing, failed in a latest run at the current source, was only skipped, or has
+no PASS in a latest passed run of a per-test-credited `-json` check; it lists
+`uncovered` requirements and requirements no current round declares as
+limitations, and fails a plan requirement whose every linking round is closed.
+`cw task trace --task DIR --summary` shows each plan requirement's status and
+gaps; without `--summary` it prints every mapped test with the runs that
+recorded it.
+
+In a plan with a per-test-credited `-json` `go test` check, `assign` refuses a
+brief with a `contract` but no `requirements`; in a plan without one, it
+refuses `requirements`. Records made before brief `inputs` and `requirements`,
+result `requirement_map` and run `test_results` existed need none of them, and
+load, hash and verify as before.
+
+`cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
+record. A `cw` built before this rule cannot load such a record (its commit and
+push hook skips it), so finish a task with the `cw` that started it. `cw`
+refuses a record without `test_rules`, `packs` or `baseline_manifest`, or one
+that binds `go.package-test/v1`, as `cw` v2.0.66 to v2.0.96 and builds before
+v3.0.0-rc.1 wrote; an open one still gates until its directory is moved out of
+the task store. The rules:
+
+- **Proven PASS (a mitigation).** With go1.27.3, `-json` frames what tests
+  print, but a line that a test writes straight to stdout or stderr starting
+  with byte 0x16 becomes a result event for any test name it gives. So each
+  run's results also count the `run` events and the output lines beginning
+  with byte 0x16 of each test. A mapped test is `passed` only when a per-test
+  credited current passed run recorded at least one `run` event per result, no
+  more `run` events than its `-count` times its `-cpu` values times the
+  packages of the test's directory that declare it, and no marked output line;
+  a PASS without that is `pass_unproven`, which fails `verify`. A FAIL of the
+  same test in a latest run at the current source makes the test `failed`
+  whatever else the run recorded. This does not prove the test ran: code in
+  the test binary can still print a forged `=== RUN` and `--- PASS` pair, or
+  unmarked framing before the first test starts, for a mapped test that never
+  genuinely runs (a subtest never created, a build-constrained file, `os.Exit`
+  before `m.Run`), and a same-named declaration in another package of the
+  directory that does not run the mapped name raises the allowance. Code
+  review is the backstop.
+- **Authorship (substantial plans).** Every changed Go test file must be
+  `independent` (recorded by a never-rejected test-engineer round with a
+  `completed` result whose latest acceptance is `accepted` or `unused`, by an
+  agent that is not excluded) or a cited reproduction test (`source_aware`);
+  `verify` fails a `lost` or `unowned` one, and a mapped test whose file is not
+  `independent` is `not_independent`. When the plan has no per-test credited
+  `go test -json` check and a changed test file is not `source_aware`, `verify`
+  fails once with "test files changed, but the plan has no go test check whose
+  argv earns per-test credit ...". An unreadable baseline manifest fails with
+  `test authorship cannot be judged: <error>`. A selected path without `go.mod`
+  but with `go.work` or Go files gets the limitation `test authorship not
+  judged: ...`, and its test files are not guarded.
+- **Contracts need a provable plan.** In a substantial task, `assign` refuses a
+  brief with a `contract` when no plan check earns per-test credit.
+- **Contract currency.** An earlier contract stops being re-extracted only when
+  a later contract-bearing round that covers its owned paths has an `accepted`
+  acceptance and no `rejected` one; a round never accepted, or ever rejected,
+  leaves the earlier contract checked.
+
+### What the final context binds
+
+`cw task context --phase final` binds the source, the completed checks, worker
+evidence and acceptances, and the coordinator's decision. Changing any of them,
+even with the source bytes unchanged, needs a fresh final context and, when
+checkpoints are required, a fresh adviser review. `cw task verify` rejects stale
+source, missing requirements or checks, invalid references, incomplete
+handoffs, unaccepted results, a missing or stale independent worker review, an
+outstanding owned check, and missing, mismatched or unresolved checkpoints
+(missing ones only when checkpoints are required). It lists each `deferred`
+finding, and each bound adviser without a successful outcome, as a limitation;
+with an empty binding it states that decisions rest on source evidence and
+checks only. Hashes and structural validation establish consistency, not
+semantic truth or complete test coverage. `cw task consult` validates the
+adviser record against the binding; it makes no provider request, selects no
+winning adviser and proves no cited semantics.
+
+### Coverage profile of a check
+
+`go test -covermode=atomic -coverpkg=./... -coverprofile=<path>` earns the same
+credit as a plain `go test`. `-coverpkg=./...` also counts statements that one
+package's tests run in another; an end-to-end test of a built binary still
+records none. Write the profile to an absolute path outside the source tree,
+such as the private directory that holds `plan.json` (the task directory does
+not exist yet when the plan is written); a check runs without a shell, so the
+directory must exist before `cw task run`. `cw task run` captures the source before and after a check, and
+that source includes untracked files the repository does not ignore: a profile
+written inside the tree changes the source during the run, so a passing run is
+recorded as `source_changed`, and the profile then shows up as a changed file
+in the reviewer bundle. Every run of the check overwrites the profile and `cw`
+does not hash it. No coverage threshold applies and the profile gates nothing.
+Tests that run the test binary again as a child process and compare its exact
+output can fail under `-cover`, because the child warns on stderr that
+`GOCOVERDIR` is not set. When the full check has such tests, keep it without
+coverage and bind a second check that adds the flags and names the packages the
+plan expects to change, leaving those tests' packages out; a change inside them
+then has no profile, which the reviewer records under what was not reviewed.
+
+### Check admission and stored history
+
+The Git gate permits known inspection dispatch: `diff`, `status`, `log`,
+`show`, `rev-parse`, `rev-list`, `ls-files`, `ls-tree`, `merge-base` and
+`describe`. Standalone metadata outputs are `-v`/`--version`, `--html-path`,
+`--man-path`, `--info-path` and bare `--exec-path`. Global directory and path
+values are consumed as data. Explicit `-c` and `--config-env` overrides allow
+only `core.quotePath`, `color.ui`, `diff.noprefix`, `diff.mnemonicPrefix`,
+`diff.context`, `status.short` and `status.branch`, compared
+case-insensitively. Unknown commands, aliases, configuration keys,
+pagination, `--exec-path=...` and `--list-cmds` selectors are refused.
+Terraform and tofu still classify their global options before refusing
+`apply` and `destroy`. This filter establishes known inspection dispatch;
+arbitrary command arguments, inherited Git configuration and environment, and
+the selected executable remain separate trust boundaries. It does not
+guarantee that every admitted Git argument is read-only, nor sandbox an
+arbitrary executable.
+
+Loading a task validates its bounded plan structure and integrity without
+applying new-input defaults or today's command admission policy. Historical
+declarations and run argv remain unchanged, including commands now refused for
+new work. Starting a task checks every command against current policy; running
+a stored check rechecks its argv against current policy before execution or a
+new check log or revision. Readable history does not authorize re-execution.
+
+New artifacts sync their file content before no-replace publication, then sync
+their descriptor-bound containing directory. New storage components and their
+parents are synced through the existing ancestor; starting a task also syncs
+the store after publishing its initial record. A reported durability failure
+can mean the named artifact is already published: inspect and reload the
+absolute task or artifact path in the error before retrying, and keep
+published bytes intact rather than replaying an update or starting another
+check on that assumption.
 
 ### Merging the base branch during a task
 
