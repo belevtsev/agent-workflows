@@ -92,6 +92,10 @@ each one. The `internal/taskflow` tests that walk a record to that limit call
 `t.Parallel()`. `TestShippedRevisionLimitIs4096` alone runs at the shipped
 value and fails if it changes. Only that package's tests can lower the limit.
 
+In `internal/taskflow` and `internal/graphify`, a top-level test that takes
+0.2 s or more calls `t.Parallel()` unless it sets the environment, changes
+directory or sets a package variable; a new slow test should do the same.
+
 ### Repository content checks
 
 ```sh
