@@ -138,7 +138,7 @@ const goEnvLimit = 64 << 10
 // records, then those only its key covers, which select the cgo, experiment,
 // workspace, instruction set and C compilers a build uses, and the flags it
 // passes them (cgoFlagNames).
-var goEnvNames = append([]string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOWORK", "GOAMD64", "GOARM64", "CC", "CXX"}, cgoFlagNames...)
+var goEnvNames = append([]string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOWORK", "GOAMD64", "GOARM64", "CC", "CXX", "FC"}, cgoFlagNames...)
 
 // ReadGoEnv runs tool.Path once, within ctx, as `go env -json` of goEnvNames
 // in dir with env followed by tool.Env, which is the environment that a check
@@ -236,7 +236,7 @@ func GoEnvWithheld(env *GoEnv) string {
 	case env.C == nil:
 		return "cw did not record whether it verified the C toolchain its go command runs with cgo on; run it again"
 	case env.C.CGO && env.C.Unverified != "":
-		return "cgo was on, and " + env.C.Unverified + "; that toolchain builds code into the test binary that can report a pass without running a test"
+		return "cgo was on, and " + env.C.Unverified + "; that toolchain builds code into the test binary that can report a pass without running a test. To earn credit, run the check again with the system compiler first on PATH and CC unset, with the variables named unset and CGO_*FLAGS holding only -O and -g, or with CGO_ENABLED=0 where -race is not needed"
 	}
 	return ""
 }

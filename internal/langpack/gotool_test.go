@@ -21,9 +21,16 @@ import (
 )
 
 // gtEnv is the process environment with PATH replaced by path and the go
-// command pinned to its own toolchain, followed by overrides.
+// command pinned to its own toolchain, followed by overrides. It drops the C
+// toolchain variables that cw task run pins for a go check (CGO_ENABLED, the
+// CGO_*FLAGS, CC, CXX, FC, COMPILER_PATH), so that go env reports what PATH
+// selects also when this package's tests run as a cw check (review finding 4
+// on #181).
 func gtEnv(path string, overrides ...string) []string {
-	env := slices.DeleteFunc(os.Environ(), func(entry string) bool { return strings.HasPrefix(entry, "PATH=") })
+	env := slices.DeleteFunc(os.Environ(), func(entry string) bool {
+		name, _, _ := strings.Cut(entry, "=")
+		return name == "PATH" || strings.HasPrefix(name, "CGO_") || slices.Contains([]string{"CC", "CXX", "FC", "COMPILER_PATH"}, name)
+	})
 	return append(append(env, "PATH="+path, "GOTOOLCHAIN=local", "GOWORK=off", "GOFLAGS="), overrides...)
 }
 
@@ -346,8 +353,8 @@ func TestReadGoEnvKeyFollowsTheConfigurationWithoutItsValues(t *testing.T) {
 func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	stopped, cancel := context.WithCancel(t.Context())
 	cancel()
-	const shape = "not exactly GOFLAGS, GOOS, GOARCH, GOHOSTOS, GOHOSTARCH, CGO_ENABLED, GOEXPERIMENT, GOWORK, GOAMD64, GOARM64, CC, CXX, CGO_CFLAGS, CGO_CPPFLAGS, CGO_CXXFLAGS, CGO_FFLAGS, CGO_LDFLAGS with the four platform values set"
-	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux","CGO_ENABLED":"1","GOEXPERIMENT":"","GOWORK":"","GOAMD64":"v1","GOARM64":"v8.0","CC":"gcc","CXX":"g++","CGO_CFLAGS":"-O2 -g","CGO_CPPFLAGS":"","CGO_CXXFLAGS":"-O2 -g","CGO_FFLAGS":"-O2 -g","CGO_LDFLAGS":"-O2 -g"`
+	const shape = "not exactly GOFLAGS, GOOS, GOARCH, GOHOSTOS, GOHOSTARCH, CGO_ENABLED, GOEXPERIMENT, GOWORK, GOAMD64, GOARM64, CC, CXX, FC, CGO_CFLAGS, CGO_CPPFLAGS, CGO_CXXFLAGS, CGO_FFLAGS, CGO_LDFLAGS with the four platform values set"
+	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux","CGO_ENABLED":"1","GOEXPERIMENT":"","GOWORK":"","GOAMD64":"v1","GOARM64":"v8.0","CC":"gcc","CXX":"g++","FC":"","CGO_CFLAGS":"-O2 -g","CGO_CPPFLAGS":"","CGO_CXXFLAGS":"-O2 -g","CGO_FFLAGS":"-O2 -g","CGO_LDFLAGS":"-O2 -g"`
 	for _, c := range []struct {
 		name, body, want string
 		ctx              context.Context

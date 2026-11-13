@@ -100,8 +100,20 @@ func TestReadGoEnvVerifiesOnlyACToolchainThatOnlyRootCanChange(t *testing.T) {
 // the first on PATH. Oracle (F18): judgeHelpers asks the compiler which it
 // runs and leaves a reason for one, found on PATH or named by its path, in a
 // directory the user owns, and for a compiler that does not answer; the
-// system's own, or none found, leave none.
+// system's own, or none found, leave none. Review finding 6 on #181: gcc
+// takes an empty PATH entry as the directory it runs in and a relative entry
+// in it, so a helper found there is judged too, and the directories of the
+// helpers found on PATH are returned for the run's COMPILER_PATH.
 func TestJudgeHelpersRefusesAnAssemblerOrLinkerTheUserCanChange(t *testing.T) {
+	work := t.TempDir()
+	gtScript(t, work, "as", "exit 0\n")
+	gtScript(t, filepath.Join(work, "sub"), "ld", "exit 0\n")
+	var system []string
+	for _, helper := range []string{"/usr/bin/as", "/usr/bin/ld"} {
+		if _, err := os.Stat(helper); err == nil && !slices.Contains(system, filepath.Dir(helper)) {
+			system = append(system, filepath.Dir(helper))
+		}
+	}
 	users := t.TempDir()
 	gtScript(t, users, "as", "exit 0\n")
 	ld := gtScript(t, users, "ld", "exit 0\n")
@@ -113,12 +125,16 @@ func TestJudgeHelpersRefusesAnAssemblerOrLinkerTheUserCanChange(t *testing.T) {
 		want           []string
 	}{
 		{"the system's", bare, "/usr/bin:/bin", nil},
+		{"an empty PATH entry and a relative one", bare, ":sub:/usr/bin:/bin", []string{"the as that " + bare + " runs, " + filepath.Join(work, "as"), "the ld that " + bare + " runs, " + filepath.Join(work, "sub", "ld")}},
 		{"an assembler and a linker first on PATH", bare, users + ":/usr/bin:/bin", []string{"the as that " + bare + " runs, " + filepath.Join(users, "as"), "the ld that " + bare + " runs, " + ld}},
 		{"a linker named by its path", named, "/usr/bin:/bin", []string{"the ld that " + named + " runs, " + ld}},
 		{"a compiler that does not answer", failing, "/usr/bin:/bin", []string{"`" + failing + " -print-prog-name=as` did not name one program", "`" + failing + " -print-prog-name=ld` did not name one program"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got := langpack.JudgeHelpers(t.Context(), c.cc, t.TempDir(), []string{"PATH=" + c.path})
+			got, dirs := langpack.JudgeHelpers(t.Context(), c.cc, work, []string{"PATH=" + c.path})
+			if c.want == nil && c.cc == bare && !slices.Equal(dirs, system) {
+				t.Errorf("JudgeHelpers directories = %q, want %q", dirs, system)
+			}
 			if len(got) != len(c.want) {
 				t.Fatalf("JudgeHelpers = %q, want reasons starting %q", got, c.want)
 			}
@@ -128,5 +144,72 @@ func TestJudgeHelpersRefusesAnAssemblerOrLinkerTheUserCanChange(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Review findings 3, 7 and 9 on #181: the branches that depend on the
+// system. Oracles: on Linux, a user namespace whose ID map is not the
+// identity map (bwrap --unshare-user --uid 0 shows the user's files as
+// root's) leaves the toolchain unverified, and the identity map passes, after
+// which cw asks the compiler for its assembler and linker; on macOS the ID
+// map is not read and the compiler is not asked (its toolchain lives in the
+// developer directory, a documented gap), and a DEVELOPER_DIR other than the
+// one xcode-select chose leaves the toolchain unverified.
+func TestReadGoEnvJudgesTheSystemSpecificSteps(t *testing.T) {
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, ctEnv(t))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	maps := t.TempDir()
+	identity := filepath.Join(maps, "identity")
+	mapped := filepath.Join(maps, "mapped")
+	for file, data := range map[string]string{identity: "         0          0 4294967295\n", mapped: "         0       1000          1\n"} {
+		if err := os.WriteFile(file, []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	unverified := func(t *testing.T, env []string) string {
+		t.Helper()
+		got, _, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
+		if err != nil || got.C == nil || !got.C.CGO {
+			t.Fatalf("ReadGoEnv = %+v, %v; want a judged C toolchain with cgo on", got, err)
+		}
+		return got.C.Unverified
+	}
+	asked := langpack.PretendHost(t, "linux", mapped)
+	if got := unverified(t, ctEnv(t)); !strings.Contains(got, "cw runs in a user namespace that maps user IDs") || *asked {
+		t.Errorf("Linux in a mapped user namespace: unverified %q, helpers asked %v; want the namespace named and no compiler run", got, *asked)
+	}
+	asked = langpack.PretendHost(t, "linux", identity)
+	if got := unverified(t, ctEnv(t)); strings.Contains(got, "user namespace") || !*asked {
+		t.Errorf("Linux with the identity map: unverified %q, helpers asked %v; want no namespace reason and the compiler asked", got, *asked)
+	}
+	asked = langpack.PretendHost(t, "darwin", mapped)
+	if got := unverified(t, ctEnv(t)); got != "" || *asked {
+		t.Errorf("macOS: unverified %q, helpers asked %v; want verified without reading the ID map or asking the compiler", got, *asked)
+	}
+	if got := unverified(t, ctEnv(t, "DEVELOPER_DIR="+maps)); !strings.Contains(got, "DEVELOPER_DIR names a developer directory other than the one xcode-select chose") {
+		t.Errorf("macOS with another DEVELOPER_DIR: unverified %q", got)
+	}
+
+	selected := t.TempDir()
+	link := filepath.Join(t.TempDir(), "xcode_select_link")
+	if err := os.Symlink(selected, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name, goos, value string
+		refused           bool
+	}{
+		{"unset", "darwin", "", false},
+		{"the selected directory", "darwin", selected, false},
+		{"another directory", "darwin", maps, true},
+		{"a directory that does not exist", "darwin", filepath.Join(maps, "none"), true},
+		{"not macOS", "linux", maps, false},
+	} {
+		if got := langpack.JudgeDeveloperDir(c.goos, c.value, link); (got != "") != c.refused {
+			t.Errorf("%s: JudgeDeveloperDir = %q, want refused %v", c.name, got, c.refused)
+		}
 	}
 }

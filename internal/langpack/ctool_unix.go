@@ -27,7 +27,9 @@ func trustedFile(path string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", fmt.Errorf("%s is not an absolute path", path)
 	}
-	pending := strings.Split(filepath.Clean(path), "/")
+	// The path is walked as written, not cleaned: the kernel takes ".."
+	// from the directory a link led to, not from the link's name.
+	pending := strings.Split(path, "/")
 	current := "/"
 	if err := trustedEntry(current); err != nil {
 		return "", err

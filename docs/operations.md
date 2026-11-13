@@ -762,7 +762,7 @@ each passed go check ran as a limitation. A run recorded before this has no
 `tool`, and verify says so.
 
 Next `cw` runs that file once as `go env -json GOFLAGS GOOS GOARCH GOHOSTOS
-GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX CGO_CFLAGS
+GOHOSTARCH CGO_ENABLED GOEXPERIMENT GOWORK GOAMD64 GOARM64 CC CXX FC CGO_CFLAGS
 CGO_CPPFLAGS CGO_CXXFLAGS CGO_FFLAGS CGO_LDFLAGS`, with the
 check's environment and in the selected path, and the run records the first
 five values it printed under `go_env` (`GOFLAGS` redacted as in `goflags`);
@@ -784,22 +784,34 @@ platform, as `check <id> passed, but earns no Go evidence credit: …`.
 With cgo on (`CGO_ENABLED=1`, cmd/go's default when it finds a C compiler,
 and needed by `go test -race` on Linux), go builds C code into test binaries
 with the `CC` that `go env` reports, from the environment, a go env file or
-the default `gcc` (Linux) or `clang` (macOS) on `PATH`. A wrapper compiler can
-add code that prints `PASS` and exits 0 before any test runs. So `cw` judges
-that toolchain after the `go env` read and records it on `go_env` under `c`:
-`cgo`, the compilers `cc` and `cxx` (`path`, `sha256`) and, when it did not
-verify, `unverified` with the reasons. It verifies when:
+the default `gcc` (Linux) or `clang` (macOS) on `PATH`; C++ files with its
+`CXX`, Fortran files with its `FC` (`gfortran` when empty) and `.swig` files
+with the `swig` on `PATH`. A wrapper compiler can add code that prints `PASS`
+and exits 0 before any test runs. So `cw` judges that toolchain after the
+`go env` read and records it on `go_env` under `c`: `cgo`, the programs `cc`,
+`cxx`, `fc` and `swig` (`path`, `sha256`) and, when it did not verify,
+`unverified` with the reasons. It verifies when:
 
-- `CC` and `CXX` are each one program without arguments; a bare name is
-  looked up on the check's `PATH`. `CC` must be found; `CXX` only when found.
-- Every step from `/` to each compiler, links included, is owned by root or
-  another user, and no directory or file on the way is writable by its group
-  or others. `/usr/bin/gcc` on Linux and the `/usr/bin/clang` shim on macOS
-  pass; a compiler in a directory the user owns, or a link there to
-  `/usr/bin/gcc`, does not.
+- `CC`, `CXX` and `FC` are each one program without arguments, named bare and
+  looked up on the check's `PATH`, or by an absolute path. `CC` must be found;
+  `CXX`, `FC` and `swig` are judged when found.
+- No program is a compiler launcher (`ccache`, `sccache`, `distcc`,
+  `distcc-pump`, `icecc`, `buildcache`), by the name it is started by or the
+  file it resolves to: a launcher runs the compiler its configuration chooses,
+  or serves objects from a cache the user can write.
+- Every step from `/` to each program, links included and walked as the
+  kernel walks them (`..` after a link climbs from where the link led), is
+  owned by root or another user, and no directory or file on the way is
+  writable by its group or others. `/usr/bin/gcc` on Linux and the
+  `/usr/bin/clang` shim on macOS pass; a program in a directory the user owns,
+  or reached through a link there, does not.
+- On Linux, `cw` runs in the initial user namespace (`/proc/self/uid_map` is
+  `0 0 4294967295`): in a namespace such as `bwrap --unshare-user --uid 0`,
+  the user's own files appear owned by root.
 - On Linux, the assembler and linker the compiler names with
-  `-print-prog-name=as` and `=ld`, or the first on `PATH` when it names a
-  bare program, pass the same test.
+  `-print-prog-name=as` and `=ld` pass the same test. When it names a bare
+  program, `cw` looks it up on `PATH` as gcc does (an empty entry is the
+  directory the compiler runs in, a relative entry is taken there).
 - `CGO_CFLAGS`, `CGO_CPPFLAGS`, `CGO_CXXFLAGS`, `CGO_FFLAGS` and
   `CGO_LDFLAGS` hold only `-O` and `-g` flags, as cmd/go's default `-O2 -g`
   does.
@@ -810,21 +822,34 @@ verify, `unverified` with the reasons. It verifies when:
   set, and on macOS `DEVELOPER_DIR` is unset or names the directory
   `xcode-select` chose.
 
-The check then runs with `CGO_ENABLED` as read and, with cgo on, the
-`CGO_*FLAGS` as read and `CC` and `CXX` set to the paths judged, at the end of
-its environment, so a go env file or `PATH` entry changed later changes
-nothing. A run with cgo on whose toolchain did not verify still runs and can
-pass, but earns no Go rule credit, and verify lists it as `check <id> passed,
-but earns no Go evidence credit: cgo was on, and cw could not verify its C
-toolchain: …`. Unset the variable it names, or put the system compiler first
-on `PATH`. A run recorded before `cw` judged the C toolchain earns none
-either: run its check again. With cgo off nothing is judged.
+An `FC` that does not pass leaves the toolchain verified but is not run.
+
+The check then runs, at the end of its environment, with `CGO_ENABLED` as
+read and, with cgo on, the `CGO_*FLAGS` as read, `CC`, `CXX` and `FC` set to
+the paths judged, and `COMPILER_PATH` naming the directories of an assembler
+or linker found on `PATH`. A `CXX` or `FC` that was not found, or an `FC`
+that did not pass, is set to a path under `/nonexistent`, so a package with
+C++ or Fortran files then fails to build. A go env file or `PATH` entry
+changed later changes nothing.
+
+A run with cgo on whose toolchain did not verify still runs and can pass, but
+earns no Go rule credit, and verify lists it as `check <id> passed, but earns
+no Go evidence credit: cgo was on, and cw could not verify its C toolchain:
+…`, followed by how to earn credit: run the check again with the system
+compiler first on `PATH` and `CC` unset, with the variables named unset and
+the `CGO_*FLAGS` holding only `-O` and `-g`, or with `CGO_ENABLED=0` where
+`-race` is not needed. A run recorded before `cw` judged the C toolchain
+earns none either: run its check again. With cgo off nothing is judged.
 
 This shows who can change the toolchain, not what it does. When `cw` runs as
 root, every file passes. On macOS, `cw` checks the `/usr/bin/clang` shim, not
-the Xcode or Command Line Tools toolchain it runs, and not the assembler or
-linker. The compiler's own temporary files, a package's `#cgo` directives
-(which cmd/go checks itself) and `pkg-config` are not judged.
+the Xcode or Command Line Tools toolchain it runs: xcrun picks that from the
+directory `xcode-select` chose, which may be an `Xcode.app` the user owns, and
+keeps a per-user cache of its lookups (`xcrun_db` in the user's temporary
+directory) that the user can write. Nor does it check the assembler or
+linker there. The compiler's own temporary files, a `swig` added to `PATH`
+during the run, a package's `#cgo` directives (which cmd/go checks itself)
+and `pkg-config` are not judged.
 
 When no go command verifies, such as a script named `go` first on `PATH`, a
 `GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
