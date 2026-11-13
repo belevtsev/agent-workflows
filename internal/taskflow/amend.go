@@ -173,7 +173,7 @@ func (env Env) AddChecks(ctx context.Context, path string, input AmendmentInput)
 		if !equalSnapshot(snapshot, after) {
 			return errors.New("source changed while adding checks")
 		}
-		record.Amendments = append(record.Amendments, Amendment{Checks: request.checks, MergeCommit: facts.Commit, BaseRef: request.baseRef, BaseCommit: facts.BaseCommit, Reason: request.reason, CoordinatorID: effectiveCoordinator(record.Plan), Snapshot: snapshot, At: env.now()})
+		record.Amendments = append(record.Amendments, Amendment{Checks: request.checks, MergeCommit: facts.Commit, BaseRef: request.baseRef, BaseCommit: facts.BaseCommit, Reason: request.reason, CoordinatorID: effectiveCoordinator(record.Plan), Snapshot: snapshot, At: env.stamp(record)})
 		record.Verification = nil
 		record.EvidenceRevision++
 		return nil

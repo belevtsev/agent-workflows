@@ -389,9 +389,10 @@ func TestFindOpen(t *testing.T) {
 		}
 	})
 
-	t.Run("age window is inclusive at both ends", func(t *testing.T) {
-		// F5: now - UpdatedAt must lie within [0, MaxOpenAge]; a latest
-		// revision in the future is skipped. created_at lies far outside the
+	t.Run("age window ends at MaxOpenAge, inclusive", func(t *testing.T) {
+		// F5: now - UpdatedAt must be at most MaxOpenAge; a latest revision
+		// dated after now governs like one written now (stamps run ahead of
+		// a clock that stepped back). created_at lies far outside the
 		// window so only updated_at can decide.
 		if MaxOpenAge != 14*day {
 			t.Fatalf("MaxOpenAge = %v, want 14 days", MaxOpenAge)
@@ -407,7 +408,8 @@ func TestFindOpen(t *testing.T) {
 			{"age zero", record.UpdatedAt, true},
 			{"age exactly MaxOpenAge", record.UpdatedAt.Add(MaxOpenAge), true},
 			{"one second past MaxOpenAge", record.UpdatedAt.Add(MaxOpenAge + time.Second), false},
-			{"updated one second in the future", record.UpdatedAt.Add(-time.Second), false},
+			{"updated one second in the future", record.UpdatedAt.Add(-time.Second), true},
+			{"updated an hour in the future", record.UpdatedAt.Add(-time.Hour), true},
 		}
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
@@ -420,13 +422,14 @@ func TestFindOpen(t *testing.T) {
 		}
 	})
 
-	t.Run("future record does not hide an older open one", func(t *testing.T) {
-		// F5: a record updated after now is skipped; the older one is returned.
+	t.Run("a record dated after now gates beside an older open one", func(t *testing.T) {
+		// F5: a record updated after now governs like one written now, and
+		// hides nothing; both are returned, newest latest revision first.
 		store, repo := foFixture(t)
 		now := time.Now()
 		older := foStartAt(t, store, repo, "older", "substantial", now.Add(-time.Hour))
-		foStartAt(t, store, repo, "future", "substantial", now.Add(time.Hour))
-		foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{}).identify()), foGating(older))
+		future := foStartAt(t, store, repo, "future", "substantial", now.Add(time.Hour))
+		foExpect(t, foFind(t, store, foAtRoot(older.Baseline.Root), now, (&foStub{}).identify()), foGating(future), foGating(older))
 	})
 
 	t.Run("digested path", func(t *testing.T) {

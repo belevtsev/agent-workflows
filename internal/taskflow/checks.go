@@ -551,7 +551,7 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		// A task at its budget's stop runs no new check without the
 		// owner's cost-budget words, and none at 100% (budget.go); a reused
 		// run above runs and records nothing, so it is not new work.
-		if _, err := approveNewWork(record, nil, "check "+checkID, ownerWords, env.now()); err != nil {
+		if _, err := approveNewWork(record, nil, "check "+checkID, ownerWords, env.stamp(record)); err != nil {
 			return err
 		}
 		if err := validateCommand(check.Argv); err != nil {
@@ -591,7 +591,7 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		if err != nil {
 			return err
 		}
-		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.now(), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key, ModesSHA256: modes}
+		run = CheckRun{ID: id, CheckID: checkID, Status: "running", Argv: append([]string(nil), check.Argv...), StartedAt: env.stamp(record), Before: snapshot, Log: "check-" + id + ".log", GOFLAGS: langpack.RedactGOFLAGS(environmentValue(checkEnvironment(check), "GOFLAGS")), Tool: tool, GoEnv: goEnv, SourceSHA256: sourceSHA256, EnvKey: key, ModesSHA256: modes}
 		logFile, err = root.OpenFile(run.Log, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err
@@ -599,7 +599,7 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		if refused != nil {
 			// The start revision is also the terminal one: the run failed
 			// without executing anything, and its log stays empty.
-			finished := env.now()
+			finished := env.stamp(record)
 			run.Status, run.Failure, run.FinishedAt = "failed", "untrusted_toolchain", &finished
 			run.LogSHA256, run.OutputSHA256 = digest(nil), digest(nil)
 		}
@@ -629,7 +629,15 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 	got := proc.Run(ctx, spec)
 	syncErr := logFile.Sync()
 	closeErr := logFile.Close()
+	// The run ends no earlier than it started, even if the clock stepped back
+	// while it ran or is behind the stamp it started at. No record rule
+	// orders finished_at against updated_at, so this reading, taken outside
+	// the lock, never raises updated_at: one wrong forward reading here would
+	// otherwise hold every later stamp.
 	finished := env.now()
+	if finished.Before(run.StartedAt) {
+		finished = run.StartedAt
+	}
 	run.FinishedAt = &finished
 	run.LogSHA256 = hex.EncodeToString(capture.saved.Sum(nil))
 	run.OutputSHA256 = hex.EncodeToString(capture.full.Sum(nil))
