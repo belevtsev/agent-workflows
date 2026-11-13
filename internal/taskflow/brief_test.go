@@ -99,18 +99,22 @@ func TestStageBriefMatchesGolden(t *testing.T) {
 }
 
 // Oracle: D15 and the H3 acceptance. With 20 open findings, newest first
-// F20..F1 across 20 test reviews, of 380-byte summaries except 60-byte ones
-// for the four oldest, both encodings stay at most 4,096 bytes; the listed
-// findings are the newest ones in order, with no short older one slipped in
-// after a misfit, and omitted.findings counts the rest, so listed plus counted
-// is 20 and at least one is counted.
+// F20..F1 across 20 test reviews, both encodings stay at most 4,096 bytes; the
+// listed findings are the newest ones in order, and omitted.findings counts
+// the rest, so listed plus counted is 20 and at least one is counted. F20 to
+// F16 have 380-byte summaries, F15 one of 1,500 bytes (stored before the
+// caps) that does not fit, and F14 to F1 60-byte ones that would: they are
+// counted, never slipped in after F15.
 func TestStageBriefWithTwentyFindingsListsTheNewestAndCountsTheRest(t *testing.T) {
 	record := briefRecord()
 	record.WorkerAcceptances = nil
 	record.Assignments, record.WorkerResults = record.Assignments[:1], record.WorkerResults[:1]
 	for i := 1; i <= 20; i++ {
 		id, size := fmt.Sprintf("r%d", i), 380
-		if i <= 4 {
+		switch {
+		case i == 15:
+			size = 1500
+		case i < 15:
 			size = 60
 		}
 		record.Assignments = append(record.Assignments, WorkerAssignment{Brief: WorkerBrief{ID: id, AgentID: "/root/" + id, Role: "review", Stage: StageTestReview}})
