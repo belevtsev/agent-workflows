@@ -55,6 +55,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
   and link the model policies instead of model releases, and drop unmeasured token counts ([host requirements](docs/operations.md#host-requirements)).
+- `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
+  optional tools are counted in `optional_missing`, and `--all` lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
   commit it takes in, so merging the fetched base branch, or `git pull`, keeps working; a merge of a local branch still stops ([git hooks](docs/hooks.md#git-hooks)).
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
@@ -73,6 +75,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
 - `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
   message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
+- `cw task verify` names an unresolved, stale or invalid decision "coordinator decision" instead of "Codex task decision", since either host
+  may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ### Fixed
 

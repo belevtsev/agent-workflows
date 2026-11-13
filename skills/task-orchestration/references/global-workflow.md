@@ -35,7 +35,11 @@ cw doctor --summary --repo /absolute/path/to/project
 cw doctor --repo /absolute/path/to/project --live
 ```
 
-The default report detects source identity, project capabilities, repository
+The summary's `problems` lists only required checks (git and `cw` on `PATH`, the
+workflow skills, source identity, git hooks during a task); fix those before
+`cw task start`. `optional_missing` counts optional tools that are absent or
+unhealthy, and `--summary --all` lists them; none blocks the workflow.
+The full report detects source identity, project capabilities, repository
 contract paths, optional tools and configured integration metadata. The explicit
 live mode performs bounded tool health/status checks. Neither command provisions
 dependencies, creates an index, registers a watcher, or consults hosted advisers.
