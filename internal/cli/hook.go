@@ -51,6 +51,11 @@ const (
 
 type hookInput struct {
 	CWD string `json:"cwd"`
+	// TurnID and Model are Codex's documented extensions of the hook input;
+	// Claude Code's PreToolUse input has neither, although it sends turn_id
+	// for another event. testdata holds one recorded input from each host.
+	TurnID string `json:"turn_id"`
+	Model  string `json:"model"`
 	// Source is how a session started, in SessionStart input only: startup,
 	// resume, clear or compact (and fork under Codex).
 	Source string `json:"source"`
@@ -63,31 +68,54 @@ type hookInput struct {
 	} `json:"tool_input"`
 }
 
-// The hosts a plugin hook command names with --host. Each host runs its own
-// hooks file: Claude Code hooks/hooks.json, which passes no --host, and Codex
+// fromCodex reports whether the input looks like Codex's: it needs both
+// Codex members, so Claude Code adding one of them to PreToolUse does not
+// turn its asks into denies. It decides the host only when no --host is
+// given (hookHost.codex).
+func (input hookInput) fromCodex() bool {
+	return input.TurnID != "" && input.Model != ""
+}
+
+// The hosts a plugin hook command names with --host. Codex runs
 // hooks/codex-hooks.json, which .codex-plugin/plugin.json names and which
-// passes --host codex. cw reads the host from the flag alone, never from the
-// hook input or the environment.
+// passes --host codex; Claude Code runs hooks/hooks.json, which passes no
+// --host. A given --host decides the host. Without one, cw tells the hosts
+// apart as before --host existed, so a Codex that still runs hooks/hooks.json
+// (a plugin cached before the Codex file, or a Codex that ignores the
+// manifest's hooks member) keeps its denies: by turn_id and model in the
+// input (fromCodex), and at session start, whose input has no turn_id, by
+// PLUGIN_ROOT, which Codex sets and Claude Code does not.
 const (
 	hookHostClaudeCode = "claude-code"
 	hookHostCodex      = "codex"
 )
 
+// hookHost is the value of a hook command's --host: "" when it is not given.
+type hookHost string
+
 // addHookHostFlag adds --host to a plugin hook command.
 func addHookHostFlag(command *cobra.Command, host *string) {
-	command.Flags().StringVar(host, "host", hookHostClaudeCode, "Host whose hooks file runs this command: claude-code (hooks/hooks.json) or codex (hooks/codex-hooks.json)")
+	command.Flags().StringVar(host, "host", "", "Host whose hooks file runs this command: claude-code (hooks/hooks.json) or codex (hooks/codex-hooks.json); "+
+		"without it, Codex is told apart by turn_id and model in the input, or at session start by PLUGIN_ROOT")
 }
 
-// hookFromCodex reports whether --host names Codex; any value but the two
-// hosts is a usage error.
-func hookFromCodex(host string) (bool, error) {
+// parseHookHost checks --host: claude-code, codex, or not given; any other
+// value is a usage error.
+func parseHookHost(host string) (hookHost, error) {
 	switch host {
-	case hookHostClaudeCode:
-		return false, nil
-	case hookHostCodex:
-		return true, nil
+	case "", hookHostClaudeCode, hookHostCodex:
+		return hookHost(host), nil
 	}
-	return false, usage(errors.New("--host must be " + hookHostClaudeCode + " or " + hookHostCodex + ", not " + strconv.Quote(host)))
+	return "", usage(errors.New("--host must be " + hookHostClaudeCode + " or " + hookHostCodex + ", not " + strconv.Quote(host)))
+}
+
+// codex reports whether Codex ran the hook: --host when given, else guess,
+// the detection that applies without one.
+func (host hookHost) codex(guess func() bool) bool {
+	if host == "" {
+		return guess()
+	}
+	return host == hookHostCodex
 }
 
 type hookOutput struct {
@@ -123,13 +151,13 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			codex, err := hookFromCodex(publishHost)
+			host, err := parseHookHost(publishHost)
 			if err != nil {
 				return err
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), cmp.Or(config.prePublishTimeout, hookPublishTimeout))
 			defer cancel()
-			decision, ok := prePublishDecision(ctx, root, config, codex)
+			decision, ok := prePublishDecision(ctx, root, config, host)
 			if !ok {
 				return nil
 			}
@@ -147,10 +175,11 @@ func addHookCommands(root *cobra.Command, config Config) {
 			if instructions == "" {
 				return usage(errors.New("--instructions FILE is required"))
 			}
-			codex, err := hookFromCodex(sessionHost)
+			host, err := parseHookHost(sessionHost)
 			if err != nil {
 				return err
 			}
+			codex := host.codex(func() bool { return config.Getenv(codexPluginRoot) != "" })
 			context, ok := sessionStartContext(cmd.Context(), root, config, instructions, cache, codex)
 			if !ok {
 				return nil
@@ -165,10 +194,11 @@ func addHookCommands(root *cobra.Command, config Config) {
 }
 
 // prePublishDecision returns the gate's deny or ask decision for the hook
-// input on stdin, or false when the command may proceed silently; codex
-// adapts it to Codex (codexDecision). With both plugin options off it
-// returns before reading stdin, which hookPublishTimeout does not bound.
-func prePublishDecision(ctx context.Context, root *cobra.Command, config Config, codex bool) (hookOutput, bool) {
+// input on stdin, or false when the command may proceed silently; under
+// Codex (host, else the input) it is adapted to Codex (codexDecision). With
+// both plugin options off it returns before reading stdin, which
+// hookPublishTimeout does not bound.
+func prePublishDecision(ctx context.Context, root *cobra.Command, config Config, host hookHost) (hookOutput, bool) {
 	enforce := config.Getenv(enforceVerifyOption) != "false"
 	prompt := config.Getenv(smallTaskPromptOption) != "false"
 	if !enforce && !prompt {
@@ -208,7 +238,7 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config,
 			decision.Reason += " " + storeFailureReason(store.err, store.store != nil)
 		}
 	}
-	if codex {
+	if host.codex(input.fromCodex) {
 		decision = codexDecision(decision)
 	}
 	if decision.Permission == gate.Allow {

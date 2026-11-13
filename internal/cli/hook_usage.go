@@ -39,11 +39,11 @@ func addTaskUsageHook(hook *cobra.Command, config Config) {
 			"an incomplete or broken transcript, a command without an open task and any error store nothing. See docs/hooks.md \"Usage sampling\".",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			codex, err := hookFromCodex(host)
+			parsed, err := parseHookHost(host)
 			if err != nil {
 				return err
 			}
-			sampleHookUsage(cmd.Context(), config, codex)
+			sampleHookUsage(cmd.Context(), config, parsed)
 			return nil
 		},
 	}
@@ -53,12 +53,13 @@ func addTaskUsageHook(hook *cobra.Command, config Config) {
 
 // sampleHookUsage stores a usage sample from the hook input's transcript in
 // each open task with a budget that a cw task command of the input names:
-// a Claude Code transcript, or under Codex (codex) the session's rollout. It reads
+// a Claude Code transcript, or under Codex (host, else the input) the
+// session's rollout. It reads
 // no transcript when no such task is open, and stores nothing from an import
 // that is incomplete or skipped a malformed line or an unreadable file: a
 // broken transcript would read as unknown, or as too little, and replace the
 // session's last sample.
-func sampleHookUsage(ctx context.Context, config Config, codex bool) {
+func sampleHookUsage(ctx context.Context, config Config, host hookHost) {
 	input, err := readHookInput(config.In)
 	if err != nil || !filepath.IsAbs(input.TranscriptPath) {
 		return
@@ -81,7 +82,7 @@ func sampleHookUsage(ctx context.Context, config Config, codex bool) {
 	}
 	for _, record := range open {
 		options := usagelog.Options{ClaudeTranscript: input.TranscriptPath, Prices: &table, Since: record.CreatedAt}
-		if codex {
+		if host.codex(input.fromCodex) {
 			options.ClaudeTranscript, options.CodexSession = "", input.TranscriptPath
 		}
 		report, estimate, err := usagelog.EstimateSession(ctx, options)

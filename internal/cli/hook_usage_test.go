@@ -160,3 +160,43 @@ func TestTaskUsageHookFindsEachCwTaskCommandsTask(t *testing.T) {
 		t.Errorf("a relative XDG_STATE_HOME gave %q; cw refuses it, so nothing is sampled", got)
 	}
 }
+
+// Oracle (review finding 2): a Codex still running hooks/hooks.json calls
+// cw hook task-usage without --host. Its input carries turn_id and model, so
+// cw reads transcript_path as the Codex rollout it is and stores the Codex
+// sample (session c1, 100 input and 20 output tokens). The same rollout read
+// as a Claude Code transcript (--host claude-code) holds no Claude entry, so
+// the import is incomplete and nothing is stored, never a known zero.
+func TestTaskUsageHookReadsTheRolloutWithoutHostAndNeverStoresZero(t *testing.T) {
+	h := newTaskBundleHarness(t)
+	rollout := writeCodexRollout(t)
+	command := "cw task run --check unit --task " + h.record.Directory
+	input := func(extra map[string]any) []byte {
+		data := map[string]any{"session_id": "c1", "transcript_path": rollout, "cwd": h.repo, "hook_event_name": "PreToolUse", "tool_name": "Bash",
+			"tool_input": map[string]any{"command": command}}
+		for key, value := range extra {
+			data[key] = value
+		}
+		encoded, err := json.Marshal(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return encoded
+	}
+
+	before := loadUsageRecord(t, h).Revision
+	runTaskUsageHook(t, h, input(nil), "--host", "claude-code")
+	if record := loadUsageRecord(t, h); record.Revision != before || len(record.Usage) != 0 {
+		t.Fatalf("rollout read as a Claude transcript: revision %d (was %d), usage %+v; want nothing stored", record.Revision, before, record.Usage)
+	}
+
+	runTaskUsageHook(t, h, input(map[string]any{"turn_id": "t", "model": "m"}))
+	record := loadUsageRecord(t, h)
+	if len(record.Usage) != 1 {
+		t.Fatalf("usage %+v, want one sample from the Codex rollout", record.Usage)
+	}
+	codex := record.Usage[0]
+	if codex.Source != taskflow.UsageSourceCodex || codex.SessionID != "c1" || codex.Tokens == nil || codex.Tokens.UncachedInput != 100 || codex.Tokens.Output != 20 {
+		t.Fatalf("sample %+v (tokens %+v), want session c1 from codex_rollout with 100 input and 20 output tokens", codex, codex.Tokens)
+	}
+}

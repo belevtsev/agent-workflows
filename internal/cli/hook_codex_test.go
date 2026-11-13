@@ -92,31 +92,64 @@ func TestHookPrePublishDeniesOnCodexWhereClaudeCodeAsks(t *testing.T) {
 	}
 }
 
-func TestHookPrePublishTakesTheHostFromTheFlagAlone(t *testing.T) {
+func TestHookPrePublishHostFlagWinsAndTheInputDecidesWithoutIt(t *testing.T) {
 	repo, h := hkUnrecordedChange(t)
 	codexQuestion := "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: "
-
-	// Oracle: without --host, and with --host claude-code, the host is
-	// Claude Code whatever the input holds: the Claude Code input, one that
-	// adds turn_id, and the recorded Codex input with its turn_id and model
-	// all get the ask. The PLUGIN_ROOT Codex sets no longer names the host.
 	claude := hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, nil)
 	withTurn := hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, map[string]any{"turn_id": "0b7c3e52-9d14-4a6f-8e21-5f9a0c6d2b37"})
-	h.env["PLUGIN_ROOT"] = hkCanonicalTempDir(t)
-	for name, input := range map[string][]byte{"Claude Code input": claude, "Claude Code input with turn_id": withTurn, "Codex input": hkCodexInput(t, repo)} {
-		hkExpectAsk(t, h.runPrePublish(t, input), hkCommitAskWording)
+	codex := hkCodexInput(t, repo)
+	run := func(t *testing.T, input []byte, args ...string) string {
+		t.Helper()
 		h.config.In = bytes.NewReader(input)
 		h.out.Reset()
-		if err := Execute(t.Context(), []string{"hook", "pre-publish", "--host", "claude-code"}, h.config); err != nil {
-			t.Fatalf("%s: hook pre-publish --host claude-code returned %v", name, err)
+		if err := Execute(t.Context(), append([]string{"hook", "pre-publish"}, args...), h.config); err != nil {
+			t.Fatalf("hook pre-publish %v returned %v", args, err)
 		}
-		hkExpectAsk(t, h.out.String(), hkCommitAskWording)
+		return h.out.String()
+	}
+	expectCodexDeny := func(t *testing.T, got string) {
+		t.Helper()
+		if decision, reason := hkDecision(t, got); decision != "deny" || !strings.HasPrefix(reason, codexQuestion) {
+			t.Fatalf("decision %q with reason %q, want a deny starting %q", decision, reason, codexQuestion)
+		}
 	}
 
-	// Oracle: under --host codex the Claude Code input, which has neither
-	// turn_id nor model, gets Codex's deny all the same.
-	if decision, reason := hkDecision(t, h.runCodexPrePublish(t, claude)); decision != "deny" || !strings.HasPrefix(reason, codexQuestion) {
-		t.Fatalf("--host codex decision %q with reason %q, want a deny starting %q", decision, reason, codexQuestion)
+	// Oracle (no --host, as hooks/hooks.json runs it): the input decides,
+	// as before --host existed. The Claude Code input and one that adds
+	// turn_id get the ask; the recorded Codex input, with turn_id and
+	// model, gets Codex's deny.
+	hkExpectAsk(t, run(t, claude), hkCommitAskWording)
+	hkExpectAsk(t, run(t, withTurn), hkCommitAskWording)
+	expectCodexDeny(t, run(t, codex))
+
+	// Oracle: a given --host wins over the input. --host claude-code asks
+	// even for the Codex input; --host codex denies even for the Claude Code
+	// input, which has neither turn_id nor model.
+	for _, input := range [][]byte{claude, codex} {
+		hkExpectAsk(t, run(t, input, "--host", "claude-code"), hkCommitAskWording)
+		expectCodexDeny(t, run(t, input, "--host", "codex"))
+	}
+}
+
+func TestHookPrePublishDeniesAbandonAndOwnerApprovalForCodexInputWithoutHost(t *testing.T) {
+	// Oracle (review finding 1): a Codex still running hooks/hooks.json, with
+	// no --host, sends input with turn_id and model; cw denies there what
+	// Claude Code asks about, as main did, so cw task abandon and an
+	// owner approval do not go ahead. The deny carries the question.
+	repo := hkRepo(t)
+	h := newHKHarness(t)
+	store := hkEmptyStore(t)
+	h.env["CW_TASK_STORE"] = store
+	record := hkSubstantialRecord(t, repo, store, "Old hooks file")
+	const codexQuestion = "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: "
+	for _, command := range []string{
+		"cw task abandon --task " + record.Directory + " --reason x",
+		`cw task assign --task t1 --input b.json --owner-approval "one more round"`,
+	} {
+		input := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": command}})
+		if decision, reason := hkDecision(t, h.runPrePublish(t, input)); decision != "deny" || !strings.HasPrefix(reason, codexQuestion) {
+			t.Fatalf("%s: decision %q with reason %q, want a deny starting %q", command, decision, reason, codexQuestion)
+		}
 	}
 }
 

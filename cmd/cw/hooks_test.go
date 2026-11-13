@@ -643,24 +643,21 @@ func TestHooksEndToEnd(t *testing.T) {
 		}
 	})
 
-	t.Run("session-start adds the instructions on resume even where PLUGIN_ROOT is set", func(t *testing.T) {
-		// Oracle: hooks/hooks.json is Claude Code's, which passes no --host,
-		// so a resume gets global/AGENTS.md as its context although
-		// PLUGIN_ROOT, which Codex sets, is in the environment; only
-		// hooks/codex-hooks.json's --host codex skips it
-		// (TestCodexHooksEndToEnd).
+	t.Run("session-start adds nothing when Codex resumes", func(t *testing.T) {
+		// Oracle: a Codex that still runs hooks/hooks.json, which passes no
+		// --host, sets PLUGIN_ROOT, and cw takes that as Codex: a resume
+		// prints one SessionStart JSON line without additionalContext,
+		// exactly as cw wrote it: not the file, which the command prints when
+		// cw prints nothing, and not the instructions, which the resumed
+		// thread holds.
 		resume, err := json.Marshal(map[string]any{"session_id": "s", "hook_event_name": "SessionStart", "source": "resume", "cwd": repo, "model": "m"})
 		if err != nil {
 			t.Fatal(err)
 		}
+		const want = `{"hookSpecificOutput":{"hookEventName":"SessionStart"}}` + "\n"
 		code, stdout, stderr := hooksSh(t, sessionCommand, resume, env(withCW, "PLUGIN_ROOT="+root))
-		var output struct {
-			HookSpecificOutput struct {
-				AdditionalContext string `json:"additionalContext"`
-			} `json:"hookSpecificOutput"`
-		}
-		if err := json.Unmarshal([]byte(stdout), &output); code != 0 || err != nil || !strings.HasPrefix(output.HookSpecificOutput.AdditionalContext, strings.TrimRight(string(agents), "\n")) {
-			t.Fatalf("exit %d stderr %q stdout %q (%v); want global/AGENTS.md as the context", code, stderr, stdout, err)
+		if code != 0 || stdout != want {
+			t.Fatalf("exit %d stderr %q stdout %q; want exit 0 and %q", code, stderr, stdout, want)
 		}
 	})
 

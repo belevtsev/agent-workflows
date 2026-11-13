@@ -19,7 +19,7 @@ summary is produced with a 5 second deadline and cached for one hour under
 `${CLAUDE_PLUGIN_DATA}/doctor/<sha256 of the directory>.json`; when it cannot be
 produced in time, the conventions are returned alone.
 
-Under Codex (`--host codex`), a `resume` adds nothing. A resumed
+Under Codex ([which host](#codex)), a `resume` adds nothing. A resumed
 Codex thread keeps all that earlier session starts added, and after a
 compaction, which drops it, Codex runs the hook again with `compact`
 ([Codex](#codex)). `cw` then prints a SessionStart object without
@@ -661,7 +661,7 @@ and the last row lists what still gets past git's hooks.
 | A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
 | `chmod 000 <task>`, or `chmod 000` on every revision file of a task (its only one, for a new task) | Allowed. A task directory the hook cannot list, or whose revision files it cannot open, has no revision to read and is ignored, like one in which no revision decodes. |
 | A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |
-| Codex running `hooks/hooks.json` with a `cw` that has `--host`: a Codex that does not read the `hooks` entry of `.codex-plugin/plugin.json`, or a plugin installed before that entry, with a newer `cw` | The four asks are allowed: that file passes no `--host`, so `cw` answers as for Claude Code, and Codex runs a command it is asked about. The denies still deny. `cw` no longer tells Codex apart by its input ([Codex](#codex)). The session-start version line names the plugin and `cw` versions when they differ. Caught when `cw gate install` has run, for git commit and push. |
+| Codex running `hooks/hooks.json` (a plugin installed before `hooks/codex-hooks.json`, or a Codex that ignores the manifest's `hooks` entry) and sending PreToolUse input without `turn_id` or without `model` | Allowed: the asks before `cw task abandon`, before an `--owner-approval`, for an unrecorded substantial change, for a push with uncommitted changes and after a directory the hook cannot resolve. That file passes no `--host`, so `cw` tells Codex apart by those two members, and without both it answers as for Claude Code, whose ask Codex does not honour. The recorded Codex inputs carry both. The denies still deny. Commit and push are caught when `cw gate install` has run ([Codex](#codex)). |
 | A record that cannot be read, under Codex: `echo '{' > <task>/record-000002.json` | Allowed. Codex cannot ask, and the hook lets the command go ahead there rather than block the user on a file it cannot judge ([Codex](#codex)). |
 | A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
 | `cw task abandon --task <task> --reason TEXT` run where the hook cannot see it: from a script, `make` or a plan check; through a name that no word of the command spells, such as `X=c; ${X}w task abandon …`; or through a renamed copy of `cw`, such as `cw-g5 task abandon …` | Allowed. An abandoned task never gates. The hook asks before every `cw task abandon` whose words it can see ([Abandoning a task](#abandoning-a-task)), and under Codex it denies one. |
@@ -690,9 +690,14 @@ hooks that `cw gate install` wrote.
 
 Codex runs the hooks file that `.codex-plugin/plugin.json` names in `hooks`,
 `hooks/codex-hooks.json`, in place of `hooks/hooks.json`. Each of its commands
-passes `--host codex`, so `cw` knows the host from the flag alone; without the
-flag `cw` answers as for Claude Code, whatever the hook input or environment
-holds. What follows was recorded with codex-cli 0.167.2 on 2026-11-12 and
+passes `--host codex`, and a given `--host` (`codex` or `claude-code`) decides
+the host. Without one, as `hooks/hooks.json` runs `cw`, `cw` tells Codex apart
+as it did before `--host`: by `turn_id` and `model` in the PreToolUse input,
+and at session start, whose input has no `turn_id`, by `PLUGIN_ROOT`, which
+Codex sets and Claude Code does not. So a Codex that still runs
+`hooks/hooks.json`, from a plugin installed before the Codex file or because
+it ignores the manifest's `hooks` entry, keeps the Codex decisions below.
+What follows was recorded with codex-cli 0.167.2 on 2026-11-12 and
 0.168.0 on 2026-11-13, `codex exec` and a wrapper in place of `cw` that saved
 each hook's arguments, input and environment
 ([Recorded host runs](#recorded-host-runs));
@@ -715,8 +720,10 @@ are recorded inputs, with paths replaced by placeholders.
   `hooks/codex-hooks.json`: every call carried `--host codex`, and none came
   from `hooks/hooks.json`. Claude Code does not read that manifest.
 - **Input.** The PreToolUse input names the shell tool `Bash` and holds `cwd`
-  and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`.
-  `cw` no longer reads either to tell the hosts apart.
+  and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`,
+  which Codex documents as its own extensions. Claude Code's PreToolUse input
+  has neither; without `--host`, `cw` takes the two together as the sign of
+  Codex, and one of them alone is not enough.
 - **Matcher.** Codex matches `Bash` but ignores the `if` condition, so the
   Codex file has two PreToolUse handlers without one, each run for every shell
   command, at the same time. `cw hook pre-publish --host codex` exits at once,
@@ -728,8 +735,8 @@ are recorded inputs, with paths replaced by placeholders.
   before it reads its input. Each command of the Codex file then runs the
   same hook again without the flag, on the same input, so the gate stays on:
   that `cw` tells Codex apart by the input's `turn_id` and `model`, and at
-  session start by `PLUGIN_ROOT`, as it did before. Any other exit status
-  runs nothing more.
+  session start by `PLUGIN_ROOT`, as a current `cw` does without `--host`.
+  Any other exit status runs nothing more.
 - **Decisions.** A deny blocks the command, and the agent sees
   `Command blocked by PreToolUse hook:` and the reason. No output lets the
   command run. An ask is not supported: Codex ran the command without asking
@@ -749,7 +756,7 @@ are recorded inputs, with paths replaced by placeholders.
   `compact` run adds it back before the next request. A thread from
   `codex exec fork` carries its parent's history, conventions included; Codex
   names that source `fork`, which the matcher does not list, and no
-  session-start hook ran. Under `--host codex`, `cw` compares itself with
+  session-start hook ran. Under Codex, `cw` compares itself with
   `.codex-plugin/plugin.json` and skips the Claude Code version. That version
   line is not recorded under Codex: the runs used a `cw` built between tags,
   which is not compared.

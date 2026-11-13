@@ -20,6 +20,10 @@ const (
 	minClaudeCodeVersion = "2.1.292"
 	// pluginManifestLimit bounds the plugin manifest read at session start.
 	pluginManifestLimit = 64 << 10
+	// codexPluginRoot is set by Codex, not by Claude Code, for a plugin hook;
+	// Codex documents it as its own extension. Without --host it names the
+	// host at session start, whose Codex input has no turn_id (hookHost).
+	codexPluginRoot = "PLUGIN_ROOT"
 	// claudeCodeAgentVariable is where Claude Code, since 2.1.120, names
 	// itself and its version for its subprocesses, hooks included, unless the
 	// environment it starts in already names another agent.

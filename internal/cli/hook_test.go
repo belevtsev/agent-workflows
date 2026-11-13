@@ -1992,11 +1992,12 @@ func TestHookSessionStartSaysNothingWhenVersionsMatchOrCWIsADevBuild(t *testing.
 }
 
 func TestHookSessionStartComparesTheManifestOfTheHost(t *testing.T) {
-	// Oracle: under --host codex, cw compares .codex-plugin/plugin.json;
-	// without it (Claude Code), .claude-plugin/plugin.json, even where
-	// PLUGIN_ROOT is set, which no longer names the host. Each case gives
-	// the two manifests different versions, so the line appears exactly when
-	// the host's manifest differs from cw.
+	// Oracle: under Codex (--host codex, or no --host with PLUGIN_ROOT set,
+	// which Codex sets), cw compares .codex-plugin/plugin.json; under Claude
+	// Code (no --host and no PLUGIN_ROOT, or --host claude-code even with
+	// PLUGIN_ROOT), .claude-plugin/plugin.json. Each case gives the two
+	// manifests different versions, so the line appears exactly when the
+	// host's manifest differs from cw.
 	pluginRoot := map[string]string{"PLUGIN_ROOT": "<root>"}
 	codex := []string{"--host", "codex"}
 	tests := []struct {
@@ -2007,7 +2008,8 @@ func TestHookSessionStartComparesTheManifestOfTheHost(t *testing.T) {
 	}{
 		{"Codex reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, codex, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
 		{"Claude Code reads its own manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
-		{"Claude Code reads its own manifest with PLUGIN_ROOT set", "3.0.0-rc.2", "3.0.0-rc.1", pluginRoot, nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"Codex without --host reads its own manifest", "3.0.0-rc.1", "3.0.0-rc.2", pluginRoot, nil, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
+		{"--host claude-code reads its own manifest with PLUGIN_ROOT set", "3.0.0-rc.2", "3.0.0-rc.1", pluginRoot, []string{"--host", "claude-code"}, "plugin 3.0.0-rc.2, cw 3.0.0-rc.1: upgrade cw"},
 		{"Codex ignores the Claude Code manifest", "3.0.0-rc.2", "3.0.0-rc.1", nil, codex, ""},
 		{"Claude Code ignores the Codex manifest", "3.0.0-rc.1", "3.0.0-rc.2", nil, nil, ""},
 	}
