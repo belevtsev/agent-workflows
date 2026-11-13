@@ -15,7 +15,7 @@ platforms or shells, more than about 300 changed lines, or a design choice with
 real alternatives that the source cannot settle. Everything else stays
 lightweight: the coder writes the tests, the reviewer checks each against the
 Code Review Rules, and commits and pushes run directly under the user's
-authorization. Dispatch an independent [test engineer](references/contracts/test-engineer.md)
+authorization. Dispatch an independent [test engineer](references/dispatching-reviews-and-tests.md#dispatch-a-test-engineer)
 when a substantial task adds or materially changes behavioural tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks. Publish
 a verified substantial task with `cw publish`, drafting the commit message and
@@ -126,7 +126,7 @@ a task is substantial or replace a gate.
 | Advisers, checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
 | Roles, flow, review stages | [contracts](references/contracts/README.md) |
-| Independent tests | [test-engineer](references/contracts/test-engineer.md) |
+| Independent tests | [dispatching-reviews-and-tests](references/dispatching-reviews-and-tests.md) |
 | Commit, push, PR | [publication](references/github-worker.md) |
 | Jira, Confluence, GitHub evidence | [connected-sources](references/connected-sources.md) |
 | Adviser providers | [adviser-providers](references/adviser-providers.md) |

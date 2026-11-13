@@ -372,7 +372,7 @@ profile with the ID of the run that wrote it, when they exist; it returns the sa
 no changes. Each behaviour finding carries a reproduction test that fails on
 the current source; the coordinator applies it unchanged and accepts the fix
 only when a recorded check run of it passes
-([reproduce every behaviour finding](contracts/code-review.md#reproduce-every-behaviour-finding)). Adviser checkpoints do not replace review,
+([reproduce every behaviour finding](dispatching-reviews-and-tests.md#apply-a-reproduction-test)). Adviser checkpoints do not replace review,
 and missing independent review cannot be presented as completed review. Small
 and unchanged read-only tasks stay lightweight.
 
@@ -503,7 +503,7 @@ missed; neither counts against the cap. Record the follow-up's other findings as
    changed.
 2. Apply each accepted finding's reproduction test unchanged, as a new file
    that is none of the test engineer's authored files
-   ([reproduce every behaviour finding](contracts/code-review.md#reproduce-every-behaviour-finding)).
+   ([reproduce every behaviour finding](dispatching-reviews-and-tests.md#apply-a-reproduction-test)).
    Fix the source, assigning any fix worker before dispatching it, with exact
    file scopes that leave the reproduction tests out. Then run every
    check that a record or a fix worker's brief cites, once, before recording

@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
+  part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
   ([CI](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles

@@ -36,7 +36,7 @@ them required.
 ## Implementation
 
 When a substantial task adds or materially changes behavioral tests, or the user
-asks, dispatch the independent [test engineer](contracts/test-engineer.md). Agree the
+asks, dispatch the independent [test engineer](dispatching-reviews-and-tests.md#dispatch-a-test-engineer). Agree the
 versioned contract and interfaces first, then separate exact implementation and
 test-artifact ownership. Authors receive approved contracts/scaffolding only;
 source-aware coordination or verification owns execution and filtered feedback.
