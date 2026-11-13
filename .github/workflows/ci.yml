@@ -15,9 +15,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The Go packages are tested in three shards per system, so that no job
-  # holds more than a third of the test time. The shards are not required
-  # checks: the two jobs named "Native Go / <system>" below are, and each
+  # The Go packages are tested in three shards per system, so that each job
+  # takes about a third as long as one job for all of them. The shards are not
+  # required checks: the two jobs named "Native Go / <system>" below are, and each
   # passes only when all of its shards pass.
   go-linux:
     name: Go shard ${{ matrix.shard }} of 3 / ubuntu-latest

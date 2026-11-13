@@ -371,8 +371,8 @@ preserved licenses are covered by the import-provenance checks in
 
 | Job | Steps |
 | --- | --- |
-| `Go shard 1 of 3 / <system>` | gofmt check, `go vet ./...`, then the tests of `internal/cli`, `internal/langpack` and `internal/taskflow` |
-| `Go shard 2 of 3 / <system>` | the tests of `cmd/cw` |
+| `Go shard 1 of 3 / <system>` | the tests of `internal/taskflow` |
+| `Go shard 2 of 3 / <system>` | gofmt check, `go vet ./...`, then the tests of `cmd/cw` |
 | `Go shard 3 of 3 / <system>` | the tests of every other package |
 | `Native Go / ubuntu-latest`, `Native Go / macos-latest` | the required checks: each passes only when all three shards of its system passed |
 | `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |

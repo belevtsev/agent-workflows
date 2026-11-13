@@ -1,6 +1,6 @@
 name: Test one shard of the Go packages
 description: >-
-  Set up the pinned Go and test one of the three package shards. Shard 1 also
+  Set up the pinned Go and test one of the three package shards. Shard 2 also
   checks formatting and runs go vet on every package.
 
 inputs:
@@ -17,7 +17,7 @@ runs:
         go-version-file: go.mod
         cache: true
     - name: Check formatting
-      if: inputs.shard == '1'
+      if: inputs.shard == '2'
       shell: bash
       run: |
         unformatted="$(git ls-files -z '*.go' ':!:third_party/**' | xargs -0 gofmt -l)"
@@ -26,22 +26,22 @@ runs:
           exit 1
         fi
     - name: Vet
-      if: inputs.shard == '1'
+      if: inputs.shard == '2'
       shell: bash
       run: go vet ./...
-    # Shard 1 holds the three packages named in `first` and shard 2 cmd/cw,
-    # whose tests run the built binary: each is about a third of the test
-    # time. Shard 3 holds every other package, so a new package is tested
-    # without a change to these lists.
+    # Shard 1 holds internal/taskflow, the slowest package, and shard 2
+    # cmd/cw, whose tests run the built binary and fail when other packages
+    # load the runner. Shard 3 holds every other package, so a new package is
+    # tested without a change to these lists.
     - name: Select the packages of this shard
       shell: bash
       env:
         SHARD: ${{ inputs.shard }}
       run: |
-        first='/internal/(cli|langpack|taskflow)$'
+        first='/internal/taskflow$'
         second='/cmd/cw$'
         all="$(go list ./...)"
-        if [ "$(grep -Ec "$first" <<<"$all")" != 3 ] || [ "$(grep -Ec "$second" <<<"$all")" != 1 ]; then
+        if [ "$(grep -Ec "$first" <<<"$all")" != 1 ] || [ "$(grep -Ec "$second" <<<"$all")" != 1 ]; then
           echo "a shard names a package that go list ./... does not print: update the lists in .github/actions/go-test/action.yml"
           exit 1
         fi
