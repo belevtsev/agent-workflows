@@ -29,7 +29,7 @@ type Profile struct {
 // prose, not on spend.
 type Budget struct {
 	MaxUSD float64 `json:"max_usd"`
-	StopAt float64 `json:"stop_at,omitempty"`
+	StopAt float64 `json:"stop_at,omitzero"`
 }
 
 // DefaultProfile is the profile of a plan that names none.
@@ -161,9 +161,11 @@ func resolveProfile(plan Plan) (*Profile, error) {
 
 // validateStoredProfile checks a recorded profile against its plan. A record
 // started before profiles existed has none, and its plan names neither a
-// profile nor a budget. A recorded profile is judged by its shape and by the
-// plan, not against today's built-in values, which may change between
-// releases while the task keeps the ones it started with.
+// profile nor a budget. start writes the resolved name into the plan, so a
+// recorded profile's name must equal the plan's profile member, never today's
+// DefaultProfile. A recorded profile is judged by its shape and by the plan,
+// not against today's built-in values, which may change between releases
+// while the task keeps the ones it started with.
 func validateStoredProfile(record Record) error {
 	profile := record.Profile
 	if profile == nil {
@@ -172,7 +174,7 @@ func validateStoredProfile(record Record) error {
 		}
 		return nil
 	}
-	if profile.Name != planProfileName(record.Plan) {
+	if profile.Name != record.Plan.Profile {
 		return errors.New("invalid stored profile: its name differs from the plan's profile")
 	}
 	if len(profile.Stages) == 0 || len(profile.Stages) > len(stageOrder) {

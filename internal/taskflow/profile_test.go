@@ -106,8 +106,8 @@ func TestBuiltInProfilesEqualTheDocumentedTable(t *testing.T) {
 		names = append(names, name)
 	}
 	slices.Sort(names)
-	if want := []string{"lite", "standard", "strict"}; !slices.Equal(names, want) {
-		t.Fatalf("documented profiles %q, want %q", names, want)
+	if builtIn := taskflow.BuiltInProfileNames(); !slices.Equal(names, builtIn) {
+		t.Fatalf("documented profiles %q, built-in profiles %q", names, builtIn)
 	}
 	if defaultName != taskflow.DefaultProfile {
 		t.Errorf("documented default %q, built-in default %q", defaultName, taskflow.DefaultProfile)
@@ -121,9 +121,6 @@ func TestBuiltInProfilesEqualTheDocumentedTable(t *testing.T) {
 		if !reflect.DeepEqual(got, documented[name]) {
 			t.Errorf("built-in profile %s = %+v, documented %+v", name, got, documented[name])
 		}
-	}
-	if _, ok := taskflow.BuiltInProfile("custom"); ok {
-		t.Error("an undocumented profile is built in")
 	}
 }
 
@@ -185,7 +182,38 @@ func TestStartRecordsThePlanProfile(t *testing.T) {
 			if !reflect.DeepEqual(loaded.Profile, record.Profile) {
 				t.Errorf("loaded profile %+v, started with %+v", loaded.Profile, record.Profile)
 			}
+			if loaded.Plan.Profile != record.Profile.Name {
+				t.Errorf("stored plan profile %q, want the resolved %q", loaded.Plan.Profile, record.Profile.Name)
+			}
 		})
+	}
+}
+
+// Oracle: the stored plan holds the budget as given. A plan budget without
+// stop_at is stored without it, so the plan bytes, which the evidence
+// binding hashes, carry no member the plan did not.
+func TestStoredPlanBudgetOmitsAnAbsentStopAt(t *testing.T) {
+	repo, store := spRepo(t, map[string]string{"a.txt": "a\n"})
+	plan := spPlan("go", "version")
+	plan.Budget = &taskflow.Budget{MaxUSD: 10}
+	record, err := taskflow.StartWithPacks(context.Background(), repo, store, plan, nil, taskflow.SelectionDefault, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored struct {
+		Plan struct {
+			Budget map[string]json.RawMessage `json:"budget"`
+		} `json:"plan"`
+	}
+	if err := json.Unmarshal(data, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := stored.Plan.Budget["stop_at"]; ok || string(stored.Plan.Budget["max_usd"]) != "10" {
+		t.Errorf("stored plan budget %s, want only max_usd 10", stored.Plan.Budget)
 	}
 }
 
@@ -255,23 +283,61 @@ func TestLaterRevisionThatChangesTheProfileFailsToLoad(t *testing.T) {
 	}
 }
 
+// withoutPlanProfile removes the profile member of the stored revision's
+// plan, as in a record started before profiles existed.
+func withoutPlanProfile(t *testing.T, file string) {
+	t.Helper()
+	data, err := os.ReadFile(file)
+	var members map[string]json.RawMessage
+	if err != nil || json.Unmarshal(data, &members) != nil {
+		t.Fatalf("cannot decode %s: %v", file, err)
+	}
+	var plan map[string]json.RawMessage
+	if err := json.Unmarshal(members["plan"], &plan); err != nil {
+		t.Fatal(err)
+	}
+	delete(plan, "profile")
+	encoded, _ := json.Marshal(plan)
+	rewriteRevision(t, file, "plan", encoded)
+}
+
 // Oracle: a record started before profiles existed has no profile and loads
 // with none, so no limits apply to it; a stored profile that disagrees with
 // its plan, or a plan profile with no stored profile, is damaged and refused.
 func TestStoredProfileAgreesWithItsPlan(t *testing.T) {
+	const lite = `"name":"lite","stages":["tests","implementation","test-review","code-review"]`
 	for _, c := range []struct {
 		name    string
 		edit    func(t *testing.T, file string)
 		refused string
+		budget  *taskflow.Budget
 	}{
-		{"record without a profile loads", func(t *testing.T, file string) { rewriteRevision(t, file, "profile", nil) }, ""},
-		{"profile name differs from the plan", func(t *testing.T, file string) {
+		{name: "record without a profile loads", edit: func(t *testing.T, file string) {
+			withoutPlanProfile(t, file)
+			rewriteRevision(t, file, "profile", nil)
+		}},
+		{name: "round cap on a stage outside the profile", edit: func(t *testing.T, file string) {
+			rewriteRevision(t, file, "profile", json.RawMessage(`{`+lite+`,"rounds":{"spec":2},"fix_rounds":2,"budget":{"max_usd":15,"stop_at":0.8}}`))
+		}, refused: "invalid stored profile round caps"},
+		{name: "round cap below one", edit: func(t *testing.T, file string) {
+			rewriteRevision(t, file, "profile", json.RawMessage(`{`+lite+`,"rounds":{"tests":0},"fix_rounds":2,"budget":{"max_usd":15,"stop_at":0.8}}`))
+		}, refused: "invalid stored profile round caps"},
+		{name: "no fix rounds", edit: func(t *testing.T, file string) {
+			rewriteRevision(t, file, "profile", json.RawMessage(`{`+lite+`,"rounds":{"tests":2},"fix_rounds":0,"budget":{"max_usd":15,"stop_at":0.8}}`))
+		}, refused: "invalid stored profile fix rounds"},
+		{name: "stored budget out of range", edit: func(t *testing.T, file string) {
+			rewriteRevision(t, file, "profile", json.RawMessage(`{`+lite+`,"rounds":{"tests":2},"fix_rounds":2,"budget":{"max_usd":15,"stop_at":1.5}}`))
+		}, refused: "invalid stored profile budget: stop_at must be above 0 and at most 1"},
+		{name: "stored budget differs from the plan's", budget: &taskflow.Budget{MaxUSD: 10}, edit: func(t *testing.T, file string) {
+			rewriteRevision(t, file, "profile", json.RawMessage(`{`+lite+`,"rounds":{"tests":2},"fix_rounds":2,"budget":{"max_usd":15,"stop_at":0.8}}`))
+		}, refused: "invalid stored profile budget: it differs from the plan's budget"},
+		{name: "profile name differs from the plan", edit: func(t *testing.T, file string) {
 			rewriteRevision(t, file, "profile", json.RawMessage(`{"name":"strict","stages":["spec"],"rounds":{},"fix_rounds":2,"budget":{"max_usd":100,"stop_at":0.8}}`))
-		}, "invalid stored profile: its name differs from the plan's profile"},
-		{"unknown stage", func(t *testing.T, file string) {
+		}, refused: "invalid stored profile: its name differs from the plan's profile"},
+		{name: "unknown stage", edit: func(t *testing.T, file string) {
 			rewriteRevision(t, file, "profile", json.RawMessage(`{"name":"lite","stages":["deploy"],"rounds":{},"fix_rounds":2,"budget":{"max_usd":15,"stop_at":0.8}}`))
-		}, "invalid stored profile stages"},
-		{"plan names a profile the record lacks", func(t *testing.T, file string) {
+		}, refused: "invalid stored profile stages"},
+		{name: "plan names a profile the record lacks", edit: func(t *testing.T, file string) {
 			data, _ := os.ReadFile(file)
 			var members map[string]json.RawMessage
 			_ = json.Unmarshal(data, &members)
@@ -281,11 +347,13 @@ func TestStoredProfileAgreesWithItsPlan(t *testing.T) {
 			encoded, _ := json.Marshal(plan)
 			rewriteRevision(t, file, "plan", encoded)
 			rewriteRevision(t, file, "profile", nil)
-		}, "invalid stored profile: the plan names a profile or budget but the record has no profile"},
+		}, refused: "invalid stored profile: the plan names a profile or budget but the record has no profile"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			repo, store := spRepo(t, map[string]string{"a.txt": "a\n"})
-			record, err := taskflow.StartWithPacks(context.Background(), repo, store, spPlan("go", "version"), nil, taskflow.SelectionDefault, nil)
+			plan := spPlan("go", "version")
+			plan.Budget = c.budget
+			record, err := taskflow.StartWithPacks(context.Background(), repo, store, plan, nil, taskflow.SelectionDefault, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

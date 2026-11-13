@@ -7,4 +7,4 @@ Saved keys that cannot be read, for example in a configuration directory that is
 The binding never changes for the task's lifetime; 'cw task context' carries it to 'cw consult'.
 An unreadable or invalid policy fails before any task is created.
 The record also fixes the pack set: the selected packs ('cw pack list') whose detect file is at the top of the selected path now; an unreadable pack selection, or a selected pack not built into cw, fails before any task is created.
-The record also fixes the profile: the plan's profile member (lite, standard or strict; lite when the plan names none) with its stages, author round caps and budget in US dollars; a plan budget member may lower the profile's max_usd but not raise it.
+The record also fixes the profile: the plan's profile member (lite, standard or strict; lite when the plan names none) with its stages, author round caps and budget in US dollars, and the summary prints it as profile; a plan budget member may lower the profile's max_usd, and set stop_at up to the profile's 0.8, but not raise either.
