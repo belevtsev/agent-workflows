@@ -43,6 +43,13 @@ type WorkerBrief struct {
 	// covers; it is required when the plan can prove tests and refused when it
 	// cannot.
 	Requirements []ContractRequirement `json:"requirements,omitempty"`
+	// Stage is the flow stage the brief answers (stages.go). A task with a
+	// profile requires one of its stages; Fixes names the findings or
+	// requirements a later round of an author stage answers, and Repeats the
+	// earlier assignment of the same stage a replacement repeats.
+	Stage   string   `json:"stage,omitempty"`
+	Fixes   []FixRef `json:"fixes,omitempty"`
+	Repeats string   `json:"repeats,omitempty"`
 }
 
 type WorkerAssignment struct {
@@ -324,6 +331,10 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if err := validateBrief(*record, brief); err != nil {
 			return asInvalid(err)
 		}
+		returned := func(id string) bool { return findWorkerResult(*record, id) != nil }
+		if err := validateBriefStage(*record, record.Assignments, returned, brief); err != nil {
+			return asInvalid(err)
+		}
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
@@ -552,7 +563,7 @@ func reachRunCoverage(artifacts Artifacts, assigned WorkerAssignment, result Wor
 // failed or cancelled runs without ever upgrading them to success.
 func workerChecks(record Record, snapshot projectctx.Snapshot, ids []string, completed bool) ([]string, error) {
 	if completed {
-		return bindChecks(record, snapshot, ids)
+		return bindChecks(record, exactCredit(snapshot), ids)
 	}
 	runs := []string{}
 	for _, id := range ids {
@@ -977,12 +988,12 @@ func (env Env) AcceptWorkerResult(ctx context.Context, taskPath string, input Wo
 				}
 			}
 		}
-		runs, err := bindChecks(*record, snapshot, input.CheckIDs)
+		runs, err := bindChecks(*record, exactCredit(snapshot), input.CheckIDs)
 		if err != nil {
 			return err
 		}
 		for _, id := range runs {
-			if err := checkStoredRun(taskDirectory{root}, *record, snapshot, id); err != nil {
+			if err := checkStoredRun(taskDirectory{root}, *record, exactCredit(snapshot), id); err != nil {
 				return err
 			}
 		}

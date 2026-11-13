@@ -800,7 +800,7 @@ func aclAssess(t *testing.T, dir, root string, checkIDs, decisionIDs []string) {
 func (r *aclRepo) runCheck(t *testing.T, dir, id string) taskflow.CheckRun {
 	t.Helper()
 	before := len(aclLoad(t, dir).Checks)
-	res := r.cw.run("", "task", "run", "--full", "--task", dir, "--check", id)
+	res := r.cw.run("", "task", "run", "--full", "--force", "--task", dir, "--check", id)
 	rec := aclLoad(t, dir)
 	if len(rec.Checks) <= before {
 		t.Fatalf("cw task run --check %s recorded no run: %s", id, res.message())
@@ -935,7 +935,7 @@ func (r *aclRepo) acceptedReview(t *testing.T, dir, reviewID string) {
 	sum := sha256.Sum256(filled)
 	ref := []any{map[string]any{"path": "internal/b/b.go", "start_line": 1, "end_line": 4}}
 	brief := map[string]any{
-		"id": reviewID, "agent_id": "/root/reviewer", "role": "review",
+		"id": reviewID, "agent_id": "/root/reviewer", "role": "review", "stage": "code-review",
 		"goal": "Review the change against the requirements", "owned_paths": []string{"."},
 		"constraints": []string{}, "check_ids": []string{},
 		"stop_condition": "Return findings with source evidence and what was not reviewed",

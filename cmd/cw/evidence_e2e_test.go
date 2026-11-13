@@ -379,7 +379,8 @@ func TestEvidenceE2EGoPackagesNeedCoveringPassedRuns(t *testing.T) {
 
 	// Only the latest run of a check at the current source counts: a later
 	// failed run of the same check at the same source withdraws the credit.
-	e.runExpect(false, "beta", "BETA_FAIL=1")
+	// BETA_FAIL is outside the run key, so only CW_NO_REUSE runs it again.
+	e.runExpect(false, "beta", "BETA_FAIL=1", "CW_NO_REUSE=1")
 	expect("pass then fail at the same source", []string{beta}, []string{anyRun, alpha})
 	// P3a-2 B10, B22: a pass after a failed run of the same check at the same
 	// source and GOFLAGS is a rerun; it earns no credit and says so.
@@ -471,7 +472,7 @@ func (e *evidenceE2E) assignReview(reviewID, agent string) taskflow.Bundle {
 	e.t.Helper()
 	bundle, ref := e.bundle(reviewID)
 	brief := map[string]any{
-		"id": reviewID, "agent_id": agent, "role": "review",
+		"id": reviewID, "agent_id": agent, "role": "review", "stage": "code-review",
 		"goal":           "Review the change against the contract.",
 		"owned_paths":    []string{"."},
 		"constraints":    []string{"Read only."},
