@@ -118,6 +118,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
+- [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
+  the wrong source and does not block reads, so their independence rests on the contracts and briefs.
 - `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
   message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 - `cw task verify` names an unresolved, stale or invalid decision "coordinator decision" instead of "Codex task decision", since either host
