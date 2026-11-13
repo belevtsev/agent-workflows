@@ -49,6 +49,9 @@ func (env Env) start(ctx context.Context, repo, store string, plan Plan, adviser
 	if err != nil {
 		return Record{}, asInvalid(err)
 	}
+	// The plan records the profile it resolved to, as it records the
+	// coordinator, so a later change of DefaultProfile changes no task.
+	plan.Profile = profile.Name
 	advisers = maps.Clone(advisers)
 	if advisers == nil {
 		advisers = map[string]string{}
