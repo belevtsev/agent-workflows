@@ -8,6 +8,20 @@ the Codex instruction block, paths, exit statuses, what each version promises
 
 ## Install
 
+### Host requirements
+
+Other pages link here rather than repeat these versions.
+
+| Requirement | Claude Code | Codex |
+| --- | --- | --- |
+| Platform | macOS or Linux; Windows is not supported | macOS or Linux; Windows is not supported |
+| Host version | 2.1.292 or newer, because the coordinator passes `effort` on every dispatch; that also covers `omitClaudeMd` for the reviewer and the test engineer (2.1.271). The session-start hook names an older client ([session start](hooks.md#session-start)) | No minimum is checked; the hooks were recorded on 0.167.2 ([recorded host runs](hooks.md#recorded-host-runs)) |
+| `cw` on `PATH` | The release that matches the plugin version ([get `cw`](#get-cw)); the session-start hook names a mismatch | Same |
+| Go | 1.27.1 or newer, to build `cw` and for the Go rule of `cw task verify` | Same |
+| git | On `PATH`; the task record and the commit gate read it | Same |
+| Hooks | Run once the plugin is installed | Run only after you trust them in `/hooks` ([Codex](#codex)) |
+| Worker models | Aliases `opus`, `sonnet` and `haiku` from [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml); an alias resolves to the host's current release | The `sol` and `luna` profiles of [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) name the models |
+
 ### Claude Code plugin
 
 ```sh
@@ -492,6 +506,30 @@ measurement input and model advice do not authorize publication or deployment.
 passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
+
+### Starter plan
+
+`cw task init --title T [--repo DIR] [--profile lite|standard|strict] [--out FILE] [--json]`
+writes a plan that `cw task start` accepts unedited, then prints the
+`cw task start` command to run next:
+
+```sh
+cw task init --title "Add a greeting"
+cw task start --plan plan.json
+```
+
+The plan is a substantial task with the title, the profile (`lite` by default,
+written as the plan's `profile` member), one requirement `r1` that repeats the
+title, and one check bound to it. The check is the `commands.race` of the first
+selected [pack](packs.md) whose `detect` file is at the top of `--repo` (default:
+the current directory); in a Go module it is `race`,
+`go test -race -shuffle=on ./...`. Without such a pack the check is `test`, which
+runs `false` and fails until you replace its argv. Under `lite` and `standard`
+the plan sets `checkpoints.required` to false with a reason, which verify lists;
+`strict` leaves the checkpoints required. `--out` defaults to `plan.json` in the
+current directory, and `cw task init` never replaces an existing file (exit 1).
+It prints text, or one JSON object with `--json`; with `--dry-run` it prints the
+same and writes nothing.
 
 ### Listing tasks
 

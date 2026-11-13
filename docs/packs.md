@@ -85,7 +85,7 @@ other key and refuses a schema newer than the one it knows.
 | `kind` | yes | `language` or `domain` | the default selection |
 | `detect` | yes | 1 to 16 distinct file names, without `/` | `cw task start` |
 | `evidence_rule` | no | a rule id such as `go.package-test/v2`, ending in `/v<N>` | `cw task verify` |
-| `commands` | no | `race`: a non-empty argv that runs the pack's tests under the race detector | `cw pack list` |
+| `commands` | no | `race`: a non-empty argv that runs the pack's tests under the race detector | `cw pack list`, [`cw task init`](operations.md#starter-plan) |
 
 A manifest holds only fields `cw` reads. Any other key, such as the
 `tests`, `skills` or `review` of the [original design](design/language-packs.md),

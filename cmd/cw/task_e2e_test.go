@@ -25,6 +25,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	agentworkflows "github.com/belevtsev/agent-workflows/v3"
+	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 )
 
 const (
@@ -108,6 +111,49 @@ func TestTaskLifecycleE2E(t *testing.T) {
 			t.Errorf("git status --porcelain is not empty:\n%s", out)
 		}
 	})
+}
+
+// cw task init writes a plan that cw task start accepts unedited in a Go
+// module: both run in the module with no flags but --title and --plan.
+// Oracle: start exits 0, and the recorded plan's only check has the argv of
+// the embedded go pack's commands.race.
+func TestTaskInitPlanStartsUneditedInGoModule(t *testing.T) {
+	if testing.Short() {
+		t.Skip("end-to-end test builds the cw binary")
+	}
+	builtIn, err := langpack.LoadManifests(agentworkflows.Packs)
+	if err != nil || len(builtIn) != 1 || len(builtIn[0].Commands.Race) == 0 {
+		t.Fatalf("embedded go pack has no race command: %v, %v", builtIn, err)
+	}
+	race := builtIn[0].Commands.Race
+	e := tle2eNewEnv(t, buildPlainCW(t))
+	tle2eWrite(t, filepath.Join(e.repo, "go.mod"), "module example.com/greet\n\ngo 1.24\n")
+	e.git(t, "add", "go.mod")
+	e.git(t, "-c", "user.name=Test Author", "-c", "user.email=test@example.invalid", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "module")
+	e.work = e.repo // cw runs in the module, as a person following the next step would
+	stdout, stderr, code := e.cw(t, "task", "init", "--title", "Add a greeting")
+	if code != 0 || !strings.Contains(stdout, strings.Join(race, " ")) || !strings.Contains(stdout, "cw task start") {
+		t.Fatalf("task init exit %d, want 0 naming the race command and the next command\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	stdout, stderr, code = e.cw(t, "task", "start", "--plan", "plan.json", "--state-dir", e.state, "--full")
+	if code != 0 {
+		t.Fatalf("task start of the init plan exit %d, want 0\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
+	}
+	var record struct {
+		Plan struct {
+			Profile string
+			Checks  []struct{ Argv []string }
+		}
+	}
+	if err := json.Unmarshal([]byte(stdout), &record); err != nil {
+		t.Fatalf("start --full is not a record: %v\n%s", err, stdout)
+	}
+	if len(record.Plan.Checks) != 1 || strings.Join(record.Plan.Checks[0].Argv, "\x00") != strings.Join(race, "\x00") {
+		t.Fatalf("recorded checks %+v, want one check with argv %q", record.Plan.Checks, race)
+	}
+	if record.Plan.Profile != "lite" {
+		t.Errorf("recorded profile %q, want lite", record.Plan.Profile)
+	}
 }
 
 type tle2eEnv struct {

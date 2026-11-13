@@ -23,15 +23,17 @@ The YAML is configurable dispatch policy, not native host configuration: neither
 host loads it as settings or changes a running chat's model. Read
 [model-policy.yaml](../model-policy.yaml) and, under Claude Code,
 [model-policy.claude.yaml](../model-policy.claude.yaml), which replaces its
-profiles and roles (read Sol and Luna below as its matching profiles). Codex
-defaults: Sol 6.1 `high` substantive and `max` for planning, architecture and
-diagnosis (`decision`), Luna `high` bounded evidence and `github`, Luna `xhigh`
-other bounded execution; Claude `github`: Sonnet 5.5 `medium`.
+profiles and roles (read `sol` and `luna` below as its matching profiles). The
+policy files name each profile's model; this page names profiles and Claude
+Code aliases only. Codex defaults: `sol` at `high` for substantive work and
+`decision` at `max` for planning, architecture and diagnosis; `luna` at `high`
+for bounded evidence and `github`, and `luna_execution` at `xhigh` for other
+bounded execution. Claude `github`: `sonnet` at `medium`.
 
 Before dispatch, resolve each role's profile (model and effort) and scope from the
 current policy, preserving explicit user choices; a user request can override
-effort only with a value the profile lists in `user_requested_efforts`. Sol `max`
-may be configured or explicitly requested; Sol `ultra` needs an explicit user
+effort only with a value the profile lists in `user_requested_efforts`. `sol` at `max`
+may be configured or explicitly requested; `sol` at `ultra` needs an explicit user
 request the profile allows. Never escalate automatically; a saved policy cannot
 switch an active session. Verify model and effort from runtime metadata and
 disclose a mismatch. Without an explicit user override, substantive coordination
@@ -41,8 +43,8 @@ only bounded evidence gathering. A compatible subworker does not repair the main
 worker's mismatch.
 
 Substantive coding, testing, planning, review, diagnosis, documentation, new
-acceptance claims and final verification use the role's configured non-Luna
-substantive profile. Routine execution requires fixed files, revision, verified facts, action
+acceptance claims and final verification use the role's configured substantive
+profile, never a `luna` one. Routine execution requires fixed files, revision, verified facts, action
 bounds and authorization from the coordinator; routine GitHub wording can be
 drafted from fixed verified facts under the [GitHub worker contract](github-worker.md).
 New claims, ambiguous scope, conflicts or uncertain verification return to
@@ -50,11 +52,11 @@ substantive ownership. Model selection never relaxes a role's action bounds.
 
 ## Dispatching workers under Claude Code
 
-Substantive roles keep Opus 5.5 at `high`. The decision roles (`planning`,
+Substantive roles keep `opus` at `high`. The decision roles (`planning`,
 `architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
 Claude-only `review_followup` role (every later review of a stage, after that
 stage's first full review), `summarization` and the three routine GitHub roles
-use cheaper Sonnet 5.5 profiles, and `lookup` uses Haiku 5.5; resolve the
+use cheaper `sonnet` profiles, and `lookup` uses `haiku`; resolve the
 current policy before dispatch. A saved `review` pin does not apply to
 `review_followup`; pin it separately.
 
@@ -71,11 +73,12 @@ current policy before dispatch. A saved `review` pin does not apply to
 - Pass `model` and `effort` on every dispatch, including built-in agents such as
   `Explore`, which otherwise use their own default model. The plugin agents below
   pin a default in their frontmatter, but the Agent tool's `model` overrides it,
-  so the policy's role (for example `review_followup` on Sonnet) still applies.
-- Agent accepts model aliases, not full IDs: `claude-opus-5-5` maps to `opus`,
-  `claude-sonnet-5-5` to `sonnet` and `claude-haiku-5-5` to `haiku`. An alias can
-  resolve to another release.
-  Per-invocation `effort` requires Claude Code 2.1.292 or newer.
+  so the policy's role (for example `review_followup` on `sonnet`) still applies.
+- Agent accepts model aliases, not full IDs: pass the alias of the profile's
+  model family (`opus`, `sonnet` or `haiku`). An alias resolves to the host's
+  current release of that family, which can differ from the policy's model ID.
+  Per-invocation `effort` needs the Claude Code version in the
+  [host requirements](../../../docs/operations.md#host-requirements).
 - `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces `CLAUDE_CODE_SUBAGENT_MODEL`, or the
   inherited model if it is unset, instead of the Agent `model` argument.
   `CLAUDE_CODE_EFFORT_LEVEL` overrides per-invocation effort. Organization
@@ -90,8 +93,8 @@ current policy before dispatch. A saved `review` pin does not apply to
   dispatching with no forked history.
 - In a non-interactive `claude -p` session, dispatch workers in the foreground
   (without `run_in_background`) and wait for their results. The process exits when
-  the coordinator's turn ends, and a background worker is lost with it: in one
-  measured replay that discarded a 36-request review.
+  the coordinator's turn ends, and a background worker and its work are lost
+  with it.
 - The coordinator profile's effort is `high` by default; `settings.json`
   `effortLevel` is the user's to set. `settings.json` rejects `max`; use
   `/effort max` or `/effort xhigh` for a session when the user asks for it.
@@ -100,7 +103,7 @@ current policy before dispatch. A saved `review` pin does not apply to
 
 Seven Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
 directory. They have no Skill tool, so the worker starts without the skill
-listing (about 6K fewer input tokens on its first request), and no Agent or
+listing, and no Agent or
 Workflow tool, so only the coordinator dispatches. Dispatch these roles
 with the namespaced `subagent_type`:
 
@@ -117,8 +120,7 @@ with the namespaced `subagent_type`:
 - Each reads its [role contract](contracts/README.md) from the path the brief
   gives, or from the plugin root when the brief gives none; a reviewer brief
   names one of the four review contracts.
-- `reviewer` and `test-engineer` set `omitClaudeMd: true` (Claude Code 2.1.271
-  or newer): they start without the user, project and local CLAUDE.md files, so
+- `reviewer` and `test-engineer` set `omitClaudeMd: true`: they start without the user, project and local CLAUDE.md files, so
   author priors and coordinator instructions stay out of an independent review
   or test. Managed policy files still load. Their contracts carry the project
   rules they apply, and the brief quotes any other project constraint the work
@@ -186,7 +188,7 @@ the configuration
 directory; this applies to tasks started afterwards). `cw task start` binds that
 set, and both checkpoints use the binding. Advisers are plain HTTPS calls made by
 `cw consult`, so they behave the same on both hosts. The coordinator is never one
-of the advisers, and `gpt-6-luna` in `consultation.providers` is an adviser pin
+of the advisers, and a model in `consultation.providers` is an adviser pin
 rather than a worker model, so it does not change under Claude Code.
 `model-policy.claude.yaml` has no consultation section.
 

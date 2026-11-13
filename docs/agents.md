@@ -8,13 +8,13 @@ reviewer never reviews its own work.
 
 | Agent | Model, effort | Does | Contract |
 |---|---|---|---|
-| [spec-writer](https://github.com/belevtsev/agent-workflows/blob/main/agents/spec-writer.md) | Opus, high | OpenSpec change folder from source documents: proposal, spec deltas with testable scenarios, sized tasks, open questions | [spec-writer](../skills/task-orchestration/references/contracts/spec-writer.md) |
-| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | Opus, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
-| [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | Opus, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
-| [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | Opus, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
-| [adversarial-tester](https://github.com/belevtsev/agent-workflows/blob/main/agents/adversarial-tester.md) | Opus, high | Opt-in, beside code review: white-box tests that must fail on the integrated source, each a finding for the implementer; kept as source-access regression tests, never black-box coverage | [adversarial-tester](../skills/task-orchestration/references/contracts/adversarial-tester.md) |
-| [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | Opus, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
-| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | Sonnet, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker.md) |
+| [spec-writer](https://github.com/belevtsev/agent-workflows/blob/main/agents/spec-writer.md) | `opus`, high | OpenSpec change folder from source documents: proposal, spec deltas with testable scenarios, sized tasks, open questions | [spec-writer](../skills/task-orchestration/references/contracts/spec-writer.md) |
+| [architect](https://github.com/belevtsev/agent-workflows/blob/main/agents/architect.md) | `opus`, xhigh | Decision record, interface contract with numbered requirements, implementation brief; an ADR in the repository's ADR folder for a costly-to-reverse choice | [architect](../skills/task-orchestration/references/contracts/architect.md) |
+| [implementer](https://github.com/belevtsev/agent-workflows/blob/main/agents/implementer.md) | `opus`, high | Smallest clean change that meets the contract, built from reusable blocks, with a self-review | [implementer](../skills/task-orchestration/references/contracts/implementer.md) |
+| [test-engineer](https://github.com/belevtsev/agent-workflows/blob/main/agents/test-engineer.md) | `opus`, high | Test matrix and unit, integration and end-to-end tests from the contract alone; the one independent test author | [test-engineer](../skills/task-orchestration/references/contracts/test-engineer.md) |
+| [adversarial-tester](https://github.com/belevtsev/agent-workflows/blob/main/agents/adversarial-tester.md) | `opus`, high | Opt-in, beside code review: white-box tests that must fail on the integrated source, each a finding for the implementer; kept as source-access regression tests, never black-box coverage | [adversarial-tester](../skills/task-orchestration/references/contracts/adversarial-tester.md) |
+| [reviewer](https://github.com/belevtsev/agent-workflows/blob/main/agents/reviewer.md) | `opus`, high | Severity-graded findings at every stage: spec, design, tests (before integration, without the implementation) and code | [spec](../skills/task-orchestration/references/contracts/spec-review.md), [design](../skills/task-orchestration/references/contracts/design-review.md), [test](../skills/task-orchestration/references/contracts/test-review.md) and [code](../skills/task-orchestration/references/contracts/code-review.md) review |
+| [github-worker](https://github.com/belevtsev/agent-workflows/blob/main/agents/github-worker.md) | `sonnet`, medium | Commit, push and pull request from verified facts, when `cw publish` does not fit (the fallback) | [GitHub worker](../skills/task-orchestration/references/github-worker.md) |
 
 Substantial work that builds new behaviour has a review loop at every stage:
 spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
@@ -42,7 +42,7 @@ cannot load a skill by name, dispatch subagents of its own or run a workflow
 script, so only the coordinator dispatches. The reviewer and the test engineer
 also set `omitClaudeMd: true`, so under Claude Code they start without the
 user's and the project's CLAUDE.md files; their contracts and briefs carry the
-project rules they apply. That needs Claude Code 2.1.271 or newer; an older
+project rules they apply. The Claude Code version in the [host requirements](operations.md#host-requirements) honours it; an older
 client ignores it without a warning. Codex has no such switch. Every agent
 here is listed in
 [`.claude-plugin/plugin.json`](https://github.com/belevtsev/agent-workflows/blob/main/.claude-plugin/plugin.json); an agent file that
@@ -116,18 +116,18 @@ contract alone.
 
 **Why not run more agents on a cheaper model?** This project has not measured
 whether a cheaper model keeps the same review and test quality, or how much it
-would save; the agents under test in its eval suites run on Opus by default
+would save; the agents under test in its eval suites run on `opus` by default
 ([evals](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md)).
-On Claude Code the GitHub worker already runs on Sonnet 5.5 at medium effort,
+On Claude Code the GitHub worker already runs on `sonnet` at medium effort,
 and every later review of a stage (a diff-scoped follow-up, a review scoped to
-a fix, a confirmation pass) runs on Sonnet 5.5 at high. Read-only evidence work
-runs cheaper too: summarization on Sonnet 5.5 and lookup on Haiku 5.5, both at
-high. The other roles run on Opus 5.5
+a fix, a confirmation pass) runs on `sonnet` at high. Read-only evidence work
+runs cheaper too: summarization on `sonnet` and lookup on `haiku`, both at
+high. The other roles run on `opus`
 ([Claude Code policy](../skills/task-orchestration/model-policy.claude.yaml));
 whether the implementer, test review and spec review keep their quality on
-Sonnet is for the evals to show, not a default. Codex roles follow
-[model-policy.yaml](../skills/task-orchestration/model-policy.yaml): Sol at
-`max` for planning, architecture and diagnosis, and at `high` for the other
+`sonnet` is for the evals to show, not a default. Codex roles follow
+[model-policy.yaml](../skills/task-orchestration/model-policy.yaml): the `decision` profile at
+`max` for planning, architecture and diagnosis, and `sol` at `high` for the other
 substantive roles. Moving more roles to a cheaper model is the owner's decision.
 
 **Why is the GitHub worker an agent rather than a shell script?** Routine
