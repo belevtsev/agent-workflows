@@ -52,9 +52,10 @@ satisfies a later state.
       [adversarial tester](references/contracts/adversarial-tester.md#opt-in-and-record).
    6. Hand a consequential planning, architecture or diagnosis question that
       source does not settle to a `decision`-profile worker.
-   7. If an open decision appears in a task started without checkpoints, stop
-      and ask the user. Never start a second task over source the first record
-      changed.
+   7. If an open decision, or a change to code that must behave alike on
+      several platforms or shells, appears in a task started without
+      checkpoints, stop and ask the user. Never start a second task over source
+      the first record changed.
 2. **Before checkpoint** (when required). With enough source evidence to assess
    approach, alternatives, risks and verification plan, consult with the `before`
    context, adjudicate and attach a resolved record before implementation edits
