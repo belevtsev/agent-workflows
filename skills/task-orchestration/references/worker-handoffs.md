@@ -314,36 +314,11 @@ or touches components the last review did not cover, the follow-up reviews those
 closes each superseded round's author and reviewer assignments as `unused`, with
 dispositions, before `cw task verify`.
 
-**Round budget.** The cap limits reviews; this budget limits, across the whole
-task, the author rounds that feed them. A round is one return of work to an
-author that changes its artefact, whether the author is continued or dispatched
-fresh, and it counts once however many findings or answers it carries. The spec
-writer gets at most two revision rounds, and the architect at most two across
-the design and the interface contract together. Each of these counts: a revision
-that answers findings or the user's answers to open questions; the change log of
-each [contract amendment](contracts/README.md#contract-amendment); and each fix
-after that amendment's scoped review. The first spec, design and contract are
-not revisions. The test engineer gets at most two rounds, counting the first
-dispatch, every return of test-review findings, every return at integration of a
-test that contradicts the contract, every fresh test engineer for a code-review
-finding and every refreshed assignment after an amendment. A replacement for an
-exposed test engineer, and a correction round that `cw task verify` requires
-because source changed a declaration outside an amendment, repeat an earlier
-round and do not count. Implementer fixes, reviews, re-binds and confirmation
-passes never count; an author's prose fix is a revision and counts. When a
-finding, an open question or a worker's question would need a third revision or
-test-engineer round, the coordinator does not start it. An amendment needs an
-architect round and a test-engineer round, so it starts only when both budgets
-have room. The coordinator has the implementer fix the findings that need no
-counted round. It keeps every other `blocker` and `major` finding `accepted`,
-never `deferred`: the budget, like the cap, never excuses a defect, and the
-[deferral limits](#return-and-accept-evidence) still hold. It defers or rejects
-only what those limits allow. It then asks the user whether to spend another
-round, giving each open finding with its evidence and the round it needs. The
-task stays open and nothing is published until every open `blocker` and `major`
-is resolved or rejected against evidence. A user's answer can add rounds; it
-never changes a disposition. The coordinator never edits a spec, design,
-contract or test itself to stay within the budget.
+**Round budget.** `cw task assign` counts author rounds and refuses one past the profile's cap ([round caps](../../../docs/operations.md#round-caps)).
+Each brief with `fixes` is a round, a refreshed brief after an amendment included; use `repeats` only to replace an exposed worker or for a correction round `cw task verify` requires.
+At the cap, the implementer fixes what needs no counted round; every other `blocker` and `major` stays `accepted`, never `deferred`.
+Ask the user, giving each open finding, its evidence and the round it needs; pass only their own words to `--owner-approval`.
+Nothing is published until every open `blocker` and `major` is resolved or rejected; never edit an artefact yourself to stay within the budget.
 
 **Fast paths.** These follow from the rules above and change none of them:
 

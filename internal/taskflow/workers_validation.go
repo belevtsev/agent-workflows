@@ -83,6 +83,9 @@ func validateWorkerRecord(record Record) error {
 		if err := validateInputFiles(assigned); err != nil {
 			return err
 		}
+		if err := validateStoredApprovals(record, assigned); err != nil {
+			return err
+		}
 	}
 	results := map[string]bool{}
 	for _, bound := range record.WorkerResults {
@@ -147,6 +150,11 @@ func validateWorkerTransition(previous, current Record) error {
 		returned := func(id string) bool { return findWorkerResult(previous, id) != nil }
 		if err := validateBriefStage(current, previous.Assignments, returned, assigned.Brief); err != nil {
 			return err
+		}
+		// Like the round rule, the budget depends on the assignments and
+		// acceptances the previous revision holds.
+		if !approvalsMatch(previous, assigned.Brief, assigned.OwnerApprovals) {
+			return fmt.Errorf("stored worker assignment %s goes past a limit of its profile without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {

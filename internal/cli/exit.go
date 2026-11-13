@@ -46,6 +46,8 @@ var sentinelExits = []struct {
 	// out of the task store and start a new task.
 	{taskflow.ErrNewerRecord, ExitRefused},
 	{taskflow.ErrLegacyRecord, ExitRefused},
+	// A round or cost past the profile's limit without the owner's words.
+	{taskflow.ErrOverBudget, ExitRefused},
 }
 
 type usageError struct{ error }

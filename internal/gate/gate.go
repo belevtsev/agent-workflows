@@ -3,7 +3,8 @@
 // repository each one publishes from and the task records that govern it,
 // and answers allow, ask or deny with the reason shown to the agent and the
 // user. It also asks before each `cw task abandon` in the command, which
-// closes a task so it no longer gates: only the user may decide that.
+// closes a task so it no longer gates: only the user may decide that; and
+// before each cw --owner-approval, whose words only the user may give.
 // DecideGitHook answers the same for git's own pre-commit, pre-merge-commit
 // and pre-push hooks. The hook's input and output formats belong to the caller; the gate
 // reaches git, the clock and the task store only through Deps.
@@ -18,6 +19,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,10 +120,12 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 	}
 	publications := gitPublications(in.Command, in.CWD, in.Home)
 	var abandons []abandonment
+	var approvals []string
 	if in.Enforce {
 		abandons = abandonments(in.Command, in.CWD, in.Home)
+		approvals = ownerApprovals(in.Command, in.CWD, in.Home)
 	}
-	if len(publications) == 0 && len(abandons) == 0 {
+	if len(publications) == 0 && len(abandons) == 0 && len(approvals) == 0 {
 		return Decision{}
 	}
 	d := decider{in: in, deps: deps, found: map[string][]taskflow.OpenRecord{}}
@@ -142,6 +146,9 @@ func Decide(ctx context.Context, in Input, deps Deps) Decision {
 		// A gating record denies anyway, so the abandoned records need no
 		// reading then.
 		asks = append([]ask{{reason: abandonReason(deps.Store, abandons)}}, asks...)
+	}
+	if len(approvals) > 0 && len(gating) == 0 {
+		asks = append([]ask{{reason: approvalReason(approvals)}}, asks...)
 	}
 	return conclude(in.Enforce, gating, asks)
 }
@@ -485,6 +492,26 @@ func abandonReason(store Store, abandons []abandonment) string {
 	}
 	return "agent-workflows: `cw task abandon` closes a task so that it no longer gates git commit and push, and needs the user's confirmation. " +
 		"This command abandons " + strings.Join(tasks, "; ") + ". Confirm only if the user wants it abandoned because it is finished or was given up."
+}
+
+// approvalReason explains the ask for a command that records the owner's
+// approval: it quotes the first namedTasks texts, or says the gate cannot
+// read one, and counts the rest.
+func approvalReason(approvals []string) string {
+	named, rest := splitNamed(approvals)
+	quoted := make([]string, 0, len(named)+1)
+	for _, text := range named {
+		if text == "" {
+			quoted = append(quoted, "words the gate cannot read")
+			continue
+		}
+		quoted = append(quoted, strconv.Quote(text))
+	}
+	if len(rest) > 0 {
+		quoted = append(quoted, fmt.Sprintf("and %d more", len(rest)))
+	}
+	return "agent-workflows: `--owner-approval` records the owner's words that let a task go past a limit of its profile, such as a stage's round cap, and only the user may give them. " +
+		"This command records " + strings.Join(quoted, "; ") + " as the owner's approval. Confirm only if these are the user's own words."
 }
 
 // uncommittedReason explains the ask for a push whose verified records may

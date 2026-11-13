@@ -33,6 +33,7 @@ func TestExitCodeMapsEachErrorToItsTableRow(t *testing.T) {
 		{"wrapped cancellation", fmt.Errorf("run: %w", context.Canceled), ExitCancelled},
 		{"wrapped record from a newer cw", fmt.Errorf("load: %w", taskflow.ErrNewerRecord), ExitRefused},
 		{"wrapped legacy record", fmt.Errorf("load: %w", taskflow.ErrLegacyRecord), ExitRefused},
+		{"wrapped budget refusal", fmt.Errorf("assign: %w", taskflow.ErrOverBudget), ExitRefused},
 		// Typed so a caller can tell them apart; their status stays 1, as
 		// before they were typed.
 		{"wrapped locked task", fmt.Errorf("assess: %w", taskflow.ErrTaskLocked), ExitFailure},

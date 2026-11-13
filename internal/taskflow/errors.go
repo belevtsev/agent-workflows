@@ -41,6 +41,11 @@ var (
 	ErrInvalidInput = errors.New("invalid input")
 )
 
+// ErrOverBudget: the operation would go past a limit of the task's profile,
+// such as a stage's author rounds (ErrRoundBudget), and carries no owner
+// approval. cw wrote nothing; cw exits with its refused status for it.
+var ErrOverBudget = errors.New("task budget exceeded; the operation needs the owner's approval")
+
 // kindError is an error with its own message that matches kind with
 // errors.Is, and cause too when it has one, so a refusal is typed without
 // rewording it.
