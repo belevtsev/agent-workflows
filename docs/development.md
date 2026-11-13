@@ -337,7 +337,6 @@ staticcheck, errcheck, ineffassign, unused, gosec and misspell, and gives the
 reason for each exclusion; a suppressed finding in code carries a
 `//nolint:<linter> // reason` comment.
 
-<a id="complexity-ratchet"></a>
 It also enables `gocognit` (above 60), `funlen` (above 120 lines, comments not
 counted) and `gocyclo` (above 30). Today's offenders are listed one rule per
 function at the end of the file, so a new offender fails the job; the list only

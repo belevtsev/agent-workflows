@@ -73,7 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
-  today's listed offenders, a list that only shrinks ([CI](docs/development.md#complexity-ratchet)).
+  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
   90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
