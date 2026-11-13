@@ -462,7 +462,7 @@ func stagedUnsureReason(verified []taskflow.OpenRecord, unsure []string) string 
 		tasks = append(tasks, fmt.Sprintf("%s (%s)", record.Record.ID, record.Record.Plan.Title))
 	}
 	if len(rest) > 0 {
-		tasks = append(tasks, "and "+countRest("task", recordDirs(rest)))
+		tasks = append(tasks, "and "+countListed("task", rest))
 	}
 	return fmt.Sprintf("agent-workflows: %s passed cw task verify on the working tree, but this commit stages content for %s through a git filter, ident or working-tree-encoding that the gate does not run, so the gate cannot tell whether the commit records the verified bytes. Confirm only if the staged content is what that conversion makes of the working tree.",
 		strings.Join(tasks, ", "), namePaths(unsure))
