@@ -623,8 +623,8 @@ skill runs `cw task usage` before each `cw task assign` and `cw task run`.
   reaches `stop_at` (80%) of `max_usd`, `cw task assign` and `cw task run` take
   no new work: they exit 4 and write nothing. `cw` prints the usage, the budget
   and the share used, marks the dollars as estimated ("at least" when the rest
-  is unknown), prints the [task receipt](#task-receipt), and asks: "continue with a higher budget, or stop with the
-  partial result?" A sample that crosses the stop or `max_usd` is always
+  is unknown), prints the [task receipt](#task-receipt), and asks: "continue
+  with a higher budget, or stop with the partial result?" A sample that crosses the stop or `max_usd` is always
   stored, whatever the 5% rule says.
 - **Continue.** Only the owner's own words go to `--owner-approval
   "cost-budget=<the owner's words>"` (or the words alone when the cost is the
