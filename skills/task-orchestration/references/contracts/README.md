@@ -183,10 +183,10 @@ and no amendment.
    extracts the test engineer's symbols again with `cw task contract-extract`
    and hashes the new extract; `assign` refuses an extract that differs in
    any byte from what current source yields. It reads the extract before
-   sending it, against the [extract rules](test-engineer.md#extract-go-declarations)
+   sending it, against the [extract rules](../dispatching-reviews-and-tests.md#extract-go-declarations)
    and for unexported fields of a type: an extract that carries anything the
    implementer wrote beyond the contract's declarations is not sent. Drop a
-   symbol the tests do not need and extract again, as those rules say; when a
+   symbol the tests do not need and extract again; when a
    needed symbol still carries it, report the blocker. The refreshed
    test-engineer assignment, under a new ID, owns at least every test path
    its earlier one owned, which supersedes the earlier extract for
@@ -203,4 +203,4 @@ Tests revised for a changed requirement return to
 rebuilt from the fresh extract, under the amendment's own cap for the test
 stage. A task whose test engineer works from the coordinator's requirement
 packet, with no architect, refreshes the packet from the request and the user's answers, never
-from the implementation ([prepare the contract](test-engineer.md#prepare-the-contract-before-dispatch)).
+from the implementation ([prepare the contract](../dispatching-reviews-and-tests.md#prepare-the-test-contract)).

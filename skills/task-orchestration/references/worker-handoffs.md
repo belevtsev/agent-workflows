@@ -145,8 +145,7 @@ whole current source by neither the coordinator nor an implementer, before
 final adviser context or completion. Its brief owns `.` and names the paths of
 `interface-contract.md`, `design.md`, `test-matrix.md`, `requirement-map.md`
 and the final coverage profile with its run ID, when they exist. Adviser
-checkpoints never replace it. Handle behaviour-finding tests as the
-[contract](contracts/code-review.md#reproduce-every-behaviour-finding) says.
+checkpoints never replace it. [Apply behaviour-finding tests](dispatching-reviews-and-tests.md#apply-a-reproduction-test) unchanged.
 
 Right before each review, write the
 [bundle](../../../docs/operations.md#review-bundle) outside source with
