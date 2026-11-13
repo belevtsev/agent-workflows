@@ -125,7 +125,6 @@ found.
 | --- | --- |
 | Terms and role names | [glossary](references/glossary.md) |
 | Host, profiles, policy, paths | [hosts](references/hosts.md) |
-| Preset for the kind of work | [use-cases](references/use-cases.md) |
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
 | Checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |

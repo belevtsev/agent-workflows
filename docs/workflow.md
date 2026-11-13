@@ -256,7 +256,8 @@ complete only after `cw task verify`. When the checkpoints are required, how eac
 request is prepared, sent, recorded and reused is in
 [task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
 and the sections after it; the plan shape that declares them not required is in
-[start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+state 1 of the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow)
+and in the example `cw task start --help` prints.
 After the before checkpoint, advisers join only at the four
 [adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow),
 and only when the task's binding holds one; otherwise each point is skipped and
