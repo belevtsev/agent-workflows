@@ -174,13 +174,14 @@ func TestGoEvidenceFlagValuesB4(t *testing.T) {
 // would credit; a host build withholds nothing; argv-only judgements are
 // unchanged.
 func TestGoEvidenceWithholdsCreditOutsideTheHostsGoConfiguration(t *testing.T) {
-	host := langpack.GoEnv{GOFLAGS: "-v", GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}
+	host := langpack.GoEnv{GOFLAGS: "-v", GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64", C: &langpack.CToolchain{}}
 	if got := langpack.GoEnvWithheld(&host); got != "" {
 		t.Errorf("GoEnvWithheld(host build) = %q, want nothing withheld", got)
 	}
-	crossArch, crossOS := host, host
+	crossArch, crossOS, noC := host, host, host
 	crossArch.GOARCH = "arm64"
 	crossOS.GOOS = "windows"
+	noC.C = nil
 	for _, c := range []struct {
 		name     string
 		env      *langpack.GoEnv
@@ -189,6 +190,7 @@ func TestGoEvidenceWithholdsCreditOutsideTheHostsGoConfiguration(t *testing.T) {
 		{"no go env", nil, "cw did not record the configuration its go command applied (go env); run it again"},
 		{"another architecture", &crossArch, "it built its tests for linux/arm64, not for its go command's host linux/amd64, so go test may have handed them to a go_linux_arm64_exec program instead of running them"},
 		{"another system", &crossOS, "it built its tests for windows/amd64, not for its go command's host linux/amd64, so go test may have handed them to a go_windows_amd64_exec program instead of running them"},
+		{"recorded before cw judged the C toolchain (F18)", &noC, "cw did not record whether it verified the C toolchain its go command runs with cgo on; run it again"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			if got := langpack.GoEnvWithheld(c.env); got != c.withheld {

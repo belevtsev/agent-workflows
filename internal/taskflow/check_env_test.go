@@ -170,7 +170,7 @@ func TestRunCheckRefusesAStoredEnvPassthroughThatAdmissionRefuses(t *testing.T) 
 func TestEvidenceRunJudgesARunByTheGoEnvItRecorded(t *testing.T) {
 	argv := []string{"go", "test", "-json", "./..."}
 	env := func(goflags, goarch string) *langpack.GoEnv {
-		return &langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: goarch, GOHOSTOS: "linux", GOHOSTARCH: "amd64"}
+		return &langpack.GoEnv{GOFLAGS: goflags, GOOS: "linux", GOARCH: goarch, GOHOSTOS: "linux", GOHOSTARCH: "amd64", C: &langpack.CToolchain{}}
 	}
 	for _, c := range []struct {
 		name     string
@@ -256,7 +256,7 @@ func TestCheckSpecKeepsTheVerifiedGoAndTheGoRuleOverEnvPassthrough(t *testing.T)
 			t.Errorf("a run with GOFLAGS %q earns Go rule credit", goflags)
 		}
 	}
-	if !langpack.GoTestsCredited(evidenceRun(CheckRun{Argv: argv, GoEnv: &langpack.GoEnv{GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64"}})) {
+	if !langpack.GoTestsCredited(evidenceRun(CheckRun{Argv: argv, GoEnv: &langpack.GoEnv{GOOS: "linux", GOARCH: "amd64", GOHOSTOS: "linux", GOHOSTARCH: "amd64", C: &langpack.CToolchain{}}})) {
 		t.Fatal("precondition: the argv without GOFLAGS earns no credit")
 	}
 }
