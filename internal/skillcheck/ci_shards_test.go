@@ -27,11 +27,10 @@ const (
 )
 
 var (
-	// shardCase matches the action's case statement over the shards, and
-	// shardArm and defaultArm the two forms an arm of it may take.
-	shardCase  = regexp.MustCompile(`(?s)case "\$SHARD" in\n(.*?)\n\s*esac`)
-	shardArm   = regexp.MustCompile(`^(\d+)\) packages=.*;;$`)
-	defaultArm = regexp.MustCompile(`^\*\) .*;;$`)
+	// shardCase matches the action's case statement over the shards and
+	// shardArm one arm of it, with or without a comment after it.
+	shardCase = regexp.MustCompile(`(?s)case "\$SHARD" in\n(.*?)\n\s*esac`)
+	shardArm  = regexp.MustCompile(`^(\d+)\) packages=.*;;(\s+#.*)?$`)
 )
 
 // stringList is a YAML value that is one string or a list of strings, as
@@ -50,13 +49,46 @@ func (l *stringList) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+// stringMap is a YAML mapping of strings, as with and env are. Any other
+// form, such as an expression that yields the mapping, is empty.
+type stringMap map[string]string
+
+func (m *stringMap) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+	*m = stringMap{}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		(*m)[node.Content[i].Value] = node.Content[i+1].Value
+	}
+	return nil
+}
+
+// ciStrategy holds the matrix of a strategy written out as a mapping; an
+// expression in its place leaves the matrix empty.
+type ciStrategy struct {
+	Matrix yaml.Node
+}
+
+func (s *ciStrategy) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == "matrix" {
+			s.Matrix = *node.Content[i+1]
+		}
+	}
+	return nil
+}
+
 type ciStep struct {
-	Uses            string            `yaml:"uses"`
-	If              string            `yaml:"if"`
-	Run             string            `yaml:"run"`
-	With            map[string]string `yaml:"with"`
-	Env             map[string]string `yaml:"env"`
-	ContinueOnError yaml.Node         `yaml:"continue-on-error"`
+	Uses            string    `yaml:"uses"`
+	If              string    `yaml:"if"`
+	Run             string    `yaml:"run"`
+	With            stringMap `yaml:"with"`
+	Env             stringMap `yaml:"env"`
+	ContinueOnError yaml.Node `yaml:"continue-on-error"`
 }
 
 type ciJob struct {
@@ -65,17 +97,17 @@ type ciJob struct {
 	Needs           stringList `yaml:"needs"`
 	If              string     `yaml:"if"`
 	ContinueOnError yaml.Node  `yaml:"continue-on-error"`
-	Strategy        struct {
-		Matrix yaml.Node `yaml:"matrix"`
-	} `yaml:"strategy"`
-	Steps []ciStep `yaml:"steps"`
+	Strategy        ciStrategy `yaml:"strategy"`
+	Steps           []ciStep   `yaml:"steps"`
 }
 
 // isSet reports whether a continue-on-error key is present and not false.
 func isSet(node yaml.Node) bool { return node.Kind != 0 && node.Value != "false" }
 
 // actionShards returns, sorted, the shards the action's case statement
-// selects, or why the test cannot read them.
+// selects, or why the test cannot read them. Up to the default arm, which
+// matches every value so that no arm after it is reached, each line is a
+// comment or one shard's arm.
 func actionShards(action []byte) ([]int, string) {
 	blocks := shardCase.FindAllSubmatch(action, -1)
 	if len(blocks) != 1 {
@@ -84,7 +116,10 @@ func actionShards(action []byte) ([]int, string) {
 	var shards []int
 	for _, line := range strings.Split(string(blocks[0][1]), "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" || defaultArm.MatchString(line) {
+		if strings.HasPrefix(line, "*)") {
+			break
+		}
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		arm := shardArm.FindStringSubmatch(line)
@@ -195,7 +230,10 @@ func resultJobProblems(jobs, shardJobs map[string]ciJob, system string) []string
 		if job.If != "always()" {
 			problems = append(problems, fmt.Sprintf("%s has if: %q, want always(): a skipped required check counts as passed", who, job.If))
 		}
-		if isSet(job.ContinueOnError) || !requiresSuccess(job, needed[0]) {
+		if isSet(job.ContinueOnError) {
+			problems = append(problems, who+" sets continue-on-error: a failed required check would count as passed")
+		}
+		if !requiresSuccess(job, needed[0]) {
 			problems = append(problems, fmt.Sprintf("%s has no step that fails unless needs.%s.result is success", who, needed[0]))
 		}
 	}
@@ -260,9 +298,13 @@ func TestCIShardJobsRunEveryShard(t *testing.T) {
 const (
 	shardTestAction = `run: |
   case "$SHARD" in
+    # Shard 1 holds the slow package.
     1) packages="$(grep -E "$first" <<<"$all")" ;;
-    2) packages="$(grep -Ev "$first" <<<"$all")" ;;
-    *) echo "unknown shard: $SHARD"; exit 1 ;;
+    2) packages="$(grep -Ev "$first" <<<"$all")" ;; # every other package
+    *)
+      echo "unknown shard: $SHARD (want 1 or 2)"
+      exit 1
+      ;;
   esac
 `
 	shardTestWorkflow = `jobs:
@@ -296,7 +338,7 @@ const (
         run: test "$RESULT" = success
   macos-result:
     name: Native Go / macos-latest
-    needs: [go-macos]
+    needs: [go-macos, lint]
     if: always()
     steps:
       - env:
@@ -311,85 +353,113 @@ const (
       matrix: ${{ fromJSON(needs.go-linux.outputs.matrix) }}
     steps:
       - run: golangci-lint run ./...
+        env: ${{ fromJSON(needs.go-linux.outputs.env) }}
+      - uses: actions/cache@v5
+        with: ${{ fromJSON(needs.go-linux.outputs.cache) }}
+        continue-on-error: true
+  plan:
+    runs-on:
+      group: large
+    strategy: ${{ fromJSON(vars.STRATEGY) }}
+    continue-on-error: true
+  deploy:
+    uses: ./.github/workflows/deploy.yml
 `
 )
 
 // oracle: a sound workflow has no problem, whatever valid form its other
-// jobs take; each broken one is reported by the job and the rule it breaks.
+// jobs take (lists, a runner group, expressions in place of a mapping, no
+// steps); each broken one is reported by the job and the rule it breaks.
 func TestCIShardProblemsAreReported(t *testing.T) {
 	if got := ciShardProblems([]byte(shardTestWorkflow), []byte(shardTestAction)); len(got) != 0 {
 		t.Errorf("a sound workflow: got %q, want no problem", got)
 	}
-	const macosResult = "job macos-result (Native Go / macos-latest)"
+	const (
+		macosResult  = "job macos-result (Native Go / macos-latest)"
+		neverFails   = macosResult + " has no step that fails unless needs.go-macos.result is success"
+		macosNeeds   = "needs: [go-macos, lint]\n    if: always()"
+		actionStep   = "- uses: actions/checkout@v7\n      - uses: ./.github/actions/go-test"
+		resultEnv    = "      - env:\n          RESULT: ${{ needs.go-macos.result }}"
+		resultTest   = "          test \"$RESULT\" = success\n"
+		macosRunsOn  = "runs-on: macos-latest"
+		macosShards  = "shard: [2, 1]"
+		continueTrue = "continue-on-error: true"
+	)
 	cases := []struct {
-		name, old, new, want string
+		name, old, new string
+		want           []string
 	}{
-		{"shard missing from a matrix", "shard: [2, 1]", "shard: [1]",
-			"job go-macos runs shards [1], but the go-test action selects [1 2]: the packages of a shard no job runs are not tested"},
-		{"shard excluded", "shard: [2, 1]", "shard: [2, 1]\n        exclude: [{shard: 2}]",
-			"job go-macos: its matrix has an exclude list, which can drop a shard"},
-		{"computed matrix", "matrix:\n        shard: [2, 1]", "matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}",
-			"job go-macos: its matrix is not written out as a mapping"},
-		{"shards as strings", "shard: [2, 1]", "shard: [two, one]",
-			"job go-macos: its matrix shard is not a list of numbers"},
-		{"constant shard", "- uses: actions/checkout@v7\n      - uses: ./.github/actions/go-test\n        with:\n          shard: ${{ matrix.shard }}",
-			"- uses: ./.github/actions/go-test\n        with:\n          shard: 1",
-			`job go-macos passes shard "1" to the go-test action, want ${{ matrix.shard }}`},
-		{"conditional action step", "- uses: actions/checkout@v7\n      - uses: ./.github/actions/go-test",
-			"- uses: ./.github/actions/go-test\n        if: matrix.shard != 2",
-			`job go-macos runs the go-test action under if: "matrix.shard != 2": a skipped step passes without testing`},
-		{"shard job continues on error", "runs-on: macos-latest", "runs-on: macos-latest\n    continue-on-error: true",
-			"job go-macos sets continue-on-error: a failed shard would count as passed"},
-		{"result job skipped after a failure", "needs: [go-macos]\n    if: always()", "needs: [go-macos]\n    if: ${{ !cancelled() }}",
-			macosResult + ` has if: "${{ !cancelled() }}", want always(): a skipped required check counts as passed`},
-		{"result job reads another result", "RESULT: ${{ needs.go-macos.result }}", "RESULT: ${{ needs.go-linux.result }}",
-			macosResult + " has no step that fails unless needs.go-macos.result is success"},
-		{"result step passes on a cancelled shard", "          test \"$RESULT\" = success\n", "          test \"$RESULT\" != failure\n",
-			macosResult + " has no step that fails unless needs.go-macos.result is success"},
-		{"result step never fails", "          test \"$RESULT\" = success\n", "          test \"$RESULT\" = success || true\n",
-			macosResult + " has no step that fails unless needs.go-macos.result is success"},
-		{"result job needs no shard job", "needs: [go-macos]\n    if: always()", "needs: [lint]\n    if: always()",
-			macosResult + " needs [lint], of which 0 run shards, want 1"},
-		{"result job of the other system", "needs: [go-macos]\n    if: always()", "needs: [go-linux]\n    if: always()",
-			macosResult + " has no step that fails unless needs.go-linux.result is success"},
+		{"shard missing from a matrix", macosShards, "shard: [1]",
+			[]string{"job go-macos runs shards [1], but the go-test action selects [1 2]: the packages of a shard no job runs are not tested"}},
+		{"shard excluded", macosShards, macosShards + "\n        exclude: [{shard: 2}]",
+			[]string{"job go-macos: its matrix has an exclude list, which can drop a shard"}},
+		{"computed matrix", "matrix:\n        " + macosShards, "matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}",
+			[]string{"job go-macos: its matrix is not written out as a mapping"}},
+		{"computed strategy", "strategy:\n      fail-fast: false\n      matrix:\n        " + macosShards, "strategy: ${{ fromJSON(vars.STRATEGY) }}",
+			[]string{"job go-macos: its matrix is not written out as a mapping"}},
+		{"shards as strings", macosShards, "shard: [two, one]",
+			[]string{"job go-macos: its matrix shard is not a list of numbers"}},
+		{"constant shard", actionStep + "\n        with:\n          shard: ${{ matrix.shard }}", actionStep + "\n        with:\n          shard: 1",
+			[]string{`job go-macos passes shard "1" to the go-test action, want ${{ matrix.shard }}`}},
+		{"computed action input", actionStep + "\n        with:\n          shard: ${{ matrix.shard }}", actionStep + "\n        with: ${{ fromJSON(vars.INPUT) }}",
+			[]string{`job go-macos passes shard "" to the go-test action, want ${{ matrix.shard }}`}},
+		{"conditional action step", actionStep, actionStep + "\n        if: matrix.shard != 2",
+			[]string{`job go-macos runs the go-test action under if: "matrix.shard != 2": a skipped step passes without testing`}},
+		{"shard job continues on error", macosRunsOn, macosRunsOn + "\n    " + continueTrue,
+			[]string{"job go-macos sets continue-on-error: a failed shard would count as passed"}},
+		{"action step continues on error", actionStep, actionStep + "\n        " + continueTrue,
+			[]string{"job go-macos sets continue-on-error: a failed shard would count as passed"}},
+		{"result job skipped after a failure", macosNeeds, "needs: [go-macos, lint]\n    if: ${{ !cancelled() }}",
+			[]string{macosResult + ` has if: "${{ !cancelled() }}", want always(): a skipped required check counts as passed`}},
+		{"result job continues on error", macosNeeds, macosNeeds + "\n    " + continueTrue,
+			[]string{macosResult + " sets continue-on-error: a failed required check would count as passed"}},
+		{"result job reads another result", "RESULT: ${{ needs.go-macos.result }}", "RESULT: ${{ needs.go-linux.result }}", []string{neverFails}},
+		{"result step passes on a cancelled shard", resultTest, "          test \"$RESULT\" != failure\n", []string{neverFails}},
+		{"result step never fails", resultTest, "          test \"$RESULT\" = success || true\n", []string{neverFails}},
+		{"conditional result step", resultEnv, "      - if: github.event_name == 'push'\n        env:\n          RESULT: ${{ needs.go-macos.result }}", []string{neverFails}},
+		{"result step continues on error", resultEnv, "      - " + continueTrue + "\n        env:\n          RESULT: ${{ needs.go-macos.result }}", []string{neverFails}},
+		{"computed result environment", resultEnv, "      - env: ${{ fromJSON(vars.ENV) }}", []string{neverFails}},
+		{"result job needs no shard job", macosNeeds, "needs: [lint]\n    if: always()",
+			[]string{macosResult + " needs [lint], of which 0 run shards, want 1"}},
+		{"result job needs both shard jobs", macosNeeds, "needs: [go-macos, go-linux]\n    if: always()",
+			[]string{macosResult + " needs [go-macos go-linux], of which 2 run shards, want 1"}},
+		{"result job of the other system", macosNeeds, "needs: [go-linux]\n    if: always()",
+			[]string{macosResult + " has no step that fails unless needs.go-linux.result is success",
+				macosResult + " needs go-linux, which runs on [ubuntu-latest]"}},
 		{"required name gone", "name: Native Go / macos-latest", "name: Go / macos-latest",
-			"no job is named Native Go / macos-latest, a required check"},
+			[]string{"no job is named Native Go / macos-latest, a required check"}},
 	}
 	for _, tc := range cases {
 		if !strings.Contains(shardTestWorkflow, tc.old) {
 			t.Fatalf("%s: the workflow does not hold %q", tc.name, tc.old)
 		}
 		got := ciShardProblems([]byte(strings.Replace(shardTestWorkflow, tc.old, tc.new, 1)), []byte(shardTestAction))
-		if !slices.Contains(got, tc.want) {
-			t.Errorf("%s: got %q, want it to hold %q", tc.name, got, tc.want)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
-	}
-	wrongSystem := strings.Replace(shardTestWorkflow, "needs: [go-macos]\n    if: always()", "needs: [go-linux]\n    if: always()", 1)
-	wrongSystem = strings.Replace(wrongSystem, "RESULT: ${{ needs.go-macos.result }}", "RESULT: ${{ needs.go-linux.result }}", 1)
-	want := []string{macosResult + " needs go-linux, which runs on [ubuntu-latest]"}
-	if got := ciShardProblems([]byte(wrongSystem), []byte(shardTestAction)); !slices.Equal(got, want) {
-		t.Errorf("result job that reads the other system's shards: got %q, want %q", got, want)
 	}
 }
 
 // oracle: the shards are read only from a case statement over $SHARD whose
-// arms are `N) packages=... ;;` lines and a default; any other arm, which
-// could select a shard the test does not see, is reported with its text.
+// lines, up to the default arm, are comments and `N) packages=... ;;` arms;
+// any other arm, which could select a shard the test does not see, is
+// reported with its text.
 func TestUnreadableShardArmsAreReported(t *testing.T) {
-	const rewrite = ": write each shard as `N) packages=... ;;` on one line"
+	const (
+		second  = "    2) packages="
+		rest    = `packages=\"$(grep -Ev \"$first\" <<<\"$all\")\" ;; # every other package"`
+		rewrite = ": write each shard as `N) packages=... ;;` on one line"
+		arms    = "    # Shard 1 holds the slow package.\n    1) packages=\"$(grep -E \"$first\" <<<\"$all\")\" ;;\n" +
+			"    2) packages=\"$(grep -Ev \"$first\" <<<\"$all\")\" ;; # every other package\n"
+	)
 	cases := []struct {
 		name, old, new, want string
 	}{
-		{"two shards in one arm", "    2) packages=", "    2|3) packages=",
-			`go-test action: cannot read the case arm "2|3) packages=\"$(grep -Ev \"$first\" <<<\"$all\")\" ;;"` + rewrite},
-		{"arm on its own line", "    2) packages=", "    2)\n      packages=",
-			`go-test action: cannot read the case arm "2)"` + rewrite},
-		{"quoted arm", "    2) packages=", "    \"2\") packages=",
-			`go-test action: cannot read the case arm "\"2\") packages=\"$(grep -Ev \"$first\" <<<\"$all\")\" ;;"` + rewrite},
-		{"no case statement", `case "$SHARD" in`, `case "$OTHER" in`,
-			"go-test action: found 0 case statements over $SHARD, want 1"},
-		{"only a default arm", "    1) packages=\"$(grep -E \"$first\" <<<\"$all\")\" ;;\n    2) packages=\"$(grep -Ev \"$first\" <<<\"$all\")\" ;;\n", "",
-			"go-test action: its case statement selects no shard"},
+		{"two shards in one arm", second, "    2|3) packages=", `go-test action: cannot read the case arm "2|3) ` + rest + rewrite},
+		{"arm on its own line", second, "    2)\n      packages=", `go-test action: cannot read the case arm "2)"` + rewrite},
+		{"quoted arm", second, "    \"2\") packages=", `go-test action: cannot read the case arm "\"2\") ` + rest + rewrite},
+		{"no case statement", `case "$SHARD" in`, `case "$OTHER" in`, "go-test action: found 0 case statements over $SHARD, want 1"},
+		{"only a default arm", arms, "", "go-test action: its case statement selects no shard"},
 	}
 	for _, tc := range cases {
 		if !strings.Contains(shardTestAction, tc.old) {
@@ -400,9 +470,12 @@ func TestUnreadableShardArmsAreReported(t *testing.T) {
 			t.Errorf("%s: got %q, want [%q]", tc.name, got, tc.want)
 		}
 	}
-	third := strings.Replace(shardTestAction, "    *) echo", "    3) packages=\"$all\" ;;\n    *) echo", 1)
-	got := ciShardProblems([]byte(shardTestWorkflow), []byte(third))
-	if len(got) != 2 || !strings.HasPrefix(got[0], "job go-linux runs shards [1 2], but the go-test action selects [1 2 3]") {
-		t.Errorf("an arm no matrix runs: got %q, want one problem for each shard job", got)
+	third := strings.Replace(shardTestAction, "    *)\n", "    3) packages=\"$all\" ;;\n    *)\n", 1)
+	want := []string{
+		"job go-linux runs shards [1 2], but the go-test action selects [1 2 3]: the packages of a shard no job runs are not tested",
+		"job go-macos runs shards [1 2], but the go-test action selects [1 2 3]: the packages of a shard no job runs are not tested",
+	}
+	if got := ciShardProblems([]byte(shardTestWorkflow), []byte(third)); !slices.Equal(got, want) {
+		t.Errorf("an arm no matrix runs: got %q, want %q", got, want)
 	}
 }

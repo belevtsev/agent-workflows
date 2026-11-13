@@ -149,9 +149,10 @@ GOWORK=off go test ./internal/skillcheck
 - only `global/AGENTS.md` states when a task is substantial; the skills, agents,
   hooks, docs and model policies link to it;
 - in `.github/workflows/ci.yml` every job that uses the `go-test` action runs
-  each shard the action selects, with no `exclude` list, step condition or
-  `continue-on-error`, and each required `Native Go` check runs with `always()`
-  and fails unless the result of its system's shard job is `success`.
+  each shard the action selects and passes it `matrix.shard`, with no
+  `exclude` list, step condition or `continue-on-error`, and each required
+  `Native Go` check runs with `always()` and fails unless the result of its
+  system's shard job is `success`.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
