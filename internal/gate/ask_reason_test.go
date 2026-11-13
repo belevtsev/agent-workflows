@@ -38,8 +38,8 @@ var askCases = []askCase{
 			return "Task directory " + open.Record.Directory + ": invalid task JSON: unexpected EOF; if the record is damaged,"
 		},
 		more: func(rest int) string {
-			return fmt.Sprintf(" And %d more %s in %s; each needs a cw that can read it or, if it is damaged, its directory moved out of the task store. Confirm to run",
-				rest, plural(rest, "unreadable task record"), denyStore)
+			return fmt.Sprintf(" And %d more %s; each needs a cw that can read it or, if it is damaged, its directory moved out of the task store. Confirm to run",
+				rest, listed(rest, "unreadable task record"))
 		},
 	},
 	{
@@ -55,7 +55,7 @@ var askCases = []askCase{
 			return fmt.Sprintf("%s (%s)", open.Record.ID, open.Record.Plan.Title)
 		},
 		more: func(rest int) string {
-			return fmt.Sprintf(", and %d more %s in %s passed cw task verify on the working tree", rest, plural(rest, "task"), denyStore)
+			return fmt.Sprintf(", and %d more %s passed cw task verify on the working tree", rest, listed(rest, "task"))
 		},
 	},
 	{
@@ -76,6 +76,15 @@ var askCases = []askCase{
 			return fmt.Sprintf("; and %d more %s in %s. Confirm only if", rest, plural(rest, "task"), denyStore)
 		},
 	},
+}
+
+// listed is how a reason counts records of the repository past the first
+// three: the noun, then where to list them.
+func listed(count int, noun string) string {
+	if count == 1 {
+		return noun + " (`cw task list` lists it)"
+	}
+	return noun + "s (`cw task list` lists them)"
 }
 
 func plural(count int, noun string) string {

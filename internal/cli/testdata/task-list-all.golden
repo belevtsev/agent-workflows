@@ -1,0 +1,7 @@
+ID                                STATE       KIND         UPDATED           TITLE                  REPOSITORY
+<other>                           open        substantial  2026-11-13 11:50  Other repository task  <other>
+<open>                            open        substantial  2026-11-13 11:30  Open task              <repo>
+<verified>                        verified    substantial  2026-11-13 11:00  Verified task          <repo>
+<unreadable>                      unreadable  substantial  2026-11-13 10:00  Unreadable task        <repo>
+<abandoned>                       abandoned   small        2026-11-13 09:30  Abandoned task         <repo>
+<stale>                           stale       substantial  2026-10-29 12:00  Stale task             <repo>

@@ -222,7 +222,8 @@ each gates, and both ways out: `cw task verify --task <task-id>`, or, for
 a task that is finished or was given up, `cw task abandon --task <task-id> --reason TEXT`,
 which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
 The reason names each task by its ID, which `--task` takes, not by its directory. Past three, it
-gives the number of other gating records and the task store they are in.
+gives the number of other gating records and points at
+[`cw task list`](operations.md#listing-tasks), which lists them.
 An abandoned record accepts no further revisions and never gates.
 
 A record is finished, and no longer governs, once another governing record
@@ -303,7 +304,7 @@ newer `cw` wrote. When that revision says the record governs the repository
 by the rules above, and no readable record gates, the hook asks
 (`permissionDecision: "ask"`) instead of letting the command through, with a
 reason that names the task directory and the load error of up to three such
-records and counts the others with the task store they are in, and `cw publish`
+records and counts the others, which `cw task list` lists, and `cw publish`
 refuses with exit 3 `open-record`. To clear it, remove the task directory or
 move it out of the task store; for a record from a newer `cw`, upgrade `cw`
 instead. A task directory in which no revision decodes is ignored

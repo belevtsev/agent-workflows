@@ -1,0 +1,5 @@
+ID                                STATE       KIND         UPDATED           TITLE
+<open>                            open        substantial  2026-11-13 11:30  Open task
+<verified>                        verified    substantial  2026-11-13 11:00  Verified task
+<unreadable>                      unreadable  substantial  2026-11-13 10:00  Unreadable task
+2 abandoned or stale tasks are hidden; --all lists them.
