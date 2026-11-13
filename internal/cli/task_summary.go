@@ -124,6 +124,9 @@ type taskHandoffSummary struct {
 	ResultSHA256 string   `json:"result_sha256"`
 	Status       string   `json:"status"`
 	CheckRuns    []string `json:"check_runs"`
+	// Report is the stored copy of the result's report, relative to the
+	// task directory, when the result names one.
+	Report string `json:"report,omitempty"`
 }
 
 func handoffSummary(record taskflow.Record, id string) taskHandoffSummary {
@@ -132,6 +135,9 @@ func handoffSummary(record taskflow.Record, id string) taskHandoffSummary {
 		if result.Result.AssignmentID == id {
 			value.ResultSHA256 = result.SHA256
 			value.Status = result.Result.Status
+			if result.Result.Report != nil {
+				value.Report = taskflow.ReportFileName(id)
+			}
 			if result.CheckRuns != nil {
 				value.CheckRuns = result.CheckRuns
 			}

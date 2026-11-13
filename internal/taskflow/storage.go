@@ -371,6 +371,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 	if within(record.Baseline.Root, directory) {
 		return Record{}, "", errors.New("task storage is inside the target repository")
 	}
+	if err := storedReportProblem(root, record); err != nil {
+		return Record{}, "", err
+	}
 	return record, previous, nil
 }
 
