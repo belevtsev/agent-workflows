@@ -48,6 +48,8 @@ type claudeUsage struct {
 		Ephemeral5m *int64 `json:"ephemeral_5m_input_tokens"`
 		Ephemeral1h *int64 `json:"ephemeral_1h_input_tokens"`
 	} `json:"cache_creation"`
+	Speed        *string `json:"speed"`
+	InferenceGeo *string `json:"inference_geo"`
 }
 
 type costState struct {
@@ -120,6 +122,12 @@ func claudeRequest(usage *claudeUsage, report *Report) (request, bool) {
 	}
 	if r.thinking != nil && *r.thinking > r.output {
 		return request{}, false
+	}
+	switch {
+	case usage.Speed != nil && *usage.Speed != "standard":
+		r.unpriced = fmt.Sprintf("a request ran at speed %q, which standard rates do not price", *usage.Speed)
+	case usage.InferenceGeo != nil && *usage.InferenceGeo != "global":
+		r.unpriced = fmt.Sprintf("a request ran with inference_geo %q, which global rates do not price", *usage.InferenceGeo)
 	}
 	return r, true
 }

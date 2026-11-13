@@ -60,8 +60,9 @@ func TestAssignAThirdFixRoundIsRefusedWithBothOptions(t *testing.T) {
 		"finding i0/f1 is still open after 2 fix rounds, the most profile lite allows",
 		"i1: Round i1 changed the guard.",
 		"i2: Round i2 changed the guard.",
-		`approve one more fix round: a person must give the words; only then pass them, unchanged, as --owner-approval "<the owner's words>"`,
-		"change the approach",
+		"approve one more fix round",
+		"or change the approach",
+		`A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>"`,
 	} {
 		if !strings.Contains(refused.stderr, want) {
 			t.Errorf("refusal stderr %q lacks %q", refused.stderr, want)
@@ -76,7 +77,7 @@ func TestAssignAThirdFixRoundIsRefusedWithBothOptions(t *testing.T) {
 		t.Fatalf("approved fix round: %v; stderr %q", approved.err, approved.stderr)
 	}
 	got := h.load().Assignments[3]
-	if got.OwnerApproval == nil || got.OwnerApproval.Text != "try once more" || got.OwnerApproval.For != taskflow.ApprovalEscalation {
-		t.Fatalf("assignment i3 approval = %+v, want the owner's words for escalation", got.OwnerApproval)
+	if len(got.OwnerApprovals) != 1 || got.OwnerApprovals[0].Text != "try once more" || got.OwnerApprovals[0].For != taskflow.ApprovalEscalation {
+		t.Fatalf("assignment i3 approvals = %+v, want the owner's words for escalation", got.OwnerApprovals)
 	}
 }

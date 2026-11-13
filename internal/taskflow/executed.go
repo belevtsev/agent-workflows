@@ -8,18 +8,13 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
-// passedAt reports whether run passed without changing the source and ran at
-// snapshot.
-func passedAt(run CheckRun, snapshot projectctx.Snapshot) bool {
-	return run.Status == "passed" && run.ExitCode != nil && *run.ExitCode == 0 && run.After != nil && equalSnapshot(run.Before, *run.After) && equalSnapshot(snapshot, *run.After)
-}
-
 // executionProblems applies the evidence rules of the record's pack set to a
 // changed substantial task and returns what they report, given the files
 // changed since the baseline and, for each planned or added check whose
-// latest run passed at the current snapshot, that run. files is the current
-// manifest.
-func executionProblems(ctx context.Context, artifacts Artifacts, record Record, snapshot projectctx.Snapshot, files []projectctx.FileState) (problems, limitations []string) {
+// latest run earns credit at credit (credited), that run. files is the
+// current manifest.
+func executionProblems(ctx context.Context, artifacts Artifacts, record Record, credit *creditSource, files []projectctx.FileState) (problems, limitations []string) {
+	snapshot := credit.snapshot
 	source, err := evidenceSource(artifacts, record, snapshot, files)
 	if err != nil {
 		return []string{err.Error()}, nil
@@ -28,7 +23,7 @@ func executionProblems(ctx context.Context, artifacts Artifacts, record Record, 
 	// followed by a failure at the same source proves nothing.
 	passed := []langpack.Run{}
 	for _, check := range allChecks(record) {
-		if run := latestRun(record, check.ID); run != nil && passedAt(*run, snapshot) {
+		if run := creditedRun(record, check.ID, credit); run != nil {
 			entry := evidenceRun(*run)
 			entry.Rerun = rerun(record, *run)
 			if data, err := artifacts.Read(run.Log, MaxLogBytes); err == nil && digest(data) == run.LogSHA256 {
@@ -49,14 +44,16 @@ func executionProblems(ctx context.Context, artifacts Artifacts, record Record, 
 }
 
 // rerun reports whether another run of run's check failed with an exit code
-// at the same before-snapshot and with the same applied GOFLAGS. A failed run
+// at the same source, its before-snapshot or its source digest, and with the
+// same applied GOFLAGS. A failed run
 // recorded without go_env (record version 4) shows only its environment's
 // GOFLAGS, not a go env file's, so it also matches a run whose environment
 // gave the same. A passed run is never failed, so run never matches itself.
 func rerun(record Record, run CheckRun) bool {
 	return slices.ContainsFunc(record.Checks, func(other CheckRun) bool {
 		sameFlags := appliedGOFLAGS(other) == appliedGOFLAGS(run) || other.GoEnv == nil && other.GOFLAGS == run.GOFLAGS
-		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && equalSnapshot(other.Before, run.Before) && sameFlags
+		sameSource := equalSnapshot(other.Before, run.Before) || other.SourceSHA256 != "" && other.SourceSHA256 == run.SourceSHA256
+		return other.CheckID == run.CheckID && other.Status == "failed" && other.ExitCode != nil && sameSource && sameFlags
 	})
 }
 

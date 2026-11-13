@@ -76,7 +76,7 @@ func TestAssignPastTheRoundCapIsRefusedUntilTheOwnerApproves(t *testing.T) {
 		t.Fatalf("task show --field assignments = %q, %v; want three assignments", shown.stdout, err)
 	}
 	got := fields.Assignments[2]
-	if got.OwnerApproval == nil || got.OwnerApproval.Text != "one more round" || got.OwnerApproval.For != taskflow.ApprovalRoundBudget || !got.OwnerApproval.At.Equal(got.AssignedAt) {
-		t.Fatalf("assignment t3 approval = %+v, want the owner's words for round-budget at %v", got.OwnerApproval, got.AssignedAt)
+	if len(got.OwnerApprovals) != 1 || got.OwnerApprovals[0].Text != "one more round" || got.OwnerApprovals[0].For != taskflow.ApprovalRoundBudget || !got.OwnerApprovals[0].At.Equal(got.AssignedAt) {
+		t.Fatalf("assignment t3 approvals = %+v, want the owner's words for round-budget at %v", got.OwnerApprovals, got.AssignedAt)
 	}
 }

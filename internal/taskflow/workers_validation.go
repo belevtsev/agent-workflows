@@ -79,7 +79,7 @@ func validateWorkerRecord(record Record) error {
 		if err := validateInputFiles(assigned); err != nil {
 			return err
 		}
-		if err := validateStoredApproval(record, assigned); err != nil {
+		if err := validateStoredApprovals(record, assigned); err != nil {
 			return err
 		}
 	}
@@ -150,11 +150,8 @@ func validateWorkerTransition(previous, current Record) error {
 		// Like the round rule, the limits depend on the assignments, results
 		// and acceptances the previous revision holds, and on the source the
 		// assignment bound.
-		if err := checkApproval(previous, assigned.Snapshot, assigned.Brief, assigned.OwnerApproval); err != nil {
-			if _, escalation := errors.AsType[ErrEscalation](err); escalation {
-				return fmt.Errorf("stored worker assignment %s fixes a finding or requirement past its fix rounds without the owner's approval", assigned.Brief.ID)
-			}
-			return fmt.Errorf("stored worker assignment %s goes past its stage's round cap without the owner's approval, or carries one it does not need", assigned.Brief.ID)
+		if !approvalsMatch(previous, assigned.Snapshot, assigned.Brief, assigned.OwnerApprovals) {
+			return fmt.Errorf("stored worker assignment %s goes past a limit of its profile without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {
@@ -194,7 +191,7 @@ func validateWorkerTransition(previous, current Record) error {
 		if result == nil {
 			return errors.New("worker acceptance must follow its result revision")
 		}
-		runs, err := bindChecks(previous, bound.Snapshot, bound.Acceptance.CheckIDs)
+		runs, err := bindChecks(previous, exactCredit(bound.Snapshot), bound.Acceptance.CheckIDs)
 		if err != nil || !slices.Equal(runs, bound.CheckRuns) {
 			return errors.New("stored acceptance did not bind actual latest passed checks")
 		}

@@ -128,7 +128,7 @@ func TestHooksJSONShape(t *testing.T) {
 	t.Run("events matchers and conditions", func(t *testing.T) {
 		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
 		// PreToolUse has one Bash group with exactly three handlers, whose
-		// ifs are Bash(*git*), Bash(*abandon*) and Bash(*cw*owner-approval*)
+		// ifs are Bash(*git*), Bash(*abandon*) and Bash(*owner-approval*)
 		// and whose commands are all the agreed inline command, so they reach
 		// the same decision where several run; SessionStart calls cw hook and references the plugin
 		// root and data directory.
@@ -173,9 +173,34 @@ func TestHooksJSONShape(t *testing.T) {
 const (
 	preToolUseIf         = "Bash(*git*)"
 	preToolUseAbandonIf  = "Bash(*abandon*)"
-	preToolUseApprovalIf = "Bash(*cw*owner-approval*)"
+	preToolUseApprovalIf = "Bash(*owner-approval*)"
 	preToolUseCommand    = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
 )
+
+// conditionMatches reports whether a Bash(GLOB) handler condition matches a
+// command line as Claude Code checks it: GLOB, where * matches any text,
+// against each command of the line split at ;, && and ||.
+func conditionMatches(condition, line string) bool {
+	glob := strings.TrimSuffix(strings.TrimPrefix(condition, "Bash("), ")")
+	for _, command := range strings.FieldsFunc(strings.NewReplacer("&&", ";", "||", ";").Replace(line), func(r rune) bool { return r == ';' }) {
+		parts := strings.Split(glob, "*")
+		rest := strings.TrimSpace(command)
+		matched := strings.HasPrefix(rest, parts[0])
+		rest = strings.TrimPrefix(rest, parts[0])
+		for _, part := range parts[1:] {
+			at := strings.Index(rest, part)
+			if !matched || at < 0 {
+				matched = false
+				break
+			}
+			rest = rest[at+len(part):]
+		}
+		if matched && (rest == "" || strings.HasSuffix(glob, "*")) {
+			return true
+		}
+	}
+	return false
+}
 
 // hooksPreToolUse returns the command of the PreToolUse handler whose if is
 // condition.
@@ -454,6 +479,28 @@ func TestHooksEndToEnd(t *testing.T) {
 		code, stdout, stderr = hooksSh(t, abandonCommand, preStdin(t, outside, "cw task show --task "+record.Directory), env(withCW))
 		if code != 0 || stdout != "" {
 			t.Fatalf("cw task show: exit %d stdout %q stderr %q; want exit 0 and no output", code, stdout, stderr)
+		}
+	})
+
+	t.Run("pre-publish asks before an owner approval through its condition", func(t *testing.T) {
+		// Oracle (R3): Claude Code runs the handler whose condition matches
+		// one command of the line (conditionMatches), and the handler asks.
+		// The condition must match cw named through a variable too.
+		approvalCommand := hooksPreToolUse(t, file, preToolUseApprovalIf)
+		for _, line := range []string{
+			`cw task assign --task t1 --input b.json --owner-approval "one more round"`,
+			`C=cw; $C task assign --task t1 --input b.json --owner-approval "one more round"`,
+		} {
+			if !conditionMatches(preToolUseApprovalIf, line) {
+				t.Fatalf("condition %s does not match %q", preToolUseApprovalIf, line)
+			}
+			code, stdout, stderr := hooksSh(t, approvalCommand, preStdin(t, outside, line), env(withCW))
+			if code != 0 {
+				t.Fatalf("exit %d stderr %q", code, stderr)
+			}
+			if reason := hooksExpectDecision(t, stdout, "ask"); !strings.Contains(reason, "as the owner's approval") {
+				t.Fatalf("ask reason %q does not name the owner's approval", reason)
+			}
 		}
 	})
 

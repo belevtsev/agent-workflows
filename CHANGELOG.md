@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
-  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; only the round caps are enforced so far ([profiles](docs/operations.md#profiles)).
+  stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; only the round caps and fix rounds are enforced so far ([profiles](docs/operations.md#profiles)).
 - `cw task assign` refuses a round past its stage's cap with exit 4 and no revision, unless `--owner-approval "<the owner's words>"`
   records the owner's words on the assignment; the plugin hook asks the user to confirm them ([round caps](docs/operations.md#round-caps)).
 - `cw task assign` refuses a third fix round on a finding or requirement still open (exit 4) until the owner approves one more
@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
 - `cw task assign` records the stage a brief answers and, for a later round, the findings or requirements it fixes or the assignment it repeats;
   under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
+- A passed check run stays credited across commits and merges that keep the source bytes and modes, go command, `GOFLAGS` and run key, and
+  `cw task run` then reuses it without running, except a `git` check; `--force` or `CW_NO_REUSE=1` runs it ([reuse](docs/operations.md#reusing-a-passed-run)).
+- `cw task usage` samples a session's tokens into the task record with dollars estimated from a dated built-in price table (or `--prices`);
+  only requests since the task's start count, task usage sums each session's latest sample, and what cannot be priced stays unknown, never 0 ([cost budget](docs/operations.md#cost-budget)).
 
 ### Changed
 

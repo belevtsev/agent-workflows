@@ -17,18 +17,54 @@ import (
 // implementer fixes, which never count against this budget.
 var countedStages = []string{StageSpec, StageDesign, StageTests}
 
-// roundsUsed counts the author rounds each capped stage has used:
-// its assignments, except one that repeats an earlier assignment (a
-// replacement for an exposed worker, or a correction round verify requires)
-// and one whose latest acceptance closed it as unused. For spec and design
-// the first such assignment is the first spec or design, not a revision, so
-// it does not count; for tests the first dispatch counts.
+// roundsUsed counts the author rounds each capped stage has used, as
+// worker-handoffs.md "Round budget" defines them:
+//
+//   - The briefs of a stage with neither fixes nor repeats were assigned
+//     before any brief of the stage returned (validateBriefStage), so
+//     together they are one round, the stage's first.
+//   - Each brief with fixes is a round: a return of findings, a fresh worker
+//     for a finding, or a refreshed brief after an amendment.
+//   - A brief that repeats an assignment that counts, or that a repeat of
+//     one replaced, is no new round: it replaces an exposed worker or makes
+//     a correction round verify requires. A repeat of an assignment that
+//     does not count takes its place.
+//   - An assignment closed unused whose handoff was not completed returned
+//     no work, so it does not count. One whose completed work was closed
+//     unused, such as a superseded round, still counts.
+//
+// For spec and design the first round is the first draft, not a revision,
+// so it does not count; for tests the first dispatch counts.
 func roundsUsed(record Record) map[string]int {
 	used := map[string]int{}
+	first := map[string]bool{}        // the assignment belongs to its stage's first round
+	covered := map[string]bool{}      // the assignment counts, or replaces one that does
+	firstCounted := map[string]bool{} // the stage's first round has counted
 	for _, assigned := range record.Assignments {
-		if stage := assigned.Brief.Stage; slices.Contains(countedStages, stage) && isRound(record, assigned) {
-			used[stage]++
+		brief := assigned.Brief
+		if !slices.Contains(countedStages, brief.Stage) {
+			continue
 		}
+		if brief.Repeats != "" {
+			if covered[brief.Repeats] {
+				covered[brief.ID] = true
+				continue
+			}
+			first[brief.ID] = first[brief.Repeats]
+		} else {
+			first[brief.ID] = len(brief.Fixes) == 0
+		}
+		if returnedNoWork(record, brief.ID) {
+			continue
+		}
+		covered[brief.ID] = true
+		if first[brief.ID] {
+			if firstCounted[brief.Stage] {
+				continue
+			}
+			firstCounted[brief.Stage] = true
+		}
+		used[brief.Stage]++
 	}
 	for _, stage := range []string{StageSpec, StageDesign} {
 		switch used[stage] {
@@ -42,15 +78,12 @@ func roundsUsed(record Record) map[string]int {
 	return used
 }
 
-// isRound reports whether assigned is a round: it repeats no earlier
-// assignment (a replacement for an exposed worker, or a correction round
-// verify requires), and its latest acceptance did not close it as unused.
-func isRound(record Record, assigned WorkerAssignment) bool {
-	if assigned.Brief.Repeats != "" {
-		return false
-	}
-	accepted := latestAcceptance(record, assigned.Brief.ID)
-	return accepted == nil || accepted.Acceptance.Status != "unused"
+// returnedNoWork reports whether the assignment's latest acceptance closed it
+// unused and its handoff was not completed, so its work never returned.
+func returnedNoWork(record Record, id string) bool {
+	accepted := latestAcceptance(record, id)
+	result := findWorkerResult(record, id)
+	return accepted != nil && accepted.Acceptance.Status == "unused" && result != nil && result.Result.Status != "completed"
 }
 
 // overRoundBudget returns the refusal of brief when assigning it would take
@@ -68,7 +101,7 @@ func overRoundBudget(record Record, brief WorkerBrief) *ErrRoundBudget {
 	next.Assignments = append(slices.Clip(record.Assignments), WorkerAssignment{Brief: brief})
 	used, after := roundsUsed(record)[brief.Stage], roundsUsed(next)[brief.Stage]
 	if after <= limit || after == used {
-		// Within the cap, or a brief that is no round, such as a repeat.
+		// Within the cap, or a brief that is no new round.
 		return nil
 	}
 	return &ErrRoundBudget{Stage: brief.Stage, Profile: record.Profile.Name, Used: used, Cap: limit, Needs: roundNeeds(record, brief)}
@@ -112,7 +145,7 @@ func (e ErrRoundBudget) Error() string {
 	return fmt.Sprintf("stage %s has used %d of the %d author rounds profile %s allows; another round needs the owner's approval", e.Stage, e.Used, e.Cap, e.Profile)
 }
 
-// OwnerApproval records the owner's words that let an operation go past a
+// OwnerApproval records the owner's words that let an operation go past one
 // limit of the task's profile; For names the limit. The agent supplies the
 // text: cw records it, and on Claude Code the plugin hook asks a person to
 // confirm it.
@@ -128,7 +161,7 @@ const ApprovalRoundBudget = "round-budget"
 
 // ApprovalEscalation is OwnerApproval.For of a fix round past the fix
 // rounds its profile allows on one finding or requirement that is still
-// open. It also covers the stage's round cap when the brief passes both.
+// open.
 const ApprovalEscalation = "escalation"
 
 // approvalLimits are the limits an OwnerApproval may name.
@@ -143,46 +176,109 @@ func validApprovalText(text string) bool {
 	return nonblank(text) && len(text) <= maxApprovalText && utf8.ValidString(text) && !strings.ContainsFunc(text, unicode.IsControl)
 }
 
-// validateStoredApproval checks a stored assignment's approval: the owner's
-// words, a known limit, and a time between the task's start and the
-// assignment.
-func validateStoredApproval(record Record, assigned WorkerAssignment) error {
-	approval := assigned.OwnerApproval
-	if approval == nil {
-		return nil
-	}
-	if !validApprovalText(approval.Text) || !slices.Contains(approvalLimits, approval.For) || approval.At.Before(record.CreatedAt) || approval.At.After(assigned.AssignedAt) {
-		return errors.New("stored worker assignment owner approval needs bounded text, a known limit and a time within the task before the assignment")
-	}
-	return nil
+// overLimit is one limit of the task's profile that a brief goes past, with
+// its refusal, which matches ErrOverBudget.
+type overLimit struct {
+	For     string
+	refusal error
 }
 
-// passedLimit returns the limit of the record's profile that assigning brief
-// at snapshot would pass, as OwnerApproval.For names it, with its refusal
-// typed ErrOverBudget; it returns "" and nil when the brief passes none. An
-// escalation comes first: approving it approves the round too.
-func passedLimit(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) (string, error) {
+// limitsOver returns every limit of the record's profile that assigning
+// brief at snapshot would go past: the stage's round cap, and the fix rounds
+// of a finding or requirement still open (escalated).
+func limitsOver(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) []overLimit {
+	var over []overLimit
+	if round := overRoundBudget(record, brief); round != nil {
+		over = append(over, overLimit{For: ApprovalRoundBudget, refusal: kindError{kind: ErrOverBudget, msg: round.Error(), cause: *round}})
+	}
 	if escalation := escalated(record, snapshot, brief); escalation != nil {
-		return ApprovalEscalation, kindError{kind: ErrOverBudget, msg: escalation.Error(), cause: *escalation}
+		over = append(over, overLimit{For: ApprovalEscalation, refusal: kindError{kind: ErrOverBudget, msg: escalation.Error(), cause: *escalation}})
 	}
-	if over := overRoundBudget(record, brief); over != nil {
-		return ApprovalRoundBudget, kindError{kind: ErrOverBudget, msg: over.Error(), cause: *over}
-	}
-	return "", nil
+	return over
 }
 
-// checkApproval checks an assignment's approval against the limits the
-// record held before it, at the assignment's snapshot: a brief that passes a
-// limit needs an approval for that limit, and any other carries none.
-func checkApproval(before Record, snapshot projectctx.Snapshot, brief WorkerBrief, approval *OwnerApproval) error {
-	limit, refusal := passedLimit(before, snapshot, brief)
-	switch {
-	case refusal != nil && (approval == nil || approval.For != limit):
-		return refusal
-	case refusal == nil && approval != nil:
-		return invalidf("worker brief %s goes past no limit of the task, so it takes no owner approval", brief.ID)
+// ownerApprovals turns each --owner-approval value into the approval of one
+// limit the brief goes past. A value "LIMIT=TEXT", LIMIT a known limit,
+// names its limit; any other value is the words for the one limit the brief
+// goes past, and is refused when it goes past several. Words for a limit it
+// does not go past, or twice for one limit, are refused as invalid input; a
+// limit without words is refused with its own refusal, or, for several,
+// with one that names them all.
+func ownerApprovals(over []overLimit, briefID string, words []string) ([]OwnerApproval, error) {
+	names := make([]string, 0, len(over))
+	for _, limit := range over {
+		names = append(names, limit.For)
+	}
+	var approvals []OwnerApproval
+	for _, value := range words {
+		limit, text := "", value
+		if name, rest, ok := strings.Cut(value, "="); ok && slices.Contains(approvalLimits, name) {
+			limit, text = name, rest
+		}
+		if !validApprovalText(text) {
+			return nil, invalidf("owner approval text must be 1..%d bytes without control characters", maxApprovalText)
+		}
+		switch {
+		case limit != "":
+		case len(over) == 1:
+			limit = over[0].For
+		case len(over) > 1:
+			return nil, invalidf("worker brief %s goes past %d limits (%s); give the owner's words for each as --owner-approval LIMIT=TEXT", briefID, len(over), strings.Join(names, ", "))
+		}
+		if !slices.Contains(names, limit) {
+			if limit == "" {
+				return nil, invalidf("worker brief %s goes past no limit of the task, so it takes no owner approval", briefID)
+			}
+			return nil, invalidf("worker brief %s does not go past %s, so it takes no owner approval for it", briefID, limit)
+		}
+		if slices.ContainsFunc(approvals, func(a OwnerApproval) bool { return a.For == limit }) {
+			return nil, invalidf("worker brief %s has the owner's approval for %s twice", briefID, limit)
+		}
+		approvals = append(approvals, OwnerApproval{Text: text, For: limit})
+	}
+	var missing []error
+	var missingNames []string
+	for _, limit := range over {
+		if !slices.ContainsFunc(approvals, func(a OwnerApproval) bool { return a.For == limit.For }) {
+			missing, missingNames = append(missing, limit.refusal), append(missingNames, limit.For)
+		}
+	}
+	switch len(missing) {
+	case 0:
+		return approvals, nil
+	case 1:
+		return nil, missing[0]
+	}
+	return nil, kindError{kind: ErrOverBudget, msg: fmt.Sprintf("worker brief %s goes past %s; each needs the owner's approval as --owner-approval LIMIT=TEXT", briefID, strings.Join(missingNames, " and ")), cause: errors.Join(missing...)}
+}
+
+// validateStoredApprovals checks a stored assignment's approvals: for each,
+// the owner's words, a known limit named once, and a time between the
+// task's start and the assignment.
+func validateStoredApprovals(record Record, assigned WorkerAssignment) error {
+	for i, approval := range assigned.OwnerApprovals {
+		if !validApprovalText(approval.Text) || !slices.Contains(approvalLimits, approval.For) || approval.At.Before(record.CreatedAt) || approval.At.After(assigned.AssignedAt) ||
+			slices.ContainsFunc(assigned.OwnerApprovals[:i], func(earlier OwnerApproval) bool { return earlier.For == approval.For }) {
+			return errors.New("stored worker assignment owner approval needs bounded text, a known limit named once and a time within the task before the assignment")
+		}
 	}
 	return nil
+}
+
+// approvalsMatch reports whether a stored assignment's approvals name
+// exactly the limits its brief went past in the record before it, at the
+// snapshot the assignment bound.
+func approvalsMatch(before Record, snapshot projectctx.Snapshot, brief WorkerBrief, approvals []OwnerApproval) bool {
+	over := limitsOver(before, snapshot, brief)
+	if len(over) != len(approvals) {
+		return false
+	}
+	for _, limit := range over {
+		if !slices.ContainsFunc(approvals, func(a OwnerApproval) bool { return a.For == limit.For }) {
+			return false
+		}
+	}
+	return true
 }
 
 // FixRound is one earlier fix round on a finding or requirement: its
@@ -252,17 +348,44 @@ func fixKey(record Record, fix FixRef) FixRef {
 	return FixRef{Finding: key}
 }
 
-// fixAssignments lists, per key, the assignments that are rounds (isRound)
-// and fix it, in order; a brief that fixes two findings of one chain counts
-// once.
+// fixesOf returns the fixes each assignment of record answers as a fix
+// round, and the assignments that count as one, as roundsUsed counts rounds:
+// a brief with fixes counts unless it returned no work (returnedNoWork); a
+// repeat (which carries no fixes) of one that counts is no new round, and a
+// repeat of one that does not count takes its place and its fixes.
+func fixesOf(record Record) (fixes map[string][]FixRef, counts map[string]bool) {
+	fixes, counts = map[string][]FixRef{}, map[string]bool{}
+	covered := map[string]bool{} // the assignment counts, or replaces one that does
+	for _, assigned := range record.Assignments {
+		brief := assigned.Brief
+		fixes[brief.ID] = brief.Fixes
+		if brief.Repeats != "" {
+			if covered[brief.Repeats] {
+				covered[brief.ID] = true
+				continue
+			}
+			fixes[brief.ID] = fixes[brief.Repeats]
+		}
+		if len(fixes[brief.ID]) == 0 || returnedNoWork(record, brief.ID) {
+			continue
+		}
+		covered[brief.ID], counts[brief.ID] = true, true
+	}
+	return fixes, counts
+}
+
+// fixAssignments lists, per key, the assignments that count as fix rounds
+// on it (fixesOf), in order; a brief that fixes two findings of one chain
+// counts once.
 func fixAssignments(record Record) map[FixRef][]string {
+	fixes, counts := fixesOf(record)
 	assignments := map[FixRef][]string{}
 	for _, assigned := range record.Assignments {
-		if !isRound(record, assigned) {
+		if !counts[assigned.Brief.ID] {
 			continue
 		}
 		seen := map[FixRef]bool{}
-		for _, fix := range assigned.Brief.Fixes {
+		for _, fix := range fixes[assigned.Brief.ID] {
 			if key := fixKey(record, fix); !seen[key] {
 				seen[key] = true
 				assignments[key] = append(assignments[key], assigned.Brief.ID)
@@ -292,7 +415,7 @@ func stillOpen(record Record, snapshot projectctx.Snapshot, fix FixRef) bool {
 		if at < 0 {
 			return false
 		}
-		_, err := bindChecks(record, snapshot, record.Plan.Requirements[at].CheckIDs)
+		_, err := bindChecks(record, exactCredit(snapshot), record.Plan.Requirements[at].CheckIDs)
 		return err != nil
 	}
 	assignment, id, _ := strings.Cut(fix.Finding, "/")
@@ -307,13 +430,20 @@ func stillOpen(record Record, snapshot projectctx.Snapshot, fix FixRef) bool {
 // escalated returns the refusal of brief when it fixes a finding or
 // requirement that is still open after the fix rounds the record's profile
 // allows, and nil otherwise. A record without a profile, and a brief that is
-// no round, have no limit.
+// no new fix round, have no limit; a repeat that takes the place of a round
+// that returned no work answers that round's fixes.
 func escalated(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) *ErrEscalation {
-	if record.Profile == nil || !isRound(record, WorkerAssignment{Brief: brief}) {
+	if record.Profile == nil {
+		return nil
+	}
+	next := record
+	next.Assignments = append(slices.Clip(record.Assignments), WorkerAssignment{Brief: brief})
+	fixes, counts := fixesOf(next)
+	if !counts[brief.ID] {
 		return nil
 	}
 	history := fixAssignments(record)
-	for _, fix := range brief.Fixes {
+	for _, fix := range fixes[brief.ID] {
 		key := fixKey(record, fix)
 		ids := history[key]
 		if len(ids) < record.Profile.FixRounds || !stillOpen(record, snapshot, fix) {
