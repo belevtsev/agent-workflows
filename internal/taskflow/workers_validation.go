@@ -58,14 +58,11 @@ func validateWorkerRecord(record Record) error {
 		if err := validateBrief(record, assigned.Brief); err != nil {
 			return err
 		}
-		// A stored brief counts only the results submitted strictly before
-		// it was assigned. AssignWorker saw exactly the results recorded
-		// then; one with an equal time is not counted, so a load never
-		// refuses what assign accepted.
-		returned := func(id string) bool {
-			result := findWorkerResult(record, id)
-			return result != nil && result.SubmittedAt.Before(assigned.AssignedAt)
-		}
+		// The round rule needs the results recorded when the brief was
+		// assigned, which only the revision chain knows, not the clock;
+		// validateWorkerTransition applies it to the revision that adds the
+		// brief. Here the rest of the brief's stage rules apply.
+		returned := func(string) bool { return false }
 		if err := validateBriefStage(record, record.Assignments[:i], returned, assigned.Brief); err != nil {
 			return err
 		}
@@ -137,6 +134,12 @@ func validateWorkerTransition(previous, current Record) error {
 		assigned := current.Assignments[len(previous.Assignments)]
 		if assigned.Brief.Role == "review" && assigned.BundleFile == "" {
 			return errors.New("stored review assignment lacks its reviewer bundle")
+		}
+		// An assignment is the only worker change of its revision, so the
+		// previous revision holds exactly the results AssignWorker saw.
+		returned := func(id string) bool { return findWorkerResult(previous, id) != nil }
+		if err := validateBriefStage(current, previous.Assignments, returned, assigned.Brief); err != nil {
+			return err
 		}
 		if assigned.Brief.Role == "implementation" {
 			for _, other := range previous.Assignments {

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // stageTask starts a small task under the default profile, or, with
@@ -170,4 +171,79 @@ func TestRecordWithoutAProfileAcceptsBriefsAsBefore(t *testing.T) {
 	if loaded, err := Load(record.Directory); err != nil || loaded.Profile != nil || len(loaded.Assignments) != 3 {
 		t.Fatalf("Load = %d assignments, profile %+v, %v; want 3, none, nil", len(loaded.Assignments), loaded.Profile, err)
 	}
+}
+
+// Oracle: whether an earlier brief of a stage had returned a result when a
+// later one was assigned is a fact of the revision chain, not of the clock.
+// With a clock that steps back, a first-round brief assigned before its
+// sibling's result exists still loads although that result's time is earlier
+// than the brief's; and a later brief assigned without fixes or repeats once a
+// result exists is still refused at load, however the times compare. The
+// clock reads 99s for the result and 101s for the revision that records it,
+// so the record's own updated_at rule, which predates stages, holds.
+func TestBriefRoundRuleFollowsTheRecordNotTheClock(t *testing.T) {
+	record, ref := stageTask(t, false)
+	if err := os.WriteFile(filepath.Join(record.Baseline.Root, "other.txt"), []byte("other\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var readings []time.Duration
+	env := productionEnv
+	env.Clock = func() time.Time {
+		offset := readings[0]
+		if len(readings) > 1 {
+			readings = readings[1:]
+		}
+		return record.CreatedAt.Add(offset)
+	}
+	at := func(offsets ...time.Duration) { readings = offsets }
+
+	at(50 * time.Second)
+	if _, err := env.AssignWorker(t.Context(), record.Directory, stageBrief("b1", "implementation", StageTests, "source.txt")); err != nil {
+		t.Fatal(err)
+	}
+	at(100 * time.Second)
+	if _, err := env.AssignWorker(t.Context(), record.Directory, stageBrief("b2", "implementation", StageTests, "other.txt")); err != nil {
+		t.Fatalf("a first-round sibling before any result: %v", err)
+	}
+	// The clock steps back: b1's result is stamped before b2's assignment.
+	at(99*time.Second, 101*time.Second)
+	record, err := Load(record.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := workerResult(t, record, "b1", "cancelled")
+	result.Findings = []WorkerFinding{{ID: "f1", Summary: "The empty case is wrong.", Evidence: []SourceRef{ref}}}
+	if _, err := env.SubmitWorkerResult(t.Context(), record.Directory, result); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(record.Directory); err != nil {
+		t.Fatalf("Load after a clock step back = %v, want the record", err)
+	}
+
+	// A third round after b1 returned, appended without fixes or repeats
+	// and stamped before b1's result, is refused at load all the same.
+	appendWorkerRevision(t, mustLoad(t, record.Directory), func(r *Record) {
+		r.UpdatedAt = record.CreatedAt.Add(102 * time.Second)
+		brief := stageBrief("b3", "implementation", StageTests, "source.txt")
+		assignment := WorkerAssignment{TaskID: r.ID, Brief: brief, Snapshot: r.Assignments[0].Snapshot, AssignedAt: record.CreatedAt.Add(98 * time.Second)}
+		var hashErr error
+		if assignment.SHA256, hashErr = assignmentHash(assignment); hashErr != nil {
+			t.Fatal(hashErr)
+		}
+		r.Assignments = append(r.Assignments, assignment)
+		r.EvidenceRevision++
+	})
+	const refused = "worker brief of stage tests needs fixes or repeats: assignment b1 of that stage has returned a result"
+	if _, err := Load(record.Directory); err == nil || !strings.HasPrefix(err.Error(), refused) {
+		t.Fatalf("Load with an unnamed third round = %v, want %q", err, refused)
+	}
+}
+
+func mustLoad(t *testing.T, directory string) Record {
+	t.Helper()
+	record, err := Load(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return record
 }
