@@ -140,8 +140,12 @@ GOWORK=off go test ./internal/skillcheck
   than 200 characters;
 - each `*.md` file under `skills/task-orchestration` stays within its cap in
   the table of `orchestration_budget_test.go`, and the files within the sum cap.
-  The caps are a ratchet toward 10,240 bytes a file (8,192 a role contract) and
-  90,000 in all: a cut lowers its rows, a new file needs a row;
+  The caps are a ratchet under 10,240 bytes a file (8,192 a role contract): a
+  cut lowers its row and the sum, a new file needs a row;
+- the files a default `lite` task loads from that skill (`SKILL.md`, the
+  references every task reads and the four lite contracts, listed in
+  `lite_flow_budget_test.go`) hold at most 90,000 bytes together; every other
+  file is listed there with the condition that loads it;
 - only `global/AGENTS.md` states when a task is substantial; the skills, agents,
   hooks, docs and model policies link to it.
 

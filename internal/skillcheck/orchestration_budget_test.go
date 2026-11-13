@@ -8,58 +8,55 @@ import (
 	"testing"
 )
 
-// The orchestration skill's prose budget (D7 as measured by OD-7): the *.md
-// files under skills/task-orchestration sum to at most 90,000 bytes, each at
-// most 10,240, and each role contract at most 8,192 (S4e).
+// The orchestration skill's prose budget (D7 as measured by OD-7): each *.md
+// file under skills/task-orchestration holds at most 10,240 bytes and each
+// role contract at most 8,192 (S4e). The 90,000-byte part of the budget
+// counts what a default lite task loads; lite_flow_budget_test.go holds it.
 //
-// The budget lands as a ratchet. Each file's cap is its size when the test
-// landed until a cut PR lowers it; the target is where the cut must end. A cut
-// PR moves its rows from cap to target and lowers orchestrationSumCap by the
-// bytes it removed. The last cut sets orchestrationSumCap to
-// orchestrationSumTarget.
+// The table is a ratchet. Each file's cap is its size after the last cut, and
+// orchestrationSumCap is the sum of the files then: a file may shrink, and a
+// PR that shrinks one lowers its row and the sum cap. Neither goes up.
 const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
 	orchestrationSumCap    = 141780
-	orchestrationSumTarget = 90000
 )
 
 type budgetRow struct {
-	cap    int    // bytes the file may hold now
-	target int    // bytes the file may hold once its item lands
-	item   string // the plan item that cuts the file to its target
+	cap  int    // bytes the file may hold
+	item string // the plan item that last cut the file
 }
 
 // orchestrationBudget has one row per *.md file under the skill, keyed by its
-// slash path relative to the skill directory. S4f covers the four files S4
-// had no item for; S4d gives consultation-helper.md the per-file limit.
+// slash path relative to the skill directory. A file no item has cut since
+// the table landed keeps the cap it had then.
 var orchestrationBudget = map[string]budgetRow{
-	"SKILL.md":                                    {6466, 5400, "H4"},
-	"references/adviser-providers.md":             {10240, 10240, "S4d"},
-	"references/base-merge.md":                    {1873, 1800, "S4h"},
-	"references/connected-sources.md":             {10240, 10240, "S4f"},
-	"references/consultation-helper.md":           {10240, 10240, "S4d"},
-	"references/contract-amendment.md":            {4803, 3900, "S4l"},
-	"references/contracts/README.md":              {4813, 4100, "S4l"},
-	"references/contracts/adversarial-tester.md":  {3191, 2700, "S4i"},
-	"references/contracts/architect.md":           {6217, 4800, "S4k"},
-	"references/contracts/code-review.md":         {8183, 6000, "S4j"},
-	"references/contracts/design-review.md":       {6314, 4100, "S4k"},
-	"references/contracts/implementer.md":         {5158, 3700, "S4j"},
-	"references/contracts/spec-review.md":         {4891, 3400, "S4k"},
-	"references/contracts/spec-writer.md":         {4339, 3400, "S4k"},
-	"references/contracts/test-engineer.md":       {7297, 5400, "S4j"},
-	"references/contracts/test-review.md":         {5141, 3600, "S4j"},
-	"references/dispatching-reviews-and-tests.md": {9270, 6600, "S4i"},
-	"references/github-worker-fallback.md":        {4132, 3700, "S4g"},
-	"references/github-worker.md":                 {4000, 3000, "S4g"},
-	"references/global-workflow.md":               {6311, 6000, "S4h"},
-	"references/glossary.md":                      {2696, 2400, "H4"},
-	"references/hosts.md":                         {7336, 4600, "S4g"},
-	"references/measure-outcomes.md":              {1304, 800, "S4h"},
-	"references/question-patterns.md":             {1883, 10240, "S4a"},
-	"references/worker-handoffs.md":               {8842, 6900, "S4i"},
+	"SKILL.md":                                    {6466, "H4"},
+	"references/adviser-providers.md":             {8646, "S4d"},
+	"references/base-merge.md":                    {1873, "S4h"},
+	"references/connected-sources.md":             {8634, "S4f"},
+	"references/consultation-helper.md":           {10040, "S4d"},
+	"references/contract-amendment.md":            {4803, "S4l"},
+	"references/contracts/README.md":              {4813, "S4l"},
+	"references/contracts/adversarial-tester.md":  {3191, "S4i"},
+	"references/contracts/architect.md":           {6217, "S4k"},
+	"references/contracts/code-review.md":         {8183, "S4j"},
+	"references/contracts/design-review.md":       {6314, "S4k"},
+	"references/contracts/implementer.md":         {5158, "S4j"},
+	"references/contracts/spec-review.md":         {4891, "S4k"},
+	"references/contracts/spec-writer.md":         {4339, "S4k"},
+	"references/contracts/test-engineer.md":       {7297, "S4j"},
+	"references/contracts/test-review.md":         {5141, "S4j"},
+	"references/dispatching-reviews-and-tests.md": {9270, "S4i"},
+	"references/github-worker-fallback.md":        {4132, "S4g"},
+	"references/github-worker.md":                 {4000, "S4g"},
+	"references/global-workflow.md":               {6311, "S4h"},
+	"references/glossary.md":                      {2696, "H4"},
+	"references/hosts.md":                         {7336, "S4g"},
+	"references/measure-outcomes.md":              {1304, "S4h"},
+	"references/question-patterns.md":             {1883, "S4a"},
+	"references/worker-handoffs.md":               {8842, "S4i"},
 }
 
 // fileLimit is the most bytes OD-7 allows the file at rel.
@@ -99,7 +96,7 @@ func orchestrationMarkdownSizes(t *testing.T, dir string) map[string]int {
 // oracle: every *.md file under skills/task-orchestration has a row in
 // orchestrationBudget and every row names a file that exists; no file holds
 // more bytes than its row's cap; the files together hold at most
-// orchestrationSumCap bytes; and every target is within OD-7's per-file limit
+// orchestrationSumCap bytes; and every cap is within OD-7's per-file limit
 // (8,192 for a contract, 10,240 otherwise). A file growing past its cap, or a
 // new file without a row, fails with the file's path and the rule it breaks.
 func TestOrchestrationReferenceBudget(t *testing.T) {
@@ -121,12 +118,12 @@ func TestOrchestrationReferenceBudget(t *testing.T) {
 		row, ok := orchestrationBudget[rel]
 		if !ok {
 			t.Errorf("%s/%s (%d bytes) has no row in orchestrationBudget: every *.md file under the skill needs a cap "+
-				"and a target, at most %d bytes (OD-7)", orchestrationSkillDir, rel, size, fileLimit(rel))
+				"of at most %d bytes (OD-7)", orchestrationSkillDir, rel, size, fileLimit(rel))
 			continue
 		}
 		if size > row.cap {
 			t.Errorf("%s/%s holds %d bytes, over its cap of %d: the budget is a ratchet, a file may not grow "+
-				"past its cap (OD-7; target %d after %s)", orchestrationSkillDir, rel, size, row.cap, row.target, row.item)
+				"past its cap (OD-7; last cut by %s)", orchestrationSkillDir, rel, size, row.cap, row.item)
 		}
 	}
 	for rel, row := range orchestrationBudget {
@@ -134,13 +131,13 @@ func TestOrchestrationReferenceBudget(t *testing.T) {
 			t.Errorf("orchestrationBudget has a row for %s/%s, which does not exist: drop or rename the row",
 				orchestrationSkillDir, rel)
 		}
-		if limit := fileLimit(rel); row.target > limit {
-			t.Errorf("orchestrationBudget gives %s/%s a target of %d bytes, over OD-7's limit of %d",
-				orchestrationSkillDir, rel, row.target, limit)
+		if limit := fileLimit(rel); row.cap > limit {
+			t.Errorf("orchestrationBudget gives %s/%s a cap of %d bytes, over OD-7's limit of %d",
+				orchestrationSkillDir, rel, row.cap, limit)
 		}
 	}
 	if sum > orchestrationSumCap {
 		t.Errorf("the *.md files under %s hold %d bytes, over the sum cap of %d: the budget is a ratchet "+
-			"(OD-7; target %d)", orchestrationSkillDir, sum, orchestrationSumCap, orchestrationSumTarget)
+			"(OD-7)", orchestrationSkillDir, sum, orchestrationSumCap)
 	}
 }
