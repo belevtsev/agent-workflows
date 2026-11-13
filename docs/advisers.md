@@ -43,7 +43,7 @@ the coordinator adjudicates each checkpoint on source evidence under the same ru
 Before configuring any adviser, confirm that sending source excerpts to that
 provider is permitted for the code and organization involved. Each provider's
 data handling is summarized in its section below and in the
-[helper contract](../skills/task-orchestration/references/adviser-providers.md#data-handling).
+[adviser guidance](../skills/task-orchestration/references/adviser-providers.md#data-handling).
 Installation and offline validation work without keys. Never paste a key into
 chat or commit it.
 
@@ -239,7 +239,7 @@ the final checkpoint before `cw task verify`. When the task's binding holds an
 adviser, the coordinator consults it at each point; when it holds none, points a
 to c are skipped and recorded as "no advisers configured", point d attaches the
 offline `no_advisers_configured` record, and the flow runs as it would without
-advisers. The [adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)
+advisers. The [adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow)
 give the commands.
 
 Configured advisers receive the same permitted evidence, questions and neutral
@@ -311,12 +311,23 @@ details and source links.
 
 ### Evaluate multilingual judgments
 
-The bundled [multilingual evaluation](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation)
-uses 12 synthetic scenarios translated into English, Ukrainian and German.
-Expected answers stay with the local scorer. Each adviser is scored independently;
-agreement and confidence do not choose the correct answer.
+The bundled multilingual evaluation (`cwdev eval multilingual`) uses 12
+synthetic scenarios translated into English, Ukrainian and German. It is
+separate from task consultations, skill-discovery evaluations and the repository
+checks. The corpus lives in `evals/multilingual` under the task-orchestration
+skill; `cwdev` is a maintainer tool that reads it from a source checkout,
+selected with `--source` (by default the current directory). The twelve neutral
+cases cover durable acknowledgement, tenant isolation, cancellation and release
+identity, each with supporting, contradictory and missing-evidence observations;
+the language variants preserve the facts, claim, instructions and option
+meanings. The stable choices are `supported`, `contradicted` and
+`insufficient_evidence`. The request builder uses only raw inputs: expected
+answers and evaluator rationale stay with the local scorer and never enter a
+request. Each adviser is scored independently; agreement and confidence do not
+choose the correct answer, and the scorer never fills a task's `final_decision`.
 
-From the editable checkout, validate the corpus offline:
+From the editable checkout, validate the corpus offline, without network access,
+credential lookup or output files:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual
@@ -331,11 +342,29 @@ GOWORK=off go run ./cmd/cwdev eval multilingual --live --output-dir ~/.local/sta
 ```
 
 Only configured advisers run; the report lists the others as `not_run` with reason
-`not_configured`, which is not a failure. The live run makes at most three
-requests per configured adviser without retries and writes `report.json`,
-`summary.md` and safe consultation records. Read accuracy together with coverage
-and per-case errors. A valid `insufficient_evidence` judgment is an answer; a
-refusal or unavailable adviser is missing coverage. This small labeled baseline
-measures performance on its frozen cases. It does not establish calibration,
-production readiness or improvement over another model version. Installation,
-source validation and CI never run the hosted evaluation.
+`not_configured`, which is not a failure, and with none configured a live run
+makes no network call and exits `0`. Freeze the reviewed input and oracle hashes
+before the first hosted request. Each language is one batch of twelve questions;
+the configured advisers receive identical input concurrently, and the batches run
+in sequence, so the run makes at most three requests per configured adviser,
+each within the 30-second batch budget and without retries. It writes
+`report.json`, `summary.md` and safe consultation records with input, oracle,
+policy and runner provenance, requested and returned models, latency and token
+usage; credentials and raw transport errors are excluded, and an existing run
+directory is never overwritten.
+
+Scores count correct, incorrect and missing answers per adviser and language and
+overall. Accuracy uses valid answers as its denominator and coverage all expected
+answers; a zero denominator leaves a metric unknown. Read accuracy together with
+coverage, correct over total, per-case errors and language-triplet consistency,
+which can be consistently wrong. A valid `insufficient_evidence` judgment is
+scored like any answer; a refusal, malformed response or unavailable adviser is
+missing coverage. Incorrect choices do not fail the run: a fully answered run
+exits `0`, incomplete coverage from a configured adviser `2`, invalid inputs or
+output errors `1`, and an interruption `130`, keeping completed batches. A
+fixture defect invalidates the affected results: keep the original run and
+correct the corpus as a new version rather than changing labels to match
+answers. This small labeled baseline measures performance on its frozen cases.
+It does not establish calibration, production readiness or improvement over
+another model version. Offline tests drive the runner with fake transports;
+installation, source validation and CI never run the hosted evaluation.

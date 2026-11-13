@@ -57,9 +57,9 @@ so; the coordinator replaces you with a fresh reviewer.
 
 Findings go back to the test engineer through the coordinator's [feedback
 limits](test-engineer.md#separate-authorship-from-execution); review rounds and
-dispositions follow the [review cap](../worker-handoffs.md#review-stages),
+dispositions follow the [review cap](../worker-handoffs.md#review-cap),
 counted for this stage alone; returns to the test engineer also count against
-the task's [round budget](../worker-handoffs.md#review-stages).
+the task's [round budget](../worker-handoffs.md#round-budget).
 
 Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
 at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
