@@ -1,0 +1,7 @@
+cw task assign --task <task-id> --input - <<'EOF'
+{"id": "impl-1", "agent_id": "/root/implementer", "role": "implementation", "stage": "implementation",
+ "goal": "Return the documented result for empty input", "owned_paths": ["internal/parse"],
+ "constraints": ["Keep the exported API"], "check_ids": ["unit"],
+ "stop_condition": "Return the changed files, source evidence and the checks run"}
+EOF
+cw task schema assign

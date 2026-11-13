@@ -1,0 +1,7 @@
+cw task handoff --task <task-id> --input - <<'EOF'
+{"assignment_id": "impl-1", "status": "completed", "summary": "Empty input now returns the documented result",
+ "evidence": [{"path": "internal/parse/parse.go", "start_line": 12, "end_line": 30}],
+ "changed_files": [{"path": "internal/parse/parse.go", "deleted": false}],
+ "check_ids": ["unit"], "findings": [], "uncertainties": []}
+EOF
+cw task schema handoff

@@ -1,0 +1,9 @@
+cw task assess --task <task-id> --input - <<'EOF'
+{"requirements": [{"id": "empty-input", "status": "satisfied",
+   "evidence": [{"path": "internal/parse/parse.go", "start_line": 12, "end_line": 30}],
+   "check_ids": ["unit"], "non_execution_reason": ""}],
+ "decision": {"status": "resolved", "reason": "The planned check passes on the current source",
+   "evidence": [{"path": "internal/parse/parse.go", "start_line": 12, "end_line": 30}],
+   "check_ids": ["unit"], "non_execution_reason": ""}}
+EOF
+cw task schema assess

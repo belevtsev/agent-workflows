@@ -36,6 +36,7 @@ func newTaskStartCommand(deps taskDeps) *cobra.Command {
 		}
 		return writeJSON(cmd.OutOrStdout(), record)
 	}}
+	start.Example = helpText("task-start-example")
 	start.Flags().StringVar(&flags.repo, "repo", "", "Selected project directory (default: current working directory)")
 	start.Flags().StringVar(&planFile, "plan", "", "Explicit plan JSON file, or - for standard input")
 	start.Flags().StringVar(&flags.store, "store", "", "Private task storage directory outside the target project")

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task start --plan",
+  "description": "The plan a new task records. cw also checks rules this schema does not state, such as that each requirement's check_ids name planned checks.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {"type": "string", "description": "What the task does, at most 4096 bytes."},
+    "kind": {"enum": ["small", "substantial"], "description": "Only an open substantial task gates commit and push."},
+    "coordinator_id": {"type": "string", "description": "The coordinating agent that records acceptances and decisions."},
+    "requirements": {"type": "array", "items": {"$ref": "#/$defs/requirement"}},
+    "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "checkpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Omitted: the before and final adviser checkpoints are required.",
+      "properties": {
+        "required": {"type": "boolean", "description": "Must be given when checkpoints is."},
+        "reason": {"type": "string", "description": "Why the checkpoints are not required."}
+      }
+    },
+    "profile": {"enum": ["lite", "standard", "strict"], "description": "The stages, round caps and budget; lite when omitted."},
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Lowers the profile's budget; it cannot raise it.",
+      "properties": {
+        "max_usd": {"type": "number", "description": "Estimated US dollars the task may spend."},
+        "stop_at": {"type": "number", "description": "Share of max_usd at which new work stops, at most the profile's 0.8."}
+      }
+    }
+  },
+  "$defs": {
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"},
+        "description": {"type": "string"},
+        "check_ids": {"type": "array", "items": {"type": "string"}, "description": "The planned checks that prove the requirement."},
+        "allow_non_execution": {"type": "boolean", "description": "Whether a stated reason may stand in for the checks."}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"},
+        "argv": {"type": "array", "items": {"type": "string"}, "description": "The command, run without a shell."},
+        "timeout_seconds": {"type": "integer"},
+        "env_passthrough": {"type": "array", "items": {"type": "string"}, "description": "Names of variables cw would otherwise drop that the check receives; never values."}
+      }
+    }
+  }
+}

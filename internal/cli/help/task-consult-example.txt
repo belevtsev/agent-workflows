@@ -1,0 +1,4 @@
+cw task context --task <task-id> --phase before >context.json
+# Put context.json in request.json as state.task_context, then:
+cw consult --request request.json --output /private/path/consult-before.json
+cw task consult --task <task-id> --phase before --input /private/path/consult-before.json

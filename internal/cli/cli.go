@@ -91,8 +91,8 @@ func NewCommand(config Config) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "cw",
 		Short: "Runtime for the agent-workflows skills",
-		Long: "cw records and verifies substantial tasks, publishes verified ones (commit, push and pull request, run by a coordinator that carries the user's authorization), consults configured advisers, inspects projects and installs the Codex instruction block. " +
-			"The skills themselves ship as Claude Code and Codex plugins.",
+		Long: "cw records and verifies substantial tasks and publishes the verified ones as a commit, push and pull request. " +
+			"The skills that drive it ship as Claude Code and Codex plugins.",
 		SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) > 0 {

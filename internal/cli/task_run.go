@@ -41,6 +41,7 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 		return err
 	}}
 	taskFlag(run, &directory)
+	run.Example = helpText("task-run-example")
 	run.Flags().StringVar(&check, "check", "", "Check ID from the immutable explicit plan or added by 'cw task add-checks'")
 	fullFlag(run, &full, "the whole check run record (a reused run prints its summary with status reused)")
 	run.Flags().StringArrayVar(&ownerApprovals, "owner-approval", nil, "The owner's own words approving a check run past the budget's stop, as cost-budget=TEXT or TEXT; "+
