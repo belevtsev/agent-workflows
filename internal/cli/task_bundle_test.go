@@ -76,7 +76,7 @@ func newTaskBundleHarness(t *testing.T) *taskBundleHarness {
 	config.WorkingDir = func() (string, error) { return repo, nil }
 	config.Getenv = func(string) string { return "" }
 	config.In = strings.NewReader(`{"title":"Review project source","kind":"small","requirements":[{"id":"source","description":"Inspect source","allow_non_execution":true}],"checks":[]}`)
-	if err := Execute(t.Context(), []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
+	if err := Execute(t.Context(), []string{"task", "start", "--full", "--plan", "-", "--policy", shippedPolicyPath}, config); err != nil {
 		t.Fatal(err)
 	}
 	harness := &taskBundleHarness{config: config, out: out, repo: repo}
@@ -134,7 +134,7 @@ func (h *taskBundleHarness) run(t *testing.T, command string, input []byte) erro
 	t.Helper()
 	h.config.In = bytes.NewReader(input)
 	h.out.Reset()
-	err := Execute(t.Context(), []string{"task", command, "--task", h.record.Directory, "--input", "-"}, h.config)
+	err := Execute(t.Context(), []string{"task", command, "--full", "--task", h.record.Directory, "--input", "-"}, h.config)
 	if err == nil {
 		if decodeErr := json.Unmarshal(h.out.Bytes(), &h.record); decodeErr != nil {
 			t.Fatalf("%s returned invalid JSON: %v", command, decodeErr)

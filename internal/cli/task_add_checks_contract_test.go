@@ -554,7 +554,7 @@ func (r *aclRepo) start(t *testing.T) string {
 func (r *aclRepo) cliStart(t *testing.T) string {
 	t.Helper()
 	plan := r.jsonFile(t, "plan.json", aclPlan())
-	res := r.cw.run("", "--config-dir", r.configDir, "task", "start", "--plan", plan, "--repo", r.root, "--store", r.store)
+	res := r.cw.run("", "--config-dir", r.configDir, "task", "start", "--full", "--plan", plan, "--repo", r.root, "--store", r.store)
 	if res.err != nil {
 		t.Fatalf("setup: cw task start: %s", res.message())
 	}
@@ -694,7 +694,7 @@ func (r *aclRepo) addChecks(t *testing.T, dir string, checks ...aclCheck) aclRes
 		checks = []aclCheck{aclWidened}
 	}
 	in := r.inputFile(t, "amend.json", aclInputJSON(t, "HEAD", checks...))
-	res := r.cw.run("", "task", "add-checks", "--task", dir, "--input", in)
+	res := r.cw.run("", "task", "add-checks", "--full", "--task", dir, "--input", in)
 	if res.err != nil {
 		t.Fatalf("cw task add-checks refused a qualifying amendment: %s", res.message())
 	}
@@ -800,7 +800,7 @@ func aclAssess(t *testing.T, dir, root string, checkIDs, decisionIDs []string) {
 func (r *aclRepo) runCheck(t *testing.T, dir, id string) taskflow.CheckRun {
 	t.Helper()
 	before := len(aclLoad(t, dir).Checks)
-	res := r.cw.run("", "task", "run", "--task", dir, "--check", id)
+	res := r.cw.run("", "task", "run", "--full", "--task", dir, "--check", id)
 	rec := aclLoad(t, dir)
 	if len(rec.Checks) <= before {
 		t.Fatalf("cw task run --check %s recorded no run: %s", id, res.message())
@@ -825,7 +825,7 @@ func (r *aclRepo) runPassed(t *testing.T, dir, id string) taskflow.CheckRun {
 
 func (r *aclRepo) verify(t *testing.T, dir string) taskflow.Verification {
 	t.Helper()
-	res := r.cw.run("", "task", "verify", "--task", dir)
+	res := r.cw.run("", "task", "verify", "--full", "--task", dir)
 	rec := aclLoad(t, dir)
 	if rec.Verification == nil {
 		t.Fatalf("cw task verify stored no verification: %s", res.message())
@@ -1187,7 +1187,7 @@ func aclTestPackSetWithoutGoRule(t *testing.T) {
 	r.standard(t)
 	before := aclDirState(t, dir)
 	in := r.inputFile(t, "amend.json", aclInputJSON(t, "HEAD", aclWidened))
-	res := r.cw.run("", "task", "add-checks", "--task", dir, "--input", in)
+	res := r.cw.run("", "task", "add-checks", "--full", "--task", dir, "--input", in)
 	if res.err == nil {
 		t.Fatalf("R2.c: add-checks accepted an amendment for a pack set without the Go rule")
 	}
@@ -1375,13 +1375,13 @@ func aclTestPlanChangedFailsCommands(t *testing.T) {
 	// Positive control: on the unmodified record run and show succeed, and
 	// verify either succeeds or fails because the stored verification is
 	// incomplete, never with the plan phrase.
-	if res := r.cw.exec(t, bin, "task", "run", "--task", dir, "--check", "unit"); res.exit != 0 || strings.Contains(res.stderr, phrase) {
+	if res := r.cw.exec(t, bin, "task", "run", "--full", "--task", dir, "--check", "unit"); res.exit != 0 || strings.Contains(res.stderr, phrase) {
 		t.Fatalf("control: cw task run on the unmodified record exited %d (stderr %q), want 0", res.exit, res.stderr)
 	}
 	if res := r.cw.exec(t, bin, "task", "show", "--task", dir); res.exit != 0 || strings.Contains(res.stderr, phrase) {
 		t.Fatalf("control: cw task show on the unmodified record exited %d (stderr %q), want 0", res.exit, res.stderr)
 	}
-	vres := r.cw.exec(t, bin, "task", "verify", "--task", dir)
+	vres := r.cw.exec(t, bin, "task", "verify", "--full", "--task", dir)
 	if strings.Contains(vres.stderr, phrase) {
 		t.Fatalf("control: cw task verify on the unmodified record reported %q", phrase)
 	}
@@ -1401,8 +1401,8 @@ func aclTestPlanChangedFailsCommands(t *testing.T) {
 	})
 	before := aclDirState(t, dir)
 	for _, args := range [][]string{
-		{"task", "run", "--task", dir, "--check", "unit"},
-		{"task", "verify", "--task", dir},
+		{"task", "run", "--full", "--task", dir, "--check", "unit"},
+		{"task", "verify", "--full", "--task", dir},
 		{"task", "show", "--task", dir},
 	} {
 		res := r.cw.exec(t, bin, args...)
@@ -1504,7 +1504,7 @@ func (r *aclRepo) consultRecord(t *testing.T, dir, phase string) string {
 }
 
 func (r *aclRepo) attach(dir, phase, record string) aclResult {
-	return r.cw.run("", "task", "consult", "--task", dir, "--phase", phase, "--input", record)
+	return r.cw.run("", "task", "consult", "--full", "--task", dir, "--phase", phase, "--input", record)
 }
 
 // commitOFiles advances origin/main by one single-parent commit holding
@@ -1635,7 +1635,7 @@ func aclTestRefusals(t *testing.T) {
 			revBefore := r.showRevision(t, dir)
 			before := aclDirState(t, dir)
 			in := r.inputFile(t, "amend.json", aclInputJSON(t, "HEAD", tc.check))
-			res := r.cw.run("", "task", "add-checks", "--task", dir, "--input", in)
+			res := r.cw.run("", "task", "add-checks", "--full", "--task", dir, "--input", in)
 			if res.err == nil {
 				t.Fatalf("%s: cw task add-checks succeeded; output %q", tc.name, res.stdout)
 			}
@@ -1682,14 +1682,14 @@ func aclTestUsageAndInputErrors(t *testing.T) {
 		args   []string
 		phrase string
 	}{
-		{"R18.a missing --task", []string{"task", "add-checks", "--input", good}, ""},
-		{"R18.a missing --input", []string{"task", "add-checks", "--task", dir}, ""},
-		{"positional argument", []string{"task", "add-checks", "--task", dir, "--input", good, "extra"}, ""},
-		{"R18.b global --dry-run", []string{"--dry-run", "task", "add-checks", "--task", dir, "--input", good}, "task state commands reject --dry-run"},
-		{"R18.c unknown member", []string{"task", "add-checks", "--task", dir, "--input", unknown}, "invalid task JSON"},
-		{"duplicate member", []string{"task", "add-checks", "--task", dir, "--input", duplicate}, "invalid task JSON"},
-		{"trailing data", []string{"task", "add-checks", "--task", dir, "--input", trailing}, "invalid task JSON"},
-		{"input over 8 MiB", []string{"task", "add-checks", "--task", dir, "--input", oversized}, "task JSON exceeds the 8 MiB limit"},
+		{"R18.a missing --task", []string{"task", "add-checks", "--full", "--input", good}, ""},
+		{"R18.a missing --input", []string{"task", "add-checks", "--full", "--task", dir}, ""},
+		{"positional argument", []string{"task", "add-checks", "--full", "--task", dir, "--input", good, "extra"}, ""},
+		{"R18.b global --dry-run", []string{"--dry-run", "task", "add-checks", "--full", "--task", dir, "--input", good}, "task state commands reject --dry-run"},
+		{"R18.c unknown member", []string{"task", "add-checks", "--full", "--task", dir, "--input", unknown}, "invalid task JSON"},
+		{"duplicate member", []string{"task", "add-checks", "--full", "--task", dir, "--input", duplicate}, "invalid task JSON"},
+		{"trailing data", []string{"task", "add-checks", "--full", "--task", dir, "--input", trailing}, "invalid task JSON"},
+		{"input over 8 MiB", []string{"task", "add-checks", "--full", "--task", dir, "--input", oversized}, "task JSON exceeds the 8 MiB limit"},
 	}
 	for _, tc := range cases {
 		before := aclDirState(t, dir)
@@ -1729,31 +1729,31 @@ func aclTestExitStatus(t *testing.T) {
 		want  int
 	}{
 		{"0 accepted", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"task", "add-checks", "--task", dir, "--input", good}
+			return []string{"task", "add-checks", "--full", "--task", dir, "--input", good}
 		}, 0},
 		{"2 missing --task", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"task", "add-checks", "--input", good}
+			return []string{"task", "add-checks", "--full", "--input", good}
 		}, 2},
 		{"2 missing --input", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"task", "add-checks", "--task", dir}
+			return []string{"task", "add-checks", "--full", "--task", dir}
 		}, 2},
 		{"2 positional argument", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"task", "add-checks", "--task", dir, "--input", good, "extra"}
+			return []string{"task", "add-checks", "--full", "--task", dir, "--input", good, "extra"}
 		}, 2},
 		{"2 global --dry-run", "", func(r *aclRepo, dir, good string) []string {
-			return []string{"--dry-run", "task", "add-checks", "--task", dir, "--input", good}
+			return []string{"--dry-run", "task", "add-checks", "--full", "--task", dir, "--input", good}
 		}, 2},
 		{"1 unknown member", `{"merge_commit":"HEAD","base_ref":"origin/main","reason":"x","coordinator_id":"/root/x","checks":[{"id":"widened","argv":["go","test","./..."]}]}`,
 			func(r *aclRepo, dir, in string) []string {
-				return []string{"task", "add-checks", "--task", dir, "--input", in}
+				return []string{"task", "add-checks", "--full", "--task", dir, "--input", in}
 			}, 1},
 		{"1 narrowing unit (B4)", `{"merge_commit":"HEAD","base_ref":"origin/main","reason":"x","checks":[{"id":"unit","argv":["go","test","-run","TestA","./internal/a"]}]}`,
 			func(r *aclRepo, dir, in string) []string {
-				return []string{"task", "add-checks", "--task", dir, "--input", in}
+				return []string{"task", "add-checks", "--full", "--task", dir, "--input", in}
 			}, 1},
 		{"1 covers nothing new (C12)", `{"merge_commit":"HEAD","base_ref":"origin/main","reason":"x","checks":[{"id":"again","argv":["go","test","./internal/a"]}]}`,
 			func(r *aclRepo, dir, in string) []string {
-				return []string{"task", "add-checks", "--task", dir, "--input", in}
+				return []string{"task", "add-checks", "--full", "--task", dir, "--input", in}
 			}, 1},
 	}
 	for _, tc := range cases {
@@ -1784,7 +1784,7 @@ func aclTestExitStatus(t *testing.T) {
 	}
 }
 
-// aclTestSummary fails when --summary does not print exactly
+// aclTestSummary fails when the default output does not print exactly
 // the section 1.5 members, with the task named by its ID rather than by any
 // directory, the --task argument as typed or the canonical one (R18.e).
 func aclTestSummary(t *testing.T) {
@@ -1803,9 +1803,9 @@ func aclTestSummary(t *testing.T) {
 	}
 	link := filepath.Join(storeLink, rel)
 	in := r.inputFile(t, "amend.json", aclInputJSON(t, "HEAD", aclWidened))
-	res := r.cw.run("", "task", "add-checks", "--task", link, "--input", in, "--summary")
+	res := r.cw.run("", "task", "add-checks", "--task", link, "--input", in)
 	if res.err != nil {
-		t.Fatalf("cw task add-checks --summary with --task through a symlinked ancestor: %s", res.message())
+		t.Fatalf("cw task add-checks with --task through a symlinked ancestor: %s", res.message())
 	}
 	line := aclOneLine(t, "R18.e", res.stdout)
 	var got map[string]any
@@ -1836,7 +1836,7 @@ func aclTestStdin(t *testing.T) {
 	aclSetup(t)
 	t.Parallel()
 	r, dir := aclStandardTask(t, false)
-	res := r.cw.run(aclInputJSON(t, "HEAD", aclWidened), "task", "add-checks", "--task", dir, "--input", "-")
+	res := r.cw.run(aclInputJSON(t, "HEAD", aclWidened), "task", "add-checks", "--full", "--task", dir, "--input", "-")
 	if res.err != nil {
 		t.Fatalf("R18.f: cw task add-checks --input - refused: %s", res.message())
 	}

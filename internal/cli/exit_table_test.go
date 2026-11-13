@@ -33,6 +33,12 @@ func TestExitCodeMapsEachErrorToItsTableRow(t *testing.T) {
 		{"wrapped cancellation", fmt.Errorf("run: %w", context.Canceled), ExitCancelled},
 		{"wrapped record from a newer cw", fmt.Errorf("load: %w", taskflow.ErrNewerRecord), ExitRefused},
 		{"wrapped legacy record", fmt.Errorf("load: %w", taskflow.ErrLegacyRecord), ExitRefused},
+		// Typed so a caller can tell them apart; their status stays 1, as
+		// before they were typed.
+		{"wrapped locked task", fmt.Errorf("assess: %w", taskflow.ErrTaskLocked), ExitFailure},
+		{"wrapped abandoned task", fmt.Errorf("assess: %w", taskflow.ErrAbandoned), ExitFailure},
+		{"wrapped revision limit", fmt.Errorf("assess: %w", taskflow.ErrRevisionLimit), ExitFailure},
+		{"wrapped invalid input", fmt.Errorf("assess: %w", taskflow.ErrInvalidInput), ExitFailure},
 	} {
 		if got := ExitCode(row.err); got != row.want {
 			t.Errorf("%s: ExitCode(%v) = %d, want %d", row.name, row.err, got, row.want)
@@ -45,13 +51,13 @@ func TestExitCodeMapsEachErrorToItsTableRow(t *testing.T) {
 func TestTaskVerifyAndRunReturnTheNegativeResultSentinels(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 	h.task = wholeRecordForTest(t, "start", h.start(false)).Directory
-	verify := compactExecute(h, nil, "task", "verify", "--task", h.task)
+	verify := compactExecute(h, nil, "task", "verify", "--full", "--task", h.task)
 	if !errors.Is(verify.err, taskflow.ErrIncomplete) || verify.err.Error() != "task completion evidence is incomplete; inspect problems" {
 		t.Fatalf("verify of an unassessed task returned %v, want taskflow.ErrIncomplete", verify.err)
 	}
 
 	h = compactCheckHarness(t, nil, []string{"cat", "exit-status-missing-input"})
-	run := compactExecute(h, nil, "task", "run", "--task", h.task, "--check", "probe")
+	run := compactExecute(h, nil, "task", "run", "--full", "--task", h.task, "--check", "probe")
 	if !errors.Is(run.err, taskflow.ErrCheckFailed) || run.err.Error() != "check did not pass: failed" {
 		t.Fatalf("failed check run returned %v, want taskflow.ErrCheckFailed with the run status", run.err)
 	}

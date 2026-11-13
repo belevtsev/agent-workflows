@@ -293,11 +293,15 @@ external task directory, by default `STATE/workflow-tasks`. Every task command's
 `--task` takes the directory `start` printed or the task's ID (32 hex digits), which
 names that directory in the task store: `$CW_TASK_STORE` when set (as for a task
 started with `--store DIR`), else `STATE/workflow-tasks`; write `./ID` for a directory of that name. Its `start`, `assign`,
-`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `trace` commands accept `--summary` for a
-one-line result instead of the whole record (`run`: the whole check run, plus failing
+`handoff`, `accept`, `assess`, `consult`, `run`, `verify` and `add-checks` commands print a
+one-line result by default and the whole record with `--full` (`run`: the check run's status and log, plus failing
 test names, from a `go test -json` run's per-test results when it recorded them, and first error lines when it failed; `verify`: without its fixed
-limitations), `cw doctor` and `cw consult` accept it too, `cw task show
---field <dotted.path>` prints only selected values, `cw task trace` reports, without
+limitations, with problems that differ only in a requirement, assignment or check ID joined into one line,
+and at most 20 problem lines, the rest counted as `omitted_problems`); `--summary` is still accepted there and changes nothing.
+`cw task trace`, `cw doctor` and `cw consult` accept `--summary` for a one-line view. `cw task show` prints one line with the
+task's state (each requirement's assessment, each check's latest run status, each assignment's state, the stored
+verification in brief) and `fields`, the record's top-level members; `cw task show
+--field <dotted.path>` prints only selected values and `--full` the whole record, `cw task trace` reports, without
 changing the record, each plan requirement with the contract requirements a
 test-engineer brief links to it, their mapped tests judged at the current source and
 the `-json` check runs that recorded them, `cw task authorship --task DIR` lists
@@ -347,7 +351,7 @@ the result, so the result is still written when that capture fails or runs out,
 unless the task lock stays held through the rest; a check that passed but whose
 capture failed or ran out is recorded as `source_changed`.
 
-`cw task timeline --task DIR [--summary]` reports the wall time a task spent, from
+`cw task timeline --task DIR [--last N] [--summary]` reports the wall time a task spent, from
 timestamps the record already stores, and is read-only: it loads the record with
 the same validation as `cw task show` and writes nothing, so `--dry-run` changes
 nothing. It prints one JSON object with `task`, `task_id`, `started_at` (the
@@ -363,9 +367,11 @@ plan check ID, `state` = the run's status, `started_at`, `finished_at` and
 Timestamps are UTC RFC 3339 with nanoseconds and durations are rounded to the
 millisecond (`250ms`, `1m2.003s`). A timestamp the record does not hold (no
 handoff yet, no acceptance, a check still running) is `n/a`, and so is every
-duration computed from one; a missing value is never shown as `0s`. `--summary`
+duration computed from one; a missing value is never shown as `0s`. It lists the
+last 20 entries, or the last N with `--last N` (`--last 0` lists them all), and
+counts the earlier ones as `omitted_entries`, a member it omits when none was left out. `--summary`
 prints JSON Lines rather than a one-line result: one compact object for the task
-(`task_id`, `started_at`, `updated_at`, `elapsed`), then one per entry with its
+(`task_id`, `started_at`, `updated_at`, `elapsed`, `omitted_entries`), then one per entry with its
 start under `start` and its durations, omitting `task`, `submitted_at`,
 `accepted_at` and `finished_at`.
 
@@ -614,7 +620,7 @@ Checks can only be added this way, never removed, replaced or narrowed.
 3. Add the checks:
 
    ```sh
-   cw task add-checks --task <task-id> --input amend.json --summary
+   cw task add-checks --task <task-id> --input amend.json
    ```
 
    with `amend.json` naming the merge commit (its ID or `HEAD`), the base ref, a
@@ -630,10 +636,10 @@ Checks can only be added this way, never removed, replaced or narrowed.
    ```
 
    `timeout_seconds` may be omitted (300). `--input -` reads standard input.
-   `--summary` prints the task ID, the amendment index, the added check IDs and
-   the resolved merge and base commits.
+   It prints the task ID, the amendment index, the added check IDs and
+   the resolved merge and base commits; `--full` prints the whole record.
 4. Run each added check: `cw task run --task <task-id> --check widened`.
-5. Run `cw task verify --task <task-id> --summary`.
+5. Run `cw task verify --task <task-id>`.
 
 `cw task add-checks` refuses, exits 1 and writes nothing when:
 

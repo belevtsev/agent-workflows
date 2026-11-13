@@ -124,8 +124,8 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cw(t, assessment, "task", "assess", "--task", record.Directory, "--input", "-")
-	cw(t, nil, "task", "verify", "--task", record.Directory)
+	cw(t, assessment, "task", "assess", "--full", "--task", record.Directory, "--input", "-")
+	cw(t, nil, "task", "verify", "--full", "--task", record.Directory)
 	commit(t, "verified", 0)
 
 	hooksWriteFile(t, repo, "source.txt", "third\n")

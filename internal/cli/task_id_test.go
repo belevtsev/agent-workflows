@@ -55,7 +55,9 @@ func TestTaskCommandsTakeATaskID(t *testing.T) {
 	}
 
 	missing := strings.Repeat("0", 32)
-	if _, err := taskIDShowID(t, h, missing); err == nil || ExitCode(err) == ExitUsage || !strings.Contains(err.Error(), filepath.Join(filepath.Dir(record.Directory), missing)) {
+	if _, err := taskIDShowID(t, h, missing); err == nil || ExitCode(err) == ExitUsage || !strings.Contains(err.Error(), filepath.Join(filepath.Base(filepath.Dir(record.Directory)), missing)) {
+		// The store directory, not its full path: on macOS the record holds the
+		// resolved /private/var path and the error the /var one cw was given.
 		t.Fatalf("show --task with an unknown ID: %v (exit %d); want a failure naming the store's directory", err, ExitCode(err))
 	}
 

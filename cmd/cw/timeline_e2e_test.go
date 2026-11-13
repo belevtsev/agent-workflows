@@ -212,7 +212,7 @@ type tle2xRecord struct {
 
 func (env tle2xEnv) show(t *testing.T, dir string) (string, tle2xRecord) {
 	t.Helper()
-	output := env.mustRun(t, "task", "show", "--task", dir)
+	output := env.mustRun(t, "task", "show", "--full", "--task", dir)
 	var record tle2xRecord
 	if err := json.Unmarshal([]byte(output), &record); err != nil {
 		t.Fatalf("task show output: %v", err)

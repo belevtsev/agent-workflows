@@ -186,7 +186,7 @@ with an amendment, in this order:
    is unverified, stop and ask the user how to go on; without an answer, run
    `git merge --abort`. Never set `CW_GATE=off` yourself.
 3. Add the covering checks with
-   `cw task add-checks --task DIR --input amend.json [--summary]`, where the
+   `cw task add-checks --task DIR --input amend.json`, where the
    input names the merge commit (or `HEAD`), the base ref, a reason and the
    checks:
    `{"merge_commit": "HEAD", "base_ref": "origin/main", "reason": "merged origin/main; go.mod and internal/b changed", "checks": [{"id": "widened", "argv": ["go", "test", "./..."]}]}`
@@ -268,19 +268,20 @@ is `failed` with failure `untrusted_toolchain`: put the real `go` first on `PATH
 ([which go](../../../docs/operations.md#which-go-a-check-runs)).
 
 ```sh
-cw task start --repo /absolute/path/to/project --plan /private/path/plan.json --summary
+cw task start --repo /absolute/path/to/project --plan /private/path/plan.json
 cw task context --task <task-id> --phase before
 ```
 
 `--task` also takes the task ID that `start` printed, found in the default task
 store, or in `$CW_TASK_STORE` for a task started with `--store DIR`.
 
-With `--summary`, `start` prints the task ID, adviser binding,
-requirement IDs and check IDs on one line. The `start`, `assign`, `handoff`,
-`accept`, `assess`, `consult` and `run` commands all accept `--summary`; without
-it they print the whole record, which grows past 80 KB (`run` prints the check
-run). Read a stored value missing from a summary with
-`cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`).
+`start` prints the task ID, adviser binding, requirement IDs and check IDs on
+one line. The `start`, `assign`, `handoff`, `accept`, `assess`, `consult`,
+`run`, `verify` and `add-checks` commands all print such a summary; `--full`
+prints the whole record instead, which grows past 80 KB (`run` prints the
+check run). Read a stored value missing from a summary with
+`cw task show --field <dotted.path>` (for example `worker_results.<assignment-id>`);
+`cw task show` alone prints the task's state and the field names.
 `cw task trace` accepts `--summary` too.
 
 When a test engineer will be dispatched with a contract, give the plan a check
@@ -378,7 +379,7 @@ each judgment against sources and finalizes a new adjudicated record under the
 [adjudication rules](consultation-helper.md#adjudicate-without-network-access).
 
 ```sh
-cw task consult --task <task-id> --phase before --input /private/path/before-final.json --summary
+cw task consult --task <task-id> --phase before --input /private/path/before-final.json
 ```
 
 The task command validates the adviser artifact and its binding: the record's
@@ -427,7 +428,7 @@ not runtime availability or automatic dispatch.
 ## Execute and record evidence
 
 ```sh
-cw task run --task <task-id> --check unit --summary
+cw task run --task <task-id> --check unit
 ```
 
 This runs the explicitly declared argv, captures actual exit status and duration,
@@ -436,7 +437,7 @@ interpret command text through a shell. A failed, cancelled, timed-out, or
 source-changing check cannot become a passing result.
 Checks execute approved local code without a sandbox. Select them within the
 user's authorized scope; a task plan is not permission for external side effects.
-`--summary` prints the status and the log's path relative to the task directory, plus failing test names and the first
+It prints the status and the log's path relative to the task directory, plus failing test names and the first
 error lines when the check failed; read the log only when those are not enough.
 Outside `cw task run`, send long output to a file and print only the exit status,
 result lines and failures; for Go,
@@ -445,7 +446,7 @@ keeps failing test names, assertion messages and compile errors.
 
 Every run records the per-test results of its `-json` events, read from its
 complete output, as `test_results`. A `-json` run's stored log holds JSON event
-lines, so its `--summary` takes `failing_tests` from those results, while the
+lines, so its summary takes `failing_tests` from those results, while the
 error lines and log tail still come from the log. For each current test-engineer
 assignment with a completed handoff, `verify` judges every mapped test at the
 current source: it fails a test that is missing, failed in a latest run at the
@@ -532,7 +533,7 @@ every check the plan lists for it or, when the plan permits non-execution, gives
 ```
 
 ```sh
-cw task assess --task <task-id> --input /private/path/assessment.json --summary
+cw task assess --task <task-id> --input /private/path/assessment.json
 ```
 
 Assess requirements and the decision together, after the last source change and
@@ -555,7 +556,7 @@ adjudicated result:
 
 ```sh
 cw task consult --task <task-id> --phase final --input /private/path/review-final.json
-cw task verify --task <task-id> --summary
+cw task verify --task <task-id>
 ```
 
 Verification rejects stale source, missing requirements/checks, invalid references
@@ -620,7 +621,7 @@ development docs. agent-workflows needs no such mode: its full check,
 `["go", "test", "-race", "-count=1", "-json", "./..."]` with `GOWORK=off` exported in the
 shell that runs `cw task run`, runs on the working tree. `-json` makes it the
 check that proves mapped tests; its stored log then holds JSON events, and its
-`--summary` takes `failing_tests` from the run's per-test results. It takes no
+summary takes `failing_tests` from the run's per-test results. It takes no
 coverage flags: the `internal/graphify` process tests run the test binary again
 and compare its output, and fail under `-cover` (with `GOCOVERDIR` set as well).
 For the code review's profile, bind a second check with the coverage flags

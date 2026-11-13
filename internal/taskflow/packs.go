@@ -2,7 +2,6 @@ package taskflow
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ type PackBinding struct {
 // selected path. Verify then applies the rules those packs name.
 func (env Env) StartWithPacks(ctx context.Context, repo, store string, plan Plan, advisers map[string]string, selection string, selected []langpack.Manifest) (Record, error) {
 	if selection != SelectionDefault && selection != SelectionExplicit {
-		return Record{}, errors.New("pack selection must be default or explicit")
+		return Record{}, invalid("pack selection must be default or explicit")
 	}
 	return env.start(ctx, repo, store, plan, advisers, packChoice{selection: selection, selected: selected})
 }
@@ -76,7 +75,7 @@ func (choice packChoice) bind(snapshot projectctx.Snapshot, files []projectctx.F
 func selectedRelative(snapshot projectctx.Snapshot) (func(string) (string, bool), error) {
 	module, err := filepath.Rel(snapshot.Root, snapshot.SelectedPath)
 	if err != nil {
-		return nil, fmt.Errorf("locate the selected path in its project: %v", err)
+		return nil, fmt.Errorf("locate the selected path in its project: %w", err)
 	}
 	return func(name string) (string, bool) {
 		if module == "." {

@@ -265,7 +265,7 @@ func Run(ctx context.Context, o Options) (int, error) {
 	}
 	if request.bound {
 		for _, name := range request.unconfigured() {
-			fmt.Fprintf(o.Stderr, "Adviser %s is bound to this task but not configured; set %s and consult again.\n", name, credentialNames[name])
+			fmt.Fprintf(o.Stderr, "Adviser %s is bound to this task but not configured; set %s and consult again.\n", name, credentialVariable(name))
 			code = Incomplete
 		}
 	}

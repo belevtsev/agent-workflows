@@ -39,6 +39,6 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 	}
 	taskFlag(abandon, &directory)
 	abandon.Flags().StringVar(&reason, "reason", "", "Why the task was given up")
-	summaryFlag(abandon, &summary)
+	abandon.Flags().BoolVar(&summary, "summary", false, "Print a one-line summary instead of the whole task record")
 	return abandon
 }

@@ -85,7 +85,7 @@ func TestPackSetImmutableInStorageB25(t *testing.T) {
 			base := t.TempDir()
 			var stdout, stderr bytes.Buffer
 			vars := map[string]string{"HOME": base, "XDG_CONFIG_HOME": filepath.Join(base, "xdg-config"), "XDG_STATE_HOME": filepath.Join(base, "xdg-state")}
-			verifyErr := cli.Execute(ctx, []string{"task", "verify", "--task", rec.Directory, "--config-dir", filepath.Join(base, "cfg")}, cli.Config{
+			verifyErr := cli.Execute(ctx, []string{"task", "verify", "--full", "--task", rec.Directory, "--config-dir", filepath.Join(base, "cfg")}, cli.Config{
 				In: strings.NewReader(""), Out: &stdout, Err: &stderr,
 				HomeDir: func() (string, error) { return base, nil }, WorkingDir: func() (string, error) { return base, nil },
 				Getenv: func(k string) string { return vars[k] },

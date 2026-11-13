@@ -115,7 +115,9 @@ workflow does, as described under Continuous integration.
 
 ### Consultation
 
-`cw consult` lives in internal/consult. Its tests use local HTTP servers and synthetic
+`cw consult` lives in internal/consult; the validated record summary and the
+adviser predicates the task flow needs live in the leaf package
+internal/consult/record. Its tests use local HTTP servers and synthetic
 records to check configured participation (including `not_configured` and
 `no_advisers_configured`), deadlines, partial failures, and evidence-bound
 adjudication without service keys:
@@ -173,10 +175,15 @@ reports.
 used: `Source` captures the selected source (production: `projectctx`, which
 runs git), `Clock` gives every time a task record stores, and the rules read a
 task's logs, results, consultations, copies, contracts and bundles through
-`Artifacts`. Each use case is a method on `taskflow.Env`, whose zero value is
-the production ports; `cli.Config.Now` is the clock of the task commands, the
-gate and `cw publish`. A rule test passes a fake `Source`, clock or
-`Artifacts` instead of building a Git repository or waiting.
+`Artifacts`. `Consultation` revalidates a consultation record (production:
+`consult.ValidateRecord`); taskflow reads only the summary in
+`internal/consult/record` and never imports `internal/consult` or its HTTP
+providers, which `TestTaskflowImportClosureExcludesAdviserProviders` enforces.
+Each use case is a method on `taskflow.Env`, whose zero value is the production
+`Source` and clock; a nil `Consultation` refuses every consultation check, so
+the task commands set it in `cli`'s `taskEnv`. `cli.Config.Now` is the clock of
+the task commands, the gate and `cw publish`. A rule test passes a fake
+`Source`, clock or `Artifacts` instead of building a Git repository or waiting.
 
 `cw task verify` runs a list of rules (`internal/taskflow/verify_rules.go`), in
 a fixed order. Each rule returns findings: a stable `FindingCode` and the
@@ -185,6 +192,15 @@ check is a new rule, or a new code in an existing one. Code that picks out
 entries, such as the `--summary` view, selects them by code, never by text, so
 rewording a message changes no caller. The JSON output and the task record
 keep the text only.
+
+A caller tells a `taskflow` refusal from a failure with `errors.Is`, never by
+its message: `ErrTaskLocked`, `ErrAbandoned`, `ErrRevisionLimit` and
+`ErrInvalidInput` (input a use case refuses before it writes; a damaged stored
+record does not match it), beside `ErrIncomplete`, `ErrCheckFailed`,
+`ErrNewerRecord` and `ErrLegacyRecord`. Each matches however deeply `cli`
+wraps it; typing a refusal keeps its message and its
+[exit status](operations.md#exit-statuses). A test asserts on the sentinel when
+the kind is its point, and on the text only where the text is the contract.
 
 Task records hold the adviser binding, typed worker assignments, results and
 coordinator acceptance; their versions follow

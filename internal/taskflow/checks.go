@@ -487,7 +487,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	}
 	planned, found := findCheck(stored, checkID)
 	if !found {
-		return run, errors.New("check is not in the explicit coordinator plan")
+		return run, invalid("check is not in the explicit coordinator plan")
 	}
 	// Admitted again, as validateCommand is below, but before checkSpec:
 	// resolving go already runs a program with the check's environment.
@@ -505,7 +505,7 @@ func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, er
 	_, err = updateWithCapacity(ctx, env, path, 2, "", func(root *os.Root, record *Record) error {
 		check, found := findCheck(*record, checkID)
 		if !found {
-			return errors.New("check is not in the explicit coordinator plan")
+			return invalid("check is not in the explicit coordinator plan")
 		}
 		if err := validateCommand(check.Argv); err != nil {
 			return err

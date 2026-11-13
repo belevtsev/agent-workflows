@@ -489,7 +489,7 @@ func subCLIRefused(t *testing.T, dir, inputPath string, phrases ...string) {
 	t.Helper()
 	beforeRev := subLoad(t, dir).Revision
 	beforeState := subDirState(t, dir)
-	out, stderr, err := subCLI(t, "", "task", "add-checks", "--task", dir, "--input", inputPath)
+	out, stderr, err := subCLI(t, "", "task", "add-checks", "--full", "--task", dir, "--input", inputPath)
 	if err == nil {
 		t.Fatalf("cw task add-checks accepted, want refusal containing %q; stdout %q", phrases, out)
 	}
@@ -523,7 +523,7 @@ func TestContractSubSelectedSubdirThroughCLI(t *testing.T) {
 	store := subStore(t)
 	planPath := subWriteJSON(t, subPlan())
 
-	out, stderr, err := subCLI(t, "", "task", "start", "--repo", r.selected, "--store", store, "--plan", planPath)
+	out, stderr, err := subCLI(t, "", "task", "start", "--full", "--repo", r.selected, "--store", store, "--plan", planPath)
 	if err != nil {
 		t.Fatalf("cw task start: %v\n%s", err, stderr)
 	}

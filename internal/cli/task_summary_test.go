@@ -66,8 +66,11 @@ func (h *summaryCLIHarness) start(summary bool) []byte {
 func (h *summaryCLIHarness) startPlan(plan string, summary bool) []byte {
 	h.t.Helper()
 	args := []string{"task", "start", "--plan", "-", "--policy", shippedPolicyPath}
+	// --summary is the default and changes nothing; --full prints the record.
 	if summary {
 		args = append(args, "--summary")
+	} else {
+		args = append(args, "--full")
 	}
 	return h.execute([]byte(plan), args...)
 }
@@ -79,8 +82,11 @@ func (h *summaryCLIHarness) taskInput(command string, input any, summary bool) [
 		h.t.Fatal(err)
 	}
 	args := []string{"task", command, "--task", h.task, "--input", "-"}
+	// --summary is the default and changes nothing; --full prints the record.
 	if summary {
 		args = append(args, "--summary")
+	} else {
+		args = append(args, "--full")
 	}
 	return h.execute(encoded, args...)
 }
@@ -353,11 +359,11 @@ func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	}
 }
 
-// R8, R9 (consult).
-func TestTaskSummaryFlagReportsAttachedConsultation(t *testing.T) {
-	h := newSummaryCLIHarness(t)
-	h.task = h.directoryOf(summaryStringForTest(t, parseSummaryLineForTest(t, "start", h.start(true),
-		"task_id", "advisers", "requirements", "checks"), "task_id"))
+// adjudicatedConsultation writes an adjudicated before-phase consultation of
+// the harness task through cw consult and returns its path.
+func (h *summaryCLIHarness) adjudicatedConsultation() string {
+	t := h.t
+	t.Helper()
 	fingerprint := h.load().Baseline.Fingerprint
 
 	context := bytes.TrimSpace(h.execute(nil, "task", "context", "--task", h.task, "--phase", "before"))
@@ -398,6 +404,16 @@ func TestTaskSummaryFlagReportsAttachedConsultation(t *testing.T) {
 		"agreement_not_independent": false,
 	}}})
 	h.execute(nil, "consult", "--adjudicate", record, "--decision", decision, "--output", final)
+
+	return final
+}
+
+// R8, R9 (consult).
+func TestTaskSummaryFlagReportsAttachedConsultation(t *testing.T) {
+	h := newSummaryCLIHarness(t)
+	h.task = h.directoryOf(summaryStringForTest(t, parseSummaryLineForTest(t, "start", h.start(true),
+		"task_id", "advisers", "requirements", "checks"), "task_id"))
+	final := h.adjudicatedConsultation()
 
 	consult := parseSummaryLineForTest(t, "consult",
 		h.execute(nil, "task", "consult", "--task", h.task, "--phase", "before", "--input", final, "--summary"),
@@ -477,8 +493,11 @@ const summaryCLIGitPlan = `{"title":"Run a planned source check","kind":"small",
 func (h *summaryCLIHarness) runCheck(summary bool) []byte {
 	h.t.Helper()
 	args := []string{"task", "run", "--task", h.task, "--check", "gitversion"}
+	// --summary is the default and changes nothing; --full prints the record.
 	if summary {
 		args = append(args, "--summary")
+	} else {
+		args = append(args, "--full")
 	}
 	return h.execute(nil, args...)
 }
