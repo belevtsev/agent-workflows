@@ -332,7 +332,7 @@ Never opt advisers in for the user: pass `--policy`, edit `advisers.enabled` or 
 adviser not enabled" is for the user to act on, not a step of the flow.
 `context` prints `{"task_id", "phase", "snapshot", "evidence_sha256", "advisers"}`.
 To opt in to Jev, pass a policy copy that enables it; see
-[opt in to Jev](consultation-helper.md#opt-in-to-jev).
+[opt in to Jev](adviser-providers.md#opt-in-to-jev).
 
 Pass the task ID that `start` printed as `--task`; it names the task's directory in
 the task store, whose private append-only records and check logs belong outside

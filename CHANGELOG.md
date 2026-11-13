@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
+  [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
   90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it

@@ -294,7 +294,7 @@ what a grade means for its artefact, never add another:
 (below) and returns the findings it accepts to that stage's author, whose
 revision answers each one; the next round reviews the revision. Before rejecting
 a `blocker` or `major` finding at any stage, the coordinator consults the
-available advisers ([adviser points](consultation-helper.md#adviser-points-in-the-flow)).
+available advisers ([adviser points](adviser-providers.md#adviser-points-in-the-flow)).
 
 **Growth check.** Every time a spec or design is reviewed again after a
 revision (a diff-scoped follow-up, a review scoped to a fix, a confirmation
