@@ -82,7 +82,7 @@ A small task skips the flow, the spec and design stages included, and the
 says when a substantial task skips the spec stage. After the before checkpoint,
 which is unchanged, advisers join only at four decision points and only when
 available
-([adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)).
+([adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow)).
 
 ## Independent test engineers
 
@@ -236,8 +236,9 @@ and `providers`: a possibly empty mapping of enabled provider IDs to pinned mode
 The Claude Code policy has no consultation section; participation follows the
 shared policy, the keys present and the user's opt-in. Policy changes require their own authorized
 change. Which advisers participate, how `cw task start` binds them, what
-`--policy` does and how to opt in to Jev are in
-[participation](../skills/task-orchestration/references/consultation-helper.md#participation);
+`--policy` does and how to opt in to Jev are in the user-facing
+[adviser setup](advisers.md#configure-advisers) and in
+[participation](../skills/task-orchestration/references/adviser-providers.md#participation);
 the measurement behind leaving Jev out is in
 [why Jev is opt-in](../skills/task-orchestration/references/adviser-providers.md#why-jev-is-opt-in).
 
@@ -252,7 +253,7 @@ request is prepared, sent, recorded and reused is in
 and the sections after it; the plan shape that declares them not required is in
 [start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
 After the before checkpoint, advisers join only at the four
-[adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow),
+[adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow),
 and only when the task's binding holds one; otherwise each point is skipped and
 recorded as "no advisers configured", and the flow runs unchanged.
 

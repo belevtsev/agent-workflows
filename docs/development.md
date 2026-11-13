@@ -157,7 +157,7 @@ deterministic scoring and safe bounded execution using synthetic transports. Liv
 runs (`--live --output-dir PATH`) call only configured providers and report the
 others as `not_run` with reason `not_configured`. Run the explicit hosted
 evaluation separately, following the
-[evaluation guide](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation).
+[evaluation guide](advisers.md#evaluate-multilingual-judgments).
 Keep its reports outside source, freeze corpus/oracle hashes before requests, and
 retain incorrect or unavailable results without automatic retries. A live baseline
 measures only its labeled cases; it is not a CI assertion or production-quality
