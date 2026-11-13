@@ -104,7 +104,9 @@ func TestUsageOfATaskWithoutAProfileIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rewriteRevision(t, filepath.Join(record.Directory, "record-000001.json"), "profile", nil)
+	first := filepath.Join(record.Directory, "record-000001.json")
+	withoutPlanProfile(t, first)
+	rewriteRevision(t, first, "profile", nil)
 	if _, err := (taskflow.Env{}).RecordUsage(ctx, record.Directory, usageTestSample(1)); !errors.Is(err, taskflow.ErrInvalidInput) {
 		t.Fatalf("RecordUsage on a record without a profile = %v, want ErrInvalidInput", err)
 	}
