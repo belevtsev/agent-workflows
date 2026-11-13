@@ -53,6 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
+  optional tools are counted in `optional_missing`, and `--all` lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
   commit it takes in, so merging the fetched base branch, or `git pull`, keeps working; a merge of a local branch still stops ([git hooks](docs/hooks.md#git-hooks)).
 - The docs say which usage store each `cw metrics` command reads and which wins when they differ; the context composition moves to
