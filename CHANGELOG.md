@@ -72,6 +72,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
+  and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
 - The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
   what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
 - The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the

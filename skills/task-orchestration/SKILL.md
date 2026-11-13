@@ -46,7 +46,7 @@ satisfies a later state.
    ([details](references/global-workflow.md#start-and-bind-a-task)). The plan
    cannot change after start; checks can only be added, by a merge-bound
    `cw task add-checks` after a base-branch merge, never removed or narrowed
-   ([merging the base branch](references/global-workflow.md#merging-the-base-branch)).
+   ([merging the base branch](references/base-merge.md)).
    A task that later meets an open decision stops and asks the user, and never
    restarts over source the first record changed. Decide here whether the plan
    opts in to the

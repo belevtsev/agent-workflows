@@ -62,6 +62,18 @@ environment or bounds of every check there.
 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
+As a `cw task` check, the full check is
+`["go", "test", "-race", "-count=1", "-json", "./..."]` with `GOWORK=off`
+exported in the shell that runs `cw task run`, and a timeout that covers the
+whole suite. It runs on the working tree, so `cw task verify` can complete
+before the commit; `-json` makes it the check that proves mapped tests. It
+takes no coverage flags: the `internal/graphify` process tests run the test
+binary again and compare its output, and fail under `-cover` (with
+`GOCOVERDIR` set as well). For the code review's profile, bind a second check
+with the coverage flags that names the packages the plan expects to change,
+outside `internal/graphify`; a change inside `internal/graphify` gets no
+profile.
+
 Use `go test` with a focused package or test filter while developing. Tests use
 temporary homes, synthetic Git repositories and local HTTP servers. They never
 change the user's configuration, consult hosted decision models, or require service
