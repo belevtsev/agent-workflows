@@ -33,7 +33,7 @@ inherited model. See
 [Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
 The coordinator profile's effort is `high` by default; `settings.json`
 `effortLevel` is the user's to set. `settings.json` rejects `max`; use
-`/effort max` or `/effort xhigh` for a session.
+`/effort max` or `/effort xhigh` for a session when the user asks for it.
 
 Codex has no per-agent switch to keep instruction files out of a worker: it
 injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
@@ -303,7 +303,9 @@ hooks directory can serve other repositories and `--shared` is not given
 ## Stability
 
 From `v3.0.0`, `cw` follows [semantic versioning](https://semver.org) for
-its core commands. `cw --help` lists the two groups.
+its core commands. `cw --help` lists the two groups. It leaves out
+`cw graphify`, which needs the [optional Graphify runtime](#optional-graphify-runtime)
+that `cw` does not install; `cw graphify --help` still shows its help.
 
 | Group | Commands | Promise |
 | --- | --- | --- |
@@ -462,7 +464,11 @@ plan check ID, `state` = the run's status, `started_at`, `finished_at` and
 Timestamps are UTC RFC 3339 with nanoseconds and durations are rounded to the
 millisecond (`250ms`, `1m2.003s`). A timestamp the record does not hold (no
 handoff yet, no acceptance, a check still running) is `n/a`, and so is every
-duration computed from one; a missing value is never shown as `0s`. It lists the
+duration computed from one; a missing value is never shown as `0s`. Entries with
+equal starts keep the order they were recorded in. After the clock steps back,
+stored times run ahead of it until it catches up
+([task record format](development.md#task-record-format)), so runs made meanwhile
+show equal starts and a duration of `0s`. It lists the
 last 20 entries, or the last N with `--last N` (`--last 0` lists them all), and
 counts the earlier ones as `omitted_entries`, a member it omits when none was left out. `--summary`
 prints JSON Lines rather than a one-line result: one compact object for the task

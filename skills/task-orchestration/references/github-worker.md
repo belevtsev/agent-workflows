@@ -66,6 +66,8 @@ not fit:
 - content conversions (`content-conversion`) and hooks that rewrite the
   commit message or content;
 - records without a source digest;
+- a `commit-failed` that repeats because git ignores a new file through
+  `XDG_CONFIG_HOME` or `GIT_CONFIG_*` rules;
 - repairing a status 7;
 - `cw` unavailable, or the user asks for a bounded worker.
 

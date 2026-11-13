@@ -33,7 +33,7 @@ names:
   and the code ([design-review](../skills/task-orchestration/references/contracts/design-review.md)).
   `design-revision-scope-growth` is a follow-up review: the revision resolves
   the accepted findings and adds an unrequested feature, which the
-  [growth check](../skills/task-orchestration/references/worker-handoffs.md#review-stages)
+  [growth check](../skills/task-orchestration/references/contracts/design-review.md)
   must flag as `scope creep`.
 - `tests-*` (two cases): test review of the test engineer's matrix,
   requirement map and tests against the interface contract, with red-first

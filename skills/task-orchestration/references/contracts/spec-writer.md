@@ -26,7 +26,7 @@ Write the resolved change folder (default `openspec/changes/<change-id>/`) in Op
 4. On revision, `change-log.md` in the artefact directory, for the coordinator: each finding ID or answer with what changed, or why not.
 5. The handoff result in the shape `cw task schema handoff` prints, under the `implementation` role with the change folder as `owned_paths` and in `changed_files`, and the open questions in `uncertainties`.
 
-Keep the handoff result at most 6 KiB, its `summary` at most 1,200 bytes. Put the full reasoning in a report file of at most 512 KiB that the result's `report` names; `cw task handoff` refuses a larger result.
+Keep the handoff result at most 6 KiB, not counting `changed_files`, its `summary` at most 1,200 bytes and each finding one line of at most 400 bytes with its ID, severity and `evidence`. Put the full reasoning in a report file of at most 512 KiB that the result's `report` names; `cw task handoff` refuses a larger result.
 
 ## Quality bar
 

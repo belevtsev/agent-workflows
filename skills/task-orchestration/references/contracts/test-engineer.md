@@ -66,8 +66,9 @@ helper or fixture needs assigned ownership, like a test file.
    same mapping in `requirement_map`, one entry per requirement the brief
    declares, and `changed_files` as [below](#record-and-complete).
 
-The result is at most 6 KiB, with a `summary` of at most 1,200 bytes and each
-finding line and `uncovered` reason at most 400 bytes. Put the full reasoning
+The result is at most 6 KiB, not counting `changed_files` and
+`requirement_map`, with a `summary` of at most 1,200 bytes and each finding
+line and `uncovered` reason at most 400 bytes. Put the full reasoning
 in the report file that the result's `report` names, at most 512 KiB.
 `cw task handoff` refuses a larger result.
 

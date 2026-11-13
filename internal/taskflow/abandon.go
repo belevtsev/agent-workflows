@@ -23,7 +23,7 @@ func (env Env) Abandon(path, reason string) (Record, error) {
 		return Record{}, invalid("an abandonment reason of 1 to 16384 bytes is required")
 	}
 	return update(context.Background(), env, path, func(_ *os.Root, record *Record) error {
-		record.Abandonment = &Abandonment{Reason: reason, At: env.now()}
+		record.Abandonment = &Abandonment{Reason: reason, At: env.stamp(record)}
 		return nil
 	})
 }

@@ -9,7 +9,9 @@ change.
 
 Establish the outcome, acceptance evidence, scope, carried authorization,
 revisions and tools; keep requirements and user decisions apart from
-observations and assumptions. Keep a compact ledger (`claim | basis/source
+observations and assumptions. Plausible source behaviour does not establish an
+incident's cause: report observed cause, inference, reproduction and
+uncertainty apart. Keep a compact ledger (`claim | basis/source
 revision | status | impact | next check`, status `unverified`, `verified`,
 `contradicted` or `obsolete`) with assignments, completed checks, consultation
 disposition and blockers. Work across repositories keeps one record per
@@ -33,9 +35,10 @@ Write the plan outside the repository, from the example that
 `cw task start --help` prints.
 
 - Set `coordinator_id` when you are not `/root`.
-- In a Go module, cover each changed package with a direct `go test -race` and
-  use no wrapper, `-run`, `-skip` or `-args`. A multi-module Go project can
-  need module-local checks; verify does not ask for them.
+- The Go rule: in a Go module, cover each changed package with a direct
+  `go test -race` and use no wrapper, `-run`, `-skip` or `-args`. A
+  multi-module Go project can need module-local checks; verify does not ask
+  for them.
 - When a test engineer gets a contract, the plan needs a `go test -json` check:
   only such a run proves a mapped test. Make it the main test check, and put
   `-json` in argv, never in an exported `GOFLAGS`.
@@ -85,7 +88,7 @@ After the accepted
 final context makes it stale: take a new final context and, when required, a
 new final checkpoint. Verify proves consistency, not semantic truth or complete
 coverage; after any source change, rerun every check the records cite and
-refresh the affected evidence. Verification authorizes no publication,
+refresh the affected evidence. Verification authorizes no publication, merge,
 deployment or external message.
 
 ## Refresh affected claims and complete

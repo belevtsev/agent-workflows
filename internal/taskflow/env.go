@@ -82,6 +82,22 @@ func (env Env) now() time.Time {
 	return env.Clock().UTC()
 }
 
+// stamp returns the time a write stores in record during an update: the
+// later of the clock and record's updated_at. It moves updated_at up to that
+// time, and update stamps the revision no earlier, so a revision's times never
+// precede the ones it already holds. A wall clock that steps back (NTP, a
+// resumed VM) then cannot leave an assignment's assigned_at after the next
+// revision's updated_at, which the worker rules refuse until the clock
+// catches up.
+func (env Env) stamp(record *Record) time.Time {
+	at := env.now()
+	if at.Before(record.UpdatedAt) {
+		at = record.UpdatedAt
+	}
+	record.UpdatedAt = at
+	return at
+}
+
 // validateConsultation revalidates a consultation record with the Env's
 // validator; a nil validator refuses.
 func (env Env) validateConsultation(data []byte) (consultrecord.Record, error) {

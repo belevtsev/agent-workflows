@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `/hooks` after updating, or Codex runs none; a given `--host` decides the host over the hook input ([Codex hooks](docs/hooks.md#codex)).
 - `--dry-run` is a flag of `cw consult`, `cw pack add|remove` and `cw task init` only, after the command name: drop it from any other command,
   which now exits 2 (`task show --dry-run` did not); so does an extra argument on every command, `cw hook` included ([paths](docs/operations.md#paths)).
+- The commit gate counts a task record whose latest revision is dated after the current time as just written, where it skipped it;
+  `cw task abandon` is the way out of a record with a wrong far-future date ([which records gate](docs/hooks.md#which-records-gate)).
 
 - While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
   from the verified working tree for a path it changes, and ask about one a git filter staged ([which source counts](docs/hooks.md#which-source-counts)).
@@ -98,6 +100,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   other unread slots, and `cw pack list` prints each pack's declared fields, now with `commands` ([pack.yaml](docs/packs.md#packyaml)).
 - `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
   does not cover; one page states what each version number promises ([stability](docs/operations.md#stability)).
+- `cw --help` no longer lists `cw graphify`, which needs a Python runtime `cw` does not install; the command and
+  `cw graphify --help` still work ([stability](docs/operations.md#stability)).
 - `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
   optional tools are counted in `optional_missing`, and `--all` lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
@@ -124,9 +128,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
 - The task-orchestration skill starts every stage with a fresh worker from `cw task brief` and names one file per step, and each agent
   returns at most the capped 6 KiB result, the rest in its report file ([skill](skills/task-orchestration/SKILL.md#keep-the-coordinator-lean)).
+- Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
+  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
 
 ### Fixed
 
+- After the wall clock steps back, `cw task` commands keep writing: stored times run ahead of the clock until it catches up, so runs
+  made meanwhile show equal starts and `0s` in the timeline ([task record format](docs/development.md#task-record-format)).
 - A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;
   an existing file there is still never replaced ([consultation](docs/advisers.md#consult-advisers-and-let-the-coordinator-decide)).
 - `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory

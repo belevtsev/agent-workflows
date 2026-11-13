@@ -82,7 +82,7 @@ A new Agent call starts with a fresh context.
   the absolute path of its `SKILL.md` in the brief
   (`<plugin root>/skills/<name>/SKILL.md`; the plugin root is the line
   `Plugin root:` in the task-orchestration `SKILL.md`). For a test engineer,
-  list it among the approved inputs.
+  list it and the reference files it needs among the approved inputs.
 - `reviewer` and `test-engineer` start without the user, project and local
   CLAUDE.md files; managed policy files still load. Quote in the brief, word
   for word, any project constraint the work must meet that the contract lacks.

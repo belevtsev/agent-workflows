@@ -61,8 +61,8 @@ the `summary` or under the finding's ID in the report. A finding only
 constraint (who starts, stops or closes what; which lock is not held across
 which call; which failure is returned), which is all the implementer gets.
 
-The result is at most 6 KiB, with a `summary` of at most 1,200 bytes, each
-finding one line of at most 400 bytes and each `reach_runs` field at most 400
+The result is at most 6 KiB without `reach_runs`, its `summary` at most 1,200
+bytes, and each finding (one line) and each `reach_runs` field at most 400
 bytes. Put the full reasoning in the report file that the result's `report`
 names, at most 512 KiB. `cw task handoff` refuses a larger result.
 

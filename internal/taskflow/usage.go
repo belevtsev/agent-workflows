@@ -128,6 +128,7 @@ func (env Env) RecordUsage(ctx context.Context, path string, sample UsageSample)
 			unchanged = *record
 			return errUsageUnchanged
 		}
+		sample.At = env.stamp(record)
 		record.Usage = append(record.Usage, sample)
 		return nil
 	})

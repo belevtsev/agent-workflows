@@ -45,8 +45,8 @@ same contract.
 4. On revision, `change-log.md` in the artefact directory answering every code
    review finding by ID: what changed, with `path:line`, or why nothing did.
 
-The result is at most 6 KiB, with a `summary` of at most 1,200 bytes and each
-finding one line of at most 400 bytes with its ID, severity and source
+The result is at most 6 KiB, not counting `changed_files`, with a `summary` of
+at most 1,200 bytes and each finding one line of at most 400 bytes with its ID, severity and source
 `evidence`. Put the full reasoning in the report file that the result's
 `report` names, at most 512 KiB. `cw task handoff` refuses a larger result.
 
