@@ -36,8 +36,8 @@ them required.
 ## Implementation
 
 When a substantial task adds or materially changes behavioral tests, or the user
-asks, dispatch the independent [test engineer](dispatching-reviews-and-tests.md#dispatch-a-test-engineer). Agree the
-versioned contract and interfaces first, then separate exact implementation and
+asks, dispatch the independent [test engineer](dispatching-reviews-and-tests.md). Agree the
+versioned contract and interfaces first, then split exact implementation and
 test-artifact ownership. Authors receive approved contracts/scaffolding only;
 source-aware coordination or verification owns execution and filtered feedback.
 A valid red-test handoff completes authorship, not verification. Return semantic

@@ -186,7 +186,7 @@ and no amendment.
    sending it, against the [extract rules](../dispatching-reviews-and-tests.md#extract-go-declarations)
    and for unexported fields of a type: an extract that carries anything the
    implementer wrote beyond the contract's declarations is not sent. Drop a
-   symbol the tests do not need and extract again, as those rules say; when a
+   symbol the tests do not need and extract again; when a
    needed symbol still carries it, report the blocker. The refreshed
    test-engineer assignment, under a new ID, owns at least every test path
    its earlier one owned, which supersedes the earlier extract for
