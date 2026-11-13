@@ -1,0 +1,34 @@
+{
+  "description": "agent-workflows for Codex (named by .codex-plugin/plugin.json, in place of hooks/hooks.json): load the working conventions at session start, gate git commit and push on a passing cw task verify, deny cw task abandon and cw's owner approval for the user to run, and sample the session's usage before cw task commands. Each command passes --host codex and, when an older cw rejects the flag (exit 2), runs it again without the flag, so the gate stays on",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"${PLUGIN_ROOT}/global/AGENTS.md\"; if ! command -v cw >/dev/null 2>&1; then cat \"$f\"; printf '%s\\n' 'agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH. Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2` (Go 1.27.1 or newer) or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw'; else out=$(cw hook session-start --host codex --instructions \"$f\" --cache \"${PLUGIN_DATA}\" 2>/dev/null); s=$?; if [ \"$s\" -eq 2 ]; then out=$(cw hook session-start --instructions \"$f\" --cache \"${PLUGIN_DATA}\" 2>/dev/null); s=$?; fi; if [ \"$s\" -eq 0 ] && [ -n \"$out\" ]; then printf '%s\\n' \"$out\"; else cat \"$f\"; fi; fi",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish --host codex 2>/dev/null; [ \"$?\" -ne 2 ] || cw hook pre-publish; exit 0",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook task-usage --host codex >/dev/null 2>&1; [ \"$?\" -ne 2 ] || cw hook task-usage >/dev/null 2>&1; exit 0",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

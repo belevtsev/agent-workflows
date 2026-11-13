@@ -66,10 +66,12 @@ the architect contract and the `software-architecture` and
   with exit 3 `open-record`. Where no hook runs, a plain `git commit` or
   `git push` goes unchecked. Without `cw` on `PATH` there is no gate: the hook
   lets the command through.
-- **Trust.** Codex runs neither plugin hook until you trust them, and `codex exec`
-  does not say it skipped them. Per Codex's documentation, trust is recorded
-  against the hook's hash, so trust them again when an update changes
-  `hooks/hooks.json`.
+- **Trust.** Codex runs no plugin hook until you trust it, and `codex exec`
+  does not say it skipped them. Codex runs `hooks/codex-hooks.json`, which
+  `.codex-plugin/plugin.json` names. Per Codex's documentation, trust is
+  recorded against the hook's hash, so trust the hooks again in `/hooks` when
+  an update changes that file, as the update that added it did
+  ([Codex hooks](hooks.md#codex)).
 - **Plugin options.** Codex has no plugin configuration and sets no
   `CLAUDE_PLUGIN_OPTION_*` variable; the hooks read the environment Codex was
   started with. Unset, the gate and the prompt for unrecorded changes are on
@@ -77,9 +79,9 @@ the architect contract and the `software-architecture` and
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
 - **Evidence.** The plugin rows come from runs recorded with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  0.167.2 and 0.168.0 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
   the last column lists what they did not cover. The session-start context
-  is added again on each resume and after each compaction.
+  is added at startup and after each compaction, not on a resume.
 
 To install the plugin:
 
@@ -502,6 +504,30 @@ measurement input and model advice do not authorize publication or deployment.
 passed. The coordinator runs it under the user's authorization; cw never
 authorizes a publication, and no flag or text in it stands for the user's
 consent.
+
+### Listing tasks
+
+`cw task list` prints the tasks in the task store (`$CW_TASK_STORE`, else the state
+directory's `workflow-tasks`) that belong to the Git repository of the working
+directory, or of `--repo DIR`, and to its main worktree when run in a linked one:
+one line each, newest first, with the task ID, state, kind, last update (UTC) and
+title, and a last line counting the hidden ones. A state is one of:
+
+| State | Meaning |
+| --- | --- |
+| `open` | Readable, not verified, abandoned or stale. |
+| `verified` | Its last `cw task verify` passed. The source may have changed since: the commit gate checks that, the list does not. |
+| `abandoned` | Closed with `cw task abandon`. |
+| `stale` | Not abandoned and untouched for 14 days, so it no longer gates commits. |
+| `unreadable` | `cw` cannot load its record (damaged, from a newer `cw`, or from v2); `--json` gives the load error. |
+
+By default it hides abandoned and stale tasks. `--all` lists them too and, without
+`--repo`, lists every task directory in the store, adding a repository column.
+Outside a Git repository, pass `--repo DIR` or `--all`. `--json` prints one object:
+`tasks`, each with `task_id`, `directory`, `title`, `kind`, `root`, `updated_at`,
+`state` and, for an unreadable task, `error`; and `hidden`, the number left out
+when it is above zero. The command is read-only. When the commit gate names three
+tasks and counts more, it points here.
 
 ### Profiles
 

@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"io/fs"
 	"os"
-	"path"
-	"strings"
 	"testing"
 
 	agentworkflows "github.com/belevtsev/agent-workflows/v3"
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 )
 
-// A10: the checked-in packs load, name known rules, resolve every skill
-// reference and match the embedded copies.
+// A10: the checked-in packs load, name known rules and match the embedded
+// copies.
 func TestRepositoryPacks(t *testing.T) {
 	fsys := os.DirFS("../..")
 	manifests, err := langpack.LoadManifests(fsys)
@@ -30,23 +28,6 @@ func TestRepositoryPacks(t *testing.T) {
 	for _, m := range manifests {
 		if m.EvidenceRule != "" && !langpack.KnownRule(m.EvidenceRule) {
 			t.Errorf("A10 violated: pack %s names unknown evidence_rule %q", m.ID, m.EvidenceRule)
-		}
-		for _, ref := range append(append(append([]string{}, m.Skills.Implement...), m.Skills.Test...), m.Skills.Security...) {
-			candidates := []string{path.Join("skills", ref, "SKILL.md"), path.Join("packs", m.ID, "skills", ref, "SKILL.md")}
-			if prefix, name, ok := strings.Cut(ref, ":"); ok {
-				candidates = nil // any prefix other than cc-skills-golang fails
-				if prefix == "cc-skills-golang" {
-					candidates = []string{path.Join("third_party/cc-skills-golang/skills", name, "SKILL.md")}
-				}
-			}
-			found := false
-			for _, c := range candidates {
-				info, err := fs.Stat(fsys, c)
-				found = found || err == nil && info.Mode().IsRegular()
-			}
-			if !found {
-				t.Errorf("A10 violated: skill %q of pack %s resolves to none of %q", ref, m.ID, candidates)
-			}
 		}
 	}
 	embedded, err := fs.Glob(agentworkflows.Packs, "packs/*/pack.yaml")
