@@ -17,12 +17,7 @@ func addDoctorCommand(root *cobra.Command, config Config) {
 		Use:   "doctor",
 		Short: "Inspect the selected project and optional local capabilities without changing it",
 		Long:  "Inspect the current project or --repo PATH independently of where the workflow skills are installed. Default inspection reads local metadata only. --live permits bounded status, protocol and package-version probes; it does not provision packages, index sources, enroll watchers or call models.",
-		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) != 0 {
-				return usage(errors.New("doctor accepts no positional arguments; use --repo PATH"))
-			}
-			return nil
-		},
+		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if all && !summary {
 				return usage(errors.New("--all applies only with --summary; the full report already lists every check"))

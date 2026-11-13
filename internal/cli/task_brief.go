@@ -7,8 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newTaskBriefCommand returns cw task brief. It only reads, so the global
-// --dry-run changes nothing.
+// newTaskBriefCommand returns cw task brief. It only reads.
 func newTaskBriefCommand(deps taskDeps) *cobra.Command {
 	var directory, stage string
 	var asJSON bool
@@ -20,7 +19,7 @@ func newTaskBriefCommand(deps taskDeps) *cobra.Command {
 			"the plan requirements, and the stage's open findings, newest first, with each result's report file. " +
 			"The output is at most 4,096 bytes: every entry is listed whole or not at all, and the last line counts what is not listed, such as older findings. " +
 			"--json prints the same brief as one JSON object. A stage that is not in the task's profile exits 2. The command is read-only.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.requireTask(&directory); err != nil {
 				return err

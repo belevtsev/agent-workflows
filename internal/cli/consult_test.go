@@ -89,8 +89,10 @@ func TestConsultAndGraphifyUsageErrorsExitTwo(t *testing.T) {
 	}
 }
 
-func TestGraphifyBuildRejectsInheritedDryRunBeforeWrites(t *testing.T) {
-	for _, args := range [][]string{{"--dry-run", "graphify", "build"}, {"graphify", "build", "--dry-run"}} {
+// Oracle: graphify build has no --dry-run; the unknown flag is a usage
+// error (exit 2) before the runtime runs or the cache is written.
+func TestGraphifyBuildRejectsDryRunBeforeWrites(t *testing.T) {
+	for _, args := range [][]string{{"graphify", "build", "--dry-run"}} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			config, _ := testConfig(t)
 			config.HomeDir = func() (string, error) { t.Fatal("dry-run accessed storage"); return "", nil }
@@ -101,7 +103,7 @@ func TestGraphifyBuildRejectsInheritedDryRunBeforeWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			err := Execute(t.Context(), append(args, "--repo", directory, "--runtime", runtime, "--cache-root", cache), config)
-			if err == nil || ExitCode(err) != 2 || !strings.Contains(err.Error(), "rejects --dry-run") {
+			if err == nil || ExitCode(err) != 2 || !strings.Contains(err.Error(), "unknown flag: --dry-run") {
 				t.Fatalf("dry-run was not rejected explicitly: %v", err)
 			}
 			for _, path := range []string{marker, cache} {

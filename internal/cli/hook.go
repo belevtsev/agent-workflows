@@ -129,7 +129,7 @@ type hookSpecificOutput struct {
 }
 
 func addHookCommands(root *cobra.Command, config Config) {
-	hook := &cobra.Command{Use: "hook", Short: "Claude Code plugin and git hooks: load conventions and gate git commit and push on cw task verify", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
+	hook := &cobra.Command{Use: "hook", Short: "Claude Code plugin and git hooks: load conventions and gate git commit and push on cw task verify", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	root.AddCommand(hook)
 	addGitHookCommand(root, hook, config)
 	addTaskUsageHook(hook, config)
@@ -148,7 +148,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
-		Args: cobra.NoArgs,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			host, err := parseHookHost(publishHost)
 			if err != nil {
@@ -169,7 +169,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
 		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context; nothing when Codex resumes a thread",
-		Args:  cobra.NoArgs,
+		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if instructions == "" {
 				return usage(errors.New("--instructions FILE is required"))

@@ -382,31 +382,21 @@ var carveoutNone = credentials.Presence{Source: "none"}
 
 // K-7: status.
 func TestCarveoutKeysStatus(t *testing.T) {
-	for _, dryRun := range []bool{false, true} {
-		name := "missing directory"
-		if dryRun {
-			name += " with dry run"
+	t.Run("missing directory", func(t *testing.T) {
+		dir := carveoutKeysDir(t)
+		config := carveoutKeysConfig(t, nil)
+		result := carveoutKeys(t, config, "", nil, "keys", "status", "--config-dir", dir)
+		carveoutRequireOK(t, result)
+		status := carveoutParseStatus(t, result.out)
+		if status.Directory != dir {
+			t.Errorf("directory = %q; want %q", status.Directory, dir)
 		}
-		t.Run(name, func(t *testing.T) {
-			dir := carveoutKeysDir(t)
-			config := carveoutKeysConfig(t, nil)
-			args := []string{"keys", "status", "--config-dir", dir}
-			if dryRun {
-				args = append([]string{"--dry-run"}, args...)
+		for _, key := range credentials.Names {
+			if got := status.Keys[key]; got != carveoutNone {
+				t.Errorf("%s = %+v; want %+v", key, got, carveoutNone)
 			}
-			result := carveoutKeys(t, config, "", nil, args...)
-			carveoutRequireOK(t, result)
-			status := carveoutParseStatus(t, result.out)
-			if status.Directory != dir {
-				t.Errorf("directory = %q; want %q", status.Directory, dir)
-			}
-			for _, key := range credentials.Names {
-				if got := status.Keys[key]; got != carveoutNone {
-					t.Errorf("%s = %+v; want %+v", key, got, carveoutNone)
-				}
-			}
-		})
-	}
+		}
+	})
 	t.Run("after set", func(t *testing.T) {
 		dir := carveoutKeysDir(t)
 		config := carveoutKeysConfig(t, nil)
@@ -457,13 +447,13 @@ func TestCarveoutKeysStatus(t *testing.T) {
 	})
 }
 
-// K-8: dry run refuses changes.
+// K-8: --dry-run is not a keys flag: a usage error that changes nothing.
 func TestCarveoutKeysDryRun(t *testing.T) {
 	t.Run("set", func(t *testing.T) {
 		dir := carveoutKeysDir(t)
 		config := carveoutKeysConfig(t, nil)
 		result := carveoutKeys(t, config, "x-dry-value\n", []string{"x-dry-value"},
-			"--dry-run", "keys", "set", "OPENAI_API_KEY", "--config-dir", dir)
+			"keys", "set", "OPENAI_API_KEY", "--config-dir", dir, "--dry-run")
 		carveoutRequireCode(t, result, 2)
 		carveoutRequireNothingSaved(t, dir)
 		if _, err := os.Lstat(dir); !errors.Is(err, os.ErrNotExist) {
@@ -475,7 +465,7 @@ func TestCarveoutKeysDryRun(t *testing.T) {
 		config := carveoutKeysConfig(t, nil)
 		secrets := []string{"sk-dry-keep"}
 		carveoutRequireOK(t, carveoutKeys(t, config, "sk-dry-keep\n", secrets, "keys", "set", "OPENAI_API_KEY", "--config-dir", dir))
-		result := carveoutKeys(t, config, "", secrets, "--dry-run", "keys", "unset", "OPENAI_API_KEY", "--config-dir", dir)
+		result := carveoutKeys(t, config, "", secrets, "keys", "unset", "OPENAI_API_KEY", "--config-dir", dir, "--dry-run")
 		carveoutRequireCode(t, result, 2)
 		if carveoutStored(t, dir)["OPENAI_API_KEY"] != "sk-dry-keep" {
 			t.Error("dry-run unset changed the saved OPENAI_API_KEY")

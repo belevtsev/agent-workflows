@@ -37,7 +37,7 @@ func addTaskUsageHook(hook *cobra.Command, config Config) {
 			"it imports the session's transcript (transcript_path: a Claude Code transcript, or under Codex (--host codex) its rollout) within 10 seconds, " +
 			"as cw task usage does with cw's built-in price table, and stores the sample when it matters. It prints nothing and exits 0 in every case: " +
 			"an incomplete or broken transcript, a command without an open task and any error store nothing. See docs/hooks.md \"Usage sampling\".",
-		Args: cobra.NoArgs,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			parsed, err := parseHookHost(host)
 			if err != nil {

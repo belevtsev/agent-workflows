@@ -67,14 +67,8 @@ func addKeysCommand(root *cobra.Command, config Config) {
 		Short: "Save, remove or report the adviser keys in the private configuration directory",
 		Long: "Manage the saved adviser keys (TYPESAFE_API_KEY, SUBQ_API_KEY and OPENAI_API_KEY) in the configuration directory: --config-dir, else $XDG_CONFIG_HOME/agent-workflows, else ~/.config/agent-workflows. " +
 			"A key set in the environment takes precedence over a saved one. Saved keys live in a private plaintext file.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
-	}
-	guard := func(cmd *cobra.Command) error {
-		if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
-			return usage(fmt.Errorf("keys %s rejects --dry-run; no key was changed", cmd.Name()))
-		}
-		return nil
 	}
 	save := func(cmd *cobra.Command, name string, value *string) error {
 		directory, err := credentialDirectory(root, config)
@@ -108,9 +102,6 @@ func addKeysCommand(root *cobra.Command, config Config) {
 			"Saving a key also opts in to its adviser: when the model policy enables it and advisers.disabled in preferences.json does not list it, tasks started afterwards bind it and an ad hoc 'cw consult' contacts it.",
 		Args: keyName,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := guard(cmd); err != nil {
-				return err
-			}
 			var value string
 			if fromEnv != "" {
 				value = config.Getenv(fromEnv)
@@ -137,16 +128,13 @@ func addKeysCommand(root *cobra.Command, config Config) {
 		Long:  "Remove the saved key for NAME. This withdraws the opt-in that saving it gave: a key left only in the environment binds its adviser again only with advisers.enabled in preferences.json or --policy. Tasks already started keep their binding.",
 		Args:  keyName,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := guard(cmd); err != nil {
-				return err
-			}
 			return save(cmd, args[0], nil)
 		},
 	})
 	keys.AddCommand(&cobra.Command{
 		Use:   "status",
 		Short: "Report whether each adviser key comes from the environment, the saved keys or neither",
-		Args:  noPositional,
+		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			directory, err := credentialDirectory(root, config)
 			if err != nil {

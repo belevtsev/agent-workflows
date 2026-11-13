@@ -114,7 +114,7 @@ func TestTaskTimelineTL8UsageErrors(t *testing.T) {
 		{"no --task with --summary", []string{"task", "timeline", "--summary"}, true},
 		{"empty --task", []string{"task", "timeline", "--task", ""}, true},
 		{"empty --task= form", []string{"task", "timeline", "--task="}, true},
-		{"no --task with --dry-run", []string{"--dry-run", "task", "timeline"}, true},
+		{"unknown flag --dry-run without --task", []string{"task", "timeline", "--dry-run"}, false},
 		{"positional argument without --task", []string{"task", "timeline", "extra"}, false},
 		{"unknown flag without --task", []string{"task", "timeline", "--no-such-flag"}, false},
 		{"positional argument with a valid-looking --task", []string{"task", "timeline", "--task", taskDir, "extra"}, false},
@@ -160,7 +160,7 @@ func TestTaskTimelineTL8UsageErrors(t *testing.T) {
 // TL-8 and TL-9: a --task path that is missing, not a directory, a symlink,
 // group- or other-accessible, or an owner-only directory without a valid
 // record is a runtime error (exit status 1) with nothing on standard output,
-// with or without --summary and --dry-run, and the file system is unchanged.
+// with or without --summary, and the file system is unchanged.
 // Each case is also a control for the usage cases above: these arguments are
 // well formed, so a status of 2 here means the command misparsed them.
 func TestTaskTimelineTL8RuntimeErrors(t *testing.T) {
@@ -265,32 +265,27 @@ func TestTaskTimelineTL8RuntimeErrors(t *testing.T) {
 	variants := [][]string{nil, {"--summary"}}
 	for _, tc := range cases {
 		for _, extra := range variants {
-			for _, dryRun := range []bool{false, true} {
-				name := fmt.Sprintf("%s/extra=%v/dry-run=%v", tc.name, extra, dryRun)
-				t.Run(name, func(t *testing.T) {
-					env := tlcNewEnv(t)
-					dir := tc.setup(t, env.root)
-					before := tlcSnapshot(t, env.root)
-					args := []string{"task", "timeline", "--task", dir}
-					args = append(args, extra...)
-					if dryRun {
-						args = append([]string{"--dry-run"}, args...)
-					}
-					stdout, _, err := tlcRun(t, env, args...)
-					if err == nil {
-						t.Fatalf("cw %v succeeded with stdout %q, want a runtime error", args, stdout)
-					}
-					if code := cli.ExitCode(err); code != 1 {
-						t.Errorf("exit status = %d, want 1 (runtime); error: %v", code, err)
-					}
-					if stdout != "" {
-						t.Errorf("stdout = %q, want nothing on error", stdout)
-					}
-					if after := tlcSnapshot(t, env.root); after != before {
-						t.Errorf("failing command changed the file system:\nbefore:\n%s\nafter:\n%s", before, after)
-					}
-				})
-			}
+			name := fmt.Sprintf("%s/extra=%v", tc.name, extra)
+			t.Run(name, func(t *testing.T) {
+				env := tlcNewEnv(t)
+				dir := tc.setup(t, env.root)
+				before := tlcSnapshot(t, env.root)
+				args := []string{"task", "timeline", "--task", dir}
+				args = append(args, extra...)
+				stdout, _, err := tlcRun(t, env, args...)
+				if err == nil {
+					t.Fatalf("cw %v succeeded with stdout %q, want a runtime error", args, stdout)
+				}
+				if code := cli.ExitCode(err); code != 1 {
+					t.Errorf("exit status = %d, want 1 (runtime); error: %v", code, err)
+				}
+				if stdout != "" {
+					t.Errorf("stdout = %q, want nothing on error", stdout)
+				}
+				if after := tlcSnapshot(t, env.root); after != before {
+					t.Errorf("failing command changed the file system:\nbefore:\n%s\nafter:\n%s", before, after)
+				}
+			})
 		}
 	}
 }

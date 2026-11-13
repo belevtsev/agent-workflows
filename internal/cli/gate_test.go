@@ -489,15 +489,15 @@ func TestGateCreatesAHooksDirectoryOnlyInTheGitDirectory(t *testing.T) {
 }
 
 func TestGateRefusesDryRunAndADirectoryOutsideGit(t *testing.T) {
-	// Oracle: the exit table. --dry-run on a command that writes is a usage
-	// error (2) and writes nothing; a directory git does not recognise as a
+	// Oracle: the exit table. --dry-run, which cw gate does not have, is a
+	// usage error (2) and writes nothing; a directory git does not recognise as a
 	// repository is a failure (1) that says so.
 	gtIsolate(t, os.DevNull)
 	repo := hkRepo(t)
 	for _, command := range []string{"install", "uninstall"} {
 		config, _ := testConfig(t)
-		err := Execute(t.Context(), []string{"--dry-run", "gate", command, "--repo", repo}, config)
-		if ExitCode(err) != ExitUsage || err.Error() != "cw gate "+command+" rejects --dry-run" {
+		err := Execute(t.Context(), []string{"gate", command, "--repo", repo, "--dry-run"}, config)
+		if ExitCode(err) != ExitUsage || err.Error() != "unknown flag: --dry-run" {
 			t.Fatalf("--dry-run gate %s: %v (exit %d)", command, err, ExitCode(err))
 		}
 	}

@@ -189,7 +189,7 @@ func TestPackAddRemove(t *testing.T) {
 		{"", []step{{"lang remove go", []string{}, true, []string{}, 0, ""}, {"pack remove go", []string{}, false, []string{}, 0, ""}}},
 		{"", []step{{"pack remove zz", []string{"go"}, true, []string{"go"}, 0, ""}}},
 		{`{"version":1,"packs":["zz"]}`, []step{{"pack add go", []string{"go", "zz"}, true, []string{"go", "zz"}, 0, ""}}},
-		{"", []step{{"--dry-run pack add go", []string{"go"}, false, nil, 0, ""}, {"--dry-run lang remove go", []string{}, false, nil, 0, ""}}},
+		{"", []step{{"pack add go --dry-run", []string{"go"}, false, nil, 0, ""}, {"lang remove go --dry-run", []string{}, false, nil, 0, ""}}},
 		{"", []step{
 			{"pack add", nil, false, nil, 2, ""}, {"lang add go go", nil, false, nil, 2, ""},
 			{"pack remove", nil, false, nil, 2, ""}, {"pack remove a b", nil, false, nil, 2, ""},

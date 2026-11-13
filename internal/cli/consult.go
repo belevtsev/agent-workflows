@@ -16,9 +16,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func noPositional(cmd *cobra.Command, args []string) error {
-	if err := cobra.NoArgs(cmd, args); err != nil {
-		return usage(err)
+// noArgs is the Args rule of every command that takes no positional
+// arguments, parents included: an argument is a usage error, exit 2, with
+// one message.
+func noArgs(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return usage(fmt.Errorf("unexpected argument %q for %q", args[0], cmd.CommandPath()))
 	}
 	return nil
 }
@@ -46,9 +49,8 @@ func addConsultCommand(root *cobra.Command, config Config) {
 			"--dry-run writes the same validated preview, marking each adviser dry_run or not_configured, without network access. " +
 			"With --adjudicate and --decision, validate the coordinator's decision against a saved version 4 record, using no network, credentials or policy.\n\n" +
 			"Exits 0 when complete (including no_advisers_configured and dry runs), 5 when coverage or the decision is incomplete or a task-bound adviser is not configured (the record is still written, and stderr names the variable to set), 2 for a usage error, and 1 when input is invalid or the output path already exists.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			options.DryRun, _ = root.PersistentFlags().GetBool("dry-run")
 			if err := options.Check(); err != nil {
 				return usage(err)
 			}
@@ -110,6 +112,7 @@ func addConsultCommand(root *cobra.Command, config Config) {
 	flags.StringVar(&options.Decision, "decision", "", "Coordinator decision JSON file, with --adjudicate")
 	flags.StringVar(&options.Output, "output", "", "New private record path; an existing file is never replaced")
 	flags.StringVar(&policy, "policy", "", "Model policy; without a task, it also opts in to every adviser it enables; "+policyFlagHelp)
+	flags.BoolVar(&options.DryRun, "dry-run", false, "With --request, write a validated preview without network access")
 	flags.BoolVar(&summary, "summary", false, "After writing the record, print a one-line JSON view of it (statuses, answers, comparison) without the request body")
 	root.AddCommand(command)
 }
@@ -124,7 +127,7 @@ type graphifyFailure struct {
 }
 
 func addGraphifyCommands(root *cobra.Command, config Config) {
-	parent := &cobra.Command{Use: "graphify", Short: "Build and query a guarded local structural graph of tracked Go source", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
+	parent := &cobra.Command{Use: "graphify", Short: "Build and query a guarded local structural graph of tracked Go source", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	report := func(cmd *cobra.Command, value any, err error) error {
 		if err == nil {
 			return writeJSON(cmd.OutOrStdout(), value)
@@ -166,10 +169,7 @@ func addGraphifyCommands(root *cobra.Command, config Config) {
 		parent.AddCommand(command)
 		return command
 	}
-	define("build", "Reuse a current graph or extract one from a tracked Go snapshot", 300, noPositional, func(cmd *cobra.Command, _ []string, options graphify.Options) error {
-		if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun {
-			return usage(errors.New("graphify build rejects --dry-run; no graph was built"))
-		}
+	define("build", "Reuse a current graph or extract one from a tracked Go snapshot", 300, noArgs, func(cmd *cobra.Command, _ []string, options graphify.Options) error {
 		result, err := graphify.Build(cmd.Context(), options)
 		return report(cmd, result, err)
 	})

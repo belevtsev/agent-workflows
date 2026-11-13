@@ -75,7 +75,7 @@ func l4cAuthorshipFixture(t *testing.T) *l3cFix {
 
 // TestTaskAuthorshipCLIPrintsReport fails when cw task authorship does not
 // print taskflow.Authorship's report as one JSON line, exits non-zero for
-// unowned files, writes to the task, behaves differently with --dry-run, or
+// unowned files, writes to the task, accepts --dry-run, which it does not have, or
 // fails on an abandoned task (R20, I7).
 func TestTaskAuthorshipCLIPrintsReport(t *testing.T) {
 	t.Parallel()
@@ -102,11 +102,8 @@ func TestTaskAuthorshipCLIPrintsReport(t *testing.T) {
 	if !l3cSameJSON(line, string(want)) {
 		t.Errorf("printed report differs from taskflow.Authorship's:\n got  %s\n want %s (R20)", line, want)
 	}
-	dry, _, err := f.execute("task", "authorship", "--task", f.dir, "--dry-run")
-	if err != nil {
-		t.Errorf("cw task authorship --dry-run: %v, want it accepted (R20)", err)
-	} else if dry != out {
-		t.Errorf("--dry-run changed the output:\n got  %s\n want %s (R20)", dry, out)
+	if _, _, err := f.execute("task", "authorship", "--task", f.dir, "--dry-run"); cli.ExitCode(err) != cli.ExitUsage {
+		t.Errorf("cw task authorship --dry-run: %v, want the usage error for an unknown flag", err)
 	}
 	l3cSameTree(t, "cw task authorship", before, l3cTree(t, f.dir))
 

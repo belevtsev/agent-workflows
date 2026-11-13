@@ -94,12 +94,7 @@ func NewCommand(config Config) *cobra.Command {
 		Long: "cw records and verifies substantial tasks and publishes the verified ones as a commit, push and pull request. " +
 			"The skills that drive it ship as Claude Code and Codex plugins.",
 		SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true,
-		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				return usage(fmt.Errorf("unknown command: %s", args[0]))
-			}
-			return nil
-		},
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
 	root.CompletionOptions.DisableDefaultCmd = true
@@ -113,13 +108,7 @@ func NewCommand(config Config) *cobra.Command {
 	flags.String("codex-home", "", "Codex configuration directory")
 	flags.String("claude-home", "", "Claude Code configuration directory")
 	flags.String("state-dir", "", "State directory holding the task store")
-	flags.Bool("dry-run", false, "Report without writing")
-	root.AddCommand(&cobra.Command{Use: "version", Short: "Show the build identity as JSON", Args: func(_ *cobra.Command, args []string) error {
-		if len(args) > 0 {
-			return usage(errors.New("version accepts no arguments"))
-		}
-		return nil
-	}, RunE: func(cmd *cobra.Command, _ []string) error {
+	root.AddCommand(&cobra.Command{Use: "version", Short: "Show the build identity as JSON", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		return writeJSON(cmd.OutOrStdout(), versionReport{Arch: runtime.GOARCH, BuiltAt: config.BuiltAt, OS: runtime.GOOS, Revision: config.Revision, Version: config.Version})
 	}})
 	addDoctorCommand(root, config)

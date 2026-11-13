@@ -97,7 +97,7 @@ func addGateCommands(root *cobra.Command, config Config) {
 			"however it starts: an alias, a script or a terminal. The hooks go in the directory git runs them from (git rev-parse --git-path hooks), " +
 			"which follows core.hooksPath and is shared by every worktree of the repository. cw gate never replaces or removes a hook it did not write, " +
 			"and changes a hooks directory that other repositories use too only with --shared.",
-		Args: noPositional,
+		Args: noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
 	root.AddCommand(gate)
@@ -106,15 +106,12 @@ func addGateCommands(root *cobra.Command, config Config) {
 	define := func(command *cobra.Command, writes bool, run func(cmd *cobra.Command, hooks gateHooks) error) *cobra.Command {
 		var repo string
 		var shared bool
-		command.Args = noPositional
+		command.Args = noArgs
 		command.Flags().StringVar(&repo, "repo", "", "Repository directory (default: the working directory)")
 		if writes {
 			command.Flags().BoolVar(&shared, "shared", false, "Change a hooks directory that other repositories use too")
 		}
 		command.RunE = func(cmd *cobra.Command, _ []string) error {
-			if dryRun, _ := root.PersistentFlags().GetBool("dry-run"); dryRun && writes {
-				return usage(fmt.Errorf("%s rejects --dry-run", cmd.CommandPath()))
-			}
 			dir, err := absolute(config, cmp.Or(repo, "."))
 			if err != nil {
 				return err

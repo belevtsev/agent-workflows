@@ -13,11 +13,8 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 		Use:   "add-checks",
 		Short: "Add go test checks to a started substantial task after merging its base branch",
 		Long:  helpText("task-add-checks"),
-		Args:  noPositional,
+		Args:  noArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := deps.guard(); err != nil {
-				return err
-			}
 			if err := deps.requireTask(&directory); err != nil {
 				return err
 			}

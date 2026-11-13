@@ -5,10 +5,7 @@ import "github.com/spf13/cobra"
 // newTaskContextCommand returns cw task context.
 func newTaskContextCommand(deps taskDeps) *cobra.Command {
 	var directory, phase string
-	command := &cobra.Command{Use: "context", Short: "Emit the exact before/final source context, with the task's adviser binding, for shared adviser state", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	command := &cobra.Command{Use: "context", Short: "Emit the exact before/final source context, with the task's adviser binding, for shared adviser state", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

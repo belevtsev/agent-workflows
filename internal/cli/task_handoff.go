@@ -9,10 +9,7 @@ import (
 func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 	var directory, inputFile string
 	var full bool
-	handoff := &cobra.Command{Use: "handoff", Short: "Validate a worker result against its assignment, source and actual checks", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := deps.guard(); err != nil {
-			return err
-		}
+	handoff := &cobra.Command{Use: "handoff", Short: "Validate a worker result against its assignment, source and actual checks", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}

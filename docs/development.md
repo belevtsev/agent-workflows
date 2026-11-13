@@ -33,7 +33,7 @@ experimental.
 
 Each `cw task` subcommand has its own constructor, `newTaskXCommand(taskDeps)`,
 in `internal/cli/task_<name>.go`, listed in `taskCommands`. Add a subcommand
-there: reject `--dry-run` with `taskDeps.guard`, read a JSON input with
+there: take no positional arguments with `Args: noArgs`, read a JSON input with
 `readTaskInput` and print with `writeJSON`.
 
 `internal/fslock` is the one file lock: `fslock.Acquire` takes `flock(2)` on a
