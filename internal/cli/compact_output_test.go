@@ -251,8 +251,8 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	// satisfied" lines joined into one at the place of the first.
 	var problems []any
 	compactDecode(t, line["problems"], &problems)
-	wantFull := []any{"requirement zeta is not satisfied", "requirement alpha is not satisfied", "Codex task decision is unresolved"}
-	wantProblems := []any{"requirements zeta, alpha are not satisfied", "Codex task decision is unresolved"}
+	wantFull := []any{"requirement zeta is not satisfied", "requirement alpha is not satisfied", "coordinator decision is unresolved"}
+	wantProblems := []any{"requirements zeta, alpha are not satisfied", "coordinator decision is unresolved"}
 	if !reflect.DeepEqual(fullProblems, wantFull) || !reflect.DeepEqual(problems, wantProblems) {
 		t.Fatalf("verify problems = %v, summary problems = %v; want %v and %v", fullProblems, problems, wantFull, wantProblems)
 	}
