@@ -48,9 +48,11 @@ jobs:
       - name: Test with the race detector
         if: runner.os == 'Linux'
         run: go test -race -count=1 ./...
+      # cmd/cw takes over eight minutes on macOS runners, near go test's
+      # 10-minute default for one package.
       - name: Test
         if: runner.os != 'Linux'
-        run: go test -count=1 ./...
+        run: go test -count=1 -timeout=15m ./...
 
   lint:
     name: Lint and vulnerabilities

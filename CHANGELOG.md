@@ -63,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
+  ([CI](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
   and link the model policies instead of model releases, and drop unmeasured token counts ([host requirements](docs/operations.md#host-requirements)).
 - `pack.yaml` keeps only the fields `cw` reads (`commands.race` among them), dropping `tests`, `skills`, `review` and the
