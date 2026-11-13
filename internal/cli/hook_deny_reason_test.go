@@ -31,7 +31,7 @@ func TestHookDenyReasonNamesAtMostThreeTasksOnEveryHost(t *testing.T) {
 		t.Fatalf("deny reason %q names the oldest record %s, or does not count it once with the command that lists it", reason, oldest.ID)
 	}
 	claude := hkExpectDenyOnly(t, got, newest, oldest)
-	if codex := hkExpectDeny(t, h.runPrePublish(t, hkCodexInput(t, repo)), newest...); codex != claude+hkCodexOptions {
+	if codex := hkExpectDeny(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)), newest...); codex != claude+hkCodexOptions {
 		t.Fatalf("Codex deny reason\n%q\nwant Claude Code's\n%q\nfollowed by %q", codex, claude, hkCodexOptions)
 	}
 	h.hgExpect(t, "pre-commit", repo, ExitDenied, claude+hgOptions+"\n")
