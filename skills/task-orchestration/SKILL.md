@@ -48,7 +48,7 @@ satisfies a later state.
       `"checkpoints": {"required": false, "reason": "..."}`; states 2 and 4 are
       then skipped.
    5. Decide whether the plan opts in to the
-      [adversarial tester](references/contracts/adversarial-tester.md#opt-in-and-record).
+      [adversarial tester](references/dispatching-reviews-and-tests.md#adversarial).
    6. Hand a consequential planning, architecture or diagnosis question that
       source does not settle to a `decision`-profile worker.
    7. If an open decision, or a change to code that must behave alike on

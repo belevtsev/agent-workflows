@@ -84,6 +84,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
 - The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
   what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
+- The worker-handoffs and dispatch references drop what `cw` refuses and what each contract states, and name the test authorship statuses;
+  the adversarial tester's contract holds worker rules only ([dispatching](skills/task-orchestration/references/dispatching-reviews-and-tests.md#adversarial)).
 - The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
   [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and

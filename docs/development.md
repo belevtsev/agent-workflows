@@ -78,6 +78,7 @@ Use `go test` with a focused package or test filter while developing. Tests use
 temporary homes, synthetic Git repositories and local HTTP servers. They never
 change the user's configuration, consult hosted decision models, or require service
 credentials.
+Host smokes are synthetic acceptance evidence; keep live model calls out of CI.
 
 ### Repository content checks
 
