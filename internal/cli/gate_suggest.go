@@ -18,8 +18,9 @@ import (
 // hookGateNoteTimeout bounds the session-start look at the task store and
 // the git hooks. It runs before the doctor summary, which has a deadline of
 // its own (hookDoctorTimeout); together they stay below the 15 second
-// SessionStart hook timeout in hooks/hooks.json.
-const hookGateNoteTimeout = 5 * time.Second
+// SessionStart hook timeout in hooks/hooks.json. It is a variable only so
+// that tests can set it; cw never changes it.
+var hookGateNoteTimeout = 5 * time.Second
 
 // gateSuggestedDirectory is the directory under the session-start cache
 // (--cache) that holds one empty file per task, named by its ID, for each

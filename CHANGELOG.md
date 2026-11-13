@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and the `verify` summary joins like problems and lists at most 20 ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw task` summaries and the commit gate's deny reason name the task by `task_id` instead of its directory, and a log path is relative
   to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- Codex runs the plugin's new `hooks/codex-hooks.json` (`cw hook … --host codex`) instead of `hooks/hooks.json`: trust the hooks again in
+  `/hooks` after updating, or Codex runs none; a given `--host` decides the host over the hook input ([Codex hooks](docs/hooks.md#codex)).
 
 ### Added
 
@@ -57,6 +59,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `pack.yaml` keeps only the fields `cw` reads (`commands.race` among them), dropping `tests`, `skills`, `review` and the
+  other unread slots, and `cw pack list` prints each pack's declared fields, now with `commands` ([pack.yaml](docs/packs.md#packyaml)).
 - `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
   does not cover; one page states what each version number promises ([stability](docs/operations.md#stability)).
 - `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
@@ -81,6 +85,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 - `cw task verify` names an unresolved, stale or invalid decision "coordinator decision" instead of "Codex task decision", since either host
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
+  those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
 
 ### Fixed
 

@@ -26,49 +26,22 @@ const (
 	KindDomain   = "domain"
 )
 
-// Manifest is one pack.yaml document (schema 1). Unknown keys are refused at
-// every level. Optional lists are nil when absent.
+// Manifest is one pack.yaml document (schema 1). It holds only fields cw
+// reads; unknown keys are refused at every level. Optional lists are nil when
+// absent.
 type Manifest struct {
-	Schema           int      `yaml:"schema"`
-	ID               string   `yaml:"id"`
-	Kind             string   `yaml:"kind"`
-	Detect           []string `yaml:"detect"`
-	Commands         Commands `yaml:"commands"`
-	Tests            Tests    `yaml:"tests"`
-	InterfaceExtract []string `yaml:"interface_extract"`
-	Skills           Skills   `yaml:"skills"`
-	Review           []string `yaml:"review"`
-	EvidenceRule     string   `yaml:"evidence_rule"`
+	Schema       int      `yaml:"schema"`
+	ID           string   `yaml:"id"`
+	Kind         string   `yaml:"kind"`
+	Detect       []string `yaml:"detect"`
+	Commands     Commands `yaml:"commands"`
+	EvidenceRule string   `yaml:"evidence_rule"`
 }
 
-// Commands are the pack's command slots, each an argv.
+// Commands are the pack's command slots, each an argv. Race runs the pack's
+// tests under the race detector.
 type Commands struct {
-	Build  []string `yaml:"build"`
-	Test   []string `yaml:"test"`
-	Race   []string `yaml:"race"`
-	Lint   []string `yaml:"lint"`
-	Format []string `yaml:"format"`
-}
-
-// Tests are the pack's test kinds; a nil kind is absent.
-type Tests struct {
-	Unit        *TestCommand `yaml:"unit"`
-	Integration *TestCommand `yaml:"integration"`
-	E2E         *TestCommand `yaml:"e2e"`
-}
-
-// TestCommand names the files a test kind covers and the argv that runs it.
-type TestCommand struct {
-	Files []string `yaml:"files"`
-	Argv  []string `yaml:"argv"`
-}
-
-// Skills are skill references by task role: a bare skill name, or
-// plugin:skill.
-type Skills struct {
-	Implement []string `yaml:"implement"`
-	Test      []string `yaml:"test"`
-	Security  []string `yaml:"security"`
+	Race []string `yaml:"race" json:"race,omitempty"`
 }
 
 // ParseManifest decodes and validates one pack.yaml document. The schema is
@@ -109,13 +82,11 @@ func ParseManifest(data []byte) (Manifest, error) {
 const (
 	maxManifestBytes = 64 << 10
 	maxDetect        = 16
-	maxReviewBytes   = 512
 )
 
 var (
-	skillPattern = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*:)?[a-z0-9][a-z0-9-]*$`)
-	rulePattern  = regexp.MustCompile(`^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+/v[1-9][0-9]*$`)
-	idPattern    = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+	rulePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+/v[1-9][0-9]*$`)
+	idPattern   = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 )
 
 // readSchema reads the schema key of a manifest mapping before anything else
@@ -141,12 +112,6 @@ func readSchema(mapping *yaml.Node) (int, error) {
 	return 0, errors.New("pack manifest has no schema")
 }
 
-// namedList is a manifest list with the field name its errors report.
-type namedList struct {
-	field string
-	list  []string
-}
-
 // validateManifest applies the schema-1 field rules to a decoded manifest.
 func validateManifest(m Manifest) error {
 	if !ValidID(m.ID) {
@@ -166,46 +131,8 @@ func validateManifest(m Manifest) error {
 			return fmt.Errorf("detect lists %q twice", name)
 		}
 	}
-	argvs := []namedList{
-		{"commands.build", m.Commands.Build}, {"commands.test", m.Commands.Test}, {"commands.race", m.Commands.Race},
-		{"commands.lint", m.Commands.Lint}, {"commands.format", m.Commands.Format}, {"interface_extract", m.InterfaceExtract},
-	}
-	for _, kind := range []struct {
-		name string
-		test *TestCommand
-	}{{"unit", m.Tests.Unit}, {"integration", m.Tests.Integration}, {"e2e", m.Tests.E2E}} {
-		if kind.test == nil {
-			continue
-		}
-		if kind.test.Argv == nil {
-			return fmt.Errorf("tests.%s has no argv", kind.name)
-		}
-		argvs = append(argvs, namedList{"tests." + kind.name + ".argv", kind.test.Argv})
-		for _, pattern := range kind.test.Files {
-			if _, err := path.Match(pattern, ""); pattern == "" || err != nil {
-				return fmt.Errorf("tests.%s.files entry %q is not a valid pattern", kind.name, pattern)
-			}
-		}
-	}
-	for _, slot := range argvs {
-		if slot.list != nil && (len(slot.list) == 0 || slices.Contains(slot.list, "")) {
-			return fmt.Errorf("%s must be a non-empty argv without empty arguments", slot.field)
-		}
-	}
-	for _, slot := range []namedList{{"skills.implement", m.Skills.Implement}, {"skills.test", m.Skills.Test}, {"skills.security", m.Skills.Security}} {
-		for i, skill := range slot.list {
-			if !skillPattern.MatchString(skill) {
-				return fmt.Errorf("%s entry %q is not a skill reference", slot.field, skill)
-			}
-			if slices.Contains(slot.list[:i], skill) {
-				return fmt.Errorf("%s lists %q twice", slot.field, skill)
-			}
-		}
-	}
-	for i, item := range m.Review {
-		if strings.TrimSpace(item) == "" || len(item) > maxReviewBytes || strings.Contains(item, "\n") {
-			return fmt.Errorf("review item %d must be one non-blank line of at most %d bytes", i+1, maxReviewBytes)
-		}
+	if race := m.Commands.Race; race != nil && (len(race) == 0 || slices.Contains(race, "")) {
+		return errors.New("commands.race must be a non-empty argv without empty arguments")
 	}
 	if m.EvidenceRule != "" && !rulePattern.MatchString(m.EvidenceRule) {
 		return fmt.Errorf("evidence_rule %q is not a rule id", m.EvidenceRule)

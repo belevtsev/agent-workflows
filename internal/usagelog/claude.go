@@ -333,6 +333,12 @@ func importClaude(ctx context.Context, path string, prices *PriceTable, observer
 			s.hit("unreadable_file")
 		}
 	}
+	// A file with no line of any Claude Code session, such as a Codex
+	// rollout passed as a Claude transcript, gives unknown usage rather
+	// than zero.
+	if matchingEntries == 0 && otherEntries == 0 {
+		s.hit("no_claude_entries")
+	}
 	if matchingEntries == 0 && otherEntries > 0 {
 		return Report{}, fmt.Errorf("claude transcript %s has no lines for session %q but has lines of another session; pass the main <session-id>.jsonl transcript (not a renamed copy or a subagent agent-*.jsonl file)", base, sessionID)
 	}
