@@ -62,4 +62,3 @@ func credentialEnvironment(root *cobra.Command, config Config, stderr io.Writer)
 func warnUnreadKeys(stderr io.Writer, err error) {
 	fmt.Fprintf(stderr, "warning: saved adviser keys were not read, so none of them is used or opts in an adviser: %v\n", err)
 }
-
