@@ -161,7 +161,7 @@ vendored files, build constraints, generated code, embedded files or shared
 testdata. A pass after a failed run of the same check at the same source
 and `GOFLAGS` earns no credit until the source changes, and skipped tests
 are listed. A task keeps the rule
-it recorded at start; see [evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+it recorded at start; see [the Go package-test rule](docs/operations.md#the-go-package-test-rule).
 The `go` pack is selected by default. A task records it when `go.mod` or
 `go.work` is at the top of the selected path at start, and the rule then checks
 packages whenever `go.mod` is at the top at verify. A task that started with
