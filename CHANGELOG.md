@@ -50,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   that worked on another stage unless the brief `repeats` an assignment ([stage briefs](docs/operations.md#stage-briefs)).
 - `cw task receipt` prints, in at most 4 KiB, a task's rounds, owner approvals, estimated dollars and tokens (or unknown, never 0),
   checks, findings and wall time; `verify`, `abandon` and a budget stop print it on stderr ([task receipt](docs/operations.md#task-receipt)).
+- `cw task list` prints this repository's tasks with their state (open, verified, abandoned, stale or unreadable), as text or with `--json`;
+  the commit gate's reasons point at it for the tasks past the three they name ([listing tasks](docs/operations.md#listing-tasks)).
 
 ### Changed
 
