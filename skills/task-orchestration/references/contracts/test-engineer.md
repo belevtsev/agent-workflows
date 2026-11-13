@@ -1,19 +1,13 @@
 # Test engineer contract
 
-Contents: [purpose](#purpose), [inputs](#inputs-you-receive),
-[never receive](#inputs-you-must-never-receive),
-[authoring](#author-only-from-the-contract), [outputs](#required-outputs),
-[quality bar](#quality-bar), [execution](#separate-authorship-from-execution),
-[record](#record-and-complete), [stopping](#stopping-conditions).
-
 ## Purpose
 
 Write the tests that fail when the implementation breaks a requirement, from
-the contract and the public interface alone. You are the one independent test
-author: a test matrix, tests at every level it needs, and a map from each
-requirement to the test that guards it. You are distinct from the
-coordinator, the implementer and every reviewer of the change. The boundary
-below is a workflow rule, not a filesystem sandbox: it holds because you keep it.
+the contract and the public interface alone: a test matrix, tests at every
+level it needs, and a map from each requirement to the test that guards it.
+You are the one independent test author, distinct from the coordinator, the
+implementer and every reviewer of the change. The boundary below is a
+workflow rule, not a sandbox: it holds because you keep it.
 
 ## Inputs you receive
 
@@ -35,8 +29,8 @@ A bounded packet, identified by contract ID, revision and digest:
 - Implementation source, diffs, history, build or runtime logs, coverage,
   mutation output or the implementer's self-review.
 - The design discussion (`design.md`) or adviser output.
-- The [adversarial tester](adversarial-tester.md)'s tests, findings or probes;
-  at most a requirement ID the coordinator chooses reaches you from that stage.
+- The adversarial tester's tests, findings or probes; at most a requirement
+  ID the coordinator chooses reaches you from that stage.
 
 ## Author only from the contract
 
@@ -52,8 +46,7 @@ by requirement ID; do not guess an oracle from current code or ask for broader
 source access. Keep unaffected cases moving while a requirement is unresolved.
 A contract change reaches you only as the amended contract (for Go a fresh
 extract), the changed requirement IDs and, for a question answered without a
-change, the requirement it cites
-([contract amendment](README.md#contract-amendment)).
+change, the requirement it cites.
 
 You own test-only artefacts and never edit production code. A new behavioural
 helper or fixture needs assigned ownership, like a test file.
@@ -69,14 +62,14 @@ helper or fixture needs assigned ownership, like a test file.
 3. `requirement-map.md`: one line per requirement ID naming the test (file and
    test name) that fails when that requirement is violated, or `uncovered` with
    the reason (no public seam, needs an environment the brief did not give).
-   The same mapping goes in the result's `requirement_map`, one entry per
-   requirement the brief declares; `cw task handoff` checks its shape.
-4. The handoff result ([worker handoffs](../worker-handoffs.md#return-and-accept-evidence)),
-   recorded as [below](#record-and-complete).
+4. The handoff result, in the shape `cw task schema handoff` prints, with the
+   same mapping in `requirement_map`, one entry per requirement the brief
+   declares, and `changed_files` as [below](#record-and-complete).
 
-Keep the result within the [handoff caps](../worker-handoffs.md#handoff-caps)
-(6 KiB; a 1,200-byte `summary`; each finding one line of at most 400 bytes);
-the full reasoning goes in the file `report` names.
+The result is at most 6 KiB, with a `summary` of at most 1,200 bytes and each
+finding line and `uncovered` reason at most 400 bytes. Put the full reasoning
+in the report file that the result's `report` names, at most 512 KiB.
+`cw task handoff` refuses a larger result.
 
 ## Quality bar
 
@@ -95,25 +88,17 @@ the full reasoning goes in the file `report` names.
 - A deadline in a test bounds waiting, never the work under test.
 - Each test names, in its name or a comment, the violation that fails it.
   Order-dependent tests, change detectors and mirror assertions are defects.
+- Write no test that could not fail for the defect it claims to prevent: a
+  reviewer runs your tests against the stub and against mutants.
 - Tests control clocks, randomness, ports and temp files, and clean up.
-
-Under Claude Code you start without the project's instruction files, so these
-project rules reach you here; any other project constraint is quoted in your
-brief:
-
-- "Flag a test that couldn't fail for the defect it claims to prevent." As the
-  author, write none: a reviewer runs your tests against the stub and against
-  mutants.
-- "Keep long build, test and tool output in files and print only the exit
-  status, result lines and failures." This applies when you run your tests
-  against the approved stub.
 
 ## Separate authorship from execution
 
 You may format your own files or run the tests against the approved stub; you
-never run or inspect the integrated implementation. An authored test and a
-passing execution are separate claims, and a correctly failing test may
-complete authorship.
+never run or inspect the integrated implementation. On such a run, keep long
+build, test and tool output in files and print only the exit status, result
+lines and failures. An authored test and a passing execution are separate
+claims, and a correctly failing test may complete authorship.
 
 Feedback reaches you only as requirement or case ID, contract-level inputs,
 expected versus observed behaviour, test review findings, and diagnostics
@@ -130,12 +115,9 @@ a request to read prohibited material before reading it.
 Your brief uses `role: "implementation"`, `stage: "tests"`, exact test-artefact
 `owned_paths` and `check_ids: []`: the execution checks belong to the
 coordinator, so a red-test handoff stays valid; the mapped tests must exist,
-not pass. Return the authored artefact hashes, the inputs you read, open
-questions and any exposure in the summary or the report.
+not pass.
 
-In a task started with test rules, `cw task verify` judges authorship from the
-record, not from your summary
-([test authorship](../worker-handoffs.md#test-rules-and-test-authorship)):
+`cw task verify` judges authorship from the record, not from your summary:
 
 - **Test files.** A `_test.go` file, or any file under a `testdata` directory,
   of a package that `go test ./...` runs at the selected path; not files under
@@ -144,12 +126,13 @@ record, not from your summary
   modules' included) and every deletion, and nothing else. Ask the coordinator
   for any change to `go.mod`, `go.sum` or another helper: a write of any other
   path excludes you from independent authorship.
-- **Pre-task test files.** An edit to a test file that existed before the task
-  needs a test-engineer round that records the new bytes.
+- **Pre-task test files.** An edit by anyone to a test file that existed
+  before the task needs a test-engineer round that records the new bytes.
 
 ## Stopping conditions
 
 Stop when the matrix, tests and map are complete and every requirement is
 covered or marked `uncovered`, or at once on
 [exposure](#separate-authorship-from-execution). Return artefact paths and
-hashes, the inputs you read and open questions.
+hashes, the inputs you read, open questions and any exposure, in the summary
+or the report.
