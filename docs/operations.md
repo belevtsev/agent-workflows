@@ -478,9 +478,13 @@ counts revisions after the first draft; a `tests` cap counts every round.
 
 `cw task usage --task DIR (--claude-transcript FILE | --codex-session FILE)
 [--prices FILE]` reads the session's transcript, read-only, as `cw metrics
-import` does, and stores what the session has used so far in the task record as
-a usage sample. A sample keeps the session, its tokens (uncached input, cache
-writes, cache reads and output, apart) and its dollars with their source.
+import` does, and stores what the session has used since the task started in
+the task record as a usage sample. Only requests stamped at or after the task's
+`created_at` count, from the main transcript, its sidechain lines and its
+subagent transcripts alike, so a session that began before the task counts
+only its later requests. A sample keeps the session, its tokens (uncached
+input, cache writes, cache reads and output, apart) and its dollars with their
+source.
 
 - **Dollars are estimates.** Each request is priced from its tokens with a price
   table: input, output and cache reads at their own rates, cache writes at the
@@ -497,19 +501,19 @@ writes, cache reads and output, apart) and its dollars with their source.
   `long_prompt`). A sample's `dollar_source` names the table's kind
   (`built_in` or `file`), its date and the SHA-256 of its bytes, and
   `usd_estimated` is true.
-- **Unknown, never zero.** An incomplete or unreadable transcript leaves tokens
-  and dollars unknown with the reason. One request the table cannot price makes
+- **Unknown, never zero.** An incomplete or unreadable transcript, or a request
+  without a readable timestamp, leaves tokens and dollars unknown with the
+  reason. One request the table cannot price makes
   the session's dollars unknown: a model it does not list (dated model IDs
   included), a `speed` other than `standard`, or an `inference_geo` other than
   `global`. An unknown value is never counted as 0.
-- **Task usage** is, per session, the latest sample minus the first, summed over
-  the sessions. Sample at task start and again later: a session with one sample
-  gives no usage yet. Within a session, every pair of consecutive known amounts
+- **Task usage** is, per session, its latest sample, summed over the sessions;
+  one sample of a session is enough. Within a session, every pair of consecutive known amounts
   must come from the same table and never fall; a different table, or a stale
   or truncated transcript copy that reads lower than the sample before it,
   makes the usage unknown.
 - **Few revisions.** A sample is judged against its own session's stored
-  samples. It is stored when it is the session's first or second, when its
+  samples. It is stored when it is the session's first, when its
   dollars turn known or unknown, change table, fall, or rise by at least 5% of
   the budget, and, while the session's dollars are unknown, when its tokens
   turn known or unknown, fall, or grow by at least 5%. The default output says

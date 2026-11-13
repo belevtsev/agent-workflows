@@ -20,22 +20,28 @@ func sessionUsageSample(session string, usd float64) taskflow.UsageSample {
 	return taskflow.UsageSample{Source: taskflow.UsageSourceClaude, SessionID: session, Tokens: &taskflow.UsageTokens{Output: 1}, USD: &usd, USDEstimated: true, DollarSource: source}
 }
 
-// Oracle: each sample is judged against its own session under lite's 15 USD
-// budget (5% is 0.75 USD). Session A reads 0, 3, 8 and 12 USD, every step at
-// least 0.75, so all four are stored though session B, with one sample, keeps
-// the task's usage unknown between them; B's second sample (0.50) is stored
-// because it gives B's usage. Usage is A's 12 plus B's 0.50. Rows with a
-// session that reads lower than its previous stored sample (1, 13, then 4)
-// store the drop and leave usage unknown, never 3 USD.
+// Oracle: a sample holds its session's tokens and dollars since the task
+// started, so a session's usage is its latest sample and the task's is their
+// sum. Each sample is judged against its own session under lite's 15 USD
+// budget (5% is 0.75 USD): session A reads 0, 3, 8 and 12 USD, every step at
+// least 0.75, so all four are stored; session B's first sample (0) is stored,
+// and its 0.50, under 0.75 above it, is not, so usage is 12. A fresh session
+// sampled once, late, at 3 USD counts all 3. A session that reads lower than
+// its previous stored sample (1, 13, then 4) stores the drop and leaves usage
+// unknown.
 func TestUsageSamplesAreJudgedPerSession(t *testing.T) {
 	for _, c := range []struct {
 		name    string
 		samples []taskflow.UsageSample
+		stored  []bool
 		want    *float64
 	}{
-		{"growth while another session is unknown", []taskflow.UsageSample{sessionUsageSample("A", 0), sessionUsageSample("A", 3), sessionUsageSample("B", 0),
-			sessionUsageSample("A", 8), sessionUsageSample("A", 12), sessionUsageSample("B", 0.5)}, new(12.5)},
-		{"a drop below the previous sample", []taskflow.UsageSample{sessionUsageSample("A", 1), sessionUsageSample("A", 13), sessionUsageSample("A", 4)}, nil},
+		{"growth while another session is new", []taskflow.UsageSample{sessionUsageSample("A", 0), sessionUsageSample("A", 3), sessionUsageSample("B", 0),
+			sessionUsageSample("A", 8), sessionUsageSample("A", 12), sessionUsageSample("B", 0.5)}, []bool{true, true, true, true, true, false}, new(12.0)},
+		{"one late sample of a fresh session", []taskflow.UsageSample{sessionUsageSample("A", 0), sessionUsageSample("A", 3), sessionUsageSample("B", 3)},
+			[]bool{true, true, true}, new(6.0)},
+		{"a drop below the previous sample", []taskflow.UsageSample{sessionUsageSample("A", 1), sessionUsageSample("A", 13), sessionUsageSample("A", 4)},
+			[]bool{true, true, true}, nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -46,8 +52,8 @@ func TestUsageSamplesAreJudgedPerSession(t *testing.T) {
 			}
 			var result taskflow.UsageResult
 			for i, sample := range c.samples {
-				if result, err = (taskflow.Env{}).RecordUsage(ctx, record.Directory, sample); err != nil || !result.Stored {
-					t.Fatalf("sample %d (%s at %v): stored %v, %v; want stored", i, sample.SessionID, *sample.USD, result.Stored, err)
+				if result, err = (taskflow.Env{}).RecordUsage(ctx, record.Directory, sample); err != nil || result.Stored != c.stored[i] {
+					t.Fatalf("sample %d (%s at %v): stored %v, %v; want stored %v", i, sample.SessionID, *sample.USD, result.Stored, err, c.stored[i])
 				}
 			}
 			usage := taskflow.UsageOf(result.Record)

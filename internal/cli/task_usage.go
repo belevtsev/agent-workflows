@@ -24,9 +24,10 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "usage --task DIR (--claude-transcript FILE | --codex-session FILE) [--prices FILE]",
 		Short: "Sample the session's usage from its transcript into the task record",
-		Long: "Read the session's transcript, read-only, price each request from cw's dated price table (or --prices), and store the session's " +
-			"cumulative tokens and estimated dollars in the task record when they matter. A recorded cost-state is not used. " +
-			"Task usage is, per session, the latest sample minus the first; unknown values stay unknown, never 0. See docs/operations.md \"Cost budget\".",
+		Long: "Read the session's transcript, read-only, count and price each request stamped at or after the task's start from cw's dated price table " +
+			"(or --prices), and store those tokens and estimated dollars in the task record when they matter. A recorded cost-state is not used. " +
+			"Task usage is the sum of each session's latest sample, so one sample of a session is enough; unknown values stay unknown, never 0. " +
+			"See docs/operations.md \"Cost budget\".",
 		Args: noPositional,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := deps.guard(); err != nil {
@@ -45,7 +46,14 @@ func newTaskUsageCommand(deps taskDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, Prices: &table}
+			// Only the requests stamped at or after the task's start
+			// belong to it; created_at never changes, so reading it before
+			// the locked update is safe.
+			task, err := taskflow.Load(directory)
+			if err != nil {
+				return err
+			}
+			options := usagelog.Options{ClaudeTranscript: claudeTranscript, CodexSession: codexSession, Prices: &table, Since: task.CreatedAt}
 			report, estimate, err := usagelog.EstimateSession(cmd.Context(), options)
 			if err != nil {
 				if errors.Is(err, usagelog.ErrInvalidOptions) {
@@ -80,20 +88,21 @@ type taskUsageSummary struct {
 	Usage  taskflow.TaskUsage   `json:"usage"`
 }
 
-// usageSample maps an import report and its estimate to a usage sample.
-// Tokens are the transcript's own totals, cache writes being the 5m, 1h and
-// unsplit writes together; a recorded cost-state changes neither them nor the
-// dollars. An incomplete import, or a request the table cannot price, leaves
-// the value nil with the reason, never 0.
+// usageSample maps an import report and its estimate to a usage sample: the
+// session's tokens and dollars since the task started, cache writes being
+// the 5m, 1h and unsplit writes together. A recorded cost-state changes
+// neither. An incomplete import, a request without a readable timestamp, or
+// one the table cannot price leaves the value nil with the reason, never 0.
 func usageSample(report usagelog.Report, estimate usagelog.Estimate, source taskflow.DollarSource) taskflow.UsageSample {
 	sample := taskflow.UsageSample{Source: report.Source, SessionID: report.SessionID}
 	if report.Status != usagelog.StatusComplete {
 		sample.UnknownReason = boundReason("the transcript import is incomplete: " + strings.Join(report.IncompleteReasons, "; "))
 		return sample
 	}
-	totals := report.Totals
-	sample.Tokens = &taskflow.UsageTokens{UncachedInput: totals.UncachedInputTokens, CacheWrite: totals.CacheWrite5mTokens + totals.CacheWrite1hTokens + totals.CacheWriteUnsplitTokens,
-		CacheRead: totals.CacheReadTokens, Output: totals.OutputTokens}
+	if totals := estimate.Tokens; totals != nil {
+		sample.Tokens = &taskflow.UsageTokens{UncachedInput: totals.UncachedInputTokens, CacheWrite: totals.CacheWrite5mTokens + totals.CacheWrite1hTokens + totals.CacheWriteUnsplitTokens,
+			CacheRead: totals.CacheReadTokens, Output: totals.OutputTokens}
+	}
 	if estimate.USD == nil {
 		sample.UnknownReason = boundReason("the dollars cannot be estimated: " + estimate.UnknownReason)
 		return sample

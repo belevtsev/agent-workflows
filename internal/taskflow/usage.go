@@ -87,10 +87,10 @@ func sameDollarSource(a, b UsageSample) bool {
 	return a.DollarSource != nil && b.DollarSource != nil && *a.DollarSource == *b.DollarSource
 }
 
-// TaskUsage is what a task has used since its first sample of each session:
-// per session, the latest sample minus the first, summed. A value is nil,
-// with UnknownReason, when any session cannot give it; known dollars are
-// always an estimate (USDEstimated).
+// TaskUsage is what a task has used: per session, its latest sample, which
+// counts only the session's requests since the task started, summed over the
+// sessions. A value is nil, with UnknownReason, when any session cannot give
+// it; known dollars are always an estimate (USDEstimated).
 type TaskUsage struct {
 	USD           *float64     `json:"usd"`
 	USDEstimated  bool         `json:"usd_estimated,omitempty"`
@@ -110,8 +110,9 @@ type UsageResult struct {
 }
 
 // RecordUsage stores sample, stamped with the Env's clock, in the task at path
-// when it matters to its session (usageWorthStoring). A task without a profile
-// has no budget, and its usage is refused.
+// when it matters to its session (usageWorthStoring). The sample holds the
+// session's tokens and dollars since the task started. A task without a
+// profile has no budget, and its usage is refused.
 func (env Env) RecordUsage(ctx context.Context, path string, sample UsageSample) (UsageResult, error) {
 	sample.At = env.now()
 	if err := validateUsageSample(sample); err != nil {
@@ -138,30 +139,26 @@ func (env Env) RecordUsage(ctx context.Context, path string, sample UsageSample)
 	return UsageResult{Record: record, Sample: sample, Stored: true}, nil
 }
 
-// usageWorthStoring judges sample against its own session's stored samples,
-// never the task's total, so one session's unknown usage cannot hide another
-// session's growth. It stores the session's first two samples, which give
-// its usage; then a sample whose dollars turn known or unknown, change
-// source or fall, or rise by at least 5% of the budget; and, while the
-// session's dollars are unknown, one whose tokens turn known or unknown,
-// fall, or grow by at least 5%.
+// usageWorthStoring judges sample against its own session's last stored
+// sample, never the task's total, so one session's unknown usage cannot hide
+// another session's growth. It stores the session's first sample; then a
+// sample whose dollars turn known or unknown, change source or fall, or rise
+// by at least 5% of the budget; and, while the session's dollars are
+// unknown, one whose tokens turn known or unknown, fall, or grow by at least
+// 5%.
 func usageWorthStoring(record Record, sample UsageSample) bool {
-	var stored []UsageSample
-	for _, earlier := range record.Usage {
+	var last *UsageSample
+	for i, earlier := range record.Usage {
 		if earlier.Source == sample.Source && earlier.SessionID == sample.SessionID {
-			stored = append(stored, earlier)
+			last = &record.Usage[i]
 		}
 	}
-	if len(stored) < 2 {
-		return true
-	}
-	last := stored[len(stored)-1]
 	switch {
-	case (last.USD == nil) != (sample.USD == nil):
+	case last == nil, (last.USD == nil) != (sample.USD == nil):
 		return true
 	case sample.USD == nil:
 		return tokensMoved(last.Tokens, sample.Tokens)
-	case !sameDollarSource(last, sample) || *sample.USD < *last.USD:
+	case !sameDollarSource(*last, sample) || *sample.USD < *last.USD:
 		return true
 	}
 	return *sample.USD-*last.USD >= usageStoreShare*record.Profile.Budget.MaxUSD
@@ -181,10 +178,11 @@ func tokensMoved(last, next *UsageTokens) bool {
 	return growth > 0 && float64(growth) >= usageStoreShare*float64(last.total())
 }
 
-// UsageOf returns the task's usage from its stored samples. Within a session
-// every consecutive pair of known amounts must keep one dollar source and
-// never fall; a stale or truncated transcript copy that reads lower than the
-// sample before it makes the session's usage unknown.
+// UsageOf returns the task's usage from its stored samples: the sum of each
+// session's latest sample. Within a session every consecutive pair of known
+// amounts must keep one dollar source and never fall; a stale or truncated
+// transcript copy that reads lower than the sample before it makes the
+// session's usage unknown.
 func UsageOf(record Record) TaskUsage {
 	if len(record.Usage) == 0 {
 		return TaskUsage{UnknownReason: "no usage sample is recorded"}
@@ -204,23 +202,18 @@ func UsageOf(record Record) TaskUsage {
 	for _, k := range order {
 		samples := sessions[k]
 		session := fmt.Sprintf("%s session %s", k.source, k.session)
-		if len(samples) == 1 {
-			reason := session + " has one usage sample; its usage is known only from a later sample"
-			usdReason, tokensReason = firstOf(usdReason, reason), firstOf(tokensReason, reason)
-			continue
-		}
-		if delta, reason := sessionDollars(session, samples); reason != "" {
+		if amount, reason := sessionDollars(session, samples); reason != "" {
 			usdReason = firstOf(usdReason, reason)
 		} else {
-			usd += delta
+			usd += amount
 		}
-		if delta, reason := sessionTokens(session, samples); reason != "" {
+		if counts, reason := sessionTokens(session, samples); reason != "" {
 			tokensReason = firstOf(tokensReason, reason)
 		} else {
-			tokens.UncachedInput += delta.UncachedInput
-			tokens.CacheWrite += delta.CacheWrite
-			tokens.CacheRead += delta.CacheRead
-			tokens.Output += delta.Output
+			tokens.UncachedInput += counts.UncachedInput
+			tokens.CacheWrite += counts.CacheWrite
+			tokens.CacheRead += counts.CacheRead
+			tokens.Output += counts.Output
 		}
 	}
 	var result TaskUsage
@@ -234,51 +227,47 @@ func UsageOf(record Record) TaskUsage {
 	return result
 }
 
-// sessionDollars is one session's latest dollars minus its first, or the
-// reason they are unknown.
+// sessionDollars is one session's latest dollars, or the reason they are
+// unknown.
 func sessionDollars(session string, samples []UsageSample) (float64, string) {
-	first, last := samples[0], samples[len(samples)-1]
-	switch {
-	case first.USD == nil:
-		return 0, session + ": the first sample's dollars are unknown: " + first.UnknownReason
-	case last.USD == nil:
+	last := samples[len(samples)-1]
+	if last.USD == nil {
 		return 0, session + ": the latest sample's dollars are unknown: " + last.UnknownReason
 	}
-	previous := first
-	for _, sample := range samples[1:] {
+	var previous *UsageSample
+	for i, sample := range samples {
 		if sample.USD == nil {
 			continue
 		}
-		if !sameDollarSource(previous, sample) {
+		if previous != nil && !sameDollarSource(*previous, sample) {
 			return 0, fmt.Sprintf("%s: the samples' dollars come from different sources (%s, then %s)", session, previous.DollarSource.label(), sample.DollarSource.label())
 		}
-		if *sample.USD < *previous.USD {
+		if previous != nil && *sample.USD < *previous.USD {
 			return 0, session + ": the dollars fell between samples, so a transcript was stale or truncated"
 		}
-		previous = sample
+		previous = &samples[i]
 	}
-	return *last.USD - *first.USD, ""
+	return *last.USD, ""
 }
 
-// sessionTokens is one session's latest tokens minus its first, or the reason
-// they are unknown.
+// sessionTokens is one session's latest tokens, or the reason they are
+// unknown.
 func sessionTokens(session string, samples []UsageSample) (UsageTokens, string) {
-	first, last := samples[0], samples[len(samples)-1]
-	if first.Tokens == nil || last.Tokens == nil {
-		return UsageTokens{}, session + ": a sample's tokens are unknown"
+	last := samples[len(samples)-1]
+	if last.Tokens == nil {
+		return UsageTokens{}, session + ": the latest sample's tokens are unknown"
 	}
-	previous := *first.Tokens
-	for _, sample := range samples[1:] {
+	var previous *UsageTokens
+	for _, sample := range samples {
 		if sample.Tokens == nil {
 			continue
 		}
-		if sample.Tokens.fellFrom(previous) {
+		if previous != nil && sample.Tokens.fellFrom(*previous) {
 			return UsageTokens{}, session + ": the token counts fell between samples, so a transcript was stale or truncated"
 		}
-		previous = *sample.Tokens
+		previous = sample.Tokens
 	}
-	return UsageTokens{UncachedInput: last.Tokens.UncachedInput - first.Tokens.UncachedInput, CacheWrite: last.Tokens.CacheWrite - first.Tokens.CacheWrite,
-		CacheRead: last.Tokens.CacheRead - first.Tokens.CacheRead, Output: last.Tokens.Output - first.Tokens.Output}, ""
+	return *last.Tokens, ""
 }
 
 func firstOf(current, next string) string {

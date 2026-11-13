@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/outcomes"
 )
@@ -19,6 +20,9 @@ type Options struct {
 	CodexSession      string
 	CodexSessionsRoot string
 	Prices            *PriceTable
+	// Since, when set, limits EstimateSession to requests stamped at or
+	// after it; Import ignores it.
+	Since time.Time
 }
 
 // CheckOptions returns an error wrapping ErrInvalidOptions when options do

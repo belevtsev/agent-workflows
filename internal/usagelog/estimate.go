@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"time"
 )
 
 // builtInPrices is the price table cw ships, dated and sourced in its date and
@@ -19,19 +20,24 @@ func BuiltInPrices() (PriceTable, []byte, error) {
 	return table, append([]byte(nil), builtInPrices...), err
 }
 
-// Estimate is a session's dollars priced request by request from a price
-// table, or the reason they are unknown. It is an estimate, never a
-// recorded amount.
+// Estimate is the tokens and dollars of a session's requests at or after
+// Options.Since, the dollars priced request by request from a price table:
+// an estimate, never a recorded amount. A nil value is unknown, with
+// UnknownReason.
 type Estimate struct {
+	Tokens        *Tokens
 	USD           *float64
 	UnknownReason string
 }
 
 // EstimateSession imports the session as Import does, without pricing its
-// totals, and prices each de-duplicated request from options.Prices. A
-// recorded cost-state is never used: stale, mismatched or missing, it changes
-// nothing. One request that the table cannot price makes the estimate
-// unknown, as does an incomplete import.
+// totals, and counts and prices each de-duplicated request (main transcript,
+// sidechain lines and subagent transcripts alike) stamped at or after
+// options.Since, from options.Prices. A recorded cost-state is never used:
+// stale, mismatched or missing, it changes nothing. An incomplete import, or
+// with Since set a request without a readable timestamp, leaves tokens and
+// dollars unknown; a request the table cannot price leaves the dollars
+// unknown.
 func EstimateSession(ctx context.Context, options Options) (Report, Estimate, error) {
 	prices := options.Prices
 	if prices == nil {
@@ -46,15 +52,28 @@ func EstimateSession(ctx context.Context, options Options) (Report, Estimate, er
 	if report.Status != StatusComplete {
 		return report, Estimate{UnknownReason: "the import is incomplete; see incomplete_reasons"}, nil
 	}
-	total := 0.0
+	tokens, total, priceReason := Tokens{}, 0.0, ""
 	for _, c := range collected {
-		amount, reason := prices.priceRequest(c.model, report.Source, c.request)
-		if reason != "" {
-			return report, Estimate{UnknownReason: reason}, nil
+		if !options.Since.IsZero() {
+			at, err := time.Parse(time.RFC3339Nano, c.timestamp)
+			if err != nil {
+				return report, Estimate{UnknownReason: "a request has no readable timestamp, so whether it falls in the task is unknown"}, nil
+			}
+			if at.Before(options.Since) {
+				continue
+			}
 		}
-		total += amount
+		tokens.add(c.request)
+		if priceReason == "" {
+			amount, reason := prices.priceRequest(c.model, report.Source, c.request)
+			priceReason = reason
+			total += amount
+		}
 	}
-	return report, Estimate{USD: &total}, nil
+	if priceReason != "" {
+		return report, Estimate{Tokens: &tokens, UnknownReason: priceReason}, nil
+	}
+	return report, Estimate{Tokens: &tokens, USD: &total}, nil
 }
 
 // priceRequest prices one request. A model's long-prompt rates apply when the
