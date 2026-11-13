@@ -254,7 +254,8 @@ run `status` or context phase, fails validation with "invalid stored …".
   `finished_at` is no earlier than its `started_at`. A wall clock that
   steps back therefore cannot leave a stored time after the next revision's
   `updated_at`, which the worker and amendment rules refuse. Until the clock
-  catches up, stored times run ahead of it.
+  catches up, stored times run ahead of it, and the gate counts such a record
+  as just written ([Which records gate](hooks.md#which-records-gate)).
   `created_at` and a verification's `checked_at` are the clock's own reading:
   the gate compares them with each other across records, and no record rule
   orders `checked_at` against `updated_at`.

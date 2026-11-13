@@ -225,6 +225,38 @@ func TestStampsAfterTheClockStepsBackEqualThePreviousRevision(t *testing.T) {
 	})
 }
 
+// The commit gate after the clock stepped back: an unverified substantial
+// task has its last revision at 12:30, the clock steps back to 12:20, a check
+// is run on the task, and a commit is gated at 12:21.
+// Oracle: the check's revision is stamped 12:30, after the gate's now, and a
+// latest revision dated after now governs like one written now, so FindOpen
+// returns the task and it gates. A gate that skips a record dated after now
+// lets the unverified commit pass.
+func TestUnverifiedTaskGatesACommitAfterTheClockStepsBack(t *testing.T) {
+	record, store, noon := clockStepTask(t)
+	if _, err := clockAt(noon.Add(30*time.Minute)).RunCheck(t.Context(), record.Directory, "focused"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := clockAt(noon.Add(20*time.Minute)).RunCheck(t.Context(), record.Directory, "focused"); err != nil {
+		t.Fatalf("check after the clock stepped back: %v", err)
+	}
+	loaded, err := Load(record.Directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := noon.Add(21 * time.Minute)
+	if !loaded.UpdatedAt.Equal(noon.Add(30 * time.Minute)) {
+		t.Fatalf("precondition: updated_at %s; want 12:30, ahead of the gate's now %s", loaded.UpdatedAt, now)
+	}
+	open, err := FindOpen(t.Context(), store, foAtRoot(loaded.Baseline.Root), now, SourceDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(open) != 1 || open[0].Record.ID != record.ID || !open[0].Gates() {
+		t.Fatalf("FindOpen at %s = %s; want the unverified task, gating", now.Format(time.TimeOnly), foDescribe(open))
+	}
+}
+
 // A verified task and its successor after the clock stepped back: task A has
 // its last revision at 12:30, the clock steps back, A is verified at 12:21,
 // task B starts at 12:22 from the bytes A verified, and work under B changes
