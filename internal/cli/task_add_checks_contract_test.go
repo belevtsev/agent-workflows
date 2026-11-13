@@ -1265,8 +1265,13 @@ func aclTestVerifyCredit(t *testing.T) {
 			r, dir := aclStandardTask(t, cliStart)
 			r.runPassed(t, dir, "unit")
 			r.addChecks(t, dir)
-			t.Setenv("GOFLAGS", "-gcflags=all=-N")
-			r.cw.env["GOFLAGS"] = "-gcflags=all=-N"
+			// Oracle: no -gcflags value earns credit (langpack allowedFlags judges
+			// the flag name). The spec's example value, all=-N, also recompiles the
+			// standard library, which no CI cache holds: about 20 CPU-seconds here
+			// and 190 s on the macOS runner. -N alone rebuilds only the fixture's
+			// packages and takes the same refusal.
+			t.Setenv("GOFLAGS", "-gcflags=-N")
+			r.cw.env["GOFLAGS"] = "-gcflags=-N"
 			r.runPassed(t, dir, "widened")
 			t.Setenv("GOFLAGS", "")
 			r.cw.env["GOFLAGS"] = ""
