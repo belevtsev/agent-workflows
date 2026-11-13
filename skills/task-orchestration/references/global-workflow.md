@@ -62,6 +62,7 @@ adviser checkpoints are not required:
 {
   "title": "Handle the documented empty-input case",
   "kind": "substantial",
+  "profile": "lite",
   "checkpoints": {
     "required": false,
     "reason": "The documented contract fixes the result; no alternative approach is open"
@@ -83,6 +84,10 @@ adviser checkpoints are not required:
   ]
 }
 ```
+
+`profile` fixes the task's stages, round caps and dollar budget: `lite` (the
+default when absent), `standard` or `strict`, as the
+[profiles table](../../../docs/operations.md#profiles) lists them.
 
 The `-covermode=atomic -coverpkg=./... -coverprofile=` flags give the
 [code review](contracts/code-review.md#uncovered-changed-blocks) the coverage

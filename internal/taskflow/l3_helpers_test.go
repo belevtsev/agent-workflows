@@ -309,6 +309,7 @@ func l3Req(id string, criteria ...string) taskflow.ContractRequirement {
 // brief is a contract-bearing (test-engineer) implementation brief.
 func (f *l3Fix) brief(id string, owned []string, reqs ...taskflow.ContractRequirement) taskflow.WorkerBrief {
 	b := f.plainBrief(id, owned)
+	b.Stage = "tests"
 	c := *f.contract
 	b.Contract = &c
 	b.Requirements = reqs
@@ -318,15 +319,42 @@ func (f *l3Fix) brief(id string, owned []string, reqs ...taskflow.ContractRequir
 // plainBrief is an implementation brief without a contract.
 func (f *l3Fix) plainBrief(id string, owned []string) taskflow.WorkerBrief {
 	return taskflow.WorkerBrief{
-		ID: id, AgentID: "agent-" + id, Role: "implementation", Goal: "fixture work",
+		ID: id, AgentID: "agent-" + id, Role: "implementation", Stage: "implementation", Goal: "fixture work",
 		OwnedPaths: owned, Constraints: []string{}, CheckIDs: []string{}, StopCondition: "done",
 	}
 }
 
 func (f *l3Fix) assign(b taskflow.WorkerBrief) error {
 	f.t.Helper()
-	_, err := taskflow.AssignWorker(f.ctx, f.dir, b)
+	_, err := taskflow.AssignWorker(f.ctx, f.dir, fixtureRound(f.t, f.dir, b))
 	return err
+}
+
+// fixtureRound returns b with repeats set to the latest assignment of its
+// stage that has returned a result, when b is an author-stage brief that
+// names neither fixes nor repeats. These fixtures assign successive rounds to
+// test what the rounds record, not the round rules, which stages_test.go
+// covers; a later round of a stage must name what it repeats or fixes.
+func fixtureRound(t *testing.T, task string, b taskflow.WorkerBrief) taskflow.WorkerBrief {
+	t.Helper()
+	if len(b.Fixes) > 0 || b.Repeats != "" || (b.Stage != "tests" && b.Stage != "implementation") {
+		return b
+	}
+	record, err := taskflow.Load(task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range record.Assignments {
+		if a.Brief.Stage != b.Stage {
+			continue
+		}
+		for _, r := range record.WorkerResults {
+			if r.Result.AssignmentID == a.Brief.ID {
+				b.Repeats = a.Brief.ID
+			}
+		}
+	}
+	return b
 }
 
 func (f *l3Fix) mustAssign(b taskflow.WorkerBrief) {

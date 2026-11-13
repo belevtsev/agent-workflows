@@ -270,7 +270,7 @@ func TestTaskAssignAcceptsBundleMemberAndFollowUpBundle(t *testing.T) {
 		t.Fatal(err)
 	}
 	brief := taskflow.WorkerBrief{
-		ID: "review1", AgentID: "/root/reviewer", Role: "review",
+		ID: "review1", AgentID: "/root/reviewer", Role: "review", Stage: "code-review",
 		Goal: "Review the changed source", OwnedPaths: []string{"."},
 		Constraints: []string{"Read source without changing it"}, CheckIDs: []string{},
 		StopCondition: "Return findings with source evidence",

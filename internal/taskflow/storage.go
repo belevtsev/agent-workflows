@@ -337,6 +337,9 @@ func loadRoot(root *os.Root, directory string) (Record, string, error) {
 		if i > 0 && (current.ID != record.ID || current.CreatedAt != record.CreatedAt || current.Baseline != record.Baseline || !sameEncoded(current.BaselineManifest, record.BaselineManifest) || !sameEncoded(current.Packs, record.Packs) || current.TestRules != record.TestRules) {
 			return Record{}, "", errors.New("immutable task baseline changed")
 		}
+		if i > 0 && !sameEncoded(current.Profile, record.Profile) {
+			return Record{}, "", errors.New("immutable task profile changed")
+		}
 		if i > 0 && !maps.Equal(current.Advisers, record.Advisers) {
 			return Record{}, "", errors.New("immutable task adviser binding changed")
 		}
@@ -467,6 +470,9 @@ func validateRecord(record Record) error {
 	}
 	if record.TestRules != TestRulesV1 {
 		return errors.New("invalid stored test rules")
+	}
+	if err := validateStoredProfile(record); err != nil {
+		return err
 	}
 	if err := consultrecord.ValidateBinding(record.Advisers); err != nil {
 		return err

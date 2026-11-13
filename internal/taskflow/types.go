@@ -51,6 +51,11 @@ type Plan struct {
 	// Checkpoints is nil for records written before the field existed and for
 	// plans that omit it; both mean adviser checkpoints are required.
 	Checkpoints *CheckpointPolicy `json:"checkpoints,omitempty"`
+	// Profile names a built-in profile (profile.go); empty selects
+	// DefaultProfile. Budget lowers the profile's budget; it may not raise
+	// it.
+	Profile string  `json:"profile,omitempty"`
+	Budget  *Budget `json:"budget,omitempty"`
 }
 
 // CheckpointPolicy lets a substantial plan declare, with a reason, that the
@@ -264,7 +269,11 @@ type Record struct {
 	// Packs is the pack set fixed at start.
 	Packs *PackSet `json:"packs,omitempty"`
 	// TestRules names the test rule set fixed at start: TestRulesV1.
-	TestRules         string                     `json:"test_rules,omitempty"`
+	TestRules string `json:"test_rules,omitempty"`
+	// Profile is the profile resolved from the plan at start, fixed for the
+	// task's lifetime like Packs. Records started before profiles existed
+	// have none, and no round caps or budget apply to them.
+	Profile           *Profile                   `json:"profile,omitempty"`
 	Advisers          map[string]string          `json:"advisers"`
 	Contexts          map[string]Context         `json:"contexts"`
 	Checks            []CheckRun                 `json:"checks"`
@@ -366,6 +375,9 @@ func validateRecordedPlan(plan Plan) error {
 	}
 	if !nonblank(plan.Title) || len(plan.Title) > 4096 || (plan.Kind != "small" && plan.Kind != "substantial") {
 		return errors.New("plan needs a title and kind small or substantial")
+	}
+	if err := validatePlanProfile(plan); err != nil {
+		return err
 	}
 	if plan.Checkpoints != nil {
 		if plan.Kind != "substantial" {

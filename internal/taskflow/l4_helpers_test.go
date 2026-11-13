@@ -257,8 +257,12 @@ func (f *l3Fix) roleBrief(id, agent, role string, checks []string) taskflow.Work
 	if checks == nil {
 		checks = []string{}
 	}
+	stage := ""
+	if role == "review" {
+		stage = "code-review"
+	}
 	return taskflow.WorkerBrief{
-		ID: id, AgentID: agent, Role: role, Goal: "fixture " + role,
+		ID: id, AgentID: agent, Role: role, Stage: stage, Goal: "fixture " + role,
 		OwnedPaths: []string{"."}, Constraints: []string{}, CheckIDs: checks, StopCondition: "done",
 	}
 }
