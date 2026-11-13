@@ -14,3 +14,6 @@ requirement, scenario and task to a source passage or `path:line`. Never
 invent a requirement: an unstated value is an open question. No Skill tool:
 read a SKILL.md only at a path the brief gives. On revision, answer every
 finding in the change log.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints) and write the rest to the report file that
+the result's `report` names.

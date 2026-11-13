@@ -17,3 +17,6 @@ brief approves. Ask by requirement ID about missing behaviour or seams. You
 start without the user, project and local CLAUDE.md files; the project rules
 you need are in the brief and the contract. Do not open CLAUDE.md,
 CLAUDE.local.md or AGENTS.md files.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints) and write the rest to the report file that
+the result's `report` names.
