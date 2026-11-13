@@ -1031,7 +1031,7 @@ func TestBranchChangeKeepsEvidenceOverTheSameBytes(t *testing.T) {
 	if err == nil || result.Complete {
 		t.Fatalf("branch drift accepted with reuse off: %+v %v", result, err)
 	}
-	for _, want := range []string{"requirement behavior evidence is stale", "Codex task decision is stale"} {
+	for _, want := range []string{"requirement behavior evidence is stale", "coordinator decision is stale"} {
 		if !slices.Contains(result.Problems, want) {
 			t.Errorf("branch drift problems %q lack %q", result.Problems, want)
 		}
