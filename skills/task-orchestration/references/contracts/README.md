@@ -21,7 +21,7 @@ evidence.
 
 Every stage that produces an artefact has a review loop: the reviewer's findings
 go back to that stage's author, who revises and answers each one, and the
-[review cap](../worker-handoffs.md#review-stages) bounds the reviews of each
+[review cap](../worker-handoffs.md#review-cap) bounds the reviews of each
 stage separately, while the round budget in the same section bounds spec,
 design, contract and test-engineer rounds across the whole task; implementer
 fixes never count. After the task's before checkpoint, when its checkpoints are
@@ -163,7 +163,7 @@ and no amendment.
    as a later review of the stage
    ([`review_followup`](../worker-handoffs.md#follow-up-review-after-a-fix-revision)
    under Claude Code). Its findings go back to the architect. Each amendment
-   gets, for each stage it reaches, a [review cap](../worker-handoffs.md#review-stages)
+   gets, for each stage it reaches, a [review cap](../worker-handoffs.md#review-cap)
    of the same shape apart from that stage's earlier rounds: here this re-bind
    counts as the full review, then at most one diff-scoped follow-up after the
    fixes and one review scoped to a fix of a defect that follow-up found.

@@ -65,7 +65,7 @@ satisfies a later state.
    [adversarial tester](references/contracts/adversarial-tester.md) beside the
    code review for concurrency, parsing or untrusted input, security or data
    integrity, or when the user asks. Findings go back to that stage's author; the
-   [review cap](references/worker-handoffs.md#review-stages) applies per stage,
+   [review cap](references/worker-handoffs.md#review-cap) applies per stage,
    and the round budget in the same section bounds spec, design, contract and
    test-engineer rounds across the whole task (implementer fixes never count);
    that file says when a small task skips the spec and design stages.
