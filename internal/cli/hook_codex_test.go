@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	json "encoding/json/v2"
 	"os"
 	"path/filepath"
@@ -10,7 +11,8 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
 )
 
-// Tests for `cw hook pre-publish` run by Codex. testdata/codex-pre-tool-use.json
+// Tests for `cw hook pre-publish` run by Codex, whose hooks file
+// (hooks/codex-hooks.json) passes --host codex. testdata/codex-pre-tool-use.json
 // is the PreToolUse input codex-cli 0.167.2 sent to the plugin hook on
 // 2026-11-12, with its paths replaced by placeholders; that run showed Codex
 // running the command after an ask (docs/hooks.md, Codex).
@@ -77,11 +79,11 @@ func TestHookPrePublishDeniesOnCodexWhereClaudeCodeAsks(t *testing.T) {
 	// Oracle: Claude Code's input, which has no turn_id, still gets the ask.
 	question := hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), hkCommitAskWording)
 
-	// Oracle: Codex runs a command it is asked about, so the recorded Codex
-	// input for the same command gets a deny whose reason is the Codex
+	// Oracle: Codex runs a command it is asked about, so under --host codex
+	// the recorded Codex input for the same command gets a deny whose reason is the Codex
 	// preamble, the whole question without its "agent-workflows: " prefix,
 	// how the user goes ahead, and where the options are.
-	decision, reason := hkDecision(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+	decision, reason := hkDecision(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 	want := "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: " +
 		strings.TrimPrefix(question, "agent-workflows: ") +
 		" Put the question to the user; to go ahead, the user runs the command outside Codex." + hkCodexOptions
@@ -90,15 +92,51 @@ func TestHookPrePublishDeniesOnCodexWhereClaudeCodeAsks(t *testing.T) {
 	}
 }
 
-func TestHookPrePublishAsksOnClaudeCodeEvenWithATurnID(t *testing.T) {
+func TestHookPrePublishTakesTheHostFromTheFlagAlone(t *testing.T) {
 	repo, h := hkUnrecordedChange(t)
+	codexQuestion := "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: "
 
-	// Oracle: the Claude Code input gets the ask, as does a later Claude
-	// Code input that adds turn_id to PreToolUse (it already sends turn_id
-	// for another event): without Codex's model member it is not Codex.
-	hkExpectAsk(t, h.runPrePublish(t, hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, nil)), hkCommitAskWording)
+	// Oracle: without --host, and with --host claude-code, the host is
+	// Claude Code whatever the input holds: the Claude Code input, one that
+	// adds turn_id, and the recorded Codex input with its turn_id and model
+	// all get the ask. The PLUGIN_ROOT Codex sets no longer names the host.
+	claude := hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, nil)
 	withTurn := hkRecordedInput(t, "claude-code-pre-tool-use.json", repo, map[string]any{"turn_id": "0b7c3e52-9d14-4a6f-8e21-5f9a0c6d2b37"})
-	hkExpectAsk(t, h.runPrePublish(t, withTurn), hkCommitAskWording)
+	h.env["PLUGIN_ROOT"] = hkCanonicalTempDir(t)
+	for name, input := range map[string][]byte{"Claude Code input": claude, "Claude Code input with turn_id": withTurn, "Codex input": hkCodexInput(t, repo)} {
+		hkExpectAsk(t, h.runPrePublish(t, input), hkCommitAskWording)
+		h.config.In = bytes.NewReader(input)
+		h.out.Reset()
+		if err := Execute(t.Context(), []string{"hook", "pre-publish", "--host", "claude-code"}, h.config); err != nil {
+			t.Fatalf("%s: hook pre-publish --host claude-code returned %v", name, err)
+		}
+		hkExpectAsk(t, h.out.String(), hkCommitAskWording)
+	}
+
+	// Oracle: under --host codex the Claude Code input, which has neither
+	// turn_id nor model, gets Codex's deny all the same.
+	if decision, reason := hkDecision(t, h.runCodexPrePublish(t, claude)); decision != "deny" || !strings.HasPrefix(reason, codexQuestion) {
+		t.Fatalf("--host codex decision %q with reason %q, want a deny starting %q", decision, reason, codexQuestion)
+	}
+}
+
+func TestHookCommandsRejectAnUnknownHost(t *testing.T) {
+	// Oracle: --host takes claude-code or codex; any other value, such as
+	// claude, is a usage error (exit 2) before the hook reads its input, so
+	// the Codex hooks file's fallback runs the command again without --host.
+	h := newHKHarness(t)
+	for _, args := range [][]string{
+		{"hook", "pre-publish", "--host", "claude"},
+		{"hook", "session-start", "--instructions", hkWriteInstructions(t, "# Rules"), "--host", "claude"},
+		{"hook", "task-usage", "--host", "Codex"},
+	} {
+		h.config.In = strings.NewReader("{}")
+		h.out.Reset()
+		err := Execute(t.Context(), args, h.config)
+		if err == nil || ExitCode(err) != ExitUsage || !strings.Contains(err.Error(), "--host must be claude-code or codex") || h.out.Len() != 0 {
+			t.Fatalf("cw %v: %v (exit %d), stdout %q; want a usage error naming the two hosts and no output", args, err, ExitCode(err), h.out.String())
+		}
+	}
 }
 
 func TestHookPrePublishDenyOnCodexNamesTheOptionVariables(t *testing.T) {
@@ -112,7 +150,7 @@ func TestHookPrePublishDenyOnCodexNamesTheOptionVariables(t *testing.T) {
 	record := hkSubstantialRecord(t, repo, store, "Codex gate")
 
 	claude := hkExpectDeny(t, h.prePublish(t, repo, hkCodexCommand), record)
-	codex := hkExpectDeny(t, h.runPrePublish(t, hkCodexInput(t, repo)), record)
+	codex := hkExpectDeny(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)), record)
 	if codex != claude+hkCodexOptions {
 		t.Fatalf("Codex deny reason\n%q\nwant Claude Code's\n%q\nfollowed by %q", codex, claude, hkCodexOptions)
 	}
@@ -153,7 +191,7 @@ func TestHookPrePublishAbandonAsksOnClaudeCodeAndDeniesOnCodex(t *testing.T) {
 	// Oracle (#110): the abandon ask is not ProceedWithoutAsk, so Codex,
 	// which runs a command it is asked about, gets a deny that carries the
 	// question and says the user runs the command outside Codex.
-	decision, reason := hkDecision(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, command)))
+	decision, reason := hkDecision(t, h.runCodexPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, command)))
 	want := "agent-workflows: Codex cannot ask for confirmation, so this command is denied where Claude Code would ask: " +
 		strings.TrimPrefix(question, "agent-workflows: ") +
 		" Put the question to the user; to go ahead, the user runs the command outside Codex." + hkCodexOptions
@@ -163,25 +201,23 @@ func TestHookPrePublishAbandonAsksOnClaudeCodeAndDeniesOnCodex(t *testing.T) {
 
 	// Oracle: cw task show closes nothing, so Codex lets it run.
 	show := map[string]any{"tool_input": map[string]any{"command": "cw task show --task " + record.Directory}}
-	hkExpectAllow(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, show)))
+	hkExpectAllow(t, h.runCodexPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, show)))
 }
 
 func TestHookSessionStartReadsTheDirectoryFromCodexInput(t *testing.T) {
 	// Oracle: Codex sent this SessionStart input, with cwd, on startup,
-	// resume and compact. Under Codex's PLUGIN_ROOT, cw reads the session's
+	// resume and compact. Under --host codex, cw reads the session's
 	// directory from it, so the context carries hkGateLine for a repository
 	// with an open substantial task and no git hooks, on startup and compact
 	// (a resume adds nothing: TestHookSessionStartAddsNothingWhenCodexResumes);
 	// each source has a cache of its own, so no earlier suggestion silences
 	// it. The control, a repository without a task, gives the instructions
-	// alone. The input has no turn_id, so fromCodex cannot tell the hosts
-	// apart at session start, and cw relies on PLUGIN_ROOT there.
+	// alone.
 	const instructions = "# Rules\n\nWork carefully."
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	file := hkWriteInstructions(t, instructions)
 	h := newHKHarness(t)
-	h.env[codexPluginRoot] = filepath.Dir(file)
 	gated := hkRepo(t)
 	h.start(t, gated, hkSubstantialPlan)
 
@@ -189,13 +225,13 @@ func TestHookSessionStartReadsTheDirectoryFromCodexInput(t *testing.T) {
 	if err := json.Unmarshal(hkRecordedInput(t, "codex-session-start.json", gated, nil), &input); err != nil {
 		t.Fatal(err)
 	}
-	if input.CWD != gated || input.fromCodex() {
-		t.Fatalf("decoded Codex SessionStart input %+v: want cwd %s and fromCodex false", input, gated)
+	if input.CWD != gated {
+		t.Fatalf("decoded Codex SessionStart input %+v: want cwd %s", input, gated)
 	}
 	context := func(t *testing.T, repo, source string) string {
 		t.Helper()
 		stdin := hkRecordedInput(t, "codex-session-start.json", repo, map[string]any{"source": source})
-		got, err := h.runSessionStart(t, string(stdin), "--instructions", file, "--cache", hkCanonicalTempDir(t))
+		got, err := h.runSessionStart(t, string(stdin), "--host", "codex", "--instructions", file, "--cache", hkCanonicalTempDir(t))
 		if err != nil {
 			t.Fatalf("session-start: %v", err)
 		}

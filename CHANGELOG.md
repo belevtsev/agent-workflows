@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and the `verify` summary joins like problems and lists at most 20 ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw task` summaries and the commit gate's deny reason name the task by `task_id` instead of its directory, and a log path is relative
   to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- Codex runs the plugin's new `hooks/codex-hooks.json` (`cw hook … --host codex`) instead of `hooks/hooks.json`: trust the hooks again in
+  `/hooks` after updating, or Codex runs none; `cw` no longer guesses the host from the hook input ([Codex hooks](docs/hooks.md#codex)).
 
 ### Added
 

@@ -100,7 +100,8 @@ codex plugin marketplace add belevtsev/agent-workflows
 Then run `codex`, open `/plugins`, install `agent-workflows`, trust its
 hooks in `/hooks` and start a new session. Until you trust them, Codex runs
 none of the hooks and the plugin gives the skills only: no conventions and no commit
-hook. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
+hook. Trust them again after an update that changes them, such as the one that
+added the Codex hooks file. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
 the Docker skills and writes the `AGENTS.md` instruction block, but installs no
 hooks. [What each shape gives](docs/operations.md#codex).
 
@@ -254,7 +255,7 @@ On Codex, start Codex with `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` (and
 `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) in its environment instead.
 
 The gate fails open: without `cw` on `PATH`, or on an internal error, the
-command goes ahead. Codex runs the same hooks once you trust them in `/hooks`;
+command goes ahead. Codex runs the same hooks, from its own hooks file, once you trust them in `/hooks`;
 it cannot ask, so there the hook denies where Claude Code asks, except that
 the asks about a task record (damaged or from a newer `cw`) or a task store
 it cannot read or locate let the command go ahead. Details:

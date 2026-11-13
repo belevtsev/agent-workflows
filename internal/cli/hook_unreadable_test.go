@@ -40,7 +40,7 @@ func TestHookPrePublishAsksWhenARecordCannotBeRead(t *testing.T) {
 		hkWriteFile(t, record.Directory, "record-000002.json", "{\n")
 		hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "Task directory "+record.Directory+": invalid task JSON",
 			"remove the directory or move it out of the task store")
-		hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+		hkExpectAllow(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 		readable := hkSubstantialRecord(t, repo, store, "Readable")
 		hkExpectDeny(t, h.prePublish(t, repo, hkCodexCommand), readable)
 	})
@@ -64,7 +64,7 @@ func TestHookPrePublishAsksWhenARecordCannotBeRead(t *testing.T) {
 		}
 		hkWriteFile(t, record.Directory, "record-000001.json", string(data))
 		hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "Task directory "+record.Directory+": task record version", "upgrade cw")
-		hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+		hkExpectAllow(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 	})
 }
 
@@ -81,7 +81,7 @@ func TestHookPrePushBesideAnUnreadableRecordStillAsksAboutUncommittedChanges(t *
 	})
 	t.Run("Codex", func(t *testing.T) {
 		push := map[string]any{"tool_input": map[string]any{"command": "git push"}}
-		decision, reason := hkDecision(t, h.runPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, push)))
+		decision, reason := hkDecision(t, h.runCodexPrePublish(t, hkRecordedInput(t, "codex-pre-tool-use.json", repo, push)))
 		if decision != "deny" || !strings.Contains(reason, "uncommitted changes to tracked files") || !strings.Contains(reason, damaged.Directory) {
 			t.Fatalf("Codex decision %q with reason %q, want a deny naming the uncommitted changes and %s", decision, reason, damaged.Directory)
 		}
@@ -101,7 +101,7 @@ func TestHookPrePublishBesideAnUnreadableRecordStillAsksAboutAnUnrecordedChange(
 		hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), unrecorded, "Task directory "+damaged.Directory+": invalid task JSON")
 	})
 	t.Run("Codex", func(t *testing.T) {
-		decision, reason := hkDecision(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+		decision, reason := hkDecision(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 		if decision != "deny" || !strings.Contains(reason, unrecorded) || !strings.Contains(reason, damaged.Directory) {
 			t.Fatalf("Codex decision %q with reason %q, want a deny naming the unrecorded change and %s", decision, reason, damaged.Directory)
 		}
@@ -118,7 +118,7 @@ func TestHookPrePublishAsksWhenTheTaskStoreCannotBeRead(t *testing.T) {
 	hkWriteFile(t, filepath.Dir(file), "store", "not a directory\n")
 	h.env["CW_TASK_STORE"] = file
 	hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "agent-workflows: cw cannot read the task store (", file, "make it a directory you can read, or set CW_TASK_STORE to one.")
-	hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+	hkExpectAllow(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 }
 
 func TestHookPrePublishAsksWhenTheTaskStoreCannotBeLocated(t *testing.T) {
@@ -131,11 +131,11 @@ func TestHookPrePublishAsksWhenTheTaskStoreCannotBeLocated(t *testing.T) {
 	h := newHKHarness(t)
 	h.config.HomeDir = func() (string, error) { return "", errors.New("$HOME is not defined") }
 	hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "agent-workflows: cw cannot locate the task store (resolve home directory); set CW_TASK_STORE to it.")
-	hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+	hkExpectAllow(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 
 	h = newHKHarness(t)
 	h.config.WorkingDir = func() (string, error) { return repo, nil }
 	h.env["XDG_STATE_HOME"] = "rel"
 	hkExpectAsk(t, h.prePublish(t, repo, hkCodexCommand), "XDG_STATE_HOME must be an absolute path")
-	hkExpectAllow(t, h.runPrePublish(t, hkCodexInput(t, repo)))
+	hkExpectAllow(t, h.runCodexPrePublish(t, hkCodexInput(t, repo)))
 }

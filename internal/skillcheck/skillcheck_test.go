@@ -327,9 +327,11 @@ func TestManifestAndPluginPathsResolve(t *testing.T) {
 	}
 	var codex struct {
 		Skills string `json:"skills"`
+		Hooks  string `json:"hooks"`
 	}
 	readJSON(t, ".codex-plugin/plugin.json", &codex)
 	requireExists(t, ".codex-plugin/plugin.json skills", codex.Skills)
+	requireExists(t, ".codex-plugin/plugin.json hooks", codex.Hooks)
 	for _, marketplace := range []string{".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json"} {
 		var listing struct {
 			Plugins []struct {
@@ -380,8 +382,8 @@ var pinnedInstall = regexp.MustCompile("agent-workflows/v3/cmd/cw@(v[0-9][^\\s`'
 
 // installCommandFiles tell a user without cw how to install it: the
 // quick start, Get cw, the always-on conventions, the task-orchestration
-// skill's first step and the session-start hook's missing-cw line.
-var installCommandFiles = []string{"README.md", "docs/operations.md", "global/AGENTS.md", "skills/task-orchestration/SKILL.md", "hooks/hooks.json"}
+// skill's first step and the session-start hooks' missing-cw line.
+var installCommandFiles = []string{"README.md", "docs/operations.md", "global/AGENTS.md", "skills/task-orchestration/SKILL.md", "hooks/hooks.json", "hooks/codex-hooks.json"}
 
 // Every place that tells a user without cw how to install it gives the
 // go install command for the next release tag, and no first-party file but

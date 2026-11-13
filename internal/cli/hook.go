@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,9 +23,10 @@ import (
 )
 
 // Claude Code and Codex plugin hooks. Both commands read the hook's JSON input
-// from stdin and write the hook's JSON decision to stdout. Under Codex, which
-// does not support an ask, the pre-publish hook denies instead, except where
-// the ask is about a record or store it cannot read. They fail open: every
+// from stdin and write the hook's JSON decision to stdout. Codex runs them
+// from hooks/codex-hooks.json with --host codex; under Codex, which does not
+// support an ask, the pre-publish hook denies instead, except where the ask
+// is about a record or store it cannot read. They fail open: every
 // condition that is not a positive gate decision, including any internal
 // error, exits 0 without output, so a missing git never blocks the user's own
 // commands. Two exceptions ask, because allowing would skip the gate without
@@ -37,7 +39,8 @@ const (
 	// work, whose capture probes allow far longer on their own. A record
 	// whose source identity cannot be captured in time is skipped, while
 	// other records can still gate. It stays below the 30 second hook
-	// timeout in hooks/hooks.json, so cw finishes before it is killed.
+	// timeout in hooks/hooks.json and hooks/codex-hooks.json, so cw
+	// finishes before it is killed.
 	hookPublishTimeout    = 20 * time.Second
 	hookDoctorTimeout     = 5 * time.Second
 	hookDoctorCacheAge    = time.Hour
@@ -48,11 +51,6 @@ const (
 
 type hookInput struct {
 	CWD string `json:"cwd"`
-	// TurnID and Model are Codex's documented extensions of the hook input;
-	// Claude Code's PreToolUse input has neither, although it sends turn_id
-	// for another event. testdata holds one recorded input from each host.
-	TurnID string `json:"turn_id"`
-	Model  string `json:"model"`
 	// Source is how a session started, in SessionStart input only: startup,
 	// resume, clear or compact (and fork under Codex).
 	Source string `json:"source"`
@@ -65,11 +63,31 @@ type hookInput struct {
 	} `json:"tool_input"`
 }
 
-// fromCodex reports whether Codex, not Claude Code, ran the hook: it needs
-// both Codex members, so Claude Code adding one of them to PreToolUse does
-// not turn its asks into denies.
-func (input hookInput) fromCodex() bool {
-	return input.TurnID != "" && input.Model != ""
+// The hosts a plugin hook command names with --host. Each host runs its own
+// hooks file: Claude Code hooks/hooks.json, which passes no --host, and Codex
+// hooks/codex-hooks.json, which .codex-plugin/plugin.json names and which
+// passes --host codex. cw reads the host from the flag alone, never from the
+// hook input or the environment.
+const (
+	hookHostClaudeCode = "claude-code"
+	hookHostCodex      = "codex"
+)
+
+// addHookHostFlag adds --host to a plugin hook command.
+func addHookHostFlag(command *cobra.Command, host *string) {
+	command.Flags().StringVar(host, "host", hookHostClaudeCode, "Host whose hooks file runs this command: claude-code (hooks/hooks.json) or codex (hooks/codex-hooks.json)")
+}
+
+// hookFromCodex reports whether --host names Codex; any value but the two
+// hosts is a usage error.
+func hookFromCodex(host string) (bool, error) {
+	switch host {
+	case hookHostClaudeCode:
+		return false, nil
+	case hookHostCodex:
+		return true, nil
+	}
+	return false, usage(errors.New("--host must be " + hookHostClaudeCode + " or " + hookHostCodex + ", not " + strconv.Quote(host)))
 }
 
 type hookOutput struct {
@@ -88,7 +106,8 @@ func addHookCommands(root *cobra.Command, config Config) {
 	root.AddCommand(hook)
 	addGitHookCommand(root, hook, config)
 	addTaskUsageHook(hook, config)
-	hook.AddCommand(&cobra.Command{
+	var publishHost string
+	prePublish := &cobra.Command{
 		Use:   "pre-publish",
 		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",
 		Long: "Reads the PreToolUse JSON from stdin. When the Bash command runs git commit or git push inside a Git repository and the task store holds " +
@@ -98,22 +117,28 @@ func addHookCommands(root *cobra.Command, config Config) {
 			"With no such record, it prints an ask decision when the change looks substantial (two of: more than 300 changed lines, more than one top-level directory, " +
 			"code changed without tests). It also prints an ask decision, naming the task, for a cw task abandon, which needs the user's confirmation, " +
 			"and one quoting the words of a cw --owner-approval, which only the user may give. " +
-			"Under Codex, which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
+			"Under Codex (--host codex), which cannot ask, an ask about an unreadable record or store lets the command run, and every other ask is a deny that carries the question. " +
 			"Every other case, including any internal error, exits 0 without output. " +
 			"Set the plugin option enforce_verify to false (" + enforceVerifyOption + "=false) to disable the gate, " +
 			"and small_task_prompt to false (" + smallTaskPromptOption + "=false) to disable the ask for unrecorded changes.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			codex, err := hookFromCodex(publishHost)
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), cmp.Or(config.prePublishTimeout, hookPublishTimeout))
 			defer cancel()
-			decision, ok := prePublishDecision(ctx, root, config)
+			decision, ok := prePublishDecision(ctx, root, config, codex)
 			if !ok {
 				return nil
 			}
 			return writeJSON(cmd.OutOrStdout(), decision)
 		},
-	})
-	var instructions, cache string
+	}
+	addHookHostFlag(prePublish, &publishHost)
+	hook.AddCommand(prePublish)
+	var instructions, cache, sessionHost string
 	sessionStart := &cobra.Command{
 		Use:   "session-start",
 		Short: "SessionStart hook: emit the instructions file, plus a line when the plugin and cw versions differ or Claude Code is too old, a line suggesting cw gate install once per open substantial task in a repository without git hooks, and a cached cw doctor summary when the plugin option session_doctor is true, as additional context; nothing when Codex resumes a thread",
@@ -122,7 +147,11 @@ func addHookCommands(root *cobra.Command, config Config) {
 			if instructions == "" {
 				return usage(errors.New("--instructions FILE is required"))
 			}
-			context, ok := sessionStartContext(cmd.Context(), root, config, instructions, cache)
+			codex, err := hookFromCodex(sessionHost)
+			if err != nil {
+				return err
+			}
+			context, ok := sessionStartContext(cmd.Context(), root, config, instructions, cache, codex)
 			if !ok {
 				return nil
 			}
@@ -131,14 +160,15 @@ func addHookCommands(root *cobra.Command, config Config) {
 	}
 	sessionStart.Flags().StringVar(&instructions, "instructions", "", "Markdown file whose contents become the session's additional context")
 	sessionStart.Flags().StringVar(&cache, "cache", "", "Directory for the one-hour doctor summary cache (no caching when empty)")
+	addHookHostFlag(sessionStart, &sessionHost)
 	hook.AddCommand(sessionStart)
 }
 
 // prePublishDecision returns the gate's deny or ask decision for the hook
-// input on stdin, or false when the command may proceed silently. With both
-// plugin options off it returns before reading stdin, which
-// hookPublishTimeout does not bound.
-func prePublishDecision(ctx context.Context, root *cobra.Command, config Config) (hookOutput, bool) {
+// input on stdin, or false when the command may proceed silently; codex
+// adapts it to Codex (codexDecision). With both plugin options off it
+// returns before reading stdin, which hookPublishTimeout does not bound.
+func prePublishDecision(ctx context.Context, root *cobra.Command, config Config, codex bool) (hookOutput, bool) {
 	enforce := config.Getenv(enforceVerifyOption) != "false"
 	prompt := config.Getenv(smallTaskPromptOption) != "false"
 	if !enforce && !prompt {
@@ -178,7 +208,7 @@ func prePublishDecision(ctx context.Context, root *cobra.Command, config Config)
 			decision.Reason += " " + storeFailureReason(store.err, store.store != nil)
 		}
 	}
-	if input.fromCodex() {
+	if codex {
 		decision = codexDecision(decision)
 	}
 	if decision.Permission == gate.Allow {
@@ -306,14 +336,14 @@ func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 // notes and the cw gate install line, and by the doctor summary when the
 // plugin option asks for it and it can be produced in time.
 //
-// When Codex resumes a thread it returns "" and true, so the hook prints a
+// When Codex (codex) resumes a thread it returns "" and true, so the hook prints a
 // SessionStart object without additionalContext. The thread already holds
 // what earlier session starts added, and Codex adds the context again after
 // a compaction, so a resume would only add a second copy. Printing nothing
 // instead would make the hook command fall back to printing the file.
 // Returning before gateInstallNote also keeps the resume from suggesting cw
 // gate install beside the compact run Codex can start at the same moment.
-func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string) (string, bool) {
+func sessionStartContext(ctx context.Context, root *cobra.Command, config Config, instructions, cache string, codex bool) (string, bool) {
 	data, err := os.ReadFile(instructions)
 	if err != nil || len(bytes.TrimSpace(data)) == 0 {
 		return "", false
@@ -324,7 +354,6 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 	// source decides whether there is anything to add.
 	gate := config.Getenv(enforceVerifyOption) != "false"
 	doctor := config.Getenv(sessionDoctorOption) == "true"
-	codex := config.Getenv(codexPluginRoot) != ""
 	dir, source := "", ""
 	if gate || doctor || codex {
 		dir, source = sessionInput(config)
@@ -333,7 +362,7 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 		return "", true
 	}
 	var notes []string
-	if note := versionNotes(config, instructions); note != "" {
+	if note := versionNotes(config, instructions, codex); note != "" {
 		notes = append(notes, note)
 	}
 	if gate && dir != "" {

@@ -12,14 +12,11 @@ import (
 )
 
 // taskUsageHookInput is a PreToolUse input for command, with the session's
-// transcript at transcript; codex adds the two members only Codex sends.
-func taskUsageHookInput(t *testing.T, cwd, transcript, command string, codex bool) []byte {
+// transcript at transcript.
+func taskUsageHookInput(t *testing.T, cwd, transcript, command string) []byte {
 	t.Helper()
 	input := map[string]any{"session_id": "s1", "transcript_path": transcript, "cwd": cwd, "hook_event_name": "PreToolUse", "tool_name": "Bash",
 		"tool_input": map[string]any{"command": command}}
-	if codex {
-		input["turn_id"], input["model"] = "t", "m"
-	}
 	data, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
@@ -27,14 +24,15 @@ func taskUsageHookInput(t *testing.T, cwd, transcript, command string, codex boo
 	return data
 }
 
-// runTaskUsageHook runs cw hook task-usage on input and requires what every
-// case needs: no error (exit 0) and no output, so it never decides.
-func runTaskUsageHook(t *testing.T, h *taskBundleHarness, input []byte) {
+// runTaskUsageHook runs cw hook task-usage with args on input and requires
+// what every case needs: no error (exit 0) and no output, so it never
+// decides.
+func runTaskUsageHook(t *testing.T, h *taskBundleHarness, input []byte, args ...string) {
 	t.Helper()
 	stderr := new(bytes.Buffer)
 	h.config.In, h.config.Err = bytes.NewReader(input), stderr
 	h.out.Reset()
-	if err := Execute(t.Context(), []string{"hook", "task-usage"}, h.config); err != nil || h.out.Len() != 0 || stderr.Len() != 0 {
+	if err := Execute(t.Context(), append([]string{"hook", "task-usage"}, args...), h.config); err != nil || h.out.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("cw hook task-usage: %v, stdout %q, stderr %q; want exit 0 and no output", err, h.out.String(), stderr.String())
 	}
 }
@@ -59,8 +57,8 @@ func writeCodexRollout(t *testing.T) string {
 // the session from the input's transcript_path: session s1, the transcript's
 // in-task tokens, and opusUSD of its requests, estimated from the built-in
 // table. A broken transcript and a command naming no task store nothing: the
-// record keeps its revision. Under Codex it samples the rollout the input
-// names (review finding 5): session c1 from codex_rollout with its 100 input
+// record keeps its revision. Under --host codex it samples the rollout the
+// input names (review finding 5), although the input has no Codex member: session c1 from codex_rollout with its 100 input
 // and 20 output tokens. Every case exits 0 without output, so no decision,
 // deny or ask, reaches the host.
 func TestTaskUsageHookSamplesTheNamedTaskAndNeverDecides(t *testing.T) {
@@ -81,7 +79,7 @@ func TestTaskUsageHookSamplesTheNamedTaskAndNeverDecides(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			writeTranscriptLines(t, filepath.Join(dir, "broken.jsonl"), `{"type":"assistant","message":`, "not json")
 			before := loadUsageRecord(t, h).Revision
-			runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, c.transcript, c.command, false))
+			runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, c.transcript, c.command))
 			if record := loadUsageRecord(t, h); record.Revision != before || len(record.Usage) != 0 {
 				t.Fatalf("revision %d (was %d), usage %+v; want nothing stored", record.Revision, before, record.Usage)
 			}
@@ -94,7 +92,7 @@ func TestTaskUsageHookSamplesTheNamedTaskAndNeverDecides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, transcript, "true && CW=1 cw task assign --input - --task="+relative, false))
+	runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, transcript, "true && CW=1 cw task assign --input - --task="+relative))
 	record := loadUsageRecord(t, h)
 	if len(record.Usage) != 1 {
 		t.Fatalf("usage %+v, want one sample", record.Usage)
@@ -104,7 +102,7 @@ func TestTaskUsageHookSamplesTheNamedTaskAndNeverDecides(t *testing.T) {
 		t.Fatalf("sample %+v, want session s1 with %v estimated USD and 20 output tokens", sample, opusUSD(requests...))
 	}
 
-	runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, writeCodexRollout(t), "cw task run --check unit --task "+h.record.Directory, true))
+	runTaskUsageHook(t, h, taskUsageHookInput(t, h.repo, writeCodexRollout(t), "cw task run --check unit --task "+h.record.Directory), "--host", "codex")
 	record = loadUsageRecord(t, h)
 	if len(record.Usage) != 2 {
 		t.Fatalf("usage %+v, want a second sample from the Codex rollout", record.Usage)

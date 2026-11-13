@@ -385,7 +385,7 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
    [CHANGELOG.md](../CHANGELOG.md) to `## [X] - date`, sets the three version
    strings to `X`, sets the tag in the install commands and release links of
    `README.md`, [Get cw](operations.md#get-cw), `global/AGENTS.md`, the
-   `task-orchestration` skill and `hooks/hooks.json`
+   `task-orchestration` skill, `hooks/hooks.json` and `hooks/codex-hooks.json`
    (`TestInstallCommandsNameTheRelease` fails when one names another tag),
    lists upgrade steps for any task record version change, and appends the
    record version the release writes to [Task record format](#task-record-format).

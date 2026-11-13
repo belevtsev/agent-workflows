@@ -16,7 +16,8 @@ import (
 )
 
 // hookUsageTimeout bounds the task-usage hook's transcript import. It stays
-// below the hook's 15 second timeout in hooks/hooks.json.
+// below the hook's 15 second timeout in hooks/hooks.json and
+// hooks/codex-hooks.json.
 const hookUsageTimeout = 10 * time.Second
 
 // hookUsageTasks bounds how many tasks one command line samples.
@@ -28,29 +29,36 @@ var cwGlobalValueOptions = map[string]bool{"--config-dir": true, "--home": true,
 
 // addTaskUsageHook adds cw hook task-usage.
 func addTaskUsageHook(hook *cobra.Command, config Config) {
-	hook.AddCommand(&cobra.Command{
+	var host string
+	taskUsage := &cobra.Command{
 		Use:   "task-usage",
 		Short: "PreToolUse hook: before a cw task command, sample the session's usage into that task's record; never decides anything",
 		Long: "Reads the PreToolUse JSON from stdin. For each cw task command in the Bash command that names an open task with a budget by --task DIR or task ID, " +
-			"it imports the session's transcript (transcript_path: a Claude Code transcript, or under Codex its rollout) within 10 seconds, " +
+			"it imports the session's transcript (transcript_path: a Claude Code transcript, or under Codex (--host codex) its rollout) within 10 seconds, " +
 			"as cw task usage does with cw's built-in price table, and stores the sample when it matters. It prints nothing and exits 0 in every case: " +
 			"an incomplete or broken transcript, a command without an open task and any error store nothing. See docs/hooks.md \"Usage sampling\".",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			sampleHookUsage(cmd.Context(), config)
+			codex, err := hookFromCodex(host)
+			if err != nil {
+				return err
+			}
+			sampleHookUsage(cmd.Context(), config, codex)
 			return nil
 		},
-	})
+	}
+	addHookHostFlag(taskUsage, &host)
+	hook.AddCommand(taskUsage)
 }
 
 // sampleHookUsage stores a usage sample from the hook input's transcript in
 // each open task with a budget that a cw task command of the input names:
-// a Claude Code transcript, or under Codex the session's rollout. It reads
+// a Claude Code transcript, or under Codex (codex) the session's rollout. It reads
 // no transcript when no such task is open, and stores nothing from an import
 // that is incomplete or skipped a malformed line or an unreadable file: a
 // broken transcript would read as unknown, or as too little, and replace the
 // session's last sample.
-func sampleHookUsage(ctx context.Context, config Config) {
+func sampleHookUsage(ctx context.Context, config Config, codex bool) {
 	input, err := readHookInput(config.In)
 	if err != nil || !filepath.IsAbs(input.TranscriptPath) {
 		return
@@ -73,7 +81,7 @@ func sampleHookUsage(ctx context.Context, config Config) {
 	}
 	for _, record := range open {
 		options := usagelog.Options{ClaudeTranscript: input.TranscriptPath, Prices: &table, Since: record.CreatedAt}
-		if input.fromCodex() {
+		if codex {
 			options.ClaudeTranscript, options.CodexSession = "", input.TranscriptPath
 		}
 		report, estimate, err := usagelog.EstimateSession(ctx, options)

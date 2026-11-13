@@ -51,10 +51,12 @@ the architect contract and the `software-architecture` and
   with exit 3 `open-record`. Where no hook runs, a plain `git commit` or
   `git push` goes unchecked. Without `cw` on `PATH` there is no gate: the hook
   lets the command through.
-- **Trust.** Codex runs neither plugin hook until you trust them, and `codex exec`
-  does not say it skipped them. Per Codex's documentation, trust is recorded
-  against the hook's hash, so trust them again when an update changes
-  `hooks/hooks.json`.
+- **Trust.** Codex runs no plugin hook until you trust it, and `codex exec`
+  does not say it skipped them. Codex runs `hooks/codex-hooks.json`, which
+  `.codex-plugin/plugin.json` names. Per Codex's documentation, trust is
+  recorded against the hook's hash, so trust the hooks again in `/hooks` when
+  an update changes that file, as the update that added it did
+  ([Codex hooks](hooks.md#codex)).
 - **Plugin options.** Codex has no plugin configuration and sets no
   `CLAUDE_PLUGIN_OPTION_*` variable; the hooks read the environment Codex was
   started with. Unset, the gate and the prompt for unrecorded changes are on
@@ -62,9 +64,9 @@ the architect contract and the `software-architecture` and
   `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false`; the other two variables use the
   same lookup but were not run. No option affects `cw publish`.
 - **Evidence.** The plugin rows come from runs recorded with codex-cli
-  0.167.2 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
+  0.167.2 and 0.168.0 ([Codex hooks](hooks.md#codex), [recorded host runs](hooks.md#recorded-host-runs));
   the last column lists what they did not cover. The session-start context
-  is added again on each resume and after each compaction.
+  is added at startup and after each compaction, not on a resume.
 
 To install the plugin:
 
