@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and a command without `--task` exits 2 with `--task DIR is required` ([exit statuses](docs/operations.md#exit-statuses)).
 - The Go rule credits a `go test` run only under the `GOFLAGS`, `GOOS` and `GOARCH` its go command reports with `go env`, and task
   records move to version 5: rerun Go checks recorded before, and upgrade every `cw` sharing the store ([which go](docs/operations.md#which-go-a-check-runs)).
+- With cgo on, the Go rule credits a `go test` run only when `cw` verified its C compiler, assembler, linker, `CGO_*FLAGS` and loader
+  variables; rerun Go checks recorded before this ([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)).
 - `cw consult` sends a task-bound request only when its task, not abandoned, holds that task context in the store the hook reads,
   so a request cannot name advisers its task did not bind: for a `--store DIR` task, set `CW_TASK_STORE=DIR` ([consultation](docs/operations.md#consultation-command)).
 - `cw task` `start`, `run`, `assess`, `assign`, `handoff`, `accept`, `consult`, `verify` and `add-checks` print their one-line summary by default:

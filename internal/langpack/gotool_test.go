@@ -237,7 +237,9 @@ func TestLoadGoFactsReadsTheRaceProbeOnlyFromAVerifiedGo(t *testing.T) {
 // (RedactGOFLAGS). Review finding 1 on #139: pin holds the GOFLAGS read,
 // unredacted, or a space for none, and GOOS and GOARCH; appended to the
 // environment, they win over a go env file that says otherwise, so the go
-// command reports the same configuration again.
+// command reports the same configuration again. With no C compiler on PATH,
+// go env reports cgo off (cmd/go's default without one), so the pin ends with
+// CGO_ENABLED=0 and C records cgo off with nothing judged (F18).
 func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	dir := t.TempDir()
 	tool, err := langpack.ResolveGo(t.Context(), "go", dir, gtEnv(gtRealGo(t)))
@@ -260,7 +262,12 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 		return langpack.GoEnv{GOFLAGS: goflags, GOOS: runtime.GOOS, GOARCH: goarch, GOHOSTOS: runtime.GOOS, GOHOSTARCH: runtime.GOARCH}
 	}
 	pinned := func(goflags, goarch string) []string {
-		return []string{"GOFLAGS=" + goflags, "GOOS=" + runtime.GOOS, "GOARCH=" + goarch}
+		return []string{"GOFLAGS=" + goflags, "GOOS=" + runtime.GOOS, "GOARCH=" + goarch, "CGO_ENABLED=0"}
+	}
+	cgoOff := func(read langpack.GoEnv) (langpack.GoEnv, bool) {
+		judged := read.C
+		read.C = nil
+		return read, judged != nil && *judged == langpack.CToolchain{}
 	}
 	for _, c := range []struct {
 		name string
@@ -275,12 +282,13 @@ func TestReadGoEnvReportsTheConfigurationTheGoCommandApplies(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			env := gtEnv(gtRealGo(t), c.env...)
-			got, pin, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
-			if err != nil || got != c.want || !slices.Equal(pin, c.pin) {
-				t.Fatalf("ReadGoEnv = %+v, pin %q, %v; want %+v, pin %q", got, pin, err, c.want, c.pin)
+			read, pin, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, env)
+			got, off := cgoOff(read)
+			if err != nil || got != c.want || !off || !slices.Equal(pin, c.pin) {
+				t.Fatalf("ReadGoEnv = %+v (C %+v), pin %q, %v; want %+v with cgo off, pin %q", got, read.C, pin, err, c.want, c.pin)
 			}
-			again, _, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, append(append(env, pin...), "GOENV="+rewritten))
-			if err != nil || again != c.want {
+			read, _, _, err = langpack.ReadGoEnv(t.Context(), tool, dir, append(append(env, pin...), "GOENV="+rewritten))
+			if again, off := cgoOff(read); err != nil || again != c.want || !off {
 				t.Errorf("ReadGoEnv with the pin and a go env file that says otherwise = %+v, %v; want %+v", again, err, c.want)
 			}
 		})
@@ -338,8 +346,8 @@ func TestReadGoEnvKeyFollowsTheConfigurationWithoutItsValues(t *testing.T) {
 func TestReadGoEnvRefusesAConfigurationItCannotRead(t *testing.T) {
 	stopped, cancel := context.WithCancel(t.Context())
 	cancel()
-	const shape = "not exactly GOFLAGS, GOOS, GOARCH, GOHOSTOS, GOHOSTARCH, CGO_ENABLED, GOEXPERIMENT, GOWORK, GOAMD64, GOARM64, CC, CXX with the four platform values set"
-	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux","CGO_ENABLED":"1","GOEXPERIMENT":"","GOWORK":"","GOAMD64":"v1","GOARM64":"v8.0","CC":"gcc","CXX":"g++"`
+	const shape = "not exactly GOFLAGS, GOOS, GOARCH, GOHOSTOS, GOHOSTARCH, CGO_ENABLED, GOEXPERIMENT, GOWORK, GOAMD64, GOARM64, CC, CXX, CGO_CFLAGS, CGO_CPPFLAGS, CGO_CXXFLAGS, CGO_FFLAGS, CGO_LDFLAGS with the four platform values set"
+	complete := `"GOFLAGS":"","GOOS":"linux","GOARCH":"amd64","GOHOSTOS":"linux","CGO_ENABLED":"1","GOEXPERIMENT":"","GOWORK":"","GOAMD64":"v1","GOARM64":"v8.0","CC":"gcc","CXX":"g++","CGO_CFLAGS":"-O2 -g","CGO_CPPFLAGS":"","CGO_CXXFLAGS":"-O2 -g","CGO_FFLAGS":"-O2 -g","CGO_LDFLAGS":"-O2 -g"`
 	for _, c := range []struct {
 		name, body, want string
 		ctx              context.Context

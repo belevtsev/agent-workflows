@@ -191,7 +191,9 @@ anything on its own. See the
 
 When a task applies the `go` pack, verify also needs passed direct `go test`
 runs for the host's `GOOS`/`GOARCH`, with allowlisted flags only (no `-run`
-or `-skip`, in argv or in the `GOFLAGS` that `go env` reports): one with `-race`
+or `-skip`, in argv or in the `GOFLAGS` that `go env` reports) and, with cgo
+on, a C toolchain `cw` verified
+([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)): one with `-race`
 covering each changed package (a plain run, with a recorded limitation,
 where `-race` cannot run on the host), one covering each package whose tests
 link a changed package, and `go test ./...` after a change to module or

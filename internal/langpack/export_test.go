@@ -26,3 +26,7 @@ func TrustGoOnPath(t testing.TB) {
 	}
 	t.Cleanup(func() { resolveGo = saved })
 }
+
+// JudgeHelpers is judgeHelpers: it judges the assembler and linker a
+// compiler at cc names, which a test can fake with a script.
+var JudgeHelpers = judgeHelpers
