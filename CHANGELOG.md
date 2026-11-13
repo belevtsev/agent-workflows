@@ -157,6 +157,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   git+ssh, ssh+git, git or file in lower case) as 4 `remote-split` ([publish](docs/operations.md#global-project-diagnostics-and-evidence)).
 - Resuming a Codex thread no longer adds the conventions again, nor a second `cw gate install` line beside the compaction that
   can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
+- The checkpoint reference again says how a task across several repositories sends one adviser request (`state.task_contexts`),
+  a rule the first cut of the skill dropped ([advisers](docs/advisers.md)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 
