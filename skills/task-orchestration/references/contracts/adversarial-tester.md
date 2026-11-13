@@ -4,18 +4,8 @@
 
 An opt-in white-box stage: read the integrated source and try to break it. Every
 test you keep must fail on the current implementation and cite the requirement
-ID or design rule it shows is broken.
-
-## Opt-in and record
-
-At classify, before `cw task start`, the coordinator opts in when the change
-touches concurrency, parsing or untrusted input, security or data integrity, or
-the user asks. The plan then holds a
-requirement naming the opted-in areas and a check that writes a coverage profile
-outside the source tree. A fresh `adversarial-tester`, no author or reviewer
-of the change, runs in parallel with
-[code review](code-review.md) on the same source. It records as an `evidence`
-assignment.
+ID or design rule it shows is broken. You are no author or reviewer of the
+change.
 
 ## Inputs
 
@@ -35,37 +25,33 @@ assignment.
   that passes, does not build, or fails for another reason.
 - Expected values come from the contract or design, never from current output;
   assert observable behaviour, not internal structure.
+- The coordinator rejects a test citing a rule the contract and design do not
+  state. It adds each other kept test unchanged, as a regression test, never
+  black-box coverage.
+- Dispatched to correct a kept test that is wrong or stops building, correct
+  it against the pre-fix source.
 
 ## Outputs
 
 1. Kept tests in the artefact directory, each a new file for a path outside every
    path the test engineer owns, naming its finding ID and cited rule; state a
    design rule in contract terms, never quoting `design.md`.
-2. `adversarial-findings.md` there: per finding an ID (`A1`, ...), a
-   [severity](../worker-handoffs.md#review-stages), the cited rule, the test,
-   the exact command, the observed failure and the failure scenario. Then the
-   discarded probes with why, and what was not probed.
-3. The handoff result, `changed_files: []`, each finding one line within the
-   [handoff caps](../worker-handoffs.md#handoff-caps), and
-   `adversarial-findings.md` as its `report`.
+2. `adversarial-findings.md` there: per finding an ID (`A1`, ...), a severity,
+   the cited rule, the test, the exact command, the observed failure and the
+   failure scenario. Then the discarded probes with why, and what was not
+   probed.
+3. The handoff result in the shape `cw task schema handoff` prints, with
+   `changed_files: []` and `adversarial-findings.md` as its `report`.
 
-## After a finding
+Grade each finding `blocker` (relying on the artefact as written yields wrong,
+unsafe or unverifiable behaviour), `major` (the next stage cannot work
+correctly from it, such as an untestable or unguarded requirement or a defect
+in changed behaviour) or `minor` (clarity that changes no test and no
+behaviour).
 
-Record this handoff and its acceptance before the code review's handoff, and
-both before any source change. A kept test follows the
-[reproduction rule](code-review.md#reproduce-every-behaviour-finding): the
-coordinator adds it unchanged at a path no implementation assignment owns, the
-fix turns it green without editing it, and its finding is `resolved` only when
-`check_ids` cites a passing recorded run of it, `evidence` names the test and
-`reason` says the adversarial tester wrote it with source access. It stays as a
-regression test, never black-box coverage or in the requirement map. A test
-citing a rule the contract and design do not state is rejected and not added.
-Only an adversarial tester corrects a kept test that is wrong or stops
-building, against the pre-fix source; otherwise the coordinator drops it and
-rejects its finding. After any later source change, and before the follow-up
-review's handoff, close this assignment `unused` with those dispositions. For a
-requirement the black-box suite leaves unguarded, a fresh test engineer gets
-that requirement ID only.
+The result is at most 6 KiB, its `summary` at most 1,200 bytes and each
+finding one line of at most 400 bytes; `cw task handoff` refuses a larger
+result. The full reasoning goes in the report file, at most 512 KiB.
 
 ## Never
 
@@ -80,5 +66,4 @@ that requirement ID only.
 Stop when every requirement and design rule in the opted-in areas has been
 probed or listed as not probed, or when the brief's effort bound is reached,
 and return the outputs. If a probe needs a source change or a new seam, return
-the question by requirement or rule ID; the coordinator settles it under the
-[contract amendment](README.md#contract-amendment) procedure.
+the question by requirement or rule ID; the coordinator settles it.

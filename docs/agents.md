@@ -99,6 +99,10 @@ data integrity, the plan can also opt in to the
 which reads the code but keeps only tests that fail on it; those never count as
 black-box coverage, and the test engineer never sees them.
 
+**Who defines a finding's severity?** Each review contract and the adversarial
+tester's contract grade a finding `blocker`, `major` or `minor`. When writing
+a contract: a contract may define a grade for its artefact, never add one.
+
 **Why doesn't the implementer write its own tests?** Code tested only by its
 author is one of the failures this project exists to prevent: the same
 reasoning that wrote a bug can write a test that misses it. The implementer

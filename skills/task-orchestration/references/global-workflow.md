@@ -71,7 +71,7 @@ For substantial work, write a plan outside the repository:
   path absolute and outside the source tree, and give the reviewer it with the
   run ID ([coverage](../../../docs/operations.md#coverage-profile-of-a-check)).
 - Opt in to the
-  [adversarial tester](contracts/adversarial-tester.md#opt-in-and-record) now
+  [adversarial tester](dispatching-reviews-and-tests.md#adversarial) now
   when its conditions hold; its check writes the profile into a directory that
   exists before `cw task run`.
 - Name checks without adviser words (`snap`, `jev`, `advisor`) as whole words.
