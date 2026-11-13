@@ -449,14 +449,16 @@ consent.
 ### Profiles
 
 `cw task start` fixes one profile in the task record, as it fixes the packs: the
-plan's `profile` member, or `lite` when the plan names none. The profile holds
+plan's `profile` member, or `lite` when the plan names none. `start` writes the
+resolved name into the stored plan and prints it as `profile` in its summary. The profile holds
 the stages the task may assign, the author round caps per stage, the fix rounds
 allowed per finding or requirement, and the budget in US dollars, with the share
 (80%) at which the task is to stop taking new work. `cw` records these limits but
 does not enforce them yet: no command refuses a round past its cap or stops a
-task at its budget. A plan's `budget` member (`{"max_usd": 10}`)
-may lower the profile's budget, never raise it: a higher one is refused and no
-task is created. A later revision that changes the profile fails to load. A record
+task at its budget. A plan's `budget` member (`{"max_usd": 10}`) may lower the
+profile's budget, never raise it; it may also set `stop_at`, the share at which
+the task stops, up to the profile's 0.8. A higher value of either is refused and
+no task is created. A later revision that changes the profile fails to load. A record
 started before profiles existed has none, and no caps or budget apply to it.
 
 The budgets are provisional: they are not measured yet, and the evaluation runs
