@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 141897
+	orchestrationSumCap    = 141780
 	orchestrationSumTarget = 90000
 )
 
