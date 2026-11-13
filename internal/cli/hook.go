@@ -422,7 +422,7 @@ func cachedDoctorSummary(ctx context.Context, root *cobra.Command, config Config
 	if err != nil {
 		return "", false
 	}
-	data, err := json.Marshal(summarizeDoctor(report), json.Deterministic(true))
+	data, err := json.Marshal(summarizeDoctor(report, false), json.Deterministic(true))
 	if err != nil {
 		return "", false
 	}
