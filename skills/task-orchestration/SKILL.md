@@ -6,7 +6,7 @@ description: Coordinate substantial work with bounded workers; dispatch independ
 # Task orchestration
 
 Plugin root: `${CLAUDE_PLUGIN_ROOT}` (empty outside the Claude Code plugin; see the
-[host mapping](references/hosts.md#worker-agent-types) for paths and agent types).
+[host mapping](references/hosts-claude-code.md#worker-agent-types) for paths and agent types).
 
 The coordinator owns the outcome, consultation, dispatch, integration and final
 verification. Use this skill for a
@@ -14,7 +14,7 @@ verification. Use this skill for a
 [glossary](references/glossary.md) names each term and role once. For every
 other task: write the tests yourself, check your diff against the Code Review
 Rules before reporting, and commit or push only with the user's authorization.
-Do not dispatch workers. Dispatch an independent [test engineer](references/contracts/test-engineer.md)
+Do not dispatch workers. Dispatch an independent [test engineer](references/dispatching-reviews-and-tests.md#dispatch-a-test-engineer)
 when a substantial task adds or materially changes behavioural tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks. Publish
 a verified substantial task with `cw publish`, drafting the commit message and
@@ -37,12 +37,11 @@ satisfies a later state.
       workspace change. Fix what `problems` lists before starting;
       `optional_missing` counts absent optional tools and blocks nothing.
       Resolve profiles from the [host mapping](references/hosts.md).
-   3. Write the plan and run `cw task start`, which records it and binds the
-      configured advisers
+   3. Write the plan and run `cw task start`, which records it
       ([details](references/global-workflow.md#start-and-bind-a-task)). The plan
       is fixed after start; only `cw task add-checks` after a base-branch merge
       adds checks, and none is removed or narrowed
-      ([merging the base branch](references/global-workflow.md#merging-the-base-branch)).
+      ([merging the base branch](references/base-merge.md)).
    4. Set `checkpoints.required` to `true` for an open decision, for a change
       to code that must behave alike on several platforms or shells, or when
       unsure. Otherwise declare
@@ -59,7 +58,11 @@ satisfies a later state.
 2. **Before checkpoint** (when required). With enough source evidence to assess
    approach, alternatives, risks and verification plan, consult with the `before`
    context, adjudicate and attach a resolved record before implementation edits
-   or worker dispatch; without implementation, before substantive drafting or review.
+   or worker dispatch; without implementation, before substantive drafting or review
+   ([checkpoint helper](references/consultation-helper.md)). Only when
+   `cw task show --field advisers` is not empty, read the
+   [adviser guidance](references/adviser-providers.md), which also applies in
+   states 3 and 4 and when checkpoints are not required.
 3. **Implement and verify.** Build new behaviour along the
    [flow](references/contracts/README.md#flow), with a review loop at every
    stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
@@ -68,18 +71,16 @@ satisfies a later state.
    [adversarial tester](references/contracts/adversarial-tester.md) beside the
    code review for concurrency, parsing or untrusted input, security or data
    integrity, or when the user asks. Findings go back to that stage's author; the
-   [review cap](references/worker-handoffs.md#review-stages) applies per stage,
+   [review cap](references/worker-handoffs.md#review-cap) applies per stage,
    and the round budget in the same section bounds spec, design, contract and
    test-engineer rounds across the whole task (implementer fixes never count);
    that file says when a small task skips the spec and design stages.
-   After state 2, advisers join only at the four
-   [adviser points](references/consultation-helper.md#adviser-points-in-the-flow)
-   and only when available; without them the flow runs unchanged. Assign and
+   Assign and
    dispatch workers, integrate, run the selected checks and obtain the
    independent code review.
 4. **Fresh final checkpoint** (when required). Consult with a new request from
    the completed work, current diff, check results and remaining limitations,
-   using the `final` context; adjudicate and attach it.
+   using the `final` context; adjudicate and attach it as in state 2.
 5. **Complete.** Claim completion or publish only after `cw task verify` passes.
 
 An unresolved decision blocks the next state: investigate and adjudicate again,
@@ -127,18 +128,18 @@ found.
 | Step | Reference |
 | --- | --- |
 | Terms and role names | [glossary](references/glossary.md) |
-| Host, profiles, policy, paths | [hosts](references/hosts.md) |
+| Host, profiles, policy, paths | [hosts](references/hosts.md), [Claude Code](references/hosts-claude-code.md), [Codex](references/hosts-codex.md) |
 | Preset for the kind of work | [use-cases](references/use-cases.md) |
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
-| Advisers, checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
+| Checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
 | Roles, flow, review stages | [contracts](references/contracts/README.md) |
 | Spec stage | [spec-writer](references/contracts/spec-writer.md), [spec-review](references/contracts/spec-review.md) |
 | Design stage | [architect](references/contracts/architect.md), [design-review](references/contracts/design-review.md) |
 | Implementation | [implementer](references/contracts/implementer.md) |
-| Independent tests | [test-engineer](references/contracts/test-engineer.md), [test-review](references/contracts/test-review.md) |
+| Independent tests | [dispatching-reviews-and-tests](references/dispatching-reviews-and-tests.md), [test-engineer](references/contracts/test-engineer.md), [test-review](references/contracts/test-review.md) |
 | Code review | [code-review](references/contracts/code-review.md), [adversarial-tester](references/contracts/adversarial-tester.md) |
 | Choice-only questions | [question-patterns](references/question-patterns.md) |
-| Commit, push, PR | [publication](references/github-worker.md) |
+| Commit, push, PR | [publication](references/github-worker.md), [fallback](references/github-worker-fallback.md) |
 | Jira, Confluence, GitHub evidence | [connected-sources](references/connected-sources.md) |
-| Adviser providers | [adviser-providers](references/adviser-providers.md) |
+| Cost and outcome metrics, when asked | [measure-outcomes](references/measure-outcomes.md) |

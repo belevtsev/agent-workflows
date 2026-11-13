@@ -5,7 +5,7 @@ version: 1
 # This file has no consultation section: an adviser takes part when the shared
 # policy enables it, its credential is present, the user opted in to it, and it
 # is not disabled in the user's preferences. Agent tool
-# dispatch accepts aliases only, so references/hosts.md maps these profiles to
+# dispatch accepts aliases only, so references/hosts-claude-code.md maps these profiles to
 # `model: opus`, `model: sonnet` or `model: haiku` with explicit effort. Most
 # substantive work runs at `high`; the `decision` profile keeps `xhigh` for
 # planning, architecture and diagnosis.

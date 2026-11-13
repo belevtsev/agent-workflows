@@ -13,7 +13,7 @@ import (
 )
 
 // claudeAgentAlias is the Agent tool alias for each full model ID a Claude
-// Code profile may name. Agent accepts aliases only; references/hosts.md
+// Code profile may name. Agent accepts aliases only; references/hosts-claude-code.md
 // states the same mapping.
 var claudeAgentAlias = map[string]string{
 	"claude-opus-5-5":   "opus",
@@ -22,7 +22,7 @@ var claudeAgentAlias = map[string]string{
 }
 
 // hostsProfileTable is the header of the profile table in
-// references/hosts.md that the coordinator dispatches Claude Code workers by.
+// references/hosts-claude-code.md that the coordinator dispatches Claude Code workers by.
 const hostsProfileTable = "| Profile | Agent tool `model` | Agent tool `effort` |"
 
 type claudeRouting struct {
@@ -97,7 +97,7 @@ func markdownTableRows(t *testing.T, path, header string) map[string][]string {
 // implementer, test_review and spec_review stay on Opus at high, since Sonnet
 // for them is an eval variable rather than a shipped default; the decision
 // roles stay on Opus at xhigh. The coordinator dispatches through the profile
-// table in hosts.md, so that table has exactly one row per policy profile,
+// table in hosts-claude-code.md, so that table has exactly one row per policy profile,
 // naming the profile model's Agent alias and the profile's effort.
 func TestClaudePolicyRoutesEvidenceRolesToCheaperModels(t *testing.T) {
 	var m manifest
@@ -133,7 +133,7 @@ func TestClaudePolicyRoutesEvidenceRolesToCheaperModels(t *testing.T) {
 		}
 	}
 
-	const hosts = "skills/task-orchestration/references/hosts.md"
+	const hosts = "skills/task-orchestration/references/hosts-claude-code.md"
 	rows := markdownTableRows(t, hosts, hostsProfileTable)
 	for _, name := range slices.Sorted(maps.Keys(policy.Profiles)) {
 		profile := policy.Profiles[name]
