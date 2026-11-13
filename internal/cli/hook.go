@@ -55,8 +55,12 @@ type hookInput struct {
 	Model  string `json:"model"`
 	// Source is how a session started, in SessionStart input only: startup,
 	// resume, clear or compact (and fork under Codex).
-	Source    string `json:"source"`
-	ToolInput struct {
+	Source string `json:"source"`
+	// SessionID and TranscriptPath name the session and its transcript, in
+	// every hook input of both hosts; cw hook task-usage samples it.
+	SessionID      string `json:"session_id"`
+	TranscriptPath string `json:"transcript_path"`
+	ToolInput      struct {
 		Command string `json:"command"`
 	} `json:"tool_input"`
 }
@@ -83,6 +87,7 @@ func addHookCommands(root *cobra.Command, config Config) {
 	hook := &cobra.Command{Use: "hook", Short: "Claude Code plugin and git hooks: load conventions and gate git commit and push on cw task verify", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() }}
 	root.AddCommand(hook)
 	addGitHookCommand(root, hook, config)
+	addTaskUsageHook(hook, root, config)
 	hook.AddCommand(&cobra.Command{
 		Use:   "pre-publish",
 		Short: "PreToolUse hook: deny git commit and push while any open substantial task record for the repository lacks a passing cw task verify on the source being published",

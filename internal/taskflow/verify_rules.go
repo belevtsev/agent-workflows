@@ -62,6 +62,9 @@ const (
 	CodeAdviserCoverage FindingCode = "adviser-coverage"
 	// CodeSourceChanged reports source that changed while Verify ran.
 	CodeSourceChanged FindingCode = "source-changed"
+	// CodeUsageUnknown notes a task with a budget whose usage is unknown, so
+	// the budget's stop could not apply.
+	CodeUsageUnknown FindingCode = "usage-unknown"
 )
 
 // Finding is one verify problem or limitation: its stable code and the text
@@ -130,6 +133,7 @@ var verifyRules = [...]verifyRule{
 	executionRule,
 	adviserBindingRule,
 	consultationsRule,
+	usageRule,
 }
 
 // runVerifyRules runs every rule over in and joins what they report.
@@ -150,6 +154,17 @@ func messages(findings []Finding) []string {
 		text = append(text, finding.Message)
 	}
 	return text
+}
+
+// usageRule discloses that a task with a budget has unknown usage. It is a
+// limitation, never a problem: unknown usage never stops a task or blocks its
+// completion.
+func usageRule(_ context.Context, in verifyInput) verifyFindings {
+	var found verifyFindings
+	if state, detail := budgetState(in.record); state == BudgetUnknown {
+		found.limitation(CodeUsageUnknown, "task usage is unknown: "+detail)
+	}
+	return found
 }
 
 func fixedLimitationsRule(context.Context, verifyInput) verifyFindings {

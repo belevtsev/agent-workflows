@@ -127,10 +127,12 @@ func TestHooksJSONShape(t *testing.T) {
 
 	t.Run("events matchers and conditions", func(t *testing.T) {
 		// R-JSON, E1: SessionStart matcher startup|resume|clear|compact;
-		// PreToolUse has one Bash group with exactly three handlers, whose
-		// ifs are Bash(*git*), Bash(*abandon*) and Bash(*cw*owner-approval*)
-		// and whose commands are all the agreed inline command, so they reach
-		// the same decision where several run; SessionStart calls cw hook and references the plugin
+		// PreToolUse has one Bash group with exactly four handlers, whose
+		// ifs are Bash(*git*), Bash(*abandon*), Bash(*cw*owner-approval*)
+		// and Bash(*cw*task*). The first three run the agreed inline command,
+		// so they reach the same decision where several run; the fourth runs
+		// cw hook task-usage with its output discarded, so it never adds a
+		// decision. SessionStart calls cw hook and references the plugin
 		// root and data directory.
 		events := make([]string, 0, len(file.Hooks))
 		for event := range file.Hooks {
@@ -157,11 +159,15 @@ func TestHooksJSONShape(t *testing.T) {
 		ifs := make([]string, 0, len(pre[0].Hooks))
 		for _, entry := range pre[0].Hooks {
 			ifs = append(ifs, entry.If)
-			if entry.Command != preToolUseCommand {
-				t.Fatalf("PreToolUse command %q, want %q", entry.Command, preToolUseCommand)
+			want := preToolUseCommand
+			if entry.If == preToolUseUsageIf {
+				want = preToolUseUsageCommand
+			}
+			if entry.Command != want {
+				t.Fatalf("PreToolUse command %q for %s, want %q", entry.Command, entry.If, want)
 			}
 		}
-		if want := []string{preToolUseIf, preToolUseAbandonIf, preToolUseApprovalIf}; !slices.Equal(ifs, want) {
+		if want := []string{preToolUseIf, preToolUseAbandonIf, preToolUseApprovalIf, preToolUseUsageIf}; !slices.Equal(ifs, want) {
 			t.Fatalf("PreToolUse handler conditions %q, want %q", ifs, want)
 		}
 	})
@@ -169,12 +175,15 @@ func TestHooksJSONShape(t *testing.T) {
 
 // The agreed PreToolUse handlers (E1): one runs the gate for git commands,
 // one for cw task abandon and one for cw's --owner-approval, with the same
-// command.
+// command; and one samples usage before cw task commands.
 const (
 	preToolUseIf         = "Bash(*git*)"
 	preToolUseAbandonIf  = "Bash(*abandon*)"
 	preToolUseApprovalIf = "Bash(*cw*owner-approval*)"
 	preToolUseCommand    = "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish; exit 0"
+	// The usage sampler (C2) runs before cw task commands and never decides.
+	preToolUseUsageIf      = "Bash(*cw*task*)"
+	preToolUseUsageCommand = "command -v cw >/dev/null 2>&1 || exit 0; cw hook task-usage >/dev/null 2>&1; exit 0"
 )
 
 // hooksPreToolUse returns the command of the PreToolUse handler whose if is
@@ -454,6 +463,42 @@ func TestHooksEndToEnd(t *testing.T) {
 		code, stdout, stderr = hooksSh(t, abandonCommand, preStdin(t, outside, "cw task show --task "+record.Directory), env(withCW))
 		if code != 0 || stdout != "" {
 			t.Fatalf("cw task show: exit %d stdout %q stderr %q; want exit 0 and no output", code, stdout, stderr)
+		}
+	})
+
+	t.Run("task-usage samples the named task and never decides", func(t *testing.T) {
+		// Oracle (C2): the task-usage handler, run through its hooks.json
+		// command before `cw task show --task DIR`, exits 0 without output
+		// for a broken transcript, storing nothing, and for a transcript
+		// with one claude-opus-5-5 request of 1,000 output tokens (0.02 USD
+		// from the built-in table), storing that sample.
+		usageCommand := hooksPreToolUse(t, file, preToolUseUsageIf)
+		transcripts := hooksCanonicalTempDir(t)
+		sample := func(t *testing.T, lines string) taskflow.Record {
+			t.Helper()
+			hooksWriteFile(t, transcripts, "s1.jsonl", lines)
+			stdin, err := json.Marshal(map[string]any{"session_id": "s1", "transcript_path": filepath.Join(transcripts, "s1.jsonl"), "hook_event_name": "PreToolUse",
+				"tool_name": "Bash", "cwd": outside, "tool_input": map[string]any{"command": "cw task show --task " + record.Directory}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			code, stdout, stderr := hooksSh(t, usageCommand, stdin, env(withCW))
+			if code != 0 || stdout != "" || stderr != "" {
+				t.Fatalf("exit %d stdout %q stderr %q; want exit 0 and no output", code, stdout, stderr)
+			}
+			loaded, err := taskflow.Load(record.Directory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return loaded
+		}
+		if got := sample(t, `{"type":"assistant","message":`+"\n"); len(got.Usage) != 0 {
+			t.Fatalf("a broken transcript stored %+v", got.Usage)
+		}
+		got := sample(t, `{"type":"assistant","timestamp":"2100-01-01T00:00:00Z","sessionId":"s1","requestId":"r1","message":{"id":"m1","model":"claude-opus-5-5",`+
+			`"usage":{"input_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":1000,"speed":"standard","inference_geo":"global"}}}`+"\n")
+		if len(got.Usage) != 1 || got.Usage[0].USD == nil || *got.Usage[0].USD < 0.0199 || *got.Usage[0].USD > 0.0201 {
+			t.Fatalf("usage %+v, want one sample of 0.02 USD", got.Usage)
 		}
 	})
 

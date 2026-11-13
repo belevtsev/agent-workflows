@@ -29,6 +29,9 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 			writeRoundBudget(cmd.ErrOrStderr(), over)
 			return reportedExit(ExitRefused)
 		}
+		if writeBudgetStop(cmd.ErrOrStderr(), directory, err) {
+			return reportedExit(ExitRefused)
+		}
 		if err != nil {
 			return err
 		}

@@ -478,6 +478,8 @@ func checkExitCode(got proc.Result) *int {
 // RunCheck executes only argv recorded in the immutable plan or added by an
 // amendment (AddChecks), in the repository directory, without a shell. Starting and terminal states are separate durable
 // revisions, so process interruption cannot turn an unfinished check into a pass.
+// A task at its budget's stop runs nothing and returns ErrBudgetStop, which
+// matches ErrOverBudget.
 func (env Env) RunCheck(ctx context.Context, path, checkID string) (CheckRun, error) {
 	return env.executeCheck(ctx, path, checkID, false)
 }
@@ -533,6 +535,11 @@ func (env Env) executeCheck(ctx context.Context, path, checkID string, reuse boo
 		check, found := findCheck(*record, checkID)
 		if !found {
 			return invalid("check is not in the explicit coordinator plan")
+		}
+		// A task at its budget's stop runs no new check (budget.go); a
+		// reused run above runs and records nothing, so it is not new work.
+		if err := budgetRefusal(*record); err != nil {
+			return err
 		}
 		if err := validateCommand(check.Argv); err != nil {
 			return err

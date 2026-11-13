@@ -319,6 +319,10 @@ At the cap, the implementer fixes what needs no counted round; every other `bloc
 Ask the user, giving each open finding, its evidence and the round it needs; pass only their own words to `--owner-approval`.
 Nothing is published until every open `blocker` and `major` is resolved or rejected; never edit an artefact yourself to stay within the budget.
 
+**Cost budget.** Under Codex, which has no usage hook, run `cw task usage --task <task-id> --codex-session <this session's rollout file>` before each `cw task assign`; under Claude Code the plugin hook samples the session. Without a sample the task's usage is unknown: nothing stops it, and verify lists it.
+At 80% of the profile's budget ([cost budget](../../../docs/operations.md#cost-budget)) `cw task assign` and `cw task run` exit 4 with the usage. Ask the user: "continue with a higher budget, or stop with the partial result?"
+Pass only their own words, as `--owner-approval "cost-budget=<their words>"` on the next assignment, which raises the stop to 100% once; at 100% only a new task continues. To stop, `verify`, `handoff`, `accept`, `show` and `abandon` still run.
+
 **Fast paths.** These follow from the rules above and change none of them:
 
 - A first review with no `blocker` or `major` finding needs no follow-up

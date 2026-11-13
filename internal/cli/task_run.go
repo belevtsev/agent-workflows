@@ -8,7 +8,9 @@ import (
 // newTaskRunCommand returns cw task run. It prints the check run whenever one
 // was recorded, then returns the run's error. When the check's latest passed
 // run is reusable it runs nothing and prints that run's summary with status
-// reused, also under --full; --force or CW_NO_REUSE=1 always runs.
+// reused, also under --full; --force or CW_NO_REUSE=1 always runs. A task at
+// its budget's stop runs nothing and exits 4 with the question for the owner
+// (writeBudgetStop).
 func newTaskRunCommand(deps taskDeps) *cobra.Command {
 	var directory, check string
 	var full, force bool
@@ -27,6 +29,9 @@ func newTaskRunCommand(deps taskDeps) *cobra.Command {
 			value, err = env.RunCheck(cmd.Context(), directory, check)
 		} else {
 			value, reused, err = env.RunOrReuseCheck(cmd.Context(), directory, check)
+		}
+		if writeBudgetStop(cmd.ErrOrStderr(), directory, err) {
+			return reportedExit(ExitRefused)
 		}
 		if value.ID != "" {
 			var printed any = value

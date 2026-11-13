@@ -230,7 +230,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap without `--owner-approval` ([round caps](#round-caps)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap without `--owner-approval` ([round caps](#round-caps)); `cw task assign` and `cw task run` at the budget's stop ([budget stop](#budget-stop)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -455,8 +455,8 @@ resolved name into the stored plan and prints it as `profile` in its summary. Th
 the stages the task may assign, the author round caps per stage, the fix rounds
 allowed per finding or requirement, and the budget in US dollars, with the share
 (80%) at which the task is to stop taking new work. `cw task assign` enforces the
-round caps ([round caps](#round-caps)); the fix rounds and the budget are recorded
-but not enforced yet. A plan's `budget` member (`{"max_usd": 10}`) may lower the
+round caps ([round caps](#round-caps)) and, with `cw task run`, the budget's stop
+([budget stop](#budget-stop)); the fix rounds are recorded but not enforced yet. A plan's `budget` member (`{"max_usd": 10}`) may lower the
 profile's budget, never raise it; it may also set `stop_at`, the share at which
 the task stops, up to the profile's 0.8. A higher value of either is refused and
 no task is created. A later revision that changes the profile fails to load. A record
@@ -539,7 +539,29 @@ source.
   whether it was stored and gives the task's usage; `--full` prints the record.
 - A task started before profiles has no budget, and `cw task usage` refuses it.
 
-Nothing stops a task at its budget yet; the budget counts dollars only.
+#### Budget stop
+
+The budget counts dollars only; tokens never stop a task. Under Claude Code the
+plugin hook samples the session before each `cw task` command
+([usage sampling](hooks.md#usage-sampling)); Codex has no such hook, so the
+skill runs `cw task usage --codex-session FILE` before each assignment.
+
+- **The stop.** When the task's estimated dollars reach `stop_at` (80%) of
+  `max_usd`, `cw task assign` and `cw task run` take no new work: they exit 4
+  and write nothing. `cw` prints the usage, the budget and the share used,
+  marks the dollars as estimated, and asks: "continue with a higher budget, or
+  stop with the partial result?"
+- **Continue.** Only the owner's own words go to the next
+  `cw task assign --owner-approval "cost-budget=<the owner's words>"`, recorded
+  on the assignment with `for: "cost-budget"`. It raises the stop to 100% of
+  `max_usd`, once; words given below the stop are refused. At 100% only a new
+  task, with a higher budget, continues.
+- **Stop.** `cw task verify`, `abandon`, `show`, `handoff`, `accept` and `usage`
+  are never stopped, so the partial result can still be recorded and verified.
+- **Unknown usage never stops a task.** With no sample, or a session whose
+  latest dollars are unknown, `cw task verify` lists "task usage is unknown:
+  REASON" as a limitation, which does not block completion. A task started
+  before profiles has no budget and never stops.
 
 ### Task locks
 
@@ -926,7 +948,7 @@ When they differ:
   and the history record no dollars, so their only dollars are price-table
   estimates.
 - **Task records.** A task record holds the usage samples `cw task usage`
-  stored; the task's budget stop, when it lands, reads them, not the cost
+  stored; the task's [budget stop](#budget-stop) reads them, not the cost
   history. A sample is the transcript as it was when sampled, and its dollars
   are estimates from a dated price table, never the cost-state, so they may
   differ from what `cw metrics import` reports for the same transcript. A
