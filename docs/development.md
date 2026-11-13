@@ -349,7 +349,15 @@ The lint job builds the pinned golangci-lint with the Go toolchain that go.mod
 selects, so the linter can load this module. `.golangci.yml` enables govet,
 staticcheck, errcheck, ineffassign, unused, gosec and misspell, and gives the
 reason for each exclusion; a suppressed finding in code carries a
-`//nolint:<linter> // reason` comment. govulncheck fails the job when the
+`//nolint:<linter> // reason` comment.
+
+It also enables `gocognit` (above 60), `funlen` (above 120 lines, comments not
+counted) and `gocyclo` (above 30). Today's offenders are listed one rule per
+function at the end of the file, so a new offender fails the job; the list only
+shrinks, and splitting a listed function removes its rule. errcheck no longer
+hides unchecked `Close`, `Remove` and `fmt.Fprint*` results everywhere: the
+existing ones are excluded per package with a reason, and fixing a package's
+sites removes its rule. govulncheck fails the job when the
 standard library of that toolchain or a dependency has a vulnerability that
 the code can reach; the fix is a newer toolchain or module version. The
 [contributing guide](../CONTRIBUTING.md#build-and-test) has the local commands.

@@ -122,6 +122,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
+- Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
+  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
 
 ### Fixed
 
