@@ -138,11 +138,6 @@ func gitCheck(argv []string) bool {
 	return len(argv) > 0 && strings.TrimSuffix(filepath.Base(argv[0]), ".exe") == "git"
 }
 
-// exactCredit credits only a passed run at snapshot.
-func exactCredit(snapshot projectctx.Snapshot) *creditSource {
-	return &creditSource{snapshot: snapshot, exact: true}
-}
-
 // credit returns the creditSource of record at snapshot. files is the
 // manifest read with snapshot, or nil to read it when a digest is needed.
 // probes is what probeReuse read before the task lock; a check it did not
