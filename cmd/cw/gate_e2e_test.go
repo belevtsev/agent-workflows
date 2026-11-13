@@ -102,7 +102,7 @@ func TestGateInstallStopsCommitsAndPushesThePluginHookCannotSee(t *testing.T) {
 		{"merge commit", "git", []string{"merge", "--no-ff", "--no-edit", "side"}},
 	} {
 		code, output := run(t, attempt.program, attempt.args...)
-		if code != 1 || !strings.Contains(output, record.ID) || !strings.Contains(output, "cw task verify --task "+record.Directory) {
+		if code != 1 || !strings.Contains(output, record.ID) || !strings.Contains(output, "cw task verify --task "+record.ID+"`") {
 			t.Fatalf("%s: exit %d, want 1 with the gate's deny text naming %s:\n%s", attempt.name, code, record.ID, output)
 		}
 		if got := revision(t, repo, "HEAD"); got != head {
@@ -233,7 +233,7 @@ func TestGateInstallLetsAMergeOfTheFetchedBaseBranchThrough(t *testing.T) {
 
 	// A local branch is still judged as a commit, and denied.
 	code, output := run(t, repo, "git", "merge", "--no-ff", "--no-edit", "side")
-	if code != 1 || !strings.Contains(output, record.ID) || !strings.Contains(output, "cw task verify --task "+record.Directory) {
+	if code != 1 || !strings.Contains(output, record.ID) || !strings.Contains(output, "cw task verify --task "+record.ID+"`") {
 		t.Fatalf("merge of the local branch: exit %d, want 1 with the gate's deny text naming %s:\n%s", code, record.ID, output)
 	}
 	if got := revision(t, repo, "HEAD"); got != local {

@@ -115,8 +115,8 @@ func TestTaskAbandonCommand(t *testing.T) {
 		if err := json.Unmarshal([]byte(got), &summary); err != nil {
 			t.Fatalf("summary %q is not a JSON object: %v", got, err)
 		}
-		if summary["task"] != record.Directory || summary["task_id"] != record.ID || summary["status"] != "abandoned" {
-			t.Fatalf("summary %v, want task %q, task_id %q, status abandoned", summary, record.Directory, record.ID)
+		if len(summary) != 2 || summary["task_id"] != record.ID || summary["status"] != "abandoned" {
+			t.Fatalf("summary %v, want only task_id %q and status abandoned", summary, record.ID)
 		}
 		if loaded := taLoad(t, record.Directory); loaded.Abandonment == nil || loaded.Abandonment.Reason != "no longer needed" {
 			t.Fatalf("stored abandonment %+v, want reason %q", loaded.Abandonment, "no longer needed")

@@ -32,7 +32,7 @@ func newTaskAbandonCommand(deps taskDeps) *cobra.Command {
 				return err
 			}
 			if summary {
-				return writeJSON(cmd.OutOrStdout(), map[string]string{"task": record.Directory, "task_id": record.ID, "status": "abandoned"})
+				return writeJSON(cmd.OutOrStdout(), map[string]string{"task_id": record.ID, "status": "abandoned"})
 			}
 			return writeJSON(cmd.OutOrStdout(), record)
 		},

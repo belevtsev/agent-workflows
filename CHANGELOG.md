@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   a script that reads the whole record passes `--full`; `--summary` is still accepted ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - `cw task show` prints the task's state and field names (`--full` for the record), `cw task timeline` the last 20 entries (`--last 0` for all),
   and the `verify` summary joins like problems and lists at most 20 ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+- `cw task` summaries and the commit gate's deny reason name the task by `task_id` instead of its directory, and a log path is relative
+  to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
 ### Added
 

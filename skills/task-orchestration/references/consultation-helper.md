@@ -2,7 +2,7 @@
 
 ## Quick path
 
-A normal checkpoint needs only this section. `T` is the task directory, `P` the
+A normal checkpoint needs only this section. `T` is the task ID, `P` the
 phase (`before` or `final`); use new file paths for each phase.
 
 1. If `adviser-terms-reviewed.md` in the state directory (default

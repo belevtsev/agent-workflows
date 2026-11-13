@@ -124,8 +124,8 @@ func TestDecideDeniesWhileARecordGates(t *testing.T) {
 	// task it names.
 	want := gate.Decision{Permission: gate.Deny, Reason: "agent-workflows: git commit and push stay blocked while a task for this repository is open: " +
 		"each must pass cw task verify on the source being published, or be closed. " +
-		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task /store/task-1 --summary`. " +
-		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation. " +
+		"Task task-1 (Add retries): it has no passing cw task verify; run `cw task verify --task task-1`. " +
+		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-id> --reason TEXT` needs their confirmation. " +
 		"To turn the gate off, set enforce_verify=false in the plugin config."}
 	if got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)
@@ -180,7 +180,7 @@ func TestDecideAsksForAnUnrecordedSubstantialChange(t *testing.T) {
 	// all three signs.
 	changes := "250\t60\tpkg/a.go\x0010\t0\tcmd/b.go\x00"
 	signs := "320 changed lines (more than 300); changes in 2 top-level directories (cmd, pkg); code changed with no test file changed"
-	advice := "Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. " +
+	advice := "Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json` and a passing cw task verify before publishing, or confirm to continue. " +
 		"Set small_task_prompt=false in the plugin config to stop this prompt."
 
 	t.Run("commit", func(t *testing.T) {
@@ -299,7 +299,7 @@ func TestDecideAsksAboutAnUnrecordedChangeWhenTheOnlyRecordCannotBeRead(t *testi
 	// cannot ask must not run it, so it is not ProceedWithoutAsk.
 	want := "agent-workflows: this commit looks like a substantial change with no readable cw task record for " + repo + ": " +
 		"320 changed lines (more than 300); changes in 2 top-level directories (cmd, pkg); code changed with no test file changed. " +
-		"Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json --summary` and a passing cw task verify before publishing, or confirm to continue. " +
+		"Consider recording it with `cw task start --repo " + repo + " --plan PLAN.json` and a passing cw task verify before publishing, or confirm to continue. " +
 		"Set small_task_prompt=false in the plugin config to stop this prompt. " +
 		"agent-workflows: cw cannot read a task record for this repository, so the commit and push gate cannot tell whether it allows this command. " +
 		"Task directory /store/task-5: invalid task JSON: unexpected EOF; if the record is damaged, remove the directory or move it out of the task store, " +
@@ -347,8 +347,8 @@ func TestDecideAsksAfterADirectoryItCannotResolve(t *testing.T) {
 	// host that cannot ask must not run it: it is not ProceedWithoutAsk.
 	want := gate.Decision{Permission: gate.Ask, Reason: "agent-workflows: the commit and push gate cannot tell which directory `cd \"$OTHER\"` leads to, " +
 		"so it checked the session's repository " + repo + " instead, where a task is open: " +
-		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task /store/task-8 --summary`. " +
-		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-dir> --reason TEXT` needs their confirmation. " +
+		"Task task-8 (Open): it has no passing cw task verify; run `cw task verify --task task-8`. " +
+		"For a task that is finished or was given up, ask the user before abandoning it: `cw task abandon --task <task-id> --reason TEXT` needs their confirmation. " +
 		"Confirm only if the git commit or push does not run in " + repo + "."}
 	if got := decide(command, repo, true, true, git, store); got != want {
 		t.Fatalf("Decide = %+v\nwant %+v", got, want)

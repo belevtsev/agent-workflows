@@ -112,7 +112,7 @@ func TestGitPreCommitHookRunsTheGate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	commit(t, "unverified", 3, record.ID, "cw task verify --task "+record.Directory)
+	commit(t, "unverified", 3, record.ID, "cw task verify --task "+record.ID+"`")
 
 	hash := sha256.Sum256([]byte("second\n"))
 	ref := taskflow.SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: hex.EncodeToString(hash[:])}

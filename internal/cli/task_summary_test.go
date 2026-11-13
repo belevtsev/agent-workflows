@@ -91,6 +91,17 @@ func (h *summaryCLIHarness) taskInput(command string, input any, summary bool) [
 	return h.execute(encoded, args...)
 }
 
+// directoryOf is the directory of the task with ID id, which a summary names
+// instead of the directory: cw task show resolves the ID in the task store.
+func (h *summaryCLIHarness) directoryOf(id string) string {
+	h.t.Helper()
+	var fields map[string]string
+	if err := json.Unmarshal(h.execute(nil, "task", "show", "--task", id, "--field", "directory"), &fields); err != nil || fields["directory"] == "" {
+		h.t.Fatalf("task show --task %s --field directory: %v %v", id, fields, err)
+	}
+	return fields["directory"]
+}
+
 func (h *summaryCLIHarness) load() taskflow.Record {
 	h.t.Helper()
 	record, err := taskflow.Load(h.task)
@@ -216,8 +227,8 @@ func summaryCompactForTest(t *testing.T, raw json.RawMessage) string {
 func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	h := newSummaryCLIHarness(t)
 
-	start := parseSummaryLineForTest(t, "start", h.start(true), "task", "task_id", "advisers", "requirements", "checks")
-	h.task = summaryStringForTest(t, start, "task")
+	start := parseSummaryLineForTest(t, "start", h.start(true), "task_id", "advisers", "requirements", "checks")
+	h.task = h.directoryOf(summaryStringForTest(t, start, "task_id"))
 	stored := h.load()
 	if stored.Directory != h.task || h.task == "" {
 		t.Fatalf("start task = %q, want record directory %q", h.task, stored.Directory)
@@ -246,13 +257,13 @@ func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	}
 
 	assign := parseSummaryLineForTest(t, "assign", h.taskInput("assign", summaryCLIBrief(), true),
-		"task", "assignment_id", "assignment_sha256", "fingerprint")
+		"task_id", "assignment_id", "assignment_sha256", "fingerprint")
 	stored = h.load()
 	if len(stored.Assignments) != 1 {
 		t.Fatal("assignment was not stored")
 	}
 	assignment := stored.Assignments[0]
-	if summaryStringForTest(t, assign, "task") != h.task || summaryStringForTest(t, assign, "assignment_id") != "inspect" {
+	if summaryStringForTest(t, assign, "task_id") != h.load().ID || summaryStringForTest(t, assign, "assignment_id") != "inspect" {
 		t.Fatalf("assign summary identifies the wrong assignment: %v", assign)
 	}
 	if got := summaryStringForTest(t, assign, "assignment_sha256"); got != assignment.SHA256 || got == "" {
@@ -263,13 +274,13 @@ func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	}
 
 	handoff := parseSummaryLineForTest(t, "handoff", h.taskInput("handoff", summaryCLIResult(), true),
-		"task", "assignment_id", "result_sha256", "status", "check_runs")
+		"task_id", "assignment_id", "result_sha256", "status", "check_runs")
 	stored = h.load()
 	if len(stored.WorkerResults) != 1 {
 		t.Fatal("handoff was not stored")
 	}
 	bound := stored.WorkerResults[0]
-	if summaryStringForTest(t, handoff, "task") != h.task || summaryStringForTest(t, handoff, "assignment_id") != "inspect" {
+	if summaryStringForTest(t, handoff, "task_id") != h.load().ID || summaryStringForTest(t, handoff, "assignment_id") != "inspect" {
 		t.Fatalf("handoff summary identifies the wrong assignment: %v", handoff)
 	}
 	if got := summaryStringForTest(t, handoff, "result_sha256"); got != bound.SHA256 || got == "" {
@@ -294,13 +305,13 @@ func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 	}
 
 	accept := parseSummaryLineForTest(t, "accept", h.taskInput("accept", summaryCLIAcceptance(), true),
-		"task", "assignment_id", "status", "findings")
+		"task_id", "assignment_id", "status", "findings")
 	stored = h.load()
 	if len(stored.WorkerAcceptances) != 1 {
 		t.Fatal("acceptance was not stored")
 	}
 	acceptance := stored.WorkerAcceptances[0].Acceptance
-	if summaryStringForTest(t, accept, "task") != h.task || summaryStringForTest(t, accept, "assignment_id") != "inspect" {
+	if summaryStringForTest(t, accept, "task_id") != h.load().ID || summaryStringForTest(t, accept, "assignment_id") != "inspect" {
 		t.Fatalf("accept summary identifies the wrong assignment: %v", accept)
 	}
 	if got := summaryStringForTest(t, accept, "status"); got != acceptance.Status || got != "accepted" {
@@ -318,17 +329,17 @@ func TestTaskSummaryFlagReportsStoredWorkerFlow(t *testing.T) {
 
 	h.runChecks()
 	partial := parseSummaryLineForTest(t, "assess", h.taskInput("assess", summaryCLIAssessment(h.fileSHA256(), []string{"zeta"}, false), true),
-		"task", "requirements")
+		"task_id", "requirements")
 	stored = h.load()
 	var statuses map[string]string
 	summaryDecodeForTest(t, partial, "requirements", &statuses)
-	if summaryStringForTest(t, partial, "task") != h.task || len(statuses) != 1 ||
+	if summaryStringForTest(t, partial, "task_id") != h.load().ID || len(statuses) != 1 ||
 		statuses["zeta"] != "satisfied" || statuses["zeta"] != stored.Assessments["zeta"].Assessment.Status {
 		t.Fatalf("assess requirements = %v, want only zeta with its stored status", statuses)
 	}
 
 	full := parseSummaryLineForTest(t, "assess", h.taskInput("assess", summaryCLIAssessment(h.fileSHA256(), []string{"zeta", "alpha"}, true), true),
-		"task", "requirements", "decision")
+		"task_id", "requirements", "decision")
 	stored = h.load()
 	statuses = nil
 	summaryDecodeForTest(t, full, "requirements", &statuses)
@@ -400,19 +411,19 @@ func (h *summaryCLIHarness) adjudicatedConsultation() string {
 // R8, R9 (consult).
 func TestTaskSummaryFlagReportsAttachedConsultation(t *testing.T) {
 	h := newSummaryCLIHarness(t)
-	h.task = summaryStringForTest(t, parseSummaryLineForTest(t, "start", h.start(true),
-		"task", "task_id", "advisers", "requirements", "checks"), "task")
+	h.task = h.directoryOf(summaryStringForTest(t, parseSummaryLineForTest(t, "start", h.start(true),
+		"task_id", "advisers", "requirements", "checks"), "task_id"))
 	final := h.adjudicatedConsultation()
 
 	consult := parseSummaryLineForTest(t, "consult",
 		h.execute(nil, "task", "consult", "--task", h.task, "--phase", "before", "--input", final, "--summary"),
-		"task", "phase", "decision_status", "providers")
+		"task_id", "phase", "decision_status", "providers")
 	stored := h.load()
 	attachment, ok := stored.Consultations["before"]
 	if !ok {
 		t.Fatal("consultation was not stored")
 	}
-	if summaryStringForTest(t, consult, "task") != h.task || summaryStringForTest(t, consult, "phase") != "before" {
+	if summaryStringForTest(t, consult, "task_id") != h.load().ID || summaryStringForTest(t, consult, "phase") != "before" {
 		t.Fatalf("consult summary identifies the wrong phase: %v", consult)
 	}
 	if got := summaryStringForTest(t, consult, "decision_status"); got != attachment.DecisionStatus || got == "" {
@@ -526,8 +537,9 @@ func TestTaskSummaryFlagReportsCheckRun(t *testing.T) {
 	if stored.Failure != "" {
 		t.Fatalf("passing run stored failure %q", stored.Failure)
 	}
-	if got := summaryStringForTest(t, run, "log"); got != filepath.Join(h.task, stored.Log) || stored.Log == "" {
-		t.Fatalf("run log = %q, want %q", got, filepath.Join(h.task, stored.Log))
+	// Oracle: the log is named relative to the task directory.
+	if got := summaryStringForTest(t, run, "log"); got != stored.Log || stored.Log == "" || filepath.IsAbs(got) {
+		t.Fatalf("run log = %q, want %q", got, stored.Log)
 	}
 
 	output := h.runCheck(false)
@@ -568,7 +580,7 @@ func TestTaskSummaryFlagReportsCheckRunsAndFindingDispositions(t *testing.T) {
 		"evidence": []any{summaryCLIUnhashedRef()},
 	}}
 	handoff := parseSummaryLineForTest(t, "handoff", h.taskInput("handoff", result, true),
-		"task", "assignment_id", "result_sha256", "status", "check_runs")
+		"task_id", "assignment_id", "result_sha256", "status", "check_runs")
 	stored := h.load()
 	if len(stored.WorkerResults) != 1 {
 		t.Fatal("handoff was not stored")
@@ -595,7 +607,7 @@ func TestTaskSummaryFlagReportsCheckRunsAndFindingDispositions(t *testing.T) {
 		"evidence": []any{summaryCLIUnhashedRef()},
 	}}
 	accept := parseSummaryLineForTest(t, "accept", h.taskInput("accept", acceptance, true),
-		"task", "assignment_id", "status", "findings")
+		"task_id", "assignment_id", "status", "findings")
 	stored = h.load()
 	if len(stored.WorkerAcceptances) != 1 {
 		t.Fatal("acceptance was not stored")

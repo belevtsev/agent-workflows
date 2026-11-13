@@ -194,16 +194,15 @@ func (e *tle2eEnv) start(t *testing.T, plan string) (task, taskID string) {
 		t.Fatalf("task start exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 	}
 	obj := tle2eDecodeOne(t, stdout)
-	task = tle2eString(t, obj, "task")
+	// The summary names the task by its ID, the name of its directory in the
+	// store, and never by the directory.
+	if _, ok := obj["task"]; ok {
+		t.Errorf("start summary names the task directory: %s", stdout)
+	}
 	taskID = tle2eString(t, obj, "task_id")
-	if !filepath.IsAbs(task) {
-		t.Errorf("task %q is not absolute", task)
-	}
-	if !tle2eInside(task, filepath.Join(e.state, "workflow-tasks")) {
-		t.Errorf("task %s is not inside %s", task, filepath.Join(e.state, "workflow-tasks"))
-	}
-	if taskID == "" || taskID != filepath.Base(task) {
-		t.Errorf("task_id = %q, want non-empty base name of %q", taskID, task)
+	task = filepath.Join(e.state, "workflow-tasks", taskID)
+	if fi, err := os.Stat(task); taskID == "" || err != nil || !fi.IsDir() {
+		t.Errorf("task_id = %q names no task directory in %s: %v", taskID, filepath.Dir(task), err)
 	}
 	var advisers map[string]json.RawMessage
 	if raw, ok := obj["advisers"]; !ok || json.Unmarshal(raw, &advisers) != nil || advisers == nil || len(advisers) != 0 {
@@ -248,10 +247,12 @@ func (e *tle2eEnv) runCheck(t *testing.T, task, check string, wantCode int, want
 		if tle2eString(t, obj, "run_id") == "" {
 			t.Errorf("run_id is empty")
 		}
+		// The log is named relative to the task directory.
 		logPath := tle2eString(t, obj, "log")
-		if !filepath.IsAbs(logPath) {
-			logPath = filepath.Join(task, logPath)
+		if filepath.IsAbs(logPath) {
+			t.Errorf("log %q is not relative to the task directory", logPath)
 		}
+		logPath = filepath.Join(task, logPath)
 		if fi, err := os.Stat(logPath); err != nil || !fi.Mode().IsRegular() {
 			t.Errorf("log %q is not an existing file: %v", logPath, err)
 		}
@@ -271,11 +272,11 @@ func (e *tle2eEnv) assess(t *testing.T, task string) {
 		t.Fatalf("task assess exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 	}
 	obj := tle2eDecodeOne(t, stdout)
-	if keys := tle2eKeys(obj); keys != "decision,requirements,task" {
-		t.Errorf("assess keys = %s, want decision,requirements,task", keys)
+	if keys := tle2eKeys(obj); keys != "decision,requirements,task_id" {
+		t.Errorf("assess keys = %s, want decision,requirements,task_id", keys)
 	}
-	if got := tle2eString(t, obj, "task"); got != task {
-		t.Errorf("assess task = %q, want %q", got, task)
+	if got := tle2eString(t, obj, "task_id"); got != filepath.Base(task) {
+		t.Errorf("assess task_id = %q, want %q", got, filepath.Base(task))
 	}
 	var reqs map[string]string
 	if err := json.Unmarshal(obj["requirements"], &reqs); err != nil || len(reqs) != 1 || reqs["r1"] != "satisfied" {

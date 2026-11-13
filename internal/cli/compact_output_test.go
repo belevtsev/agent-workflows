@@ -1368,7 +1368,7 @@ func compactTaskFlow(t *testing.T, mode compactOutputMode, want func(h *summaryC
 	}
 
 	printed := run("start", []byte(summaryCLITestPlan), "--plan", "-", "--policy", shippedPolicyPath)
-	h.task = compactStartedTask(t, printed)
+	h.task = compactStartedTask(h, printed)
 	want(h, "start", printed)
 	want(h, "assign", inputRun("assign", summaryCLIBrief()))
 	want(h, "handoff", inputRun("handoff", summaryCLIResult()))
@@ -1380,24 +1380,26 @@ func compactTaskFlow(t *testing.T, mode compactOutputMode, want func(h *summaryC
 	want(h, "consult", run("consult", nil, "--task", h.task, "--phase", "before", "--input", h.adjudicatedConsultation()))
 }
 
-// compactStartedTask is the task directory start printed: the summary names
-// it as "task", the record as "directory".
-func compactStartedTask(t *testing.T, printed string) string {
+// compactStartedTask is the task directory start printed: the record names it
+// as "directory", and the summary names the task by "task_id", which show
+// resolves to the directory.
+func compactStartedTask(h *summaryCLIHarness, printed string) string {
+	t := h.t
 	t.Helper()
 	var members struct {
-		Task      string `json:"task"`
+		TaskID    string `json:"task_id"`
 		Directory string `json:"directory"`
 	}
 	if err := json.Unmarshal([]byte(printed), &members); err != nil {
 		t.Fatalf("start did not print one JSON object: %v: %q", err, printed)
 	}
-	if members.Task != "" {
-		return members.Task
+	if members.Directory != "" {
+		return members.Directory
 	}
-	if members.Directory == "" {
-		t.Fatalf("start printed no task directory: %q", printed)
+	if members.TaskID == "" {
+		t.Fatalf("start printed neither a task directory nor a task ID: %q", printed)
 	}
-	return members.Directory
+	return h.directoryOf(members.TaskID)
 }
 
 // compactFormerSummary is what command printed with --summary before the

@@ -75,11 +75,10 @@ func TestTaskTraceCLISummary(t *testing.T) {
 		t.Fatalf("cw task trace --summary: %v (exit %d), stderr %q; want exit 0 (R37)", err, cli.ExitCode(err), stderr)
 	}
 	got := l3cObject(t, "summary", out)
-	if keys := l3cKeys(got); !reflect.DeepEqual(keys, []string{"criteria", "gaps", "problems", "task", "task_id"}) {
-		t.Errorf("summary members %v, want exactly criteria, gaps, problems, task, task_id (R37)", keys)
+	if keys := l3cKeys(got); !reflect.DeepEqual(keys, []string{"criteria", "gaps", "problems", "task_id"}) {
+		t.Errorf("summary members %v, want exactly criteria, gaps, problems, task_id (R37)", keys)
 	}
 	want := map[string]any{
-		"task":    f.dir,
 		"task_id": f.id,
 		"criteria": map[string]any{
 			"C1": "proven", "C2": "open", "C3": "lost", "C4": "unmapped", "C5": "unmapped",
@@ -99,7 +98,7 @@ func TestTaskTraceCLISummary(t *testing.T) {
 		},
 		"problems": []any{},
 	}
-	for _, k := range []string{"task", "task_id", "criteria", "gaps", "problems"} {
+	for _, k := range []string{"task_id", "criteria", "gaps", "problems"} {
 		if !reflect.DeepEqual(got[k], want[k]) {
 			g, _ := json.Marshal(got[k])
 			w, _ := json.Marshal(want[k])

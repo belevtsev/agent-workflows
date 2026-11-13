@@ -8,7 +8,6 @@ import (
 // taskTraceSummary is what `cw task trace --summary` prints: each criterion's
 // status and only the gaps that keep a criterion from being proven.
 type taskTraceSummary struct {
-	Task     string            `json:"task"`
 	TaskID   string            `json:"task_id"`
 	Criteria map[string]string `json:"criteria"`
 	Gaps     []taskTraceGap    `json:"gaps"`
@@ -26,8 +25,8 @@ type taskTraceGap struct {
 	Detail       string `json:"detail,omitempty"`
 }
 
-func traceSummary(directory string, report taskflow.TraceReport) taskTraceSummary {
-	value := taskTraceSummary{Task: directory, TaskID: report.TaskID, Criteria: map[string]string{}, Gaps: []taskTraceGap{}, Problems: report.Problems}
+func traceSummary(report taskflow.TraceReport) taskTraceSummary {
+	value := taskTraceSummary{TaskID: report.TaskID, Criteria: map[string]string{}, Gaps: []taskTraceGap{}, Problems: report.Problems}
 	if value.Problems == nil {
 		value.Problems = []string{}
 	}
@@ -76,11 +75,7 @@ func newTaskTraceCommand(deps taskDeps) *cobra.Command {
 			if !summary {
 				return writeJSON(cmd.OutOrStdout(), report)
 			}
-			record, err := taskflow.Load(directory)
-			if err != nil {
-				return err
-			}
-			return writeJSON(cmd.OutOrStdout(), traceSummary(record.Directory, report))
+			return writeJSON(cmd.OutOrStdout(), traceSummary(report))
 		},
 	}
 	taskFlag(trace, &directory)

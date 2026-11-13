@@ -1785,8 +1785,8 @@ func aclTestExitStatus(t *testing.T) {
 }
 
 // aclTestSummary fails when the default output does not print exactly
-// the section 1.5 members, or prints the --task argument as typed instead of
-// the canonical task directory (R18.e).
+// the section 1.5 members, with the task named by its ID rather than by any
+// directory, the --task argument as typed or the canonical one (R18.e).
 func aclTestSummary(t *testing.T) {
 	aclSetup(t)
 	t.Parallel()
@@ -1818,7 +1818,6 @@ func aclTestSummary(t *testing.T) {
 		t.Fatalf("setup: record directory %q, symlink %q resolves to %q (%v)", rec.Directory, link, canonical, err)
 	}
 	want := map[string]any{
-		"task":         rec.Directory,
 		"task_id":      rec.ID,
 		"amendment":    float64(0),
 		"checks":       []any{"widened"},
@@ -1827,7 +1826,7 @@ func aclTestSummary(t *testing.T) {
 		"base_commit":  r.O,
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("R18.e: summary = %#v, want %#v (task must be the canonical directory, not %q)", got, want, link)
+		t.Errorf("R18.e: summary = %#v, want %#v (no task directory, neither %q nor the canonical one)", got, want, link)
 	}
 }
 

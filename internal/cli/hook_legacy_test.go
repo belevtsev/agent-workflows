@@ -89,7 +89,7 @@ func TestHookPrePublishGatesOnLegacyRecords(t *testing.T) {
 			t.Errorf("deny reason %q does not contain %q", reason, want)
 		}
 	}
-	for _, refused := range []string{"cw task verify --task " + record.Directory, "cw task abandon --task " + record.Directory} {
+	for _, refused := range []string{"cw task verify --task " + record.ID, "cw task abandon --task " + record.ID, "cw task verify --task " + record.Directory} {
 		if strings.Contains(reason, refused) {
 			t.Errorf("deny reason %q offers %q, which cannot load a legacy record", reason, refused)
 		}
