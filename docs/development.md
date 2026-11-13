@@ -147,7 +147,10 @@ GOWORK=off go test ./internal/skillcheck
   `lite_flow_budget_test.go`) hold at most 90,000 bytes together; every other
   file is listed there with the condition that loads it;
 - only `global/AGENTS.md` states when a task is substantial; the skills, agents,
-  hooks, docs and model policies link to it.
+  hooks, docs and model policies link to it;
+- in `.github/workflows/ci.yml` every job that uses the `go-test` action runs
+  each shard the action selects, and each required `Native Go` check runs with
+  `always()` and fails unless the result of its system's shard job is `success`.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
