@@ -469,24 +469,24 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 	}
 	decision := record.Decision
 	if decision == nil || decision.Decision.Status != "resolved" || !nonblank(decision.Decision.Reason) {
-		problem("Codex task decision is unresolved")
+		problem("coordinator decision is unresolved")
 	} else {
 		if !equalSnapshot(snapshot, decision.Snapshot) && !stillCredited(record, source, decision.Decision.CheckIDs, decision.CheckRuns) {
-			problem("Codex task decision is stale")
+			problem("coordinator decision is stale")
 		}
 		if err := validateRefs(snapshot, decision.Decision.Evidence); err != nil {
-			problem("Codex task decision: %v", err)
+			problem("coordinator decision: %v", err)
 		}
 		runs, err := bindChecks(record, source, decision.Decision.CheckIDs)
 		if err != nil || !slices.Equal(runs, decision.CheckRuns) {
-			problem("Codex task decision has invalid check references")
+			problem("coordinator decision has invalid check references")
 		}
 		if len(runs) == 0 && (!permittedNonExecution(record) || !nonblank(decision.Decision.NonExecutionReason)) {
-			problem("Codex task decision lacks permitted non-execution reasoning")
+			problem("coordinator decision lacks permitted non-execution reasoning")
 		}
 		for _, id := range decision.CheckRuns {
 			if err := checkStoredRun(artifacts, record, source, id); err != nil {
-				problem("Codex task decision: %v", err)
+				problem("coordinator decision: %v", err)
 			}
 		}
 	}
@@ -494,7 +494,7 @@ func localEvidenceProblems(artifacts Artifacts, record Record, source *creditSou
 }
 
 // Verify records a mechanical completion gate. It does not claim to prove the
-// meaning of source, the adequacy of tests, or the truth of Codex's reasoning.
+// meaning of source, the adequacy of tests, or the truth of the coordinator's reasoning.
 func (env Env) Verify(ctx context.Context, path string) (Verification, error) {
 	var result Verification
 	probes := env.probeReuse(ctx, path)

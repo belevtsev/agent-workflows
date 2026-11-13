@@ -33,6 +33,7 @@ var taskCommands = []func(deps taskDeps) *cobra.Command{
 	newTaskConsultCommand,
 	newTaskVerifyCommand,
 	newTaskShowCommand,
+	newTaskListCommand,
 	newTaskBriefCommand,
 	newTaskReceiptCommand,
 	newTaskTraceCommand,

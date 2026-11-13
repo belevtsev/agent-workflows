@@ -23,6 +23,55 @@ import (
 
 var credentialKeys = []string{"TYPESAFE_API_KEY", "SUBQ_API_KEY", "OPENAI_API_KEY"}
 
+// pluginName is the plugin's name in the marketplace and in the host's
+// plugin cache.
+const pluginName = "agent-workflows"
+
+// Check classes. A required check names something the workflow cannot run
+// without; an optional one names a tool or integration it works without.
+const (
+	ClassRequired = "required"
+	ClassOptional = "optional"
+)
+
+// checkClasses gives the class of every check Doctor reports, and of
+// git_hooks, which cw doctor adds.
+var checkClasses = map[string]string{
+	"project_source":          ClassRequired,
+	"project_contracts":       ClassRequired,
+	"git_cli":                 ClassRequired,
+	"cw_cli":                  ClassRequired,
+	"workflow_skills":         ClassRequired,
+	"git_hooks":               ClassRequired,
+	"codex_config":            ClassOptional,
+	"claude_config":           ClassOptional,
+	"credentials_stored":      ClassOptional,
+	"credentials_environment": ClassOptional,
+	"credentials_launcher":    ClassOptional,
+	"credentials_codex_shell": ClassOptional,
+	"mcp_gopls":               ClassOptional,
+	"mcp_jbcontext":           ClassOptional,
+	"jbcontext_cli":           ClassOptional,
+	"jbcontext_index":         ClassOptional,
+	"jbcontext_overlay":       ClassOptional,
+	"jbcontext_watch":         ClassOptional,
+	"jbcontext_retrieval":     ClassOptional,
+	"gopls_cli":               ClassOptional,
+	"gopls_mcp":               ClassOptional,
+	"gopls_dispatch":          ClassOptional,
+	"graphify_cli":            ClassOptional,
+	"graphify_version":        ClassOptional,
+}
+
+// CheckClass returns the class of the named check. A check without a declared
+// class is required, so a new check is reported until it is declared optional.
+func CheckClass(name string) string {
+	if class, ok := checkClasses[name]; ok {
+		return class
+	}
+	return ClassRequired
+}
+
 // Doctor performs metadata-only inspection unless Live is explicitly enabled.
 // Optional probes have fixed argv, minimal environments, bounded output and
 // deadlines. No instruction text, package provisioning, or model call is run.
@@ -65,6 +114,12 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 		}
 	}
 	skillRoots := []string{filepath.Join(options.Home, ".agents", "skills"), filepath.Join(options.ClaudeHome, "skills")}
+	// A plugin install keeps its skills in the host's plugin cache, as
+	// <marketplace>/agent-workflows/<version>/skills, not in a skill root.
+	for _, cache := range []string{filepath.Join(options.ClaudeHome, "plugins", "cache"), filepath.Join(options.CodexHome, "plugins", "cache")} {
+		matches, _ := filepath.Glob(filepath.Join(cache, "*", pluginName, "*", "skills"))
+		skillRoots = append(skillRoots, matches...)
+	}
 	if options.SkillsHome != "" {
 		skillRoots = []string{options.SkillsHome}
 	}
@@ -144,6 +199,16 @@ func Doctor(ctx context.Context, options DoctorOptions) (DoctorReport, error) {
 			return ""
 		}
 		return path
+	}
+	for _, tool := range []struct{ check, name, missing string }{
+		{"git_cli", "git", "git was not found on PATH; cw reads source identity and the commit gate runs through git"},
+		{"cw_cli", "cw", "cw was not found on PATH; the plugin's hooks and the git hooks cw gate install writes run cw from PATH"},
+	} {
+		if lookup(tool.name) == "" {
+			put(tool.check, "missing", tool.missing, "executable_lookup")
+		} else {
+			put(tool.check, "detected", tool.name+" executable detected on PATH; its version is unchecked", "executable_lookup")
+		}
 	}
 	jbcontext := lookup("jbcontext")
 	if jbcontext == "" {

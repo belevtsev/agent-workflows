@@ -83,20 +83,21 @@ func TestDenyReasonNamesAtMostThreeTasks(t *testing.T) {
 			if n := strings.Count(reason, abandon); n != 1 {
 				t.Errorf("deny reason gives the abandon sentence %d times, want once:\n%s", n, reason)
 			}
-			// Oracle: past three, the reason counts the rest and names the
-			// task store they are in once; up to three, it counts nothing.
+			// Oracle: past three, the reason counts the rest and names
+			// `cw task list`, which lists them, instead of a task store; up
+			// to three, it counts nothing.
 			more := ""
 			switch rest := count - named; {
 			case rest == 1:
-				more = " And 1 more open task in " + denyStore + ";"
+				more = " And 1 more open task (`cw task list` lists it);"
 			case rest > 1:
-				more = fmt.Sprintf(" And %d more open tasks in %s;", rest, denyStore)
+				more = fmt.Sprintf(" And %d more open tasks (`cw task list` lists them);", rest)
 			}
 			if more != "" && strings.Count(reason, more) != 1 || more == "" && strings.Contains(reason, " more open task") {
 				t.Errorf("deny reason for %d records does not count the rest as %q:\n%s", count, more, reason)
 			}
-			if n := strings.Count(reason, denyStore+";"); more != "" && n != 1 {
-				t.Errorf("deny reason names the task store %d times, want once:\n%s", n, reason)
+			if strings.Contains(reason, denyStore) {
+				t.Errorf("deny reason names the task store %s, want `cw task list` for the rest:\n%s", denyStore, reason)
 			}
 
 			// Oracle: the ask after a directory change the gate cannot follow
@@ -126,7 +127,7 @@ func TestDenyReasonCountsALegacyRecordPastTheFirstThree(t *testing.T) {
 	got := decide("git commit -m x", repo, true, true, git, &fakeStore{open: map[string][]taskflow.OpenRecord{repo: open}})
 	// Oracle: the count of the rest says how to clear a record that verify
 	// and abandon cannot load, without naming it.
-	want := " And 1 more open task in " + denyStore + "; each needs `cw task verify` or the user's confirmation to abandon, " +
+	want := " And 1 more open task (`cw task list` lists it); each needs `cw task verify` or the user's confirmation to abandon, " +
 		"or, if this cw cannot read its record, moving its directory out of the task store."
 	if got.Permission != gate.Deny || !strings.Contains(got.Reason, want) || strings.Contains(got.Reason, open[3].Record.ID) {
 		t.Fatalf("Decide = %+v, want a deny that counts the legacy record as %q and does not name it", got, want)

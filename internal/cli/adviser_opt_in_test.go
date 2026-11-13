@@ -254,7 +254,7 @@ func TestDoctorSummaryStaysOkWithOnlyAKeyWithoutAnOptIn(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			report := doctor.DoctorReport{Checks: map[string]doctor.Check{}, Warnings: c.warnings}
 			report.Profile.Warnings = c.profile
-			summary := summarizeDoctor(report)
+			summary := summarizeDoctor(report, false)
 			if summary.Status != c.want || !slices.Contains(summary.Warnings, optInKeyWarning) {
 				t.Fatalf("summary status %q, warnings %q; want status %q with the key warning listed", summary.Status, summary.Warnings, c.want)
 			}

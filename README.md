@@ -110,6 +110,10 @@ Check that `cw` can read your repository:
 cw doctor --summary --repo "$PWD"
 ```
 
+It prints `"status":"ok"` when nothing blocks the workflow; `problems` names
+what does. Optional tools are only counted, in `optional_missing`; `--all`
+lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+
 ## Your first task
 
 The steps below are for a substantial task. A small change needs none of this;
