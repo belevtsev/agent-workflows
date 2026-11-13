@@ -3,7 +3,8 @@
 Claude Code gets the skills and worker agents from the plugin in
 `.claude-plugin/`, and Codex from `.codex-plugin/` and
 `.agents/plugins/marketplace.json`. This page covers installing them and `cw`,
-the Codex instruction block, paths, the model policy lookup and adviser keys.
+the Codex instruction block, paths, exit statuses, what each version promises
+([stability](#stability)), the model policy lookup and adviser keys.
 
 ## Install
 
@@ -264,6 +265,37 @@ when a hook it did not write is in the way, and still writes the other hooks;
 `cw gate install` and `uninstall` exit 4 without changing anything when the
 hooks directory can serve other repositories and `--shared` is not given
 ([installing the git hooks](hooks.md#installing-the-git-hooks)).
+
+## Stability
+
+From `v3.0.0`, `cw` follows [semantic versioning](https://semver.org) for
+its core commands. `cw --help` lists the two groups.
+
+| Group | Commands | Promise |
+| --- | --- | --- |
+| Core | `doctor`, `gate`, `help`, `hook`, `install`, `pack`, `publish`, `task`, `uninstall`, `version` | Their names, flags, [exit statuses](#exit-statuses) and JSON output, the plan and other JSON input formats, the [task record format](development.md#task-record-format) and the hook decisions change incompatibly only in a major release. |
+| Experimental | `consult`, `graphify`, `keys`, `metrics` | Any of these may change or go away in a minor release. `cw task consult` and the consultation record it keeps belong to `cw consult`, so they are experimental too. |
+
+Before `v3.0.0`, a release candidate may still break the core commands; the
+[CHANGELOG](../CHANGELOG.md) lists each such change under Breaking.
+
+The other version numbers follow these rules:
+
+- **Plugin version.** The Claude Code and Codex plugins carry the version of
+  the `cw` release they ship with, the tag without its leading `v`. Use the
+  same version of both: at session start the plugin adds a line when the
+  two differ ([session start](hooks.md#session-start)).
+- **`pack.yaml` `schema`.** An integer, now 1. A `cw` reads the schemas it
+  knows and refuses a newer one rather than read it partly; a key or value an
+  older `cw` would refuse raises it ([`pack.yaml`](packs.md#packyaml)).
+- **Task record `version`.** Raised on every change that a `cw` reading the
+  previous version could not load; a `cw` reads its own version and older
+  ones down to 3. A raise is listed under Breaking
+  ([task record format](development.md#task-record-format)).
+- **Skill wording.** The text of the skills, agents, references and
+  `global/` conventions is outside semver: any release may reword it. What
+  `cw` reads or prints, such as the model policy members `cw` reads, follows
+  the rules above.
 
 ## Model policy
 
