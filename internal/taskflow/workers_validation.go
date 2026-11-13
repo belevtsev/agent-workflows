@@ -86,6 +86,9 @@ func validateWorkerRecord(record Record) error {
 		if err := validateStoredApprovals(record, assigned); err != nil {
 			return err
 		}
+		if assigned.SourceSHA256 != "" && !validSHA256(assigned.SourceSHA256) {
+			return errors.New("stored worker assignment source_sha256 is invalid")
+		}
 	}
 	results := map[string]bool{}
 	for i, bound := range record.WorkerResults {
@@ -157,7 +160,7 @@ func validateWorkerTransition(previous, current Record) error {
 		// Like the round rule, the limits depend on the assignments, results
 		// and acceptances the previous revision holds, and on the source the
 		// assignment bound.
-		if !approvalsMatch(previous, assigned.Snapshot, assigned.Brief, assigned.OwnerApprovals) {
+		if !approvalsMatch(previous, assigned) {
 			return fmt.Errorf("stored worker assignment %s goes past a limit of its profile without the owner's approval, or carries one it does not need", assigned.Brief.ID)
 		}
 		if assigned.Brief.Role == "implementation" {

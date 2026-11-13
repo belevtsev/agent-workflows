@@ -71,6 +71,11 @@ type WorkerAssignment struct {
 	// the assignment went past, one per limit (rounds.go); an assignment
 	// within every limit carries none.
 	OwnerApprovals []OwnerApproval `json:"owner_approvals,omitempty"`
+	// SourceSHA256 is SourceDigest of the source the assignment was made at,
+	// by which a requirement's reused check run counts as a pass for its fix
+	// rounds at assign and again on load (rounds.go). Assignments recorded
+	// before it existed omit it (record version 5).
+	SourceSHA256 string `json:"source_sha256,omitempty"`
 }
 
 // WorkerChangedFile binds a declared current regular file to its bytes, or an
@@ -271,7 +276,8 @@ func assignmentHash(assignment WorkerAssignment) (string, error) {
 		Brief          WorkerBrief         `json:"brief"`
 		Snapshot       projectctx.Snapshot `json:"snapshot"`
 		OwnerApprovals []OwnerApproval     `json:"owner_approvals,omitempty"`
-	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals})
+		SourceSHA256   string              `json:"source_sha256,omitempty"`
+	}{assignment.TaskID, assignment.Brief, assignment.Snapshot, assignment.OwnerApprovals, assignment.SourceSHA256})
 	if err != nil {
 		return "", err
 	}
@@ -367,20 +373,25 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if len(record.Assignments) >= 256 {
 			return errors.New("task worker assignment limit reached")
 		}
-		snapshot, err := env.source().Snapshot(ctx, record.Baseline.SelectedPath)
+		snapshot, files, err := env.source().Manifest(ctx, record.Baseline.SelectedPath)
 		if err != nil {
 			return err
 		}
+		_, sourceSHA256, err := sourceManifest(files)
+		if err != nil {
+			return err
+		}
+		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, SourceSHA256: sourceSHA256}
 		// A requirement's fix rounds depend on its checks at the source
-		// the assignment binds.
-		approvals, err := ownerApprovals(limitsOver(*record, snapshot, brief), brief.ID, ownerWords)
+		// the assignment binds, judged as load judges them.
+		approvals, err := ownerApprovals(limitsOver(*record, assignmentCredit(assignment), brief), brief.ID, ownerWords)
 		if err != nil {
 			return err
 		}
 		if err := validateWorkerOwnership(*record, snapshot, brief); err != nil {
 			return err
 		}
-		assignment := WorkerAssignment{TaskID: record.ID, Brief: brief, Snapshot: snapshot, AssignedAt: env.now(), OwnerApprovals: approvals}
+		assignment.AssignedAt, assignment.OwnerApprovals = env.now(), approvals
 		for i := range assignment.OwnerApprovals {
 			assignment.OwnerApprovals[i].At = assignment.AssignedAt
 		}

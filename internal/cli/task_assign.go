@@ -59,13 +59,18 @@ func writeOverBudget(w io.Writer, err error) {
 		}
 	}
 	if escalation, ok := errors.AsType[taskflow.ErrEscalation](err); ok {
-		fmt.Fprintln(w, "Earlier fix rounds:")
-		for _, round := range escalation.History {
-			fmt.Fprintf(w, "  - %s: %s\n", round.Assignment, round.Summary)
+		for _, key := range escalation.Keys {
+			fmt.Fprintf(w, "Earlier fix rounds on %s:\n", key.Name())
+			if key.Omitted > 0 {
+				fmt.Fprintf(w, "  - (%d earlier rounds not shown)\n", key.Omitted)
+			}
+			for _, round := range key.History {
+				fmt.Fprintf(w, "  - %s: %s\n", round.Assignment, round.Summary)
+			}
 		}
-		fmt.Fprintln(w, "The owner chooses:")
-		fmt.Fprintln(w, "  - approve one more fix round, with the owner's words as below;")
-		fmt.Fprintln(w, "  - or change the approach: revise the design or the plan instead of fixing the same thing again.")
+		fmt.Fprintln(w, "Both choices are the owner's:")
+		fmt.Fprintln(w, `  - one more fix round: the owner's words, passed as --owner-approval "escalation=<the owner's words>";`)
+		fmt.Fprintln(w, `  - or a change of approach: the owner's words naming the new approach, passed the same way, or the owner disposes of the finding: rejected against evidence, or deferred with the owner's reason.`)
 	}
 	fmt.Fprintln(w, `Ask the owner whether to go on. A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>".`)
 }

@@ -516,13 +516,22 @@ work does not count, and a repeat of it takes its place and its `fixes`. A
 finding with `reopens` (an earlier finding, as `<assignment id>/<finding id>`)
 counts as that earlier one. A brief that fixes a key with the profile's fix
 rounds (2) behind it while the key is still open is refused with exit 4 and no
-revision. A finding is open until the latest acceptance of its result disposes
-it as `resolved`, `rejected` or `deferred`; a requirement is open while one of
-its checks lacks a passed run at the source the brief is assigned at. `cw` lists
-each earlier round's assignment and result summary and names the owner's two
-choices: one more fix round, through `--owner-approval` with the limit
-`escalation`, or a change of approach. A third `tests` round that is also a
-third fix goes past both limits and needs words for each.
+revision, naming every such key the brief fixes, its rounds and the profile's
+allowance. A finding key is open while any finding of its `reopens` chain is
+open: until the latest acceptance of that finding's result disposes it as
+`resolved`, `rejected` or `deferred`. A requirement with checks is open while
+one of them lacks a credited pass at the source the brief is assigned at, a
+reused pass included: the assignment records that source's digest as
+`source_sha256`, and load judges it the same way. A requirement without checks
+is open until its latest assessment says `satisfied`. `cw` lists each key's
+latest four rounds (assignment and the first line of its result summary, cut to
+200 bytes, counting the rest) and names the owner's two choices, both the
+owner's call: one more fix round, or a change of approach. Either way the owner
+gives words, passed as `--owner-approval "escalation=<the owner's words>"`, that
+approve the round or name the new approach; or the owner disposes of the
+finding, rejected against evidence or deferred with the owner's reason. A
+third `tests` round that is also a third fix goes past both limits and needs
+words for each.
 
 ### Cost budget
 

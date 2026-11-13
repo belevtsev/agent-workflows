@@ -57,11 +57,10 @@ func TestAssignAThirdFixRoundIsRefusedWithBothOptions(t *testing.T) {
 		t.Fatalf("third fix round exits %d (%v), want %d; stderr %q", got, refused.err, ExitRefused, refused.stderr)
 	}
 	for _, want := range []string{
-		"finding i0/f1 is still open after 2 fix rounds, the most profile lite allows",
-		"i1: Round i1 changed the guard.",
-		"i2: Round i2 changed the guard.",
-		"approve one more fix round",
-		"or change the approach",
+		"finding i0/f1 is still open after 2 fix rounds; profile lite allows 2 per finding or requirement",
+		"Earlier fix rounds on finding i0/f1:\n  - i1: Round i1 changed the guard.\n  - i2: Round i2 changed the guard.\n",
+		`one more fix round: the owner's words, passed as --owner-approval "escalation=<the owner's words>"`,
+		"or a change of approach: the owner's words naming the new approach, passed the same way, or the owner disposes of the finding: rejected against evidence, or deferred with the owner's reason",
 		`A person must give the words: only then pass them, unchanged, as --owner-approval "<the owner's words>"`,
 	} {
 		if !strings.Contains(refused.stderr, want) {

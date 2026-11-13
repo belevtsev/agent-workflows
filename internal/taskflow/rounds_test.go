@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 // round is one assignment of a counting case, built explicitly: its stage,
@@ -443,11 +445,11 @@ func wantEscalation(t *testing.T, err error, key FixRef) {
 	t.Helper()
 	escalation, typed := errors.AsType[ErrEscalation](err)
 	summary := "Inspected the assigned source and actual task evidence."
-	want := ErrEscalation{Key: key, Profile: "lite", Rounds: 2, History: []FixRound{{"i1", summary}, {"i2", summary}}}
+	want := ErrEscalation{Profile: "lite", Allowed: 2, Keys: []EscalatedKey{{Key: key, Rounds: 2, History: []FixRound{{"i1", summary}, {"i2", summary}}}}}
 	if !errors.Is(err, ErrOverBudget) || errors.Is(err, ErrInvalidInput) || !typed || !reflect.DeepEqual(escalation, want) {
 		t.Fatalf("third fix round = %#v, want ErrOverBudget with %+v", err, want)
 	}
-	for _, option := range []string{"approving one more fix round", "changing the approach"} {
+	for _, option := range []string{"one more fix round", "a change of approach", "both are the owner's call"} {
 		if !strings.Contains(err.Error(), option) {
 			t.Fatalf("refusal %q lacks the option %q", err, option)
 		}
@@ -683,5 +685,152 @@ func TestOwnerWordsOnAFixRoundWithinItsLimitAreRefused(t *testing.T) {
 	record = returnFinding(t, mustAssignWorker(t, record, fixBrief("i1", FixRef{Finding: "i0/f1"})), ref, "i1", "")
 	if _, err := productionEnv.AssignApprovedWorker(t.Context(), record.Directory, fixBrief("i2", FixRef{Finding: "i0/f1"}), []string{"yes"}); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("words on a second fix round = %v, want ErrInvalidInput", err)
+	}
+}
+
+// closeFindings records the unused acceptance of each cancelled result in
+// ids, disposing its finding f1 as resolved.
+func closeFindings(t *testing.T, record Record, ref SourceRef, ids ...string) Record {
+	t.Helper()
+	for _, id := range ids {
+		acceptance := workerAcceptance(t, record, id, "unused")
+		acceptance.Findings = []FindingDisposition{{FindingID: "f1", Status: "resolved", Reason: "The coordinator checked the finding against the source.", Evidence: []SourceRef{ref}}}
+		record = mustAcceptWorker(t, record, acceptance)
+	}
+	return record
+}
+
+// Oracle: review finding 1. A finding key is open while any finding of its
+// reopens chain is open. In the chain i0/f1 <- i1/f1 <- i2/f1 after two
+// rounds, with i0/f1 resolved but i2/f1 open, a brief fixing i0/f1 is
+// refused; once i1/f1 and i2/f1 are resolved too, it is assigned.
+func TestAssignEscalatesWhileAnyFindingOfTheChainIsOpen(t *testing.T) {
+	record, ref := fixRoundTask(t, FixRef{}, true)
+	record = closeFindings(t, record, ref, "i0")
+	_, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", FixRef{Finding: "i0/f1"}))
+	wantEscalation(t, err, FixRef{Finding: "i0/f1"})
+	record = closeFindings(t, record, ref, "i1", "i2")
+	if _, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", FixRef{Finding: "i0/f1"})); err != nil {
+		t.Fatalf("fix round on a chain whose findings are all resolved = %v, want assigned", err)
+	}
+}
+
+// Oracle: review finding 2. A reused pass closes a requirement: after two
+// fix rounds on behavior, focused passes and an empty commit moves the
+// snapshot over the same bytes; verify's reuse credits the run, and the
+// third fix round on behavior is assigned without words, stores the
+// source's digest, and the record loads. Before the pass it is refused.
+func TestAReusedPassClosesARequirement(t *testing.T) {
+	record := committedTask(t, helperPlan(t, "small", "pass"))
+	data := []byte("first line\n")
+	ref := SourceRef{Path: "source.txt", StartLine: 1, EndLine: 1, SHA256: digest(data)}
+	behavior := FixRef{Requirement: "behavior"}
+	record = returnFinding(t, mustAssignWorker(t, record, fixBrief("i0")), ref, "i0", "")
+	for _, id := range []string{"i1", "i2"} {
+		record = returnFinding(t, mustAssignWorker(t, record, fixBrief(id, behavior)), ref, id, "")
+	}
+	if _, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", behavior)); !errors.Is(err, ErrOverBudget) {
+		t.Fatalf("third fix round before the pass = %v, want ErrOverBudget", err)
+	}
+	passThenCommit(t, record, "focused")
+	if reused, _ := reusedNow(t, record, "focused"); !reused {
+		t.Fatal("precondition: the pass is not reused after the empty commit")
+	}
+	record, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", behavior))
+	if err != nil {
+		t.Fatalf("third fix round after a reused pass = %v, want assigned", err)
+	}
+	if got := findAssignment(record, "i3"); got.SourceSHA256 != latestRun(record, "focused").SourceSHA256 {
+		t.Fatalf("assignment source_sha256 %q, want the run's %q", got.SourceSHA256, latestRun(record, "focused").SourceSHA256)
+	}
+	if _, err := Load(record.Directory); err != nil {
+		t.Fatalf("the record does not load: %v", err)
+	}
+}
+
+// Oracle: review finding 3. A requirement without checks (non-execution)
+// is open until its latest assessment says satisfied: its third fix round
+// is refused, and after a satisfied assessment it is assigned.
+func TestARequirementWithoutChecksIsOpenUntilSatisfied(t *testing.T) {
+	plan := Plan{Title: "Read-only source check", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read actual source", AllowNonExecution: true}}}
+	record, ref := fixtureTask(t, plan)
+	behavior := FixRef{Requirement: "behavior"}
+	record = returnFinding(t, mustAssignWorker(t, record, fixBrief("i0")), ref, "i0", "")
+	for _, id := range []string{"i1", "i2"} {
+		record = returnFinding(t, mustAssignWorker(t, record, fixBrief(id, behavior)), ref, id, "")
+	}
+	_, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", behavior))
+	wantEscalation(t, err, behavior)
+	input := assessment(ref)
+	input.Requirements[0].NonExecutionReason = "Read-only change; inspected the complete referenced file."
+	input.Decision = nil
+	if _, err := Assess(t.Context(), record.Directory, input); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", behavior)); err != nil {
+		t.Fatalf("third fix round on a satisfied requirement = %v, want assigned", err)
+	}
+}
+
+// Oracle: review finding 4. After an approved third round, the fourth is
+// refused naming 3 rounds and the profile's allowance of 2 apart.
+func TestARefusalAfterAnApprovedRoundStatesTheAllowance(t *testing.T) {
+	f1 := FixRef{Finding: "i0/f1"}
+	record, ref := fixRoundTask(t, f1, false)
+	record, err := productionEnv.AssignApprovedWorker(t.Context(), record.Directory, fixBrief("i3", f1), []string{"try once more"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record = returnFinding(t, record, ref, "i3", "")
+	_, err = AssignWorker(t.Context(), record.Directory, fixBrief("i4", f1))
+	escalation, _ := errors.AsType[ErrEscalation](err)
+	if escalation.Allowed != 2 || len(escalation.Keys) != 1 || escalation.Keys[0].Rounds != 3 || !strings.Contains(err.Error(), "finding i0/f1 is still open after 3 fix rounds; profile lite allows 2 per finding or requirement") {
+		t.Fatalf("fourth fix round = %v (%+v), want 3 rounds against an allowance of 2", err, escalation)
+	}
+}
+
+// Oracle: review finding 5. A brief that fixes two open findings, each
+// after two rounds, is refused naming both, each with its history; one
+// approval then lets the brief through for both.
+func TestAnEscalationNamesEveryKeyPastItsLimit(t *testing.T) {
+	record, ref := stageTask(t, false)
+	record = mustAssignWorker(t, record, fixBrief("i0"))
+	result := workerResult(t, record, "i0", "cancelled")
+	result.Findings = []WorkerFinding{{ID: "f1", Summary: "The empty case is wrong.", Evidence: []SourceRef{ref}}, {ID: "f2", Summary: "The full case is wrong.", Evidence: []SourceRef{ref}}}
+	record = mustSubmitWorker(t, record, result)
+	f1, f2 := FixRef{Finding: "i0/f1"}, FixRef{Finding: "i0/f2"}
+	for _, id := range []string{"i1", "i2"} {
+		record = returnFinding(t, mustAssignWorker(t, record, fixBrief(id, f1, f2)), ref, id, "")
+	}
+	_, err := AssignWorker(t.Context(), record.Directory, fixBrief("i3", f1, f2))
+	escalation, _ := errors.AsType[ErrEscalation](err)
+	if len(escalation.Keys) != 2 || escalation.Keys[0].Key != f1 || escalation.Keys[1].Key != f2 || len(escalation.Keys[1].History) != 2 || !strings.Contains(err.Error(), "finding i0/f1 (2 fix rounds), finding i0/f2 (2 fix rounds) are still open") {
+		t.Fatalf("fix round on two open findings = %v (%+v), want both keys", err, escalation)
+	}
+}
+
+// Oracle: review finding 6. The history is bounded: of six earlier rounds
+// it lists the latest four and counts the other two, and each summary is
+// its first line without control characters, at most 200 bytes.
+func TestAnEscalationHistoryIsBounded(t *testing.T) {
+	record := Record{Profile: &Profile{Name: "lite", FixRounds: 2}}
+	record.WorkerResults = append(record.WorkerResults, BoundWorkerResult{Result: WorkerResult{AssignmentID: "a0", Findings: []WorkerFinding{{ID: "f1"}}}})
+	f1 := FixRef{Finding: "a0/f1"}
+	long := "Round\x1b[31m " + strings.Repeat("é", 150) + "\nsecond line"
+	for _, id := range []string{"a1", "a2", "a3", "a4", "a5", "a6"} {
+		record.Assignments = append(record.Assignments, WorkerAssignment{Brief: fixBrief(id, f1)})
+		record.WorkerResults = append(record.WorkerResults, BoundWorkerResult{Result: WorkerResult{AssignmentID: id, Summary: long}})
+	}
+	escalation := escalated(record, recordedCredit(record.Baseline, ""), fixBrief("a7", f1))
+	if escalation == nil || len(escalation.Keys) != 1 {
+		t.Fatalf("escalated = %+v, want one key", escalation)
+	}
+	key := escalation.Keys[0]
+	if key.Rounds != 6 || key.Omitted != 2 || len(key.History) != 4 || key.History[0].Assignment != "a3" || key.History[3].Assignment != "a6" {
+		t.Fatalf("history %+v, want rounds 6, omitted 2, a3..a6", key)
+	}
+	summary := key.History[0].Summary
+	if len(summary) > 200 || strings.ContainsFunc(summary, unicode.IsControl) || !utf8.ValidString(summary) || !strings.HasPrefix(summary, "Round[31m é") || strings.Contains(summary, "second line") {
+		t.Fatalf("summary %q (%d bytes), want one clean line of at most 200 bytes", summary, len(summary))
 	}
 }

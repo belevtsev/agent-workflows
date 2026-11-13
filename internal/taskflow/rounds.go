@@ -8,8 +8,6 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/belevtsev/agent-workflows/v3/internal/projectctx"
 )
 
 // countedStages are the author stages whose rounds a profile caps, as
@@ -184,14 +182,14 @@ type overLimit struct {
 }
 
 // limitsOver returns every limit of the record's profile that assigning
-// brief at snapshot would go past: the stage's round cap, and the fix rounds
-// of a finding or requirement still open (escalated).
-func limitsOver(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) []overLimit {
+// brief would go past: the stage's round cap, and the fix rounds of a
+// finding or requirement still open at the assignment's source (escalated).
+func limitsOver(record Record, source *creditSource, brief WorkerBrief) []overLimit {
 	var over []overLimit
 	if round := overRoundBudget(record, brief); round != nil {
 		over = append(over, overLimit{For: ApprovalRoundBudget, refusal: kindError{kind: ErrOverBudget, msg: round.Error(), cause: *round}})
 	}
-	if escalation := escalated(record, snapshot, brief); escalation != nil {
+	if escalation := escalated(record, source, brief); escalation != nil {
 		over = append(over, overLimit{For: ApprovalEscalation, refusal: kindError{kind: ErrOverBudget, msg: escalation.Error(), cause: *escalation}})
 	}
 	return over
@@ -267,9 +265,9 @@ func validateStoredApprovals(record Record, assigned WorkerAssignment) error {
 
 // approvalsMatch reports whether a stored assignment's approvals name
 // exactly the limits its brief went past in the record before it, at the
-// snapshot the assignment bound.
-func approvalsMatch(before Record, snapshot projectctx.Snapshot, brief WorkerBrief, approvals []OwnerApproval) bool {
-	over := limitsOver(before, snapshot, brief)
+// source the assignment bound (assignmentCredit).
+func approvalsMatch(before Record, assigned WorkerAssignment) bool {
+	over, approvals := limitsOver(before, assignmentCredit(assigned), assigned.Brief), assigned.OwnerApprovals
 	if len(over) != len(approvals) {
 		return false
 	}
@@ -281,32 +279,91 @@ func approvalsMatch(before Record, snapshot projectctx.Snapshot, brief WorkerBri
 	return true
 }
 
+// assignmentCredit is the credit a requirement's checks earn at the
+// assignment's source: a pass at its snapshot, or a reused pass with its
+// source digest, the same at assign and at load (recordedCredit).
+func assignmentCredit(assigned WorkerAssignment) *creditSource {
+	return recordedCredit(assigned.Snapshot, assigned.SourceSHA256)
+}
+
 // FixRound is one earlier fix round on a finding or requirement: its
-// assignment and the first line of that assignment's result summary.
+// assignment and the first line of that assignment's result summary,
+// without control characters and at most maxHistorySummary bytes.
 type FixRound struct {
 	Assignment string
 	Summary    string
 }
 
-// ErrEscalation is the refusal of a fix round on a finding or requirement
-// that is still open after the fix rounds its profile allows. It matches
-// ErrOverBudget.
-type ErrEscalation struct {
+// maxHistoryRounds bounds the rounds an EscalatedKey's History lists (the
+// latest ones), and maxHistorySummary the bytes of each summary.
+const (
+	maxHistoryRounds  = 4
+	maxHistorySummary = 200
+)
+
+// EscalatedKey is one finding or requirement still open after the fix
+// rounds its profile allows.
+type EscalatedKey struct {
 	// Key is the finding or requirement; a finding is the first of its
 	// reopens chain.
-	Key     FixRef
-	Profile string
-	// Rounds counts the earlier fix rounds on Key, which History lists.
+	Key FixRef
+	// Rounds counts the earlier fix rounds on Key. History lists the latest
+	// of them, at most maxHistoryRounds; Omitted counts the others.
 	Rounds  int
 	History []FixRound
+	Omitted int
+}
+
+// Name is the key as a refusal names it, such as "finding a1/f1".
+func (k EscalatedKey) Name() string {
+	if k.Key.Finding != "" {
+		return "finding " + k.Key.Finding
+	}
+	return "requirement " + k.Key.Requirement
+}
+
+// ErrEscalation is the refusal of a fix round on findings or requirements
+// still open after the fix rounds their profile allows, every such key the
+// brief fixes. It matches ErrOverBudget.
+type ErrEscalation struct {
+	Profile string
+	// Allowed is the profile's fix rounds per finding or requirement.
+	Allowed int
+	Keys    []EscalatedKey
 }
 
 func (e ErrEscalation) Error() string {
-	key := "requirement " + e.Key.Requirement
-	if e.Key.Finding != "" {
-		key = "finding " + e.Key.Finding
+	var open string
+	if len(e.Keys) == 1 {
+		open = fmt.Sprintf("%s is still open after %d fix rounds", e.Keys[0].Name(), e.Keys[0].Rounds)
+	} else {
+		keys := make([]string, 0, len(e.Keys))
+		for _, key := range e.Keys {
+			keys = append(keys, fmt.Sprintf("%s (%d fix rounds)", key.Name(), key.Rounds))
+		}
+		open = strings.Join(keys, ", ") + " are still open"
 	}
-	return fmt.Sprintf("%s is still open after %d fix rounds, the most profile %s allows; the owner chooses between approving one more fix round and changing the approach", key, e.Rounds, e.Profile)
+	return fmt.Sprintf("%s; profile %s allows %d per finding or requirement. The owner decides between one more fix round and a change of approach; both are the owner's call", open, e.Profile, e.Allowed)
+}
+
+// historySummary is the first line of summary without control characters,
+// cut to at most maxHistorySummary bytes of whole runes.
+func historySummary(summary string) string {
+	line, _, _ := strings.Cut(summary, "\n")
+	line = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || r == utf8.RuneError {
+			return -1
+		}
+		return r
+	}, line)
+	if len(line) <= maxHistorySummary {
+		return line
+	}
+	cut := maxHistorySummary - len("…")
+	for cut > 0 && !utf8.RuneStart(line[cut]) {
+		cut--
+	}
+	return line[:cut] + "…"
 }
 
 // findingAt returns the finding that key ("<assignment id>/<finding id>")
@@ -404,23 +461,11 @@ func fixRounds(record Record) map[FixRef]int {
 	return rounds
 }
 
-// stillOpen reports whether fix is still open at snapshot. A finding is open
-// until the latest acceptance of its result disposes it as other than
-// accepted (acknowledged but unresolved): one without a disposition yet is
-// open. A requirement is open while one of its checks lacks a passed run at
-// snapshot itself (bindChecks): an assignment stores no source digest, so a
-// run reused at another snapshot does not close it, and load judges the
-// same way.
-func stillOpen(record Record, snapshot projectctx.Snapshot, fix FixRef) bool {
-	if fix.Requirement != "" {
-		at := slices.IndexFunc(record.Plan.Requirements, func(r Requirement) bool { return r.ID == fix.Requirement })
-		if at < 0 {
-			return false
-		}
-		_, err := bindChecks(record, recordedCredit(snapshot, ""), record.Plan.Requirements[at].CheckIDs)
-		return err != nil
-	}
-	assignment, id, _ := strings.Cut(fix.Finding, "/")
+// findingOpen reports whether finding id of assignment's result is open:
+// until the latest acceptance of that result disposes it as other than
+// accepted (acknowledged but unresolved); one without a disposition yet is
+// open.
+func findingOpen(record Record, assignment, id string) bool {
 	accepted := latestAcceptance(record, assignment)
 	if accepted == nil {
 		return true
@@ -429,12 +474,42 @@ func stillOpen(record Record, snapshot projectctx.Snapshot, fix FixRef) bool {
 	return at < 0 || accepted.Acceptance.Findings[at].Status == "accepted"
 }
 
-// escalated returns the refusal of brief when it fixes a finding or
-// requirement that is still open after the fix rounds the record's profile
-// allows, and nil otherwise. A record without a profile, and a brief that is
-// no new fix round, have no limit; a repeat that takes the place of a round
-// that returned no work answers that round's fixes.
-func escalated(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) *ErrEscalation {
+// stillOpen reports whether key, a fixKey, is still open at source. A
+// finding key is open while any finding of its reopens chain (any finding
+// whose fixKey is key) is open (findingOpen). A requirement with checks is
+// open while one of them lacks a credited pass at source (bindChecks); one
+// without checks (non-execution) is open until its latest assessment says
+// satisfied.
+func stillOpen(record Record, source *creditSource, key FixRef) bool {
+	if key.Requirement != "" {
+		at := slices.IndexFunc(record.Plan.Requirements, func(r Requirement) bool { return r.ID == key.Requirement })
+		if at < 0 {
+			return false
+		}
+		if checks := record.Plan.Requirements[at].CheckIDs; len(checks) > 0 {
+			_, err := bindChecks(record, source, checks)
+			return err != nil
+		}
+		return record.Assessments[key.Requirement].Assessment.Status != "satisfied"
+	}
+	for _, bound := range record.WorkerResults {
+		for _, finding := range bound.Result.Findings {
+			own := bound.Result.AssignmentID + "/" + finding.ID
+			if fixKey(record, FixRef{Finding: own}) == key && findingOpen(record, bound.Result.AssignmentID, finding.ID) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// escalated returns the refusal of brief when it fixes findings or
+// requirements still open at source after the fix rounds the record's
+// profile allows, naming every such key, and nil otherwise. A record without
+// a profile, and a brief that is no new fix round, have no limit; a repeat
+// that takes the place of a round that returned no work answers that round's
+// fixes.
+func escalated(record Record, source *creditSource, brief WorkerBrief) *ErrEscalation {
 	if record.Profile == nil {
 		return nil
 	}
@@ -445,23 +520,29 @@ func escalated(record Record, snapshot projectctx.Snapshot, brief WorkerBrief) *
 		return nil
 	}
 	history := fixAssignments(record)
+	escalation := &ErrEscalation{Profile: record.Profile.Name, Allowed: record.Profile.FixRounds}
+	seen := map[FixRef]bool{}
 	for _, fix := range fixes[brief.ID] {
 		key := fixKey(record, fix)
 		ids := history[key]
-		if len(ids) < record.Profile.FixRounds || !stillOpen(record, snapshot, fix) {
+		if seen[key] || len(ids) < record.Profile.FixRounds || !stillOpen(record, source, key) {
 			continue
 		}
-		escalation := &ErrEscalation{Key: key, Profile: record.Profile.Name, Rounds: len(ids)}
-		for _, id := range ids {
+		seen[key] = true
+		escalated := EscalatedKey{Key: key, Rounds: len(ids), Omitted: max(len(ids)-maxHistoryRounds, 0)}
+		for _, id := range ids[escalated.Omitted:] {
 			summary := "no result yet"
 			if result := findWorkerResult(record, id); result != nil {
-				summary, _, _ = strings.Cut(result.Result.Summary, "\n")
+				summary = historySummary(result.Result.Summary)
 			}
-			escalation.History = append(escalation.History, FixRound{Assignment: id, Summary: summary})
+			escalated.History = append(escalated.History, FixRound{Assignment: id, Summary: summary})
 		}
-		return escalation
+		escalation.Keys = append(escalation.Keys, escalated)
 	}
-	return nil
+	if len(escalation.Keys) == 0 {
+		return nil
+	}
+	return escalation
 }
 
 // validateReopens checks each finding's reopens against the results recorded
