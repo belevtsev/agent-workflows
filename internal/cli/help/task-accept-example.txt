@@ -1,0 +1,6 @@
+cw task accept --task <task-id> --input - <<'EOF'
+{"assignment_id": "impl-1", "status": "accepted", "reason": "The change does what the brief asks on the current source",
+ "evidence": [{"path": "internal/parse/parse.go", "start_line": 12, "end_line": 30}],
+ "check_ids": ["unit"], "findings": []}
+EOF
+cw task schema accept

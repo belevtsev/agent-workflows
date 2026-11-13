@@ -1,0 +1,7 @@
+git merge --no-ff origin/main
+cw task add-checks --task <task-id> --input - <<'EOF'
+{"merge_commit": "<HEAD after the merge>", "base_ref": "origin/main",
+ "reason": "The merged base branch adds internal/cache",
+ "checks": [{"id": "cache-race", "argv": ["go", "test", "-race", "./internal/cache"], "timeout_seconds": 600}]}
+EOF
+cw task schema add-checks

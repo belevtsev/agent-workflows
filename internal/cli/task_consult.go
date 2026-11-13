@@ -30,6 +30,7 @@ func newTaskConsultCommand(deps taskDeps) *cobra.Command {
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(command, &directory)
+	command.Example = helpText("task-consult-example")
 	command.Flags().StringVar(&phase, "phase", "", "before or final")
 	command.Flags().StringVar(&inputFile, "input", "", "Original version 4 record written by cw consult (raw or adjudicated)")
 	fullFlag(command, &full, "the whole task record")

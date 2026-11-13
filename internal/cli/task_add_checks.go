@@ -41,6 +41,7 @@ func newTaskAddChecksCommand(deps taskDeps) *cobra.Command {
 		},
 	}
 	taskFlag(addChecks, &directory)
+	addChecks.Example = helpText("task-add-checks-example")
 	addChecks.Flags().StringVar(&inputFile, "input", "", "Amendment JSON file, or - for standard input")
 	fullFlag(addChecks, &full, "the whole task record")
 	return addChecks

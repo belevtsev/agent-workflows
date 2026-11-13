@@ -1,4 +1,4 @@
-cw records and verifies substantial tasks, publishes verified ones (commit, push and pull request, run by a coordinator that carries the user's authorization), consults configured advisers, inspects projects and installs the Codex instruction block. The skills themselves ship as Claude Code and Codex plugins.
+cw records and verifies substantial tasks and publishes the verified ones as a commit, push and pull request. The skills that drive it ship as Claude Code and Codex plugins.
 
 Usage:
   cw [flags]

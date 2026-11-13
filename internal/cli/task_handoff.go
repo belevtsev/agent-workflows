@@ -30,6 +30,7 @@ func newTaskHandoffCommand(deps taskDeps) *cobra.Command {
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(handoff, &directory)
+	handoff.Example = helpText("task-handoff-example")
 	handoff.Flags().StringVar(&inputFile, "input", "", "Worker result JSON file, or - for standard input")
 	fullFlag(handoff, &full, "the whole task record")
 	return handoff
