@@ -375,16 +375,36 @@ func (f *l3Fix) authorship() taskflow.AuthorshipReport {
 // ("" for none), whose agent and brief contract it carries.
 func (f *l3Fix) l4File(path string, deleted bool, status, reason, asg, finding string) taskflow.AuthorshipFile {
 	f.t.Helper()
-	x := taskflow.AuthorshipFile{Path: path, Deleted: deleted, Status: status, Reason: reason, FindingID: finding}
+	var rec taskflow.Record
 	if asg != "" {
-		a := f.assignment(asg)
+		rec = f.load()
+	}
+	return f.l4FileIn(rec, path, deleted, status, reason, asg, finding)
+}
+
+// l4FileIn is l4File with the assignment taken from rec, a record the caller
+// loaded after the last write to the task. A test that expects many files
+// loads the record once for all of them: each Load decodes and re-checks
+// every revision.
+func (f *l3Fix) l4FileIn(rec taskflow.Record, path string, deleted bool, status, reason, asg, finding string) taskflow.AuthorshipFile {
+	f.t.Helper()
+	x := taskflow.AuthorshipFile{Path: path, Deleted: deleted, Status: status, Reason: reason, FindingID: finding}
+	if asg == "" {
+		return x
+	}
+	for _, a := range rec.Assignments {
+		if a.Brief.ID != asg {
+			continue
+		}
 		x.AssignmentID = asg
 		x.AgentID = a.Brief.AgentID
 		if a.Brief.Contract != nil {
 			c := *a.Brief.Contract
 			x.Contract = &c
 		}
+		return x
 	}
+	f.t.Fatalf("no assignment %s", asg)
 	return x
 }
 

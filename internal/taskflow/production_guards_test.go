@@ -552,6 +552,7 @@ func productionIntegrityFixture(test *testing.T) Record {
 }
 
 func TestProductionLoadRetainsStrictHistoryIntegrity(test *testing.T) {
+	test.Parallel()
 	// immutable-advisers: D5 binds advisers once at start, immutable for the
 	// task's lifetime, like the plan and baseline.
 	for _, mutation := range []string{"unknown-json", "duplicate-json", "trailing-json", "chain", "immutable-plan", "immutable-baseline", "immutable-advisers", "terminal-argv", "stored-timeout-zero", "missing-coordinator"} {

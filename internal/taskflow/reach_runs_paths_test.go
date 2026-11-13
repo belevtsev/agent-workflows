@@ -127,6 +127,7 @@ func reachPathsR3Refused(t *testing.T, runs []ReachRun, want string) {
 // the live row tool.sh unanswered. The "plus" cases answer every live row,
 // so only the unknown-path check can refuse them.
 func TestReachPathsR3UnknownPathWins(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		runs []ReachRun
@@ -148,6 +149,7 @@ func TestReachPathsR3UnknownPathWins(t *testing.T) {
 // RR2b, RR2c: when every entry names a reach row but a live row has no
 // entry, the error names the first missing live row in bundle order.
 func TestReachPathsR3MissingLiveRow(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		runs []ReachRun

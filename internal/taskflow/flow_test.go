@@ -75,6 +75,7 @@ func TestSubstantialAssignWaitsForResolvedBeforeCheckpoint(t *testing.T) {
 // effect: dispatch needs no checkpoint, verify completes without consultations,
 // and limitations never mention the bound providers.
 func TestSmallTaskSkipsCheckpointsAndBindingHasNoEffect(t *testing.T) {
+	t.Parallel()
 	for name, binding := range map[string]map[string]string{"bound_advisers": fixtureBinding(), "no_advisers": {}} {
 		t.Run(name, func(t *testing.T) {
 			expected := maps.Clone(binding)
@@ -102,6 +103,7 @@ func TestSmallTaskSkipsCheckpointsAndBindingHasNoEffect(t *testing.T) {
 
 // D5 flow: the final context needs the before checkpoint attached and resolved.
 func TestFinalContextNeedsResolvedBeforeCheckpoint(t *testing.T) {
+	t.Parallel()
 	for name, mutate := range map[string]func(*checkpointDraft){
 		"not_attached": nil,
 		"pending":      pendingDecision,
@@ -131,6 +133,7 @@ func TestFinalContextNeedsResolvedBeforeCheckpoint(t *testing.T) {
 // D5 checkpoint completeness: verify reports incomplete while the attached
 // final decision is pending or unresolved, and completes once it is resolved.
 func TestVerifyRequiresResolvedFinalDecision(t *testing.T) {
+	t.Parallel()
 	for name, mutate := range map[string]func(*checkpointDraft){
 		"pending":    pendingDecision,
 		"unresolved": unresolvedDecision,
@@ -215,6 +218,7 @@ func completedLimitations(t *testing.T, binding map[string]string, before, final
 // D5 verify limitations: non-success coverage is listed per bound provider
 // with no hardcoded provider IDs; an empty binding states the D5 sentence.
 func TestVerifyLimitationsNameNonSuccessCoveragePerBoundProvider(t *testing.T) {
+	t.Parallel()
 	agree := func(providers ...string) func(*checkpointDraft) {
 		outcomes := map[string]adviserOutcome{}
 		for _, provider := range providers {
@@ -346,6 +350,7 @@ func TestNoAdvisersCheckpointStillNeedsTypedEvidenceAndVerification(t *testing.T
 // provider with confidence >= 0.7 (boundary at OpenAI's 0.7); with untrusted
 // state an agreement must be marked not independent.
 func TestCheckpointDecisionAnswersDisagreeingJudgments(t *testing.T) {
+	t.Parallel()
 	disagreement := map[string]adviserOutcome{
 		"subq_snap":        {Status: "success", Choices: map[string]string{"claim": "contradicted"}},
 		"openai_decisions": {Status: "success", Choices: map[string]string{"claim": "supported"}},

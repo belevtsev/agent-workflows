@@ -456,6 +456,7 @@ func autofillTestReviewGateProblems(t *testing.T, dir string) []string {
 
 // R1: an autofilled review satisfies the same completion gate as an explicit one.
 func TestAutofillReviewSatisfiesCompletionGateLikeExplicitReview(t *testing.T) {
+	t.Parallel()
 	for _, explicit := range []bool{true, false} {
 		name := "autofilled"
 		if explicit {

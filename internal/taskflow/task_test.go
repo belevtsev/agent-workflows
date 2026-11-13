@@ -360,6 +360,7 @@ func TestNonExecutionMustBeExplicitlyPermitted(t *testing.T) {
 }
 
 func TestCheckOutcomesNeverBecomePasses(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"fail", "wait", "mutate", "output"} {
 		t.Run(mode, func(t *testing.T) {
 			plan := helperPlan(t, "small", mode)
@@ -512,6 +513,7 @@ func TestSubstantialTaskNeedsTwoSourceBoundAdjudications(t *testing.T) {
 }
 
 func TestFinalCheckpointBindsCompletedEvidenceAtUnchangedSource(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	before := record.Contexts["before"]
 	if _, err := AttachConsultation(t.Context(), record.Directory, "before", writeConsultation(t, before, nil)); err != nil {
@@ -576,6 +578,7 @@ func TestFinalCheckpointBindsCompletedEvidenceAtUnchangedSource(t *testing.T) {
 }
 
 func TestFinalCheckpointInvalidAfterLaterFailedRun(t *testing.T) {
+	t.Parallel()
 	marker := filepath.Join(t.TempDir(), "allowed-marker")
 	if err := os.WriteFile(marker, []byte("present"), 0600); err != nil {
 		t.Fatal(err)
@@ -837,6 +840,7 @@ func TestAttachRevalidatesAnsweredRecords(t *testing.T) {
 }
 
 func TestPrivateStorageAndInterruptedWritesPreserveOriginals(t *testing.T) {
+	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	initial, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
 	if err != nil {
@@ -940,6 +944,7 @@ func TestStorageRejectsRepoAndSymlinkEscapes(t *testing.T) {
 }
 
 func TestInitialRevisionNeverPublishesAboveReadableLimit(t *testing.T) {
+	t.Parallel()
 	plan := Plan{Title: "Bounded task plan", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "One planned check", CheckIDs: []string{"check0"}}}}
 	for i := 0; i < 129; i++ {
 		plan.Checks = append(plan.Checks, Check{ID: fmt.Sprintf("check%d", i), Argv: []string{"go", "test", strings.Repeat("x", 65500)}, TimeoutSeconds: 1})
@@ -1200,6 +1205,7 @@ func TestHandoffFindingSeverity(t *testing.T) {
 // is also a problem until a later accepted independent review, whose bundle
 // lists the rejection, completes without re-raising the finding's ID.
 func TestVerifyRejectedFindingsBySeverity(t *testing.T) {
+	t.Parallel()
 	const reason = "Source contradicts the finding."
 	const problem = "rejected blocker finding f1 of worker assignment review1 needs a later accepted independent review whose bundle lists it as rejected and whose result does not re-raise it (same finding id)"
 	for _, tc := range []struct {

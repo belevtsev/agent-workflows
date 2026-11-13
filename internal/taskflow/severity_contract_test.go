@@ -79,6 +79,7 @@ func severitySubmitRefused(t *testing.T, record Record, result WorkerResult) {
 }
 
 func TestSeverityContractValidationByRole(t *testing.T) {
+	t.Parallel()
 	invalid := []string{"critical", "Major", "BLOCKER", " minor", "minor ", "info"}
 
 	t.Run("review", func(t *testing.T) {
@@ -117,6 +118,7 @@ func TestSeverityContractValidationByRole(t *testing.T) {
 // A stored finding without severity reads as major: rejected, it is listed as
 // a limitation and is not a blocker problem.
 func TestSeverityContractMissingReadsAsMajor(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, severity string
 		limitation     bool
@@ -174,6 +176,7 @@ func severityBlockerTask(t *testing.T, id string) (Record, SourceRef) {
 }
 
 func TestSeverityContractRejectedBlockerNeedsLaterReview(t *testing.T) {
+	t.Parallel()
 	const id = "blocker-finding-9"
 
 	t.Run("cleared by a later accepted review without the finding", func(t *testing.T) {
@@ -284,6 +287,7 @@ func severityTryReview(t *testing.T, record Record, id, agent string, ref Source
 // accepted review by the coordinator or by an implementation worker's agent
 // leaves it a problem.
 func TestSeverityContractRejectedBlockerNeedsIndependentReviewer(t *testing.T) {
+	t.Parallel()
 	const id = "blocker-finding-13"
 
 	t.Run("coordinator as reviewer", func(t *testing.T) {

@@ -85,6 +85,7 @@ func (e *goToolchainE2E) log(check string) string {
 // names the fake, and the fake runs once, as `go env GOROOT`, never as the
 // check; the check's log is empty.
 func TestTaskRunRefusesAFakeGoFirstOnPath(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	fake := e.fake("go", "echo ok\nexit 0\n")
 	code, stderr := e.runCode("alpha", "PATH="+fake+":"+filepath.Dir(goTool(t))+":/usr/bin:/bin")
@@ -113,6 +114,7 @@ func TestTaskRunRefusesAFakeGoFirstOnPath(t *testing.T) {
 // passes with the real go test's output, and neither the shim nor the
 // go1.99.0 that the real go would otherwise switch to runs the check.
 func TestTaskRunRunsTheRealGoThatAShimReports(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	root := evidenceGoEnv(t, "GOROOT")
 	shim := e.fake("go", "if [ \"$*\" = 'env GOROOT' ]; then echo '"+root+"'; else echo 'ok  fake pass'; fi\nexit 0\n")
@@ -140,6 +142,7 @@ func TestTaskRunRunsTheRealGoThatAShimReports(t *testing.T) {
 // toolchain switch looks in PATH first; G6 verifies the go command the switch
 // selects, so the run is refused and the fake never runs the check.
 func TestTaskRunRefusesAToolchainSwitchToAFakeOnPath(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	fake := e.fake("go1.99.0", "echo ok\nexit 0\n")
 	code, stderr := e.runCode("alpha", "PATH="+fake+":"+filepath.Dir(goTool(t))+":/usr/bin:/bin", "GOTOOLCHAIN=go1.99.0")
@@ -157,6 +160,7 @@ func TestTaskRunRefusesAToolchainSwitchToAFakeOnPath(t *testing.T) {
 // fails. Oracle: review finding 1: cw accepts only the go command's own tree,
 // so the run is refused as untrusted_toolchain, never recorded as passed.
 func TestTaskRunRefusesAGOROOTOutsideTheGoCommandsTree(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		env  func(e *goToolchainE2E, root string) []string
@@ -196,6 +200,7 @@ func TestTaskRunRefusesAGOROOTOutsideTheGoCommandsTree(t *testing.T) {
 // tool.version (the go command that ran, in the runtime.Version() family) and
 // verify lists that go command and its GOROOT as a limitation.
 func TestTaskRunRecordsTheGoCommandThatRanIt(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	e.runExpect(true, "alpha")
 	want, err := filepath.EvalSymlinks(goTool(t))

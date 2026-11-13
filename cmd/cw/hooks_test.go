@@ -52,6 +52,7 @@ func hooksRead(t *testing.T) ([]byte, hooksFile) {
 }
 
 func TestHooksJSONShape(t *testing.T) {
+	t.Parallel()
 	data, file := hooksRead(t)
 
 	t.Run("valid JSON with only description and hooks", func(t *testing.T) {
@@ -358,6 +359,7 @@ func hooksExpectDecision(t *testing.T, stdout, want string) string {
 }
 
 func TestHooksEndToEnd(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("builds cmd/cw")
 	}

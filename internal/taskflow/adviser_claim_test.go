@@ -416,6 +416,7 @@ func acReferenceClaims(reason string) bool {
 // Fixture invariant: the reference transcription agrees with every contract
 // example, so it is a valid oracle for the random-input property below.
 func TestClaimsNoAdvisersReferenceMatchesContractExamples(t *testing.T) {
+	t.Parallel()
 	for _, example := range acTrueExamples {
 		if !acReferenceClaims(example.input) {
 			t.Errorf("fixture invariant: reference rejects true example %q", example.input)
@@ -513,6 +514,7 @@ func acAllPhrases() []string {
 // independent transcription of the rules, is deterministic, and is invariant
 // under ASCII case changes. Fails on any over- or under-match.
 func TestClaimsNoAdvisersAgreesWithRulesOnRandomReasons(t *testing.T) {
+	t.Parallel()
 	random := rand.New(rand.NewPCG(20261108, 4))
 	phrases := acAllPhrases()
 	positives, failures := 0, 0
@@ -560,6 +562,7 @@ func acASCIIOnlyUpper(s string) string {
 // and the result follows the rules. Fails on a panic or on bytes that are not
 // treated as separators.
 func TestClaimsNoAdvisersArbitraryBytes(t *testing.T) {
+	t.Parallel()
 	for value := 0; value < 256; value++ {
 		b := string([]byte{byte(value)})
 		for _, input := range []string{b, "no advisers" + b + "configured", b + "no advisers configured" + b} {
@@ -921,6 +924,7 @@ func acVerifyPair(t *testing.T, binding map[string]string, flow acFlow) (contrad
 // condition (pending or unresolved before counted as usable, source state
 // ignored), or when another problem or limitation changes.
 func TestVerifyReportsNoAdvisersClaimWithBoundAdvisers(t *testing.T) {
+	t.Parallel()
 	all := func(ids string) []string {
 		return []string{acVerifyAttachFinal(ids), acVerifyUnchanged(ids), acVerifyChanged(ids)}
 	}
@@ -1013,6 +1017,7 @@ func TestVerifyNoAdvisersClaimNamesSortedBoundIDs(t *testing.T) {
 // contradiction is reported despite both checkpoints, or when it hides or
 // changes the existing validation of an invalid final checkpoint.
 func TestVerifyNoAdvisersClaimWithBothCheckpointsAttached(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name     string
 		flow     acFlow
@@ -1113,6 +1118,7 @@ func TestVerifyStillRefusesAbandonedContradiction(t *testing.T) {
 // the both-attached exception does not cover). Fails when Verify reports the
 // contradiction without checking Required, or changes any other problem.
 func TestVerifyRequiredCheckpointsWithClaimingReasonAddNoProblem(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		name string
 		flow acFlow
@@ -1180,6 +1186,7 @@ func TestNonClaimingReasonWithBoundAdvisersIsUnchanged(t *testing.T) {
 // no problem, even when the reason text claims no advisers. Fails when such
 // coverage outcomes become problems.
 func TestRequiredCheckpointsWithUnavailableCoverageAreUnchanged(t *testing.T) {
+	t.Parallel()
 	unavailable := withOutcomes(map[string]adviserOutcome{
 		"subq_snap":        {Status: "unavailable", Category: "http_error", HTTPStatus: 429},
 		"openai_decisions": {Status: "unavailable", Category: "http_error", HTTPStatus: 429},

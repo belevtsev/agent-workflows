@@ -39,6 +39,7 @@ const (
 )
 
 func TestTaskLifecycleE2E(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("end-to-end test builds the cw binary")
 	}
@@ -118,6 +119,7 @@ func TestTaskLifecycleE2E(t *testing.T) {
 // Oracle: start exits 0, and the recorded plan's only check has the argv of
 // the embedded go pack's commands.race.
 func TestTaskInitPlanStartsUneditedInGoModule(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("end-to-end test builds the cw binary")
 	}

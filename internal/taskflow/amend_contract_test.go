@@ -2077,7 +2077,12 @@ func acTestVerifyCredit(t *testing.T) {
 		_, dir := acStandardTask(t, acPlanOpts{})
 		acRunPassed(t, dir, "unit")
 		acExpectAccepted(t, dir, acInput("HEAD", acWidened()))
-		t.Setenv("GOFLAGS", "-gcflags=all=-N")
+		// Oracle: no -gcflags value earns credit (langpack allowedFlags judges
+		// the flag name). The spec's example value, all=-N, also recompiles the
+		// standard library, which no CI cache holds: about 20 CPU-seconds here
+		// and 190 s on the macOS runner. -N alone rebuilds only the fixture's
+		// packages and takes the same refusal.
+		t.Setenv("GOFLAGS", "-gcflags=-N")
 		acRunPassed(t, dir, "widened")
 		t.Setenv("GOFLAGS", "")
 		if v := acVerify(t, dir); !acHasProblem(v, acGoModProblem) {

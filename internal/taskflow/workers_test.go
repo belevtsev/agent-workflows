@@ -152,6 +152,7 @@ func completeIndependentReview(t *testing.T, record Record, ref SourceRef, id st
 }
 
 func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *testing.T) {
+	t.Parallel()
 	record, _ := fixtureTask(t, helperPlan(t, "substantial", "pass"))
 	if record.Version != Version || record.Plan.CoordinatorID != "/root" {
 		t.Fatalf("new task version/default: %+v", record.Plan)
@@ -217,6 +218,7 @@ func TestWorkerLifecycleBindsImmutableBriefResultAndCoordinatorAcceptance(t *tes
 }
 
 func TestWorkerOwnershipAndInputValidation(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	for _, bad := range []string{"../outside", "/absolute", "dir/../source.txt", "dir\\source.txt", ".git/config", "source.txt/", "C:/outside"} {
 		if _, err := AssignWorker(t.Context(), record.Directory, workerBrief("invalid", "/root/writer", "implementation", []string{bad})); err == nil {
@@ -285,6 +287,7 @@ func TestWorkerOwnershipAndInputValidation(t *testing.T) {
 }
 
 func TestBlockedCancelledAndUnusedHandoffsNeverClaimCompletion(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"blocked", "cancelled"} {
 		t.Run(status, func(t *testing.T) {
 			record, ref := fixtureTask(t, helperPlan(t, "small", "fail"))
@@ -342,6 +345,7 @@ func TestCancelledUnusedHandoffCanCloseWithoutACompletionClaim(t *testing.T) {
 }
 
 func TestIndependentReviewCannotBeRelabeledForNewerSource(t *testing.T) {
+	t.Parallel()
 	record, ref := preparedChangedTask(t)
 	record = mustAssignWorker(t, record, workerBrief("review", "/root/reviewer", "review", []string{"."}, "focused"))
 	if err := os.WriteFile(filepath.Join(record.Baseline.Root, "later.sql"), []byte("SELECT 1;\n"), 0600); err != nil {
@@ -362,6 +366,7 @@ func TestIndependentReviewCannotBeRelabeledForNewerSource(t *testing.T) {
 }
 
 func TestReviewDependenciesRejectLaterWorkerMutations(t *testing.T) {
+	t.Parallel()
 	record, ref := preparedChangedTask(t)
 	record = completeIndependentReview(t, record, ref, "review")
 	first, err := PrepareContext(t.Context(), record.Directory, "final")
@@ -388,6 +393,7 @@ func TestReviewDependenciesRejectLaterWorkerMutations(t *testing.T) {
 }
 
 func TestUnusedObsoleteReviewCanCloseWithoutInventingFindingResolution(t *testing.T) {
+	t.Parallel()
 	record, ref := preparedChangedTask(t)
 	if findingSourceObsolete(record.Baseline, []SourceRef{ref}) {
 		t.Fatal("unchanged finding source was treated as obsolete")
@@ -423,6 +429,7 @@ func TestUnusedObsoleteReviewCanCloseWithoutInventingFindingResolution(t *testin
 }
 
 func TestReviewRequiresIndependentIdentityFullScopeAndResolvedFindings(t *testing.T) {
+	t.Parallel()
 	record, ref := preparedChangedTask(t)
 	record = mustAssignWorker(t, record, workerBrief("implementation", "/root/shared", "implementation", []string{"source.txt"}, "focused"))
 	record = mustSubmitWorker(t, record, workerResult(t, record, "implementation", "completed", ref))
@@ -473,6 +480,7 @@ func TestReviewRequiresIndependentIdentityFullScopeAndResolvedFindings(t *testin
 }
 
 func TestImplementationHandoffSurvivesUnrelatedNonGoSourceChanges(t *testing.T) {
+	t.Parallel()
 	plan := helperPlan(t, "small", "pass")
 	repo := t.TempDir()
 	data := []byte("<h1>Before</h1>\n")
@@ -515,6 +523,7 @@ func TestImplementationHandoffSurvivesUnrelatedNonGoSourceChanges(t *testing.T) 
 }
 
 func TestWorkerDeletionAndRetainedArtifactBindings(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	if err := os.WriteFile(filepath.Join(record.Baseline.Root, "removed.txt"), []byte("delete\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -693,6 +702,7 @@ func withoutWorkerCollection(t *testing.T, input any, field string, null bool) [
 }
 
 func TestWorkerInputsRequireExplicitNonNullCollections(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	for _, null := range []bool{false, true} {
 		for _, field := range []string{"constraints", "check_ids"} {
@@ -766,6 +776,7 @@ func TestWorkerInputsRequireExplicitNonNullCollections(t *testing.T) {
 }
 
 func TestConservativeScopeFailureCanBeCancelledAndReplaced(t *testing.T) {
+	t.Parallel()
 	record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))
 	if err := os.MkdirAll(filepath.Join(record.Baseline.Root, "web", "node_modules"), 0700); err != nil {
 		t.Fatal(err)
