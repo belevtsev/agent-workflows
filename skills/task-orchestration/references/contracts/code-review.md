@@ -70,7 +70,8 @@ as an independent reviewer).
    not running the file.
 3. For every behaviour finding, its [reproduction test](#reproduce-every-behaviour-finding):
    the test file, kept outside the source, the exact command that runs it
-   alone, and the failure observed, named in the finding's `summary`.
+   alone, and the failure observed, named in the finding's `summary` or, past
+   its cap, under the finding's ID in the report.
 4. When a coverage profile is an input, every uncovered changed block in
    exactly one finding, whose summary names its class
    ([below](#uncovered-changed-blocks)).
@@ -94,11 +95,16 @@ implementation from it before the architect sees it.
 A finding's `evidence` holds only source references inside the tree
 (`path`, line range, `sha256`); `cw task handoff` rejects any other path. Put
 everything else (a reproduction test's absolute path, its command and output,
-the `design.md` rule) in the finding's `summary`, or in a file outside the
-source that the summary names; an untested requirement's summary stays as
+the `design.md` rule) in the finding's `summary`, or under the finding's ID in
+the report the result's `report` names; an untested requirement's summary stays as
 [class 1](#uncovered-changed-blocks) limits it. Whatever a finding cites, the
 coordinator removes any `design.md` rule from it before it reaches the
 implementer, which gets the finding in requirement or constraint terms only.
+
+Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
+at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
+at most 400 bytes with its ID, severity and source `evidence`. Put the full
+reasoning in a report file of at most 512 KiB that the result's `report` names.
 
 ## Quality bar
 
@@ -175,8 +181,8 @@ implementation and the exact command that runs that test alone, for example
   repository's test style, and name in a comment the finding ID and the
   requirement ID or contract-level constraint it shows is broken (never a
   quotation from `design.md`). Keep the file outside the source tree and give
-  its absolute path, or its full text, in the finding's `summary` or the file
-  it names, so the coordinator can apply it unchanged.
+  its absolute path, or its full text, in the finding's `summary` or the
+  report, so the coordinator can apply it unchanged.
 - Run it and record the failure you observed. A test you wrote that passes on
   the current code is not a finding: discard it, and report the suspicion, if
   any, as not reproduced.

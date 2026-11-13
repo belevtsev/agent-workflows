@@ -46,6 +46,11 @@ same contract.
 4. On revision, `change-log.md` in the artefact directory answering every code
    review finding by ID: what changed, with `path:line`, or why nothing did.
 
+Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
+at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
+at most 400 bytes with its ID, severity and source `evidence`. Put the full
+reasoning in a report file of at most 512 KiB that the result's `report` names.
+
 ## Quality bar
 
 The change is the smallest one that satisfies every requirement ID in the

@@ -95,6 +95,9 @@ Every request re-sends the whole conversation. These rules never decide whether
 a task is substantial or replace a gate.
 
 - Read a reference when its step starts, and only the section needed.
+- Start each stage with a fresh worker from `cw task brief --task <task-id>
+  --stage <stage>`; the worker loads only the one contract the brief names
+  ([fresh workers](references/worker-handoffs.md#assign-before-dispatch)).
 - The `cw task` commands print a one-line summary by default; pass `--summary`
   to `cw doctor` and `cw task trace`. Read a missing value with
   `cw task show --field <dotted.path>`, not the whole record.

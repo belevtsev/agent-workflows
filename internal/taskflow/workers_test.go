@@ -431,6 +431,16 @@ func TestReviewRequiresIndependentIdentityFullScopeAndResolvedFindings(t *testin
 		id, agent string
 		owned     []string
 	}{{"coordinator_review", "/root", []string{"."}}, {"self_review", "/root/shared", []string{"."}}, {"partial_review", "/root/independent", []string{"source.txt"}}} {
+		if test.id == "self_review" {
+			// Under a profile the implementer's agent cannot be assigned the
+			// code review at all: each stage starts a fresh worker.
+			brief := workerBrief(test.id, test.agent, "review", test.owned, "focused")
+			brief.Bundle = fixtureReviewBundle(t, record, brief.ID)
+			if _, err := AssignWorker(t.Context(), record.Directory, brief); err == nil || !strings.Contains(err.Error(), "each stage starts a fresh worker") {
+				t.Fatalf("self review assignment = %v; want the fresh-worker refusal", err)
+			}
+			continue
+		}
 		record = mustAssignWorker(t, record, workerBrief(test.id, test.agent, "review", test.owned, "focused"))
 		record = mustSubmitWorker(t, record, workerResult(t, record, test.id, "completed", ref))
 		record = mustAcceptWorker(t, record, workerAcceptance(t, record, test.id, "accepted", ref))

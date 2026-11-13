@@ -126,6 +126,10 @@ type WorkerResult struct {
 	// RequirementMap answers every requirement the brief declares; only a
 	// completed result of such an assignment carries it.
 	RequirementMap []RequirementMapping `json:"requirement_map,omitempty"`
+	// Report names the worker's full report, which handoff copies into the
+	// task directory as ReportFileName; only a task with a profile takes one
+	// (report.go).
+	Report *ReportRef `json:"report,omitempty"`
 }
 
 // ReachRun is one mode of one reach row as a reviewer ran it, or did not.
@@ -367,6 +371,9 @@ func (env Env) AssignApprovedWorker(ctx context.Context, taskPath string, brief 
 		if err := validateBriefStage(*record, record.Assignments, returned, brief); err != nil {
 			return asInvalid(err)
 		}
+		if err := freshWorker(record.Assignments, brief); err != nil {
+			return asInvalid(err)
+		}
 		if findAssignment(*record, brief.ID) != nil {
 			return invalid("worker assignment ID is immutable; use a new ID")
 		}
@@ -521,6 +528,9 @@ func validateResult(record Record, assigned WorkerAssignment, result WorkerResul
 		}
 	}
 	if err := reachRunsShape(assigned.Brief.Role, result.ReachRuns); err != nil {
+		return err
+	}
+	if err := validateReportRef(record, result.Report); err != nil {
 		return err
 	}
 	if len(result.Findings) > 256 {
@@ -818,7 +828,15 @@ func validateLiveWorkerRefs(snapshot projectctx.Snapshot, result WorkerResult, e
 
 func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input WorkerResult) (Record, error) {
 	probes := env.probeReuse(ctx, taskPath)
-	return update(ctx, env, taskPath, func(root *os.Root, record *Record) error {
+	// report names the copy of the result's report the closure stored; the
+	// update removes it if it then fails, as AssignWorker does its copies.
+	report := ""
+	discardReport := func(root *os.Root) {
+		if report != "" {
+			root.Remove(report)
+		}
+	}
+	return updateDiscarding(ctx, env, taskPath, 1, "", func(root *os.Root, record *Record) error {
 		assigned := findAssignment(*record, input.AssignmentID)
 		if assigned == nil {
 			return invalid("worker result references an unknown assignment")
@@ -834,6 +852,9 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 			return err
 		}
 		if err := validateResult(*record, *assigned, input); err != nil {
+			return asInvalid(err)
+		}
+		if err := handoffCaps(*record, input); err != nil {
 			return asInvalid(err)
 		}
 		if err := validateReopens(record.WorkerResults, input); err != nil {
@@ -918,11 +939,16 @@ func (env Env) SubmitWorkerResult(ctx context.Context, taskPath string, input Wo
 		if err := storeSourceManifest(taskDirectory{root}, manifest, sourceSHA256); err != nil {
 			return err
 		}
+		if input.Report != nil {
+			if report, err = storeReport(root, input.AssignmentID, *input.Report); err != nil {
+				return err
+			}
+		}
 		record.WorkerResults = append(record.WorkerResults, bound)
 		record.EvidenceRevision++
 		record.Verification = nil
 		return nil
-	})
+	}, discardReport)
 }
 
 func validateAcceptance(record Record, result BoundWorkerResult, input WorkerAcceptance) error {

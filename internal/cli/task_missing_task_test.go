@@ -31,6 +31,7 @@ func TestTaskCommandsWithoutTaskAreUsageErrors(t *testing.T) {
 		"assess":     {"--input", input},
 		"assign":     {"--input", input},
 		"authorship": {},
+		"brief":      {"--stage", "tests"},
 		"bundle":     {"--review-id", "review1", "--output", output},
 		"consult":    {"--phase", "before", "--input", input},
 		"context":    {"--phase", "before"},
