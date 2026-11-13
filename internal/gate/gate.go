@@ -281,7 +281,9 @@ type decider struct {
 // store cannot be read, yields neither. With enforce on, a governing record
 // that cannot be read asks, unless another record gates, joined with any ask
 // the publication raises without it; with enforce off, such a record counts
-// as no record. Records that gate a publication marked unresolved, which
+// as no record. With enforce on, records that passed on the working tree
+// gate a commit that would record content for a path that differs from the
+// working tree's (stagedProblem). Records that gate a publication marked unresolved, which
 // the gate checks in the session's directory for want of its own, ask
 // instead of gating; a host that cannot ask denies.
 func (d *decider) check(ctx context.Context, publication publication) ([]taskflow.OpenRecord, ask) {
@@ -305,6 +307,17 @@ func (d *decider) check(ctx context.Context, publication publication) ([]taskflo
 			unreadable = append(unreadable, record)
 		default:
 			verified = append(verified, record)
+		}
+	}
+	if len(gating) == 0 && len(verified) > 0 && d.in.Enforce && !publication.push && publication.unresolved == "" {
+		// The records passed on the working tree; a commit that records
+		// other content for a path publishes bytes they never saw.
+		if problem := stagedProblem(ctx, d.deps.Git, repo.Worktree, publication.staged); problem != "" {
+			for _, record := range verified {
+				record.Problem = problem
+				gating = append(gating, record)
+			}
+			verified = nil
 		}
 	}
 	if len(gating) > 0 {

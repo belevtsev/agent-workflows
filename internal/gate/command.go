@@ -41,6 +41,9 @@ type publication struct {
 	// all is a commit with -a or --all, which also commits modified tracked
 	// files that are not staged.
 	all bool
+	// staged is what the gate can tell of the content a commit records
+	// (stagedDifferences).
+	staged stagedRule
 	// unresolved marks a publication that runs after a directory change the
 	// gate could not follow, such as `cd $OTHER` or `cd -`, and names it as
 	// written; dir is then the session's directory, checked in its place.
@@ -109,6 +112,10 @@ func substitutionMarker(index int) string { return "\x00" + strconv.Itoa(index) 
 type publicationScanner struct {
 	substitutions []string
 	found         []publication
+	// touched reports that a command read so far may change git's index
+	// (keepsIndex), so a later commit is not judged by the index as it
+	// stands.
+	touched bool
 }
 
 // scan reads command from cwd. Each substitution referenced by a simple
@@ -124,6 +131,7 @@ func (s *publicationScanner) scan(command, cwd string) {
 			}
 		}
 		words, chdirs := commandWords(substitutionReference.ReplaceAllString(segment, "_"))
+		defer func(keeps bool) { s.touched = s.touched || !keeps }(keepsIndex(words))
 		if len(words) > 0 && (words[0] == "cd" || words[0] == "pushd" || words[0] == "popd") {
 			words = withoutRedirections(words)
 			if len(words) == 2 && words[0] != "popd" && followablePath(words[1]) {
@@ -150,7 +158,13 @@ func (s *publicationScanner) scan(command, cwd string) {
 		if target == "" {
 			return
 		}
-		next := publication{dir: target, push: words[subcommand] == "push", all: words[subcommand] == "commit" && commitsAll(words[subcommand+1:])}
+		next := publication{dir: target, push: words[subcommand] == "push"}
+		if !next.push {
+			next.all, next.staged = commitsAll(words[subcommand+1:]), commitStaged(words[subcommand+1:])
+			if s.touched {
+				next.staged = stagedUnknown
+			}
+		}
 		if !slices.Contains(s.found, next) {
 			s.found = append(s.found, next)
 		}

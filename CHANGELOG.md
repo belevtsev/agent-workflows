@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cw task` summaries and the commit gate's deny reason name the task by `task_id` instead of its directory, and a log path is relative
   to the task directory: pass the ID to `--task`; `--full` keeps the record ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 
+- While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
+  from the verified working tree for a path it changes; stage the working tree's version ([which source counts](docs/hooks.md#which-source-counts)).
+
 ### Added
 
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with

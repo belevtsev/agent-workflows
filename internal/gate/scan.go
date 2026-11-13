@@ -286,6 +286,8 @@ type wordScanner struct {
 	approvals    []string
 	approvalRuns int
 	certain      bool
+	// touched is publicationScanner's.
+	touched bool
 	// session is the directory the command line starts in; a publication
 	// after a directory change the scanner cannot follow is checked there.
 	session string
@@ -339,6 +341,7 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 	if !known {
 		s.certain = false
 	}
+	defer func(keeps bool) { s.touched = s.touched || !keeps }(keepsIndex(wordTexts(words)))
 	if len(words) > 0 && (words[0].Text == "cd" || words[0].Text == "pushd" || words[0].Text == "popd") {
 		change := strings.Join(wordRaws(words), " ")
 		if slices.ContainsFunc(all, func(word shellwords.Word) bool { return word.Text == "" }) {
@@ -398,7 +401,10 @@ func (s *wordScanner) visit(all []shellwords.Word, at place, depth int, vars exp
 		runs = move(runs, words[index], words[index].Raw, vars)
 		plain = resolveDir(plain, texts[index])
 	}
-	next := publication{push: texts[subcommand] == "push", all: texts[subcommand] == "commit" && commitsAll(texts[subcommand+1:])}
+	next := publication{push: texts[subcommand] == "push"}
+	if !next.push {
+		next.all, next.staged = commitsAll(texts[subcommand+1:]), commitStaged(texts[subcommand+1:])
+	}
 	s.add(runs, next)
 	if plain != "" && plain != runs.dir {
 		// Where the two readings differ, the gate also checks the plain one,
@@ -468,8 +474,12 @@ func move(at place, word shellwords.Word, change string, vars expansion) place {
 
 // add records next as run at: in its directory, or, after a directory change
 // the scanner could not follow, in the session's directory, marked unresolved.
+// A commit after a command that may change the index is stagedUnknown.
 func (s *wordScanner) add(at place, next publication) {
 	next.dir = at.dir
+	if !next.push && s.touched {
+		next.staged = stagedUnknown
+	}
 	if next.dir == "" && at.unresolved != "" {
 		next.dir, next.unresolved = s.session, at.unresolved
 	}

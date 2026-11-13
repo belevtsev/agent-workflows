@@ -320,6 +320,35 @@ push after the commit goes ahead. Editing any eligible file does reopen it. A
 record verified by a `cw` older than this digest stays open until it is
 verified again.
 
+The digest is of the working tree, so a commit must also record the working
+tree's content. For each path a `git commit` records differently from `HEAD`,
+the staged mode and bytes must equal the file on disk, and a path the commit
+removes must be gone from disk or ignored by git. Otherwise both the plugin
+hook and git's `pre-commit` hook deny while a record that passed on the
+working tree governs the repository, naming up to three such paths. So
+`git add` of bytes that were never verified, then the verified bytes put back
+on disk, then `git commit -m x` is denied, and so is a staged mode change
+alone (`git update-index --chmod=+x`). A path left unstaged keeps `HEAD`'s content
+and is not part of the change, so a partial commit of verified files goes
+ahead. The bytes are compared raw, as `cw task verify` reads them: a path whose
+clean filter or end-of-line conversion makes the staged blob differ from the
+file on disk, such as a Git LFS pointer, counts as differing. A submodule's
+commit, which `cw task verify` does not read, and an unmerged path, which git
+refuses to commit, are not compared. `git commit --amend` is compared with
+`HEAD`, not with the commit it replaces.
+
+The plugin hook judges the agent's command before it runs, so it reads the
+commit's content from the index as it stands: all of it for `git commit`, and
+only the paths it removes for `git commit -a`, which records the working tree
+of every other path. It does not judge a commit that takes paths from the
+working tree (`git commit PATH`, `-i`, `-o`, `--pathspec-from-file`), nor one
+after another command in the same Bash input that may change the index, such
+as `git add -A && git commit`: only `cd`, `pushd`, `popd`, `echo`, `printf`,
+`cat`, `rg`, `grep`, `jq`, `pwd`, `ls`, `test`, `true`, `false`, `:` and
+`git push` keep it. The `pre-commit` hook that `cw gate install` writes
+judges every commit by the index git commits (`GIT_INDEX_FILE`)
+([Git hooks](#git-hooks)).
+
 The digest is taken where the command runs. For a command in the record's own
 worktree that is the record's `baseline.selected_path`; for a command in a
 linked worktree of the record's main checkout it is that linked worktree, and
@@ -450,7 +479,9 @@ exits 0 without output, and the command proceeds, when:
   substantial;
 - anything fails internally: unreadable input, a task directory in which no
   revision decodes or that cannot be listed, a failed source capture, a missing
-  `git`, a git command that fails or times out. Two failures ask instead: a
+  `git`, a git command that fails or times out, and a file the staged-content
+  comparison cannot read ([Which source counts](#which-source-counts)), which
+  leaves a verified record allowing the commit. Two failures ask instead: a
   governing record that cannot be read
   ([Records that cannot be read](#records-that-cannot-be-read)) and a task
   store that cannot be located or read ([task store](#task-store)). A record
@@ -512,9 +543,11 @@ judges that repository by the rules above:
   uncommitted changes over verified records, and a substantial change with no
   record. Git names the directory, so the ask about a directory change cannot
   arise.
-- For the substantial-change warning, a commit's change is the index git is
-  committing (`GIT_INDEX_FILE`), so `git commit -a` and `git commit PATH`
-  count what they record. `pre-merge-commit` gives no such warning: a merge
+- For the substantial-change warning, and for the rule that a commit records
+  the working tree's content ([Which source counts](#which-source-counts)), a
+  commit's change is the index git is committing (`GIT_INDEX_FILE`), so
+  `git commit -a` and `git commit PATH` count what they record.
+  `pre-merge-commit` gives no such warning: a merge
   commit's change is the incoming branch's, such as the base branch's on
   `git pull --no-rebase`, not work the task records.
 - Where `cw hook pre-publish` lets the command through without output
@@ -652,7 +685,7 @@ and the last row lists what still gets past git's hooks.
 | `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Caught when `cw gate install` has run: a merge commit, from `git merge`, `git merge --continue` or `git pull`, runs `pre-merge-commit` or, after conflicts, `pre-commit`, except that `pre-merge-commit` lets through a merge of commits on remote-tracking branches ([Git hooks](#git-hooks)). The agent's own `git merge --no-verify`, `git pull --no-verify` or `CW_GATE=off git merge` still gets past both hooks, since the plugin hook does not check a merge. The others can still make their commits, since git does not run `pre-commit` for them as it does for `git commit`; pushing them is caught. |
 | A remote-tracking ref pointed at local work, as in `git update-ref refs/remotes/origin/x side` or `git fetch . side:refs/remotes/origin/x`, followed by `git merge origin/x` | Allowed where `cw gate install` has run. `pre-merge-commit` lets through a merge of commits a remote-tracking ref contains, and nothing checks how the ref got there: rewriting one, which the plugin hook does not see, makes local work look published ([Git hooks](#git-hooks)). |
 | `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
-| Staged bytes that differ from the verified working tree: `git add`, then restore the verified bytes on disk, then `git commit -m x` | Allowed once the task's verify passed on the working tree. The gate digests the working tree, not the index, so a commit without `-a` can hold staged bytes that were never verified. Only the later push asks, because the working tree then differs from the commit. |
+| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x`, `git commit -i PATH`, or an index named by `GIT_INDEX_FILE=… git commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run: `pre-commit` judges the index git commits. |
 | Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks, or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
 | A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
 | An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under a `cw` older than v3.0.0-rc.2, any record of version 4 or later ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
