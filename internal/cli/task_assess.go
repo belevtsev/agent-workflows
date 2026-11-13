@@ -30,6 +30,7 @@ func newTaskAssessCommand(deps taskDeps) *cobra.Command {
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(assess, &directory)
+	assess.Example = helpText("task-assess-example")
 	assess.Flags().StringVar(&inputFile, "input", "", "Assessment JSON file, or - for standard input")
 	fullFlag(assess, &full, "the whole task record")
 	return assess

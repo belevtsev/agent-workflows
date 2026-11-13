@@ -21,7 +21,7 @@ The Go skills are separate from the Go pack. They come from the
 
 | Command | What it does |
 | --- | --- |
-| `cw pack list` | Prints `selection` (`default` or `explicit`) and each built-in pack with its `id`, `kind`, `detect`, `evidence_rule` and whether it is `selected`. |
+| `cw pack list` | Prints `selection` (`default` or `explicit`) and each built-in pack with what its `pack.yaml` declares except `schema` (`id`, `kind`, `detect`, `commands` when present, `evidence_rule`) and whether it is `selected`. |
 | `cw pack add <id>` | Selects a built-in pack. An unknown id exits with status 2 and lists the built-in packs. |
 | `cw pack remove <id>` | Deselects a pack. |
 
@@ -85,15 +85,11 @@ other key and refuses a schema newer than the one it knows.
 | `kind` | yes | `language` or `domain` | the default selection |
 | `detect` | yes | 1 to 16 distinct file names, without `/` | `cw task start` |
 | `evidence_rule` | no | a rule id such as `go.package-test/v2`, ending in `/v<N>` | `cw task verify` |
-| `commands` | no | `build`, `test`, `race`, `lint`, `format`: each a non-empty argv | nothing yet |
-| `tests` | no | `unit`, `integration`, `e2e`: each an `argv` and optional `files` patterns | nothing yet |
-| `interface_extract` | no | a non-empty argv | nothing yet |
-| `skills` | no | `implement`, `test`, `security`: skill names or `plugin:skill`, each once | nothing yet |
-| `review` | no | review items, each one line of at most 512 bytes | nothing yet |
+| `commands` | no | `race`: a non-empty argv that runs the pack's tests under the race detector | `cw pack list`, [`cw task init`](operations.md#starter-plan) |
 
-"Nothing yet" means `cw` validates the field when it loads the pack, but no
-command or skill reads it. Do not rely on these fields to change what an agent
-does.
+A manifest holds only fields `cw` reads. Any other key, such as the
+`tests`, `skills` or `review` of the [original design](design/language-packs.md),
+is refused as unknown.
 
 If one built-in `pack.yaml` is invalid, every `cw pack` subcommand and
 `cw task start` fail with "built-in packs are invalid".
@@ -114,9 +110,7 @@ process. The technical steps are these.
    and a case to `Evaluate` in `evaluate.go`, with tests. To make a rule
    stricter, add a new `/v<N>` id instead of changing the old rule, because
    open tasks keep the id they recorded.
-4. List in `skills` only skills that ship: a core skill under `skills/`, or
-   `cc-skills-golang:<name>`. No plugin ships skills from `packs/` today.
-5. Update the tests that pin the built-in set to the Go pack alone. Any new
+4. Update the tests that pin the built-in set to the Go pack alone. Any new
    pack fails these:
    - `TestDefaultSelectionAndEmbeddedPacks` in `internal/langpack`;
    - `TestPackAddRemove` and `TestTaskStartRecordsPacks` in `internal/cli`;
@@ -124,10 +118,10 @@ process. The technical steps are these.
 
    A `language` pack also changes the default selection, so it fails
    `TestPackList` and `TestPackDefaultConfigDir` in `internal/cli` too.
-6. Run `go test ./internal/langpack ./internal/skillcheck ./internal/cli ./internal/taskflow`.
-   `TestRepositoryPacks` in `internal/skillcheck` checks that each pack loads,
-   names a known rule and lists skills that exist.
-7. Build `cw` and run `cw pack list` to see the new pack.
+5. Run `go test ./internal/langpack ./internal/skillcheck ./internal/cli ./internal/taskflow`.
+   `TestRepositoryPacks` in `internal/skillcheck` checks that each pack loads
+   and names a known rule.
+6. Build `cw` and run `cw pack list` to see the new pack.
 
 ## History
 

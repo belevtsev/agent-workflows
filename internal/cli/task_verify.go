@@ -29,6 +29,7 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		return err
 	}}
 	taskFlag(verify, &directory)
+	verify.Example = helpText("task-verify-example")
 	fullFlag(verify, &full, "the whole verification, with every fixed limitation,")
 	return verify
 }

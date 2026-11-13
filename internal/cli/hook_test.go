@@ -2066,16 +2066,16 @@ func TestHookSessionStartNamesAClaudeCodeOlderThanTheMinimum(t *testing.T) {
 	}
 }
 
-func TestMinimumClaudeCodeVersionIsTheREADMEs(t *testing.T) {
-	// Oracle: README.md's Quick start states minClaudeCodeVersion as the
-	// minimum Claude Code version, so the session-start line and the README
-	// cannot drift apart.
-	readme, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+func TestMinimumClaudeCodeVersionIsTheHostRequirements(t *testing.T) {
+	// Oracle: the host requirements table in docs/operations.md states
+	// minClaudeCodeVersion as the minimum Claude Code version, so the
+	// session-start line and the docs cannot drift apart.
+	operations, err := os.ReadFile(filepath.Join("..", "..", "docs", "operations.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "**Claude Code version.** " + minClaudeCodeVersion + " or newer"; !strings.Contains(string(readme), want) {
-		t.Fatalf("README.md does not contain %q", want)
+	if want := "| Host version | " + minClaudeCodeVersion + " or newer"; !strings.Contains(string(operations), want) {
+		t.Fatalf("docs/operations.md does not contain %q", want)
 	}
 }
 
@@ -2272,11 +2272,13 @@ func TestHookSessionStartReturnsWhileItsWriterKeepsStdinOpen(t *testing.T) {
 	// well within the 10 second wait below. With enforce_verify false and
 	// session_doctor off it reads no stdin and its context is the
 	// instructions alone. With the gate on it stops reading stdin after its
-	// bound and takes the working directory as the session's, so the
-	// repository's open task gets hkGateLine.
+	// bound, set here to 100 ms (cw ships 2 s), and takes the working
+	// directory as the session's, so the repository's open task gets
+	// hkGateLine.
 	const instructions = "# Rules\n\nWork carefully."
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	withSessionInputTimeout(t, 100*time.Millisecond)
 	file := hkWriteInstructions(t, instructions)
 	run := func(t *testing.T, h *hkHarness) string {
 		t.Helper()

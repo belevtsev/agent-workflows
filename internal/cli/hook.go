@@ -42,7 +42,6 @@ const (
 	// timeout in hooks/hooks.json and hooks/codex-hooks.json, so cw
 	// finishes before it is killed.
 	hookPublishTimeout    = 20 * time.Second
-	hookDoctorTimeout     = 5 * time.Second
 	hookDoctorCacheAge    = time.Hour
 	enforceVerifyOption   = "CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY"
 	sessionDoctorOption   = "CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR"
@@ -412,9 +411,15 @@ func sessionStartContext(ctx context.Context, root *cobra.Command, config Config
 	return text, true
 }
 
-// hookSessionInputTimeout bounds the session-start read of the hook input,
-// which the host has written by the time the hook runs.
-const hookSessionInputTimeout = 2 * time.Second
+// The session-start deadlines. They are variables only so that tests can
+// set them; cw never changes them.
+var (
+	// hookSessionInputTimeout bounds the session-start read of the hook
+	// input, which the host has written by the time the hook runs.
+	hookSessionInputTimeout = 2 * time.Second
+	// hookDoctorTimeout bounds the session-start doctor summary.
+	hookDoctorTimeout = 5 * time.Second
+)
 
 // sessionInput returns the session's directory and how the session started.
 // The directory is the cwd of the hook input on stdin, else the working

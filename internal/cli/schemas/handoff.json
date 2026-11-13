@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task handoff --input",
+  "description": "A worker result, validated against its assignment, the current source and the checks run. cw also checks rules this schema does not state, such as the handoff caps.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {"type": "string", "description": "cw fills it when omitted."},
+    "assignment_id": {"type": "string"},
+    "assignment_sha256": {"type": "string", "description": "cw fills it from the assignment when omitted."},
+    "agent_id": {"type": "string", "description": "cw fills it from the assignment when omitted."},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The source the result describes; cw fills it from the current source when omitted.",
+      "properties": {
+        "root": {"type": "string"},
+        "selected_path": {"type": "string"},
+        "head": {"type": "string"},
+        "branch": {"type": "string"},
+        "fingerprint": {"type": "string"},
+        "dirty": {"type": "boolean"},
+        "file_count": {"type": "integer"}
+      }
+    },
+    "status": {"enum": ["completed", "blocked", "cancelled"]},
+    "summary": {"type": "string"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}},
+    "changed_files": {
+      "type": "array",
+      "description": "Implementation results only.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "description": "cw fills it from the current bytes when omitted."},
+          "deleted": {"type": "boolean"},
+          "gofmt_sha256": {"type": "string", "description": "cw fills it when omitted."}
+        }
+      }
+    },
+    "check_ids": {"type": "array", "items": {"type": "string"}},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "summary": {"type": "string", "description": "One line."},
+          "severity": {"enum": ["blocker", "major", "minor"], "description": "Required in a review result."},
+          "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}},
+          "reopens": {"type": "string", "description": "An earlier finding this one files again, as <assignment id>/<finding id>."}
+        }
+      }
+    },
+    "uncertainties": {"type": "array", "items": {"type": "string"}},
+    "reach_runs": {
+      "type": "array",
+      "description": "How a reviewer ran each reach row of its bundle.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string"},
+          "mode": {"type": "string"},
+          "status": {"enum": ["ran", "not_run"]},
+          "command": {"type": "string", "description": "Required when status is ran."},
+          "observed": {"type": "string", "description": "Required when status is ran."},
+          "reason": {"type": "string", "description": "Required when status is not_run."}
+        }
+      }
+    },
+    "requirement_map": {
+      "type": "array",
+      "description": "Answers every requirement the brief declares, in a completed result.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requirement": {"type": "string"},
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {"type": "string"},
+                "name": {"type": "string"}
+              }
+            }
+          },
+          "uncovered": {"type": "string", "description": "Why no test covers the requirement."}
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The worker's full report; a task with a profile only.",
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A line range of a repository file.",
+      "properties": {
+        "path": {"type": "string", "description": "Repository-relative path."},
+        "start_line": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "description": "SHA-256 of the whole file; cw fills it from the current bytes when omitted."}
+      }
+    }
+  }
+}

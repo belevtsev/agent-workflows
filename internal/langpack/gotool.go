@@ -126,6 +126,9 @@ type GoEnv struct {
 	// built for, which go test compares with GOOS and GOARCH.
 	GOHOSTOS   string `json:"gohostos"`
 	GOHOSTARCH string `json:"gohostarch"`
+	// C is how cw judged the C toolchain the go command runs with cgo on
+	// (judgeC). Runs recorded before cw judged it lack it.
+	C *CToolchain `json:"c,omitempty"`
 }
 
 // goEnvLimit bounds the output of the go env probe.
@@ -133,8 +136,9 @@ const goEnvLimit = 64 << 10
 
 // goEnvNames are the variables ReadGoEnv asks go env for: the five GoEnv
 // records, then those only its key covers, which select the cgo, experiment,
-// workspace, instruction set and C compilers a build uses.
-var goEnvNames = []string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOWORK", "GOAMD64", "GOARM64", "CC", "CXX"}
+// workspace, instruction set and C compilers a build uses, and the flags it
+// passes them (cgoFlagNames).
+var goEnvNames = append([]string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOWORK", "GOAMD64", "GOARM64", "CC", "CXX", "FC"}, cgoFlagNames...)
 
 // ReadGoEnv runs tool.Path once, within ctx, as `go env -json` of goEnvNames
 // in dir with env followed by tool.Env, which is the environment that a check
@@ -149,10 +153,14 @@ var goEnvNames = []string{"GOFLAGS", "GOOS", "GOARCH", "GOHOSTOS", "GOHOSTARCH",
 // this read, so pin holds the run to what was read: GOFLAGS as printed,
 // unredacted, or a single space for none, and GOOS and GOARCH. Appended to
 // the run's environment, they win over any go env file, as a value that is
-// not empty does in cmd/go, and a space applies no flags.
+// not empty does in cmd/go, and a space applies no flags. The pin then holds
+// judgeC's: CGO_ENABLED as read and, with cgo on, the CGO_*FLAGS as read and
+// the C and C++ compilers by the paths judged, recorded under read.C.
 //
-// config holds every value printed, by name, GOFLAGS unredacted, for a key
-// that tells two configurations apart (GoEnvKey); it is not to be stored.
+// config holds every value printed, by name, GOFLAGS unredacted, and under
+// "C toolchain" the compilers judged with their hashes and why the toolchain
+// did not verify, for a key that tells two configurations apart (GoEnvKey);
+// it is not to be stored.
 func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read GoEnv, pin []string, config map[string]string, err error) {
 	refuse := func(format string, args ...any) (GoEnv, []string, map[string]string, error) {
 		return GoEnv{}, nil, nil, fmt.Errorf("cannot read the configuration of the go command %s: %s", tool.Path, fmt.Sprintf(format, args...))
@@ -184,7 +192,16 @@ func ReadGoEnv(ctx context.Context, tool GoTool, dir string, env []string) (read
 	if !complete || read.GOOS == "" || read.GOARCH == "" || read.GOHOSTOS == "" || read.GOHOSTARCH == "" {
 		return refuse("`go env -json` printed %s, not exactly %s with the four platform values set", quoteLimited(string(got.Stdout)), strings.Join(goEnvNames, ", "))
 	}
-	return read, []string{"GOFLAGS=" + cmp.Or(printed["GOFLAGS"], " "), "GOOS=" + read.GOOS, "GOARCH=" + read.GOARCH}, printed, nil
+	pin = []string{"GOFLAGS=" + cmp.Or(printed["GOFLAGS"], " "), "GOOS=" + read.GOOS, "GOARCH=" + read.GOARCH}
+	var cPin []string
+	read.C, cPin = judgeC(ctx, printed, dir, append(append(slices.Clip(env), tool.Env()...), pin...))
+	judged, err := json.Marshal(read.C)
+	if err != nil {
+		return refuse("%v", err)
+	}
+	config = maps.Clone(printed)
+	config["C toolchain"] = string(judged)
+	return read, append(pin, cPin...), config, nil
 }
 
 // GoEnvKey returns the hex HMAC-SHA256, under secret, of each name in values
@@ -206,13 +223,20 @@ func GoEnvKey(secret []byte, values map[string]string) string {
 // env does not show what its go command applied. A run whose GOOS or GOARCH
 // is not its go command's host's earns none either: go test hands each such
 // test binary to a go_<goos>_<goarch>_exec program it finds on PATH, which
-// need not run it.
+// need not run it. Nor does a run recorded before cw judged its C toolchain,
+// or one with cgo on whose C toolchain did not verify (judgeC): that
+// toolchain builds into the test binary code that can report a pass without
+// running a test.
 func GoEnvWithheld(env *GoEnv) string {
 	switch {
 	case env == nil:
 		return "cw did not record the configuration its go command applied (go env); run it again"
 	case env.GOOS != env.GOHOSTOS || env.GOARCH != env.GOHOSTARCH:
 		return fmt.Sprintf("it built its tests for %s/%s, not for its go command's host %s/%s, so go test may have handed them to a go_%s_%s_exec program instead of running them", env.GOOS, env.GOARCH, env.GOHOSTOS, env.GOHOSTARCH, env.GOOS, env.GOARCH)
+	case env.C == nil:
+		return "cw did not record whether it verified the C toolchain its go command runs with cgo on; run it again"
+	case env.C.CGO && env.C.Unverified != "":
+		return "cgo was on, and " + env.C.Unverified + "; that toolchain builds code into the test binary that can report a pass without running a test. To earn credit, run the check again with the system compiler first on PATH and CC unset, with the variables named unset and CGO_*FLAGS holding only -O and -g, or with CGO_ENABLED=0 where -race is not needed"
 	}
 	return ""
 }

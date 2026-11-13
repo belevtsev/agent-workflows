@@ -83,9 +83,9 @@ GOWORK=off go test ./internal/skillcheck
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
-- the model policy loads; its shipped routing keeps Claude Code lookup on Haiku,
-  summarization on Sonnet, and Codex `max` for planning, architecture and
-  diagnosis only; the recommended Codex memory passes use Luna; and the profile
+- the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
+  summarization on `sonnet`, and Codex `max` for planning, architecture and
+  diagnosis only; the recommended Codex memory passes use `luna`; and the profile
   table in `references/hosts.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
@@ -271,7 +271,7 @@ run `status` or context phase, fails validation with "invalid stored …".
   The check run member `go_env` (F1) was the first record change after rc.2
   and bumped `Version` to 5; later changes before rc.3, such as R1's
   `profile`, keep 5. Members version 5 adds so far: on a check run, `go_env`
-  (F1), `source_sha256` and `env_key` (X1), `modes_sha256` (X2); on a worker acceptance, `source_sha256` (X2); on a worker result,
+  (F1) and its `c` (F18), `source_sha256` and `env_key` (X1), `modes_sha256` (X2); on a worker acceptance, `source_sha256` (X2); on a worker result,
   `source_sha256` (X1) and, in its result, `report` (H1); on the record, `profile`, and on its plan,
   `profile` and `budget` (R1), and `usage` (C1); on a worker brief, `stage`,
   `fixes` and `repeats` (R2); on a worker assignment, `owner_approvals` (R3);
@@ -323,7 +323,7 @@ preserved licenses are covered by the import-provenance checks in
 | Job | Steps |
 | --- | --- |
 | `Native Go / ubuntu-latest` | gofmt check, `go vet ./...`, `go test -race -count=1 ./...` |
-| `Native Go / macos-latest` | gofmt check, `go vet ./...`, `go test -count=1 ./...` |
+| `Native Go / macos-latest` | gofmt check, `go vet ./...`, `go test -count=1 -timeout=15m ./...` |
 | `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 

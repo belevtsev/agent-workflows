@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task assign --input",
+  "description": "A worker brief, bound to the current source. cw also checks rules this schema does not state, such as the stage's round cap.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$", "description": "The assignment ID, unique in the task."},
+    "agent_id": {"type": "string", "description": "The worker agent, such as /root/implementer."},
+    "role": {"enum": ["implementation", "review", "evidence", "verification"]},
+    "goal": {"type": "string"},
+    "owned_paths": {"type": "array", "items": {"type": "string"}, "description": "Repository-relative paths the worker may change; . is the whole repository."},
+    "constraints": {"type": "array", "items": {"type": "string"}},
+    "check_ids": {"type": "array", "items": {"type": "string"}},
+    "stop_condition": {"type": "string"},
+    "bundle": {"$ref": "#/$defs/file_ref", "description": "The filled reviewer bundle; review briefs only."},
+    "contract": {"$ref": "#/$defs/file_ref", "description": "The saved Go contract extract; implementation briefs only."},
+    "inputs": {"type": "array", "items": {"$ref": "#/$defs/file_ref"}, "description": "Files handed to the worker; cw keeps a copy of each."},
+    "requirements": {
+      "type": "array",
+      "description": "The contract requirements a brief with a contract covers.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requirement": {"type": "string"},
+          "criteria": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "stage": {"enum": ["spec", "spec-review", "design", "design-review", "tests", "implementation", "test-review", "code-review", "adversarial"], "description": "Under a profile, an implementation or review brief needs one of the profile's stages."},
+    "fixes": {
+      "type": "array",
+      "description": "The findings or requirements a later round of an author stage answers.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "finding": {"type": "string", "description": "<assignment id>/<finding id>."},
+          "requirement": {"type": "string"}
+        }
+      }
+    },
+    "repeats": {"type": "string", "description": "The earlier assignment of the same stage this one replaces."}
+  },
+  "$defs": {
+    "file_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "description": "Absolute path."},
+        "sha256": {"type": "string", "description": "SHA-256 of the file's bytes."}
+      }
+    }
+  }
+}
