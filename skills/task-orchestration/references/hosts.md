@@ -74,9 +74,9 @@ does not establish an unexposed context.
 
 Give only approved contract, interface and scaffold inputs and exact test-output
 paths; on either host, Go contracts start from the
-[declaration extract](contracts/test-engineer.md#extract-go-declarations).
+[declaration extract](dispatching-reviews-and-tests.md#extract-go-declarations).
 The coordinator retains implementation discovery and raw execution diagnostics.
-Inspect available tool transcripts for boundary violations; neither host dispatch
+Inspect any tool transcripts for boundary violations; neither host dispatch
 nor native task ownership is a filesystem sandbox. If the test engineer is
 exposed, stop or supersede it and use a fresh replacement. Report a blocker when
 suitable fresh context or model settings cannot be supplied; do not fall back to

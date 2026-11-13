@@ -29,7 +29,7 @@ spec writer turns requirements, tickets and pages into an
 no `openspec/`), and never invents a requirement: anything the sources leave
 open becomes an open question. Advisers, when available, join only at the
 decision points the
-[consultation reference](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)
+[adviser guidance](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow)
 lists. The flow, when a stage is skipped and when each role runs are in the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md).
 
