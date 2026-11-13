@@ -1,0 +1,2 @@
+cw task usage --task <task-id> --claude-transcript ~/.claude/projects/<project>/<session>.jsonl
+cw task usage --task <task-id> --codex-session ~/.codex/sessions/<date>/<rollout>.jsonl --prices /path/to/prices.json

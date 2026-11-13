@@ -91,8 +91,8 @@ func NewCommand(config Config) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "cw",
 		Short: "Runtime for the agent-workflows skills",
-		Long: "cw records and verifies substantial tasks, publishes verified ones (commit, push and pull request, run by a coordinator that carries the user's authorization), consults configured advisers, inspects projects and installs the Codex instruction block. " +
-			"The skills themselves ship as Claude Code and Codex plugins.",
+		Long: "cw records and verifies substantial tasks and publishes the verified ones as a commit, push and pull request. " +
+			"The skills that drive it ship as Claude Code and Codex plugins.",
 		SilenceUsage: true, SilenceErrors: true, DisableSuggestions: true,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -133,8 +133,9 @@ func NewCommand(config Config) *cobra.Command {
 	addGraphifyCommands(root, config)
 	addHostCommands(root, config)
 	addPackCommands(root, config)
+	groupCommands(root)
 	// Cobra's help path stays independent of state and environment.
-	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", RunE: func(_ *cobra.Command, args []string) error {
+	root.SetHelpCommand(&cobra.Command{Use: "help [command ...]", Short: "Show help for a command", GroupID: commandGroup["help"], RunE: func(_ *cobra.Command, args []string) error {
 		target := root
 		if len(args) > 0 {
 			found, remaining, err := root.Find(args)
@@ -143,9 +144,43 @@ func NewCommand(config Config) *cobra.Command {
 			}
 			target = found
 		}
+		// Cobra adds the -h flag only to the command it runs, so add it
+		// here to make cw help X print what cw X --help prints.
+		target.InitDefaultHelpFlag()
 		return target.Help()
 	}})
 	return root
+}
+
+// Command groups (docs/operations.md, Stability). Core commands, their flags,
+// exit codes and the record format follow semver from v3.0.0; experimental
+// ones may change in a minor release.
+const (
+	groupCore         = "core"
+	groupExperimental = "experimental"
+)
+
+// commandGroup names the group of every top-level command. A command missing
+// from it is listed under "Additional Commands" in cw --help, which the help
+// test refuses, so a new command must choose its group here.
+var commandGroup = map[string]string{
+	"doctor": groupCore, "gate": groupCore, "help": groupCore, "hook": groupCore,
+	"install": groupCore, "pack": groupCore, "publish": groupCore, "task": groupCore,
+	"uninstall": groupCore, "version": groupCore,
+	"consult": groupExperimental, "graphify": groupExperimental, "keys": groupExperimental, "metrics": groupExperimental,
+}
+
+// groupCommands sorts the top-level commands into the core and experimental
+// help groups. Cobra adds the help command only when the command runs, so
+// NewCommand sets its group where it defines it.
+func groupCommands(root *cobra.Command) {
+	root.AddGroup(
+		&cobra.Group{ID: groupCore, Title: "Core commands:"},
+		&cobra.Group{ID: groupExperimental, Title: "Experimental commands (may change in a minor release):"},
+	)
+	for _, command := range root.Commands() {
+		command.GroupID = commandGroup[command.Name()]
+	}
 }
 
 type versionReport struct {

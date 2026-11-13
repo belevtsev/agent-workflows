@@ -19,12 +19,16 @@ type packListReport struct {
 	Packs     []packEntry `json:"packs"`
 }
 
+// packEntry is one built-in pack: the fields its pack.yaml declares, except
+// schema, and whether the selection holds it. Commands is omitted when the
+// pack declares no command.
 type packEntry struct {
-	ID           string   `json:"id"`
-	Kind         string   `json:"kind"`
-	Detect       []string `json:"detect"`
-	EvidenceRule string   `json:"evidence_rule"`
-	Selected     bool     `json:"selected"`
+	ID           string             `json:"id"`
+	Kind         string             `json:"kind"`
+	Detect       []string           `json:"detect"`
+	Commands     *langpack.Commands `json:"commands,omitempty"`
+	EvidenceRule string             `json:"evidence_rule"`
+	Selected     bool               `json:"selected"`
 }
 
 // packChangeReport is the result of cw pack add or remove: the selection
@@ -128,7 +132,11 @@ func addPackCommands(root *cobra.Command, config Config) {
 			report.Selection = taskflow.SelectionExplicit
 		}
 		for _, manifest := range selection.builtIn {
-			report.Packs = append(report.Packs, packEntry{ID: manifest.ID, Kind: manifest.Kind, Detect: manifest.Detect, EvidenceRule: manifest.EvidenceRule, Selected: slices.Contains(selection.ids, manifest.ID)})
+			entry := packEntry{ID: manifest.ID, Kind: manifest.Kind, Detect: manifest.Detect, EvidenceRule: manifest.EvidenceRule, Selected: slices.Contains(selection.ids, manifest.ID)}
+			if manifest.Commands.Race != nil {
+				entry.Commands = &langpack.Commands{Race: manifest.Commands.Race}
+			}
+			report.Packs = append(report.Packs, entry)
 		}
 		return writeJSON(cmd.OutOrStdout(), report)
 	}})

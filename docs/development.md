@@ -83,9 +83,9 @@ GOWORK=off go test ./internal/skillcheck
 - `disable-model-invocation` in `SKILL.md` agrees with
   `policy.allow_implicit_invocation` in `agents/openai.yaml`;
 - the paths in `skills-manifest.json` and the plugin manifests exist;
-- the model policy loads; its shipped routing keeps Claude Code lookup on Haiku,
-  summarization on Sonnet, and Codex `max` for planning, architecture and
-  diagnosis only; the recommended Codex memory passes use Luna; and the profile
+- the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
+  summarization on `sonnet`, and Codex `max` for planning, architecture and
+  diagnosis only; the recommended Codex memory passes use `luna`; and the profile
   table in `references/hosts.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
@@ -353,7 +353,8 @@ release candidates (`v3.0.0-rc.3` and so on), then `v3.0.0`. The plugin manifest
 its leading `v`: `version` in `.claude-plugin/plugin.json` and
 `.codex-plugin/plugin.json`, and `metadata.version` in
 `.claude-plugin/marketplace.json`. `TestPluginVersionsAgree` in
-`internal/skillcheck` fails when the three differ.
+`internal/skillcheck` fails when the three differ. What each version number promises is in
+[Stability](operations.md#stability).
 
 `.github/workflows/release.yml` runs the tests on the tagged commit and then
 goreleaser with [`.goreleaser.yaml`](../.goreleaser.yaml). It publishes
@@ -385,7 +386,7 @@ Steps for each tag `vX` (the owner runs steps 3 to 5):
    [CHANGELOG.md](../CHANGELOG.md) to `## [X] - date`, sets the three version
    strings to `X`, sets the tag in the install commands and release links of
    `README.md`, [Get cw](operations.md#get-cw), `global/AGENTS.md`, the
-   `task-orchestration` skill and `hooks/hooks.json`
+   `task-orchestration` skill, `hooks/hooks.json` and `hooks/codex-hooks.json`
    (`TestInstallCommandsNameTheRelease` fails when one names another tag),
    lists upgrade steps for any task record version change, and appends the
    record version the release writes to [Task record format](#task-record-format).

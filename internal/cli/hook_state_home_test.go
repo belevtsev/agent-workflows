@@ -66,7 +66,7 @@ func TestHookPrePublishAsksOnRelativeXDGStateHome(t *testing.T) {
 		// joined with the abandon's, which the user must answer, it is not
 		// ProceedWithoutAsk, so Codex denies it.
 		codex := hkRecordedInput(t, "codex-pre-tool-use.json", repo, map[string]any{"tool_input": map[string]any{"command": command}})
-		if decision, reason := hkDecision(t, h.runPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "This command abandons the task in /store/task-1.") || !strings.Contains(reason, want) {
+		if decision, reason := hkDecision(t, h.runCodexPrePublish(t, codex)); decision != "deny" || !strings.Contains(reason, "This command abandons the task in /store/task-1.") || !strings.Contains(reason, want) {
 			t.Fatalf("Codex decision %q with reason %q, want a deny naming the abandon and the store", decision, reason)
 		}
 	})

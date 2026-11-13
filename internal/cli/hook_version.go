@@ -15,14 +15,14 @@ import (
 // needs a minimum Claude Code client. Each note is one short line, because
 // the session-start context is paid for in every session.
 const (
-	// minClaudeCodeVersion is the oldest Claude Code client README.md
+	// minClaudeCodeVersion is the oldest Claude Code client docs/operations.md
 	// supports: the coordinator passes effort on every dispatch.
 	minClaudeCodeVersion = "2.1.292"
 	// pluginManifestLimit bounds the plugin manifest read at session start.
 	pluginManifestLimit = 64 << 10
 	// codexPluginRoot is set by Codex, not by Claude Code, for a plugin hook;
-	// Codex documents it as its own extension. Codex's SessionStart input has
-	// no turn_id, so hookInput.fromCodex cannot tell the hosts apart here.
+	// Codex documents it as its own extension. Without --host it names the
+	// host at session start, whose Codex input has no turn_id (hookHost).
 	codexPluginRoot = "PLUGIN_ROOT"
 	// claudeCodeAgentVariable is where Claude Code, since 2.1.120, names
 	// itself and its version for its subprocesses, hooks included, unless the
@@ -42,10 +42,9 @@ var pseudoVersion = regexp.MustCompile(`(^|\.)[0-9]{14}-[0-9a-f]{12}$`)
 // versionNotes returns the session-start lines that report version drift,
 // one per line, or "" when there is none or it cannot be told. It compares
 // the version of the plugin manifest beside the instructions file with cw's
-// own, and, under Claude Code, the client's version with
+// own, and, under Claude Code (codex false), the client's version with
 // minClaudeCodeVersion.
-func versionNotes(config Config, instructions string) string {
-	codex := config.Getenv(codexPluginRoot) != ""
+func versionNotes(config Config, instructions string, codex bool) string {
 	var notes []string
 	if note := pluginVersionNote(pluginManifestVersion(instructions, codex), config.Version); note != "" {
 		notes = append(notes, note)

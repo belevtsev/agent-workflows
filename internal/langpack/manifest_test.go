@@ -15,57 +15,24 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
 )
 
-// mfGoText is the pack.yaml text of contract section 3.4.
-const mfGoText = `# Go language pack. cw embeds this file (docs/design/language-packs.md).
+// mfGoText is the shipped Go pack.yaml: only the fields cw reads.
+const mfGoText = `# Go language pack. cw embeds this file (docs/packs.md).
 schema: 1
 id: go
 kind: language
 detect: [go.mod, go.work]
 commands:
-  build: [go, build, ./...]
-  test: [go, test, ./...]
   race: [go, test, -race, -shuffle=on, ./...]
-  lint: [go, vet, ./...]
-tests:
-  unit: {files: ["*_test.go"], argv: [go, test, ./...]}
-interface_extract: [cw, task, contract-extract]
-skills:
-  implement: [go-principal-engineer]
-  test: ["cc-skills-golang:golang-testing"]
-  security: [go-pki-mtls, "cc-skills-golang:golang-security"]
-review:
-  - Every goroutine has an owner that stops it, waits for it and receives its error.
-  - Changed concurrent code ran under the race command.
-  - No error is ignored, and no error is matched by its Error() text.
-  - Response bodies and sql.Rows are closed, and rows.Err() is checked.
-  - No sync.Mutex or other lock is copied.
-  - Reachable dependency vulnerabilities were checked with govulncheck.
 evidence_rule: go.package-test/v2
 `
 
-// mfGoWant is section 3.4 decoded by hand; Format, Integration and E2E stay nil.
+// mfGoWant is mfGoText decoded by hand.
 func mfGoWant() langpack.Manifest {
 	return langpack.Manifest{
 		Schema: 1, ID: "go", Kind: "language", Detect: []string{"go.mod", "go.work"},
-		Commands: langpack.Commands{Build: []string{"go", "build", "./..."}, Test: []string{"go", "test", "./..."},
-			Race: []string{"go", "test", "-race", "-shuffle=on", "./..."}, Lint: []string{"go", "vet", "./..."}},
-		Tests:            langpack.Tests{Unit: &langpack.TestCommand{Files: []string{"*_test.go"}, Argv: []string{"go", "test", "./..."}}},
-		InterfaceExtract: []string{"cw", "task", "contract-extract"},
-		Skills: langpack.Skills{Implement: []string{"go-principal-engineer"}, Test: []string{"cc-skills-golang:golang-testing"},
-			Security: []string{"go-pki-mtls", "cc-skills-golang:golang-security"}},
-		Review:       mfReview(),
+		Commands:     langpack.Commands{Race: []string{"go", "test", "-race", "-shuffle=on", "./..."}},
 		EvidenceRule: "go.package-test/v2",
 	}
-}
-
-// mfReview takes the review items from the section 3.4 text.
-func mfReview() (items []string) {
-	for _, line := range strings.Split(mfGoText, "\n") {
-		if item, ok := strings.CutPrefix(line, "  - "); ok {
-			items = append(items, item)
-		}
-	}
-	return items
 }
 
 const mfBase = "schema: 1\nid: x\nkind: language\ndetect: [x.mod]\n"
@@ -85,7 +52,7 @@ func mfList(n int) string {
 	return "[" + strings.Join(items, ", ") + "]"
 }
 
-// A1, A4: section 3.4 decodes field for field; documents at the rule edges are accepted.
+// A1, A4: the Go pack decodes field for field; documents at the rule edges are accepted.
 func TestParseManifestAccepts(t *testing.T) {
 	got, err := langpack.ParseManifest([]byte(mfGoText))
 	if err != nil || !reflect.DeepEqual(got, mfGoWant()) {
@@ -94,9 +61,9 @@ func TestParseManifestAccepts(t *testing.T) {
 	for name, doc := range map[string]string{
 		"domain, unknown well-formed rule": mfHead("x", "domain", "detect: [x.mod]\n") + "evidence_rule: example.rule/v1\n",
 		"16 detect entries":                mfHead("x", "language", "detect: "+mfList(16)+"\n"),
-		"512-byte review, no rule":         mfBase + "review: [" + strings.Repeat("r", 512) + "]\n",
+		"race command, no rule":            mfBase + "commands: {race: [go, test, -race]}\n",
 		"document of exactly 64KiB":        mfPadded(64 << 10),
-		"prefixed skill, 32-byte id":       mfHead("a"+strings.Repeat("b", 31), "language", "detect: [x.mod]\n") + "skills: {test: [\"plugin-a:skill-b\"]}\n",
+		"32-byte id":                       mfHead("a"+strings.Repeat("b", 31), "language", "detect: [x.mod]\n"),
 	} {
 		if _, err := langpack.ParseManifest([]byte(doc)); err != nil {
 			t.Errorf("A4 violated: %s refused: %v", name, err)
@@ -123,10 +90,9 @@ func TestParseManifestRefuses(t *testing.T) {
 		{"A2.c string", "schema: \"1\"\nid: x\nkind: language\ndetect: [x.mod]\n", []string{"schema"}},
 		{"A2.c float", "schema: 1.5\nid: x\nkind: language\ndetect: [x.mod]\n", []string{"schema"}},
 		{"A3 top", mfBase + "zzunknowna: 1\n", []string{"zzunknowna"}},
-		{"A3 commands", mfBase + "commands: {build: [go], zzunknownb: [x]}\n", []string{"zzunknownb"}},
-		{"A3 tests", mfBase + "tests: {zzunknownc: {argv: [x]}}\n", []string{"zzunknownc"}},
-		{"A3 tests.unit", mfBase + "tests: {unit: {argv: [x], zzunknownd: [y]}}\n", []string{"zzunknownd"}},
-		{"A3 skills", mfBase + "skills: {zzunknowne: [a]}\n", []string{"zzunknowne"}},
+		{"A3 commands", mfBase + "commands: {race: [go], zzunknownb: [x]}\n", []string{"zzunknownb"}},
+		{"commands race empty list", mfBase + "commands: {race: []}\n", []string{"commands.race"}},
+		{"commands race empty element", mfBase + "commands: {race: [go, \"\"]}\n", []string{"commands.race"}},
 		{"id fails ValidID", mfHead("Badid", "language", "detect: [x.mod]\n"), []string{"id", "Badid"}},
 		{"kind", mfHead("x", "plugin", "detect: [x.mod]\n"), []string{"kind", "plugin"}},
 		{"detect absent", mfHead("x", "language", ""), []string{"detect"}},
@@ -139,22 +105,6 @@ func TestParseManifestRefuses(t *testing.T) {
 		{"detect slash", mfHead("x", "language", "detect: [a/b]\n"), []string{"detect", "a/b"}},
 		{"detect backslash", mfHead("x", "language", "detect: ['a\\b']\n"), []string{"detect", `a\b`}},
 		{"detect NUL", mfHead("x", "language", "detect: [\"a\\0b\"]\n"), []string{"detect"}},
-		{"commands empty list", mfBase + "commands: {build: []}\n", []string{"build", "commands"}},
-		{"commands empty element", mfBase + "commands: {format: [gofmt, \"\"]}\n", []string{"format", "commands"}},
-		{"tests argv empty list", mfBase + "tests: {unit: {argv: []}}\n", []string{"argv", "unit"}},
-		{"tests argv empty element", mfBase + "tests: {e2e: {argv: [\"\"]}}\n", []string{"argv", "e2e"}},
-		{"interface_extract empty list", mfBase + "interface_extract: []\n", []string{"interface_extract"}},
-		{"interface_extract empty element", mfBase + "interface_extract: [cw, \"\"]\n", []string{"interface_extract"}},
-		{"tests kind without argv", mfBase + "tests: {integration: {files: [\"*.go\"]}}\n", []string{"argv", "integration"}},
-		{"tests files empty entry", mfBase + "tests: {unit: {files: [\"\"], argv: [x]}}\n", []string{"files"}},
-		{"tests files bad pattern", mfBase + "tests: {unit: {files: [\"[\"], argv: [x]}}\n", []string{"files", "["}},
-		{"skill uppercase", mfBase + "skills: {implement: [BadSkill]}\n", []string{"implement", "BadSkill", "skills"}},
-		{"skill two prefixes", mfBase + "skills: {test: [\"a:b:c\"]}\n", []string{"test", "a:b:c", "skills"}},
-		{"skill leading dash", mfBase + "skills: {security: [-x]}\n", []string{"security", "-x", "skills"}},
-		{"skill repeated", mfBase + "skills: {implement: [dup, dup]}\n", []string{"implement", "dup", "skills"}},
-		{"review blank", mfBase + "review: [\"  \"]\n", []string{"review"}},
-		{"review 513 bytes", mfBase + "review: [" + strings.Repeat("r", 513) + "]\n", []string{"review"}},
-		{"review newline", mfBase + "review: [\"a\\nb\"]\n", []string{"review"}},
 		{"rule without a dot", mfBase + "evidence_rule: gorule/v1\n", []string{"evidence_rule", "gorule/v1"}},
 		{"rule v0", mfBase + "evidence_rule: go.rule/v0\n", []string{"evidence_rule", "go.rule/v0"}},
 		{"rule without version", mfBase + "evidence_rule: go.rule\n", []string{"evidence_rule", "go.rule"}},
@@ -173,6 +123,26 @@ func TestParseManifestRefuses(t *testing.T) {
 		}
 		if !ok {
 			t.Errorf("%s: invalid manifest gave %v, want an error containing one of %q", c.name, err, c.any)
+		}
+	}
+}
+
+// A manifest declares only what cw reads. Oracle: each field that no cw code
+// reads (the schema-1 slots dropped by QR-31) is refused as an unknown key,
+// with an error naming it.
+func TestParseManifestRefusesFieldsNothingReads(t *testing.T) {
+	for key, doc := range map[string]string{
+		"build":             "commands: {build: [go, build, ./...]}\n",
+		"test":              "commands: {test: [go, test, ./...]}\n",
+		"lint":              "commands: {lint: [go, vet, ./...]}\n",
+		"format":            "commands: {format: [gofmt, -l, .]}\n",
+		"tests":             "tests: {unit: {files: [\"*_test.go\"], argv: [go, test, ./...]}}\n",
+		"interface_extract": "interface_extract: [cw, task, contract-extract]\n",
+		"skills":            "skills: {implement: [go-principal-engineer]}\n",
+		"review":            "review: [Changed concurrent code ran under the race command.]\n",
+	} {
+		if _, err := langpack.ParseManifest([]byte(mfBase + doc)); err == nil || !strings.Contains(err.Error(), key) {
+			t.Errorf("manifest with unread field %q gave %v, want an error naming it", key, err)
 		}
 	}
 }
@@ -263,7 +233,7 @@ func TestApplicable(t *testing.T) {
 }
 
 // A8, A9: R-DEFAULT-SELECTION picks language packs in order; the embedded set is
-// exactly the Go pack of section 3.4, embedded verbatim.
+// exactly the Go pack of mfGoText, embedded verbatim.
 func TestDefaultSelectionAndEmbeddedPacks(t *testing.T) {
 	in := []langpack.Manifest{mfManifest("z", "language", "", "a"), mfManifest("d", "domain", "", "a"), mfManifest("b", "language", "", "a")}
 	if got := langpack.DefaultSelection(in); len(got) != 2 || got[0].ID != "z" || got[1].ID != "b" {
@@ -276,13 +246,8 @@ func TestDefaultSelectionAndEmbeddedPacks(t *testing.T) {
 	if got := langpack.DefaultSelection(builtIn); len(got) != 1 || got[0].ID != "go" {
 		t.Fatalf("A8 violated: shipped default selection %v", got)
 	}
-	m, want := builtIn[0], mfGoWant()
-	m.Review, m.EvidenceRule, want.Review, want.EvidenceRule = nil, "", nil, ""
-	if !reflect.DeepEqual(m, want) {
-		t.Fatalf("A9 violated: embedded go pack differs from section 3.4: %#v", m)
-	}
-	if n := len(builtIn[0].Review); n < 1 || n > 64 || !langpack.KnownRule(builtIn[0].EvidenceRule) {
-		t.Fatalf("A9 violated: %d review items, rule %q", n, builtIn[0].EvidenceRule)
+	if m := builtIn[0]; !reflect.DeepEqual(m, mfGoWant()) || !langpack.KnownRule(m.EvidenceRule) {
+		t.Fatalf("A9 violated: embedded go pack differs from mfGoText or names an unknown rule: %#v", m)
 	}
 	embedded, err1 := fs.ReadFile(agentworkflows.Packs, "packs/go/pack.yaml")
 	disk, err2 := os.ReadFile("../../packs/go/pack.yaml")

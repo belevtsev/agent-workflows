@@ -30,6 +30,7 @@ func newTaskAcceptCommand(deps taskDeps) *cobra.Command {
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(accept, &directory)
+	accept.Example = helpText("task-accept-example")
 	accept.Flags().StringVar(&inputFile, "input", "", "Coordinator acceptance JSON file, or - for standard input")
 	fullFlag(accept, &full, "the whole task record")
 	return accept

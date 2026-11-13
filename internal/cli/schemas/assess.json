@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cw task assess --input",
+  "description": "The coordinator's assessment of the plan's requirements and its decision, bound to the current source. cw also checks rules this schema does not state.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "description": "A requirement ID from the plan."},
+          "status": {"enum": ["satisfied", "pending"], "description": "A pending requirement carries no evidence or checks."},
+          "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}},
+          "check_ids": {"type": "array", "items": {"type": "string"}, "description": "Every check the plan lists for the requirement."},
+          "non_execution_reason": {"type": "string", "description": "Stands in for the checks when the plan allows non-execution."}
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {"enum": ["resolved", "unresolved"]},
+        "reason": {"type": "string"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/source_ref"}},
+        "check_ids": {"type": "array", "items": {"type": "string"}},
+        "non_execution_reason": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A line range of a repository file.",
+      "properties": {
+        "path": {"type": "string", "description": "Repository-relative path."},
+        "start_line": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "description": "SHA-256 of the whole file; cw fills it from the current bytes when omitted."}
+      }
+    }
+  }
+}

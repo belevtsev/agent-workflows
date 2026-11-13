@@ -1,0 +1,8 @@
+cw task start --repo /path/to/project --plan - <<'EOF'
+{"title": "Return the documented result for empty input", "kind": "substantial", "profile": "lite",
+ "checkpoints": {"required": false, "reason": "The documented contract fixes the result"},
+ "requirements": [{"id": "empty-input", "description": "Empty input returns the documented result",
+   "check_ids": ["unit"], "allow_non_execution": false}],
+ "checks": [{"id": "unit", "argv": ["go", "test", "-race", "./..."], "timeout_seconds": 600}]}
+EOF
+cw task schema start

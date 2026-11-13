@@ -251,8 +251,8 @@ func TestCompactVerifySummaryDropsOnlyFixedLimitations(t *testing.T) {
 	// satisfied" lines joined into one at the place of the first.
 	var problems []any
 	compactDecode(t, line["problems"], &problems)
-	wantFull := []any{"requirement zeta is not satisfied", "requirement alpha is not satisfied", "Codex task decision is unresolved"}
-	wantProblems := []any{"requirements zeta, alpha are not satisfied", "Codex task decision is unresolved"}
+	wantFull := []any{"requirement zeta is not satisfied", "requirement alpha is not satisfied", "coordinator decision is unresolved"}
+	wantProblems := []any{"requirements zeta, alpha are not satisfied", "coordinator decision is unresolved"}
 	if !reflect.DeepEqual(fullProblems, wantFull) || !reflect.DeepEqual(problems, wantProblems) {
 		t.Fatalf("verify problems = %v, summary problems = %v; want %v and %v", fullProblems, problems, wantFull, wantProblems)
 	}
@@ -319,7 +319,7 @@ func TestSummariesHideFixedEntriesWhateverTheirWording(t *testing.T) {
 
 	report := doctor.DoctorReport{Checks: map[string]doctor.Check{}}
 	report.Profile.Warnings = []string{projectctx.DirtyComparisonWarning}
-	doctorLine := summarizeDoctor(report)
+	doctorLine := summarizeDoctor(report, false)
 	if doctorLine.OmittedFixed != 1 || len(doctorLine.Warnings) != 0 || doctorLine.Status != "ok" {
 		t.Fatalf("doctor summary = %+v, want the projectctx caveat omitted and counted", doctorLine)
 	}
@@ -961,15 +961,30 @@ func TestCompactDoctorSummary(t *testing.T) {
 		}
 	}
 
-	// problems hold exactly the missing, degraded or stale checks.
+	// problems hold exactly the required checks that are missing, degraded or
+	// stale; optional_missing counts the optional ones, which are not listed.
 	problemsWant := map[string]string{}
+	optionalWant := 0
 	for id, check := range report.Checks {
-		if slices.Contains([]string{"missing", "degraded", "stale"}, check.Status) {
+		if !slices.Contains([]string{"missing", "degraded", "stale"}, check.Status) {
+			continue
+		}
+		if doctor.CheckClass(id) == doctor.ClassOptional {
+			optionalWant++
+		} else {
 			problemsWant[id] = check.Status
 		}
 	}
-	if len(problemsWant) == 0 {
-		t.Log("fixture produced no missing, degraded or stale check; only the empty-problems shape is covered")
+	if optionalWant == 0 {
+		t.Fatalf("fixture: no optional check is missing, degraded or stale: %+v", report.Checks)
+	}
+	var optionalMissing int
+	compactDecode(t, line["optional_missing"], &optionalMissing)
+	if optionalMissing != optionalWant {
+		t.Fatalf("optional_missing = %d, want %d", optionalMissing, optionalWant)
+	}
+	if _, ok := line["optional"]; ok {
+		t.Fatalf("doctor --summary listed the optional checks without --all: %s", line["optional"])
 	}
 	var problems map[string]map[string]any
 	compactDecode(t, line["problems"], &problems)
@@ -1090,6 +1105,80 @@ func TestCompactDoctorSummaryCredentialsAndLive(t *testing.T) {
 	liveLine := compactLine(t, "doctor --live --summary", []byte(liveSummary.stdout))
 	if _, ok := liveLine["live"]; !ok {
 		t.Fatalf("doctor --live --summary lacks live: %s", liveSummary.stdout)
+	}
+}
+
+// A repository whose required checks all pass is ok, however many optional
+// tools are absent. Oracle: with git and cw on PATH and the three workflow
+// skills present, but no Codex MCP server for jbcontext, no Claude settings
+// and no provider credential, --summary prints status ok, an empty problems
+// object and optional_missing equal to the number of optional checks the full
+// report marks missing, degraded or stale; --all lists exactly those checks
+// under optional and changes neither status nor problems.
+func TestCompactDoctorSummaryIsOkWithOnlyOptionalChecksMissing(t *testing.T) {
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatalf("git is needed for the fixture: %v", err)
+	}
+	tools := t.TempDir()
+	doctorWrite(t, tools, "cw", "#!/bin/sh\nexit 0\n")
+	if err := os.Chmod(filepath.Join(tools, "cw"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+filepath.Dir(git))
+	f := newCompactDoctorFixture(t)
+
+	var report doctor.DoctorReport
+	if err := jsonv2.Unmarshal([]byte(f.run(t, nil).stdout), &report); err != nil {
+		t.Fatalf("doctor without --summary is not a DoctorReport: %v", err)
+	}
+	optionalWant := []string{}
+	for id, check := range report.Checks {
+		if !slices.Contains([]string{"missing", "degraded", "stale"}, check.Status) {
+			continue
+		}
+		if doctor.CheckClass(id) != doctor.ClassOptional {
+			t.Fatalf("fixture: required check %s is %s: %s", id, check.Status, check.Detail)
+		}
+		optionalWant = append(optionalWant, id)
+	}
+	if len(optionalWant) == 0 {
+		t.Fatalf("fixture: no optional check is missing: %+v", report.Checks)
+	}
+
+	for _, extra := range [][]string{{"--summary"}, {"--summary", "--all"}} {
+		outcome := f.run(t, nil, extra...)
+		if outcome.err != nil {
+			t.Fatalf("doctor %v: %s", extra, outcome.text())
+		}
+		line := compactLine(t, fmt.Sprintf("doctor %v", extra), []byte(outcome.stdout))
+		var status string
+		var problems map[string]any
+		var optionalMissing int
+		compactDecode(t, line["status"], &status)
+		compactDecode(t, line["problems"], &problems)
+		compactDecode(t, line["optional_missing"], &optionalMissing)
+		if status != "ok" || problems == nil || len(problems) != 0 {
+			t.Fatalf("doctor %v status = %q, problems = %s; want ok and {}: %s", extra, status, line["problems"], outcome.stdout)
+		}
+		if optionalMissing != len(optionalWant) {
+			t.Fatalf("doctor %v optional_missing = %d, want %d (%v)", extra, optionalMissing, len(optionalWant), optionalWant)
+		}
+		var optional map[string]any
+		if raw, ok := line["optional"]; ok {
+			compactDecode(t, raw, &optional)
+		}
+		listed := slices.Sorted(maps.Keys(optional))
+		want := []string{}
+		if len(extra) == 2 {
+			want = slices.Sorted(slices.Values(optionalWant))
+		}
+		if !slices.Equal(listed, want) {
+			t.Fatalf("doctor %v optional = %v, want %v", extra, listed, want)
+		}
+	}
+	if outcome := f.run(t, nil, "--all"); ExitCode(outcome.err) != ExitUsage {
+		t.Fatalf("doctor --all without --summary exit %d, want %d: %s", ExitCode(outcome.err), ExitUsage, outcome.text())
 	}
 }
 

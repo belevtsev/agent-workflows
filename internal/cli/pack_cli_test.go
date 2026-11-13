@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 	agentworkflows "github.com/belevtsev/agent-workflows/v3"
 	"github.com/belevtsev/agent-workflows/v3/internal/cli"
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
+	"gopkg.in/yaml.v3"
 )
 
 // pkEnv is a hermetic cw environment under one resolved temporary directory.
@@ -124,6 +126,41 @@ func TestPackList(t *testing.T) {
 	e.writeSelection(t, "{")
 	_, err = e.run(t, "", "pack", "list")
 	pkWantExit(t, err, 1, "cannot read the pack selection: ")
+}
+
+// cw pack list prints, for each built-in pack, exactly the fields its
+// pack.yaml declares. Oracle: the embedded pack.yaml decoded as plain YAML,
+// without schema, equals the list entry as JSON without selected, key for key
+// and value for value.
+func TestPackListPrintsOnlyWhatPackYamlDeclares(t *testing.T) {
+	names, err := fs.Glob(agentworkflows.Packs, "packs/*/pack.yaml")
+	if err != nil || len(names) == 0 {
+		t.Fatalf("no embedded pack.yaml: %v", err)
+	}
+	out, err := pkNewEnv(t).run(t, "", "pack", "list")
+	var got struct{ Packs []map[string]any }
+	pkOneLine(t, out, &got)
+	if err != nil || len(got.Packs) != len(names) {
+		t.Fatalf("pack list gives %s, %v; want %d packs", out, err, len(names))
+	}
+	for i, name := range names {
+		data, err := fs.ReadFile(agentworkflows.Packs, name)
+		var declared map[string]any
+		if err != nil || yaml.Unmarshal(data, &declared) != nil {
+			t.Fatalf("cannot read %s: %v", name, err)
+		}
+		delete(declared, "schema")
+		// Normalise the YAML values to what encoding/json decodes.
+		raw, err := json.Marshal(declared)
+		if err != nil || json.Unmarshal(raw, &declared) != nil {
+			t.Fatalf("cannot normalise %s: %v", name, err)
+		}
+		printed := got.Packs[i]
+		delete(printed, "selected")
+		if !reflect.DeepEqual(printed, declared) {
+			t.Errorf("pack list entry %v differs from what %s declares: %v", printed, name, declared)
+		}
+	}
 }
 
 // A15, A16, A17: add and remove edit the effective selection, save only on

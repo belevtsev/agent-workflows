@@ -134,7 +134,7 @@ even with a `--policy` copy; started tasks keep their binding.
 The shipped policy (version 3) enables `subq_snap` and `openai_decisions`; Jev is
 opt-in ([why](adviser-providers.md#why-jev-is-opt-in)). Any other policy version,
 unknown provider IDs and moving aliases such as `jev-latest` are rejected. An
-OpenAI Decisions call does not dispatch a Luna worker or inherit its reasoning
+OpenAI Decisions call does not dispatch a `luna` worker or inherit its reasoning
 effort.
 
 The participation set comes from one place:

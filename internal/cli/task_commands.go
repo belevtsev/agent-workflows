@@ -33,6 +33,7 @@ var taskCommands = []func(deps taskDeps) *cobra.Command{
 	newTaskConsultCommand,
 	newTaskVerifyCommand,
 	newTaskShowCommand,
+	newTaskListCommand,
 	newTaskBriefCommand,
 	newTaskReceiptCommand,
 	newTaskTraceCommand,
@@ -41,6 +42,7 @@ var taskCommands = []func(deps taskDeps) *cobra.Command{
 	newTaskAddChecksCommand,
 	newTaskTimelineCommand,
 	newTaskUsageCommand,
+	newTaskSchemaCommand,
 }
 
 // addTaskCommands adds cw task and its subcommands to root.

@@ -86,7 +86,7 @@ opts in, or list `subq_snap` under `advisers.enabled` to use the exported key al
 Obtain an API key from the [OpenAI Platform](https://platform.openai.com/api-keys)
 and store it in your local secret manager. The adviser uses
 [`gpt-6-luna` through the Decisions API](https://developers.openai.com/api/docs/guides/decisions).
-This API call is separate from dispatching a Luna worker with a reasoning profile.
+This API call is separate from dispatching a `luna` worker with a reasoning profile.
 
 Bash:
 

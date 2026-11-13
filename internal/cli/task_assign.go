@@ -41,6 +41,7 @@ func newTaskAssignCommand(deps taskDeps) *cobra.Command {
 		return writeJSON(cmd.OutOrStdout(), value)
 	}}
 	taskFlag(assign, &directory)
+	assign.Example = helpText("task-assign-example")
 	assign.Flags().StringVar(&inputFile, "input", "", "Worker brief JSON file, or - for standard input")
 	assign.Flags().StringArrayVar(&ownerApprovals, "owner-approval", nil, "The owner's own words approving a limit the brief goes past: a round past the stage's cap (round-budget) or a third fix round on an open finding or requirement (escalation); "+
 		"a person must give them, and cw records them on the assignment. Past several limits, give it once per limit as LIMIT=TEXT, such as round-budget=TEXT")

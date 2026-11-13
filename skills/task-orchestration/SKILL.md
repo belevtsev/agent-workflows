@@ -34,7 +34,9 @@ satisfies a later state.
    Go 1.27.1 or newer, or the release archive
    ([get `cw`](../../docs/operations.md#get-cw)).
    Run `cw doctor --summary --repo /absolute/path` at the start
-   and after material workspace changes; resolve profiles from the
+   and after material workspace changes; fix what `problems` lists before
+   starting (`optional_missing` counts absent optional tools, which block
+   nothing); resolve profiles from the
    [host mapping](references/hosts.md). `cw task start` records the plan and
    binds the configured advisers. Checkpoints are required for an open decision
    (real alternatives with consequential uncertainty), for any change to code
@@ -106,7 +108,7 @@ a task is substantial or replace a gate.
 - Batch each step: `assign` then dispatch in one turn, `handoff && accept` in
   one shell call, embed-and-consult and adjudicate-and-attach in one call each.
 - Delegate investigations over many files or long logs to fresh bounded workers
-  returning conclusions and exact references; past about 200K tokens, hand
+  returning conclusions and exact references; past about 150K tokens, hand
   remaining independent pieces to fresh workers.
 - Rerun a passed check only after the source, inputs or environment change, or
   to resolve a recorded risk. Commit after `cw task verify` and compare trees

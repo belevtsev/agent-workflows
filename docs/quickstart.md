@@ -2,7 +2,7 @@
 
 Ten minutes, one task, by hand: you run each `cw` command that the agent runs
 for you in daily use, from a starter plan to a verified commit. You need macOS
-or Linux, git, Go 1.24 or newer, and `shasum`.
+or Linux, git, Go 1.27.1 or newer to build `cw`, and `shasum`.
 
 The test `cmd/cw/quickstart_e2e_test.go` runs every block of this page tagged
 `sh quickstart`, in order and in one shell, so the page stays true.
