@@ -53,6 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
+  does not cover; one page states what each version number promises ([stability](docs/operations.md#stability)).
 - `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
   optional tools are counted in `optional_missing`, and `--all` lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
