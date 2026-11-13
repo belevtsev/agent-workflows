@@ -15,7 +15,7 @@ evidence.
 | Test review | `reviewer` | [test-review.md](test-review.md) | contract, extract, tests, stub | `test-review.md` |
 | Adversarial tester (opt-in) | `adversarial-tester` | [adversarial-tester.md](adversarial-tester.md) | contract, `design.md`, integrated source, coverage profile | failing tests, `adversarial-findings.md` |
 | Code review | `reviewer` | [code-review.md](code-review.md) | resulting source, reviewer bundle, interface contract, `design.md`, test matrix and requirement map, coverage profile | findings, a failing test per behaviour finding |
-| GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker.md](../github-worker.md) | verified facts, carried authorization | commit, push, pull request |
+| GitHub worker (fallback to `cw publish`) | `github-worker` | [github-worker-fallback.md](../github-worker-fallback.md) | verified facts, carried authorization | commit, push, pull request |
 
 ## Flow
 
@@ -23,11 +23,11 @@ evidence.
 holds ([profiles](../../../../docs/operations.md#profiles)). Every stage that
 produces an artefact has a review loop: findings go back to that stage's
 author, who revises and answers each one. The
-[review cap](../worker-handoffs.md#review-stages) bounds each stage's reviews;
+[review cap](../worker-handoffs.md#review-cap) bounds each stage's reviews;
 the round budget in the same section bounds spec, design, contract and
 test-engineer rounds across the task, never implementer fixes. After the
 before checkpoint, when checkpoints are required, advisers join only at the
-[adviser points](../consultation-helper.md#adviser-points-in-the-flow) a to d
+[adviser points](../adviser-providers.md#adviser-points-in-the-flow) a to d
 below, when available; without them nothing changes.
 
 ### `lite`, the default
@@ -35,7 +35,7 @@ below, when available; without them nothing changes.
 Four agents: implementer, test engineer, reviewer (tests), reviewer (code).
 
 1. **Contract.** The coordinator writes the requirement packet
-   ([test engineer](test-engineer.md#prepare-the-contract-before-dispatch)),
+   ([prepare it](../dispatching-reviews-and-tests.md#prepare-the-test-contract)),
    or under `standard` and `strict` fixes the architect's
    `interface-contract.md`; it extracts the public interface and hashes both
    before dispatch, and keeps the source record a later
@@ -75,7 +75,7 @@ Four agents: implementer, test engineer, reviewer (tests), reviewer (code).
    and current.
 7. **Commit** with `cw publish` under the user's authorization, which the
    coordinator carries; the GitHub worker is the
-   [fallback](../github-worker.md#fallback-the-github-worker).
+   [fallback](../github-worker-fallback.md).
 
 ### `standard`: adds the design stage
 

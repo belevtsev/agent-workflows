@@ -1,6 +1,7 @@
 version: 3
 
-# Read this file for each substantial task. It guides the coordinator; the host
+# Read this file for each substantial task, as global/AGENTS.md defines it
+# ("Substantial tasks"); this file does not define it. It guides the coordinator; the host
 # does not load these settings natively or switch a running session's model.
 # On Codex these profiles apply directly. Claude Code uses model-policy.claude.yaml
 # for profiles and roles, and shares everything else here.
@@ -8,13 +9,6 @@ version: 3
 # and scope relationships. Consultation checkpoints and publication safeguards
 # stay mandatory; which advisers take part follows consultation.providers below,
 # for those not disabled in the user's preferences.
-activation:
-  any_of:
-    - independent_workstreams
-    - cross_component_change
-    - consequential_uncertainty
-  bypass: small_edits_and_direct_factual_answers
-
 profiles:
   # Profile names and the sol_* keys below are stable identifiers the validator
   # requires. `sol` is the substantive profile, whichever model it runs.

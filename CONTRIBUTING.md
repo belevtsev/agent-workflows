@@ -49,6 +49,7 @@ Skills live in `skills/<name>/SKILL.md`.
 - A skill that should not appear in the automatic skill listing is hidden. Set `disable-model-invocation: true` in `SKILL.md` and `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
 - If the skill adapts content from another source, record the source and its license in `THIRD_PARTY.md`. Do not add content whose license is unclear.
 - Put long reference material in files under the skill's `references/` directory and load it only when needed, rather than in `SKILL.md`.
+- Keep skills reusable across projects: a repository's commands and constraints belong in its `AGENTS.md` or development docs, and product features, incident history and operational recipes in the owning repository's docs.
 
 For a new skill, you can open a skill proposal issue first to discuss scope.
 
