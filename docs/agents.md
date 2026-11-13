@@ -100,8 +100,9 @@ reasoning that wrote a bug can write a test that misses it. The implementer
 proves its change with the checks the brief names and writes a self-review; the
 behavioural tests come from the test engineer
 ([implementer](../skills/task-orchestration/references/contracts/implementer.md#purpose)).
-A small task is the exception: its author writes the tests and a reviewer
-checks them.
+A task that is not [substantial](../global/AGENTS.md#substantial-tasks) is the
+exception: the agent writes the tests itself and checks its diff against the
+Code Review Rules.
 
 **Does the reviewer ever read the code?** Yes. Code review runs on the
 integrated source after the tests have run. It has the whole repository, a

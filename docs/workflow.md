@@ -90,8 +90,10 @@ When a substantial task adds or materially changes behavioral tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks, the
 coordinator dispatches a fresh
 [test engineer](../skills/task-orchestration/references/contracts/test-engineer.md)
-under the `test_engineer` role. For a small task the coder writes the tests and
-the reviewer checks each against the Code Review Rules. That contract holds the
+under the `test_engineer` role. A task that is not
+[substantial](../global/AGENTS.md#substantial-tasks) dispatches no workers: the
+agent writes the tests itself and checks its diff against the Code Review Rules.
+That contract holds the
 input boundary, the Go declaration extract, feedback, replacement and record
 rules; the
 [host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)

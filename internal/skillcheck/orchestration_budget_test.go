@@ -21,7 +21,7 @@ const (
 	orchestrationSkillDir  = "skills/task-orchestration"
 	orchestrationFileLimit = 10240
 	contractFileLimit      = 8192
-	orchestrationSumCap    = 182612
+	orchestrationSumCap    = 186634
 	orchestrationSumTarget = 90000
 )
 
@@ -35,7 +35,7 @@ type budgetRow struct {
 // slash path relative to the skill directory. S4f covers the four files S4
 // had no item for; S4d gives consultation-helper.md the per-file limit.
 var orchestrationBudget = map[string]budgetRow{
-	"SKILL.md":                                    {7940, 10240, "S3, S4a"},
+	"SKILL.md":                                    {8947, 10240, "S3, S4a"},
 	"references/adviser-providers.md":             {10240, 10240, "S4d"},
 	"references/base-merge.md":                    {10240, 10240, "S4b"},
 	"references/connected-sources.md":             {10240, 10240, "S4f"},
@@ -54,6 +54,7 @@ var orchestrationBudget = map[string]budgetRow{
 	"references/github-worker-fallback.md":        {10240, 10240, "S4f"},
 	"references/github-worker.md":                 {10240, 10240, "S4f"},
 	"references/global-workflow.md":               {10240, 10240, "S4b"},
+	"references/glossary.md":                      {3010, 4096, "S4a"},
 	"references/hosts-claude-code.md":             {10240, 10240, "S4f"},
 	"references/hosts-codex.md":                   {10240, 10240, "S4f"},
 	"references/hosts.md":                         {10240, 10240, "S4f"},

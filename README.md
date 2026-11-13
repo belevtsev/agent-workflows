@@ -23,10 +23,10 @@ only ([Quick start](#quick-start)).
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
 without them the loop runs unchanged, and the coordinator decides either way.
-The full flow is for substantial tasks: at least two of more than one package
-or component changed, behaviour that must match across platforms or shells,
-more than about 300 changed lines, or a design choice with real alternatives.
-Smaller changes stay lightweight. The spec stage is skipped when a reviewed
+The full flow is for [substantial tasks](global/AGENTS.md#substantial-tasks).
+For any other task the agent writes the tests itself, checks its diff against
+the Code Review Rules before reporting, and commits or pushes only with your
+authorization; it dispatches no workers. The spec stage is skipped when a reviewed
 spec exists or the request states every behaviour.
 
 | Agent | Gets | Produces | Claude Code model alias |
@@ -43,8 +43,7 @@ The table is not a one-way pipeline: every review loops back to its stage's
 author, except that a code review finding about a test goes to a fresh test
 engineer, by requirement ID, contract-level inputs and expected outcome only;
 the implementer and the test engineer run in parallel from the same
-contract. Small tasks skip this staged flow: their author writes the tests and
-a reviewer checks them.
+contract. Other tasks skip this staged flow, as above.
 
 An alias resolves to Claude Code's current release of that model; the
 [Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) sets

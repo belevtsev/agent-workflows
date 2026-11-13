@@ -1,7 +1,7 @@
 version: 1
 
-# Claude Code roles for the coordinator and its workers. Activation, consultation
-# and publication rules stay in model-policy.yaml, which applies on every host.
+# Claude Code roles for the coordinator and its workers. Consultation and
+# publication rules stay in model-policy.yaml, which applies on every host.
 # This file has no consultation section: an adviser takes part when the shared
 # policy enables it, its credential is present, the user opted in to it, and it
 # is not disabled in the user's preferences. Agent tool
