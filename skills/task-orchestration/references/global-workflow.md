@@ -272,6 +272,9 @@ cw task start --repo /absolute/path/to/project --plan /private/path/plan.json
 cw task context --task /path/returned/by/start --phase before
 ```
 
+`--task` also takes the task ID that `start` printed, found in the default task
+store, or in `$CW_TASK_STORE` for a task started with `--store DIR`.
+
 `start` prints the task directory, task ID, adviser binding, requirement IDs
 and check IDs on one line. The `start`, `assign`, `handoff`, `accept`,
 `assess`, `consult`, `run`, `verify` and `add-checks` commands all print such a

@@ -11,7 +11,7 @@ func newTaskVerifyCommand(deps taskDeps) *cobra.Command {
 		if err := deps.guard(); err != nil {
 			return err
 		}
-		if err := requireTask(directory); err != nil {
+		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}
 		value, err := taskEnv(deps.config).Verify(cmd.Context(), directory)

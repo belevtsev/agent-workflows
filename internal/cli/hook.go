@@ -276,10 +276,11 @@ func readHookInput(reader io.Reader) (hookInput, error) {
 	return input, nil
 }
 
-// hookTaskStore returns $CW_TASK_STORE, a hook-only override that
-// `cw task start` does not read (it takes --store), else the store
-// `cw task start` writes to: the state directory's workflow-tasks
-// ($XDG_STATE_HOME/agent-workflows or ~/.local/state/agent-workflows).
+// hookTaskStore returns $CW_TASK_STORE, an override that the hooks, cw
+// consult and a task command given a task ID read, but that `cw task start`
+// does not (it takes --store), else the store `cw task start` writes to: the
+// state directory's workflow-tasks ($XDG_STATE_HOME/agent-workflows or
+// ~/.local/state/agent-workflows).
 func hookTaskStore(root *cobra.Command, config Config) (string, error) {
 	if store := config.Getenv("CW_TASK_STORE"); store != "" {
 		return store, nil

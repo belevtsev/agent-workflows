@@ -11,12 +11,12 @@ import (
 // newTaskShowCommand returns cw task show. Without --field or --full it prints
 // the show summary, whose size does not grow with every check run. It only
 // reads, so the global --dry-run changes nothing.
-func newTaskShowCommand(taskDeps) *cobra.Command {
+func newTaskShowCommand(deps taskDeps) *cobra.Command {
 	var directory string
 	var fields []string
 	var full bool
 	show := &cobra.Command{Use: "show", Short: "Read a task and validate its immutable revision chain", Args: noPositional, RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := requireTask(directory); err != nil {
+		if err := deps.requireTask(&directory); err != nil {
 			return err
 		}
 		if full && len(fields) > 0 {
