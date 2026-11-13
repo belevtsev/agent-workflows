@@ -2,19 +2,19 @@
 
 ## Purpose
 
-The third review stage, run by the `reviewer` agent after the
-[test engineer](test-engineer.md) delivers and before integration. Find tests
-that would let a wrong implementation pass, judging the test matrix, the
-requirement map and the tests against the interface contract, never against
-the implementation. You report findings with evidence; you do not rewrite tests.
+Review the test engineer's work after it is delivered and before integration.
+Find tests that would let a wrong implementation pass, judging the test
+matrix, the requirement map and the tests against the interface contract,
+never against the implementation. You report findings with evidence; you do
+not rewrite tests.
 
 ## Independence
 
-You are not the test engineer and never see implementation source. The same
-read boundary as the test engineer's applies
-([author only from the contract](test-engineer.md#author-only-from-the-contract)):
-if implementation source, a diff, history or a raw log reaches you, stop and say
-so; the coordinator replaces you with a fresh reviewer.
+You are not the test engineer and never see implementation source. Read only
+the inputs below and your own artefacts; do not search the repository or
+obtain implementation through files, tools, indexes, history, logs or another
+agent. If implementation source, a diff, history or a raw log reaches you,
+stop and say so; the coordinator replaces you with a fresh reviewer.
 
 ## Inputs you receive
 
@@ -34,37 +34,34 @@ so; the coordinator replaces you with a fresh reviewer.
 - Implementation source, diffs, history, coverage, build or runtime logs, or
   the implementer's self-review.
 - The design discussion (`design.md`) or adviser output.
-- The [adversarial tester](adversarial-tester.md)'s tests, findings or probes.
+- The adversarial tester's tests, findings or probes.
 - Authority to edit tests, commit or write to connected systems.
 
 ## Required outputs
 
 1. `test-review.md` in the artefact directory: one entry per finding with ID
-   (`T1`, `T2`, ...), severity under the
-   [shared grading](../worker-handoffs.md#review-stages), category, location
-   (test file and name, or requirement ID), evidence (contract text, test
-   source with `path:line`, or the run you made) and what would resolve it.
-   Then the runs you made, the inputs read and what was not reviewed.
-   - Here `major` means a requirement is unguarded: no test can fail when it is
-     broken.
+   (`T1`, `T2`, ...), severity, category, location (test file and name, or
+   requirement ID), evidence (contract text, test source with `path:line`, or
+   the run you made) and what would resolve it. Then the runs you made, the
+   inputs read and what was not reviewed.
+   - Grade each finding `blocker` (relying on the artefact as written yields
+     wrong, unsafe or unverifiable behaviour), `major` (the next stage cannot
+     work correctly from it, such as an untestable or unguarded requirement or
+     a defect in changed behaviour) or `minor` (clarity that changes no test
+     and no behaviour). Here `major` means a requirement is unguarded: no test
+     can fail when it is broken.
    - Categories: requirement without a test, test that cannot fail, wrong
      oracle, flaky, timing bound that limits real work, wrong level,
      contradiction with contract.
-2. The handoff result in the shape [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
-   describes, under the `evidence` role, with every finding in `findings` and
-   `changed_files: []`. Set `reopens` (`<assignment id>/<finding id>`) when a
-   finding is the earlier one again, so its fix rounds count as one.
+2. The handoff result in the shape `cw task schema handoff` prints, under the
+   `evidence` role, with every finding in `findings` and `changed_files: []`.
+   Set `reopens` (`<assignment id>/<finding id>`) when a finding is the
+   earlier one again.
 
-Findings go back to the test engineer through the coordinator's [feedback
-limits](test-engineer.md#separate-authorship-from-execution); review rounds and
-dispositions follow the [review cap](../worker-handoffs.md#review-cap),
-counted for this stage alone; returns to the test engineer also count against
-the task's [round budget](../worker-handoffs.md#round-budget).
-
-Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
-at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
-at most 400 bytes with its ID, severity and source `evidence`. Put the full
-reasoning in a report file of at most 512 KiB that the result's `report` names.
+The result is at most 6 KiB, with a `summary` of at most 1,200 bytes and each
+finding one line of at most 400 bytes with its ID, severity and source
+`evidence`. Put the full reasoning in the report file that the result's
+`report` names, at most 512 KiB. `cw task handoff` refuses a larger result.
 
 ## Quality bar
 
@@ -82,18 +79,10 @@ reasoning in a report file of at most 512 KiB that the result's `report` names.
 - Timing: a deadline or timeout in a test must bound waiting, not the work the
   requirement does; a bound tight enough to fail a correct implementation on a
   slow machine is a finding, and so is a bound that hides a hang.
-- Every finding cites evidence. Preference without evidence is not a finding.
-
-Under Claude Code you start without the project's instruction files, so
-these project rules reach you here, quoted from the Code Review Rules and
-the working conventions:
-
-- "Flag a test that couldn't fail for the defect it claims to prevent." The
-  red-first run and the mutant results are how you show it.
-- "Check a change against what was asked, separately from code quality." The
-  tests answer to the interface contract, not to their style.
-- "Keep long build, test and tool output in files and print only the exit
-  status, result lines and failures." This applies to your red-first runs.
+- Every finding cites evidence. The tests answer to the interface contract,
+  not to their style: preference without evidence is not a finding.
+- Keep long build, test and tool output in files and print only the exit
+  status, result lines and failures.
 
 ## Stopping conditions
 

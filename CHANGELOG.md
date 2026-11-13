@@ -80,6 +80,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
 - The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
   part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
+- The implementer, test-engineer, test-review and code-review contracts stand alone: each states the severity grades and the 6 KiB
+  result cap itself and links no coordinator reference, so a worker needs only its contract and brief ([agents](docs/agents.md)).
 - The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
   and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
 - The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
