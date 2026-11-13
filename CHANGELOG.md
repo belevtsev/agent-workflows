@@ -23,8 +23,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `cw task assign` records the stage a brief answers and, for a later round, the findings or requirements it fixes or the assignment it repeats;
-  under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
 - `cw task start` fixes a profile (`lite` by default, `standard` or `strict`) in the task record and prints it as `profile` in its summary, with
   stages, round caps and a provisional dollar budget a plan's `budget` may lower but not raise; nothing enforces them yet ([profiles](docs/operations.md#profiles)).
 - Every `cw task` command takes the task ID for `--task` as well as the directory, found in the default task store
@@ -33,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   run it again where an older `cw` wrote the hooks, which `cw doctor` and the session-start line then name ([git hooks](docs/hooks.md#git-hooks)).
 - Each check run records the digest of the source it ran at and a key of its go and `env_passthrough` configuration, keyed per task,
   and each worker result its source digest, so a later pass can be matched to unchanged bytes ([run keys](docs/operations.md#what-a-check-run-records)).
+- `cw task assign` records the stage a brief answers and, for a later round, the findings or requirements it fixes or the assignment it repeats;
+  under a profile it refuses an implementation or review brief without them, naming the member ([assign](skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
 
 ### Changed
 
