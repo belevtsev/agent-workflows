@@ -17,7 +17,7 @@ which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
 a running chat's model automatically. How the coordinator resolves profiles,
 overrides and mismatches is in
-[profiles and policy](../skills/task-orchestration/references/hosts.md#profiles-and-policy).
+[profiles and policy](../skills/task-orchestration/references/hosts.md).
 
 The skill reads the routing from the policy files it ships with; `cw` reads only
 the consultation part of a policy (see [model policy](operations.md#model-policy)).
@@ -99,7 +99,7 @@ agent writes the tests itself and checks its diff against the Code Review Rules.
 That contract holds the
 input boundary, the Go declaration extract, feedback, replacement and record
 rules; the
-[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)
+[host mapping](../skills/task-orchestration/references/hosts.md)
 says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
 checks its tests before integration.
 

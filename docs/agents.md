@@ -38,7 +38,7 @@ lists. The flow, when a stage is skipped and when each role runs are in the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md).
 
 Under the Claude Code plugin the agent types are namespaced, for example
-`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types)
+`agent-workflows:reviewer`; the [host mapping](../skills/task-orchestration/references/hosts.md)
 maps each policy role to its type. The frontmatter model is a default: the
 coordinator passes the role's model and effort on every dispatch. Every agent
 sets `disallowedTools: Skill, Agent, Workflow`: under Claude Code a worker

@@ -128,6 +128,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
+- The orchestration skill has one host reference: `hosts-claude-code.md` and `hosts-codex.md` merge into `hosts.md`, and the
+  publication references shrink; every `cw publish` status and reason is now in the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
 
 ### Fixed
 
@@ -337,7 +339,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts.md
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish
