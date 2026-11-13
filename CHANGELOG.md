@@ -74,6 +74,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cmd/cw` tests build `cw` once per run and run in parallel (about 90 s to 25 s locally), and the `internal/taskflow` tests of the
   4,096-revision limit run at 64 revisions, with one test pinning the shipped value ([development](docs/development.md#tests)).
+- The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
+  what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
+- The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
+  [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
 - A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
   90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
