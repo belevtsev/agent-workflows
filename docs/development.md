@@ -62,6 +62,18 @@ environment or bounds of every check there.
 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
+As a `cw task` check, the full check is
+`["go", "test", "-race", "-count=1", "-json", "./..."]` with `GOWORK=off`
+exported in the shell that runs `cw task run`, and a timeout that covers the
+whole suite. It runs on the working tree, so `cw task verify` can complete
+before the commit; `-json` makes it the check that proves mapped tests. It
+takes no coverage flags: the `internal/graphify` process tests run the test
+binary again and compare its output, and fail under `-cover` (with
+`GOCOVERDIR` set as well). For the code review's profile, bind a second check
+with the coverage flags that names the packages the plan expects to change,
+outside `internal/graphify`; a change inside `internal/graphify` gets no
+profile.
+
 Use `go test` with a focused package or test filter while developing. Tests use
 temporary homes, synthetic Git repositories and local HTTP servers. They never
 change the user's configuration, consult hosted decision models, or require service
@@ -86,7 +98,7 @@ GOWORK=off go test ./internal/skillcheck
 - the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
   summarization on `sonnet`, and Codex `max` for planning, architecture and
   diagnosis only; the recommended Codex memory passes use `luna`; and the profile
-  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
+  table in `references/hosts-claude-code.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
@@ -105,7 +117,11 @@ GOWORK=off go test ./internal/skillcheck
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
-  than 200 characters.
+  than 200 characters;
+- each `*.md` file under `skills/task-orchestration` stays within its cap in
+  the table of `orchestration_budget_test.go`, and the files within the sum cap.
+  The caps are a ratchet toward 10,240 bytes a file (8,192 a role contract) and
+  90,000 in all: a cut lowers its rows, a new file needs a row.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
@@ -145,8 +161,8 @@ and untrusted agreement.
 
 ### Multilingual evaluation
 
-The multilingual corpus is a skill resource, and `cwdev eval multilingual` is its
-runner:
+The multilingual corpus lives in `evals/multilingual/`, outside the shipped skill,
+and `cwdev eval multilingual` is its runner:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual
@@ -157,7 +173,7 @@ deterministic scoring and safe bounded execution using synthetic transports. Liv
 runs (`--live --output-dir PATH`) call only configured providers and report the
 others as `not_run` with reason `not_configured`. Run the explicit hosted
 evaluation separately, following the
-[evaluation guide](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation).
+[evaluation guide](advisers.md#evaluate-multilingual-judgments).
 Keep its reports outside source, freeze corpus/oracle hashes before requests, and
 retain incorrect or unavailable results without automatic retries. A live baseline
 measures only its labeled cases; it is not a CI assertion or production-quality

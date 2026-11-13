@@ -72,8 +72,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
-  the wrong source and does not block reads, so their independence rests on the contracts and briefs.
+- The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
+  and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
+- The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
+  part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
+- The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
+  and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
+- The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
+  what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
+- The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
+  [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
+- A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
+  90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
   ([CI](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
@@ -100,6 +110,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
+- [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
+  the wrong source and does not block reads, so their independence rests on the contracts and briefs.
 - `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
   message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 - `cw task verify` names an unresolved, stale or invalid decision "coordinator decision" instead of "Codex task decision", since either host
@@ -315,7 +327,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts-claude-code.md#worker-agent-types
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

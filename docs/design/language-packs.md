@@ -68,8 +68,8 @@ race command"), never a tool.
 | test-strategy | split | `references/go-fuzzing.md` to `go-fuzzing`; `references/e2e.md:59` (this repo's devcheck) to [development.md](../development.md) |
 
 Make neutral, in [task-orchestration references][tor]:
-`contracts/implementer.md:17`, `contracts/test-engineer.md:55-56` and its
-"Extract Go declarations" section, `hosts.md:144-145`,
+`contracts/implementer.md:17`, `contracts/test-engineer.md:25-26,53`,
+`dispatching-reviews-and-tests.md:57-58` and its "Extract Go declarations" section, `hosts.md:144-145`,
 `global-workflow.md:44-57,80,89-100,269-270,375`, `consultation-helper.md:333`; and "Go-focused" plus the `go` keyword in core
 manifests and marketplaces.
 `agents/*.md` have no Go; the in-flight spec agents must not add any.

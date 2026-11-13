@@ -69,7 +69,7 @@ else `$XDG_CONFIG_HOME/agent-workflows`, else `~/.config/agent-workflows`.
 
 The Go pack's rule, `go.package-test/v2`, needs, among other runs, a direct
 `go test -race` run covering each changed package. See
-[evidence rules](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+[the Go package-test rule](operations.md#the-go-package-test-rule).
 
 ## `pack.yaml`
 

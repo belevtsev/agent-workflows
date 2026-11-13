@@ -61,7 +61,7 @@ design cannot review it. Judge the artefacts as written.
    `changed_files: []`.
 
 Findings go back to the architect; rounds and dispositions follow the
-[review cap](../worker-handoffs.md#review-stages), counted for this stage alone.
+[review cap](../worker-handoffs.md#review-cap), counted for this stage alone.
 
 Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
 at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
