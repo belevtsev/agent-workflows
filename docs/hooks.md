@@ -277,7 +277,8 @@ deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
 ### Owner approval
 
 `cw task assign --owner-approval "<the owner's words>"` lets a round past its
-stage's cap through and records the words ([round caps](operations.md#round-caps)).
+stage's cap, or a third fix round on an open finding or requirement, through and
+records the words ([round caps](operations.md#round-caps), [fix rounds](operations.md#fix-rounds)).
 The agent supplies that text, so with `enforce_verify` on the hook asks before
 every `cw` command it finds with `--owner-approval TEXT` or
 `--owner-approval=TEXT`, quoting each text (three at most, counting the rest),

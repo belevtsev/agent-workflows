@@ -230,7 +230,7 @@ can tell "the answer is no" from "`cw` failed" without reading stderr:
 | 1 | failure | `cw` could not do it: invalid input, an I/O error, a damaged or locked record. A check that passed but whose log or test results `cw` could not write (`log_write_failed`, `test_results_write_failed`) is recorded as failed and exits 1. |
 | 2 | usage | The command line is wrong: an unknown flag, a missing or conflicting option (such as a `cw task` command without `--task`), `cw task brief` with a stage outside the task's profile, or `--dry-run` where it is rejected. Nothing ran. |
 | 3 | denied | The gate blocks the operation: `cw publish` `denied`; `cw hook git` blocking a commit or push. |
-| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap without `--owner-approval` ([round caps](#round-caps)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
+| 4 | refused | A precondition or the record's state refuses the operation: `cw publish` `refused`; `cw gate install` leaving a hook it did not write unchanged, and `cw gate install` or `uninstall` refusing a hooks directory that can serve other repositories (without `--shared`) or, for install, a missing one outside the git directory; every `cw graphify` `unavailable` report, whatever its `code`; `cw task assign` past a stage's round cap or a third fix round on an open finding or requirement without `--owner-approval` ([round caps](#round-caps), [fix rounds](#fix-rounds)); a `cw task` command on a record from a newer `cw` (upgrade `cw`), or on one without `packs`, `test_rules` or `baseline_manifest`, or that binds `go.package-test/v1` (start a new task). Other records `cw` cannot read, such as version 1 or 2, exit 1. |
 | 5 | negative result | The command worked and the answer is no: `cw task verify` incomplete; `cw task run` with a check that did not pass (failed, timed out, changed the source, or left a process behind) or that `cw` would not run with an unverified `go` ([which go](#which-go-a-check-runs)); `cw consult` with partial or unavailable coverage, an unresolved adjudication or a bound adviser without its key. |
 | 6 | unknown | `cw publish` cannot establish whether a step happened. |
 | 7 | mismatch | `cw publish` read back a step that differs from the request. |
@@ -455,8 +455,8 @@ resolved name into the stored plan and prints it as `profile` in its summary. Th
 the stages the task may assign, the author round caps per stage, the fix rounds
 allowed per finding or requirement, and the budget in US dollars, with the share
 (80%) at which the task is to stop taking new work. `cw task assign` enforces the
-round caps ([round caps](#round-caps)); the fix rounds and the budget are recorded
-but not enforced yet. A plan's `budget` member (`{"max_usd": 10}`) may lower the
+round caps ([round caps](#round-caps)) and the fix rounds ([fix rounds](#fix-rounds));
+the budget is recorded but not enforced yet. A plan's `budget` member (`{"max_usd": 10}`) may lower the
 profile's budget, never raise it; it may also set `stop_at`, the share at which
 the task stops, up to the profile's 0.8. A higher value of either is refused and
 no task is created. A later revision that changes the profile fails to load. A record
@@ -510,6 +510,31 @@ goes past, shown by `cw task show --field assignments`. The round cap's limit is
 words for a limit the brief does not go past are refused.
 With `enforce_verify` on, the plugin hook asks the user to confirm the words
 before such a command runs ([hooks](hooks.md#owner-approval)).
+
+#### Fix rounds
+
+`cw task assign` counts, per finding or requirement, the earlier assignments whose
+`fixes` name it, in any stage, as it counts rounds above: one that returned no
+work does not count, and a repeat of it takes its place and its `fixes`. A
+finding with `reopens` (an earlier finding, as `<assignment id>/<finding id>`)
+counts as that earlier one. A brief that fixes a key with the profile's fix
+rounds (2) behind it while the key is still open is refused with exit 4 and no
+revision, naming every such key the brief fixes, its rounds and the profile's
+allowance. A finding key is open while any finding of its `reopens` chain is
+open: until the latest acceptance of that finding's result disposes it as
+`resolved`, `rejected` or `deferred`. A requirement with checks is open while
+one of them lacks a credited pass at the source the brief is assigned at, a
+reused pass included: the assignment records that source's digest as
+`source_sha256`, and load judges it the same way. A requirement without checks
+is open until its latest assessment says `satisfied`. `cw` lists each key's
+latest four rounds (assignment and the first line of its result summary, cut to
+200 bytes, counting the rest) and names the owner's two choices, both the
+owner's call: one more fix round, or a change of approach. Either way the owner
+gives words, passed as `--owner-approval "escalation=<the owner's words>"`, that
+approve the round or name the new approach; or the owner disposes of the
+finding, rejected against evidence or deferred with the owner's reason. A
+third `tests` round that is also a third fix goes past both limits and needs
+words for each.
 
 #### Stage briefs
 
