@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -207,14 +208,47 @@ func reserve(path string) (*pendingOutput, error) {
 	return &pendingOutput{File: file, path: path}, nil
 }
 
-// publish links the written temporary file to the output path. The temporary
-// name is removed in every case.
+// link is os.Link; a test replaces it to stand for a file system without
+// hard links.
+var link = os.Link
+
+// publish links the written temporary file to the output path. A file system
+// without hard links gets the output created exclusively and written instead.
+// The temporary name is removed in every case.
 func (p *pendingOutput) publish() error {
 	defer p.discard()
-	if err := os.Link(p.Name(), p.path); err != nil {
+	err := link(p.Name(), p.path)
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, fs.ErrExist):
 		return errOutputExists
 	}
-	return nil
+	data, err := os.ReadFile(p.Name())
+	if err != nil {
+		return err
+	}
+	return writeNew(p.path, data)
+}
+
+// writeNew creates path, which must not exist, as a private file holding
+// data, synced to disk. A failed write removes the file it created.
+func writeNew(path string, data []byte) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return errOutputExists
+	}
+	_, err = file.Write(data)
+	if err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(path)
+	}
+	return err
 }
 
 // discard closes and removes the temporary file; the output path is untouched.
