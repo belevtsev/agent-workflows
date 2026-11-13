@@ -37,8 +37,8 @@ satisfies a later state.
    and after material workspace changes; fix what `problems` lists before
    starting (`optional_missing` counts absent optional tools, which block
    nothing); resolve profiles from the
-   [host mapping](references/hosts.md). `cw task start` records the plan and
-   binds the configured advisers. Checkpoints are required for an open decision
+   [host mapping](references/hosts.md). `cw task start` records the plan.
+   Checkpoints are required for an open decision
    (real alternatives with consequential uncertainty), for any change to code
    that must behave alike on several platforms or shells, and whenever in doubt;
    otherwise the plan declares `"checkpoints": {"required": false, "reason": "..."}`
@@ -56,7 +56,11 @@ satisfies a later state.
 2. **Before checkpoint** (when required). With enough source evidence to assess
    approach, alternatives, risks and verification plan, consult with the `before`
    context, adjudicate and attach a resolved record before implementation edits
-   or worker dispatch; without implementation, before substantive drafting or review.
+   or worker dispatch; without implementation, before substantive drafting or review
+   ([checkpoint helper](references/consultation-helper.md)). Only when
+   `cw task show --field advisers` is not empty, read the
+   [adviser guidance](references/adviser-providers.md), which also applies in
+   states 3 and 4 and when checkpoints are not required.
 3. **Implement and verify.** Build new behaviour along the
    [flow](references/contracts/README.md#flow), with a review loop at every
    stage: spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) →
@@ -69,14 +73,12 @@ satisfies a later state.
    and the round budget in the same section bounds spec, design, contract and
    test-engineer rounds across the whole task (implementer fixes never count);
    that file says when a small task skips the spec and design stages.
-   After state 2, advisers join only at the four
-   [adviser points](references/consultation-helper.md#adviser-points-in-the-flow)
-   and only when available; without them the flow runs unchanged. Assign and
+   Assign and
    dispatch workers, integrate, run the selected checks and obtain the
    independent code review.
 4. **Fresh final checkpoint** (when required). Consult with a new request from
    the completed work, current diff, check results and remaining limitations,
-   using the `final` context; adjudicate and attach it.
+   using the `final` context; adjudicate and attach it as in state 2.
 5. **Complete.** Claim completion or publish only after `cw task verify` passes.
 
 An unresolved decision blocks the next state: investigate and adjudicate again,
@@ -123,10 +125,9 @@ a task is substantial or replace a gate.
 | Host, profiles, policy, paths | [hosts](references/hosts.md) |
 | Preset for the kind of work | [use-cases](references/use-cases.md) |
 | Scope, plan, `cw task`, checks, completion | [global-workflow](references/global-workflow.md) |
-| Advisers, checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
+| Checkpoints, adjudication | [consultation-helper](references/consultation-helper.md) |
 | Assign, dispatch, accept, review | [worker-handoffs](references/worker-handoffs.md) |
 | Roles, flow, review stages | [contracts](references/contracts/README.md) |
 | Independent tests | [test-engineer](references/contracts/test-engineer.md) |
 | Commit, push, PR | [publication](references/github-worker.md) |
 | Jira, Confluence, GitHub evidence | [connected-sources](references/connected-sources.md) |
-| Adviser providers | [adviser-providers](references/adviser-providers.md) |

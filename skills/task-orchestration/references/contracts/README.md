@@ -26,7 +26,7 @@ stage separately, while the round budget in the same section bounds spec,
 design, contract and test-engineer rounds across the whole task; implementer
 fixes never count. After the task's before checkpoint, when its checkpoints are
 required, advisers join only at the [adviser
-points](../consultation-helper.md#adviser-points-in-the-flow) (a to d below) and
+points](../adviser-providers.md#adviser-points-in-the-flow) (a to d below) and
 only when available; without them every step runs unchanged.
 
 1. **Spec writer ⇄ reviewer (spec).** The spec writer turns the source

@@ -1615,5 +1615,6 @@ A terminal export does not update an already running desktop app; use the
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
 
-See the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
-for adviser statuses, offline adjudication and exit codes.
+See the [adviser statuses](../skills/task-orchestration/references/adviser-providers.md#statuses)
+and the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
+for offline adjudication and exit codes.

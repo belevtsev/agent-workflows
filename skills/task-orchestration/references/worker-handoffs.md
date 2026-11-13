@@ -100,7 +100,7 @@ behaviour. `minor`: clarity that changes no test and no behaviour.
 
 **Findings loop.** Return accepted findings to the author; the next round
 reviews the revision. Before rejecting a `blocker` or `major`, consult the
-available advisers ([points](consultation-helper.md#adviser-points-in-the-flow)).
+available advisers ([points](adviser-providers.md#adviser-points-in-the-flow)).
 
 **Growth check.** When a spec or design is reviewed after a revision or an
 [amendment](contracts/README.md#contract-amendment), anything the diff adds
