@@ -314,9 +314,9 @@ details and source links.
 The bundled multilingual evaluation (`cwdev eval multilingual`) uses 12
 synthetic scenarios translated into English, Ukrainian and German. It is
 separate from task consultations, skill-discovery evaluations and the repository
-checks. The corpus lives in `evals/multilingual` under the task-orchestration
-skill; `cwdev` is a maintainer tool that reads it from a source checkout,
-selected with `--source` (by default the current directory). The twelve neutral
+checks. The corpus lives in `evals/multilingual` of the source checkout, not in
+the installed skill; `cwdev` is a maintainer tool that reads it from that
+checkout, selected with `--source` (by default the current directory). The twelve neutral
 cases cover durable acknowledgement, tenant isolation, cancellation and release
 identity, each with supporting, contradictory and missing-evidence observations;
 the language variants preserve the facts, claim, instructions and option

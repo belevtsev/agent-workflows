@@ -7,6 +7,9 @@ linters:
   default: none
   enable:
     - errcheck
+    - funlen
+    - gocognit
+    - gocyclo
     - gosec
     - govet
     - ineffassign
@@ -14,11 +17,21 @@ linters:
     - staticcheck
     - unused
   settings:
+    # Complexity ratchet (QR-45): the start thresholds of the quality review
+    # (section 5.5); the targets are gocognit 30, funlen 80 and gocyclo 20.
+    # Today's offenders are listed by function under exclusions below.
+    funlen:
+      lines: 120
+      statements: -1
+      ignore-comments: true
+    gocognit:
+      min-complexity: 60
+    gocyclo:
+      min-complexity: 30
     errcheck:
       exclude-functions:
-        # The os.Root and unix forms of os.Remove, which std-error-handling
-        # below already exempts: best-effort removal of a temporary or lock
-        # file on a cleanup path.
+        # The os.Root and unix forms of os.Remove: best-effort removal of a
+        # temporary or lock file on a cleanup path, everywhere.
         - (*os.Root).Remove
         - golang.org/x/sys/unix.Unlinkat
     misspell:
@@ -42,13 +55,6 @@ linters:
         # Quick fixes (QF) are refactoring suggestions, not defects.
         - -QF*
   exclusions:
-    presets:
-      # errcheck: Close, Flush, os.Remove(All), the fmt print family and
-      # os.(Un)Setenv. These are mostly deferred closes of read handles,
-      # cleanup on an error path, and diagnostics to stdout or stderr. The
-      # linter no longer flags them, so a write whose Close result matters
-      # must check it explicitly.
-      - std-error-handling
     rules:
       # G104 repeats errcheck, which is configured above.
       - linters: [gosec]
@@ -67,3 +73,461 @@ linters:
       - path: _test\.go
         linters: [gosec]
         text: "G(101|115|122|204|301|302|306|404|602|702|703|704):"
+      # errcheck (F13): the std-error-handling preset is gone, so new code
+      # checks every result. Today's unchecked results stay excluded per
+      # package and function; fix a package's sites and delete its rule.
+      # The list only shrinks.
+      # cmd/cw (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^cmd/cw/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # cmd/cwdev (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^cmd/cwdev/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/cli (production): closes of read handles, directories and locks, and closes on an error path after a failed write; best-effort removal of a temporary file on a cleanup path; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/cli/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.Remove|fmt\.Fprint|fmt\.Fprintf|fmt\.Fprintln)` is not checked'
+      # internal/cli (tests): closes of fixture files and locks, whose failure the test assertions would show; test environment set up and restored by the test itself.
+      - path: ^internal/cli/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.Setenv|[^`]*\.Unsetenv)` is not checked'
+      # internal/codexinstall (production): best-effort removal of a temporary file on a cleanup path.
+      - path: ^internal/codexinstall/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Remove)` is not checked'
+      # internal/consult (production): closes of read handles, directories and locks, and closes on an error path after a failed write; best-effort removal of a temporary file on a cleanup path; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/consult/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.Remove|fmt\.Fprintf|fmt\.Fprintln)` is not checked'
+      # internal/consult (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/consult/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/credentials (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/credentials/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/doctor (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/doctor/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/fslock (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/fslock/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/gate (production): closes of read handles, directories and locks, and closes on an error path after a failed write; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/gate/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|fmt\.Fprintf)` is not checked'
+      # internal/graphify (production): best-effort removal of a temporary directory on a cleanup path.
+      - path: ^internal/graphify/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.RemoveAll)` is not checked'
+      # internal/graphify (tests): closes of fixture files and locks, whose failure the test assertions would show; best-effort removal of a temporary directory on a cleanup path; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/graphify/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.RemoveAll|fmt\.Fprintln)` is not checked'
+      # internal/langpack (production): closes of read handles, directories and locks, and closes on an error path after a failed write; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/langpack/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|fmt\.Fprintf)` is not checked'
+      # internal/langpack (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/langpack/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/modelpolicy (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/modelpolicy/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/outcomes (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/outcomes/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/proc (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/proc/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/projectctx (production): closes of read handles, directories and locks, and closes on an error path after a failed write; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/projectctx/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|fmt\.Fprintf)` is not checked'
+      # internal/projectctx (tests): closes of fixture files and locks, whose failure the test assertions would show; best-effort removal of a temporary directory on a cleanup path; test environment set up and restored by the test itself.
+      - path: ^internal/projectctx/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.RemoveAll|[^`]*\.Setenv)` is not checked'
+      # internal/publish (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/publish/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/skillcheck (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/skillcheck/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/taskflow (production): closes of read handles, directories and locks, and closes on an error path after a failed write; diagnostics and reports printed to the command's stdout or stderr.
+      - path: ^internal/taskflow/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|fmt\.Fprintf)` is not checked'
+      # internal/taskflow (tests): closes of fixture files and locks, whose failure the test assertions would show; best-effort removal of a temporary file on a cleanup path; test environment set up and restored by the test itself.
+      - path: ^internal/taskflow/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close|[^`]*\.Remove|[^`]*\.Setenv|[^`]*\.Unsetenv)` is not checked'
+      # internal/usagelog (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/usagelog/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/usagelog (tests): closes of fixture files and locks, whose failure the test assertions would show.
+      - path: ^internal/usagelog/[^/]*_test\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # internal/userconfig (production): closes of read handles, directories and locks, and closes on an error path after a failed write.
+      - path: ^internal/userconfig/[^/]*([^t]|[^s]t|[^e]st|[^t]est|[^_]test)\.go$
+        linters: [errcheck]
+        text: 'Error return value of `([^`]*\.Close)` is not checked'
+      # Complexity ratchet (QR-45): today's offenders, one rule per function.
+      # Remove a rule when its function is split; never add one.
+      - path: ^cmd/cw/codex_hooks_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestCodexHooksEndToEnd''|func `TestCodexHooksEndToEnd`'
+        # funlen 187, gocognit 75, gocyclo 56
+      - path: ^cmd/cw/evidence_e2e_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestEvidenceE2EReviewSeverityAndRejectedBlocker'''
+        # funlen 132
+      - path: ^cmd/cw/hooks_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestHooksEndToEnd''|func `TestHooksEndToEnd`'
+        # funlen 297, gocognit 99, gocyclo 61
+      - path: ^cmd/cw/hooks_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `TestHooksJSONShape`'
+        # gocognit 98, gocyclo 36
+      - path: ^cmd/cw/hostfiles_e2e_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestHostfilesE2E''|func `TestHostfilesE2E`'
+        # funlen 431, gocognit 201, gocyclo 74
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `\(\*pubEnv\)\.checkGit`'
+        # gocognit 65, gocyclo 46
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `pubTestCommitMismatchTree`'
+        # gocognit 63, gocyclo 32
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [funlen, gocyclo]
+        text: 'Function ''pubTestHappyPath''|func `pubTestHappyPath`'
+        # funlen 126, gocyclo 47
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [gocyclo]
+        text: 'func `pubTestPRCreate`'
+        # gocyclo 34
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `pubTestPRReadbackBodyState`'
+        # gocognit 61, gocyclo 31
+      - path: ^cmd/cw/publish_e2e_test\.go$
+        linters: [funlen]
+        text: 'Function ''pubTestUsage'''
+        # funlen 186
+      - path: ^cmd/cw/staged_gate_e2e_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestGateJudgesTheContentACommitRecords'''
+        # funlen 156
+      - path: ^cmd/cw/timeline_e2e_test\.go$
+        linters: [funlen, gocyclo]
+        text: 'Function ''TestTimelineE2ERealTask''|func `TestTimelineE2ERealTask`'
+        # funlen 155, gocyclo 39
+      - path: ^cmd/cw/timeline_e2e_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestTimelineE2ERunningCheck'''
+        # funlen 131
+      - path: ^evals/adversarial_gate_authored_test\.go$
+        linters: [gocognit]
+        text: 'func `TestAuthoredRunAdversarialSelfTest`'
+        # gocognit 61
+      - path: ^evals/adversarial_scaffold_authored_test\.go$
+        linters: [gocognit]
+        text: 'func `TestAuthoredAdversarialScaffolds`'
+        # gocognit 64
+      - path: ^evals/evals_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''checkGrader''|func `\(\*caseCheck\)\.checkGrader`'
+        # funlen 125, gocognit 93, gocyclo 56
+      - path: ^evals/jsregex_authored_test\.go$
+        linters: [funlen]
+        text: 'Function ''authored2RegexCases'''
+        # funlen 258
+      - path: ^evals/jsregex_test\.go$
+        linters: [gocyclo]
+        text: 'func `\(jsSyntax\)\.escape`'
+        # gocyclo 59
+      - path: ^evals/jsregex_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''translateJS''|func `translateJS`'
+        # funlen 154, gocognit 95, gocyclo 72
+      - path: ^evals/mutant_gate_test\.go$
+        linters: [gocognit]
+        text: 'func `TestAuthoredMutantGateSelfTest`'
+        # gocognit 65
+      - path: ^internal/cli/compact_output_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestCompactDoctorSummary''|func `TestCompactDoctorSummary`'
+        # funlen 206, gocognit 86, gocyclo 67
+      - path: ^internal/cli/doctor_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestDoctorGitHooksCheckNeedsAttentionOnlyForAnOpenTaskWithoutGitHooks'''
+        # funlen 143
+      - path: ^internal/cli/gate\.go$
+        linters: [funlen]
+        text: 'Function ''addGateCommands'''
+        # funlen 127
+      - path: ^internal/cli/hook_test\.go$
+        linters: [funlen, gocognit]
+        text: 'Function ''TestHookSessionStartDoctor''|func `TestHookSessionStartDoctor`'
+        # funlen 143, gocognit 64
+      - path: ^internal/cli/metrics_composition_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestMetricsCompositionRolesMapping'''
+        # funlen 139
+      - path: ^internal/cli/metrics_history_r2_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestMetricsHistoryCodexAppendThroughExecute`'
+        # gocyclo 59
+      - path: ^internal/cli/metrics_history_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestMetricsHistoryAppendStoresImportedRequests`'
+        # gocyclo 45
+      - path: ^internal/cli/metrics_import_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestMetricsImportClaudeDedupAgentsAndNoCost`'
+        # gocyclo 41
+      - path: ^internal/cli/metrics_import_test\.go$
+        linters: [gocyclo]
+        text: 'func `checkCodexAgents`'
+        # gocyclo 47
+      - path: ^internal/cli/policy_select_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestCarveoutConsultPolicySelection'''
+        # funlen 164
+      - path: ^internal/cli/task_abandon_test\.go$
+        linters: [funlen, gocyclo]
+        text: 'Function ''TestTaskAbandonCommand''|func `TestTaskAbandonCommand`'
+        # funlen 139, gocyclo 33
+      - path: ^internal/cli/task_commands_test\.go$
+        linters: [gocognit]
+        text: 'func `TestTaskCLIRefusesOtherRecordVersionsWithoutWrites`'
+        # gocognit 94
+      - path: ^internal/cli/task_summary_test\.go$
+        linters: [funlen, gocyclo]
+        text: 'Function ''TestTaskSummaryFlagReportsStoredWorkerFlow''|func `TestTaskSummaryFlagReportsStoredWorkerFlow`'
+        # funlen 132, gocyclo 59
+      - path: ^internal/consult/adjudicate\.go$
+        linters: [gocyclo]
+        text: 'func `\(\*checkedRecord\)\.checkDecisionItem`'
+        # gocyclo 39
+      - path: ^internal/credentials/credentials_test\.go$
+        linters: [gocognit]
+        text: 'func `TestRC6PrecedencePresenceAndReadOnlyResolution`'
+        # gocognit 67
+      - path: ^internal/credentials/credentials_test\.go$
+        linters: [gocyclo]
+        text: 'func `decodeDocument`'
+        # gocyclo 37
+      - path: ^internal/credentials/store\.go$
+        linters: [gocyclo]
+        text: 'func `\(Store\)\.Save`'
+        # gocyclo 31
+      - path: ^internal/doctor/doctor\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''Doctor''|func `Doctor`'
+        # funlen 237, gocognit 107, gocyclo 62
+      - path: ^internal/gate/known_forms_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestPrePublishKnownForms'''
+        # funlen 199
+      - path: ^internal/gate/staged_content\.go$
+        linters: [gocyclo]
+        text: 'func `stagedDifferences`'
+        # gocyclo 36
+      - path: ^internal/graphify/graphify\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''activate''|func `\(Options\)\.activate`'
+        # funlen 135, gocognit 68, gocyclo 44
+      - path: ^internal/graphify/production_cache_process_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestProductionCacheLockProcessDeathAndRefusals`'
+        # gocyclo 33
+      - path: ^internal/graphify/production_cache_process_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `TestProductionCachePathRefusals`'
+        # gocognit 120, gocyclo 38
+      - path: ^internal/graphify/production_cache_process_test\.go$
+        linters: [gocognit]
+        text: 'func `TestProductionProcessGroupLifetimeAndPipeJoin`'
+        # gocognit 63
+      - path: ^internal/graphify/production_cache_process_test\.go$
+        linters: [gocognit]
+        text: 'func `TestProductionPublishRollbackAndRecovery`'
+        # gocognit 65
+      - path: ^internal/graphify/production_cache_process_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''productionProcessMain''|func `productionProcessMain`'
+        # funlen 130, gocognit 80, gocyclo 40
+      - path: ^internal/langpack/goevidence\.go$
+        linters: [gocyclo]
+        text: 'func `GoEvidence`'
+        # gocyclo 36
+      - path: ^internal/outcomes/read\.go$
+        linters: [funlen]
+        text: 'Function ''Summarize'''
+        # funlen 124
+      - path: ^internal/outcomes/read\.go$
+        linters: [gocyclo]
+        text: 'func `\(\*entry\)\.validate`'
+        # gocyclo 37
+      - path: ^internal/projectctx/capture\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''capture''|func `capture`'
+        # funlen 272, gocognit 145, gocyclo 80
+      - path: ^internal/projectctx/merge_contract_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestContractInspectMerge''|func `TestContractInspectMerge`'
+        # funlen 426, gocognit 79, gocyclo 40
+      - path: ^internal/publish/request\.go$
+        linters: [gocyclo]
+        text: 'func `ParseRequest`'
+        # gocyclo 35
+      - path: ^internal/publish/run\.go$
+        linters: [gocyclo]
+        text: 'func `\(\*run\)\.preconditions`'
+        # gocyclo 31
+      - path: ^internal/skillcheck/personal_imports_test\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''TestPersonalImportHashesAndCompleteOriginalInventories''|func `TestPersonalImportHashesAndCompleteOriginalInventories`'
+        # funlen 125, gocognit 91, gocyclo 38
+      - path: ^internal/skillcheck/routing_fixtures_test\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `validateRoutingFixtures`'
+        # gocognit 84, gocyclo 45
+      - path: ^internal/skillcheck/shell_template_test\.go$
+        linters: [gocyclo]
+        text: 'func `runInstallerScenario`'
+        # gocyclo 35
+      - path: ^internal/taskflow/amend_contract_test\.go$
+        linters: [funlen]
+        text: 'Function ''acTestMergeGate'''
+        # funlen 157
+      - path: ^internal/taskflow/binding_test\.go$
+        linters: [gocyclo]
+        text: 'func `buildCheckpoint`'
+        # gocyclo 33
+      - path: ^internal/taskflow/checks\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''executeCheck''|func `\(Env\)\.executeCheck`'
+        # funlen 175, gocognit 77, gocyclo 54
+      - path: ^internal/taskflow/consultation\.go$
+        linters: [gocyclo]
+        text: 'func `\(Env\)\.AttachConsultation`'
+        # gocyclo 32
+      - path: ^internal/taskflow/contract\.go$
+        linters: [gocyclo]
+        text: 'func `renderValueSpec`'
+        # gocyclo 33
+      - path: ^internal/taskflow/find\.go$
+        linters: [gocyclo]
+        text: 'func `FindOpen`'
+        # gocyclo 34
+      - path: ^internal/taskflow/find_test\.go$
+        linters: [funlen, gocognit]
+        text: 'Function ''TestFindOpen''|func `TestFindOpen`'
+        # funlen 369, gocognit 77
+      - path: ^internal/taskflow/find_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestFindOpenFinishedRecords'''
+        # funlen 176
+      - path: ^internal/taskflow/production_guards_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestProductionHistoricalDeniedPlansStayReadable`'
+        # gocyclo 32
+      - path: ^internal/taskflow/storage\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `loadRoot`'
+        # gocognit 61, gocyclo 45
+      - path: ^internal/taskflow/storage\.go$
+        linters: [gocyclo]
+        text: 'func `validateRecord`'
+        # gocyclo 76
+      - path: ^internal/taskflow/task\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `\(Env\)\.Assess`'
+        # gocognit 86, gocyclo 34
+      - path: ^internal/taskflow/task\.go$
+        linters: [gocyclo]
+        text: 'func `localEvidenceProblems`'
+        # gocyclo 36
+      - path: ^internal/taskflow/task_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestCheckSubprocess`'
+        # gocyclo 42
+      - path: ^internal/taskflow/timeline_test\.go$
+        linters: [funlen]
+        text: 'Function ''TestTimelineTL2AssignmentEntries'''
+        # funlen 162
+      - path: ^internal/taskflow/trace\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''judgeTrace''|func `judgeTrace`'
+        # funlen 286, gocognit 195, gocyclo 109
+      - path: ^internal/taskflow/types\.go$
+        linters: [gocyclo]
+        text: 'func `validateRecordedPlan`'
+        # gocyclo 33
+      - path: ^internal/taskflow/workers\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `\(Env\)\.AssignApprovedWorker`'
+        # gocognit 69, gocyclo 33
+      - path: ^internal/taskflow/workers\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `\(Env\)\.SubmitWorkerResult`'
+        # gocognit 77, gocyclo 35
+      - path: ^internal/taskflow/workers\.go$
+        linters: [gocyclo]
+        text: 'func `validateBrief`'
+        # gocyclo 35
+      - path: ^internal/taskflow/workers\.go$
+        linters: [gocyclo]
+        text: 'func `validateResult`'
+        # gocyclo 51
+      - path: ^internal/taskflow/workers\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `workerEvidenceProblems`'
+        # gocognit 70, gocyclo 35
+      - path: ^internal/taskflow/workers_validation\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `validateWorkerRecord`'
+        # gocognit 61, gocyclo 52
+      - path: ^internal/taskflow/workers_validation\.go$
+        linters: [gocognit, gocyclo]
+        text: 'func `validateWorkerTransition`'
+        # gocognit 86, gocyclo 51
+      - path: ^internal/usagelog/claude\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''importClaude''|func `importClaude`'
+        # funlen 185, gocognit 109, gocyclo 56
+      - path: ^internal/usagelog/codex\.go$
+        linters: [funlen, gocognit, gocyclo]
+        text: 'Function ''importCodex''|func `importCodex`'
+        # funlen 196, gocognit 144, gocyclo 56
+      - path: ^internal/usagelog/codex_test\.go$
+        linters: [gocyclo]
+        text: 'func `TestImportCodexSumsRootAndDescendantRollouts`'
+        # gocyclo 37
+      - path: ^internal/usagelog/history_r2_test\.go$
+        linters: [gocyclo]
+        text: 'func `cxCheckRecord`'
+        # gocyclo 32
+      - path: ^internal/usagelog/history_test\.go$
+        linters: [gocyclo]
+        text: 'func `checkRecord`'
+        # gocyclo 32

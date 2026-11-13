@@ -34,7 +34,8 @@ const (
 // Evaluation runs the synthetic multilingual baseline. Offline corpus validation
 // is the default: it reads no credentials, makes no requests and writes nothing.
 type Evaluation struct {
-	// Source is the checkout holding skills/task-orchestration.
+	// Source is the checkout holding skills/task-orchestration and the corpus
+	// in evals/multilingual.
 	Source    string
 	Live      bool
 	OutputDir string
@@ -50,6 +51,12 @@ type Evaluation struct {
 
 func (e Evaluation) skillRoot() string {
 	return filepath.Join(e.Source, "skills", "task-orchestration")
+}
+
+// corpusRoot holds the evaluation inputs and oracle. They live outside the
+// skill so that the installed plugin does not ship them.
+func (e Evaluation) corpusRoot() string {
+	return filepath.Join(e.Source, "evals", "multilingual")
 }
 
 func nonempty(value any) bool {
@@ -267,8 +274,8 @@ func (e Evaluation) load() (*evalResources, error) {
 	policyPath := filepath.Join(skill, "model-policy.yaml")
 	raw := map[string][]byte{}
 	for name, path := range map[string]string{
-		"inputs.json":       filepath.Join(skill, "evals", "multilingual", "inputs.json"),
-		"oracle.json":       filepath.Join(skill, "evals", "multilingual", "oracle.json"),
+		"inputs.json":       filepath.Join(e.corpusRoot(), "inputs.json"),
+		"oracle.json":       filepath.Join(e.corpusRoot(), "oracle.json"),
 		"model-policy.yaml": policyPath,
 	} {
 		data, err := os.ReadFile(path)
@@ -481,11 +488,15 @@ func (e Evaluation) protectedRoots() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	corpus, err := resolvePath(e.corpusRoot())
+	if err != nil {
+		return nil, err
+	}
 	home, err := e.Home()
 	if err != nil {
 		return nil, err
 	}
-	roots := []string{skill}
+	roots := []string{skill, corpus}
 	// A source run also protects the default and XDG manager stores. An installed
 	// copy additionally discovers its custom immutable release root.
 	stores := []string{filepath.Join(home, ".local", "state", "agent-workflows", "releases")}

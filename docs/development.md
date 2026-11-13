@@ -117,7 +117,7 @@ GOWORK=off go test ./internal/skillcheck
 - the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
   summarization on `sonnet`, and Codex `max` for planning, architecture and
   diagnosis only; the recommended Codex memory passes use `luna`; and the profile
-  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
+  table in `references/hosts-claude-code.md` gives each Claude Code profile's alias and effort;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
@@ -140,7 +140,9 @@ GOWORK=off go test ./internal/skillcheck
 - each `*.md` file under `skills/task-orchestration` stays within its cap in
   the table of `orchestration_budget_test.go`, and the files within the sum cap.
   The caps are a ratchet toward 10,240 bytes a file (8,192 a role contract) and
-  90,000 in all: a cut lowers its rows, a new file needs a row.
+  90,000 in all: a cut lowers its rows, a new file needs a row;
+- only `global/AGENTS.md` states when a task is substantial; the skills, agents,
+  hooks, docs and model policies link to it.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
@@ -180,8 +182,8 @@ and untrusted agreement.
 
 ### Multilingual evaluation
 
-The multilingual corpus is a skill resource, and `cwdev eval multilingual` is its
-runner:
+The multilingual corpus lives in `evals/multilingual/`, outside the shipped skill,
+and `cwdev eval multilingual` is its runner:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual
@@ -283,6 +285,17 @@ run `status` or context phase, fails validation with "invalid stored …".
   v3.0.0-rc.2 skips the task instead of gating it, and the hook of v3.0.0-rc.2
   or later asks before each commit and push. Run the same `cw` on every host
   and hook that shares a task store.
+- A revision's `updated_at`, and every time it adds (an assignment, handoff,
+  acceptance, approval, amendment, check start, usage sample or abandonment),
+  is the later of the clock and the previous `updated_at`, and a check's
+  `finished_at` is no earlier than its `started_at`. A wall clock that
+  steps back therefore cannot leave a stored time after the next revision's
+  `updated_at`, which the worker and amendment rules refuse. Until the clock
+  catches up, stored times run ahead of it, and the gate counts such a record
+  as just written ([Which records gate](hooks.md#which-records-gate)).
+  `created_at` and a verification's `checked_at` are the clock's own reading:
+  the gate compares them with each other across records, and no record rule
+  orders `checked_at` against `updated_at`.
 - The hook selects a task by the newest revision it can decode, reading
   `plan.kind`, `baseline.root` and `updated_at` without loading the chain, so
   that an older hook can still ask about a record it cannot read. Those three
@@ -366,7 +379,15 @@ The lint job builds the pinned golangci-lint with the Go toolchain that go.mod
 selects, so the linter can load this module. `.golangci.yml` enables govet,
 staticcheck, errcheck, ineffassign, unused, gosec and misspell, and gives the
 reason for each exclusion; a suppressed finding in code carries a
-`//nolint:<linter> // reason` comment. govulncheck fails the job when the
+`//nolint:<linter> // reason` comment.
+
+It also enables `gocognit` (above 60), `funlen` (above 120 lines, comments not
+counted) and `gocyclo` (above 30). Today's offenders are listed one rule per
+function at the end of the file, so a new offender fails the job; the list only
+shrinks, and splitting a listed function removes its rule. errcheck no longer
+hides unchecked `Close`, `Remove` and `fmt.Fprint*` results everywhere: the
+existing ones are excluded per package with a reason, and fixing a package's
+sites removes its rule. govulncheck fails the job when the
 standard library of that toolchain or a dependency has a vulnerability that
 the code can reach; the fix is a newer toolchain or module version. The
 [contributing guide](../CONTRIBUTING.md#build-and-test) has the local commands.

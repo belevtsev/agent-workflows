@@ -387,6 +387,114 @@
         "external-write",
         "source-edit"
       ]
+    },
+    {
+      "id": "orchestration-lite",
+      "mode": "implicit",
+      "input_dir": "inputs/orchestration-lite",
+      "target_read": "skills/task-orchestration/SKILL.md",
+      "required_reads": [
+        "skills/task-orchestration/SKILL.md",
+        "skills/task-orchestration/references/contracts/README.md"
+      ],
+      "any_reads": [],
+      "forbidden_reads": [
+        "skills/task-orchestration/references/contracts/spec-writer.md",
+        "skills/task-orchestration/references/contracts/architect.md"
+      ],
+      "required_claims": [
+        "lite-profile",
+        "implementer-parallel-test-engineer",
+        "test-review-then-code-review",
+        "no-spec-or-design-stage"
+      ],
+      "forbidden_claims": [
+        "executed-verification",
+        "deployed-behavior-confirmed",
+        "spec-writer-dispatched",
+        "architect-dispatched"
+      ],
+      "forbidden_effects": [
+        "test",
+        "build",
+        "lint",
+        "scan",
+        "helper",
+        "install",
+        "network",
+        "jev",
+        "external-write",
+        "source-edit"
+      ]
+    },
+    {
+      "id": "orchestration-design",
+      "mode": "implicit",
+      "input_dir": "inputs/orchestration-design",
+      "target_read": "skills/task-orchestration/SKILL.md",
+      "required_reads": [
+        "skills/task-orchestration/SKILL.md",
+        "skills/task-orchestration/references/contracts/README.md",
+        "skills/task-orchestration/references/contracts/architect.md"
+      ],
+      "any_reads": [],
+      "forbidden_reads": [
+        "skills/task-orchestration/references/contracts/spec-writer.md"
+      ],
+      "required_claims": [
+        "standard-profile",
+        "architect-and-design-review-first",
+        "design-summary-shown-to-user",
+        "interface-change-noted"
+      ],
+      "forbidden_claims": [
+        "executed-verification",
+        "deployed-behavior-confirmed",
+        "spec-writer-dispatched"
+      ],
+      "forbidden_effects": [
+        "test",
+        "build",
+        "lint",
+        "scan",
+        "helper",
+        "install",
+        "network",
+        "jev",
+        "external-write",
+        "source-edit"
+      ]
+    },
+    {
+      "id": "orchestration-adjacent",
+      "mode": "adjacent-negative",
+      "input_dir": "inputs/orchestration-adjacent",
+      "target_read": "skills/task-orchestration/SKILL.md",
+      "required_reads": [],
+      "any_reads": [],
+      "forbidden_reads": [
+        "skills/task-orchestration/SKILL.md"
+      ],
+      "required_claims": [
+        "typo-fix-line-8",
+        "no-workers-dispatched"
+      ],
+      "forbidden_claims": [
+        "executed-verification",
+        "deployed-behavior-confirmed"
+      ],
+      "forbidden_effects": [
+        "test",
+        "build",
+        "lint",
+        "scan",
+        "helper",
+        "install",
+        "network",
+        "jev",
+        "external-write",
+        "source-edit"
+      ]
     }
   ]
 }

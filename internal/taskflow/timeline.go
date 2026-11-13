@@ -158,7 +158,10 @@ func checkItem(run CheckRun) timelineItem {
 }
 
 // compareTimelineItems orders present starts by instant before missing ones,
-// then assignments before checks, then IDs by byte order.
+// then assignments before checks. It leaves equal items to the stable sort,
+// which keeps them in the record's order, the order they were written in:
+// stamps held at the previous updated_at while the clock is behind
+// (Env.stamp) give runs made one after another the same start.
 func compareTimelineItems(a, b timelineItem) int {
 	aMissing, bMissing := a.start.IsZero(), b.start.IsZero()
 	if aMissing != bMissing {
@@ -172,10 +175,7 @@ func compareTimelineItems(a, b timelineItem) int {
 			return order
 		}
 	}
-	return cmp.Or(
-		cmp.Compare(timelineKindRank(a.entry.Kind), timelineKindRank(b.entry.Kind)),
-		cmp.Compare(a.entry.ID, b.entry.ID),
-	)
+	return cmp.Compare(timelineKindRank(a.entry.Kind), timelineKindRank(b.entry.Kind))
 }
 
 func timelineKindRank(kind string) int {

@@ -341,7 +341,8 @@ func tle2xExpect(t *testing.T, record tle2xRecord, states map[string]string) (st
 				"start", q(tle2xTime(run.StartedAt)), "duration", q(tle2xDuration(run.StartedAt, finished))),
 		})
 	}
-	slices.SortFunc(entries, func(a, b tle2xEntry) int {
+	// Stable: entries equal in start and kind keep the record's order.
+	slices.SortStableFunc(entries, func(a, b tle2xEntry) int {
 		aMissing, bMissing := a.start.IsZero(), b.start.IsZero()
 		switch {
 		case !aMissing && bMissing:
@@ -359,7 +360,7 @@ func tle2xExpect(t *testing.T, record tle2xRecord, states map[string]string) (st
 			}
 			return 1
 		}
-		return strings.Compare(a.id, b.id)
+		return 0
 	})
 	var full, lines []string
 	for _, entry := range entries {

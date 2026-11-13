@@ -1,17 +1,16 @@
 # Task presets
 
-Read only the section matching the deliverable. Presets suggest workstreams; they
+Read only the section matching the deliverable: [Implementation](#implementation),
+[Planning](#planning), [Review](#review), [Diagnosis](#diagnosis),
+[Release verification](#release-verification), [Documentation](#documentation),
+[Issue management](#issue-management) or
+[Mixed tasks](#mixed-tasks-and-refreshed-evidence). Presets suggest workstreams; they
 never authorize implementation, publication, or operations. Resolve model, effort,
 and role scope from [model-policy.yaml](../model-policy.yaml), following the
 [entrypoint](../SKILL.md)'s runtime and authorization safeguards.
 
-Defaults are the `sol` profile at `high` for substantive work and `decision` at `max`
-for planning, architecture and diagnosis, `luna` at `high` for bounded evidence,
-`github` at `high` for GitHub execution, and `luna_execution` at `xhigh` for other bounded execution.
-Claude's GitHub execution default is `sonnet` at `medium`. `max` on `sol` can be
-configured or explicitly requested; `ultra` requires an explicit permitted user request.
-Automatic escalation stays disabled. Configuration does not switch active sessions
-or prove depth, cost, or savings.
+Profile defaults, overrides and escalation are in the
+[host mapping](hosts.md#profiles-and-policy).
 
 Split independent questions, owned components, or evidence sources. Brief each
 worker with exact inputs/revision, question or files, constraints and permitted
@@ -37,12 +36,13 @@ them required.
 
 When a substantial task adds or materially changes behavioral tests, or the user
 asks, dispatch the independent [test engineer](dispatching-reviews-and-tests.md). Agree the
-versioned contract and interfaces first, then split exact implementation and
-test-artifact ownership. Authors receive approved contracts/scaffolding only;
-source-aware coordination or verification owns execution and filtered feedback.
-A valid red-test handoff completes authorship, not verification. Return semantic
-assertion/fixture/helper/skip changes to an unexposed author and retain patch
-identity. A user-requested author on a small task does not activate substantial
+versioned contract and interfaces first, then separate exact implementation and
+test-artifact ownership. Give the test author only the approved contract and
+scaffolding. The coordinator runs the tests and passes back only failures stated
+in contract terms. A handoff of failing tests finishes authorship; it verifies
+nothing. Send any change to an assertion, fixture, helper or skip to a test
+author who has not seen the implementation, and record which patch it applies
+to. A user-requested author on a small task does not activate substantial
 checkpoints; otherwise the coder writes the tests and the reviewer checks each
 against the Code Review Rules.
 
@@ -56,14 +56,10 @@ The coordinator resolves, defers or rejects each finding against evidence and
 stays within the [review cap](worker-handoffs.md#review-cap);
 keep small and unchanged read-only tasks lightweight.
 
-To publish a verified substantial task, run `cw publish` under the user's
-authorization; for its fallback cases, or when the user asks for a bounded
-worker, dispatch the [GitHub worker](github-worker.md); a small task commits and
-pushes directly under the user's authorization. The worker drafts messages and
-PR text from fixed verified facts and performs scoped, authorized commit/push and
-`gh` PR writes with refresh and readback. Its three roles use the `github` profile;
-substantive `pr_authoring` stays with the substantive profile. New claims or changed
-scope return to the coordinator. Publishing already verified work alone does not
+To publish, follow the [publication reference](github-worker.md): `cw publish`
+for a verified substantial task, the GitHub worker for its fallback cases, and a
+direct commit and push under the user's authorization for a small task.
+Publishing already verified work alone does not
 require a new substantial task or repeat adviser checkpoints. Commit, push, merge,
 deployment and infrastructure actions retain their own authorization.
 
