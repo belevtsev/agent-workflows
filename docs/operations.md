@@ -468,7 +468,10 @@ replace them before v3.0.0. The budget counts dollars only; there is no token ca
 | `standard` | `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review` | `design` 2, `tests` 2 | 2 | 40 | an open design choice or a public interface change |
 | `strict` | `spec`, `spec-review`, `design`, `design-review`, `tests`, `implementation`, `test-review`, `code-review`, `adversarial` | `spec` 2, `design` 2, `tests` 2 | 2 | 100 | the user asks, or the change touches security, data integrity or concurrency |
 
-`tests` runs in parallel with `implementation`. Under `strict` the adviser
+`tests` runs in parallel with `implementation`. `cw task assign` requires an
+implementation or review brief to name one of the profile's stages, and a later
+round of an author stage to name the findings it fixes or the assignment it
+repeats ([assign before dispatch](../skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)). Under `strict` the adviser
 checkpoints also apply when the task binds advisers. A `spec` or `design` cap
 counts revisions after the first draft; a `tests` cap counts every round.
 

@@ -19,21 +19,29 @@ type FixRef struct {
 // repeats.
 var authorStages = []string{StageSpec, StageDesign, StageTests, StageImplementation}
 
+// stagedRoles are the roles whose briefs need a stage under a profile; an
+// evidence or verification brief serves no flow stage.
+var stagedRoles = []string{"implementation", "review"}
+
 // validateBriefStage checks the brief's stage, fixes and repeats against the
-// record and the assignments recorded before it (prior). Under a profile a
-// brief needs a stage of that profile, and an author-stage brief after the
-// first of its stage needs fixes or repeats. A record without a profile
+// record and the assignments recorded before it (prior); returned reports
+// whether an earlier assignment had returned a result when the brief was
+// assigned. Under a profile an implementation or review brief needs a stage
+// of that profile, and an author-stage brief assigned after an earlier brief
+// of its stage returned a result is a fix or a repeat, so it needs fixes or
+// repeats. Several first-round briefs of one stage, such as parallel
+// implementers on separate paths, need neither. A record without a profile
 // accepts a brief without them, as before profiles existed; what a brief does
 // carry is checked either way.
-func validateBriefStage(record Record, prior []WorkerAssignment, brief WorkerBrief) error {
+func validateBriefStage(record Record, prior []WorkerAssignment, returned func(assignment string) bool, brief WorkerBrief) error {
 	if brief.Stage != "" && !slices.Contains(stageOrder, brief.Stage) {
 		return fmt.Errorf("worker brief stage %q is not one of %s", brief.Stage, strings.Join(stageOrder, ", "))
 	}
 	if profile := record.Profile; profile != nil {
-		if brief.Stage == "" {
-			return fmt.Errorf("worker brief needs a stage under profile %s: one of %s", profile.Name, strings.Join(profile.Stages, ", "))
+		if brief.Stage == "" && slices.Contains(stagedRoles, brief.Role) {
+			return fmt.Errorf("worker brief of role %s needs a stage under profile %s: one of %s", brief.Role, profile.Name, strings.Join(profile.Stages, ", "))
 		}
-		if !slices.Contains(profile.Stages, brief.Stage) {
+		if brief.Stage != "" && !slices.Contains(profile.Stages, brief.Stage) {
 			return fmt.Errorf("worker brief stage %s is not in profile %s: use one of %s", brief.Stage, profile.Name, strings.Join(profile.Stages, ", "))
 		}
 	}
@@ -41,25 +49,20 @@ func validateBriefStage(record Record, prior []WorkerAssignment, brief WorkerBri
 		return err
 	}
 	if brief.Repeats != "" {
-		var repeated *WorkerAssignment
-		for i := range prior {
-			if prior[i].Brief.ID == brief.Repeats {
-				repeated = &prior[i]
-			}
-		}
-		if repeated == nil {
+		index := slices.IndexFunc(prior, func(a WorkerAssignment) bool { return a.Brief.ID == brief.Repeats })
+		if index < 0 {
 			return fmt.Errorf("worker brief repeats %s, which is not an earlier assignment of the task", brief.Repeats)
 		}
-		if repeated.Brief.Stage != brief.Stage {
-			return fmt.Errorf("worker brief repeats %s of stage %q, but its stage is %q; a replacement keeps the stage", brief.Repeats, repeated.Brief.Stage, brief.Stage)
+		if stage := prior[index].Brief.Stage; stage != brief.Stage {
+			return fmt.Errorf("worker brief repeats %s of stage %q, but its stage is %q; a replacement keeps the stage", brief.Repeats, stage, brief.Stage)
 		}
 	}
 	if record.Profile == nil || !slices.Contains(authorStages, brief.Stage) || len(brief.Fixes) > 0 || brief.Repeats != "" {
 		return nil
 	}
 	for _, earlier := range prior {
-		if earlier.Brief.Stage == brief.Stage {
-			return fmt.Errorf("worker brief of stage %s needs fixes or repeats: assignment %s already took that stage, so name the findings or requirements this round fixes, or the assignment it repeats", brief.Stage, earlier.Brief.ID)
+		if earlier.Brief.Stage == brief.Stage && returned(earlier.Brief.ID) {
+			return fmt.Errorf("worker brief of stage %s needs fixes or repeats: assignment %s of that stage has returned a result, so name the findings or requirements this round fixes, or the assignment it repeats", brief.Stage, earlier.Brief.ID)
 		}
 	}
 	return nil

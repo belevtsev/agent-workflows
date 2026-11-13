@@ -331,7 +331,8 @@ func (env Env) AssignWorker(ctx context.Context, taskPath string, brief WorkerBr
 		if err := validateBrief(*record, brief); err != nil {
 			return asInvalid(err)
 		}
-		if err := validateBriefStage(*record, record.Assignments, brief); err != nil {
+		returned := func(id string) bool { return findWorkerResult(*record, id) != nil }
+		if err := validateBriefStage(*record, record.Assignments, returned, brief); err != nil {
 			return asInvalid(err)
 		}
 		if findAssignment(*record, brief.ID) != nil {

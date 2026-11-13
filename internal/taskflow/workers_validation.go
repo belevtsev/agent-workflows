@@ -58,7 +58,15 @@ func validateWorkerRecord(record Record) error {
 		if err := validateBrief(record, assigned.Brief); err != nil {
 			return err
 		}
-		if err := validateBriefStage(record, record.Assignments[:i], assigned.Brief); err != nil {
+		// A stored brief counts only the results submitted strictly before
+		// it was assigned. AssignWorker saw exactly the results recorded
+		// then; one with an equal time is not counted, so a load never
+		// refuses what assign accepted.
+		returned := func(id string) bool {
+			result := findWorkerResult(record, id)
+			return result != nil && result.SubmittedAt.Before(assigned.AssignedAt)
+		}
+		if err := validateBriefStage(record, record.Assignments[:i], returned, assigned.Brief); err != nil {
 			return err
 		}
 		hash, err := assignmentHash(assigned)
