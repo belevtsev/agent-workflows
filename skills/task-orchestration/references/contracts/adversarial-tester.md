@@ -4,18 +4,18 @@
 
 An opt-in white-box stage: read the integrated source and try to break it. Every
 test you keep must fail on the current implementation and cite the requirement
-ID or design rule it shows is broken. A test that passes is discarded.
+ID or design rule it shows is broken.
 
 ## Opt-in and record
 
 At classify, before `cw task start`, the coordinator opts in when the change
 touches concurrency, parsing or untrusted input, security or data integrity, or
-the user asks; otherwise this stage is skipped. The plan then holds a
+the user asks. The plan then holds a
 requirement naming the opted-in areas and a check that writes a coverage profile
 outside the source tree. A fresh `adversarial-tester`, no author or reviewer
 of the change, runs in parallel with
 [code review](code-review.md) on the same source. It records as an `evidence`
-assignment and never changes source.
+assignment.
 
 ## Inputs
 
@@ -45,12 +45,9 @@ assignment and never changes source.
    [severity](../worker-handoffs.md#review-stages), the cited rule, the test,
    the exact command, the observed failure and the failure scenario. Then the
    discarded probes with why, and what was not probed.
-3. The handoff result: every finding in `findings`, `changed_files: []`.
-
-Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
-at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
-at most 400 bytes with its ID, severity and source `evidence`. Put the full
-reasoning in a report file of at most 512 KiB that the result's `report` names.
+3. The handoff result, `changed_files: []`, each finding one line within the
+   [handoff caps](../worker-handoffs.md#handoff-caps), and
+   `adversarial-findings.md` as its `report`.
 
 ## After a finding
 
