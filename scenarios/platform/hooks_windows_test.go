@@ -27,14 +27,15 @@ func TestCommitFromPowerShellAndFromTheCommandPrompt(t *testing.T) {
 	psTrace := traced(t, repo)
 	ps := fromPowerShell("git commit -a -m docs")
 	viaPS := repo.Run("", ps[0], ps[1:]...)
+	// PowerShell carries standard error on its standard output here.
+	viaPS.Stderr, viaPS.Stdout = viaPS.Output(), ""
 	assertDenied(t, repo, before, viaPS, psTrace)
 
 	cmdTrace := traced(t, repo)
 	viaCmd := repo.Run("", "cmd", "/c", "git commit -a -m docs")
 	assertDenied(t, repo, before, viaCmd, cmdTrace)
 
-	// PowerShell carries standard error on its standard output here.
-	psReason := reasonLines(viaPS.Output())
+	psReason := reasonLines(viaPS.Stderr)
 	cmdReason := reasonLines(viaCmd.Stderr)
 	if len(cmdReason) == 0 || !slices.Equal(psReason, cmdReason) {
 		t.Errorf("the reasons differ\nfrom PowerShell:\n  %s\nfrom cmd.exe:\n  %s",

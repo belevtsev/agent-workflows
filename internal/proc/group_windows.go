@@ -78,14 +78,15 @@ func newJob(pid int) (windows.Handle, error) {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
-	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE, false, uint32(pid)) //nolint:gosec // G115: a Windows process id fits in 32 bits.
+	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(pid)) //nolint:gosec // G115: a Windows process id fits in 32 bits.
 	if err != nil {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
 	err = windows.AssignProcessToJobObject(job, process)
+	exited, _ := windows.WaitForSingleObject(process, 0) // a program that has exited cannot join, and has nothing left to end
 	_ = windows.CloseHandle(process)
-	if err != nil {
+	if err != nil && exited != windows.WAIT_OBJECT_0 {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
@@ -106,11 +107,9 @@ func setKillOnClose(job windows.Handle, kill bool) error {
 
 // takeJob removes and returns the command's job object.
 func takeJob(command *exec.Cmd) (windows.Handle, bool) {
-	job, ok := jobs.LoadAndDelete(command)
-	if !ok {
-		return 0, false
-	}
-	return job.(windows.Handle), true //nolint:forcetypeassert // jobs holds only handles.
+	job, _ := jobs.LoadAndDelete(command)
+	handle, ok := job.(windows.Handle)
+	return handle, ok
 }
 
 // endGroup ends every process left in the job of a command that has exited

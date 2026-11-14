@@ -48,7 +48,7 @@ func TestCheckNewInTheChangeAlwaysRuns(t *testing.T) {
 	t.Parallel()
 	clone := freshClone(t)
 	executed := filepath.Join(t.TempDir(), "build-executed")
-	clone.Write("cw.toml", cwtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"touch\", \""+executed+"\"]\npaths = [\"src/**\"]\n")
+	clone.Write("cw.toml", cwtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", ': >\"$0\"', '"+filepath.ToSlash(executed)+"']\npaths = [\"src/**\"]\n")
 	clone.Git("commit", "-q", "-am", "declare build")
 
 	result := clone.CW("run", "--base", "origin/main")

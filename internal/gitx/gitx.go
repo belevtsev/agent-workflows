@@ -126,7 +126,7 @@ func Open(ctx context.Context, dir string) (*Repo, error) {
 		}
 		return nil, err
 	}
-	repo := &Repo{GitDir: lines[0], CommonDir: lines[1], dir: lines[0]}
+	repo := &Repo{GitDir: filepath.Clean(lines[0]), CommonDir: lines[1], dir: filepath.Clean(lines[0])}
 	if !filepath.IsAbs(repo.CommonDir) {
 		repo.CommonDir = filepath.Join(abs, repo.CommonDir)
 	}

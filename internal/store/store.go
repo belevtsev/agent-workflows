@@ -5,6 +5,7 @@ package store
 
 import (
 	"bytes"
+	"cmp"
 	"errors"
 	"io/fs"
 	"os"
@@ -57,14 +58,13 @@ func (s *Store) Abs(rel string) string {
 // that word; anything else, and no file, is enforce. An error means the
 // store cannot be read, and a hook then denies.
 func (s *Store) Mode() (string, error) {
-	data, err := os.ReadFile(filepath.Join(s.Dir, "mode"))
-	if errors.Is(err, fs.ErrNotExist) {
-		if _, statErr := os.Stat(s.Dir); statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
-			return Enforce, statErr
-		}
+	if info, err := os.Stat(s.Dir); errors.Is(err, fs.ErrNotExist) {
 		return Enforce, nil
+	} else if err != nil || !info.IsDir() {
+		return Enforce, cmp.Or(err, errors.New(s.Dir+" is not a directory"))
 	}
-	if err != nil {
+	data, err := os.ReadFile(filepath.Join(s.Dir, "mode"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return Enforce, err
 	}
 	if bytes.Equal(bytes.TrimSuffix(data, []byte("\n")), []byte(Observe)) {
