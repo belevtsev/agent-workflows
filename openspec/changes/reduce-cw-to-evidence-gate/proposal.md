@@ -496,15 +496,15 @@ recommendations, because the owner asked for the work to go on alone
    it arrives unchanged, and refuse a check with an argument that cannot be
    passed so (`platform-support`: Programs on Windows). Settled by: tests on
    Windows (task 4.7) and Go's documentation of `os/exec.Command`.
-   Answer, 14 November 2026, from the tests on Windows in CI (run 16,
-   commit `db028bb`). `cw` starts a batch file by the full path of the file. An
-   argument made only of letters, digits and `_ . / : = + , @ \ -` reaches
-   it unchanged. A check with any other argument for a batch file is refused
-   before anything starts, and the refusal names the argument: `cw` guesses
-   no quoting. A program that is not a batch file gets every argument
-   unchanged. A name without a folder is found in the folders of `PATH`
-   only, and a path is read from the repository root, also when `cw run`
-   starts in a subfolder.
+   Answer, 14 November 2026, from the tests on Windows in CI (run 19,
+   commit `3eaa40e`). `cw` starts a batch file by the full path of the file. An
+   argument made only of the letters a to z and A to Z, digits and
+   `_ . / : = + , @ \ -` reaches it unchanged. A check with any other
+   argument for a batch file, also an empty one, is refused before anything
+   starts, and the refusal names the argument: `cw` guesses no quoting. A
+   program that is not a batch file gets every argument unchanged. A name
+   without a folder is found in the folders of `PATH` only, and a path is
+   read from the repository root, also when `cw run` starts in a subfolder.
 10. **What may a hook decision cost on Windows?** Starting a program and
     running git are slower there, and no number exists. Recommendation:
     measure in CI first, then set the limits in Success measure 2. Settled

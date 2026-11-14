@@ -100,7 +100,6 @@ jobs:
 
   # This repository uses its own gate. `cw run --base` counts a check as
   # passed on the base revision, so only the checks whose content changed run.
-  # Never run so far: the job was written on a branch that was not pushed.
   gate:
     name: Gate / cw run
     runs-on: ubuntu-latest

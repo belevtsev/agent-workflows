@@ -50,8 +50,15 @@ A test is named after the behaviour it checks.
 | Native Go / macos-latest | gofmt, `go vet`, `go test` |
 | Native Go / windows-latest | gofmt, `go vet`, `go test` |
 | Lint and vulnerabilities | `golangci-lint` and `govulncheck` for linux, darwin and windows |
-| Gate / cw run | Builds `cw` and runs the checks of `cw.toml` with `cw run --base` against the base revision. Never run so far |
+| Gate / cw run | Builds `cw` and runs the checks of `cw.toml` with `cw run --base` against the base revision |
 | Plugin manifests | `claude plugin validate .` |
+
+A thorough run is started by hand, with the input `thorough` of the workflow:
+`gh workflow run ci.yml --ref <branch> -f thorough=true`. It uses the race
+detector on macOS and Windows too and sets `CW_SLOW_TESTS=1`, so the test that
+waits ten minutes for the default timeout runs. Start one after a change to
+code written for one system: the first such run found a fault on Windows that
+no other run showed.
 
 ## Releases
 

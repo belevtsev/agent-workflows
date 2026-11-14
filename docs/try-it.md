@@ -371,8 +371,8 @@ when you are done.
 | --- | --- |
 | Parts 1 to 9 of this guide | Run on Linux, by hand, with the output shown. |
 | The tests of this branch | Run on Linux. [The production plan](../openspec/production-plan.md) lists them. |
-| macOS and Windows | The tests of this branch passed in CI on both (run 16, commit `db028bb`). On Windows the tests skip the plugin commands written for `sh`. Nothing was tried there by hand. |
-| Continuous integration | Run 16, for commit `db028bb` on pull request 219, passed on Linux, macOS and Windows. |
+| macOS and Windows | The tests of this branch passed in CI on both (run 19, commit `3eaa40e`). On Windows the tests skip the plugin commands written for `sh`. Nothing was tried there by hand. |
+| Continuous integration | Run 19, for commit `3eaa40e` on pull request 219, passed on Linux, macOS and Windows. A run started by hand on the same commit also passed with the race detector on all three. |
 | A release, and the install without Go | No release exists. The first install instruction of the README cannot work yet. |
 | The plugin in Claude Code | Its files pass `claude plugin validate .`. It was never loaded in a session. |
 | Codex | Nothing was run. The hooks follow the Codex documentation as read on 14 November 2026. |
