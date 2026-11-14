@@ -78,6 +78,16 @@ Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-r
 - **WHEN** the root of `demo` holds executable files `cw` and `git`, the first entry of `PATH` is empty or `.`, no other `cw` is on `PATH`, and a session starts or the agent is about to run a shell command
 - **THEN** neither file is run, and each command of the plugin exits 0
 
+#### Scenario: A relative entry before the installed `cw`
+
+- **WHEN** the root of `demo` holds executable files `cw` and `git`, the first entry of `PATH` is empty or `.`, a later entry that is an absolute path holds the installed `cw`, and a session starts or the agent is about to run `git commit --no-verify`
+- **THEN** neither file of `demo` is run, the session gets the context of the installed `cw`, and the guard speaks up
+
+#### Scenario: A `cw` that cannot be run
+
+- **WHEN** the only file `cw` in the folders of `PATH` is not executable, and a session starts in `demo`
+- **THEN** the context holds one line that says that `cw` is not installed and where the install instruction is, and the command exits 0
+
 #### Scenario: No absolute entry in `PATH`
 
 - **WHEN** the root of `demo` holds executable files `cw` and `git`, `PATH` is empty, `.`, `:` or `.:bin`, and Claude Code runs each command of the plugin

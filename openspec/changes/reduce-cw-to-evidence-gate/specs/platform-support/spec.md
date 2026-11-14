@@ -114,7 +114,12 @@ Source: `publish-gate`, Hook installation and Fail closed; the owner's decision 
 
 #### Scenario: A relative entry of `PATH` under Codex on Windows
 
-- **WHEN** on Windows `portable` holds `cw.bat`, `git.bat`, `where.bat` and a folder `tools` with `cw.bat` and `git.bat`, the first entry of `PATH` is `.`, `tools` or `.\tools`, no other entry holds `cw`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`
+- **WHEN** on Windows `portable` holds `cw.bat`, `git.bat`, `where.bat` and a folder `tools` with `cw.bat` and `git.bat`, the first entry of `PATH` is `.`, `tools` or `.\tools`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`, once with no `cw` in another entry and once with the installed `cw` in a later one
+- **THEN** each command exits 0 and runs none of these files, and with the installed `cw` the command before `git commit --no-verify` prints the decision `deny`
+
+#### Scenario: A drive-relative entry of `PATH` under Codex on Windows
+
+- **WHEN** on Windows `portable` is a folder, not the root, of a drive other than that of the Windows folder, it holds `cw.bat` and `tools\cw.bat`, the first entry of `PATH` names that drive and no path from its root, as `X:tools`, `X:` or `X:.`, no other entry holds `cw`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`
 - **THEN** each command exits 0 and runs none of these files
 
 #### Scenario: The guard of Codex on Windows
@@ -131,6 +136,11 @@ Source: `publish-gate`, Hook installation and Fail closed; the owner's decision 
 
 - **WHEN** on Windows no `cw` is on `PATH` and Codex runs the Windows command of its plugin for the start of a session, once in the root of `portable` and once in a folder outside any repository
 - **THEN** in the root of `portable` the command prints one line that says that `cw` is not installed and where the install instruction is, outside a repository it prints nothing, and both exit 0
+
+#### Scenario: A file named `cw` that Windows cannot run
+
+- **WHEN** on Windows the only `cw` on `PATH` is a file of that name without an extension, and Codex runs the Windows command of its plugin for the start of a session in the root of `portable`
+- **THEN** the command prints the line that says that `cw` is not installed, and exits 0
 
 ### Requirement: Install without a toolchain
 

@@ -41,8 +41,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - The hook files and every command of the plugin look for `cw` only in the entries of `PATH` that are absolute paths;
   an empty or relative entry is not searched. Run `cw init` again in a clone to get the new hook file.
-- The plugin's commands find `git` the same way. Under Codex on Windows they go to the Windows folder first, so a
-  relative entry of `PATH` leads there and not into the repository ([hooks](docs/hooks.md#hooks-of-the-agent-plugin)).
+- The plugin's commands find `git` the same way, and take a `cw` that cannot be run as not installed. Under Codex on
+  Windows they go to the root of the drive and then to the Windows folder first, so a relative entry of `PATH` leads
+  there and not into the repository ([hooks](docs/hooks.md#hooks-of-the-agent-plugin)).
 - The plugin's commands always exit 0, so an older `cw` blocks no tool call ([hooks](docs/hooks.md)).
 - A hook counts as calling `cw` only on a line that is no comment. In a `core.hooksPath` directory `cw uninstall`
   removes only a file that is exactly its own script, and it prints how many hooks it removed.

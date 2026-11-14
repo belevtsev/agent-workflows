@@ -1,13 +1,13 @@
 {
-  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a git call that skips the hooks, a cw call that turns the gate off, or a patch of cw.toml, a hook file, the git configuration or a record of cw, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. Each command runs cw only from an entry of PATH that leads outside the working directory, and always exits 0, so an old or missing cw blocks nothing. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a git call that skips the hooks, a cw call that turns the gate off, or a patch of cw.toml, a hook file, the git configuration or a record of cw, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. Each command runs cw only from an entry of PATH that is an absolute path, on Windows only from an entry that does not lead into the session's directory, and always exits 0, so an old or missing cw blocks nothing. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" context --host codex;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true'",
-            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& pushd %SystemRoot% && (where /q $PATH:cw 2>nul && (cw context --host codex 2>nul & ver >nul) || (popd & if exist cw.toml echo cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install)) & exit /b 0",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" context --host codex;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& pushd .& cd \\& cd /d %SystemRoot% && (cw context --host codex 2>nul & if errorlevel 9009 (popd & if exist cw.toml echo cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install)) & exit /b 0",
             "timeout": 10
           }
         ]
@@ -19,8 +19,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" guard --host codex;; esac; true'",
-            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw guard --host codex 2>nul & exit /b 0",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" guard --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw guard --host codex 2>nul & exit /b 0",
             "timeout": 10
           }
         ]
@@ -31,8 +31,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
-            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
             "timeout": 30
           }
         ]
@@ -43,8 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
-            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
             "timeout": 3
           }
         ]

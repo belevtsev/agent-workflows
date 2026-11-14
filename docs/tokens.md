@@ -35,9 +35,9 @@ The plugin of this repository runs `cw tokens record` from two hooks of the host
 
 Each command looks for `cw` only in the entries of `PATH` that are absolute paths, and ends with exit
 status 0 whatever `cw` returns, so a failure of `cw` never stops a role or a turn. On Windows the
-Codex command tells `cmd.exe` not to look in the working directory, goes to the Windows folder, so
-that a relative entry of `PATH` leads there, runs `cw tokens record --host codex`, and ends with
-`exit /b 0`. `cw` finds the repository from the `cwd` of the notice.
+Codex command tells `cmd.exe` not to look in the working directory, goes to the root of the drive
+and then to the Windows folder, so that a relative entry of `PATH` leads there, runs
+`cw tokens record --host codex`, and ends with `exit /b 0`. `cw` finds the repository from the `cwd` of the notice.
 
 The host gives the hook a notice: one JSON object on standard input. `cw` reads six of its
 fields and ignores the rest:

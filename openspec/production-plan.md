@@ -6,7 +6,7 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 202 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 206 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
 | 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 46, with 97 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
@@ -329,6 +329,21 @@ Windows commands again after F6. Each is resolved:
 | F6 | The fix for S1 did not hold on macOS. It ran `cw` only when `command -v cw` printed an absolute path, and the `sh` of macOS (bash 3.2 in POSIX mode) prints one also for a file found through an empty or relative entry. Found by the new tests in the first CI run that reached them on macOS. | The hook file and the plugin commands leave every entry of `PATH` that is not an absolute path out before they look. Tests run the hook file and the plugin commands in bash started as `sh`, which behaves as on macOS, so Linux holds the rule too; `internal/gate`, `TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH`. |
 | F7 | Two more ways to a program of the repository through a relative entry of `PATH`, of the same kind as F6. At the start of a session without `cw` the plugin commands ran `git` with the whole `PATH`. Under Codex on Windows `cmd.exe` searched a relative entry, such as `.`, from the session's directory. | The commands for a POSIX shell keep only the absolute entries of `PATH` for all they run. The Windows commands go to the Windows folder before they look for `cw`, and without `cw` they run no program: the line that says `cw` is not installed is printed when the session's directory itself holds `cw.toml`, no longer from a subfolder. `agent-integration`, scenario "No absolute entry in `PATH`"; `platform-support`, scenario "A relative entry of `PATH` under Codex on Windows". |
 
+#### A last review of the plugin commands
+
+After F7 a ninth adviser, who had not written them, read the hook commands of both plugin files
+as each shell reads them, and ran the commands for a POSIX shell with `sh`, `bash` and `bash`
+started as `sh`. It could run nothing on Windows. It reported five findings and found no way to
+break the commands for a POSIX shell. Each finding is resolved:
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| H1 | Under Codex on Windows an entry of `PATH` such as `D:tools` still led into the repository when the session is on another drive than the Windows folder: `cmd.exe` keeps the directory it left on each drive. Reasoned from documentation, not run. | Each Windows command goes to the root of the session's drive before it goes to the Windows folder. `platform-support`, scenario "A drive-relative entry of `PATH` under Codex on Windows"; the test gives the repository a drive letter with `subst` and first shows that the earlier form of the command ran the planted file. |
+| H2 | The description in `hooks/codex-hooks.json` said `cw` runs "only from an entry of `PATH` that leads outside the working directory". The commands for a POSIX shell take every absolute entry, also one that points into the repository. | The description says "an entry of `PATH` that is an absolute path". An absolute entry that points into the repository is the user's own setting and stays outside the rule. |
+| H3 | At the start of a session the line that says `cw` is not installed was missing when the `cw` found cannot be run: a file that is not executable under `bash`, and on Windows a file `cw` without an extension, which `where` finds and `cmd.exe` does not run. | The commands for a POSIX shell take a file that is not executable as no `cw`. The Windows command no longer asks `where`: it runs `cw context` and prints the line when `cmd.exe` found nothing to run. `agent-integration`, scenario "A `cw` that cannot be run"; `platform-support`, scenario "A file named `cw` that Windows cannot run". |
+| H4 | No test showed that the installed `cw` still runs when a relative entry comes first in `PATH`. | `agent-integration`, scenario "A relative entry before the installed `cw`"; on Windows the scenario "A relative entry of `PATH` under Codex on Windows" now also has the installed `cw` in a later entry. |
+| H5 | No test and no scenario covered H1. | The scenario and test named under H1. |
+
 ## Changes to the specifications during the build
 
 | Date | Where | What changed | Why |
@@ -368,6 +383,7 @@ Windows commands again after F6. Each is resolved:
 | 14 Nov 2026 | Part 1 proposal, Open Question 11 | Under Codex on Windows the start of a session now prints the line that says `cw` is not installed; the row of this table that says it prints no line is out of date | Defect F2 above |
 | 14 Nov 2026 | `publish-gate`: Fail closed; `agent-integration`: Instruction text comes from `cw`; part 1 design, Hooks and Plugin | The hook file and the plugin "look for `cw` only in the entries of `PATH` that are absolute paths". Before, they ran what `command -v cw` printed when that was an absolute path, and denied "a `cw` that `PATH` names by a relative path". One message now covers a `cw` that is not installed and one that only an empty or relative entry holds; the scenario "An empty or relative entry of `PATH`" expects it | Defect F6 above |
 | 14 Nov 2026 | `agent-integration`: Instruction text comes from `cw`; `platform-support`: Hooks on Windows; part 1 design, Plugin | The plugin's commands for a POSIX shell "run `cw` and `git` only from the entries of `PATH` that are absolute paths"; the Windows commands of Codex "run no program of the working directory, also not through a relative entry of `PATH`". Two scenarios added: "No absolute entry in `PATH`" and "A relative entry of `PATH` under Codex on Windows". Under Codex on Windows the line for a missing `cw` is printed in the folder that holds `cw.toml` only | Defect F7 above |
+| 14 Nov 2026 | `agent-integration`: Instruction text comes from `cw`; `platform-support`: Hooks on Windows | Four scenarios added: "A relative entry before the installed `cw`", "A `cw` that cannot be run", "A drive-relative entry of `PATH` under Codex on Windows" and "A file named `cw` that Windows cannot run". The scenario "A relative entry of `PATH` under Codex on Windows" also runs with the installed `cw` in a later entry | Findings H1, H3, H4 and H5 above |
 
 ## Progress
 

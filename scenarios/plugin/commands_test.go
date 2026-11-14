@@ -166,6 +166,72 @@ func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
 	}
 }
 
+// Requirement "Instruction text comes from `cw`", scenario "A relative entry
+// before the installed `cw`".
+func TestHookCommandsRunTheInstalledCWAfterARelativeEntry(t *testing.T) {
+	t.Parallel()
+	needShell(t)
+	repo := gatedDemo(t)
+	marker := filepath.Join(t.TempDir(), "repository-program-ran")
+	for _, name := range []string{"cw", "git"} {
+		repo.Write(name, "#!/bin/sh\necho ran > '"+marker+"'\n")
+		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
+			t.Fatal(err)
+		}
+	}
+	for _, first := range []string{"", "."} {
+		env := withPath(repo.Env(), first+string(os.PathListSeparator)+pathOf(repo.Env()))
+		for _, h := range hostFiles {
+			for label, shell := range shells(t) {
+				for _, e := range hookEvents[:2] {
+					t.Run(h.host+"/"+label+"/"+e.event+"/PATH="+first+":installed", func(t *testing.T) {
+						result := runHooksIn(t, shell, repo.Dir, env, hookCommands(t, h.file, e.event, e.selector), noticeFor(e.event, repo.Dir))
+						if result.Code != 0 {
+							t.Errorf("the %s command exited %d, want 0:\n%s", e.event, result.Code, result.Output())
+						}
+						if _, err := os.Stat(marker); err == nil {
+							t.Errorf("the %s command ran a program of the repository", e.event)
+						}
+						switch e.event {
+						case "SessionStart":
+							if strings.TrimSpace(result.Stdout) == "" || strings.Contains(result.Stdout, "cw is not installed") {
+								t.Errorf("the session did not get the context of the installed cw:\n%s", result.Output())
+							}
+						case "PreToolUse":
+							if !strings.Contains(result.Stdout, "permissionDecision") {
+								t.Errorf("the guard of the installed cw did not speak up:\n%s", result.Output())
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+// Requirement "Instruction text comes from `cw`", scenario "A `cw` that
+// cannot be run".
+func TestSessionStartSaysWhenTheCWFoundCannotBeRun(t *testing.T) {
+	t.Parallel()
+	needShell(t)
+	repo := gatedDemo(t)
+	folder := t.TempDir()
+	if err := os.WriteFile(filepath.Join(folder, "cw"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil { //nolint:gosec // the file must be readable and not executable
+		t.Fatal(err)
+	}
+	env := withPath(repo.Env(), folder+string(os.PathListSeparator)+toolFolder(t, "sh"))
+	for _, h := range hostFiles {
+		for label, shell := range shells(t) {
+			t.Run(h.host+"/"+label, func(t *testing.T) {
+				result := runHooksIn(t, shell, repo.Dir, env, hookCommands(t, h.file, "SessionStart", "startup"), noticeFor("SessionStart", repo.Dir))
+				if result.Code != 0 || !strings.Contains(result.Stdout, "cw is not installed") || strings.Contains(result.Stdout, "ran") {
+					t.Errorf("exit status %d, want 0 and the line that says cw is not installed:\n%s", result.Code, result.Output())
+				}
+			})
+		}
+	}
+}
+
 // Requirement "Instruction text comes from `cw`", scenario "An older `cw`".
 func TestOlderCWBlocksNoToolCall(t *testing.T) {
 	t.Parallel()
@@ -192,9 +258,9 @@ func TestOlderCWBlocksNoToolCall(t *testing.T) {
 // Requirements "Instruction text comes from `cw`" and "Ask before skipping":
 // each command runs cw only by an absolute path and ends with exit status 0;
 // a command for Codex runs in sh whatever the user's shell is, and its
-// Windows form searches no working directory, runs from the Windows folder,
-// holds no double quote and ends with exit status 0. Claude Code matches its
-// PowerShell tool.
+// Windows form searches no working directory, leaves the folder of the
+// session's drive and goes to the Windows folder, holds no double quote and
+// ends with exit status 0. Claude Code matches its PowerShell tool.
 func TestHookCommandsHaveTheirSafeShape(t *testing.T) {
 	t.Parallel()
 	for _, h := range hostFiles {
@@ -233,7 +299,7 @@ func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	if !strings.Contains(command, `case "$c" in /*)`) {
 		t.Errorf("%s %s does not run cw only by an absolute path: %s", file, event, command)
 	}
-	if !strings.Contains(command, `[ -n "$p" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null);`) {
+	if !strings.Contains(command, `[ -n "$p" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x "$c" ] || c=;`) {
 		t.Errorf("%s %s does not keep only the absolute entries of PATH for all it runs: %s", file, event, command)
 	}
 	if file == claudeHooks {
@@ -248,10 +314,12 @@ func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	if !strings.HasPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& ") || !strings.HasSuffix(windows, " & exit /b 0") {
 		t.Errorf("%s %s has no commandWindows that searches no working directory and exits 0: %q", file, event, windows)
 	}
-	// A relative entry of PATH leads into the directory cmd.exe is in, so
-	// the command leaves the session's directory before it looks for cw.
-	rest := strings.TrimPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& ")
-	if !strings.HasPrefix(rest, "cd /d %SystemRoot% && ") && !strings.HasPrefix(rest, "pushd %SystemRoot% && ") {
+	// A relative entry of PATH leads into the directory cmd.exe is in, and
+	// one such as D:tools into the directory it left on that drive. So the
+	// command goes to the root of the session's drive and then to the
+	// Windows folder before it looks for cw.
+	rest := strings.TrimPrefix(strings.TrimPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& "), "pushd .& ")
+	if !strings.HasPrefix(rest, `cd \& cd /d %SystemRoot% && `) {
 		t.Errorf("%s %s has a commandWindows that does not go to the Windows folder first: %q", file, event, windows)
 	}
 	// Codex gives the command to cmd.exe as one argument; a double quote in

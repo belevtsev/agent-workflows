@@ -190,6 +190,111 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 				}
 			}
 		}
+		// With the installed cw in a later entry the guard still decides.
+		installed := first + string(os.PathListSeparator) + pathOf(repo)
+		for _, command := range codexWindowsCommands(t)["PreToolUse"] {
+			for _, way := range cmdWays {
+				t.Run("PreToolUse with the installed cw/"+way+"/PATH="+first, func(t *testing.T) {
+					result := runCmd(t, way, repo.Dir, installed, command, codexNotice("PreToolUse", repo.Dir))
+					if result.Code != 0 || !strings.Contains(result.Stdout, "deny") {
+						t.Errorf("exit status %d, want 0 and the decision deny:\n%s", result.Code, result.Output())
+					}
+					if exists(marker) {
+						t.Errorf("the command ran a program of the repository")
+					}
+				})
+			}
+		}
+	}
+}
+
+// substDrive gives folder a drive letter of its own with subst until the
+// test ends, or skips the test when the machine has none to give.
+func substDrive(t *testing.T, folder string) string {
+	t.Helper()
+	for letter := 'Z'; letter >= 'G'; letter-- {
+		drive := string(letter) + ":"
+		if exists(drive + `\`) {
+			continue
+		}
+		if output, err := exec.Command("subst", drive, folder).CombinedOutput(); err != nil {
+			t.Logf("subst %s %s: %v\n%s", drive, folder, err, output)
+			continue
+		}
+		t.Cleanup(func() { _ = exec.Command("subst", drive, "/d").Run() })
+		return drive
+	}
+	t.Skip("subst gave the test folder no drive letter")
+	return ""
+}
+
+// Requirement "Hooks on Windows", scenario "A drive-relative entry of `PATH`
+// under Codex on Windows". The repository gets a drive letter of its own, so
+// the test needs no second disk. It is not parallel: a drive letter is the
+// machine's.
+func TestCodexWindowsCommandsRunNoProgramOfADriveRelativeEntryOfPATH(t *testing.T) {
+	repo := portable(t, "")
+	marker := filepath.Join(t.TempDir(), "repository-program-ran")
+	planted := "@echo off\r\necho ran> \"" + marker + "\"\r\necho {\"hookSpecificOutput\":{}}\r\n"
+	for _, name := range []string{"cw.bat", "tools/cw.bat"} {
+		repo.Write(name, planted)
+	}
+	drive := substDrive(t, filepath.Dir(repo.Dir))
+	session := drive + `\` + filepath.Base(repo.Dir)
+	if !exists(filepath.Join(session, "cw.toml")) {
+		t.Fatalf("%s does not show the repository", session)
+	}
+	// From another drive cmd.exe still finds the planted file through an
+	// entry such as Z:tools: it leads into the directory left on drive Z.
+	probe := runCmd(t, cmdWays[0], session, drive+"tools"+string(os.PathListSeparator)+systemPath(), "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw", codexNotice("SessionStart", session))
+	if !strings.Contains(probe.Stdout, "hookSpecificOutput") {
+		t.Fatalf("with PATH=%stools cmd.exe does not find the planted cw.bat from another drive, so the test proves nothing:\n%s", drive, probe.Output())
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	for _, first := range []string{drive + "tools", drive, drive + "."} {
+		path := first + string(os.PathListSeparator) + systemPath()
+		for event, commands := range codexWindowsCommands(t) {
+			for _, command := range commands {
+				for _, way := range cmdWays {
+					t.Run(event+"/"+way+"/PATH="+first, func(t *testing.T) {
+						result := runCmd(t, way, session, path, command, codexNotice(event, session))
+						if result.Code != 0 {
+							t.Errorf("exit status %d, want 0:\n%s", result.Code, result.Output())
+						}
+						if exists(marker) {
+							t.Errorf("the command ran a program of the repository")
+						}
+						if strings.Contains(result.Stdout, "hookSpecificOutput") {
+							t.Errorf("the command printed what a program of the repository prints:\n%s", result.Stdout)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+// Requirement "Hooks on Windows", scenario "A file named `cw` that Windows
+// cannot run".
+func TestCodexWindowsSessionStartSaysWhenCWCannotBeRun(t *testing.T) {
+	t.Parallel()
+	repo := portable(t, "")
+	folder := t.TempDir()
+	if err := os.WriteFile(filepath.Join(folder, "cw"), []byte("#!/bin/sh\necho ran\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := folder + string(os.PathListSeparator) + systemPath()
+	for _, command := range codexWindowsCommands(t)["SessionStart"] {
+		for _, way := range cmdWays {
+			t.Run(way, func(t *testing.T) {
+				result := runCmd(t, way, repo.Dir, path, command, codexNotice("SessionStart", repo.Dir))
+				if result.Code != 0 || !strings.Contains(result.Stdout, "cw is not installed") {
+					t.Errorf("exit status %d, want 0 and the line that says cw is not installed:\n%s", result.Code, result.Output())
+				}
+			})
+		}
 	}
 }
 
