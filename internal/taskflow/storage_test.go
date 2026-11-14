@@ -50,6 +50,58 @@ func extendTaskHistory(t *testing.T, record Record, revision int) Record {
 	return loaded
 }
 
+// testRevisionLimit is the limit the boundary tests run at. Every Load
+// decodes and re-checks each revision, so walking to the shipped 4,096 costs
+// each of those tests thousands of decodes per step under -race. The
+// boundary arithmetic does not depend on the value: the tests address the
+// last accepted revision and the first refused one through maxTaskRevisions.
+// 64 leaves room above the few revisions a fixture holds before it is
+// extended.
+const testRevisionLimit = 64
+
+// lowerRevisionLimit runs the calling test at testRevisionLimit and restores
+// the shipped limit when it ends. The caller must be a top-level test that
+// does not call t.Parallel: go test runs such a test while every parallel
+// test is paused, so no other test reads the limit while it is lowered.
+// t.Setenv enforces that: it panics in a parallel test, and t.Parallel
+// panics after it. Nothing reads the variable it sets.
+func lowerRevisionLimit(t *testing.T) {
+	t.Helper()
+	t.Setenv("CW_TEST_SERIAL_GUARD", "revision-limit")
+	shipped := maxTaskRevisions
+	maxTaskRevisions = testRevisionLimit
+	t.Cleanup(func() { maxTaskRevisions = shipped })
+}
+
+// Oracle: the shipped limit is 4,096 revisions. A record of exactly 4,096
+// revisions loads; the next update is refused with ErrRevisionLimit before
+// its change runs; a directory holding a 4,097th revision file does not load.
+// This is the only test that runs at the shipped limit: the other boundary
+// tests lower it with lowerRevisionLimit, so they would still pass if the
+// shipped value changed.
+func TestShippedRevisionLimitIs4096(t *testing.T) {
+	t.Parallel()
+	if maxTaskRevisions != 4096 {
+		t.Fatalf("shipped revision limit = %d, want 4096", maxTaskRevisions)
+	}
+	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
+	record = extendTaskHistory(t, record, 4096)
+	called := false
+	if _, err := update(t.Context(), Env{}, record.Directory, func(_ *os.Root, _ *Record) error { called = true; return nil }); !errors.Is(err, ErrRevisionLimit) || called {
+		t.Fatalf("revision 4097 was not refused: called=%t err=%v", called, err)
+	}
+	last, err := os.ReadFile(filepath.Join(record.Directory, "record-004096.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(record.Directory, "record-004097.json"), last, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(record.Directory); err == nil || err.Error() != "missing task revisions or revision limit exceeded" {
+		t.Fatalf("a record of 4097 revision files loaded: %v", err)
+	}
+}
+
 func taskArtifactNames(t *testing.T, directory string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(directory)
@@ -64,7 +116,7 @@ func taskArtifactNames(t *testing.T, directory string) []string {
 }
 
 func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	plan := Plan{Title: "Read source", Kind: "small", Requirements: []Requirement{{ID: "behavior", Description: "Read the complete source", AllowNonExecution: true}}}
 	record, ref := fixtureTask(t, plan)
 	initial, err := os.ReadFile(filepath.Join(record.Directory, "record-000001.json"))
@@ -121,7 +173,7 @@ func TestRevisionLimitPreservesReadableLastRevisionAndRefusesSideEffects(t *test
 }
 
 func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	marker := filepath.Join(t.TempDir(), "must-not-execute")
 	record, _ := fixtureTask(t, helperPlan(t, "small", "mutate", marker))
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
@@ -140,7 +192,7 @@ func TestCheckStartRequiresTerminalCapacityBeforeLogOrChild(t *testing.T) {
 }
 
 func TestRevisionCapacitySerializesCompetingWriters(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	record = extendTaskHistory(t, record, maxTaskRevisions-1)
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -303,7 +355,7 @@ func awaitCheckOutcome(t *testing.T, lifetime context.Context, done <-chan check
 }
 
 func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	lifetime, cancelLifetime := checkBarrierLifetime(t)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
@@ -373,7 +425,7 @@ func TestRunningChecksRetainEveryTerminalSlotAtRevisionLimit(t *testing.T) {
 }
 
 func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	lifetime, cancelLifetime := checkBarrierLifetime(t)
 	defer cancelLifetime()
 	deadline, _ := lifetime.Deadline()
@@ -398,7 +450,7 @@ func TestCancellationSpendsReservedTerminalRevisionAtLimit(t *testing.T) {
 }
 
 func TestTerminalReservationRequiresItsOwnerAndPreservesAbandonedLock(t *testing.T) {
-	t.Parallel()
+	lowerRevisionLimit(t)
 	record, _ := fixtureTask(t, helperPlan(t, "small", "pass"))
 	runID := strings.Repeat("a", 32)
 	record, err := updateWithCapacity(t.Context(), Env{}, record.Directory, 2, "", func(_ *os.Root, record *Record) error {

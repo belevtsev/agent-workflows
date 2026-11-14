@@ -22,6 +22,27 @@ Other pages link here rather than repeat these versions.
 | Hooks | Run once the plugin is installed | Run only after you trust them in `/hooks` ([Codex](#codex)) |
 | Worker models | Aliases `opus`, `sonnet` and `haiku` from [model-policy.claude.yaml](../skills/task-orchestration/model-policy.claude.yaml); an alias resolves to the host's current release | The `sol` and `luna` profiles of [model-policy.yaml](../skills/task-orchestration/model-policy.yaml) name the models |
 
+Under Claude Code the effective model or effort of a worker can differ from
+what the coordinator passes, which is why the
+[host mapping](../skills/task-orchestration/references/hosts.md) has it check
+runtime metadata. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces
+`CLAUDE_CODE_SUBAGENT_MODEL`, or the inherited model if it is unset, instead of
+the Agent `model` argument. `CLAUDE_CODE_EFFORT_LEVEL` overrides per-invocation
+effort. Organization `availableModels` restrictions can also substitute the
+inherited model. See
+[Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
+The coordinator profile's effort is `high` by default; `settings.json`
+`effortLevel` is the user's to set. `settings.json` rejects `max`; use
+`/effort max` or `/effort xhigh` for a session when the user asks for it.
+
+Codex has no per-agent switch to keep instruction files out of a worker: it
+injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
+agent even with `fork_turns: "none"`, as reported for Codex CLI 0.166.0 in
+[google/elephant-goldfish-model#237](https://github.com/google/elephant-goldfish-model/issues/237)
+(open), so a Codex reviewer or test engineer sees those files. The Claude Code
+reviewer and test engineer set `omitClaudeMd: true` instead, so author priors
+and coordinator instructions stay out of an independent review or test.
+
 ### Claude Code plugin
 
 ```sh
@@ -110,7 +131,7 @@ skill installed twice is unverified.
 `cw` runs on macOS and Linux; Windows is not supported (`cw` does not build
 there). Go modules (`go.mod` at the top of the task's path) get the
 package-level `go test` rule in `cw task verify`; other repositories need any
-one passed check (see [evidence rules](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task)).
+one passed check (see [evidence rules](#the-go-package-test-rule)).
 
 Download `cw_<tag>_<os>_<arch>.tar.gz` (`darwin` or `linux`, `amd64` or
 `arm64`) and `SHA256SUMS` from the
@@ -223,6 +244,14 @@ saved adviser keys (`credentials.json`), `preferences.json` and `packs.json` (th
 pack selection written by `cw pack add` and `cw pack remove`, where `cw lang` is
 an alias of `cw pack`; absent means the default selection).
 
+Each host keeps its instructions and skills in its own place:
+
+| Concern | Codex | Claude Code |
+| --- | --- | --- |
+| Global instructions | `$CODEX_HOME/AGENTS.md` | `CLAUDE.md` in the Claude config directory |
+| Personal skills | `~/.agents/skills` | `skills/` in the Claude config directory |
+| Explicit skill invocation | `$skill-name` | `/skill-name` |
+
 `--dry-run` is not a global flag. Only the commands that can preview a write
 have it, after the command name: `cw consult` (a validated preview without
 network access), `cw pack add|remove` (the new selection, without writing
@@ -274,7 +303,9 @@ hooks directory can serve other repositories and `--shared` is not given
 ## Stability
 
 From `v3.0.0`, `cw` follows [semantic versioning](https://semver.org) for
-its core commands. `cw --help` lists the two groups.
+its core commands. `cw --help` lists the two groups. It leaves out
+`cw graphify`, which needs the [optional Graphify runtime](#optional-graphify-runtime)
+that `cw` does not install; `cw graphify --help` still shows its help.
 
 | Group | Commands | Promise |
 | --- | --- | --- |
@@ -334,7 +365,10 @@ runtime call targets. Each live probe and each Git inspection runs in a process
 group of its own; when it answers, exits or reaches its deadline, `cw` kills the
 group until no member is alive, and a member that survives fails the probe.
 Missing or unsupported tooling is qualified and retains normal source discovery. Neither mode installs dependencies, changes watcher enrollment or
-calls advisers.
+calls advisers. Saved-file tools cannot see unsaved editor buffers. Graphify
+stays an optional map of tracked Go with its stale-cache guard. Coverage limits
+and unknown checks stay visible in the report. A multi-module Go project can
+need module-local checks.
 
 `--summary` prints one line. Its `problems` lists the required checks that are
 missing, degraded or stale, which block the workflow: `git_cli` and `cw_cli`
@@ -400,7 +434,7 @@ Unknown metrics remain unknown, and synthetic observations are never described a
 production savings. With go1.27.3, a line that a test writes straight to stdout or
 stderr starting with byte 0x16 becomes a `-json` result event for any test name it
 gives, so it can forge a PASS; it cannot hide a real FAIL, because a FAIL of the same
-test in a latest run at the current source makes that test `failed`. See the [global command guide](../skills/task-orchestration/references/global-workflow.md).
+test in a latest run at the current source makes that test `failed`. See [test evidence rules](#test-evidence-rules).
 
 Source capture treats a path as a plain folder only when Git exits with a failure
 status or no `git` is on `PATH`. Any other end of a Git probe stops the capture
@@ -430,13 +464,19 @@ plan check ID, `state` = the run's status, `started_at`, `finished_at` and
 Timestamps are UTC RFC 3339 with nanoseconds and durations are rounded to the
 millisecond (`250ms`, `1m2.003s`). A timestamp the record does not hold (no
 handoff yet, no acceptance, a check still running) is `n/a`, and so is every
-duration computed from one; a missing value is never shown as `0s`. It lists the
+duration computed from one; a missing value is never shown as `0s`. Entries with
+equal starts keep the order they were recorded in. After the clock steps back,
+stored times run ahead of it until it catches up
+([task record format](development.md#task-record-format)), so runs made meanwhile
+show equal starts and a duration of `0s`. It lists the
 last 20 entries, or the last N with `--last N` (`--last 0` lists them all), and
 counts the earlier ones as `omitted_entries`, a member it omits when none was left out. `--summary`
 prints JSON Lines rather than a one-line result: one compact object for the task
 (`task_id`, `started_at`, `updated_at`, `elapsed`, `omitted_entries`), then one per entry with its
 start under `start` and its durations, omitting `task`, `submitted_at`,
 `accepted_at` and `finished_at`.
+
+### Publishing a verified task
 
 `cw publish` commits a verified task's files, pushes the commit and, with
 `--pr create` or `--pr edit`, creates or edits its pull request. It runs only
@@ -445,12 +485,38 @@ gates the repository, commits whole files of the task's verified change set, or
 of the part of it that `--path` names, reads every step back, and continues from
 the observed state when the same command runs again. Once its checks pass, it
 appends a `started` entry (`publication-NNNNNN.json`) to the task directory, and
-a `finished` entry when it ends. `--summary` prints one line.
-Its exit statuses (0 published, 1 failed, 2 usage, 3 denied, 4 refused,
-6 unknown, 7 mismatch, 130 cancelled) and what to do for each are in the
+a `finished` entry when it ends; the entries are hash-chained through
+`previous_sha256` and written beside the task revisions, which it never
+changes. The push sends only the commit to `refs/heads/BRANCH` of REMOTE, never
+tags; the command never amends or force-pushes. `--summary` prints one line with
+the members `status`, `reason`, `task_id`, `commit`, `remote_ref`, `pr_number`,
+`pr_url` and `record` instead of the whole report. It needs Git 2.24 or newer.
+
+The command takes flags only, so the remote and the branch are two flags,
+`--push REMOTE --branch BRANCH`, not `--push REMOTE BRANCH`; the local branch
+must be `BRANCH`. `--path` narrows the commit to files of the task's verified
+change set (by the spelling `cw task bundle` prints); without it the whole
+change set since `cw task start` is committed, whole files only. `--pr create`
+or `--pr edit` needs all of `--repo`, `--base`, `--title` and `--body-file`;
+`--pr none`, the default, takes none of them. The message file must end with a
+newline and start with a non-blank subject line; the title is one line of at
+most 256 characters. `--timeout` bounds each git and gh command (default 10m).
+
+Its exit statuses and reasons follow. The coordinator's action on each status
+is in the
 [publication reference](../skills/task-orchestration/references/github-worker.md),
-which also names the cases that go to the GitHub worker instead. It needs Git
-2.24 or newer.
+which also names the cases that go to the GitHub worker instead.
+
+| Exit | Status | Reasons | What to do |
+| --- | --- | --- | --- |
+| 0 | `published` | none | Report the commit, remote ref and PR from the report. |
+| 1 | `failed` | `git-missing`, `locked`, `task-unreadable`, `record-invalid`, `capture-failed`, `read-failed`, `record-write-failed`, `commit-failed` | Fix the cause and re-run. After `commit-failed`, check the index (`git ls-files -s`): intent-to-add entries for new files may remain. `locked` means another run holds `.publish-lock` in the task directory, or a `cw` older than v3.0.0-rc.2 left a `.publish-lock` directory there; a killed run of a later `cw` leaves no lock. |
+| 2 | usage error | none | Fix the command line; nothing ran. |
+| 3 | `denied` | `task-abandoned`, `task-not-verified`, `source-changed`, `open-record` | Verify the task on the current source, or, with the user's confirmation, abandon the record named in `open_records`. A record `cw` cannot read (from `cw` v2.0.66 to v2.0.96, from a newer `cw`, or damaged) cannot be verified or abandoned: as its `problem` says, upgrade `cw` for a newer record, else move its directory out of the task store. |
+| 4 | `refused` | `not-a-repository`, `nothing-to-publish`, `path-not-verified`, `branch-mismatch`, `head-moved`, `hunk-scope`, `content-conversion`, `git-locked`, `remote-unknown`, `remote-split`, `remote-moved`, `not-fast-forward`, `gh-missing`, `repo-mismatch`, `pr-exists`, `pr-missing`, `pr-ambiguous` | Fix the precondition, or use the fallback. A refusal at the checks commits nothing; one at a later step keeps the commit or push before it (`steps`), so re-run once fixed. Remove a Git lock in `locks_left` only after checking that no git process runs in the repository. |
+| 6 | `unknown` | `commit-unknown`, `push-unknown`, `pr-unknown` | Read the reconciliation in the report (`steps`, `locks_left`), then re-run the same command only while the authorization still covers it. After an unknown PR create, check the PR list first. A `commit-unknown` with locks left may be a definite failure behind a live git process's lock. |
+| 7 | `mismatch` | `commit-mismatch`, `push-mismatch`, `pr-mismatch` | Inspect what was written: a hook or conversion changed the commit, the remote moved, or the PR differs. Never amend or force-push; repair it through the fallback. |
+| 130 | `cancelled` | `cancelled` | Interrupted while no commit, push or PR command ran, or during a commit that left HEAD unchanged. Earlier steps may have completed (a commit, or a commit and its push): the report's `steps` shows what did. A 130 during the commit step can leave intent-to-add entries for new files in the index: the report's `intent_to_add` lists the paths passed, so check `git ls-files -s` before handing over to the fallback. Re-run the same command, which continues from the observed state, only while the authorization still covers it. |
 
 A refusal (exit 4, status `refused`) never commits part of the file set, but it
 can come after steps that are already done:
@@ -480,12 +546,13 @@ Its known limitations:
 - A new file that the user's ignore rules exclude only through `XDG_CONFIG_HOME`
   or `GIT_CONFIG_*` makes `git add --intent-to-add` fail on every run
   (1 `commit-failed`), because the source capture does not read those rules.
-- With `core.autocrlf` set to `input` or true, a commit-set file that contains
-  a CR byte, binaries included, refuses the publication as 4
-  `content-conversion`.
-- A Git lock that a concurrent git process holds for more than about two seconds
-  reads as a stale lock (4 `git-locked`, or 6 `commit-unknown` after a failed
-  commit), so check that no git process runs before removing one.
+- With `core.autocrlf` set to `input` or true, globally or in the repository,
+  every commit-set file that contains a CR byte, binaries such as PNG images
+  included, refuses the publication as 4 `content-conversion`.
+- A Git lock that a concurrent git process (an editor's `git status`) holds for
+  more than about two seconds reads as a stale lock (4 `git-locked` before a
+  step, or 6 `commit-unknown` after a failed commit or intent-to-add), so check
+  that no git process runs before removing one, and treat such a 6 as unknown.
 - A remote with a push URL for another repository, several URLs or an
   `ssh_config` host alias in only one URL is refused as 4 `remote-split`, and
   with a pull request any host alias is refused as 4 `repo-mismatch`.
@@ -496,9 +563,11 @@ Its known limitations:
   `remote.<name>.vcs` set. `host:path`, `[user@host:port]:path` and local
   paths are accepted.
 
-A task check cannot run `cw publish`: `cw task start` refuses such a plan. This
-is a guard, not a sandbox, since a check can still run another program that
-publishes.
+A task check cannot run `cw publish`, even after `cw`'s global flags:
+`cw task start` refuses such a plan, and `cw task run` such a check in a
+recorded plan, with "publication and deployment commands are outside task
+checks". This is a guard, not a sandbox, since a check can still run another
+program that publishes.
 
 The shared instructions apply across projects. A first-party Go repository, a
 Terraform repository and a Roblox project retain their own checks and operational
@@ -585,7 +654,7 @@ replace them before v3.0.0. The budget counts dollars only; there is no token ca
 `tests` runs in parallel with `implementation`. `cw task assign` requires an
 implementation or review brief to name one of the profile's stages, and a later
 round of an author stage to name the findings it fixes or the assignment it
-repeats ([assign before dispatch](../skills/task-orchestration/references/worker-handoffs.md#assign-before-dispatch)).
+repeats ([assignment briefs](#assignment-briefs)).
 Each stage starts a fresh worker: `assign` refuses a brief with a stage whose
 `agent_id` an assignment of another stage already used, unless the brief
 `repeats` an assignment ([stage briefs](#stage-briefs)). Under `strict` the adviser
@@ -671,6 +740,240 @@ JSON) counts what is not listed, such as `12 older findings`. A stage that is
 not one of the profile's, or any stage of a task started before profiles, exits
 2.
 
+### Worker records
+
+`cw task assign`, `cw task handoff` and `cw task accept` record the brief, the
+result and the coordinator's acceptance of delegated work; the coordinator's
+side is in [worker handoffs](../skills/task-orchestration/references/worker-handoffs.md).
+`cw task schema <assign|handoff|accept>` prints each shape. This section lists
+what the commands check.
+
+#### Assignment briefs
+
+An implementation brief, then a code review brief with its filled
+[bundle](#review-bundle):
+
+```json
+{"id": "component-change", "agent_id": "/root/implementer", "role": "implementation",
+ "stage": "implementation", "goal": "Implement the agreed component behavior", "owned_paths": ["src/component"],
+ "constraints": ["Preserve unrelated changes and the agreed interface"],
+ "check_ids": ["unit"],
+ "stop_condition": "Return changes, source evidence, actual checks and unresolved questions"}
+```
+
+```json
+{"id": "review-1", "agent_id": "/root/reviewer", "role": "review", "stage": "code-review",
+ "goal": "Review the change against the requirements", "owned_paths": ["."],
+ "constraints": [], "check_ids": [],
+ "stop_condition": "Return findings with source evidence and what was not reviewed",
+ "bundle": {"path": "/private/review-1-bundle.json", "sha256": "<sha256 of the filled file>"}}
+```
+
+The record retains the brief's task ID, exact source snapshot and SHA-256;
+`assign` prints the assignment ID, its SHA-256 and the snapshot fingerprint,
+and `handoff` fills the assignment hash and snapshot.
+
+Under the task's [profile](#profiles), an
+`implementation` or `review` brief names its `stage`, one of the profile's stages
+(a test engineer's is `tests`, a test review's `test-review`, a code review's
+`code-review`); `evidence` and
+`verification` briefs need none. Several first-round briefs of one stage may run
+in parallel on separate paths. Once a brief of a stage has returned a result, a
+later `spec`, `design`, `tests` or `implementation` brief is a fix or a repeat:
+it names `fixes`, each entry one `{"finding": "<assignment id>/<finding id>"}`
+or `{"requirement": "<plan requirement id>"}`, or `repeats`, the earlier
+assignment of the same stage it replaces. `assign` refuses a brief that lacks
+them and names the member. A task started before profiles accepts briefs
+without them.
+
+Roles are `implementation`, `evidence`, `review` and `verification`; only
+implementation results can declare changes. `owned_paths` holds clean relative
+files or directory prefixes (`.` covers the whole project); active implementation
+assignments cannot own overlapping paths. `check_ids` selects plan checks or
+checks added by `cw task add-checks`. `cw task run` retains actual execution; a
+worker's assertion is not a pass.
+
+A brief of any role may carry `inputs`: up to 32 artefacts handed to the worker,
+inside or outside the project, each as an absolute `path` with its `sha256`.
+`assign` checks every hash and stores a private copy of each in the task, so a
+later edit of the original changes nothing and `verify` reports a copy that is
+missing or differs. A test engineer's brief, which carries `contract`, also
+declares `requirements`: each contract requirement with the plan requirements it
+implements as `criteria`, for example
+`{"requirement": "R4", "criteria": ["inputs"]}`. They are required when the plan
+has a `go test` check whose argv earns per-test credit, which needs `-json` in its
+own argv and only flags the Go evidence rule allows (no `-args`, `-run`, `-skip`
+or other refused flag), and refused when it has none. A correction round, a
+refreshed brief after a contract amendment, or a refreshed round after a fix closed
+the earlier round `unused` re-declares every requirement whose tests it owns, and
+may map them to the files an earlier round wrote; `verify` lists a requirement no
+current round declares, and fails a plan requirement that some closed round linked
+when no current round links it; a plan requirement no round ever linked is no
+problem and shows as `unmapped` in `cw task trace`.
+
+Ownership checks cover direct file aliases, not hardlinks beneath separate
+directory scopes. Scoped freshness hashes every entry under each owned
+directory, rejects symlinks and stops at 30,000 entries or 64 MiB. `.` uses the
+project's eligible-source snapshot.
+
+#### Results and acceptances
+
+The result JSON contains:
+
+| Field | Meaning |
+| --- | --- |
+| `task_id`, `assignment_id`, `assignment_sha256`, `agent_id` | Exact task, brief and worker binding |
+| `snapshot` | Full current `profile.snapshot` from `cw doctor --repo /absolute/project` |
+| `status`, `summary` | `completed`, `blocked` or `cancelled`, with a concrete outcome |
+| `evidence` | Source references with `path`, `start_line`, `end_line` and full-file `sha256` |
+| `changed_files` | Declared changes with `path` and `sha256`, or `deleted: true`; empty for read-only roles |
+| `check_ids` | Actual task check records cited by the worker |
+| `findings` | Each finding's `id`, `summary`, `severity` (`blocker`, `major` or `minor`; required in a review; a finding without one reads as `major`) and source `evidence`; `[]` records none |
+| `uncertainties` | Remaining unknowns; `[]` records none |
+| `reach_runs` | Review only: how each reach-row mode was [run](#reach-runs) |
+| `requirement_map` | Completed result of a brief with `requirements` only: for each declared requirement, its `tests` (`path` of a `_test.go` file this result or an earlier test-engineer result changed, and the Go test `name`), or an `uncovered` reason |
+| `report` | Optional, task with a profile only: the full report's absolute `path` and `sha256` ([handoff caps](#handoff-caps)) |
+
+`cw task` fills omitted single-valued
+fields and validates explicit ones: `task_id`, `assignment_sha256`, `agent_id` and
+`snapshot` (current source) in a result; `task_id`, `coordinator_id` and
+`result_sha256` (the single recorded result) in an acceptance; `sha256` in any
+source reference or changed file, from its current bytes. A filled hash binds the
+bytes present when the record is written. Collections (`evidence`, `changed_files`, `check_ids`,
+`findings`, `uncertainties`) are never filled.
+`cw task trace --task <task-id> --summary` shows, for each plan requirement,
+the mapped tests and the `-json` runs that proved or failed them.
+
+An acceptance holds `assignment_id`, `status` (`accepted`, `rejected` or
+`unused`), `reason`, real current source `evidence`, `check_ids` and, for every
+finding, `finding_id`, a disposition `status`, `reason` and source `evidence`:
+
+```json
+{"assignment_id": "review-1", "status": "accepted",
+ "reason": "Checked each finding against the current source",
+ "evidence": [{"path": "src/component/store.go", "start_line": 40, "end_line": 58}],
+ "check_ids": ["unit"],
+ "findings": [{"finding_id": "F1", "status": "rejected",
+   "reason": "Line 54 returns the last error after the final attempt",
+   "evidence": [{"path": "src/component/store.go", "start_line": 51, "end_line": 55}]}]}
+```
+
+`cw task verify` lists a `deferred` finding as a limitation, and each rejected
+`blocker` or `major` finding as a limitation (in its summary, first, as
+`rejected_findings`); a rejected `blocker` is a problem until a later accepted
+independent review whose bundle lists the rejection and whose result does not
+re-raise its `id`. An `accepted` disposition acknowledges an unresolved finding
+and blocks completion. An `unused` acceptance may give `[]` for `evidence` and
+`check_ids`.
+
+#### Handoff caps
+
+In a task with a profile, `cw task handoff` refuses a result whose `summary`
+exceeds 1,200 bytes, whose finding `summary` spans lines or exceeds 400 bytes,
+or which encodes to more than 6 KiB without `changed_files`, `reach_runs` and
+`requirement_map`; a reach run's `mode`, `command`, `observed` and `reason`,
+and a requirement's `uncovered` reason, are at most 400 bytes each. A finding keeps its ID, severity, one line and source
+`evidence`; the reasoning goes in a report file of at most 512 KiB that
+`report` names. `handoff` stores a copy as `report-<assignment>.md` in the task
+directory and prints that path as `report`; loading the task checks the copy
+against its `sha256`. A task without a profile takes no `report` and keeps the
+old limits.
+
+#### Test authorship
+
+`cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
+record; `cw` refuses a record without it (one from `cw` v2.0.66 to v2.0.96 or
+a build before v3.0.0-rc.1). A record whose plan `kind` is `substantial` is *gated*:
+`verify` and `assign` apply the rules below to it.
+
+- **A contract needs a provable plan.** In a gated record, `assign` refuses a
+  brief that carries `contract` when no plan check is a `go test` whose argv earns
+  per-test credit (`-json` in its own argv, only allowed flags).
+- **Proven PASS.** A mapped test passes only when a per-test credited run at the
+  current source recorded at least one `run` event per result, no more `run`
+  events than its `-count` times its `-cpu` values times the packages of its
+  directory declaring the test, and no output line beginning with byte 0x16.
+  Otherwise it is `pass_unproven`. This is a mitigation, not a proof: see
+  [execute and record evidence](../skills/task-orchestration/references/global-workflow.md#execute-and-record-evidence).
+- **gofmt hash.** For each changed Go test file (`_test.go`, outside
+  `testdata`) of a contract-bearing result in a record with test rules, `handoff`
+  fills `gofmt_sha256`, the SHA-256 of the gofmt-formatted bytes, when the file
+  parses. An explicit value must equal it; on any other entry it is refused.
+  Formatting a test engineer's file mechanically then keeps its authorship.
+- **Authorship from the record.** Every Go test file (a `_test.go` file or a
+  file under the `testdata` of a package that `go test ./...` runs at the selected
+  path) whose bytes differ from the baseline must be `independent` or
+  `source_aware`, or `verify` fails it as `lost` or `unowned`.
+  - `independent`: a completed, contract-bearing result recorded its current bytes
+    or deletion (or bytes gofmt-equivalent to them), its latest acceptance is
+    `accepted` or `unused`, the round was never rejected, and its agent is not
+    excluded.
+  - An agent is excluded when it is the plan's `coordinator_id`, or holds any
+    implementation assignment without a contract, any review or verification
+    assignment, or a contract-bearing assignment whose result wrote a path that
+    is neither a `_test.go` file nor under a `testdata` directory.
+  - A round with any `rejected` acceptance never counts again, even after it is
+    closed `unused`. A round closed `unused` without a rejection keeps its
+    authorship.
+  - `lost`: an independent round wrote the file, but its current state is neither
+    what that round recorded nor gofmt-equivalent to it.
+  - A mapped test whose file is not `independent` is `not_independent` in `verify`
+    and `cw task trace`.
+- **Reproduction tests.** A file is `source_aware` when cw reads this marking:
+  a `resolved` finding disposition of a `review`, `evidence` or `verification`
+  assignment cites the file in its evidence at the file's current bytes; the
+  file is new (absent at start); the acceptance holding the disposition is the
+  assignment's latest, is `accepted` or `unused`, lists at least one check in
+  `check_ids`, and the assignment was never rejected. A
+  source-aware file is never coverage: a mapped test in it is `not_independent`.
+- **No go.mod.** When the selected path has no `go.mod` but has `go.work` or Go
+  files, no file counts as a Go test file, and `verify` adds the limitation
+  `test authorship not judged: ...`. A `go.work` workspace root is not supported.
+
+`cw task authorship --task DIR` prints, read-only, each changed test file with its
+status, reason and the assignment, agent, contract and finding the status rests
+on. It exits 0 whatever the statuses and works on an abandoned task.
+
+#### Review bundle
+
+`cw task bundle --task <task-id> --review-id <id> --output FILE` writes, from
+the record and current source, the requirements, prior findings with
+their dispositions, each check's latest run with its log path, the files changed
+since the task started (a manifest of path, mode and SHA-256, bound by
+`manifest_sha256`), and one reach row per file changed since the previous reviewed
+source: the latest review with a completed handoff that was not rejected, or the
+task start for the first review. A row's hints give the file's shebang and up to 10
+lines of docs and scripts that name it, invocations first. The coordinator fills
+four facets per row from source, or writes `n/a: <reason>`:
+
+| Facet | Answer from source |
+| --- | --- |
+| `callers` | Who calls, sources or imports the file; its entry points |
+| `invocation_modes` | Every documented way it runs: piped (`curl … \| sh`), sourced, executed, flags, CI |
+| `platforms` | Every operating system, shell and version it must work on |
+| `consumers` | What reads the state, files, output or formats it writes |
+
+`assign` regenerates the bundle and refuses a missing row, an empty facet or a bare
+`n/a`, and any other difference, including a check run or record added after
+`bundle`; it keeps an immutable copy for the next bundle.
+
+#### Reach runs
+
+`cw task handoff` refuses a completed review that carries a bundle unless each row
+of a file that still exists has an entry in `reach_runs` and each entry names a
+row; a `ran` entry needs `command` and `observed` and no `reason`, a `not_run`
+entry `reason` and neither of the others:
+
+```json
+[{"path": "install.sh", "mode": "curl | sh under macOS /bin/sh (bash 3.2.57)", "status": "ran",
+  "command": "cat install.sh | /bin/sh -s -- version", "observed": "exit 0, printed the version"},
+ {"path": "install.sh", "mode": "Linux dash", "status": "not_run", "reason": "no Docker or Linux host"}]
+```
+
+A review assigned with a bundle from an older cw (`version` 1), which never
+asked for runs, needs none. A review's handoff binds every check run and worker
+record present when recorded; a later check run or record makes it stale.
+
 ### Cost budget
 
 `cw task usage --task DIR (--claude-transcript FILE | --codex-session FILE)
@@ -726,6 +1029,10 @@ samples the session before each `cw task` command, from a Claude Code
 transcript or, under Codex, the session's rollout
 ([usage sampling](hooks.md#usage-sampling)). Where the hook does not run, the
 skill runs `cw task usage` before each `cw task assign` and `cw task run`.
+Codex keeps the rollout at `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-<time>-<session id>.jsonl`,
+dated the day the session started; take the file whose name ends with this
+session's ID, or, when only this session runs, the newest:
+`ls -t ${CODEX_HOME:-~/.codex}/sessions/*/*/*/rollout-*.jsonl | head -n 1`.
 
 - **The stop** is judged on a known lower bound of the task's dollars: per
   session, the highest dollars any of its samples knew, summed. When that
@@ -1064,6 +1371,207 @@ off for every command: only a run at the current snapshot earns credit, and
 same `source_sha256` and `GOFLAGS` is a rerun and earns no Go evidence credit,
 also across a commit of the same bytes.
 
+### The Go package-test rule
+
+A substantial plan binds at least one check to a requirement. Once its source
+changes, `cw task verify` needs the latest run of some check passed at the
+current source (the fallback rule). The Go rule applies on top of it when the
+task applies the `go` pack, which is selected by default. A task records the
+pack when `go.mod` or `go.work` is at the top of the selected path at start,
+and the rule then checks packages whenever `go.mod` is at the top at verify. A
+task that started with neither file gets no Go rule, even if it creates
+`go.mod` later. `cw pack add` and `cw pack remove` affect only tasks started
+afterwards; an open task keeps the pack set it recorded, and `cw pack list`
+shows the selection. `cw pack remove go` writes an explicit `packs.json`, which
+drops the Go rule for all of that user's repositories and leaves only the
+fallback rule; `cw pack add go`, or deleting `packs.json`, restores it.
+
+Under the Go rule (`go.package-test/v2`; a task keeps the rule it recorded at
+start):
+
+- Each changed package needs a check whose argv is a direct `go test -race`
+  naming `./...`, the package (`./pkg`) or a parent (`./dir/...`). Where
+  `-race` cannot run on the host (its own platform, with the cgo setting
+  `cw task verify` sees), a plain `go test` run counts and verify records why.
+- A file belongs to the package of its directory (or of the directory holding
+  its `testdata/`); a non-Go file in a directory without Go files belongs to
+  the nearest ancestor package.
+- Each package whose test binary links a changed package needs a passed
+  `go test` run covering it, unless only that changed package's `_test.go` or
+  `testdata/` files changed.
+- A changed `go.mod`, `go.sum`, `go.work`, `go.work.sum` or vendored file, a
+  changed file with a build constraint line or a generated-code header, a
+  changed embedded file, changed testdata outside any package directory, or a
+  package graph that `go list` cannot compute at verify within 5 s needs
+  `./...`. Verify runs `go list` offline (`GOPROXY=off`), inside the task
+  lock, for at most 6 s, so a cold module cache can be the reason. It runs
+  only a go it verified ([which go](#which-go-a-check-runs)), so a fake `go`
+  first on `PATH` is another reason, and `-race` stays required.
+- A pass after a failed run of the same check at the same source and
+  `GOFLAGS` earns no credit until the source changes.
+- Skipped tests are listed as limitations, which needs `-v` or `-json` on the
+  run; a run without either gets a limitation saying they are not listed.
+- Only runs whose every flag, in argv and in `GOFLAGS` (split as `go` splits
+  it), is on the allowlist earn credit: `v`, `race`, `count` of at least 1,
+  `timeout`, `cover*`, `tags` and the other flags in
+  `internal/langpack/golang.go` that cannot skip or replace tests, with a
+  `test.` prefix only on flags `go test` passes to the test binary. `-run`,
+  `-skip`, `-args`, `-c`, `-n`, `-exec`, `-toolexec`, `-overlay`, `-ldflags`,
+  `-gcflags`, `-asmflags`, `-C`, unknown flags, a pattern after a flag that
+  follows a pattern (`./a -v ./b`, where `go test` hands `./b` to the test
+  binary), wrappers (`make`, scripts), `GO.EXE` and Windows-style `.\pkg`
+  patterns earn none.
+- The rule reads the `GOFLAGS`, `GOOS` and `GOARCH` that the check's go
+  command reports with `go env` just before the run, so a go env file's
+  `GOFLAGS` (`GOENV`, `go env -w`) counts too, and a run for another
+  `GOOS`/`GOARCH` than the host's earns none. With cgo on, a run earns none
+  unless `cw` verified its C toolchain
+  ([the C toolchain](#the-c-toolchain-of-a-go-check)).
+- The run records `GOFLAGS` with compiler and linker flag values redacted, but
+  stores the check's argv verbatim: keep secrets out of check argv.
+
+### Test evidence rules
+
+Every run records the per-test results of its `-json` events, read from its
+complete output, as `test_results`. A `-json` run's stored log holds JSON event
+lines, so its summary takes `failing_tests` from those results, while the error
+lines and log tail still come from the log. Only a `go test -json` run with
+flags the Go rule allows proves a mapped test. A `GOFLAGS=-json` in the shell
+that runs `cw task run` reaches every check, and `go vet` then exits 0 on
+findings, so `-json` belongs in argv.
+
+For each current test-engineer assignment with a completed handoff, `verify`
+judges every mapped test at the current source: it fails a test that is
+missing, failed in a latest run at the current source, was only skipped, or has
+no PASS in a latest passed run of a per-test-credited `-json` check; it lists
+`uncovered` requirements and requirements no current round declares as
+limitations, and fails a plan requirement whose every linking round is closed.
+`cw task trace --task DIR --summary` shows each plan requirement's status and
+gaps; without `--summary` it prints every mapped test with the runs that
+recorded it.
+
+In a plan with a per-test-credited `-json` `go test` check, `assign` refuses a
+brief with a `contract` but no `requirements`; in a plan without one, it
+refuses `requirements`. Records made before brief `inputs` and `requirements`,
+result `requirement_map` and run `test_results` existed need none of them, and
+load, hash and verify as before.
+
+`cw task start` records `"test_rules": "go.test-evidence/v1"` in every new
+record. A `cw` built before this rule cannot load such a record (its commit and
+push hook skips it), so finish a task with the `cw` that started it. `cw`
+refuses a record without `test_rules`, `packs` or `baseline_manifest`, or one
+that binds `go.package-test/v1`, as `cw` v2.0.66 to v2.0.96 and builds before
+v3.0.0-rc.1 wrote; an open one still gates until its directory is moved out of
+the task store. The rules:
+
+- **Proven PASS (a mitigation).** With go1.27.3, `-json` frames what tests
+  print, but a line that a test writes straight to stdout or stderr starting
+  with byte 0x16 becomes a result event for any test name it gives. So each
+  run's results also count the `run` events and the output lines beginning
+  with byte 0x16 of each test. A mapped test is `passed` only when a per-test
+  credited current passed run recorded at least one `run` event per result, no
+  more `run` events than its `-count` times its `-cpu` values times the
+  packages of the test's directory that declare it, and no marked output line;
+  a PASS without that is `pass_unproven`, which fails `verify`. A FAIL of the
+  same test in a latest run at the current source makes the test `failed`
+  whatever else the run recorded. This does not prove the test ran: code in
+  the test binary can still print a forged `=== RUN` and `--- PASS` pair, or
+  unmarked framing before the first test starts, for a mapped test that never
+  genuinely runs (a subtest never created, a build-constrained file, `os.Exit`
+  before `m.Run`), and a same-named declaration in another package of the
+  directory that does not run the mapped name raises the allowance. Code
+  review is the backstop.
+- **Authorship (substantial plans).** Every changed Go test file must be
+  `independent` (recorded by a never-rejected test-engineer round with a
+  `completed` result whose latest acceptance is `accepted` or `unused`, by an
+  agent that is not excluded) or a cited reproduction test (`source_aware`);
+  `verify` fails a `lost` or `unowned` one, and a mapped test whose file is not
+  `independent` is `not_independent`. When the plan has no per-test credited
+  `go test -json` check and a changed test file is not `source_aware`, `verify`
+  fails once with "test files changed, but the plan has no go test check whose
+  argv earns per-test credit ...". An unreadable baseline manifest fails with
+  `test authorship cannot be judged: <error>`. A selected path without `go.mod`
+  but with `go.work` or Go files gets the limitation `test authorship not
+  judged: ...`, and its test files are not guarded.
+- **Contracts need a provable plan.** In a substantial task, `assign` refuses a
+  brief with a `contract` when no plan check earns per-test credit.
+- **Contract currency.** An earlier contract stops being re-extracted only when
+  a later contract-bearing round that covers its owned paths has an `accepted`
+  acceptance and no `rejected` one; a round never accepted, or ever rejected,
+  leaves the earlier contract checked.
+
+### What the final context binds
+
+`cw task context --phase final` binds the source, the completed checks, worker
+evidence and acceptances, and the coordinator's decision. Changing any of them,
+even with the source bytes unchanged, needs a fresh final context and, when
+checkpoints are required, a fresh adviser review. `cw task verify` rejects stale
+source, missing requirements or checks, invalid references, incomplete
+handoffs, unaccepted results, a missing or stale independent worker review, an
+outstanding owned check, and missing, mismatched or unresolved checkpoints
+(missing ones only when checkpoints are required). It lists each `deferred`
+finding, and each bound adviser without a successful outcome, as a limitation;
+with an empty binding it states that decisions rest on source evidence and
+checks only. Hashes and structural validation establish consistency, not
+semantic truth or complete test coverage. `cw task consult` validates the
+adviser record against the binding; it makes no provider request, selects no
+winning adviser and proves no cited semantics.
+
+### Coverage profile of a check
+
+`go test -covermode=atomic -coverpkg=./... -coverprofile=<path>` earns the same
+credit as a plain `go test`. `-coverpkg=./...` also counts statements that one
+package's tests run in another; an end-to-end test of a built binary still
+records none. Write the profile to an absolute path outside the source tree,
+such as the private directory that holds `plan.json` (the task directory does
+not exist yet when the plan is written); a check runs without a shell, so the
+directory must exist before `cw task run`. `cw task run` captures the source before and after a check, and
+that source includes untracked files the repository does not ignore: a profile
+written inside the tree changes the source during the run, so a passing run is
+recorded as `source_changed`, and the profile then shows up as a changed file
+in the reviewer bundle. Every run of the check overwrites the profile and `cw`
+does not hash it. No coverage threshold applies and the profile gates nothing.
+Tests that run the test binary again as a child process and compare its exact
+output can fail under `-cover`, because the child warns on stderr that
+`GOCOVERDIR` is not set. When the full check has such tests, keep it without
+coverage and bind a second check that adds the flags and names the packages the
+plan expects to change, leaving those tests' packages out; a change inside them
+then has no profile, which the reviewer records under what was not reviewed.
+
+### Check admission and stored history
+
+The Git gate permits known inspection dispatch: `diff`, `status`, `log`,
+`show`, `rev-parse`, `rev-list`, `ls-files`, `ls-tree`, `merge-base` and
+`describe`. Standalone metadata outputs are `-v`/`--version`, `--html-path`,
+`--man-path`, `--info-path` and bare `--exec-path`. Global directory and path
+values are consumed as data. Explicit `-c` and `--config-env` overrides allow
+only `core.quotePath`, `color.ui`, `diff.noprefix`, `diff.mnemonicPrefix`,
+`diff.context`, `status.short` and `status.branch`, compared
+case-insensitively. Unknown commands, aliases, configuration keys,
+pagination, `--exec-path=...` and `--list-cmds` selectors are refused.
+Terraform and tofu still classify their global options before refusing
+`apply` and `destroy`. This filter establishes known inspection dispatch;
+arbitrary command arguments, inherited Git configuration and environment, and
+the selected executable remain separate trust boundaries. It does not
+guarantee that every admitted Git argument is read-only, nor sandbox an
+arbitrary executable.
+
+Loading a task validates its bounded plan structure and integrity without
+applying new-input defaults or today's command admission policy. Historical
+declarations and run argv remain unchanged, including commands now refused for
+new work. Starting a task checks every command against current policy; running
+a stored check rechecks its argv against current policy before execution or a
+new check log or revision. Readable history does not authorize re-execution.
+
+New artifacts sync their file content before no-replace publication, then sync
+their descriptor-bound containing directory. New storage components and their
+parents are synced through the existing ancestor; starting a task also syncs
+the store after publishing its initial record. A reported durability failure
+can mean the named artifact is already published: inspect and reload the
+absolute task or artifact path in the error before retrying, and keep
+published bytes intact rather than replaying an update or starting another
+check on that assumption.
+
 ### Merging the base branch during a task
 
 A task's plan cannot change after `cw task start`. When the task merges its base
@@ -1220,6 +1728,62 @@ cw metrics history --since 2026-10-01 --until 2026-10-31 --prices prices.json
   inclusive UTC `--since`/`--until` date range, and prints totals and groups by
   model, UTC day and session. Without `--prices` every amount is unknown, with a
   reason.
+
+#### What an import reports
+
+`import` reads a session read-only and reports each agent (the main session and
+every subagent or child rollout) with requests, uncached input, cache writes (5-minute
+and 1-hour), cache reads, output and thinking tokens. Claude dollars are the
+transcript's recorded `cost-state`, per model and for the session, never allocated to
+agents; a model that `cost-state` lists but no transcript entry carries, such as
+background calls, is reported as unattributed. Codex rollouts record no cost. `--prices` adds
+per-agent estimates from a supplied table
+(`{"currency","evidence","models":{"MODEL":{"input_per_million","output_per_million","cache_write_5m_per_million","cache_write_1h_per_million","cache_read_per_million"}}}`),
+reported separately from recorded dollars; no price is built in. The report's
+`usage` (and `cost`, when recorded) can be copied into an observation; there
+`input_tokens` stays total input, and the optional breakdown counters must add up to
+it. When a model's transcript and recorded totals differ, for example a `cost-state`
+written before the session ended, the report shows the difference and leaves
+`usage` and `cost` out.
+
+`--append` (with `--claude-transcript` or `--codex-session`) keeps the counts after
+the transcript is deleted. It appends one record per de-duplicated request to the cost history,
+`<state>/metrics/history.jsonl` unless `--history` names another file, and prints what
+it appended instead of the report. A record holds token counts, IDs, timestamps, the
+model and agent labels, and no dollars. Requests already stored are skipped, so
+importing again never double-counts. `--append` rejects `--prices`, `--composition`
+and `--summary`. `cw metrics history` aggregates the history by model,
+UTC day and session, and recomputes dollars from `--prices`.
+
+`--composition` (it needs `--prices`) adds where each agent's input came from. Each
+agent is mapped to a role from the `cw task assign` brief whose assignment id its Agent
+prompt names, else from its Agent description or agent type; unmapped agents count as
+`other`, and the role coverage is reported.
+Each request's new input, its total input minus the previous request's, is assigned
+to the blocks appended in between: the previous output gets its output tokens
+(all of the new input when that is smaller), and the rest is split by byte share across tool output (by tool), `cw`
+command output, Skill loads, reference reads, Agent handoffs, user turns and other
+context. New input with no visible block is `unrecorded`. The first request is split
+into its visible blocks, estimated at the agent's measured bytes per token, and
+`system_and_tools`, the remainder. That remainder, the skill listing and the
+CLAUDE.md/AGENTS.md instructions form the fixed prefix. Per source the report gives
+input tokens, input share, input dollars and re-read cost (tokens × later requests ×
+cache-read rate). Input dollars allocate each request's priced input in context order:
+cache reads first, then cache writes, then uncached input. It also lists repeated
+identical tool calls (same tool and input hash). For an agent that ran
+`cw task start`, `cw task consult`, a review `cw task assign` or `cw task verify` (as
+commands, including after `if`, `do`, `env`, `nohup`, `sudo` or `timeout`; not text in
+a heredoc, a comment or a quoted string, nor history copied into a resumed session), it
+gives the stale-phase re-read: earlier-phase blocks, other than the initial context,
+re-read in a later phase, beside an estimate for re-sending the initial context at
+each boundary. The composition is reported only when the price-table total is within
+1% of the recorded `cost-state` and the transcript has no tokens the recorded cost
+lacks; otherwise it is withheld with a reason. Codex rollouts record no cost, so
+their composition is reported as unsupported. `--summary` prints a short table
+instead of JSON.
+
+The agent's rules for recording and comparing observations are in
+[measure outcomes](../skills/task-orchestration/references/measure-outcomes.md).
 
 ### Usage stores
 
@@ -1378,5 +1942,6 @@ A terminal export does not update an already running desktop app; use the
 process and session. `cw consult` never reads macOS launchctl or another process's
 secrets by itself.
 
-See the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
-for adviser statuses, offline adjudication and exit codes.
+See the [adviser statuses](../skills/task-orchestration/references/adviser-providers.md#statuses)
+and the [consultation record contract](../skills/task-orchestration/references/consultation-helper.md)
+for offline adjudication and exit codes.

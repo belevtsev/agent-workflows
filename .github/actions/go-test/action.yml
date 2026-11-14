@@ -1,0 +1,75 @@
+name: Test one shard of the Go packages
+description: >-
+  Set up the pinned Go and test one of the four package shards. Shard 2 also
+  checks formatting and runs go vet on every package.
+
+inputs:
+  shard:
+    description: The shard to test, 1 to 4.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pinned Go with dependency cache
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: go.mod
+        cache: true
+    - name: Check formatting
+      if: inputs.shard == '2'
+      shell: bash
+      run: |
+        unformatted="$(git ls-files -z '*.go' ':!:third_party/**' | xargs -0 gofmt -l)"
+        if [ -n "$unformatted" ]; then
+          printf 'gofmt needed:\n%s\n' "$unformatted"
+          exit 1
+        fi
+    - name: Vet
+      if: inputs.shard == '2'
+      shell: bash
+      run: go vet ./...
+    # Shard 1 holds internal/taskflow, the slowest package; shard 2 cmd/cw,
+    # whose tests run the built binary; shard 3 internal/cli and
+    # internal/langpack. These start many processes, and on a macOS runner
+    # they fail each other's time limits, and the process-group tests of
+    # internal/graphify, when they share a job. Shard 4 holds every other
+    # package, so a new package is tested without a change to these lists.
+    - name: Select the packages of this shard
+      shell: bash
+      env:
+        SHARD: ${{ inputs.shard }}
+      run: |
+        first='/internal/taskflow$'
+        second='/cmd/cw$'
+        third='/internal/(cli|langpack)$'
+        all="$(go list ./...)"
+        if [ "$(grep -Ec "$first" <<<"$all")" != 1 ] || [ "$(grep -Ec "$second" <<<"$all")" != 1 ] ||
+          [ "$(grep -Ec "$third" <<<"$all")" != 2 ]; then
+          echo "the patterns of shards 1, 2 and 3 must match exactly 1, 1 and 2 packages of go list ./...: update them in .github/actions/go-test/action.yml"
+          exit 1
+        fi
+        case "$SHARD" in
+          1) packages="$(grep -E "$first" <<<"$all")" ;;
+          2) packages="$(grep -E "$second" <<<"$all")" ;;
+          3) packages="$(grep -E "$third" <<<"$all")" ;;
+          4) packages="$(grep -Ev "$first|$second|$third" <<<"$all")" ;;
+          *) echo "unknown shard: $SHARD"; exit 1 ;;
+        esac
+        if [ -z "$packages" ]; then
+          echo "shard $SHARD holds no package"
+          exit 1
+        fi
+        printf '%s\n' "$packages"
+        echo "SHARD_PACKAGES=$(tr '\n' ' ' <<<"$packages")" >>"$GITHUB_ENV"
+    # Race checks run once, on Linux, where they cover every package.
+    - name: Test with the race detector
+      if: runner.os == 'Linux'
+      shell: bash
+      run: go test -race -count=1 ${SHARD_PACKAGES:?}
+    # A package can take over eight minutes on a macOS runner, near go test's
+    # 10-minute default for one package.
+    - name: Test
+      if: runner.os != 'Linux'
+      shell: bash
+      run: go test -count=1 -timeout=15m ${SHARD_PACKAGES:?}

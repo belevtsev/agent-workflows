@@ -1,176 +1,106 @@
 # Host mapping
 
-The workflow runs under Codex or Claude Code. Consultation, handoff, review, and
-publication rules are the same on both. This reference covers what differs. In
-these skills, "the coordinator" means the primary agent on whichever host is
-running.
-
-Identify the host from your own runtime. Under Claude Code, Bash subprocesses
-have `CLAUDECODE=1`.
-
-| Concern | Codex | Claude Code |
-| --- | --- | --- |
-| Profiles and roles | `model-policy.yaml` | `model-policy.claude.yaml` |
-| Activation, advisers, publication | `model-policy.yaml` | `model-policy.yaml` |
-| Global instructions | `$CODEX_HOME/AGENTS.md` | `CLAUDE.md` in the Claude config directory |
-| Personal skills | `~/.agents/skills` | `skills/` in the Claude config directory |
-| Explicit skill invocation | `$skill-name` | `/skill-name` |
-| Project instructions | `AGENTS.md` | `CLAUDE.md`, or `AGENTS.md` when no `CLAUDE.md` applies |
+What differs between Codex and Claude Code. Identify the host from your own
+runtime: under Claude Code, Bash subprocesses have `CLAUDECODE=1`. Project
+instructions are `AGENTS.md` under Codex; under Claude Code `CLAUDE.md`, or
+`AGENTS.md` when no `CLAUDE.md` applies.
 
 ## Profiles and policy
 
-The YAML is configurable dispatch policy, not native host configuration: neither
-host loads it as settings or changes a running chat's model. Read
-[model-policy.yaml](../model-policy.yaml) and, under Claude Code,
-[model-policy.claude.yaml](../model-policy.claude.yaml), which replaces its
-profiles and roles (read `sol` and `luna` below as its matching profiles). The
-policy files name each profile's model; this page names profiles and Claude
-Code aliases only. Codex defaults: `sol` at `high` for substantive work and
-`decision` at `max` for planning, architecture and diagnosis; `luna` at `high`
-for bounded evidence and `github`, and `luna_execution` at `xhigh` for other
-bounded execution. Claude `github`: `sonnet` at `medium`.
+Read [model-policy.yaml](../model-policy.yaml). Under Claude Code,
+[model-policy.claude.yaml](../model-policy.claude.yaml) replaces its profiles
+and roles (read `sol` and `luna` below as its matching profiles); activation,
+advisers and publication stay in `model-policy.yaml`. The policy guides your
+dispatch: neither host loads it as settings or changes a running chat's model.
 
-Before dispatch, resolve each role's profile (model and effort) and scope from the
-current policy, preserving explicit user choices; a user request can override
-effort only with a value the profile lists in `user_requested_efforts`. `sol` at `max`
-may be configured or explicitly requested; `sol` at `ultra` needs an explicit user
-request the profile allows. Never escalate automatically; a saved policy cannot
-switch an active session. Verify model and effort from runtime metadata and
-disclose a mismatch. Without an explicit user override, substantive coordination
-and final verification require a compatible main worker; if unavailable, retain
-the brief and evidence, name the required fresh-session configuration and continue
-only bounded evidence gathering. A compatible subworker does not repair the main
-worker's mismatch.
+- Before dispatch, resolve each role's profile (model and effort) and scope
+  from the current policy. Keep explicit user choices; a user request overrides
+  effort only with a value the profile lists in `user_requested_efforts`.
+- `sol` at `max` may be configured or explicitly requested; `sol` at `ultra`
+  needs an explicit user request the profile allows. Never escalate
+  automatically; a saved policy cannot switch an active session.
+- Substantive coding, testing, planning, review, diagnosis, documentation, new
+  acceptance claims and final verification use the role's configured
+  substantive profile, never a `luna` one. Never lower a substantive effort or
+  model family.
+- Routine execution requires fixed files, revision, verified facts, action
+  bounds and authorization from you. New claims, ambiguous scope, conflicts or
+  uncertain verification return to substantive ownership. Model selection
+  never relaxes a role's action bounds.
+- Use a fixed specialist model only within its evidence role.
+- Check runtime capabilities before spawning. Pass model and effort
+  explicitly; where the host cannot override them, use a compatible inherited
+  configuration or report the limit.
+- Verify the effective model and effort from host runtime metadata, never
+  from worker prose, and disclose a mismatch. Stop an incompatible worker
+  before it writes.
+- Without an explicit user override, substantive coordination and final
+  verification require a compatible main worker. If none is available, retain
+  the brief and evidence, name the required fresh-session configuration and
+  continue only bounded evidence gathering. A compatible subworker does not
+  repair the main worker's mismatch.
 
-Substantive coding, testing, planning, review, diagnosis, documentation, new
-acceptance claims and final verification use the role's configured substantive
-profile, never a `luna` one. Routine execution requires fixed files, revision, verified facts, action
-bounds and authorization from the coordinator; routine GitHub wording can be
-drafted from fixed verified facts under the [GitHub worker contract](github-worker.md).
-New claims, ambiguous scope, conflicts or uncertain verification return to
-substantive ownership. Model selection never relaxes a role's action bounds.
+## Dispatch under Codex
 
-## Dispatching workers under Claude Code
+Create a distinct worker with `fork_turns: "none"` (a full-history fork
+rejects overrides) and explicit `model` and `reasoning_effort`. Codex still
+injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into it: keep
+task conclusions out of `AGENTS.md`, and report the independence of a Codex
+reviewer or test engineer as limited by those files.
 
-Substantive roles keep `opus` at `high`. The decision roles (`planning`,
-`architecture` and `diagnosis`) keep `xhigh` through the `decision` profile. The
-Claude-only `review_followup` role (every later review of a stage, after that
-stage's first full review), `summarization` and the three routine GitHub roles
-use cheaper `sonnet` profiles, and `lookup` uses `haiku`; resolve the
-current policy before dispatch. A saved `review` pin does not apply to
-`review_followup`; pin it separately.
+## Dispatch under Claude Code
 
-| Profile | Agent tool `model` | Agent tool `effort` |
-| --- | --- | --- |
-| `substantive` | `opus` | `high` |
-| `decision` | `opus` | `xhigh` |
-| `bounded_execution` | `opus` | `high` |
-| `review_followup` | `sonnet` | `high` |
-| `github` | `sonnet` | `medium` |
-| `bounded_evidence` | `sonnet` | `high` |
-| `lookup` | `haiku` | `high` |
+A new Agent call starts with a fresh context.
 
-- Pass `model` and `effort` on every dispatch, including built-in agents such as
-  `Explore`, which otherwise use their own default model. The plugin agents below
-  pin a default in their frontmatter, but the Agent tool's `model` overrides it,
-  so the policy's role (for example `review_followup` on `sonnet`) still applies.
-- Agent accepts model aliases, not full IDs: pass the alias of the profile's
-  model family (`opus`, `sonnet` or `haiku`). An alias resolves to the host's
-  current release of that family, which can differ from the policy's model ID.
-  Per-invocation `effort` needs the Claude Code version in the
-  [host requirements](../../../docs/operations.md#host-requirements).
-- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` forces `CLAUDE_CODE_SUBAGENT_MODEL`, or the
-  inherited model if it is unset, instead of the Agent `model` argument.
-  `CLAUDE_CODE_EFFORT_LEVEL` overrides per-invocation effort. Organization
-  `availableModels` restrictions can also substitute the inherited model. See
-  [Claude Code subagent dispatch](https://code.claude.com/docs/en/sub-agents).
-- Check the actual model and effort in host runtime metadata, such as `/tasks` or
-  transcript metadata, rather than worker prose. Stop an incompatible worker
-  before writes. If the configured GitHub worker or metadata verification is
-  unavailable, report the blocker; do not silently use an expensive model. The
-  [GitHub worker contract](github-worker.md) covers the shared fallback precedence.
-- Standard subagents start with a fresh context. This matches the Codex rule of
-  dispatching with no forked history.
-- In a non-interactive `claude -p` session, dispatch workers in the foreground
-  (without `run_in_background`) and wait for their results. The process exits when
-  the coordinator's turn ends, and a background worker and its work are lost
-  with it.
-- The coordinator profile's effort is `high` by default; `settings.json`
-  `effortLevel` is the user's to set. `settings.json` rejects `max`; use
-  `/effort max` or `/effort xhigh` for a session when the user asks for it.
+- Pass `model` and `effort` on every call, built-in agents such as `Explore`
+  included; the `model` you pass overrides an agent's frontmatter default.
+- Pass the alias of the profile's model family (`opus`, `sonnet` or `haiku`),
+  never a full ID. It resolves to the host's current release of that family,
+  which can differ from the policy's model ID
+  ([host requirements](../../../docs/operations.md#host-requirements)).
+- Dispatch every later review of a stage, after that stage's first full
+  review, under the `review_followup` role. A saved `review` pin does not
+  apply to it; pin it separately.
+- Set `subagent_type`:
+  - `agent-workflows:spec-writer`, `agent-workflows:architect`,
+    `agent-workflows:implementer`, `agent-workflows:test-engineer` and the
+    opt-in `agent-workflows:adversarial-tester` for the role of that name;
+  - `agent-workflows:reviewer` for `spec_review`, `design_review`,
+    `test_review`, `review` and `review_followup`;
+  - `agent-workflows:github-worker` for `commit_execution`,
+    `pr_authoring_routine` and `pr_submission`;
+  - `general-purpose` or a built-in type such as `Explore` for other roles.
+- If a type is unavailable, for example when the plugin is not installed,
+  dispatch `general-purpose` with the same model, effort and brief and note it
+  in the assignment. Check the runtime type, `agent:custom:<name>` in
+  transcript metadata (or `/tasks`), with the model and effort.
+- Each worker reads its role contract from the path the brief gives, or from
+  the plugin root when the brief gives none. A reviewer brief names one of the
+  four review contracts.
+- These workers have no Skill, Agent or Workflow tool, so only you dispatch.
+  When a worker needs a skill, such as `code-review` for a code reviewer, put
+  the absolute path of its `SKILL.md` in the brief
+  (`<plugin root>/skills/<name>/SKILL.md`; the plugin root is the line
+  `Plugin root:` in the task-orchestration `SKILL.md`). For a test engineer,
+  list it and the reference files it needs among the approved inputs.
+- `reviewer` and `test-engineer` start without the user, project and local
+  CLAUDE.md files; managed policy files still load. Quote in the brief, word
+  for word, any project constraint the work must meet that the contract lacks.
+  The other five agents keep CLAUDE.md.
 
-### Worker agent types
+## Test engineer and GitHub worker
 
-Seven Claude agent definitions ship in the `agent-workflows` plugin's `agents/`
-directory. They have no Skill tool, so the worker starts without the skill
-listing, and no Agent or
-Workflow tool, so only the coordinator dispatches. Dispatch these roles
-with the namespaced `subagent_type`:
+Resolve the `test_engineer` role itself: add no host policy role and select
+no cheaper publication profile.
 
-| Role | `subagent_type` | Frontmatter default |
-| --- | --- | --- |
-| `spec_writer` | `agent-workflows:spec-writer` | `opus`, `high` |
-| `architect` | `agent-workflows:architect` | `opus`, `xhigh` |
-| `implementer` | `agent-workflows:implementer` | `opus`, `high` |
-| `test_engineer` | `agent-workflows:test-engineer` | `opus`, `high` |
-| `adversarial_tester` (opt-in) | `agent-workflows:adversarial-tester` | `opus`, `high` |
-| `spec_review`, `design_review`, `test_review`, `review`, `review_followup` | `agent-workflows:reviewer` | `opus`, `high` |
-| `commit_execution`, `pr_authoring_routine`, `pr_submission` | `agent-workflows:github-worker` | `sonnet`, `medium` |
-
-- Each reads its [role contract](contracts/README.md) from the path the brief
-  gives, or from the plugin root when the brief gives none; a reviewer brief
-  names one of the four review contracts.
-- `reviewer` and `test-engineer` set `omitClaudeMd: true`: they start without the user, project and local CLAUDE.md files, so
-  author priors and coordinator instructions stay out of an independent review
-  or test. Managed policy files still load. Their contracts carry the project
-  rules they apply, and the brief quotes any other project constraint the work
-  must meet. The other five agents keep CLAUDE.md, because they work to the
-  project's conventions.
-- That isolation holds on Claude Code only. Codex has no per-agent switch: it
-  injects `$CODEX_HOME/AGENTS.md` and the project `AGENTS.md` into a spawned
-  agent even with `fork_turns: "none"`, as reported for Codex CLI 0.166.0 in
-  [google/elephant-goldfish-model#237](https://github.com/google/elephant-goldfish-model/issues/237)
-  (open), so a Codex reviewer or test engineer sees those files. Keep task
-  conclusions out of `AGENTS.md`, and report the independence of a Codex
-  reviewer or test engineer as limited by them.
-- Other roles keep `general-purpose` or a built-in type such as `Explore`.
-- These workers cannot load skills by name. When a worker needs one, such as
-  `code-review` for a code reviewer, put the absolute path of its `SKILL.md` in
-  the brief (`<plugin root>/skills/<name>/SKILL.md`, where the plugin root is the
-  line `Plugin root:` in the task-orchestration `SKILL.md`); for a test engineer,
-  list it among the approved inputs.
-- If the type is unavailable, for example when the plugin is not installed,
-  dispatch `general-purpose` with the same model, effort and brief and
-  note it in the assignment. Only the token cost differs.
-- The runtime agent type appears in transcript metadata as
-  `agent:custom:<name>`; check it with the model and effort.
-
-## Independent test engineers on either host
-
-The [test-engineer contract](contracts/test-engineer.md) applies when a
-substantial task authors, changes, removes or disables behavioural tests or their
-helpers or data, or when the user asks for an independent author. Resolve the
-`test_engineer` role rather than adding a host policy role or selecting a
-cheaper publication profile. Preserve configured model and effort overrides and
-verify the effective settings.
-
-On Codex, create a distinct worker with `fork_turns: "none"` and explicit `model`
-and `reasoning_effort`. On Claude, use a fresh `agent-workflows:test-engineer`
-Agent invocation with the resolved model alias and explicit `effort`, accounting
-for the overrides above. Do not resume an implementer, coordinator or
-source-aware reviewer as the test engineer. Inspect initial injected context and
-automatic project instructions as well as the handoff; a fresh conversation alone
-does not establish an unexposed context.
-
-Give only approved contract, interface and scaffold inputs and exact test-output
-paths; on either host, Go contracts start from the
-[declaration extract](contracts/test-engineer.md#extract-go-declarations).
-The coordinator retains implementation discovery and raw execution diagnostics.
-Inspect available tool transcripts for boundary violations; neither host dispatch
-nor native task ownership is a filesystem sandbox. If the test engineer is
-exposed, stop or supersede it and use a fresh replacement. Report a blocker when
-suitable fresh context or model settings cannot be supplied; do not fall back to
-an exposed worker.
+`commit_execution`, `pr_authoring_routine` and `pr_submission` use the
+`github` profile, with `bounded_execution` scope; the worker's
+[contract](github-worker-fallback.md) lists its brief. If that profile's
+worker or the metadata check is unavailable, retain the brief and report the
+blocker. `fallbacks.github_unavailable: report_blocker`, when the policy has
+it, overrides the profile fallbacks for these three roles on both hosts;
+without it, follow the policy's bounded-worker fallback. Never silently move
+these roles to your own, an expensive or any other model.
 
 ## Adviser questions
 

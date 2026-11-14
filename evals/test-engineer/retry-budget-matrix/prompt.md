@@ -27,7 +27,10 @@ and `testdata/contract/declarations.go`; never mention or pass
 - Owned paths: `retry/budget_test.go` (external test package `retry_test`),
   `artefacts/test-matrix.md`, `artefacts/requirement-map.md`.
 - Approved inputs: the interface contract and the declaration extract. Apply
-  the test-design and property-testing references your contract links.
+  the `test-strategy` skill's references on test design and property testing:
+  `../../../test-strategy/references/test-design.md` and
+  `../../../test-strategy/references/property-testing.md`, relative to your
+  contract's directory.
 - Scope: unit and property tests; the clock is injected, so no real time.
 - Stop condition: every requirement is covered or marked `uncovered` with a
   reason. You do not run the implementation.

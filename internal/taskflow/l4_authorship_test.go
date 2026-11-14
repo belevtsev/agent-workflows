@@ -185,8 +185,10 @@ func TestAuthorshipFaults(t *testing.T) {
 	f.plain("imp2", "", body("Same"))
 
 	fault := func(asg, text string) string { return fmt.Sprintf(l4FaultBytes, asg, text) }
+	// Every round above is recorded, so one load serves all expected files.
+	rec := f.load()
 	file := func(path, status, reason, asg string) taskflow.AuthorshipFile {
-		return f.l4File(path, false, status, reason, asg, "")
+		return f.l4FileIn(rec, path, false, status, reason, asg, "")
 	}
 	f.l4Report("faults", f.authorship(), l4Rules, true, nil,
 		file("p/f2_test.go", "unowned", fault("blk", "its handoff is not completed"), "blk"),

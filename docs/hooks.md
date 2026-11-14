@@ -215,7 +215,10 @@ A record governs the command when all of the following hold:
 - its latest revision was written within the last 14 days. Any recording
   command (`assess`, `run`, `assign`, `verify` and the others) writes a
   revision, so a task that is being worked on keeps governing however long it
-  runs; one nobody has touched for 14 days stops.
+  runs; one nobody has touched for 14 days stops. A revision dated after the
+  current time counts as just written, which happens after the clock steps
+  back; `cw task abandon` is the way out of a record with a wrong far-future
+  date.
 
 Starting a new record does not hide an older one: every governing record gates
 until `cw task verify` passes on the source being published, and the hook

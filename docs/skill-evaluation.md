@@ -13,7 +13,7 @@ Measure those outcomes on equivalent work.
 
 The historical fifteen scenarios under
 `internal/skillcheck/testdata/backend-skills` remain unchanged. They exercise supplied
-skills and synthetic decision evidence. Fresh discovery is a separate twelve-case
+skills and synthetic decision evidence. Fresh discovery is a separate fifteen-case
 corpus under `internal/skillcheck/testdata/skill-routing`: raw case inputs are in
 `inputs/`; evaluator-only rubrics and canned observations are outside that tree.
 
@@ -31,6 +31,9 @@ corpus under `internal/skillcheck/testdata/skill-routing`: raw case inputs are i
 | `go-fuzz-implicit` | Fuzz design with a weak oracle and an invalid input exclusion |
 | `shell-portability-implicit` | Pre-release review of a `curl \| sh` installer without a skill name |
 | `shell-portability-adjacent` | Error wrapping around a Go `exec.Command` call with no shell |
+| `orchestration-lite` | Substantial change with no open design choice: the `lite` flow, no spec writer or architect |
+| `orchestration-design` | Substantial change with an open design choice and an interface change: the `standard` flow with a design summary |
+| `orchestration-adjacent` | One-word fix: no orchestration and no workers |
 
 The `go test ./internal/skillcheck` gates validate raw/oracle separation, local paths,
 required references, discovery modes, and deterministic canned scoring. Canned

@@ -68,6 +68,7 @@ func TestWorkerPathsRejectIntermediateSymlinkAliases(t *testing.T) {
 }
 
 func TestWorkerOwnershipRechecksPathAliasesAtHandoffAndFreshness(t *testing.T) {
+	t.Parallel()
 	for _, completed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "handoff", true: "freshness"}[completed], func(t *testing.T) {
 			record, ref := fixtureTask(t, helperPlan(t, "small", "pass"))

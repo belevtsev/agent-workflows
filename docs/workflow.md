@@ -17,7 +17,7 @@ which replaces its profiles and roles. These are editable routing policies
 interpreted by the skill; neither host loads the YAML as native settings or changes
 a running chat's model automatically. How the coordinator resolves profiles,
 overrides and mismatches is in
-[profiles and policy](../skills/task-orchestration/references/hosts.md#profiles-and-policy).
+[profiles and policy](../skills/task-orchestration/references/hosts.md).
 
 The skill reads the routing from the policy files it ships with; `cw` reads only
 the consultation part of a policy (see [model policy](operations.md#model-policy)).
@@ -61,10 +61,13 @@ policies without it retain their fallback behavior.
 
 ## Review loops
 
-Substantial work that builds new behaviour has a review loop at every stage:
-spec writer ⇄ reviewer (spec) → architect ⇄ reviewer (design) → implementer ∥
-test engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
-implementer → `cw task verify` → gated commit. One `reviewer` agent runs every
+A substantial task runs the `lite` profile by default: implementer ∥ test
+engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
+implementer → `cw task verify` → gated commit. `standard` adds architect ⇄
+reviewer (design) first, for an open design choice or a public interface
+change; `strict` also adds spec writer ⇄ reviewer (spec), when the user asks or
+the change touches security, data integrity or concurrency
+([profiles](operations.md#profiles)). One `reviewer` agent runs every
 stage with the contract its brief names; findings go back to that stage's
 author; the severity grades and the per-stage review cap are in
 [review stages](../skills/task-orchestration/references/worker-handoffs.md#review-stages).
@@ -77,12 +80,12 @@ requirement reaches a fresh one only as its requirement ID, contract-level
 inputs and expected outcome. Such a reproduction test stays as a regression
 test authored with source access: it is not requirement coverage and needs
 no test-engineer dispatch.
-A small task skips the flow, the spec and design stages included, and the
+A task that is not substantial skips the flow, and the
 [contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)
-says when a substantial task skips the spec stage. After the before checkpoint,
+says when a `strict` task skips the spec stage. After the before checkpoint,
 which is unchanged, advisers join only at four decision points and only when
 available
-([adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow)).
+([adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow)).
 
 ## Independent test engineers
 
@@ -90,11 +93,13 @@ When a substantial task adds or materially changes behavioral tests, helpers,
 fixtures, golden data, fuzz seeds or tolerances, or when the user asks, the
 coordinator dispatches a fresh
 [test engineer](../skills/task-orchestration/references/contracts/test-engineer.md)
-under the `test_engineer` role. For a small task the coder writes the tests and
-the reviewer checks each against the Code Review Rules. That contract holds the
+under the `test_engineer` role. A task that is not
+[substantial](../global/AGENTS.md#substantial-tasks) dispatches no workers: the
+agent writes the tests itself and checks its diff against the Code Review Rules.
+That contract holds the
 input boundary, the Go declaration extract, feedback, replacement and record
 rules; the
-[host mapping](../skills/task-orchestration/references/hosts.md#independent-test-engineers-on-either-host)
+[host mapping](../skills/task-orchestration/references/hosts.md)
 says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
 checks its tests before integration.
 
@@ -236,8 +241,9 @@ and `providers`: a possibly empty mapping of enabled provider IDs to pinned mode
 The Claude Code policy has no consultation section; participation follows the
 shared policy, the keys present and the user's opt-in. Policy changes require their own authorized
 change. Which advisers participate, how `cw task start` binds them, what
-`--policy` does and how to opt in to Jev are in
-[participation](../skills/task-orchestration/references/consultation-helper.md#participation);
+`--policy` does and how to opt in to Jev are in the user-facing
+[adviser setup](advisers.md#configure-advisers) and in
+[participation](../skills/task-orchestration/references/adviser-providers.md#participation);
 the measurement behind leaving Jev out is in
 [why Jev is opt-in](../skills/task-orchestration/references/adviser-providers.md#why-jev-is-opt-in).
 
@@ -250,9 +256,10 @@ complete only after `cw task verify`. When the checkpoints are required, how eac
 request is prepared, sent, recorded and reused is in
 [task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
 and the sections after it; the plan shape that declares them not required is in
-[start and bind a task](../skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+state 1 of the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow)
+and in the example `cw task start --help` prints.
 After the before checkpoint, advisers join only at the four
-[adviser points](../skills/task-orchestration/references/consultation-helper.md#adviser-points-in-the-flow),
+[adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow),
 and only when the task's binding holds one; otherwise each point is skipped and
 recorded as "no advisers configured", and the flow runs unchanged.
 

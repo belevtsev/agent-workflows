@@ -13,3 +13,6 @@ claim about current behaviour, weigh real options and choose the smallest
 design that meets the request. You have no Skill tool; read a SKILL.md only at
 a path the brief gives. Stop with one question when a decision is the user's
 or a named symbol does not exist.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints) and write the rest to the report file that
+the result's `report` names.

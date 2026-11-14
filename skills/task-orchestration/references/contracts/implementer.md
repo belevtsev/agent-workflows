@@ -18,9 +18,8 @@ same contract.
   read each `SKILL.md`.
 - An artefact directory for your outputs, outside the source tree and separate
   from the architect's.
-- On revision, the accepted [code review](code-review.md) and
-  [adversarial tester](adversarial-tester.md) findings and the coordinator's
-  dispositions, by finding ID, with any `design.md` rule
+- On revision, the accepted code review and adversarial tester findings and
+  the coordinator's dispositions, by finding ID, with any `design.md` rule
   removed: a finding that only `design.md` supports arrives as a constraint
   in contract terms under its ID. Never edit a kept adversarial test.
 
@@ -32,8 +31,8 @@ same contract.
   to build something else.
 - The test engineer's tests, matrix or requirement map while they are being
   written. Run them only when the coordinator integrates them.
-- Paths outside `owned_paths`; [worker handoffs](../worker-handoffs.md#assign-before-dispatch)
-  says how shared-filesystem workers preserve others' edits.
+- Paths outside `owned_paths`. Other workers may share the filesystem: leave
+  their edits as they are.
 
 ## Required outputs
 
@@ -41,15 +40,15 @@ same contract.
 2. `self-review.md` in the artefact directory: one line per checklist item
    below, each `yes` with `path:line` evidence or `n/a` with the reason; then
    a Checks section listing each command run, its exit status and the log path.
-3. The handoff result in the shape [worker handoffs](../worker-handoffs.md#return-and-accept-evidence)
-   describes, with `changed_files` covering every file you touched.
+3. The handoff result in the shape `cw task schema handoff` prints, with
+   `changed_files` covering every file you touched.
 4. On revision, `change-log.md` in the artefact directory answering every code
    review finding by ID: what changed, with `path:line`, or why nothing did.
 
-Keep the handoff result within the [handoff caps](../worker-handoffs.md#handoff-caps):
-at most 6 KiB, a `summary` of at most 1,200 bytes, and each finding one line of
-at most 400 bytes with its ID, severity and source `evidence`. Put the full
-reasoning in a report file of at most 512 KiB that the result's `report` names.
+The result is at most 6 KiB, not counting `changed_files`, with a `summary` of
+at most 1,200 bytes and each finding one line of at most 400 bytes with its ID, severity and source
+`evidence`. Put the full reasoning in the report file that the result's
+`report` names, at most 512 KiB. `cw task handoff` refuses a larger result.
 
 ## Quality bar
 
@@ -88,10 +87,8 @@ Stop and return to the coordinator when:
 - a requirement is ambiguous, two requirements conflict, or meeting one needs
   a change outside your owned paths or to the public interface; ask one
   precise question, citing the requirement ID, and keep working on the rest.
-  A contract change comes back through the
-  [contract amendment](README.md#contract-amendment) procedure as an amended
-  contract and brief in a refreshed assignment, never as the test engineer's
-  work;
+  A contract change comes back as an amended contract and brief in a refreshed
+  assignment, never as the test engineer's work;
 - a check the brief names cannot run on this host; report which and why;
 - the change is complete, every checklist item is answered and every check
   passed.

@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `/hooks` after updating, or Codex runs none; a given `--host` decides the host over the hook input ([Codex hooks](docs/hooks.md#codex)).
 - `--dry-run` is a flag of `cw consult`, `cw pack add|remove` and `cw task init` only, after the command name: drop it from any other command,
   which now exits 2 (`task show --dry-run` did not); so does an extra argument on every command, `cw hook` included ([paths](docs/operations.md#paths)).
+- The commit gate counts a task record whose latest revision is dated after the current time as just written, where it skipped it;
+  `cw task abandon` is the way out of a record with a wrong far-future date ([which records gate](docs/hooks.md#which-records-gate)).
 
 - While a task that passed `cw task verify` is open, both commit gates deny a `git commit` recording staged bytes or a mode that differ
   from the verified working tree for a path it changes, and ask about one a git filter staged ([which source counts](docs/hooks.md#which-source-counts)).
@@ -72,14 +74,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- A substantial task runs the `lite` flow by default: implementer and test engineer in parallel, test review, code review; `standard`
+  adds the design stage and `strict` the spec stage ([profiles](docs/operations.md#profiles)); reviewers skip style.
+- "Substantial task" is defined only in the working conventions; a task that is not substantial dispatches no workers, and the agent
+  checks its own diff; a new [glossary](skills/task-orchestration/references/glossary.md) names each term and role once.
+- The orchestration skill is cut a second time, from 187 KB to 144 KB: every worker contract stands alone, the two host pages merge
+  into `hosts.md`, the task presets go, and each `cw publish` status moves to the docs ([publishing](docs/operations.md#publishing-a-verified-task)).
+- The orchestration skill loads less: publication splits into `cw publish` and its fallback worker, the host mapping into a page per host,
+  and the multilingual eval corpus moves out of the installed skill to `evals/multilingual/` ([host mapping](skills/task-orchestration/references/hosts.md)).
+- The test-engineer and code-review contracts hold worker rules only (each under 8 KB), so a dispatched worker reads less; the coordinator's
+  part moves to [dispatching reviews and tests](skills/task-orchestration/references/dispatching-reviews-and-tests.md).
+- The orchestration skill's workflow reference shrinks from 46 KB to 10 KB: base-branch merges and `cw metrics` get their own references,
+  and the Go rule and test evidence rules move to [operations](docs/operations.md#the-go-package-test-rule).
+- The worker-handoffs reference is cut from 36 KB to 10 KB and states the review cap as three rules and the round budget as four;
+  what `cw task assign`, `handoff` and `bundle` check moves to [worker records](docs/operations.md#worker-records).
+- The coordinator reads adviser guidance only when a task binds advisers; checkpoints and adjudication alone need the
+  [checkpoint helper](skills/task-orchestration/references/consultation-helper.md), now under 10 KB ([advisers](docs/advisers.md)).
+- A test holds each `*.md` file of the orchestration skill, and their sum, to a byte cap that only goes down, toward 10 KB a file and
+  90 KB in all; a new file needs a cap ([repository content checks](docs/development.md#repository-content-checks)).
+- The 90,000-byte budget of the orchestration skill counts what a default `lite` task loads (about 76 KB): the other references are
+  listed with the condition that loads each, and the folder total only goes down ([content checks](docs/development.md#repository-content-checks)).
 - CI gives each package 15 minutes on macOS, where `cmd/cw` takes over eight; go test's default of 10 failed it
   ([CI](docs/development.md#continuous-integration)).
+- CI tests the Go packages in four shards per system (`internal/taskflow`; `cmd/cw`; `internal/cli` with `internal/langpack`; the rest), so the Linux race run
+  and the macOS run finish sooner; the required checks `Native Go / ubuntu-latest` and `Native Go / macos-latest` keep their names and pass
+  only when every shard passes ([continuous integration](docs/development.md#continuous-integration)).
 - One host requirements table lists the platform, Claude Code, Codex, Go and git versions; the docs name model aliases and profiles
   and link the model policies instead of model releases, and drop unmeasured token counts ([host requirements](docs/operations.md#host-requirements)).
 - `pack.yaml` keeps only the fields `cw` reads (`commands.race` among them), dropping `tests`, `skills`, `review` and the
   other unread slots, and `cw pack list` prints each pack's declared fields, now with `commands` ([pack.yaml](docs/packs.md#packyaml)).
 - `cw --help` lists the core commands apart from the experimental ones (`consult`, `graphify`, `keys`, `metrics`), which semver
   does not cover; one page states what each version number promises ([stability](docs/operations.md#stability)).
+- `cw --help` no longer lists `cw graphify`, which needs a Python runtime `cw` does not install; the command and
+  `cw graphify --help` still work ([stability](docs/operations.md#stability)).
 - `cw doctor --summary` lists under `problems`, and turns `attention` for, only what blocks the workflow (git, `cw` on `PATH`, the skills);
   optional tools are counted in `optional_missing`, and `--all` lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The `pre-merge-commit` hook lets a merge commit through during an unverified task when a remote-tracking ref contains every
@@ -96,19 +123,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `internal/taskflow` no longer links the adviser HTTP providers or `net/http` ([ports](docs/development.md#tasks-diagnostics-and-metrics)).
 - `taskflow` types its refusals (locked, abandoned, revision limit, invalid input), so code and tests tell them from failures with
   `errors.Is`; messages, JSON output and exit statuses are unchanged ([typed errors](docs/development.md#tasks-diagnostics-and-metrics)).
+- `cmd/cw` tests build `cw` once per run and run in parallel (about 90 s to 25 s locally), and the `internal/taskflow` tests of the
+  4,096-revision limit run at 64 revisions, with one test pinning the shipped value ([development](docs/development.md#tests)).
 - Cheaper default models for simple work: Claude Code lookups run on Haiku 5.5 and summaries on Sonnet 5.5; Codex Sol runs at `high`, keeping `max`
   for planning, architecture and diagnosis, and recommended Codex memory passes use Luna with no context window override ([routing](docs/workflow.md)).
+- [Agents](docs/agents.md) states why the reviewer and test engineer do not run in a Claude Code worktree: it would hold
+  the wrong source and does not block reads, so their independence rests on the contracts and briefs.
 - `cw task verify` runs a list of rules whose findings carry stable codes, and `--summary` selects by code, so rewording a
   message no longer returns a fixed caveat to `verify` or `doctor` summaries; JSON output is unchanged ([rules](docs/development.md#tasks-diagnostics-and-metrics)).
 - `cw task verify` names an unresolved, stale or invalid decision "coordinator decision" instead of "Codex task decision", since either host
   may coordinate; the problem's place, exit status and JSON keys are unchanged ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
 - The session-start tests no longer depend on its 2 s and 5 s deadlines, so a loaded CI machine does not fail them; cw keeps
   those deadlines and its session-start output unchanged ([session start](docs/hooks.md#session-start)).
+- The task-orchestration skill starts every stage with a fresh worker from `cw task brief` and names one file per step, and each agent
+  returns at most the capped 6 KiB result, the rest in its report file ([skill](skills/task-orchestration/SKILL.md#keep-the-coordinator-lean)).
+- Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
+  today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
+- `cw` links `golang.org/x/sys` v0.50.0, up from v0.49.0; `THIRD_PARTY.md` lists the new version.
 
 ### Fixed
 
 - On macOS, a cgo Go check earns credit only when the developer directory `xcode-select -p` prints is one the user cannot change,
   and it runs with xcrun's lookup cache off, so a user-owned `Xcode.app` no longer earns it ([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)).
+- After the wall clock steps back, `cw task` commands keep writing: stored times run ahead of the clock until it catches up, so runs
+  made meanwhile show equal starts and `0s` in the timeline ([task record format](docs/development.md#task-record-format)).
 - A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;
   an existing file there is still never replaced ([consultation](docs/advisers.md#consult-advisers-and-let-the-coordinator-decide)).
 - `cw task start` and `cw consult` no longer fail when only some adviser key variables are set and the configuration directory
@@ -135,6 +173,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   git+ssh, ssh+git, git or file in lower case) as 4 `remote-split` ([publish](docs/operations.md#global-project-diagnostics-and-evidence)).
 - Resuming a Codex thread no longer adds the conventions again, nor a second `cw gate install` line beside the compaction that
   can follow; startup and compaction still add them ([session start](docs/hooks.md#session-start)).
+- The checkpoint reference again says how a task across several repositories sends one adviser request (`state.task_contexts`),
+  a rule the first cut of the skill dropped ([advisers](docs/advisers.md)).
+
+- The four test-engineer eval prompts name the `test-strategy` references to apply by path; they still pointed at
+  links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
+- The fork-swarm cancellation test of `internal/graphify` counts a trial only when the kill finds all 32 forkers forking and
+  starts it again otherwise, at most ten times a run; a loaded macOS runner failed it twice when one forker never reported.
 
 ## [3.0.0-rc.2] - 2026-11-12
 
@@ -315,7 +360,7 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 [install]: docs/operations.md#install
 [getcw]: docs/operations.md#get-cw
-[types]: skills/task-orchestration/references/hosts.md#worker-agent-types
+[types]: skills/task-orchestration/references/hosts.md
 [start]: skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task
 [authorship]: skills/task-orchestration/references/worker-handoffs.md#test-rules-and-test-authorship
 [publish]: skills/task-orchestration/references/github-worker.md#publish-with-cw-publish

@@ -13,17 +13,13 @@ import (
 )
 
 // claudeAgentAlias is the Agent tool alias for each full model ID a Claude
-// Code profile may name. Agent accepts aliases only; references/hosts.md
-// states the same mapping.
+// Code profile may name. Agent accepts aliases only; references/hosts.md tells
+// the coordinator to pass the alias of the profile's model family.
 var claudeAgentAlias = map[string]string{
 	"claude-opus-5-5":   "opus",
 	"claude-sonnet-5-5": "sonnet",
 	"claude-haiku-5-5":  "haiku",
 }
-
-// hostsProfileTable is the header of the profile table in
-// references/hosts.md that the coordinator dispatches Claude Code workers by.
-const hostsProfileTable = "| Profile | Agent tool `model` | Agent tool `effort` |"
 
 type claudeRouting struct {
 	Profiles map[string]struct {
@@ -61,34 +57,6 @@ func readRouting(t *testing.T, path string, value any) {
 	}
 }
 
-// markdownTableRows returns the body rows of the table whose header line is
-// header, keyed by the first cell, with backticks stripped from every cell.
-func markdownTableRows(t *testing.T, path, header string) map[string][]string {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(path)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	lines := strings.Split(string(data), "\n")
-	start := slices.Index(lines, header)
-	if start < 0 {
-		t.Fatalf("%s: no table with header %q", path, header)
-	}
-	rows := map[string][]string{}
-	// Skip the header and its separator line.
-	for _, line := range lines[min(start+2, len(lines)):] {
-		if !strings.HasPrefix(line, "|") {
-			break
-		}
-		var cells []string
-		for _, cell := range strings.Split(strings.Trim(line, "|"), "|") {
-			cells = append(cells, strings.Trim(strings.TrimSpace(cell), "`"))
-		}
-		rows[cells[0]] = cells[1:]
-	}
-	return rows
-}
-
 // TestClaudePolicyRoutesEvidenceRolesToCheaperModels checks the Claude Code
 // routing of the read-only evidence roles and of the roles kept on Opus.
 //
@@ -96,9 +64,9 @@ func markdownTableRows(t *testing.T, path, header string) map[string][]string {
 // summarization on Sonnet, both at high and with bounded_evidence scope.
 // implementer, test_review and spec_review stay on Opus at high, since Sonnet
 // for them is an eval variable rather than a shipped default; the decision
-// roles stay on Opus at xhigh. The coordinator dispatches through the profile
-// table in hosts.md, so that table has exactly one row per policy profile,
-// naming the profile model's Agent alias and the profile's effort.
+// roles stay on Opus at xhigh. The coordinator reads each profile's model and
+// effort from the policy and dispatches by alias, so every profile's model has
+// an Agent alias and hosts.md, the one host reference, names that alias.
 func TestClaudePolicyRoutesEvidenceRolesToCheaperModels(t *testing.T) {
 	var m manifest
 	readJSON(t, "skills-manifest.json", &m)
@@ -134,26 +102,19 @@ func TestClaudePolicyRoutesEvidenceRolesToCheaperModels(t *testing.T) {
 	}
 
 	const hosts = "skills/task-orchestration/references/hosts.md"
-	rows := markdownTableRows(t, hosts, hostsProfileTable)
-	for _, name := range slices.Sorted(maps.Keys(policy.Profiles)) {
-		profile := policy.Profiles[name]
-		alias, ok := claudeAgentAlias[profile.Model]
-		if !ok {
-			t.Errorf("%s: profile %s names %q, which has no Agent tool alias", m.ClaudeModelPolicy, name, profile.Model)
-			continue
-		}
-		row, ok := rows[name]
-		if !ok {
-			t.Errorf("%s: no row for profile %s", hosts, name)
-			continue
-		}
-		if len(row) != 2 || row[0] != alias || row[1] != profile.Effort {
-			t.Errorf("%s: profile %s row is %q, want [%s %s]", hosts, name, row, alias, profile.Effort)
-		}
+	page, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(hosts)))
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, name := range slices.Sorted(maps.Keys(rows)) {
-		if _, ok := policy.Profiles[name]; !ok {
-			t.Errorf("%s: row for profile %s, which %s does not define", hosts, name, m.ClaudeModelPolicy)
+	for _, name := range slices.Sorted(maps.Keys(policy.Profiles)) {
+		model := policy.Profiles[name].Model
+		alias, ok := claudeAgentAlias[model]
+		if !ok {
+			t.Errorf("%s: profile %s names %q, which has no Agent tool alias", m.ClaudeModelPolicy, name, model)
+			continue
+		}
+		if !strings.Contains(string(page), "`"+alias+"`") {
+			t.Errorf("%s: does not name the alias `%s` of profile %s", hosts, alias, name)
 		}
 	}
 }

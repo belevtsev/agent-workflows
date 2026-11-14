@@ -8,6 +8,7 @@ package taskflow_test
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
@@ -599,9 +600,10 @@ func TestTimelineTL4OrderByInstantNotText(t *testing.T) {
 }
 
 // TL-4: equal start instants (some written in other locations) order
-// assignments before checks, then IDs in ascending byte order. The check ID
-// "0..." sorts before every assignment ID, and "B" sorts before "a" only by
-// bytes, so a missing kind tie-break or a case-folding comparison fails.
+// assignments before checks, then by position in the record, the order the
+// entries were written in. The check ID "0..." sorts before every assignment
+// ID, and no kind's IDs are in byte order, so a missing kind tie-break or an
+// ID comparison fails.
 func TestTimelineTL4TieBreaks(t *testing.T) {
 	record := taskflow.Record{
 		ID: tlnTaskID, Directory: "/d", CreatedAt: tlnBase, UpdatedAt: tlnAt(time.Hour),
@@ -622,15 +624,15 @@ func TestTimelineTL4TieBreaks(t *testing.T) {
 	for _, entry := range got.Entries {
 		ids = append(ids, entry.ID)
 	}
-	want := []string{"B", "a", "a-1", "b", "00000000000000000000000000000000", "a0000000000000000000000000000000", "ffffffffffffffffffffffffffffffff"}
+	want := []string{"b", "a-1", "a", "B", "ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000", "a0000000000000000000000000000000"}
 	if !slices.Equal(ids, want) {
 		t.Errorf("order = %v, want %v", ids, want)
 	}
 }
 
 // TL-4: entries with a missing start come after every present start, even one
-// far in the future, ordered assignment before check, then by ID. A sort that
-// treats the zero time as the earliest instant fails.
+// far in the future, ordered assignment before check, then by position in
+// the record. A sort that treats the zero time as the earliest instant fails.
 func TestTimelineTL4MissingStartLast(t *testing.T) {
 	record := taskflow.Record{
 		ID: tlnTaskID, Directory: "/d", CreatedAt: tlnBase, UpdatedAt: tlnAt(time.Hour),
@@ -650,7 +652,7 @@ func TestTimelineTL4MissingStartLast(t *testing.T) {
 	for _, entry := range got.Entries {
 		ids = append(ids, entry.ID)
 	}
-	want := []string{"z", "ffffffffffffffffffffffffffffffff", "a", "b", "00000000000000000000000000000000", "abcabcabcabcabcabcabcabcabcabcab"}
+	want := []string{"z", "ffffffffffffffffffffffffffffffff", "b", "a", "abcabcabcabcabcabcabcabcabcabcab", "00000000000000000000000000000000"}
 	if !slices.Equal(ids, want) {
 		t.Errorf("order = %v, want %v", ids, want)
 	}
@@ -1021,7 +1023,8 @@ func tlnModel(record taskflow.Record) taskflow.Timeline {
 		}})
 	}
 	kindRank := map[string]int{"assignment": 0, "check": 1}
-	slices.SortFunc(model, func(a, b tlnModelEntry) int {
+	// Stable: entries equal in start and kind keep the record's order.
+	slices.SortStableFunc(model, func(a, b tlnModelEntry) int {
 		aMissing, bMissing := a.start.IsZero(), b.start.IsZero()
 		switch {
 		case !aMissing && bMissing:
@@ -1033,10 +1036,7 @@ func tlnModel(record taskflow.Record) taskflow.Timeline {
 				return c
 			}
 		}
-		if c := kindRank[a.entry.Kind] - kindRank[b.entry.Kind]; c != 0 {
-			return c
-		}
-		return strings.Compare(a.entry.ID, b.entry.ID)
+		return kindRank[a.entry.Kind] - kindRank[b.entry.Kind]
 	})
 	entries := []taskflow.TimelineEntry{}
 	for _, item := range model {
@@ -1109,10 +1109,13 @@ func TestTimelinePropertyMatchesContractModel(t *testing.T) {
 	}
 }
 
-// TL-5 over the domain: shuffling the assignment and check slices, moving
-// every timestamp to another location, or calling twice gives an equal
-// timeline, and the argument is left unchanged.
+// TL-5 over the domain: moving every timestamp to another location, or
+// calling twice, gives an equal timeline, and the argument is left unchanged.
+// Shuffling the assignment and check slices keeps every entry and moves only
+// entries equal in start and kind, which follow the record's order: the
+// result is the contract model of the shuffled record.
 func TestTimelinePropertyDeterministicAndPure(t *testing.T) {
+	t.Parallel()
 	for seed := uint64(1); seed <= tlnPropertySeeds; seed++ {
 		record := tlnRandomRecord(seed)
 		first := tlnBuild(t, record)
@@ -1128,8 +1131,18 @@ func TestTimelinePropertyDeterministicAndPure(t *testing.T) {
 			shuffled.Assignments[i], shuffled.Assignments[j] = shuffled.Assignments[j], shuffled.Assignments[i]
 		})
 		r.Shuffle(len(shuffled.Checks), func(i, j int) { shuffled.Checks[i], shuffled.Checks[j] = shuffled.Checks[j], shuffled.Checks[i] })
-		if got := tlnBuild(t, shuffled); !reflect.DeepEqual(first, got) {
-			t.Fatalf("seed %d: reordering assignments or checks changed the timeline:\n%+v\n%+v", seed, first, got)
+		got := tlnBuild(t, shuffled)
+		if want := tlnModel(shuffled); !reflect.DeepEqual(got, want) {
+			t.Fatalf("seed %d: the timeline of the reordered record differs from the contract model:\n%+v\n%+v", seed, got, want)
+		}
+		byID := func(a, b taskflow.TimelineEntry) int {
+			return cmp.Or(strings.Compare(a.Kind, b.Kind), strings.Compare(a.ID, b.ID))
+		}
+		before, after := slices.Clone(first.Entries), got.Entries
+		slices.SortFunc(before, byID)
+		slices.SortFunc(after, byID)
+		if !reflect.DeepEqual(before, after) {
+			t.Fatalf("seed %d: reordering assignments or checks changed an entry:\n%+v\n%+v", seed, before, after)
 		}
 		for _, loc := range tlnPropertyLocations {
 			if got := tlnBuild(t, tlnInLocation(tlnRandomRecord(seed), loc)); !reflect.DeepEqual(first, got) {

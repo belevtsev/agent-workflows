@@ -33,7 +33,7 @@ names:
   and the code ([design-review](../skills/task-orchestration/references/contracts/design-review.md)).
   `design-revision-scope-growth` is a follow-up review: the revision resolves
   the accepted findings and adds an unrequested feature, which the
-  [growth check](../skills/task-orchestration/references/worker-handoffs.md#review-stages)
+  [growth check](../skills/task-orchestration/references/contracts/design-review.md)
   must flag as `scope creep`.
 - `tests-*` (two cases): test review of the test engineer's matrix,
   requirement map and tests against the interface contract, with red-first
@@ -45,6 +45,17 @@ names:
   design drift, with one grader per planted defect; `code-upload-quota`
   also plants a behaviour defect in executed code whose grader needs a
   failing reproduction test and its command.
+
+The `spec-*`, `design-*` and `tests-*` cases also grade the size of
+`artefacts/handoff.json` (`graders/handoff-size.md`): at most 6,144 bytes, the
+cap `cw task handoff` puts on a result. The regex counts UTF-16 units and
+never passes a larger file. It fails a smaller one only when the file holds
+characters outside ASCII and is over 6,016 units with up to 64 of them, over
+5,120 units with up to 512, or over 2,048 units with more. It reads the file
+as written, so indentation counts. The `code-*` cases have no such grader:
+`cw` measures the cap without `reach_runs`, which a code review returns, so a
+valid result can be larger as a file. The test-engineer cases write no handoff
+file and have none either.
 
 Each case's `testdata/` holds the scenario inputs the brief names; the case's
 `scaffold.sh` copies it into the run's workspace, so pass `--scaffold`. Some

@@ -14,3 +14,6 @@ named checks on the final tree, report real results, fill the
 self-review checklist with `path:line` evidence. No Skill tool: read a
 SKILL.md only at a path the brief gives. Ask by requirement ID when
 requirements conflict or the change must leave your paths. No commits.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints) and write the rest to the report file that
+the result's `report` names.

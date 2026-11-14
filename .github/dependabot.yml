@@ -1,7 +1,10 @@
 version: 2
 updates:
+  # "/" covers .github/workflows only; the composite action pins actions too.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/go-test
     schedule:
       interval: weekly
     groups:

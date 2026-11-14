@@ -132,6 +132,7 @@ func unsupportedVersionTask(t *testing.T, variant unsupportedVersionVariant, mar
 // record file changes, no artifact or .lock remains, and no planned check
 // child runs.
 func TestUnsupportedTaskRecordVersionsAreRefusedWithoutWrites(t *testing.T) {
+	t.Parallel()
 	for _, variant := range unsupportedVersionVariants() {
 		t.Run(variant.name, func(t *testing.T) {
 			marker := filepath.Join(t.TempDir(), "probe-must-not-run")
@@ -220,6 +221,7 @@ func startMembersTask(t *testing.T, drop []string, rewrite func(revision, last i
 // lock and no probe marker). A later revision that drops a member is caught
 // by the immutability check instead (l4_rules_test.go).
 func TestRecordsWithoutStartMembersAreRefusedWithoutWrites(t *testing.T) {
+	t.Parallel()
 	every := func(int, int) bool { return true }
 	first := func(revision, _ int) bool { return revision == 1 }
 	for _, variant := range []struct {

@@ -22,7 +22,12 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
 )
 
-const maxTaskRevisions = 4096
+// maxTaskRevisions is the most revisions one task may hold: 4,096. It is a
+// variable only so that this package's own tests can walk a record to the
+// limit without building 4,096 revisions (lowerRevisionLimit in
+// storage_test.go). Nothing else assigns it: it is unexported, and no flag,
+// environment variable or exported function reaches it.
+var maxTaskRevisions = 4096
 
 const (
 	// taskLockName is the regular file whose flock serialises the writers of
@@ -637,7 +642,7 @@ func updateDiscarding(ctx context.Context, env Env, path string, additional int,
 	record.Version = Version
 	record.Revision++
 	record.PreviousSHA256 = previous
-	record.UpdatedAt = env.now()
+	env.stamp(&record)
 	if err := requireRevisionCapacity(record, 0, ""); err != nil {
 		return Record{}, err
 	}

@@ -62,10 +62,42 @@ environment or bounds of every check there.
 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test -race -count=1 ./...
 ```
 
+As a `cw task` check, the full check is
+`["go", "test", "-race", "-count=1", "-json", "./..."]` with `GOWORK=off`
+exported in the shell that runs `cw task run`, and a timeout that covers the
+whole suite. It runs on the working tree, so `cw task verify` can complete
+before the commit; `-json` makes it the check that proves mapped tests. It
+takes no coverage flags: the `internal/graphify` process tests run the test
+binary again and compare its output, and fail under `-cover` (with
+`GOCOVERDIR` set as well). For the code review's profile, bind a second check
+with the coverage flags that names the packages the plan expects to change,
+outside `internal/graphify`; a change inside `internal/graphify` gets no
+profile.
+
 Use `go test` with a focused package or test filter while developing. Tests use
 temporary homes, synthetic Git repositories and local HTTP servers. They never
 change the user's configuration, consult hosted decision models, or require service
 credentials.
+Host smokes are synthetic acceptance evidence; keep live model calls out of CI.
+
+### Tests
+
+`cmd/cw` builds its `cw` binary once per test run (`buildPlainCW`), so a test
+runs or copies that file and never moves or changes it. Every top-level test
+there calls `t.Parallel()`; a new one must own its directories and must not
+call `t.Setenv`.
+
+A task holds at most 4,096 revisions, and every load decodes and re-checks
+each one. The `internal/taskflow` tests that walk a record to that limit call
+`lowerRevisionLimit`, which runs them at 64 revisions, so they must not call
+`t.Parallel()`. `TestShippedRevisionLimitIs4096` alone runs at the shipped
+value and fails if it changes. Only that package's tests can lower the limit.
+
+In `internal/taskflow`, a top-level test that takes 0.2 s or more calls
+`t.Parallel()` unless it sets the environment, changes directory or sets a
+package variable; a new slow test should do the same. The `internal/graphify`
+tests stay serial: they bound process timing, and one missed its 2 s bound on
+the macOS runner when they ran beside each other.
 
 ### Repository content checks
 
@@ -85,8 +117,8 @@ GOWORK=off go test ./internal/skillcheck
 - the paths in `skills-manifest.json` and the plugin manifests exist;
 - the model policy loads; its shipped routing keeps Claude Code lookup on `haiku`,
   summarization on `sonnet`, and Codex `max` for planning, architecture and
-  diagnosis only; the recommended Codex memory passes use `luna`; and the profile
-  table in `references/hosts.md` gives each Claude Code profile's alias and effort;
+  diagnosis only; the recommended Codex memory passes use `luna`; and every
+  Claude Code profile's model has an Agent alias that `references/hosts.md` names;
 - the pack manifests under `packs/` load, name only evidence rules built into
   `cw`, reference skills that exist, and equal the copies embedded in `cw`;
 - outside `skills/` and `third_party/` there is no `.sh`, `.py`, `.bash`, `.zsh`
@@ -105,7 +137,22 @@ GOWORK=off go test ./internal/skillcheck
 - no first-party Markdown file (any `.md` outside `third_party/`) opens a
   `mermaid` code block, since archify is the only diagram tool;
 - no line of `CHANGELOG.md` above the first released version heading is longer
-  than 200 characters.
+  than 200 characters;
+- each `*.md` file under `skills/task-orchestration` stays within its cap in
+  the table of `orchestration_budget_test.go`, and the files within the sum cap.
+  The caps are a ratchet under 10,240 bytes a file (8,192 a role contract): a
+  cut lowers its row and the sum, a new file needs a row;
+- the files a default `lite` task loads from that skill (`SKILL.md`, the
+  references every task reads and the four lite contracts, listed in
+  `lite_flow_budget_test.go`) hold at most 90,000 bytes together; every other
+  file is listed there with the condition that loads it;
+- only `global/AGENTS.md` states when a task is substantial; the skills, agents,
+  hooks, docs and model policies link to it;
+- in `.github/workflows/ci.yml` every job that uses the `go-test` action runs
+  each shard the action selects and passes it `matrix.shard`, with no
+  `exclude` list, step condition or `continue-on-error`, and each required
+  `Native Go` check runs with `always()` and fails unless the result of its
+  system's shard job is `success`.
 
 First-party automation must use Go. Script resources supplied by skills are
 exempt. Do not add Python tests, environment preparation, or release shell
@@ -145,8 +192,8 @@ and untrusted agreement.
 
 ### Multilingual evaluation
 
-The multilingual corpus is a skill resource, and `cwdev eval multilingual` is its
-runner:
+The multilingual corpus lives in `evals/multilingual/`, outside the shipped skill,
+and `cwdev eval multilingual` is its runner:
 
 ```sh
 GOWORK=off go run ./cmd/cwdev eval multilingual
@@ -157,7 +204,7 @@ deterministic scoring and safe bounded execution using synthetic transports. Liv
 runs (`--live --output-dir PATH`) call only configured providers and report the
 others as `not_run` with reason `not_configured`. Run the explicit hosted
 evaluation separately, following the
-[evaluation guide](../skills/task-orchestration/references/adviser-providers.md#multilingual-evaluation).
+[evaluation guide](advisers.md#evaluate-multilingual-judgments).
 Keep its reports outside source, freeze corpus/oracle hashes before requests, and
 retain incorrect or unavailable results without automatic retries. A live baseline
 measures only its labeled cases; it is not a CI assertion or production-quality
@@ -248,6 +295,17 @@ run `status` or context phase, fails validation with "invalid stored …".
   v3.0.0-rc.2 skips the task instead of gating it, and the hook of v3.0.0-rc.2
   or later asks before each commit and push. Run the same `cw` on every host
   and hook that shares a task store.
+- A revision's `updated_at`, and every time it adds (an assignment, handoff,
+  acceptance, approval, amendment, check start, usage sample or abandonment),
+  is the later of the clock and the previous `updated_at`, and a check's
+  `finished_at` is no earlier than its `started_at`. A wall clock that
+  steps back therefore cannot leave a stored time after the next revision's
+  `updated_at`, which the worker and amendment rules refuse. Until the clock
+  catches up, stored times run ahead of it, and the gate counts such a record
+  as just written ([Which records gate](hooks.md#which-records-gate)).
+  `created_at` and a verification's `checked_at` are the clock's own reading:
+  the gate compares them with each other across records, and no record rule
+  orders `checked_at` against `updated_at`.
 - The hook selects a task by the newest revision it can decode, reading
   `plan.kind`, `baseline.root` and `updated_at` without loading the chain, so
   that an older hook can still ask about a record it cannot read. Those three
@@ -322,8 +380,11 @@ preserved licenses are covered by the import-provenance checks in
 
 | Job | Steps |
 | --- | --- |
-| `Native Go / ubuntu-latest` | gofmt check, `go vet ./...`, `go test -race -count=1 ./...` |
-| `Native Go / macos-latest` | gofmt check, `go vet ./...`, `go test -count=1 -timeout=15m ./...` |
+| `Go shard 1 of 4 / <system>` | the tests of `internal/taskflow` |
+| `Go shard 2 of 4 / <system>` | gofmt check, `go vet ./...`, then the tests of `cmd/cw` |
+| `Go shard 3 of 4 / <system>` | the tests of `internal/cli` and `internal/langpack` |
+| `Go shard 4 of 4 / <system>` | the tests of every other package |
+| `Native Go / ubuntu-latest`, `Native Go / macos-latest` | the required checks: each passes only when all four shards of its system passed |
 | `Lint and vulnerabilities` | golangci-lint v2.15.0 with [`.golangci.yml`](../.golangci.yml), then govulncheck v1.9.0 `./...`, each for Linux and then `GOOS=darwin` |
 | `Plugin manifests` | `claude plugin validate .` and `claude plugin validate ./third_party/cc-skills-golang` |
 
@@ -331,12 +392,24 @@ The lint job builds the pinned golangci-lint with the Go toolchain that go.mod
 selects, so the linter can load this module. `.golangci.yml` enables govet,
 staticcheck, errcheck, ineffassign, unused, gosec and misspell, and gives the
 reason for each exclusion; a suppressed finding in code carries a
-`//nolint:<linter> // reason` comment. govulncheck fails the job when the
+`//nolint:<linter> // reason` comment.
+
+It also enables `gocognit` (above 60), `funlen` (above 120 lines, comments not
+counted) and `gocyclo` (above 30). Today's offenders are listed one rule per
+function at the end of the file, so a new offender fails the job; the list only
+shrinks, and splitting a listed function removes its rule. errcheck no longer
+hides unchecked `Close`, `Remove` and `fmt.Fprint*` results everywhere: the
+existing ones are excluded per package with a reason, and fixing a package's
+sites removes its rule. govulncheck fails the job when the
 standard library of that toolchain or a dependency has a vulnerability that
 the code can reach; the fix is a newer toolchain or module version. The
 [contributing guide](../CONTRIBUTING.md#build-and-test) has the local commands.
 
-The race detector runs on Linux only. Only obsolete pull request runs are
+The shards run for `ubuntu-latest` (`go test -race -count=1`) and
+`macos-latest` (`go test -count=1 -timeout=15m`), so the race detector runs on
+Linux only. [`.github/actions/go-test`](../.github/actions/go-test/action.yml)
+holds their steps and the package lists of shards 1 to 3; a new package
+lands in shard 4 without a change. Only obsolete pull request runs are
 cancelled. `ci.yml` makes no release and receives no service credentials.
 
 `.github/workflows/evals.yml` is separate: it runs the paid `claude plugin eval`

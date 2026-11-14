@@ -15,3 +15,6 @@ shows is broken; discard every test that passes. Write only in your scratch copy
 and artefact directory: never edit the source or its existing tests, and never
 contact the test engineer. No Skill tool: read a SKILL.md only at a
 path the brief gives. No commits.
+Return at most the capped result (at most 6 KiB, in the shape
+`cw task schema handoff` prints) and write the rest, with each kept test's
+reasoning, to the report file that the result's `report` names.

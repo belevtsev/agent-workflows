@@ -61,6 +61,7 @@ func noopProgram(t *testing.T) string {
 // command reports with go env under the check's environment, so the run earns
 // no credit, and it records that GOFLAGS under go_env.
 func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
+	t.Parallel()
 	goflags := "-exec=" + noopProgram(t)
 	for _, tc := range []struct {
 		name string
@@ -108,6 +109,7 @@ func TestTaskRunUnderAGoEnvFileThatSkipsTestsEarnsNoCredit(t *testing.T) {
 // says why; the run passed and the exec program ran, so the repro is real
 // (review finding 5 on #139: a run that stops reproducing fails the test).
 func TestTaskRunForAnotherPlatformEarnsNoCredit(t *testing.T) {
+	t.Parallel()
 	e := newGoToolchainE2E(t)
 	goarch := "arm64"
 	if runtime.GOARCH == "arm64" {

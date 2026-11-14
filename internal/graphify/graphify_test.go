@@ -241,8 +241,9 @@ done`
 // it releases them, which keeps the number of live processes small while
 // forks are almost always in progress. After stormRunningAfter descendants it
 // creates a file named after its pid in the config.Running directory. Left
-// alone it stops after stormDuration, reaps every descendant and fails
-// without publishing a graph.
+// alone it stops after stormDuration, removes that file, reaps every
+// descendant and fails without publishing a graph. The file of a forker that
+// was killed while forking stays.
 func fakeForkSwarm(config fakeConfig) int {
 	self := strconv.Itoa(os.Getpid())
 	slots := make(chan struct{}, pgSwarmConcurrency)
@@ -280,6 +281,7 @@ func fakeForkSwarm(config fakeConfig) int {
 			}
 		}
 	}
+	_ = os.Remove(filepath.Join(config.Running, self))
 	return 28
 }
 

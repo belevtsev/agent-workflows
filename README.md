@@ -20,19 +20,26 @@ only ([Quick start](#quick-start)).
 
 <img src="docs/diagrams/workflow-overview.svg" alt="Flow of a substantial task: spec-writer and reviewer (spec, skipped with a reviewed spec or a precise request), architect and reviewer (design and contract), implementer in parallel with test-engineer and reviewer (tests), integrate and run, then reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, with the adversarial-tester beside the code review if the plan opts in, whose failing tests go to the implementer, then cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback when cw publish does not fit. Findings loop back to each author; optional advisers join at four decision points." width="820">
 
+A substantial task runs the `lite` profile by default, with four agents: the
+implementer and the test engineer work in parallel from one contract, a
+reviewer checks the tests, the coordinator integrates and runs them, and a
+reviewer checks the code before `cw task verify`. `standard` adds the architect
+and a design review, for an open design choice or a public interface change;
+`strict` also adds the spec writer and a spec review, when you ask or the change
+touches security, data integrity or concurrency
+([profiles](docs/operations.md#profiles)). The diagram shows `strict`.
 Each stage's review findings go back to its author, capped per stage. Advisers,
 when available, join only at four decision points after the before checkpoint;
 without them the loop runs unchanged, and the coordinator decides either way.
-The full flow is for substantial tasks: at least two of more than one package
-or component changed, behaviour that must match across platforms or shells,
-more than about 300 changed lines, or a design choice with real alternatives.
-Smaller changes stay lightweight. The spec stage is skipped when a reviewed
-spec exists or the request states every behaviour.
+The staged flow is for [substantial tasks](global/AGENTS.md#substantial-tasks).
+For any other task the agent writes the tests itself, checks its diff against
+the Code Review Rules before reporting, and commits or pushes only with your
+authorization; it dispatches no workers.
 
 | Agent | Gets | Produces | Claude Code model alias |
 | --- | --- | --- | --- |
-| spec-writer | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | `opus`, high |
-| architect | the reviewed spec or request | design, interface contract, implementation brief | `opus`, xhigh |
+| spec-writer (`strict`) | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | `opus`, high |
+| architect (`standard`, `strict`) | the reviewed spec or request | design, interface contract, implementation brief | `opus`, xhigh |
 | implementer | brief and contract | the change, a self-review | `opus`, high |
 | test-engineer | contract and interface, never the code | test matrix, tests, requirement map | `opus`, high |
 | adversarial-tester (opt-in) | contract, design, the integrated source and its coverage | tests that fail on the code, each a finding | `opus`, high |
@@ -43,8 +50,7 @@ The table is not a one-way pipeline: every review loops back to its stage's
 author, except that a code review finding about a test goes to a fresh test
 engineer, by requirement ID, contract-level inputs and expected outcome only;
 the implementer and the test engineer run in parallel from the same
-contract. Small tasks skip this staged flow: their author writes the tests and
-a reviewer checks them.
+contract.
 
 An alias resolves to Claude Code's current release of that model; the
 [Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) sets
@@ -161,7 +167,7 @@ vendored files, build constraints, generated code, embedded files or shared
 testdata. A pass after a failed run of the same check at the same source
 and `GOFLAGS` earns no credit until the source changes, and skipped tests
 are listed. A task keeps the rule
-it recorded at start; see [evidence rules](skills/task-orchestration/references/global-workflow.md#start-and-bind-a-task).
+it recorded at start; see [the Go package-test rule](docs/operations.md#the-go-package-test-rule).
 The `go` pack is selected by default. A task records it when `go.mod` or
 `go.work` is at the top of the selected path at start, and the rule then checks
 packages whenever `go.mod` is at the top at verify. A task that started with

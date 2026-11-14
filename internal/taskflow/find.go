@@ -132,8 +132,10 @@ func (o OpenRecord) NeedsConfirmation() bool { return o.Unreadable != "" }
 // FindOpen returns every record in store that governs publication from
 // repo, newest latest revision first: each substantial, unabandoned,
 // unfinished record whose baseline root is one of repo.Roots and whose
-// latest revision was written within MaxOpenAge of now (a revision dated
-// after now is skipped). Starting a new record does not hide an older one:
+// latest revision was written within MaxOpenAge of now. A revision dated
+// after now counts as written now: monotonic stamps (Env.stamp) run ahead of
+// a clock that stepped back, and the task being worked on must still gate.
+// Starting a new record does not hide an older one:
 // the older one stays open until it is verified, finished, abandoned or
 // ages out.
 //
@@ -342,10 +344,10 @@ func legacyProblem(directory string) string {
 }
 
 // governs reports whether a record with this head governs publication for
-// roots at now.
+// roots at now. A head dated after now has a negative age and governs, as
+// one written now does.
 func (h head) governs(roots []string, now time.Time) bool {
-	age := now.Sub(h.updatedAt)
-	return h.kind == "substantial" && !h.abandoned && slices.Contains(roots, h.root) && age >= 0 && age <= MaxOpenAge
+	return h.kind == "substantial" && !h.abandoned && slices.Contains(roots, h.root) && now.Sub(h.updatedAt) <= MaxOpenAge
 }
 
 // storedHead is the JSON shape of head inside a revision file.
