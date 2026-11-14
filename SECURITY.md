@@ -17,14 +17,15 @@ Out of scope: vulnerabilities in git, in third-party tools, in model providers, 
 The gate stops a commit or a push whose content has no passing run of every declared check. It is built for people and agents that would otherwise skip a step. It is not a defence against a process that sets out to defeat it:
 
 - `cw` and the agent run as the same user. Anything that user can write, the agent can write: the hooks, the records under the git directory, the git configuration and the refs.
-- `git commit --no-verify` and `git push --no-verify` skip git's hooks. The plugin asks before an agent runs a git call it recognises as skipping the hooks; it does not expand variables or aliases, and nothing asks a person.
+- `git commit --no-verify` and `git push --no-verify` skip git's hooks. The plugin's guard asks before an agent runs a git call it recognises as skipping the hooks, `cw uninstall` or `cw init --observe`, and before an edit, with an edit tool or a patch, of `cw.toml`, a git hook (also under `core.hooksPath`), `.git/config` or the records of `cw`. It also reads the commands behind `env`, `sudo`, `timeout`, `exec`, `nohup`, `eval` and `sh -c`, and the `PowerShell` tool of Claude Code. It misses, on purpose, a shell command that writes those files itself (a redirection, `sed -i`, an editor), a file of another repository named by an absolute path, and input sent to a running program (`write_stdin` on Codex). It does not expand variables or aliases, and nothing asks a person. The guard is a reminder for an agent; the git hooks decide ([operations](docs/operations.md#cw-guard)).
 - A check runs with the user's rights and can do whatever its program does.
+- CI runs what the pushed `cw.toml` declares, so a commit that removes or weakens a check passes CI as well. The commit hook prints a notice that names each check that is removed or changed. Protect `cw.toml` by review, for example with code owners.
 
-None of these is a vulnerability. Run the same checks in CI as the backstop.
+None of these is a vulnerability. Running the same checks in CI catches a commit that went around the hooks; it does not catch a weakened `cw.toml`.
 
 ## No network
 
-`cw` never opens a network connection. It reads the repository and the session records the coding agent keeps on the same machine, and it writes `cw.toml`, the git hooks and its records under the git directory. `cw tokens` stores counts and names, and no text of a brief or an answer.
+`cw` never opens a network connection. Every git call of `cw` sets `GIT_NO_LAZY_FETCH=1`, so git fetches no missing object in a partial clone; `cw` then reports the object as missing. It reads the repository and the session records the coding agent keeps on the same machine, and it writes `cw.toml`, the git hooks and its records under the git directory. `cw tokens` stores counts and names, and no text of a brief or an answer. Logs, records and decision files are created readable by the user only (`0600`), and the folders of the gate's store with `0700`.
 
 ## Supported versions
 

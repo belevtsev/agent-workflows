@@ -6,8 +6,8 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 154 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
-| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 45, with 91 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 200 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 46, with 97 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
 
@@ -54,11 +54,14 @@ asked for the work to go on alone. Each can be undone.
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
   improve anything.
-- The size limit of the gate's code. It holds 5,996 of 6,000 lines after
-  the guard learned to read a command as words. The next change to the gate
-  needs a cut elsewhere, or the owner's word on the limit.
-- Confirming the behaviour on macOS, on Windows and on Codex. The build
-  machine is Linux, and CI does not run for a branch that is not pushed.
+- The size limit of the gate's code. It holds 5,998 of 6,000 lines, after the
+  fixes of the second challenge and the removal of options nothing used
+  (`go test ./internal/repocheck/ -run Size -v` prints the numbers). The next
+  change to the gate needs a cut elsewhere, or the owner's word on the limit.
+- Confirming the behaviour by hand on macOS, on Windows and on Codex. The
+  branch is pushed, and pull request 219 is a draft. CI run 4, for commit
+  `dd0ce41`, passed on Linux, macOS and Windows. Nothing was run inside Claude
+  Code or Codex, and no model evaluation was run.
 
 Tasks that stay open on 14 November 2026, by what they wait for:
 
@@ -155,6 +158,173 @@ continued cherry-pick, a revert and a rebase run; `pre-push` on a dry run and
 for a URL; that a Claude Code transcript repeats a message id with the same
 usage; and the arithmetic of the token fixture.
 
+### The second challenge: eight advisers
+
+Eight advisers that had not written the code each took one view of it on 14 November 2026:
+break the gate (G, ran on Linux with git 2.53), security (S), Windows and macOS (P, read and
+cross-built), architecture and tests (A), the Claude Code formats against its documentation (C),
+the Codex formats against the source of rust-v0.168.0 (X), a first-time user (U, ran), and the
+role texts (R). They reported 93 findings. Each has one outcome:
+
+- **resolved**: the code, a test or a text was changed.
+- **resolved in documents**: the finding is true and cannot be closed in the code; it is now a
+  stated limit, with a test of the git behaviour where one is possible.
+- **rejected against evidence**: the evidence is named.
+- **deferred**: changes no behaviour, fails no gate and loses no rule.
+
+#### G: break the gate
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| G1 | A file that another process stages while `pre-commit` runs is committed without being judged: git reads the index again after the hook. | resolved in documents | A hook cannot hold the index. Stated in the Known limits and in `docs/hooks.md`; `scenarios/gitfacts` holds the git behaviour as a test. The push hook judges the tip that is pushed, so such a commit is still denied there. |
+| G2 | A submodule could hide content: a path inside it marked "assume unchanged", or a submodule that is not checked out whose folder holds plain files. | resolved | `cw run` and `cw status` refuse both (`internal/gitx/snapshot.go`). |
+| G3 | The content key of a check with `paths` ignored submodule entries and the content behind a link. | resolved; the link part in documents | Every submodule entry counts in the key of every check with paths. A link is recorded as a link, as git records it; `docs/evidence.md` says that `paths` is a promise about what a check reads. |
+| G4 | A forced push that moves a branch back publishes a commit nobody judged. | rejected against evidence | The specification requires it: `publish-gate`, "Updates that add nothing", scenario "A branch is moved back". The remote already holds the commit. The consequence is stated in `docs/hooks.md`. |
+| G5 | Refs without `cw.toml` could not be pushed: `refs/notes/`, an orphan branch, an old tag on a first push. | resolved | Notes are not judged. A ref that is no branch adds nothing when a branch of the same push contains its commit. An orphan branch needs a `cw.toml` that holds `version = 1`; the denial names the section of `docs/operations.md` that says so. |
+| G6 | `docs/evidence.md` said that the working tree did not change while a check ran; only the snapshots before and after are compared. | resolved | The sentence says what is compared. |
+| G7 | `git am` and the plumbing commands make commits without `pre-commit`. | resolved in documents | Stated in the Known limits and `docs/hooks.md`, with tests in `scenarios/gitfacts`. The push hook judges the tip. |
+| G8 | A hook that names `cw hook pre-commit` only in a comment counted as installed. | resolved | Only a line that is no comment counts (`internal/gate/hookfiles.go`). |
+| G9 | `paths = ["src"]` names a folder, matches nothing, and one pass then counted for ever. | resolved | Such a pattern is an invalid declaration; the message gives the pattern to write. |
+| G10 | A file name with a line break could add false lines to a denial. | resolved | A name with a control character is printed quoted (`decl.Plain`). |
+
+#### S: security
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| S1 | With an empty or relative entry in `PATH`, a hook ran `./cw` of the repository. | resolved | The hook files and every plugin command run `cw` only by an absolute path; the Windows command of Codex tells `cmd.exe` not to search the working directory. |
+| S2 | A pattern with many `**` took exponential time. | resolved | The matcher is linear; a test compares it with the recursive meaning. |
+| S3 | The documents called CI a backstop against a weakened `cw.toml`. | resolved | `SECURITY.md` and `docs/operations.md` say that CI runs what the pushed `cw.toml` declares, and that the file is protected by review. |
+| S4 | The guard missed `cw uninstall`, `cw init --observe`, an edit of `.git/config`, the wrappers `timeout`, `exec`, `nohup`, `eval`, a link to `cw.toml`, a write into the store through the shell, and another repository named by an absolute path. | resolved; two cases in documents | All but the last two are asked about. A redirection in a shell command and a file of another repository are listed as misses in `docs/operations.md`: the guard is a reminder, the git hooks decide. |
+| S5 | `cw uninstall` removed any hook file that held cw's marker, also a tracked file in a `core.hooksPath` directory. | resolved | There it removes only a file that is exactly cw's script. |
+| S6 | "cw starts no connection" was false in a partial clone, where git fetches a missing object. | resolved | Every git call of cw sets `GIT_NO_LAZY_FETCH=1`; a test in `scenarios/gitfacts`. |
+| S7 | Keys, patterns and names from `cw.toml` were printed raw, with terminal control sequences. | resolved | Quoted, as in G10. |
+| S8 | The guard allowed a call whose notice it could not read: larger than 16 MiB, a command given as a list, a patch under `input`. | resolved; one case rejected against evidence | The notice is decoded in one pass with no limit, and a list is read. Rejected: the source of Codex gives a patch in `tool_input.command` (`apply_patch.rs`), not under `input`. |
+| S9 | The same as G7. | resolved in documents | See G7. |
+| S10 | Logs followed the umask, and the store's folders were readable by others. | resolved | Logs, records and decisions are created `0600`, the folders `0700`. |
+| S11 | `cw change check` followed a test path of `tests.md` out of the repository. | resolved | Refused (`internal/change/rules.go`). |
+
+#### P: Windows and macOS
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| P1 | Ctrl+C reached the check's program as well; the run was recorded as failed. | resolved | The program starts in a process group of its own; a run that ends with the console's exit status, or fails while cw is being cancelled, is interrupted. |
+| P2 | The rule for batch files was skipped when `cw run` started in a subfolder. | resolved | A program given as a path is read from the repository root; a name without a folder is found on `PATH` only. |
+| P3 | The guard compared paths as text: another case, a trailing dot, a short name. | resolved | It compares files as the file system sees them, with every folder above. |
+| P4 | A record could not be replaced while a reader had it open; the outcome was lost. | resolved | The rename and the read are repeated for a moment on Windows. |
+| P5 | `cmd.exe` looked a batch file up again, the working directory first. | resolved | The check is started by the full path cw found. |
+| P6 | A check id such as `aux` or `nul` is a device name on Windows. | resolved | Refused on every system. |
+| P7 | Lock files opened with `CreateFile` skip the long-path handling of Go. | rejected against evidence | The Go runtime turns long paths on for the whole process (`runtime/os_windows.go`, `initLongPathSupport`, Go 1.27). |
+| P8 | With `core.fsmonitor`, each git call of cw started a daemon that ended with the call. | resolved | cw calls git with `-c core.fsmonitor=false`. |
+
+#### A: architecture, code and tests
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| A1 | The guard did not cover the hooks of a `core.hooksPath` directory. | resolved | With P3. |
+| A2 | The guard missed other spellings of a name and had a size limit. | resolved | With P3 and S8. |
+| A3 | No test could fail on what the log keeps. | resolved | `internal/runner/log_test.go`. |
+| A4 | The role names were written in five places. | resolved | The token reader asks `internal/roles`; a test holds the rest together. |
+| A5 | `internal/proc` held options nothing used. | resolved | Removed, and one more in `internal/fslock`. |
+| A6 | The clean-up could delete a lock file that was held. | resolved | Lock files stay. |
+| A7 | A run stayed open for ever when its log could not be created. | resolved | It is recorded as interrupted, with the cause. |
+| A8 | Every failure of git was read as "absent". | resolved | Only exit status 1 means that; any other failure, and output past the limit, is an error. |
+| A9 | The age at which a run stops deciding borrowed the constant of the logs. | resolved | A named constant says that the two are equal on purpose. |
+| A10 | "The first 20 paths that differ" was written three times. | resolved | One function, `gitx.DiffPaths`. |
+| A11 | Three copies of "write a file whole"; `cw add` did not sync. | resolved; one copy kept against the design | `cw add` and the store share one synced writer. The token store keeps its own: by the design, `internal/tokens` imports no package of the gate, and a damaged token file is reported. |
+| A12 | The size test counts 399 lines of test harness and skipped outside a checkout. | resolved in part; the rule deferred | The test fails in CI when git cannot list the files. Which files count is the owner's rule. |
+| A13 | A read error in the decisions file was ignored. | resolved | Counted as unreadable. |
+| A14 | Three concurrency tests did not test what they named. | resolved | Rewritten: runs that overlap, no wall clock, no signal to a stored process id. |
+
+#### C: Claude Code formats
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| C1 | An older `cw` on `PATH` exits 2 for `cw guard`, which blocks every tool call. | resolved | Every plugin command ends with exit status 0. |
+| C2 | The hook at the end of a session has 1.5 seconds, whatever its `timeout` says. | resolved | Measured: 0.12 s for a record of 50 MB, 1.15 s for 500 MB. `docs/tokens.md` names the limit and the variable that raises it. |
+| C3 | The `PowerShell` tool was not matched. | resolved | Matched, and read like a shell command. |
+| C4 | The token reader depends on a record format the host does not document. | resolved | Said in `docs/tokens.md`. |
+| C5 | A count taken when a role stops can miss its last turn. | resolved | Every later notice of the session reads again the records that grew. |
+| C6 | Internal agents without a type produced unlabelled starts. | resolved | Ignored. |
+| C7 | `cw context` and `cw tokens record` ignored the `cwd` of the notice. | resolved | Both use it; `cw context --host` reads the notice. |
+| C8 | `MultiEdit` is not a current tool. | rejected against evidence | Older releases have it, and a name that never matches does no harm. |
+| C9 | On some providers a role's effort is lowered. | resolved | One sentence in `docs/workflow.md`. |
+| C10 | An edit made through the shell is not guarded; the description said otherwise. | resolved | The description names the edit tools; the misses are listed in `docs/operations.md`. |
+
+#### X: Codex formats
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| X1 | The plugin's hooks do nothing until Codex trusts them; the README did not say how. | resolved | `README.md`. |
+| X2 | Exit status 2 blocks every shell call and patch. | resolved | With C1; the Windows command ends with `exit /b 0`. |
+| X3 | A patch given to the shell skipped the guard. | resolved; one case in documents | The shell command is read for a patch. `write_stdin` is listed as a miss. |
+| X4 | The notice arrives before the record is complete. | resolved | With C5. |
+| X5 | One overflow of the context window made the count of a thread unknown. | resolved | A total that falls is a reset; the total before it is carried. |
+| X6 | A start that copies the parent's context is counted and labelled wrongly. | resolved | The coordinator's text forbids such a start. |
+| X7 | The commands are POSIX text but run in the user's shell. | resolved | Wrapped in `sh -c`. |
+| X8 | The README said "asks" for both hosts; Codex denies. | resolved | `README.md`. |
+| X9 | The head of `skills/cw/SKILL.md` was not valid YAML. | resolved | Quoted; a test holds the rule. |
+| X10 | On Windows a missing `cw` showed a failed hook. | resolved | With X2. |
+
+#### U: a first-time user
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| U1 | After a project removed `cw.toml`, every commit of a teammate was denied, and the advice was `cw init`. | resolved | The denial names the section "A tree without cw.toml" of `docs/operations.md`. It names no command, as the specification of the denial requires. |
+| U2 | `source_changed` came without advice, and the denial dropped the cause. | resolved | The run says what to do about files a check writes; the denial names the last run that decided nothing. |
+| U3 | After a failed test the denial said only "run `cw run`". | resolved | It says to fix what the log shows first; a failed `cw run` ends with one line. |
+| U4 | "Set it aside" never said how. | resolved | The message names `git add -A` and `git stash push --keep-index --include-untracked`. |
+| U5 | A denied push sent the user to a linked worktree when `cw run` here was enough. | resolved | Only when the working tree holds other checked content for a missing check. |
+| U6 | In a clone without hooks, `cw status` and `cw context` contradicted git. | resolved | Both say first that no hook judges here yet. |
+| U7 | No way to replace a check. | resolved by a hint; a new command rejected | `cw add` says that it only appends and that `cw.toml` is edited by hand. A command to edit is rejected: the file is the interface (`check-declaration`). |
+| U8 | Forgetting `--` in `cw add` gave a bare error. | resolved | A hint. |
+| U9 | `cw add unit -- "go test ./..."` was accepted and failed at the run. | resolved | Refused, with the form to write. |
+| U10 | `--help` describes no option. | deferred | A text only. |
+| U11 | The install part of the README was incomplete. | resolved | `README.md`. |
+| U12 | `cw init` in a repository with checks printed the wrong next step. | resolved | It prints `next: cw run`. |
+| U13 | Notices used Go's list syntax. | resolved | Lists are printed as `cw.toml` holds them; an absent `paths` is "not set". |
+| U14 | `docs/try-it.md` showed less than cw prints; the uninstall message named one place for two things. | resolved | Both. |
+| U15 | `cw stats` counts a commit with nothing to commit as allowed; the table of `cw roles` is 200 columns wide. | resolved in documents; the table deferred | `docs/operations.md` says what "allowed" counts. The width is a matter of looks. |
+
+#### R: the role texts
+
+| # | Finding | Outcome | What was done |
+| --- | --- | --- | --- |
+| R1 | Nobody owned an existing test that a change breaks. | resolved | The quality engineer does; the developer's text says so. |
+| R2 | A wrong test had no way back. | resolved | The developer returns it to the quality engineer with the reason. |
+| R3 | Open questions could reach a review. | resolved | Settled before the review starts. |
+| R4 | Only the developer could reject a blocker; a "Checked" column and a token tie were proposed. | resolved; two proposals rejected | The rule is in the texts. The column and the tie add work without a failure they prevent. |
+| R5 | A task was ticked before its review. | resolved | After it. |
+| R6 | `cw change check` ran only at the end. | resolved | After each role that writes the record. |
+| R7 | The texts assumed a language without a build step. | resolved | They name the build where a language has one. |
+| R8 | The two paths were defined in two places. | resolved | In one. |
+| R9 | The small path had no rule. | resolved | Stated plainly: no record, the gate still decides. |
+| R10 | A task could start on a working tree with other changes. | resolved | The coordinator checks first. |
+| R11 | The models of the roles. | resolved; one proposal rejected | The reviewer runs at the architect's model and effort. Cheaper models for the spec-writer and the developer are rejected: the owner asked for strong models in the roles that decide quality. |
+| R12 | Roles repeat each other's reading. | deferred | Costs tokens only; the token report shows it. |
+| R13 | The `git` role costs a start for one commit. | rejected against evidence | The owner named the role. |
+| R14 | One developer start for all groups of tasks. | resolved | One start for each group. |
+| R15 | The meaning of a stage was unclear. | resolved | Defined in the coordinator's text and in `docs/workflow.md`. |
+
+#### Totals
+
+93 findings. By row: 83 resolved, 4 resolved in documents (G1, G7, S9, U15), 4 rejected against
+evidence (G4, P7, C8, R13) and 2 deferred (U10, R12). Ten rows have a part with another outcome,
+named in the row: in documents for G3, S4 and X3; rejected for S8, A11, U7, R4 and R11; deferred
+for A12 and U15.
+
+#### Found while the fixes were tested
+
+Three helpers then wrote the tests, the scenarios and the documents for these fixes without
+having written the code. They found five more defects. Each is resolved:
+
+| # | Defect | What was done |
+| --- | --- | --- |
+| F1 | On Windows a check named by a bare file name was refused when the repository root held a file of that name: Go refuses a program it finds in the working directory. | A name without a folder is found on `PATH` only, as on the other systems; `platform-support`, scenario "A batch file of the same name in the repository". |
+| F2 | Under Codex on Windows the start of a session printed no line when `cw` is not installed, against `agent-integration`, Instruction text comes from `cw`. | The Windows command prints the line in a repository that holds `cw.toml`; `platform-support`, scenario "Codex starts a session on Windows without `cw`". |
+| F3 | `cw change check` failed on this repository: no task of part 2 named the requirement "Notices as the host gives them", which the fixes had added. | Task 4.2 of part 2 names it. |
+| F4 | `cw tokens record` created its folders `0755`, against finding S10. | They are created `0700`; `internal/tokens`, `TestRecordKeepsItsFoldersPrivate`. |
+| F5 | For a copy of `cw`'s own hook file that was changed since, `cw uninstall` printed a line the file does not hold. | It prints the file's own line that calls `cw`; `internal/gate`, `TestUninstallNamesTheLineTheFileHolds`. |
+
 ## Changes to the specifications during the build
 
 | Date | Where | What changed | Why |
@@ -186,7 +356,12 @@ usage; and the arithmetic of the token fixture.
 | 14 Nov 2026 | `agent-integration`: Ask before skipping; The plugin never judges a commit or push; design, Plugin; proposal, Known limits | The guard reads a shell command as words: it asks before `--no-verify`, `-n` of `git commit`, a setting of `core.hooksPath`, and an edit of a hook file or of a record. The same text inside an argument is no reason to ask. Five scenarios added. "Never judges" now says what it always meant: the plugin does not decide about content; it reads a command only to ask before a skip | Review of other tools, row G-2: the old rule asked before `grep -- --no-verify docs/hooks.md` and missed `git commit -n`. `internal/shellwords` is a new package of 151 lines; the package of that name that the first review criticised decided the gate, and this one decides nothing |
 | 14 Nov 2026 | `agent-integration`: new requirement Usage skill | The plugin ships the skill `cw`; a test replays its examples and allows only commands `cw help` lists; no skill holds a `cw` version; four scenarios added. Part 1 now has 55 requirements, 154 scenarios and 64 tasks | The owner's request of 14 November 2026. The advice to record a tool version in the skill was rejected against the requirement "Instruction text comes from `cw`" |
 | 14 Nov 2026 | `task-flow`: Two paths | For a change of a few lines with a plain cause the coordinator says that the task needs no roles; one scenario and the case E26 added. Part 2 now has 91 scenarios. The texts of `spec-writer` and `architect` say to write no more than the behaviour needs | Review of other tools, rows R-1 and R-2 |
-| 14 Nov 2026 | Part 2 design, Tokens: a record of Codex, a record of Claude Code | Codex writes running totals in `token_count` events; the thread is counted once from them, and a total that falls or starts above its own request is unknown. The line `token_usage_record` that the first reader expected exists in no real record | The readers were run on real records: 170 of Claude Code 2.1, where the reader was right, and 16 of codex-cli 0.141 and 0.142, where it found no count |
+| 14 Nov 2026 | Part 2 design, Tokens: a record of Codex, a record of Claude Code | Codex writes running totals in `token_count` events; the thread is counted once from them, and a total that starts above its own request is unknown; a total that falls is a reset, and the total before it is carried. The line `token_usage_record` that the first reader expected exists in no real record | The readers were run on real records: 170 of Claude Code 2.1, where the reader was right, and 16 of codex-cli 0.141 and 0.142, where it found no count |
+| 14 Nov 2026 | Part 2, second challenge: `token-report`, `change-record`, `role-definitions`, `task-flow` | One requirement added, Notices as the host gives them, with three scenarios; three more scenarios added: "A Codex total that is reset", "A test file outside the repository" and "The quality engineer removes an existing test"; the texts of the roles say who owns an existing test and how a wrong test goes back. Part 2 now has 46 requirements and 97 scenarios | Second challenge, findings of the views C, X and R; commit `c5a88ef` |
+| 14 Nov 2026 | Part 1, second challenge: all six specifications | 46 scenarios added, each for a behaviour that a fix of the second challenge changed: 6 in `check-declaration`, 4 in `check-evidence`, 15 in `publish-gate`, 1 in `gate-reporting`, 13 in `agent-integration` and 7 in `platform-support`. The texts of 20 requirements got a clause for what their new scenarios hold; no requirement was added and none lost a rule. Part 1 now has 55 requirements and 200 scenarios | Second challenge; the Source line of each requirement names its findings. The scenarios and their tests were written by helpers that had not written the fixes |
+| 14 Nov 2026 | `platform-support`: Programs on Windows; part 1, task 4.7 | A program named without a folder is found in the folders of `PATH` only; a program given as a path is read from the repository root; the file is started by its full path. Before, the text said "as the system does" | Defect F1 above: Windows, and Go for it, look in the working directory first, which let a file of the repository stand in for a program of `PATH` or made Go refuse the check |
+| 14 Nov 2026 | `publish-gate`: Removal | `cw uninstall` prints "the line of it that holds the call", not "the line to remove from it" | Defect F5 above |
+| 14 Nov 2026 | Part 1 proposal, Open Question 11 | Under Codex on Windows the start of a session now prints the line that says `cw` is not installed; the row of this table that says it prints no line is out of date | Defect F2 above |
 
 ## Progress
 
@@ -213,8 +388,8 @@ The job `Native Go` passed on Linux. Every finding of that run is listed here.
 | The guard did not ask about an edit that creates a folder under `.git/cw` or `.git/hooks` when the repository is reached through a link. | macOS, Windows | Changed: the deepest folder that exists is resolved. The test failed before the change on Linux, through a link. |
 | The git directory kept forward slashes while the two other directories had the form of the system. | Windows | Changed. Passed in the second run. |
 | A store that is a file was read as "no mode", so the gate enforced without reporting the error. | Windows | Changed: the store is looked at before the mode. Passed in the second run. |
-| `cw init` failed once with "put process in a job object: Access is denied": the program was ending before it joined its job. The second run showed the same for other git calls. | Windows | Changed: the program starts suspended, joins its job and then continues. Not run on Windows yet. |
-| A child of a program was still running after the run. The program joined its job after it had started, so under load a child could start first. | Windows | Changed by the same suspended start. Not run on Windows yet. |
+| `cw init` failed once with "put process in a job object: Access is denied": the program was ending before it joined its job. The second run showed the same for other git calls. | Windows | Changed: the program starts suspended, joins its job and then continues. Passed in run 4 (commit `dd0ce41`). |
+| A child of a program was still running after the run. The cause first named was that the program joined its job after it had started, so under load a child could start first; the suspended start did not end it. The third run showed the real cause: the end of the job did not wait for each process to exit, because Windows takes a process out of the job's count while it is still ending. | Windows | Changed in `5ac846b`: the processes of the job are opened before it is ended, and each is waited for. Passed in run 4 (commit `dd0ce41`). |
 | `cw` links the package `net` through `golang.org/x/sys/windows`. | Windows | Changed: the test reads the packages for all three systems and holds that no other package imports a network package. The documents say so. |
 | Two tests were wrong for Windows: one wrote a path with backslashes into `cw.toml`, one looked for the text of the hook on the wrong stream of PowerShell. | Windows | Changed. Both passed in the second run. |
-| Two runs at once: one was refused the file that holds its temporary index, while Windows was still removing the directory for the other. Found by the second run. | Windows | Changed: the two steps are repeated also when the file is refused, with a short pause. Not run on Windows yet. |
+| Two runs at once: one was refused the file that holds its temporary index, while Windows was still removing the directory for the other. Found by the second run. | Windows | Changed: the two steps are repeated also when the file is refused, with a short pause. Passed in run 4 (commit `dd0ce41`). |

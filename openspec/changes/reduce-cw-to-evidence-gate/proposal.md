@@ -259,6 +259,23 @@ These follow from the design and are stated so that nobody is surprised.
   does not expand variables or aliases, so `git commit $FLAGS` is not asked
   about, and neither is a hook file removed from the shell. The push rule
   still judges the resulting commit when it is pushed through the hooks.
+- A file that another process stages while `pre-commit` runs is committed
+  without being judged: git does not hold the index during the hook and reads
+  it again after it (observed). The push rule judges the tip that is pushed.
+- `git am` runs `pre-applypatch`, not `pre-commit`. A commit made with
+  `git commit-tree` and moved with `git update-ref` runs no hook of a commit;
+  `git update-ref` runs `reference-transaction`, which `cw` does not
+  install (observed). The push rule judges the tip that is pushed.
+- A forced push that moves a branch back to a commit the remote's branch
+  already contains adds nothing and is allowed without a judgement
+  (`publish-gate`: Updates that add nothing).
+- The push rule does not judge a ref under `refs/notes/`, nor a ref that is no
+  branch whose commit a branch of the same push contains; that branch is
+  judged.
+- A tree without `cw.toml` cannot be committed or pushed through the hooks. A
+  project that stops using `cw` runs `cw uninstall` in every clone; a branch
+  with other content, such as a documentation site, commits a `cw.toml` that
+  holds only `version = 1` (`docs/operations.md`, "A tree without cw.toml").
 
 ## Success measures
 
@@ -483,6 +500,23 @@ recommendations, because the owner asked for the work to go on alone
     running git are slower there, and no number exists. Recommendation:
     measure in CI first, then set the limits in Success measure 2. Settled
     by: that measurement (task 10.1).
+    Measured on 14 November 2026 in CI run 4 (commit `dd0ce41`) by the test
+    `scenarios/cost`: 15 decisions after one that is not counted, each the
+    `pre-commit` hook file started as git starts it. Median
+    (lowest to highest), first on a copy of this repository (2,472 files,
+    18.1 MiB), then on the generated repository (30,000 files, 68 MiB):
+
+    | System | This repository | Generated repository |
+    | --- | --- | --- |
+    | Linux, amd64 | 14.3 ms (13.7 to 15.4) | 26.3 ms (25.2 to 28.1) |
+    | macOS, arm64 | 67.8 ms (47.0 to 90.5) | 65.9 ms (57.4 to 102.0) |
+    | Windows, amd64 | 195.0 ms (191.1 to 200.4) | 199.5 ms (194.3 to 217.3) |
+
+    Linux and macOS are inside the limits of Success measure 2. Windows is
+    not inside 150 ms for this repository, and its cost hardly depends on
+    the size: it is the cost of starting `cw` and the git calls. These are
+    the numbers of one run on the machines CI provides. The limits for
+    Windows are the owner's to set; the test fails there for no number.
 11. **How do Claude Code and Codex run a plugin's hook commands on Windows?**
     Today's hook files hold POSIX shell text. Recommendation: keep each hook
     command in a form the host runs on all three systems, and if a host
@@ -499,3 +533,7 @@ recommendations, because the owner asked for the work to go on alone
     `cw context` and `cw guard --host codex`, which every shell can run. One
     job is therefore missing under Codex on Windows: the line that says `cw`
     is not installed. The README says so.
+    Changed on 14 November 2026: the Windows command for the start of a
+    session now prints that line, so no job is missing there. A test runs
+    each Windows command with `cmd.exe /C` on Windows
+    (`scenarios/platform/plugin_windows_test.go`); Codex itself was not run.

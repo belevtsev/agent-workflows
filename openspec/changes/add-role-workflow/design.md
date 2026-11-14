@@ -37,7 +37,7 @@ afterwards what a program can check. Three alternatives were rejected:
 | --- | --- | --- | --- | --- |
 | `internal/roles` | The seven roles, their models, their write limits, `cw-roles.toml`, and the texts | `internal/decl`, `internal/gitx` | yes | `internal/modelpolicy` on `workflow-v3`: it validates profiles and scopes this design does not have; the path patterns of `internal/decl` are reused |
 | `internal/change` | Reads a change folder; decides its stage; checks its rules; makes the content ids | `internal/decl` | yes | `internal/skillcheck` on `workflow-v3`: it checks skill files, not change folders |
-| `internal/tokens` | Reads the host's record of a session; stores counts; reports them | none | yes | `internal/usagelog` on `workflow-v3`: its two readers are the starting point; prices, budgets and history are not carried |
+| `internal/tokens` | Reads the host's record of a session; stores counts; reports them | `internal/roles`, for the names of the roles | yes | `internal/usagelog` on `workflow-v3`: its two readers are the starting point; prices, budgets and history are not carried |
 | `internal/cli` | The commands `cw roles`, `cw change` and `cw tokens`; gathers from git what a stage needs | `internal/roles`, `internal/change`, `internal/tokens`, `internal/gitx`, `internal/store` | no | |
 | `internal/decl` | Path patterns and strict TOML decoding | none | no | |
 | `internal/gitx` | Snapshot and differing paths | none | no | |

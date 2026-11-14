@@ -95,3 +95,47 @@ func TestArgumentsReachABatchFileAsTheyWereWritten(t *testing.T) {
 		t.Logf("cw run (exit status %d):\n%s", result.Code, result.Output())
 	}
 }
+
+// Requirement "Programs on Windows", scenario "A batch file named from a
+// subfolder".
+func TestBatchFileRuleHoldsFromASubfolder(t *testing.T) {
+	t.Parallel()
+	repo := portable(t, "[[check]]\nid = \"batch\"\nrun = [\"tools\\\\check.bat\", \"a&b\"]\n")
+	marker := filepath.Join(t.TempDir(), "check-ran")
+	repo.Write("tools/check.bat", "@echo off\r\necho ran> \""+marker+"\"\r\n")
+	repo.Write("sub/README.md", "# sub\n")
+
+	result := repo.In("sub").CW("run", "batch")
+
+	if exists(marker) {
+		t.Errorf("tools\\check.bat was started")
+	}
+	if !strings.Contains(result.Output(), "was not started") || !strings.Contains(result.Output(), "is a batch file") || !strings.Contains(result.Output(), "a&b") {
+		t.Errorf("the output does not say that the batch file was not started and name a&b")
+	}
+	if result.Code == 0 {
+		t.Errorf("cw run exited 0, want a refusal")
+	}
+	if t.Failed() {
+		t.Logf("cw run batch in sub (exit status %d):\n%s", result.Code, result.Output())
+	}
+}
+
+// Requirement "Programs on Windows", scenario "A batch file of the same name
+// in the repository".
+func TestCheckIsStartedByThePathCWFound(t *testing.T) {
+	t.Parallel()
+	repo := portable(t, "[[check]]\nid = \"which\"\nrun = [\"check.bat\"]\n")
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "check.bat"), []byte("@echo off\r\necho from path\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repo.Write("check.bat", "@echo off\r\necho from root\r\n")
+	prependPath(repo, bin)
+
+	result := repo.CW("run", "which")
+
+	if !strings.Contains(result.Output(), "from path") || strings.Contains(result.Output(), "from root") {
+		t.Errorf("the check did not run check.bat of PATH alone\ncw run which (exit status %d):\n%s", result.Code, result.Output())
+	}
+}

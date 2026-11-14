@@ -73,7 +73,9 @@ func TestTheBranchThatIsPushedIsTheOneJudged(t *testing.T) {
 
 	push := repo.TryGit("push", "origin", "feature")
 	reason := assertDenied(t, push, origin, map[string]string{"refs/heads/feature": ""})
-	for _, want := range []string{"refs/heads/feature", "cw run", "checkout"} {
+	// The working tree holds other checked content than the tip of feature,
+	// so cw run here would not check it (second challenge, finding U5).
+	for _, want := range []string{"refs/heads/feature", "cw run", "checkout", "git worktree add --detach"} {
 		if !strings.Contains(reason, want) {
 			t.Errorf("the reason does not hold %q:\n%s", want, reason)
 		}

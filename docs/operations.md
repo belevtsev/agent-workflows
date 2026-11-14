@@ -31,6 +31,7 @@ paths are shortened to `<repository>`.
 - [Exit statuses](#exit-statuses)
 - [Where cw keeps its records](#where-cw-keeps-its-records)
 - [Continuous integration](#continuous-integration)
+- [A tree without cw.toml](#a-tree-without-cwtoml)
 
 ## Command line
 
@@ -72,6 +73,9 @@ the gate enforces: a commit or a push needs a passing run of every declared chec
 next: cw add <id> -- <program> [<argument>...], then cw run
 ```
 
+In a clone whose `cw.toml` already declares checks, the first line is
+`cw.toml is kept as it is` and the last is `next: cw run`.
+
 When a hook is left for you to edit, the line to add is printed on standard
 error:
 
@@ -109,7 +113,11 @@ added the check `unit` to cw.toml
 $ cw add unit -- true
 cw: the check was not added, because the file would not be a valid declaration:
 cw.toml:15: the id `unit` is declared twice, at lines 5 and 15
+`cw add` only appends a check; to change or remove one, edit cw.toml
 ```
+
+`cw add` only appends. To change or remove a check, edit `cw.toml` by hand;
+the file is the interface.
 
 The first command appends this block:
 
@@ -120,11 +128,26 @@ run = ["sh", "unit.sh"]
 paths = ["src/**", "unit.sh"]
 ```
 
-`cw add` does not check that the program exists. A program that cannot be
-started makes the run end `failed`.
+`cw add` does not check that the program exists, with one exception: a
+program that is one word with a space in it, for which no such program exists,
+is refused, because no shell reads `run`:
+
+```text
+$ cw add test -- 'sh test.sh && echo done'
+cw: the program `sh test.sh && echo done` is one word with a space in it, and no such program exists; write the program and each argument as words of their own, with no quotes around the whole command
+```
+
+Any other program that cannot be started makes the run end `failed`. An option
+that `cw add` does not know, given before `--`, names the place of `--`:
+
+```text
+$ cw add unit python3 -m unittest
+cw: unknown option: -m; the program and its arguments go after `--`; usage: cw add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]
+```
 
 Exit statuses: 0 added; 1 no `cw.toml`, or the file would not be valid; 2 no
-id, more than one id, or nothing after `--`.
+id, more than one id, nothing after `--`, an unknown option, or a program that
+is one word with a space.
 
 ## cw run
 
@@ -154,8 +177,8 @@ snapshot again. A run ends with one outcome:
 | `passed` | The program exited 0 and the snapshot after it equals the snapshot before it. |
 | `failed` | The program exited with another status, could not be started, or was ended by something outside `cw`, such as a signal. The text of the run says which. |
 | `timed_out` | The timeout passed first. `cw` stopped the program and the processes it started. |
-| `source_changed` | The program exited 0, and the working tree changed during the run. Up to 20 changed paths are named. |
-| `interrupted` | `cw` received SIGINT, SIGTERM or SIGHUP, or the `cw` process died. |
+| `source_changed` | The program exited 0, and the snapshot after the run differs from the one before it. Up to 20 changed paths are named, with the advice to list a file the check writes in `.gitignore` or to write it outside the working tree. |
+| `interrupted` | `cw` received SIGINT, SIGTERM or SIGHUP, or on Windows Ctrl+C, or the `cw` process died. |
 
 ```text
 $ cw run
@@ -178,7 +201,12 @@ A failure names the log:
 app is not ok
 == unit: failed with exit status 3
    log: <repository>/.git/cw/logs/20261114T144217Z-80b277b8.log
+== lint: true
+== lint: passed in 0s
+not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again
 ```
+
+A run in which a check did not pass ends with that last line and exits 5.
 
 When a named subset passes and other checks still lack a run, the last line is
 `not yet verified; still missing:` and their ids, and the exit status is 0.
@@ -188,10 +216,14 @@ When no check is declared, `cw run` prints
 `cw run` also removes old records: see
 [Where cw keeps its records](#where-cw-keeps-its-records).
 
-On Windows the code looks the program up as the system does, and refuses a
-`.bat` or `.cmd` program whose arguments hold a character other than letters,
-digits and `_ . / : = + , @ \ -`, because `cmd.exe` could read such an argument
-as a second command. This code has not been run on Windows.
+On Windows the code looks the program up itself, a bare name on `PATH` and a
+path from the root of the repository, also when `cw run` starts in a
+subfolder, and starts it by the full path it found, so that `cmd.exe` does not
+look a batch file up again. It refuses a `.bat` or `.cmd` program whose arguments hold a character other than
+letters, digits and `_ . / : = + , @ \ -`, because `cmd.exe` could read such an
+argument as a second command. Ctrl+C in the console reaches `cw`, not the
+check, and the run is recorded as `interrupted`. This code has not been run on
+Windows by hand.
 
 Exit statuses: 0 every check it executed passed, or nothing needed a run; 1 the
 declaration is missing or invalid, the working tree cannot be recorded, the
@@ -234,7 +266,9 @@ The lines that start with `index:` compare the tree of the index, which is what
 up to 20 paths that are not staged are listed, and `cw status` says whether a
 commit of the index alone would be allowed. In observe mode a line
 `mode: observe` is added. When the hooks of `cw` are not installed in this
-clone, a warning that names `cw init` is printed on standard error.
+clone, a warning that names `cw init` is printed on standard error, and a first
+line that would say `not verified: a commit of this content would be denied`
+says instead `not verified, but no hook of cw judges a commit in this clone yet`.
 
 `--json` prints this object. The fields stay while the declaration `version` is
 1.
@@ -335,6 +369,10 @@ hook decisions
   a decision (`no_declaration`, `invalid_declaration`, `tree`, `store`,
   `internal`). In observe mode a denial is printed as `would have been denied`.
 - Records that cannot be read are counted and named in the last line.
+- A hook decision is recorded when the hook runs, before git goes on. git runs
+  `pre-commit` also when it then finds nothing to commit, so such an attempt
+  counts as `allowed` although no commit was made. A push records one decision
+  for each ref it updates.
 
 `--json` prints the same as one object with the fields `since`, `until`,
 `runs`, `pass_after_failure`, `decisions` and `unreadable`.
@@ -353,8 +391,14 @@ evidence, that `cw status` shows what is missing, and whether the hooks are
 installed. The agent plugin runs it; see [Hooks](hooks.md#hooks-of-the-agent-plugin).
 
 ```text
-cw context
+cw context [--host claude|codex]
 ```
+
+| Option | Meaning |
+| --- | --- |
+| `--host claude`, `--host codex` | Read the host's notice, a JSON object, from standard input, and judge the directory its `cwd` names. The plugin passes it, because a host does not always start a hook in the directory the session works in. |
+
+Without `--host`, `cw context` reads nothing and judges the working directory.
 
 ```text
 $ cw context
@@ -365,9 +409,16 @@ This repository is gated by cw. git allows a commit or a push only when every ch
 The hooks are installed.
 ```
 
-The last line says instead that the hooks are not installed in this clone, or
-that the gate only observes. Outside a git repository, and where the root of
-the working tree holds no `cw.toml`, it prints nothing.
+In observe mode the last line says that the gate only observes. When the hooks
+are not installed in this clone, the first line is this one, and the line
+about the hooks is left out:
+
+```text
+This repository declares checks for cw, but the hooks are not installed in this clone, so nothing is gated here yet; `cw init` installs them. Once they are installed, git allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly the content that is committed or pushed.
+```
+
+Outside a git repository, and where the root of the working tree holds no
+`cw.toml`, it prints nothing.
 
 Exit statuses: 0 always, also outside a repository; 2 an argument.
 
@@ -402,9 +453,10 @@ denied. Outside a git repository the hook denies with 3.
 ## cw guard
 
 Reads the notice that Claude Code or Codex gives a hook before a tool call, and
-answers in two cases only: a shell command with a git call that skips git's
-hooks, and an edit of `cw.toml`, of a git hook or of a record of `cw`. It never
-judges a commit or a push. The agent plugin runs it; see
+answers in two cases only: a shell command that skips git's hooks or turns the
+gate off, and an edit of `cw.toml`, of a git hook, of the git configuration or
+of a record of `cw`. It never judges a commit or a push. The guard is a
+reminder for an agent; the git hooks decide. The agent plugin runs it; see
 [Hooks](hooks.md#hooks-of-the-agent-plugin).
 
 ```text
@@ -414,54 +466,94 @@ cw guard [--host claude|codex]
 | Option | Meaning |
 | --- | --- |
 | `--host claude` | The default. The answer asks the user. |
-| `--host codex` | The answer denies the call with the reason, because Codex does not ask from a hook. |
+| `--host codex` | The answer denies the call with the reason, because Codex does not ask from a hook. The reason adds that the user can run the call themselves. |
 
 The notice is a JSON object on standard input with `tool_name`, `cwd` and
-`tool_input`. The guard reads `command` of the tool `Bash`, `file_path` of the
-tools `Edit`, `Write` and `MultiEdit`, and the file names in the patch of
-`apply_patch`. Where the working directory is not in a git repository whose
-root holds `cw.toml`, it prints nothing.
+`tool_input`. The guard reads `command` of the tools `Bash` and `PowerShell`,
+also when it is a list of words, `file_path` of the tools `Edit`, `Write` and
+`MultiEdit`, and the file names in the patch of `apply_patch`. Where the
+working directory is not in a git repository whose root holds `cw.toml`, it
+prints nothing.
 
-The guard splits the command into simple commands and words, as a shell does:
-quotes, backslashes, `;`, `&&`, `||`, `|`, `&`, newlines, `(`, `)`, `$(` and
-backticks. It steps over `NAME=value` words and the wrappers `env`, `command`,
-`sudo`, `time`, `nice` and `xargs`, and reads the text after `-c` of `sh`,
-`bash`, `zsh` and `dash` as a command, to a depth of three. A call of `git`,
-`/path/git` or `git.exe` skips the hooks when:
+### What it asks about
 
-- a word after the subcommand is `--no-verify`, or a prefix of it at least as
-  long as `--no-veri`, which git takes for the whole option;
-- the subcommand is `commit` and a cluster of short options holds `n`, as in
-  `-n`, `-an` or `-nm`; the cluster ends at `m`, `F`, `C`, `c` or `t`, which
-  take a value, and at `S` or `u`, which take one only when it is attached;
-- an option before the subcommand, `-c` or `--config-env`, sets
-  `core.hooksPath`, in any case;
-- the subcommand is `config`, a word names `core.hooksPath`, in any case, and a
-  value follows the name or the call unsets it;
-- a `NAME=value` word before the program holds `core.hooksPath`.
+The guard splits a shell command into simple commands and words, as a shell
+does: quotes, backslashes, `;`, `&&`, `||`, `|`, `&`, newlines, `(`, `)`, `$(`
+and backticks. It steps over `NAME=value` words and the wrappers `env`,
+`command`, `sudo`, `time`, `nice`, `xargs`, `timeout`, `exec` and `nohup`. It
+reads the words after `eval`, and the text after `-c` of `sh`, `bash`, `zsh`
+and `dash`, as a command, to a depth of three. A command speaks up when:
+
+- a call of `git`, `/path/git` or `git.exe` skips the hooks:
+  - a word after the subcommand is `--no-verify`, or a prefix of it at least
+    as long as `--no-veri`, which git takes for the whole option;
+  - the subcommand is `commit` and a cluster of short options holds `n`, as in
+    `-n`, `-an` or `-nm`; the cluster ends at `m`, `F`, `C`, `c` or `t`, which
+    take a value, and at `S` or `u`, which take one only when it is attached;
+  - an option before the subcommand, `-c` or `--config-env`, sets
+    `core.hooksPath`, in any case;
+  - the subcommand is `config`, a word names `core.hooksPath`, in any case, and
+    a value follows the name or the call unsets it;
+- a `NAME=value` word before the program holds `core.hooksPath`;
+- it runs `cw uninstall`, or `cw init` with `--observe`;
+- it holds a patch, a line `*** Update File:`, `*** Add File:`,
+  `*** Delete File:` or `*** Move to:`, that names a guarded file.
 
 Words after `--` are not options, and the value of `-m`, `-F`, `--message`,
 `--file`, `--author` and other options of `commit` that take one is not an
-option. A command with an unclosed quote is judged by its text: it skips when
-it holds `--no-verify`. An edit is of a git hook or a record of `cw` when its
-path is under `hooks/` or `cw/` of the common git directory.
+option. A command with an unclosed quote is judged by its text: it speaks up
+when it holds `--no-verify`.
+
+An edit, or a patch, speaks up when it names one of these, or a file or folder
+inside it:
+
+- `cw.toml` at the root of the working tree;
+- `hooks/` of the common git directory, and the directory `core.hooksPath`
+  names;
+- `config` of the common git directory;
+- `cw/` of the common git directory, which holds the records.
+
+A path is compared as the file system sees it, with each folder above it, so
+another spelling of a name, a symbolic link to a guarded file, and a file that
+does not exist yet inside a guarded folder are judged like the place they lead
+to.
 
 ```text
 $ echo '{"tool_name":"Bash","cwd":"<repository>","tool_input":{"command":"git commit -n -m x"}}' | cw guard
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"This command gives git commit the option -n, the short form of --no-verify, which skips the commit gate: the git hooks of cw would not judge the commit or the push."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"This command gives git commit the option -n, the short form of --no-verify, which skips the commit gate: the git hooks of cw would not deny the commit or the push."}}
+$ echo '{"tool_name":"Bash","cwd":"<repository>","tool_input":{"command":"cw uninstall"}}' | cw guard --host codex
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"This command runs `cw uninstall`, which skips the commit gate: the git hooks of cw would not deny the commit or the push. This host cannot ask from a hook, so the call is refused. Ask the user; they can run it themselves."}}
 ```
 
-The guard does not expand variables, aliases or functions, and does not run
-the command. `git commit $FLAGS` or a git alias that adds `--no-verify` is not
-recognised; the push rule of the hooks still judges the commit.
+### What it misses
+
+The guard reads words; it runs nothing and expands nothing. It misses, on
+purpose:
+
+- a shell command that writes a guarded file itself, such as a redirection
+  (`echo x >> cw.toml`), `sed -i` or an editor;
+- a file of another repository named by an absolute path: only the files of
+  the repository of the notice's `cwd` are guarded;
+- input sent to a program that already runs, such as `write_stdin` on Codex,
+  for which Codex runs no hook;
+- variables, aliases and functions: `git commit $FLAGS`, or a git alias that
+  adds `--no-verify`, is not recognised.
+
+In each case the git hooks still decide about the commit, and the push rule
+judges the commit when it is pushed through the hooks.
 
 Exit statuses: 0 in every case it reads, also when the notice is not JSON; 2 an
-argument or a host other than `claude` and `codex`.
+argument or a host other than `claude` and `codex`. The commands of the plugin
+end with exit status 0 whatever `cw` returns.
 
 ## cw uninstall
 
 Removes the hook files that `cw` wrote and the whole `cw/` directory of
-records. `cw.toml` and every hook file of another tool stay as they are.
+records. `cw.toml` and every hook file of another tool stay as they are. In
+`hooks/` of the common git directory, a hook file that holds the marker line of
+`cw` is removed. In a directory that `core.hooksPath` names, which belongs to
+its owner, only a file that is exactly the script `cw` writes is removed; every
+other file stays, also one with the marker that was edited.
 
 ```text
 cw uninstall
@@ -469,15 +561,15 @@ cw uninstall
 
 ```text
 $ cw uninstall
-removed the hooks cw wrote and its records in <repository>/.git/cw
+removed the hooks cw wrote, 3 in all, and the records of cw in <repository>/.git/cw
 cw.toml is left as it is
 ```
 
-When a hook file of another tool still calls `cw hook`, `cw uninstall` names it
-and prints the line to remove:
+When a hook file that it leaves still calls `cw hook`, `cw uninstall` names it
+and prints the line of that file that holds the call:
 
 ```text
-these hooks were not written by cw and still call it; remove the line from each:
+these hooks are not as cw wrote them and still call it; remove the call from each:
   <repository>/.git/hooks/pre-commit
       cw hook pre-commit "$@"
 ```
@@ -591,7 +683,7 @@ them the same way: as a program and its arguments.
 | --- | --- | --- |
 | `version` | yes | The integer `1`. |
 | `[[check]]` | no | One table per check. A file with no check is valid, and then every commit is allowed. |
-| `id` | yes | The name of the check: a lower-case letter or a digit, then up to 39 lower-case letters, digits, `_` or `-`. Unique in the file. |
+| `id` | yes | The name of the check: a lower-case letter or a digit, then up to 39 lower-case letters, digits, `_` or `-`. Unique in the file. Not `con`, `prn`, `aux`, `nul`, `com0` to `com9` or `lpt0` to `lpt9`, which Windows reads as devices; they are refused on every system. |
 | `run` | yes | An array of strings: the program, then its arguments. No shell reads it, so `$HOME`, `&&` or `*` reach the program as they are written. A check that needs a shell names one, such as `["sh", "-c", "..."]`. |
 | `paths` | no | An array of one or more path patterns. The check depends only on the paths that match. Without it, the check depends on every path of the tree. |
 | `timeout` | no | A string: a duration from `1s` to `6h` in the form `90s`, `5m` or `1h30m`. The default is `10m`. |
@@ -607,8 +699,11 @@ repository, with `/` as the separator and with case respected:
 - A plain name matches at the root only: `go.mod` does not match
   `tools/go.mod`; `**/go.mod` matches both.
 - Nothing else is special. There is no `!`, no `[...]` and no `{a,b}`.
-- A symbolic link and a submodule are each one entry, matched by their own
-  path.
+- A symbolic link is one entry, matched by its own path. A submodule is one
+  entry too, and it counts for every check that has `paths`, whatever the
+  patterns are.
+- A pattern matches files. A pattern that names a folder of the tree, such as
+  `src`, is an invalid declaration; write `src/**`.
 
 [Evidence](evidence.md#what-paths-changes) says what `paths` changes and what
 it promises.
@@ -629,8 +724,10 @@ are these:
 | `run` as one string, empty, or with an empty program | ``cw.toml:4: `run` must be an array of strings that begins with a program, such as ["go", "test", "./..."]`` |
 | `paths` empty or not an array of strings | ``cw.toml:5: `paths` must be an array of one or more patterns`` |
 | A pattern that is empty, starts or ends with `/`, or holds `//` | ``cw.toml:5: the path pattern `/src/**` must be relative to the repository root, with no empty segment`` |
+| A pattern that names a folder of the tree | ``cw.toml:9: the pattern `src` of the check `folder` names a folder, and a pattern matches files; for everything in the folder write `src/**` `` |
+| An `id` that Windows reads as a device | ``cw.toml:10: `id` must not be `nul`, which Windows reads as the name of a device`` |
 | `timeout` not a string, not a duration, or outside 1s to 6h | ``cw.toml:5: `timeout` must be a duration from 1s to 6h, such as "5m"`` |
-| No `cw.toml` at the root of the tree | ``the tree has no declaration: there is no cw.toml at its root; `cw init` creates one`` |
+| No `cw.toml` at the root of the tree | ``the tree has no declaration: there is no cw.toml at its root; `cw init` creates one``; a hook says instead that the tree holds no `cw.toml` and names [A tree without cw.toml](#a-tree-without-cwtoml) |
 
 A `cw.toml` that is not a regular file in the tree, such as a symbolic link, is
 an invalid declaration.
@@ -670,6 +767,10 @@ cw/tokens/                                   token records; see tokens.md
 
 - A run id is the start time in UTC and eight random hex digits, such as
   `20261114T144211Z-f48b9af5`.
+- Logs, run records, decision files, the mode file and the token records are
+  created readable and writable by the user only (`0600`). The folder `cw/`,
+  when `cw init` or `cw run` creates it, and the folders of runs, logs and
+  decisions get `0700`; the folders under `cw/tokens/` get `0755`.
 - A log keeps at most the first 1 MiB and the last 9 MiB of the output, with a
   line between them that says how many bytes were dropped.
 - A record that cannot be read is renamed to `<name>.damaged` by the next
@@ -680,23 +781,35 @@ cw/tokens/                                   token records; see tokens.md
   removing, this one skips it.
 
 Outside the git directory, `cw` writes only `cw.toml`: `cw init` creates it, and
-`cw add` writes the longer file to a temporary `.cw-toml-*` file beside it and
-renames that over it. Nothing is written into the home directory. The hook
+`cw add` writes the longer file to a temporary `.tmp-*` file beside it, syncs
+it to disk and renames that over it. Nothing is written into the home directory. The hook
 files are in the git directory. A check's program runs in the working tree
 and can write there; `cw` records such a run as `source_changed`.
 
-`cw uninstall` removes the hook files that hold the marker line of `cw`, in the
-hooks directory git uses and in `hooks/` of the common git directory, and then
-the whole `cw/` directory: runs, logs, decisions, the mode and the token
-records. It leaves `cw.toml`, every hook file of another tool, and the agent
-plugin.
+`cw uninstall` removes the hook files that hold the marker line of `cw` in
+`hooks/` of the common git directory, and the files that are exactly the
+script of `cw` in a directory that `core.hooksPath` names; then the whole
+`cw/` directory: runs, logs, decisions, the mode and the token records. It
+leaves `cw.toml`, every other hook file, and the agent plugin.
+
+`cw` starts no network connection. Every git call of `cw` sets
+`GIT_NO_LAZY_FETCH=1`, so that git fetches no missing object in a partial
+clone; `cw` then reports the object as missing.
 
 ## Continuous integration
 
 The git hooks run only in a clone where `cw init` ran, and
-`git commit --no-verify` skips them. A job in continuous integration is the
-backstop: it runs the checks again on the content of the pull request. Records
-are not shared between clones, so a fresh clone in CI starts with none.
+`git commit --no-verify` skips them. A job in continuous integration runs the
+checks again on the content of the pull request, so a commit that went around
+the hooks still meets them there. Records are not shared between clones, so a
+fresh clone in CI starts with none.
+
+CI runs what the pushed `cw.toml` declares. A commit that removes a check or
+weakens it, for example with `run = ["true"]` or narrower `paths`, passes CI as
+well. The commit hook prints a notice that names each check that is removed or
+changed, and that notice is all `cw` does about it. Protect `cw.toml` by
+review, for example by naming its owners in a code owners file of the hosting
+service.
 
 ```sh
 git fetch origin main
@@ -711,7 +824,9 @@ A job that only runs does not stop a merge. Make it a required status check
 in the branch protection of the hosting service, so that a change whose job
 failed, or never ran, cannot be merged. That setting is the only part of the
 gate that a person or an agent with write access to a clone cannot skip:
-some tools commit without the hooks, and a hook directory can be replaced.
+some tools commit without the hooks, and a hook directory can be replaced. It
+does not protect the declaration itself: a weakened `cw.toml` is what the job
+runs.
 [What other tools taught us](other-tools.md#what-speaks-against-parts-of-cw)
 names the reports.
 
@@ -757,3 +872,68 @@ Here the pull request changed only `README.md`. `unit` has
 `--base` trusts that the base revision passed its checks. `cw` does not verify
 that: it holds no record of the base in a fresh clone. Protect the base branch
 so that only content that passed CI reaches it.
+
+## A tree without cw.toml
+
+A hook denies a commit or a push whose tree holds no `cw.toml` at its root,
+also when that is on purpose. The denial names this section:
+
+```text
+cw: this commit is denied: the tree has no declaration: it holds no cw.toml at its root. When that is on purpose, see https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#a-tree-without-cwtoml
+```
+
+### A project that stops using cw
+
+The commit that removes `cw.toml` is denied in every clone that has the hooks.
+The person who removes it runs `cw uninstall` in their clone first, and then
+commits:
+
+```text
+$ git rm -q cw.toml
+$ git commit -m "stop using cw"
+cw: notice: this commit changes the required checks: `unit` is no longer declared
+cw: this commit is denied: the tree has no declaration: it holds no cw.toml at its root. When that is on purpose, see https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#a-tree-without-cwtoml
+$ cw uninstall
+removed the hooks cw wrote, 3 in all, and the records of cw in <repository>/.git/cw
+$ git commit -m "stop using cw"
+```
+
+The commit is made, and the push goes through: no hook of `cw` is left in that
+clone.
+
+Every teammate runs `cw uninstall` in their own clone after they pull. Until
+then each commit and each merge in that clone is denied with "the tree has no
+declaration". A pull that merges is denied, and the merge stays in progress;
+`cw uninstall` and then `git commit --no-edit` conclude it:
+
+```text
+$ git pull --no-rebase --no-edit
+cw: notice: this commit changes the required checks: `unit` is no longer declared
+cw: this merge is denied: the tree has no declaration: it holds no cw.toml at its root. When that is on purpose, see https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#a-tree-without-cwtoml
+Not committing merge; use 'git commit' to complete the merge.
+$ cw uninstall
+removed the hooks cw wrote, 3 in all, and the records of cw in <repository>/.git/cw
+$ git commit --no-edit
+```
+
+Do not run `cw init` there: it would create `cw.toml` again.
+
+### A branch with other content
+
+A branch that holds other content than the project, such as a documentation
+site on an orphan branch, needs a `cw.toml` that declares no check. Commit one
+that holds only:
+
+```toml
+version = 1
+```
+
+A tree whose `cw.toml` declares no check is allowed, so commits and pushes of
+that branch go through, and `cw status` there prints
+`no checks are declared, so every commit is allowed`.
+
+### Notes
+
+A push of a ref under `refs/notes/`, such as `git push origin refs/notes/commits`,
+is not judged: notes hold no content of the project. See
+[Hooks](hooks.md#pre-push).

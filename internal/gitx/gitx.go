@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/proc"
@@ -62,12 +63,7 @@ func environment(foreign bool, extra ...string) []string {
 	if foreign {
 		kept := env[:0:0]
 		for _, kv := range env {
-			name, _, _ := strings.Cut(kv, "=")
-			local := false
-			for _, v := range localVars {
-				local = local || name == v
-			}
-			if !local {
+			if name, _, _ := strings.Cut(kv, "="); !slices.Contains(localVars, name) {
 				kept = append(kept, kv)
 			}
 		}

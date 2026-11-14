@@ -34,8 +34,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ([tokens](docs/tokens.md#checked-against-real-records)).
 - A review of what users report about other tools, with sources and what `cw` did about each finding
   ([what other tools taught us](docs/other-tools.md)).
-- Code for Windows, and release archives that need no Go toolchain. Neither has run yet: no release exists, and the
-  tests ran on Linux only ([try it](docs/try-it.md)).
+- Code for Windows, and release archives that need no Go toolchain. The tests passed in CI on Linux, macOS and Windows;
+  no release exists yet ([try it](docs/try-it.md)).
+
+### Changed
+
+- The hook files and every command of the plugin run `cw` only by an absolute path from `PATH`; an empty or relative
+  entry denies. The plugin's commands always exit 0, so an older `cw` blocks no tool call ([hooks](docs/hooks.md)).
+- A hook counts as calling `cw` only on a line that is no comment. In a `core.hooksPath` directory `cw uninstall`
+  removes only a file that is exactly its own script, and it prints how many hooks it removed.
+- A submodule entry counts in the content key of every check with `paths`. A pattern that names a folder is an invalid
+  declaration. A submodule that is not checked out but holds files, or that holds a path git is told to overlook, is
+  refused ([evidence](docs/evidence.md)).
+- A push of `refs/notes/` is not judged, and a tag that a branch of the same push contains adds nothing. A tree without
+  `cw.toml` is denied with a link to what to do ([operations](docs/operations.md#a-tree-without-cwtoml)).
+- The guard compares files as the file system sees them, also under `core.hooksPath`. It asks before `cw uninstall`,
+  `cw init --observe`, an edit of the git configuration and a patch given to the shell, reads commands behind
+  `timeout`, `exec`, `nohup` and `eval`, and matches the `PowerShell` tool ([operations](docs/operations.md#cw-guard)).
+- A denial says to fix what the log shows when a check failed, names a last run that decided nothing, and names
+  `git add -A` and `git stash push --keep-index --include-untracked`. A failed `cw run` ends with one `not verified` line,
+  and `source_changed` says what to do about a file a check writes.
+- `cw status` and `cw context` say first when no hook of `cw` judges commits in a clone. `cw init` prints `next: cw run`
+  where checks are declared. `cw context --host` reads the `cwd` of the host's notice.
+- `cw add` refuses a program that is one word with a space and no such file, names `--` when an option is unknown, says
+  that it only appends, and writes `cw.toml` whole and synced. The ids `con`, `prn`, `aux`, `nul`, `com0`-`com9` and
+  `lpt0`-`lpt9` are refused.
+- git runs with `GIT_NO_LAZY_FETCH=1` and without its file system monitor. Logs, records and decisions are created
+  `0600`, the folders of the store `0700`.
+- On Windows Ctrl+C is recorded as `interrupted`. A check's program named without a folder is found on `PATH` only,
+  one given as a path is read from the repository root, and the program is started by the full path `cw` found.
+- Under Codex on Windows the start of a session prints the line that says `cw` is not installed.
+- `cw uninstall` prints the line of a hook file that holds the call of `cw`, as the file holds it.
+- `cw tokens record` creates its folders `0700`.
+- The role texts say who owns an existing test, how a wrong test goes back, and that a task is ticked after its review;
+  `cw change check` runs after each role that writes the record, and refuses a test path that leaves the repository.
+- `cw tokens record` reads again the starts whose record grew, carries a Codex total over a reset, ignores an internal
+  agent without a type, and uses the `cwd` of the notice ([tokens](docs/tokens.md)).
 
 ## [workflow-v3] - not released
 

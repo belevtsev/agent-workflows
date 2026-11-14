@@ -105,6 +105,74 @@ func TestClassifyEndsDecidedWithoutASnapshot(t *testing.T) {
 	}
 }
 
+// On Windows Ctrl+C reaches the check's program as well as cw, and the
+// program may end before cw sees the signal. An end with the exit status the
+// console gives, and a failure while the run is being cancelled, are
+// therefore interrupted; a failure while the run goes on is failed (second
+// challenge, finding P1).
+func TestClassifyAnEndByTheConsoleOrDuringCancellation(t *testing.T) {
+	t.Parallel()
+	job := Job{Check: decl.Check{ID: "unit", Run: []string{"unit-program"}, Timeout: time.Minute}}
+	live := context.Background()
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	// Converted at run time, so that the test builds where int has 32 bits.
+	console, near := int64(0xC000013A), int64(0xC000013B)
+	cases := []struct {
+		name    string
+		ctx     context.Context
+		ended   proc.Result
+		outcome string
+		exit    *int
+	}{
+		{
+			name:  "the exit status of a program the Windows console ended, as Windows gives it",
+			ctx:   live,
+			ended: proc.Result{Code: int(console), Err: &exec.ExitError{}}, outcome: store.Interrupted,
+		},
+		{
+			name:  "the same exit status as a negative 32-bit number",
+			ctx:   live,
+			ended: proc.Result{Code: -1073741510, Err: &exec.ExitError{}}, outcome: store.Interrupted,
+		},
+		{
+			name:  "a failure while the run is being cancelled",
+			ctx:   cancelled,
+			ended: proc.Result{Code: 1, Err: &exec.ExitError{}}, outcome: store.Interrupted,
+		},
+		{
+			name:  "an end by a signal while the run is being cancelled",
+			ctx:   cancelled,
+			ended: proc.Result{Code: -1, Err: &exec.ExitError{}}, outcome: store.Interrupted,
+		},
+		{
+			name:  "a failure while the run goes on",
+			ctx:   live,
+			ended: proc.Result{Code: 1, Err: &exec.ExitError{}}, outcome: store.Failed, exit: intp(1),
+		},
+		{
+			name:  "a failure with a status close to the console's",
+			ctx:   live,
+			ended: proc.Result{Code: int(near), Err: &exec.ExitError{}}, outcome: store.Failed, exit: intp(int(near)),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			end := classify(c.ctx, nil, nil, job, c.ended)
+			if end.outcome != c.outcome {
+				t.Errorf("outcome %q, want %q", end.outcome, c.outcome)
+			}
+			switch {
+			case c.exit == nil && end.exit != nil:
+				t.Errorf("exit status %d recorded, want none", *end.exit)
+			case c.exit != nil && (end.exit == nil || *end.exit != *c.exit):
+				t.Errorf("exit status %v recorded, want %d", end.exit, *c.exit)
+			}
+		})
+	}
+}
+
 type wrapped struct{ err error }
 
 func (w wrapped) Error() string { return "wrapped: " + w.err.Error() }

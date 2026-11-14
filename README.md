@@ -23,13 +23,15 @@ stop a person who decides to go around it.
   used on real work, and the roles have never been run with a model. The
   [production plan](openspec/production-plan.md) says what was built and how
   each part was checked.
-- It was built and tested on Linux. The code for macOS and Windows compiles
-  and is linted, and has never run there.
+- It was built and tried by hand on Linux. Its tests passed in CI on Linux,
+  macOS and Windows (run 4, commit `dd0ce41`); nothing was tried by hand on
+  macOS or Windows.
 
 ## Install
 
 `cw` is one file, and it needs git. It uses options that git has had since
-version 2.24, and was tested with git 2.53 only.
+version 2.24, and was tried by hand with git 2.53 only. On Windows the git
+hooks are shell scripts, run by the `sh` of Git for Windows.
 
 **From a release, without Go.** The archive is checked against `SHA256SUMS`
 before anything is unpacked. The tag `v3.0.0-beta.1` does not exist yet.
@@ -62,13 +64,37 @@ if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $want) { throw "the checksum 
 Expand-Archive $zip -DestinationPath "$env:LOCALAPPDATA\cw" -Force
 ```
 
-Then put the directory that holds `cw` on your `PATH`: `$HOME/.local/bin`, or
-`%LOCALAPPDATA%\cw` on Windows.
+Then put the directory that holds `cw` on your `PATH`, and open a new shell.
+`$HOME/.local/bin` is not on `PATH` by default on macOS, nor on some Linux
+systems. For bash, or a shell that reads `~/.profile`:
+
+```sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
+```
+
+For zsh, the shell of macOS, write the same line to `~/.zprofile`. On Windows,
+in PowerShell, for your user:
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\cw", "User")
+```
+
+The hooks run `cw` only by an absolute path from `PATH`; see
+[hooks](docs/hooks.md#when-cw-is-not-on-path).
 
 **With Go.** `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-beta.1`
 
-**From this branch, today.** `go build -o cw ./cmd/cw`, as
-[the test guide](docs/try-it.md) shows.
+**From this branch, today.** Building from source needs Go 1.27. In the root
+of this checkout:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+go build -o "$HOME/.local/bin/cw" ./cmd/cw
+```
+
+Do not leave a built `cw` in the root of a repository: git does not ignore it,
+so it becomes part of the content every check is judged on.
+[The test guide](docs/try-it.md) builds it into a folder of its own.
 
 ## The five commands
 
@@ -91,10 +117,14 @@ test executes.
 
 The gate needs no plugin: the git hooks decide. The plugin in this repository
 adds three small things on Claude Code and on Codex. It tells a new session
-what the gate requires, asks before a git call that skips the hooks, such as
-`git commit --no-verify` or `git commit -n`, and before an edit of `cw.toml`,
-a hook file or a record of `cw`, and gives `cw tokens record` the notices that
-a role or the session has ended.
+what the gate requires; it stops a git call that skips the hooks, such as
+`git commit --no-verify` or `git commit -n`, a `cw` call that turns the gate
+off, and an edit of `cw.toml`, a hook file, the git configuration or a record
+of `cw`; and it gives `cw tokens record` the notices that a role or the session
+has ended. Claude Code asks you before such a call. Codex refuses it and gives
+the reason, because Codex cannot ask from a hook; run the call yourself if you
+want it. The guard is a reminder, not a wall:
+[operations](docs/operations.md#what-it-misses) lists what it misses.
 
 It ships two skills. [`cw`](skills/cw/SKILL.md) tells an agent how to work in
 a gated repository: the loop for any change, what each denial means, and
@@ -103,12 +133,20 @@ workflow below. On Claude Code the plugin also ships the seven roles as
 agents; on Codex a role is started from the text `cw roles text <role>`
 prints. Nothing was run on Codex.
 
+On Claude Code:
+
 ```text
 /plugin install agent-workflows --marketplace belevtsev/agent-workflows
 ```
 
-Under Codex on Windows the line that says "cw is not installed" is missing:
-the hook command there is `cw` itself.
+On Codex, add this repository as a marketplace with
+`codex plugin marketplace add belevtsev/agent-workflows`, then add the plugin
+`agent-workflows` with `codex plugin add`. Codex does not run the hooks of a
+plugin when it installs it. Its documentation says: "Installing or enabling a
+plugin doesn't automatically trust its hooks … Codex skips them until the user
+reviews and trusts the current hook definition." Until you review and trust
+them, the session gets no text from `cw context`, no guard and no token
+records. The git hooks still decide.
 
 ## The roles
 

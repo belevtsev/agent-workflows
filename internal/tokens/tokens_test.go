@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -494,5 +495,38 @@ func TestRecordIgnoresInternalAgentsOfClaude(t *testing.T) {
 	}
 	if err := Record(filepath.Join(dir, "none"), Claude, Notice{Session: "s", AgentID: "aside"}); err != nil {
 		t.Errorf("a notice of an internal agent alone: %v", err)
+	}
+}
+
+// What `cw tokens record` stores is for its user alone: the folders it
+// creates, the folder of cw among them, and the file of a start.
+func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no permission bits; a file there has the access of its folder")
+	}
+	dir := t.TempDir()
+	empty := filepath.Join(dir, "agent-a1.jsonl")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := filepath.Join(dir, "cw", "tokens")
+	if err := Record(store, Claude, Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "agent-workflows:architect"}); err != nil {
+		t.Fatal(err)
+	}
+	files, err := filepath.Glob(filepath.Join(store, "s", "*.json"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("stored the files %v (%v), want one", files, err)
+	}
+	for path, want := range map[string]os.FileMode{
+		filepath.Join(dir, "cw"): 0o700, store: 0o700, filepath.Join(store, "s"): 0o700, files[0]: 0o600,
+	} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s has the mode %o, want %o", path, got, want)
+		}
 	}
 }

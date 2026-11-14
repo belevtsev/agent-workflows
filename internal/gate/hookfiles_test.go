@@ -39,7 +39,7 @@ func TestScript(t *testing.T) {
 				t.Errorf("the %s script lacks %q:\n%s", name, want, script)
 			}
 		}
-		if !strings.Contains(script, `/*) exec "$cw" hook `+name+` "$@" ;;`+"\n") || !callsCW(script, name) {
+		if !strings.Contains(script, `/*) exec "$cw" hook `+name+` "$@" ;;`+"\n") || callLine(script, name) == "" {
 			t.Errorf("the %s script does not run cw hook by an absolute path:\n%s", name, script)
 		}
 		if strings.Contains(script, "exec cw ") {
@@ -267,7 +267,7 @@ func TestUninstall(t *testing.T) {
 	if removed != 2 {
 		t.Errorf("Uninstall removed %d hooks, want the 2 that cw wrote", removed)
 	}
-	if want := []Foreign{{Name: "pre-commit", Path: sharedPath}}; !slices.Equal(foreign, want) {
+	if want := []Foreign{{Name: "pre-commit", Path: sharedPath, Line: Line("pre-commit")}}; !slices.Equal(foreign, want) {
 		t.Errorf("foreign = %v, want %v", foreign, want)
 	}
 	if own := Own(t.Context(), e.repo); len(own) != 0 {
@@ -348,8 +348,29 @@ func TestACommentDoesNotCallCW(t *testing.T) {
 		"#!/bin/sh\nexec cw hook pre-push \"$@\"\n":                      false,
 		Script("pre-commit"):                                             true,
 	} {
-		if got := callsCW(script, "pre-commit"); got != want {
-			t.Errorf("callsCW = %v, want %v, for:\n%s", got, want, script)
+		if got := callLine(script, "pre-commit"); (got != "") != want {
+			t.Errorf("callLine = %q, want a line: %v, for:\n%s", got, want, script)
 		}
+	}
+}
+
+// The line Uninstall names is the one the file holds: a copy of cw's own
+// script that was changed since calls cw in another form than Line gives.
+func TestUninstallNamesTheLineTheFileHolds(t *testing.T) {
+	e := newEnv(t, map[string]string{"a.txt": "a\n"})
+	e.git("config", "core.hooksPath", ".githooks")
+	edited := filepath.Join(e.dir, ".githooks", "pre-push")
+	if err := os.MkdirAll(filepath.Dir(edited), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(edited, []byte(Script("pre-push")+"# a note of the team\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, foreign, err := Uninstall(t.Context(), e.repo)
+	if err != nil || len(foreign) != 1 {
+		t.Fatalf("Uninstall = %v, %v; want the changed file named", foreign, err)
+	}
+	if want := `/*) exec "$cw" hook pre-push "$@" ;;`; foreign[0].Line != want || !strings.Contains(readFile(t, edited), want) {
+		t.Errorf("Uninstall names the line %q, want %q, which the file holds", foreign[0].Line, want)
 	}
 }

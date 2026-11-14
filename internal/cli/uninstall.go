@@ -39,9 +39,9 @@ func runUninstall(ctx context.Context, cfg Config, args []string) error {
 	if len(foreign) == 0 {
 		return nil
 	}
-	fmt.Fprintln(cfg.Out, "these hooks were not written by cw and still call it; remove the line from each:")
+	fmt.Fprintln(cfg.Out, "these hooks are not as cw wrote them and still call it; remove the call from each:")
 	for _, hook := range foreign {
-		fmt.Fprintf(cfg.Out, "  %s\n      %s\n", hook.Path, gate.Line(hook.Name))
+		fmt.Fprintf(cfg.Out, "  %s\n      %s\n", hook.Path, decl.Plain(hook.Line))
 	}
 	return exit(ExitForeignHook)
 }

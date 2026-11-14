@@ -32,7 +32,7 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
 
 `cw` SHALL meet every requirement of this change on Linux, on macOS and on Windows with Git for Windows. Where a requirement names something that only some systems have, such as a signal or the executable mark of a file, its own text or scenario says what holds on the others.
 
-Source: the owner's decision of 14 November 2026 (Windows is needed); proposal, Open Question 7; `docs/operations.md:131` (Windows is not supported today); `internal/proc/group_other.go` and `internal/fslock/fslock_other.go` (on other systems today only the program itself is stopped, and no file lock can be taken).
+Source: the owner's decision of 14 November 2026 (Windows is needed); proposal, Open Question 7; `docs/operations.md:131` (Windows is not supported today); `internal/proc/group_other.go` and `internal/fslock/fslock_other.go` (on other systems today only the program itself is stopped, and no file lock can be taken); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding P3.
 
 #### Scenario: A gated commit on each system
 
@@ -43,6 +43,11 @@ Source: the owner's decision of 14 November 2026 (Windows is needed); proposal, 
 
 - **WHEN** on each system `README.md` is edited and `git commit -a -m docs` runs in `portable` without `cw run`
 - **THEN** the commit is denied and the reason names `git` as not run on this content
+
+#### Scenario: A name in another case
+
+- **WHEN** on a file system that ignores the case of names, as on Windows and by default on macOS, the agent in Claude Code is about to edit `CW.TOML` or `.GIT/HOOKS/pre-commit` in `portable`
+- **THEN** the user is asked, as for `cw.toml` or `.git/hooks/pre-commit`
 
 ### Requirement: Programs that a system lacks
 
@@ -62,9 +67,9 @@ Source: `check-declaration`, Declaration file (nothing outside `cw.toml` changes
 
 ### Requirement: Programs on Windows
 
-On Windows `cw` SHALL find a check's program as the system does, so that a name without its extension finds a `.exe`, `.cmd` or `.bat` file. When the program is a batch file, each argument SHALL reach it unchanged, or `cw run` SHALL refuse that check, name the argument, and start nothing for it. An argument MUST NOT be read as a second command.
+On Windows `cw` SHALL find a check's program in the folders of `PATH` when `run` names it without a folder, and from the repository root otherwise, SHALL find a `.exe`, `.cmd` or `.bat` file by a name without its extension, and SHALL start the file by its full path. When the program is a batch file, each argument SHALL reach it unchanged, or `cw run` SHALL refuse that check, name the argument, and start nothing for it. An argument MUST NOT be read as a second command.
 
-Source: `go doc os/exec.LookPath` and `go doc os/exec.Command`, Go 1.27.4 (a name needs an extension from `PATHEXT`; `cmd.exe`, "and thus, all batch files", unquote a command line differently from other programs); proposal, Open Question 9.
+Source: `go doc os/exec.LookPath` and `go doc os/exec.Command`, Go 1.27.4 (a name needs an extension from `PATHEXT`; `cmd.exe`, "and thus, all batch files", unquote a command line differently from other programs); proposal, Open Question 9; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings P2 and P5.
 
 #### Scenario: A program is found without its extension
 
@@ -76,11 +81,21 @@ Source: `go doc os/exec.LookPath` and `go doc os/exec.Command`, Go 1.27.4 (a nam
 - **WHEN** on Windows `hello.cmd` passes its arguments on to a program that prints them, a check has `run = ["hello", "a b", "c&d"]`, and `cw run` runs
 - **THEN** that program receives exactly the two arguments `a b` and `c&d`, or `cw run` exits 1 and names `c&d`; in neither case is a program named `d` started
 
+#### Scenario: A batch file named from a subfolder
+
+- **WHEN** on Windows a check has `run = ["tools\\check.bat", "a&b"]` and `cw run` runs in a subfolder of `portable`
+- **THEN** `cw run` refuses the check, says that it is a batch file and names `a&b`, and `tools\check.bat` is not started
+
+#### Scenario: A batch file of the same name in the repository
+
+- **WHEN** on Windows a folder on `PATH` holds `check.bat`, which prints `from path`, the root of `portable` holds another `check.bat`, which prints `from root`, a check has `run = ["check.bat"]`, and `cw run` runs at the root
+- **THEN** the output holds `from path` and not `from root`
+
 ### Requirement: Hooks on Windows
 
-On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
+On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. So SHALL the Windows commands of the Codex plugin, which SHALL NOT run a `cw` of the working directory and SHALL exit 0. A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
 
-Source: `publish-gate`, Hook installation and Fail closed; the owner's decision of 14 November 2026. Not observed: every git observation under proposal, Sources was made on Linux.
+Source: `publish-gate`, Hook installation and Fail closed; the owner's decision of 14 November 2026; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, X2 and X10; `agent-integration`, Instruction text comes from `cw` (the line for a missing `cw`). Not observed: every git observation under proposal, Sources was made on Linux.
 
 #### Scenario: A commit from PowerShell and from the command prompt
 
@@ -91,6 +106,26 @@ Source: `publish-gate`, Hook installation and Fail closed; the owner's decision 
 
 - **WHEN** on Windows `README.md` is edited, and `cw run` and `git commit -a -m docs` run from PowerShell
 - **THEN** the commit is recorded
+
+#### Scenario: A `cw` of the working directory
+
+- **WHEN** on Windows `portable` holds `cw.bat`, no `cw` is on `PATH`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`
+- **THEN** each command exits 0 and does not run `cw.bat`
+
+#### Scenario: The guard of Codex on Windows
+
+- **WHEN** on Windows `cw` is on `PATH` and Codex runs the Windows command of its plugin before the agent runs `git commit --no-verify`
+- **THEN** the command prints the decision `deny`
+
+#### Scenario: An older `cw` on Windows
+
+- **WHEN** on Windows the `cw` first on `PATH` is a batch file that exits 2, and Codex runs each Windows command of its plugin
+- **THEN** each command exits 0
+
+#### Scenario: Codex starts a session on Windows without `cw`
+
+- **WHEN** on Windows no `cw` is on `PATH` and Codex runs the Windows command of its plugin for the start of a session, once in `portable` and once in a folder outside any repository
+- **THEN** in `portable` the command prints one line that says that `cw` is not installed and where the install instruction is, outside a repository it prints nothing, and both exit 0
 
 ### Requirement: Install without a toolchain
 

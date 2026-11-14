@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -118,19 +119,31 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 		}
 		return true, nil
 	}
-	// On Windows the program is looked up here, as the system will find it
-	// from the repository root, and started by that full path: cmd.exe, which
-	// runs a batch file, would look a bare name up again, the folder first.
+	// On Windows the program is looked up here and started by its full path:
+	// cmd.exe, which runs a batch file, would look a bare name up again, the
+	// folder first. A bare name is found on PATH only, as on the other
+	// systems, and a path is read from the repository root.
 	program := ""
 	if name := check.Run[0]; runtime.GOOS == "windows" {
-		if !filepath.IsAbs(name) && strings.ContainsAny(name, `/\`) {
-			name = filepath.Join(s.repo.Root, name)
+		places := []string{filepath.Join(s.repo.Root, name)}
+		if filepath.IsAbs(name) {
+			places[0] = name
+		} else if !strings.ContainsAny(name, `:/\`) {
+			places = filepath.SplitList(os.Getenv("PATH"))
+			for i, dir := range places {
+				places[i] = filepath.Join(dir, name)
+			}
 		}
-		if found, err := exec.LookPath(name); err == nil {
+		for _, place := range places {
+			found, err := exec.LookPath(place)
+			if err != nil || !filepath.IsAbs(place) {
+				continue
+			}
 			if refusal := runner.BatchRefusal(found, check.Run[1:]); refusal != "" {
 				return false, failf("the check `%s` was not started: %s", id, refusal)
 			}
-			program, _ = filepath.Abs(found)
+			program = found
+			break
 		}
 	}
 	fmt.Fprintf(out, "== %s: %s\n", id, decl.Plain(strings.Join(check.Run, " ")))

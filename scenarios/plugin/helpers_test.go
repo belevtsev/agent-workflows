@@ -39,6 +39,8 @@ type hookFile struct {
 		Hooks   []struct {
 			Type    string `json:"type"`
 			Command string `json:"command"`
+			// CommandWindows is what Codex runs with cmd.exe /C on Windows.
+			CommandWindows string `json:"commandWindows"`
 		} `json:"hooks"`
 	} `json:"hooks"`
 }
@@ -126,13 +128,20 @@ func hookCommands(t *testing.T, file, event, selector string) []string {
 // exit status that is not 0.
 func runHooks(t *testing.T, dir string, env []string, commands []string, notice any) cwtest.Result {
 	t.Helper()
+	return runHooksIn(t, "sh", dir, env, commands, notice)
+}
+
+// runHooksIn is runHooks with another shell, such as bash, which Claude Code
+// names in its hook file.
+func runHooksIn(t *testing.T, shell, dir string, env []string, commands []string, notice any) cwtest.Result {
+	t.Helper()
 	input, err := json.Marshal(notice)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var all cwtest.Result
 	for _, command := range commands {
-		cmd := exec.Command("sh", "-c", command)
+		cmd := exec.Command(shell, "-c", command)
 		cmd.Dir = dir
 		cmd.Env = env
 		cmd.Stdin = strings.NewReader(string(input))
@@ -149,7 +158,7 @@ func runHooks(t *testing.T, dir string, env []string, commands []string, notice 
 				all.Code = exit.ExitCode()
 			}
 		default:
-			t.Fatalf("sh -c %q: %v", command, err)
+			t.Fatalf("%s -c %q: %v", shell, command, err)
 		}
 	}
 	return all

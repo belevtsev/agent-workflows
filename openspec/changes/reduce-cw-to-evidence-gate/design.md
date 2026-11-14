@@ -95,8 +95,11 @@ the repository root.
 - **A submodule or nested repository.** The snapshot records it as one
   commit. For each entry with mode 160000 in the copy, `git status
   --porcelain` runs inside it; any output stops the command with exit 1,
-  naming the path and saying that it holds uncommitted changes. Otherwise a
-  check would run on content that no tree records.
+  naming the path and saying that it holds uncommitted changes. A path inside
+  it that is marked assume-unchanged or skip-worktree stops the command too,
+  and its own submodules are looked at in the same way. A submodule that is
+  not checked out is refused when its folder holds files. Otherwise a check
+  would run on content that no tree records.
 - **The tree of a commit.** Inside `pre-commit` and `pre-merge-commit`, the
   tree of the index, as above, with the environment git gave the hook.
 - **The tree of a pushed ref.** `git rev-parse <id>^{commit}` peels an
@@ -159,7 +162,11 @@ cw/tmp/                                  index copies
   which ends were recorded, and it does not depend on the clock.
 - **Content key.** For a check without `paths`, the tree id. With `paths`, the
   SHA-256 of the raw entries of `git ls-tree -r -z` (mode, type, object id,
-  path, each ended by a NUL byte) whose path matches a pattern. Two trees
+  path, each ended by a NUL byte) whose path matches a pattern, and of every
+  submodule entry: a tree holds a submodule as one entry, which no pattern for
+  a file inside it matches. A symbolic link is one entry, so the content
+  behind it is not part of the key. A pattern that names a folder of the tree
+  matches nothing and is refused as an invalid declaration. Two trees
   hold the same checked content for a check exactly when their keys are
   equal, so no hook compares trees pairwise.
 - **A run that died.** A record without an outcome whose lock can be taken at
@@ -255,9 +262,16 @@ record is written.
 ## Hooks
 
 - **The hook file** is a POSIX shell script with a marker line that shows `cw`
-  wrote it. It runs `cw hook <name> "$@"`. When `cw` is not on `PATH` it
-  prints that `cw` was not found and where the install instruction is, and
-  exits 3. Git for Windows runs the same file in its own shell.
+  wrote it. It runs `"$cw" hook <name> "$@"` only when `command -v cw` gives
+  an absolute path, so an empty or relative entry of `PATH` cannot make it run
+  a file of the repository. When `cw` is not found it prints that and where the
+  install instruction is; when `PATH` names it by a relative path it prints
+  that and says to remove the entry; both exit 3. Git for Windows runs the
+  same file in its own shell.
+- **`cw uninstall`** removes, in `hooks/` of the common git directory, each of
+  the three files that holds the marker, and in a directory that
+  `core.hooksPath` names only a file that is exactly the script of `cw`. A file
+  it leaves that still calls `cw hook <name>` is named, with exit 4.
 - **`cw init`** creates `cw.toml` when it is missing, installs the three hooks
   in `hooks/` of the common git directory, and writes the mode. A hook file
   without the marker is left alone, and `core.hooksPath` stops every write.
@@ -268,15 +282,17 @@ record is written.
   its declaration, list its entries once, compute the key of each check and
   read that check's records. Verified means allow. The working tree's snapshot
   is taken only for a denial, to list up to 20 paths that differ.
-- **`pre-push`.** One decision per line of input. A deletion is allowed. The
-  id git passes is peeled to a commit first. A branch update is allowed when
-  the remote's commit already contains the new tip; any other ref when a
-  remote-tracking branch of that remote contains its commit. Otherwise the
-  tree of the tip commit must be verified. One denial denies the push.
+- **`pre-push`.** One decision per line of input. A deletion is allowed. A ref
+  under `refs/notes/` is allowed and not judged. The id git passes is peeled
+  to a commit first. A branch update is allowed when the remote's commit
+  already contains the new tip; any other ref when the new tip of a branch
+  that the same push updates, or a remote-tracking branch of that remote,
+  contains its commit. Otherwise the tree of the tip commit must be verified.
+  One denial denies the push.
 - **Gate state.** The hooks are `installed` when each of the three files git
   would run (in `core.hooksPath` when that is set, else in `hooks/` of the
   common git directory) exists, can be executed (not judged on Windows) and
-  holds `cw hook <name>`. `cw status` and `cw context` report anything else
+  holds `cw hook <name>` on a line that is no comment. `cw status` and `cw context` report anything else
   and name `cw init`: it installs the hooks, or, where `core.hooksPath` is
   set, prints the line to add to each.
 - **Notice.** When the new tree lacks a check the tree of `HEAD` declares, or
@@ -291,28 +307,37 @@ record is written.
 ## Plugin
 
 - **Session start.** The hook command is shell text: when `cw` is on `PATH`
-  it runs `cw context`; when it is not and the root of the repository holds
+  by an absolute path it runs `cw context --host <host>`, which reads the
+  `cwd` of the host's notice; otherwise, when the root of the repository holds
   `cw.toml`, it prints one line that says so and names the install
-  instruction. The Codex command for Windows is `cw context` alone, so that
-  line is missing there. The text an agent reads lives in `cw`, not in the
+  instruction. The Codex command for Windows does the same with the commands
+  of `cmd.exe`. The text an agent reads lives in `cw`, not in the
   hook file.
 - **Before a tool call.** The hook runs `cw guard --host <host>`, which reads
   the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
   (`command` for the shell tool, `file_path` for an editing tool, the patch
   text for the `apply_patch` of Codex). In a repository whose root holds
   `cw.toml` it answers in two cases: a git call in the command skips the
-  hooks, or the edited file is that `cw.toml`, a hook file or a record of
-  `cw`. It reads the command as shell words with `internal/shellwords`, a
-  splitter that runs nothing: a call skips the hooks when it holds
-  `--no-verify`, `-n` of `git commit` or a setting of `core.hooksPath`, and a
-  command it cannot split is judged by whether its text holds `--no-verify`.
+  hooks or turns the gate off (`cw uninstall`, `cw init --observe`), or the
+  edited file, also through a patch given to the shell, is that `cw.toml`, a
+  hook file in `hooks/` of the common git directory or in the directory
+  `core.hooksPath` names, the git configuration, or a record of `cw`. Paths
+  are compared as the file system sees them, with `os.SameFile`, for the
+  path and each folder above it, so another spelling, a link and a file that
+  does not exist yet are judged like the place they lead to. It reads the
+  command as shell words with `internal/shellwords`, a splitter that runs
+  nothing, also behind `env`, `sudo`, `timeout`, `exec`, `nohup`, `eval` and
+  `sh -c`: a call skips the hooks when it holds `--no-verify`, `-n` of
+  `git commit` or a setting of `core.hooksPath`, and a command it cannot split
+  is judged by whether its text holds `--no-verify`.
   The guard decides nothing about a commit; a call it does not recognise is
   not asked about. The answer is the JSON object both hosts
   read, `hookSpecificOutput` with `permissionDecision` and
   `permissionDecisionReason`: `ask` for Claude Code, `deny` for Codex, which
   does not support `ask`. In every other case it prints nothing and exits 0.
-- **Without `cw`.** The guard command does nothing when `cw` is not on
-  `PATH`. The git hooks still deny.
+- **Without `cw`.** Each command of the plugin runs `cw` only by an absolute
+  path from `PATH`, and ends with exit status 0, so a missing or an older
+  `cw` blocks no tool call. The git hooks still deny.
 - **What the plugin does not do.** It reads no git command and decides about
   no commit or push.
 

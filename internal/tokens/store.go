@@ -179,7 +179,7 @@ func write(dir string, s Start) error {
 		return err
 	}
 	folder := filepath.Join(dir, fileName(s.Session))
-	if err := os.MkdirAll(folder, 0o755); err != nil {
+	if err := os.MkdirAll(folder, 0o700); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(folder, ".tmp-*")

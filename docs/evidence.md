@@ -36,7 +36,8 @@ holds:
 - every tracked file as it is on disk, after git's own conversions: line
   endings, clean filters and `core.fileMode`;
 - every untracked file that git does not ignore;
-- a submodule as the commit it has checked out.
+- a submodule as the commit it has checked out;
+- a symbolic link as the link, not as the content it leads to.
 
 It does not hold ignored files. A file listed in `.gitignore`, such as a build
 directory, is not part of the content, and changing it changes nothing for
@@ -54,8 +55,10 @@ cw: the working tree cannot be recorded: README.md is marked skip-worktree and d
 
 The same holds for a file marked assume-unchanged that differs, a sparse
 checkout that keeps tracked files off the disk, a submodule or nested
-repository with uncommitted changes, and any case in which `git add -A` fails,
-such as a nested repository with no commit:
+repository with uncommitted changes, a submodule that holds a path marked
+assume-unchanged or skip-worktree, a submodule that is not checked out but
+whose folder holds files, and any case in which `git add -A` fails, such as a
+nested repository with no commit:
 
 ```text
 cw: the working tree cannot be recorded: git add -A failed:
@@ -71,10 +74,13 @@ Each check has a content key for a tree:
 - A check without `paths` depends on every path. Its key is the id of the whole
   tree, so any change to any non-ignored file, `cw.toml` included, makes a new
   content that needs a new run.
-- A check with `paths` depends only on the entries whose path matches a pattern.
-  Its key is the SHA-256 of those entries as `git ls-tree -r` lists them: mode,
-  type, object id and path. Two trees hold the same checked content for the
-  check exactly when these entries are the same.
+- A check with `paths` depends only on the entries whose path matches a
+  pattern, and on every submodule entry. Its key is the SHA-256 of those
+  entries as `git ls-tree -r` lists them: mode, type, object id and path. Two
+  trees hold the same checked content for the check exactly when these entries
+  are the same. A tree holds a submodule as one entry, which no pattern for a
+  file inside it matches, so a submodule entry counts in the key of every
+  check that has `paths`: a new commit of any submodule needs a new run.
 
 So for a check with `paths = ["src/**"]`:
 
@@ -86,11 +92,21 @@ So for a check with `paths = ["src/**"]`:
 - content that was checked earlier is recognised again: after `src/app.txt` is
   changed and changed back, the earlier run counts again.
 
-`paths` is a promise by the repository that the check reads nothing else. `cw`
-does not check the promise. When a check reads a file outside its `paths`, a
-pass is carried over to content the check never saw. A pattern that matches no
-entry gives the same key for every tree that has no such entry, so one pass
-then counts for all of them.
+`paths` is a promise by the repository about what the check reads: nothing
+else. `cw` does not check the promise. When a check reads a file outside its
+`paths`, a pass is carried over to content the check never saw. A symbolic
+link is recorded as a link, so the content behind it is not part of the key,
+even when the link matches a pattern. A pattern that matches no entry gives the
+same key for every tree that has no such entry, so one pass then counts for all
+of them.
+
+A pattern that names a folder of the tree matches nothing, because a pattern
+matches files. Such a declaration is invalid, and `cw run`, `cw status` and a
+hook say which pattern to write:
+
+```text
+cw: cw.toml:9: the pattern `src` of the check `folder` names a folder, and a pattern matches files; for everything in the folder write `src/**`
+```
 
 ### The index against the working tree
 
@@ -117,7 +133,9 @@ stage everything with `git add -A`, or run the checks on what you will commit
 
 A passing run proves that, on this machine, the program of the check exited 0
 when it started from the root of a working tree whose snapshot was that tree,
-and that the working tree did not change while it ran.
+and that the snapshot after the run equals the snapshot before it. Only these
+two snapshots are compared: a file that changed during the run and changed
+back before it ended is not seen.
 
 It does not prove:
 
@@ -181,6 +199,20 @@ every declared check has a passing run on this content
 same `cw run` changed the working tree, the next check runs on that changed
 content, and the earlier one ends `source_changed`.
 
+A check that writes a file into the working tree, such as a coverage report,
+ends `source_changed`, also when the file lies outside its `paths`. The line
+names the files and says what to do:
+
+```text
+== writes: sh -c echo r > coverage.out
+== writes: source_changed: the source changed during the run: coverage.out; when the check writes these files, list them in .gitignore or write them outside the working tree
+   log: <repository>/.git/cw/logs/20261114T175338Z-db4d8cac.log
+not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again
+```
+
+A second `cw run` can pass only because the file is then already there with
+the same content; the check still writes into the working tree.
+
 ### --force
 
 `cw run --force` executes the selected checks even when they are satisfied.
@@ -198,6 +230,7 @@ run ends `timed_out`:
 == slow: sleep 5
 == slow: timed_out after 1s: the check did not end within its timeout of 1s
    log: <repository>/.git/cw/logs/20261114T144258Z-6d1dadd1.log
+not verified: 1 of 1 checks did not pass; fix what each log shows, then run `cw run` again
 ```
 
 `timed_out` is decisive: the check is not satisfied on that content until a
@@ -205,8 +238,8 @@ later run passes. A process that the program left running when it exited is
 stopped too. When such a process held the output open, `cw` prints a warning
 that names the cause; the outcome stays the one the exit status gave.
 
-When `cw run` itself receives SIGINT, SIGTERM or SIGHUP, it stops the program
-and records the run as `interrupted`. When the `cw` process dies without
+When `cw run` itself receives SIGINT, SIGTERM or SIGHUP, or on Windows Ctrl+C,
+it stops the program and records the run as `interrupted`. When the `cw` process dies without
 recording an end, the next command reports that run as `interrupted`, and
 nothing waits for it.
 
@@ -259,6 +292,10 @@ The first line of `cw status` sums up the snapshot:
 | `verified: every declared check has a passing run on this content` | 0 |
 | `no checks are declared, so every commit is allowed` | 0 |
 | `not verified: a commit of this content would be denied` | 5 |
+| `not verified, but no hook of cw judges a commit in this clone yet` | 5 |
+
+The last line is printed in a clone where the hooks of `cw` are not installed,
+so git would allow the commit. A warning on standard error names `cw init`.
 
 [Operations](operations.md#cw-status) describes the rest of the output and the
 JSON form.

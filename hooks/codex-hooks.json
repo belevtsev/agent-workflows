@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "sh -c 'c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" context --host codex;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true'",
-            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cw context --host codex 2>nul& exit /b 0",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& (where /q $PATH:cw 2>nul && (cw context --host codex 2>nul & ver >nul) || (git ls-files --error-unmatch :/cw.toml >nul 2>nul && echo cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install)) & exit /b 0",
             "timeout": 10
           }
         ]

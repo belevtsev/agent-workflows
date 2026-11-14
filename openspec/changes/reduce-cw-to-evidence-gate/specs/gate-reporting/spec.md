@@ -54,9 +54,9 @@ Source: review finding H1; `publish-gate`, Commit rule (a commit is judged by th
 
 ### Requirement: Gate state
 
-`cw status` SHALL warn when git does not run the hooks of `cw` in this clone: a hook file is missing or does not call `cw hook`, or `core.hooksPath` names a directory whose hooks do not. The warning SHALL name `cw init`. `cw status --json` SHALL hold `hooks`, which is `installed` or `missing`. The exit status SHALL NOT depend on it.
+`cw status` SHALL warn when git does not run the hooks of `cw` in this clone: a hook file is missing or does not call `cw hook`, or `core.hooksPath` names a directory whose hooks do not. The warning SHALL name `cw init`, and the first line of `cw status` SHALL then not say that a commit would be denied. `cw status --json` SHALL hold `hooks`, which is `installed` or `missing`. The exit status SHALL NOT depend on it.
 
-Source: production plan, Independent challenge, finding 7 (a clone without hooks, or a changed `core.hooksPath`, turned the gate off with nothing reported).
+Source: production plan, Independent challenge, finding 7 (a clone without hooks, or a changed `core.hooksPath`, turned the gate off with nothing reported); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U6.
 
 #### Scenario: A clone without hooks
 
@@ -67,6 +67,11 @@ Source: production plan, Independent challenge, finding 7 (a clone without hooks
 
 - **WHEN** `git config core.hooksPath .githooks` is set after `cw init`, `.githooks/` holds no hook, and `cw status --json` runs
 - **THEN** `hooks` is `missing`
+
+#### Scenario: Status says first that nothing judges yet
+
+- **WHEN** `demo`, in which no check has run, is cloned, and `cw status` runs in the clone
+- **THEN** it exits 5, and the first line of its output is `not verified, but no hook of cw judges a commit in this clone yet`
 
 ### Requirement: Status as JSON
 

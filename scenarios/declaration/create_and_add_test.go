@@ -114,6 +114,10 @@ func TestAddRefusesAnIDThatExists(t *testing.T) {
 	if !strings.Contains(result.Output(), "unit") {
 		t.Errorf("the output does not name unit:\n%s", result.Output())
 	}
+	// Second challenge, finding U7: the user learns how to change a check.
+	if !strings.Contains(result.Output(), "`cw add` only appends a check") {
+		t.Errorf("the output does not say that `cw add` only appends a check:\n%s", result.Output())
+	}
 	if after := sha256File(repo, "cw.toml"); after != sum {
 		t.Errorf("cw add changed cw.toml:\n%s", repo.Read("cw.toml"))
 	}

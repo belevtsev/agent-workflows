@@ -51,6 +51,11 @@ func TestSessionContextWhenHooksAreNotInstalled(t *testing.T) {
 			if !strings.Contains(result.Stdout, "cw init") {
 				t.Errorf("the context does not say that cw init installs them:\n%s", result.Stdout)
 			}
+			// It says so first, before what the gate does (U6).
+			missing, gated := strings.Index(lower, "nothing is gated"), strings.Index(lower, "allows a commit")
+			if missing < 0 || gated < 0 || missing > gated || !strings.Contains(strings.SplitN(lower, ".", 2)[0], "hooks are not installed") {
+				t.Errorf("the context does not start by saying that the hooks are not installed and nothing is gated yet:\n%s", result.Stdout)
+			}
 		})
 	}
 }

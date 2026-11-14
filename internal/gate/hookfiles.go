@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
@@ -36,14 +37,7 @@ const (
 )
 
 // IsHook says whether name is one of the hooks cw knows.
-func IsHook(name string) bool {
-	for _, h := range Hooks {
-		if h == name {
-			return true
-		}
-	}
-	return false
-}
+func IsHook(name string) bool { return slices.Contains(Hooks, name) }
 
 // Line is the line that calls cw from a hook another tool owns. It must be
 // the last command of that hook.
@@ -74,11 +68,9 @@ func Script(name string) string {
 // ownLine is how the file cw writes calls cw, up to the name of the hook.
 const ownLine = `"$cw" hook `
 
-// Foreign is a hook file cw did not write.
-type Foreign struct {
-	Name string
-	Path string
-}
+// Foreign is a hook file cw did not write, or one it wrote that was changed
+// since. Line is its line that calls cw, when Uninstall left the file.
+type Foreign struct{ Name, Path, Line string }
 
 // Install writes the three hooks into the hooks directory of the common git
 // directory. It never changes a file it did not write, and writes nothing
@@ -155,17 +147,18 @@ func executable(path string) bool {
 // calls says whether the file is a hook git would run and that calls cw.
 func calls(path, name string) bool {
 	data, err := os.ReadFile(path)
-	return err == nil && executable(path) && callsCW(string(data), name)
+	return err == nil && executable(path) && callLine(string(data), name) != ""
 }
 
-// callsCW says whether a line of a hook file that is no comment calls cw.
-func callsCW(script, name string) bool {
+// callLine is the first line of a hook file that is no comment and calls cw,
+// or nothing.
+func callLine(script, name string) string {
 	for _, line := range strings.Split(script, "\n") {
 		if line = strings.TrimSpace(line); !strings.HasPrefix(line, "#") && (strings.Contains(line, "cw hook "+name) || strings.Contains(line, ownLine+name)) {
-			return true
+			return line
 		}
 	}
-	return false
+	return ""
 }
 
 // State says whether git runs the hooks of cw in this clone: each of the
@@ -209,8 +202,8 @@ func Uninstall(ctx context.Context, repo *gitx.Repo) (removed int, foreign []For
 					return removed, nil, err
 				}
 				removed++
-			case callsCW(string(data), name):
-				foreign = append(foreign, Foreign{Name: name, Path: path})
+			case callLine(string(data), name) != "":
+				foreign = append(foreign, Foreign{Name: name, Path: path, Line: callLine(string(data), name)})
 			}
 		}
 	}

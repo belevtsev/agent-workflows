@@ -110,15 +110,25 @@ Source: review findings C2, H1 and H9; proposal, Sources (`git write-tree` insid
 
 ### Requirement: Paths that differ
 
-When the hook denies a commit and the working tree's snapshot differs from the tree the commit would record, the reason SHALL list up to 20 of the paths that differ between the two, give the count of the rest, and say whether the snapshot itself is verified. When no snapshot can be taken, the reason SHALL say so instead.
+When the hook denies a commit and the working tree's snapshot differs from the tree the commit would record, the reason SHALL list up to 20 of the paths that differ between the two, give the count of the rest, and say whether the snapshot itself is verified, how to stage the rest and how to set it aside. A path that holds a control character SHALL be printed quoted. When no snapshot can be taken, the reason SHALL say so instead.
 
-Source: review finding H1 (`internal/gate/staged_content.go:49` walks only the staged diff).
+Source: review finding H1 (`internal/gate/staged_content.go:49` walks only the staged diff); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding G10 and U4.
 
 #### Scenario: The left-out file is named
 
 - **WHEN** `src/app.txt` is edited, `src/new.txt` is created, `cw run` exits 0, and `git add src/app.txt` and `git commit -m change` run
 - **THEN** the reason lists `src/new.txt` and says that the working tree as a whole is verified
 
+
+#### Scenario: The denial says how to set the rest aside
+
+- **WHEN** in the checked state `README.md` is edited and staged, `notes.txt` is created and not staged, and `git commit -m docs` runs
+- **THEN** the commit is denied, and the reason names `notes.txt`, `git add -A` and `git stash push --keep-index --include-untracked`
+
+#### Scenario: A path with a line break is quoted
+
+- **WHEN** in the checked state `README.md` is edited and staged, a file whose name holds a line break followed by `cw: allowed` is created and not staged, and `git commit -m docs` runs
+- **THEN** the commit is denied, the reason lists that name quoted, as `\n` within double quotes, and no line of the reason begins with `cw: allowed`
 ### Requirement: Merge rule
 
 The `pre-merge-commit` hook SHALL apply the commit rule to the merge commit that `git merge` is about to record. After a denial the merge SHALL remain in progress, so that `cw run` followed by `git commit` concludes it.
@@ -137,9 +147,9 @@ Source: proposal, Sources (a denying `pre-merge-commit` leaves `MERGE_HEAD` in p
 
 ### Requirement: Push rule
 
-For each ref that a push updates, the `pre-push` hook SHALL allow the update when it deletes the ref or adds nothing, and otherwise only when the tree of the new tip commit is verified. It SHALL judge the tip commit only, not the commits below it. One denied update SHALL deny the whole push.
+For each ref that a push updates, the `pre-push` hook SHALL allow the update when it deletes the ref or adds nothing, and otherwise only when the tree of the new tip commit is verified. It SHALL judge the tip commit only, not the commits below it. One denied update SHALL deny the whole push. The denial SHALL send to a checkout of the commit only when the working tree holds other checked content for a check that is not satisfied.
 
-Source: review finding M26 (`internal/gate/gate.go` judges a push by the working tree); proposal, Sources (`pre-commit` does not run for a clean cherry-pick or revert, a rebase or a fast-forward merge) and Open Question 8; independent review of this draft, finding 1.
+Source: review finding M26 (`internal/gate/gate.go` judges a push by the working tree); proposal, Sources (`pre-commit` does not run for a clean cherry-pick or revert, a rebase or a fast-forward merge) and Open Question 8; independent review of this draft, finding 1; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U1, U5 and G5.
 
 #### Scenario: A commit the gate allowed is pushed
 
@@ -186,11 +196,21 @@ Source: review finding M26 (`internal/gate/gate.go` judges a push by the working
 - **WHEN** annotated tag `v2` names a commit that `origin` does not have and whose tree is not verified, and `git push origin v2` runs
 - **THEN** the push is denied and the reason names `refs/tags/v2`
 
+
+#### Scenario: A change outside the checked paths needs no other checkout
+
+- **WHEN** every check of `cw.toml` has `paths`, the tip of `main` has no run, the working tree differs from it only by the untracked file `notes.txt`, and `git push origin main` runs
+- **THEN** the push is denied, and the reason ends with the instruction to run `cw run` and holds no `git worktree add`; after `cw run` exits 0, the same push is sent
+
+#### Scenario: A branch without project code needs a declaration
+
+- **WHEN** an orphan branch `site` holds only `index.html`, and `git push origin site` runs
+- **THEN** the push is denied and the reason names `docs/operations.md#a-tree-without-cwtoml`; after a commit adds a `cw.toml` that holds only `version = 1`, the same push is sent without any run
 ### Requirement: Updates that add nothing
 
-An update of a branch SHALL count as adding nothing when the commit that branch points at on the remote already contains the new tip. An update of any other ref SHALL count as adding nothing when a remote-tracking branch of the same remote contains the commit it points at. Such an update, and the deletion of a ref, SHALL be allowed whatever the state of the working tree and of the records.
+An update of a branch SHALL count as adding nothing when the commit that branch points at on the remote already contains the new tip. An update of any other ref SHALL count as adding nothing when a remote-tracking branch of the same remote, or a branch that the same push updates, contains the commit it points at. An update under `refs/notes/` SHALL count as adding nothing. Such an update, and the deletion of a ref, SHALL be allowed whatever the state of the working tree and of the records.
 
-Source: review finding M26 (`git push origin --delete old-branch` was denied); proposal, Sources (`pre-push` input for a delete and for a tag on a commit the remote has); independent review of this draft, finding 5.
+Source: review finding M26 (`git push origin --delete old-branch` was denied); proposal, Sources (`pre-push` input for a delete and for a tag on a commit the remote has); independent review of this draft, finding 5; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding G5.
 
 #### Scenario: A branch is deleted on the remote
 
@@ -212,6 +232,16 @@ Source: review finding M26 (`git push origin --delete old-branch` was denied); p
 - **WHEN** no record exists for the tree of `origin/main`, and `git push origin origin/main:refs/heads/release` runs
 - **THEN** the push is denied, because `release` does not exist on the remote and its new tip is not verified
 
+
+#### Scenario: Notes are not judged
+
+- **WHEN** `git notes add` has made `refs/notes/commits`, the working tree is not verified, no run is recorded, and `git push origin refs/notes/commits` runs
+- **THEN** the push is sent
+
+#### Scenario: A tag below a branch of the same push
+
+- **WHEN** `origin` is empty, tag `v0` names an older commit whose tree has no `cw.toml`, the verified tip of `main` contains that commit, and `git push origin v0` and then `git push origin main v0` run
+- **THEN** the first push is denied, and the second is sent with both refs
 ### Requirement: Hooks decide from records
 
 A hook SHALL decide from recorded runs alone. It SHALL NOT execute a check, SHALL NOT wait for a check that is running, and SHALL NOT change the index, the working tree or any ref.
@@ -230,9 +260,9 @@ Source: proposal, Success measure 2; review finding M4 (0.41 s per load inside t
 
 ### Requirement: Fail closed
 
-When an enforcing hook cannot establish that the content is verified, it SHALL deny with exit status 3 and name the cause. This covers a tree it cannot compute, a missing or invalid declaration, a store it cannot read, and an internal error. An installed hook SHALL deny, with an instruction to install `cw`, when `cw` is not on `PATH`.
+When an enforcing hook cannot establish that the content is verified, it SHALL deny with exit status 3 and name the cause. This covers a tree it cannot compute, a missing or invalid declaration, a store it cannot read, and an internal error. An installed hook SHALL deny, with an instruction to install `cw`, when `cw` is not on `PATH`, and SHALL deny, without running it, a `cw` that `PATH` names by a relative path. A denial of a tree without `cw.toml` SHALL name the documents about such a tree.
 
-Source: review finding C2 (`internal/taskflow/find.go:254-256` skips a record whose digest cannot be computed); `SECURITY.md` (the gate fails open by design today).
+Source: review finding C2 (`internal/taskflow/find.go:254-256` skips a record whose digest cannot be computed); `SECURITY.md` (the gate fails open by design today); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding S1 and U1.
 
 #### Scenario: `cw` is missing
 
@@ -254,11 +284,21 @@ Source: review finding C2 (`internal/taskflow/find.go:254-256` skips a record wh
 - **WHEN** the `cw/` directory in the git directory is made unreadable and `git commit -a -m change` runs
 - **THEN** the commit is denied and the reason names that directory
 
+
+#### Scenario: A tree without `cw.toml` names the documents
+
+- **WHEN** `git rm cw.toml` and `git commit -m remove` run
+- **THEN** the commit is denied, the reason names `docs/operations.md#a-tree-without-cwtoml`, and it holds neither `cw init` nor `cw uninstall`
+
+#### Scenario: An empty or relative entry of `PATH`
+
+- **WHEN** the first entry of `PATH` is empty or `.`, no other entry holds `cw`, the repository root holds an executable file `cw`, and `git commit -a -m change` runs
+- **THEN** git records nothing, the output says that `cw` is not an absolute path, and the file `cw` of the repository is not run
 ### Requirement: Denial message
 
-A denial SHALL name each check that is not satisfied with its state, which is not run on this content, failed or timed out, and with the log of the deciding run when there is one. It SHALL end with the command that produces the missing evidence, and SHALL say where to run it when the denied content is not the working tree's. It MUST NOT name `--no-verify`, a setting or any other way to skip the gate.
+A denial SHALL name each check that is not satisfied with its state, which is not run on this content, failed or timed out, and with the log of the deciding run when there is one. It SHALL say to fix the log first when a check failed or timed out, SHALL end with the command that produces the missing evidence, and SHALL say where to run it when the working tree holds other checked content. It MUST NOT name `--no-verify`, a setting or any other way to skip the gate.
 
-Source: review finding L1 (`internal/gate/gate.go:368` tells the agent how to turn the gate off); independent review of this draft, finding 9.
+Source: review finding L1 (`internal/gate/gate.go:368` tells the agent how to turn the gate off); independent review of this draft, finding 9; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U2, U3 and U5.
 
 #### Scenario: What a denial says
 
@@ -270,11 +310,31 @@ Source: review finding L1 (`internal/gate/gate.go:368` tells the agent how to tu
 - **WHEN** any commit or push is denied
 - **THEN** the reason holds neither `--no-verify` nor `observe` nor `uninstall`
 
+
+#### Scenario: A failed check is fixed first
+
+- **WHEN** `unit` failed on the content of a commit, and the commit is denied
+- **THEN** the reason holds the line `cw: a check failed or timed out; first fix what its log shows.` before the command `cw run`; a denial of checks that were only not run holds no such line
+
+#### Scenario: A program that cannot be started
+
+- **WHEN** a check `gone` has `run = ["no-such-program-of-this-test"]`, `cw run` exits 5, and a commit of that content is denied
+- **THEN** the line of `gone` in the reason says `failed` and that the program `no-such-program-of-this-test` could not be started
+
+#### Scenario: The last run decided nothing
+
+- **WHEN** `unit.sh` also writes `out.txt` into the working tree, `cw run` ends `unit` as `source_changed`, and a commit of the content it ran on is denied
+- **THEN** the line of `unit` in the reason says `not run on this content (the last run ended source_changed: ` and names `out.txt`
+
+#### Scenario: A change outside the checked paths is left unstaged
+
+- **WHEN** every check of `cw.toml` has `paths`, a change of `src/app.txt` is staged, a change of `README.md` is not, and `git commit -m change` runs
+- **THEN** the commit is denied, and the reason ends with the instruction to run `cw run` and names neither a path that differs nor another place to run it; after `cw run` exits 0, the same commit is recorded
 ### Requirement: Declaration change notice
 
-When the tree a commit would record lacks a check that the tree of `HEAD` declares, or declares one with a different `run`, `paths` or `timeout`, the hook SHALL print a notice that lists each such check and what changed, whether it allows or denies the commit.
+When the tree a commit would record lacks a check that the tree of `HEAD` declares, or declares one with a different `run`, `paths` or `timeout`, the hook SHALL print a notice that lists each such check and what changed, with each list as `cw.toml` holds it, whether it allows or denies the commit.
 
-Source: proposal, Open Question 4.
+Source: proposal, Open Question 4; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U13.
 
 #### Scenario: A check is removed
 
@@ -286,6 +346,11 @@ Source: proposal, Open Question 4.
 - **WHEN** the staged `cw.toml` adds a check `build` and changes nothing else
 - **THEN** the hook prints no such notice
 
+
+#### Scenario: A changed check is shown as `cw.toml` holds it
+
+- **WHEN** the staged `cw.toml` changes the `run` of `unit` to `["sh", "unit2.sh"]` and gives `lint` `paths = ["src/**"]`, and `git commit -a -m change` runs
+- **THEN** standard error holds a notice that `run` of `unit` was `["sh", "unit.sh"]` and becomes `["sh", "unit2.sh"]`, and one that `paths` of `lint` was `not set` and becomes `["src/**"]`
 ### Requirement: Linked worktrees
 
 The hooks that `cw init` installs SHALL apply in every linked worktree of the repository. A run recorded in one worktree SHALL count in another for the same checked content. Work in one worktree that is unfinished, unchecked or failing SHALL NOT change a decision about different content in another.
@@ -325,9 +390,9 @@ Source: review finding H7 (no baseline exists for the workflow's benefit); propo
 
 ### Requirement: Removal
 
-`cw uninstall` SHALL remove the hooks that `cw` wrote and the `cw/` store, and SHALL leave `cw.toml` and every hook file that `cw` did not write unchanged. When such a file still calls `cw hook`, `cw uninstall` SHALL name the file, print the line to remove from it, and exit 4.
+`cw uninstall` SHALL remove the hooks that `cw` wrote and the `cw/` store, and SHALL leave `cw.toml` and every hook file that `cw` did not write unchanged. In a directory that `core.hooksPath` names, only a file that is exactly the script of `cw` counts as written by `cw`. When a file it leaves still calls `cw hook`, `cw uninstall` SHALL name the file, print the line of it that holds the call, and exit 4.
 
-Source: review finding L3 (`internal/codexinstall/codexinstall.go:142-160` removes links it does not own); independent review of this draft, finding 14.
+Source: review finding L3 (`internal/codexinstall/codexinstall.go:142-160` removes links it does not own); independent review of this draft, finding 14; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding S5 and U14.
 
 #### Scenario: Only `cw`'s own files go
 
@@ -338,3 +403,13 @@ Source: review finding L3 (`internal/codexinstall/codexinstall.go:142-160` remov
 
 - **WHEN** `pre-commit` was written by another tool and calls `cw hook pre-commit`, `pre-push` was written by `cw`, and `cw uninstall` runs
 - **THEN** `pre-push` and the `cw/` directory are gone, `pre-commit` has the same SHA-256 as before, and `cw uninstall` exits 4 and prints the path of `pre-commit` and the line to remove
+
+#### Scenario: A hooks directory of another owner keeps what is not exactly `cw`'s
+
+- **WHEN** `core.hooksPath` is `.githooks`, `.githooks/pre-push` is exactly the hook script of `cw`, `.githooks/pre-commit` holds the marker line of `cw`, a command of the team and `cw hook pre-commit "$@"`, and `cw uninstall` runs
+- **THEN** `.githooks/pre-push` is gone, `.githooks/pre-commit` is unchanged, and `cw uninstall` exits 4 and names `.githooks/pre-commit` and the line to remove
+
+#### Scenario: `cw uninstall` says what it removed
+
+- **WHEN** `cw uninstall` runs after `cw init`
+- **THEN** it exits 0 and prints `removed the hooks cw wrote, 3 in all, and the records of cw in` followed by the path of the `cw/` directory

@@ -50,9 +50,9 @@ Source: review findings H1 (untracked files were left out of the commit check), 
 
 ### Requirement: Working tree that cannot be recorded
 
-When git cannot record the working tree as it is on disk, `cw run` and `cw status` SHALL exit 1, name the path and the cause, and record nothing. This covers a tracked file marked skip-worktree or assume-unchanged that is absent from disk or differs from the index, a working tree on which `git add -A` fails, and a submodule or nested repository that holds changes it has not committed.
+When git cannot record the working tree as it is on disk, `cw run` and `cw status` SHALL exit 1, name the path and the cause, and record nothing. This covers a tracked file marked skip-worktree or assume-unchanged that is absent from disk or differs from the index, a working tree on which `git add -A` fails, and a submodule or nested repository that holds changes it has not committed, holds a file that git is told to overlook, or is not checked out yet holds files.
 
-Source: independent review of this draft, finding 2; proposal, Sources (the tree after `git add -A` equals the tree of `HEAD` in all three cases, and `git add -A` fails with status 128 on a nested repository without a commit); production plan, Independent challenge, finding 3 (the snapshot records a submodule as its commit only).
+Source: independent review of this draft, finding 2; proposal, Sources (the tree after `git add -A` equals the tree of `HEAD` in all three cases, and `git add -A` fails with status 128 on a nested repository without a commit); production plan, Independent challenge, finding 3 (the snapshot records a submodule as its commit only); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding G2.
 
 #### Scenario: A local override that git is told to overlook
 
@@ -73,6 +73,16 @@ Source: independent review of this draft, finding 2; proposal, Sources (the tree
 
 - **WHEN** `vendor/lib` is a submodule, a file inside it is edited and not committed there, and `cw run` runs
 - **THEN** it exits 1, names `vendor/lib`, says that it holds uncommitted changes, and executes no check
+
+#### Scenario: A submodule that hides a file
+
+- **WHEN** `vendor/lib` is a submodule, `git update-index --assume-unchanged lib.txt` or `git update-index --skip-worktree lib.txt` has run inside it, `lib.txt` is then edited, and `cw run` or `cw status` runs
+- **THEN** it exits 1, names `vendor/lib/lib.txt` and the mark, says to clear the mark there first, and records nothing
+
+#### Scenario: A submodule that is not checked out but holds files
+
+- **WHEN** `git submodule deinit -f vendor/lib` has run, a file is then written into the empty folder `vendor/lib/`, and `cw run` or `cw status` runs
+- **THEN** it exits 1, names `vendor/lib`, says that it is a submodule that is not checked out yet its folder holds files, and records nothing
 
 ### Requirement: Running checks
 
@@ -107,9 +117,9 @@ Source: review finding M9 (`internal/taskflow/checks.go:299` strips environment 
 
 ### Requirement: Outcome of a run
 
-Each run SHALL end with exactly one outcome: `passed` when the program exits 0 and the snapshot after it equals the snapshot before it; `source_changed` when the program exits 0 and the snapshot differs; `failed` when the program exits with any other status; `timed_out` when `timeout` passes first; `interrupted` when `cw` is stopped first. `cw run` SHALL exit 5 when a check it executed did not end `passed`.
+Each run SHALL end with exactly one outcome: `passed` when the program exits 0 and the snapshot after it equals the snapshot before it; `source_changed` when the program exits 0 and the snapshot differs; `failed` when the program exits with any other status; `timed_out` when `timeout` passes first; `interrupted` when `cw` is stopped first. `cw run` SHALL exit 5 when a check it executed did not end `passed`, and SHALL then end with one line that says how many did not.
 
-Source: review findings M13 (profile output written into the worktree) and H2; `docs/operations.md` exit status table.
+Source: review findings M13 (profile output written into the worktree) and H2; `docs/operations.md` exit status table; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U3.
 
 #### Scenario: A failing check
 
@@ -125,6 +135,11 @@ Source: review findings M13 (profile output written into the worktree) and H2; `
 
 - **WHEN** `README.md` is edited by another process while `lint.sh` is running, and `lint.sh` exits 0
 - **THEN** the run ends as `source_changed` and the output names `README.md`
+
+#### Scenario: A run in which a check did not pass ends with one line
+
+- **WHEN** `src/app.txt` holds `broken` and `cw run` runs
+- **THEN** it exits 5 and the last line of its output is ``not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again``
 
 ### Requirement: Leftover processes
 
@@ -192,9 +207,9 @@ Source: review finding M14 (`internal/taskflow/reuse.go:233` refuses reuse whene
 
 ### Requirement: Same checked content
 
-For one check, two trees SHALL hold the same checked content exactly when no path that differs between them matches the check's `paths`; for a check without `paths`, only identical trees do. A path differs when it exists in only one of the trees, or its content or its mode is different. `cw` SHALL NOT detect renames or copies: a moved file differs at its old path and at its new one.
+For one check, two trees SHALL hold the same checked content exactly when no path that differs between them matches the check's `paths`; for a check without `paths`, only identical trees do. A path differs when it exists in only one of the trees, or its content or its mode is different. `cw` SHALL NOT detect renames or copies: a moved file differs at its old path and at its new one. Every submodule SHALL count in the checked content of every check with `paths`.
 
-Source: proposal, Terms; independent review of this draft, finding 6; proposal, Sources (`git diff-tree -r --name-only` lists a moved file at both paths).
+Source: proposal, Terms; independent review of this draft, finding 6; proposal, Sources (`git diff-tree -r --name-only` lists a moved file at both paths); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding G3.
 
 #### Scenario: A file moved out of `paths`
 
@@ -205,6 +220,11 @@ Source: proposal, Terms; independent review of this draft, finding 6; proposal, 
 
 - **WHEN** `chmod +x unit.sh` runs in the checked state, in a repository where git records file modes, and `cw status` runs
 - **THEN** it reports `unit` as not run
+
+#### Scenario: A submodule counts for every check with `paths`
+
+- **WHEN** `vendor/lib` is a submodule, `cw run` exits 0, a new commit is then made inside `vendor/lib`, and `cw status` runs
+- **THEN** it exits 5 and reports `unit` as not run on this content, although the `paths` of `unit` do not match `vendor/lib`
 
 ### Requirement: Satisfied check
 

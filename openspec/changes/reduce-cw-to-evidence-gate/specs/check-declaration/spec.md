@@ -46,9 +46,9 @@ Source: proposal, What Changes (checks move from a per-task JSON plan to one com
 
 ### Requirement: Check definition
 
-Each `[[check]]` SHALL have an `id` that is unique in the file and matches `[a-z0-9][a-z0-9_-]{0,39}`, and a `run` array of one or more strings. It MAY have `paths`, an array of one or more patterns, and `timeout`, a duration from `1s` to `6h` that defaults to `10m`. `cw` SHALL execute `run` as a program and its arguments, without a shell.
+Each `[[check]]` SHALL have an `id` that is unique in the file, matches `[a-z0-9][a-z0-9_-]{0,39}` and is no name that Windows reads as a device, and a `run` array of one or more strings. It MAY have `paths`, an array of one or more patterns, and `timeout`, a duration from `1s` to `6h` that defaults to `10m`. `cw` SHALL execute `run` as a program and its arguments, without a shell.
 
-Source: proposal, Terms. A plan check is an argv today as well (review findings, H2 repro: `{"id":"slow","argv":["sleep","8"]}`).
+Source: proposal, Terms. A plan check is an argv today as well (review findings, H2 repro: `{"id":"slow","argv":["sleep","8"]}`); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding P6.
 
 #### Scenario: Arguments are not interpreted by a shell
 
@@ -59,6 +59,11 @@ Source: proposal, Terms. A plan check is an argv today as well (review findings,
 
 - **WHEN** the check `lint`, which has no `timeout`, runs a program that does not end
 - **THEN** the run ends as `timed_out` ten minutes after it started
+
+#### Scenario: A device name of Windows is refused
+
+- **WHEN** a check has `id = "aux"`, or `con`, `prn`, `nul`, `com1` or `lpt9`, and `cw status` runs, on any system
+- **THEN** it exits 1, and the output names the id and says that Windows reads it as the name of a device
 
 ### Requirement: Path patterns
 
@@ -88,9 +93,9 @@ Source: proposal, Terms ("same checked content"); independent review of this dra
 
 ### Requirement: Invalid declaration
 
-`cw` MUST refuse a declaration that is not valid TOML, whose `version` is not `1`, that holds a key `cw` does not know, or that breaks a rule of this specification. Each command other than a hook SHALL then exit 1 and print the file name, the line and the rule that is broken, and SHALL NOT run any check from that file. A hook SHALL deny, as `publish-gate` states.
+`cw` MUST refuse a declaration that is not valid TOML, whose `version` is not `1`, that holds a key `cw` does not know, whose pattern names a folder of the tree, or that breaks a rule of this specification. A name from the file that holds a control character SHALL be printed quoted. Each command other than a hook SHALL then exit 1 and print the file name, the line and the rule that is broken, and SHALL NOT run any check from that file. A hook SHALL deny, as `publish-gate` states.
 
-Source: review finding L10 (a typo in a policy key is silent today, `internal/modelpolicy/modelpolicy.go:136-145`).
+Source: review finding L10 (a typo in a policy key is silent today, `internal/modelpolicy/modelpolicy.go:136-145`); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding G9 and S7.
 
 #### Scenario: A misspelt key is refused
 
@@ -107,6 +112,16 @@ Source: review finding L10 (a typo in a policy key is silent today, `internal/mo
 - **WHEN** a check has `run = "go test ./..."` and `cw run` runs
 - **THEN** it exits 1 and the output says that `run` must be an array of strings
 
+#### Scenario: A pattern that names a folder is refused
+
+- **WHEN** a check has `paths = ["src"]`, `src/` holds files, and `cw run`, `cw status` or `git commit` runs
+- **THEN** `cw run` and `cw status` exit 1 and execute no check, the commit is denied, and each says that the pattern `src` names a folder and gives `src/**`
+
+#### Scenario: A name with a control character is printed quoted
+
+- **WHEN** `cw.toml` holds the key `"x\u001b[2Jy"`, whose ESC `[2J` would clear a terminal, and `cw status` runs
+- **THEN** it exits 1, the output names the key as `"x\x1b[2Jy"`, and it holds no ESC character
+
 ### Requirement: Missing declaration
 
 When the tree has no `cw.toml` at its root, `cw run` and `cw status` SHALL exit 1 and print that the repository has no declaration and that `cw init` creates one.
@@ -120,9 +135,9 @@ Source: proposal, Open Question 3.
 
 ### Requirement: Create a declaration
 
-`cw init` SHALL create `cw.toml` with `version = 1` and no checks when the repository root has none, and SHALL leave an existing `cw.toml` byte for byte unchanged. Outside a git repository it SHALL be refused.
+`cw init` SHALL create `cw.toml` with `version = 1` and no checks when the repository root has none, and SHALL leave an existing `cw.toml` byte for byte unchanged. It SHALL name the next step: `cw run` when the file declares checks, `cw add` otherwise. Outside a git repository it SHALL be refused.
 
-Source: review finding H4 (the starter plan could not run the default flow); proposal, Success measure 1.
+Source: review finding H4 (the starter plan could not run the default flow); proposal, Success measure 1; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U12.
 
 #### Scenario: A new repository
 
@@ -134,11 +149,16 @@ Source: review finding H4 (the starter plan could not run the default flow); pro
 - **WHEN** `cw init` runs in `demo`
 - **THEN** the SHA-256 of `cw.toml` is the same before and after
 
+#### Scenario: The next step is named
+
+- **WHEN** `cw init` runs in `demo`, and then in a new git repository without `cw.toml`
+- **THEN** in `demo` it prints the line `next: cw run`, and in the new repository a line that begins `next: cw add`
+
 ### Requirement: Add a check from the command line
 
-`cw add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]` SHALL append one `[[check]]` to `cw.toml`, with the words after `--` as `run` exactly as `cw` received them, and SHALL leave every earlier byte of the file unchanged. It SHALL be refused when the resulting file would be an invalid declaration.
+`cw add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]` SHALL append one `[[check]]` to `cw.toml`, with the words after `--` as `run` exactly as `cw` received them, and SHALL leave every earlier byte of the file unchanged. It SHALL be refused when the resulting file would be an invalid declaration, and as a usage error when the command line has no `--` or the program is one word with a space that names no program.
 
-Source: proposal, Success measure 1 (no hand-written file); review findings M1 to M3 (`cw` does not split a command line itself).
+Source: proposal, Success measure 1 (no hand-written file); review findings M1 to M3 (`cw` does not split a command line itself); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding U7, U8 and U9.
 
 #### Scenario: A check is appended
 
@@ -148,4 +168,14 @@ Source: proposal, Success measure 1 (no hand-written file); review findings M1 t
 #### Scenario: A second check with the same id is refused
 
 - **WHEN** `cw add unit -- true` runs in `demo`
-- **THEN** it exits 1, names `unit`, and the SHA-256 of `cw.toml` is unchanged
+- **THEN** it exits 1, names `unit`, says that `cw add` only appends a check, and the SHA-256 of `cw.toml` is unchanged
+
+#### Scenario: The program goes after `--`
+
+- **WHEN** `cw add unit2 go test -v ./...` runs in `demo`, without `--`
+- **THEN** it exits 2, says that the program and its arguments go after `--`, and the SHA-256 of `cw.toml` is unchanged
+
+#### Scenario: A command written as one word is refused
+
+- **WHEN** `cw add unit2 -- "go test ./..."` runs in `demo`, where no program of that name exists
+- **THEN** it exits 2, says that the program is one word with a space in it, and the SHA-256 of `cw.toml` is unchanged; a program whose path holds a space and that exists is accepted

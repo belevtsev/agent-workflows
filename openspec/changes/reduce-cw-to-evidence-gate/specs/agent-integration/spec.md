@@ -28,9 +28,9 @@ Source: review findings M1, M2 and M3 (the plugin hook is a second, weaker gate 
 
 ### Requirement: Session context
 
-In a repository whose root holds `cw.toml`, the plugin SHALL add to the agent's context at the start of a session the text that `cw context` prints. That text SHALL say that commits and pushes are gated, that `cw run` produces the evidence, that `cw status` shows what is missing, and whether the hooks are installed. In any other directory the plugin SHALL add nothing.
+In a repository whose root holds `cw.toml`, the plugin SHALL add to the agent's context at the start of a session the text that `cw context` prints. That text SHALL say that commits and pushes are gated, that `cw run` produces the evidence, that `cw status` shows what is missing, and whether the hooks are installed. The session's directory SHALL be the one the host names in its notice. In any other directory the plugin SHALL add nothing.
 
-Source: `hooks/hooks.json` (a session-start hook loads conventions today); review finding M24 (the agent-facing text is long).
+Source: `hooks/hooks.json` (a session-start hook loads conventions today); review finding M24 (the agent-facing text is long); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings C7 and U6.
 
 #### Scenario: A gated repository
 
@@ -40,18 +40,28 @@ Source: `hooks/hooks.json` (a session-start hook loads conventions today); revie
 #### Scenario: Hooks are not installed in this clone
 
 - **WHEN** a session starts in a fresh clone of `demo` in which `cw init` has not run
-- **THEN** the context says that the hooks are not installed and that `cw init` installs them
+- **THEN** the context starts by saying that the hooks are not installed and that nothing is gated yet, and says that `cw init` installs them
 
 #### Scenario: A repository without a declaration
 
 - **WHEN** a session starts in a repository that has no `cw.toml`
 - **THEN** the plugin adds nothing to the context
 
+#### Scenario: The host names the session's directory
+
+- **WHEN** the host starts the session-start command in a folder outside any repository, and its notice names `demo` as the session's directory
+- **THEN** the context of `demo` is added; the other way round, nothing is added
+
+#### Scenario: `cw context` in a terminal
+
+- **WHEN** a user runs `cw context` without `--host` in `demo`, and its standard input never ends
+- **THEN** `cw context` prints the context and returns without reading its input
+
 ### Requirement: Instruction text comes from `cw`
 
-The plugin SHALL take the session text from the installed `cw`, and SHALL hold neither a copy of that text nor a `cw` version number. When `cw` is not on `PATH`, the plugin SHALL add one line that says so.
+The plugin SHALL take the session text from the installed `cw`, and SHALL hold neither a copy of that text nor a `cw` version number. When `cw` is not on `PATH`, the plugin SHALL add one line that says so. The plugin SHALL run `cw` only by an absolute path, and SHALL block no tool call when `cw` fails.
 
-Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-rc.2`, which no release matches).
+Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-rc.2`, which no release matches); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, C1, X2 and X7.
 
 #### Scenario: `cw` is upgraded
 
@@ -63,11 +73,21 @@ Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-r
 - **WHEN** `cw` is not on `PATH` and a session starts in `demo`
 - **THEN** the context holds one line that says `cw` is not installed and that commits in this repository will be denied, says where the install instruction is, and names no Go command
 
+#### Scenario: A program named `cw` in the repository
+
+- **WHEN** the root of `demo` holds an executable file `cw`, the first entry of `PATH` is empty or `.`, no other `cw` is on `PATH`, and a session starts or the agent is about to run a shell command
+- **THEN** that file is not run, and each command of the plugin exits 0
+
+#### Scenario: An older `cw`
+
+- **WHEN** the `cw` on `PATH` prints its usage and exits 2 for every command it is given, and a session starts, the agent is about to run a shell command, a role ends or the session ends
+- **THEN** each command of the plugin exits 0 and the host is neither asked nor told to deny
+
 ### Requirement: Ask before skipping
 
-Before the agent runs a shell command in which a call of git skips the hooks, or changes `cw.toml`, a hook file or a record of `cw` with a file-editing tool, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. It SHALL read the command as shell words, so that `--no-verify`, `-n` of `git commit` and a setting of `core.hooksPath` count only as arguments of git. The plugin SHALL NOT act on any other tool call.
+Before the agent runs a shell command in which a call of git skips the hooks or a call of `cw` turns the gate off, or changes `cw.toml`, a git hook, the git configuration or a record of `cw`, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. It SHALL read the command as shell words, so that `--no-verify`, `-n` of `git commit` and a setting of `core.hooksPath` count only as arguments of git. The plugin SHALL NOT act on any other tool call.
 
-Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where Claude Code asks); `docs/other-tools.md`, row G-2 (matching a command as text is fragile in both directions).
+Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where Claude Code asks); `docs/other-tools.md`, row G-2 (matching a command as text is fragile in both directions); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S4, S8, C3, X3 and A1.
 
 #### Scenario: A commit that skips the hook
 
@@ -107,6 +127,51 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 #### Scenario: An ordinary command
 
 - **WHEN** the agent is about to run `go test ./...` or `git commit -m change`
+- **THEN** the plugin neither asks nor denies
+
+#### Scenario: The shell tool of Windows
+
+- **WHEN** the agent in Claude Code is about to run `git commit --no-verify` with its `PowerShell` tool
+- **THEN** the user is asked
+
+#### Scenario: A call that turns the gate off
+
+- **WHEN** the agent is about to run `cw uninstall` or `cw init --observe`
+- **THEN** in Claude Code the user is asked and in Codex the call is denied, and the reason says that the command skips the commit gate
+
+#### Scenario: An edit of the git configuration
+
+- **WHEN** the agent in Claude Code is about to write `.git/config` with its file-editing tool
+- **THEN** the user is asked, and the question names the git configuration
+
+#### Scenario: A hook in the folder of `core.hooksPath`
+
+- **WHEN** `core.hooksPath` is `.githooks` and the agent in Claude Code is about to edit `.githooks/pre-commit`
+- **THEN** the user is asked, and the question names a git hook
+
+#### Scenario: An edit through a link
+
+- **WHEN** `alias.toml` is a symbolic link to `cw.toml` and the agent in Claude Code is about to write `alias.toml`
+- **THEN** the user is asked, and the question names `cw.toml`
+
+#### Scenario: A command given as a list
+
+- **WHEN** the host gives the command as the list `["bash", "-lc", "git commit --no-verify"]` or `["git", "commit", "--no-verify"]`
+- **THEN** in Claude Code the user is asked and in Codex the call is denied
+
+#### Scenario: A notice larger than 16 MiB
+
+- **WHEN** the agent in Claude Code is about to write `cw.toml` with a content of more than 16 MiB
+- **THEN** the user is asked
+
+#### Scenario: A patch given to the shell
+
+- **WHEN** the agent is about to run `apply_patch` in the shell with a patch, given as a here-document, that updates `cw.toml`
+- **THEN** in Claude Code the user is asked and in Codex the call is denied, and the reason names `cw.toml`
+
+#### Scenario: An edit of another file
+
+- **WHEN** the agent in Claude Code is about to write `README.md` with its file-editing tool
 - **THEN** the plugin neither asks nor denies
 
 ### Requirement: The plugin never judges a commit or push

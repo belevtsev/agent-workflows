@@ -27,9 +27,9 @@ itself does not change. Inside the hook git points `GIT_INDEX_FILE` at the
 index the commit will use, so the judged tree is the commit's tree whether it
 was built from the index, by `git commit -a` or by `git commit <path>`.
 
-When the commit is denied and the working tree holds other content than the
-commit, the denial lists up to 20 paths that differ and says whether the
-working tree as a whole is verified:
+When the commit is denied and the working tree holds other checked content
+than the commit for a check that is not satisfied, the denial lists up to 20
+paths that differ and says whether the working tree as a whole is verified:
 
 ```text
 cw: this commit is denied: its content has no recorded passing run of every declared check.
@@ -37,13 +37,18 @@ cw: this commit is denied: its content has no recorded passing run of every decl
   The working tree holds other content than this commit. Paths that differ:
     src/new.txt
   The working tree as a whole is verified; this commit is not, because it records other content.
-cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest or by setting it aside, and run:
+cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:
   cw run
 ```
 
 This is the case of a partial commit: `cw run` checked the whole working tree,
-and the commit records only part of it. Stage everything, or set the rest
-aside and run `cw run` again.
+and the commit records only part of it. Stage everything with `git add -A`, or
+set the rest aside with `git stash push --keep-index --include-untracked`, run
+`cw run` again, commit, and bring the rest back with `git stash pop`.
+
+When a check that is not satisfied failed or timed out, the denial adds the
+line `cw: a check failed or timed out; first fix what its log shows.` before
+the command.
 
 After a denied merge, the merge stays in progress. Run `cw run`, then
 `git commit --no-edit` concludes it; `pre-commit` judges that commit.
@@ -53,9 +58,12 @@ declares one with another `run`, `paths` or `timeout`, the hook prints a notice,
 whether it allows or denies:
 
 ```text
-cw: notice: this commit changes the required checks: `unit`: `run` was ["cat" "src/app.txt"] and becomes ["cat" "-v" "src/app.txt"]; `timeout` was 10m0s and becomes 5m0s
+cw: notice: this commit changes the required checks: `unit`: `run` was ["cat", "src/app.txt"] and becomes ["cat", "-v", "src/app.txt"]; `timeout` was 10m0s and becomes 5m0s
 ```
 
+A list is printed as `cw.toml` holds it, and an absent `paths` as `not set`. A
+check that is removed gets the line
+``cw: notice: this commit changes the required checks: `lint` is no longer declared``.
 A check that is new gets no notice.
 
 ### pre-push
@@ -63,18 +71,24 @@ A check that is new gets no notice.
 git gives the hook one line per ref the push updates. `cw` decides each line:
 
 - A deletion of a ref is allowed.
+- A ref under `refs/notes/` is allowed and not judged: notes hold no content of
+  the project.
 - A tag is first peeled to the commit it names.
 - An update of a branch adds nothing, and is allowed, when the commit the
   branch points at on the remote already contains the new tip. A branch that
   is new on the remote always adds something.
-- An update of any other ref, such as a tag, adds nothing when a
+- An update of any other ref, such as a tag, adds nothing when the new tip of a
+  branch that the same push updates contains the commit, or when a
   remote-tracking branch of the same remote, under `refs/remotes/<remote>/`,
-  contains the commit. These are the refs of the last fetch in this clone.
+  contains it. The remote-tracking branches are the refs of the last fetch in
+  this clone.
 - Otherwise the tree of the new tip must be verified. Only the tip is judged,
   not the commits below it.
 
 One denied ref denies the whole push. A denial names the ref. When the working
-tree does not hold the pushed commit, it says where to run `cw run`:
+tree holds the same checked content as the pushed commit for every check that
+is not satisfied, the denial ends with `cw run`, to be run here. Otherwise it
+says where to run `cw run`:
 
 ```text
 cw: the push of refs/heads/f2 is denied: its content has no recorded passing run of every declared check.
@@ -92,15 +106,16 @@ status 3, and names the cause:
 
 | Cause | Example |
 | --- | --- |
-| `no_declaration` | the tree holds no `cw.toml` at its root, for example after `git rm cw.toml` |
+| `no_declaration` | the tree holds no `cw.toml` at its root, for example after `git rm cw.toml`; the denial names [A tree without cw.toml](operations.md#a-tree-without-cwtoml) |
 | `invalid_declaration` | `cw.toml` breaks a rule; the denial prints the line, such as `cw.toml:9` |
 | `tree` | the tree of the commit cannot be written, or a pushed ref names neither a commit nor a tree |
 | `store` | the records in `cw/` cannot be read; the denial names the directory |
 | `internal` | anything else, with git's own message |
 
 A denial names each check that is not satisfied, with its state and the log
-of the run that decided it, and ends with `cw run`. It names no way around the
-gate.
+of the run that decided it, and ends with `cw run`. When the last run on this
+content decided nothing, the denial names how it ended, such as
+`(the last run ended source_changed: ...)`. It names no way around the gate.
 
 ### What a hook records
 
@@ -118,17 +133,23 @@ with mode 0755. This is `pre-commit`:
 ```sh
 #!/bin/sh
 # cw-hook: written by `cw init`. `cw uninstall` removes this file.
-if ! command -v cw >/dev/null 2>&1; then
-  echo "cw: the cw program was not found on PATH, so this pre-commit cannot be judged and is denied." >&2
-  echo "cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install" >&2
-  exit 3
-fi
-exec cw hook pre-commit "$@"
+cw=$(command -v cw 2>/dev/null)
+case "$cw" in
+/*) exec "$cw" hook pre-commit "$@" ;;
+"") echo "cw: the cw program was not found on PATH, so this pre-commit cannot be judged and is denied." >&2
+  echo "cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install" >&2 ;;
+*) echo "cw: PATH names cw as $cw, which is not an absolute path, so this pre-commit cannot be judged and is denied. Remove the empty or relative entry from PATH." >&2 ;;
+esac
+exit 3
 ```
 
 - The second line is the marker. A hook file that holds it was written by `cw`;
-  `cw init` replaces it when its text differs or it cannot be executed, and
-  `cw uninstall` removes it. A file without the marker belongs to another tool.
+  `cw init` replaces it when its text differs or it cannot be executed. A file
+  without the marker belongs to another tool.
+- The script runs `cw` only when `command -v cw` gives an absolute path. An
+  empty or a relative entry of `PATH`, such as `.`, would let the hook run a
+  file named `cw` from the repository; the script then denies instead. When
+  `cw` is not found at all, it denies and names the install instruction.
 - The hooks are written into `hooks/` of the common git directory, the one git
   uses for every linked worktree.
 - The script finds `cw` on `PATH` at the time git runs the hook. The decision
@@ -144,6 +165,14 @@ The hook denies. git records or sends nothing, and the hook prints:
 ```text
 cw: the cw program was not found on PATH, so this pre-commit cannot be judged and is denied.
 cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install
+```
+
+When the first `cw` that `PATH` names is found through an empty or relative
+entry, the hook denies as well. With `PATH=:/usr/bin:/bin` and a file `cw` in
+the root of the repository, it prints:
+
+```text
+cw: PATH names cw as cw, which is not an absolute path, so this pre-commit cannot be judged and is denied. Remove the empty or relative entry from PATH.
 ```
 
 A clone with the hooks and without `cw` cannot commit or push until `cw` is
@@ -187,8 +216,9 @@ observe mode.
 - Add that line as the last command of the other tool's hook. A command after
   it could change the files after `cw` judged them, and git would record a tree
   that `cw` did not judge.
-- When the file can be executed and holds the text `cw hook <name>`, it counts
-  as calling `cw`. `cw init` then exits 0, names the hook in the line
+- When the file can be executed and a line of it that is no comment holds
+  `cw hook <name>`, it counts as calling `cw`. A line that starts with `#` does
+  not count. `cw init` then exits 0, names the hook in the line
   `left as they are, because another tool wrote them and they call cw already`,
   and `cw status --json` reports `hooks` as `installed`.
 - When `core.hooksPath` is set, the hooks belong to the owner of that directory
@@ -202,8 +232,12 @@ observe mode.
         cw hook pre-commit "$@"
   ```
 
-- `cw uninstall` leaves such a file as it is. When it still calls `cw hook`,
-  `cw uninstall` names it, prints the line to remove, and exits 4.
+- `cw uninstall` removes, in `hooks/` of the common git directory, each of the
+  three files that holds the marker of `cw`. In a directory that
+  `core.hooksPath` names, it removes only a file that is exactly the script
+  `cw` writes, and leaves every other file, also one with the marker that
+  someone edited. When a file it leaves still calls `cw hook`, `cw uninstall`
+  names it, prints the line to remove, and exits 4.
 
 `cw hook <name>` gives the same decision when another hook calls it, as long as
 it gets the arguments and the standard input git gave that hook: pass `"$@"`,
@@ -247,6 +281,25 @@ worktree warns, and `cw status --json` reports `hooks` as `missing`.
   `pre-commit` for a clean `git cherry-pick` or `git revert`, for `git rebase`
   (also when continued) or for a fast-forward merge. The push rule judges what
   they leave at the tip.
+- `git am` runs `pre-applypatch`, not `pre-commit`. A commit made with
+  `git commit-tree` and moved onto a branch with `git update-ref` runs no hook
+  of a commit; `git update-ref` runs `reference-transaction`, which `cw` does
+  not install. In both cases the push hook still judges the tip that is
+  pushed. `scenarios/gitfacts` holds this git behaviour as tests.
+- A file that another process stages while `pre-commit` runs is committed
+  without being judged: git does not hold the index during the hook and reads
+  it again after the hook. A hook cannot prevent this. The push hook still
+  judges the tip that is pushed.
+- A forced push that moves a branch back to a commit the remote's branch
+  already contains is allowed, and nothing is judged: the commit is already on
+  the remote.
+- The push hook does not judge a ref under `refs/notes/`, nor a ref that is no
+  branch, such as a tag, whose commit the new tip of a branch of the same push
+  contains. That branch is judged.
+- A tree without `cw.toml` cannot be committed or pushed, also when that is on
+  purpose. [A tree without cw.toml](operations.md#a-tree-without-cwtoml) says
+  what to do when a project stops using `cw`, and for a branch with other
+  content.
 - The push rule judges the tip commit of each ref, not every commit below it.
   After a rebase or a cherry-pick of several commits, the commits below the tip
   were never judged one by one.
@@ -271,13 +324,14 @@ worktree warns, and `cw status --json` reports `hooks` as `missing`.
 
 The plugin for Claude Code and Codex adds hooks of the agent host. They do not
 decide about commits or pushes; the git hooks do. The gate works without the
-plugin. Each command first checks that `cw` is on `PATH`, and does nothing when
-it is not, except at the start of a session.
+plugin. Each command runs `cw` only when `command -v cw` gives an absolute path,
+does nothing otherwise, except at the start of a session, and always exits 0,
+so a missing or an older `cw` blocks no tool call.
 
 | Host event | Claude Code (`hooks/hooks.json`) | Codex (`hooks/codex-hooks.json`) |
 | --- | --- | --- |
-| `SessionStart` | `cw context` | `cw context` |
-| `PreToolUse` | `cw guard --host claude`, for the tools `Bash`, `Edit`, `Write`, `MultiEdit` | `cw guard --host codex`, for the tools `Bash`, `apply_patch` |
+| `SessionStart` | `cw context --host claude` | `cw context --host codex` |
+| `PreToolUse` | `cw guard --host claude`, for the tools `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit` | `cw guard --host codex`, for the tools `Bash`, `apply_patch` |
 | `SubagentStop` | `cw tokens record --host claude` | `cw tokens record --host codex` |
 | `SessionEnd` | `cw tokens record --host claude` | `cw tokens record --host codex` |
 
@@ -286,16 +340,18 @@ it is not, except at the start of a session.
   installed, that every commit and push will be denied by the git hooks, and
   where the install instruction is.
 - `cw guard` asks the user in Claude Code, and denies with the reason in Codex,
-  before a shell command with a git call that skips git's hooks, and before an
-  edit of `cw.toml`, of a git hook or of a record of `cw`. It reads the command
-  as shell words, not as text. It acts on no other call. See
-  [Operations](operations.md#cw-guard).
-- The token commands end with `|| true`, so a failure to record never fails the
-  host's hook. [Tokens](tokens.md) says what they record.
-- The hook commands of Claude Code are written for `bash`. Under Codex on
-  Windows the file names `commandWindows`, which runs `cw` directly with no
-  check for `PATH`, so the line that says `cw` is not installed is missing
-  there. Neither has been run on Windows.
+  before a shell command with a git call that skips git's hooks or a `cw` call
+  that turns the gate off, and before an edit of `cw.toml`, of a git hook, of
+  the git configuration or of a record of `cw`. It reads the command as shell
+  words, not as text. It is a reminder for an agent; the git hooks decide. See
+  [Operations](operations.md#cw-guard), which also lists what it misses.
+- A failure to record tokens never fails the host's hook.
+  [Tokens](tokens.md) says what the token commands record.
+- The hook commands of Claude Code are written for `bash`; those of Codex are
+  wrapped in `sh -c`. Under Codex on Windows the file names `commandWindows`
+  for each event, which sets `NoDefaultCurrentDirectoryInExePath=1`, so that
+  `cmd.exe` does not look for `cw` in the working directory, and ends with
+  `exit /b 0`. Neither has been run on Windows.
 - `hooks/codex-hooks.json` is named in `.codex-plugin/plugin.json`. The plugin
   manifest of Claude Code, `.claude-plugin/plugin.json`, names no hooks file;
   Claude Code reads `hooks/hooks.json` of a plugin by default.
