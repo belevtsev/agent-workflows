@@ -13,6 +13,9 @@ comes from a run you can repeat with the commands under
   mutant gate passes. The adversarial gate fails on one case.
 - **Most failed graders trace to the evals, not the agents.** See
   [Why graders failed](#why-graders-failed).
+- **Changed since, not measured again:** the five causes that lay in the
+  evals. See
+  [Changes to the evals after this run](#changes-to-the-evals-after-this-run).
 - **Not measured:** a comparison with and without the workflow, end-to-end
   tasks, token counts and run-to-run variance. See
   [What this does not show](#what-this-does-not-show).
@@ -25,7 +28,8 @@ comes from a run you can repeat with the commands under
 - **Cases:** the six suites under [`evals/`](../evals/README.md). Each case
   dispatches one plugin agent once with a brief. Graders then check what the
   agent wrote against its contract.
-- **Command:** per suite, the flags of `.github/workflows/evals.yml`; see
+- **Command:** per suite, the flags `.github/workflows/evals.yml` had at
+  that commit, which did not grant `Bash(cw task schema *)`; see
   [Reproduce](#reproduce).
 - **Models:** `claude-opus-5-5` runs the agents. `claude-haiku-5-5` judges
   the 55 `llm` graders with three votes each.
@@ -33,7 +37,8 @@ comes from a run you can repeat with the commands under
 - **Differences from the workflow:** the workflow pins Claude Code 2.1.316
   and runs one case at a time with an API key. This run used a logged-in
   subscription, three cases at a time (`-j 3`), and a cost ceiling four times
-  the workflow's so that no run was cut.
+  the workflow's default at that commit (5 US dollars per three cases) so
+  that no run was cut.
 - **Validity check:** the trace of every run was read for its Bash results.
   Of 198 Bash calls none failed for the sandbox, and 42 `go` commands ran
   inside the runs. Three earlier attempts were discarded because the agents
@@ -91,6 +96,22 @@ The case ran three more times with the same flags. The scores were 0.875,
 0.875 and 0.75, so the case falls below the floor in two of its four runs.
 `design-quality` failed in all four runs, each time by three votes to none.
 `contract-testable` failed in two of the four.
+
+### Changes to the evals after this run
+
+Five of the causes above lay in the evals. They were changed after the run.
+No suite has run since, so their effect on the scores is not measured.
+
+| Cause | Change |
+| --- | --- |
+| `handoff-shape` | A run can call `cw task schema handoff`, as the contracts tell the agent to: the command grants `Bash(cw task schema *)` and needs `cw` on `PATH`. |
+| `map-names-tests` | The grader asks what the contract asks: per requirement a test's file and name, or `uncovered` with a reason. |
+| `probe-run` | The graders that look for `go test` also match `go -C <dir> test`. |
+| `loader-once-race` | In the fixture a `Get` that waits on a failed load returns `""` with the error, so the seeded defect is the only one. Requirement R3 of the case's contract now says so. |
+| `design-quality`, `config-hot-reload` | The rubric no longer asks about a shutdown. |
+
+The `self-review-cites-evidence`, single `llm` grader and `contract-read`
+rows are unchanged.
 
 ### Per-case results
 
@@ -174,8 +195,9 @@ A case's score is the share of its graders that passed.
 ## Reproduce
 
 Prepare the host as [`evals/README.md`](../evals/README.md#run-locally)
-says. Then, from the plugin root, for each suite (`spec-writer`, `architect`,
-`implementer`, `test-engineer`, `adversarial-tester`, `reviewer`):
+says, with this checkout's `cw` on `PATH`. Then, from the plugin root, for
+each suite (`spec-writer`, `architect`, `implementer`, `test-engineer`,
+`adversarial-tester`, `reviewer`):
 
 ```sh
 suite=architect
@@ -184,7 +206,8 @@ mkdir -p "$runs"
 TMPDIR="$runs" claude plugin eval . --tag "$suite" --ablation none \
   --scaffold --trust-plugin --keep-temp --no-publish \
   --model claude-opus-5-5 --judge-model claude-haiku-5-5 --threshold 0.8 \
-  --max-cost-usd 30 --allow-tools Write Edit "Bash(go *)" -j 3 \
+  --max-cost-usd 30 -j 3 \
+  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
   --json "$runs/result.json"
 EVAL_RESULT_JSON="$runs/result.json" EVAL_PASS_FLOOR=0.8 \
   go test ./evals/ -run '^TestEvalResult$' -count=1 -v
@@ -199,5 +222,5 @@ EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestMutantGate$' -count=1 -v
 EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestAdversarialGate$' -count=1 -v
 ```
 
-Every run is a real model call on your account, and scores differ from run
-to run.
+The run reported above did not grant `Bash(cw task schema *)`. Every run is
+a real model call on your account, and scores differ from run to run.

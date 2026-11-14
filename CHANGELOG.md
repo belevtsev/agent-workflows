@@ -186,6 +186,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   links the test-engineer contract dropped when it was shortened. `go test ./evals` checks that each named file exists.
 - The fork-swarm cancellation test of `internal/graphify` counts a trial only when the kill finds all 32 forkers forking and
   starts it again otherwise, at most ten times a run; a loaded macOS runner failed it twice when one forker never reported.
+- The agent evals no longer fail an agent for the harness: a run can call `cw task schema handoff`, the `go test` graders accept
+  `go -C <dir> test`, two graders ask only what the contract and brief ask, and the `loader-once-race` fixture has one defect,
+  not two ([evidence](docs/evidence.md#changes-to-the-evals-after-this-run)).
+- The eval workflow copies workspaces out of the sealed run directories, allows 3 US dollars per case where four cases got
+  6.67 and `architect` cost 8.39, and fails a dispatched run that has no API key ([what CI runs](evals/README.md#what-ci-runs)).
 
 ## [3.0.0-rc.2] - 2026-11-12
 

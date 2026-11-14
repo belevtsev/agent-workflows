@@ -13,7 +13,7 @@ on:
         description: Minimum with-arm score (0 to 1) every case must reach
         default: '0.8'
       max_cost_usd:
-        description: List-price cost ceiling per suite, in US dollars; empty means 5 dollars per three cases in the suite
+        description: List-price cost ceiling per suite, in US dollars; empty means 3 dollars per case in the suite
         default: ''
       suites:
         description: Space-separated suite directories under evals/ (empty runs all)
@@ -58,12 +58,17 @@ jobs:
         id: secret
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EVENT: ${{ github.event_name }}
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = workflow_dispatch ]; then
+            # Someone asked for this run, so it must not end green with no eval.
+            echo "::error title=Agent evals did not run::Repository secret ANTHROPIC_API_KEY is not set, so no paid eval ran."
+            exit 1
+          else
             echo "::notice title=Agent evals skipped::Repository secret ANTHROPIC_API_KEY is not set, so no paid eval ran."
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Check out exact source
         if: steps.secret.outputs.enabled == 'true'
@@ -112,6 +117,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: Build cw for the runs
+        run: |
+          # The role contracts send an agent to `cw task schema handoff` for the
+          # shape of its result, so a run gets this checkout's cw on PATH and
+          # may call that one subcommand.
+          mkdir -p "$RUNNER_TEMP/bin"
+          go build -o "$RUNNER_TEMP/bin/cw" ./cmd/cw
+          "$RUNNER_TEMP/bin/cw" task schema handoff > /dev/null
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Install Claude Code and the Bash sandbox prerequisites
         run: |
           sudo apt-get update -qq
@@ -135,21 +149,30 @@ jobs:
           OUT: ${{ runner.temp }}/eval-out
         run: |
           mkdir -p "$TMPDIR" "$OUT"
-          # Without a dispatch input the ceiling scales with the suite: 5 dollars
-          # per three cases, so a twelve-case suite gets the same budget per case.
+          # Without a dispatch input the ceiling scales with the suite: 3 dollars
+          # per case. The dearest suite in the local run of 2026-11-14 was
+          # architect, at 2.10 dollars per case (docs/evidence.md).
           cases=$(find "evals/$SUITE" -mindepth 2 -maxdepth 2 -name prompt.md | wc -l)
-          ceiling=${MAX_COST_USD:-$(awk -v n="$cases" 'BEGIN { printf "%.2f", n * 5 / 3 }')}
+          ceiling=${MAX_COST_USD:-$((cases * 3))}
           echo "cost ceiling: $ceiling USD for $cases cases"
           set +e
           claude plugin eval . --tag "$SUITE" --ablation none --scaffold --trust-plugin --keep-temp \
             --no-publish --model "$EVAL_MODEL" --judge-model "$JUDGE_MODEL" \
             --threshold "$PASS_FLOOR" --max-cost-usd "$ceiling" \
-            --allow-tools Write Edit "Bash(go *)" \
+            --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
             --json "$OUT/result.json" 2> "$OUT/stderr.log"
           status=$?
           set -e
           echo "status=$status" >> "$GITHUB_OUTPUT"
           tail -n 40 "$OUT/stderr.log"
+          # The runner leaves each kept run directory with its sealed/ folder,
+          # which holds the workspace, at mode 000. Open them first: the find
+          # below would otherwise see no workspace and still succeed.
+          for kept in "$TMPDIR"/claude-eval-*; do
+            [ -d "$kept" ] || continue
+            chmod u+rwx "$kept"
+            if [ -d "$kept/sealed" ]; then chmod u+rwx "$kept/sealed"; fi
+          done
           # Keep only the run workspaces, found by the contract or the coverage
           # profile the scaffold copies into each, never the runs' temporary home
           # directories. A directory with a prompt.md is a copy of the case
