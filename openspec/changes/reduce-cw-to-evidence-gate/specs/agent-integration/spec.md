@@ -59,7 +59,7 @@ Source: `hooks/hooks.json` (a session-start hook loads conventions today); revie
 
 ### Requirement: Instruction text comes from `cw`
 
-The plugin SHALL take the session text from the installed `cw`, and SHALL hold neither a copy of that text nor a `cw` version number. When `cw` is not on `PATH`, the plugin SHALL add one line that says so. The plugin SHALL look for `cw` only in the entries of `PATH` that are absolute paths, and SHALL block no tool call when `cw` fails.
+The plugin SHALL take the session text from the installed `cw`, and SHALL hold neither a copy of that text nor a `cw` version number. When `cw` is not on `PATH`, the plugin SHALL add one line that says so. Its commands for a POSIX shell SHALL run `cw` and `git` only from the entries of `PATH` that are absolute paths; `platform-support` (Hooks on Windows) holds the rule for its Windows commands. The plugin SHALL block no tool call when `cw` fails.
 
 Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-rc.2`, which no release matches); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, C1, X2 and X7.
 
@@ -75,8 +75,13 @@ Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-r
 
 #### Scenario: A program named `cw` in the repository
 
-- **WHEN** the root of `demo` holds an executable file `cw`, the first entry of `PATH` is empty or `.`, no other `cw` is on `PATH`, and a session starts or the agent is about to run a shell command
-- **THEN** that file is not run, and each command of the plugin exits 0
+- **WHEN** the root of `demo` holds executable files `cw` and `git`, the first entry of `PATH` is empty or `.`, no other `cw` is on `PATH`, and a session starts or the agent is about to run a shell command
+- **THEN** neither file is run, and each command of the plugin exits 0
+
+#### Scenario: No absolute entry in `PATH`
+
+- **WHEN** the root of `demo` holds executable files `cw` and `git`, `PATH` is empty, `.`, `:` or `.:bin`, and Claude Code runs each command of the plugin
+- **THEN** neither file is run, and each command exits 0 and prints nothing
 
 #### Scenario: An older `cw`
 

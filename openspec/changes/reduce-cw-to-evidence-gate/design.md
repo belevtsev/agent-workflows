@@ -312,9 +312,13 @@ record is written.
   that is an absolute path holds `cw`, it runs `cw context --host <host>`, which reads the
   `cwd` of the host's notice; otherwise, when the root of the repository holds
   `cw.toml`, it prints one line that says so and names the install
-  instruction. The Codex command for Windows does the same with the commands
-  of `cmd.exe`. The text an agent reads lives in `cw`, not in the
-  hook file.
+  instruction. The filtered `PATH` holds for the whole command, so `git` is
+  found the same way. The Codex command for Windows uses the commands of
+  `cmd.exe`: it goes to the Windows folder before it looks for `cw`, so that
+  a relative entry of `PATH` leads there and not into the repository, and
+  without `cw` it runs no program and prints the line when the session's
+  directory holds `cw.toml`. The text an agent reads lives in `cw`, not in
+  the hook file.
 - **Before a tool call.** The hook runs `cw guard --host <host>`, which reads
   the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
   (`command` for the shell tool, `file_path` for an editing tool, the patch
@@ -364,7 +368,7 @@ record is written.
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The 154 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
+| The 202 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
 | No network | A test that lists the packages `cw` links for Linux, macOS and Windows. It finds no `net` for Linux and macOS. For Windows `net` is linked through `golang.org/x/sys/windows` alone, which `cw` calls for job objects and file locks; no package of `cw` imports it. | Linux | That no network code is linked on Linux and macOS, and that on Windows no code of `cw` reaches any; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |

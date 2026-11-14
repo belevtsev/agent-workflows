@@ -85,9 +85,12 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 	needShell(t)
 	repo := gatedDemo(t)
 	marker := filepath.Join(t.TempDir(), "repository-cw-ran")
-	repo.Write("cw", "#!/bin/sh\necho ran > '"+marker+"'\n")
-	if err := os.Chmod(repo.Path("cw"), 0o755); err != nil { //nolint:gosec // the planted cw must be executable
-		t.Fatal(err)
+	gitMarker := filepath.Join(t.TempDir(), "repository-git-ran")
+	for name, file := range map[string]string{"cw": marker, "git": gitMarker} {
+		repo.Write(name, "#!/bin/sh\necho ran > '"+file+"'\n")
+		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
+			t.Fatal(err)
+		}
 	}
 	for _, innerSh := range []string{"sh", "bash"} {
 		bin := toolFolder(t, innerSh)
@@ -111,12 +114,53 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 							if _, err := os.Stat(marker); err == nil {
 								t.Errorf("the %s command ran the file cw of the repository", e.event)
 							}
+							if _, err := os.Stat(gitMarker); err == nil {
+								t.Errorf("the %s command ran the file git of the repository", e.event)
+							}
 							if e.event == "PreToolUse" && strings.TrimSpace(result.Stdout) != "" {
 								t.Errorf("the PreToolUse command printed, want nothing:\n%s", result.Stdout)
 							}
 						})
 					}
 				}
+			}
+		}
+	}
+}
+
+// Requirement "Instruction text comes from `cw`", scenario "No absolute entry
+// in `PATH`". Codex starts `sh` itself, so only the commands of Claude Code
+// can run with such a PATH.
+func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
+	t.Parallel()
+	needShell(t)
+	repo := gatedDemo(t)
+	marker := filepath.Join(t.TempDir(), "repository-program-ran")
+	for _, name := range []string{"cw", "git"} {
+		repo.Write(name, "#!/bin/sh\necho ran > '"+marker+"'\n")
+		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
+			t.Fatal(err)
+		}
+	}
+	for label, shell := range shells(t) {
+		if !filepath.IsAbs(shell) {
+			found, err := exec.LookPath(shell)
+			if err != nil {
+				t.Fatal(err)
+			}
+			shell = found
+		}
+		for _, value := range []string{"", ".", ":", ".:bin"} {
+			for _, e := range hookEvents {
+				t.Run(label+"/"+e.event+"/PATH="+value, func(t *testing.T) {
+					result := runHooksIn(t, shell, repo.Dir, withPath(repo.Env(), value), hookCommands(t, claudeHooks, e.event, e.selector), noticeFor(e.event, repo.Dir))
+					if result.Code != 0 || strings.TrimSpace(result.Stdout) != "" {
+						t.Errorf("the %s command exited %d and printed, want exit 0 and nothing on standard output:\n%s", e.event, result.Code, result.Output())
+					}
+					if _, err := os.Stat(marker); err == nil {
+						t.Errorf("the %s command ran a program of the repository", e.event)
+					}
+				})
 			}
 		}
 	}
@@ -148,8 +192,9 @@ func TestOlderCWBlocksNoToolCall(t *testing.T) {
 // Requirements "Instruction text comes from `cw`" and "Ask before skipping":
 // each command runs cw only by an absolute path and ends with exit status 0;
 // a command for Codex runs in sh whatever the user's shell is, and its
-// Windows form searches no working directory and ends with exit status 0.
-// Claude Code matches its PowerShell tool.
+// Windows form searches no working directory, runs from the Windows folder,
+// holds no double quote and ends with exit status 0. Claude Code matches its
+// PowerShell tool.
 func TestHookCommandsHaveTheirSafeShape(t *testing.T) {
 	t.Parallel()
 	for _, h := range hostFiles {
@@ -188,6 +233,9 @@ func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	if !strings.Contains(command, `case "$c" in /*)`) {
 		t.Errorf("%s %s does not run cw only by an absolute path: %s", file, event, command)
 	}
+	if !strings.Contains(command, `[ -n "$p" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null);`) {
+		t.Errorf("%s %s does not keep only the absolute entries of PATH for all it runs: %s", file, event, command)
+	}
 	if file == claudeHooks {
 		if !strings.HasSuffix(command, "; true") {
 			t.Errorf("%s %s does not end with ; true: %s", file, event, command)
@@ -197,8 +245,19 @@ func checkCommandShape(t *testing.T, file, event, command, windows string) {
 	if !strings.HasPrefix(command, "sh -c '") || !strings.HasSuffix(command, "; true'") || strings.Count(command, "'") != 2 {
 		t.Errorf("%s %s is not one sh -c '…; true' with no other single quote: %s", file, event, command)
 	}
-	if !strings.HasPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1&") || !strings.HasSuffix(windows, "& exit /b 0") {
+	if !strings.HasPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& ") || !strings.HasSuffix(windows, " & exit /b 0") {
 		t.Errorf("%s %s has no commandWindows that searches no working directory and exits 0: %q", file, event, windows)
+	}
+	// A relative entry of PATH leads into the directory cmd.exe is in, so
+	// the command leaves the session's directory before it looks for cw.
+	rest := strings.TrimPrefix(windows, "set NoDefaultCurrentDirectoryInExePath=1& ")
+	if !strings.HasPrefix(rest, "cd /d %SystemRoot% && ") && !strings.HasPrefix(rest, "pushd %SystemRoot% && ") {
+		t.Errorf("%s %s has a commandWindows that does not go to the Windows folder first: %q", file, event, windows)
+	}
+	// Codex gives the command to cmd.exe as one argument; a double quote in
+	// it reaches cmd.exe with a backslash before it.
+	if strings.Contains(windows, `"`) {
+		t.Errorf("%s %s has a commandWindows with a double quote: %q", file, event, windows)
 	}
 }
 

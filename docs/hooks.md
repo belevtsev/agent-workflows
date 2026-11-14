@@ -325,10 +325,12 @@ worktree warns, and `cw status --json` reports `hooks` as `missing`.
 
 The plugin for Claude Code and Codex adds hooks of the agent host. They do not
 decide about commits or pushes; the git hooks do. The gate works without the
-plugin. Each command looks for `cw` only in the entries of `PATH` that are
-absolute paths, as the hook file does, does nothing when none holds it, except
-at the start of a session, and always exits 0,
-so a missing or an older `cw` blocks no tool call.
+plugin. Each command keeps only the entries of `PATH` that are absolute paths,
+as the hook file does, for all it runs: `cw`, and `git` at the start of a
+session. It does nothing when none holds `cw`, except at the start of a
+session, and always exits 0, so a missing or an older `cw` blocks no tool
+call. Codex starts the `sh` that runs its commands; where that `sh` comes
+from is not in the hands of the plugin.
 
 | Host event | Claude Code (`hooks/hooks.json`) | Codex (`hooks/codex-hooks.json`) |
 | --- | --- | --- |
@@ -351,10 +353,16 @@ so a missing or an older `cw` blocks no tool call.
   [Tokens](tokens.md) says what the token commands record.
 - The hook commands of Claude Code are written for `bash`; those of Codex are
   wrapped in `sh -c`. Under Codex on Windows the file names `commandWindows`
-  for each event, which sets `NoDefaultCurrentDirectoryInExePath=1`, so that
-  `cmd.exe` does not look for `cw` in the working directory, and ends with
-  `exit /b 0`. Tests run these Windows commands with `cmd.exe /C` on Windows
-  in CI. The commands for `bash` and `sh` are tested on Linux and macOS only:
+  for each event. It sets `NoDefaultCurrentDirectoryInExePath=1`, so that
+  `cmd.exe` does not look for `cw` in the working directory, and goes to the
+  Windows folder before it runs `cw`, so that a relative entry of `PATH`,
+  such as `.`, leads there and not into the repository. `cw` takes the
+  session's directory from the `cwd` of the host's notice. The command holds
+  no double quote and ends with `exit /b 0`. At the start of a session
+  without `cw` it runs no program: it prints the line when the session's
+  directory itself holds `cw.toml`, so a session started in a subfolder gets
+  no line there. Tests run these Windows commands with `cmd.exe /C` on
+  Windows in CI. The commands for `bash` and `sh` are tested on Linux and macOS only:
   on Windows the hosts run them in Git Bash, which the tests do not set up.
 - `hooks/codex-hooks.json` is named in `.codex-plugin/plugin.json`. The plugin
   manifest of Claude Code, `.claude-plugin/plugin.json`, names no hooks file;

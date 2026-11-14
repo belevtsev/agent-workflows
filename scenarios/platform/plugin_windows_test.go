@@ -149,6 +149,50 @@ func TestCodexWindowsCommandsRunNoCWOfTheWorkingDirectory(t *testing.T) {
 	}
 }
 
+// Requirement "Hooks on Windows", scenario "A relative entry of `PATH` under
+// Codex on Windows".
+func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
+	t.Parallel()
+	repo := portable(t, "")
+	marker := filepath.Join(t.TempDir(), "repository-program-ran")
+	planted := "@echo off\r\necho ran> \"" + marker + "\"\r\necho {\"hookSpecificOutput\":{}}\r\n"
+	for _, name := range []string{"cw.bat", "git.bat", "where.bat", "tools/cw.bat", "tools/git.bat"} {
+		repo.Write(name, planted)
+	}
+	for _, first := range []string{".", "tools", `.\tools`, ""} {
+		path := first + string(os.PathListSeparator) + systemPath()
+		// cmd.exe finds the planted file through such an entry, so a command
+		// that stayed in the repository would run it.
+		if first != "" {
+			probe := runCmd(t, cmdWays[0], repo.Dir, path, "set NoDefaultCurrentDirectoryInExePath=1& cw", codexNotice("SessionStart", repo.Dir))
+			if !strings.Contains(probe.Stdout, "hookSpecificOutput") {
+				t.Fatalf("with PATH=%s cmd.exe does not find the planted cw.bat, so the test proves nothing:\n%s", path, probe.Output())
+			}
+			if err := os.Remove(marker); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for event, commands := range codexWindowsCommands(t) {
+			for _, command := range commands {
+				for _, way := range cmdWays {
+					t.Run(event+"/"+way+"/PATH="+first, func(t *testing.T) {
+						result := runCmd(t, way, repo.Dir, path, command, codexNotice(event, repo.Dir))
+						if result.Code != 0 {
+							t.Errorf("exit status %d, want 0:\n%s", result.Code, result.Output())
+						}
+						if exists(marker) {
+							t.Errorf("the command ran a program of the repository")
+						}
+						if strings.Contains(result.Stdout, "hookSpecificOutput") {
+							t.Errorf("the command printed what a program of the repository prints:\n%s", result.Stdout)
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
 // Requirement "Hooks on Windows", scenario "The guard of Codex on Windows".
 func TestCodexWindowsGuardDenies(t *testing.T) {
 	t.Parallel()

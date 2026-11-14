@@ -6,7 +6,7 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 200 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 202 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
 | 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 46, with 97 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
@@ -49,7 +49,8 @@ asked for the work to go on alone. Each can be undone.
 
 ## What is left for the owner
 
-- Pushing, a pull request, a tag, a release, and every repository setting.
+- Merging pull request 219, a tag, a release, and every repository setting.
+  The branch was pushed and the draft pull request opened on the owner's word.
 - Removing `_quarantine/` (task 11.1 of part 1).
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
@@ -315,7 +316,8 @@ for A12 and U15.
 #### Found while the fixes were tested
 
 Three helpers then wrote the tests, the scenarios and the documents for these fixes without
-having written the code. They and their tests found six more defects. Each is resolved:
+having written the code. They and their tests found six more defects, and a seventh (F7) was found by reading the
+Windows commands again after F6. Each is resolved:
 
 | # | Defect | What was done |
 | --- | --- | --- |
@@ -325,6 +327,7 @@ having written the code. They and their tests found six more defects. Each is re
 | F4 | `cw tokens record` created its folders `0755`, against finding S10. | They are created `0700`; `internal/tokens`, `TestRecordKeepsItsFoldersPrivate`. |
 | F5 | For a copy of `cw`'s own hook file that was changed since, `cw uninstall` printed a line the file does not hold. | It prints the file's own line that calls `cw`; `internal/gate`, `TestUninstallNamesTheLineTheFileHolds`. |
 | F6 | The fix for S1 did not hold on macOS. It ran `cw` only when `command -v cw` printed an absolute path, and the `sh` of macOS (bash 3.2 in POSIX mode) prints one also for a file found through an empty or relative entry. Found by the new tests in the first CI run that reached them on macOS. | The hook file and the plugin commands leave every entry of `PATH` that is not an absolute path out before they look. Tests run the hook file and the plugin commands in bash started as `sh`, which behaves as on macOS, so Linux holds the rule too; `internal/gate`, `TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH`. |
+| F7 | Two more ways to a program of the repository through a relative entry of `PATH`, of the same kind as F6. At the start of a session without `cw` the plugin commands ran `git` with the whole `PATH`. Under Codex on Windows `cmd.exe` searched a relative entry, such as `.`, from the session's directory. | The commands for a POSIX shell keep only the absolute entries of `PATH` for all they run. The Windows commands go to the Windows folder before they look for `cw`, and without `cw` they run no program: the line that says `cw` is not installed is printed when the session's directory itself holds `cw.toml`, no longer from a subfolder. `agent-integration`, scenario "No absolute entry in `PATH`"; `platform-support`, scenario "A relative entry of `PATH` under Codex on Windows". |
 
 ## Changes to the specifications during the build
 
@@ -364,6 +367,7 @@ having written the code. They and their tests found six more defects. Each is re
 | 14 Nov 2026 | `publish-gate`: Removal | `cw uninstall` prints "the line of it that holds the call", not "the line to remove from it" | Defect F5 above |
 | 14 Nov 2026 | Part 1 proposal, Open Question 11 | Under Codex on Windows the start of a session now prints the line that says `cw` is not installed; the row of this table that says it prints no line is out of date | Defect F2 above |
 | 14 Nov 2026 | `publish-gate`: Fail closed; `agent-integration`: Instruction text comes from `cw`; part 1 design, Hooks and Plugin | The hook file and the plugin "look for `cw` only in the entries of `PATH` that are absolute paths". Before, they ran what `command -v cw` printed when that was an absolute path, and denied "a `cw` that `PATH` names by a relative path". One message now covers a `cw` that is not installed and one that only an empty or relative entry holds; the scenario "An empty or relative entry of `PATH`" expects it | Defect F6 above |
+| 14 Nov 2026 | `agent-integration`: Instruction text comes from `cw`; `platform-support`: Hooks on Windows; part 1 design, Plugin | The plugin's commands for a POSIX shell "run `cw` and `git` only from the entries of `PATH` that are absolute paths"; the Windows commands of Codex "run no program of the working directory, also not through a relative entry of `PATH`". Two scenarios added: "No absolute entry in `PATH`" and "A relative entry of `PATH` under Codex on Windows". Under Codex on Windows the line for a missing `cw` is printed in the folder that holds `cw.toml` only | Defect F7 above |
 
 ## Progress
 

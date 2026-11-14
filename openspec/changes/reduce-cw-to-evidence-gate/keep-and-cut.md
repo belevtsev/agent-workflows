@@ -177,7 +177,7 @@ Test code is 109,209 lines, more than twice the code it tests.
 | Tests of cut code | 23,083 | Cut with their subject. |
 | Tests in the four split packages (`internal/cli`, `internal/gate`, `internal/projectctx`, `cmd/cw`) that their file name does not assign: 85 files | 32,077 | Each follows the code it tests. A test of rewritten code is rewritten. |
 
-The core's tests are written from the 154 scenarios of the six specifications.
+The core's tests are written from the 202 scenarios of the six specifications.
 Four of today's tests are worth reading first, because they drive real git:
 
 - `cmd/cw/quickstart_e2e_test.go` executes the quick start. Success measure 1

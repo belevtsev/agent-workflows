@@ -93,7 +93,7 @@ Source: `go doc os/exec.LookPath` and `go doc os/exec.Command`, Go 1.27.4 (a nam
 
 ### Requirement: Hooks on Windows
 
-On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. So SHALL the Windows commands of the Codex plugin, which SHALL NOT run a `cw` of the working directory and SHALL exit 0. A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
+On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. So SHALL the Windows commands of the Codex plugin, which SHALL run no program of the working directory, also not through a relative entry of `PATH`, and SHALL exit 0. A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
 
 Source: `publish-gate`, Hook installation and Fail closed; the owner's decision of 14 November 2026; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, X2 and X10; `agent-integration`, Instruction text comes from `cw` (the line for a missing `cw`). Not observed: every git observation under proposal, Sources was made on Linux.
 
@@ -112,6 +112,11 @@ Source: `publish-gate`, Hook installation and Fail closed; the owner's decision 
 - **WHEN** on Windows `portable` holds `cw.bat`, no `cw` is on `PATH`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`
 - **THEN** each command exits 0 and does not run `cw.bat`
 
+#### Scenario: A relative entry of `PATH` under Codex on Windows
+
+- **WHEN** on Windows `portable` holds `cw.bat`, `git.bat`, `where.bat` and a folder `tools` with `cw.bat` and `git.bat`, the first entry of `PATH` is `.`, `tools` or `.\tools`, no other entry holds `cw`, and Codex runs each Windows command of its plugin with `cmd.exe /C` in `portable`
+- **THEN** each command exits 0 and runs none of these files
+
 #### Scenario: The guard of Codex on Windows
 
 - **WHEN** on Windows `cw` is on `PATH` and Codex runs the Windows command of its plugin before the agent runs `git commit --no-verify`
@@ -124,8 +129,8 @@ Source: `publish-gate`, Hook installation and Fail closed; the owner's decision 
 
 #### Scenario: Codex starts a session on Windows without `cw`
 
-- **WHEN** on Windows no `cw` is on `PATH` and Codex runs the Windows command of its plugin for the start of a session, once in `portable` and once in a folder outside any repository
-- **THEN** in `portable` the command prints one line that says that `cw` is not installed and where the install instruction is, outside a repository it prints nothing, and both exit 0
+- **WHEN** on Windows no `cw` is on `PATH` and Codex runs the Windows command of its plugin for the start of a session, once in the root of `portable` and once in a folder outside any repository
+- **THEN** in the root of `portable` the command prints one line that says that `cw` is not installed and where the install instruction is, outside a repository it prints nothing, and both exit 0
 
 ### Requirement: Install without a toolchain
 
