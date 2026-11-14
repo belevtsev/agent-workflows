@@ -22,6 +22,11 @@ func repoFiles(t *testing.T) []string {
 	command := exec.CommandContext(t.Context(), "git", "-C", repoRoot, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	output, err := command.Output()
 	if err != nil {
+		// CI always works in a checkout; there, a skip would hide every
+		// check of the repository's files, the size limits among them.
+		if os.Getenv("CI") != "" {
+			t.Fatalf("CI must run in a git checkout, and git cannot list the files: %v", err)
+		}
 		t.Skipf("not a git checkout: %v", err)
 	}
 	var files []string

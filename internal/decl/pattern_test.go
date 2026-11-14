@@ -1,6 +1,10 @@
 package decl
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestValidPattern(t *testing.T) {
 	cases := []struct {
@@ -103,5 +107,73 @@ func TestMatchAny(t *testing.T) {
 	}
 	if MatchAny(nil, "a") {
 		t.Error("MatchAny(nil) matched")
+	}
+}
+
+// naive is the plain recursive meaning of a pattern: "**" matches any number
+// of segments. Its work grows without bound with the number of "**", which
+// is why Match does not use it; here it is the oracle.
+func naive(pattern, path []string) bool {
+	if len(pattern) == 0 {
+		return len(path) == 0
+	}
+	if pattern[0] == "**" {
+		for skip := 0; skip <= len(path); skip++ {
+			if naive(pattern[1:], path[skip:]) {
+				return true
+			}
+		}
+		return false
+	}
+	return len(path) > 0 && matchSegment([]rune(pattern[0]), []rune(path[0])) && naive(pattern[1:], path[1:])
+}
+
+// Match gives the same answer as the recursive meaning for every pattern and
+// path of up to five segments over a small alphabet.
+func TestMatchAgreesWithTheRecursiveMeaning(t *testing.T) {
+	words := []string{"a", "b", "**", "*", "a*"}
+	var all func(n int) [][]string
+	all = func(n int) [][]string {
+		if n == 0 {
+			return [][]string{nil}
+		}
+		var out [][]string
+		for _, rest := range all(n - 1) {
+			for _, w := range words {
+				out = append(out, append([]string{w}, rest...))
+			}
+		}
+		return out
+	}
+	for size := 1; size <= 5; size++ {
+		for _, pattern := range all(size) {
+			for pathSize := 1; pathSize <= 4; pathSize++ {
+				for _, path := range all(pathSize) {
+					if strings.Contains(strings.Join(path, "/"), "*") {
+						continue
+					}
+					if got, want := matchSegments(pattern, path), naive(pattern, path); got != want {
+						t.Fatalf("Match(%q, %q) = %v, the recursive meaning gives %v", strings.Join(pattern, "/"), strings.Join(path, "/"), got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// A pattern with many "**" is matched in bounded work. With the recursive
+// meaning this call does not end within hours.
+func TestMatchIsBoundedForManyDoubleStars(t *testing.T) {
+	pattern := strings.Repeat("**/", 40) + "zz"
+	path := strings.Repeat("d/", 200) + "file"
+	done := make(chan bool, 1)
+	go func() { done <- Match(pattern, path) }()
+	select {
+	case got := <-done:
+		if got {
+			t.Error("the pattern matched a path that does not end in zz")
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("Match had not answered after 30 s")
 	}
 }

@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -71,6 +73,23 @@ func (e *Error) Error() string {
 }
 
 var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,39}$`)
+
+// deviceName matches the ids that Windows reads as a device, not as the name
+// of a folder. They are refused on every system, so that one declaration is
+// valid everywhere.
+var deviceName = regexp.MustCompile(`^(con|prn|aux|nul|com[0-9]|lpt[0-9])$`)
+
+// Plain returns text as it is when it holds no control character, and
+// quoted otherwise, so that a name a repository holds can add neither a line
+// nor a terminal command to what cw prints.
+func Plain(text string) string {
+	for _, r := range text {
+		if r < 0x20 || r >= 0x7f && r < 0xa0 || r == utf8.RuneError {
+			return strconv.Quote(text)
+		}
+	}
+	return text
+}
 
 // raw is the file as TOML gives it. The fields of a check are decoded
 // loosely, so that each broken rule gets a sentence of its own.
@@ -137,6 +156,8 @@ func (rc rawCheck) check(data []byte, start, end int) (Check, []Problem) {
 		fail("", "a check needs an `id`")
 	case !ok || !idPattern.MatchString(id):
 		fail("id", "`id` must match [a-z0-9][a-z0-9_-]{0,39}")
+	case deviceName.MatchString(id):
+		fail("id", "`id` must not be `%s`, which Windows reads as the name of a device", id)
 	default:
 		check.ID = id
 	}
@@ -205,16 +226,16 @@ func tomlError(err error) error {
 		for _, e := range strict.Errors {
 			line, _ := e.Position()
 			key := e.Key()
-			problems = append(problems, Problem{Line: line, Text: fmt.Sprintf("unknown key `%s`", key[len(key)-1])})
+			problems = append(problems, Problem{Line: line, Text: fmt.Sprintf("unknown key `%s`", Plain(key[len(key)-1]))})
 		}
 		return &Error{Problems: problems}
 	}
 	var decode *toml.DecodeError
 	if errors.As(err, &decode) {
 		line, _ := decode.Position()
-		return &Error{Problems: []Problem{{Line: line, Text: "not valid TOML: " + decode.Error()}}}
+		return &Error{Problems: []Problem{{Line: line, Text: "not valid TOML: " + Plain(decode.Error())}}}
 	}
-	return &Error{Problems: []Problem{{Text: "not valid TOML: " + err.Error()}}}
+	return &Error{Problems: []Problem{{Text: "not valid TOML: " + Plain(err.Error())}}}
 }
 
 var headerPattern = regexp.MustCompile(`^\s*\[\[\s*check\s*\]\]\s*(#.*)?$`)
@@ -259,9 +280,9 @@ func Append(old []byte, id string, run, paths []string, timeout string) ([]byte,
 	}
 	b.WriteString("\n[[check]]\n")
 	fmt.Fprintf(&b, "id = %s\n", quote(id))
-	fmt.Fprintf(&b, "run = %s\n", quoteList(run))
+	fmt.Fprintf(&b, "run = %s\n", QuoteList(run))
 	if len(paths) > 0 {
-		fmt.Fprintf(&b, "paths = %s\n", quoteList(paths))
+		fmt.Fprintf(&b, "paths = %s\n", QuoteList(paths))
 	}
 	if timeout != "" {
 		fmt.Fprintf(&b, "timeout = %s\n", quote(timeout))
@@ -272,7 +293,8 @@ func Append(old []byte, id string, run, paths []string, timeout string) ([]byte,
 	return b.Bytes(), nil
 }
 
-func quoteList(items []string) string {
+// QuoteList writes items as a TOML array of strings.
+func QuoteList(items []string) string {
 	quoted := make([]string, len(items))
 	for i, item := range items {
 		quoted[i] = quote(item)

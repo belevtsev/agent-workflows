@@ -2,6 +2,7 @@
 package runner
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -18,14 +19,18 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/store"
 )
 
-// MaxDiffer is how many differing paths a record and a message list.
-const MaxDiffer = 20
+// controlCExit is the exit status of a Windows program that the console
+// ended, as Ctrl+C, Ctrl+Break and closing the console do.
+const controlCExit = 0xC000013A
 
 // Job is one check to execute on one snapshot.
 type Job struct {
 	Check decl.Check
 	Tree  string // the snapshot taken immediately before
 	Key   string // the check's content key for that snapshot
+	// Program is the file to start when the caller looked the program up
+	// itself; empty starts the first word of the check's command.
+	Program string
 	// Out and Err receive the program's output as it is produced.
 	Out, Err io.Writer
 }
@@ -53,14 +58,24 @@ func Execute(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job) (Re
 	if err != nil {
 		return Result{}, fmt.Errorf("the run of `%s` cannot be recorded in %s: %w", job.Check.ID, st.Dir, err)
 	}
-	logFile, err := os.Create(st.LogPath(runID))
+	// A cancelled run is still recorded, so the context of the record is not
+	// the one that was cancelled.
+	finish := func(end ending) (store.Record, error) {
+		return run.Finish(context.WithoutCancel(ctx), func(r *store.Record) {
+			now := time.Now().UTC().Truncate(time.Second)
+			r.Outcome, r.ExitStatus, r.EndedAt = end.outcome, end.exit, &now
+			r.Differ, r.DifferMore, r.Detail = end.differ, end.more, end.detail
+		})
+	}
+	logFile, err := os.OpenFile(st.LogPath(runID), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
+		_, _ = finish(ending{outcome: store.Interrupted, detail: "the log could not be written: " + err.Error()})
 		return Result{}, fmt.Errorf("the log of `%s` cannot be written: %w", job.Check.ID, err)
 	}
 	log := newLog(logFile)
 	var warnings []string
 	ended := proc.Run(ctx, proc.Spec{
-		Path: job.Check.Run[0], Args: job.Check.Run[1:], Dir: repo.Root, Env: os.Environ(),
+		Path: cmp.Or(job.Program, job.Check.Run[0]), Args: job.Check.Run[1:], Dir: repo.Root, Env: os.Environ(),
 		Stdout: &tee{log: log, terminal: job.Out}, Stderr: &tee{log: log, terminal: job.Err},
 		Timeout: job.Check.Timeout,
 	})
@@ -77,13 +92,7 @@ func Execute(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job) (Re
 	if err := log.Close(); err != nil {
 		warnings = append(warnings, fmt.Sprintf("`%s`: the log is incomplete: %v", job.Check.ID, err))
 	}
-	// A cancelled run is still recorded, so the context of the record is not
-	// the one that was cancelled.
-	record, err := run.Finish(context.WithoutCancel(ctx), func(r *store.Record) {
-		now := time.Now().UTC().Truncate(time.Second)
-		r.Outcome, r.ExitStatus, r.EndedAt = end.outcome, end.exit, &now
-		r.Differ, r.DifferMore, r.Detail = end.differ, end.more, end.detail
-	})
+	record, err := finish(end)
 	return Result{Record: record, Warnings: warnings}, err
 }
 
@@ -96,9 +105,12 @@ type ending struct {
 	detail  string
 }
 
+// classify says how a run ended. A program that ended with a failure while
+// the run was being cancelled was interrupted, whichever of the two cw saw
+// first: on Windows the console sends its signal to the program as well.
 func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, ended proc.Result) ending {
 	switch {
-	case ended.Stopped && ended.Cancelled:
+	case ended.Stopped && ended.Cancelled, ended.Code != 0 && errors.Is(ctx.Err(), context.Canceled), uint32(ended.Code) == controlCExit: //nolint:gosec // G115: compared as the 32 bits Windows gives.
 		return ending{outcome: store.Interrupted}
 	case ended.Stopped:
 		return ending{outcome: store.TimedOut, detail: fmt.Sprintf("the check did not end within its timeout of %s", job.Check.Timeout)}
@@ -128,23 +140,17 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 	if after == job.Tree {
 		return ending{outcome: store.Passed, exit: &exit}
 	}
-	end := ending{outcome: store.SourceChanged, exit: &exit}
-	changes, err := repo.Diff(ctx, job.Tree, after)
-	if err != nil {
-		end.detail = "the source changed during the run"
+	end := ending{outcome: store.SourceChanged, exit: &exit, detail: "the source changed during the run"}
+	if end.differ, end.more, err = repo.DiffPaths(ctx, job.Tree, after); err != nil {
 		return end
 	}
-	for i, change := range changes {
-		if i == MaxDiffer {
-			end.more = len(changes) - MaxDiffer
-			break
-		}
-		end.differ = append(end.differ, change.Path)
-	}
-	end.detail = "the source changed during the run: " + strings.Join(end.differ, ", ")
+	end.detail += ": " + decl.Plain(strings.Join(end.differ, ", "))
 	if end.more > 0 {
 		end.detail += fmt.Sprintf(" and %d more", end.more)
 	}
+	// A file the check itself wrote is the usual cause, and the next run
+	// would pass only because the file is then already there.
+	end.detail += "; when the check writes these files, list them in .gitignore or write them outside the working tree"
 	return end
 }
 

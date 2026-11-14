@@ -6,7 +6,7 @@ of a tool that keeps its own hooks directory. The repository holds `cw.toml`.
 ```console
 $ cw status
 cw: warning: the hooks of cw are not installed in this clone, so git gates nothing here; run `cw init`
-not verified: a commit of this content would be denied
+not verified, but no hook of cw judges a commit in this clone yet
   test  not run on this content
   lint  not run on this content
 index: holds the same content as the working tree
@@ -30,7 +30,7 @@ $ cw init
 cw.toml is kept as it is
 installed the hooks pre-commit, pre-merge-commit, pre-push
 the gate enforces: a commit or a push needs a passing run of every declared check
-next: cw add <id> -- <program> [<argument>...], then cw run
+next: cw run
 $ cw run
 == test: sh tests/run.sh
 tests passed

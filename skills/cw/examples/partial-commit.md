@@ -41,7 +41,7 @@ cw: this commit is denied: its content has no recorded passing run of every decl
   The working tree holds other content than this commit. Paths that differ:
     tests/run.sh
   The working tree as a whole is verified; this commit is not, because it records other content.
-cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest or by setting it aside, and run:
+cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:
   cw run
 [exit 1]
 $ git add -A

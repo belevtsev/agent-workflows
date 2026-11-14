@@ -1,5 +1,6 @@
 // Package shellwords reads a shell command line as simple commands of words,
-// and says whether a git call in it skips git's hooks. It runs nothing.
+// and says whether a call in it skips git's hooks or turns the gate of cw
+// off. It runs nothing.
 package shellwords
 
 import (
@@ -70,7 +71,7 @@ func judge(line string, depth int) string {
 }
 
 var (
-	wrappers = []string{"env", "command", "sudo", "time", "nice", "xargs"}
+	wrappers = []string{"env", "command", "sudo", "time", "nice", "xargs", "timeout", "exec", "nohup"}
 	// Options of git before the subcommand, and of commit, that take the next word.
 	globalValued = []string{"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"}
 	longValued   = []string{"--message", "--file", "--author", "--date", "--template", "--reuse-message",
@@ -88,6 +89,10 @@ func simple(words []string, depth int) string {
 			return gitCall(words[i+1:])
 		case slices.Contains([]string{"sh", "bash", "zsh", "dash"}, name) && depth > 0:
 			return judge(shellCommand(words[i+1:]), depth-1)
+		case name == "eval" && depth > 0:
+			return judge(strings.Join(words[i+1:], " "), depth-1)
+		case name == "cw" && len(words) > i+1 && (words[i+1] == "uninstall" || words[i+1] == "init" && slices.ContainsFunc(words[i+2:], observes)):
+			return "runs `" + strings.Join(words[i:], " ") + "`"
 		case strings.Contains(w, "=") && strings.Contains(strings.ToLower(w), "core.hookspath"):
 			return "sets core.hooksPath in the environment of git"
 		case !wrapped && !strings.Contains(w, "=") && !slices.Contains(wrappers, name):
@@ -97,6 +102,10 @@ func simple(words []string, depth int) string {
 	}
 	return ""
 }
+
+// observes says whether a word of `cw init` is the option that makes the
+// hooks allow everything, in any of the spellings the program reads.
+func observes(word string) bool { return strings.HasPrefix(strings.TrimLeft(word, "-"), "observe") }
 
 // shellCommand is TEXT in `sh -c TEXT` or `sh -lc TEXT`, or "".
 func shellCommand(args []string) string {

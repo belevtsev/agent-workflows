@@ -1,5 +1,5 @@
 {
-  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, asks before a git call that skips the hooks or an edit of cw.toml, a hook file or a record of cw, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, asks before a git call that skips the hooks, a cw call that turns the gate off, or an edit, made with an edit tool, of cw.toml, a hook file, the git configuration or a record of cw, and gives `cw tokens record` the notice that a role or the session has ended. Each command runs cw only from an absolute path of PATH and always exits 0, so an old or missing cw blocks nothing. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "if command -v cw >/dev/null 2>&1; then cw context; elif [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi",
+            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" context --host claude;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true",
             "timeout": 10
           }
         ]
@@ -15,12 +15,12 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|MultiEdit",
+        "matcher": "Bash|PowerShell|Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
             "shell": "bash",
-            "command": "if command -v cw >/dev/null 2>&1; then cw guard --host claude; fi",
+            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" guard --host claude;; esac; true",
             "timeout": 10
           }
         ]
@@ -32,7 +32,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host claude || true; fi",
+            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]
@@ -44,7 +44,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host claude || true; fi",
+            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]

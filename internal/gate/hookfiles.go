@@ -22,6 +22,10 @@ var Hooks = []string{"pre-commit", "pre-merge-commit", "pre-push"}
 // user to install cw names this place and no command of any toolchain.
 const InstallURL = "https://github.com/belevtsev/agent-workflows#install"
 
+// NoDeclarationURL is where the documents say what to do about a tree that
+// holds no cw.toml on purpose. A denial names this place and no command.
+const NoDeclarationURL = "https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#a-tree-without-cwtoml"
+
 // marker is the line that shows cw wrote a hook file.
 const marker = "# cw-hook: written by `cw init`. `cw uninstall` removes this file."
 
@@ -48,20 +52,27 @@ func Line(name string) string {
 }
 
 // Script is the hook file cw writes. It is a POSIX shell script, which is
-// also what Git for Windows runs. Without cw on PATH it denies.
+// also what Git for Windows runs. It runs cw only by an absolute path, so an
+// empty or relative entry of PATH cannot make it run a file of the
+// repository; without such a cw it denies.
 func Script(name string) string {
 	return strings.Join([]string{
 		"#!/bin/sh",
 		marker,
-		"if ! command -v cw >/dev/null 2>&1; then",
-		"  echo \"cw: the cw program was not found on PATH, so this " + name + " cannot be judged and is denied.\" >&2",
-		"  echo \"cw: the install instruction is at " + InstallURL + "\" >&2",
-		"  exit 3",
-		"fi",
-		"exec " + Line(name),
+		"cw=$(command -v cw 2>/dev/null)",
+		"case \"$cw\" in",
+		"/*) exec " + ownLine + name + " \"$@\" ;;",
+		"\"\") echo \"cw: the cw program was not found on PATH, so this " + name + " cannot be judged and is denied.\" >&2",
+		"  echo \"cw: the install instruction is at " + InstallURL + "\" >&2 ;;",
+		"*) echo \"cw: PATH names cw as $cw, which is not an absolute path, so this " + name + " cannot be judged and is denied. Remove the empty or relative entry from PATH.\" >&2 ;;",
+		"esac",
+		"exit 3",
 		"",
 	}, "\n")
 }
+
+// ownLine is how the file cw writes calls cw, up to the name of the hook.
+const ownLine = `"$cw" hook `
 
 // Foreign is a hook file cw did not write.
 type Foreign struct {
@@ -144,7 +155,17 @@ func executable(path string) bool {
 // calls says whether the file is a hook git would run and that calls cw.
 func calls(path, name string) bool {
 	data, err := os.ReadFile(path)
-	return err == nil && executable(path) && strings.Contains(string(data), "cw hook "+name)
+	return err == nil && executable(path) && callsCW(string(data), name)
+}
+
+// callsCW says whether a line of a hook file that is no comment calls cw.
+func callsCW(script, name string) bool {
+	for _, line := range strings.Split(script, "\n") {
+		if line = strings.TrimSpace(line); !strings.HasPrefix(line, "#") && (strings.Contains(line, "cw hook "+name) || strings.Contains(line, ownLine+name)) {
+			return true
+		}
+	}
+	return false
 }
 
 // State says whether git runs the hooks of cw in this clone: each of the
@@ -162,17 +183,20 @@ func State(ctx context.Context, repo *gitx.Repo) string {
 	return Installed
 }
 
-// Uninstall removes the hook files cw wrote and says how many there were. A
-// file of another tool that still calls `cw hook` is left as it is and
-// returned.
+// Uninstall removes the hook files cw wrote and says how many there were: in
+// the hooks directory of the common git directory, where Install writes, a
+// file with the marker; in a directory that core.hooksPath names, which
+// belongs to its owner, only a file that is exactly the script of cw. A file
+// it leaves that still calls `cw hook` is returned.
 func Uninstall(ctx context.Context, repo *gitx.Repo) (removed int, foreign []Foreign, err error) {
 	dir, _, err := repo.HooksDir(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
-	dirs := []string{dir}
-	if own := filepath.Join(repo.CommonDir, "hooks"); own != dir {
-		dirs = append(dirs, own)
+	own := filepath.Join(repo.CommonDir, "hooks")
+	dirs := []string{own}
+	if dir != own {
+		dirs = append(dirs, dir)
 	}
 	for _, dir := range dirs {
 		for _, name := range Hooks {
@@ -180,12 +204,12 @@ func Uninstall(ctx context.Context, repo *gitx.Repo) (removed int, foreign []For
 			data, readErr := os.ReadFile(path)
 			switch {
 			case readErr != nil:
-			case strings.Contains(string(data), marker):
+			case string(data) == Script(name) || dir == own && strings.Contains(string(data), marker):
 				if err := os.Remove(path); err != nil {
 					return removed, nil, err
 				}
 				removed++
-			case strings.Contains(string(data), "cw hook "+name):
+			case callsCW(string(data), name):
 				foreign = append(foreign, Foreign{Name: name, Path: path})
 			}
 		}

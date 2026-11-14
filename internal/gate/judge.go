@@ -16,9 +16,6 @@ import (
 	"github.com/belevtsev/agent-workflows/v3/internal/store"
 )
 
-// maxPaths is how many differing paths a denial lists.
-const maxPaths = 20
-
 // Ruling is what a hook decided about one tree. A hook decides from the
 // records alone: it executes no check and changes nothing.
 type Ruling struct {
@@ -57,7 +54,7 @@ func (g *Gate) rule(ctx context.Context, hook, tree string) Ruling {
 	case err == nil:
 		ruling.Verdict, ruling.Allowed = verdict, verdict.Verified
 	case errors.Is(err, evidence.ErrNoDeclaration):
-		ruling.Cause, ruling.Reason = store.CauseNoDeclaration, "the tree has no declaration: it holds no "+decl.FileName+" at its root"
+		ruling.Cause, ruling.Reason = store.CauseNoDeclaration, "the tree has no declaration: it holds no "+decl.FileName+" at its root. When that is on purpose, see "+NoDeclarationURL
 	case errors.As(err, &invalid):
 		ruling.Cause, ruling.Reason = store.CauseInvalidDeclaration, "the declaration is invalid:\n"+indent(invalid.Error())
 	case errors.As(err, &unreadable):
@@ -118,10 +115,10 @@ func (g *Gate) declarationNotice(ctx context.Context, ruling Ruling) []string {
 		}
 		var changed []string
 		if !slices.Equal(old.Run, current.Run) {
-			changed = append(changed, fmt.Sprintf("`run` was %q and becomes %q", old.Run, current.Run))
+			changed = append(changed, fmt.Sprintf("`run` was %s and becomes %s", listText(old.Run), listText(current.Run)))
 		}
 		if !slices.Equal(old.Paths, current.Paths) {
-			changed = append(changed, fmt.Sprintf("`paths` was %q and becomes %q", old.Paths, current.Paths))
+			changed = append(changed, fmt.Sprintf("`paths` was %s and becomes %s", listText(old.Paths), listText(current.Paths)))
 		}
 		if old.Timeout != current.Timeout {
 			changed = append(changed, fmt.Sprintf("`timeout` was %s and becomes %s", old.Timeout, current.Timeout))
@@ -133,8 +130,18 @@ func (g *Gate) declarationNotice(ctx context.Context, ruling Ruling) []string {
 	return notes
 }
 
-// compareWorktree says how the denied commit relates to the working tree,
-// which is what `cw run` checks. The snapshot is taken only for a denial.
+// listText is a list as cw.toml holds it.
+func listText(items []string) string {
+	if len(items) == 0 {
+		return "not set"
+	}
+	return decl.QuoteList(items)
+}
+
+// compareWorktree says whether `cw run` in the working tree would check the
+// denied content. It would when the working tree holds that content, or the
+// same content for every check that is not satisfied. Otherwise it says how
+// the two differ. The snapshot is taken only for a denial.
 func (g *Gate) compareWorktree(ctx context.Context, ruling *Ruling) {
 	snapshot, err := g.Repo.Snapshot(ctx, g.Store.Tmp())
 	if err != nil {
@@ -145,27 +152,45 @@ func (g *Gate) compareWorktree(ctx context.Context, ruling *Ruling) {
 	if snapshot == ruling.Tree {
 		return
 	}
-	ruling.Elsewhere = true
-	changes, err := g.Repo.Diff(ctx, ruling.Tree, snapshot)
-	if err != nil {
-		ruling.Differs = "The working tree holds other content than this commit."
+	work := g.rule(ctx, ruling.Hook, snapshot)
+	if sameMissing(ruling.Verdict, work.Verdict) {
 		return
 	}
-	var b strings.Builder
-	b.WriteString("The working tree holds other content than this commit. Paths that differ:\n")
-	for i, change := range changes {
-		if i == maxPaths {
-			fmt.Fprintf(&b, "  ... and %d more\n", len(changes)-maxPaths)
-			break
-		}
-		fmt.Fprintf(&b, "  %s\n", change.Path)
+	ruling.Elsewhere = true
+	ruling.Differs = "The working tree holds other content than this commit."
+	paths, more, err := g.Repo.DiffPaths(ctx, ruling.Tree, snapshot)
+	if err != nil {
+		return
 	}
-	if g.rule(ctx, ruling.Hook, snapshot).Allowed {
-		b.WriteString("The working tree as a whole is verified; this commit is not, because it records other content.")
+	ruling.Differs += " Paths that differ:\n"
+	for _, path := range paths {
+		ruling.Differs += "  " + decl.Plain(path) + "\n"
+	}
+	if more > 0 {
+		ruling.Differs += fmt.Sprintf("  ... and %d more\n", more)
+	}
+	if work.Allowed {
+		ruling.Differs += "The working tree as a whole is verified; this commit is not, because it records other content."
 	} else {
-		b.WriteString("The working tree as a whole is not verified either.")
+		ruling.Differs += "The working tree as a whole is not verified either."
 	}
-	ruling.Differs = b.String()
+}
+
+// sameMissing says whether every check the denied tree misses has the same
+// command and the same checked content in the working tree, so that a run
+// there is a run on the denied content.
+func sameMissing(denied, work *evidence.Verdict) bool {
+	if denied == nil || work == nil {
+		return false
+	}
+	for _, c := range denied.Missing() {
+		if !slices.ContainsFunc(work.Checks, func(w evidence.Check) bool {
+			return w.ID == c.ID && w.Key == c.Key && slices.Equal(w.Run, c.Run) && slices.Equal(w.Paths, c.Paths)
+		}) {
+			return false
+		}
+	}
+	return true
 }
 
 // zeroID says whether an object id is the all-zero id git uses for "none".
@@ -175,16 +200,22 @@ func zeroID(id string) bool { return strings.Trim(id, "0") == "" }
 // the local ref and its id, then the remote ref and its id.
 func (g *Gate) Push(ctx context.Context, remote string, input io.Reader) []Ruling {
 	const hook = "pre-push"
-	var rulings []Ruling
+	var updates [][]string
+	var tips []string // the new tips of the branches this push updates
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(nil, 1<<20)
 	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) != 4 {
-			continue
+		if fields := strings.Fields(scanner.Text()); len(fields) == 4 {
+			updates = append(updates, fields)
+			if strings.HasPrefix(fields[2], "refs/heads/") && !zeroID(fields[1]) {
+				tips = append(tips, fields[1])
+			}
 		}
-		ruling := g.pushRef(ctx, remote, fields[1], fields[2], fields[3])
-		ruling.Hook, ruling.Ref = hook, fields[2]
+	}
+	var rulings []Ruling
+	for _, update := range updates {
+		ruling := g.pushRef(ctx, remote, update[1], update[2], update[3], tips)
+		ruling.Hook, ruling.Ref = hook, update[2]
 		rulings = append(rulings, ruling)
 	}
 	if err := scanner.Err(); err != nil {
@@ -196,7 +227,7 @@ func (g *Gate) Push(ctx context.Context, remote string, input io.Reader) []Rulin
 // pushRef judges one update. A deletion and an update that adds nothing to
 // the remote are allowed; otherwise the tree of the new tip must be
 // verified. Only the tip is judged, not the commits below it.
-func (g *Gate) pushRef(ctx context.Context, remote, localID, remoteRef, remoteID string) Ruling {
+func (g *Gate) pushRef(ctx context.Context, remote, localID, remoteRef, remoteID string, tips []string) Ruling {
 	const hook = "pre-push"
 	if zeroID(localID) {
 		return Ruling{Allowed: true}
@@ -207,7 +238,7 @@ func (g *Gate) pushRef(ctx context.Context, remote, localID, remoteRef, remoteID
 		return Cannot(hook, store.CauseInternal, err.Error())
 	}
 	if isCommit {
-		adds, err := g.addsSomething(ctx, remote, commit, remoteRef, remoteID)
+		adds, err := g.addsSomething(ctx, remote, commit, remoteRef, remoteID, tips)
 		if err != nil {
 			return Cannot(hook, store.CauseInternal, err.Error())
 		}
@@ -216,37 +247,41 @@ func (g *Gate) pushRef(ctx context.Context, remote, localID, remoteRef, remoteID
 		}
 	}
 	tree, found, err := g.Repo.TreeOf(ctx, localID)
-	if err != nil || !found {
+	if err != nil {
+		return Cannot(hook, store.CauseInternal, err.Error())
+	}
+	if !found {
 		return Cannot(hook, store.CauseTree, "it names neither a commit nor a tree, so there is nothing to judge")
 	}
 	ruling := g.rule(ctx, hook, tree)
 	ruling.Commit = commit
 	if !ruling.Allowed && ruling.Verdict != nil {
-		ruling.Elsewhere = !g.worktreeHolds(ctx, tree)
+		g.compareWorktree(ctx, &ruling)
+		ruling.Differs = "" // the denial names the ref; the paths of another branch say nothing more
 	}
 	return ruling
 }
 
-// worktreeHolds says whether the working tree holds exactly this tree, so
-// that `cw run` here would check it.
-func (g *Gate) worktreeHolds(ctx context.Context, tree string) bool {
-	if g.Repo.Root == "" {
-		return false
-	}
-	snapshot, err := g.Repo.Snapshot(ctx, g.Store.Tmp())
-	return err == nil && snapshot == tree
-}
-
 // addsSomething says whether pushing the commit to the ref gives the remote
 // a commit it does not have. For a branch, the commit the branch points at
-// on the remote decides; for any other ref, the remote-tracking branches.
-func (g *Gate) addsSomething(ctx context.Context, remote, commit, remoteRef, remoteID string) (bool, error) {
+// on the remote decides. For any other ref, the branches this push updates
+// and the remote-tracking branches decide; notes hold no content of the
+// project and are not judged.
+func (g *Gate) addsSomething(ctx context.Context, remote, commit, remoteRef, remoteID string, tips []string) (bool, error) {
 	if strings.HasPrefix(remoteRef, "refs/heads/") {
 		if zeroID(remoteID) {
 			return true, nil
 		}
 		contained, err := g.Repo.Contains(ctx, commit, remoteID)
 		return !contained, err
+	}
+	if strings.HasPrefix(remoteRef, "refs/notes/") {
+		return false, nil
+	}
+	for _, tip := range tips {
+		if contained, err := g.Repo.Contains(ctx, commit, tip); contained || err != nil {
+			return false, err
+		}
 	}
 	held, err := g.Repo.RemoteHolds(ctx, remote, commit)
 	return !held, err
@@ -332,17 +367,7 @@ func (r Ruling) Denial(st *store.Store) string {
 	}
 	fmt.Fprintf(&b, "cw: %s is denied: its content has no recorded passing run of every declared check.\n", r.subject())
 	for _, c := range r.Verdict.Missing() {
-		fmt.Fprintf(&b, "  %s: %s", c.ID, c.State)
-		if c.State == evidence.NotRun {
-			b.WriteString(" on this content")
-		}
-		if c.Deciding != nil {
-			if c.Deciding.ExitStatus != nil {
-				fmt.Fprintf(&b, " with exit status %d", *c.Deciding.ExitStatus)
-			}
-			fmt.Fprintf(&b, "; log: %s", st.Abs(c.Deciding.Log))
-		}
-		b.WriteString("\n")
+		fmt.Fprintf(&b, "  %s: %s\n", c.ID, Describe(st, c))
 	}
 	if r.Differs != "" {
 		b.WriteString(indent(r.Differs) + "\n")
@@ -351,19 +376,55 @@ func (r Ruling) Denial(st *store.Store) string {
 	return b.String()
 }
 
-// instruction is the end of a denial: the command that produces the missing
-// evidence, and where to run it when the denied content is not what the
-// working tree holds.
+// Describe is the state of a check as a person reads it. The state comes
+// first: satisfied, not run, failed or timed out. A run that decides is
+// named with its log, and a last run that decides nothing with how it ended.
+func Describe(st *store.Store, c evidence.Check) string {
+	text := c.State
+	switch {
+	case c.State == evidence.NotRun:
+		text += " on this content"
+		if c.Last != nil {
+			text += fmt.Sprintf(" (the last run ended %s", c.Last.Outcome)
+			if c.Last.Detail != "" {
+				text += ": " + c.Last.Detail
+			}
+			text += ")"
+		}
+	case c.Implied:
+		text += " (same checked content as the base revision)"
+	case c.Deciding != nil && c.State != evidence.Satisfied:
+		if c.Deciding.ExitStatus != nil {
+			text += fmt.Sprintf(" with exit status %d", *c.Deciding.ExitStatus)
+		}
+		if c.Deciding.Detail != "" {
+			text += ": " + c.Deciding.Detail
+		}
+		text += "; log: " + st.Abs(c.Deciding.Log)
+	}
+	if c.Running {
+		text += " (a run is executing now)"
+	}
+	return text
+}
+
+// instruction is the end of a denial: what to fix first when a check failed,
+// the command that produces the missing evidence, and where to run it when
+// the denied content is not what the working tree holds.
 func (r Ruling) instruction() string {
+	fix := ""
+	if slices.ContainsFunc(r.Verdict.Missing(), func(c evidence.Check) bool { return c.Deciding != nil }) {
+		fix = "cw: a check failed or timed out; first fix what its log shows.\n"
+	}
 	switch {
 	case !r.Elsewhere:
-		return "cw: to produce the missing evidence, run:\n  cw run\n"
+		return fix + "cw: to produce the missing evidence, run:\n  cw run\n"
 	case r.Ref == "":
-		return "cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest or by setting it aside, and run:\n  cw run\n"
+		return fix + "cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:\n  cw run\n"
 	case r.Commit == "":
-		return "cw: `cw run` checks the working tree, so it must run in a checkout of that content:\n  cw run\n"
+		return fix + "cw: `cw run` checks the working tree, so it must run in a checkout of that content:\n  cw run\n"
 	}
-	return fmt.Sprintf("cw: `cw run` checks the working tree, so it must run in a checkout of that commit, for example in a linked worktree:\n  git worktree add --detach ../cw-check %s\nand then, in that directory:\n  cw run\n", r.Commit)
+	return fix + fmt.Sprintf("cw: `cw run` checks the working tree, so it must run in a checkout of that commit, for example in a linked worktree:\n  git worktree add --detach ../cw-check %s\nand then, in that directory:\n  cw run\n", r.Commit)
 }
 
 func indent(text string) string {

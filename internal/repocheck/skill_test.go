@@ -184,16 +184,22 @@ func TestSkillHeads(t *testing.T) {
 				values[match[1]] = strings.TrimSpace(strings.TrimPrefix(line, match[0]))
 			}
 		}
-		for key := range values {
+		for key, value := range values {
 			if !slices.Contains([]string{"name", "description", "metadata"}, key) {
 				t.Errorf("%s: the head holds `%s`; only name, description and metadata work on every host", path, key)
+			}
+			// The head is YAML. A text that holds `: ` or ` #` is a text only
+			// inside quotes; without them a strict reader refuses the head.
+			quoted := len(value) > 1 && value[0] == '\'' && value[len(value)-1] == '\'' && !strings.Contains(value[1:len(value)-1], "'")
+			if !quoted && (strings.Contains(value, ": ") || strings.Contains(value, " #") || strings.HasPrefix(value, "'") || strings.HasPrefix(value, `"`)) {
+				t.Errorf("%s: the value of `%s` is not one YAML text; put it in single quotes, with no single quote inside", path, key)
 			}
 		}
 		folder := filepath.Base(filepath.Dir(path))
 		if name := values["name"]; name != folder || !skillName.MatchString(name) || strings.Contains(name, "claude") {
 			t.Errorf("%s: the name %q must be the folder name %q, in lower-case letters, digits and hyphens", path, name, folder)
 		}
-		description := values["description"]
+		description := strings.Trim(values["description"], "'")
 		if len(description) < 80 || len(description) > 700 || strings.ContainsAny(description, "<>") {
 			t.Errorf("%s: the description has %d characters; want 80 to 700 and no angle bracket", path, len(description))
 		}

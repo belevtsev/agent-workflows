@@ -118,7 +118,7 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 func holdDir(dir, file string) (err error) {
 	for attempt := range 8 {
 		time.Sleep(time.Duration(attempt) * time.Millisecond)
-		if err = os.MkdirAll(dir, 0o755); err == nil {
+		if err = os.MkdirAll(dir, 0o700); err == nil {
 			err = os.WriteFile(file, nil, 0o600)
 		}
 		if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, fs.ErrPermission) {
@@ -133,8 +133,8 @@ type indexEntry struct {
 	tag, mode, object, path string
 }
 
-func (r *Repo) indexEntries(ctx context.Context, env []string) ([]indexEntry, error) {
-	out, err := run(ctx, call{dir: r.dir, env: env}, "ls-files", "-s", "-v", "-z")
+func indexEntries(ctx context.Context, c call) ([]indexEntry, error) {
+	out, err := run(ctx, c, "ls-files", "-s", "-v", "-z")
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +172,7 @@ func (e indexEntry) mark() string {
 // repository with changes it has not committed. `git add -A` leaves marked
 // entries as they were, so the copy still shows the marks.
 func (r *Repo) checkEntries(ctx context.Context, env []string) error {
-	entries, err := r.indexEntries(ctx, env)
+	entries, err := indexEntries(ctx, call{dir: r.dir, env: env})
 	if err != nil {
 		return err
 	}
@@ -210,19 +210,33 @@ func (r *Repo) checkMarked(ctx context.Context, entries []indexEntry) error {
 	return nil
 }
 
-// checkNested refuses a submodule or nested repository whose own working
-// tree holds changes. The snapshot records it as one commit, so a check
-// would otherwise run on content that no tree records.
+// checkNested refuses a submodule or nested repository whose folder holds
+// other content than its commit: uncommitted changes, a file that git is
+// told to overlook, or files although it is not checked out. The snapshot
+// records it as one commit, so a check would otherwise run on content that
+// no tree records.
 func (r *Repo) checkNested(ctx context.Context, path, full string) error {
 	if _, err := os.Lstat(filepath.Join(full, ".git")); err != nil {
-		return nil // not checked out: nothing on disk can differ
+		if files, _ := os.ReadDir(full); len(files) > 0 {
+			return &WorktreeError{Path: path, Cause: "is a submodule that is not checked out, yet its folder holds files; remove them or check the submodule out"}
+		}
+		return nil // not checked out and empty: nothing on disk can differ
 	}
-	out, err := run(ctx, call{dir: full, foreign: true}, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")
+	nested := call{dir: full, foreign: true}
+	out, err := run(ctx, nested, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")
 	if err != nil {
 		return &WorktreeError{Path: path, Cause: "is a nested repository that git cannot read: " + err.Error()}
 	}
 	if len(bytes.TrimSpace(out)) > 0 {
 		return &WorktreeError{Path: path, Cause: "is a submodule or nested repository that holds uncommitted changes; commit or remove them there first"}
 	}
-	return nil
+	entries, err := indexEntries(ctx, nested)
+	for _, entry := range entries {
+		if entry.mode != "160000" {
+			return &WorktreeError{Path: path + "/" + entry.path, Cause: "is marked " + entry.mark() + " in a submodule, so git does not say whether it differs; clear the mark there first"}
+		} else if err := r.checkNested(ctx, path+"/"+entry.path, filepath.Join(full, filepath.FromSlash(entry.path))); err != nil {
+			return err
+		}
+	}
+	return err
 }

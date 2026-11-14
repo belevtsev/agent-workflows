@@ -31,7 +31,7 @@ func runUninstall(ctx context.Context, cfg Config, args []string) error {
 	if removed == 0 && statErr != nil {
 		fmt.Fprintf(cfg.Out, "nothing to remove: cw wrote no hook in this clone and keeps no records in %s\n", s.store.Dir)
 	} else {
-		fmt.Fprintf(cfg.Out, "removed the hooks cw wrote and its records in %s\n", s.store.Dir)
+		fmt.Fprintf(cfg.Out, "removed the hooks cw wrote, %d in all, and the records of cw in %s\n", removed, s.store.Dir)
 	}
 	if _, err := os.Stat(filepath.Join(s.repo.Root, decl.FileName)); err == nil {
 		fmt.Fprintf(cfg.Out, "%s is left as it is\n", decl.FileName)

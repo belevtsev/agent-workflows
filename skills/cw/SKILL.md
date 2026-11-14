@@ -1,6 +1,6 @@
 ---
 name: cw
-description: Works with cw, the commit gate of a git repository - git allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly that content. Use when the repository holds cw.toml and you are about to change code, run its checks, commit or push; when git prints "cw: this commit is denied" or cw status says "not verified"; when a declared check fails; or when the user asks to add checks or a commit gate to a repository in any language. Not for general git help.
+description: 'Works with cw, the commit gate of a git repository - git allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly that content. Use when the repository holds cw.toml and you are about to change code, run its checks, commit or push; when git prints "cw: this commit is denied" or cw status says "not verified"; when a declared check fails; or when the user asks to add checks or a commit gate to a repository in any language. Not for general git help.'
 ---
 
 # Working in a repository gated by cw

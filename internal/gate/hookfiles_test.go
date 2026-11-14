@@ -34,13 +34,16 @@ func TestScript(t *testing.T) {
 		if !strings.HasPrefix(script, "#!/bin/sh\n") {
 			t.Errorf("%s does not begin with #!/bin/sh", name)
 		}
-		for _, want := range []string{marker, Line(name), "exit 3", InstallURL, "command -v cw", "not found"} {
+		for _, want := range []string{marker, "exit 3", InstallURL, "command -v cw", "not found", "not an absolute path"} {
 			if !strings.Contains(script, want) {
 				t.Errorf("the %s script lacks %q:\n%s", name, want, script)
 			}
 		}
-		if !strings.Contains(script, "exec "+Line(name)+"\n") {
-			t.Errorf("the %s script does not end by running cw hook:\n%s", name, script)
+		if !strings.Contains(script, `/*) exec "$cw" hook `+name+` "$@" ;;`+"\n") || !callsCW(script, name) {
+			t.Errorf("the %s script does not run cw hook by an absolute path:\n%s", name, script)
+		}
+		if strings.Contains(script, "exec cw ") {
+			t.Errorf("the %s script runs cw by its bare name:\n%s", name, script)
 		}
 		for _, banned := range []string{"go install", "go get", "--no-verify"} {
 			if strings.Contains(script, banned) {
@@ -309,6 +312,44 @@ func TestUninstallWithHooksPath(t *testing.T) {
 	for _, path := range hookPaths(filepath.Join(e.repo.CommonDir, "hooks")) {
 		if exists(path) {
 			t.Errorf("Uninstall left %s in the common hooks directory", path)
+		}
+	}
+}
+
+// A directory that core.hooksPath names belongs to its owner: a file there
+// that holds more than the script of cw is not removed, also when it holds
+// the marker line. It is named for the user to edit.
+func TestUninstallLeavesAnotherToolsFileInHooksPath(t *testing.T) {
+	e := newEnv(t, map[string]string{"a.txt": "a\n"})
+	e.git("config", "core.hooksPath", ".githooks")
+	team := filepath.Join(e.dir, ".githooks", "pre-commit")
+	if err := os.MkdirAll(filepath.Dir(team), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "#!/bin/sh\n" + marker + "\nsh team-lint.sh || exit 1\n" + Line("pre-commit") + "\n"
+	if err := os.WriteFile(team, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	removed, foreign, err := Uninstall(t.Context(), e.repo)
+	if err != nil || removed != 0 || len(foreign) != 1 || foreign[0].Path != team {
+		t.Errorf("Uninstall = %d removed, %v, %v; want none removed and the team's file named", removed, foreign, err)
+	}
+	if got, _ := os.ReadFile(team); string(got) != content {
+		t.Errorf("Uninstall changed the team's hook:\n%s", got)
+	}
+}
+
+// A hook that only mentions cw in a comment does not call it.
+func TestACommentDoesNotCallCW(t *testing.T) {
+	for script, want := range map[string]bool{
+		"#!/bin/sh\n# TODO: enable: cw hook pre-commit \"$@\"\nexit 0\n": false,
+		"#!/bin/sh\n  # cw hook pre-commit\n":                            false,
+		"#!/bin/sh\nlint || exit 1\ncw hook pre-commit \"$@\"\n":         true,
+		"#!/bin/sh\nexec cw hook pre-push \"$@\"\n":                      false,
+		Script("pre-commit"):                                             true,
+	} {
+		if got := callsCW(script, "pre-commit"); got != want {
+			t.Errorf("callsCW = %v, want %v, for:\n%s", got, want, script)
 		}
 	}
 }

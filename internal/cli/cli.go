@@ -34,7 +34,7 @@ func commands() []command {
 		{"run", "[<id>...] [--force] [--base <rev>]", "Execute the declared checks that have no passing run on this content", runRun},
 		{"status", "[--json]", "Say whether a commit of the working tree would be allowed, and what is missing", runStatus},
 		{"stats", "[--since <period>] [--json]", "Count the runs and the hook decisions this repository recorded", runStats},
-		{"context", "", "Print what an agent should know at the start of a session here", runContext},
+		{"context", "[--host claude|codex]", "Print what an agent should know at the start of a session here", runContext},
 		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", runHook},
 		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a git call that skips the hooks, or an edit of cw.toml, a hook or a record", runGuard},
 		{"uninstall", "", "Remove the hooks cw wrote and its records; cw.toml stays", runUninstall},

@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -75,19 +76,19 @@ func (s *Store) Mode() (string, error) {
 
 // SetMode writes the mode.
 func (s *Store) SetMode(mode string) error {
-	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
+	if err := os.MkdirAll(s.Dir, 0o700); err != nil {
 		return err
 	}
-	return writeSynced(filepath.Join(s.Dir, "mode"), []byte(mode+"\n"))
+	return WriteFile(filepath.Join(s.Dir, "mode"), []byte(mode+"\n"), 0o600)
 }
 
 // Remove deletes the whole store.
 func (s *Store) Remove() error { return os.RemoveAll(s.Dir) }
 
-// writeSynced writes a file so that it is whole on disk or absent: a
-// temporary file is written and synced, renamed into place, and the
+// WriteFile writes a file so that it is whole on disk or absent: a temporary
+// file is written and synced, given the mode, renamed into place, and the
 // directory is synced.
-func writeSynced(path string, data []byte) error {
+func WriteFile(path string, data []byte, mode fs.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
 	if err != nil {
 		return err
@@ -101,7 +102,10 @@ func writeSynced(path string, data []byte) error {
 		err = closeErr
 	}
 	if err == nil {
-		err = os.Rename(name, path)
+		err = os.Chmod(name, mode)
+	}
+	if err == nil {
+		err = retry(func() error { return os.Rename(name, path) })
 	}
 	if err != nil {
 		_ = os.Remove(name)
@@ -109,6 +113,19 @@ func writeSynced(path string, data []byte) error {
 	}
 	syncDir(filepath.Dir(path))
 	return nil
+}
+
+// retry does the work again, for a moment, when it fails on Windows: there a
+// file that another process has open, such as a reader of a record or a
+// virus scanner, can for that moment be neither replaced nor read.
+func retry(work func() error) (err error) {
+	for attempt := range 20 {
+		if err = work(); err == nil || runtime.GOOS != "windows" || errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		time.Sleep(time.Duration(attempt+1) * time.Millisecond)
+	}
+	return err
 }
 
 // syncDir makes a rename in the directory durable where the system can.

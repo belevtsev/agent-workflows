@@ -36,6 +36,7 @@ three prices: want 6, got 3
 == test: failed with exit status 1
    log: <repo>/.git/cw/logs/<run>.log
 == lint: satisfied, not run again: run <run> passed on this content
+not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again
 [exit 5]
 ```
 

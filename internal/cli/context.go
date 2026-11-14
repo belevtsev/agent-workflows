@@ -2,10 +2,10 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/decl"
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
@@ -19,12 +19,22 @@ const MaxContext = 1000
 // runContext prints what an agent should know at the start of a session in
 // a gated repository. It prints nothing where the root of the working tree
 // holds no declaration, and it never fails a session: outside a repository
-// it prints nothing and exits 0.
+// it prints nothing and exits 0. For a host it reads the host's notice from
+// standard input, which says where the session works; that is not always the
+// directory the host starts a hook in.
 func runContext(ctx context.Context, cfg Config, args []string) error {
-	if err := noArguments("context", args); err != nil {
-		return err
+	flags := newFlags("context")
+	host := flags.String("host", "", "")
+	if p, err := parseArgs(flags, args); err != nil || len(p.pos) > 0 || p.dash || (*host != "" && *host != "claude" && *host != "codex") {
+		return usagef("usage: cw context [--host claude|codex], with the host's notice on standard input when a host is named")
 	}
 	dir, err := os.Getwd()
+	var notice struct {
+		Dir string `json:"cwd"`
+	}
+	if *host != "" && json.NewDecoder(cfg.In).Decode(&notice) == nil && notice.Dir != "" {
+		dir, err = notice.Dir, nil
+	}
 	if err != nil {
 		return nil
 	}
@@ -42,22 +52,20 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 }
 
 // contextText is the text for one state of the gate. configured says that
-// core.hooksPath is set, so that cw writes no hook in this clone.
+// core.hooksPath is set, so that cw writes no hook in this clone. Where the
+// hooks do not run, the text says so before it says what the gate does.
 func contextText(hooks, mode string, configured bool) string {
-	var b strings.Builder
-	b.WriteString("This repository is gated by cw. git allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly the content that is committed or pushed.\n")
-	b.WriteString("- `cw run` executes the declared checks that have no passing run on the current content and records the results. Run it before you commit.\n")
-	b.WriteString("- `cw status` says whether a commit would be allowed and which checks are missing.\n")
-	b.WriteString("- A denied commit or push names what is missing. Produce the evidence with `cw run`; do not go around the hook.\n")
+	intro, state := "This repository is gated by cw. git", "The hooks are installed.\n"
 	switch {
 	case hooks != gate.Installed && configured:
-		b.WriteString("The hooks git runs in this clone (core.hooksPath) do not all call cw, so nothing is gated here yet; `cw init` prints the line to add to each.\n")
+		intro, state = "This repository declares checks for cw, but the hooks git runs in this clone (core.hooksPath) do not all call cw, so nothing is gated here yet; `cw init` prints the line to add to each. Once they call cw, git", ""
 	case hooks != gate.Installed:
-		b.WriteString("The hooks are not installed in this clone, so nothing is gated here yet; `cw init` installs them.\n")
+		intro, state = "This repository declares checks for cw, but the hooks are not installed in this clone, so nothing is gated here yet; `cw init` installs them. Once they are installed, git", ""
 	case mode == store.Observe:
-		b.WriteString("The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n")
-	default:
-		b.WriteString("The hooks are installed.\n")
+		state = "The hooks are installed. The gate only observes here: it records what it would deny and allows the operation.\n"
 	}
-	return b.String()
+	return intro + " allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly the content that is committed or pushed.\n" +
+		"- `cw run` executes the declared checks that have no passing run on the current content and records the results. Run it before you commit.\n" +
+		"- `cw status` says whether a commit would be allowed and which checks are missing.\n" +
+		"- A denied commit or push names what is missing. Produce the evidence with `cw run`; do not go around the hook.\n" + state
 }

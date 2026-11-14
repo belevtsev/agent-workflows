@@ -92,7 +92,7 @@ func (s *Store) Begin(ctx context.Context, record Record) (*Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Join(s.Dir, "logs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(s.Dir, "logs"), 0o700); err != nil {
 		_ = lock.Close()
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (s *Store) Begin(ctx context.Context, record Record) (*Run, error) {
 func inDir(dir string, work func() error) error {
 	var err error
 	for range 5 {
-		if err = os.MkdirAll(dir, 0o755); err != nil {
+		if err = os.MkdirAll(dir, 0o700); err != nil {
 			return err
 		}
 		if err = work(); !errors.Is(err, fs.ErrNotExist) {
@@ -134,7 +134,7 @@ func (r *Run) write() error {
 	if err != nil {
 		return err
 	}
-	return writeSynced(r.path(), append(data, '\n'))
+	return WriteFile(r.path(), append(data, '\n'), 0o600)
 }
 
 // Finish records how the run ended and releases its lock. Under the lock of
@@ -241,8 +241,8 @@ func readRecord(path string) (Record, error) {
 
 func decodeRecord(path string) (Record, error) {
 	var record Record
-	data, err := os.ReadFile(path)
-	if err != nil {
+	var data []byte
+	if err := retry(func() (err error) { data, err = os.ReadFile(path); return err }); err != nil {
 		return record, err
 	}
 	if err := json.Unmarshal(data, &record); err != nil {

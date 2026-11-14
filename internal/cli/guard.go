@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,17 +14,15 @@ import (
 )
 
 // toolCall is what an agent host tells a hook before it runs a tool. Claude
-// Code and Codex use the same field names.
+// Code and Codex use the same field names. The input holds a shell command,
+// the path of a file edit, or a Codex patch as the command.
 type toolCall struct {
-	Tool  string          `json:"tool_name"`
-	Dir   string          `json:"cwd"`
-	Input json.RawMessage `json:"tool_input"`
-}
-
-// toolInput holds a shell command, the path of a file edit, or a Codex patch.
-type toolInput struct {
-	Command string `json:"command"`
-	Path    string `json:"file_path"`
+	Tool  string `json:"tool_name"`
+	Dir   string `json:"cwd"`
+	Input struct {
+		Command any    `json:"command"`
+		Path    string `json:"file_path"`
+	} `json:"tool_input"`
 }
 
 // runGuard is the plugin's job before a tool call. It reads the host's notice
@@ -43,12 +40,8 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 	if len(p.pos) > 0 || p.dash || (*host != "claude" && *host != "codex") {
 		return usagef("usage: cw guard [--host claude|codex], with the host's notice on standard input")
 	}
-	data, err := io.ReadAll(io.LimitReader(cfg.In, 16<<20))
-	if err != nil {
-		return nil
-	}
 	var call toolCall
-	if json.Unmarshal(data, &call) != nil {
+	if json.NewDecoder(cfg.In).Decode(&call) != nil {
 		return nil // a notice the guard cannot read is one it does not act on
 	}
 	reason := guardReason(ctx, call)
@@ -76,10 +69,6 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 
 // guardReason is why the user should be asked, or nothing.
 func guardReason(ctx context.Context, call toolCall) string {
-	var input toolInput
-	if json.Unmarshal(call.Input, &input) != nil {
-		return ""
-	}
 	dir := call.Dir
 	if dir == "" {
 		dir, _ = os.Getwd()
@@ -88,37 +77,57 @@ func guardReason(ctx context.Context, call toolCall) string {
 	if err != nil || repo.Root == "" {
 		return ""
 	}
-	declaration := filepath.Join(repo.Root, decl.FileName)
-	if _, err := os.Stat(declaration); err != nil {
+	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
 		return "" // nothing is gated here
 	}
-	switch call.Tool {
-	case "Bash":
-		if how := shellwords.SkipsHooks(input.Command); how != "" {
-			return "This command " + how + ", which skips the commit gate: the git hooks of cw would not judge the commit or the push."
+	// A host gives a command as one text; a list of words is read as one
+	// line and, for a word that is itself a command line, word by word.
+	command, _ := call.Input.Command.(string)
+	if words, ok := call.Input.Command.([]any); ok {
+		command = fmt.Sprintln(words...)
+		for _, word := range words {
+			command += fmt.Sprintln(word)
 		}
+	}
+	switch call.Tool {
+	case "Bash", "PowerShell":
+		if how := shellwords.SkipsHooks(command); how != "" {
+			return "This command " + how + ", which skips the commit gate: the git hooks of cw would not deny the commit or the push."
+		}
+		return editReason(ctx, repo, dir, patchPaths(command)) // a patch given to the shell
 	case "Edit", "Write", "MultiEdit":
-		return editReason([]string{input.Path}, dir, declaration, repo.CommonDir)
+		return editReason(ctx, repo, dir, []string{call.Input.Path})
 	case "apply_patch":
-		return editReason(patchPaths(input.Command), dir, declaration, repo.CommonDir)
+		return editReason(ctx, repo, dir, patchPaths(command))
 	}
 	return ""
 }
 
-// editReason says why an edit of paths, relative to dir or absolute, needs the user. Directories
-// are resolved as far as they exist, since a host may give dir through a link and an edit may create some.
-func editReason(paths []string, dir, declaration, common string) string {
+// editReason says why an edit of paths, relative to dir or absolute, needs
+// the user. A path is compared as the file system sees it, with each folder
+// above it, so another spelling of a name, a link or a file that does not
+// exist yet is judged like the place it leads to.
+func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string) string {
+	hooks, _, _ := repo.HooksDir(ctx)
+	const hook = "This edit changes a git hook of this clone, and the git hooks of cw judge each commit and push."
+	guarded := [][2]string{
+		{filepath.Join(repo.Root, decl.FileName), "This edit changes cw.toml, and with it the checks this repository requires before a commit or a push."},
+		{filepath.Join(repo.CommonDir, "hooks"), hook},
+		{hooks, hook},
+		{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},
+		{filepath.Join(repo.CommonDir, "cw"), "This edit changes the records of cw, which hold the passing runs that the commit gate reads."},
+	}
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, path)
 		}
-		switch path = resolved(path); {
-		case path == resolved(declaration):
-			return "This edit changes cw.toml, and with it the checks this repository requires before a commit or a push."
-		case strings.HasPrefix(path, resolved(filepath.Join(common, "hooks"))+string(filepath.Separator)):
-			return "This edit changes a git hook of this clone, and the git hooks of cw judge each commit and push."
-		case strings.HasPrefix(path, resolved(filepath.Join(common, "cw"))+string(filepath.Separator)):
-			return "This edit changes the records of cw, which hold the passing runs that the commit gate reads."
+		for at, above := filepath.Clean(path), ""; at != above; at, above = filepath.Dir(at), at {
+			info, err := os.Stat(at)
+			for _, g := range guarded {
+				if target, targetErr := os.Stat(g[0]); err == nil && targetErr == nil && os.SameFile(info, target) {
+					return g[1]
+				}
+			}
 		}
 	}
 	return ""
@@ -136,14 +145,4 @@ func patchPaths(patch string) []string {
 		}
 	}
 	return paths
-}
-
-func resolved(path string) string {
-	path = filepath.Clean(path)
-	if dir, err := filepath.EvalSymlinks(filepath.Dir(path)); err == nil {
-		return filepath.Join(dir, filepath.Base(path))
-	} else if filepath.Dir(path) == path {
-		return path
-	}
-	return filepath.Join(resolved(filepath.Dir(path)), filepath.Base(path))
 }

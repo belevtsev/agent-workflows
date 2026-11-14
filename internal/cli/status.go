@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/decl"
 	"github.com/belevtsev/agent-workflows/v3/internal/evidence"
 	"github.com/belevtsev/agent-workflows/v3/internal/gate"
-	"github.com/belevtsev/agent-workflows/v3/internal/runner"
 	"github.com/belevtsev/agent-workflows/v3/internal/store"
 )
 
@@ -112,16 +112,8 @@ func (s *session) statusReport(ctx context.Context, verdict *evidence.Verdict) (
 	if indexTree == verdict.Tree {
 		return report, nil, nil
 	}
-	changes, err := s.repo.Diff(ctx, indexTree, verdict.Tree)
-	if err != nil {
+	if report.NotStaged, report.NotStagedMore, err = s.repo.DiffPaths(ctx, indexTree, verdict.Tree); err != nil {
 		return report, nil, err
-	}
-	for i, change := range changes {
-		if i == runner.MaxDiffer {
-			report.NotStagedMore = len(changes) - runner.MaxDiffer
-			break
-		}
-		report.NotStaged = append(report.NotStaged, change.Path)
 	}
 	index, err := evidence.Judge(ctx, s.repo, s.store, indexTree, time.Now(), nil)
 	report.IndexVerified = err == nil && index.Verified
@@ -141,6 +133,8 @@ func printStatus(cfg Config, st *store.Store, verdict *evidence.Verdict, index *
 		fmt.Fprintln(out, "no checks are declared, so every commit is allowed")
 	case verdict.Verified:
 		fmt.Fprintln(out, "verified: every declared check has a passing run on this content")
+	case report.Hooks != gate.Installed:
+		fmt.Fprintln(out, "not verified, but no hook of cw judges a commit in this clone yet")
 	default:
 		fmt.Fprintln(out, "not verified: a commit of this content would be denied")
 	}
@@ -155,7 +149,7 @@ func printStatus(cfg Config, st *store.Store, verdict *evidence.Verdict, index *
 	default:
 		fmt.Fprintf(out, "index: differs from the working tree; not staged:\n")
 		for _, path := range report.NotStaged {
-			fmt.Fprintf(out, "  %s\n", path)
+			fmt.Fprintf(out, "  %s\n", decl.Plain(path))
 		}
 		fmt.Fprint(out, more(report.NotStagedMore))
 		if report.IndexVerified {
@@ -184,38 +178,7 @@ func printChecks(out interface{ Write([]byte) (int, error) }, st *store.Store, c
 		width = max(width, len(c.ID))
 	}
 	for _, c := range checks {
-		line := fmt.Sprintf("  %-*s  %s", width, c.ID, describeState(st, c))
+		line := fmt.Sprintf("  %-*s  %s", width, c.ID, gate.Describe(st, c))
 		fmt.Fprintln(out, line)
 	}
-}
-
-// describeState is the state of a check as a person reads it. The state
-// comes first: satisfied, not run, failed or timed out.
-func describeState(st *store.Store, c evidence.Check) string {
-	text := c.State
-	switch {
-	case c.State == evidence.NotRun:
-		text += " on this content"
-		if c.Last != nil {
-			text += fmt.Sprintf(" (the last run ended %s", c.Last.Outcome)
-			if c.Last.Detail != "" {
-				text += ": " + c.Last.Detail
-			}
-			text += ")"
-		}
-	case c.Implied:
-		text += " (same checked content as the base revision)"
-	case c.Deciding != nil && c.State != evidence.Satisfied:
-		if c.Deciding.ExitStatus != nil {
-			text += fmt.Sprintf(" with exit status %d", *c.Deciding.ExitStatus)
-		}
-		if c.Deciding.Detail != "" {
-			text += ": " + c.Deciding.Detail
-		}
-		text += "; log: " + st.Abs(c.Deciding.Log)
-	}
-	if c.Running {
-		text += " (a run is executing now)"
-	}
-	return text
 }

@@ -55,7 +55,8 @@ var localVars = []string{
 }
 
 // environment is the caller's environment plus extra, with git told to take
-// no lock it does not need, so that reading never rewrites the index.
+// no lock it does not need, so that reading never rewrites the index, and to
+// fetch no object a partial clone lacks, so that cw starts no connection.
 func environment(foreign bool, extra ...string) []string {
 	env := os.Environ()
 	if foreign {
@@ -72,7 +73,7 @@ func environment(foreign bool, extra ...string) []string {
 		}
 		env = kept
 	}
-	env = append(env, "GIT_OPTIONAL_LOCKS=0")
+	env = append(env, "GIT_OPTIONAL_LOCKS=0", "GIT_NO_LAZY_FETCH=1")
 	return append(env, extra...)
 }
 
@@ -80,18 +81,22 @@ func environment(foreign bool, extra ...string) []string {
 type call struct {
 	dir     string
 	env     []string
-	stdin   io.Reader
 	stdout  io.Writer // nil keeps the output for the caller
 	foreign bool      // runs in another repository, such as a submodule
 }
 
+// run starts git without its file system monitor: a daemon that git started
+// for cw would end with the call, and the next call would start it again.
 func run(ctx context.Context, c call, args ...string) ([]byte, error) {
 	result := proc.Run(ctx, proc.Spec{
-		Path: "git", Args: args, Dir: c.dir, Env: environment(c.foreign, c.env...),
-		Stdin: c.stdin, Stdout: c.stdout, StdoutLimit: 1 << 30, StderrLimit: 1 << 16,
+		Path: "git", Args: append([]string{"-c", "core.fsmonitor=false"}, args...), Dir: c.dir, Env: environment(c.foreign, c.env...),
+		Stdout: c.stdout, StdoutLimit: 1 << 30, StderrLimit: 1 << 16,
 	})
 	if result.Stopped {
 		return nil, ctx.Err()
+	}
+	if result.Overflow {
+		return nil, fmt.Errorf("git %s printed more than cw reads", args[0])
 	}
 	if result.Code != 0 {
 		stderr := string(result.Stderr)
@@ -149,10 +154,12 @@ func (r *Repo) CommitOf(ctx context.Context, rev string) (string, bool, error) {
 	return r.resolve(ctx, rev+"^{commit}")
 }
 
+// resolve reads exit status 1 as "names nothing"; any other failure of git,
+// such as an object it cannot read, is an error.
 func (r *Repo) resolve(ctx context.Context, spec string) (string, bool, error) {
 	out, err := r.git(ctx, nil, "rev-parse", "--verify", "--quiet", "--end-of-options", spec)
 	var gitErr *Error
-	if errors.As(err, &gitErr) {
+	if errors.As(err, &gitErr) && gitErr.Code == 1 {
 		return "", false, nil
 	}
 	return out, err == nil && out != "", err
@@ -287,6 +294,22 @@ func (s *nulSplitter) Write(p []byte) (int, error) {
 type Change struct {
 	Path string
 	Kind string // "added", "changed" or "removed"
+}
+
+// MaxPaths is how many differing paths a message and a record list.
+const MaxPaths = 20
+
+// DiffPaths lists the first MaxPaths paths that differ between two trees,
+// and says how many more differ.
+func (r *Repo) DiffPaths(ctx context.Context, from, to string) (paths []string, more int, err error) {
+	changes, err := r.Diff(ctx, from, to)
+	for i, change := range changes {
+		if i == MaxPaths {
+			return paths, len(changes) - MaxPaths, err
+		}
+		paths = append(paths, change.Path)
+	}
+	return paths, 0, err
 }
 
 // Diff lists the paths that differ between two trees, without rename or copy

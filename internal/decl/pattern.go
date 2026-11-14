@@ -13,7 +13,7 @@ func ValidPattern(pattern string) error {
 	}
 	for _, segment := range strings.Split(pattern, "/") {
 		if segment == "" {
-			return fmt.Errorf("the path pattern `%s` must be relative to the repository root, with no empty segment", pattern)
+			return fmt.Errorf("the path pattern `%s` must be relative to the repository root, with no empty segment", Plain(pattern))
 		}
 	}
 	return nil
@@ -38,23 +38,31 @@ func MatchAny(patterns []string, path string) bool {
 	return false
 }
 
+// matchSegments matches whole segments. Only the last "**" is ever tried
+// again, so the work is bounded by the two lengths multiplied, whatever the
+// pattern is.
 func matchSegments(pattern, path []string) bool {
-	for len(pattern) > 0 {
-		if pattern[0] == "**" {
-			rest := pattern[1:]
-			for skip := 0; skip <= len(path); skip++ {
-				if matchSegments(rest, path[skip:]) {
-					return true
-				}
-			}
+	p, n := 0, 0
+	star, mark := -1, 0
+	for n < len(path) {
+		switch {
+		case p < len(pattern) && pattern[p] == "**":
+			star, mark = p, n
+			p++
+		case p < len(pattern) && matchSegment([]rune(pattern[p]), []rune(path[n])):
+			p++
+			n++
+		case star >= 0:
+			mark++
+			p, n = star+1, mark
+		default:
 			return false
 		}
-		if len(path) == 0 || !matchSegment([]rune(pattern[0]), []rune(path[0])) {
-			return false
-		}
-		pattern, path = pattern[1:], path[1:]
 	}
-	return len(path) == 0
+	for p < len(pattern) && pattern[p] == "**" {
+		p++
+	}
+	return p == len(pattern)
 }
 
 // matchSegment matches one segment, with the usual backtracking for "*".

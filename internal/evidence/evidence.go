@@ -3,6 +3,7 @@
 package evidence
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"hash"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/decl"
@@ -24,6 +26,10 @@ const (
 	Failed    = "failed"
 	TimedOut  = "timed out"
 )
+
+// MaxAge is how long a run decides. It is the age at which the log of a run
+// is removed, on purpose: a run that decides always has its log.
+const MaxAge = store.LogAge
 
 // ErrNoDeclaration is a tree without cw.toml at its root.
 var ErrNoDeclaration = errors.New("the tree has no declaration: there is no " + decl.FileName + " at its root; `cw init` creates one")
@@ -96,7 +102,10 @@ func Declaration(ctx context.Context, repo *gitx.Repo, tree string) (*decl.File,
 // Keys computes the content key of each check for a tree. Two trees hold the
 // same checked content for a check exactly when the keys are equal. A check
 // without paths depends on everything, so its key is the tree itself. With
-// paths, the key is the SHA-256 of the tree's raw entries whose path matches.
+// paths, the key is the SHA-256 of the tree's raw entries whose path matches
+// and of every submodule entry: a tree holds a submodule as one entry, which
+// no pattern for a file inside it matches. For the same reason a pattern that
+// names a folder matches nothing; it is refused as a mistake.
 func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check) (map[string]string, error) {
 	keys := make(map[string]string, len(checks))
 	hashers := map[string]hash.Hash{}
@@ -110,15 +119,25 @@ func Keys(ctx context.Context, repo *gitx.Repo, tree string, checks []decl.Check
 	if len(hashers) == 0 {
 		return keys, nil
 	}
+	var folders []decl.Problem
 	err := repo.Entries(ctx, tree, func(raw []byte, path string) {
+		submodule := bytes.HasPrefix(raw, []byte("160000 "))
 		for _, c := range checks {
-			if h, ok := hashers[c.ID]; ok && decl.MatchAny(c.Paths, path) {
+			if h, ok := hashers[c.ID]; ok && (submodule || decl.MatchAny(c.Paths, path)) {
 				h.Write(raw)
+			}
+			for _, p := range c.Paths {
+				if len(folders) == 0 && strings.HasPrefix(path, p+"/") {
+					folders = append(folders, decl.Problem{Line: c.Line, Text: fmt.Sprintf("the pattern `%s` of the check `%s` names a folder, and a pattern matches files; for everything in the folder write `%s/**`", decl.Plain(p), c.ID, decl.Plain(p))})
+				}
 			}
 		}
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(folders) > 0 {
+		return nil, &decl.Error{Problems: folders}
 	}
 	for id, h := range hashers {
 		keys[id] = hex.EncodeToString(h.Sum(nil))
@@ -220,7 +239,7 @@ func (c *Check) decide(records []store.Record, now time.Time) []string {
 	if deciding.EndedAt.After(now) {
 		return []string{fmt.Sprintf("run %s of `%s` is dated in the future (%s); it does not count", deciding.RunID, c.ID, deciding.EndedAt.Format(time.RFC3339))}
 	}
-	if now.Sub(*deciding.EndedAt) > store.LogAge {
+	if now.Sub(*deciding.EndedAt) > MaxAge {
 		return nil // too old to satisfy
 	}
 	c.Deciding = deciding

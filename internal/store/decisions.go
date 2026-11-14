@@ -52,7 +52,7 @@ func (s *Store) Record(ctx context.Context, d Decision) error {
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(filepath.Join(dir, d.Time.UTC().Format("2006-01")+".jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(filepath.Join(dir, d.Time.UTC().Format("2006-01")+".jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
@@ -96,6 +96,9 @@ func (s *Store) Decisions(since time.Time) (decisions []Decision, unreadable int
 				decisions = append(decisions, d)
 			}
 		}
+		if scanner.Err() != nil {
+			unreadable++ // the rest of the file could not be read
+		}
 		_ = file.Close()
 	}
 	return decisions, unreadable, nil
@@ -121,7 +124,9 @@ func (s *Store) Sweep(ctx context.Context, now time.Time) {
 }
 
 // removeOlder removes the files under dir that were last written before
-// limit, and with prune the directories this leaves empty.
+// limit, and with prune the directories this leaves empty. A lock that
+// processes share stays: taking it does not change its time, and a second
+// process could lock a new file of the same name.
 func removeOlder(dir string, limit time.Time, prune bool) {
 	var dirs []string
 	_ = filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
@@ -134,7 +139,7 @@ func removeOlder(dir string, limit time.Time, prune bool) {
 			}
 			return nil
 		}
-		if info, err := entry.Info(); err == nil && info.ModTime().Before(limit) {
+		if info, err := entry.Info(); err == nil && info.ModTime().Before(limit) && entry.Name() != "seq.lock" && entry.Name() != "write.lock" {
 			_ = os.Remove(path)
 		}
 		return nil

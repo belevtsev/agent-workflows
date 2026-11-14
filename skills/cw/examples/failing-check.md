@@ -8,11 +8,12 @@ You changed nothing yet and run the checks to learn the state.
 $ cw run
 == unit: sh check.sh
 unit tests passed
-== unit: source_changed: the source changed during the run: report.txt
+== unit: source_changed: the source changed during the run: report.txt; when the check writes these files, list them in .gitignore or write them outside the working tree
    log: <repo>/.git/cw/logs/<run>.log
 == lint: service-lint app
 == lint: failed: the program `service-lint` could not be started: exec: "service-lint": executable file not found in $PATH
    log: <repo>/.git/cw/logs/<run>.log
+not verified: 2 of 2 checks did not pass; fix what each log shows, then run `cw run` again
 [exit 5]
 ```
 

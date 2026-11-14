@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/belevtsev/agent-workflows/v3/internal/decl"
 	"github.com/belevtsev/agent-workflows/v3/internal/evidence"
 	"github.com/belevtsev/agent-workflows/v3/internal/runner"
 	"github.com/belevtsev/agent-workflows/v3/internal/store"
@@ -61,6 +63,7 @@ func runRun(ctx context.Context, cfg Config, args []string) error {
 		}
 	}
 	if failed > 0 {
+		fmt.Fprintf(cfg.Out, "not verified: %d of %d checks did not pass; fix what each log shows, then run `cw run` again\n", failed, len(ids))
 		return exit(ExitNotVerified)
 	}
 	return s.summary(ctx, base)
@@ -115,15 +118,23 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 		}
 		return true, nil
 	}
-	if runtime.GOOS == "windows" {
-		if program, err := exec.LookPath(check.Run[0]); err == nil {
-			if refusal := runner.BatchRefusal(program, check.Run[1:]); refusal != "" {
+	// On Windows the program is looked up here, as the system will find it
+	// from the repository root, and started by that full path: cmd.exe, which
+	// runs a batch file, would look a bare name up again, the folder first.
+	program := ""
+	if name := check.Run[0]; runtime.GOOS == "windows" {
+		if !filepath.IsAbs(name) && strings.ContainsAny(name, `/\`) {
+			name = filepath.Join(s.repo.Root, name)
+		}
+		if found, err := exec.LookPath(name); err == nil {
+			if refusal := runner.BatchRefusal(found, check.Run[1:]); refusal != "" {
 				return false, failf("the check `%s` was not started: %s", id, refusal)
 			}
+			program, _ = filepath.Abs(found)
 		}
 	}
-	fmt.Fprintf(out, "== %s: %s\n", id, strings.Join(check.Run, " "))
-	result, err := runner.Execute(ctx, s.repo, s.store, runner.Job{Check: check.Check, Tree: verdict.Tree, Key: check.Key, Out: s.cfg.Out, Err: s.cfg.Err})
+	fmt.Fprintf(out, "== %s: %s\n", id, decl.Plain(strings.Join(check.Run, " ")))
+	result, err := runner.Execute(ctx, s.repo, s.store, runner.Job{Check: check.Check, Tree: verdict.Tree, Key: check.Key, Program: program, Out: s.cfg.Out, Err: s.cfg.Err})
 	if err != nil {
 		return false, failf("%v", err)
 	}

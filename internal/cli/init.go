@@ -34,7 +34,8 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	created, err := createDeclaration(filepath.Join(s.repo.Root, decl.FileName))
+	path := filepath.Join(s.repo.Root, decl.FileName)
+	created, err := createDeclaration(path)
 	if err != nil {
 		return failf("%v", err)
 	}
@@ -66,7 +67,13 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 	} else {
 		fmt.Fprintln(cfg.Out, "the gate enforces: a commit or a push needs a passing run of every declared check")
 	}
-	fmt.Fprintln(cfg.Out, "next: cw add <id> -- <program> [<argument>...], then cw run")
+	next := "next: cw add <id> -- <program> [<argument>...], then cw run"
+	if data, err := os.ReadFile(path); err == nil && !created {
+		if file, err := decl.Parse(data); err == nil && len(file.Checks) > 0 {
+			next = "next: cw run"
+		}
+	}
+	fmt.Fprintln(cfg.Out, next)
 	if len(foreign) == 0 {
 		return nil
 	}
