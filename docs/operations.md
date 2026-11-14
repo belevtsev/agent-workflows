@@ -38,7 +38,8 @@ paths are shortened to `<repository>`.
 - `cw help` prints the list of commands and the exit statuses, and exits 0.
   `cw` with no command prints the same list on standard error and exits 2.
 - `cw help <command>`, `cw <command> --help` and `cw <command> -h` print the
-  usage line and the summary of one command.
+  usage line and the summary of one command, and one line for each of its
+  arguments and options.
 - Options may stand before or after the other arguments: `cw run lint --force`
   and `cw run --force lint` mean the same. An option takes its value as the
   next word or after `=`: `--base main` or `--base=main`.
