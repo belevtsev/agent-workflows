@@ -11,7 +11,10 @@ changes the repository you are reading.
 ## What you need
 
 - Linux. It is the only system this was run on.
-- git, and Go 1.27 or newer to build the program.
+- git, with your name and e-mail set. The guide makes commits: when
+  `git config user.name` or `git config user.email` prints nothing, set it
+  first.
+- Go 1.27 or newer to build the program.
 - For part 9 only: `golangci-lint` on your `PATH`.
 
 ## 1. Build the program beside your installed one
@@ -56,7 +59,7 @@ the gate enforces: a commit or a push needs a passing run of every declared chec
 next: cw add <id> -- <program> [<argument>...], then cw run
 ```
 
-`cw run` prints:
+`cw add` prints ``added the check `no-bad` to cw.toml``. `cw run` prints:
 
 ```text
 == no-bad: test ! -e BAD
@@ -186,6 +189,9 @@ echo change > review-notes.txt
 cw roles check reviewer --from <the value of "tree" in the JSON>
 ```
 
+Take the first `"tree"` of the JSON, the one beside `"verified"`. A check
+holds a `"tree"` of its own: the content its last run was on.
+
 It exits 5:
 
 ```text
@@ -218,7 +224,8 @@ reduce-cw-to-evidence-gate: the files obey their rules
 
 Both records stand at the stage `spec`, and that is correct: neither holds a
 `reviews.md` with a review and an approval of its specification. Both commands
-only read files. [The task workflow](workflow.md) says what each stage needs.
+change no file of the checkout and leave nothing behind; `cw change status`
+writes temporary files in the git directory and removes them. [The task workflow](workflow.md) says what each stage needs.
 
 ## 8. The token count, from a record written by hand
 
@@ -282,8 +289,8 @@ The empty line between the two tables holds spaces in the output.
 The developer's first round is writing. The review and the session itself are
 the workflow: 40,000 of 80,000. Now empty `reviewer.jsonl`
 (`: > "$HOME/cw-try/record/reviewer.jsonl"`), give the second notice again and
-print the report again: the reviewer's total is `unknown`, the first line
-counts 60,000 known tokens, and the report says that the tokens of 1 start are
+print the report again: the reviewer's total is `unknown`, the report
+counts 60,000 known tokens, and it says that the tokens of 1 start are
 unknown, so every sum is at least the number shown. An unknown count is never
 added as zero without that sentence. [Tokens](tokens.md) explains every number.
 
@@ -301,8 +308,8 @@ cw run
 git commit --allow-empty -m "gated by itself"
 ```
 
-`cw run` takes a few minutes: it builds, vets, tests and lints the whole
-module. The commit is made. Then:
+`cw run` can take a few minutes the first time: it builds, vets, tests and
+lints the whole module. The commit is made. Then:
 
 ```sh
 echo "// a change" >> cmd/cw/main.go
@@ -364,8 +371,8 @@ when you are done.
 | --- | --- |
 | Parts 1 to 9 of this guide | Run on Linux, by hand, with the output shown. |
 | The tests of this branch | Run on Linux. [The production plan](../openspec/production-plan.md) lists them. |
-| macOS and Windows | The tests of this branch passed in CI on both (run 4, commit `dd0ce41`). Nothing was tried there by hand. |
-| Continuous integration | Run 4, for commit `dd0ce41` on pull request 219, passed on Linux, macOS and Windows. |
+| macOS and Windows | The tests of this branch passed in CI on both (run 16, commit `db028bb`). On Windows the tests skip the plugin commands written for `sh`. Nothing was tried there by hand. |
+| Continuous integration | Run 16, for commit `db028bb` on pull request 219, passed on Linux, macOS and Windows. |
 | A release, and the install without Go | No release exists. The first install instruction of the README cannot work yet. |
 | The plugin in Claude Code | Its files pass `claude plugin validate .`. It was never loaded in a session. |
 | Codex | Nothing was run. The hooks follow the Codex documentation as read on 14 November 2026. |

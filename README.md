@@ -24,7 +24,7 @@ stop a person who decides to go around it.
   [production plan](openspec/production-plan.md) says what was built and how
   each part was checked.
 - It was built and tried by hand on Linux. Its tests passed in CI on Linux,
-  macOS and Windows (run 4, commit `dd0ce41`); nothing was tried by hand on
+  macOS and Windows (run 16, commit `db028bb`); nothing was tried by hand on
   macOS or Windows.
 
 ## Install

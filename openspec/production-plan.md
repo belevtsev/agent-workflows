@@ -55,28 +55,32 @@ asked for the work to go on alone. Each can be undone.
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
   improve anything.
-- The size limit of the gate's code. It holds 5,998 of 6,000 lines, after the
-  fixes of the second challenge and the removal of options nothing used
+- The size limit of the gate's code. It holds 6,000 of 6,000 lines: 5,998 after
+  the fixes of the second challenge and the removal of options nothing used,
+  and two more in the test harness `internal/cwtest` for the fault F8
   (`go test ./internal/repocheck/ -run Size -v` prints the numbers). The next
   change to the gate needs a cut elsewhere, or the owner's word on the limit.
 - Confirming the behaviour by hand on macOS, on Windows and on Codex. The
-  branch is pushed, and pull request 219 is a draft. CI run 4, for commit
-  `dd0ce41`, passed on Linux, macOS and Windows. Nothing was run inside Claude
+  branch is pushed, and pull request 219 is a draft. CI run 16, for commit
+  `db028bb`, passed on Linux, macOS and Windows. Nothing was run inside Claude
   Code or Codex, and no model evaluation was run.
 
 Tasks that stay open on 14 November 2026, by what they wait for:
 
 | Waits for | Part 1 | Part 2 |
 | --- | --- | --- |
-| The owner's decision or account | 1.1, 1.2, 1.3, 1.4, 11.1, 11.3, 11.4, 12.1, 12.2 | 7.1, 7.2, 7.3 |
-| A CI run on the three systems | 2.4, 3.4, 5.3, 5.4, 5.5, 6.9, 6.10, 6.11, 7.4, 8.4, 11.5 | |
-| Windows, for one scenario of their check | 4.4, 4.7, 6.2 | |
-| The owner's clone and CI | 10.4 | |
-| Work that was not done | 3.5 (the git observations as a test), 10.1 (the hook-cost test), 11.2 (the release workflow) | |
+| The owner's decision or account | 1.1, 1.2, 1.3, 11.1, 11.3, 11.4, 12.1, 12.2 | 7.1, 7.2, 7.3 |
+| The first release (task 11.4) | 11.2, for the last part of its check: the attestation and the SBOM of a release; 11.5 | |
+| The owner's clone | 10.4 | |
 
-The tests those CI tasks name exist and pass on Linux. 37 of the 64 tasks of
-part 1 and 24 of the 27 of part 2 are ticked: each one's check passed here as
-it is written.
+53 of the 64 tasks of part 1 and 24 of the 27 of part 2 are ticked: each one's
+check passed as it is written. Where the check is a run on the three systems,
+that is CI run 16. On Windows the tests skip what needs a POSIX shell, POSIX
+file modes or a POSIX signal; `rg -n "t.Skip" internal scenarios` lists each
+skip with its reason. Of task 11.2 the test of the deciding step passes, and
+a local snapshot build with goreleaser 2.18.3 made six archives and a
+`SHA256SUMS` that lists each; the SBOM step was left out there, because syft
+is not installed on this machine.
 
 ## Milestones
 
@@ -93,6 +97,7 @@ Each ends in a commit and in something that can be tried.
 | M7 | Tokens | part 2: group 4 | `cw tokens` prints the known counts for recorded sessions | `cw tokens` on a real session |
 | M8 | Documents and self-use | part 1: groups 9 and 10; part 2: groups 5 and 6 | README, quick start, the test guide; this repository gates itself with `cw.toml` | Everything, by following `docs/try-it.md` |
 | M9 | Review against other tools, and the usage skill | part 1: 8.5, 8.6 | The findings of the review each have an outcome; the skill's examples are replayed by a test; the guard reads a command as words; the token readers are compared with real records | `docs/other-tools.md`, `skills/cw/`, and part 10 of `docs/try-it.md` |
+| M10 | Independent challenge, and the three systems | part 1: 1.4, 2.4, 3.4, 3.5, 4.4, 4.7, 10.1 and the Tests tasks of groups 5 to 8 | Every finding of the advisers has an outcome; CI passes on Linux, macOS and Windows | The checks of pull request 219 |
 
 Order inside a milestone follows the task lists. A scenario that proves wrong
 is corrected in the specification first, and the correction is listed below
@@ -126,8 +131,11 @@ The work stops and waits for the owner when:
 
 ## Rollback
 
-Everything is on one local branch in one worktree. Removing the worktree and
-the branch restores the state of 14 November 2026. Nothing else changed.
+Everything is on one branch, `feat/evidence-gate-and-roles`, in one worktree.
+The branch is pushed, and the draft pull request 219 shows it. `main` is
+unchanged, and no tag, release or repository setting was touched. Closing the
+pull request and removing the branch, here and on GitHub, and the worktree
+restores the state before this work.
 
 ## Independent challenge
 
@@ -232,7 +240,7 @@ role texts (R). They reported 93 findings. Each has one outcome:
 | A9 | The age at which a run stops deciding borrowed the constant of the logs. | resolved | A named constant says that the two are equal on purpose. |
 | A10 | "The first 20 paths that differ" was written three times. | resolved | One function, `gitx.DiffPaths`. |
 | A11 | Three copies of "write a file whole"; `cw add` did not sync. | resolved; one copy kept against the design | `cw add` and the store share one synced writer. The token store keeps its own: by the design, `internal/tokens` imports no package of the gate, and a damaged token file is reported. |
-| A12 | The size test counts 399 lines of test harness and skipped outside a checkout. | resolved in part; the rule deferred | The test fails in CI when git cannot list the files. Which files count is the owner's rule. |
+| A12 | The size test counts the test harness (`internal/cwtest`, 332 lines) and skipped outside a checkout. | resolved in part; the rule deferred | The test fails in CI when git cannot list the files. Which files count is the owner's rule. |
 | A13 | A read error in the decisions file was ignored. | resolved | Counted as unreadable. |
 | A14 | Three concurrency tests did not test what they named. | resolved | Rewritten: runs that overlap, no wall clock, no signal to a stored process id. |
 
@@ -317,7 +325,8 @@ for A12 and U15.
 
 Three helpers then wrote the tests, the scenarios and the documents for these fixes without
 having written the code. They and their tests found six more defects, and a seventh (F7) was found by reading the
-Windows commands again after F6. Each is resolved:
+Windows commands again after F6. An eighth (F8) is a fault of the tests themselves, found by
+running them sixty times in a row. Each is resolved:
 
 | # | Defect | What was done |
 | --- | --- | --- |
@@ -328,13 +337,15 @@ Windows commands again after F6. Each is resolved:
 | F5 | For a copy of `cw`'s own hook file that was changed since, `cw uninstall` printed a line the file does not hold. | It prints the file's own line that calls `cw`; `internal/gate`, `TestUninstallNamesTheLineTheFileHolds`. |
 | F6 | The fix for S1 did not hold on macOS. It ran `cw` only when `command -v cw` printed an absolute path, and the `sh` of macOS (bash 3.2 in POSIX mode) prints one also for a file found through an empty or relative entry. Found by the new tests in the first CI run that reached them on macOS. | The hook file and the plugin commands leave every entry of `PATH` that is not an absolute path out before they look. Tests run the hook file and the plugin commands in bash started as `sh`, which behaves as on macOS, so Linux holds the rule too; `internal/gate`, `TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH`. |
 | F7 | Two more ways to a program of the repository through a relative entry of `PATH`, of the same kind as F6. At the start of a session without `cw` the plugin commands ran `git` with the whole `PATH`. Under Codex on Windows `cmd.exe` searched a relative entry, such as `.`, from the session's directory. | The commands for a POSIX shell keep only the absolute entries of `PATH` for all they run. The Windows commands go to the Windows folder before they look for `cw`, and without `cw` they run no program: the line that says `cw` is not installed is printed when the session's directory itself holds `cw.toml`, no longer from a subfolder. `agent-integration`, scenario "No absolute entry in `PATH`"; `platform-support`, scenario "A relative entry of `PATH` under Codex on Windows". |
+| F8 | A test failed once in sixty repeats of the scenario tests under load, on Linux (`go test -race -count=60 -timeout 25m ./scenarios/...`): `TestSessionContextComesFromTheInstalledCW` wrote a small program and ran it, and the system refused with "text file busy". Another test of the same process had started a program while the file was open for writing, and its child held the file open. Every test that writes a program and runs it while other tests of its package run had the same fault. | The tests write such a file through one helper, `writeProgram`, which lets no other test start a program while the file is open (`syscall.ForkLock`). Nine packages use it. Eight need it; the tests of `internal/gate` do not run in parallel and use it only so that every test writes such a file the same way. The harness does the same when it copies a program named by `CW_TEST_BINARY`. The sixty repeats then passed, with `./internal/gate/` and `./internal/repocheck/` added to the command, and passed again on the last tree. Before the change one hundred repeats of `./scenarios/plugin/` and `./internal/gate/` had passed, which shows how rare the fault was. All of these runs were local, on Linux. It is a fault of the tests, not of `cw`. |
 
 #### A last review of the plugin commands
 
 After F7 a ninth adviser, who had not written them, read the hook commands of both plugin files
 as each shell reads them, and ran the commands for a POSIX shell with `sh`, `bash` and `bash`
 started as `sh`. It could run nothing on Windows. It reported five findings and found no way to
-break the commands for a POSIX shell. Each finding is resolved:
+break the commands for a POSIX shell. Each of the five is resolved. H6 came from the test
+written for H4 and is rejected against evidence:
 
 | # | Finding | What was done |
 | --- | --- | --- |
@@ -343,6 +354,50 @@ break the commands for a POSIX shell. Each finding is resolved:
 | H3 | At the start of a session the line that says `cw` is not installed was missing when the `cw` found cannot be run: a file that is not executable under `bash`, and on Windows a file `cw` without an extension, which `where` finds and `cmd.exe` does not run. | The commands for a POSIX shell take a file that is not executable as no `cw`. The Windows command no longer asks `where`: it runs `cw context` and prints the line when `cmd.exe` found nothing to run. `agent-integration`, scenario "A `cw` that cannot be run"; `platform-support`, scenario "A file named `cw` that Windows cannot run". |
 | H4 | No test showed that the installed `cw` still runs when a relative entry comes first in `PATH`. | `agent-integration`, scenario "A relative entry before the installed `cw`"; on Windows the scenario "A relative entry of `PATH` under Codex on Windows" now also has the installed `cw` in a later entry. |
 | H5 | No test and no scenario covered H1. | The scenario and test named under H1. |
+| H6 | Found by the test for H4, in CI on Windows: with an empty first entry of `PATH` and the installed `cw` in a later one, the command before a tool call printed no decision. | Rejected as a defect of the command, against three CI runs of pull request 219. In run 11 (commit `3db1d6d`) the sub-test "PreToolUse with the installed cw" with `PATH=` failed both ways of starting `cmd.exe`: no decision was printed. From run 12 on (commit `0bb35b1`) the test also asks `cmd.exe` itself for `cw version` through that `PATH` from an empty folder, and passes only when the command prints the decision or that question finds no `cw`. From run 13 on (commit `d424e7d`) it first shows that the same question finds `cw` through the `PATH` without the empty entry. The command is the same in the three runs, and runs 12 and 13 passed. So through such a `PATH` `cmd.exe` itself runs no `cw`, and the command has none to run. Before a tool call it prints nothing; at the start of a session it prints the line that says `cw` is not installed (L1 below). `docs/hooks.md` says both. |
+
+#### A walk through the guide
+
+A tester that had not seen [the guide](../docs/try-it.md) then followed its parts 1 to 9 and 11
+on Linux, with the program built from commit `3db1d6d` and a home folder of its own. Every
+command worked, and every output, exit status and count the guide shows matched. It named six
+places where the words were not exact or a line was missing, and each is corrected in the guide:
+
+| # | What the tester found | What was done |
+| --- | --- | --- |
+| T1 | The guide makes commits and does not say that git needs a name and an e-mail. | "What you need" says so; the quick start says so too. |
+| T2 | `cw add` prints a line the guide did not show. | Part 2 shows it. |
+| T3 | `cw status --json` holds `"tree"` at the top and in each check; part 6 did not say which to take. | Part 6 names the first one. |
+| T4 | Part 7 said that `cw change status` and `cw change check` only read files. `cw change status` writes temporary files in the git directory and removes them. | Part 7 says that they change no file of the checkout and leave nothing behind. |
+| T5 | Part 8 said the first line of the token report counts "60,000 known tokens"; the word "known" is on the second line. | Part 8 says that the report counts them. |
+| T6 | Part 9 said that `cw run` takes a few minutes; with a warm build cache it took ten seconds. | Part 9 says that it can take a few minutes the first time. |
+
+#### A last review of the tests and the closing documents
+
+A tenth adviser, who had written none of it, then read the two commits for F8 and the closing
+documents against the repository, and counted every number these documents state. It found the
+lock of F8 complete for programs the test process starts, no way for it to stall, and no place
+left where a test writes a program and runs it beside parallel tests. The numbers matched: 55
+requirements and 206 scenarios in part 1, 46 and 97 in part 2, 93 findings of the second
+challenge with 83, 4, 4 and 2 by outcome, and 6,000 of 6,000 lines. It reported fourteen
+findings, none in the code of `cw`. Each is resolved:
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| L1 | `docs/hooks.md` said that behind an empty first entry of `PATH` the Windows commands "do nothing". At the start of a session the command then prints the line that says `cw` is not installed, although it is installed. | `docs/hooks.md` says so. The test of the scenario "A relative entry of `PATH` under Codex on Windows" also runs the command at the start of a session with the installed `cw` in a later entry: it must print what `cw context` prints, or, where `cmd.exe` itself finds no `cw`, that line. |
+| L2 | The row H6 and `docs/hooks.md` named no CI run, and the test passes on either branch, so one green run does not show which was taken. | The row H6 names runs 11, 12 and 13 and what each showed. `docs/hooks.md` says where and when it was seen. |
+| L3 | The table of open tasks listed 3.5, 10.1 and 11.2 as work that was not done. Each is done. | The table under "What is left for the owner" is the state at the end. |
+| L4 | The README, `docs/try-it.md` and this plan named CI run 4, thirteen commits back. | They name the run on the last commit that changes code or tests. |
+| L5 | The description in `hooks/codex-hooks.json` said that on Windows `cw` runs "only from an entry that does not lead into the session's directory". An absolute entry may lead there, and the commands do not leave a relative entry out: they change where it is read from. | The description says what the commands do. Reading them again for this showed one case they do not cover: a session in the root of a drive, with an entry of `PATH` such as `X:tools` that names that drive. The requirement Hooks on Windows, the design and `docs/hooks.md` name it. |
+| L6 | The pull request text and this plan said that every finding of the ninth adviser is resolved, and did not say that H6 is rejected. | Both say five resolved, and H6 rejected against evidence. |
+| L7 | The row of M1 and the section Rollback still spoke of a local branch and of no pull request. | Both say that the branch is pushed and that the draft pull request 219 shows it. |
+| L8 | The commit for F8 says "nine packages that need it". The tests of `internal/gate` do not run in parallel, so eight need it. | The row F8 says so. The commit message stays as it is: no commit is amended. |
+| L9 | The repeats named under F8 had no command and no place. | The row F8 gives each command and says that the runs were local, on Linux. |
+| L10 | This plan credited all 6,000 lines of the gate to the second challenge. | The plan says that the last two are the test harness, for F8. |
+| L11 | The rows of the walk through the guide were named G1 to G6, as the findings of the first adviser are. | They are T1 to T6. |
+| L12 | The guides said that `git config user.name` must print a value. A name given through git's environment prints none there. | The guides say to set the name and the e-mail when the command prints nothing. |
+| L13 | "Every output matched the guide", while T2 is a line the guide did not show. | The sentence says that every output the guide shows matched. |
+| L14 | `docs/hooks.md` said that a plugin command does nothing without `cw` "except at the start of a session". With no absolute entry in `PATH` it prints nothing there either. | `docs/hooks.md` says so. |
 
 ## Changes to the specifications during the build
 
@@ -384,12 +439,13 @@ break the commands for a POSIX shell. Each finding is resolved:
 | 14 Nov 2026 | `publish-gate`: Fail closed; `agent-integration`: Instruction text comes from `cw`; part 1 design, Hooks and Plugin | The hook file and the plugin "look for `cw` only in the entries of `PATH` that are absolute paths". Before, they ran what `command -v cw` printed when that was an absolute path, and denied "a `cw` that `PATH` names by a relative path". One message now covers a `cw` that is not installed and one that only an empty or relative entry holds; the scenario "An empty or relative entry of `PATH`" expects it | Defect F6 above |
 | 14 Nov 2026 | `agent-integration`: Instruction text comes from `cw`; `platform-support`: Hooks on Windows; part 1 design, Plugin | The plugin's commands for a POSIX shell "run `cw` and `git` only from the entries of `PATH` that are absolute paths"; the Windows commands of Codex "run no program of the working directory, also not through a relative entry of `PATH`". Two scenarios added: "No absolute entry in `PATH`" and "A relative entry of `PATH` under Codex on Windows". Under Codex on Windows the line for a missing `cw` is printed in the folder that holds `cw.toml` only | Defect F7 above |
 | 14 Nov 2026 | `agent-integration`: Instruction text comes from `cw`; `platform-support`: Hooks on Windows | Four scenarios added: "A relative entry before the installed `cw`", "A `cw` that cannot be run", "A drive-relative entry of `PATH` under Codex on Windows" and "A file named `cw` that Windows cannot run". The scenario "A relative entry of `PATH` under Codex on Windows" also runs with the installed `cw` in a later entry | Findings H1, H3, H4 and H5 above |
+| 14 Nov 2026 | `platform-support`: Hooks on Windows; part 1 design, Plugin | The requirement names the one case the Windows commands of Codex do not cover: a working directory that is the root of a drive, with an entry of `PATH` that names that drive and no path from its root. No scenario changed: "A drive-relative entry of `PATH` under Codex on Windows" already says "not the root" | Finding L5 of the last review |
 
 ## Progress
 
 | Milestone | State | Commit | Evidence |
 | --- | --- | --- | --- |
-| M1 | done | `4fff8ad` | The two change folders and this plan are on the branch. No pull request: publishing is the owner's. |
+| M1 | done | `4fff8ad` | The two change folders and this plan are on the branch. No pull request at that time; the branch was pushed and the draft pull request 219 opened later, on the owner's word. |
 | M2 | done | `cb59433` | Local, Linux: `go build`, `go vet`, `go test -race` pass; 2,216 files hold the same blob under `_quarantine/`; `cw version` exits 0 and `cw nosuch` exits 2; `claude plugin validate .` passes. Task 2.4 is written but not ticked: its check is a CI run. |
 | M3 | done, Linux only | `df3f3b5`, tests in the commit after it | Local, Linux: the 62 scenarios of tasks 5.3 to 5.5 each have a test, written from the specifications by agents that did not read the code. 58 pass; 3 need Windows and are skipped; 1 waits ten minutes and runs only with `CW_SLOW_TESTS=1`; it ran once, on 14 Nov 2026, and passed in 600 seconds. Three tests failed first (a refused command left an empty `cw/` directory); the code was fixed. Tasks 3.x to 5.x are not ticked where their check names the three systems. |
 | M4 | done, Linux only | `9211f5b`, tests in `ba569f7` | Local, Linux, by hand in a demo repository: an unchecked commit is denied and a checked one recorded; a commit that leaves a file out names the file; a push of a commit made around the hook is denied; a push of another branch says where to run `cw run`; a tag on a commit the remote has, a new branch at that commit and a deletion go through; observe mode prints one line; a missing `cw` and an unreadable store deny; `cw uninstall` removes the hooks and the store. Scenario tests since then, local, Linux: commit gate 27, push gate 17, reporting 16 (15 pass; the offline one is skipped because this machine does not allow a network namespace), platform 8 (3 run; 5 need Windows and are only compiled). Unit tests for `decl`, `store`, `stats`, `gitx`, `evidence` and `gate` pass. |
@@ -398,6 +454,7 @@ break the commands for a POSIX shell. Each finding is resolved:
 | M7 | done; compared with real records in M9 | `90aee13`, `501ebd8` | Local, Linux: the 16 scenarios of `token-report` each have a test and pass, 14 against records built to the shape the reader expects and 2 as tests of the documents. Three scenario tests failed first and were settled against the specification (see the table above). A record built to the table of the specification gives 655,000 tokens, of which 225,000 (34%) are workflow tokens; no text of a brief is stored. No record that Claude Code or Codex wrote was read. |
 | M8 | done, except what needs the owner | `501ebd8` | Local, Linux: `README.md`, eleven documents under `docs/` with an index, and `docs/try-it.md`, whose parts 1 to 9 were run by hand with the output shown. The quick start is executed by a test. Tests of the documents: links and anchors resolve, the index names every document, no benefit is stated while the comparison table holds no numbers. `cw.toml` declares five checks. In a second clone of this branch at `501ebd8`, made in a scratch directory, `cw init` installed the hooks, `cw run` passed all five checks, a commit was allowed, a commit of changed content was denied and named the five checks, and a commit with a failing test was denied and named the check `test`. The owner's clone was not touched: it has no hooks of this `cw` and no records. The two writers of the reference documents compared the program with the design and reported eleven cases with a concrete failure and thirteen differences; all were settled in the code or in the design, and six got a test under `scenarios/messages`. Not done: the release workflow (task 11.2), the hook-cost test (10.1), the git observations as a test (3.5), and everything that needs CI, macOS, Windows, Codex or a model. |
 | M9 | done, not run on a host | the commit after `e50e20b` | Local, Linux. **Review:** four research agents read the sources listed in `docs/other-tools.md`; its author did not open them again. Each of 48 findings has an outcome: changed, already so, rejected or deferred. **Skill:** seven examples, each replayed by `TestSkillExamplesAreReplayed` against the `cw` under test; the replay found four places where a draft showed other output than `cw` prints. **Guard:** table tests and four scenario tests through both hook files. **Tokens:** `cw tokens record` and a separate script gave the same totals for 170 real records of Claude Code and for 13 real rollouts of Codex. **Model trial:** five runs of a subagent on Opus 5.5 in scratch repositories, three with the skill and two without, read back from the repositories: no run went around the gate; one run for each cell is not a measurement. `gofmt`, `go vet` and `golangci-lint` for three systems, `govulncheck`, `go test -race -count=1 ./...` in 27 packages, the specification and task lints, and `claude plugin validate .` pass. Not done: a run of the plugin on Claude Code or Codex, the trigger test of the skill, CI. |
+| M10 | done, not run on a host | `c5a88ef` to `db028bb` | **Review:** eight advisers, 93 findings, each with an outcome under "The second challenge"; eight more defects found while the fixes were tested, all fixed; a ninth adviser on the final hook commands, five findings, all resolved, and one more point (H6) rejected against three CI runs; a tenth on the last tests and the closing documents, fourteen findings, all resolved. **CI, run 16, commit `db028bb`:** every job passed: the tests on Linux, macOS and Windows, the lint and the vulnerability check for the three builds, the plugin manifests, and `cw run` on this repository. **Local, Linux:** `go build`, `go vet` and `golangci-lint` for the three systems, `go test -race -count=1 ./...`, `cw change check` and `claude plugin validate .` pass. Nothing was run inside Claude Code or Codex, and nobody tried macOS or Windows by hand. |
 
 ### The first run of CI
 

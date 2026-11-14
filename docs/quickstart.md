@@ -6,7 +6,8 @@ two blocks below in a new directory, so this page cannot drift from the
 program.
 
 You need `cw` and git on your `PATH`; [the README](../README.md#install) says
-how to get `cw`.
+how to get `cw`. git must know your name and e-mail, as for any commit: when
+`git config user.name` or `git config user.email` prints nothing, set it first.
 
 ## A new repository
 

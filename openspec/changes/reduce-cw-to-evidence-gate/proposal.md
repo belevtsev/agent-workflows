@@ -496,30 +496,43 @@ recommendations, because the owner asked for the work to go on alone
    it arrives unchanged, and refuse a check with an argument that cannot be
    passed so (`platform-support`: Programs on Windows). Settled by: tests on
    Windows (task 4.7) and Go's documentation of `os/exec.Command`.
+   Answer, 14 November 2026, from the tests on Windows in CI (run 16,
+   commit `db028bb`). `cw` starts a batch file by the full path of the file. An
+   argument made only of letters, digits and `_ . / : = + , @ \ -` reaches
+   it unchanged. A check with any other argument for a batch file is refused
+   before anything starts, and the refusal names the argument: `cw` guesses
+   no quoting. A program that is not a batch file gets every argument
+   unchanged. A name without a folder is found in the folders of `PATH`
+   only, and a path is read from the repository root, also when `cw run`
+   starts in a subfolder.
 10. **What may a hook decision cost on Windows?** Starting a program and
     running git are slower there, and no number exists. Recommendation:
     measure in CI first, then set the limits in Success measure 2. Settled
     by: that measurement (task 10.1).
-    Measured on 14 November 2026 in two CI runs, run 4 (commit `dd0ce41`)
-    and run 8 (commit `7b08729`), by the test `scenarios/cost`: 15 decisions
-    after one that is not counted, each the `pre-commit` hook file started
-    as git starts it. Median (lowest to highest), first on a copy of this
-    repository (2,472 files and 18.1 MiB in run 4; 2,493 files and 18.3 MiB
-    in run 8), then on the generated repository (30,000 files, 68 MiB):
+    Measured on 14 November 2026 in three CI runs, run 4 (commit `dd0ce41`),
+    run 8 (commit `7b08729`) and run 15 (commit `4f1d2db`), by the test
+    `scenarios/cost`: 15 decisions after one that is not counted, each the
+    `pre-commit` hook file started as git starts it. Median (lowest to
+    highest), first on a copy of this repository (2,472 files and 18.1 MiB
+    in run 4; 2,493 files and 18.3 MiB in run 8; 2,502 files and 18.3 MiB in
+    run 15), then on the generated repository (30,000 files, 68 MiB):
 
     | System | Run | This repository | Generated repository |
     | --- | --- | --- | --- |
     | Linux, amd64 | 4 | 14.3 ms (13.7 to 15.4) | 26.3 ms (25.2 to 28.1) |
     | | 8 | 17.7 ms (16.7 to 19.1) | 28.3 ms (27.8 to 29.4) |
+    | | 15 | 14.7 ms (14.2 to 15.0) | 26.1 ms (25.5 to 26.9) |
     | macOS, arm64 | 4 | 67.8 ms (47.0 to 90.5) | 65.9 ms (57.4 to 102.0) |
     | | 8 | 35.4 ms (34.1 to 44.1) | 50.1 ms (41.6 to 72.0) |
+    | | 15 | 65.7 ms (51.6 to 110.8) | 70.8 ms (62.7 to 83.0) |
     | Windows, amd64 | 4 | 195.0 ms (191.1 to 200.4) | 199.5 ms (194.3 to 217.3) |
     | | 8 | 164.4 ms (158.0 to 172.4) | 178.6 ms (173.9 to 206.8) |
+    | | 15 | 197.3 ms (192.0 to 220.4) | 208.9 ms (204.4 to 228.2) |
 
-    Linux and macOS are inside the limits of Success measure 2 in both runs.
-    Windows is not inside 150 ms for this repository in either, and its cost
+    Linux and macOS are inside the limits of Success measure 2 in every run.
+    Windows is not inside 150 ms for this repository in any, and its cost
     hardly depends on the size: it is the cost of starting `cw` and the git
-    calls. Each number is one run on a machine CI provides, and the two runs
+    calls. Each number is one run on a machine CI provides, and the runs
     differ: by about 30 ms on Windows, and by half on macOS. The limits for
     Windows are the owner's to set; the test fails there for no number.
 11. **How do Claude Code and Codex run a plugin's hook commands on Windows?**

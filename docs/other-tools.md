@@ -125,7 +125,7 @@ Three findings go against choices this repository made. They are not softened.
 5. Try a hook that tells the user "not verified" at the end of a turn (G-6).
 6. Look at git's hooks by configuration when a git that has them is at hand (H-7).
 7. Say what to do in the last line of `cw status` when the program of a check is missing. Two
-   trial agents asked for it. The gate's code is at 5,998 of its 6,000 lines, so this needs a
+   trial agents asked for it. The gate's code is at 6,000 of its 6,000 lines, so this needs a
    cut elsewhere or the owner's word on the limit.
 
 ## Sources
