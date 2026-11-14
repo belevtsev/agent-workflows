@@ -110,6 +110,26 @@ under `testdata/` are fixtures and are ignored by the Go toolchain. Every
 run is a real model call on your account; the ceiling is a list-price
 estimate checked before each run starts.
 
+On Linux a run's Bash tool needs its sandbox. A run that cannot start it
+fails every Bash call and still reports a score, so prepare the host first
+(observed on Ubuntu 26.04 with Claude Code 2.1.311):
+
+- Install `bubblewrap` and `socat`.
+- Let bubblewrap create user namespaces:
+  `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`, and where
+  the profile exists also
+  `sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict`. Both last
+  until the next boot.
+- Keep `TMPDIR` outside `/tmp`, `/var/tmp` and `/dev/shm`. The runner denies
+  writes under them, which makes the run's own home and temporary directory
+  read-only: `go test` then cannot create its build cache.
+- Keep `TMPDIR` short. The sandbox's sockets live under it, and a socket path
+  over 108 characters is refused.
+
+After a run, read a trace: a Bash result holding `Sandbox is required`,
+`apply-seccomp` or `read-only file system` means the run is not valid.
+[Evidence](../docs/evidence.md) reports a full run of the six suites.
+
 ## Mutant gate
 
 The graders cannot run code, so whether the test engineer's tests would catch
@@ -125,12 +145,18 @@ Keep the run's workspaces with `--keep-temp` under a directory of your own, then
 point the gate at it:
 
 ```sh
-mkdir -p /tmp/evals-run
-TMPDIR=/tmp/evals-run claude plugin eval . --tag test-engineer --ablation none \
+runs="$HOME/.cache/evals-run/test-engineer"
+mkdir -p "$runs"
+TMPDIR="$runs" claude plugin eval . --tag test-engineer --ablation none \
   --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
   --max-cost-usd 20 --no-publish
-EVAL_ARTEFACTS_DIR=/tmp/evals-run go test ./evals/ -run '^TestMutantGate$' -v
+chmod 700 "$runs"/claude-eval-* "$runs"/claude-eval-*/sealed
+EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestMutantGate$' -v
 ```
+
+The runner leaves each kept run directory with its `sealed/` folder, which
+holds the workspace, at mode 000; without the `chmod` the gate stops with
+`permission denied`.
 
 The gate finds a workspace by its copy of the case's interface contract, so it
 can search any directory that holds them. Set `EVAL_CASES=ttl-cache-matrix`
@@ -205,10 +231,13 @@ after the fix (a kept test that fails for another reason). Run it like the
 mutant gate:
 
 ```sh
-TMPDIR=/tmp/evals-run claude plugin eval . --tag adversarial-tester --ablation none \
+runs="$HOME/.cache/evals-run/adversarial-tester"
+mkdir -p "$runs"
+TMPDIR="$runs" claude plugin eval . --tag adversarial-tester --ablation none \
   --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
   --max-cost-usd 20 --no-publish
-EVAL_ARTEFACTS_DIR=/tmp/evals-run go test ./evals/ -run '^TestAdversarialGate$' -v
+chmod 700 "$runs"/claude-eval-* "$runs"/claude-eval-*/sealed
+EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestAdversarialGate$' -v
 ```
 
 `TestAdversarialFixtures` (offline, in every `go test`) checks that each

@@ -71,6 +71,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   checks, findings and wall time; `verify`, `abandon` and a budget stop print it on stderr ([task receipt](docs/operations.md#task-receipt)).
 - `cw task list` prints this repository's tasks with their state (open, verified, abandoned, stale or unreadable), as text or with `--json`;
   the commit gate's reasons point at it for the tasks past the three they name ([listing tasks](docs/operations.md#listing-tasks)).
+- [Evidence](docs/evidence.md) reports the first full local run of the six agent eval suites (29 cases): four suites at or above the
+  0.8 pass floor, `architect` and `adversarial-tester` one case below it, and why each grader failed; `evals/README.md` gains the Linux
+  host steps a run needs.
 
 ### Changed
 
