@@ -34,13 +34,8 @@ import (
 // the same that os.Process.Kill gives on Windows.
 const terminatedCode = 1
 
-const (
-	// bound limits how long ending a job waits for its processes to exit.
-	bound = 5 * time.Second
-	// firstPause and maxPause space the looks at the job's process count.
-	firstPause = 100 * time.Microsecond
-	maxPause   = 10 * time.Millisecond
-)
+// bound limits how long ending a job waits for its processes to exit.
+const bound = 5 * time.Second
 
 // jobs holds the job object of every command between joinGroup and the
 // endGroup, stopGroup or leaveGroup that ends its run.
@@ -153,50 +148,45 @@ func stopGroup(command *exec.Cmd, _ time.Duration, done <-chan error) (waitErr, 
 	return <-done, cleanup
 }
 
-// endJob terminates every process in job, waits until the job has no active
-// process, or for bound, and closes the handle.
+// endJob terminates every process in job, waits until each has gone, or for
+// bound, and closes the handle. It opens the processes first: once the job is
+// terminated it counts them as gone, while they are still ending.
 func endJob(job windows.Handle) error {
-	defer func() { _ = windows.CloseHandle(job) }()
+	members := jobMembers(job)
+	defer func() {
+		for _, handle := range append(members, job) {
+			_ = windows.CloseHandle(handle)
+		}
+	}()
 	if err := windows.TerminateJobObject(job, terminatedCode); err != nil {
 		return fmt.Errorf("terminate job object: %w", err)
 	}
 	deadline := time.Now().Add(bound)
-	pause := firstPause
-	for {
-		active, err := activeProcesses(job)
-		if err != nil {
-			return fmt.Errorf("query job object: %w", err)
+	for _, process := range members {
+		left := uint32(max(0, time.Until(deadline).Milliseconds())) //nolint:gosec // G115: no more than bound.
+		if event, _ := windows.WaitForSingleObject(process, left); event != windows.WAIT_OBJECT_0 {
+			return fmt.Errorf("a process of the job was still running %v after the job was terminated", bound)
 		}
-		if active == 0 {
-			return nil
-		}
-		if !time.Now().Before(deadline) {
-			return fmt.Errorf("job object still had %d active processes %v after it was terminated", active, bound)
-		}
-		time.Sleep(pause)
-		pause = min(2*pause, maxPause)
 	}
+	return nil
 }
 
-// jobAccounting is JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, which
-// golang.org/x/sys/windows does not define.
-type jobAccounting struct {
-	TotalUserTime             int64
-	TotalKernelTime           int64
-	ThisPeriodTotalUserTime   int64
-	ThisPeriodTotalKernelTime int64
-	TotalPageFaultCount       uint32
-	TotalProcesses            uint32
-	ActiveProcesses           uint32
-	TotalTerminatedProcesses  uint32
-}
-
-// activeProcesses returns how many processes in job have not exited.
-func activeProcesses(job windows.Handle) (uint32, error) {
-	var info jobAccounting
-	err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation,
-		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil) //nolint:gosec // G103: the Win32 call takes the structure's address and size.
-	return info.ActiveProcesses, err
+// jobMembers opens the processes of job, so that endJob can wait for each. It
+// reads JOBOBJECT_BASIC_PROCESS_ID_LIST; of more than 1024 processes the rest is not waited for.
+func jobMembers(job windows.Handle) []windows.Handle {
+	var list struct {
+		assigned, listed uint32
+		ids              [1024]uintptr
+	}
+	_ = windows.QueryInformationJobObject(job, windows.JobObjectBasicProcessIdList,
+		uintptr(unsafe.Pointer(&list)), uint32(unsafe.Sizeof(list)), nil) //nolint:gosec // G103: the Win32 call takes the structure's address and size.
+	var members []windows.Handle
+	for _, id := range list.ids[:min(int(list.listed), len(list.ids))] {
+		if process, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(id)); err == nil { //nolint:gosec // G115: a Windows process id fits in 32 bits.
+			members = append(members, process)
+		}
+	}
+	return members
 }
 
 // KillGroup is unavailable on Windows, which has no process groups; Run ends
