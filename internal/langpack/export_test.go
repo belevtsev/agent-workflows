@@ -74,3 +74,13 @@ func PretendCommandLineTools(t testing.TB, dir string) {
 // XcodeSelectPrint is xcodeSelectPrint, which a test runs with a script in
 // place of xcode-select.
 var XcodeSelectPrint = xcodeSelectPrint
+
+// PretendXcodeSelect makes judgeC, until t ends, run program in place of
+// /usr/bin/xcode-select. Call it only from a test that is not parallel, as
+// it replaces a package variable.
+func PretendXcodeSelect(t testing.TB, program string) {
+	t.Helper()
+	saved := xcodeSelect
+	xcodeSelect = program
+	t.Cleanup(func() { xcodeSelect = saved })
+}

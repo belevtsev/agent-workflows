@@ -1250,6 +1250,17 @@ verifies when:
   `xcode-select -p` that fails or prints anything else leaves the toolchain
   unverified.
 
+  Under the fallback, the check and every program it runs, its test
+  binaries included, get the Command Line Tools as `DEVELOPER_DIR`, not the
+  Xcode the user selected. A test that needs Xcode, such as one that runs
+  `xcodebuild` or `xcrun simctl` or builds against an SDK newer than the
+  Command Line Tools', can then fail under `cw task run` while it passes in
+  the user's shell, and since the run still earns credit, no reason names
+  the fallback; only the run's `developer_dir` shows it. Two ways out: select a developer directory that only root
+  can change (`sudo xcode-select -s DIR`), or run that check with
+  `CGO_ENABLED=0` if it needs no cgo, since with cgo off nothing is judged
+  or pinned.
+
 An `FC` that does not pass leaves the toolchain verified but is not run.
 
 The check then runs, at the end of its environment, with `CGO_ENABLED` as

@@ -359,8 +359,9 @@ func judgeDeveloperDir(goos, value, selectLink string) string {
 	return ""
 }
 
-// xcodeSelect is macOS's xcode-select, on the sealed system volume.
-const xcodeSelect = "/usr/bin/xcode-select"
+// xcodeSelect is macOS's xcode-select, on the sealed system volume; a test
+// replaces it with a script.
+var xcodeSelect = "/usr/bin/xcode-select"
 
 // xcodeSelectPrint returns the developer directory that `program -p`
 // (xcode-select) prints in dir with env: the one the xcrun shims,
