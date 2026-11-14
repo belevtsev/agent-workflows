@@ -136,6 +136,7 @@ func NewRepo(t testing.TB) *Repo {
 		"GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com",
 	)
 	repo.Git("init", "-q", "-b", "main", ".")
+	repo.Git("config", "maintenance.auto", "false") // its detached process would change .git while a test compares files
 	return repo
 }
 
