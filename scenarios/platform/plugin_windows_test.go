@@ -159,6 +159,12 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 	for _, name := range []string{"cw.bat", "git.bat", "where.bat", "tools/cw.bat", "tools/git.bat"} {
 		repo.Write(name, planted)
 	}
+	// The control used below works: through the PATH of the repository
+	// cmd.exe runs the installed cw from a folder that holds nothing.
+	const askCmd = "set NoDefaultCurrentDirectoryInExePath=1& cw version"
+	if control := runCmd(t, cmdWays[0], t.TempDir(), pathOf(repo), askCmd, codexNotice("PreToolUse", repo.Dir)); !strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw ") {
+		t.Fatalf("cmd.exe does not run `cw version` through the PATH of the repository, so the control proves nothing:\n%s", control.Output())
+	}
 	for _, first := range []string{".", "tools", `.\tools`, ""} {
 		path := first + string(os.PathListSeparator) + systemPath()
 		// cmd.exe finds the planted file through such an entry, so a command
@@ -211,7 +217,7 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 					// at all. Then the command has no cw to run, and that is
 					// the system's doing: the control asks cmd.exe for cw
 					// from a folder that holds nothing.
-					control := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& cw version", notice)
+					control := runCmd(t, way, neutral, installed, askCmd, notice)
 					if first == "" && !strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw ") {
 						if strings.TrimSpace(result.Stdout) != "" {
 							t.Errorf("cmd.exe finds no cw through this PATH, and the command printed, want nothing:\n%s", result.Output())
