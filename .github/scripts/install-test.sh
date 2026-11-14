@@ -8,7 +8,8 @@
 # With ARCHIVES, a directory that holds the archives and SHA256SUMS, the
 # instruction downloads from this machine in place of the release; nothing
 # else in it is changed. The instruction is then followed a second time with
-# one byte of the archive changed, and must fail and install nothing.
+# one byte of the archive changed, and must fail and install nothing. The
+# changed archive still unpacks, so only the checksum step can refuse it.
 #
 # Without ARCHIVES the instruction runs exactly as the README gives it, so it
 # needs the published release.
@@ -85,13 +86,17 @@ else
 	cp "$archives/$archive" "$archives/SHA256SUMS" "$work/good/" ||
 		fail "$archives does not hold $archive and SHA256SUMS."
 	cp "$archives/$archive" "$archives/SHA256SUMS" "$work/damaged/"
-	# One byte in the middle of the damaged copy gets another value.
-	at=$(($(wc -c <"$work/damaged/$archive") / 2))
+	# One byte of the damaged copy gets another value: the byte of the gzip
+	# header that names the system the archive was made on. The copy still
+	# unpacks, so only the checksum can refuse it.
+	at=9
 	old=$(od -An -tu1 -j "$at" -N 1 "$work/damaged/$archive" | tr -d ' ')
 	# shellcheck disable=SC2059 # the format is the byte, written as an octal escape
 	printf "\\$(printf '%03o' $(((old + 1) % 256)))" |
 		dd of="$work/damaged/$archive" bs=1 seek="$at" conv=notrunc 2>/dev/null
 	cmp -s "$work/good/$archive" "$work/damaged/$archive" && fail "The damaged copy does not differ."
+	tar -xzf "$work/damaged/$archive" -O cw >/dev/null 2>&1 ||
+		fail "The damaged copy does not unpack, so it cannot show that the checksum is checked."
 
 	python3 -m http.server "$port" --bind 127.0.0.1 --directory "$work" >/dev/null 2>&1 &
 	server=$!

@@ -52,6 +52,9 @@ changelog:
       - '^test(\([^)]*\))?:'
       - '^chore(\([^)]*\))?:'
 
+# A draft: release.yml makes it public after it has attested the archives.
 release:
-  draft: false
+  draft: true
+  # A second run for the same tag replaces the draft of the first.
+  replace_existing_draft: true
   prerelease: auto

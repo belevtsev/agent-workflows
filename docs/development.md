@@ -68,12 +68,14 @@ A release is made when the owner pushes a `v*` tag. `.github/workflows/release.y
 then does four things, each only when the one before it passed:
 
 1. It refuses a tag whose commit is not on `main`, or for which no run of CI
-   started by a push or by hand has passed (`.github/scripts/release-guard.sh`).
+   started by a push or by hand has passed (`.github/scripts/release-guard.sh`),
+   and a tag that the install instructions of the README do not name.
 2. It runs the tests with the race detector, the lint and the vulnerability
    check.
 3. It builds with `.goreleaser.yaml` the archives for linux, darwin and windows
-   on amd64 and arm64, an SBOM for each and `SHA256SUMS`, publishes them as a
-   release on GitHub, and attests the build of each archive. A tag with a
+   on amd64 and arm64, an SBOM for each and `SHA256SUMS`, uploads them to a
+   draft release on GitHub, attests the build of each archive, and only then
+   makes the release public. A tag with a
    hyphen, such as `v3.0.0-beta.1`, becomes a pre-release. The text of the
    release is the section of `CHANGELOG.md` for that version, or the section
    `Unreleased` while the changelog has none
@@ -82,10 +84,11 @@ then does four things, each only when the one before it passed:
    Windows, exactly as written, on a `PATH` without `go`. This fails when the
    README names another tag.
 
-Steps 1, 3 and 4 have never run: no tag of this code exists. The job `Release
-archives` of CI builds the same archives from any commit, and the jobs `Install
-without Go` install from them, so what is left untried is the publishing, the
-attestation and the download from GitHub.
+None of these steps has run in this workflow: no tag of this code exists. CI
+runs the commands of step 2 on every commit. Its job `Release archives` builds
+the same archives and the same text, and its jobs `Install without Go` install
+from them. What is left untried is the guard against the real repository, the
+upload, the attestation, the publishing and the download from GitHub.
 
 To try the archives of a commit before it is tagged:
 

@@ -44,6 +44,16 @@ func TestReleaseNotes(t *testing.T) {
 		{name: "nothing unreleased", changelog: "# Changelog\n\n## [Unreleased]\n\n## [1.0.0]\n\n- First.\n", tag: "v2.0.0", code: 1,
 			want: []string{"CHANGELOG.md has no text under ## [Unreleased]."}},
 		{name: "no tag", changelog: changelog, tag: "", code: 2, want: []string{"Usage: release-notes.sh TAG"}},
+		{name: "an image", changelog: "## [Unreleased]\n\n![shot](docs/shot.png) and [doc](docs/a.md)\n", tag: "v1.0.0",
+			want: []string{"![shot](https://github.com/o/r/raw/v1.0.0/docs/shot.png)", "[doc](https://github.com/o/r/blob/v1.0.0/docs/a.md)"}},
+		{name: "a heading inside a fenced block", changelog: "## [Unreleased]\n\n- Before.\n\n```text\n## [1.0.0]\n```\n\n- After.\n\n## [1.0.0]\n\n- Old.\n", tag: "v2.0.0",
+			want: []string{"- Before.", "- After."}, not: []string{"Old"}},
+		{name: "a reference link", changelog: "## [Unreleased]\n\n- See [the guide][guide].\n\n[guide]: docs/a.md\n", tag: "v1.0.0", code: 1,
+			want: []string{"a link that the release page could not resolve", "[the guide][guide]"}},
+		{name: "a target in angle brackets", changelog: "## [Unreleased]\n\n- See [a](<docs/a b.md>).\n", tag: "v1.0.0", code: 1,
+			want: []string{"a link that the release page could not resolve"}},
+		{name: "a target without a scheme", changelog: "## [Unreleased]\n\n- See [w](www.example.test).\n", tag: "v1.0.0", code: 1,
+			want: []string{"a link that the release page could not resolve"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

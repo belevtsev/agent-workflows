@@ -34,8 +34,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ([tokens](docs/tokens.md#checked-against-real-records)).
 - A review of what users report about other tools, with sources and what `cw` did about each finding
   ([what other tools taught us](docs/other-tools.md)).
-- Code for Windows, and release archives that need no Go toolchain. The tests passed in CI on Linux, macOS and Windows;
-  no release exists yet ([try it](docs/try-it.md)).
+- Code for Windows, and release archives that need no Go toolchain. CI runs the tests on Linux, macOS and Windows,
+  builds the archives from every commit, and follows the install instruction of the README with them on the three
+  systems, on Windows in both PowerShells ([development](docs/development.md#continuous-integration)).
+- `cw <command> --help` explains every argument and option of the command.
+- The text of a release is the section of this changelog ([development](docs/development.md#releases)).
 
 ### Changed
 

@@ -7,7 +7,8 @@
 # With -Archives, a directory that holds the archives and SHA256SUMS, the
 # instruction downloads from this machine in place of the release; nothing
 # else in it is changed. The instruction is then followed a second time with
-# one byte of the archive changed, and must fail and install nothing.
+# one byte of the archive changed, and must fail and install nothing. The
+# changed archive still unpacks, so only the checksum step can refuse it.
 #
 # Without -Archives the instruction runs exactly as the README gives it, so it
 # needs the published release.
@@ -75,12 +76,17 @@ try {
             New-Item -ItemType Directory (Join-Path $work $name) | Out-Null
             Copy-Item (Join-Path $Archives $zip), (Join-Path $Archives "SHA256SUMS") (Join-Path $work $name)
         }
-        # One byte in the middle of the damaged copy gets another value.
+        # One byte of the damaged copy gets another value: a byte of the time
+        # in the header of the first file, which a program that unpacks does
+        # not read. The copy still unpacks, so only the checksum can refuse it.
         $damaged = Join-Path $work "damaged\$zip"
         $bytes = [IO.File]::ReadAllBytes($damaged)
-        $at = [int]($bytes.Length / 2)
-        $bytes[$at] = ($bytes[$at] + 1) % 256
+        $bytes[10] = ($bytes[10] + 1) % 256
         [IO.File]::WriteAllBytes($damaged, $bytes)
+        Expand-Archive $damaged -DestinationPath (Join-Path $work "unpacked")
+        if (-not (Test-Path (Join-Path $work "unpacked\cw.exe"))) {
+            throw "The damaged copy does not unpack, so it cannot show that the checksum is checked."
+        }
 
         $server = Start-Process python -PassThru -WindowStyle Hidden -ArgumentList `
             "-m", "http.server", "$port", "--bind", "127.0.0.1", "--directory", "`"$work`""
