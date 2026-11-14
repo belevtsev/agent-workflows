@@ -262,29 +262,68 @@ func readClaude(path string) reading {
 	return c.result(r, err)
 }
 
-// readCodex reads the record Codex keeps of one thread. A count is taken
-// only from an entry that names the request that used it, by response_id.
-// Codex also writes running totals; they name no request, and counting them
-// would count every request twice.
+// codexUsage is a usage object of a Codex token_count event.
+type codexUsage struct {
+	Input      *int64 `json:"input_tokens"`
+	Cached     *int64 `json:"cached_input_tokens"`
+	CacheWrite *int64 `json:"cache_write_input_tokens"`
+	Output     *int64 `json:"output_tokens"`
+}
+
+// counts are the four kinds of a usage object. Codex counts cached and
+// written input inside its input. ok is false without an input or output
+// count.
+func (u *codexUsage) counts() (c Counts, ok bool) {
+	if u == nil || u.Input == nil || u.Output == nil {
+		return Counts{}, false
+	}
+	c.Output = *u.Output
+	if u.Cached != nil {
+		c.CacheRead = *u.Cached
+	}
+	if u.CacheWrite != nil {
+		c.CacheWrite = *u.CacheWrite
+	}
+	c.Input = *u.Input - c.CacheRead - c.CacheWrite
+	return c, true
+}
+
+func (c Counts) minus(o Counts) Counts {
+	return Counts{c.Input - o.Input, c.CacheWrite - o.CacheWrite, c.CacheRead - o.CacheRead, c.Output - o.Output}
+}
+
+// hostContext says whether the text of a user message is what Codex adds
+// before the first prompt of a thread: the AGENTS.md instructions or the
+// environment. Such a message is not the brief.
+func hostContext(s string) bool {
+	s = strings.TrimLeft(s, " \t\r\n")
+	return strings.HasPrefix(s, "# AGENTS.md instructions") || strings.HasPrefix(s, "<environment_context>")
+}
+
+// readCodex reads the record Codex keeps of one thread. Codex writes an
+// event_msg of payload.type token_count after each request: info holds the
+// running total of the thread in total_token_usage, and the request itself
+// in last_token_usage. The thread is counted once, from its totals: each
+// rise of the total goes to the model of the turn_context before it, so the
+// sum is the last total. A total that falls, or a first total that is more
+// than its own request, is not understood, and the counts are unknown.
 func readCodex(path string) reading {
 	var r reading
 	var c collect
 	model := ""
+	var prev *Counts
 	err := eachLine(path, func(n int, line []byte, whole bool) {
 		var entry struct {
 			Type    string `json:"type"`
 			Payload *struct {
-				Model    string          `json:"model"`
-				Type     string          `json:"type"`
-				Role     string          `json:"role"`
-				Content  json.RawMessage `json:"content"`
-				Response string          `json:"response_id"`
-				Usage    *struct {
-					Input      *int64 `json:"input_tokens"`
-					Cached     *int64 `json:"cached_input_tokens"`
-					CacheWrite *int64 `json:"cache_write_input_tokens"`
-					Output     *int64 `json:"output_tokens"`
-				} `json:"usage"`
+				Model   string          `json:"model"`
+				Type    string          `json:"type"`
+				Role    string          `json:"role"`
+				Content json.RawMessage `json:"content"`
+				Info    *struct {
+					Total *codexUsage `json:"total_token_usage"`
+					Last  *codexUsage `json:"last_token_usage"`
+				} `json:"info"`
 			} `json:"payload"`
 		}
 		if json.Unmarshal(line, &entry) != nil {
@@ -299,27 +338,32 @@ func readCodex(path string) reading {
 		case entry.Type == "turn_context":
 			model = p.Model
 		case entry.Type == "response_item" && p.Type == "message" && p.Role == "user" && r.brief == "":
-			r.brief = text(p.Content)
-		case entry.Type == "token_usage_record" && p.Usage != nil && p.Response != "":
-			u := p.Usage
-			if u.Input == nil || u.Output == nil {
-				c.broken = fmt.Sprintf("line %d of the record holds a request without its token counts", n)
+			if brief := text(p.Content); !hostContext(brief) {
+				r.brief = brief
+			}
+		case entry.Type == "event_msg" && p.Type == "token_count" && p.Info != nil:
+			total, ok := p.Info.Total.counts()
+			last, lastOK := p.Info.Last.counts()
+			if !ok || !total.valid() {
+				c.broken = fmt.Sprintf("line %d of the record holds a running total without its token counts", n)
 				return
 			}
-			counts := Counts{Output: *u.Output}
-			if u.Cached != nil {
-				counts.CacheRead = *u.Cached
+			if prev == nil {
+				// The first total is the first request alone. A larger one
+				// holds tokens this record does not show being spent.
+				if !lastOK || last != total {
+					c.broken = fmt.Sprintf("line %d of the record starts from a running total of earlier requests", n)
+					return
+				}
+				prev = &Counts{}
 			}
-			if u.CacheWrite != nil {
-				counts.CacheWrite = *u.CacheWrite
-			}
-			// Codex counts cached and written input inside its input.
-			counts.Input = *u.Input - counts.CacheRead - counts.CacheWrite
-			if !counts.valid() {
-				c.broken = fmt.Sprintf("line %d of the record holds token counts that do not add up", n)
+			rise := total.minus(*prev)
+			if !rise.valid() {
+				c.broken = fmt.Sprintf("line %d of the record holds a running total smaller than the one before", n)
 				return
 			}
-			c.add(p.Response, model, counts)
+			*prev = total
+			c.add("", model, rise)
 		}
 	})
 	return c.result(r, err)

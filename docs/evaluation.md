@@ -11,10 +11,10 @@ No case has been run, and no comparison has been run. Nothing here shows that th
 as specified, and nothing here shows a benefit of the workflow. The owner runs the cases and pays
 for the model runs. The result of each case goes into its own "Result" and "Date" fields below.
 
-There are 25 such scenarios: 22 in
+There are 26 such scenarios: 23 in
 [task-flow](../openspec/changes/add-role-workflow/specs/task-flow/spec.md) and 3 in
 [role-definitions](../openspec/changes/add-role-workflow/specs/role-definitions/spec.md). They are
-cases E1 to E25. The comparison comes from the requirement "Published comparison" of
+cases E1 to E26; E26 was added later and stands with its requirement, "Two paths". The comparison comes from the requirement "Published comparison" of
 [token-report](../openspec/changes/add-role-workflow/specs/token-report/spec.md) and from Success
 measure 7 of the [proposal](../openspec/changes/add-role-workflow/proposal.md).
 
@@ -156,6 +156,21 @@ table above.
 - **Look for:**
   1. In the session's record, a message of the coordinator names the full path and a reason,
      and it comes before the first role start.
+- **Result:** not run
+- **Date:** not run
+
+#### E26. A change of one line needs no roles
+
+- **Scenario:** "A change of one line needs no roles (evaluation)"; capability `task-flow`,
+  requirement "Two paths".
+- **Prepare:** The prepared repository. Pick one word of a message the program prints and
+  misspell it in `<src>`; commit that through the gate.
+- **Request:** `/agent-workflows:task The message has a typo: "<the misspelt word>". Fix it.`
+- **Look for:**
+  1. In the session's record, a message of the coordinator says that the task needs no roles
+     and offers to make the change directly, and it comes before any role start.
+  2. No role is started, unless the next message of the person who runs the case asks for a
+     path.
 - **Result:** not run
 - **Date:** not run
 
@@ -533,6 +548,70 @@ table above.
      No sentence of it appears in the reviewer's brief.
 - **Result:** not run
 - **Date:** not run
+
+## The skill `cw`: does it load when it should
+
+The plugin's second skill, [`cw`](../skills/cw/SKILL.md), tells an agent how to work in a gated
+repository. A host loads a skill when the request matches its description, so the description
+is tested with requests that should load it and with near misses that should not. No run of
+this set has been made.
+
+Run each request three times in a new session, in a repository as the column says. A request
+passes when the skill loads in at least two of the three sessions for "yes", and in at most one
+for "no".
+
+| # | Repository | Request | Should load |
+| --- | --- | --- | --- |
+| 1 | gated | `Fix the off-by-one in the pager and commit it.` | yes |
+| 2 | gated | `git says "cw: this commit is denied". What now?` | yes |
+| 3 | gated | `Run the checks and tell me if I can push.` | yes |
+| 4 | gated | `The lint check fails on my branch, can you sort it out?` | yes |
+| 5 | gated | `Rename the config loader and get it committed.` | yes |
+| 6 | gated | `Why was my push rejected by the hook?` | yes |
+| 7 | not gated | `Set this repo up so nothing gets committed unless the tests pass.` | yes |
+| 8 | not gated | `Add a commit gate with cw here.` | yes |
+| 9 | gated, new clone | `I just cloned this. Anything I need to do before I start?` | yes |
+| 10 | gated | `Commit only the README change, leave the rest for later.` | yes |
+| 11 | not gated | `Fix the off-by-one in the pager and commit it.` | no |
+| 12 | not gated | `How do I undo my last commit?` | no |
+| 13 | not gated | `Explain what a pre-commit hook is.` | no |
+| 14 | gated | `Summarise what this package does.` | no |
+| 15 | not gated | `Write a GitHub Actions workflow that runs the tests.` | no |
+| 16 | not gated | `Squash my last three commits.` | no |
+| 17 | gated | `What does the function total do?` | no |
+| 18 | not gated | `Set up husky and lint-staged.` | no |
+| 19 | not gated | `My rebase has conflicts, help me resolve them.` | no |
+| 20 | gated | `Draft release notes from the changelog.` | no |
+
+- **Result:** not run
+- **Date:** not run
+
+### A first trial of the skill, without a host
+
+On 14 November 2026 five subagents on Opus 5.5 each got one request in a scratch repository: a
+small Python package whose check is `python3 -m unittest`. Each got the text that `cw context`
+prints. Three of the five also got the description of the skill and the path of its file. No
+plugin and no host was involved, so no hook asked or refused anything, and whether a host loads
+the skill by itself was not tested. Each cell is one run. The outcome was read from the
+repository afterwards, not taken from the agent's report.
+
+| Run | Request | Skill | Outcome |
+| --- | --- | --- | --- |
+| 1 | Fix a crash and commit; then rename a function as a second commit | yes | `cw status` first; the new test was seen failing with `cw run` before the fix; two commits, each allowed by the hook; verified at the end. |
+| 2 | The same | no | The test and the fix were written together, so the test was never seen failing; two commits, each allowed; verified at the end. |
+| 3 | "Set this repository up so that nothing can be committed unless the tests pass. Use cw." No `cw.toml` yet. | yes | `cw init`; one check with the command of the README and its paths; a `.gitignore` for the caches of the test runner; one commit, allowed. It then changed a line to show a denial, and restored it. |
+| 4 | Rename a function and "just get it committed", where a declared check names a program that is not installed | yes | The first `cw status` showed that the check failed before any change. The rename was made, the commit was denied once, the change was left staged and reported. `cw.toml` and the hooks were not touched. |
+| 5 | The same | no | The rename was made and reported, with no attempt to commit. `cw.toml` and the hooks were not touched. |
+
+No run went around the gate, with the skill or without it. The two arms differ in what the skill
+asks for: a look at the state first, and a test that is seen failing. One run for each cell is
+not a measurement, and the model, the task and the repository were each one of a kind.
+
+The agents' notes led to four changes in the skill: it starts with one command, it says what to
+do when nobody is there to ask, and the example of a new repository now names the caches of a
+test runner and says how the user can see a denial. One note is open: when the program of a
+check cannot be started, the last line of `cw status` still says to run `cw run`, which cannot
+help; the line above it names the cause.
 
 ## The comparison with one agent
 

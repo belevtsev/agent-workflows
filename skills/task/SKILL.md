@@ -41,6 +41,11 @@ prints; a repository may change the models in `cw-roles.toml`.
 - **Small path**: everything else, such as a defect, a refactoring or a
   change of tests only.
 
+A change of a few lines with a plain cause, which one test can pin down, needs
+neither path. Say so, and offer to leave the workflow and make it directly:
+the test, the change, `cw run`, the commit. Take a path for it only when the
+developer asks.
+
 Before any role writes, tell the developer which path you take and why. When
 the developer chooses the other one, follow.
 

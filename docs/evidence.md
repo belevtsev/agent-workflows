@@ -127,7 +127,11 @@ It does not prove:
 - anything about the environment: the version of a compiler or a tool, the
   environment variables, the ignored files, such as caches or a local
   configuration, the network, or the state of another machine. The program
-  runs with the environment of the `cw run` that started it;
+  runs with the environment of the `cw run` that started it. To make the
+  version of a tool part of the content, keep it in a committed file that the
+  check reads, such as a lock file or a file of tool versions, and name that
+  file in `paths` when the check has `paths`: a new version is then new
+  content, and the check runs again;
 - that `paths` is right: see [What paths changes](#what-paths-changes);
 - that the record is genuine. The records are plain files in the git directory.
   A process that writes there can forge one. The gate trusts the git directory;

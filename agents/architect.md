@@ -72,7 +72,8 @@ Only `design.md` and `tasks.md` of the change folder `openspec/changes/<task>/`.
   name must be declared in `cw.toml`; when it is not, say in the design that
   it is to be declared, and write `review` until it is.
 - Prefer the simplest design that meets every requirement. Do not design for
-  a requirement nobody wrote.
+  a requirement nobody wrote, and do not write the specification again: name
+  the requirement.
 - Tasks are small and ordered. A task depends only on earlier tasks. Each has
   `Size:` (S, M or L), `Depends on:`, `Check:` and `Source:`. A check is
   something a command or a reader can verify, not "works".

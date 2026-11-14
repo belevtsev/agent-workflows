@@ -115,7 +115,7 @@ rule "archify only, no Mermaid" under test.
 | Path | Files | Verdict | What happens | Basis |
 | --- | ---: | --- | --- | --- |
 | `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` | 4 | Rewrite | The core's plugin lists no skills, no agents and no settings. Today's three settings (`enforce_verify`, `small_task_prompt`, `session_doctor`) go, because the gate is in git and not in the plugin. | `agent-integration`: The gate needs no plugin |
-| `hooks/hooks.json`, `hooks/codex-hooks.json` | 2 | Rewrite | Two jobs remain: add the text of `cw context` at the start of a session, and ask before `--no-verify` or an edit of `cw.toml`. The pinned `cw@v3.0.0-rc.2` goes, and so does the silent `exit 0` when `cw` is missing. | `agent-integration`: Session context, Instruction text comes from `cw`, Ask before skipping; C1 |
+| `hooks/hooks.json`, `hooks/codex-hooks.json` | 2 | Rewrite | Two jobs remain: add the text of `cw context` at the start of a session, and ask before a git call that skips the hooks or an edit of `cw.toml`. The pinned `cw@v3.0.0-rc.2` goes, and so does the silent `exit 0` when `cw` is missing. | `agent-integration`: Session context, Instruction text comes from `cw`, Ask before skipping; C1 |
 | `agents/` | 7 | Move | The seven roles. | Open Question 1 |
 | `skills/task-orchestration/` | 29 | Move | The orchestration skill. It has to be rewritten there to use `cw run` and `cw status`. Open findings go with it: M15, M25. | Open Question 1 |
 | `skills/` (20 other skills, `README.md`), `skills-manifest.json` | 80 | Move | Engineering knowledge that the roles load. Not part of a gate. | L15 |
@@ -177,7 +177,7 @@ Test code is 109,209 lines, more than twice the code it tests.
 | Tests of cut code | 23,083 | Cut with their subject. |
 | Tests in the four split packages (`internal/cli`, `internal/gate`, `internal/projectctx`, `cmd/cw`) that their file name does not assign: 85 files | 32,077 | Each follows the code it tests. A test of rewritten code is rewritten. |
 
-The core's tests are written from the 145 scenarios of the six specifications.
+The core's tests are written from the 154 scenarios of the six specifications.
 Four of today's tests are worth reading first, because they drive real git:
 
 - `cmd/cw/quickstart_e2e_test.go` executes the quick start. Success measure 1

@@ -63,18 +63,30 @@ not change.
   `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` and `output_tokens`.
   Lines with the same `message.id` are one answer, counted once with the largest count of each
   kind. An answer of the model `<synthetic>` is not counted.
+- Claude Code writes one line for each block of an answer, and each of them holds the usage of
+  the whole answer. Lines of other types, such as `api-request`, `attachment`, `system` and
+  `cost-state`, are not answers and are not counted.
+- The record of a role is `<session>/subagents/agent-<agent_id>.jsonl` beside the record of the
+  session, and the session's own record holds none of its lines.
 
 **Codex.** One JSON object per line, with `type` and `payload`.
 
 - `turn_context` gives the model in `payload.model`, for the lines that follow.
 - The first `response_item` with `payload.type` `message` and `payload.role` `user` holds the brief
-  in `payload.content`.
-- `token_usage_record` with a `payload.response_id` gives `payload.usage` with `input_tokens`,
-  `cached_input_tokens`, `cache_write_input_tokens` and `output_tokens`. Uncached input is
-  `input_tokens` less the other two input counts. Lines with the same `response_id` are counted
-  once.
-- A `token_usage_record` without a `response_id` is a running total: it names no request and is
-  not counted. A record that holds only running totals holds no count, so its tokens are unknown.
+  in `payload.content`, unless its text begins with `# AGENTS.md instructions` or
+  `<environment_context>`: Codex adds those before the first prompt of a thread, and the brief is
+  then the next such message.
+- After each request Codex writes an `event_msg` with `payload.type` `token_count`. Its
+  `payload.info.total_token_usage` is the running total of the thread, and
+  `payload.info.last_token_usage` the request itself. Each holds `input_tokens`,
+  `cached_input_tokens`, `cache_write_input_tokens` and `output_tokens`; uncached input is
+  `input_tokens` less the other two input counts, and `output_tokens` includes the reasoning.
+- The thread is counted once, from its last running total. Each rise of the total goes to the
+  model of the `turn_context` before it. A total written twice adds nothing. A `token_count` with
+  `info` `null` holds only rate limits and is skipped.
+- A running total that falls, or a first running total larger than its own request, is not
+  understood: the tokens of the record are unknown. A record with no `token_count` that holds
+  `info` holds no count, so its tokens are unknown.
 
 ## The label
 
@@ -313,9 +325,10 @@ The tokens of a start are unknown when its record:
 
 - does not exist or cannot be read;
 - has a line longer than 64 MiB;
-- holds no count at all, such as a Codex record with only running totals;
+- holds no count at all, such as a Codex record whose `token_count` events hold only rate limits;
 - holds an answer without its input or output count, or with a negative count; for Codex, counts
-  whose cached and written input exceed the input;
+  whose cached and written input exceed the input, a running total that falls, or a first running
+  total larger than its own request;
 - holds a complete line that is not a JSON object;
 - is not named: the notice says that a role ended and gives no record of it. The start is stored
   all the same, with the role the notice names.
@@ -461,11 +474,8 @@ working tree.
   its records, not what a line holds. The Codex documentation calls its format unstable and
   describes no line. A host that changes its format makes counts unknown, or wrong if a field
   changes its meaning.
-- **The Codex reader was never run against a real Codex session.** It was written from the shape a
-  previous reader of this project knew and from the Codex hook documentation, and is tested only
-  with records built for the test.
-- **The Claude Code reader was tested only with built test data**, not with a record that a host
-  wrote.
+- **The readers were checked against real records of one machine only**; see
+  [Checked against real records](#checked-against-real-records).
 - **The Codex `SessionEnd` hook has a timeout of 3 seconds**, because Codex gives that hook between
   1 and 3 seconds. A long record may not be read in time; the session's count then stays as the
   last role's notice left it.
@@ -476,6 +486,53 @@ working tree.
   notice came from the host.
 - **The label is the coordinator's.** A wrong label gives the tokens to the wrong task, stage or
   round.
+
+## Checked against real records
+
+On 2026-11-14 the readers were run on records that the hosts wrote on one developer machine. Only
+the structure and the numbers of the records were read. A separate script counted each record
+independently: for Claude Code, per `message.id` the largest value of each kind; for Codex, the
+last running total. The tests of this repository reproduce each structure with invented text.
+
+**Claude Code**, installed version 2.1.311. 2 session records and 168 role records (103,573 lines)
+were examined:
+
+- 16,486 answers; 12,268 of them were written in 2 to 13 lines. The lines of one answer never
+  differed in a count, and every line had a `stop_reason`. No answer lacked its final line.
+- 9 lines of the model `<synthetic>` were errors the host made up, with all counts zero.
+- Each role record was named `agent-<agent_id>.jsonl`, and every line in it gave that
+  `agentId`. Its first line was the brief, a string.
+- `cw tokens record` matched the independent count in all four kinds for the largest session record
+  (18,198 lines) and for all 168 role records. The reader needed no change.
+
+**Codex**, installed version codex-cli 0.168.0. The 16 rollouts on the machine were written by
+codex-cli 0.141.0 and 0.142.3 (64,138 lines):
+
+- No line was a `token_usage_record`, the shape the first reader expected; it found no count in any
+  rollout. The reader was rewritten to read `token_count` events.
+- In the 13 rollouts with counts, the running total never fell, also after a `compacted` line;
+  each rise equalled `last_token_usage`; the first total equalled its own request; and 114 totals
+  were written twice. `cache_write_input_tokens` was 0 in every event.
+- The first user message of every rollout was the host's context, never a prompt.
+- After the change `cw tokens record` matched the independent count for every rollout with counts,
+  for example the largest (21,867 lines). The 3 rollouts without a `token_count` that holds `info`
+  gave unknown tokens.
+
+**Time.** `cw tokens record` took at most 0.30 s for one notice, for the largest rollout, with the
+file in the page cache of the system. A read from a cold disk was not timed.
+
+**Not checked:**
+
+- Every rollout was a thread a person started (`thread_source` `user`). No rollout of a Codex
+  subagent was on the machine, so how a subagent's thread relates to its parent, and whether its
+  first total holds the parent's, is not known. A first total larger than its own request makes
+  the counts unknown, not counted twice.
+- No rollout of the installed codex-cli 0.168.0 was on the machine.
+- No brief of a role carried a label, so a label was read only from built records.
+- Whether Codex counts `cache_write_input_tokens` inside `input_tokens` could not be seen: the count
+  was always 0.
+- The notices themselves: the fields were taken from the hook documentation, and no notice a host
+  gave was recorded.
 
 ## What is not measured
 

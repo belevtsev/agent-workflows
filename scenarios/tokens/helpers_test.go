@@ -46,7 +46,7 @@ type start struct {
 	Tokens   counts
 	Answers  int  // how many answers the start is split into
 	Empty    bool // the record is an empty file
-	Missing  bool // the record holds no count (Codex: only a running total)
+	Missing  bool // the record holds no count (Codex: only rate limits)
 }
 
 const (
@@ -280,8 +280,9 @@ const s2Session = "0199a3b4-7c5d-7e6f-8a9b-0c1d2e3f4a5b"
 
 var s2SessionTokens = split(20000)
 
-// s2Starts are the starts of S2. The record of the git start holds only a
-// running total that names no request, so its tokens are unknown.
+// s2Starts are the starts of S2. The record of the git start holds only
+// token_count events without info, which give the rate limits and no count,
+// so its tokens are unknown.
 func s2Starts() []start {
 	return []start{
 		{ID: "b2e0001", Role: "quality-engineer", Label: "cw-task: fix-empty-app tests 1", Sentence: "Write a test for an empty src/app.txt.", Model: codex, Tokens: split(30000), Answers: 2},
@@ -291,15 +292,18 @@ func s2Starts() []start {
 	}
 }
 
-// codexUsage is payload.usage: input_tokens is the whole input, of which
-// cached_input_tokens were read from the cache and cache_write_input_tokens
-// written to it.
+// codexUsage is a usage object of a token_count event: input_tokens is the
+// whole input, of which cached_input_tokens were read from the cache and
+// cache_write_input_tokens written to it; output_tokens holds the reasoning.
 func codexUsage(c counts) map[string]any {
+	in := c.Input + c.CacheWrite + c.CacheRead
 	return map[string]any{
-		"input_tokens":             c.Input + c.CacheWrite + c.CacheRead,
+		"input_tokens":             in,
 		"cached_input_tokens":      c.CacheRead,
 		"cache_write_input_tokens": c.CacheWrite,
 		"output_tokens":            c.Output,
+		"reasoning_output_tokens":  c.Output / 3,
+		"total_tokens":             in + c.Output,
 	}
 }
 
@@ -307,27 +311,49 @@ func codexLine(kind string, payload map[string]any) map[string]any {
 	return map[string]any{"timestamp": "2026-11-14T10:00:00.000Z", "type": kind, "payload": payload}
 }
 
-// codexRecord writes a Codex rollout: the model, the brief, one usage record
-// for each request, and a running total that names no request.
-func codexRecord(t *testing.T, path, prefix, text string, s start) {
+func codexMessage(role, text string) map[string]any {
+	return codexLine("response_item", map[string]any{"type": "message", "role": role,
+		"content": []any{map[string]any{"type": "input_text", "text": text}}})
+}
+
+// codexRecord writes a Codex rollout as codex-cli 0.142 writes one: the
+// thread, the host's context as a first user message, the model, the brief,
+// and after each request a token_count event with the running total of the
+// thread and the request itself. A start whose count is missing has only
+// token_count events without info.
+func codexRecord(t *testing.T, path, text string, s start) {
 	t.Helper()
+	limits := codexLine("event_msg", map[string]any{"type": "token_count", "info": nil,
+		"rate_limits": map[string]any{"limit_id": "codex", "primary": map[string]any{"used_percent": 1.5, "window_minutes": 300}}})
 	lines := []any{
-		codexLine("session_meta", map[string]any{"id": s2Session, "cwd": "/tmp/demo"}),
-		codexLine("turn_context", map[string]any{"model": s.Model, "cwd": "/tmp/demo"}),
-		codexLine("response_item", map[string]any{"type": "message", "role": "user",
-			"content": []any{map[string]any{"type": "input_text", "text": text}}}),
+		codexLine("session_meta", map[string]any{"id": s2Session, "session_id": s2Session, "cwd": "/tmp/demo",
+			"source": "vscode", "thread_source": "user", "cli_version": "0.142.3"}),
+		codexMessage("developer", "Follow the rules of the sandbox."),
+		codexLine("response_item", map[string]any{"type": "message", "role": "user", "content": []any{
+			map[string]any{"type": "input_text", "text": "# AGENTS.md instructions for /tmp/demo\n\nKeep the tests green."},
+			map[string]any{"type": "input_text", "text": "<environment_context>\n  <cwd>/tmp/demo</cwd>\n</environment_context>"},
+		}}),
+		codexLine("turn_context", map[string]any{"turn_id": "turn-1", "model": s.Model, "cwd": "/tmp/demo", "effort": "high"}),
+		codexMessage("user", text),
+		limits,
 	}
 	c := s.Tokens
 	in, cw, cr, out := parts(c.Input, s.Answers), parts(c.CacheWrite, s.Answers), parts(c.CacheRead, s.Answers), parts(c.Output, s.Answers)
-	if !s.Missing {
-		for i := range s.Answers {
-			lines = append(lines, codexLine("token_usage_record", map[string]any{
-				"response_id": fmt.Sprintf("resp_%s_%02d", prefix, i+1),
-				"usage":       codexUsage(counts{Input: in[i], CacheWrite: cw[i], CacheRead: cr[i], Output: out[i]}),
-			}))
+	var total counts
+	for i := range s.Answers {
+		if s.Missing {
+			break
+		}
+		last := counts{Input: in[i], CacheWrite: cw[i], CacheRead: cr[i], Output: out[i]}
+		total = counts{total.Input + last.Input, total.CacheWrite + last.CacheWrite, total.CacheRead + last.CacheRead, total.Output + last.Output}
+		lines = append(lines, codexMessage("assistant", "Working on it."), codexLine("event_msg", map[string]any{"type": "token_count",
+			"info": map[string]any{"total_token_usage": codexUsage(total), "last_token_usage": codexUsage(last), "model_context_window": 258400}}))
+		if i == 0 {
+			// Codex writes some totals twice.
+			lines = append(lines, lines[len(lines)-1])
 		}
 	}
-	lines = append(lines, codexLine("token_usage_record", map[string]any{"usage": codexUsage(c)}))
+	lines = append(lines, codexLine("event_msg", map[string]any{"type": "task_complete", "turn_id": "turn-1"}))
 	writeLines(t, path, lines)
 }
 
@@ -336,12 +362,12 @@ func buildS2(t *testing.T) session {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), ".codex", "sessions", "2026", "11", "14")
 	sessionPath := filepath.Join(dir, "rollout-2026-11-14T10-00-00-"+s2Session+".jsonl")
-	codexRecord(t, sessionPath, "main", "Run the task fix-empty-app on the small path.",
+	codexRecord(t, sessionPath, "Run the task fix-empty-app on the small path.",
 		start{Model: codex, Tokens: s2SessionTokens, Answers: 3})
 	s := session{Host: "codex", Paths: map[string]string{"session": sessionPath}}
 	for _, st := range s2Starts() {
 		path := filepath.Join(dir, "rollout-2026-11-14T10-05-00-"+st.ID+".jsonl")
-		codexRecord(t, path, st.ID, brief(st), st)
+		codexRecord(t, path, brief(st), st)
 		s.Paths[st.ID] = path
 		s.Notices = append(s.Notices, notice(map[string]any{
 			"session_id": s2Session, "transcript_path": sessionPath, "cwd": "/tmp/demo",

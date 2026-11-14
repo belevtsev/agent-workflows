@@ -6,8 +6,8 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 54, with 145 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
-| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 45, with 90 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 55, with 154 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [64 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 45, with 91 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
 
@@ -21,6 +21,12 @@ One tool, `cw`, for a developer in any language and any codebase:
    change. The change folder records what was decided, and `cw` checks it.
 3. **The token count.** `cw tokens` says what a task cost, role by role, and
    how much of it the workflow itself used.
+4. **The skill.** `skills/cw/` tells a coding agent how to work with the gate
+   for any task, with seven examples that a test replays against `cw`.
+
+What users report about other tools, and what `cw` did about each finding, is
+in [docs/other-tools.md](../docs/other-tools.md). Three of those findings speak
+against parts of this plan, and the page says so first.
 
 ## Where the work happens
 
@@ -48,6 +54,9 @@ asked for the work to go on alone. Each can be undone.
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
   improve anything.
+- The size limit of the gate's code. It holds 5,997 of 6,000 lines after
+  the guard learned to read a command as words. The next change to the gate
+  needs a cut elsewhere, or the owner's word on the limit.
 - Confirming the behaviour on macOS, on Windows and on Codex. The build
   machine is Linux, and CI does not run for a branch that is not pushed.
 
@@ -61,7 +70,7 @@ Tasks that stay open on 14 November 2026, by what they wait for:
 | The owner's clone and CI | 10.4 | |
 | Work that was not done | 3.5 (the git observations as a test), 10.1 (the hook-cost test), 11.2 (the release workflow) | |
 
-The tests those CI tasks name exist and pass on Linux. 35 of the 62 tasks of
+The tests those CI tasks name exist and pass on Linux. 37 of the 64 tasks of
 part 1 and 24 of the 27 of part 2 are ticked: each one's check passed here as
 it is written.
 
@@ -79,6 +88,7 @@ Each ends in a commit and in something that can be tried.
 | M6 | Roles | part 2: groups 2 and 3 | `cw roles`, `cw roles check`, `cw change status`, `cw change check` behave as their scenarios say; the role texts exist | The four commands; the texts |
 | M7 | Tokens | part 2: group 4 | `cw tokens` prints the known counts for recorded sessions | `cw tokens` on a real session |
 | M8 | Documents and self-use | part 1: groups 9 and 10; part 2: groups 5 and 6 | README, quick start, the test guide; this repository gates itself with `cw.toml` | Everything, by following `docs/try-it.md` |
+| M9 | Review against other tools, and the usage skill | part 1: 8.5, 8.6 | The findings of the review each have an outcome; the skill's examples are replayed by a test; the guard reads a command as words; the token readers are compared with real records | `docs/other-tools.md`, `skills/cw/`, and part 10 of `docs/try-it.md` |
 
 Order inside a milestone follows the task lists. A scenario that proves wrong
 is corrected in the specification first, and the correction is listed below
@@ -173,6 +183,10 @@ usage; and the arithmetic of the token fixture.
 | 14 Nov 2026 | Part 1 design: Declaration, Clean-up, Gate state, Plugin, `--base`; proposal, Known limits | Six sentences now say what the code does: a pattern with any empty segment is refused; the clean-up goes by the time a file was last written and also removes decision files and index copies; a hook counts only when it can be executed; the Codex command for Windows prints no line when `cw` is missing; the base implies nothing for a check with an unreadable or future-dated record; a working tree with uncommitted changes in a submodule is refused | The writer of `docs/operations.md`, `docs/hooks.md` and `docs/evidence.md` compared the design with the code and listed seven differences. In each the code was right or stricter. The seventh, a limit of 1,000 characters that nothing enforced, got a test |
 | 14 Nov 2026 | Part 2 design: Tokens, `cw change status`, Failure behaviour | A role that ended without a record is stored with unknown tokens; a damaged stored file makes the tasks of its session incomplete; `cw change status` also prints the number of broken rules; `cw roles text` does not read `cw-roles.toml`; `cw tokens record` does not read the notice outside a gated repository | The writer of `docs/roles.md`, `docs/workflow.md` and `docs/tokens.md` found five cases with a concrete failure and six differences between design and code. The code was changed in seven places and the design in four |
 | 14 Nov 2026 | Part 1, task 10.3 | "Leave no complexity exemption" now says "for code that is not a test" | The limits hold for every function that is not a test. Test files keep one exemption, with its reason in `.golangci.yml`: a test function is as long as its cases. Without it five test functions exceed a limit |
+| 14 Nov 2026 | `agent-integration`: Ask before skipping; The plugin never judges a commit or push; design, Plugin; proposal, Known limits | The guard reads a shell command as words: it asks before `--no-verify`, `-n` of `git commit`, a setting of `core.hooksPath`, and an edit of a hook file or of a record. The same text inside an argument is no reason to ask. Five scenarios added. "Never judges" now says what it always meant: the plugin does not decide about content; it reads a command only to ask before a skip | Review of other tools, row G-2: the old rule asked before `grep -- --no-verify docs/hooks.md` and missed `git commit -n`. `internal/shellwords` is a new package of 151 lines; the package of that name that the first review criticised decided the gate, and this one decides nothing |
+| 14 Nov 2026 | `agent-integration`: new requirement Usage skill | The plugin ships the skill `cw`; a test replays its examples and allows only commands `cw help` lists; no skill holds a `cw` version; four scenarios added. Part 1 now has 55 requirements, 154 scenarios and 64 tasks | The owner's request of 14 November 2026. The advice to record a tool version in the skill was rejected against the requirement "Instruction text comes from `cw`" |
+| 14 Nov 2026 | `task-flow`: Two paths | For a change of a few lines with a plain cause the coordinator says that the task needs no roles; one scenario and the case E26 added. Part 2 now has 91 scenarios. The texts of `spec-writer` and `architect` say to write no more than the behaviour needs | Review of other tools, rows R-1 and R-2 |
+| 14 Nov 2026 | Part 2 design, Tokens: a record of Codex, a record of Claude Code | Codex writes running totals in `token_count` events; the thread is counted once from them, and a total that falls or starts above its own request is unknown. The line `token_usage_record` that the first reader expected exists in no real record | The readers were run on real records: 170 of Claude Code 2.1, where the reader was right, and 16 of codex-cli 0.141 and 0.142, where it found no count |
 
 ## Progress
 
@@ -184,5 +198,6 @@ usage; and the arithmetic of the token fixture.
 | M4 | done, Linux only | `9211f5b`, tests in `ba569f7` | Local, Linux, by hand in a demo repository: an unchecked commit is denied and a checked one recorded; a commit that leaves a file out names the file; a push of a commit made around the hook is denied; a push of another branch says where to run `cw run`; a tag on a commit the remote has, a new branch at that commit and a deletion go through; observe mode prints one line; a missing `cw` and an unreadable store deny; `cw uninstall` removes the hooks and the store. Scenario tests since then, local, Linux: commit gate 27, push gate 17, reporting 16 (15 pass; the offline one is skipped because this machine does not allow a network namespace), platform 8 (3 run; 5 need Windows and are only compiled). Unit tests for `decl`, `store`, `stats`, `gitx`, `evidence` and `gate` pass. |
 | M5 | done, not run on a host | `ba569f7` | Local, Linux: the 12 scenarios of `agent-integration` each have a test and pass; they run the hook commands of both hook files with `sh -c` and a notice on standard input. `claude plugin validate .` passes. Nothing was run inside Claude Code or Codex. |
 | M6 | done, not run with a model | `ba569f7`, `90aee13` | Local, Linux: `cw roles`, `cw roles check`, `cw roles text`, `cw change status` and `cw change check` exist. The 19 scenarios of `role-definitions` that need no model and the 29 of `change-record` each have a test, written from the specifications by agents that did not read the code; all pass. `cw change check` exits 0 on the two change folders of this repository, after it found 18 requirements that no task named. No role was ever started: the texts were not tried with a model. |
-| M7 | done, never read a real record | `90aee13`, `501ebd8` | Local, Linux: the 16 scenarios of `token-report` each have a test and pass, 14 against records built to the shape the reader expects and 2 as tests of the documents. Three scenario tests failed first and were settled against the specification (see the table above). A record built to the table of the specification gives 655,000 tokens, of which 225,000 (34%) are workflow tokens; no text of a brief is stored. No record that Claude Code or Codex wrote was read. |
+| M7 | done; compared with real records in M9 | `90aee13`, `501ebd8` | Local, Linux: the 16 scenarios of `token-report` each have a test and pass, 14 against records built to the shape the reader expects and 2 as tests of the documents. Three scenario tests failed first and were settled against the specification (see the table above). A record built to the table of the specification gives 655,000 tokens, of which 225,000 (34%) are workflow tokens; no text of a brief is stored. No record that Claude Code or Codex wrote was read. |
 | M8 | done, except what needs the owner | `501ebd8` | Local, Linux: `README.md`, eleven documents under `docs/` with an index, and `docs/try-it.md`, whose parts 1 to 9 were run by hand with the output shown. The quick start is executed by a test. Tests of the documents: links and anchors resolve, the index names every document, no benefit is stated while the comparison table holds no numbers. `cw.toml` declares five checks. In a second clone of this branch at `501ebd8`, made in a scratch directory, `cw init` installed the hooks, `cw run` passed all five checks, a commit was allowed, a commit of changed content was denied and named the five checks, and a commit with a failing test was denied and named the check `test`. The owner's clone was not touched: it has no hooks of this `cw` and no records. The two writers of the reference documents compared the program with the design and reported eleven cases with a concrete failure and thirteen differences; all were settled in the code or in the design, and six got a test under `scenarios/messages`. Not done: the release workflow (task 11.2), the hook-cost test (10.1), the git observations as a test (3.5), and everything that needs CI, macOS, Windows, Codex or a model. |
+| M9 | done, not run on a host | the commit after `e50e20b` | Local, Linux. **Review:** four research agents read the sources listed in `docs/other-tools.md`; its author did not open them again. Each of 48 findings has an outcome: changed, already so, rejected or deferred. **Skill:** seven examples, each replayed by `TestSkillExamplesAreReplayed` against the `cw` under test; the replay found four places where a draft showed other output than `cw` prints. **Guard:** table tests and four scenario tests through both hook files. **Tokens:** `cw tokens record` and a separate script gave the same totals for 170 real records of Claude Code and for 13 real rollouts of Codex. **Model trial:** five runs of a subagent on Opus 5.5 in scratch repositories, three with the skill and two without, read back from the repositories: no run went around the gate; one run for each cell is not a measurement. `gofmt`, `go vet` and `golangci-lint` for three systems, `govulncheck`, `go test -race -count=1 ./...` in 27 packages, the specification and task lints, and `claude plugin validate .` pass. Not done: a run of the plugin on Claude Code or Codex, the trigger test of the skill, CI. |

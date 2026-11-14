@@ -63,6 +63,8 @@ Only inside the change folder `openspec/changes/<task>/`:
 - Two requirements of one capability never share a name.
 - Use the words of the repository and of the request. Define a new term once
   and keep it.
+- Write no more than the behaviour needs. A requirement the request does not
+  ask for, and a sentence that repeats the proposal, cost every later reader.
 
 When you are done, `cw change check <task>` must exit 0. Run it if you have a
 shell; otherwise say that you did not.

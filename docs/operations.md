@@ -402,9 +402,9 @@ denied. Outside a git repository the hook denies with 3.
 ## cw guard
 
 Reads the notice that Claude Code or Codex gives a hook before a tool call, and
-answers in two cases only: a shell command whose text holds `--no-verify`, and
-an edit of the `cw.toml` at the root of the repository. It never judges a
-commit or a push. The agent plugin runs it; see
+answers in two cases only: a shell command with a git call that skips git's
+hooks, and an edit of `cw.toml`, of a git hook or of a record of `cw`. It never
+judges a commit or a push. The agent plugin runs it; see
 [Hooks](hooks.md#hooks-of-the-agent-plugin).
 
 ```text
@@ -422,13 +422,38 @@ tools `Edit`, `Write` and `MultiEdit`, and the file names in the patch of
 `apply_patch`. Where the working directory is not in a git repository whose
 root holds `cw.toml`, it prints nothing.
 
+The guard splits the command into simple commands and words, as a shell does:
+quotes, backslashes, `;`, `&&`, `||`, `|`, `&`, newlines, `(`, `)`, `$(` and
+backticks. It steps over `NAME=value` words and the wrappers `env`, `command`,
+`sudo`, `time`, `nice` and `xargs`, and reads the text after `-c` of `sh`,
+`bash`, `zsh` and `dash` as a command, to a depth of three. A call of `git`,
+`/path/git` or `git.exe` skips the hooks when:
+
+- a word after the subcommand is `--no-verify`, or a prefix of it at least as
+  long as `--no-veri`, which git takes for the whole option;
+- the subcommand is `commit` and a cluster of short options holds `n`, as in
+  `-n`, `-an` or `-nm`; the cluster ends at `m`, `F`, `C`, `c` or `t`, which
+  take a value, and at `S` or `u`, which take one only when it is attached;
+- an option before the subcommand, `-c` or `--config-env`, sets
+  `core.hooksPath`, in any case;
+- the subcommand is `config`, a word names `core.hooksPath`, in any case, and a
+  value follows the name or the call unsets it;
+- a `NAME=value` word before the program holds `core.hooksPath`.
+
+Words after `--` are not options, and the value of `-m`, `-F`, `--message`,
+`--file`, `--author` and other options of `commit` that take one is not an
+option. A command with an unclosed quote is judged by its text: it skips when
+it holds `--no-verify`. An edit is of a git hook or a record of `cw` when its
+path is under `hooks/` or `cw/` of the common git directory.
+
 ```text
-$ echo '{"tool_name":"Bash","cwd":"<repository>","tool_input":{"command":"git commit --no-verify -m x"}}' | cw guard
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"This command holds --no-verify, which skips the commit gate: the git hooks of cw would not judge the commit or the push."}}
+$ echo '{"tool_name":"Bash","cwd":"<repository>","tool_input":{"command":"git commit -n -m x"}}' | cw guard
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"This command gives git commit the option -n, the short form of --no-verify, which skips the commit gate: the git hooks of cw would not judge the commit or the push."}}
 ```
 
-The guard reads text only. `git commit -n`, the short form of `--no-verify`, is
-not recognised; the push rule of the hooks still judges the commit.
+The guard does not expand variables, aliases or functions, and does not run
+the command. `git commit $FLAGS` or a git alias that adds `--no-verify` is not
+recognised; the push rule of the hooks still judges the commit.
 
 Exit statuses: 0 in every case it reads, also when the notice is not JSON; 2 an
 argument or a host other than `claude` and `codex`.
@@ -681,6 +706,14 @@ cw run --base origin/main
 `cw run` needs no `cw init` and no hooks. It exits 0 when every check it
 executed passed and 5 when one did not, so the job fails on 5. The hook
 warning of `cw status` does not appear, because `cw run` does not print it.
+
+A job that only runs does not stop a merge. Make it a required status check
+in the branch protection of the hosting service, so that a change whose job
+failed, or never ran, cannot be merged. That setting is the only part of the
+gate that a person or an agent with write access to a clone cannot skip:
+some tools commit without the hooks, and a hook directory can be replaced.
+[What other tools taught us](other-tools.md#what-speaks-against-parts-of-cw)
+names the reports.
 
 `--base <rev>` does this, according to the code:
 

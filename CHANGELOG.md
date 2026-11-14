@@ -24,6 +24,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the rules its files must obey ([the task workflow](docs/workflow.md)).
 - `cw tokens` reports what a task used by role and stage, and the share the workflow itself took; a count that
   cannot be read is `unknown`, never zero ([tokens](docs/tokens.md)).
+- The skill `cw` tells a coding agent how to work in a gated repository: the loop for any change, what each denial
+  means, and seven examples that a test replays against `cw` ([skill](skills/cw/SKILL.md)).
+- `cw guard` reads a shell command as words. It asks before `git commit -n`, a setting of `core.hooksPath` and an edit of
+  a hook file or of a record, and no longer before a command that only mentions `--no-verify`
+  ([operations](docs/operations.md#cw-guard)).
+- `cw tokens record` reads the running totals that Codex writes; the first reader found no count in any real Codex
+  record. Both readers were compared with a separate count on real records
+  ([tokens](docs/tokens.md#checked-against-real-records)).
+- A review of what users report about other tools, with sources and what `cw` did about each finding
+  ([what other tools taught us](docs/other-tools.md)).
 - Code for Windows, and release archives that need no Go toolchain. Neither has run yet: no release exists, and the
   tests ran on Linux only ([try it](docs/try-it.md)).
 

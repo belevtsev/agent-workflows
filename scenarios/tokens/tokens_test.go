@@ -258,11 +258,17 @@ func TestACodexSession(t *testing.T) {
 			t.Errorf("%s: total %v, want a number or unknown", role, e["total"])
 		}
 	}
-	// The record of the git start holds only a running total that names no
-	// request, which the design says is not counted: it holds no count.
+	// The record of the git start holds only token_count events without
+	// info: it holds no count.
 	if e := find(t, roles, map[string]any{"role": "git"}); e["total"] != "unknown" {
 		t.Errorf("git: total %v, want unknown (its record holds no count)", e["total"])
 	}
+	// Each other start is counted once from its last running total, though
+	// a total is written twice, and the session's own 20,000 are added.
+	for role, want := range map[string]int{"quality-engineer": 30000, "developer": 50000, "reviewer": 15000} {
+		wantNumber(t, find(t, roles, map[string]any{"role": role}), "total", want)
+	}
+	wantNumber(t, out, "total", 115000)
 	if unknown && out["complete"] != false {
 		t.Errorf("complete is %v, want false when a role is unknown", out["complete"])
 	}

@@ -40,6 +40,11 @@ here is an instruction to the coordinator or to a role. `cw` enforces only what 
 - **Small path**: everything else, such as a defect, a refactoring, or a change of tests only. It
   writes no change folder.
 
+A change of a few lines with a plain cause, which one test can pin down, needs neither path. The
+coordinator says so and offers to make the change directly, as the skill
+[`cw`](../skills/cw/SKILL.md) describes: the test, the change, `cw run`, the commit. It takes a
+path for such a change only when the developer asks.
+
 Before any role writes, the coordinator tells the developer which path it takes and why, and
 follows the developer when the developer chooses the other one.
 
@@ -144,7 +149,7 @@ blocks nothing: the gate does not read change folders unless a repository declar
 | A role changed only the paths of its limit | `cw roles check` | only when someone runs it; it reports and undoes nothing |
 | The files of a change folder obey their rules | `cw change check` | when someone runs it, or at every commit when `cw.toml` declares it as a check |
 | The stage of a task, and whether a review or an approval is of the current content | `cw change status` | when someone runs it; it reports and changes nothing |
-| A command with `--no-verify`, or an edit of `cw.toml` | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
+| A git call that skips the hooks, or an edit of `cw.toml`, a hook file or a record of `cw` | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
 
 What no program checks:
 

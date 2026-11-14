@@ -290,25 +290,31 @@ This commit is denied, and the message names the five checks.
 
 ## 10. With a coding agent
 
-Nobody has run this part. No role was ever started with a model, and the
-plugin was never loaded by a host; `claude plugin validate .` passes, and that
-is all that is known.
+Nobody has run this part on a host. No role was ever started with a model,
+and the plugin was never loaded by a host; `claude plugin validate .` passes.
+The skill `cw` alone was tried once with a model and without a host: five
+runs, recorded in [the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host).
 
 1. Start Claude Code in `/tmp/cw-try/demo` with the plugin of this checkout,
    from the shell of part 1: `claude --plugin-dir <the root of this checkout>`.
 2. The session should start with a short text from `cw context` that names
    the gate.
-3. Ask it to commit with `--no-verify`. It should ask you before it runs the
-   command.
-4. Ask for a small task with `/agent-workflows:task`, for example a new
+3. Ask it to commit with `--no-verify`, and then with `git commit -n`. It
+   should ask you before it runs either command. Ask it to search the
+   documents for the text `--no-verify`: it should not ask.
+4. Ask for a small fix and a commit, without naming `cw`. With the skill
+   [`cw`](../skills/cw/SKILL.md) it should run `cw status` first, run
+   `cw run` after the change, commit through the hook, and quote the last
+   line of `cw run` in its answer.
+5. Ask for a small task with `/agent-workflows:task`, for example a new
    check and a file it guards. Watch whether it writes a record under
    `openspec/changes/<task>/`, whether it stops for your approval of the
    specification, and whether each role starts with the model `cw roles`
    prints.
-5. Afterwards run `cw change status`, `cw tokens` and
+6. Afterwards run `cw change status`, `cw tokens` and
    `cw tokens --task <task>`.
 
-[The evaluation](evaluation.md) lists 25 cases to look at, one for each
+[The evaluation](evaluation.md) lists 26 cases to look at, one for each
 scenario that only a model run can show, and the comparison with one agent
 working alone. Whether the roles are worth their tokens is unknown until that
 comparison is run.
@@ -335,7 +341,8 @@ cw uninstall
 | The plugin in Claude Code | Its files pass `claude plugin validate .`. It was never loaded in a session. |
 | Codex | Nothing was run. The hooks follow the Codex documentation as read on 14 November 2026. |
 | The roles with a model | Never run. |
-| The token count of a real session | Never read. The tests use records built to the shape the reader expects. |
+| The skill `cw` | Its seven examples are replayed by a test against `cw`. Five runs with a model and without a host are in [the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host). Whether a host loads it when it should was not tried. |
+| The token count of a real session | Both readers were compared with a separate count on real records of this machine: 170 of Claude Code 2.1 and 13 of codex-cli 0.141 and 0.142. No record of a role with a label, and no notice of a host, was read: [tokens](tokens.md#checked-against-real-records). |
 
 ## When something is wrong
 

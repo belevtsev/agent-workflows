@@ -195,17 +195,29 @@ each model name the record gives, the four counts `input`, `cache_write`,
   `message.id` are one answer. It is counted once, with the largest count of
   each kind. An answer of the model `<synthetic>` is not counted.
 
+Claude Code 2.1 writes one line for each block of an answer, each with the
+usage of the whole answer, and keeps the record of a role at
+`<session>/subagents/agent-<agent_id>.jsonl`. This was read from 170 records
+on the owner's machine on 14 November 2026, where the reader and a separate
+count gave the same totals.
+
 **A record of Codex** has one JSON object in each line, with `type` and
-`payload`: `turn_context` gives `payload.model`; `response_item` with
-`payload.type` `message` and `payload.role` `user` gives the brief in
-`payload.content`; `token_usage_record` gives `payload.response_id` and
-`payload.usage` with `input_tokens`, `cached_input_tokens`,
-`cache_write_input_tokens` and `output_tokens`. Uncached input is
-`input_tokens` less the other two. A `token_usage_record` without a
-`response_id` is a running total: it names no request and is not counted, and
-neither is any other line. A record that holds only running totals holds no
-count. This is the shape the previous reader of this project knew; the
-Codex documentation describes no line and calls the format unstable.
+`payload`: `turn_context` gives `payload.model`; the first `response_item`
+with `payload.type` `message` and `payload.role` `user` whose text does not
+begin with `# AGENTS.md instructions` or `<environment_context>` gives the
+brief. After each request an `event_msg` with `payload.type` `token_count`
+gives `payload.info.total_token_usage`, the running total of the thread, and
+`payload.info.last_token_usage`, the request, each with `input_tokens`,
+`cached_input_tokens`, `cache_write_input_tokens` and `output_tokens`.
+Uncached input is `input_tokens` less the other two. The thread is counted
+once, from its totals: each rise of the total goes to the model of the
+`turn_context` before it, so the sum is the last total. A total that falls,
+or a first total larger than its own request, makes the counts unknown, and
+so does a record with no `token_count` that holds `info`. This shape was read
+from 16 rollouts that codex-cli 0.141 and 0.142 wrote on the owner's machine
+on 14 November 2026; none of them was the record of a subagent, so how a
+child thread relates to its parent is not known. The first version of this
+reader expected a line `token_usage_record`, which no real record holds.
 
 **Unknown.** The tokens of a start are unknown when its record does not
 exist or cannot be read, holds no count, holds a whole line that is not a

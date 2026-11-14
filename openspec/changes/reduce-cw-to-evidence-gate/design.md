@@ -300,8 +300,14 @@ record is written.
   the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
   (`command` for the shell tool, `file_path` for an editing tool, the patch
   text for the `apply_patch` of Codex). In a repository whose root holds
-  `cw.toml` it answers in two cases: the command text holds `--no-verify`, or
-  the edited file is that `cw.toml`. The answer is the JSON object both hosts
+  `cw.toml` it answers in two cases: a git call in the command skips the
+  hooks, or the edited file is that `cw.toml`, a hook file or a record of
+  `cw`. It reads the command as shell words with `internal/shellwords`, a
+  splitter that runs nothing: a call skips the hooks when it holds
+  `--no-verify`, `-n` of `git commit` or a setting of `core.hooksPath`, and a
+  command it cannot split is judged by whether its text holds `--no-verify`.
+  The guard decides nothing about a commit; a call it does not recognise is
+  not asked about. The answer is the JSON object both hosts
   read, `hookSpecificOutput` with `permissionDecision` and
   `permissionDecisionReason`: `ask` for Claude Code, `deny` for Codex, which
   does not support `ask`. In every other case it prints nothing and exits 0.
@@ -329,7 +335,7 @@ record is written.
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The 145 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
+| The 154 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
 | No network | A test that lists the packages `cw` links and finds no `net` | Linux | That no network code is linked; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |

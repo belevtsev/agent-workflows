@@ -1,5 +1,5 @@
 {
-  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a command with --no-verify or an edit of cw.toml, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a git call that skips the hooks or an edit of cw.toml, a hook file or a record of cw, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {

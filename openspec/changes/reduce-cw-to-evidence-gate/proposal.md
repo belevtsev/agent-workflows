@@ -254,8 +254,11 @@ These follow from the design and are stated so that nobody is surprised.
   behaviour, and the snapshot follows it.
 - CI tests one architecture per system. The archives for the other
   architecture are built and not tested, as today.
-- The plugin sees `--no-verify` only as literal text. `git commit -n` is not
-  caught by the plugin; the push rule still catches the resulting commit.
+- The plugin asks before a git call that it recognises as skipping the hooks:
+  `--no-verify`, `-n` of `git commit`, or a setting of `core.hooksPath`. It
+  does not expand variables or aliases, so `git commit $FLAGS` is not asked
+  about, and neither is a hook file removed from the shell. The push rule
+  still judges the resulting commit when it is pushed through the hooks.
 
 ## Success measures
 

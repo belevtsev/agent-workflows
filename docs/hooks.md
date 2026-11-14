@@ -231,6 +231,14 @@ worktree warns, and `cw status --json` reports `hooks` as `missing`.
   `git push --no-verify` skip the hooks. The push rule judges a commit that was
   made with `--no-verify` when it is pushed, unless the push skips the hook as
   well.
+- Some tools commit without the hooks, or replace the hooks directory, without
+  anyone asking for it. Reports name Aider, which passes `--no-verify` by
+  default; two versions of Cursor, which pointed `core.hooksPath` elsewhere;
+  the creation of a worktree by Claude Code, which wrote `core.hooksPath` into
+  the shared configuration; and an action that commits through the hosting
+  service and runs no local hook. [What other tools taught us](other-tools.md)
+  has the sources. `cw status` warns when the hooks git runs in a clone do not
+  call `cw`. A setting given on one command line it cannot see.
 - A clone in which nobody ran `cw init` has no hooks and is not gated. git does
   not copy hooks with a clone. `cw status` and `cw context` say so. Continuous
   integration with `cw run --base` is the backstop; see
@@ -278,8 +286,9 @@ it is not, except at the start of a session.
   installed, that every commit and push will be denied by the git hooks, and
   where the install instruction is.
 - `cw guard` asks the user in Claude Code, and denies with the reason in Codex,
-  before a shell command whose text holds `--no-verify` and before an edit of
-  `cw.toml`. It acts on no other call. See
+  before a shell command with a git call that skips git's hooks, and before an
+  edit of `cw.toml`, of a git hook or of a record of `cw`. It reads the command
+  as shell words, not as text. It acts on no other call. See
   [Operations](operations.md#cw-guard).
 - The token commands end with `|| true`, so a failure to record never fails the
   host's hook. [Tokens](tokens.md) says what they record.

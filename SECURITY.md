@@ -17,7 +17,7 @@ Out of scope: vulnerabilities in git, in third-party tools, in model providers, 
 The gate stops a commit or a push whose content has no passing run of every declared check. It is built for people and agents that would otherwise skip a step. It is not a defence against a process that sets out to defeat it:
 
 - `cw` and the agent run as the same user. Anything that user can write, the agent can write: the hooks, the records under the git directory, the git configuration and the refs.
-- `git commit --no-verify` and `git push --no-verify` skip git's hooks. The plugin asks before an agent runs a command that holds `--no-verify`; nothing asks a person.
+- `git commit --no-verify` and `git push --no-verify` skip git's hooks. The plugin asks before an agent runs a git call it recognises as skipping the hooks; it does not expand variables or aliases, and nothing asks a person.
 - A check runs with the user's rights and can do whatever its program does.
 
 None of these is a vulnerability. Run the same checks in CI as the backstop.

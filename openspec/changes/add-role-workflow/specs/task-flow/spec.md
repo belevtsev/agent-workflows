@@ -32,14 +32,19 @@ Source: the owner's statement of 14 November 2026 (implement a task from scratch
 
 ### Requirement: Two paths
 
-The coordinator SHALL take the full path when the task adds or changes behaviour that a user or another part of the code can observe, and the small path otherwise. Before any role writes, it SHALL tell the developer the path and the reason, and it SHALL follow the developer when the developer chooses the other path.
+The coordinator SHALL take the full path when the task adds or changes behaviour that a user or another part of the code can observe, and the small path otherwise. Before any role writes, it SHALL tell the developer the path and the reason, and it SHALL follow the developer when the developer chooses the other path. For a change of a few lines with a plain cause, which one test can pin down, it SHALL say that the task needs no roles and SHALL take a path only when the developer asks.
 
-Source: `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped for a bug fix, a refactor or a test-only task); review finding H7 (9 to 27 role starts for a strict task).
+Source: `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped for a bug fix, a refactor or a test-only task); review finding H7 (9 to 27 role starts for a strict task); `docs/other-tools.md`, Specifications and roles (users of four tools report too much ceremony for a small change).
 
 #### Scenario: A defect takes the small path (evaluation)
 
 - **WHEN** the developer reports that `unit.sh` accepts an empty `src/app.txt` and asks for a fix
 - **THEN** the coordinator names the small path before the first role is started, and no change folder is written
+
+#### Scenario: A change of one line needs no roles (evaluation)
+
+- **WHEN** the developer asks to correct one misspelt word in the message that `unit.sh` prints
+- **THEN** the coordinator says that the task needs no roles, and starts no role unless the developer then asks for a path
 
 #### Scenario: New behaviour takes the full path (evaluation)
 

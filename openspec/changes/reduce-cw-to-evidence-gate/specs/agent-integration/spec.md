@@ -65,9 +65,9 @@ Source: review finding C1 (README, both hook files and SKILL.md pin `cw@v3.0.0-r
 
 ### Requirement: Ask before skipping
 
-Before the agent runs a shell command whose text holds `--no-verify`, or changes `cw.toml` with a file-editing tool, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. The plugin SHALL NOT act on any other tool call.
+Before the agent runs a shell command in which a call of git skips the hooks, or changes `cw.toml`, a hook file or a record of `cw` with a file-editing tool, the plugin SHALL ask the user where the host can ask, and SHALL otherwise deny with the reason. It SHALL read the command as shell words, so that `--no-verify`, `-n` of `git commit` and a setting of `core.hooksPath` count only as arguments of git. The plugin SHALL NOT act on any other tool call.
 
-Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where Claude Code asks).
+Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where Claude Code asks); `docs/other-tools.md`, row G-2 (matching a command as text is fragile in both directions).
 
 #### Scenario: A commit that skips the hook
 
@@ -79,6 +79,31 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 - **WHEN** the agent in Claude Code is about to edit `cw.toml` with its file-editing tool
 - **THEN** the user is asked, and the question says that the edit changes the required checks
 
+#### Scenario: The short form of the option
+
+- **WHEN** the agent in Claude Code is about to run `git commit -n -m change`
+- **THEN** the user is asked, and the question says that the command skips the commit gate
+
+#### Scenario: A setting that replaces the hooks
+
+- **WHEN** the agent in Claude Code is about to run `git -c core.hooksPath=/dev/null commit -m change`
+- **THEN** the user is asked, and the question says that the command skips the commit gate
+
+#### Scenario: The option as the text of an argument
+
+- **WHEN** the agent is about to run `git commit -m "--no-verify is blocked"` or `grep -- --no-verify docs/hooks.md`
+- **THEN** the plugin neither asks nor denies
+
+#### Scenario: A command that cannot be read
+
+- **WHEN** the agent in Claude Code is about to run a command that holds `--no-verify` and an opening quote that is never closed
+- **THEN** the user is asked
+
+#### Scenario: An edit of a hook or of a record
+
+- **WHEN** the agent in Claude Code is about to change `.git/hooks/pre-commit` or a file under `.git/cw/` with its file-editing tool
+- **THEN** the user is asked, and the question says what the edit changes
+
 #### Scenario: An ordinary command
 
 - **WHEN** the agent is about to run `go test ./...` or `git commit -m change`
@@ -86,7 +111,7 @@ Source: proposal, Open Questions 4 and 6; review finding M3 (Codex denies where 
 
 ### Requirement: The plugin never judges a commit or push
 
-The plugin SHALL NOT allow, deny or interpret a `git commit` or `git push` command. Only the git hooks SHALL decide, so the way a command is written in the shell SHALL NOT change the decision.
+The plugin SHALL NOT allow or deny a `git commit` or `git push` because of the content it would record. Only the git hooks SHALL decide that, so the way a command is written in the shell SHALL NOT change the decision. The plugin reads a command for one purpose only, to ask before a call that skips the hooks; a call it does not recognise is not asked about, and the hooks decide as for any other.
 
 Source: review findings M1, M2, M3 and H8 (`internal/gate/scan.go`, `internal/gate/command.go`, `internal/shellwords/shellwords.go:509`; three command shapes get past the parser and four of eight mutants survive its tests).
 
@@ -104,3 +129,29 @@ Source: review findings M1, M2, M3 and H8 (`internal/gate/scan.go`, `internal/ga
 
 - **WHEN** the content is verified and the agent runs `git add -A && git commit -F -` with a heredoc message that holds the text `git push` between backticks
 - **THEN** the commit is recorded and the user is asked nothing
+
+### Requirement: Usage skill
+
+The plugin SHALL ship one skill, `cw`, that tells an agent how to work in a gated repository: what to run before and after a change, what each denial and each outcome of a check means, and when the task workflow fits. The skill SHALL name only commands that `cw help` lists and no `cw` version number, and a test SHALL replay every example beside it against the `cw` of the same commit. The head of every skill of the plugin SHALL hold no key that a host rejects.
+
+Source: the owner's statement of 14 November 2026 (a skill for an agent on how to use the tool for any task, with examples); `docs/other-tools.md`, Skills.
+
+#### Scenario: An example shows output that `cw` does not print
+
+- **WHEN** an example under `skills/cw/examples/` shows, for one of its commands, other output or another exit status than `cw` gives for it in the repository of the example
+- **THEN** the tests fail and name the command
+
+#### Scenario: A command that does not exist
+
+- **WHEN** `skills/cw/SKILL.md` names `cw verify`
+- **THEN** the tests fail, because `cw help` lists no such command
+
+#### Scenario: An example the skill does not name
+
+- **WHEN** a file is added under `skills/cw/examples/` and `skills/cw/SKILL.md` does not link it
+- **THEN** the tests fail and name the file
+
+#### Scenario: A head that a host rejects
+
+- **WHEN** the head of a `SKILL.md` holds a key other than `name`, `description` and `metadata`
+- **THEN** the tests fail and name the key

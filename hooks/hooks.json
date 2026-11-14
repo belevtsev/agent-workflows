@@ -1,5 +1,5 @@
 {
-  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, asks before a command with --no-verify or an edit of cw.toml, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, asks before a git call that skips the hooks or an edit of cw.toml, a hook file or a record of cw, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {

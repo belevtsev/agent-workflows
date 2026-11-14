@@ -36,7 +36,7 @@ func commands() []command {
 		{"stats", "[--since <period>] [--json]", "Count the runs and the hook decisions this repository recorded", runStats},
 		{"context", "", "Print what an agent should know at the start of a session here", runContext},
 		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", runHook},
-		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a command with --no-verify or an edit of cw.toml", runGuard},
+		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a git call that skips the hooks, or an edit of cw.toml, a hook or a record", runGuard},
 		{"uninstall", "", "Remove the hooks cw wrote and its records; cw.toml stays", runUninstall},
 		{"roles", "[--json] | check <role> --from <tree> [--task <task>] | text <role>", "Print the seven roles of the task workflow, check what a role changed, or print a role's text", runRoles},
 		{"change", "status [<task>] [--json] | check [<task>]", "Print the stage of a task's change folder, or check the rules its files must obey", runChange},

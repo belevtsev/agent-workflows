@@ -13,11 +13,14 @@ Start with the first two. The rest is reference.
 | [The task workflow](workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `cw change`. |
 | [Tokens](tokens.md) | What `cw tokens` counts, what "workflow tokens" are, and when a count is unknown. |
 | [Evaluation](evaluation.md) | The cases only a model run can show, and the comparison with one agent. Not run. |
+| [What other tools taught us](other-tools.md) | What users report about hook managers, agent guardrails, specification workflows and skills, with sources, and what `cw` did about each finding. |
 | [Development](development.md) | How to build, test and release `cw`. |
 
 Elsewhere in the repository:
 
 - [README](../README.md): what `cw` is, how to install it, and its known limits.
+- [The skill `cw`](../skills/cw/SKILL.md): how a coding agent works in a gated
+  repository, with seven worked examples that a test replays against `cw`.
 - [The production plan](../openspec/production-plan.md): what was built, how
   each part was checked, and what is left for the owner.
 - [The specifications](../openspec/changes/): the requirements and scenarios

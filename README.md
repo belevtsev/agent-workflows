@@ -91,11 +91,17 @@ test executes.
 
 The gate needs no plugin: the git hooks decide. The plugin in this repository
 adds three small things on Claude Code and on Codex. It tells a new session
-what the gate requires, asks before a command that holds `--no-verify` or an
-edit of `cw.toml`, and gives `cw tokens record` the notices that a role or the
-session has ended. On Claude Code it also ships the seven roles as agents and
-the skill `/agent-workflows:task`. On Codex it ships the skill, and a role is
-started from the text `cw roles text <role>` prints. Nothing was run on Codex.
+what the gate requires, asks before a git call that skips the hooks, such as
+`git commit --no-verify` or `git commit -n`, and before an edit of `cw.toml`,
+a hook file or a record of `cw`, and gives `cw tokens record` the notices that
+a role or the session has ended.
+
+It ships two skills. [`cw`](skills/cw/SKILL.md) tells an agent how to work in
+a gated repository: the loop for any change, what each denial means, and
+seven worked examples that a test replays against `cw`. `task` is the role
+workflow below. On Claude Code the plugin also ships the seven roles as
+agents; on Codex a role is started from the text `cw roles text <role>`
+prints. Nothing was run on Codex.
 
 ```text
 /plugin install agent-workflows --marketplace belevtsev/agent-workflows

@@ -11,6 +11,7 @@ import (
 
 	"github.com/belevtsev/agent-workflows/v3/internal/decl"
 	"github.com/belevtsev/agent-workflows/v3/internal/gitx"
+	"github.com/belevtsev/agent-workflows/v3/internal/shellwords"
 )
 
 // toolCall is what an agent host tells a hook before it runs a tool. Claude
@@ -21,19 +22,17 @@ type toolCall struct {
 	Input json.RawMessage `json:"tool_input"`
 }
 
-// toolInput holds the two fields the guard reads. A shell tool gives the
-// command; a file-editing tool gives the path; Codex gives a patch as the
-// command of `apply_patch`.
+// toolInput holds a shell command, the path of a file edit, or a Codex patch.
 type toolInput struct {
 	Command string `json:"command"`
 	Path    string `json:"file_path"`
 }
 
-// runGuard is the plugin's job before a tool call. It reads the host's
-// notice from standard input and speaks up in two cases only: a shell
-// command whose text holds --no-verify, and a file edit of cw.toml. It asks
-// the user where the host can ask and denies with the reason where it
-// cannot. It never judges a commit or a push: the git hooks do that.
+// runGuard is the plugin's job before a tool call. It reads the host's notice
+// from standard input and speaks up in two cases only: a git call that skips
+// git's hooks, and an edit of cw.toml, of git's hooks or of cw's records. It
+// asks where the host can ask and denies with the reason where it cannot. It
+// never judges a commit or a push: the git hooks do that.
 func runGuard(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("guard")
 	host := flags.String("host", "claude", "")
@@ -93,21 +92,33 @@ func guardReason(ctx context.Context, call toolCall) string {
 	if _, err := os.Stat(declaration); err != nil {
 		return "" // nothing is gated here
 	}
-	const edit = "This edit changes cw.toml, and with it the checks this repository requires before a commit or a push."
 	switch call.Tool {
 	case "Bash":
-		if strings.Contains(input.Command, "--no-verify") {
-			return "This command holds --no-verify, which skips the commit gate: the git hooks of cw would not judge the commit or the push."
+		if how := shellwords.SkipsHooks(input.Command); how != "" {
+			return "This command " + how + ", which skips the commit gate: the git hooks of cw would not judge the commit or the push."
 		}
 	case "Edit", "Write", "MultiEdit":
-		if samePath(input.Path, declaration, dir) {
-			return edit
-		}
+		return editReason([]string{input.Path}, dir, declaration, repo.CommonDir)
 	case "apply_patch":
-		for _, path := range patchPaths(input.Command) {
-			if samePath(path, declaration, dir) {
-				return edit
-			}
+		return editReason(patchPaths(input.Command), dir, declaration, repo.CommonDir)
+	}
+	return ""
+}
+
+// editReason says why an edit of paths, relative to dir or absolute, needs the
+// user. Directories are resolved: a host may give dir through a link.
+func editReason(paths []string, dir, declaration, common string) string {
+	for _, path := range paths {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(dir, path)
+		}
+		switch path = resolved(path); {
+		case path == resolved(declaration):
+			return "This edit changes cw.toml, and with it the checks this repository requires before a commit or a push."
+		case strings.HasPrefix(path, resolved(filepath.Join(common, "hooks"))+string(filepath.Separator)):
+			return "This edit changes a git hook of this clone, and the git hooks of cw judge each commit and push."
+		case strings.HasPrefix(path, resolved(filepath.Join(common, "cw"))+string(filepath.Separator)):
+			return "This edit changes the records of cw, which hold the passing runs that the commit gate reads."
 		}
 	}
 	return ""
@@ -125,19 +136,6 @@ func patchPaths(patch string) []string {
 		}
 	}
 	return paths
-}
-
-// samePath says whether path, which may be relative to dir, names the file
-// target. Directories are resolved, because a host may give the working
-// directory through a symbolic link.
-func samePath(path, target, dir string) bool {
-	if path == "" {
-		return false
-	}
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(dir, path)
-	}
-	return resolved(path) == resolved(target)
 }
 
 func resolved(path string) string {

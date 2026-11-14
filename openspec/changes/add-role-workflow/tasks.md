@@ -54,8 +54,8 @@ record store.
 ## 5. Flow
 
 - [x] 5.1 Write into the coordinator's instructions the two paths, the stages, the approvals, the review rounds, tests before code, the check of each role's limit, and when a task is done. Size: M. Depends on: 2.4, 3.2. Check: every requirement of `task-flow` is stated in the instructions, and the text stays within its budget. Source: `task-flow`: Entry, Two paths, Stages of the full path, Stages of the small path, Existing specifications, Open questions, Approvals, Review rounds, Tests before code, Limits are checked, Done means verified, Commits through the gate, A repository without checks, No state outside the record, Role starts, Current specifications; `role-definitions`: Text budget.
-- [x] 5.2 Write `docs/evaluation.md`: the 25 evaluation cases of `task-flow` and `role-definitions`, each with its repository, its request and what to look for in the session's record and in the repository afterwards; and the task set of the comparison with one agent. Size: M. Depends on: 5.1. Check: each scenario marked (evaluation) has one case. Source: Success measures 1 and 7; `token-report`: Published comparison.
-- [x] 5.3 Tests: the scenarios of `task-flow`, 1 as a Go test and 22 as evaluation cases (23). Size: S. Depends on: 5.2. Check: `go test -race ./...` passes, and the 22 cases are in `docs/evaluation.md`. Source: `specs/task-flow/spec.md`.
+- [x] 5.2 Write `docs/evaluation.md`: the 26 evaluation cases of `task-flow` and `role-definitions`, each with its repository, its request and what to look for in the session's record and in the repository afterwards; and the task set of the comparison with one agent. Size: M. Depends on: 5.1. Check: each scenario marked (evaluation) has one case. Source: Success measures 1 and 7; `token-report`: Published comparison.
+- [x] 5.3 Tests: the scenarios of `task-flow`, 1 as a Go test and 23 as evaluation cases (24). Size: S. Depends on: 5.2. Check: `go test -race ./...` passes, and the 23 cases are in `docs/evaluation.md`. Source: `specs/task-flow/spec.md`.
 
 ## 6. Documents and self-use
 
