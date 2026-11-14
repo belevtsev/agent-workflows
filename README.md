@@ -16,6 +16,8 @@ asks the agent to stop and pass `cw task verify` before it commits; see
 [what the gate does not stop](#the-verify-gate). `cw` runs on macOS and Linux
 only ([Quick start](#quick-start)).
 
+What has been measured so far, and what has not: [evidence](docs/evidence.md).
+
 ## How it works
 
 <img src="docs/diagrams/workflow-overview.svg" alt="Flow of a substantial task: spec-writer and reviewer (spec, skipped with a reviewed spec or a precise request), architect and reviewer (design and contract), implementer in parallel with test-engineer and reviewer (tests), integrate and run, then reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, with the adversarial-tester beside the code review if the plan opts in, whose failing tests go to the implementer, then cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback when cw publish does not fit. Findings loop back to each author; optional advisers join at four decision points." width="820">

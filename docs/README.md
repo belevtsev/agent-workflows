@@ -10,6 +10,7 @@
 | [Packs](packs.md) | Choose the packs `cw task verify` applies, or add a language pack |
 | [Development](development.md) | Build, test and release `cw` itself |
 | [Skill evaluation](skill-evaluation.md) | Measure whether a skill or agent change helps, with routing fixtures and evals |
+| [Evidence](evidence.md) | See what has been measured about the workflow so far, and what has not |
 | [Diagrams](diagrams/) | Edit the workflow diagram specifications (render them with the `archify` skill) |
 
 Elsewhere in the repository:
