@@ -74,6 +74,13 @@ func ownGroup(command *exec.Cmd, session bool) {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: !session, Setsid: session}
 }
 
+// joinGroup does nothing: ownGroup placed the command in its group before it
+// started.
+func joinGroup(*exec.Cmd) error { return nil }
+
+// leaveGroup does nothing: the group's other members simply keep running.
+func leaveGroup(*exec.Cmd) {}
+
 // endGroup kills the process group of a command that has exited until no
 // live member remains.
 func endGroup(command *exec.Cmd) error {

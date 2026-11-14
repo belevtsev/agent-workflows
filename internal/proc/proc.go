@@ -9,8 +9,11 @@
 // ends, after a normal exit as well (unless Spec.KeepGroupOnExit), so no
 // descendant outlives its run.
 //
-// Process groups are used on Linux and macOS only. Elsewhere Run stops only
-// the program itself, at once, and KillGroup fails with errors.ErrUnsupported.
+// Process groups are used on Linux and macOS. On Windows the program is put
+// in a job object as soon as it has started, and Run ends the whole job; see
+// group_windows.go for how that differs. Elsewhere Run stops only the program
+// itself, at once. KillGroup fails with errors.ErrUnsupported on every
+// platform but Linux and macOS.
 package proc
 
 import (
@@ -60,7 +63,7 @@ type Spec struct {
 	// Grace, when set, lets a stopped program clean up: Run sends SIGTERM to
 	// the group and kills it only if the program has not exited and the group
 	// emptied within Grace, so git, for example, can remove its lock files.
-	// Zero kills the group at once.
+	// Zero kills the group at once. Windows has no SIGTERM and ignores Grace.
 	Grace time.Duration
 	// KeepGroupOnExit leaves the group's other members running when the
 	// program exits on its own, for a program such as git whose hooks may
@@ -120,6 +123,41 @@ func Run(ctx context.Context, spec Spec) Result {
 	if runCtx.Err() != nil {
 		return Result{Code: -1, Stopped: true, Cancelled: interrupted(ctx)}
 	}
+	command, out, err := prepare(ctx, spec)
+	if err != nil {
+		return Result{Code: -1, Err: err}
+	}
+	ownGroup(command, spec.Session)
+	if err := command.Start(); err != nil {
+		return Result{Code: -1, Err: err}
+	}
+	// joinGroup has reaped the program when it fails.
+	if err := joinGroup(command); err != nil {
+		return Result{Code: -1, Err: err}
+	}
+	written := feed(out.input, spec.Stdin)
+	got := await(ctx, runCtx, command, spec)
+	if written != nil {
+		// Wait closed the pipe once the program exited, which ends a write
+		// the program never read; only another failure is reported.
+		if err := <-written; got.Err == nil && !got.Stopped && !errors.Is(err, os.ErrClosed) && !errors.Is(err, syscall.EPIPE) {
+			got.Err = err
+		}
+	}
+	got.Stdout, got.Overflow, got.Stderr = out.stdout.Bytes(), out.stdout.Overflow(), out.stderr.Bytes()
+	return got
+}
+
+// streams are where Run keeps a run's output, and the input pipe it holds
+// open for Spec.KeepStdinOpen.
+type streams struct {
+	stdout *HeadBuffer
+	stderr *TailBuffer
+	input  io.WriteCloser
+}
+
+// prepare builds the command for spec, without starting it.
+func prepare(ctx context.Context, spec Spec) (*exec.Cmd, streams, error) {
 	command := exec.Command(spec.Path, spec.Args...) //nolint:gosec // G204: the caller names a fixed program and argv; no shell is involved.
 	command.Dir, command.Env, command.WaitDelay = spec.Dir, spec.Env, spec.WaitDelay
 	if command.Env == nil {
@@ -130,68 +168,65 @@ func Run(ctx context.Context, spec Spec) Result {
 	if command.WaitDelay == 0 && (spec.Timeout > 0 || ctx.Done() != nil) {
 		command.WaitDelay = DefaultWaitDelay
 	}
-	stdout := &HeadBuffer{Limit: spec.StdoutLimit}
-	command.Stdout = stdout
+	out := streams{stdout: &HeadBuffer{Limit: spec.StdoutLimit}, stderr: &TailBuffer{Limit: spec.StderrLimit}}
+	command.Stdout = out.stdout
 	if spec.Stdout != nil {
 		command.Stdout = spec.Stdout
 	}
-	stderr := &TailBuffer{Limit: spec.StderrLimit}
-	command.Stderr = stderr
+	command.Stderr = out.stderr
 	if spec.Stderr != nil {
 		command.Stderr = spec.Stderr
 	}
-	var input io.WriteCloser
 	if spec.KeepStdinOpen && spec.Stdin != nil {
 		var err error
-		if input, err = command.StdinPipe(); err != nil {
-			return Result{Code: -1, Err: err}
+		if out.input, err = command.StdinPipe(); err != nil {
+			return nil, out, err
 		}
 	} else {
 		command.Stdin = spec.Stdin
 	}
-	ownGroup(command, spec.Session)
-	if err := command.Start(); err != nil {
-		return Result{Code: -1, Err: err}
+	return command, out, nil
+}
+
+// feed copies stdin into input in the background and reports the copy's
+// result on the returned channel; it returns nil when there is no input pipe.
+func feed(input io.WriteCloser, stdin io.Reader) <-chan error {
+	if input == nil {
+		return nil
 	}
-	var written chan error
-	if input != nil {
-		written = make(chan error, 1)
-		go func() {
-			_, err := io.Copy(input, spec.Stdin)
-			written <- err
-		}()
-	}
+	written := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(input, stdin)
+		written <- err
+	}()
+	return written
+}
+
+// await waits for a started command until it exits or runCtx ends, and ends
+// or stops its group accordingly.
+func await(ctx, runCtx context.Context, command *exec.Cmd, spec Spec) Result {
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
 	got := Result{Code: -1}
 	select {
 	case got.Err = <-done:
-		if !spec.KeepGroupOnExit {
+		if spec.KeepGroupOnExit {
+			leaveGroup(command)
+		} else {
 			got.Cleanup = endGroup(command)
-		}
-		if state := command.ProcessState; state != nil && state.Exited() {
-			got.Code = state.ExitCode()
 		}
 	case <-runCtx.Done():
 		got.Stopped, got.Cancelled = true, interrupted(ctx)
 		// Killing the group closes every pipe a member holds. A descendant
 		// that left the group can still hold one; WaitDelay bounds that wait.
 		got.Err, got.Cleanup = stopGroup(command, spec.Grace, done)
-		// The program may have exited on its own before the stop, while a
-		// descendant held its output open, or within the grace after
-		// SIGTERM; it keeps its status.
-		if state := command.ProcessState; state != nil && state.Exited() {
-			got.Code = state.ExitCode()
-		}
 	}
-	if input != nil {
-		// Wait closed the pipe once the program exited, which ends a write
-		// the program never read; only another failure is reported.
-		if err := <-written; got.Err == nil && !got.Stopped && !errors.Is(err, os.ErrClosed) && !errors.Is(err, syscall.EPIPE) {
-			got.Err = err
-		}
+	// After a stop, the program may have exited on its own before it, while
+	// a descendant held its output open, or within the grace after SIGTERM;
+	// it keeps its status.
+	if state := command.ProcessState; state != nil && state.Exited() {
+		got.Code = state.ExitCode()
 	}
-	got.Stdout, got.Overflow, got.Stderr = stdout.Bytes(), stdout.Overflow(), stderr.Bytes()
 	return got
 }
 

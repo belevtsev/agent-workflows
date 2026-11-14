@@ -1,4 +1,4 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !windows
 
 package proc
 
@@ -9,6 +9,11 @@ import (
 )
 
 func ownGroup(*exec.Cmd, bool) {}
+
+// joinGroup and leaveGroup do nothing: there is no group to join or leave.
+func joinGroup(*exec.Cmd) error { return nil }
+
+func leaveGroup(*exec.Cmd) {}
 
 // endGroup has nothing to kill: without process groups nothing else is known
 // to belong to the run.
