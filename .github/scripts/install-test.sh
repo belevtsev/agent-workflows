@@ -47,12 +47,22 @@ grep -q "^tag=$tag\$" "$work/instruction.sh" ||
 grep -q '^base=https://' "$work/instruction.sh" ||
 	fail "The first install instruction of README.md has no line that starts with base=https://."
 
-# A PATH without go.
+# A PATH without go. A directory that holds go is replaced by a directory of
+# links to everything else in it: on some systems that directory is /usr/bin.
 path=
+count=0
 old_ifs=$IFS
 IFS=:
 for dir in $PATH; do
-	[ -n "$dir" ] && [ ! -x "$dir/go" ] && path="${path:+$path:}$dir"
+	[ -n "$dir" ] || continue
+	if [ -x "$dir/go" ]; then
+		count=$((count + 1))
+		mkdir "$work/bin-$count"
+		ln -s "$dir"/* "$work/bin-$count/"
+		rm -f "$work/bin-$count/go" "$work/bin-$count/gofmt"
+		dir=$work/bin-$count
+	fi
+	path="${path:+$path:}$dir"
 done
 IFS=$old_ifs
 if PATH=$path command -v go >/dev/null 2>&1; then

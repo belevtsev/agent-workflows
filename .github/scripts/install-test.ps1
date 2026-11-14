@@ -118,3 +118,5 @@ finally {
     if ($server) { Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue }
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }
+# The last program this script started is the instruction that had to fail.
+exit 0
