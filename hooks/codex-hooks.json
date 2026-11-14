@@ -1,4 +1,30 @@
 {
-  "description": "agent-workflows for Codex: no hook yet",
-  "hooks": {}
+  "description": "cw for Codex: adds what `cw context` prints at the start of a session, and refuses, with the reason, a command with --no-verify or an edit of cw.toml, because Codex cannot ask from a hook. The git hooks decide about commits and pushes; this file does not.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v cw >/dev/null 2>&1; then cw context; elif [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi",
+            "commandWindows": "cw context",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v cw >/dev/null 2>&1; then cw guard --host codex; fi",
+            "commandWindows": "cw guard --host codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
 }

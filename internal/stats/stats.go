@@ -6,6 +6,7 @@ package stats
 import (
 	"cmp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/store"
@@ -73,7 +74,8 @@ func inPeriod(r store.Record, since time.Time) bool {
 }
 
 func (r *Report) countRuns(records []store.Record, since time.Time) {
-	type content struct{ id, key string }
+	// One history per check, checked content, command and paths.
+	type content struct{ id, key, run, paths string }
 	byContent := map[content][]store.Record{}
 	for _, record := range records {
 		if record.Running || record.Outcome == "" {
@@ -86,7 +88,7 @@ func (r *Report) countRuns(records []store.Record, since time.Time) {
 			r.Runs[record.ID][record.Outcome]++
 		}
 		if store.Decisive(record.Outcome) {
-			at := content{record.ID, record.ContentKey}
+			at := content{record.ID, record.ContentKey, strings.Join(record.Run, "\x00"), strings.Join(record.Paths, "\x00")}
 			byContent[at] = append(byContent[at], record)
 		}
 	}
@@ -94,8 +96,7 @@ func (r *Report) countRuns(records []store.Record, since time.Time) {
 		slices.SortFunc(runs, func(a, b store.Record) int { return cmp.Compare(a.Seq, b.Seq) })
 		for i := 1; i < len(runs); i++ {
 			previous, run := runs[i-1], runs[i]
-			same := slices.Equal(previous.Run, run.Run) && slices.Equal(previous.Paths, run.Paths)
-			if same && run.Outcome == store.Passed && previous.Outcome != store.Passed && inPeriod(run, since) {
+			if run.Outcome == store.Passed && previous.Outcome != store.Passed && inPeriod(run, since) {
 				r.PassAfterFailure[at.id]++
 			}
 		}

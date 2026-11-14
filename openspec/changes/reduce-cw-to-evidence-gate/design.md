@@ -102,7 +102,7 @@ the repository root.
 - **The tree of a pushed ref.** `git rev-parse <id>^{commit}` peels an
   annotated tag; its tree is judged. A ref that names a tree is judged by
   that tree. A ref that names anything else is denied, cause `tree`.
-- **Paths that differ.** `git diff-tree -r --no-renames --name-only -z A B`.
+- **Paths that differ.** `git diff-tree -r --no-renames --name-status -z A B`, which also gives the kind of each change: added, changed or removed.
 - **The declaration of a tree.** `git ls-tree T -- cw.toml`, then
   `git cat-file blob`. No entry means no declaration; an entry that is not a
   regular file is an invalid declaration.
@@ -220,7 +220,8 @@ cw/tmp/                                  index copies
   or under its cause; `checks` counts per state how often each check was not
   satisfied. `pass_after_failure` counts, per check, the passing runs whose
   previous decisive run on the same content key, with the same `run` and
-  `paths`, did not pass. A run belongs to the period when it ended in it.
+  `paths`, did not pass. A run belongs to the period when it ended in it, or, when it never
+  recorded an end, when it started in it.
 
 ## Running a check
 
@@ -253,8 +254,10 @@ record is written.
   exits 3. Git for Windows runs the same file in its own shell.
 - **`cw init`** creates `cw.toml` when it is missing, installs the three hooks
   in `hooks/` of the common git directory, and writes the mode. A hook file
-  without the marker is left alone, and `core.hooksPath` stops every write;
-  both end with exit 4 and the line to add.
+  without the marker is left alone, and `core.hooksPath` stops every write.
+  A hook that is left alone and does not call `cw hook <name>` yet ends
+  `cw init` with exit 4 and the line to add; one that calls it already
+  needs nothing.
 - **`pre-commit` and `pre-merge-commit`.** Write the tree of the index, read
   its declaration, list its entries once, compute the key of each check and
   read that check's records. Verified means allow. The working tree's snapshot
@@ -277,6 +280,26 @@ record is written.
 - **A denial** names each check with its state and log, ends with `cw run`,
   says where to run it, and names no way around the gate.
 
+## Plugin
+
+- **Session start.** The hook command is shell text: when `cw` is on `PATH`
+  it runs `cw context`; when it is not and the root of the repository holds
+  `cw.toml`, it prints one line that says so and names the install
+  instruction. The text an agent reads lives in `cw`, not in the hook file.
+- **Before a tool call.** The hook runs `cw guard --host <host>`, which reads
+  the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
+  (`command` for the shell tool, `file_path` for an editing tool, the patch
+  text for the `apply_patch` of Codex). In a repository whose root holds
+  `cw.toml` it answers in two cases: the command text holds `--no-verify`, or
+  the edited file is that `cw.toml`. The answer is the JSON object both hosts
+  read, `hookSpecificOutput` with `permissionDecision` and
+  `permissionDecisionReason`: `ask` for Claude Code, `deny` for Codex, which
+  does not support `ask`. In every other case it prints nothing and exits 0.
+- **Without `cw`.** The guard command does nothing when `cw` is not on
+  `PATH`. The git hooks still deny.
+- **What the plugin does not do.** It reads no git command and decides about
+  no commit or push.
+
 ## Platform
 
 - **Windows locks:** `LockFileEx`, released by the system when the handle
@@ -296,7 +319,7 @@ record is written.
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The 144 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
+| The 145 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
 | No network | A test that lists the packages `cw` links and finds no `net` | Linux | That no network code is linked; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |

@@ -24,9 +24,11 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
   - `tests.md` with one row per scenario. Both name `tests/app_test.txt`,
     with the texts `name_is_given` and `no_name_is_given`, and that file holds
     both texts.
-  - `reviews.md` with the reviews of the specification, of the design and of
-    the code, round 1 each; one finding, `minor` and `resolved`; and the
-    approvals of the specification and of the design.
+  - `reviews.md` with the reviews `spec`, `design` and `code`, round 1 each;
+    one finding, `minor` and `resolved`; and the approvals `spec` and
+    `design`. Each review and each approval holds the content id that
+    `cw change status add-greeting` prints for it.
+- The folder and `tests/app_test.txt` are committed.
 - In this state `cw change check` exits 0 and `cw change status` prints
   `done`.
 
@@ -59,6 +61,7 @@ Source: `skills/task-orchestration/references/contracts/spec-writer.md` (an Open
 | `tests` | `tests.md` has a row for every scenario. |
 | `code` | Every task is checked. |
 | `review` | `reviews.md` holds a review of the code with no `open` finding. |
+| `commit` | The folder in the working tree is the folder in `HEAD`. |
 
 Source: review findings H2 and H9 (a task's state lives in a store that can block and go stale); `task-flow`: No state outside the record.
 
@@ -76,6 +79,11 @@ Source: review findings H2 and H9 (a task's state lives in a store that can bloc
 
 - **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `cw change status add-greeting --json` runs
 - **THEN** `stage` is `code` and `missing` names task 1.2
+
+#### Scenario: The record is not committed
+
+- **WHEN** an empty line is added at the end of `reviews.md` and `cw change status add-greeting` runs
+- **THEN** it prints `commit` and says that the folder differs from `HEAD`
 
 #### Scenario: Reading changes nothing
 
@@ -137,7 +145,7 @@ Source: the owner's statement of 14 November 2026 (well tested code, in any lang
 
 #### Scenario: A scenario that is not automated
 
-- **WHEN** the row of `No name is given` is changed to `not automated` with a reason, and `cw change status add-greeting` runs
+- **WHEN** the row of `No name is given` is changed to `not automated` with a reason, the change is committed, and `cw change status add-greeting` runs
 - **THEN** it prints `done` and says that one scenario is not automated
 
 ### Requirement: Design rules
@@ -168,7 +176,7 @@ Source: the owner's statement (clean architecture; reusable building blocks); `s
 
 ### Requirement: Review records
 
-`reviews.md` SHALL hold every finding with its stage, round, severity (`blocker`, `major` or `minor`), place and disposition: `open`, `resolved`, `rejected` or `deferred`. `cw change check` SHALL fail when a `rejected` or `deferred` finding has no reason, when a `blocker` or `major` finding is `deferred`, or when every task is checked and a finding is `open`.
+`reviews.md` SHALL hold every finding with its stage (`spec`, `design` or `code`), round, severity (`blocker`, `major` or `minor`), place and disposition: `open`, `resolved`, `rejected` or `deferred`. `cw change check` SHALL fail when a row holds another value, when a `rejected` or `deferred` finding has no reason, when a `blocker` or `major` finding is `deferred`, or when every task is checked and a finding is `open`.
 
 Source: `skills/task-orchestration/references/contracts/README.md` and `code-review.md` (findings with the severities `blocker` and `major`); `reports/Review findings 2026-11-14.md` (each finding has a status, and rejected ones a reason).
 
@@ -186,6 +194,37 @@ Source: `skills/task-orchestration/references/contracts/README.md` and `code-rev
 
 - **WHEN** a finding with severity `minor` and disposition `open` is added to `reviews.md` and `cw change check` runs
 - **THEN** it exits 5 and names that finding
+
+#### Scenario: A stage that does not exist
+
+- **WHEN** the stage of the fixture's finding is changed to `final` and `cw change check` runs
+- **THEN** it exits 5 and names `reviews.md`, the line of that finding, and `final`
+
+### Requirement: Reviewed content
+
+Each review and each approval in `reviews.md` SHALL hold the content id that `cw change status` printed for it: for `spec` the id of `proposal.md` and `specs/`, for `design` the id of `design.md` and `tasks.md` without their check marks, for `code` the id of every path outside the change folder. A review or an approval SHALL count only while its id is that of the working tree or, for `code`, that of the last commit that changed the folder.
+
+Source: production plan, Independent challenge, finding 9 (an approval stayed valid after the approved file changed).
+
+#### Scenario: The specification changes after its approval
+
+- **WHEN** the word `SHALL` of `Greeting text` is changed to `MUST` in `specs/greeting/spec.md` and `cw change status add-greeting` runs
+- **THEN** it prints `spec` and says that the review and the approval of the specification were given for other content
+
+#### Scenario: The code changes after its review
+
+- **WHEN** `src/app.txt` is edited and `cw change status add-greeting` runs
+- **THEN** it prints `review` and says that the review of the code was given for other content
+
+#### Scenario: A checked task does not undo the approval of the design
+
+- **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `cw change status add-greeting` runs
+- **THEN** it prints `code`, and names neither the review nor the approval of the design
+
+#### Scenario: Later work leaves a finished task done
+
+- **WHEN** `README.md` is edited and committed after the fixture's commit, and `cw change status add-greeting` runs
+- **THEN** it prints `done`
 
 ### Requirement: Usable as a check
 

@@ -71,7 +71,8 @@ type Foreign struct {
 
 // Install writes the three hooks into the hooks directory of the common git
 // directory. It never changes a file it did not write, and writes nothing
-// when core.hooksPath is set; such hooks are returned for the user to edit.
+// when core.hooksPath is set. A hook it left alone is returned for the user
+// to edit, unless that hook already calls cw.
 func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error) {
 	dir, configured, err := repo.HooksDir(ctx)
 	if err != nil {
@@ -79,7 +80,9 @@ func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error
 	}
 	if configured {
 		for _, name := range Hooks {
-			foreign = append(foreign, Foreign{Name: name, Path: filepath.Join(dir, name)})
+			if path := filepath.Join(dir, name); !calls(path, name) {
+				foreign = append(foreign, Foreign{Name: name, Path: path})
+			}
 		}
 		return foreign, nil
 	}
@@ -95,7 +98,9 @@ func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error
 		case readErr != nil:
 			return nil, readErr
 		case !strings.Contains(string(old), marker):
-			foreign = append(foreign, Foreign{Name: name, Path: path})
+			if !calls(path, name) {
+				foreign = append(foreign, Foreign{Name: name, Path: path})
+			}
 			continue
 		case string(old) == script && executable(path):
 			continue
@@ -119,6 +124,12 @@ func executable(path string) bool {
 	return runtime.GOOS == "windows" || info.Mode()&0o111 != 0
 }
 
+// calls says whether the file is a hook git would run and that calls cw.
+func calls(path, name string) bool {
+	data, err := os.ReadFile(path)
+	return err == nil && executable(path) && strings.Contains(string(data), "cw hook "+name)
+}
+
 // State says whether git runs the hooks of cw in this clone: each of the
 // three files git would run exists, can be executed and calls `cw hook`.
 func State(ctx context.Context, repo *gitx.Repo) string {
@@ -127,9 +138,7 @@ func State(ctx context.Context, repo *gitx.Repo) string {
 		return Missing
 	}
 	for _, name := range Hooks {
-		path := filepath.Join(dir, name)
-		data, err := os.ReadFile(path)
-		if err != nil || !executable(path) || !strings.Contains(string(data), "cw hook "+name) {
+		if !calls(filepath.Join(dir, name), name) {
 			return Missing
 		}
 	}

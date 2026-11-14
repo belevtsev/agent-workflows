@@ -89,9 +89,11 @@ language, with any agent, on Linux, macOS or Windows.
 
 ## What Changes
 
-- **BREAKING** `cw` becomes a gate with nine commands: `cw init`, `cw add`,
-  `cw run`, `cw status`, `cw stats`, `cw context`, `cw hook`, `cw uninstall`
-  and `cw version`. The commands `cw task` (23 subcommands), `cw publish`,
+- **BREAKING** `cw` becomes a gate with ten commands: `cw init`, `cw add`,
+  `cw run`, `cw status`, `cw stats`, `cw context`, `cw hook`, `cw guard`,
+  `cw uninstall` and `cw version`. (`cw guard` was added during the build: it
+  is the plugin's question before a tool call, kept in `cw` so that the hook
+  files hold no logic.) The commands `cw task` (23 subcommands), `cw publish`,
   `cw consult`, `cw keys`, `cw metrics`, `cw pack`, `cw doctor`, `cw gate` and
   `cw install` leave the core.
 - **BREAKING** Checks are declared in a committed file, `cw.toml`, not in a
@@ -151,7 +153,7 @@ Changes and Non-goals.
 ## Impact
 
 - **Code.** The core needs a declaration reader, a check runner, a record store,
-  three hook decisions and the nine commands above. Of today's packages, the ones
+  three hook decisions and the ten commands above. Of today's packages, the ones
   that carry removed features are `internal/taskflow` (12,907 lines),
   `internal/usagelog` (4,539), `internal/consult` (3,990), `internal/langpack`
   (2,625), `internal/publish` (2,623), `internal/graphify` (1,284),
@@ -448,6 +450,15 @@ recommendations, because the owner asked for the work to go on alone
    where it asks under Claude Code (M3). Recommendation: ask where the host
    can, deny otherwise (`agent-integration`: Ask before skipping). Settled by:
    the Codex hook documentation.
+   Answer, 14 November 2026: no. The Codex hooks page
+   (https://developers.openai.com/codex/hooks) says that
+   `permissionDecision: "ask"` is "parsed but not supported yet"; Codex then
+   marks the hook as failed and runs the tool call. `deny` with
+   `permissionDecisionReason` is supported. So `cw guard --host codex` denies
+   with the reason and tells the agent to ask the user, and
+   `cw guard --host claude` asks. The page was read through a summarising
+   fetch, so the quotation is close to the page and may not be exact. Nothing
+   was run on Codex.
 7. **Is Windows out of the first version?** The recommendation was yes. The
    owner decided no: Windows is in the first version (`platform-support`).
 8. **Does a push judge only the tip commit?** Recommendation: yes
@@ -473,3 +484,13 @@ recommendations, because the owner asked for the work to go on alone
     offers none, state in the README that the plugin's two jobs are missing
     there. The git hooks do not depend on this. Settled by: each host's
     documentation and a test on Windows (tasks 8.1 and 8.2).
+    Answer, 14 November 2026, from the documentation only; nothing was run
+    on Windows. Claude Code (https://code.claude.com/docs/en/hooks) runs a
+    hook command with `sh -c` on macOS and Linux and in Git Bash on Windows,
+    and a hook can name `"shell": "bash"`. `cw` needs Git for Windows anyway,
+    so the two hook commands stay POSIX shell text and name that shell. The
+    Codex page does not say which shell runs a hook on Windows; it offers
+    `commandWindows` as a Windows-only command. There the two commands are
+    `cw context` and `cw guard --host codex`, which every shell can run. One
+    job is therefore missing under Codex on Windows: the line that says `cw`
+    is not installed. The README says so.

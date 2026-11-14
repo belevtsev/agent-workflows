@@ -6,7 +6,7 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 54, with 144 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 54, with 145 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
 | 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 44, with 82 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
@@ -141,6 +141,9 @@ usage; and the arithmetic of the token fixture.
 | 14 Nov 2026 | `publish-gate`: Push rule | One scenario added: an annotated tag | Challenge finding 10 |
 | 14 Nov 2026 | `gate-reporting`: Status; new requirement Gate state | The index file is not rewritten (one scenario); `cw status` reports hooks git does not run (two scenarios) | Challenge findings 12 and 7 |
 | 14 Nov 2026 | Part 1 totals | 54 requirements and 144 scenarios, from 53 and 136 | The rows above |
+| 14 Nov 2026 | `publish-gate`: Hooks of other tools | `cw init` exits 4 only for a hook that does not call `cw hook <name>` yet; one scenario added. Part 1 now has 145 scenarios | A unit test showed that `cw init` exited 4 for ever in a repository whose shared hooks already called `cw`. The test of scenario "Another tool's hook still calls `cw`" expected that exit in its setup and was changed with the specification |
+| 14 Nov 2026 | Design, Records | `pass_after_failure` compares runs of the same command; a base revision implies nothing for a check that has a decisive run of its own, however old; `--name-status`; a run without an end belongs to the period it started in | Two unit tests failed against the design (the code was fixed), and two sentences of the design did not say what the code does |
+| 14 Nov 2026 | `agent-integration`, design: Plugin; proposal, Open Questions 6 and 11 | A tenth command, `cw guard`, holds the plugin's question before a tool call; Codex denies because it cannot ask | The hosts' documentation |
 | 14 Nov 2026 | `check-declaration`: fixture, the meaning of "Refused" | "Writes nothing" now says what it covers: no new or changed file or directory in the working tree, the home directory or the git directory; objects git stores for a snapshot are not counted | Three scenario tests failed because a refused `cw run` and `cw status` left an empty `cw/` directory. The code was fixed; the wording was made exact |
 
 ## Progress

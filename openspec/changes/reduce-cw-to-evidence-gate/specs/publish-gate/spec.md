@@ -33,7 +33,7 @@ Source: `docs/hooks.md` (`cw gate install` today); proposal, What Changes.
 
 ### Requirement: Hooks of other tools
 
-`cw init` MUST NOT change or replace a hook file it did not write, and MUST NOT write any hook when `core.hooksPath` is set. It SHALL install the hooks that are free, exit 4, and print for each other hook the line that calls `cw hook <name>`, with the statement that this line must be the last command of that hook.
+`cw init` MUST NOT change or replace a hook file it did not write, and MUST NOT write any hook when `core.hooksPath` is set. It SHALL install the hooks that are free. For each other hook that does not yet call `cw hook <name>` it SHALL print the line that does, with the statement that this line must be the last command of that hook, and exit 4.
 
 Source: `docs/operations.md` exit status table (status 4, "`cw gate install` leaving a hook it did not write unchanged"); independent review of this draft, findings 3 and 4; proposal, Sources (git records the tree a later hook command staged; a relative `core.hooksPath` leaves a linked worktree without hooks).
 
@@ -46,6 +46,11 @@ Source: `docs/operations.md` exit status table (status 4, "`cw gate install` lea
 
 - **WHEN** `git config core.hooksPath .githooks` is set and `cw init` runs
 - **THEN** no file is created in `.githooks/` or in the `hooks` directory of the git directory, `cw init` exits 4, and the output holds one `cw hook` line for each of the three hooks
+
+#### Scenario: A shared hook that already calls `cw`
+
+- **WHEN** `pre-commit` was written by another tool and its last command is `cw hook pre-commit "$@"`, and `cw init` runs
+- **THEN** it exits 0, the SHA-256 of `pre-commit` is unchanged, and `cw status --json` holds `hooks` as `installed`
 
 #### Scenario: A formatter that runs before `cw` in a shared hook
 

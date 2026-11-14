@@ -70,7 +70,7 @@ name, for example `check-evidence`: Snapshot.
 | `cmd/cw/main.go` | 55 | Keep | Add SIGHUP to the two signals it traps today. | H2; `check-evidence`: Interrupted runs |
 | `internal/proc/` | 531 | Keep | Unchanged for Linux and macOS, and Windows code is added: on other systems it stops only the program itself today (`group_other.go`). It runs a program without a shell, in a process group of its own, and stops the whole group. It already reports the exit status when a leftover process holds the output open (L7); the core's runner has to use that status and print the warning. | `check-evidence`: Running checks, Leftover processes; `platform-support`: Supported systems |
 | `internal/fslock/` | 264 | Keep | Unchanged for Linux and macOS, and Windows code is added: on other systems it can take no lock today (`fslock_other.go`). File locks that a killed process cannot leave behind. | `check-evidence`: Damaged and concurrent records; `platform-support`: Supported systems |
-| `internal/cli/cli.go`, `exit.go`, `help.go` | 398 | Rewrite | The command root, for nine commands in place of twelve groups. The exit status numbers 0 to 5 keep their meaning. | `gate-reporting`: Exit statuses |
+| `internal/cli/cli.go`, `exit.go`, `help.go` | 398 | Rewrite | The command root, for ten commands in place of twelve groups. The exit status numbers 0 to 5 keep their meaning. | `gate-reporting`: Exit statuses |
 | `internal/cli/gate.go`, `hook_git.go`, `hook.go` | 1,112 | Rewrite | Become `cw init`, `cw uninstall`, `cw hook <name>` and `cw context`. Worth carrying over: the marker line that shows `cw` wrote a hook, the refusal to replace another tool's hook, exit status 4, and the reading of each host's hook input. New: hooks are written only in the common git directory, never when `core.hooksPath` is set, and `pre-push` reads the refs git passes. | `publish-gate`: Hook installation, Hooks of other tools, Push rule, Removal; M26 |
 | `internal/gate/gate.go`, `git.go`, `staged.go`, `staged_content.go` | 1,204 | Rewrite | The three hook decisions. Little of this code survives: it decides from task records and compares staged files one by one. The core compares two git trees. | `publish-gate`: Commit rule, Paths that differ, Merge rule, Fail closed, Denial message; C2, H1, L1 |
 | `internal/projectctx/capture.go`, `types.go` | 663 | Rewrite | The snapshot. Today `cw` reads and hashes every file itself, with a ceiling of 30,000 files and 64 MiB. The core asks git for the tree through a temporary index, with no ceiling. | `check-evidence`: Snapshot; C2, M5 |
@@ -133,7 +133,7 @@ the layer or from upstream.
 | `README.md` | Rewrite | Lead with the promise and the five commands. The first install instruction uses a release archive and needs no Go. State the limits. Claim no benefit until the observe-mode numbers exist. | C1, H6, M24, L13; Success measures 1, 4, 5; `platform-support`: Install without a toolchain |
 | `docs/quickstart.md` | Rewrite | The five-command start, executed by a test as today. | Success measure 1 |
 | `docs/hooks.md` (904 lines) | Rewrite | The three hooks, sharing a hook with another tool, the known limits. | `publish-gate`; proposal, Known limits |
-| `docs/operations.md` (1,946 lines) | Rewrite | The nine commands and the exit statuses. | M24; `gate-reporting` |
+| `docs/operations.md` (1,946 lines) | Rewrite | The ten commands and the exit statuses. | M24; `gate-reporting` |
 | `docs/evidence.md` | Rewrite | What a passing run proves and what it does not, then the measured numbers once they exist. | H7; Success measure 5 |
 | `docs/README.md` | Rewrite | The index. Today it omits the quick start and `hooks.md`. | M24 |
 | `SECURITY.md` | Rewrite | A guardrail, not a sandbox. No network. Which version is supported. | M24, L13; `check-evidence`: No network |
@@ -177,7 +177,7 @@ Test code is 109,209 lines, more than twice the code it tests.
 | Tests of cut code | 23,083 | Cut with their subject. |
 | Tests in the four split packages (`internal/cli`, `internal/gate`, `internal/projectctx`, `cmd/cw`) that their file name does not assign: 85 files | 32,077 | Each follows the code it tests. A test of rewritten code is rewritten. |
 
-The core's tests are written from the 144 scenarios of the six specifications.
+The core's tests are written from the 145 scenarios of the six specifications.
 Four of today's tests are worth reading first, because they drive real git:
 
 - `cmd/cw/quickstart_e2e_test.go` executes the quick start. Success measure 1

@@ -54,6 +54,9 @@ type Check struct {
 	Running bool
 	// Implied says that the check counts as passed on the base revision.
 	Implied bool
+	// decided says that a decisive run of this command exists on this
+	// content, whether or not it is recent enough to decide.
+	decided bool
 }
 
 // Verdict is the judgement of one tree.
@@ -188,7 +191,9 @@ func Judge(ctx context.Context, repo *gitx.Repo, st *store.Store, tree string, n
 			check.State, check.Deciding = NotRun, nil
 			warnings = append(warnings, fmt.Sprintf("the record %s cannot be read (%v); `%s` does not count as run on this content until it runs again", d.Path, d.Err, c.ID))
 		}
-		if check.State == NotRun && check.Deciding == nil && len(damaged) == 0 && len(warnings) == 0 && base.implies(c, check.Key) {
+		// The base implies a check only when the check has no decisive run
+		// of its own on this content, however old.
+		if check.State == NotRun && !check.decided && len(damaged) == 0 && len(warnings) == 0 && base.implies(c, check.Key) {
 			check.State, check.Implied = Satisfied, true
 		}
 		verdict.Warnings = append(verdict.Warnings, warnings...)
@@ -205,6 +210,7 @@ func Judge(ctx context.Context, repo *gitx.Repo, st *store.Store, tree string, n
 // days and not later than now.
 func (c *Check) decide(records []store.Record, now time.Time) []string {
 	deciding, last := c.pick(records)
+	c.decided = deciding != nil
 	if deciding == nil || (last != nil && last.Seq > deciding.Seq) {
 		c.Last = last
 	}

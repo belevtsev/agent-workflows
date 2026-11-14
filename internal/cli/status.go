@@ -99,7 +99,7 @@ func (s *session) statusReport(ctx context.Context, verdict *evidence.Verdict) (
 		report.Checks = append(report.Checks, entry)
 	}
 	if report.Hooks != gate.Installed {
-		report.Warnings = append(report.Warnings, "git does not run the hooks of cw in this clone, so nothing is gated here; run `cw init`")
+		report.Warnings = append(report.Warnings, hooksMissing)
 	}
 	indexTree, err := s.repo.IndexTree(ctx, s.store.Tmp())
 	if err != nil {

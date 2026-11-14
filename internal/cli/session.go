@@ -59,6 +59,10 @@ func (s *session) warn(warnings []string) {
 	}
 }
 
+// hooksMissing is the warning of every command that reports the state of
+// the gate.
+const hooksMissing = "the hooks of cw are not installed in this clone, so git gates nothing here; run `cw init`"
+
 // more says how many items a list left out.
 func more(n int) string {
 	if n <= 0 {

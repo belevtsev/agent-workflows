@@ -170,6 +170,11 @@ func (r *Run) Finish(ctx context.Context, update func(*Record)) (Record, error) 
 	return r.record, nil
 }
 
+// release gives up the lock of the run and removes its file. A lock file
+// is as a rule never removed, because a second process could then lock a
+// new file of the same name. Here the name belongs to this run alone, and a
+// reader that finds the lock free or gone reads the record again before it
+// calls the run interrupted.
 func (r *Run) release() {
 	_ = r.lock.Close()
 	_ = os.Remove(filepath.Join(r.store.keyDir(r.record.ID, r.record.ContentKey), r.record.RunID+".lock"))

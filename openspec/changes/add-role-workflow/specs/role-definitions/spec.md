@@ -111,7 +111,7 @@ Source: `skills/task-orchestration/references/hosts.md` ("Never silently move th
 
 ### Requirement: Write limits
 
-Each role SHALL change only the paths the table below gives it. `cw roles check <role> --from <tree> [--task <task>]` SHALL compare the snapshot with that tree, exit 0 when every path that differs is within the role's limit, and otherwise exit 5 and list each path outside it.
+Each role SHALL change only the paths the table below gives it. `cw roles check <role> --from <tree> [--task <task>]` SHALL compare the snapshot with that tree, exit 0 when every path that differs is within the role's limit, and otherwise exit 5 and list each path outside it. It SHALL warn, as `cw status` does, when git does not run the hooks of `cw` in this clone.
 
 | Role | May change |
 | --- | --- |
@@ -152,6 +152,11 @@ Source: review finding H6 (independence is one sentence in a prompt, and nothing
 
 - **WHEN** `cw-roles.toml` is removed, `src/app.txt` is edited, and `cw roles check developer --from T0` runs
 - **THEN** it exits 1 and says that `cw-roles.toml` must name the test paths under `[paths]`
+
+#### Scenario: A clone in which nothing is gated
+
+- **WHEN** `cw init` has not run in `demo` and `cw roles check reviewer --from T0` runs with nothing changed
+- **THEN** it exits 0 and warns that the hooks are not installed, naming `cw init`
 
 ### Requirement: Roles without a writing tool
 
