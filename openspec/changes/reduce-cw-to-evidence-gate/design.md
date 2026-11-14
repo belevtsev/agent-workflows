@@ -317,7 +317,8 @@ record is written.
   Codex command for Windows uses the commands of `cmd.exe`: it goes to the
   root of the session's drive and then to the Windows folder before it runs
   `cw`, so that a relative entry of `PATH`, also one such as `D:tools`,
-  leads there and not into the repository. When `cmd.exe` finds no `cw` it
+  leads there and not into the repository; a session that starts in the root
+  of a drive is the one case this does not cover. When `cmd.exe` finds no `cw` it
   can run, the command runs no other program and prints the line when the
   session's directory holds `cw.toml`. The text an agent reads lives in `cw`, not in
   the hook file.

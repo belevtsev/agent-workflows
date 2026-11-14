@@ -233,6 +233,33 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 				})
 			}
 		}
+		// And the session still gets what `cw context` prints. Where cmd.exe
+		// finds no cw behind an empty first entry, the session is told that
+		// cw is not installed, as for a missing cw.
+		for _, command := range codexWindowsCommands(t)["SessionStart"] {
+			for _, way := range cmdWays {
+				t.Run("SessionStart with the installed cw/"+way+"/PATH="+first, func(t *testing.T) {
+					notice := codexNotice("SessionStart", repo.Dir)
+					result := runCmd(t, way, repo.Dir, installed, command, notice)
+					if result.Code != 0 {
+						t.Errorf("exit status %d, want 0:\n%s", result.Code, result.Output())
+					}
+					if exists(marker) {
+						t.Errorf("the command ran a program of the repository")
+					}
+					said := strings.Contains(result.Stdout, "cw is not installed")
+					control := runCmd(t, way, neutral, installed, askCmd, notice)
+					switch found := strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw "); {
+					case found && (said || strings.TrimSpace(result.Stdout) == ""):
+						t.Errorf("cmd.exe finds cw through this PATH, and the command did not print what `cw context` prints:\n%s", result.Output())
+					case !found && first != "":
+						t.Errorf("cmd.exe finds no cw through this PATH:\n%s", control.Output())
+					case !found && !said:
+						t.Errorf("cmd.exe finds no cw through this PATH, and the command did not say that cw is not installed:\n%s", result.Output())
+					}
+				})
+			}
+		}
 	}
 }
 
