@@ -12,12 +12,85 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A tag is released only when its commit is on main and a CI run for
+  # exactly that commit passed. internal/repocheck tests the script.
+  guard:
+    name: Commit is on main and passed CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the tagged commit with the history of main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Refuse a commit that is not on main or did not pass CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: sh .github/scripts/release-guard.sh "$GITHUB_SHA"
+
+  # The same tools and versions as the jobs of ci.yml.
+  verify:
+    name: Test, lint and vulnerabilities
+    needs: guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      GOWORK: 'off'
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Go with dependency cache
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test with the race detector
+        run: go test -race -count=1 ./...
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+      - name: Lint the darwin build
+        env:
+          GOOS: darwin
+        run: golangci-lint run ./...
+      - name: Lint the windows build
+        env:
+          GOOS: windows
+        run: golangci-lint run ./...
+      - name: Install pinned govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Check reachable vulnerabilities
+        run: govulncheck ./...
+      - name: Check reachable vulnerabilities in the darwin build
+        env:
+          GOOS: darwin
+        run: govulncheck ./...
+      - name: Check reachable vulnerabilities in the windows build
+        env:
+          GOOS: windows
+        run: govulncheck ./...
+
+  # Only this job can write: it publishes the release and the attestations.
   release:
     name: Publish cw for ${{ github.ref_name }}
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       GOWORK: 'off'
     steps:
@@ -31,9 +104,12 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Test before publishing
-        run: go test -count=1 ./...
-      - name: Build and publish archives and checksums
+      # goreleaser runs syft to make one SBOM per archive.
+      - name: Install pinned syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.55.0
+      - name: Build and publish archives, SBOMs and SHA256SUMS
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
@@ -41,3 +117,9 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      - name: Attest the build of each archive
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
