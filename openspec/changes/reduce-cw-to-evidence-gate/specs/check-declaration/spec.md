@@ -24,7 +24,7 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
   run = ["sh", "lint.sh"]
   ```
 
-- "Refused" means the command exits 1, prints the reason, and writes nothing.
+- "Refused" means the command exits 1, prints the reason, and writes nothing: it leaves no new or changed file or directory in the working tree, in the home directory or in the git directory. Objects that git stores while `cw` takes a snapshot of uncommitted content are not counted.
 
 ## ADDED Requirements
 

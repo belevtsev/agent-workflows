@@ -165,10 +165,12 @@ cw/tmp/                                  index copies
   once, shared, belongs to a dead `cw`; it is reported as `interrupted`. No
   command waits for a lock of another run.
 - **Satisfied.** Among the records in the directory of the check and the
-  content key that hold the same `run` and `paths`, ended `passed`, `failed`
-  or `timed_out`, and ended neither more than 30 days ago nor later than now,
-  the one with the highest `seq` decides; of two with the same `seq`, the one
-  that did not pass.
+  content key that hold the same `run` and `paths` and ended `passed`,
+  `failed` or `timed_out`, the one with the highest `seq` is the most recent;
+  of two with the same `seq`, the one that did not pass. It decides only when
+  it ended neither more than 30 days ago nor later than now. An older record
+  never decides in its place, so a pass cannot return because a later
+  failure aged out or carries a wrong date.
 - **A record that cannot be read** makes its check not satisfied for that
   content, with a warning that names the file. The next run of the check on
   that content that ends decisively renames the file to `<name>.damaged`,
@@ -185,8 +187,40 @@ cw/tmp/                                  index copies
   waiting; a busy lock skips the clean-up.
 - **Decision line.** `time`, `hook`, `mode`, `tree`, `outcome` (`allowed` or
   `denied`), `ref` for a push, `checks` (the state of each check that was not
-  satisfied) or `cause` (`no_declaration`, `invalid_declaration`, `tree`,
-  `store`, `internal`).
+  satisfied: `failed`, `not_run` or `timed_out`) or `cause` (`no_declaration`,
+  `invalid_declaration`, `tree`, `store`, `internal`).
+- **Index copies.** A copy lives in `cw/tmp/` only while git works on it. The
+  command that made it removes it and then removes `cw/tmp/` and `cw/` when
+  they are left empty, so a command that only reads leaves no directory
+  behind. A writer that finds its directory gone creates it again.
+- **Statistics.** `cw stats` reads every run record and the decision lines of
+  the period. `--since` takes a number and a unit: `90m`, `36h`, `7d`, `2w`;
+  the default is 30 days. `cw stats --json` prints one object:
+
+  ```json
+  {
+    "since": "2026-11-07T10:00:00Z",
+    "until": "2026-11-14T10:00:00Z",
+    "runs": { "unit": { "passed": 6, "failed": 2 }, "lint": { "passed": 7 } },
+    "pass_after_failure": { "unit": 1 },
+    "decisions": [
+      { "hook": "pre-commit", "mode": "enforce", "outcome": "allowed", "count": 5 },
+      { "hook": "pre-commit", "mode": "enforce", "outcome": "denied", "count": 3,
+        "reasons": { "failed": 2, "not_run": 1 },
+        "checks": { "failed": { "unit": 2 }, "not_run": { "unit": 1, "lint": 1 } } },
+      { "hook": "pre-commit", "mode": "observe", "outcome": "denied", "count": 1,
+        "reasons": { "failed": 1 }, "checks": { "failed": { "unit": 1 } } }
+    ],
+    "unreadable": 0
+  }
+  ```
+
+  `decisions` holds one entry for each hook, mode and outcome that occurred.
+  `reasons` counts a denial once under each state its unsatisfied checks had,
+  or under its cause; `checks` counts per state how often each check was not
+  satisfied. `pass_after_failure` counts, per check, the passing runs whose
+  previous decisive run on the same content key, with the same `run` and
+  `paths`, did not pass. A run belongs to the period when it ended in it.
 
 ## Running a check
 

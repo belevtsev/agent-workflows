@@ -141,15 +141,16 @@ usage; and the arithmetic of the token fixture.
 | 14 Nov 2026 | `publish-gate`: Push rule | One scenario added: an annotated tag | Challenge finding 10 |
 | 14 Nov 2026 | `gate-reporting`: Status; new requirement Gate state | The index file is not rewritten (one scenario); `cw status` reports hooks git does not run (two scenarios) | Challenge findings 12 and 7 |
 | 14 Nov 2026 | Part 1 totals | 54 requirements and 144 scenarios, from 53 and 136 | The rows above |
+| 14 Nov 2026 | `check-declaration`: fixture, the meaning of "Refused" | "Writes nothing" now says what it covers: no new or changed file or directory in the working tree, the home directory or the git directory; objects git stores for a snapshot are not counted | Three scenario tests failed because a refused `cw run` and `cw status` left an empty `cw/` directory. The code was fixed; the wording was made exact |
 
 ## Progress
 
 | Milestone | State | Commit | Evidence |
 | --- | --- | --- | --- |
 | M1 | done | `4fff8ad` | The two change folders and this plan are on the branch. No pull request: publishing is the owner's. |
-| M2 | done | this commit | Local, Linux: `go build`, `go vet`, `go test -race` pass; 2,216 files hold the same blob under `_quarantine/`; `cw version` exits 0 and `cw nosuch` exits 2; `claude plugin validate .` passes. Task 2.4 is written but not ticked: its check is a CI run. |
-| M3 | not started | | |
-| M4 | not started | | |
+| M2 | done | `cb59433` | Local, Linux: `go build`, `go vet`, `go test -race` pass; 2,216 files hold the same blob under `_quarantine/`; `cw version` exits 0 and `cw nosuch` exits 2; `claude plugin validate .` passes. Task 2.4 is written but not ticked: its check is a CI run. |
+| M3 | done, Linux only | `df3f3b5`, tests in the commit after it | Local, Linux: the 62 scenarios of tasks 5.3 to 5.5 each have a test, written from the specifications by agents that did not read the code. 58 pass; 3 need Windows and are skipped; 1 waits ten minutes and runs only with `CW_SLOW_TESTS=1`, and has never run. Three tests failed first (a refused command left an empty `cw/` directory); the code was fixed. Tasks 3.x to 5.x are not ticked where their check names the three systems. |
+| M4 | built, tests being written | the commit after `df3f3b5` | Local, Linux, by hand in a demo repository: an unchecked commit is denied and a checked one recorded; a commit that leaves a file out names the file; a push of a commit made around the hook is denied; a push of another branch says where to run `cw run`; a tag on a commit the remote has, a new branch at that commit and a deletion go through; observe mode prints one line; a missing `cw` and an unreadable store deny; `cw uninstall` removes the hooks and the store. |
 | M5 | not started | | |
 | M6 | not started | | |
 | M7 | not started | | |

@@ -204,23 +204,7 @@ func Judge(ctx context.Context, repo *gitx.Repo, st *store.Store, tree string, n
 // the one that did not pass. It decides when it ended within the last 30
 // days and not later than now.
 func (c *Check) decide(records []store.Record, now time.Time) []string {
-	var deciding, last *store.Record
-	for i := range records {
-		r := &records[i]
-		if !slices.Equal(r.Run, c.Run) || !slices.Equal(r.Paths, c.Paths) {
-			continue
-		}
-		switch {
-		case r.Running:
-			c.Running = true
-		case !store.Decisive(r.Outcome):
-			if last == nil || r.Seq > last.Seq {
-				last = r
-			}
-		case deciding == nil || r.Seq > deciding.Seq || (r.Seq == deciding.Seq && r.Outcome != store.Passed):
-			deciding = r
-		}
-	}
+	deciding, last := c.pick(records)
 	if deciding == nil || (last != nil && last.Seq > deciding.Seq) {
 		c.Last = last
 	}
@@ -243,4 +227,27 @@ func (c *Check) decide(records []store.Record, now time.Time) []string {
 		c.State = TimedOut
 	}
 	return nil
+}
+
+// pick finds, among the runs of this command and these paths, the decisive
+// run whose end was recorded last and the last run that decides nothing. It
+// also notes a run that is still executing.
+func (c *Check) pick(records []store.Record) (deciding, last *store.Record) {
+	for i := range records {
+		r := &records[i]
+		if !slices.Equal(r.Run, c.Run) || !slices.Equal(r.Paths, c.Paths) {
+			continue
+		}
+		switch {
+		case r.Running:
+			c.Running = true
+		case !store.Decisive(r.Outcome):
+			if last == nil || r.Seq > last.Seq {
+				last = r
+			}
+		case deciding == nil || r.Seq > deciding.Seq || (r.Seq == deciding.Seq && r.Outcome != store.Passed):
+			deciding = r
+		}
+	}
+	return deciding, last
 }

@@ -39,10 +39,11 @@ type Decision struct {
 // decision; a lock keeps two hooks from writing into each other's line.
 func (s *Store) Record(ctx context.Context, d Decision) error {
 	dir := filepath.Join(s.Dir, "decisions")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	var lock *fslock.Lock
+	err := inDir(dir, func() (err error) {
+		lock, err = fslock.Acquire(ctx, filepath.Join(dir, "write.lock"), fslock.Options{Wait: 5 * time.Second})
 		return err
-	}
-	lock, err := fslock.Acquire(ctx, filepath.Join(dir, "write.lock"), fslock.Options{Wait: 5 * time.Second})
+	})
 	if err != nil {
 		return err
 	}

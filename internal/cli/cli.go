@@ -33,6 +33,10 @@ func commands() []command {
 		{"add", "<id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]", "Append one check to cw.toml", runAdd},
 		{"run", "[<id>...] [--force] [--base <rev>]", "Execute the declared checks that have no passing run on this content", runRun},
 		{"status", "[--json]", "Say whether a commit of the working tree would be allowed, and what is missing", runStatus},
+		{"stats", "[--since <period>] [--json]", "Count the runs and the hook decisions this repository recorded", runStats},
+		{"context", "", "Print what an agent should know at the start of a session here", runContext},
+		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", runHook},
+		{"uninstall", "", "Remove the hooks cw wrote and its records; cw.toml stays", runUninstall},
 		{"version", "", "Print the version, the revision and the build time", runVersion},
 	}
 }

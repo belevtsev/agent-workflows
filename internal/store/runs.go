@@ -84,14 +84,16 @@ type Run struct {
 // process that died.
 func (s *Store) Begin(ctx context.Context, record Record) (*Run, error) {
 	dir := s.keyDir(record.ID, record.ContentKey)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	var lock *fslock.Lock
+	err := inDir(dir, func() (err error) {
+		lock, err = fslock.Acquire(ctx, filepath.Join(dir, record.RunID+".lock"), fslock.Options{Wait: fslock.NoWait})
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
 	if err := os.MkdirAll(filepath.Join(s.Dir, "logs"), 0o755); err != nil {
-		return nil, err
-	}
-	lock, err := fslock.Acquire(ctx, filepath.Join(dir, record.RunID+".lock"), fslock.Options{Wait: fslock.NoWait})
-	if err != nil {
+		_ = lock.Close()
 		return nil, err
 	}
 	record.Log = "logs/" + record.RunID + ".log"
@@ -101,6 +103,23 @@ func (s *Store) Begin(ctx context.Context, record Record) (*Run, error) {
 		return nil, err
 	}
 	return run, nil
+}
+
+// inDir creates the directory and then does the work in it. A command that
+// only reads removes the directories it leaves empty, and the sweep removes
+// empty directories of old runs; when that happens between the two steps
+// they are repeated.
+func inDir(dir string, work func() error) error {
+	var err error
+	for range 5 {
+		if err = os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		if err = work(); !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return err
 }
 
 // Record is the record as it was last written.

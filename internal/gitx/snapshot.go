@@ -69,6 +69,11 @@ func (r *Repo) IndexTree(ctx context.Context, tmp string) (string, error) {
 // modification time of the original. git re-reads a file whose time is not
 // older than the index; with a newer time on the copy it would trust a file
 // that was edited in the second it was staged.
+//
+// The cleanup removes the copy and then tmp and its parent when they are
+// left empty, so that a command which only reads leaves no directory behind.
+// An empty file next to the copy keeps another process from removing the
+// directory while git still works in it.
 func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 	source := os.Getenv("GIT_INDEX_FILE")
 	if source == "" {
@@ -76,27 +81,34 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 	} else if !filepath.IsAbs(source) {
 		source = filepath.Join(r.dir, source)
 	}
-	if err := os.MkdirAll(tmp, 0o700); err != nil {
-		return "", nil, err
-	}
 	var suffix [8]byte
 	if _, err := rand.Read(suffix[:]); err != nil {
 		return "", nil, err
 	}
 	path = filepath.Join(tmp, fmt.Sprintf("index-%d-%s", os.Getpid(), hex.EncodeToString(suffix[:])))
+	hold := path + ".hold"
+	if err := holdDir(tmp, hold); err != nil {
+		return "", nil, err
+	}
 	cleanup = func() {
 		_ = os.Remove(path)
 		_ = os.Remove(path + ".lock")
+		_ = os.Remove(hold)
+		// Both fail, as they should, when the directory still holds something.
+		_ = os.Remove(tmp)
+		_ = os.Remove(filepath.Dir(tmp))
 	}
 	data, err := os.ReadFile(source)
 	if errors.Is(err, fs.ErrNotExist) {
 		return path, cleanup, nil // no index yet: git starts from an empty one
 	}
 	if err != nil {
+		cleanup()
 		return "", nil, err
 	}
 	info, err := os.Stat(source)
 	if err != nil {
+		cleanup()
 		return "", nil, err
 	}
 	if err := os.WriteFile(path, data, 0o600); err != nil {
@@ -108,6 +120,21 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 		return "", nil, err
 	}
 	return path, cleanup, nil
+}
+
+// holdDir creates the directory and an empty file in it. Another process may
+// remove the empty directory between the two steps, so they are repeated.
+func holdDir(dir, file string) error {
+	var err error
+	for range 5 {
+		if err = os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		if err = os.WriteFile(file, nil, 0o600); !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return err
 }
 
 // indexEntry is one line of `git ls-files -s -v -z`.
