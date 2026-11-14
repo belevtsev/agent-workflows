@@ -46,20 +46,20 @@ func Line(name string) string {
 }
 
 // Script is the hook file cw writes. It is a POSIX shell script, which is
-// also what Git for Windows runs. It runs cw only by an absolute path, so an
-// empty or relative entry of PATH cannot make it run a file of the
-// repository; without such a cw it denies.
+// also what Git for Windows runs. It looks for cw only in the entries of PATH
+// that are absolute paths, so an empty or relative entry cannot make it run a
+// file of the repository, whatever form the shell gives to what it finds;
+// without such a cw it denies.
 func Script(name string) string {
 	return strings.Join([]string{
 		"#!/bin/sh",
 		marker,
-		"cw=$(command -v cw 2>/dev/null)",
-		"case \"$cw\" in",
-		"/*) exec " + ownLine + name + " \"$@\" ;;",
-		"\"\") echo \"cw: the cw program was not found on PATH, so this " + name + " cannot be judged and is denied.\" >&2",
-		"  echo \"cw: the install instruction is at " + InstallURL + "\" >&2 ;;",
-		"*) echo \"cw: PATH names cw as $cw, which is not an absolute path, so this " + name + " cannot be judged and is denied. Remove the empty or relative entry from PATH.\" >&2 ;;",
-		"esac",
+		"dirs=; IFS=:; set -f",
+		`for dir in $PATH; do case "$dir" in /*) dirs="${dirs:+$dirs:}$dir" ;; esac; done; unset IFS; set +f`,
+		`cw=$([ -n "$dirs" ] && PATH=$dirs && command -v cw 2>/dev/null)`,
+		`case "$cw" in /*) exec ` + ownLine + name + ` "$@" ;; esac`,
+		`echo "cw: the cw program was not found in an entry of PATH that is an absolute path, so this ` + name + ` cannot be judged and is denied. An empty or relative entry is not searched." >&2`,
+		`echo "cw: the install instruction is at ` + InstallURL + `" >&2`,
 		"exit 3",
 		"",
 	}, "\n")

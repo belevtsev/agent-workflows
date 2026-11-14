@@ -1,7 +1,9 @@
 package gate
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -34,12 +36,12 @@ func TestScript(t *testing.T) {
 		if !strings.HasPrefix(script, "#!/bin/sh\n") {
 			t.Errorf("%s does not begin with #!/bin/sh", name)
 		}
-		for _, want := range []string{marker, "exit 3", InstallURL, "command -v cw", "not found", "not an absolute path"} {
+		for _, want := range []string{marker, "exit 3", InstallURL, "command -v cw", "absolute path"} {
 			if !strings.Contains(script, want) {
 				t.Errorf("the %s script lacks %q:\n%s", name, want, script)
 			}
 		}
-		if !strings.Contains(script, `/*) exec "$cw" hook `+name+` "$@" ;;`+"\n") || callLine(script, name) == "" {
+		if !strings.Contains(script, `case "$cw" in /*) exec "$cw" hook `+name+` "$@" ;; esac`+"\n") || callLine(script, name) == "" {
 			t.Errorf("the %s script does not run cw hook by an absolute path:\n%s", name, script)
 		}
 		if strings.Contains(script, "exec cw ") {
@@ -370,7 +372,76 @@ func TestUninstallNamesTheLineTheFileHolds(t *testing.T) {
 	if err != nil || len(foreign) != 1 {
 		t.Fatalf("Uninstall = %v, %v; want the changed file named", foreign, err)
 	}
-	if want := `/*) exec "$cw" hook pre-push "$@" ;;`; foreign[0].Line != want || !strings.Contains(readFile(t, edited), want) {
+	if want := `case "$cw" in /*) exec "$cw" hook pre-push "$@" ;; esac`; foreign[0].Line != want || !strings.Contains(readFile(t, edited), want) {
 		t.Errorf("Uninstall names the line %q, want %q, which the file holds", foreign[0].Line, want)
+	}
+}
+
+// The hook file runs cw only from an entry of PATH that is an absolute path,
+// in every shell: bash started as sh, which is the sh of macOS, gives an
+// absolute path also for a file it found through an empty or relative entry.
+func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("runs the hook file with a POSIX shell and plants an executable script")
+	}
+	shells := map[string]string{}
+	if sh, err := exec.LookPath("sh"); err == nil {
+		shells["sh"] = sh
+	}
+	if bash, err := exec.LookPath("bash"); err == nil {
+		shells["bash"] = bash
+		shells["bash as sh"] = filepath.Join(t.TempDir(), "sh")
+		if err := os.Symlink(bash, shells["bash as sh"]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	work := t.TempDir()
+	planted := filepath.Join(work, "planted-ran")
+	for _, dir := range []string{work, filepath.Join(work, "rel")} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "cw"), []byte("#!/bin/sh\necho ran > '"+planted+"'\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	installed := t.TempDir()
+	ran := filepath.Join(installed, "installed-ran")
+	if err := os.WriteFile(filepath.Join(installed, "cw"), []byte("#!/bin/sh\necho \"$@\" > '"+ran+"'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook := filepath.Join(t.TempDir(), "pre-commit")
+	if err := os.WriteFile(hook, []byte(Script("pre-commit")), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(shell, path string) (int, string) {
+		command := exec.Command(shell, hook, "an argument")
+		command.Dir, command.Env = work, []string{"PATH=" + path}
+		output, err := command.CombinedOutput()
+		var exit *exec.ExitError
+		if err != nil && !errors.As(err, &exit) {
+			t.Fatal(err)
+		}
+		return command.ProcessState.ExitCode(), string(output)
+	}
+	for label, shell := range shells {
+		for _, path := range []string{"", ":", ".", "rel", ":/nowhere", ".:/nowhere", "rel:/nowhere", "/nowhere:"} {
+			code, output := run(shell, path)
+			if code != 3 || !strings.Contains(output, "absolute path") || !strings.Contains(output, InstallURL) {
+				t.Errorf("%s, PATH=%q: exit status %d, want 3 and the reason:\n%s", label, path, code, output)
+			}
+			if exists(planted) {
+				t.Fatalf("%s, PATH=%q: the hook ran a cw that no absolute entry of PATH holds", label, path)
+			}
+		}
+		for _, path := range []string{installed, ":" + installed, ".:rel:" + installed} {
+			if err := os.RemoveAll(ran); err != nil {
+				t.Fatal(err)
+			}
+			code, output := run(shell, path)
+			if code != 0 || strings.TrimSpace(readFile(t, ran)) != "hook pre-commit an argument" || exists(planted) {
+				t.Errorf("%s, PATH=%q: exit status %d; want the installed cw run with `hook pre-commit an argument` and no other:\n%s", label, path, code, output)
+			}
+		}
 	}
 }

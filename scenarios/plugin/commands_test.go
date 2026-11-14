@@ -41,15 +41,41 @@ func noticeFor(event, dir string) map[string]any {
 	return notice
 }
 
-// shells are the shells a hook command is run with here: sh, and bash where
-// it is installed, which Claude Code names in its hook file.
-func shells(t *testing.T) []string {
+// shells are the shells a hook command is run with here, by label: sh; bash
+// where it is installed, which Claude Code names in its hook file; and bash
+// started as sh, which is the sh of macOS. That one runs in POSIX mode,
+// where `command -v` gives an absolute path also for a file it found through
+// an empty or relative entry of PATH.
+func shells(t *testing.T) map[string]string {
 	t.Helper()
-	found := []string{"sh"}
-	if _, err := exec.LookPath("bash"); err == nil {
-		found = append(found, "bash")
+	found := map[string]string{"sh": "sh"}
+	if bash, err := exec.LookPath("bash"); err == nil {
+		found["bash"] = "bash"
+		asSh := filepath.Join(t.TempDir(), "sh")
+		if err := os.Symlink(bash, asSh); err != nil {
+			t.Fatal(err)
+		}
+		found["bash as sh"] = asSh
 	}
 	return found
+}
+
+// toolFolder is a folder that holds git, bash and sh, which the hook
+// commands need, and no cw. sh is the program of that name on this machine,
+// or bash, as on macOS.
+func toolFolder(t *testing.T, sh string) string {
+	t.Helper()
+	bin := t.TempDir()
+	for name, program := range map[string]string{"git": "git", "bash": "bash", "sh": sh} {
+		path, err := exec.LookPath(program)
+		if err != nil {
+			continue
+		}
+		if err := os.Symlink(path, filepath.Join(bin, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return bin
 }
 
 // Requirement "Instruction text comes from `cw`", scenario "A program named
@@ -63,41 +89,33 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 	if err := os.Chmod(repo.Path("cw"), 0o755); err != nil { //nolint:gosec // the planted cw must be executable
 		t.Fatal(err)
 	}
-	// A folder that holds what the commands need and no cw.
-	bin := t.TempDir()
-	for _, program := range []string{"git", "sh", "bash"} {
-		path, err := exec.LookPath(program)
-		if err != nil {
-			continue
-		}
-		if err := os.Symlink(path, filepath.Join(bin, program)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, path := range []string{":" + bin, "." + string(os.PathListSeparator) + bin} {
-		env := withPath(repo.Env(), path)
-		// The shell finds the planted file, so a command that ran what
-		// `command -v` gives would run it.
-		probe := exec.Command("sh", "-c", "command -v cw")
-		probe.Dir, probe.Env = repo.Dir, env
-		if out, _ := probe.Output(); strings.TrimSpace(string(out)) == "" {
-			t.Fatalf("with PATH=%s the shell does not find the planted cw, so the test proves nothing", path)
-		}
-		for _, h := range hostFiles {
-			for _, shell := range shells(t) {
-				for _, e := range hookEvents[:2] {
-					t.Run(h.host+"/"+shell+"/"+e.event+"/PATH="+strings.ReplaceAll(path, bin, "bin"), func(t *testing.T) {
-						result := runHooksIn(t, shell, repo.Dir, env, hookCommands(t, h.file, e.event, e.selector), noticeFor(e.event, repo.Dir))
-						if result.Code != 0 {
-							t.Errorf("the %s command exited %d, want 0:\n%s", e.event, result.Code, result.Output())
-						}
-						if _, err := os.Stat(marker); err == nil {
-							t.Errorf("the %s command ran the file cw of the repository", e.event)
-						}
-						if e.event == "PreToolUse" && strings.TrimSpace(result.Stdout) != "" {
-							t.Errorf("the PreToolUse command printed, want nothing:\n%s", result.Stdout)
-						}
-					})
+	for _, innerSh := range []string{"sh", "bash"} {
+		bin := toolFolder(t, innerSh)
+		for _, first := range []string{"", "."} {
+			env := withPath(repo.Env(), first+string(os.PathListSeparator)+bin)
+			// The shell finds the planted file, so a command that ran what
+			// `command -v` gives would run it.
+			probe := exec.Command("sh", "-c", "command -v cw")
+			probe.Dir, probe.Env = repo.Dir, env
+			if out, _ := probe.Output(); strings.TrimSpace(string(out)) == "" {
+				t.Fatalf("with PATH=%s%c<tools> the shell does not find the planted cw, so the test proves nothing", first, os.PathListSeparator)
+			}
+			for _, h := range hostFiles {
+				for label, shell := range shells(t) {
+					for _, e := range hookEvents[:2] {
+						t.Run(h.host+"/"+label+"/"+e.event+"/PATH="+first+":tools with "+innerSh+" as sh", func(t *testing.T) {
+							result := runHooksIn(t, shell, repo.Dir, env, hookCommands(t, h.file, e.event, e.selector), noticeFor(e.event, repo.Dir))
+							if result.Code != 0 {
+								t.Errorf("the %s command exited %d, want 0:\n%s", e.event, result.Code, result.Output())
+							}
+							if _, err := os.Stat(marker); err == nil {
+								t.Errorf("the %s command ran the file cw of the repository", e.event)
+							}
+							if e.event == "PreToolUse" && strings.TrimSpace(result.Stdout) != "" {
+								t.Errorf("the PreToolUse command printed, want nothing:\n%s", result.Stdout)
+							}
+						})
+					}
 				}
 			}
 		}

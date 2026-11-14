@@ -39,8 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- The hook files and every command of the plugin run `cw` only by an absolute path from `PATH`; an empty or relative
-  entry denies. The plugin's commands always exit 0, so an older `cw` blocks no tool call ([hooks](docs/hooks.md)).
+- The hook files and every command of the plugin look for `cw` only in the entries of `PATH` that are absolute paths;
+  an empty or relative entry is not searched. Run `cw init` again in a clone to get the new hook file.
+- The plugin's commands always exit 0, so an older `cw` blocks no tool call ([hooks](docs/hooks.md)).
 - A hook counts as calling `cw` only on a line that is no comment. In a `core.hooksPath` directory `cw uninstall`
   removes only a file that is exactly its own script, and it prints how many hooks it removed.
 - A submodule entry counts in the content key of every check with `paths`. A pattern that names a folder is an invalid

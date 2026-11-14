@@ -262,12 +262,14 @@ record is written.
 ## Hooks
 
 - **The hook file** is a POSIX shell script with a marker line that shows `cw`
-  wrote it. It runs `"$cw" hook <name> "$@"` only when `command -v cw` gives
-  an absolute path, so an empty or relative entry of `PATH` cannot make it run
-  a file of the repository. When `cw` is not found it prints that and where the
-  install instruction is; when `PATH` names it by a relative path it prints
-  that and says to remove the entry; both exit 3. Git for Windows runs the
-  same file in its own shell.
+  wrote it. It looks for `cw` only in the entries of `PATH` that are absolute
+  paths, and runs `"$cw" hook <name> "$@"` with what it finds there, so an
+  empty or relative entry of `PATH` cannot make it run a file of the
+  repository. It does not judge by the form of what `command -v` prints: bash
+  in POSIX mode, which is the `sh` of macOS, prints an absolute path also for
+  a file found through `.`. When no such entry holds `cw` it says so, names
+  the install instruction and exits 3. Git for Windows runs the same file in
+  its own shell.
 - **`cw uninstall`** removes, in `hooks/` of the common git directory, each of
   the three files that holds the marker, and in a directory that
   `core.hooksPath` names only a file that is exactly the script of `cw`. A file
@@ -306,8 +308,8 @@ record is written.
 
 ## Plugin
 
-- **Session start.** The hook command is shell text: when `cw` is on `PATH`
-  by an absolute path it runs `cw context --host <host>`, which reads the
+- **Session start.** The hook command is shell text: when an entry of `PATH`
+  that is an absolute path holds `cw`, it runs `cw context --host <host>`, which reads the
   `cwd` of the host's notice; otherwise, when the root of the repository holds
   `cw.toml`, it prints one line that says so and names the install
   instruction. The Codex command for Windows does the same with the commands

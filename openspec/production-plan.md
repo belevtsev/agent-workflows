@@ -191,7 +191,7 @@ role texts (R). They reported 93 findings. Each has one outcome:
 
 | # | Finding | Outcome | What was done |
 | --- | --- | --- | --- |
-| S1 | With an empty or relative entry in `PATH`, a hook ran `./cw` of the repository. | resolved | The hook files and every plugin command run `cw` only by an absolute path; the Windows command of Codex tells `cmd.exe` not to search the working directory. |
+| S1 | With an empty or relative entry in `PATH`, a hook ran `./cw` of the repository. | resolved | The hook files and every plugin command look for `cw` only in the entries of `PATH` that are absolute paths (see F6 below for the first fix, which did not hold on macOS); the Windows command of Codex tells `cmd.exe` not to search the working directory. |
 | S2 | A pattern with many `**` took exponential time. | resolved | The matcher is linear; a test compares it with the recursive meaning. |
 | S3 | The documents called CI a backstop against a weakened `cw.toml`. | resolved | `SECURITY.md` and `docs/operations.md` say that CI runs what the pushed `cw.toml` declares, and that the file is protected by review. |
 | S4 | The guard missed `cw uninstall`, `cw init --observe`, an edit of `.git/config`, the wrappers `timeout`, `exec`, `nohup`, `eval`, a link to `cw.toml`, a write into the store through the shell, and another repository named by an absolute path. | resolved; two cases in documents | All but the last two are asked about. A redirection in a shell command and a file of another repository are listed as misses in `docs/operations.md`: the guard is a reminder, the git hooks decide. |
@@ -315,7 +315,7 @@ for A12 and U15.
 #### Found while the fixes were tested
 
 Three helpers then wrote the tests, the scenarios and the documents for these fixes without
-having written the code. They found five more defects. Each is resolved:
+having written the code. They and their tests found six more defects. Each is resolved:
 
 | # | Defect | What was done |
 | --- | --- | --- |
@@ -324,6 +324,7 @@ having written the code. They found five more defects. Each is resolved:
 | F3 | `cw change check` failed on this repository: no task of part 2 named the requirement "Notices as the host gives them", which the fixes had added. | Task 4.2 of part 2 names it. |
 | F4 | `cw tokens record` created its folders `0755`, against finding S10. | They are created `0700`; `internal/tokens`, `TestRecordKeepsItsFoldersPrivate`. |
 | F5 | For a copy of `cw`'s own hook file that was changed since, `cw uninstall` printed a line the file does not hold. | It prints the file's own line that calls `cw`; `internal/gate`, `TestUninstallNamesTheLineTheFileHolds`. |
+| F6 | The fix for S1 did not hold on macOS. It ran `cw` only when `command -v cw` printed an absolute path, and the `sh` of macOS (bash 3.2 in POSIX mode) prints one also for a file found through an empty or relative entry. Found by the new tests in the first CI run that reached them on macOS. | The hook file and the plugin commands leave every entry of `PATH` that is not an absolute path out before they look. Tests run the hook file and the plugin commands in bash started as `sh`, which behaves as on macOS, so Linux holds the rule too; `internal/gate`, `TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH`. |
 
 ## Changes to the specifications during the build
 
@@ -362,6 +363,7 @@ having written the code. They found five more defects. Each is resolved:
 | 14 Nov 2026 | `platform-support`: Programs on Windows; part 1, task 4.7 | A program named without a folder is found in the folders of `PATH` only; a program given as a path is read from the repository root; the file is started by its full path. Before, the text said "as the system does" | Defect F1 above: Windows, and Go for it, look in the working directory first, which let a file of the repository stand in for a program of `PATH` or made Go refuse the check |
 | 14 Nov 2026 | `publish-gate`: Removal | `cw uninstall` prints "the line of it that holds the call", not "the line to remove from it" | Defect F5 above |
 | 14 Nov 2026 | Part 1 proposal, Open Question 11 | Under Codex on Windows the start of a session now prints the line that says `cw` is not installed; the row of this table that says it prints no line is out of date | Defect F2 above |
+| 14 Nov 2026 | `publish-gate`: Fail closed; `agent-integration`: Instruction text comes from `cw`; part 1 design, Hooks and Plugin | The hook file and the plugin "look for `cw` only in the entries of `PATH` that are absolute paths". Before, they ran what `command -v cw` printed when that was an absolute path, and denied "a `cw` that `PATH` names by a relative path". One message now covers a `cw` that is not installed and one that only an empty or relative entry holds; the scenario "An empty or relative entry of `PATH`" expects it | Defect F6 above |
 
 ## Progress
 

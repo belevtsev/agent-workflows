@@ -199,8 +199,8 @@ func TestAnEmptyOrRelativeEntryOfPATHRunsNoFileOfTheRepository(t *testing.T) {
 		if after := g.head(); after != before {
 			t.Errorf("PATH starts with %q: git recorded a commit", first)
 		}
-		if !strings.Contains(output.String(), "not an absolute path") {
-			t.Errorf("PATH starts with %q: the output does not say that cw is not an absolute path:\n%s", first, output.String())
+		if !strings.Contains(output.String(), "not found in an entry of PATH that is an absolute path") {
+			t.Errorf("PATH starts with %q: the output does not say that no absolute entry of PATH holds cw:\n%s", first, output.String())
 		}
 		if _, err := os.Stat(marker); err == nil {
 			t.Errorf("PATH starts with %q: the hook ran the file cw of the repository", first)

@@ -33,7 +33,7 @@ The plugin of this repository runs `cw tokens record` from two hooks of the host
 | Codex (`hooks/codex-hooks.json`) | `SubagentStop` | `cw tokens record --host codex` | 30 s |
 | Codex (`hooks/codex-hooks.json`) | `SessionEnd` | `cw tokens record --host codex` | 3 s |
 
-Each command runs `cw` only when `command -v cw` gives an absolute path, and ends with exit
+Each command looks for `cw` only in the entries of `PATH` that are absolute paths, and ends with exit
 status 0 whatever `cw` returns, so a failure of `cw` never stops a role or a turn. On Windows the
 Codex command runs `cw tokens record --host codex` with no check for `PATH`, tells `cmd.exe` not to
 look in the working directory, and ends with `exit /b 0`.

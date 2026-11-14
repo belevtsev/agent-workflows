@@ -2,6 +2,7 @@ package evidence_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -74,12 +75,11 @@ func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 	t.Parallel()
 	repo := cwtest.Demo(t)
 	pidFile := filepath.Join(t.TempDir(), "pids")
-	// The program starts a second program; both write their process id and
-	// neither ends for 600 seconds.
-	repo.Write("tree.ps1", "$child = Start-Process -PassThru -NoNewWindow -FilePath powershell -ArgumentList '-NoProfile','-Command','Start-Sleep 600'\n"+
-		"Set-Content -Path '"+pidFile+"' -Value \"$PID $($child.Id)\"\n"+
-		"Start-Sleep 600\n")
-	declare(t, repo, "[[check]]\nid = \"tree\"\ntimeout = \"2s\"\nrun = [\"powershell\", \"-NoProfile\", \"-ExecutionPolicy\", \"Bypass\", \"-File\", \"tree.ps1\"]\n")
+	// The program starts a second program, writes both process ids, and
+	// neither ends for 600 seconds. It is a compiled program, not a script:
+	// under load PowerShell alone can take longer to start than the timeout.
+	program := buildProgram(t, "tree", treeProgram)
+	declare(t, repo, "[[check]]\nid = \"tree\"\ntimeout = \"2s\"\nrun = [\""+filepath.ToSlash(program)+"\", \""+filepath.ToSlash(pidFile)+"\"]\n")
 
 	result, took := runLimited(t, repo, 60*time.Second, "run", "tree")
 
@@ -102,4 +102,52 @@ func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 	if t.Failed() {
 		t.Logf("output (exit status %d):\n%s", result.Code, result.Output())
 	}
+}
+
+// treeProgram starts itself a second time, writes the process ids of both to
+// the file its first argument names, and then both wait for 600 seconds.
+const treeProgram = `package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"time"
+)
+
+func main() {
+	if len(os.Args) > 2 {
+		time.Sleep(600 * time.Second)
+		return
+	}
+	child := exec.Command(os.Args[0], "second", "program")
+	if err := child.Start(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	ids := fmt.Sprintf("%d %d", os.Getpid(), child.Process.Pid)
+	if err := os.WriteFile(os.Args[1], []byte(ids), 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	time.Sleep(600 * time.Second)
+}
+`
+
+// buildProgram compiles a main package of one file and returns the program.
+func buildProgram(t *testing.T, name, source string) string {
+	t.Helper()
+	dir := t.TempDir()
+	src := filepath.Join(dir, name+".go")
+	if err := os.WriteFile(src, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, name+".exe")
+	build := exec.Command("go", "build", "-o", out, src)
+	build.Dir = dir
+	build.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building %s: %v\n%s", name, err, output)
+	}
+	return out
 }

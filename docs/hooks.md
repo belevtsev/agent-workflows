@@ -133,47 +133,46 @@ with mode 0755. This is `pre-commit`:
 ```sh
 #!/bin/sh
 # cw-hook: written by `cw init`. `cw uninstall` removes this file.
-cw=$(command -v cw 2>/dev/null)
-case "$cw" in
-/*) exec "$cw" hook pre-commit "$@" ;;
-"") echo "cw: the cw program was not found on PATH, so this pre-commit cannot be judged and is denied." >&2
-  echo "cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install" >&2 ;;
-*) echo "cw: PATH names cw as $cw, which is not an absolute path, so this pre-commit cannot be judged and is denied. Remove the empty or relative entry from PATH." >&2 ;;
-esac
+dirs=; IFS=:; set -f
+for dir in $PATH; do case "$dir" in /*) dirs="${dirs:+$dirs:}$dir" ;; esac; done; unset IFS; set +f
+cw=$([ -n "$dirs" ] && PATH=$dirs && command -v cw 2>/dev/null)
+case "$cw" in /*) exec "$cw" hook pre-commit "$@" ;; esac
+echo "cw: the cw program was not found in an entry of PATH that is an absolute path, so this pre-commit cannot be judged and is denied. An empty or relative entry is not searched." >&2
+echo "cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install" >&2
 exit 3
 ```
 
 - The second line is the marker. A hook file that holds it was written by `cw`;
   `cw init` replaces it when its text differs or it cannot be executed. A file
   without the marker belongs to another tool.
-- The script runs `cw` only when `command -v cw` gives an absolute path. An
-  empty or a relative entry of `PATH`, such as `.`, would let the hook run a
-  file named `cw` from the repository; the script then denies instead. When
-  `cw` is not found at all, it denies and names the install instruction.
+- The script looks for `cw` only in the entries of `PATH` that are absolute
+  paths. An empty or a relative entry, such as `.`, would let the hook run a
+  file named `cw` from the repository, so the script leaves such entries out
+  before it asks the shell where `cw` is. It does not go by the form of the
+  shell's answer: the `sh` of macOS answers with an absolute path also for a
+  file it found through `.`. When no absolute entry holds `cw`, the script
+  denies and names the install instruction.
 - The hooks are written into `hooks/` of the common git directory, the one git
   uses for every linked worktree.
 - The script finds `cw` on `PATH` at the time git runs the hook. The decision
   is made by the installed `cw`, so a new `cw` takes effect without a new
   `cw init`.
 - On Windows the code writes the same file; Git for Windows runs hooks in its
-  own shell. This has not been run on Windows.
+  own shell. The tests run it there in CI, with git started from PowerShell
+  and from `cmd.exe`. Nobody has tried it there by hand.
 
 ## When cw is not on PATH
 
 The hook denies. git records or sends nothing, and the hook prints:
 
 ```text
-cw: the cw program was not found on PATH, so this pre-commit cannot be judged and is denied.
+cw: the cw program was not found in an entry of PATH that is an absolute path, so this pre-commit cannot be judged and is denied. An empty or relative entry is not searched.
 cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install
 ```
 
-When the first `cw` that `PATH` names is found through an empty or relative
-entry, the hook denies as well. With `PATH=:/usr/bin:/bin` and a file `cw` in
-the root of the repository, it prints:
-
-```text
-cw: PATH names cw as cw, which is not an absolute path, so this pre-commit cannot be judged and is denied. Remove the empty or relative entry from PATH.
-```
+It prints the same when a `cw` could be found only through an empty or
+relative entry: with `PATH=:/usr/bin:/bin` and an executable file `cw` in the
+root of the repository, that file is not run.
 
 A clone with the hooks and without `cw` cannot commit or push until `cw` is
 installed or the hooks are removed. [The README](../README.md#install) has the
@@ -317,15 +316,18 @@ worktree warns, and `cw status --json` reports `hooks` as `missing`.
   files, the refs and the configuration. A process that writes there, or a
   person who edits a hook, can defeat it. The gate is a guardrail against a
   mistake, not a defence against someone who decides to go around it.
-- On Windows, where the code treats every file as executable, the hook file
-  and the commands of the agent plugin have not been run.
+- On Windows the code treats every file as executable. There the tests in CI
+  run the hook file and the Windows commands of the Codex plugin, and skip
+  the plugin commands that are written for `sh`. Nobody has tried any of it
+  there by hand, and no agent host was started there.
 
 ## Hooks of the agent plugin
 
 The plugin for Claude Code and Codex adds hooks of the agent host. They do not
 decide about commits or pushes; the git hooks do. The gate works without the
-plugin. Each command runs `cw` only when `command -v cw` gives an absolute path,
-does nothing otherwise, except at the start of a session, and always exits 0,
+plugin. Each command looks for `cw` only in the entries of `PATH` that are
+absolute paths, as the hook file does, does nothing when none holds it, except
+at the start of a session, and always exits 0,
 so a missing or an older `cw` blocks no tool call.
 
 | Host event | Claude Code (`hooks/hooks.json`) | Codex (`hooks/codex-hooks.json`) |
@@ -351,7 +353,9 @@ so a missing or an older `cw` blocks no tool call.
   wrapped in `sh -c`. Under Codex on Windows the file names `commandWindows`
   for each event, which sets `NoDefaultCurrentDirectoryInExePath=1`, so that
   `cmd.exe` does not look for `cw` in the working directory, and ends with
-  `exit /b 0`. Neither has been run on Windows.
+  `exit /b 0`. Tests run these Windows commands with `cmd.exe /C` on Windows
+  in CI. The commands for `bash` and `sh` are tested on Linux and macOS only:
+  on Windows the hosts run them in Git Bash, which the tests do not set up.
 - `hooks/codex-hooks.json` is named in `.codex-plugin/plugin.json`. The plugin
   manifest of Claude Code, `.claude-plugin/plugin.json`, names no hooks file;
   Claude Code reads `hooks/hooks.json` of a plugin by default.

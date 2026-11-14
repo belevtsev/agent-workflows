@@ -260,7 +260,7 @@ Source: proposal, Success measure 2; review finding M4 (0.41 s per load inside t
 
 ### Requirement: Fail closed
 
-When an enforcing hook cannot establish that the content is verified, it SHALL deny with exit status 3 and name the cause. This covers a tree it cannot compute, a missing or invalid declaration, a store it cannot read, and an internal error. An installed hook SHALL deny, with an instruction to install `cw`, when `cw` is not on `PATH`, and SHALL deny, without running it, a `cw` that `PATH` names by a relative path. A denial of a tree without `cw.toml` SHALL name the documents about such a tree.
+When an enforcing hook cannot establish that the content is verified, it SHALL deny with exit status 3 and name the cause. This covers a tree it cannot compute, a missing or invalid declaration, a store it cannot read, and an internal error. An installed hook SHALL look for `cw` only in the entries of `PATH` that are absolute paths, and SHALL deny, with an instruction to install `cw`, when none of them holds it. A denial of a tree without `cw.toml` SHALL name the documents about such a tree.
 
 Source: review finding C2 (`internal/taskflow/find.go:254-256` skips a record whose digest cannot be computed); `SECURITY.md` (the gate fails open by design today); second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), finding S1 and U1.
 
@@ -293,7 +293,7 @@ Source: review finding C2 (`internal/taskflow/find.go:254-256` skips a record wh
 #### Scenario: An empty or relative entry of `PATH`
 
 - **WHEN** the first entry of `PATH` is empty or `.`, no other entry holds `cw`, the repository root holds an executable file `cw`, and `git commit -a -m change` runs
-- **THEN** git records nothing, the output says that `cw` is not an absolute path, and the file `cw` of the repository is not run
+- **THEN** git records nothing, the output says that `cw` was not found in an entry of `PATH` that is an absolute path, and the file `cw` of the repository is not run
 ### Requirement: Denial message
 
 A denial SHALL name each check that is not satisfied with its state, which is not run on this content, failed or timed out, and with the log of the deciding run when there is one. It SHALL say to fix the log first when a check failed or timed out, SHALL end with the command that produces the missing evidence, and SHALL say where to run it when the working tree holds other checked content. It MUST NOT name `--no-verify`, a setting or any other way to skip the gate.

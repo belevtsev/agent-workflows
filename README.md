@@ -79,7 +79,7 @@ in PowerShell, for your user:
 [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\cw", "User")
 ```
 
-The hooks run `cw` only by an absolute path from `PATH`; see
+The hooks look for `cw` only in the entries of `PATH` that are absolute paths; see
 [hooks](docs/hooks.md#when-cw-is-not-on-path).
 
 **With Go.** `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-beta.1`

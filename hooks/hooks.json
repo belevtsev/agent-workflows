@@ -7,7 +7,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" context --host claude;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; c=$([ -n \"$p\" ] && PATH=$p && command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" context --host claude;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true",
             "timeout": 10
           }
         ]
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" guard --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; c=$([ -n \"$p\" ] && PATH=$p && command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" guard --host claude;; esac; true",
             "timeout": 10
           }
         ]
@@ -32,7 +32,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; c=$([ -n \"$p\" ] && PATH=$p && command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]
@@ -44,7 +44,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "c=$(command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; c=$([ -n \"$p\" ] && PATH=$p && command -v cw 2>/dev/null); case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]
