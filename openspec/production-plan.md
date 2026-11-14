@@ -49,21 +49,31 @@ asked for the work to go on alone. Each can be undone.
 
 ## What is left for the owner
 
-- Merging pull request 219, a tag, a release, and every repository setting.
-  The branch was pushed and the draft pull request opened on the owner's word.
+- A tag, a release, and every repository setting. The branch was pushed, the
+  draft pull request 219 opened, and the pull request merged, each on the
+  owner's word. The steps that are left, in order, are under "The release
+  candidate, and the merge" below. The first is a branch `workflow-v3` at the commit that
+  was the tip of `main` before the merge (task 1.2): the README and the
+  changelog say that the old workflow is kept there, and it does not exist.
 - Removing `_quarantine/` (task 11.1 of part 1).
-- Running anything with a model: the evaluation and the comparison with one
-  agent (part 2, group 7). Until then no document claims that the roles
-  improve anything.
+- Running the evaluation and the comparison with one agent (part 2, group 7).
+  A script ran the plugin and the roles in Claude Code on two small tasks
+  ([benchmarks](../docs/benchmarks.md)); that is neither of the two. Until
+  then no document claims that the roles improve anything.
 - The size limit of the gate's code. It holds 6,000 of 6,000 lines: 5,998 after
   the fixes of the second challenge and the removal of options nothing used,
   and two more in the test harness `internal/cwtest` for the fault F8
   (`go test ./internal/repocheck/ -run Size -v` prints the numbers). The next
   change to the gate needs a cut elsewhere, or the owner's word on the limit.
-- Confirming the behaviour by hand on macOS, on Windows and on Codex. The
-  branch is pushed, and pull request 219 is a draft. CI run 19, for commit
-  `3eaa40e`, passed on Linux, macOS and Windows. Nothing was run inside Claude
-  Code or Codex, and no model evaluation was run.
+- Confirming the behaviour by hand on macOS, on Windows and on Codex. CI run 19, for commit
+  `3eaa40e`, passed on Linux, macOS and Windows, and so did every later run up
+  to run 43645026158 for commit `3285c99`. Nothing was run inside
+  Codex, nothing in Claude Code with a person at the keyboard, and no model
+  evaluation was run.
+- Three settings of CI that only the owner can weigh: a limit for the hook
+  cost on Windows, where a decision takes 150 to 203 ms and none is set; the
+  limit of 150 ms on macOS, where one run measured 113 ms; and the race
+  detector on macOS and Windows, which runs only in a run started by hand.
 
 Tasks that stay open on 14 November 2026, by what they wait for:
 
@@ -86,7 +96,11 @@ file modes or a POSIX signal; `rg -n "t.Skip" internal scenarios` lists each
 skip with its reason. Of task 11.2 the test of the deciding step passes, and
 a local snapshot build with goreleaser 2.18.3 made six archives and a
 `SHA256SUMS` that lists each; the SBOM step was left out there, because syft
-is not installed on this machine.
+is not installed on this machine. CI now makes the same build with the SBOMs
+from every commit. Tasks 11.2 and 11.5 stay open: the last part of each check
+needs the release of task 11.4. The job of 11.5 exists and passes on the three
+systems with the archives CI built, and `install-test.sh` fails for a tag the
+README does not install.
 
 ## Milestones
 
@@ -104,6 +118,7 @@ Each ends in a commit and in something that can be tried.
 | M8 | Documents and self-use | part 1: groups 9 and 10; part 2: groups 5 and 6 | README, quick start, the test guide; this repository gates itself with `cw.toml` | Everything, by following `docs/try-it.md` |
 | M9 | Review against other tools, and the usage skill | part 1: 8.5, 8.6 | The findings of the review each have an outcome; the skill's examples are replayed by a test; the guard reads a command as words; the token readers are compared with real records | `docs/other-tools.md`, `skills/cw/`, and part 10 of `docs/try-it.md` |
 | M10 | Independent challenge, and the three systems | part 1: 1.4, 2.4, 3.4, 3.5, 4.4, 4.7, 6.2, 10.1 and the Tests tasks of groups 5 to 8 | Every finding of the advisers has an outcome; CI passes on Linux, macOS and Windows | The checks of pull request 219 |
+| M11 | Release candidate, a host and first numbers | part 1: the parts of 11.2 and 11.5 that need no release | CI builds the archives and installs from them without Go on the three systems; the plugin and the roles ran in Claude Code; the first benchmarks are written down | The artifact `cw-archives` of a CI run; `docs/benchmarks.md` |
 
 Order inside a milestone follows the task lists. A scenario that proves wrong
 is corrected in the specification first, and the correction is listed below
@@ -137,11 +152,12 @@ The work stops and waits for the owner when:
 
 ## Rollback
 
-Everything is on one branch, `feat/evidence-gate-and-roles`, in one worktree.
-The branch is pushed, and the draft pull request 219 shows it. `main` is
-unchanged, and no tag, release or repository setting was touched. Closing the
-pull request and removing the branch, here and on GitHub, and the worktree
-restores the state before this work.
+Everything was built on one branch, `feat/evidence-gate-and-roles`, in one
+worktree. On the owner's word in the night of 14 to 15 November 2026 pull request
+219 is merged into `main` with one merge commit, right after the commit that
+writes this sentence. The first parent of that merge commit is `3cbfb0d`, the
+tip of `main` before it; a revert of the merge commit on `main` restores the
+files of that state. No tag, release or repository setting was touched.
 
 ## Independent challenge
 
@@ -420,6 +436,114 @@ and reported six more points, all in what the corrections had written. Each is r
 | L19 | The new test of the command at the start of a session passed for any output that is not the line for a missing `cw`, and its control asked `cmd.exe` from another folder than the one the command runs `cw` in. | The test looks for the text of `cw context`, and the control asks from the Windows folder. |
 | L20 | The rows of M2 and M3 still said that their tasks are not ticked, and the row of M10 left out task 6.2. | The rows say when the tasks were ticked, and M10 lists 6.2. |
 
+### After the challenge: a release candidate, a host and first numbers
+
+On the evening of 14 November 2026 the owner asked for a release candidate, for benchmarks and
+for a report of the tokens spent, and was away until the morning. What was added, in the commits
+`1c399dd` to `3285c99`:
+
+| What | Evidence |
+| --- | --- |
+| CI builds the six release archives and their SBOMs from every commit (job `Release archives`), and follows the first install instruction of the README with them on Linux, macOS and Windows, on a `PATH` without Go, on Windows in both PowerShells (job `Install without Go`). A copy of the archive with one byte changed must be refused. | CI: run 43645026158, commit `3285c99`, every job passed. |
+| The text of a release is the section of the changelog (`.github/scripts/release-notes.sh`). | Local, Linux: `TestReleaseNotes`, ten cases, and `TestReleaseNotesOfThisRepository`. CI: the job `Release archives` builds with that text. |
+| `release.yml` refuses a tag that the README does not install, tells goreleaser the tag, keeps the release a draft until the attestation has passed, and then follows the install instruction against the published release on the three systems. | Not run: it needs a pushed tag. `goreleaser check` passes locally. |
+| `cw <command> --help` explains every argument and option (U10). | Local and CI: `TestHelpOfACommandExplainsEveryWordOfItsUsageLine`. |
+| `cw roles` prints the job of a role and what it may write below its row (the table of U15). | Local and CI: `TestTheTableFitsATerminal`. |
+| The cost test reports two parts of a decision alone: a hook file that only exits, and `cw version`. | CI: run 43642931023 on the three systems. On Windows the two starts take 30 of 167 ms; the rest is five `git` processes and the reading of the records. |
+| First numbers: the time of a commit, the time of each command against the size of a repository, and the tokens of an agent in four arms on two tasks. | `docs/benchmarks.md`, with the scripts under `docs/benchmarks/`. The timings are local, on Linux; the cost of a commit is from CI; the tokens are from sessions of Claude Code. |
+
+#### A review of the release and install steps
+
+An adviser that had not written them read the two scripts and both workflows, `release.yml` with
+special care because it cannot run before a tag exists. It reported no blocker, one major finding
+and five minor. All six are resolved in commit `a0f9971`.
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| V1, major | The install test changed one byte in the middle of the archive. That breaks the archive itself, so `tar` refused it, and the test passed even with the checksum line taken out of the README. | The changed byte leaves the archive unpackable: the system byte of the gzip header, and for the zip a byte of the time in the header of the first file. The test unpacks the changed copy first, so only the checksum step can refuse it. Local, Linux: with the checksum line removed the test fails. CI: run 43642931023 passed on the three systems, in both PowerShells. |
+| V2 | Nothing compared the pushed tag with the tag the README installs until the release was public. | The guard job refuses such a tag. Not run: it needs a pushed tag. |
+| V3 | The archives were attested after the release was public. | The release is a draft until the attestation has passed. Not run. |
+| V4 | goreleaser was not told which tag it releases, so a commit with two tags could be released under the other one. | The workflow gives it the pushed tag. The snapshot build of CI is told the tag the same way; the release was not run. |
+| V5 | `release-notes.sh` took a heading inside a fenced block for the end of the section, turned an image into a link to a page, and left three forms of link relative. | It skips fenced blocks, links an image to the raw file, and refuses a section with a reference link, a target in angle brackets or a target that starts with `www.`. Five more cases in `TestReleaseNotes`. |
+| V6 | `docs/development.md` said that step 2 of the release had run. | It says that no step of the release workflow has run. |
+
+#### The plugin and the roles in Claude Code
+
+A script started Claude Code 2.1.311 with `claude -p` in scratch repositories, six sessions
+with the plugin of this branch. No person took part, and nothing was run on Codex.
+
+- The plugin loaded: the session listed the seven roles and the skills `cw` and `task`. The text
+  of `cw context` reached the model at the start of the session.
+- A `git commit --no-verify` did not run: with nobody to ask, the host refused the command and gave
+  the reason of the guard.
+- In two gated repositories one agent ran `cw run` after its change and committed through the hook.
+- On a defect of a few lines the coordinator advised against the workflow and, told to take the
+  option it recommends, made the fix itself: no role started. Asked for the roles, it took the
+  small path: `quality-engineer`, `developer`, `reviewer` and `git` in that order, with
+  `cw roles check` after each, and one commit through the hook.
+- On a new function it took the full path: 16 starts of roles in 42 minutes, with two rounds of review for the specification and for the design, a record that `cw change check` accepts and `cw change status` calls `done`, and one commit through the hook. It ran `cw roles check` after 11 of the 16 starts and left it out after the five starts of `reviewer`.
+- Every role was answered by the model it was started with: `claude-opus-5-5` for `opus`,
+  `claude-sonnet-5-5` for `sonnet`. `lookup` was not started.
+- In each of the six sessions the total of `cw tokens` equalled the total the host reported.
+- The sessions cost 11.43 dollars at the host's list prices, on the owner's account, and left
+  their records under `~/.claude/projects/` in folders named after the scratch repositories.
+
+What this is not: the evaluation, or the comparison with one agent. One run stands behind each
+number, the tasks are a few lines each, and the script answered every question of the coordinator
+with one fixed approval.
+
+#### An outsider's read of the documents
+
+Before the documents were shown to anyone, an adviser read the README, the quick start, the
+benchmarks and the passages on the host as a first-time reader, and checked every number of the
+benchmarks against the raw data. Every number of the three tables matched. It reported nineteen
+findings, all in the words around the numbers, none a blocker. All are resolved in the commit
+that writes this section.
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| O1, major | The benchmarks said the start of `sh` and of `cw` is "a fifth of the decision or less". It is 23 in a hundred on Linux and 21 on macOS. | The sentence gives the three shares. |
+| O2, major | The benchmarks named a major review finding of the roles, Python's limit of 4,300 digits, in a way a reader takes for a caught defect. The plain agent's function behaves the same there. | The page says that the finding changed the specification and not what the code does. Checked on the three results. |
+| O3, major | The two results differ and the page did not say so: for an input that is not a text the result of the roles raises `TypeError`, the plain result `ValueError`, as the request says. The hidden tests give a text only. | The page says so. |
+| O4 | The share of cache reads was given as 88 to 93 in a hundred; one run has 87. | 87 to 93. |
+| O5 | Two values of "Where the time goes" were computed from rounded parts. | The table holds the values of the log with one decimal. |
+| O6 | "The number of `git` processes is what the Windows cost depends on most" was stated as measured. The rest of a decision was not split. | "Likely", and "not measured". |
+| O7 | The split of the tokens of the full path read as if every later round answered a finding, and left out `git`. | The page says what `cw tokens` counts as rework and what the later rounds were for, and names the tokens of `git`. |
+| O8 | `docs/roles.md` said the skill `task` ran in two sessions. It ran in three; roles started in two. | It says so. |
+| O9 | `docs/tokens.md` still said that nothing shows what the workflow costs more than one agent. | It points to the two tasks of the benchmarks. |
+| O10 | The benchmarks said the sessions ran on `opus`; the first trial ran on `claude-haiku-5-5`. | The benchmarks and `docs/tokens.md` name it. `docs/try-it.md` names no model and stays. |
+| O11 | The arms with the roles got the request without its last sentence, and the page read as if all arms got the same words. | The page says so. |
+| O12 | "2,503 files": the runs counted 2,505 and 2,508. | "About 2,500 files". |
+| O13 | The limits apply to the median; the page named a single decision above the limit without saying so. | It says so. |
+| O14 | "Four changed lines" of the fix was ambiguous. | Four lines added and one removed, against seven and two. |
+| O15 | The timings ran while an agent session ran on the same machine. | The page says so. They were not run again. |
+| O16 | The published script `tokens.py` is not the file that produced the numbers. | The page says that an earlier form of it did, with the same steps. |
+| O17 | "Each section names the commit and the machine" was not true of every section. | The sentence says what each section does name. |
+| O18 | The quick start said "this page cannot drift from the program"; the test executes its commands, not its output. | "The commands of this page". |
+| O19 | The index of the documents said of the evaluation "Not run", beside a recorded trial of the skill. | It says that no case was run and that one trial is recorded. |
+
+#### The release candidate, and the merge
+
+In the same night the owner said to merge. Pull request 219 is merged into `main` with one merge
+commit, after the commit that writes this section and after the required checks of that commit
+passed. The release candidate is the artifact `cw-archives` of the CI run of that merge commit
+on `main`: the six archives, their SBOMs, `SHA256SUMS` and the text of the release. `cw version`
+in them prints `cw v3.0.0-beta.1` and the merge commit. Nothing is published: no tag and no
+release exist.
+
+What is left to publish, for the owner:
+
+1. A branch `workflow-v3` at `3cbfb0d`, the tip of `main` before the merge and the first parent
+   of the merge commit (task 1.2).
+2. Removing `_quarantine/`, or the decision to keep it for now (task 11.1).
+3. After the CI run of the merge commit on `main` has passed: the tag `v3.0.0-beta.1` on that
+   commit, pushed (tasks 1.1 and 11.4). Another name needs the same name in the README, in
+   `SECURITY.md` and in the two plugin manifests first: the release workflow refuses a tag the
+   README does not install.
+4. Watching the workflow `Release`: it builds, attests, publishes, and then follows the install
+   instruction against the published release on the three systems. It has never run.
+5. The repository settings of task 11.3.
+
 ## Changes to the specifications during the build
 
 | Date | Where | What changed | Why |
@@ -476,6 +600,7 @@ and reported six more points, all in what the corrections had written. Each is r
 | M8 | done, except what needs the owner | `501ebd8` | Local, Linux: `README.md`, eleven documents under `docs/` with an index, and `docs/try-it.md`, whose parts 1 to 9 were run by hand with the output shown. The quick start is executed by a test. Tests of the documents: links and anchors resolve, the index names every document, no benefit is stated while the comparison table holds no numbers. `cw.toml` declares five checks. In a second clone of this branch at `501ebd8`, made in a scratch directory, `cw init` installed the hooks, `cw run` passed all five checks, a commit was allowed, a commit of changed content was denied and named the five checks, and a commit with a failing test was denied and named the check `test`. The owner's clone was not touched: it has no hooks of this `cw` and no records. The two writers of the reference documents compared the program with the design and reported eleven cases with a concrete failure and thirteen differences; all were settled in the code or in the design, and six got a test under `scenarios/messages`. Not done: the release workflow (task 11.2), the hook-cost test (10.1), the git observations as a test (3.5), and everything that needs CI, macOS, Windows, Codex or a model. |
 | M9 | done, not run on a host | the commit after `e50e20b` | Local, Linux. **Review:** four research agents read the sources listed in `docs/other-tools.md`; its author did not open them again. Each of 48 findings has an outcome: changed, already so, rejected or deferred. **Skill:** seven examples, each replayed by `TestSkillExamplesAreReplayed` against the `cw` under test; the replay found four places where a draft showed other output than `cw` prints. **Guard:** table tests and four scenario tests through both hook files. **Tokens:** `cw tokens record` and a separate script gave the same totals for 170 real records of Claude Code and for 13 real rollouts of Codex. **Model trial:** five runs of a subagent on Opus 5.5 in scratch repositories, three with the skill and two without, read back from the repositories: no run went around the gate; one run for each cell is not a measurement. `gofmt`, `go vet` and `golangci-lint` for three systems, `govulncheck`, `go test -race -count=1 ./...` in 27 packages, the specification and task lints, and `claude plugin validate .` pass. Not done: a run of the plugin on Claude Code or Codex, the trigger test of the skill, CI. |
 | M10 | done, not run on a host | `c5a88ef` to `3eaa40e` | **Review:** eight advisers, 93 findings, each with an outcome under "The second challenge"; nine more defects found while the fixes were tested, the last by a thorough CI run, all fixed; a ninth adviser on the final hook commands, five findings, all resolved, and one more point (H6) rejected against three CI runs; a tenth on the last tests and the closing documents, twenty findings in two passes, all resolved. **CI, run 19, commit `3eaa40e`:** every job passed: the tests on Linux, macOS and Windows, the lint and the vulnerability check for the three builds, the plugin manifests, and `cw run` on this repository. **CI, run 43638791541, started by hand on the same commit:** every job passed with the race detector on the three systems. **Local, Linux:** `go build`, `go vet` and `golangci-lint` for the three systems, `go test -race -count=1 ./...`, `cw change check` and `claude plugin validate .` pass. Nothing was run inside Claude Code or Codex, and nobody tried macOS or Windows by hand. |
+| M11 | done; the release itself not run | `1c399dd` to `3285c99` | **CI, run 43645026158, commit `3285c99`:** every job passed, with the release archives built and the install without Go followed on Linux, macOS and Windows. **Review:** one adviser on the release and install steps, six findings, all resolved; V2 to V4 can run only with a pushed tag. One more as a first-time reader of the documents, nineteen findings, all resolved; every number of the benchmarks matched the raw data. **Host:** six sessions of Claude Code 2.1.311 with the plugin, started by a script in scratch repositories; two of them ran roles. **Local, Linux:** the timings of `docs/benchmarks.md`, `go test -race -count=1 ./...`, `golangci-lint` for the three systems and `cw change check`. **Local, Linux, repeated:** `go test -race -count=20` on the scenarios and on `internal/gate`, `internal/cli` and `internal/roles` passed on `3285c99`. No tag and no release exist, nothing was run on Codex, and no person used the plugin. |
 
 ### The first run of CI
 

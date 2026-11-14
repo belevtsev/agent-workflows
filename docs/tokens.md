@@ -552,7 +552,8 @@ file in the page cache of the system. On built Claude Code session records it to
 cold disk was not timed.
 
 **In sessions of a host.** On the same day a script ran six sessions of Claude Code 2.1.311 with
-the plugin of this branch, in scratch repositories; [benchmarks](benchmarks.md#what-an-agent-spends)
+the plugin of this branch, in scratch repositories, one on `claude-haiku-5-5` and five on
+`claude-opus-5-5`; [benchmarks](benchmarks.md#what-an-agent-spends)
 describes them. The plugin's hooks gave `cw tokens record` the notices of the host.
 
 - In each session the total that `cw tokens` printed equalled the total of the host's own report
@@ -588,4 +589,5 @@ describes them. The plugin's hooks gave `cw tokens record` the notices of the ho
 
 The comparison with one agent working alone, on the same tasks, has not been run. It is defined in
 [the evaluation](evaluation.md#the-comparison-with-one-agent). Until it is, nothing here shows that
-the workflow saves tokens, costs a known amount more than one agent, or gives better code.
+the workflow saves tokens or gives better code. What it costs more than one agent is known for
+two small tasks only, with one run of each: [benchmarks](benchmarks.md#what-an-agent-spends).

@@ -363,8 +363,9 @@ Nothing was run on Codex: not the skill, not a role, not the hooks.
 ## What is not known
 
 - **The roles ran with a model in two sessions only.** On 14 November 2026 a script gave the
-  skill `task` one small task in each of two scratch repositories, in Claude Code 2.1.311, and
-  answered every question of the coordinator with one fixed approval.
+  skill `task` a small task in three sessions of Claude Code 2.1.311, on two tasks in scratch
+  repositories, and answered every question of the coordinator with one fixed approval. Roles
+  started in two of the three.
   [Benchmarks](benchmarks.md#what-an-agent-spends) holds what the roles did there and what they
   cost. Nobody answered the coordinator's questions on their merits, `lookup` was not started,
   and the cases of [the evaluation](evaluation.md) were not run. Two tasks do not show whether a

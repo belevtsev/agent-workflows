@@ -13,7 +13,7 @@ Start with the first two. The rest is reference.
 | [Roles](roles.md) | The seven roles, their models, what each may write, and `cw-roles.toml`. |
 | [The task workflow](workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `cw change`. |
 | [Tokens](tokens.md) | What `cw tokens` counts, what "workflow tokens" are, and when a count is unknown. |
-| [Evaluation](evaluation.md) | The cases only a model run can show, and the comparison with one agent. Not run. |
+| [Evaluation](evaluation.md) | The cases only a model run can show, and the comparison with one agent. No case was run; one first trial of the skill `cw` is recorded. |
 | [What other tools taught us](other-tools.md) | What users report about hook managers, agent guardrails, specification workflows and skills, with sources, and what `cw` did about each finding. |
 | [Development](development.md) | How to build, test and release `cw`. |
 

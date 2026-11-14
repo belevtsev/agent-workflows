@@ -1,8 +1,8 @@
 # Benchmarks
 
 What `cw` costs: in time for every commit, and in tokens for an agent that works with the gate
-or with the roles. Everything here was measured on 14 November 2026. Each section names the
-commit and the machine.
+or with the roles. Everything here was measured on 14 November 2026. Each section says where it
+was measured and on which commit or CI run.
 
 These are first measurements. Each table says how many runs stand behind it. None of them is the
 comparison that [the evaluation](evaluation.md#the-comparison-with-one-agent) defines, and none
@@ -28,8 +28,8 @@ the content up in its records. It executes no check.
 
 The test `scenarios/cost` measures that decision in CI on the three systems: the hook file started
 with `sh` as git starts it, from the start of `sh` to its exit. Each number is the median of 15
-decisions after one warm-up. The first number is for a copy of this repository (2,503 files,
-18 MiB), the second for a generated repository of 30,000 files and 68 MiB.
+decisions after one warm-up. The first number is for a copy of this repository (about 2,500
+files, 18 MiB), the second for a generated repository of 30,000 files and 68 MiB.
 
 | CI run | Linux, amd64 | macOS, arm64 | Windows, amd64 |
 | --- | --- | --- | --- |
@@ -41,9 +41,9 @@ decisions after one warm-up. The first number is for a copy of this repository (
 | Run 43641527063 | 15 ms, 27 ms | 113 ms, 64 ms | 203 ms, 215 ms |
 | Run 43642931023 | 13 ms, 33 ms | 77 ms, 78 ms | 167 ms, 183 ms |
 
-- The limits are 150 ms for this repository and 500 ms for the generated one. They hold on Linux
-  and macOS in every run. On macOS the first number went from 35 to 113 ms between runs, and one
-  decision of run 43641527063 took 294 ms.
+- The limits are 150 ms for this repository and 500 ms for the generated one. They apply to the
+  median, and hold on Linux and macOS in every run. On macOS the first number went from 35 to
+  113 ms between runs, and one decision of run 43641527063 took 294 ms.
 - On Windows the decision took 150 to 203 ms on this repository. No limit is set there; the test
   reports the number only.
 - The runners are shared machines. The spread between runs on one system is as large as the
@@ -59,18 +59,18 @@ a hook file that only exits, started with `sh` the same way, and `cw version`, s
 
 | On this repository | Linux | macOS | Windows |
 | --- | --- | --- | --- |
-| A hook file that only exits | 0.6 ms | 6 ms | 20 ms |
-| `cw version` | 2.4 ms | 10 ms | 11 ms |
-| The whole decision | 13 ms | 77 ms | 167 ms |
-| The rest: what the decision adds to the two starts | 10 ms | 61 ms | 136 ms |
+| A hook file that only exits | 0.6 ms | 6.3 ms | 19.9 ms |
+| `cw version` | 2.4 ms | 10.1 ms | 10.5 ms |
+| The whole decision | 13.0 ms | 76.8 ms | 167.0 ms |
+| The rest: what the decision adds to the two starts | 10.0 ms | 60.4 ms | 136.6 ms |
 
-- The start of `sh` and of `cw` is a fifth of the decision or less on every system. On Windows it
-  is 31 of 167 ms.
+- The start of `sh` and of `cw` is about a fifth of the decision on every system: 23 in a hundred
+  on Linux, 21 on macOS and 18 on Windows, where it is 30 of 167 ms.
 - The rest is the five `git` processes and the reading of the records. It was not split
   further. Divided by five it is 2 ms for each `git` on Linux, 12 ms on macOS and 27 ms on
   Windows.
-- So the number of `git` processes that a decision starts is what the Windows cost depends on
-  most. It was not reduced.
+- So the number of `git` processes that a decision starts is likely what the Windows cost
+  depends on most. That was not measured, and the number was not reduced.
 
 ## What cw costs against the size of a repository
 
@@ -93,8 +93,9 @@ Each number is the median of 11 calls after one warm-up, in milliseconds.
   about 2 ms: `cw` takes a snapshot of the working tree before and after the check. At 10,000
   files that is a third of a second, at 100,000 files one second. A check that takes a minute
   hides it; a check that takes a tenth of a second does not.
-- The numbers are from one machine and one run of the script. On a disk, and on macOS or
-  Windows, they will be higher; that was not measured.
+- The numbers are from one machine and one run of the script. While it ran, one agent session of
+  the next section ran on the same machine, which has twelve cores. On a disk, and on macOS or
+  Windows, the numbers will be higher; that was not measured.
 
 ## What an agent spends
 
@@ -116,7 +117,7 @@ Four arms:
 - **Gate.** The same request in a repository with `cw init`, its checks declared, and the plugin
   loaded.
 - **Roles.** The gated repository with a `cw-roles.toml`, and the request given to the skill
-  `task`. Whenever the session stopped before the task was committed, the script answered with
+  `task`, without that last sentence. Whenever the session stopped before the task was committed, the script answered with
   one fixed text: approved, take the option you recommend, and record it as my approval.
 - **Roles, asked.** As Roles, with one sentence more: take it through the roles, also if the
   change is small.
@@ -132,7 +133,7 @@ Four arms:
 | `slug` | Roles, asked | 683,341 | 13,535 | $0.72 | 2 min 19 s | 4 | pass |
 
 - **Tokens** are all four kinds the host counts: input, cache write, cache read and output.
-  Between 88 and 93 in a hundred are cache reads, because the host sends the conversation so far
+  Between 87 and 93 in a hundred are cache reads, because the host sends the conversation so far
   with every step.
 - **Cost** is what the host reported for the session (`total_cost_usd`), in dollars at its list
   prices of that day. It weighs the four kinds, so it compares two arms more fairly than the
@@ -161,8 +162,8 @@ Four arms:
   2 min 19 s, where the plain agent took $0.15 and 24 s: 4.7 times the cost.
 - `cw tokens` gives 68,428 of the 683,341 tokens to the writing of the test and the fix, and
   523,790 to the coordinator's own session.
-- The fix is four changed lines of `slug.go` in both runs with the skill `task`, and seven in the
-  two others.
+- The fix adds four lines to `slug.go` and removes one in both runs with the skill `task`. In
+  the two others it adds seven and removes two.
 
 ### The roles on new behaviour
 
@@ -176,20 +177,29 @@ Four arms:
 - `spec-writer` put twelve questions that the request leaves open, such as spaces, signs,
   upper-case units, a value of zero and an input that is not a text. The script answered "take
   the option you recommend". The plain agent settled the same points without a question.
+- The results differ in one of those points. For an input that is not a text, such as `None`,
+  the result of the roles raises `TypeError`: `spec-writer` recommended it and said that it
+  departs from the words of the request. The plain result raises `ValueError`, as the request
+  says. The hidden tests give a text only, so they do not see the difference.
 - The reviews of the specification and the design recorded eleven findings, two of them major.
   One: "no upper limit on numbers" contradicts the limit of 4,300 digits that Python sets when a
-  text becomes an int. The review of the code had no finding.
-- `cw tokens` gives 1,358,469 of the 6,950,768 tokens to the first writing of the specification,
-  the design, the tests and the code. 2,612,892 are the coordinator's own session, 1,340,770 the
-  reviews, and 1,616,273 the later rounds of `spec-writer`, `architect` and `developer`. The
-  three starts of `architect` took 2,182,552.
+  text becomes an int. The finding changed the specification, not what the code does: the plain
+  result and the result of the roles both return the value for 4,300 digits and raise
+  `ValueError` for 4,301. The review of the code had no finding.
+- `cw tokens` gives 1,358,469 of the 6,950,768 tokens to the first round of each writing stage.
+  2,612,892 are the coordinator's own session, 1,340,770 the reviews, 22,364 the commit by `git`,
+  and 1,616,273 every later round of `spec-writer`, `architect` and `developer`. `cw tokens`
+  counts a later round as rework whatever it was for: the second round of `spec-writer` wrote
+  the developer's answers in, and the second round of `developer` wrote the function, after a
+  first round that wrote its empty form for the tests. The three starts of `architect` took
+  2,182,552.
 - Both results pass the nine hidden tests. Nobody read the code of either, and whether the 62
   tests and the record are worth the difference was not judged.
 
 ### What the runs say about cw
 
 - **The token count.** Six sessions ran with the plugin: the five above with the gate or the
-  roles, and one first trial. In each, the total of `cw tokens` equalled the total the host
+  roles, and one first trial, which ran on `claude-haiku-5-5`. In each, the total of `cw tokens` equalled the total the host
   reported: 85,336, 143,383, 105,817, 283,000, 683,341 and 6,950,768 tokens. In the two sessions
   that used two models, the tokens of `git` equalled the host's total for `claude-sonnet-5-5`.
 - **The models.** Each of the 20 starts of roles was answered by the model the coordinator named
@@ -244,6 +254,8 @@ python3 docs/benchmarks/tokens.py "$(command -v cw)" "$PWD" roles slug /tmp/cw-t
 
 The arms are `plain`, `gate`, `roles` and `roles-asked`; the tasks are `duration` and `slug`. One
 call runs one arm on one task in a new repository under the last argument and prints one line.
+The numbers above were made with an earlier form of this script: the same steps, with the paths
+of one machine written into it.
 It spends tokens of the account that `claude` is logged in to: the table above says how many
 each arm took here. The hidden tests of a task run on what an arm committed:
 
