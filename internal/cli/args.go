@@ -48,7 +48,8 @@ func parseArgs(fs *flag.FlagSet, args []string) (parsed, error) {
 				p.help = true
 				return p, nil
 			}
-			return p, usagef("%s", strings.Replace(strings.TrimPrefix(err.Error(), "flag "), "provided but not defined", "unknown option", 1))
+			message := strings.Replace(strings.TrimPrefix(err.Error(), "flag "), "provided but not defined", "unknown option", 1)
+			return p, usagef("%s", asTyped(message, args))
 		}
 		args = fs.Args()
 		if len(args) == 0 {
@@ -58,4 +59,20 @@ func parseArgs(fs *flag.FlagSet, args []string) (parsed, error) {
 		args = args[1:]
 	}
 	return p, nil
+}
+
+// asTyped gives the unknown option of a message the dashes the user typed.
+// The flag package names every option with one dash.
+func asTyped(message string, args []string) string {
+	_, name, found := strings.Cut(message, "unknown option: -")
+	if !found {
+		return message
+	}
+	for _, arg := range args {
+		typed, _, _ := strings.Cut(arg, "=")
+		if typed == "--"+name {
+			return strings.Replace(message, "-"+name, typed, 1)
+		}
+	}
+	return message
 }

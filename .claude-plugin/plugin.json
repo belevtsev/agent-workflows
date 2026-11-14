@@ -1,7 +1,7 @@
 {
   "name": "agent-workflows",
   "version": "3.0.0-beta.1",
-  "description": "cw for Claude Code: tells the session that commits and pushes are gated on recorded passing checks, and asks before a command that would skip the gate.",
+  "description": "cw for Claude Code: tells the session that commits and pushes are gated on recorded passing checks, asks before a command that would skip the gate, ships seven roles and the skill `task` for a task workflow, and records the tokens a task used.",
   "author": {
     "name": "Pavlo Belevtsev",
     "url": "https://github.com/belevtsev"

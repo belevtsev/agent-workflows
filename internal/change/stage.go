@@ -44,6 +44,9 @@ type Report struct {
 	// NotAutomated counts the scenarios whose row names no test.
 	NotAutomated int     `json:"not_automated"`
 	Content      Content `json:"content"`
+	// BrokenRules counts the rules `cw change check` finds broken. A stage
+	// says how far the record is; only that count says whether it is valid.
+	BrokenRules int `json:"broken_rules"`
 }
 
 // Git is what the stage needs to know from git.
@@ -146,7 +149,7 @@ func Status(f *Folder, git Git) (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	report := &Report{Task: f.Task, Stage: StageDone, Missing: []string{}, Content: Content{Spec: spec, Design: design, Code: git.Code}}
+	report := &Report{Task: f.Task, Stage: StageDone, Missing: []string{}, Content: Content{Spec: spec, Design: design, Code: git.Code}, BrokenRules: len(problems)}
 	for _, s := range f.scenarios() {
 		if r, found := f.row(s.Name); found && !r.Automated() {
 			report.NotAutomated++

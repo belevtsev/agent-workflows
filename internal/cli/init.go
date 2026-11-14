@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/decl"
@@ -53,8 +54,12 @@ func runInit(ctx context.Context, cfg Config, args []string) error {
 	} else {
 		fmt.Fprintf(cfg.Out, "%s is kept as it is\n", decl.FileName)
 	}
-	if installed := installedHooks(foreign); len(installed) > 0 {
-		fmt.Fprintf(cfg.Out, "installed the hooks %s\n", strings.Join(installed, ", "))
+	own := gate.Own(ctx, s.repo)
+	if len(own) > 0 {
+		fmt.Fprintf(cfg.Out, "installed the hooks %s\n", strings.Join(own, ", "))
+	}
+	if shared := sharedHooks(own, foreign); len(shared) > 0 {
+		fmt.Fprintf(cfg.Out, "left as they are, because another tool wrote them and they call cw already: %s\n", strings.Join(shared, ", "))
 	}
 	if mode == store.Observe {
 		fmt.Fprintln(cfg.Out, "the gate observes: each hook records what it would have decided and allows the operation")
@@ -79,18 +84,17 @@ func createDeclaration(path string) (created bool, err error) {
 	return true, os.WriteFile(path, []byte(newDeclaration), 0o644)
 }
 
-func installedHooks(foreign []gate.Foreign) []string {
-	var installed []string
+// sharedHooks lists the hooks that cw neither wrote nor asks the user to
+// edit: another tool wrote them, and they call cw already.
+func sharedHooks(own []string, foreign []gate.Foreign) []string {
+	var shared []string
 	for _, name := range gate.Hooks {
-		left := false
-		for _, f := range foreign {
-			left = left || f.Name == name
-		}
-		if !left {
-			installed = append(installed, name)
+		left := slices.ContainsFunc(foreign, func(f gate.Foreign) bool { return f.Name == name })
+		if !left && !slices.Contains(own, name) {
+			shared = append(shared, name)
 		}
 	}
-	return installed
+	return shared
 }
 
 // printForeign tells the user which hooks cw left alone and the line to add

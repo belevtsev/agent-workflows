@@ -115,6 +115,23 @@ func Install(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error
 	return foreign, nil
 }
 
+// Own lists the hooks git runs in this clone whose file cw wrote, in the
+// order of Hooks. A hook of another tool is not among them, whether or not
+// it calls cw.
+func Own(ctx context.Context, repo *gitx.Repo) []string {
+	dir, _, err := repo.HooksDir(ctx)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, name := range Hooks {
+		if data, err := os.ReadFile(filepath.Join(dir, name)); err == nil && strings.Contains(string(data), marker) {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 // executable says whether git would run the file as a hook.
 func executable(path string) bool {
 	info, err := os.Stat(path)
@@ -145,12 +162,13 @@ func State(ctx context.Context, repo *gitx.Repo) string {
 	return Installed
 }
 
-// Uninstall removes the hook files cw wrote. A file of another tool that
-// still calls `cw hook` is left as it is and returned.
-func Uninstall(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err error) {
+// Uninstall removes the hook files cw wrote and says how many there were. A
+// file of another tool that still calls `cw hook` is left as it is and
+// returned.
+func Uninstall(ctx context.Context, repo *gitx.Repo) (removed int, foreign []Foreign, err error) {
 	dir, _, err := repo.HooksDir(ctx)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	dirs := []string{dir}
 	if own := filepath.Join(repo.CommonDir, "hooks"); own != dir {
@@ -164,12 +182,13 @@ func Uninstall(ctx context.Context, repo *gitx.Repo) (foreign []Foreign, err err
 			case readErr != nil:
 			case strings.Contains(string(data), marker):
 				if err := os.Remove(path); err != nil {
-					return nil, err
+					return removed, nil, err
 				}
+				removed++
 			case strings.Contains(string(data), "cw hook "+name):
 				foreign = append(foreign, Foreign{Name: name, Path: path})
 			}
 		}
 	}
-	return foreign, nil
+	return removed, foreign, nil
 }

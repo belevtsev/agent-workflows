@@ -28,6 +28,10 @@ type Start struct {
 	Task   string `json:"task,omitempty"`
 	Stage  string `json:"stage,omitempty"`
 	Round  int    `json:"round,omitempty"`
+	// Role is the role the host named in its notice. It is kept only when
+	// the record gives no label, so that a start whose record cannot be
+	// read still has its role.
+	Role string `json:"role,omitempty"`
 	// Known is false when the counts could not be read; Why says why.
 	Known  bool              `json:"known"`
 	Why    string            `json:"why,omitempty"`
@@ -40,6 +44,19 @@ type Notice struct {
 	Transcript      string `json:"transcript_path"`
 	AgentID         string `json:"agent_id"`
 	AgentTranscript string `json:"agent_transcript_path"`
+	// AgentType is the name of the role as the host knows it. A plugin's
+	// role has the plugin's name and a colon before its own.
+	AgentType string `json:"agent_type"`
+}
+
+// noticeRole is the role a notice names, or empty when it names none of the
+// roles of cw.
+func noticeRole(agentType string) string {
+	name := agentType[strings.LastIndexByte(agentType, ':')+1:]
+	if slices.Contains(roleOrder(), name) {
+		return name
+	}
+	return ""
 }
 
 var safeName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
@@ -60,10 +77,17 @@ func stem(path string) string {
 	return strings.TrimSuffix(base, filepath.Ext(base))
 }
 
-func start(host, session, agent, record string, r reading) Start {
+// start makes what is stored of one start. role is the role the notice
+// names; it is kept when the record gives no label.
+func start(host, session, agent, record, role string, r reading) Start {
 	s := Start{Version: 1, Host: host, Session: session, Agent: agent, Record: record, Known: r.why == "", Why: r.why, Models: r.models}
-	if label, ok := ParseLabel(r.brief); ok && agent != SessionAgent {
+	if agent == SessionAgent {
+		return s
+	}
+	if label, ok := ParseLabel(r.brief); ok {
 		s.Task, s.Stage, s.Round = label.Task, label.Stage, label.Round
+	} else {
+		s.Role = role
 	}
 	return s
 }
@@ -94,10 +118,16 @@ func Record(dir, host string, notice Notice) error {
 		if agent == "" {
 			agent = stem(notice.AgentTranscript)
 		}
-		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, read(notice.AgentTranscript)))
+		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, noticeRole(notice.AgentType), read(notice.AgentTranscript)))
+	} else if notice.AgentID != "" {
+		// The host says that a role ended and names no record of it: the
+		// start is kept, with unknown tokens, so that no sum leaves it out
+		// in silence.
+		unread := reading{why: "the notice names no record of the role"}
+		starts = append(starts, start(host, session, "agent-"+notice.AgentID, "", noticeRole(notice.AgentType), unread))
 	}
 	if notice.Transcript != "" {
-		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, read(notice.Transcript)))
+		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, "", read(notice.Transcript)))
 	}
 	if len(starts) == 0 {
 		return errors.New("the notice names no record")

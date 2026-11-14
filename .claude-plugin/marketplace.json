@@ -10,7 +10,7 @@
     {
       "name": "agent-workflows",
       "source": "./",
-      "description": "Session context for the cw gate, and a question before a command that would skip it.",
+      "description": "Session context for the cw gate, a question before a command that would skip it, seven roles and a skill for a task workflow, and a record of the tokens a task used.",
       "category": "development"
     }
   ]

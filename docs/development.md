@@ -50,6 +50,7 @@ A test is named after the behaviour it checks.
 | Native Go / macos-latest | gofmt, `go vet`, `go test` |
 | Native Go / windows-latest | gofmt, `go vet`, `go test` |
 | Lint and vulnerabilities | `golangci-lint` and `govulncheck` for linux, darwin and windows |
+| Gate / cw run | Builds `cw` and runs the checks of `cw.toml` with `cw run --base` against the base revision. Never run so far |
 | Plugin manifests | `claude plugin validate .` |
 
 ## Releases

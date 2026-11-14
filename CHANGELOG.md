@@ -10,16 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `cw` is rebuilt as a gate that any git repository can use. Checks are declared in a committed `cw.toml`, and a commit or a
   push is allowed only when every declared check has a recorded passing run on exactly that content.
-- The commands are `cw init`, `add`, `run`, `status`, `stats`, `context`, `hook`, `uninstall` and `version`. Every other
-  command is gone: `cw task`, `publish`, `gate`, `consult`, `keys`, `pack`, `doctor`, `install`, `graphify` and the rest.
+- The commands are `cw init`, `add`, `run`, `status`, `stats`, `context`, `hook`, `guard`, `uninstall`, `roles`, `change`,
+  `tokens` and `version` ([operations](docs/operations.md)). Every other command is gone: `cw task`, `publish`, `gate`,
+  `consult`, `keys`, `pack`, `doctor`, `install`, `graphify` and the rest.
 - The skills, the agents, the language packs and the vendored tools left this branch. They are kept on the branch `workflow-v3`.
 - Records are kept under `cw/` in the repository's git directory. The task store under the home directory is no longer read.
 
 ### Added
 
-- Roles: `cw roles`, `cw roles check`, `cw change status` and `cw change check`, with seven role texts for a coding agent.
-- `cw tokens` reports what a task cost by role and how much of it the workflow itself used.
-- Windows is a supported system, and release archives need no Go toolchain.
+- Seven roles for a coding agent, each with its model and what it may write: `cw roles`, `cw roles text` and
+  `cw roles check`; the plugin ships them as agents and the skill `task` ([roles](docs/roles.md)).
+- `cw change status` prints the stage of a task's record under `openspec/changes/<task>/`, and `cw change check` checks
+  the rules its files must obey ([the task workflow](docs/workflow.md)).
+- `cw tokens` reports what a task used by role and stage, and the share the workflow itself took; a count that
+  cannot be read is `unknown`, never zero ([tokens](docs/tokens.md)).
+- Code for Windows, and release archives that need no Go toolchain. Neither has run yet: no release exists, and the
+  tests ran on Linux only ([try it](docs/try-it.md)).
 
 ## [workflow-v3] - not released
 

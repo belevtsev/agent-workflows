@@ -170,6 +170,9 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 		if report.NotAutomated > 0 {
 			fmt.Fprintf(out, "scenarios that are not automated: %d\n", report.NotAutomated)
 		}
+		if report.BrokenRules > 0 {
+			fmt.Fprintf(out, "broken rules: %d; `cw change check %s` names them. The stage says how far the record is, not that its files are valid\n", report.BrokenRules, report.Task)
+		}
 		fmt.Fprintf(out, "content ids: spec %s, design %s, code %s\n", orNone(report.Content.Spec), orNone(report.Content.Design), orNone(report.Content.Code))
 	case len(reports) == 0:
 		fmt.Fprintf(out, "%s/ holds no change folder\n", change.Dir)
@@ -178,6 +181,9 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 			line := fmt.Sprintf("%s: %s", report.Task, report.Stage)
 			if n := len(report.Missing); n > 0 {
 				line += fmt.Sprintf(" (%d missing; `cw change status %s` names them)", n, report.Task)
+			}
+			if report.BrokenRules > 0 {
+				line += fmt.Sprintf("; broken rules: %d (`cw change check %s`)", report.BrokenRules, report.Task)
 			}
 			fmt.Fprintln(out, line)
 		}

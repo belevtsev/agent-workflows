@@ -8,7 +8,7 @@ Please include the affected version, steps to reproduce, and the impact you expe
 
 ## Scope
 
-In scope: the `cw` binary and its commands, the git hooks it installs, and the plugin files in `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` and `hooks/`.
+In scope: the `cw` binary and its commands, the git hooks it installs, and the plugin files in `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/`, `hooks/`, `agents/` and `skills/`.
 
 Out of scope: vulnerabilities in git, in third-party tools, in model providers, or in Codex and Claude Code themselves; report those upstream.
 
@@ -24,7 +24,7 @@ None of these is a vulnerability. Run the same checks in CI as the backstop.
 
 ## No network
 
-`cw` never opens a network connection. It reads and writes the repository, its git directory and the session records of the coding agent on the same machine.
+`cw` never opens a network connection. It reads the repository and the session records the coding agent keeps on the same machine, and it writes `cw.toml`, the git hooks and its records under the git directory. `cw tokens` stores counts and names, and no text of a brief or an answer.
 
 ## Supported versions
 

@@ -36,18 +36,22 @@ func runContext(ctx context.Context, cfg Config, args []string) error {
 		return nil
 	}
 	mode, _ := store.Open(repo.CommonDir).Mode()
-	fmt.Fprint(cfg.Out, contextText(gate.State(ctx, repo), mode))
+	_, configured, _ := repo.HooksDir(ctx)
+	fmt.Fprint(cfg.Out, contextText(gate.State(ctx, repo), mode, configured))
 	return nil
 }
 
-// contextText is the text for one state of the gate.
-func contextText(hooks, mode string) string {
+// contextText is the text for one state of the gate. configured says that
+// core.hooksPath is set, so that cw writes no hook in this clone.
+func contextText(hooks, mode string, configured bool) string {
 	var b strings.Builder
 	b.WriteString("This repository is gated by cw. git allows a commit or a push only when every check declared in cw.toml has a recorded passing run on exactly the content that is committed or pushed.\n")
 	b.WriteString("- `cw run` executes the declared checks that have no passing run on the current content and records the results. Run it before you commit.\n")
 	b.WriteString("- `cw status` says whether a commit would be allowed and which checks are missing.\n")
 	b.WriteString("- A denied commit or push names what is missing. Produce the evidence with `cw run`; do not go around the hook.\n")
 	switch {
+	case hooks != gate.Installed && configured:
+		b.WriteString("The hooks git runs in this clone (core.hooksPath) do not all call cw, so nothing is gated here yet; `cw init` prints the line to add to each.\n")
 	case hooks != gate.Installed:
 		b.WriteString("The hooks are not installed in this clone, so nothing is gated here yet; `cw init` installs them.\n")
 	case mode == store.Observe:

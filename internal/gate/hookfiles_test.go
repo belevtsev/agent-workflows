@@ -257,12 +257,18 @@ func TestUninstall(t *testing.T) {
 	if err := os.WriteFile(unrelated, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	foreign, err := Uninstall(t.Context(), e.repo)
+	removed, foreign, err := Uninstall(t.Context(), e.repo)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if removed != 2 {
+		t.Errorf("Uninstall removed %d hooks, want the 2 that cw wrote", removed)
+	}
 	if want := []Foreign{{Name: "pre-commit", Path: sharedPath}}; !slices.Equal(foreign, want) {
 		t.Errorf("foreign = %v, want %v", foreign, want)
+	}
+	if own := Own(t.Context(), e.repo); len(own) != 0 {
+		t.Errorf("after Uninstall cw still owns %v", own)
 	}
 	if readFile(t, sharedPath) != shared {
 		t.Error("Uninstall changed a hook it did not write")
@@ -275,8 +281,8 @@ func TestUninstall(t *testing.T) {
 			t.Errorf("Uninstall left %s", name)
 		}
 	}
-	if foreign, err := Uninstall(t.Context(), e.repo); err != nil || len(foreign) != 1 {
-		t.Errorf("a second Uninstall = %v, %v", foreign, err)
+	if removed, foreign, err := Uninstall(t.Context(), e.repo); err != nil || len(foreign) != 1 || removed != 0 {
+		t.Errorf("a second Uninstall = %d, %v, %v", removed, foreign, err)
 	}
 }
 
@@ -294,7 +300,7 @@ func TestUninstallWithHooksPath(t *testing.T) {
 	if err := os.WriteFile(own, []byte(Script("pre-push")), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Uninstall(t.Context(), e.repo); err != nil {
+	if _, _, err := Uninstall(t.Context(), e.repo); err != nil {
 		t.Fatal(err)
 	}
 	if exists(own) {

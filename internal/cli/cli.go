@@ -96,7 +96,9 @@ func usageLine(c command) string {
 func printHelp(w io.Writer) {
 	var b strings.Builder
 	b.WriteString("cw allows a commit or a push only when every check the repository\n")
-	b.WriteString("declares in cw.toml has a recorded passing run on exactly that content.\n\n")
+	b.WriteString("declares in cw.toml has a recorded passing run on exactly that content.\n")
+	b.WriteString("It also holds the roles of a task workflow, checks the record of a task,\n")
+	b.WriteString("and counts the tokens a task used.\n\n")
 	b.WriteString("usage: cw <command> [arguments]\n\ncommands:\n")
 	for _, c := range commands() {
 		fmt.Fprintf(&b, "  %s\n      %s\n", usageLine(c), c.summary)

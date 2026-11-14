@@ -42,7 +42,7 @@ Releases are published when a `v*` tag is pushed. Maintainers create tags; contr
 
 ## Built with itself
 
-This repository gates its own commits with `cw`: `cw.toml` declares the checks above. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
+`cw.toml` declares this repository's checks: build, vet, test, lint, and `cw change check` on the task records under `openspec/changes/`. Run `cw init` in your clone to install the hooks; then a commit needs a passing `cw run`. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
 
 ## License
 

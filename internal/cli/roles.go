@@ -172,7 +172,7 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 		return failf("%v", err)
 	}
 	if gate.State(ctx, s.repo) != gate.Installed {
-		s.warn([]string{hooksMissing})
+		s.warn([]string{hooksAdvice(ctx, s.repo)})
 	}
 	if len(outside) == 0 {
 		fmt.Fprintf(cfg.Out, "`%s` stayed within its limit: %d paths differ from %s\n", role, len(changes), *from)

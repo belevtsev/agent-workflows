@@ -204,7 +204,12 @@ func readClaude(path string) reading {
 	var c collect
 	briefFound := false
 	err := eachLine(path, func(n int, line []byte, whole bool) {
+		// Most lines hold no count. They are not decoded, and they must
+		// still be JSON objects: a damaged line may be a lost answer.
 		if briefFound && !bytes.Contains(line, []byte(`"usage"`)) {
+			if whole && (line[0] != '{' || !json.Valid(line)) {
+				c.broken = fmt.Sprintf("line %d of the record is not a JSON object", n)
+			}
 			return
 		}
 		var entry struct {
@@ -258,8 +263,9 @@ func readClaude(path string) reading {
 }
 
 // readCodex reads the record Codex keeps of one thread. A count is taken
-// only from an entry that says which request used it; Codex also writes
-// running totals, and those cannot be given to a request.
+// only from an entry that names the request that used it, by response_id.
+// Codex also writes running totals; they name no request, and counting them
+// would count every request twice.
 func readCodex(path string) reading {
 	var r reading
 	var c collect
@@ -294,7 +300,7 @@ func readCodex(path string) reading {
 			model = p.Model
 		case entry.Type == "response_item" && p.Type == "message" && p.Role == "user" && r.brief == "":
 			r.brief = text(p.Content)
-		case entry.Type == "token_usage_record" && p.Usage != nil:
+		case entry.Type == "token_usage_record" && p.Usage != nil && p.Response != "":
 			u := p.Usage
 			if u.Input == nil || u.Output == nil {
 				c.broken = fmt.Sprintf("line %d of the record holds a request without its token counts", n)

@@ -103,7 +103,13 @@ func classify(ctx context.Context, repo *gitx.Repo, st *store.Store, job Job, en
 	case ended.Stopped:
 		return ending{outcome: store.TimedOut, detail: fmt.Sprintf("the check did not end within its timeout of %s", job.Check.Timeout)}
 	case ended.Code < 0:
+		// The program started and something outside cw ended it, or it
+		// never started.
+		var exited *exec.ExitError
 		detail := fmt.Sprintf("the program `%s` could not be started", job.Check.Run[0])
+		if errors.As(ended.Err, &exited) {
+			detail = fmt.Sprintf("the program `%s` did not exit on its own", job.Check.Run[0])
+		}
 		if ended.Err != nil {
 			detail += ": " + ended.Err.Error()
 		}

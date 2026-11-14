@@ -83,6 +83,47 @@ jobs:
           GOOS: windows
         run: govulncheck ./...
 
+  # This repository uses its own gate. `cw run --base` counts a check as
+  # passed on the base revision, so only the checks whose content changed run.
+  # Never run so far: the job was written on a branch that was not pushed.
+  gate:
+    name: Gate / cw run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
+    steps:
+      - name: Check out exact source with its history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up pinned Go with dependency cache
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # The check `lint` of cw.toml needs the linter on PATH.
+      - name: Install the pinned linter
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+      # The check `record` of cw.toml needs cw itself on PATH.
+      - name: Build cw
+        run: |
+          go build -o "$RUNNER_TEMP/cw-bin/cw" ./cmd/cw
+          echo "$RUNNER_TEMP/cw-bin" >> "$GITHUB_PATH"
+      - name: Run the declared checks
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            cw run --base "$BASE"
+          else
+            cw run
+          fi
+
   plugins:
     name: Plugin manifests
     runs-on: ubuntu-latest

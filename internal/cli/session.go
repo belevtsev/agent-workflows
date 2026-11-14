@@ -63,6 +63,15 @@ func (s *session) warn(warnings []string) {
 // the gate.
 const hooksMissing = "the hooks of cw are not installed in this clone, so git gates nothing here; run `cw init`"
 
+// hooksAdvice is that warning for this clone. Where core.hooksPath is set,
+// cw writes no hook, so `cw init` can only print the line to add.
+func hooksAdvice(ctx context.Context, repo *gitx.Repo) string {
+	if dir, configured, err := repo.HooksDir(ctx); err == nil && configured {
+		return fmt.Sprintf("git runs the hooks in %s here (core.hooksPath), and they do not all call cw, so git gates nothing here; `cw init` prints the line to add to each", dir)
+	}
+	return hooksMissing
+}
+
 // more says how many items a list left out.
 func more(n int) string {
 	if n <= 0 {

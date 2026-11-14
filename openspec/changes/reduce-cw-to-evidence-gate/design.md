@@ -57,14 +57,14 @@ imports `internal/cli`. The Go modules that remain are `go-toml/v2` and
 
 | Rule | Checked by |
 | --- | --- |
-| No package imports `internal/cli` except `cmd/cw` | review |
-| `cw` links no network package | review |
-| Only `internal/gitx` starts git | review |
-| Nothing outside the git directory is written, apart from `cw.toml` and the hook files | review |
+| No package imports `internal/cli` except `cmd/cw` | test |
+| `cw` links no network package | test |
+| A program is started only by `internal/proc`, which only `internal/gitx` (git) and `internal/runner` (a declared check) import | test |
+| Nothing outside the git directory is written, apart from `cw.toml` and the hook files | review, test |
 
-"review" stands for a Go test in each case; this repository has no `cw.toml`
-yet, so no check id can be named. Task 6.3 of the second change replaces the
-word when it has.
+`test` is the check of this repository's `cw.toml` that runs every Go test.
+The first three rules are tests of `internal/repocheck`. The fourth is tested
+where a scenario says that a command writes nothing, and reviewed elsewhere.
 
 ## Git
 
@@ -120,7 +120,8 @@ the repository root.
   `[[check]]` header, found by scanning the file.
 - A pattern is split at `/`. `**` is a whole segment that matches any number
   of segments, also none. `*` and `?` match inside one segment. Nothing else
-  is special. An empty pattern and one that begins with `/` are refused.
+  is special. A pattern with an empty segment is refused: an empty pattern,
+  one that begins or ends with `/`, and one that holds `//`.
 - `cw add` appends a block of text, after a newline when the file does not end
   with one, and refuses when the result does not parse. Strings are written as
   TOML basic strings.
@@ -181,10 +182,15 @@ cw/tmp/                                  index copies
   check of the snapshot that the base declares with the same `id`, `run` and
   `paths`, with the same content key, and with no decisive record of its own
   in that directory, counts as satisfied for this command. Nothing is
-  written for it.
-- **Clean-up.** `cw run` removes logs of runs that ended more than 30 days ago
-  and records more than 365 days old, under `cw/gc.lock` taken without
-  waiting; a busy lock skips the clean-up.
+  written for it. The base implies nothing for a check one of whose records
+  cannot be read or is dated in the future, and `paths` are the same only in
+  the same order.
+- **Clean-up.** `cw run` removes the logs that were last written more than
+  30 days ago, the records and the decision files last written more than 365
+  days ago, and its copies of the index older than a day, under `cw/gc.lock`
+  taken without waiting; a busy lock skips the clean-up. The age is the time
+  the file was last written, which for a log and a record is the end of the
+  run.
 - **Decision line.** `time`, `hook`, `mode`, `tree`, `outcome` (`allowed` or
   `denied`), `ref` for a push, `checks` (the state of each check that was not
   satisfied: `failed`, `not_run` or `timed_out`) or `cause` (`no_declaration`,
@@ -269,8 +275,10 @@ record is written.
   tree of the tip commit must be verified. One denial denies the push.
 - **Gate state.** The hooks are `installed` when each of the three files git
   would run (in `core.hooksPath` when that is set, else in `hooks/` of the
-  common git directory) exists and holds `cw hook <name>`. `cw status` and
-  `cw context` report anything else and name `cw init`.
+  common git directory) exists, can be executed (not judged on Windows) and
+  holds `cw hook <name>`. `cw status` and `cw context` report anything else
+  and name `cw init`: it installs the hooks, or, where `core.hooksPath` is
+  set, prints the line to add to each.
 - **Notice.** When the new tree lacks a check the tree of `HEAD` declares, or
   declares it with another `run`, `paths` or `timeout`, the hook lists it,
   whatever it decides.
@@ -285,7 +293,9 @@ record is written.
 - **Session start.** The hook command is shell text: when `cw` is on `PATH`
   it runs `cw context`; when it is not and the root of the repository holds
   `cw.toml`, it prints one line that says so and names the install
-  instruction. The text an agent reads lives in `cw`, not in the hook file.
+  instruction. The Codex command for Windows is `cw context` alone, so that
+  line is missing there. The text an agent reads lives in `cw`, not in the
+  hook file.
 - **Before a tool call.** The hook runs `cw guard --host <host>`, which reads
   the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
   (`command` for the shell tool, `file_path` for an editing tool, the patch

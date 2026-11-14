@@ -236,8 +236,10 @@ These follow from the design and are stated so that nobody is surprised.
   files leaves a worktree without hooks).
 - Git runs `pre-push` for `git push --dry-run` as well and gives the hook no
   sign of it (observed). A dry run is therefore judged like a push.
-- A submodule is recorded by its checked-out commit. Uncommitted changes inside
-  a submodule are not part of the snapshot.
+- A submodule is recorded by its checked-out commit. A working tree with
+  uncommitted changes inside a submodule is refused, because the snapshot
+  could not hold them (`check-evidence`: Working tree that cannot be
+  recorded).
 - On Windows `cw` needs Git for Windows; its shell runs the hooks. A Linux
   distribution under the Windows Subsystem for Linux counts as Linux.
 - One `cw.toml` holds the same checks on every system. A check that names a

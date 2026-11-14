@@ -25,7 +25,9 @@ type statusReport struct {
 	Checks        []statusCheck `json:"checks"`
 	NotStaged     []string      `json:"not_staged,omitempty"`
 	NotStagedMore int           `json:"not_staged_more,omitempty"`
-	Warnings      []string      `json:"warnings,omitempty"`
+	// IndexProblem says why the tree of the index cannot be judged at all.
+	IndexProblem string   `json:"index_problem,omitempty"`
+	Warnings     []string `json:"warnings,omitempty"`
 }
 
 type statusCheck struct {
@@ -99,7 +101,7 @@ func (s *session) statusReport(ctx context.Context, verdict *evidence.Verdict) (
 		report.Checks = append(report.Checks, entry)
 	}
 	if report.Hooks != gate.Installed {
-		report.Warnings = append(report.Warnings, hooksMissing)
+		report.Warnings = append(report.Warnings, hooksAdvice(ctx, s.repo))
 	}
 	indexTree, err := s.repo.IndexTree(ctx, s.store.Tmp())
 	if err != nil {
@@ -124,6 +126,9 @@ func (s *session) statusReport(ctx context.Context, verdict *evidence.Verdict) (
 	index, err := evidence.Judge(ctx, s.repo, s.store, indexTree, time.Now(), nil)
 	report.IndexVerified = err == nil && index.Verified
 	if err != nil {
+		// The index cannot be judged at all, for example because it holds
+		// no declaration: say that, and not that runs are missing.
+		report.IndexProblem = err.Error()
 		index = nil
 	}
 	return report, index, nil
@@ -155,6 +160,9 @@ func printStatus(cfg Config, st *store.Store, verdict *evidence.Verdict, index *
 		fmt.Fprint(out, more(report.NotStagedMore))
 		if report.IndexVerified {
 			fmt.Fprintln(out, "a commit of the index alone would be allowed")
+		} else if report.IndexProblem != "" {
+			fmt.Fprintf(out, "a commit of the index alone would be denied: %s\n", report.IndexProblem)
+			fmt.Fprintln(out, "stage everything with `git add -A`")
 		} else {
 			fmt.Fprintln(out, "a commit of the index alone would be denied: its content has no passing run of every check")
 			if index != nil {

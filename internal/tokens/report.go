@@ -2,6 +2,8 @@ package tokens
 
 import (
 	"cmp"
+	"maps"
+	"path/filepath"
 	"slices"
 	"strconv"
 )
@@ -39,6 +41,9 @@ type Entry struct {
 
 func (e *Entry) add(s Start) {
 	e.Starts++
+	if e.Models == nil {
+		e.Models = []string{}
+	}
 	if !s.Known {
 		e.UnknownStarts++
 	}
@@ -82,6 +87,14 @@ type Task struct {
 	// SharedSessions names the sessions that also ran another task. Their
 	// own tokens are in the total of no task.
 	SharedSessions []string `json:"shared_sessions,omitempty"`
+	// unknownSessions counts the unknown records that are a session's own.
+	unknownSessions int
+}
+
+// Unknown says how many of the unknown records are starts of roles, or
+// records that may be, and how many are a session's own record.
+func (t *Task) Unknown() (starts, sessions int) {
+	return len(t.UnknownRecords) - t.unknownSessions, t.unknownSessions
 }
 
 // Session is the report of the tokens of one session itself.
@@ -96,8 +109,10 @@ type Session struct {
 	Entry
 }
 
-// Unlabelled is a start whose brief had no label: its tokens belong to no
-// task and are not dropped.
+// Unlabelled is a start whose record gave no label. When its tokens are
+// known they belong to no task and are not dropped. When they are unknown
+// the start may belong to any task of its session, and each of those tasks
+// is incomplete.
 type Unlabelled struct {
 	Session string `json:"session"`
 	Agent   string `json:"agent"`
@@ -110,6 +125,9 @@ type Report struct {
 	Tasks      []Task       `json:"tasks"`
 	Unlabelled []Unlabelled `json:"unlabelled"`
 	Sessions   []Session    `json:"sessions"`
+	// Damaged names the stored files that cannot be read. Their tokens are
+	// in no sum, and every task of their session is incomplete.
+	Damaged []string `json:"damaged,omitempty"`
 }
 
 // the stages whose first round is the writing itself
@@ -143,29 +161,83 @@ func order(stage string) int {
 	return slices.IndexFunc(stageRoles, func(s struct{ stage, role string }) bool { return s.stage == stage })
 }
 
-// Build makes the report from the stored starts.
-func Build(starts []Start) *Report {
-	report := &Report{Tasks: []Task{}, Unlabelled: []Unlabelled{}, Sessions: []Session{}}
-	tasksOf := map[string][]string{} // per session, the tasks it ran
-	byTask := map[string][]Start{}
-	var names []string
-	for _, s := range starts {
-		switch {
-		case s.Agent == SessionAgent:
-		case s.Task == "":
-			u := Unlabelled{Session: s.Session, Agent: s.Agent, Record: s.Record}
-			u.add(s)
-			report.Unlabelled = append(report.Unlabelled, u)
-		default:
-			if _, known := byTask[s.Task]; !known {
-				names = append(names, s.Task)
+// Build makes the report from the stored starts. damaged names the stored
+// files that could not be read; each is in the folder of its session.
+func Build(starts []Start, damaged []string) *Report {
+	report := &Report{Tasks: []Task{}, Unlabelled: []Unlabelled{}, Sessions: []Session{}, Damaged: damaged}
+	byTask, tasksOf := group(starts)
+	left := report.place(starts, byTask, tasksOf)
+	for _, file := range damaged {
+		folder := filepath.Base(filepath.Dir(file))
+		for session, tasks := range tasksOf {
+			if fileName(session) != folder {
+				continue
 			}
-			byTask[s.Task] = append(byTask[s.Task], s)
-			if !slices.Contains(tasksOf[s.Session], s.Task) {
-				tasksOf[s.Session] = append(tasksOf[s.Session], s.Task)
+			for _, task := range tasks {
+				left[task] = append(left[task], file)
 			}
 		}
 	}
+	sessions := report.sessions(starts, tasksOf)
+	for _, name := range slices.Sorted(maps.Keys(byTask)) {
+		task := buildTask(name, byTask[name], tasksOf, sessions)
+		if len(left[name]) > 0 {
+			task.Complete = false
+			task.UnknownRecords = append(task.UnknownRecords, left[name]...)
+		}
+		report.Tasks = append(report.Tasks, task)
+	}
+	return report
+}
+
+// group sorts the starts that have a label by their task, and lists for
+// each session the tasks it ran.
+func group(starts []Start) (byTask map[string][]Start, tasksOf map[string][]string) {
+	byTask, tasksOf = map[string][]Start{}, map[string][]string{}
+	for _, s := range starts {
+		if s.Agent == SessionAgent || s.Task == "" {
+			continue
+		}
+		byTask[s.Task] = append(byTask[s.Task], s)
+		if !slices.Contains(tasksOf[s.Session], s.Task) {
+			tasksOf[s.Session] = append(tasksOf[s.Session], s.Task)
+		}
+	}
+	return byTask, tasksOf
+}
+
+// place gives each start without a label its place. With known tokens it
+// belongs to no task. With unknown tokens the label could not be read
+// either: the start is given to the one task of its session when the host
+// named its role, and otherwise it may belong to any task of its session.
+// left lists, for each task, the records that may hold tokens of it.
+func (r *Report) place(starts []Start, byTask map[string][]Start, tasksOf map[string][]string) (left map[string][]string) {
+	left = map[string][]string{}
+	for _, s := range starts {
+		if s.Agent == SessionAgent || s.Task != "" {
+			continue
+		}
+		tasks := tasksOf[s.Session]
+		if !s.Known && s.Role != "" && len(tasks) == 1 {
+			byTask[tasks[0]] = append(byTask[tasks[0]], s)
+			continue
+		}
+		u := Unlabelled{Session: s.Session, Agent: s.Agent, Record: s.Record}
+		u.Role = s.Role
+		u.add(s)
+		r.Unlabelled = append(r.Unlabelled, u)
+		if !s.Known {
+			for _, task := range tasks {
+				left[task] = append(left[task], s.Record)
+			}
+		}
+	}
+	return left
+}
+
+// sessions adds the entry of each session to the report and returns the
+// start of each.
+func (r *Report) sessions(starts []Start, tasksOf map[string][]string) map[string]Start {
 	sessions := map[string]Start{}
 	for _, s := range starts {
 		if s.Agent != SessionAgent {
@@ -178,13 +250,9 @@ func Build(starts []Start) *Report {
 		}
 		entry := Session{Session: s.Session, Host: s.Host, Record: s.Record, Tasks: tasks, Shared: len(tasks) > 1}
 		entry.add(s)
-		report.Sessions = append(report.Sessions, entry)
+		r.Sessions = append(r.Sessions, entry)
 	}
-	slices.Sort(names)
-	for _, name := range names {
-		report.Tasks = append(report.Tasks, buildTask(name, byTask[name], tasksOf, sessions))
-	}
-	return report
+	return sessions
 }
 
 func buildTask(name string, starts []Start, tasksOf map[string][]string, sessions map[string]Start) Task {
@@ -207,16 +275,20 @@ func buildTask(name string, starts []Start, tasksOf map[string][]string, session
 	}
 	var seen []string
 	for _, s := range starts {
-		role := RoleOf(s.Stage)
+		// A start without a stage is one whose record could not be read:
+		// the host named its role, and it is in no stage.
+		role := cmp.Or(RoleOf(s.Stage), s.Role)
 		if roles[role] == nil {
 			roles[role] = &Entry{Role: role}
 		}
 		roles[role].add(s)
 		key := [2]string{s.Stage, strconv.Itoa(s.Round)}
-		if stages[key] == nil {
-			stages[key] = &Entry{Stage: s.Stage, Round: s.Round, Role: role}
+		if s.Stage != "" {
+			if stages[key] == nil {
+				stages[key] = &Entry{Stage: s.Stage, Round: s.Round, Role: role}
+			}
+			stages[key].add(s)
 		}
-		stages[key].add(s)
 		task.Starts++
 		count(s, task.Flow.part(s))
 		if !slices.Contains(seen, s.Session) {
@@ -234,7 +306,11 @@ func buildTask(name string, starts []Start, tasksOf map[string][]string, session
 		case !recorded:
 			task.Complete = false
 			task.UnknownRecords = append(task.UnknownRecords, "the record of session "+id)
+			task.unknownSessions++
 		default:
+			if !session.Known {
+				task.unknownSessions++
+			}
 			count(session, &task.Flow.Coordination)
 		}
 	}
