@@ -50,9 +50,9 @@ Source: review findings H1 (untracked files were left out of the commit check), 
 
 ### Requirement: Working tree that cannot be recorded
 
-When git cannot record the working tree as it is on disk, `cw run` and `cw status` SHALL exit 1, name the path and the cause, and record nothing. This covers a tracked file that is marked skip-worktree or assume-unchanged and is absent from disk or differs from the index, and a working tree on which `git add -A` fails.
+When git cannot record the working tree as it is on disk, `cw run` and `cw status` SHALL exit 1, name the path and the cause, and record nothing. This covers a tracked file marked skip-worktree or assume-unchanged that is absent from disk or differs from the index, a working tree on which `git add -A` fails, and a submodule or nested repository that holds changes it has not committed.
 
-Source: independent review of this draft, finding 2; proposal, Sources (the tree after `git add -A` equals the tree of `HEAD` in all three cases, and `git add -A` fails with status 128 on a nested repository without a commit).
+Source: independent review of this draft, finding 2; proposal, Sources (the tree after `git add -A` equals the tree of `HEAD` in all three cases, and `git add -A` fails with status 128 on a nested repository without a commit); production plan, Independent challenge, finding 3 (the snapshot records a submodule as its commit only).
 
 #### Scenario: A local override that git is told to overlook
 
@@ -68,6 +68,11 @@ Source: independent review of this draft, finding 2; proposal, Sources (the tree
 
 - **WHEN** `git init sub` has created an empty repository inside the working tree and `cw run` runs
 - **THEN** it exits 1, names `sub/` and git's reason, and executes no check
+
+#### Scenario: A submodule with uncommitted changes
+
+- **WHEN** `vendor/lib` is a submodule, a file inside it is edited and not committed there, and `cw run` runs
+- **THEN** it exits 1, names `vendor/lib`, says that it holds uncommitted changes, and executes no check
 
 ### Requirement: Running checks
 
@@ -203,9 +208,9 @@ Source: proposal, Terms; independent review of this draft, finding 6; proposal, 
 
 ### Requirement: Satisfied check
 
-A check declared in a tree SHALL be satisfied for that tree exactly when the most recent decisive run of a check recorded with the same `id`, `run` and `paths`, on the same checked content, ended `passed`. The most recent run SHALL be the one that ended last; when two ended at the same time, a run that did not pass SHALL count as the later.
+A check declared in a tree SHALL be satisfied for that tree exactly when the most recent decisive run of a check recorded with the same `id`, `run` and `paths`, on the same checked content, ended `passed`. The most recent run SHALL be the one whose end `cw` recorded last, in the order of recording and not by the clock; when that order cannot be told, a run that did not pass SHALL count as the later.
 
-Source: review finding M8 (`internal/taskflow/executed.go:51-57`; a pass after a failed run earned no credit); proposal, Terms; independent review of this draft, finding 10.
+Source: review finding M8 (`internal/taskflow/executed.go:51-57`; a pass after a failed run earned no credit); proposal, Terms; independent review of this draft, finding 10; production plan, Independent challenge, finding 2 (a clock that was set back must not let an earlier pass outrank a later failure).
 
 #### Scenario: A run on the same tree satisfies
 
@@ -242,6 +247,11 @@ Source: review finding M8 (`internal/taskflow/executed.go:51-57`; a pass after a
 - **WHEN** in two linked worktrees with the same content, a run of `env` starts first and ends `failed`, and a run of `env` that started after it ended `passed` before that
 - **THEN** `cw status` reports `env` as failed, because the failed run ended last
 
+#### Scenario: The clock does not decide the order
+
+- **WHEN** the check `env` has ended `passed`, `/tmp/demo-flag` is deleted, `cw run env --force` ends `failed`, and the `ended_at` in the record of that failed run is then changed to one hour earlier
+- **THEN** `cw status` reports `env` as failed
+
 #### Scenario: Content checked earlier is recognised again
 
 - **WHEN** `src/app.txt` is changed to `broken` in the checked state and then changed back to `ok`, and `cw status` runs
@@ -265,14 +275,19 @@ Source: proposal, Terms and Open Question 3; review finding C2.
 
 ### Requirement: Old runs
 
-A run that ended more than 30 days ago SHALL NOT satisfy a check, and `cw run` SHALL remove its log. `cw run` SHALL remove the records of runs and of hook decisions that are more than 365 days old.
+A run that ended more than 30 days ago SHALL NOT satisfy a check, and `cw run` SHALL remove its log. A run whose recorded end is later than the present time SHALL NOT satisfy a check either. `cw run` SHALL remove the records of runs and of hook decisions that are more than 365 days old.
 
-Source: review finding M4 (the store grows without bound today); proposal, Open Question 5; `gate-reporting`, Statistics (which needs records older than 30 days).
+Source: review finding M4 (the store grows without bound today); proposal, Open Question 5; `gate-reporting`, Statistics (which needs records older than 30 days); production plan, Independent challenge, finding 2 (a pass dated in the future would never age out).
 
 #### Scenario: A run ages out
 
 - **WHEN** the checked state is 31 days old and `cw status` runs
 - **THEN** it reports `unit` and `lint` as not run
+
+#### Scenario: A run dated in the future
+
+- **WHEN** the `ended_at` in the record of the passing `lint` run is changed to one day ahead in the checked state, and `cw status` runs
+- **THEN** it reports `lint` as not run and warns that the run is dated in the future
 
 ### Requirement: Base revision for continuous integration
 
@@ -308,14 +323,19 @@ Source: review findings H9 and M4 (the task store is under `~/.local/state/agent
 
 ### Requirement: Damaged and concurrent records
 
-A record that `cw` cannot read SHALL be ignored with a warning that names the file. It SHALL NOT count as a pass and SHALL NOT stop `cw` from using other records. Commands that run at the same time in one repository or its worktrees SHALL NOT lose or damage the record of a finished run.
+A record that `cw` cannot read SHALL NOT count as a pass, and `cw` SHALL warn with the name of the file. Its check SHALL NOT be satisfied for that checked content until a later run of it ends decisively; other checks and other content SHALL be judged as before. Commands that run at the same time in one repository or its worktrees SHALL NOT lose or damage the record of a finished run. A finished record SHALL be on disk before it replaces the unfinished one.
 
-Source: review findings M4 and L8 (`internal/taskflow/storage.go:278-386`; every load re-validates the whole chain, so one bad revision makes a task unreadable).
+Source: review findings M4 and L8 (`internal/taskflow/storage.go:278-386`; every load re-validates the whole chain, so one bad revision makes a task unreadable); production plan, Independent challenge, finding 4 (a damaged record of a failure must not let an earlier pass decide).
 
 #### Scenario: A truncated record
 
 - **WHEN** the record of the passing `lint` run is cut to half its length in the checked state and `cw status` runs
 - **THEN** it warns with the path of that record, reports `lint` as not run and `unit` as satisfied
+
+#### Scenario: A damaged record hides no failure
+
+- **WHEN** the check `env` has ended `passed` and then, with `--force`, `failed` on the same content, the record of the failed run is cut to half its length, and `cw status` runs
+- **THEN** it reports `env` as not run; after `/tmp/demo-flag` is created again and `cw run env` ends `passed`, `cw status` reports `env` as satisfied
 
 #### Scenario: Two runs at once
 

@@ -176,6 +176,11 @@ Source: review finding M26 (`internal/gate/gate.go` judges a push by the working
 - **WHEN** the tip of `main` is not verified and `git push --dry-run origin main` runs
 - **THEN** the push is denied
 
+#### Scenario: An annotated tag is judged by the commit it names
+
+- **WHEN** annotated tag `v2` names a commit that `origin` does not have and whose tree is not verified, and `git push origin v2` runs
+- **THEN** the push is denied and the reason names `refs/tags/v2`
+
 ### Requirement: Updates that add nothing
 
 An update of a branch SHALL count as adding nothing when the commit that branch points at on the remote already contains the new tip. An update of any other ref SHALL count as adding nothing when a remote-tracking branch of the same remote contains the commit it points at. Such an update, and the deletion of a ref, SHALL be allowed whatever the state of the working tree and of the records.

@@ -36,6 +36,11 @@ Source: review finding H9 (the only way to learn whether a commit would pass tod
 - **WHEN** `cw.toml` holds only `version = 1` and `cw status` runs
 - **THEN** it exits 0 and says that no checks are declared, so every commit is allowed
 
+#### Scenario: The index file is not rewritten
+
+- **WHEN** `cw status` runs in the checked state
+- **THEN** the index file of the repository has the same bytes and the same modification time as before
+
 ### Requirement: Staged content
 
 `cw status` SHALL say whether the index holds the same tree as the snapshot. When it does not, `cw status` SHALL list up to 20 of the paths that differ, give the count of the rest, and say whether the tree of the index is itself verified.
@@ -46,6 +51,22 @@ Source: review finding H1; `publish-gate`, Commit rule (a commit is judged by th
 
 - **WHEN** `README.md` and `src/app.txt` are edited, `cw run` exits 0, `git add README.md` runs, and `cw status` runs
 - **THEN** it exits 0, lists `src/app.txt` as not staged, and says that a commit of the index alone would be denied
+
+### Requirement: Gate state
+
+`cw status` SHALL warn when git does not run the hooks of `cw` in this clone: a hook file is missing or does not call `cw hook`, or `core.hooksPath` names a directory whose hooks do not. The warning SHALL name `cw init`. `cw status --json` SHALL hold `hooks`, which is `installed` or `missing`. The exit status SHALL NOT depend on it.
+
+Source: production plan, Independent challenge, finding 7 (a clone without hooks, or a changed `core.hooksPath`, turned the gate off with nothing reported).
+
+#### Scenario: A clone without hooks
+
+- **WHEN** `demo` is cloned in the checked state and `cw status` runs in the clone
+- **THEN** it warns that the hooks are not installed and names `cw init`
+
+#### Scenario: A hooks directory that does not call `cw`
+
+- **WHEN** `git config core.hooksPath .githooks` is set after `cw init`, `.githooks/` holds no hook, and `cw status --json` runs
+- **THEN** `hooks` is `missing`
 
 ### Requirement: Status as JSON
 

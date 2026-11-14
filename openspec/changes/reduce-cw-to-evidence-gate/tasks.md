@@ -11,7 +11,7 @@ Rules for every task:
 - **Tests.** The tests for the scenarios are written from the specification by
   someone other than the task's implementer: the test engineer, in the workflow
   this repository uses today. Implementation tasks do not author them. The
-  tasks named "Tests" say when, and together they cover all 136 scenarios.
+  tasks named "Tests" say when, and together they cover all 144 scenarios.
 - **Checks.** A scenario that needs a command from a later task is checked when
   that task is done. Until then the task's check is the command it names.
 - **Systems.** Every "Tests" task passes on `ubuntu-latest`, `macos-latest` and
@@ -74,8 +74,8 @@ after it. `<base>` is the commit of `main` before that pull request.
 - [ ] 5.1 `cw status [--json]`: print each declared check with its state, exit 0 when the snapshot is verified and 5 when it is not, say whether the index holds the same tree and list up to 20 paths that differ, and print the JSON object. Change nothing. Size: M. Depends on: 3.2, 3.5, 4.2. Check: scenarios under "Status", "Staged content", "Status as JSON", "Declaration file" and "Missing declaration", and scenario "A duplicate id is refused". Source: `gate-reporting`: Status, Staged content, Status as JSON; `check-declaration`: Declaration file, Missing declaration; H9.
 - [ ] 5.2 `cw init` creates `cw.toml` with `version = 1` when the root has none and leaves an existing one byte for byte unchanged. `cw add` appends one check and changes no earlier byte. The hooks come in 6.1. Size: S. Depends on: 3.1, 5.1. Check: scenarios under "Create a declaration" and "Add a check from the command line". Source: `check-declaration`: Create a declaration, Add a check from the command line; H4; Success measure 1.
 - [ ] 5.3 Tests: every scenario of `check-declaration` (16). Size: M. Depends on: 4.3, 5.2. Check: `go test -race ./...` passes on the three systems. Source: `specs/check-declaration/spec.md`.
-- [ ] 5.4 Tests: the scenarios of `check-evidence` from "Snapshot" to "Log limit" (23). Size: L. Depends on: 4.4, 4.5, 5.1. Check: `go test -race ./...` passes on the three systems. Source: `specs/check-evidence/spec.md`.
-- [ ] 5.5 Tests: the scenarios of `check-evidence` from "Same checked content" to "Damaged and concurrent records" (19). Size: L. Depends on: 4.6, 5.1. Check: `go test -race ./...` passes on the three systems. Source: `specs/check-evidence/spec.md`.
+- [ ] 5.4 Tests: the scenarios of `check-evidence` from "Snapshot" to "Log limit" (24). Size: L. Depends on: 4.4, 4.5, 5.1. Check: `go test -race ./...` passes on the three systems. Source: `specs/check-evidence/spec.md`.
+- [ ] 5.5 Tests: the scenarios of `check-evidence` from "Same checked content" to "Damaged and concurrent records" (22). Size: L. Depends on: 4.6, 5.1. Check: `go test -race ./...` passes on the three systems. Source: `specs/check-evidence/spec.md`.
 
 ## 6. Hooks
 
@@ -88,7 +88,7 @@ after it. `<base>` is the commit of `main` before that pull request.
 - [ ] 6.7 Record each hook decision with its time, hook, mode, tree, outcome and reasons. `cw init --observe` puts the gate in observe mode: each hook records and prints in one line what it would have decided, and allows the operation. `cw init` returns the gate to enforcing. Size: M. Depends on: 6.3, 6.5. Check: scenarios "A cause that prevents a decision is observed too" and "Enforcing again"; the scenarios that read `cw stats` at 7.1. Source: `gate-reporting`: Recorded decisions; `publish-gate`: Observe mode; H7.
 - [ ] 6.8 `cw uninstall` removes the hooks that `cw` wrote and the `cw/` store, leaves `cw.toml` and every other hook file unchanged, and exits 4 with the line to remove when such a file still calls `cw hook`. Size: S. Depends on: 6.1. Check: scenarios under "Removal". Source: `publish-gate`: Removal; L3.
 - [ ] 6.9 Tests: the scenarios of `publish-gate` under "Hook installation", "Hooks of other tools", "Commit rule", "Paths that differ", "Merge rule", "Hooks decide from records", "Fail closed", "Denial message" and "Declaration change notice" (26). Size: L. Depends on: 6.3, 6.4, 6.6. Check: `go test -race ./...` passes on the three systems. Source: `specs/publish-gate/spec.md`; `_quarantine/cmd/cw/hook_git_e2e_test.go`, `gate_e2e_test.go` and `staged_gate_e2e_test.go` (they drive real git today).
-- [ ] 6.10 Tests: the scenarios of `publish-gate` under "Push rule", "Updates that add nothing", "Linked worktrees" and "Removal" (16). Size: M. Depends on: 6.5, 6.8. Check: `go test -race ./...` passes on the three systems. Source: `specs/publish-gate/spec.md`.
+- [ ] 6.10 Tests: the scenarios of `publish-gate` under "Push rule", "Updates that add nothing", "Linked worktrees" and "Removal" (17). Size: M. Depends on: 6.5, 6.8. Check: `go test -race ./...` passes on the three systems. Source: `specs/publish-gate/spec.md`.
 - [ ] 6.11 Tests: the scenarios of `platform-support` under "Supported systems", "Programs that a system lacks", "Programs on Windows" and "Hooks on Windows" (8). Size: M. Depends on: 4.7, 6.2. Check: `go test -race ./...` passes on the three systems. Source: `specs/platform-support/spec.md`.
 
 ## 7. Statistics, context and exit statuses
@@ -96,7 +96,7 @@ after it. `<base>` is the commit of `main` before that pull request.
 - [ ] 7.1 `cw stats [--since <period>] [--json]`: from the repository's own records, print runs per check by outcome, hook decisions by hook, mode, outcome and reason, and per check how often it passed after failing on the same checked content. Size: M. Depends on: 6.7. Check: scenarios under "Statistics" and "Recorded decisions", and scenario "A commit that would be denied goes through and is counted". Source: `gate-reporting`: Statistics, Recorded decisions; H7.
 - [ ] 7.2 `cw context`: print at most 1,000 characters that say commits and pushes are gated, that `cw run` produces the evidence, that `cw status` shows what is missing, and whether the hooks are installed. Print nothing where the root holds no `cw.toml`. Size: S. Depends on: 6.1. Check: in `demo` the output holds `cw run` and `cw status` in at most 1,000 characters; in a clone without hooks it names `cw init`; without `cw.toml` it is empty. Source: `agent-integration`: Session context; M24.
 - [ ] 7.3 Hold the exit statuses of all nine commands in one table, and keep `cw` off the network. Size: S. Depends on: 6.8, 7.1, 7.2. Check: scenario "The statuses in one session"; `go list -deps ./cmd/cw` lists no `net/http`. Source: `gate-reporting`: Exit statuses; `check-evidence`: No network; H5.
-- [ ] 7.4 Tests: every scenario of `gate-reporting` (9), the scenarios under "Observe mode" (3) and scenario "Everything works offline" (1). Size: M. Depends on: 7.3. Check: `go test -race ./...` passes on the three systems; the offline scenario runs where the system offers a network namespace. Source: `specs/gate-reporting/spec.md`; `publish-gate`: Observe mode; `check-evidence`: No network.
+- [ ] 7.4 Tests: every scenario of `gate-reporting` (12), the scenarios under "Observe mode" (3) and scenario "Everything works offline" (1). Size: M. Depends on: 7.3. Check: `go test -race ./...` passes on the three systems; the offline scenario runs where the system offers a network namespace. Source: `specs/gate-reporting/spec.md`; `publish-gate`: Observe mode; `check-evidence`: No network.
 
 ## 8. Plugin
 
@@ -178,6 +178,7 @@ Every requirement has a task that builds it and a task that tests it.
 | | Removal | 6.8 | 6.10 |
 | `gate-reporting` | Status | 5.1 | 7.4 |
 | | Staged content | 5.1 | 7.4 |
+| | Gate state | 5.1, 6.1 | 7.4 |
 | | Status as JSON | 5.1 | 7.4 |
 | | Recorded decisions | 6.7 | 7.4 |
 | | Statistics | 7.1 | 7.4 |

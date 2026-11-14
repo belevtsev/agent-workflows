@@ -46,8 +46,8 @@ open, it says so under "Decisions taken without the owner".
 | `internal/store` | Runs, logs, decisions, the mode, and clean-up | `internal/fslock` | yes | `internal/taskflow/storage.go` on `workflow-v3`: a chain of revisions under the home directory (H9, M4, L8); `internal/fslock` is reused |
 | `internal/decl` | `cw.toml`: parse, validate, patterns, append | none | yes | `internal/modelpolicy` on `workflow-v3`: a typo in a key is silent there (L10) |
 | `internal/gitx` | Every call to git | `internal/proc` | yes | `internal/projectctx/capture.go` on `workflow-v3`: it hashes every file itself, with a ceiling (C2, M5) |
-| `internal/proc` | A program in its own process group | none | no | |
-| `internal/fslock` | A lock a dead process cannot leave behind | none | no | |
+| `internal/proc` | A program in its own process group; on Windows in a job object | none | no | The Windows part is new: `group_windows.go` |
+| `internal/fslock` | A lock a dead process cannot leave behind | none | no | The Windows part is new: `fslock_windows.go`, on `LockFileEx` |
 
 `internal/cli` is the only package that imports all of them, and no package
 imports `internal/cli`. The Go modules that remain are `go-toml/v2` and
@@ -73,19 +73,35 @@ the repository root.
 
 - **Snapshot.** Copy the index git would use (`GIT_INDEX_FILE` when set, else
   the path `git rev-parse --git-path index` gives) to `cw/tmp/` in the common
-  git directory; when there is no index, start empty. With `GIT_INDEX_FILE`
-  set to the copy, run `git add -A` and `git write-tree`, then remove the
-  copy. The copy keeps git's file statistics, so only changed files are
-  hashed.
+  git directory, and give the copy the modification time of the original;
+  when there is no index, start empty. With `GIT_INDEX_FILE` set to the copy,
+  run `git add -A` and `git write-tree`, then remove the copy. The copy keeps
+  git's file statistics, so only changed files are hashed. The modification
+  time matters: git re-reads a file whose time is not older than the index,
+  and a copy with a new time would make git trust a file that was edited in
+  the same second it was staged.
+- **The tree of the index.** The same copy, with `git write-tree` alone. No
+  command and no hook runs `git write-tree` on the index itself, because that
+  rewrites the index file.
 - **A working tree that cannot be recorded.** Before the snapshot,
   `git ls-files -v` lists the marks. For a path marked skip-worktree (`S`) or
   assume-unchanged (a lower-case tag) that is absent from disk, or whose
   `git hash-object` differs from the index entry, stop with exit 1 and name
   the path and the mark. When `core.sparseCheckout` is true and the path is
   absent, say that the sparse checkout keeps it off the disk. When
-  `git add -A` fails, print the path git names and git's own reason.
-- **The tree of a commit.** Inside `pre-commit` and `pre-merge-commit`,
-  `git write-tree` with the environment git gave the hook.
+  `git add -A` fails, print the path git names and git's own reason. The
+  marks are read from the copy after `git add -A`, which leaves marked
+  entries as they were, so one listing serves both this and the next rule.
+- **A submodule or nested repository.** The snapshot records it as one
+  commit. For each entry with mode 160000 in the copy, `git status
+  --porcelain` runs inside it; any output stops the command with exit 1,
+  naming the path and saying that it holds uncommitted changes. Otherwise a
+  check would run on content that no tree records.
+- **The tree of a commit.** Inside `pre-commit` and `pre-merge-commit`, the
+  tree of the index, as above, with the environment git gave the hook.
+- **The tree of a pushed ref.** `git rev-parse <id>^{commit}` peels an
+  annotated tag; its tree is judged. A ref that names a tree is judged by
+  that tree. A ref that names anything else is denied, cause `tree`.
 - **Paths that differ.** `git diff-tree -r --no-renames --name-only -z A B`.
 - **The declaration of a tree.** `git ls-tree T -- cw.toml`, then
   `git cat-file blob`. No entry means no declaration; an entry that is not a
@@ -114,33 +130,56 @@ the repository root.
 Everything is under `cw/` in the common git directory.
 
 ```
-cw/mode                      "enforce" or "observe"
-cw/runs/<check id>/<run id>.json
-cw/runs/<check id>/<run id>.lock   held while the run executes
+cw/mode                                  "enforce" or "observe"
+cw/runs/<check id>/<content key>/<run id>.json
+cw/runs/<check id>/<content key>/<run id>.lock   held while the run executes
+cw/runs/<check id>/<content key>/seq.lock        held while an end is recorded
 cw/logs/<run id>.log
-cw/decisions/<yyyy-mm>.jsonl       one line per hook decision
-cw/tmp/                            index copies
+cw/decisions/<yyyy-mm>.jsonl             one line per hook decision
+cw/tmp/                                  index copies
 ```
+
+- **The mode.** Observe only when the file holds exactly `observe`, with or
+  without a final newline. Anything else, and no file, is enforce.
+- **One directory per checked content.** A hook reads only the directory of
+  the content it judges, so its cost does not grow with the history.
 
 - **Run id.** The start time in UTC and eight random hex digits:
   `20261114T153000Z-1a2b3c4d`.
-- **Run record.** Written when the program starts, without an outcome, and
-  replaced by rename when it ends. Fields: `run_id`, `id`, `run`, `paths`,
-  `tree`, `content_key`, `outcome`, `exit_status` (absent when the program did
-  not exit on its own), `started_at`, `ended_at`, `log`.
+- **Run record.** The run's lock is taken first; then the record is written,
+  without an outcome. When the run ends, the finished record is written to a
+  temporary file, synced to disk, renamed over the unfinished one, and the
+  directory is synced. Fields: `run_id`, `id`, `run`, `paths`, `tree`,
+  `content_key`, `seq`, `outcome`, `exit_status` (absent when the program did
+  not exit on its own), `started_at`, `ended_at`, `log` (relative to `cw/`),
+  and for `source_changed` up to 20 `differ` paths.
+- **Sequence number.** Under `seq.lock` of the directory, a finished record
+  gets `seq`, one more than the highest in that directory. It is the order in
+  which ends were recorded, and it does not depend on the clock.
 - **Content key.** For a check without `paths`, the tree id. With `paths`, the
-  SHA-256 of the mode, object id and path of every entry of the tree that
-  matches a pattern. Two trees hold the same checked content for a check
-  exactly when their keys are equal, so no hook compares trees pairwise.
+  SHA-256 of the raw entries of `git ls-tree -r -z` (mode, type, object id,
+  path, each ended by a NUL byte) whose path matches a pattern. Two trees
+  hold the same checked content for a check exactly when their keys are
+  equal, so no hook compares trees pairwise.
 - **A run that died.** A record without an outcome whose lock can be taken at
-  once belongs to a dead `cw`; it is reported as `interrupted`. No command
-  waits for a lock of another run.
-- **Satisfied.** Among the runs of a check with the same `id`, `run`, `paths`
-  and content key that ended `passed`, `failed` or `timed_out` in the last 30
-  days, the one that ended last decides; of two that ended at the same
-  instant, the one that did not pass.
-- **A record that cannot be read** is skipped with a warning that names the
-  file.
+  once, shared, belongs to a dead `cw`; it is reported as `interrupted`. No
+  command waits for a lock of another run.
+- **Satisfied.** Among the records in the directory of the check and the
+  content key that hold the same `run` and `paths`, ended `passed`, `failed`
+  or `timed_out`, and ended neither more than 30 days ago nor later than now,
+  the one with the highest `seq` decides; of two with the same `seq`, the one
+  that did not pass.
+- **A record that cannot be read** makes its check not satisfied for that
+  content, with a warning that names the file. The next run of the check on
+  that content that ends decisively renames the file to `<name>.damaged`,
+  after which it is ignored. A record dated in the future is reported in the
+  same way and never renamed.
+- **`--base`.** `cw run --base <rev>` reads the declaration of the tree of
+  `<rev>` and computes that tree's content key for each of its checks. A
+  check of the snapshot that the base declares with the same `id`, `run` and
+  `paths`, with the same content key, and with no decisive record of its own
+  in that directory, counts as satisfied for this command. Nothing is
+  written for it.
 - **Clean-up.** `cw run` removes logs of runs that ended more than 30 days ago
   and records more than 365 days old, under `cw/gc.lock` taken without
   waiting; a busy lock skips the clean-up.
@@ -155,7 +194,7 @@ For each selected check, in the order of the declaration:
 
 1. Take the snapshot and its content key. When the check is satisfied and
    `--force` is not given, say so and go on.
-2. Write the run record and take its lock.
+2. Take the run's lock and write its record.
 3. Start the program through `internal/proc`: from the repository root, with
    the caller's environment, no input, its own process group, and the check's
    timeout. Output goes to the terminal as it arrives and to the log, which
@@ -186,11 +225,15 @@ record is written.
   its declaration, list its entries once, compute the key of each check and
   read that check's records. Verified means allow. The working tree's snapshot
   is taken only for a denial, to list up to 20 paths that differ.
-- **`pre-push`.** One decision per line of input. A deletion is allowed. A
-  branch update is allowed when the remote's commit already contains the new
-  tip; any other ref when a remote-tracking branch of that remote contains its
-  commit. Otherwise the tree of the tip commit must be verified. One denial
-  denies the push.
+- **`pre-push`.** One decision per line of input. A deletion is allowed. The
+  id git passes is peeled to a commit first. A branch update is allowed when
+  the remote's commit already contains the new tip; any other ref when a
+  remote-tracking branch of that remote contains its commit. Otherwise the
+  tree of the tip commit must be verified. One denial denies the push.
+- **Gate state.** The hooks are `installed` when each of the three files git
+  would run (in `core.hooksPath` when that is set, else in `hooks/` of the
+  common git directory) exists and holds `cw hook <name>`. `cw status` and
+  `cw context` report anything else and name `cw init`.
 - **Notice.** When the new tree lacks a check the tree of `HEAD` declares, or
   declares it with another `run`, `paths` or `timeout`, the hook lists it,
   whatever it decides.
@@ -219,7 +262,7 @@ record is written.
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The 136 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
+| The 144 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
 | No network | A test that lists the packages `cw` links and finds no `net` | Linux | That no network code is linked; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |
@@ -239,6 +282,17 @@ record is written.
 | `cw.toml` is missing or invalid in the judged tree | A command exits 1; a hook denies. |
 | A check's program does not exist | The run ends `failed` and names the program. |
 | The disk is full while a record is written | The rename never happens, so the unfinished record reads as `interrupted`. |
+| The machine loses power after a run ended | The finished record was synced before the rename, so it is whole or absent. |
+| The clock is set back | The order of runs is their `seq`; a record dated in the future does not count. |
+| A submodule holds uncommitted changes | `cw run` and `cw status` exit 1 and name it; a hook that denies says that no snapshot could be taken. |
+
+## What the gate trusts
+
+`cw`, the checks and the coding agent run as one user. `cw` trusts what is in
+the git directory: its own records and mode file, the hook files, the refs
+and the configuration. A process that sets out to write there can defeat the
+gate, as it can with `git commit --no-verify`. The gate is a guardrail, and
+the documents say so; CI is the backstop.
 
 ## Rollback
 

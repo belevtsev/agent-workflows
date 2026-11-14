@@ -6,7 +6,7 @@ is the overview. The engineering content is in the two changes:
 
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
-| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 53, with 136 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
+| 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 54, with 144 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
 | 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 44, with 82 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
@@ -106,15 +106,41 @@ the branch restores the state of 14 November 2026. Nothing else changed.
 A reviewer that had not written the designs read both and the specifications
 they rest on. Its findings and what was done about each:
 
+It reported 12 findings on 14 November 2026, each with an experiment on git
+2.53.0 or a quotation from the designs. None is deferred.
+
 | # | Finding | Severity | Disposition | What was done |
 | --- | --- | --- | --- | --- |
+| 1 | A copy of the index gets a new modification time, so git trusts a file that was staged and edited in the same second. A pass could be recorded for content that was never checked. | blocker | resolved | The copy keeps the time of the original. Design, Git, Snapshot; a test edits a file in the second it was staged. |
+| 2 | The run that decides was chosen by the clock. A clock set back lets an earlier pass outrank a later failure, and a pass dated in the future never ages out. | blocker | resolved | Finished records carry a sequence number given under a lock; a record dated in the future does not count. `check-evidence`: Satisfied check, Old runs; two new scenarios. |
+| 3 | A submodule or nested repository with uncommitted edits is invisible to the snapshot, so a check runs on content no tree records. | blocker | resolved | `cw run` and `cw status` refuse such a working tree. `check-evidence`: Working tree that cannot be recorded; one new scenario. |
+| 4 | A damaged record of a failure was skipped, so an earlier pass decided; nothing was synced to disk; a hook read every record of a check. | major | resolved | Records are synced before the rename; one directory per checked content; an unreadable record there makes the check not satisfied until it runs again. `check-evidence`: Damaged and concurrent records; one new scenario. |
+| 5 | `cw run --base` had no design. | major | resolved | Design, Records, `--base`. |
+| 6 | The rule for tags trusts remote-tracking refs, which a local process can write. | major | rejected against evidence | The forgery needs a deliberate write into the git directory. The same process can write a passing record or remove a hook, so closing this one path buys nothing, and the rule is what lets a tag on a published commit through (scenario "A tag on a commit the remote already has"). The boundary is stated: design, What the gate trusts; `SECURITY.md`. |
+| 7 | Changes inside the git directory that turn the gate off are reported nowhere: `core.hooksPath`, a hand-written record, the mode file, `.git/info/exclude`. | major | resolved in part, the rest rejected against evidence | Resolved: `cw status` and `cw context` report hooks that git does not run (`gate-reporting`: Gate state, two new scenarios), `cw roles check` repeats that warning, and the mode is observe only for the exact word. Rejected: detecting a forged record or an exclude file, for the reason of finding 6. |
+| 8 | `cw change status` had no stage for the commit, so it said `done` before the commit existed. | major | resolved | A `commit` stage, held while the change folder differs from `HEAD`. Settled in the role change when its code is written (M6). |
+| 9 | The values of the review and approval tables were never listed, and an approval stayed valid after the approved file changed. | major | resolved | The values are fixed, and each review and approval row carries the content id it was given for. Settled in the role change (M6). |
+| 10 | For an annotated tag `pre-push` receives the id of the tag object, and a tag can name a tree. | minor | resolved | The id is peeled to a commit; a tree is judged as a tree; anything else is denied. `publish-gate`: Push rule; one new scenario. |
+| 11 | A reader could see an unfinished record before its lock was taken; the Windows lock did not exist. | minor | resolved | The lock is taken before the record is written and probed shared; `fslock_windows.go` is written (compiled, not run). |
+| 12 | The content key needed framing for paths with newlines; `git write-tree` rewrote the index file, against "status changes nothing". | minor | resolved | The key hashes the raw NUL-ended entries; the tree of the index is written from a copy. `gate-reporting`: Status; one new scenario. |
 
-The table is filled in when the review returns.
+The reviewer also confirmed by experiment: the tree inside `pre-commit` for a
+plain commit, `commit -a` and `commit <path>`; the snapshot from a copied
+hook index; hooks in a linked worktree; `pre-merge-commit`; the hooks that a
+continued cherry-pick, a revert and a rebase run; `pre-push` on a dry run and
+for a URL; that a Claude Code transcript repeats a message id with the same
+usage; and the arithmetic of the token fixture.
 
 ## Changes to the specifications during the build
 
 | Date | Where | What changed | Why |
 | --- | --- | --- | --- |
+| 14 Nov 2026 | `check-evidence`: Working tree that cannot be recorded | Also refuses a submodule with uncommitted changes; one scenario added | Challenge finding 3 |
+| 14 Nov 2026 | `check-evidence`: Satisfied check, Old runs | Order of runs is the order of recording, not the clock; a run dated in the future does not count; two scenarios added | Challenge finding 2 |
+| 14 Nov 2026 | `check-evidence`: Damaged and concurrent records | An unreadable record makes its check not satisfied for that content until it runs again; records are synced; one scenario added | Challenge finding 4 |
+| 14 Nov 2026 | `publish-gate`: Push rule | One scenario added: an annotated tag | Challenge finding 10 |
+| 14 Nov 2026 | `gate-reporting`: Status; new requirement Gate state | The index file is not rewritten (one scenario); `cw status` reports hooks git does not run (two scenarios) | Challenge findings 12 and 7 |
+| 14 Nov 2026 | Part 1 totals | 54 requirements and 144 scenarios, from 53 and 136 | The rows above |
 
 ## Progress
 
