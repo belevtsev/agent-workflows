@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -52,6 +53,8 @@ func prepareBinary() (string, error) {
 		if err != nil {
 			return "", err
 		}
+		syscall.ForkLock.RLock() // a program started now would hold the copy open, and the copy could not be run
+		defer syscall.ForkLock.RUnlock()
 		return dir, os.WriteFile(target, data, 0o755)
 	}
 	root, err := moduleRoot()
@@ -109,8 +112,7 @@ type Repo struct {
 func NewRepo(t testing.TB) *Repo {
 	t.Helper()
 	base := t.TempDir()
-	// A temporary directory may be reached through a symbolic link; git
-	// prints the real path.
+	// A temporary directory may be reached through a symbolic link; git prints the real path.
 	if real, err := filepath.EvalSymlinks(base); err == nil {
 		base = real
 	}
