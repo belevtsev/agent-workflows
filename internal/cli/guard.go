@@ -105,8 +105,8 @@ func guardReason(ctx context.Context, call toolCall) string {
 	return ""
 }
 
-// editReason says why an edit of paths, relative to dir or absolute, needs the
-// user. Directories are resolved: a host may give dir through a link.
+// editReason says why an edit of paths, relative to dir or absolute, needs the user. Directories
+// are resolved as far as they exist, since a host may give dir through a link and an edit may create some.
 func editReason(paths []string, dir, declaration, common string) string {
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {
@@ -142,6 +142,8 @@ func resolved(path string) string {
 	path = filepath.Clean(path)
 	if dir, err := filepath.EvalSymlinks(filepath.Dir(path)); err == nil {
 		return filepath.Join(dir, filepath.Base(path))
+	} else if filepath.Dir(path) == path {
+		return path
 	}
-	return path
+	return filepath.Join(resolved(filepath.Dir(path)), filepath.Base(path))
 }

@@ -33,6 +33,20 @@ func TestEditReason(t *testing.T) {
 		{"README.md", root, ""},
 		{"", root, ""},
 	}
+	// The repository reached through a link, as under the temporary directory
+	// of macOS: a directory the edit would create cannot be resolved itself.
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(root, link); err == nil {
+		cases = append(cases, []struct{ path, dir, want string }{
+			{".git/cw/new/dir/x", link, "records of cw"},
+			{".git/hooks/new/dir/x", link, "git hook"},
+			{filepath.Join(link, ".git", "cw", "new", "x"), root, "records of cw"},
+			{"new/dir/cw.toml", link, ""},
+			{"cw.toml", link, "cw.toml"},
+		}...)
+	} else {
+		t.Logf("no symbolic link could be made, so those cases are left out: %v", err)
+	}
 	for _, c := range cases {
 		got := editReason([]string{c.path}, c.dir, declaration, common)
 		if c.want == "" && got != "" || c.want != "" && !strings.Contains(got, c.want) {
