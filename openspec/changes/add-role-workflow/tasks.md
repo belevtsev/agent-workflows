@@ -61,7 +61,7 @@ record store.
 
 - [x] 6.1 Write `docs/roles.md`, `docs/workflow.md` and `docs/tokens.md`, and a section of `README.md` that says what the roles are, that their benefit is not measured, and what flow tokens do and do not mean. Size: M. Depends on: 4.3, 5.1. Check: `go test ./...` passes; the text claims no benefit. Source: proposal, Known limits; H6, H7.
 - [x] 6.2 Add tests for Success measures 2, 4 and 6: the size limits of the Go code and of the texts. Size: S. Depends on: 2.4, 4.3. Check: the tests pass and fail in a trial with a limit lowered by one. Source: Success measures 2, 4 and 6.
-- [ ] 6.3 Declare this repository's own checks in `cw.toml`, with `cw change check` among them, and name those checks in the Rules table of both designs. Size: S. Depends on: 3.4. Check: `cw run` exits 0 in this repository, and a commit goes through the hooks. Source: Success measure 3; `change-record`: Usable as a check.
+- [x] 6.3 Declare this repository's own checks in `cw.toml`, with `cw change check` among them, and name those checks in the Rules table of both designs. Size: S. Depends on: 3.4. Check: `cw run` exits 0 in this repository, and a commit goes through the hooks. Source: Success measure 3; `change-record`: Usable as a check.
 
 ## 7. Evaluation
 
