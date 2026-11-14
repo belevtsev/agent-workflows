@@ -1256,10 +1256,10 @@ verifies when:
   `xcodebuild` or `xcrun simctl` or builds against an SDK newer than the
   Command Line Tools', can then fail under `cw task run` while it passes in
   the user's shell, and since the run still earns credit, no reason names
-  the fallback; only the run's `developer_dir` shows it. Two ways out: select a developer directory that only root
-  can change (`sudo xcode-select -s DIR`), or run that check with
-  `CGO_ENABLED=0` if it needs no cgo, since with cgo off nothing is judged
-  or pinned.
+  the fallback; only the run's `developer_dir` shows it. Two ways out:
+  select a developer directory that only root can change
+  (`sudo xcode-select -s DIR`), or run that check with `CGO_ENABLED=0` if it
+  needs no cgo, since with cgo off nothing is judged or pinned.
 
 An `FC` that does not pass leaves the toolchain verified but is not run.
 
