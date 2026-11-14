@@ -45,7 +45,7 @@ func (c *Cache) Get(key string) (string, error) {
 	if cl, ok := c.inflight[key]; ok {
 		c.mu.Unlock()
 		<-cl.done
-		return cl.val, cl.err
+		return cl.result()
 	}
 	cl := c.begin(key)
 	c.mu.Unlock()
@@ -74,4 +74,13 @@ func (c *Cache) finish(key string, cl *call) {
 	delete(c.inflight, key)
 	c.mu.Unlock()
 	close(cl.done)
+}
+
+// result is what a Get that waited for cl returns: the loaded value, or ""
+// with the error when the load failed.
+func (cl *call) result() (string, error) {
+	if cl.err != nil {
+		return "", cl.err
+	}
+	return cl.val, nil
 }

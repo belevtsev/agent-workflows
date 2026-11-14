@@ -89,14 +89,19 @@ case file and the rule it breaks.
 
 ## Run locally
 
-Run from the plugin root. The agents write files and run Go checks, so grant
-those tools, keep one arm (the baseline arm cannot dispatch the plugin's
-agents) and set a cost ceiling:
+Run from the plugin root. The agents write files, run Go checks and read the
+shape of their result from `cw task schema handoff`. So put this checkout's
+`cw` on `PATH` (`go install ./cmd/cw`), grant those tools, keep one arm (the
+baseline arm cannot dispatch the plugin's agents) and set a cost ceiling:
 
 ```sh
 claude plugin eval . --tag architect --ablation none --runs 1 --scaffold \
-  --allow-tools Write Edit "Bash(go *)" --max-cost-usd 20 --no-publish
+  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
+  --max-cost-usd 20 --no-publish
 ```
+
+A run that cannot call `cw task schema handoff` guesses the shape of the
+handoff result, and its `handoff-shape` grader then fails.
 
 Use `--tag implementer`, `--tag test-engineer`, `--tag spec-writer`,
 `--tag adversarial-tester` or `--tag reviewer` for the other suites, `--tag spec-review`, `--tag
@@ -148,7 +153,8 @@ point the gate at it:
 runs="$HOME/.cache/evals-run/test-engineer"
 mkdir -p "$runs"
 TMPDIR="$runs" claude plugin eval . --tag test-engineer --ablation none \
-  --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
+  --runs 1 --scaffold --keep-temp \
+  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
   --max-cost-usd 20 --no-publish
 chmod 700 "$runs"/claude-eval-* "$runs"/claude-eval-*/sealed
 EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestMutantGate$' -v
@@ -188,8 +194,8 @@ each:
 
 ```sh
 claude plugin eval . --tag instruction-probe --ablation none --runs 1 \
-  --scaffold --allow-tools Write Edit "Bash(go *)" --max-cost-usd 5 \
-  --no-publish
+  --scaffold --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
+  --max-cost-usd 5 --no-publish
 ```
 
 To measure `omitClaudeMd` itself, run a case's prompt in an ordinary session,
@@ -234,7 +240,8 @@ mutant gate:
 runs="$HOME/.cache/evals-run/adversarial-tester"
 mkdir -p "$runs"
 TMPDIR="$runs" claude plugin eval . --tag adversarial-tester --ablation none \
-  --runs 1 --scaffold --keep-temp --allow-tools Write Edit "Bash(go *)" \
+  --runs 1 --scaffold --keep-temp \
+  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
   --max-cost-usd 20 --no-publish
 chmod 700 "$runs"/claude-eval-* "$runs"/claude-eval-*/sealed
 EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestAdversarialGate$' -v
@@ -249,20 +256,22 @@ known-good, extra-passing and unrelated-failure kept files from
 ## What CI runs
 
 `.github/workflows/evals.yml` runs on demand (`workflow_dispatch`) and weekly on
-Monday. Without the `ANTHROPIC_API_KEY` repository secret it skips with a notice.
-Otherwise one job per suite directory installs a pinned Claude Code release and
-runs:
+Monday. Without the `ANTHROPIC_API_KEY` repository secret the weekly run skips
+with a notice and a dispatched run fails. Otherwise one job per suite directory
+builds `cw` from the checkout onto `PATH`, installs a pinned Claude Code release
+and runs:
 
 ```sh
 claude plugin eval . --tag <suite> --ablation none --scaffold --trust-plugin \
   --keep-temp --no-publish --model <model> --judge-model <judge> \
   --threshold <pass_floor> --max-cost-usd <ceiling> \
-  --allow-tools Write Edit "Bash(go *)" --json result.json
+  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
+  --json result.json
 ```
 
-The cost ceiling defaults to 5 US dollars per three cases (list price): 5 for
-the three-case suites, 6.67 for the four-case suites and 20 for the
-twelve-case `reviewer` suite. A
+The cost ceiling defaults to 3 US dollars per case (list price): 9 for the
+three-case suites, 12 for the four-case suites and 36 for the twelve-case
+`reviewer` suite. A
 `max_cost_usd` dispatch input sets one ceiling per suite instead. It applies to
 each suite's job separately, so spend can exceed it only by the runs already in
 flight when it is reached; a run the ceiling stops is partial and fails the job. The pass floor

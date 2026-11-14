@@ -21,8 +21,9 @@ func (c *Cache) Get(key string) (string, error)
   error (`errors.Is` matches it), and nothing is cached: the next `Get(key)`
   calls `load(key)` again.
 - R3: While a call of `load(key)` is in flight, every other `Get(key)` waits
-  for it instead of calling `load`, and returns the same value and error when
-  it completes. For one key, at most one call of `load` runs at a time, and a
+  for it instead of calling `load`, and returns what the `Get` that called
+  `load` returns: the loaded value with a nil error, or `""` with the error
+  (R2). For one key, at most one call of `load` runs at a time, and a
   burst of overlapping `Get(key)` calls makes exactly one call of `load`.
 - R4: All methods are safe for concurrent use; Gets for different keys do not
   wait for each other's loads.

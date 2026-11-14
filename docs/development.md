@@ -413,9 +413,10 @@ lands in shard 4 without a change. Only obsolete pull request runs are
 cancelled. `ci.yml` makes no release and receives no service credentials.
 
 `.github/workflows/evals.yml` is separate: it runs the paid `claude plugin eval`
-suites under `evals/` on demand and weekly, receives the `ANTHROPIC_API_KEY`
-secret, and skips with a notice when that secret is not set. It never runs on
-pushes or pull requests. See `evals/README.md`.
+suites under `evals/` on demand and weekly and receives the
+`ANTHROPIC_API_KEY` secret. Without that secret the weekly run skips with a
+notice and a dispatched run fails. It never runs on pushes or pull requests.
+See `evals/README.md`.
 
 ## Releases
 
