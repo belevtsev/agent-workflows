@@ -1,26 +1,24 @@
 {
   "name": "agent-workflows",
-  "version": "3.0.0-rc.2",
-  "description": "Evidence-based reviews at every stage, independent test engineers, a verify gate for substantial tasks, and Go-focused engineering skills for Codex.",
+  "version": "3.0.0-beta.1",
+  "description": "cw for Codex: tells the session that commits and pushes are gated on recorded passing checks, and stops a command that would skip the gate.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "homepage": "https://github.com/belevtsev/agent-workflows",
   "repository": "https://github.com/belevtsev/agent-workflows",
   "license": "MIT",
-  "keywords": ["codex", "plugin", "skills", "code-review", "go", "workflow"],
-  "skills": "./skills/",
+  "keywords": ["codex", "plugin", "git-hooks", "quality-gate", "workflow"],
   "hooks": "./hooks/codex-hooks.json",
   "interface": {
     "displayName": "Agent Workflows",
-    "shortDescription": "Reviews at every stage, independent test engineers and a verify gate",
-    "longDescription": "Engineering workflow skills for substantial changes: evidence-based code review, test strategy, domain modeling, codebase design, threat modeling, and a task-orchestration flow with independent reviewers, test authors and a verify gate backed by the cw command.",
+    "shortDescription": "A gate on commits and pushes, backed by the cw command",
+    "longDescription": "Tells the session that the repository gates commits and pushes on recorded passing runs of the checks declared in cw.toml, and stops a command that would skip the gate.",
     "developerName": "Pavlo Belevtsev",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/belevtsev/agent-workflows",
     "defaultPrompt": [
-      "Review this diff for concrete defects with exact evidence",
-      "Plan this change as expand, migrate and contract steps",
-      "Choose tests for the behaviour this change adds"
+      "Run cw status and tell me which checks are missing",
+      "Run cw run and fix what fails"
     ]
   }
 }

@@ -120,8 +120,8 @@ The table is filled in when the review returns.
 
 | Milestone | State | Commit | Evidence |
 | --- | --- | --- | --- |
-| M1 | in progress | | |
-| M2 | not started | | |
+| M1 | done | `4fff8ad` | The two change folders and this plan are on the branch. No pull request: publishing is the owner's. |
+| M2 | done | this commit | Local, Linux: `go build`, `go vet`, `go test -race` pass; 2,216 files hold the same blob under `_quarantine/`; `cw version` exits 0 and `cw nosuch` exits 2; `claude plugin validate .` passes. Task 2.4 is written but not ticked: its check is a CI run. |
 | M3 | not started | | |
 | M4 | not started | | |
 | M5 | not started | | |

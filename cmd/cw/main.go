@@ -1,4 +1,5 @@
-// cw is the runtime for the agent-workflows skills.
+// cw gates commits and pushes on recorded passing runs of the checks a
+// repository declares.
 package main
 
 import (
@@ -20,14 +21,17 @@ var (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	// SIGHUP is trapped so that closing the terminal ends a run as interrupted.
+	// On Windows Ctrl+C and Ctrl+Break arrive as os.Interrupt, and the closing
+	// of the console as SIGTERM.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 	info, _ := debug.ReadBuildInfo()
 	v, r, b := buildIdentity(version, revision, builtAt, info)
 	if err := cli.Execute(ctx, os.Args[1:], cli.Config{Version: v, Revision: r, BuiltAt: b, In: os.Stdin, Out: os.Stdout, Err: os.Stderr}); err != nil {
 		// A command that already reported its own result carries no message.
 		if err.Error() != "" {
-			fmt.Fprintln(os.Stderr, "agent-workflows:", err)
+			fmt.Fprintln(os.Stderr, "cw:", err)
 		}
 		os.Exit(cli.ExitCode(err))
 	}

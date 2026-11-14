@@ -1,6 +1,6 @@
-# Skill distributions remain reviewable resources rather than manager source.
-third_party/** linguist-vendored
+# Every text file is checked out with LF on every system: the git hooks are
+# shell scripts, and gofmt and the tests compare bytes.
+* text=auto eol=lf
 
-# Preserve upstream-rendered HTML bytes, including whitespace-only lines.
-third_party/archify/assets/template.html whitespace=-blank-at-eol
-third_party/archify/renderers/workflow/workflow-compiler.mjs whitespace=-blank-at-eol
+# Files that left the core are reading material.
+_quarantine/** linguist-vendored

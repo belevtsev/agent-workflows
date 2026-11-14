@@ -15,20 +15,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The Go packages are tested in four shards per system, so that the required
-  # checks finish in about four minutes on Linux and five on macOS; one job
-  # for all packages took six to ten and eight to sixteen. The shards are not
-  # required checks: the two jobs named "Native Go / <system>" below are, and
-  # each passes only when all of its shards pass. Both matrices list every
-  # shard the go-test action selects (TestCIShardJobsRunEveryShard).
-  go-linux:
-    name: Go shard ${{ matrix.shard }} of 4 / ubuntu-latest
-    runs-on: ubuntu-latest
+  # The job names are the required checks of the branch protection:
+  # "Native Go / ubuntu-latest" and "Native Go / macos-latest". The Windows
+  # job is not required until the owner makes it so.
+  go:
+    name: Native Go / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     env:
       GOWORK: 'off'
     steps:
@@ -36,60 +33,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Test this shard
+      - name: Test
         uses: ./.github/actions/go-test
-        with:
-          shard: ${{ matrix.shard }}
-
-  go-macos:
-    name: Go shard ${{ matrix.shard }} of 4 / macos-latest
-    runs-on: macos-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    env:
-      GOWORK: 'off'
-    steps:
-      - name: Check out exact source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Test this shard
-        uses: ./.github/actions/go-test
-        with:
-          shard: ${{ matrix.shard }}
-
-  # always() makes these run after a failed or cancelled shard too: a skipped
-  # required check would count as passed.
-  go-linux-result:
-    name: Native Go / ubuntu-latest
-    needs: go-linux
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require every shard to pass
-        env:
-          RESULT: ${{ needs.go-linux.result }}
-        run: |
-          echo "Go shards on ubuntu-latest: $RESULT"
-          test "$RESULT" = success
-
-  go-macos-result:
-    name: Native Go / macos-latest
-    needs: go-macos
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require every shard to pass
-        env:
-          RESULT: ${{ needs.go-macos.result }}
-        run: |
-          echo "Go shards on macos-latest: $RESULT"
-          test "$RESULT" = success
 
   lint:
     name: Lint and vulnerabilities
@@ -114,22 +59,28 @@ jobs:
         with:
           version: v2.15.0
           install-mode: goinstall
-      # The runner is Linux; this also lints the darwin-only files.
+      # The runner is Linux; these also lint the files of the other systems.
       - name: Lint the darwin build
         env:
           GOOS: darwin
         run: golangci-lint run ./...
+      - name: Lint the windows build
+        env:
+          GOOS: windows
+        run: golangci-lint run ./...
       # Pinned so a new govulncheck release cannot fail CI without a
       # repository change; new vulnerability data still can, by design.
-      # Installed for the runner, so the darwin step below can still run it.
       - name: Install pinned govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Check reachable vulnerabilities
         run: govulncheck ./...
-      # Releases also ship darwin binaries; this checks the darwin build.
       - name: Check reachable vulnerabilities in the darwin build
         env:
           GOOS: darwin
+        run: govulncheck ./...
+      - name: Check reachable vulnerabilities in the windows build
+        env:
+          GOOS: windows
         run: govulncheck ./...
 
   plugins:
@@ -144,7 +95,5 @@ jobs:
       # Pinned so a validator release cannot fail CI without a repository change.
       - name: Install Claude Code
         run: npm install --global @anthropic-ai/claude-code@2.1.316
-      - name: Validate the plugins
-        run: |
-          claude plugin validate .
-          claude plugin validate ./third_party/cc-skills-golang
+      - name: Validate the plugin
+        run: claude plugin validate .

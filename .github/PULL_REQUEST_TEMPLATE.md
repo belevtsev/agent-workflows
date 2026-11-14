@@ -10,6 +10,6 @@ Commands run and results, for example `GOWORK=off go test -race -count=1 ./...`.
 
 - [ ] Tests added or updated for behaviour changes
 - [ ] `CHANGELOG.md` entry added under Unreleased
-- [ ] Docs updated if commands, skills or install behaviour changed
+- [ ] Docs updated if commands or install behaviour changed
 - [ ] New or adapted third-party content recorded in `THIRD_PARTY.md`
 - [ ] One topic per pull request
