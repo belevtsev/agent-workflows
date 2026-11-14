@@ -209,7 +209,8 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 }
 
 // substDrive gives folder a drive letter of its own with subst until the
-// test ends, or skips the test when the machine has none to give.
+// test ends. When the machine has none to give, the test is skipped, and
+// fails in CI.
 func substDrive(t *testing.T, folder string) string {
 	t.Helper()
 	for letter := 'Z'; letter >= 'G'; letter-- {
@@ -223,6 +224,10 @@ func substDrive(t *testing.T, folder string) string {
 		}
 		t.Cleanup(func() { _ = exec.Command("subst", drive, "/d").Run() })
 		return drive
+	}
+	// In CI the test must run: a skip there would read as a pass.
+	if os.Getenv("CI") != "" {
+		t.Fatal("subst gave the test folder no drive letter")
 	}
 	t.Skip("subst gave the test folder no drive letter")
 	return ""
