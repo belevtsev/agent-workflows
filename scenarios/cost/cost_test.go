@@ -21,6 +21,8 @@
 //     what the checks do.
 //   - The limits are 150 ms and 500 ms, on Linux and macOS. On Windows the
 //     test measures and reports only.
+//   - After the decisions it reports two floors, measured the same way: a
+//     hook file that only exits, and `cw version` started without sh.
 //
 // The test runs only when CW_COST=1, so that a plain `go test ./...` stays
 // fast and is not judged by the speed of the machine it runs on.
@@ -133,6 +135,41 @@ func measure(t *testing.T, repo *cwtest.Repo, limit time.Duration) {
 	case median > limit:
 		t.Errorf("the median decision took %s, above the limit of %s", ms(median), ms(limit))
 	}
+	floors(t, repo, hook)
+}
+
+// floors reports what a decision cannot go below on this machine, so that a
+// reader can tell the cost of cw from the cost of starting a hook at all: a
+// hook file that only exits, started the same way, and cw started without sh.
+func floors(t *testing.T, repo *cwtest.Repo, hook *exec.Cmd) {
+	t.Helper()
+	if len(hook.Args) == 2 { // sh and the hook file
+		empty := filepath.Join(t.TempDir(), "pre-commit")
+		if err := os.WriteFile(empty, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("a hook file that only exits, started the same way: median %s", ms(medianOf(t, repo.Command(hook.Path, empty))))
+	}
+	direct := repo.Command(filepath.Join(cwtest.Binary(t), cwName()), "version")
+	t.Logf("cw version, started without sh: median %s", ms(medianOf(t, direct)))
+}
+
+// medianOf runs a command as often as a decision is measured, after the same
+// warm-up, and returns the median time.
+func medianOf(t *testing.T, command *exec.Cmd) time.Duration {
+	t.Helper()
+	times := make([]time.Duration, 0, measured)
+	for n := range warmups + measured {
+		took, err := decide(command)
+		if err != nil {
+			t.Fatalf("%s: %v", strings.Join(command.Args, " "), err)
+		}
+		if n >= warmups {
+			times = append(times, took)
+		}
+	}
+	slices.Sort(times)
+	return times[len(times)/2]
 }
 
 // hookCommand is the installed pre-commit hook as git starts it. Where no sh
