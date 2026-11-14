@@ -9,8 +9,17 @@ any code exists.
 | The task | The way |
 | --- | --- |
 | A few lines with a plain cause, a rename, a change one test can pin down | The loop of this skill, with no roles |
-| A defect or a refactoring that should get a second reader | The workflow, small path: tests, code, review, commit |
-| New behaviour, or a change across several parts of the code | The workflow, full path: specification, design, tests, code, review, commit |
+| The intended behaviour does not change, and the task should get a second reader | The workflow, small path: tests, code, review, commit |
+| A requirement must be written or changed | The workflow, full path: specification, design, tests, code, review, commit |
+
+The two paths of the workflow:
+
+- **Full path**: the task needs a requirement written or changed: new behaviour, or a change to
+  behaviour that is specified or relied on.
+- **Small path**: the intended behaviour is already clear and does not change: a defect against
+  stated behaviour, a refactoring, a change of tests only.
+
+Size does not choose the path.
 
 The workflow starts a separate agent for each role, so it uses more tokens and more time than
 the loop. Say which way you propose and why, in one or two sentences, and let the user choose.

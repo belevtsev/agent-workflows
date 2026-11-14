@@ -75,8 +75,8 @@ Only inside the change folder `openspec/changes/<task>/`:
 - Write no more than the behaviour needs. A requirement the request does not
   ask for, and a sentence that repeats the proposal, cost every later reader.
 
-When you are done, `cw change check <task>` must exit 0. Run it if you have a
-shell; otherwise say that you did not.
+The coordinator runs `cw change check <task>` after you. Make the files obey
+the rules above.
 
 ## Hand back
 

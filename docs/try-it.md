@@ -172,7 +172,7 @@ It exits 5:
 ```text
 `reviewer` changed 1 of 1 paths outside its limit:
   review-notes.txt (added): `reviewer` may change nothing
-start `reviewer` again with these paths; do not accept the work and do not repair it yourself
+`reviewer` writes nothing: ask the developer to remove these paths, or remove them after their yes; do not accept the work
 ```
 
 Move the file out (`mv review-notes.txt /tmp/cw-try/`) and run the same

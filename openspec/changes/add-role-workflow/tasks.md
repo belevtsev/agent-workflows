@@ -32,7 +32,7 @@ record store.
 - [x] 2.3 Build `cw roles check`: compare the snapshot with a tree, by the kind of each change, against the limit of the role. Size: M. Depends on: 2.2. Check: scenarios under "Write limits". Source: `role-definitions`: Write limits; H6.
 - [x] 2.4 Write the seven role texts and the coordinator's instructions under `internal/roles/text/`. Each role text says the job, what the role reads, what it may write and what it hands back. Size: L. Depends on: 2.1. Check: scenarios under "Role text names no language" and "Text budget"; `cw roles` prints each size. Source: `role-definitions`: Role text names no language, Text budget, Fresh context and brief, Model not available; `task-flow`; M24; H4.
 - [x] 2.5 Generate the files Claude Code needs from the texts: one role file each, with model, effort and tools, and the skill that holds the coordinator's instructions. A test fails when a generated file differs from its text. Size: M. Depends on: 2.4. Check: scenarios under "One text per role" and "Roles without a writing tool", and scenario "No role can start a role". Source: `role-definitions`: One text per role, Roles without a writing tool, Explicit start; C1.
-- [x] 2.6 Tests: the scenarios of `role-definitions`, 19 as Go tests and 3 as evaluation cases (22). Size: M. Depends on: 2.3, 2.5. Check: `go test -race ./...` passes, and the three evaluation cases are in `docs/evaluation.md`. Source: `specs/role-definitions/spec.md`.
+- [x] 2.6 Tests: the scenarios of `role-definitions`, 20 as Go tests and 3 as evaluation cases (23). Size: M. Depends on: 2.3, 2.5. Check: `go test -race ./...` passes, and the three evaluation cases are in `docs/evaluation.md`. Source: `specs/role-definitions/spec.md`.
 
 ## 3. Change record
 
@@ -40,7 +40,7 @@ record store.
 - [x] 3.2 Build `cw change status` with `--json`: the stage from the files alone, what is missing, and the content ids that say whether a review or an approval is of the current content. Size: M. Depends on: 3.1. Check: scenarios under "Folder", "Stage from the files" and "Reviewed content". Source: `change-record`: Folder, Stage from the files, Reviewed content; H2, H9; production plan, Independent challenge, finding 9.
 - [x] 3.3 Build `cw change check`: the rules for specifications, tasks, the test table, the design and the review records, each failure with its file, line and rule. Size: L. Depends on: 3.1. Check: scenarios under "Specification rules", "Task rules", "Test table", "Design rules", "Review records" and "Usable as a check". Source: `change-record`: Specification rules, Task rules, Test table, Design rules, Review records, Usable as a check.
 - [x] 3.4 Make the two change folders of this repository pass `cw change check`. Size: S. Depends on: 3.3. Check: `cw change check` exits 0 in this repository. Source: Success measure 3.
-- [x] 3.5 Tests: the scenarios of `change-record` (29). Size: M. Depends on: 3.2, 3.3. Check: `go test -race ./...` passes. Source: `specs/change-record/spec.md`.
+- [x] 3.5 Tests: the scenarios of `change-record` (30). Size: M. Depends on: 3.2, 3.3. Check: `go test -race ./...` passes. Source: `specs/change-record/spec.md`.
 
 ## 4. Tokens
 
@@ -49,7 +49,7 @@ record store.
 - [x] 4.3 Build `cw tokens` with `--task` and `--json`: by role, by stage and round, writing and flow tokens, the share, unlabelled starts, session tokens, and unknown counts that mark a sum as incomplete. Size: M. Depends on: 4.2. Check: scenarios under "Task label", "Kinds of tokens", "Flow tokens", "Session tokens" and "Unknown is not zero". Source: `token-report`: Task label, Kinds of tokens, Flow tokens, Session tokens, Unknown is not zero; M11.
 - [x] 4.4 Add to the plugin the hooks that run `cw tokens record` when a role or a session ends. Size: S. Depends on: 4.2. Check: a test reads the plugin's hook file and finds one command for each of the two events. Source: `token-report`: Counts from the host's record; proposal, Impact.
 - [x] 4.5 Build the reader for a Codex record of a session or a role, from `_quarantine/internal/usagelog/codex.go`, and report `unknown` where the record holds no count. Write into `proposal.md` under Open Question 12 what the Codex documentation says. Size: M. Depends on: 4.3. Check: scenario "A Codex session". Source: `token-report`: Both hosts; Open Question 12; M11.
-- [x] 4.6 Tests: the scenarios of `token-report` (16). Size: M. Depends on: 4.3, 4.5. Check: `go test -race ./...` passes; the two scenarios under "Published comparison" are tests of the documents. Source: `specs/token-report/spec.md`.
+- [x] 4.6 Tests: the scenarios of `token-report` (20). Size: M. Depends on: 4.3, 4.5. Check: `go test -race ./...` passes; the two scenarios under "Published comparison" are tests of the documents. Source: `specs/token-report/spec.md`.
 
 ## 5. Flow
 
@@ -117,6 +117,7 @@ record store.
 | | Unknown is not zero | 4.3 | 4.6 |
 | | Local and without text | 4.2 | 4.6 |
 | | Both hosts | 4.5 | 4.6 |
+| | Notices as the host gives them | 4.2 | 4.6 |
 | | Published comparison | 5.2, 7.2 | 4.6 |
 
 | Success measure | Tasks |

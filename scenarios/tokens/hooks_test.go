@@ -51,7 +51,7 @@ func TestPluginHooksRecordTokens(t *testing.T) {
 		if err := json.Unmarshal(data, &hooks); err != nil {
 			t.Fatalf("%s: %v", file, err)
 		}
-		recordCmd := regexp.MustCompile(`\bcw tokens record --host ` + host + `\b`)
+		recordCmd := regexp.MustCompile(`"\$c" tokens record --host ` + host + `\b`)
 		for _, event := range []string{"SubagentStop", "SessionEnd"} {
 			found := 0
 			for _, group := range hooks.Hooks[event] {

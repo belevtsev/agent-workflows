@@ -51,15 +51,15 @@ Without a setting in `cw-roles.toml`, the roles SHALL have the models and effort
 | --- | --- | --- |
 | `lookup` | `haiku`, `high` | `gpt-6-luna`, `high` |
 | `git` | `sonnet`, `medium` | `gpt-6-luna`, `high` |
-| `architect` | `opus`, `xhigh` | `gpt-6.1-sol`, `max` |
-| `spec-writer`, `quality-engineer`, `developer`, `reviewer` | `opus`, `high` | `gpt-6.1-sol`, `high` |
+| `architect`, `reviewer` | `opus`, `xhigh` | `gpt-6.1-sol`, `max` |
+| `spec-writer`, `quality-engineer`, `developer` | `opus`, `high` | `gpt-6.1-sol`, `high` |
 
-Source: `skills/task-orchestration/model-policy.claude.yaml` (profiles `lookup`, `github`, `decision`, `substantive`); `skills/task-orchestration/model-policy.yaml` (profiles `luna`, `github`, `decision`, `sol`); proposal, Open Question 4.
+Source: `skills/task-orchestration/model-policy.claude.yaml` (profiles `lookup`, `github`, `decision`, `substantive`); `skills/task-orchestration/model-policy.yaml` (profiles `luna`, `github`, `decision`, `sol`); proposal, Open Question 4; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge) (a review does not run at a lower effort than the work it reviews).
 
 #### Scenario: The defaults
 
 - **WHEN** `cw roles --json` runs in `demo`
-- **THEN** on `claude` the model of `lookup` is `haiku`, of `git` `sonnet`, and of `architect` `opus` with effort `xhigh`
+- **THEN** on `claude` the model of `lookup` is `haiku`, of `git` `sonnet`, and of `architect` and `reviewer` `opus` with effort `xhigh`
 
 ### Requirement: Roles file
 
@@ -84,9 +84,9 @@ Source: the owner's statement (the appropriate model for each role); `check-decl
 
 ### Requirement: Explicit start
 
-The coordinator SHALL start every role with the model and effort `cw roles` prints for it on that host, given on the call that starts the role. Only the coordinator SHALL start a role: the role files SHALL give no role a tool that starts another.
+The coordinator SHALL start every role with the model and effort `cw roles` prints for it on that host, given on the call that starts the role. When the developer's own instruction names a model for agents, that instruction SHALL come first, and the coordinator SHALL say once which roles it changes. Only the coordinator SHALL start a role: the role files SHALL give no role a tool that starts another.
 
-Source: `skills/task-orchestration/references/hosts.md` (pass model and effort on every call); Claude Code documentation, `sub-agents.md` (the model on the call wins over the role file; a role can start roles of its own by default); `agents/*.md` (`disallowedTools: Skill, Agent, Workflow`).
+Source: `skills/task-orchestration/references/hosts.md` (pass model and effort on every call); Claude Code documentation, `sub-agents.md` (the model on the call wins over the role file; a role can start roles of its own by default); `agents/*.md` (`disallowedTools: Skill, Agent, Workflow`); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: No role can start a role
 
@@ -118,10 +118,10 @@ Each role SHALL change only the paths the table below gives it. `cw roles check 
 | `lookup`, `reviewer`, `git` | nothing |
 | `spec-writer` | `proposal.md` and `specs/` of the task's change folder |
 | `architect` | `design.md` and `tasks.md` of the task's change folder |
-| `quality-engineer` | paths that match `tests`, and `tests.md` of the task's change folder |
+| `quality-engineer` | paths that match `tests`, existing tests included, and `tests.md` of the task's change folder; it is the only role that changes or removes an existing test |
 | `developer` | any other path, except `cw.toml`, `cw-roles.toml` and `openspec/`; it MAY add a path that matches `tests` and SHALL NOT change or remove one |
 
-Source: review finding H6 (independence is one sentence in a prompt, and nothing checks it); proposal, Terms of the first change (snapshot; a path differs); proposal, Open Question 7.
+Source: review finding H6 (independence is one sentence in a prompt, and nothing checks it); proposal, Terms of the first change (snapshot; a path differs); proposal, Open Question 7; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge) (existing tests have one owner).
 
 #### Scenario: The developer role changes a test
 
@@ -137,6 +137,11 @@ Source: review finding H6 (independence is one sentence in a prompt, and nothing
 
 - **WHEN** `tests/app_test.txt` and `src/app.txt` are edited and `cw roles check quality-engineer --from T0 --task add-greeting` runs
 - **THEN** it exits 5 and lists `src/app.txt` and no other path
+
+#### Scenario: The quality engineer removes an existing test
+
+- **WHEN** `tests/app_test.txt` is removed and `cw roles check quality-engineer --from T0 --task add-greeting` runs
+- **THEN** it exits 0
 
 #### Scenario: A role that writes nothing wrote a file
 
@@ -171,7 +176,7 @@ Source: Claude Code documentation, `plugins/components.md` (a plugin's role file
 
 ### Requirement: Fresh context and brief
 
-Each role SHALL start with none of the coordinator's or another role's conversation. Its brief SHALL name the files it is to read and what it is to hand back, and a brief for `reviewer` SHALL hold no opinion of the author about the work. A role SHALL hand back the paths it wrote, the commands it ran with their results, and its open questions.
+Each role SHALL start with none of the coordinator's or another role's conversation, and SHALL NOT be started from a copy or fork of it. Its brief SHALL name the files it is to read and what it is to hand back, and a brief for `reviewer` SHALL hold no opinion of the author about the work. A role SHALL hand back the paths it wrote, the commands it ran with their results, and its open questions.
 
 Source: `skills/task-orchestration/references/hosts.md` (a new Agent call starts with a fresh context; a Codex worker is created without the history); `skills/task-orchestration/references/contracts/README.md` (a worker reads only its contract and the inputs it lists).
 

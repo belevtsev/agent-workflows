@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/roles"
 )
 
 // SessionAgent is the agent of the start that is the session itself.
@@ -23,8 +25,10 @@ type Start struct {
 	Host    string `json:"host"`
 	Session string `json:"session"`
 	Agent   string `json:"agent"`
-	// Record is the file of the host the counts were read from.
+	// Record is the file of the host the counts were read from, and Size
+	// its size before that reading.
 	Record string `json:"record"`
+	Size   int64  `json:"size,omitempty"`
 	Task   string `json:"task,omitempty"`
 	Stage  string `json:"stage,omitempty"`
 	Round  int    `json:"round,omitempty"`
@@ -47,13 +51,24 @@ type Notice struct {
 	// AgentType is the name of the role as the host knows it. A plugin's
 	// role has the plugin's name and a colon before its own.
 	AgentType string `json:"agent_type"`
+	// Cwd is the directory the host works in.
+	Cwd string `json:"cwd"`
+}
+
+// Dir is the directory the repository is found from: the notice's cwd, or
+// the working directory when the notice gives none.
+func (n Notice) Dir() (string, error) {
+	if n.Cwd != "" {
+		return n.Cwd, nil
+	}
+	return os.Getwd()
 }
 
 // noticeRole is the role a notice names, or empty when it names none of the
 // roles of cw.
 func noticeRole(agentType string) string {
 	name := agentType[strings.LastIndexByte(agentType, ':')+1:]
-	if slices.Contains(roleOrder(), name) {
+	if roles.Known(name) {
 		return name
 	}
 	return ""
@@ -80,7 +95,7 @@ func stem(path string) string {
 // start makes what is stored of one start. role is the role the notice
 // names; it is kept when the record gives no label.
 func start(host, session, agent, record, role string, r reading) Start {
-	s := Start{Version: 1, Host: host, Session: session, Agent: agent, Record: record, Known: r.why == "", Why: r.why, Models: r.models}
+	s := Start{Version: 1, Host: host, Session: session, Agent: agent, Record: record, Size: r.size, Known: r.why == "", Why: r.why, Models: r.models}
 	if agent == SessionAgent {
 		return s
 	}
@@ -92,17 +107,27 @@ func start(host, session, agent, record, role string, r reading) Start {
 	return s
 }
 
+// readers are the readers of the records of each host.
+var readers = map[string]func(string) reading{Claude: readClaude, Codex: readCodex}
+
+// readNow reads a record and notes the size it had before the reading.
+func readNow(host, path string) reading {
+	info, err := os.Stat(path)
+	r := readers[host](path)
+	if err == nil {
+		r.size = info.Size()
+	}
+	return r
+}
+
 // Record reads the records a notice names and stores their counts under
 // dir: the record of the role that ended, when the notice names one, and
-// the record of the session, which every notice names. Giving the same
-// notice again writes the same files.
+// the record of the session, which every notice names. It also reads again
+// every record stored for the session that has grown since: the host may
+// write a record after its notice. Giving the same notice again writes the
+// same files.
 func Record(dir, host string, notice Notice) error {
-	read := readClaude
-	switch host {
-	case Claude:
-	case Codex:
-		read = readCodex
-	default:
+	if readers[host] == nil {
 		return fmt.Errorf("unknown host %q; the hosts are %s and %s", host, Claude, Codex)
 	}
 	session := notice.Session
@@ -113,13 +138,18 @@ func Record(dir, host string, notice Notice) error {
 		return errors.New("the notice names no session")
 	}
 	var starts []Start
-	if notice.AgentTranscript != "" {
+	// Claude Code ends its own agents, such as a prompt suggestion, with an
+	// empty agent_type. They are no start.
+	internal := host == Claude && notice.AgentID != "" && notice.AgentType == ""
+	switch {
+	case internal:
+	case notice.AgentTranscript != "":
 		agent := notice.AgentID
 		if agent == "" {
 			agent = stem(notice.AgentTranscript)
 		}
-		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, noticeRole(notice.AgentType), read(notice.AgentTranscript)))
-	} else if notice.AgentID != "" {
+		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, noticeRole(notice.AgentType), readNow(host, notice.AgentTranscript)))
+	case notice.AgentID != "":
 		// The host says that a role ended and names no record of it: the
 		// start is kept, with unknown tokens, so that no sum leaves it out
 		// in silence.
@@ -127,12 +157,14 @@ func Record(dir, host string, notice Notice) error {
 		starts = append(starts, start(host, session, "agent-"+notice.AgentID, "", noticeRole(notice.AgentType), unread))
 	}
 	if notice.Transcript != "" {
-		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, "", read(notice.Transcript)))
+		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, "", readNow(host, notice.Transcript)))
 	}
-	if len(starts) == 0 {
+	if len(starts) == 0 && internal {
+		return nil
+	} else if len(starts) == 0 {
 		return errors.New("the notice names no record")
 	}
-	for _, s := range starts {
+	for _, s := range append(again(dir, session, starts), starts...) {
 		if err := write(dir, s); err != nil {
 			return err
 		}
@@ -167,6 +199,34 @@ func write(dir string, s Start) error {
 	return err
 }
 
+// again reads once more the record of each start stored for the session
+// that named does not hold, when the record still exists and its size has
+// changed. A start whose new reading is unknown keeps its counts.
+func again(dir, session string, named []Start) []Start {
+	files, _ := filepath.Glob(filepath.Join(dir, fileName(session), "*.json"))
+	var out []Start
+	for _, file := range files {
+		s, ok := load(file)
+		if !ok || s.Session != session || readers[s.Host] == nil || slices.ContainsFunc(named, func(n Start) bool { return n.Agent == s.Agent }) {
+			continue
+		}
+		if info, err := os.Stat(s.Record); s.Record == "" || err != nil || info.Size() == s.Size {
+			continue
+		}
+		if r := readNow(s.Host, s.Record); r.why == "" {
+			out = append(out, start(s.Host, s.Session, s.Agent, s.Record, s.Role, r))
+		}
+	}
+	return out
+}
+
+// load reads one stored start; ok is false when it cannot be read.
+func load(file string) (s Start, ok bool) {
+	data, err := os.ReadFile(file)
+	ok = err == nil && json.Unmarshal(data, &s) == nil && s.Version == 1 && s.Session != "" && s.Agent != ""
+	return s, ok
+}
+
 // Load reads every start stored under dir, in the order of their paths. A
 // file that cannot be read is named in damaged.
 func Load(dir string) (starts []Start, damaged []string, err error) {
@@ -176,13 +236,11 @@ func Load(dir string) (starts []Start, damaged []string, err error) {
 	}
 	slices.Sort(files)
 	for _, file := range files {
-		var s Start
-		data, err := os.ReadFile(file)
-		if err != nil || json.Unmarshal(data, &s) != nil || s.Version != 1 || s.Session == "" || s.Agent == "" {
+		if s, ok := load(file); ok {
+			starts = append(starts, s)
+		} else {
 			damaged = append(damaged, file)
-			continue
 		}
-		starts = append(starts, s)
 	}
 	return starts, damaged, nil
 }

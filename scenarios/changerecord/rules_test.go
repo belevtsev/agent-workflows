@@ -1,6 +1,8 @@
 package changerecord_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -72,6 +74,29 @@ func TestTestIsRenamed(t *testing.T) {
 	r.edit("tests/app_test.txt", "greets_by_name", "greets_name")
 	out := r.check(5)
 	assertLineWith(t, out, "A name is given", "tests/app_test.txt")
+}
+
+// Requirement "Test table", scenario "A test file outside the repository".
+func TestTestFileOutsideTheRepository(t *testing.T) {
+	t.Parallel()
+	r := newRecord(t)
+	// A file beside the repository holds the text of the row.
+	outside := filepath.Join(filepath.Dir(r.Dir), "outside_test.txt")
+	if err := os.WriteFile(outside, []byte(appTestFile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r.edit(folder+"tests.md", "| A name is given | tests/app_test.txt |", "| A name is given | ../outside_test.txt |")
+	out := r.check(5)
+	assertLineWith(t, out, "A name is given", "../outside_test.txt")
+
+	// The same file reached through a symbolic link inside the repository.
+	link := filepath.Join(r.Dir, "tests", "link_test.txt")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("this system makes no symbolic link: %v", err)
+	}
+	r.edit(folder+"tests.md", "| A name is given | ../outside_test.txt |", "| A name is given | tests/link_test.txt |")
+	out = r.check(5)
+	assertLineWith(t, out, "A name is given", "tests/link_test.txt")
 }
 
 // Requirement "Test table", scenario "A scenario without a test, when the

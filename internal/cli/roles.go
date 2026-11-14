@@ -149,18 +149,7 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return failf("%v", err)
 	}
-	before, found, err := s.repo.TreeOf(ctx, *from)
-	if err != nil {
-		return failf("%v", err)
-	}
-	if !found {
-		return failf("`%s` names no tree of this repository", *from)
-	}
-	snapshot, err := s.repo.Snapshot(ctx, s.store.Tmp())
-	if err != nil {
-		return failf("%v", err)
-	}
-	changes, err := s.repo.Diff(ctx, before, snapshot)
+	changes, err := s.changedSince(ctx, *from)
 	if err != nil {
 		return failf("%v", err)
 	}
@@ -182,6 +171,29 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	for _, v := range outside {
 		fmt.Fprintf(cfg.Out, "  %s (%s): %s\n", v.Path, v.Kind, v.Why)
 	}
-	fmt.Fprintf(cfg.Out, "start `%s` again with these paths; do not accept the work and do not repair it yourself\n", role)
+	advice := "start `%s` again with these paths; do not accept the work and do not repair it yourself\n"
+	for _, r := range roles.All(nil) {
+		if r.ID == role && r.Writes == "nothing" {
+			advice = "`%s` writes nothing: ask the developer to remove these paths, or remove them after their yes; do not accept the work\n"
+		}
+	}
+	fmt.Fprintf(cfg.Out, advice, role)
 	return exit(ExitNotVerified)
+}
+
+// changedSince lists the paths of the working tree, as it is on disk, that
+// differ from a tree.
+func (s *session) changedSince(ctx context.Context, from string) ([]gitx.Change, error) {
+	before, found, err := s.repo.TreeOf(ctx, from)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("`%s` names no tree of this repository", from)
+	}
+	snapshot, err := s.repo.Snapshot(ctx, s.store.Tmp())
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Diff(ctx, before, snapshot)
 }

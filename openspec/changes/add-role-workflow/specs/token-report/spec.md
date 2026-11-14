@@ -58,6 +58,27 @@ Source: the owner's statement of 14 November 2026 (a count of the tokens used ex
 - **WHEN** `S1` is recorded, the notice of the first `developer` start is given to `cw tokens record` again, and `cw tokens --task add-greeting --json` runs
 - **THEN** `total` is 655,000
 
+### Requirement: Notices as the host gives them
+
+At each notice `cw tokens record` SHALL read again the record of every start already stored for that session whose record still exists, and SHALL replace its stored counts when the new reading is known. It SHALL find the repository from the notice's `cwd`, or from its working directory when `cwd` is empty. It SHALL NOT store as a start a notice of Claude Code that names an agent (`agent_id`) with an empty `agent_type`.
+
+Source: review of the token report, 14 November 2026: Claude Code documentation, `hooks.md` (the transcript is written asynchronously and may not yet hold the last messages at `SubagentStop` or `SessionEnd`; every hook input has `cwd`; the host's own agents end with an empty `agent_type`); Codex source (`SubagentStop` runs at the end of each turn of a sub-agent, before its record is flushed).
+
+#### Scenario: A record that grows after its notice
+
+- **WHEN** the record of the first `developer` start lacks its last answer when its notice is given and holds it at the next notice, `S1` is recorded, and `cw tokens --task add-greeting --json` runs
+- **THEN** `total` is 655,000 and the entry of `stages` for `code`, round 1, has `total` 200,000
+
+#### Scenario: An internal agent of the host
+
+- **WHEN** `S1` is recorded, a notice that names the agent `aside01` with an empty `agent_type` and a record of 3,000 tokens is given to `cw tokens record`, and `cw tokens --json` runs
+- **THEN** `unlabelled` is empty and no file is stored for `aside01`
+
+#### Scenario: The directory of the notice
+
+- **WHEN** every notice of `S1`, with `cwd` the root of `demo`, is given to `cw tokens record` running in a git repository whose root holds no `cw.toml`, and `cw tokens --task add-greeting --json` runs in `demo`
+- **THEN** `total` is 655,000
+
 ### Requirement: Task label
 
 The first line of every brief SHALL be `cw-task: <task> <stage> <round>`, with the stage `lookup`, `spec`, `spec-review`, `design`, `design-review`, `tests`, `code`, `review` or `commit`. `cw` SHALL give the tokens of that start to that task, stage and round, and to the role of the stage. It SHALL list the tokens of a start without such a line as `unlabelled` and SHALL NOT drop them.
@@ -146,14 +167,19 @@ Source: review finding H5 (repository details were sent to third parties); the f
 
 ### Requirement: Both hosts
 
-On Codex `cw tokens` SHALL report the same fields from the record Codex keeps of a session. Where that record holds no count for a start, the report SHALL say `unknown` for it.
+On Codex `cw tokens` SHALL report the same fields from the record Codex keeps of a session. Where that record holds no count for a start, the report SHALL say `unknown` for it. When a running total of Codex falls, `cw` SHALL add the total before the fall to the count and go on from the smaller total.
 
-Source: `internal/usagelog/codex.go` (reads a Codex rollout today, and notes that a rollout can hold token counts without the entries that say which request used them); review finding M11; proposal, Open Question 12.
+Source: `internal/usagelog/codex.go` (reads a Codex rollout today, and notes that a rollout can hold token counts without the entries that say which request used them); review finding M11; proposal, Open Question 12; Codex source, `fill_to_context_window` (after a context window overflows, the running total is set to a value with no input and no output).
 
 #### Scenario: A Codex session
 
 - **WHEN** `S2` is recorded and `cw tokens --task fix-empty-app --json` runs
 - **THEN** `roles` holds an entry for `quality-engineer`, `developer`, `reviewer` and `git`, each with a number or `unknown` as its `total`, and `complete` is `false` when one of them is `unknown`
+
+#### Scenario: A Codex total that is reset
+
+- **WHEN** a Codex record that holds a running total of 95 tokens, then a total of 0, then a total of 14 is read
+- **THEN** its count is 109 tokens
 
 ### Requirement: Published comparison
 

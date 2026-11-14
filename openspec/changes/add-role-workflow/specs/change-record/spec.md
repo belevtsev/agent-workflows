@@ -124,14 +124,19 @@ Source: `skills/task-orchestration/references/contracts/spec-writer.md` (each ta
 
 ### Requirement: Test table
 
-`tests.md` SHALL hold one row per scenario, with the file of its test and a text that occurs in that file, or with `not automated` and a reason. `cw change check` SHALL fail when a row names a file that does not exist or does not hold the text, and, once every task is checked, when a scenario has no row. `cw change status` SHALL print the number of scenarios that are not automated.
+`tests.md` SHALL hold one row per scenario, with the file of its test and a text that occurs in that file, or with `not automated` and a reason. `cw change check` SHALL fail when a row names a file that does not exist, does not hold the text, or lies outside the repository, and, once every task is checked, when a scenario has no row. `cw change status` SHALL print the number of scenarios that are not automated.
 
-Source: the owner's statement of 14 November 2026 (well tested code, in any language); review finding H8 (tests that miss what they claim to cover); proposal, Known limits.
+Source: the owner's statement of 14 November 2026 (well tested code, in any language); review finding H8 (tests that miss what they claim to cover); proposal, Known limits; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge) (the check reads no file outside the repository).
 
 #### Scenario: A test is renamed
 
 - **WHEN** the text `greets_by_name` in `tests/app_test.txt` is changed to `greets_name` and `cw change check` runs
 - **THEN** it exits 5 and names the scenario `A name is given` and the file `tests/app_test.txt`
+
+#### Scenario: A test file outside the repository
+
+- **WHEN** a file beside the repository holds `greets_by_name`, the row of `A name is given` names it as `../outside_test.txt`, and `cw change check` runs
+- **THEN** it exits 5, names the scenario `A name is given`, and says that the test file is outside the repository
 
 #### Scenario: A scenario without a test, when the work is called finished
 

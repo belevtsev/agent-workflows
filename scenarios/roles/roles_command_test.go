@@ -95,8 +95,14 @@ func TestTheDefaults(t *testing.T) {
 	if got := roles["git"].Models["claude"].Model; got != "sonnet" {
 		t.Errorf("the claude model of git is %q, want sonnet", got)
 	}
-	if got := roles["architect"].Models["claude"]; got != (hostModel{Model: "opus", Effort: "xhigh"}) {
-		t.Errorf("the claude model of architect is %+v, want opus with effort xhigh", got)
+	for _, id := range []string{"architect", "reviewer"} {
+		if got := roles[id].Models["claude"]; got != (hostModel{Model: "opus", Effort: "xhigh"}) {
+			t.Errorf("the claude model of %s is %+v, want opus with effort xhigh", id, got)
+		}
+	}
+	// A review runs at the effort of the work it reviews.
+	if got, want := roles["reviewer"].Models["codex"], roles["architect"].Models["codex"]; got != want {
+		t.Errorf("the codex model of reviewer is %+v, want that of architect, %+v", got, want)
 	}
 }
 

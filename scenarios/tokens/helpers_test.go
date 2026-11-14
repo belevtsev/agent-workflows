@@ -392,14 +392,30 @@ func demo(t *testing.T) *cwtest.Repo {
 	return repo
 }
 
-// recordNotice gives one notice to cw tokens record.
+// noticeCwd is the cwd the generated notices give. recordNotice replaces it
+// with the directory of the repository, as the host would give it.
+const noticeCwd = `"cwd":"/tmp/demo"`
+
+// recordNotice gives one notice to cw tokens record in repo, with the cwd of
+// repo.
 func recordNotice(t *testing.T, repo *cwtest.Repo, host, n string) cwtest.Result {
+	t.Helper()
+	return recordNoticeIn(t, repo, repo.Dir, host, n)
+}
+
+// recordNoticeIn runs cw tokens record in the directory of runIn, with a
+// notice whose cwd is cwd.
+func recordNoticeIn(t *testing.T, runIn *cwtest.Repo, cwd, host, n string) cwtest.Result {
 	t.Helper()
 	args := []string{"tokens", "record"}
 	if host == "codex" {
 		args = append(args, "--host", "codex")
 	}
-	return repo.Run(n, cwProgram(t), args...)
+	dir, err := json.Marshal(cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return runIn.Run(strings.ReplaceAll(n, noticeCwd, `"cwd":`+string(dir)), cwProgram(t), args...)
 }
 
 // cwProgram is the path of the cw under test. It is a full path, because a

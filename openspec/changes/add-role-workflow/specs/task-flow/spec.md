@@ -21,9 +21,9 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
 
 ### Requirement: Entry
 
-The workflow SHALL start from a request in the developer's words, from documents the developer names, or from an existing change folder. For an existing folder it SHALL continue at the stage `cw change status` names and SHALL NOT repeat a stage that is finished.
+The workflow SHALL start from a request in the developer's words, from documents the developer names, or from an existing change folder. For an existing folder it SHALL continue at the first stage that is not finished, which `cw change status` names, and SHALL NOT repeat a finished stage. When `git status --porcelain` prints anything, the coordinator SHALL ask the developer to commit it or set it aside before any role starts.
 
-Source: the owner's statement of 14 November 2026 (implement a task from scratch by creating a specification or working with existing ones); `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped when a reviewed spec exists).
+Source: the owner's statement of 14 November 2026 (implement a task from scratch by creating a specification or working with existing ones); `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped when a reviewed spec exists); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A folder with an approved specification (evaluation)
 
@@ -32,9 +32,9 @@ Source: the owner's statement of 14 November 2026 (implement a task from scratch
 
 ### Requirement: Two paths
 
-The coordinator SHALL take the full path when the task adds or changes behaviour that a user or another part of the code can observe, and the small path otherwise. Before any role writes, it SHALL tell the developer the path and the reason, and it SHALL follow the developer when the developer chooses the other path. For a change of a few lines with a plain cause, which one test can pin down, it SHALL say that the task needs no roles and SHALL take a path only when the developer asks.
+The coordinator SHALL take the full path when the task needs a requirement written or changed, and the small path when the intended behaviour is already clear and does not change; size SHALL NOT choose the path. Before any role writes, it SHALL tell the developer the path and the reason, and SHALL follow the developer's choice. For a change of a few lines with a plain cause, which one test can pin down, it SHALL say that the task needs no roles and SHALL take a path only when the developer asks.
 
-Source: `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped for a bug fix, a refactor or a test-only task); review finding H7 (9 to 27 role starts for a strict task); `docs/other-tools.md`, Specifications and roles (users of four tools report too much ceremony for a small change).
+Source: `skills/task-orchestration/references/contracts/README.md` (the spec stage is skipped for a bug fix, a refactor or a test-only task); review finding H7 (9 to 27 role starts for a strict task); `docs/other-tools.md`, Specifications and roles (users of four tools report too much ceremony for a small change); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A defect takes the small path (evaluation)
 
@@ -53,20 +53,20 @@ Source: `skills/task-orchestration/references/contracts/README.md` (the spec sta
 
 ### Requirement: Stages of the full path
 
-The full path SHALL run these stages in this order: spec by `spec-writer`, design by `architect`, tests by `quality-engineer`, code by `developer`, review by `reviewer`, commit by `git`. `reviewer` SHALL review the specification before the design stage starts, and the design before the tests stage starts. `lookup` MAY be started at any stage.
+The full path SHALL run these stages in this order: spec by `spec-writer`, design by `architect`, tests by `quality-engineer`, code by `developer` with one group of `tasks.md` per start, review by `reviewer`, commit by `git`. `reviewer` SHALL review the specification before the design stage starts, and the design before the tests stage starts. The coordinator SHALL tick the finished tasks only when the review of the code has no open finding. `lookup` MAY be started at any stage.
 
-Source: the owner's statement (specification, code, tests, architecture); `skills/task-orchestration/references/contracts/README.md` (spec, design, tests, code and review stages, each reviewed by another worker).
+Source: the owner's statement (specification, code, tests, architecture); `skills/task-orchestration/references/contracts/README.md` (spec, design, tests, code and review stages, each reviewed by another worker); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: The order of the roles (evaluation)
 
-- **WHEN** the full path runs for one task and no review returns a finding
+- **WHEN** the full path runs for one task, `tasks.md` has one group, and no role is started a second time for a stage
 - **THEN** the roles other than `lookup` are started in this order: `spec-writer`, `reviewer`, `architect`, `reviewer`, `quality-engineer`, `developer`, `reviewer`, `git`
 
 ### Requirement: Stages of the small path
 
-The small path SHALL run tests by `quality-engineer`, code by `developer`, review by `reviewer` and commit by `git`, and SHALL write no change folder. For a defect, the tests stage SHALL add a test that fails on the code as it is.
+The small path SHALL run tests by `quality-engineer`, code by `developer`, review by `reviewer` and commit by `git`, and SHALL write no change folder. For a defect the new test SHALL fail before the code changes; for a refactoring the tests SHALL pass before and after; for a change of tests only `developer` SHALL NOT be started. When the coordinator stops a task on this path, it SHALL tell the developer the stage, the round and the open findings.
 
-Source: `skills/task-orchestration/references/contracts/README.md` (the `lite` flow); review finding H7.
+Source: `skills/task-orchestration/references/contracts/README.md` (the `lite` flow); review finding H7; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A defect is shown by a test first (evaluation)
 
@@ -91,9 +91,9 @@ Source: the owner's statement (working with existing specifications); proposal, 
 
 ### Requirement: Open questions
 
-A role SHALL write a question it cannot answer from its sources into the record, and SHALL NOT answer it by a guess. The coordinator SHALL put every open question of a stage to the developer before that stage is approved.
+A role SHALL write a question it cannot answer from its sources into the record, and SHALL NOT answer it by a guess. The coordinator SHALL put the open questions of `proposal.md` to the developer and start `spec-writer` again with the answers before `reviewer` reviews the specification, and SHALL put every open question of a stage to the developer before that stage is approved.
 
-Source: `skills/task-orchestration/references/contracts/spec-writer.md` (a value the sources do not give is an open question); the owner's statement (clarity).
+Source: `skills/task-orchestration/references/contracts/spec-writer.md` (a value the sources do not give is an open question); the owner's statement (clarity); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A request that leaves a value open (evaluation)
 
@@ -118,9 +118,9 @@ Source: `skills/task-orchestration/references/contracts/README.md` (the user is 
 
 ### Requirement: Review rounds
 
-Every finding of a review SHALL go back to the role that wrote the work, and the changed work SHALL be reviewed again. After two rounds on one stage the coordinator SHALL stop and ask the developer how to go on. `reviewer` SHALL NOT change the work.
+Every finding of a review SHALL go back to the role that wrote the work, and the changed work SHALL be reviewed again. A stage SHALL have at most two review rounds: when the second review still has a `blocker` or `major` finding open, the coordinator SHALL stop and ask the developer how to go on. Only the developer SHALL reject a `blocker` or `major` finding, and the coordinator SHALL record their words as the reason. `reviewer` SHALL NOT change the work.
 
-Source: `skills/task-orchestration/references/contracts/README.md` (findings go back to the stage's author, within a review cap); review finding H7.
+Source: `skills/task-orchestration/references/contracts/README.md` (findings go back to the stage's author, within a review cap); review finding H7; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: A finding goes back to the author (evaluation)
 
@@ -134,9 +134,9 @@ Source: `skills/task-orchestration/references/contracts/README.md` (findings go 
 
 ### Requirement: Tests before code
 
-On both paths the tests stage SHALL end before `developer` is started. Between the two the coordinator SHALL run `cw run`, and when every check passes it SHALL tell the developer that the new tests did not fail without the code.
+On both paths the tests stage SHALL end before `developer` is started, except for a first group of `tasks.md` that builds only the design's interface with empty bodies. Between the two the coordinator SHALL run `cw run`, and when every check passes it SHALL tell the developer that the new tests did not fail without the code. When `developer` reports a wrong test, the coordinator SHALL start `quality-engineer` with that report before `developer` continues.
 
-Source: review finding H6 (the test engineer and the implementer share a checkout); review finding H8 (tests that miss what they claim to cover).
+Source: review finding H6 (the test engineer and the implementer share a checkout); review finding H8 (tests that miss what they claim to cover); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: The tests fail first (evaluation)
 
@@ -145,9 +145,9 @@ Source: review finding H6 (the test engineer and the implementer share a checkou
 
 ### Requirement: Limits are checked
 
-After each role ends, the coordinator SHALL run `cw roles check` for that role, from the tree as it was before the role started. When the command exits 5, the coordinator SHALL start the role again with the paths the command named, and SHALL neither accept the work nor repair it itself.
+After each role ends, the coordinator SHALL run `cw roles check` for that role, from the tree before it started, and after `spec-writer` and `architect` also `cw change check`. On exit 5 it SHALL start the role again with what the command named, and SHALL neither accept the work nor repair it; when a role exceeds its limit a second time, it SHALL stop and ask the developer. A file left by a role that writes nothing SHALL be removed only with the developer's yes.
 
-Source: review finding H6 (nothing checks what a role changed); `role-definitions`: Write limits.
+Source: review finding H6 (nothing checks what a role changed); `role-definitions`: Write limits; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: The developer role changed a test (evaluation)
 
@@ -183,9 +183,9 @@ Source: the first change's `agent-integration`: Ask before skipping; `publish-ga
 
 ### Requirement: A repository without checks
 
-In a repository whose root holds no `cw.toml`, the workflow SHALL first have `lookup` find the commands the repository already uses to test and to lint, propose them as checks, and wait for the developer's approval before `cw init` and `cw add` run. It SHALL call no work verified while no check is declared.
+In a repository whose root holds no `cw.toml`, the workflow SHALL first have `lookup` find the commands the repository already uses to test and to lint, propose them as checks, and wait for the developer's approval before `cw init` and `cw add` run. The coordinator SHALL run each proposed command once before it becomes a check. It SHALL call no work verified while no check is declared.
 
-Source: the owner's statement (any codebase; from scratch); the first change's `check-declaration`: Create a declaration, Add a check from the command line; review finding H4.
+Source: the owner's statement (any codebase; from scratch); the first change's `check-declaration`: Create a declaration, Add a check from the command line; review finding H4; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: Checks are proposed from what the repository has (evaluation)
 
@@ -205,8 +205,8 @@ Source: review findings H2 (a killed run blocks the next one) and H9 (a finished
 
 #### Scenario: Another session continues (evaluation)
 
-- **WHEN** a session ends during the code stage with task 1.1 checked and task 1.2 not, and a new session is asked to continue `add-greeting`
-- **THEN** `developer` is started for task 1.2, and no earlier stage is repeated
+- **WHEN** a session ends after the review of the code has no open finding and the tasks are ticked, and a new session is asked to continue `add-greeting`
+- **THEN** the first role started other than `lookup` is `git`, and no earlier stage is repeated
 
 #### Scenario: An abandoned task blocks nothing
 
@@ -215,13 +215,13 @@ Source: review findings H2 (a killed run blocks the next one) and H9 (a finished
 
 ### Requirement: Role starts
 
-When no review returns a finding, the full path SHALL start at most eight roles other than `lookup`, and the small path at most four.
+When `tasks.md` has one group and no role is started a second time for a stage, the full path SHALL start at most eight roles other than `lookup`, and the small path at most four.
 
-Source: review finding H7 (4 to 13 role starts for a lite task and 9 to 27 for a strict one); proposal, Open Question 10.
+Source: review finding H7 (4 to 13 role starts for a lite task and 9 to 27 for a strict one); proposal, Open Question 10; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
 #### Scenario: The count on the full path (evaluation)
 
-- **WHEN** the full path runs for one task and no review returns a finding
+- **WHEN** the full path runs for one task, `tasks.md` has one group, and no role is started a second time for a stage
 - **THEN** `cw tokens --json` reports eight starts of roles other than `lookup`
 
 ### Requirement: Current specifications

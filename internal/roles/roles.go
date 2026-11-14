@@ -33,8 +33,11 @@ type Role struct {
 
 var (
 	substantive = map[string]Model{"claude": {"opus", "high"}, "codex": {"gpt-6.1-sol", "high"}}
-	writing     = []string{"Read", "Grep", "Glob", "Edit", "Write"}
-	building    = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash"}
+	// deciding is for the design and for its review: a review never runs at
+	// a lower effort than the work it reviews.
+	deciding = map[string]Model{"claude": {"opus", "xhigh"}, "codex": {"gpt-6.1-sol", "max"}}
+	writing  = []string{"Read", "Grep", "Glob", "Edit", "Write"}
+	building = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash"}
 )
 
 // defaults lists the roles in the order a task meets them.
@@ -53,8 +56,7 @@ var defaults = []Role{
 	{
 		ID: "architect", Job: "Designs the building blocks, their dependencies and the tasks.",
 		Writes: "design.md and tasks.md of the task's change folder",
-		Models: map[string]Model{"claude": {"opus", "xhigh"}, "codex": {"gpt-6.1-sol", "max"}},
-		Tools:  writing,
+		Models: deciding, Tools: writing,
 	},
 	{
 		ID: "quality-engineer", Job: "Writes the tests of the scenarios before the code exists.",
@@ -69,7 +71,7 @@ var defaults = []Role{
 	{
 		ID: "reviewer", Job: "Reviews a specification, a design or code that another role wrote, and reports findings.",
 		Writes: "nothing",
-		Models: substantive, Tools: []string{"Read", "Grep", "Glob", "Bash"},
+		Models: deciding, Tools: []string{"Read", "Grep", "Glob", "Bash"},
 	},
 	{
 		ID: "git", Job: "Runs the checks and makes the commit through the gate.",

@@ -183,8 +183,9 @@ table above.
 - **Prepare:** As E3.
 - **Request:** The request of E3.
 - **Look for:**
-  1. `openspec/changes/add-greeting/reviews.md` holds no row under `## Findings`. If it holds one,
-     the WHEN does not hold: write "not triggered" as the result.
+  1. `openspec/changes/add-greeting/reviews.md` holds no row under `## Findings`, `tasks.md` has
+     one group, and no role was started a second time for a stage. If one of these fails, the
+     WHEN does not hold: write "not triggered" as the result.
   2. In the session's record, the role starts other than `lookup` are, in this order:
      `spec-writer`, `reviewer`, `architect`, `reviewer`, `quality-engineer`, `developer`,
      `reviewer`, `git`.
@@ -333,7 +334,9 @@ table above.
 - **Prepare:** As E3.
 - **Request:** The request of E3.
 - **Look for:**
-  1. In the session's record, the start labelled `tests 1` ends before `developer` starts.
+  1. In the session's record, the start labelled `tests 1` ends before `developer` starts, apart
+     from a start for a first group of `tasks.md` that builds only the interface with empty
+     bodies.
   2. Between the two, a `cw run` whose result is `failed`.
   3. At that run the tree holds the new tests and no change to `<src>`: the record of the
      `quality-engineer` start lists only test paths and `tests.md` as written.
@@ -370,7 +373,7 @@ table above.
 - **Request:** The request of E3.
 - **Look for:**
   1. In the session's record, `cw roles check reviewer` exited 5 and listed `notes.txt`.
-  2. The coordinator told the developer about `notes.txt`.
+  2. The coordinator asked the developer to remove `notes.txt`, or removed it after their yes.
   3. `git show --stat HEAD` does not list `notes.txt`.
 - **Result:** not run
 - **Date:** not run
@@ -453,16 +456,15 @@ table above.
 
 - **Scenario:** "Another session continues (evaluation)"; capability `task-flow`, requirement
   "No state outside the record".
-- **Prepare:** Run the request of E3, with a design whose `tasks.md` has the tasks 1.1 and 1.2.
-  End the session during the code stage, after the coordinator ticked 1.1 and before 1.2 is
-  ticked. Check that `cw change status add-greeting` prints `code`. Start a new session.
+- **Prepare:** Run the request of E3. End the session after the review of the code has no open
+  finding and the coordinator ticked the tasks, before `git` starts. Check that
+  `cw change status add-greeting` prints `commit`. Start a new session.
 - **Request:** `Continue the task add-greeting.`
 - **Look for:**
-  1. In the new session's record, the first role started other than `lookup` is `developer`,
-     with the stage `code`, and its brief names task 1.2.
+  1. In the new session's record, the first role started other than `lookup` is `git`, with the
+     stage `commit`.
   2. No start in the new session has the stage `spec`, `spec-review`, `design`,
-     `design-review` or `tests`.
-  3. Task 1.1 is not done a second time: the brief does not ask for it.
+     `design-review`, `tests`, `code` or `review`.
 - **Result:** not run
 - **Date:** not run
 
@@ -472,8 +474,9 @@ table above.
 
 - **Scenario:** "The count on the full path (evaluation)"; capability `task-flow`, requirement
   "Role starts".
-- **Prepare:** As E3. If `reviews.md` holds a row under `## Findings` afterwards, the WHEN does
-  not hold: write "not triggered" as the result.
+- **Prepare:** As E3. If `reviews.md` holds a row under `## Findings` afterwards, `tasks.md` has
+  more than one group, or a role was started a second time for a stage, the WHEN does not hold:
+  write "not triggered" as the result.
 - **Request:** The request of E3.
 - **Look for:**
   1. In `cw tokens --task add-greeting --json`, `starts` less the `starts` of the `roles` entry

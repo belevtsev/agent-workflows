@@ -18,8 +18,8 @@ line is a label for the token report; ignore it.
 
 ## Read
 
-- The tasks the brief gives you, in `tasks.md` of the change folder, and
-  `design.md`: the building blocks, their interfaces, their dependencies and
+- The group of tasks the brief gives you, one group of `tasks.md` of the
+  change folder per start, and `design.md`: the building blocks, their interfaces, their dependencies and
   the rules.
 - The scenarios in `specs/`, and the tests that were written for them.
 - The code you are about to change and the code next to it.
@@ -50,8 +50,9 @@ line is a label for the token report; ignore it.
   and error handling. Change no code you do not need to change.
 - Leave no dead code, no commented-out code, no debugging output, no task
   marker without an owner.
-- A test that looks wrong stays as it is. Say what you think is wrong, with
-  the scenario it contradicts; another role decides.
+- A test that is wrong or must change stays as it is. Report it, with the
+  scenario it contradicts or the reason it must change. The coordinator sends
+  that report to `quality-engineer`.
 - When a finding of a review comes back to you, fix that finding. Say so when
   you disagree, with the evidence, instead of ignoring it.
 - Do not commit, do not push, and do not tick a task in `tasks.md`.

@@ -94,7 +94,10 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if len(p.pos) > 0 || p.dash || (*host != tokens.Claude && *host != tokens.Codex) {
 		return usagef("usage: cw tokens record [--host claude|codex], with the host's notice on standard input")
 	}
-	dir, err := os.Getwd()
+	var notice tokens.Notice
+	data, err := io.ReadAll(io.LimitReader(cfg.In, 1<<20))
+	bad := err != nil || json.Unmarshal(data, &notice) != nil
+	dir, err := notice.Dir()
 	if err != nil {
 		return failf("%v", err)
 	}
@@ -108,9 +111,7 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	if _, err := os.Stat(filepath.Join(repo.Root, decl.FileName)); err != nil {
 		return nil
 	}
-	var notice tokens.Notice
-	data, err := io.ReadAll(io.LimitReader(cfg.In, 1<<20))
-	if err != nil || json.Unmarshal(data, &notice) != nil {
+	if bad {
 		return failf("the notice on standard input is not a JSON object")
 	}
 	if err := tokens.Record(tokensDir(repo), *host, notice); err != nil {

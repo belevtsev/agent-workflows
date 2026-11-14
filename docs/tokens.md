@@ -29,7 +29,7 @@ The plugin of this repository runs `cw tokens record` from two hooks of the host
 | Host | Hook | Command | Timeout |
 | --- | --- | --- | --- |
 | Claude Code (`hooks/hooks.json`) | `SubagentStop`, when a role ends | `cw tokens record --host claude \|\| true` | 30 s |
-| Claude Code (`hooks/hooks.json`) | `SessionEnd`, when the session ends | `cw tokens record --host claude \|\| true` | 30 s |
+| Claude Code (`hooks/hooks.json`) | `SessionEnd`, when the session ends | `cw tokens record --host claude \|\| true` | 30 s in the file; Claude Code allows 1.5 s (see [Limits](#limits)) |
 | Codex (`hooks/codex-hooks.json`) | `SubagentStop` | `cw tokens record --host codex \|\| true` | 30 s |
 | Codex (`hooks/codex-hooks.json`) | `SessionEnd` | `cw tokens record --host codex \|\| true` | 3 s |
 
@@ -37,7 +37,7 @@ Each command runs only when `cw` is on the `PATH`, and ends with `|| true`, so a
 never stops a role or a turn. On Windows the Codex command is `cw tokens record --host codex`
 alone.
 
-The host gives the hook a notice: one JSON object on standard input. `cw` reads five of its
+The host gives the hook a notice: one JSON object on standard input. `cw` reads six of its
 fields and ignores the rest:
 
 | Field | Meaning |
@@ -46,12 +46,21 @@ fields and ignores the rest:
 | `transcript_path` | The record the host keeps of the session. |
 | `agent_id` | The role start that ended. When it is absent, the name of the file of `agent_transcript_path` is used. Absent at the end of the session. |
 | `agent_transcript_path` | The record the host keeps of that role start. Absent at the end of the session. |
-| `agent_type` | The name of the role as the host knows it, such as `architect` or `agent-workflows:architect`. `cw` takes the text after the last colon and keeps it only when it is one of the seven roles. |
+| `agent_type` | The name of the role as the host knows it, such as `architect` or `agent-workflows:architect`. `cw` takes the text after the last colon and keeps it only when it is one of the seven roles. Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`: such a notice of Claude Code stores no start. |
+| `cwd` | The directory the host works in. `cw` finds the repository from it, and from its own working directory when it is empty. |
 
 For each notice, `cw` reads the record of the role when the notice names one, and the record of
 the session, and stores the counts of each. So the session's own count is current after every
 role, not only at the end. The same notice given twice stores the same files, and the totals do
 not change.
+
+A host may still be writing a record when it gives the notice. Claude Code writes its transcript
+asynchronously, so at `SubagentStop` or `SessionEnd` the record may not yet hold the last
+messages. Codex runs `SubagentStop` at the end of every turn of a sub-agent, before it writes the
+record out. So at every notice `cw` also reads again the record of each start it already stored
+for that session, when the record still exists and its size has changed. The new counts replace
+the stored ones when they are known. The last notice of a session has no later one, so its last
+turn can still be missing from the count.
 
 ### How a record is read
 
@@ -84,9 +93,13 @@ not change.
 - The thread is counted once, from its last running total. Each rise of the total goes to the
   model of the `turn_context` before it. A total written twice adds nothing. A `token_count` with
   `info` `null` holds only rate limits and is skipped.
-- A running total that falls, or a first running total larger than its own request, is not
-  understood: the tokens of the record are unknown. A record with no `token_count` that holds
-  `info` holds no count, so its tokens are unknown.
+- A running total that falls is a reset. After a context window overflows, Codex sets the
+  running total to a value with no input and no output. `cw` carries the total before the fall
+  and goes on, so the count of the thread is the carried totals and the last total.
+- A first running total larger than its own request is not understood: the tokens of the record
+  are unknown. A record with no `token_count` that holds `info` holds no count, so its tokens are
+  unknown.
+- A line `token_usage_record` is skipped. It changes no count.
 
 ## The label
 
@@ -310,7 +323,7 @@ hooks run it; a person runs it only to test.
 
 | Exit | When |
 | --- | --- |
-| 0 | The counts are stored; or the directory is not in a git repository, or the repository root holds no `cw.toml`: then nothing is stored and the notice is not read. |
+| 0 | The counts are stored; or the directory of the notice's `cwd` is not in a git repository, or the repository root holds no `cw.toml`: then nothing is stored. |
 | 1 | The input is not a JSON object; the notice names no session or no record; or a file cannot be written. |
 | 2 | `--host` is neither `claude` nor `codex`, or the command line is wrong. |
 
@@ -327,8 +340,8 @@ The tokens of a start are unknown when its record:
 - has a line longer than 64 MiB;
 - holds no count at all, such as a Codex record whose `token_count` events hold only rate limits;
 - holds an answer without its input or output count, or with a negative count; for Codex, counts
-  whose cached and written input exceed the input, a running total that falls, or a first running
-  total larger than its own request;
+  whose cached and written input exceed the input, or a first running total larger than its own
+  request;
 - holds a complete line that is not a JSON object;
 - is not named: the notice says that a role ended and gives no record of it. The start is stored
   all the same, with the role the notice names.
@@ -444,6 +457,7 @@ not at all. One file, for the first `developer` start of the worked example:
   "session": "s1",
   "agent": "agent-a8",
   "record": "<record>/subagents/agent-a8.jsonl",
+  "size": <bytes of the record>,
   "task": "add-greeting",
   "stage": "code",
   "round": 1,
@@ -460,7 +474,7 @@ not at all. One file, for the first `developer` start of the worked example:
 ```
 
 A file holds the counts, the model names, the task, stage and round of the label, the path of the
-host's record, and, when the counts are unknown, `"known": false` and the reason in `why`. When the
+host's record and its size before it was read, and, when the counts are unknown, `"known": false` and the reason in `why`. When the
 record gave no label it holds the `role` the notice named. It holds no text of a brief, a prompt
 or an answer: a search of the stored files for a sentence of a brief finds nothing.
 
@@ -472,10 +486,19 @@ working tree.
 
 ## Limits
 
-- **The record formats are not documented by the hosts.** Claude Code documents where it keeps
-  its records, not what a line holds. The Codex documentation calls its format unstable and
-  describes no line. A host that changes its format makes counts unknown, or wrong if a field
-  changes its meaning.
+- **The record formats belong to the hosts.** The records of both hosts are internal. They are
+  not documented for this use, and they can change with any release. When a field the reader
+  needs is missing, the count is unknown. When a field keeps its name and changes its meaning, the
+  count is wrong, and nothing can notice.
+- **The end of a session on Claude Code has 1.5 seconds.** Claude Code gives the `SessionEnd`
+  hooks of a plugin 1.5 seconds in all, and ignores the plugin's own timeout for that event. The
+  user can raise it with the environment variable `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`.
+  `cw tokens record` took 0.12 s for a built session record of 50 MB and 1.15 s for one of
+  500 MB, with the file in memory. A larger record, a slow disk or other hooks of the same event
+  can pass the limit; the session's count then stays as the last role's notice left it.
+- **The last turn of a session can be missing.** The host may still be writing a record when it
+  gives a notice. `cw` reads every stored record again at the next notice of the session, but the
+  last notice has no next one.
 - **The readers were checked against real records of one machine only**; see
   [Checked against real records](#checked-against-real-records).
 - **The Codex `SessionEnd` hook has a timeout of 3 seconds**, because Codex gives that hook between
@@ -484,8 +507,8 @@ working tree.
 - **A notice without a role's record gives a start with unknown tokens.** The Codex documentation
   says `agent_transcript_path` may be null. The label is in that record, so the task of such a
   start is known only when its session ran one task and the notice named the role.
-- **`cw` trusts the notice.** It reads the files the notice names; it cannot tell whether the
-  notice came from the host.
+- **`cw` trusts the notice.** It reads the files the notice names and stores the counts in the
+  repository of its `cwd`; it cannot tell whether the notice came from the host.
 - **The label is the coordinator's.** A wrong label gives the tokens to the wrong task, stage or
   round.
 
@@ -521,7 +544,9 @@ codex-cli 0.141.0 and 0.142.3 (64,138 lines):
   gave unknown tokens.
 
 **Time.** `cw tokens record` took at most 0.30 s for one notice, for the largest rollout, with the
-file in the page cache of the system. A read from a cold disk was not timed.
+file in the page cache of the system. On built Claude Code session records it took 0.12 s for
+50 MB and 1.14 to 1.15 s for 500 MB, in three runs each, with the file in memory. A read from a
+cold disk was not timed.
 
 **Not checked:**
 
@@ -529,7 +554,12 @@ file in the page cache of the system. A read from a cold disk was not timed.
   subagent was on the machine, so how a subagent's thread relates to its parent, and whether its
   first total holds the parent's, is not known. A first total larger than its own request makes
   the counts unknown, not counted twice.
-- No rollout of the installed codex-cli 0.168.0 was on the machine.
+- No rollout of the installed codex-cli 0.168.0 was on the machine. A review says that version
+  writes a line `token_usage_record` after each response, with `usage`, `turn_token_usage`,
+  `thread_token_usage` and `response_id`. The reader skips such a line; a test holds that it
+  changes no count.
+- No rollout held a running total that falls. The carry over a reset was built from the Codex
+  source, not from a record.
 - No brief of a role carried a label, so a label was read only from built records.
 - Whether Codex counts `cache_write_input_tokens` inside `input_tokens` could not be seen: the count
   was always 0.

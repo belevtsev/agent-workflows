@@ -80,12 +80,16 @@ Only `design.md` and `tasks.md` of the change folder `openspec/changes/<task>/`.
 - Every requirement of the change is named in the `Source:` of at least one
   task, by its exact name.
 - Tests come before the code they test: the task that writes the tests of a
-  behaviour is earlier than the task that builds it.
+  behaviour is earlier than the task that builds it. One exception: when the
+  tests must be seen failing on behaviour, the first group may build only the
+  interface, with empty bodies, before the tests.
+- `developer` builds one group of tasks per start, so a group is a unit of
+  work that can be built and checked alone.
 - In a repository with no code yet, the design names the checks the code will
   have, so that `cw.toml` declares them before the first commit of code.
 
-When you are done, `cw change check <task>` must exit 0. Run it if you have a
-shell; otherwise say that you did not.
+The coordinator runs `cw change check <task>` after you. Make the files obey
+the rules above.
 
 ## Hand back
 

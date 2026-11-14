@@ -180,8 +180,10 @@ func (f *Folder) testRules() ([]Problem, error) {
 		case r.File == "" || r.Text == "":
 			at(r.Line, "the row of the scenario `%s` names no test file or no text", r.Scenario)
 		default:
-			data, err := os.ReadFile(filepath.Join(f.root, filepath.FromSlash(r.File)))
+			data, err := readInside(f.root, r.File)
 			switch {
+			case errors.Is(err, errOutside):
+				at(r.Line, "the test file `%s` of the scenario `%s` is outside the repository", r.File, r.Scenario)
 			case errors.Is(err, os.ErrNotExist):
 				at(r.Line, "the test file `%s` of the scenario `%s` does not exist", r.File, r.Scenario)
 			case err != nil:
@@ -203,6 +205,35 @@ func (f *Folder) testRules() ([]Problem, error) {
 		}
 	}
 	return problems, nil
+}
+
+// errOutside is the reason a test file is not read: its path leaves the
+// repository.
+var errOutside = errors.New("the path leaves the repository")
+
+// readInside reads a file named by a path from the root of the repository.
+// A path that is absolute or leaves the root, also through a symbolic link,
+// gives errOutside, so that the check says nothing about other files.
+func readInside(root, rel string) ([]byte, error) {
+	leaves := func(path string) bool {
+		return filepath.IsAbs(path) || filepath.VolumeName(path) != "" || path == ".." || strings.HasPrefix(path, ".."+string(filepath.Separator))
+	}
+	clean := filepath.Clean(filepath.FromSlash(rel))
+	if leaves(clean) {
+		return nil, errOutside
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	real, err := filepath.EvalSymlinks(filepath.Join(realRoot, clean))
+	if err != nil {
+		return nil, err
+	}
+	if within, err := filepath.Rel(realRoot, real); err != nil || leaves(within) {
+		return nil, errOutside
+	}
+	return os.ReadFile(real)
 }
 
 // declared reads the ids of the checks cw.toml declares. A repository

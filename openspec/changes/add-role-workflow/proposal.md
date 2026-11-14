@@ -48,25 +48,27 @@ orders". Then:
    `add-order-csv-export` and says which path it takes and why.
 2. `lookup` finds the specifications and the code that exist. `spec-writer`
    writes `openspec/changes/add-order-csv-export/` with the proposal and the
-   requirements. `reviewer` reviews it. The developer answers the open
-   questions and approves.
+   requirements. The developer answers the open questions, and `spec-writer`
+   writes the answers in. `reviewer` reviews it. The developer approves.
 3. `architect` writes `design.md` (the decision, the building blocks, the
    interfaces, the rules) and `tasks.md`. `reviewer` reviews it. The developer
    approves.
 4. `quality-engineer` writes a test for every scenario and lists them in
-   `tests.md`. `cw run` is expected to fail here.
-5. `developer` writes the code, task by task. `cw roles check developer` then
-   shows that it changed no existing test.
+   `tests.md`. It is the only role that changes or removes an existing test.
+   `cw run` is expected to fail here.
+5. `developer` writes the code, one group of tasks per start.
+   `cw roles check developer` then shows that it changed no existing test.
 6. `cw run` passes. `reviewer` reviews the code and the tests against the
    specification and the design. Every finding and what was done about it is
-   in `reviews.md`.
+   in `reviews.md`. When no finding is open, the coordinator ticks the tasks.
 7. `cw change check` passes. `git` commits; the gate allows it because the
    tree is verified. A push or a pull request waits for the developer's word.
 8. `cw tokens --task add-order-csv-export` prints the tokens of every role and
    how much of the total the workflow itself used.
 
-A defect or a refactoring takes the small path: a failing test, the fix, a
-review and a commit, with no folder.
+A task whose intended behaviour is already clear and does not change, such as
+a defect, a refactoring or a change of tests only, takes the small path:
+tests, the fix, a review and a commit, with no folder.
 
 ## The roles and their models
 
@@ -77,7 +79,7 @@ review and a commit, with no folder.
 | `architect` | Decides the design: building blocks, interfaces, rules, tasks. | `design.md`, `tasks.md` | `opus`, `xhigh` | `gpt-6.1-sol`, `max` |
 | `quality-engineer` | Writes the tests from the specification, before the code. | test paths, `tests.md` | `opus`, `high` | `gpt-6.1-sol`, `high` |
 | `developer` | The principal developer. Writes the code to the design. | everything else | `opus`, `high` | `gpt-6.1-sol`, `high` |
-| `reviewer` | Reviews the specification, the design, and the code with its tests. | nothing | `opus`, `high` | `gpt-6.1-sol`, `high` |
+| `reviewer` | Reviews the specification, the design, and the code with its tests. | nothing | `opus`, `xhigh` | `gpt-6.1-sol`, `max` |
 | `git` | Commits, pushes and opens pull requests. | nothing in the working tree | `sonnet`, `medium` | `gpt-6-luna`, `high` |
 
 The owner named five of them. `spec-writer` and `reviewer` are added because
@@ -85,8 +87,9 @@ the flow needs someone who writes the specification and someone who judges
 work without having written it (Open Question 3).
 
 The models are the ones this repository's own policy files give these jobs
-today (Sources). A repository changes any cell with one line in
-`cw-roles.toml`. The coordinator runs on the model of the developer's session.
+today (Sources), except that `reviewer` runs at the effort of `architect`: a
+review does not run at a lower effort than the work it reviews. A repository
+changes any cell with one line in `cw-roles.toml`. The coordinator runs on the model of the developer's session.
 
 ## What Changes
 
@@ -212,8 +215,9 @@ the first change.
    keeps its limit of 6,000. No role text exceeds 8,000 characters, the
    coordinator's instructions 12,000, and all of them together 60,000. Today's
    texts are 150,080 characters.
-5. **Role starts.** When no review returns a finding, the full path starts at
-   most eight roles other than `lookup`, and the small path at most four.
+5. **Role starts.** When `tasks.md` has one group and no role is started a
+   second time for a stage, the full path starts at most eight roles other
+   than `lookup`, and the small path at most four.
 6. **Token report.** On recorded sessions kept as test data, `cw tokens`
    prints the known counts on the three systems.
 7. **Measured benefit and extra tokens.** Before the README claims a benefit:

@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/belevtsev/agent-workflows/v3/internal/change"
+	"github.com/belevtsev/agent-workflows/v3/internal/roles"
 )
 
 func TestNoticeRole(t *testing.T) {
@@ -188,15 +191,14 @@ func TestCodexCountsTheLastRunningTotal(t *testing.T) {
 	}
 }
 
-// A total that falls, or a first total that holds more than its own request,
-// is not understood: the counts are unknown, not a guess.
+// A first total that holds more than its own request is not understood: the
+// counts are unknown, not a guess.
 func TestCodexTotalsThatAreNotUnderstood(t *testing.T) {
 	t.Parallel()
 	a := Counts{Input: 30, CacheRead: 60, Output: 5}
 	small := Counts{Input: 3, CacheRead: 6, Output: 1}
 	for name, lines := range map[string][]string{
 		"only rate limits":       {codexModel("m"), codexLimits},
-		"a total that falls":     {codexModel("m"), codexCount(a, a), codexCount(small, small)},
 		"an inherited total":     {codexModel("m"), codexCount(a, small)},
 		"a total without output": {codexModel("m"), `{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":5},"last_token_usage":{"input_tokens":5}}}}`},
 		"cached input above all": {codexModel("m"), `{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":5,"cached_input_tokens":9,"output_tokens":1},"last_token_usage":{"input_tokens":5,"cached_input_tokens":9,"output_tokens":1}}}}`},
@@ -359,5 +361,138 @@ func TestClaudeRecordWithADamagedLine(t *testing.T) {
 		if r := readClaude(path); (r.why == "") != c.known {
 			t.Errorf("%s: known %v (%s), want %v", name, r.why == "", r.why, c.known)
 		}
+	}
+}
+
+// Requirement: Both hosts, scenario: A Codex total that is reset. After a
+// context window overflows, Codex sets the running total to a value with
+// no input and no output; a total may also fall to a smaller one. The total
+// before the fall is carried, and the count is the carried sum and the last
+// total.
+func TestCodexTotalThatIsReset(t *testing.T) {
+	t.Parallel()
+	a := Counts{Input: 30, CacheRead: 60, Output: 5}
+	small := Counts{Input: 3, CacheRead: 6, Output: 1}
+	x := Counts{Input: 4, CacheRead: 8, Output: 2}
+	for name, c := range map[string]struct {
+		lines []string
+		want  Counts
+	}{
+		"a filler of zero":   {[]string{codexModel("m"), codexCount(a, a), codexCount(Counts{}, Counts{}), codexCount(x, x)}, Counts{Input: 34, CacheRead: 68, Output: 7}},
+		"a smaller total":    {[]string{codexModel("m"), codexCount(a, a), codexCount(small, small)}, Counts{Input: 33, CacheRead: 66, Output: 6}},
+		"two falls and rise": {[]string{codexModel("m"), codexCount(a, a), codexCount(small, small), codexCount(Counts{}, Counts{}), codexCount(x, x)}, Counts{Input: 37, CacheRead: 74, Output: 8}},
+	} {
+		if r := readCodex(codexFile(t, c.lines...)); r.why != "" || r.models["m"] != c.want {
+			t.Errorf("%s: read %+v (%s), want %+v", name, r.models, r.why, c.want)
+		}
+	}
+}
+
+// A line token_usage_record, which codex-cli 0.168.0 is said to write after
+// each response, is not read and does not change the count.
+func TestCodexTokenUsageRecordIsIgnored(t *testing.T) {
+	t.Parallel()
+	a := Counts{Input: 30, CacheRead: 60, Output: 5}
+	usage := codexUsageJSON(a)
+	record := `{"timestamp":"t","type":"token_usage_record","payload":{"response_id":"resp_1","usage":` + usage +
+		`,"turn_token_usage":` + usage + `,"thread_token_usage":` + usage + `}}`
+	r := readCodex(codexFile(t, codexModel("m"), record, codexCount(a, a), record))
+	if r.why != "" || len(r.models) != 1 || r.models["m"] != a {
+		t.Errorf("read %+v (%s), want m %+v", r.models, r.why, a)
+	}
+}
+
+// The roles and the stages of the token report are those of the roles and
+// of the change folder: a role renamed there makes this test fail.
+func TestOneVocabulary(t *testing.T) {
+	t.Parallel()
+	if got, want := slices.Sorted(slices.Values(roleOrder())), slices.Sorted(slices.Values(roles.IDs())); !slices.Equal(got, want) {
+		t.Errorf("the token report knows the roles %v, the roles are %v", got, want)
+	}
+	for _, s := range stageRoles {
+		if !roles.Known(s.role) {
+			t.Errorf("the stage %s maps to %q, which is no role", s.stage, s.role)
+		}
+	}
+	for _, stage := range []string{change.StageSpec, change.StageDesign, change.StageTests, change.StageCode, change.StageReview, change.StageCommit} {
+		if RoleOf(stage) == "" {
+			t.Errorf("the stage %s of a change folder is not a stage of a label", stage)
+		}
+	}
+	for _, id := range roles.IDs() {
+		if noticeRole("agent-workflows:"+id) != id {
+			t.Errorf("a notice of the role %s is not read as that role", id)
+		}
+	}
+}
+
+// Requirement: Notices as the host gives them, scenario: A record that grows
+// after its notice. A start stored at an earlier notice is read again at a
+// later one, and keeps its counts when the new reading is unknown.
+func TestRecordReadsStoredStartsAgain(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	store := filepath.Join(dir, "tokens")
+	agent, main := filepath.Join(dir, "agent-a1.jsonl"), filepath.Join(dir, "s.jsonl")
+	brief := `{"type":"user","message":{"role":"user","content":"cw-task: one code 1\nx"}}`
+	answer := func(id string) string {
+		return `{"type":"assistant","message":{"id":"` + id + `","model":"m","usage":{"input_tokens":1,"output_tokens":2}}}`
+	}
+	write := func(path string, lines ...string) {
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stored := func() Start {
+		starts, _, err := Load(store)
+		at := slices.IndexFunc(starts, func(s Start) bool { return s.Agent == "agent-a1" })
+		if err != nil || at < 0 {
+			t.Fatalf("loaded %+v, error %v", starts, err)
+		}
+		return starts[at]
+	}
+	write(main, answer("s"))
+	write(agent, brief, answer("x"))
+	if err := Record(store, Claude, Notice{Session: "s", Transcript: main, AgentID: "a1", AgentTranscript: agent, AgentType: "developer"}); err != nil {
+		t.Fatal(err)
+	}
+	write(agent, brief, answer("x"), answer("y"))
+	if err := Record(store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); !got.Known || got.Task != "one" || got.Models["m"] != (Counts{Input: 2, Output: 4}) {
+		t.Errorf("after the later notice the start is %+v, want both answers", got)
+	}
+	write(agent, brief, "not json", answer("x"))
+	if err := Record(store, Claude, Notice{Session: "s", Transcript: main}); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); !got.Known || got.Models["m"] != (Counts{Input: 2, Output: 4}) {
+		t.Errorf("an unknown reading replaced the stored counts: %+v", got)
+	}
+}
+
+// Requirement: Notices as the host gives them, scenario: An internal agent of
+// the host. A notice of Claude Code that names an agent with an empty
+// agent_type stores the session and no start; on Codex the start is kept.
+func TestRecordIgnoresInternalAgentsOfClaude(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	main := filepath.Join(dir, "s.jsonl")
+	line := `{"type":"assistant","message":{"id":"m","model":"m","usage":{"input_tokens":1,"output_tokens":2}}}` + "\n"
+	if err := os.WriteFile(main, []byte(line), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for host, want := range map[string]int{Claude: 1, Codex: 2} {
+		store := filepath.Join(dir, host)
+		if err := Record(store, host, Notice{Session: "s", Transcript: main, AgentID: "aside", AgentTranscript: main}); err != nil {
+			t.Fatal(err)
+		}
+		if starts, _, _ := Load(store); len(starts) != want {
+			t.Errorf("%s: stored %+v, want %d files", host, starts, want)
+		}
+	}
+	if err := Record(filepath.Join(dir, "none"), Claude, Notice{Session: "s", AgentID: "aside"}); err != nil {
+		t.Errorf("a notice of an internal agent alone: %v", err)
 	}
 }

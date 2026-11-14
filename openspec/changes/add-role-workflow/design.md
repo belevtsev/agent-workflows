@@ -91,8 +91,8 @@ git does not run, it prints the warning `cw status` prints.
 | `proposal.md` | `spec-writer` | Free text. |
 | `specs/<capability>/spec.md` | `spec-writer` | `## ADDED`, `## MODIFIED` or `## REMOVED Requirements`; `### Requirement: <name>`; a `Source:` line; `#### Scenario: <name>` with one `- **WHEN**` and one `- **THEN**` line. |
 | `design.md` | `architect` | Free text, plus a table under `## Building blocks` with the columns Block, Responsibility, Depends on, New, Reuse considered, and a table under `## Rules` with the columns Rule and Checked by. |
-| `tasks.md` | `architect`; the coordinator ticks the boxes | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
-| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. |
+| `tasks.md` | `architect`; the coordinator ticks the boxes after the review of the code has no open finding | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
+| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `cw` does not read it. |
 | `reviews.md` | the coordinator | Three tables: under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. Stage is `spec`, `design` or `code`; What is `spec` or `design`; Round is a number from 1. |
 
 How the files are read:
@@ -109,7 +109,9 @@ How the files are read:
 - **Design.** New is `yes` or `no`. Depends on holds block names, or `none`.
   A dependency on a name the table does not hold is not followed. Checked by
   is `review` or the id of a check; several are joined by commas.
-- **Tests.** The test file is a path from the root of the repository. A row
+- **Tests.** The test file is a path from the root of the repository; a path
+  that is absolute or leaves the root, also through a symbolic link, breaks
+  the rule of the table and is not read. A row
   that is `not automated` without a reason breaks the rule of the table.
 - A file that is missing breaks no rule. `cw change status` names it as
   missing at its stage.
@@ -154,7 +156,7 @@ of the current content; `cw change status` does.
 (`SubagentStop`) and the end of the session (`SessionEnd`) run
 `cw tokens record --host claude` or `--host codex`; without `--host` the host
 is `claude`. The command reads the host's notice from standard input: one JSON
-object. It uses five fields and ignores the rest:
+object. It uses six fields and ignores the rest:
 
 | Field | Meaning |
 | --- | --- |
@@ -162,7 +164,8 @@ object. It uses five fields and ignores the rest:
 | `transcript_path` | The record the host keeps of the session. |
 | `agent_id` | The role that ended; absent at the end of the session. |
 | `agent_transcript_path` | The record the host keeps of that role; absent at the end of the session. |
-| `agent_type` | The name of the role as the host knows it: `architect`, or `agent-workflows:architect` for the role of a plugin. `cw` takes the text after the last colon, and uses it only when it is one of the seven roles. |
+| `agent_type` | The name of the role as the host knows it: `architect`, or `agent-workflows:architect` for the role of a plugin. `cw` takes the text after the last colon, and uses it only when it is one of the seven roles (`roles.Known`). Claude Code ends its own agents, such as a prompt suggestion, with an empty `agent_type`; such a notice of Claude Code stores no start. |
+| `cwd` | The directory the host works in. `cw` finds the repository from it, and from its own working directory when it is empty. |
 
 For each notice `cw` reads the record of the role, when the notice names one,
 and the record of the session, and writes one file for each:
@@ -171,18 +174,31 @@ and the record of the session, and writes one file for each:
 session's own tokens are current after every role, not only at the end. The
 same notice given again writes the same files. The command prints nothing on
 standard output, stores nothing where the root holds no `cw.toml` or outside a
-repository, and exits 0 in both cases without reading the notice.
+repository, and exits 0 in both cases; a notice that is not JSON is then not
+reported.
+
+At each notice `cw` also reads again the record of every start already stored
+for that session whose record still exists and whose size has changed, and
+replaces its counts when the new reading is known. Claude Code writes its
+transcript asynchronously, so at `SubagentStop` or `SessionEnd` it may not
+yet hold the last messages; Codex runs `SubagentStop` at the end of every turn
+of a sub-agent, before it flushes the record. The last notice of a session has
+no later one, so its last turn can still be missing.
 
 Codex gives a hook at the end of a session between 1 and 3 seconds, so that
 hook has a timeout of 3 in `hooks/codex-hooks.json`. The hook for the end of a
-role has 30 on both hosts, and so has the end of the session on Claude Code.
+role has 30 on both hosts. Claude Code gives the `SessionEnd` hooks of a
+plugin 1.5 seconds in all and ignores their own timeout, unless the user sets
+`CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS`. `cw tokens record` took 0.12 s for a
+built session record of 50 MB and 1.15 s for one of 500 MB, read from memory.
 
 **A stored file** holds `version`, `host`, `session`, `agent`, `record` (the
 path of the host's file), `task`, `stage` and `round` from the label (absent
 without one), `role` (the role the notice names, kept only when the record
 gives no label), `known`, `why` (why the counts are unknown), and `models`: for
 each model name the record gives, the four counts `input`, `cache_write`,
-`cache_read` and `output`. It holds no text of a brief or an answer.
+`cache_read` and `output`, and `size`, the size of the record before it was
+read. It holds no text of a brief or an answer.
 
 **A record of Claude Code** has one JSON object in each line:
 
@@ -211,13 +227,18 @@ gives `payload.info.total_token_usage`, the running total of the thread, and
 `cached_input_tokens`, `cache_write_input_tokens` and `output_tokens`.
 Uncached input is `input_tokens` less the other two. The thread is counted
 once, from its totals: each rise of the total goes to the model of the
-`turn_context` before it, so the sum is the last total. A total that falls,
-or a first total larger than its own request, makes the counts unknown, and
-so does a record with no `token_count` that holds `info`. This shape was read
+`turn_context` before it, so the sum is the last total. A total that falls is
+a reset: Codex sets the total to a value with no input and no output after a
+context window overflows (`fill_to_context_window`). The total before the fall
+is carried, and the count is the carried sum and the last total. A first total
+larger than its own request makes the counts unknown, and so does a record
+with no `token_count` that holds `info`. This shape was read
 from 16 rollouts that codex-cli 0.141 and 0.142 wrote on the owner's machine
 on 14 November 2026; none of them was the record of a subagent, so how a
 child thread relates to its parent is not known. The first version of this
-reader expected a line `token_usage_record`, which no real record holds.
+reader expected a line `token_usage_record`, which no real record on that
+machine held. A review says codex-cli 0.168.0 writes one after each response;
+the reader skips such a line, and a test holds that it changes no count.
 
 **Unknown.** The tokens of a start are unknown when its record does not
 exist or cannot be read, holds no count, holds a whole line that is not a

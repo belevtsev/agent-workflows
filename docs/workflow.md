@@ -25,20 +25,27 @@ here is an instruction to the coordinator or to a role. `cw` enforces only what 
 1. The coordinator runs `cw status`. When the repository root holds no `cw.toml`, nothing can be
    verified yet. `lookup` finds the commands the repository already uses to test and to lint, the
    coordinator proposes them as checks, and after the developer's yes it runs `cw init` and one
-   `cw add <id> -- <your test command>` for each. In a repository with no code, the design names
+   `cw add <id> -- <your test command>` for each. The coordinator runs each proposed command once
+   before it becomes a check. In a repository with no code, the design names
    the checks, and they are declared before the first commit that holds code. No work is called
    verified while no check is declared.
 2. `cw-roles.toml` must name the test paths under `[paths]`. When it does not, `lookup` finds
    where the tests live, and the coordinator writes the file after the developer's yes.
-3. For a task that already has a change folder, the coordinator runs `cw change status <task>`
-   and continues at the stage it prints. A finished stage is not repeated.
+3. When `git status --porcelain` prints anything, the coordinator shows it and asks the developer
+   to commit it or set it aside before any role starts.
+4. For a task that already has a change folder, the coordinator runs `cw change status <task>`
+   and continues at the stage it prints: the first one that is not finished. A finished stage is
+   not repeated, and `commit` means everything before it is finished. The tasks are ticked after
+   the review of the code, so `code` is printed until then.
 
 ### Two paths
 
-- **Full path**: the task adds or changes behaviour that a user or another part of the code can
-  observe. It writes a change folder.
-- **Small path**: everything else, such as a defect, a refactoring, or a change of tests only. It
-  writes no change folder.
+- **Full path**: the task needs a requirement written or changed: new behaviour, or a change to
+  behaviour that is specified or relied on. It writes a change folder.
+- **Small path**: the intended behaviour is already clear and does not change: a defect against
+  stated behaviour, a refactoring, a change of tests only. It writes no change folder.
+
+Size does not choose the path.
 
 A change of a few lines with a plain cause, which one test can pin down, needs neither path. The
 coordinator says so and offers to make the change directly, as the skill
@@ -52,31 +59,50 @@ follows the developer when the developer chooses the other one.
 
 | Stage | Role that writes | Then |
 | --- | --- | --- |
-| spec | `lookup` finds the specifications the repository holds; `spec-writer` writes `proposal.md` and `specs/` | `reviewer` reviews; the developer answers the open questions and approves the specification |
+| spec | `lookup` finds the specifications the repository holds; `spec-writer` writes `proposal.md` and `specs/` | the developer answers the open questions and `spec-writer` writes the answers in; `reviewer` reviews; the developer approves the specification |
 | design | `architect` writes `design.md` and `tasks.md` | `reviewer` reviews; the developer approves the design |
-| tests | `quality-engineer` writes the tests and `tests.md` | the coordinator runs `cw run` |
-| code | `developer` writes the code | the coordinator runs `cw run` and ticks the finished tasks in `tasks.md` |
-| review | `reviewer` reviews the code | findings go back to `developer` |
+| tests | `quality-engineer` writes the tests and `tests.md`, and changes or removes the existing tests that no longer hold | the coordinator runs `cw run` |
+| code | `developer` writes the code, one group of `tasks.md` per start, each labelled `code <round>` | the coordinator runs `cw run` after each start |
+| review | `reviewer` reviews the code | findings go back to `developer`; when no finding is open, the coordinator ticks the finished tasks in `tasks.md` |
 | commit | `git` commits | `cw change status <task>` prints `done` |
 
-When no review returns a finding, the roles other than `lookup` start in this order:
-`spec-writer`, `reviewer`, `architect`, `reviewer`, `quality-engineer`, `developer`, `reviewer`,
-`git`. That is eight starts. `lookup` may be started at any stage.
+When `tasks.md` has one group and no role is started a second time for a stage, the roles other
+than `lookup` start in this order: `spec-writer`, `reviewer`, `architect`, `reviewer`,
+`quality-engineer`, `developer`, `reviewer`, `git`. That is eight starts. `lookup` may be started
+at any stage.
+
+When `developer` reports that a test is wrong or must change, the coordinator starts
+`quality-engineer` with that report, as stage `tests` with the next round, before `developer`
+continues. `quality-engineer` is the only role that changes or removes an existing test.
 
 ### The small path
 
 Tests by `quality-engineer`, code by `developer`, review by `reviewer`, commit by `git`: four
-starts when the review returns no finding. For a defect, the tests stage adds a test that fails on
-the code as it is, and the coordinator runs `cw run` to see it fail before `developer` starts. The
-coordinator still gives the task a name of the same form as a change folder's, because the
-[label of each brief](tokens.md#the-label) needs one.
+starts when the review returns no finding.
+
+- For a defect, the new test must fail before the code changes. The coordinator runs `cw run` to
+  see it fail before `developer` starts.
+- For a refactoring, the tests must pass before and after.
+- For a change of tests only, `developer` is not started.
+
+The coordinator still gives the task a name of the same form as a change folder's, because the
+[label of each brief](tokens.md#the-label) needs one. No change folder is written, so a small-path
+task cannot be continued from files: when the coordinator stops one, it tells the developer the
+stage, the round and the open findings.
 
 ### Starting a role
 
 - Each role starts as a new worker with none of the coordinator's conversation, on the model and
-  effort `cw roles` prints, given on the call that starts it.
+  effort `cw roles` prints, given on the call that starts it. When a host offers to copy or fork
+  the conversation into a new agent, the coordinator does not use it: the copy would be counted
+  twice, and the label would not be the first message.
+- On some providers a model alias resolves to an older model that takes no effort or a lower one,
+  and the host then lowers the effort without saying so; `cw roles` prints what is asked for, not
+  what the provider ran.
 - When the host cannot run the role on that model, the coordinator stops before the role writes
   anything, tells the developer the role and the model, and waits.
+- The developer's own instruction about models comes first. When it names a model for agents, the
+  coordinator uses it and says once which roles it changes.
 - The first line of every brief is `cw-task: <task> <stage> <round>`.
 - The brief names the files to read and what to hand back. A brief for `reviewer` holds no opinion,
   summary or excuse from the role that wrote the work.
@@ -87,12 +113,18 @@ coordinator still gives the task a name of the same form as a change folder's, b
 2. When the role ends, it runs `cw roles check <role> --from <that tree>`, with `--task <task>` on
    the full path.
 3. On exit 5 it starts the same role again with the paths the command listed. It neither accepts
-   the work nor repairs it. When a role that writes nothing left a file, it tells the developer
-   and sees that the file is not in the commit.
+   the work nor repairs it. When the same role exceeds its limit a second time, it stops and asks
+   the developer. When a role that writes nothing left a file, it asks the developer to remove
+   the file, or removes it after their yes; the file is never in the commit.
+4. After `spec-writer` and after `architect`, it runs `cw change check <task>`. On exit 5 it
+   starts the same role again with the output, before any review.
 
 ### Open questions and approvals
 
 - A role writes a question it cannot answer from its sources into the record, and does not guess.
+- When `proposal.md` holds open questions, the coordinator puts them to the developer first and
+  starts `spec-writer` again with the answers. `reviewer` reviews only a specification without
+  open questions; then the developer approves it.
 - The coordinator puts every open question of a stage to the developer before it asks for the
   approval of that stage.
 - `architect` does not start before the developer has approved the specification, nor
@@ -105,16 +137,26 @@ coordinator still gives the task a name of the same form as a change folder's, b
 
 - Every finding goes back to the role that wrote the work, in a new start with the next round
   number, and the changed work is reviewed again.
-- After two rounds on one stage, the coordinator stops and asks the developer how to go on.
+- A stage has at most two review rounds. When the second review still has a `blocker` or `major`
+  finding open, the coordinator stops and asks the developer how to go on.
 - `reviewer` never changes the work, and neither does the coordinator.
 - Each finding ends as `resolved`, `rejected` or `deferred`. `rejected` and `deferred` need a
   reason. A `blocker` or `major` finding is never deferred.
+- Only the developer rejects a `blocker` or `major` finding, and the coordinator writes their words
+  in Reason. The coordinator may reject a `minor` finding with a reason.
 
 ### Tests before code
 
-On both paths the tests stage ends before `developer` starts. Between the two the coordinator runs
-`cw run`. It is expected to fail, because the behaviour is not there yet. When every check passes,
-the coordinator tells the developer that the new tests did not fail without the code.
+On both paths the tests stage ends before `developer` starts, apart from the interface described
+below. Between the two the coordinator runs `cw run`. For new behaviour and for a defect it is expected to fail, because the behaviour is not
+there yet; for a refactoring the tests must pass before and after. When the new tests of new
+behaviour or of a defect pass, the coordinator tells the developer that they did not fail without
+the code.
+
+In a language that compiles, the expected failure is that the names of the design's interface are
+missing; `quality-engineer` says which names are missing and that nothing else fails. When the
+tests must be seen failing on behaviour, the first group of `tasks.md` is that interface with
+empty bodies, and `developer` builds it before the tests stage.
 
 ### Commits through the gate
 
@@ -156,8 +198,8 @@ What no program checks:
 - Which path was chosen, and whether the developer agreed.
 - Whether the developer gave an approval. `cw change status` checks that an approval row exists
   and that its content id is current; the coordinator writes that row.
-- The order of the roles, the number of review rounds, and whether a reviewer's brief held the
-  author's opinion.
+- The order of the roles, the number of review rounds, whether the developer or the coordinator
+  rejected a finding, and whether a reviewer's brief held the author's opinion.
 - Whether the tests ran and failed before the code was written. `cw run` records each run, and
   nothing compares the order.
 - Which model a role ran on. [`cw tokens`](tokens.md) shows the model names the host's record
@@ -174,8 +216,8 @@ lower-case words joined by hyphens. `cw` reads the folder itself and needs no ot
 | `proposal.md` | `spec-writer` | Free text: why, what changes, what is not part of it, and `## Open questions`. |
 | `specs/<capability>/spec.md` | `spec-writer` | `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements`; under them `### Requirement: <name>`, a text with `SHALL` or `MUST`, a `Source:` line, and `#### Scenario: <name>` with one `- **WHEN**` line and one `- **THEN**` line. |
 | `design.md` | `architect` | Free text, plus a table under `## Building blocks` with the columns Block, Responsibility, Depends on, New, Reuse considered, and a table under `## Rules` with the columns Rule, Checked by. |
-| `tasks.md` | `architect`; the coordinator ticks the boxes | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
-| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. |
+| `tasks.md` | `architect`; the coordinator ticks the boxes after the review of the code has no open finding | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
+| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `cw` does not read it. |
 | `reviews.md` | the coordinator | Under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. |
 
 How `cw` reads these files:
@@ -475,6 +517,8 @@ Tests, in `tests.md`:
 - There is no table with the column Scenario, or the table lacks Test file or Text.
 - A row is `not automated` and gives no reason, or names no test file or no text.
 - The test file of a row does not exist, or does not hold the text.
+- The test file of a row is absolute or lies outside the repository, also through a symbolic
+  link. `cw change check` then reads nothing outside the repository.
 - Once every task is checked: a scenario of a requirement under `ADDED` or `MODIFIED` has no row,
   or `tests.md` is missing while the change has scenarios.
 

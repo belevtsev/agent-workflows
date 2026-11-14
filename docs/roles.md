@@ -23,12 +23,13 @@ are the tools the generated Claude Code role file allows.
 | `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Edit, Write |
 | `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
 | `developer` | Writes the code that makes the tests pass, within the design. | any other path except `cw.toml`, `cw-roles.toml` and `openspec/`; may add a test, may not change or remove one | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
-| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Bash |
+| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Bash |
 | `git` | Runs the checks and makes the commit through the gate. | nothing | `sonnet`, `medium` | `gpt-6-luna`, `high` | Read, Grep, Glob, Bash |
 
 The model is given as `<model>, <effort>`. "The test paths" are the patterns that `cw-roles.toml`
 names under `[paths]`. No role file gives a role the tool that starts another role; only the
-coordinator starts roles.
+coordinator starts roles. `reviewer` runs at the effort of `architect`, because a review does not
+run at a lower effort than the work it reviews.
 
 ## Each role
 
@@ -50,34 +51,46 @@ Turns the request and its sources into requirements a test can check, in `propos
 `specs/<capability>/spec.md` of the change folder. Every requirement holds `SHALL` or `MUST`, a
 `Source:` line and at least one scenario with one `WHEN` and one `THEN`. A value the sources do not
 give becomes an open question in `proposal.md`, not a guess. When `openspec/specs/` already holds a
-requirement for the behaviour, it changes that requirement under `## MODIFIED Requirements`.
+requirement for the behaviour, it changes that requirement under `## MODIFIED Requirements`. The
+coordinator runs `cw change check` after it.
 
 ### architect
 
 Writes `design.md` (a table of building blocks and a table of rules) and `tasks.md` (small,
 ordered tasks with `Size:`, `Depends on:`, `Check:` and `Source:`). For every new block it names
 the existing code it considered. A rule that a program can check names a check that `cw.toml`
-declares, or `review`. It does not change the approved specification.
+declares, or `review`. It does not change the approved specification. `developer` builds one
+group of tasks per start. When the tests must be seen failing on behaviour, the first group may
+build only the interface, with empty bodies, before the tests. The coordinator runs
+`cw change check` after it.
 
 ### quality-engineer
 
 Writes the tests of the scenarios, only under the test paths, before the code exists, and on the
 full path writes `tests.md`: one row per scenario with the test file and a text that occurs in it.
 It follows the repository's own way of testing. After its work, `cw run` is expected to fail,
-because the behaviour is not there yet. It changes no production code.
+because the behaviour is not there yet; in a language that compiles, because the names of the
+design's interface are missing. It changes no production code. It is the only role that changes
+or removes an existing test: the tests of behaviour that a `MODIFIED` or `REMOVED` requirement
+changes, or of code the brief says will be renamed or moved. It lists each one with the
+requirement or the reason, on the full path under `## Changed tests` in `tests.md`.
 
 ### developer
 
 Writes the code that makes the tests pass, inside the design. It may add a test, and may not
 change or remove one. It does not touch `cw.toml`, `cw-roles.toml` or anything under `openspec/`,
-does not tick tasks, and does not commit. It runs `cw run` and reports the result as it is.
+does not tick tasks, and does not commit. It builds one group of `tasks.md` per start. It runs
+`cw run` and reports the result as it is. A test that is wrong or must change is reported, and the
+coordinator sends that report to `quality-engineer`.
 
 ### reviewer
 
 Examines a specification, a design or code that another role wrote and reports findings with a
 severity (`blocker`, `major`, `minor`), a place and the evidence. It runs `cw run` and `cw status`
-when it reviews code. It changes nothing. Its Claude Code file gives it no tool that edits or
-writes a file; it has a shell, which a host cannot limit to reading.
+when it reviews code, checks each test against the WHEN and THEN of its scenario, and reports an
+existing test changed or removed without a requirement or a reason from `quality-engineer`. It
+changes nothing. Its Claude Code file gives it no tool that edits or writes a file; it has a shell,
+which a host cannot limit to reading.
 
 ### git
 
@@ -91,10 +104,12 @@ working tree.
 The coordinator is the developer's own session, not a role. Its instructions are
 `cw roles text coordinator`, shipped on Claude Code as the skill `/agent-workflows:task`. It
 chooses the path, writes each brief, starts each role on the model and effort `cw roles` prints,
-runs `cw roles check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md`, and asks
-the developer for the approvals. It writes no specification, design, test or code itself. When a
+runs `cw roles check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
+review of the code, and asks the developer for the approvals. It writes no specification, design, test or code itself. When a
 host cannot run a role on its model, the instructions tell it to stop and tell the developer, not
-to use another model. The steps are in [the task workflow](workflow.md#the-flow).
+to use another model. The developer's own instruction about models comes first: when it names a
+model for agents, the coordinator uses it and says once which roles it changes. The steps are in
+[the task workflow](workflow.md#the-flow).
 
 ## cw-roles.toml
 
@@ -134,7 +149,7 @@ Add a table for the host and the role. With the lines `[claude.developer]` and
 other role keeps its default:
 
 ```text
-developer         sonnet, high    gpt-6.1-sol, high  2752  any other path except cw.toml, cw-roles.toml and openspec/; may add a test, may not change or remove one  Writes the code that makes the tests pass, within the design.
+developer         sonnet, high    gpt-6.1-sol, high  2841  any other path except cw.toml, cw-roles.toml and openspec/; may add a test, may not change or remove one  Writes the code that makes the tests pass, within the design.
 ```
 
 `cw` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
@@ -186,7 +201,7 @@ of the seven entries of `roles`:
       "id": "architect",
       "job": "Designs the building blocks, their dependencies and the tasks.",
       "writes": "design.md and tasks.md of the task's change folder",
-      "text_chars": 3452,
+      "text_chars": 3766,
       "models": {
         "claude": {
           "model": "opus",
@@ -199,7 +214,7 @@ of the seven entries of `roles`:
       }
     }
   ],
-  "coordinator_text_chars": 8155
+  "coordinator_text_chars": 11126
 }
 ```
 

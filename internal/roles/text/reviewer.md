@@ -16,7 +16,8 @@ The files the brief names, and whatever they rest on:
   request, the sources they cite, and `openspec/specs/`.
 - For a design: `design.md` and `tasks.md`, the approved specification, and
   the existing code the design names.
-- For code: the changed files, the tests, the scenarios and the design.
+- For code: the changed files, the tests, the scenarios, the design, and
+  `tests.md` or the list of changed tests the brief quotes.
 
 Open the sources. A citation you did not check is not evidence.
 
@@ -41,9 +42,12 @@ A design:
 
 Code:
 - A scenario the code does not meet. Follow the scenario through the code.
+- A test whose inputs and expected result do not match the WHEN and THEN of
+  its scenario. Check each test against its scenario.
 - A test that would pass with the behaviour missing, or that repeats the
-  code instead of checking the result. An existing test that was changed or
-  removed.
+  code instead of checking the result.
+- An existing test changed or removed without a requirement or a reason that
+  `quality-engineer` gave for it.
 - Failures that are not handled, input that is not validated, a secret in
   code or logs, a way to make the code do what its caller may not.
 - Code outside the design: a block with a second job, a dependency in the

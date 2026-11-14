@@ -65,6 +65,19 @@ func TestTheQualityEngineerChangesProductionCode(t *testing.T) {
 	assertLists(t, result, []string{"src/app.txt"}, []string{"tests/app_test.txt"})
 }
 
+// Requirement "Write limits", scenario "The quality engineer removes an
+// existing test".
+func TestTheQualityEngineerRemovesAnExistingTest(t *testing.T) {
+	t.Parallel()
+	repo := demo(t)
+	t0 := tree(t, repo)
+	repo.Remove("tests/app_test.txt")
+	result := repo.CW("roles", "check", "quality-engineer", "--from", t0, "--task", "add-greeting")
+	if result.Code != 0 {
+		t.Errorf("cw roles check quality-engineer exited %d, want 0:\n%s", result.Code, result.Output())
+	}
+}
+
 // Requirement "Write limits", scenario "A role that writes nothing wrote a
 // file".
 func TestARoleThatWritesNothingWroteAFile(t *testing.T) {

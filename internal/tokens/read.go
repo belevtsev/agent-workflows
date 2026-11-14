@@ -96,6 +96,7 @@ type reading struct {
 	models map[string]Counts // per model the record names
 	brief  string            // the first message, which holds the label
 	why    string            // why the counts are unknown; empty when they are known
+	size   int64             // the size of the record before it was read
 }
 
 // maxLine bounds one line of a record. A longer line cannot be read.
@@ -305,8 +306,10 @@ func hostContext(s string) bool {
 // running total of the thread in total_token_usage, and the request itself
 // in last_token_usage. The thread is counted once, from its totals: each
 // rise of the total goes to the model of the turn_context before it, so the
-// sum is the last total. A total that falls, or a first total that is more
-// than its own request, is not understood, and the counts are unknown.
+// sum is the last total. A total that falls is a reset: the count goes on
+// from it, so the sum is the totals before each fall and the last total. A
+// first total that is more than its own request is not understood, and the
+// counts are unknown.
 func readCodex(path string) reading {
 	var r reading
 	var c collect
@@ -359,8 +362,9 @@ func readCodex(path string) reading {
 			}
 			rise := total.minus(*prev)
 			if !rise.valid() {
-				c.broken = fmt.Sprintf("line %d of the record holds a running total smaller than the one before", n)
-				return
+				// Codex resets the total after a context window overflows:
+				// the total before the fall stays counted.
+				rise = total
 			}
 			*prev = total
 			c.add("", model, rise)
