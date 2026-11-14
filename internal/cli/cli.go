@@ -29,6 +29,10 @@ type command struct {
 // commands lists every command in the order the help prints them.
 func commands() []command {
 	return []command{
+		{"init", "[--observe]", "Create cw.toml if it is missing and install the git hooks", runInit},
+		{"add", "<id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]", "Append one check to cw.toml", runAdd},
+		{"run", "[<id>...] [--force] [--base <rev>]", "Execute the declared checks that have no passing run on this content", runRun},
+		{"status", "[--json]", "Say whether a commit of the working tree would be allowed, and what is missing", runStatus},
 		{"version", "", "Print the version, the revision and the build time", runVersion},
 	}
 }
@@ -86,14 +90,8 @@ func printHelp(w io.Writer) {
 	b.WriteString("cw allows a commit or a push only when every check the repository\n")
 	b.WriteString("declares in cw.toml has a recorded passing run on exactly that content.\n\n")
 	b.WriteString("usage: cw <command> [arguments]\n\ncommands:\n")
-	width := 0
 	for _, c := range commands() {
-		if n := len(usageLine(c)); n > width {
-			width = n
-		}
-	}
-	for _, c := range commands() {
-		fmt.Fprintf(&b, "  %-*s  %s\n", width, usageLine(c), c.summary)
+		fmt.Fprintf(&b, "  %s\n      %s\n", usageLine(c), c.summary)
 	}
 	b.WriteString("\nexit statuses: 0 done; 1 could not; 2 wrong command line; 3 a hook denies;\n")
 	b.WriteString("4 a hook of another tool is left for you to edit; 5 not verified.\n")
@@ -107,7 +105,7 @@ func noArguments(name string, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("cw %s takes no arguments", name)
+		return usagef("%s takes no arguments", name)
 	}
 	return nil
 }

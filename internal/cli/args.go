@@ -48,7 +48,7 @@ func parseArgs(fs *flag.FlagSet, args []string) (parsed, error) {
 				p.help = true
 				return p, nil
 			}
-			return p, usagef("%s", strings.TrimPrefix(err.Error(), "flag "))
+			return p, usagef("%s", strings.Replace(strings.TrimPrefix(err.Error(), "flag "), "provided but not defined", "unknown option", 1))
 		}
 		args = fs.Args()
 		if len(args) == 0 {
