@@ -192,16 +192,38 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 		}
 		// With the installed cw in a later entry the guard still decides.
 		installed := first + string(os.PathListSeparator) + pathOf(repo)
+		neutral := t.TempDir()
 		for _, command := range codexWindowsCommands(t)["PreToolUse"] {
 			for _, way := range cmdWays {
 				t.Run("PreToolUse with the installed cw/"+way+"/PATH="+first, func(t *testing.T) {
-					result := runCmd(t, way, repo.Dir, installed, command, codexNotice("PreToolUse", repo.Dir))
-					if result.Code != 0 || !strings.Contains(result.Stdout, "deny") {
-						t.Errorf("exit status %d, want 0 and the decision deny:\n%s", result.Code, result.Output())
+					notice := codexNotice("PreToolUse", repo.Dir)
+					result := runCmd(t, way, repo.Dir, installed, command, notice)
+					if result.Code != 0 {
+						t.Errorf("exit status %d, want 0:\n%s", result.Code, result.Output())
 					}
 					if exists(marker) {
 						t.Errorf("the command ran a program of the repository")
 					}
+					if strings.Contains(result.Stdout, "deny") {
+						return
+					}
+					// Behind an empty first entry cmd.exe may find no program
+					// at all. Then the command has no cw to run, and that is
+					// the system's doing: the control asks cmd.exe for cw
+					// from a folder that holds nothing.
+					control := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& cw version", notice)
+					if first == "" && !strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw ") {
+						if strings.TrimSpace(result.Stdout) != "" {
+							t.Errorf("cmd.exe finds no cw through this PATH, and the command printed, want nothing:\n%s", result.Output())
+						}
+						return
+					}
+					// What follows only says more about the failure.
+					loud := runCmd(t, way, repo.Dir, installed, strings.ReplaceAll(command, " 2>nul", ""), notice)
+					git := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& git --version", notice)
+					status := runCmd(t, way, neutral, installed, "set NoDefaultCurrentDirectoryInExePath=1& cd /d %SystemRoot% && cw context --host codex", codexNotice("SessionStart", repo.Dir))
+					t.Errorf("the command printed no decision deny:\n%s\n`cw version` through the same PATH (exit status %d):\n%s\nthe command without 2>nul (exit status %d):\n%s\n`git --version` (exit status %d):\n%s\n`cw context` from the Windows folder (exit status %d):\n%s",
+						result.Output(), control.Code, control.Output(), loud.Code, loud.Output(), git.Code, git.Output(), status.Code, status.Output())
 				})
 			}
 		}
