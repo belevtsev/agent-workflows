@@ -91,4 +91,4 @@ their notices:
 | [spf13/cobra](https://github.com/spf13/cobra) | v1.10.2 | [Apache notice](licenses/cobra-LICENSE) |
 | [spf13/pflag](https://github.com/spf13/pflag) | v1.0.9 | [BSD notice](licenses/pflag-LICENSE) |
 | [inconshreveable/mousetrap](https://github.com/inconshreveable/mousetrap) | v1.1.0 | [Apache notice](licenses/mousetrap-LICENSE) |
-| [golang.org/x/sys](https://golang.org/x/sys) | v0.49.0 | [LICENSE](licenses/module-golang.org_x_sys-LICENSE) |
+| [golang.org/x/sys](https://golang.org/x/sys) | v0.50.0 | [LICENSE](licenses/module-golang.org_x_sys-LICENSE) |

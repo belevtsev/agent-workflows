@@ -139,6 +139,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   returns at most the capped 6 KiB result, the rest in its report file ([skill](skills/task-orchestration/SKILL.md#keep-the-coordinator-lean)).
 - Lint fails a new function above the complexity limits (`gocognit`, `funlen`, `gocyclo`) and unchecked `Close`, `Remove` or print results outside
   today's listed offenders, a list that only shrinks ([CI](docs/development.md#continuous-integration)).
+- `cw` links `golang.org/x/sys` v0.50.0, up from v0.49.0; `THIRD_PARTY.md` lists the new version.
 
 ### Fixed
 
