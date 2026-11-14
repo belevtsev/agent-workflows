@@ -28,10 +28,6 @@ const NoWait time.Duration = -1
 
 // Options select the kind of lock and how long Acquire waits for it.
 type Options struct {
-	// Dir, when non-nil, is an open directory that path is resolved against
-	// with openat(2), so a caller that reached it without following symlinks
-	// keeps that guarantee. Dir must stay open until the Lock is closed.
-	Dir *os.File
 	// Shared takes a shared lock instead of an exclusive one, and opens the
 	// file read-only, so a reader needs only read permission.
 	Shared bool

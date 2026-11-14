@@ -7,9 +7,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"time"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -28,9 +26,6 @@ import (
 //     owner or ACL check is made here (Options.Check can add one).
 //   - A reparse point (a symbolic link, a junction, or any other kind) at the
 //     lock path is refused with ErrSymlink; it is opened, never followed.
-//   - With Options.Dir, a relative path is opened with NtCreateFile relative
-//     to the directory's handle, the counterpart of openat(2). The NT object
-//     manager does not resolve "." or ".." components there.
 //   - "Regular file" means a disk file that is not a directory.
 //   - The file is opened with every share mode, so another process can open
 //     it to lock it and can delete or rename it; Verify then reports
@@ -50,7 +45,6 @@ const shareAll = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE | windows.FI
 // Lock is a held lock. Close releases it.
 type Lock struct {
 	file  *os.File
-	dir   *os.File
 	path  string
 	check func(*os.File) error
 }
@@ -71,7 +65,7 @@ func Acquire(ctx context.Context, path string, opts Options) (*Lock, error) {
 		defer timer.Stop()
 		deadline = timer.C
 	}
-	lock := &Lock{dir: opts.Dir, path: path, check: opts.Check}
+	lock := &Lock{path: path, check: opts.Check}
 	if err := lock.open(ctx, opts, deadline); err != nil {
 		return nil, err
 	}
@@ -133,9 +127,9 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		h, err := openAt(l.dir, l.path, access, false)
+		h, err := openFile(l.path, access, false)
 		if errors.Is(err, fs.ErrNotExist) && !opts.NoCreate {
-			h, err = openAt(l.dir, l.path, access, true)
+			h, err = openFile(l.path, access, true)
 		}
 		switch {
 		case err == nil:
@@ -151,56 +145,20 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 	}
 }
 
-// openAt opens path, or creates it when create is set, without following a
-// final reparse point. A relative path with a non-nil dir is resolved against
-// dir's handle. The handle is synchronous and not inherited by children.
-// Directories open too (backup semantics), so Verify can name them.
-func openAt(dir *os.File, path string, access uint32, create bool) (windows.Handle, error) {
-	if dir == nil || filepath.IsAbs(path) || filepath.VolumeName(path) != "" {
-		name, err := windows.UTF16PtrFromString(path)
-		if err != nil {
-			return windows.InvalidHandle, err
-		}
-		disposition := uint32(windows.OPEN_EXISTING)
-		if create {
-			disposition = windows.CREATE_NEW
-		}
-		return windows.CreateFile(name, access, shareAll, nil, disposition,
-			windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT|windows.FILE_FLAG_BACKUP_SEMANTICS, 0)
-	}
-	name, err := windows.NewNTUnicodeString(filepath.FromSlash(path))
+// openFile opens path, or creates it when create is set, without following
+// a final reparse point. The handle is synchronous and not inherited by
+// children. Directories open too (backup semantics), so Verify can name them.
+func openFile(path string, access uint32, create bool) (windows.Handle, error) {
+	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return windows.InvalidHandle, err
 	}
-	disposition := uint32(windows.FILE_OPEN)
+	disposition := uint32(windows.OPEN_EXISTING)
 	if create {
-		disposition = windows.FILE_CREATE
+		disposition = windows.CREATE_NEW
 	}
-	raw, err := dir.SyscallConn()
-	if err != nil {
-		return windows.InvalidHandle, err
-	}
-	h := windows.InvalidHandle
-	var openErr error
-	if err := raw.Control(func(fd uintptr) {
-		attrs := windows.OBJECT_ATTRIBUTES{RootDirectory: windows.Handle(fd), ObjectName: name, Attributes: windows.OBJ_CASE_INSENSITIVE}
-		attrs.Length = uint32(unsafe.Sizeof(attrs))
-		var status windows.IO_STATUS_BLOCK
-		openErr = windows.NtCreateFile(&h, access|windows.SYNCHRONIZE, &attrs, &status, nil,
-			windows.FILE_ATTRIBUTE_NORMAL, shareAll, disposition,
-			windows.FILE_SYNCHRONOUS_IO_NONALERT|windows.FILE_OPEN_REPARSE_POINT, 0, 0)
-	}); err != nil {
-		return windows.InvalidHandle, err
-	}
-	if openErr != nil {
-		// An NTSTATUS becomes the Win32 error it maps to, so errors.Is
-		// matches fs.ErrNotExist and ERROR_ALREADY_EXISTS as for CreateFile.
-		if status, ok := errors.AsType[windows.NTStatus](openErr); ok {
-			return windows.InvalidHandle, status.Errno()
-		}
-		return windows.InvalidHandle, openErr
-	}
-	return h, nil
+	return windows.CreateFile(name, access, shareAll, nil, disposition,
+		windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT|windows.FILE_FLAG_BACKUP_SEMANTICS, 0)
 }
 
 // control runs fn on the lock file's handle. It fails once the Lock is
@@ -264,7 +222,7 @@ func (l *Lock) Verify() error {
 
 // named reports whether path still opens the file described by held.
 func (l *Lock) named(held *windows.ByHandleFileInformation) bool {
-	h, err := openAt(l.dir, l.path, windows.FILE_READ_ATTRIBUTES, false)
+	h, err := openFile(l.path, windows.FILE_READ_ATTRIBUTES, false)
 	if err != nil {
 		return false
 	}

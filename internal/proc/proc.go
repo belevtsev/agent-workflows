@@ -6,11 +6,10 @@
 // kernel has walked it, and that child survives. Linux redirects or restarts
 // such a fork, but the same loop is correct there too. KillGroup therefore
 // kills until the group has no live member, and Run calls it whenever a run
-// ends, after a normal exit as well (unless Spec.KeepGroupOnExit), so no
-// descendant outlives its run.
+// ends, after a normal exit as well, so no descendant outlives its run.
 //
-// Process groups are used on Linux and macOS. On Windows the program is put
-// in a job object as soon as it has started, and Run ends the whole job; see
+// Process groups are used on Linux and macOS. On Windows the program starts
+// suspended in a job object of its own, and Run ends the whole job; see
 // group_windows.go for how that differs. Elsewhere Run stops only the program
 // itself, at once. KillGroup fails with errors.ErrUnsupported on every
 // platform but Linux and macOS.
@@ -20,9 +19,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"os/exec"
-	"syscall"
 	"time"
 )
 
@@ -46,10 +43,6 @@ type Spec struct {
 	Env []string
 	// Stdin is the program's input; nil gives it none.
 	Stdin io.Reader
-	// KeepStdinOpen holds the input open after Stdin is written, until the
-	// program exits or is stopped, for a protocol server that reads the end
-	// of its input as a request to shut down.
-	KeepStdinOpen bool
 	// Stdout, when set, receives the output. Otherwise Result.Stdout keeps
 	// the first StdoutLimit bytes.
 	Stdout      io.Writer
@@ -58,20 +51,9 @@ type Spec struct {
 	// keeps the last StderrLimit bytes.
 	Stderr      io.Writer
 	StderrLimit int
-	// Timeout bounds the run; zero leaves the bound to ctx.
+	// Timeout bounds the run; zero leaves the bound to ctx. A stop kills the
+	// group at once.
 	Timeout time.Duration
-	// Grace, when set, lets a stopped program clean up: Run sends SIGTERM to
-	// the group and kills it only if the program has not exited and the group
-	// emptied within Grace, so git, for example, can remove its lock files.
-	// Zero kills the group at once. Windows has no SIGTERM and ignores Grace.
-	Grace time.Duration
-	// KeepGroupOnExit leaves the group's other members running when the
-	// program exits on its own, for a program such as git whose hooks may
-	// start background work on purpose. A stop still ends the whole group.
-	KeepGroupOnExit bool
-	// Session starts the program in a session of its own rather than only a
-	// process group, so it has no controlling terminal to read or signal.
-	Session bool
 	// WaitDelay bounds how long output may still arrive after the program
 	// exits or is stopped, for a descendant that keeps the pipes open
 	// (exec.Cmd.WaitDelay); a descendant that left the group survives the
@@ -87,8 +69,7 @@ type Result struct {
 	// Code is the exit status, or -1 when the program did not exit on its
 	// own: it never started, or a signal ended it, such as the kill when the
 	// run was stopped. A program that exited before the stop, while a
-	// descendant held its output open, or within Grace after the SIGTERM,
-	// keeps its status.
+	// descendant held its output open, keeps its status.
 	Code int
 	// Stopped is set when ctx ended or Timeout passed, so the process group
 	// was killed or the program was never started.
@@ -110,9 +91,8 @@ type Result struct {
 
 // Run starts the program in a process group of its own and waits for it.
 // When the program exits, Run kills whatever is left in the group; when ctx
-// ends or Timeout passes first, Run stops the group, after Grace if one is
-// set. Either way Run returns only once no member of the group is alive, or
-// with Result.Cleanup set; KeepGroupOnExit lifts this after a normal exit.
+// ends or Timeout passes first, Run stops the group. Either way Run returns
+// only once no member of the group is alive, or with Result.Cleanup set.
 func Run(ctx context.Context, spec Spec) Result {
 	runCtx := ctx
 	if spec.Timeout > 0 {
@@ -123,11 +103,8 @@ func Run(ctx context.Context, spec Spec) Result {
 	if runCtx.Err() != nil {
 		return Result{Code: -1, Stopped: true, Cancelled: interrupted(ctx)}
 	}
-	command, out, err := prepare(ctx, spec)
-	if err != nil {
-		return Result{Code: -1, Err: err}
-	}
-	ownGroup(command, spec.Session)
+	command, out := prepare(ctx, spec)
+	ownGroup(command)
 	if err := command.Start(); err != nil {
 		return Result{Code: -1, Err: err}
 	}
@@ -135,31 +112,21 @@ func Run(ctx context.Context, spec Spec) Result {
 	if err := joinGroup(command); err != nil {
 		return Result{Code: -1, Err: err}
 	}
-	written := feed(out.input, spec.Stdin)
-	got := await(ctx, runCtx, command, spec)
-	if written != nil {
-		// Wait closed the pipe once the program exited, which ends a write
-		// the program never read; only another failure is reported.
-		if err := <-written; got.Err == nil && !got.Stopped && !errors.Is(err, os.ErrClosed) && !errors.Is(err, syscall.EPIPE) {
-			got.Err = err
-		}
-	}
+	got := await(ctx, runCtx, command)
 	got.Stdout, got.Overflow, got.Stderr = out.stdout.Bytes(), out.stdout.Overflow(), out.stderr.Bytes()
 	return got
 }
 
-// streams are where Run keeps a run's output, and the input pipe it holds
-// open for Spec.KeepStdinOpen.
+// streams are where Run keeps a run's output.
 type streams struct {
 	stdout *HeadBuffer
 	stderr *TailBuffer
-	input  io.WriteCloser
 }
 
 // prepare builds the command for spec, without starting it.
-func prepare(ctx context.Context, spec Spec) (*exec.Cmd, streams, error) {
+func prepare(ctx context.Context, spec Spec) (*exec.Cmd, streams) {
 	command := exec.Command(spec.Path, spec.Args...) //nolint:gosec // G204: the caller names a fixed program and argv; no shell is involved.
-	command.Dir, command.Env, command.WaitDelay = spec.Dir, spec.Env, spec.WaitDelay
+	command.Dir, command.Env, command.Stdin, command.WaitDelay = spec.Dir, spec.Env, spec.Stdin, spec.WaitDelay
 	if command.Env == nil {
 		command.Env = []string{}
 	}
@@ -177,53 +144,26 @@ func prepare(ctx context.Context, spec Spec) (*exec.Cmd, streams, error) {
 	if spec.Stderr != nil {
 		command.Stderr = spec.Stderr
 	}
-	if spec.KeepStdinOpen && spec.Stdin != nil {
-		var err error
-		if out.input, err = command.StdinPipe(); err != nil {
-			return nil, out, err
-		}
-	} else {
-		command.Stdin = spec.Stdin
-	}
-	return command, out, nil
-}
-
-// feed copies stdin into input in the background and reports the copy's
-// result on the returned channel; it returns nil when there is no input pipe.
-func feed(input io.WriteCloser, stdin io.Reader) <-chan error {
-	if input == nil {
-		return nil
-	}
-	written := make(chan error, 1)
-	go func() {
-		_, err := io.Copy(input, stdin)
-		written <- err
-	}()
-	return written
+	return command, out
 }
 
 // await waits for a started command until it exits or runCtx ends, and ends
 // or stops its group accordingly.
-func await(ctx, runCtx context.Context, command *exec.Cmd, spec Spec) Result {
+func await(ctx, runCtx context.Context, command *exec.Cmd) Result {
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
 	got := Result{Code: -1}
 	select {
 	case got.Err = <-done:
-		if spec.KeepGroupOnExit {
-			leaveGroup(command)
-		} else {
-			got.Cleanup = endGroup(command)
-		}
+		got.Cleanup = endGroup(command)
 	case <-runCtx.Done():
 		got.Stopped, got.Cancelled = true, interrupted(ctx)
 		// Killing the group closes every pipe a member holds. A descendant
 		// that left the group can still hold one; WaitDelay bounds that wait.
-		got.Err, got.Cleanup = stopGroup(command, spec.Grace, done)
+		got.Err, got.Cleanup = stopGroup(command, done)
 	}
 	// After a stop, the program may have exited on its own before it, while
-	// a descendant held its output open, or within the grace after SIGTERM;
-	// it keeps its status.
+	// a descendant held its output open; it keeps its status.
 	if state := command.ProcessState; state != nil && state.Exited() {
 		got.Code = state.ExitCode()
 	}

@@ -21,13 +21,10 @@ import (
 // Differences from Linux and macOS:
 //   - The job is created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so if cw
 //     itself dies, Windows ends the run's processes when the handle closes.
-//   - A stop (timeout or cancelled ctx) terminates the job at once: there is
-//     no SIGTERM, so Spec.Grace is ignored.
+//   - A stop (timeout or cancelled ctx) terminates the job.
 //   - A terminated program reports the exit code TerminateJobObject gave it
 //     (terminatedCode), not a signal, so Result.Code is 1 rather than -1
 //     after a stop.
-//   - Spec.Session has no meaning: there is no controlling terminal, and the
-//     program shares cw's console.
 //   - KillGroup is not available.
 
 // terminatedCode is the exit code of a process that ending the job killed,
@@ -38,15 +35,16 @@ const terminatedCode = 1
 const bound = 5 * time.Second
 
 // jobs holds the job object of every command between joinGroup and the
-// endGroup, stopGroup or leaveGroup that ends its run.
+// endGroup or stopGroup that ends its run.
 var jobs sync.Map // *exec.Cmd -> windows.Handle
 
 // ntResumeProcess continues a suspended process. Go keeps no handle to the first thread, which ResumeThread needs.
 var ntResumeProcess = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtResumeProcess")
 
 // ownGroup makes the program start suspended; joinGroup lets it run once it is in its job object.
-func ownGroup(command *exec.Cmd, _ bool) {
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED}
+// It also starts it in a console process group of its own, so that Ctrl+C in cw's console reaches cw alone.
+func ownGroup(command *exec.Cmd) {
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED | windows.CREATE_NEW_PROCESS_GROUP}
 }
 
 // joinGroup puts a started command in a new job object that kills its
@@ -72,7 +70,7 @@ func newJob(pid int) (windows.Handle, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err := setKillOnClose(job, true); err != nil {
+	if err := setKillOnClose(job); err != nil {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
@@ -94,13 +92,10 @@ func newJob(pid int) (windows.Handle, error) {
 	return job, nil
 }
 
-// setKillOnClose sets or clears JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, the
-// job's only limit.
-func setKillOnClose(job windows.Handle, kill bool) error {
+// setKillOnClose sets JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, the job's only limit.
+func setKillOnClose(job windows.Handle) error {
 	var info windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-	if kill {
-		info.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-	}
+	info.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
 	_, err := windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation,
 		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))) //nolint:gosec // G103: the Win32 call takes the structure's address and size.
 	return err
@@ -123,22 +118,9 @@ func endGroup(command *exec.Cmd) error {
 	return endJob(job)
 }
 
-// leaveGroup lets the job's other processes keep running after the command
-// exited (Spec.KeepGroupOnExit): it clears the kill-on-close limit and closes
-// the handle. Should clearing fail, closing the handle ends those processes.
-func leaveGroup(command *exec.Cmd) {
-	job, ok := takeJob(command)
-	if !ok {
-		return
-	}
-	_ = setKillOnClose(job, false)
-	_ = windows.CloseHandle(job)
-}
-
 // stopGroup ends the job of a started command whose Wait result arrives on
-// done, at once, and returns that result and any cleanup failure. Windows
-// has no SIGTERM, so the grace is skipped.
-func stopGroup(command *exec.Cmd, _ time.Duration, done <-chan error) (waitErr, cleanup error) {
+// done, and returns that result and any cleanup failure.
+func stopGroup(command *exec.Cmd, done <-chan error) (waitErr, cleanup error) {
 	job, ok := takeJob(command)
 	if !ok {
 		_ = command.Process.Kill()
