@@ -38,6 +38,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   builds the archives from every commit, and follows the install instruction of the README with them on the three
   systems, on Windows in both PowerShells ([development](docs/development.md#continuous-integration)).
 - `cw <command> --help` explains every argument and option of the command.
+- First measurements of what `cw` costs: the time of a commit on the three systems, the time of each command against
+  the size of a repository, and the tokens of an agent with the gate and with the roles on two small tasks, with the
+  scripts that repeat them ([benchmarks](docs/benchmarks.md)).
 - The text of a release is the section of this changelog ([development](docs/development.md#releases)).
 
 ### Changed

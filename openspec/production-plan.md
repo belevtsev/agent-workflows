@@ -293,12 +293,12 @@ role texts (R). They reported 93 findings. Each has one outcome:
 | U7 | No way to replace a check. | resolved by a hint; a new command rejected | `cw add` says that it only appends and that `cw.toml` is edited by hand. A command to edit is rejected: the file is the interface (`check-declaration`). |
 | U8 | Forgetting `--` in `cw add` gave a bare error. | resolved | A hint. |
 | U9 | `cw add unit -- "go test ./..."` was accepted and failed at the run. | resolved | Refused, with the form to write. |
-| U10 | `--help` describes no option. | deferred | A text only. |
+| U10 | `--help` describes no option. | resolved | Deferred at first as a text only. `cw <command> --help` now prints one line for each argument and option of the command; `TestHelpOfACommandExplainsEveryWordOfItsUsageLine` holds that every word of the usage line is explained (commit `f418250`). |
 | U11 | The install part of the README was incomplete. | resolved | `README.md`. |
 | U12 | `cw init` in a repository with checks printed the wrong next step. | resolved | It prints `next: cw run`. |
 | U13 | Notices used Go's list syntax. | resolved | Lists are printed as `cw.toml` holds them; an absent `paths` is "not set". |
 | U14 | `docs/try-it.md` showed less than cw prints; the uninstall message named one place for two things. | resolved | Both. |
-| U15 | `cw stats` counts a commit with nothing to commit as allowed; the table of `cw roles` is 200 columns wide. | resolved in documents; the table deferred | `docs/operations.md` says what "allowed" counts. The width is a matter of looks. |
+| U15 | `cw stats` counts a commit with nothing to commit as allowed; the table of `cw roles` is 200 columns wide. | resolved in documents; the table resolved | `docs/operations.md` says what "allowed" counts. The table was deferred at first as a matter of looks; it was 253 columns wide. `cw roles` now prints the job of a role and what it may write below its row, and `TestTheTableFitsATerminal` holds every line to 120 columns. |
 
 #### R: the role texts
 
@@ -322,10 +322,11 @@ role texts (R). They reported 93 findings. Each has one outcome:
 
 #### Totals
 
-93 findings. By row: 83 resolved, 4 resolved in documents (G1, G7, S9, U15), 4 rejected against
-evidence (G4, P7, C8, R13) and 2 deferred (U10, R12). Ten rows have a part with another outcome,
+93 findings. By row: 84 resolved, 4 resolved in documents (G1, G7, S9, U15), 4 rejected against
+evidence (G4, P7, C8, R13) and 1 deferred (R12). Ten rows have a part with another outcome,
 named in the row: in documents for G3, S4 and X3; rejected for S8, A11, U7, R4 and R11; deferred
-for A12 and U15.
+for A12; resolved in the code for U15. U10 and the table of U15 were deferred when the challenge
+closed and were resolved afterwards, as their rows say.
 
 #### Found while the fixes were tested
 

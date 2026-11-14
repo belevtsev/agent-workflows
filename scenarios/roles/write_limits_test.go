@@ -102,6 +102,10 @@ func TestTheSpecWriterStaysInItsFolder(t *testing.T) {
 	if result.Code != 0 {
 		t.Errorf("cw roles check spec-writer exited %d, want 0:\n%s", result.Code, result.Output())
 	}
+	// One path is "1 path differs", not "1 paths differ".
+	if want := "`spec-writer` stayed within its limit: 1 path differs from " + t0 + "\n"; result.Stdout != want {
+		t.Errorf("cw roles check spec-writer printed %q, want %q", result.Stdout, want)
+	}
 }
 
 // Requirement "Write limits", scenario "Test paths are not declared".

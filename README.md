@@ -17,15 +17,19 @@ stop a person who decides to go around it.
 
 ## State
 
-- This is a pre-release that exists on one branch. No release of it has been
-  published, so the first install instruction below does not work yet.
+- This is a pre-release. The first install instruction below works once the
+  release `v3.0.0-beta.1` is published; the
+  [releases](https://github.com/belevtsev/agent-workflows/releases) show
+  whether it is. CI builds the archives of that release from every commit and
+  follows the instruction with them on Linux, macOS and Windows.
 - **Nothing here is measured to improve anything.** The gate has not yet been
-  used on real work, and the roles have never been run with a model. The
-  [production plan](openspec/production-plan.md) says what was built and how
-  each part was checked.
-- It was built and tried by hand on Linux. Its tests passed in CI on Linux,
-  macOS and Windows (run 19, commit `3eaa40e`); nothing was tried by hand on
-  macOS or Windows.
+  used on real work. The plugin and the roles ran with a model in scratch
+  repositories only, on two small tasks:
+  [benchmarks](docs/benchmarks.md) says what that showed and what it cost.
+  The [production plan](openspec/production-plan.md) says what was built and
+  how each part was checked.
+- It was built and tried by hand on Linux. Its tests pass in CI on Linux,
+  macOS and Windows; nothing was tried by hand on macOS or Windows.
 
 ## Install
 
@@ -34,7 +38,7 @@ version 2.24, and was tried by hand with git 2.53 only. On Windows the git
 hooks are shell scripts, run by the `sh` of Git for Windows.
 
 **From a release, without Go.** The archive is checked against `SHA256SUMS`
-before anything is unpacked. The tag `v3.0.0-beta.1` does not exist yet.
+before anything is unpacked.
 
 Linux and macOS:
 
@@ -164,7 +168,9 @@ a repository come from its `cw.toml`.
 Whether seven roles give better code than one agent working alone is **not
 measured**. The roles cost tokens that one agent would not spend, and
 `cw tokens` shows how many. [The evaluation](docs/evaluation.md) says how the
-comparison is to be made; it has not been run.
+comparison is to be made; it has not been run. A first run on two small tasks
+is in [benchmarks](docs/benchmarks.md): it shows what the roles cost there,
+not whether the code is better.
 
 ## Known limits
 

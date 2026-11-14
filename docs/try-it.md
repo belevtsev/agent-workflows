@@ -3,7 +3,8 @@
 This guide takes you through everything on this branch that can be tried by
 hand. Parts 1 to 9 need no coding agent and take about twenty minutes. Every
 command and every output in parts 1 to 9 was run on Linux, on 14 November
-2026, with the program built from this branch. Part 10 was run by nobody yet.
+2026, with the program built from this branch. Part 10 was run in part, by a
+script and not by a person; it says which steps.
 
 Nothing here replaces a `cw` you already have installed, and nothing here
 changes the repository you are reading.
@@ -320,10 +321,27 @@ This commit is denied, and the message names the five checks.
 
 ## 10. With a coding agent
 
-Nobody has run this part on a host. No role was ever started with a model,
-and the plugin was never loaded by a host; `claude plugin validate .` passes.
-The skill `cw` alone was tried once with a model and without a host: five
-runs, recorded in [the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host).
+No person has run this part. On 14 November 2026 a script ran some of it in
+Claude Code 2.1.311, with `claude -p` and the plugin of this branch, in
+scratch repositories:
+
+- **Step 1.** The plugin loaded: the session listed the seven roles and the
+  skills `cw` and `task`.
+- **Step 2.** The text of `cw context` reached the model at the start of the
+  session.
+- **Step 3, in part.** A `git commit --no-verify` did not run. With nobody to
+  ask, the host refused the command and gave the reason of the guard.
+  `git commit -n` and the search were not tried.
+- **Step 4, in part.** In two gated repositories the agent ran `cw run` after
+  its change and committed through the hook. It did not load the skill `cw`
+  and did not run `cw status` first.
+- **Steps 5 and 6.** The roles ran on two small tasks, and the script
+  answered every question with one fixed approval:
+  [benchmarks](benchmarks.md#what-an-agent-spends).
+
+Nothing was run on Codex. The skill `cw` alone was also tried with a model and
+without a host: five runs, recorded in
+[the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host).
 
 1. Start Claude Code in `$HOME/cw-try/demo` with the plugin of this checkout,
    from the shell of part 1: `claude --plugin-dir <the root of this checkout>`.
@@ -346,8 +364,8 @@ runs, recorded in [the evaluation](evaluation.md#a-first-trial-of-the-skill-with
 
 [The evaluation](evaluation.md) lists 26 cases to look at, one for each
 scenario that only a model run can show, and the comparison with one agent
-working alone. Whether the roles are worth their tokens is unknown until that
-comparison is run.
+working alone. None of them was run. Whether the roles are worth their tokens
+is unknown until that comparison is run.
 
 ## 11. Clean up
 
@@ -373,12 +391,12 @@ when you are done.
 | The tests of this branch | Run on Linux. [The production plan](../openspec/production-plan.md) lists them. |
 | macOS and Windows | The tests of this branch passed in CI on both (run 19, commit `3eaa40e`). On Windows the tests skip the plugin commands written for `sh`. Nothing was tried there by hand. |
 | Continuous integration | Run 19, for commit `3eaa40e` on pull request 219, passed on Linux, macOS and Windows. A run started by hand on the same commit also passed with the race detector on all three. |
-| A release, and the install without Go | No release exists. The first install instruction of the README cannot work yet. |
-| The plugin in Claude Code | Its files pass `claude plugin validate .`. It was never loaded in a session. |
+| A release, and the install without Go | No release is published yet, so the first install instruction of the README cannot download anything. CI builds the six archives of this branch and follows that instruction on Linux, macOS and Windows, on a PATH without Go, with the archives served from the same machine (run 43642931023). The release workflow itself never ran. |
+| The plugin in Claude Code | Loaded by a script in Claude Code 2.1.311 (`claude -p --plugin-dir`): the roles and the two skills were listed, the text of `cw context` reached the model, and a `git commit --no-verify` was refused with the reason of the guard. Never used in a session with a person. |
 | Codex | Nothing was run. The hooks follow the Codex documentation as read on 14 November 2026. |
-| The roles with a model | Never run. |
-| The skill `cw` | Its seven examples are replayed by a test against `cw`. Five runs with a model and without a host are in [the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host). Whether a host loads it when it should was not tried. |
-| The token count of a real session | Both readers were compared with a separate count on real records of this machine: 170 of Claude Code 2.1 and 13 of codex-cli 0.141 and 0.142. No record of a role with a label, and no notice of a host, was read: [tokens](tokens.md#checked-against-real-records). |
+| The roles with a model | Run by a script on two small tasks in scratch repositories: [benchmarks](benchmarks.md#what-an-agent-spends). No case of the evaluation was run. |
+| The skill `cw` | Its seven examples are replayed by a test against `cw`. Five runs with a model and without a host are in [the evaluation](evaluation.md#a-first-trial-of-the-skill-without-a-host). In two gated scratch repositories the agent ran `cw run` and committed through the hook without loading the skill. Whether a host loads it when it should is not known. |
+| The token count of a real session | Both readers were compared with a separate count on real records of this machine: 170 of Claude Code 2.1 and 13 of codex-cli 0.141 and 0.142. In six sessions of Claude Code 2.1.311 with the plugin, two of them with roles, the total of `cw tokens` equalled the total the host reported: [tokens](tokens.md#checked-against-real-records). |
 
 ## When something is wrong
 

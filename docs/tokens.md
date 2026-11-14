@@ -551,6 +551,19 @@ file in the page cache of the system. On built Claude Code session records it to
 50 MB and 1.14 to 1.15 s for 500 MB, in three runs each, with the file in memory. A read from a
 cold disk was not timed.
 
+**In sessions of a host.** On the same day a script ran six sessions of Claude Code 2.1.311 with
+the plugin of this branch, in scratch repositories; [benchmarks](benchmarks.md#what-an-agent-spends)
+describes them. The plugin's hooks gave `cw tokens record` the notices of the host.
+
+- In each session the total that `cw tokens` printed equalled the total of the host's own report
+  (`modelUsage` in the result of `claude -p`): 85,336, 143,383, 105,817, 283,000, 683,341 and
+  6,950,768 tokens.
+- Two sessions started roles, 4 and 16 times. Every start carried its label in the brief and was
+  counted under its task, stage and round. Both sessions used two models, and in both the tokens
+  of the role `git` equalled the host's total for `claude-sonnet-5-5`: 22,015 and 22,364.
+- The host reports no count for one role, so the split between the roles of one model was not
+  compared with anything.
+
 **Not checked:**
 
 - Every rollout was a thread a person started (`thread_source` `user`). No rollout of a Codex
@@ -563,11 +576,13 @@ cold disk was not timed.
   changes no count.
 - No rollout held a running total that falls. The carry over a reset was built from the Codex
   source, not from a record.
-- No brief of a role carried a label, so a label was read only from built records.
+- No brief of a Codex worker carried a label, so a label of Codex was read only from built
+  records.
 - Whether Codex counts `cache_write_input_tokens` inside `input_tokens` could not be seen: the count
   was always 0.
-- The notices themselves: the fields were taken from the hook documentation, and no notice a host
-  gave was recorded.
+- The notices of Codex: the fields were taken from the hook documentation, and no notice Codex
+  gave was read. The notices of Claude Code were read in the six sessions above and were not
+  stored, so their fields were compared with nothing but the counts they led to.
 
 ## What is not measured
 

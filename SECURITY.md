@@ -29,4 +29,4 @@ None of these is a vulnerability. Running the same checks in CI catches a commit
 
 ## Supported versions
 
-No release of this branch exists yet. When one does, only the newest release receives security fixes.
+Only the newest release receives security fixes. The first release of this code is `v3.0.0-beta.1`; the [releases](https://github.com/belevtsev/agent-workflows/releases) show whether it is published.

@@ -45,16 +45,23 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	if *asJSON {
 		return printRolesJSON(cfg, all)
 	}
-	w := tabwriter.NewWriter(cfg.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ROLE\tCLAUDE CODE\tCODEX\tTEXT\tMAY WRITE\tJOB")
+	var table strings.Builder
+	w := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ROLE\tCLAUDE CODE\tCODEX\tTEXT")
 	for _, r := range all {
-		fmt.Fprintf(w, "%s\t%s, %s\t%s, %s\t%d\t%s\t%s\n", r.ID,
+		fmt.Fprintf(w, "%s\t%s, %s\t%s, %s\t%d\n", r.ID,
 			r.Models["claude"].Model, r.Models["claude"].Effort,
-			r.Models["codex"].Model, r.Models["codex"].Effort,
-			roles.TextSize(r.ID), r.Writes, r.Job)
+			r.Models["codex"].Model, r.Models["codex"].Effort, roles.TextSize(r.ID))
 	}
 	if err := w.Flush(); err != nil {
 		return failf("%v", err)
+	}
+	// The job and the paths go below the row of a role, so that the table
+	// fits a terminal (U15).
+	rows := strings.Split(table.String(), "\n")
+	fmt.Fprintln(cfg.Out, rows[0])
+	for i, r := range all {
+		fmt.Fprintf(cfg.Out, "%s\n    %s\n    May write: %s.\n", rows[i+1], r.Job, r.Writes)
 	}
 	fmt.Fprintf(cfg.Out, "\nTEXT is the size of the role's text in characters; the coordinator's instructions have %d.\n", roles.TextSize(roles.Coordinator))
 	fmt.Fprintf(cfg.Out, "A repository sets other models in %s, and names its test paths there.\n", roles.FileName)
@@ -164,7 +171,7 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 		s.warn([]string{hooksAdvice(ctx, s.repo)})
 	}
 	if len(outside) == 0 {
-		fmt.Fprintf(cfg.Out, "`%s` stayed within its limit: %d paths differ from %s\n", role, len(changes), *from)
+		fmt.Fprintf(cfg.Out, "`%s` stayed within its limit: %s from %s\n", role, plural(len(changes), "path differs", "paths differ"), *from)
 		return nil
 	}
 	fmt.Fprintf(cfg.Out, "`%s` changed %d of %d paths outside its limit:\n", role, len(outside), len(changes))

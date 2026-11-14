@@ -36,6 +36,36 @@ func TestTheTable(t *testing.T) {
 	}
 }
 
+// The table fits a terminal: below the row of a role stand its job and what
+// it may write, and no line is wider than 120 columns (U15).
+func TestTheTableFitsATerminal(t *testing.T) {
+	t.Parallel()
+	repo := demo(t)
+	lines := strings.Split(repo.CW("roles").Stdout, "\n")
+	for _, line := range lines {
+		if utf8.RuneCountInString(line) > 120 {
+			t.Errorf("a line of cw roles has %d columns, want at most 120:\n%s", utf8.RuneCountInString(line), line)
+		}
+	}
+	var out struct {
+		Roles []struct{ ID, Job, Writes string } `json:"roles"`
+	}
+	if err := json.Unmarshal([]byte(repo.CW("roles", "--json").Stdout), &out); err != nil || len(out.Roles) != 7 {
+		t.Fatalf("cw roles --json: %v, %d roles", err, len(out.Roles))
+	}
+	for _, role := range out.Roles {
+		found := false
+		for i, line := range lines {
+			if first, _, _ := strings.Cut(line, " "); first == role.ID && i+2 < len(lines) {
+				found = lines[i+1] == "    "+role.Job && lines[i+2] == "    May write: "+role.Writes+"."
+			}
+		}
+		if !found {
+			t.Errorf("the row of %s is not followed by its job and by what it may write:\n%s", role.ID, strings.Join(lines, "\n"))
+		}
+	}
+}
+
 // Requirement "Role set", scenario "The table as JSON".
 func TestTheTableAsJSON(t *testing.T) {
 	t.Parallel()

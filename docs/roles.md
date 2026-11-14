@@ -6,7 +6,8 @@ on the paths it may change. `cw` holds these definitions, prints them, and check
 which paths a role changed. `cw` starts no model: the roles run inside the developer's coding
 agent, and what a role does there is an instruction to a model, not something `cw` enforces.
 
-No role has been run with a model yet. See [What is not known](#what-is-not-known).
+The roles have run with a model in two scratch repositories only, on one small task each. See
+[What is not known](#what-is-not-known).
 
 The order of the work, the record of a task and `cw change` are in
 [the task workflow](workflow.md). The token count is in [tokens](tokens.md).
@@ -149,7 +150,7 @@ Add a table for the host and the role. With the lines `[claude.developer]` and
 other role keeps its default:
 
 ```text
-developer         sonnet, high    gpt-6.1-sol, high  2841  any other path except cw.toml, cw-roles.toml and openspec/; may add a test, may not change or remove one  Writes the code that makes the tests pass, within the design.
+developer         sonnet, high    gpt-6.1-sol, high  2841
 ```
 
 `cw` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
@@ -158,8 +159,10 @@ fails only when the host tries to start the role.
 The role files of the Claude Code plugin are generated with the default models. A setting in
 `cw-roles.toml` does not change them. It reaches a role only because the coordinator's
 instructions say to give the model and effort that `cw roles` prints on the call that starts the
-role. Whether a host then uses that model has not been observed. The proposal also notes that on
-Claude Code the developer's own settings can override the model of every role.
+role. In the two sessions of Claude Code named under [What is not known](#what-is-not-known),
+every role was answered by the model it was started with; both sessions used the default models.
+The proposal also notes that on Claude Code the developer's own settings can override the model
+of every role.
 
 ### What is refused
 
@@ -189,9 +192,17 @@ it works even when the file is invalid.
 cw roles [--json]
 ```
 
-Prints one row for each role: its id, its model and effort on Claude Code and on Codex, the size
-of its text in characters, what it may write, and its job. Below the table it prints the size of
-the coordinator's instructions. With `--json` it prints one object. Here it is shortened to one
+Prints one row for each role: its id, its model and effort on Claude Code and on Codex, and the
+size of its text in characters. Below the row of a role stand its job and what it may write:
+
+```text
+ROLE              CLAUDE CODE     CODEX              TEXT
+lookup            haiku, high     gpt-6-luna, high   1827
+    Finds files, facts and existing specifications, and reports where they are.
+    May write: nothing.
+```
+
+Below the table it prints the size of the coordinator's instructions. With `--json` it prints one object. Here it is shortened to one
 of the seven entries of `roles`:
 
 ```json
@@ -351,10 +362,19 @@ Nothing was run on Codex: not the skill, not a role, not the hooks.
 
 ## What is not known
 
-- **No role was ever run with a model.** The texts, the limits and the order of the work are
-  written and tested as files and commands. Whether a model follows them is not observed. The
-  cases that would show it are in [the evaluation](evaluation.md); none has been run.
+- **The roles ran with a model in two sessions only.** On 14 November 2026 a script gave the
+  skill `task` one small task in each of two scratch repositories, in Claude Code 2.1.311, and
+  answered every question of the coordinator with one fixed approval.
+  [Benchmarks](benchmarks.md#what-an-agent-spends) holds what the roles did there and what they
+  cost. Nobody answered the coordinator's questions on their merits, `lookup` was not started,
+  and the cases of [the evaluation](evaluation.md) were not run. Two tasks do not show whether a
+  model follows the texts, the limits and the order of the work in general.
 - **Whether seven roles give better code than one agent is not measured.** The roles cost tokens
   that one agent would not spend, and `cw tokens` shows how many. The comparison with one agent
   is defined in [the evaluation](evaluation.md#the-comparison-with-one-agent) and has not been run.
-- **Whether a host uses the model a role is started with** has not been observed on either host.
+  The two sessions show what the roles cost on two tasks, not what they are worth.
+- **Whether a host uses the model a role is started with** was observed on Claude Code only, and
+  only for the default models: in the two sessions every start was answered by the model the
+  coordinator named on the call, `claude-opus-5-5` for `opus` and `claude-sonnet-5-5` for
+  `sonnet`. A model set in `cw-roles.toml`, the effort, the model of `lookup`, and Codex were not
+  observed.

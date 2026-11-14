@@ -6,6 +6,7 @@ Start with the first two. The rest is reference.
 | --- | --- |
 | [Quick start](quickstart.md) | The five commands in a new repository. A test executes them. |
 | [Try it](try-it.md) | Everything on this branch that can be tried by hand, with the output to expect, and what was never run. |
+| [Benchmarks](benchmarks.md) | What `cw` costs: the time of a commit and of each command against the size of a repository, and the tokens of an agent with the gate and with the roles on two small tasks. |
 | [Operations](operations.md) | Every command, `cw.toml`, the exit statuses and where `cw` keeps its records. |
 | [Hooks](hooks.md) | The three git hooks, a hook shared with another tool, the plugin's hooks, and the known limits. |
 | [Evidence](evidence.md) | What a recorded passing run is, what it proves and what it does not. |
