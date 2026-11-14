@@ -346,7 +346,7 @@ func TestACommentDoesNotCallCW(t *testing.T) {
 		"#!/bin/sh\n  # cw hook pre-commit\n":                            false,
 		"#!/bin/sh\nlint || exit 1\ncw hook pre-commit \"$@\"\n":         true,
 		"#!/bin/sh\nexec cw hook pre-push \"$@\"\n":                      false,
-		Script("pre-commit"):                                             true,
+		Script("pre-commit"): true,
 	} {
 		if got := callLine(script, "pre-commit"); (got != "") != want {
 			t.Errorf("callLine = %q, want a line: %v, for:\n%s", got, want, script)
