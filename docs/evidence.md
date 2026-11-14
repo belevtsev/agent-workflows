@@ -28,7 +28,8 @@ comes from a run you can repeat with the commands under
 - **Cases:** the six suites under [`evals/`](../evals/README.md). Each case
   dispatches one plugin agent once with a brief. Graders then check what the
   agent wrote against its contract.
-- **Command:** per suite, the flags of `.github/workflows/evals.yml`; see
+- **Command:** per suite, the flags `.github/workflows/evals.yml` had at
+  that commit, which did not grant `Bash(cw task schema *)`; see
   [Reproduce](#reproduce).
 - **Models:** `claude-opus-5-5` runs the agents. `claude-haiku-5-5` judges
   the 55 `llm` graders with three votes each.
@@ -36,7 +37,8 @@ comes from a run you can repeat with the commands under
 - **Differences from the workflow:** the workflow pins Claude Code 2.1.316
   and runs one case at a time with an API key. This run used a logged-in
   subscription, three cases at a time (`-j 3`), and a cost ceiling four times
-  the workflow's so that no run was cut.
+  the workflow's default at that commit (5 US dollars per three cases) so
+  that no run was cut.
 - **Validity check:** the trace of every run was read for its Bash results.
   Of 198 Bash calls none failed for the sandbox, and 42 `go` commands ran
   inside the runs. Three earlier attempts were discarded because the agents
