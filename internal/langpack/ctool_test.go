@@ -3,12 +3,15 @@
 package langpack_test
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/belevtsev/agent-workflows/v3/internal/langpack"
@@ -201,6 +204,7 @@ func TestReadGoEnvJudgesTheSystemSpecificSteps(t *testing.T) {
 		t.Errorf("Linux with the identity map: unverified %q, helpers asked %v; want no namespace reason and the compiler asked", got, *asked)
 	}
 	asked = langpack.PretendHost(t, "darwin", mapped)
+	langpack.PretendDeveloperDir(t, "/usr", nil)
 	if got := unverified(t, ctEnv(t)); got != "" || *asked {
 		t.Errorf("macOS: unverified %q, helpers asked %v; want verified without reading the ID map or asking the compiler", got, *asked)
 	}
@@ -221,10 +225,251 @@ func TestReadGoEnvJudgesTheSystemSpecificSteps(t *testing.T) {
 		{"the selected directory", "darwin", selected, false},
 		{"another directory", "darwin", maps, true},
 		{"a directory that does not exist", "darwin", filepath.Join(maps, "none"), true},
+		{"a relative path", "darwin", "Xcode.app/Contents/Developer", true},
+		{"the selected directory after a space", "darwin", " " + selected, true},
 		{"not macOS", "linux", maps, false},
 	} {
 		if got := langpack.JudgeDeveloperDir(c.goos, c.value, link); (got != "") != c.refused {
 			t.Errorf("%s: JudgeDeveloperDir = %q, want refused %v", c.name, got, c.refused)
 		}
+	}
+}
+
+// The macOS developer directory (F23, #181 review finding 7, and the review
+// of #198): the /usr/bin/clang shim runs the clang of the directory
+// xcode-select -p prints, found through a per-user lookup cache. Oracles: on
+// macOS the run's pin turns xcrun's cache off (xcrun_nocache=1); an active
+// developer directory that only root can change, such as /usr, leaves the
+// toolchain verified, is recorded as developer_dir and is pinned as
+// DEVELOPER_DIR; an active one the user owns, as a dragged-in Xcode.app is,
+// gives way to the Command Line Tools directory when that passes, which is
+// then recorded and pinned instead, so the run's key differs (an active
+// directory that fails the walk otherwise, such as a group-writable
+// /Applications, takes the same branch, but this test uses only one the user
+// owns); when neither passes the
+// toolchain is unverified, the reason naming both directories and how to earn
+// credit, and nothing is pinned; an xcode-select that cannot print leaves it
+// unverified, naming why; a DEVELOPER_DIR that is not an absolute path, such
+// as one starting with a space that a trimmed reading would take for /usr,
+// is refused; other systems neither pin nor record a developer directory.
+func TestReadGoEnvJudgesTheMacOSDeveloperDirectory(t *testing.T) {
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, ctEnv(t))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	identity := filepath.Join(t.TempDir(), "identity")
+	if err := os.WriteFile(identity, []byte("0 0 4294967295\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	judge := func(t *testing.T, overrides ...string) (*langpack.CToolchain, []string, string) {
+		t.Helper()
+		got, pin, config, err := langpack.ReadGoEnv(t.Context(), tool, dir, ctEnv(t, overrides...))
+		if err != nil || got.C == nil || !got.C.CGO {
+			t.Fatalf("ReadGoEnv = %+v, %v; want a judged C toolchain with cgo on", got, err)
+		}
+		return got.C, pin, langpack.GoEnvKey([]byte("secret"), config)
+	}
+	pinned := func(pin []string) []string {
+		var values []string
+		for _, entry := range pin {
+			if value, ok := strings.CutPrefix(entry, "DEVELOPER_DIR="); ok {
+				values = append(values, value)
+			}
+		}
+		return values
+	}
+	owned := t.TempDir()
+	langpack.PretendHost(t, "darwin", identity)
+
+	langpack.PretendCommandLineTools(t, owned)
+	langpack.PretendDeveloperDir(t, "/usr", nil)
+	active, pin, activeKey := judge(t)
+	if active.Unverified != "" || active.DeveloperDir != "/usr" || !slices.Contains(pin, "xcrun_nocache=1") || !slices.Equal(pinned(pin), []string{"/usr"}) {
+		t.Errorf("macOS, root's active developer directory: C = %+v, pin %q; want verified, developer_dir /usr, xcrun_nocache=1 and DEVELOPER_DIR=/usr pinned", active, pin)
+	}
+
+	langpack.PretendCommandLineTools(t, "/usr/bin")
+	langpack.PretendDeveloperDir(t, owned, nil)
+	fallback, pin, fallbackKey := judge(t)
+	if fallback.Unverified != "" || fallback.DeveloperDir != "/usr/bin" || !slices.Equal(pinned(pin), []string{"/usr/bin"}) {
+		t.Errorf("macOS, an active directory the user owns and root's Command Line Tools: C = %+v, pin %q; want verified, developer_dir /usr/bin and DEVELOPER_DIR=/usr/bin pinned", fallback, pin)
+	}
+	if fallbackKey == activeKey {
+		t.Errorf("macOS: the run key is the same for developer directories /usr and /usr/bin; want them told apart")
+	}
+
+	tools := t.TempDir()
+	langpack.PretendCommandLineTools(t, tools)
+	neither, pin, _ := judge(t)
+	for _, want := range []string{"the active developer directory " + owned + " (", "the Command Line Tools directory " + tools + " (", "install the Command Line Tools (xcode-select --install) or select a developer directory that only root can change"} {
+		if !strings.Contains(neither.Unverified, want) {
+			t.Errorf("macOS, neither directory passes: unverified %q, want it to hold %q", neither.Unverified, want)
+		}
+	}
+	if neither.DeveloperDir != "" || len(pinned(pin)) != 0 {
+		t.Errorf("macOS, neither directory passes: developer_dir %q, pin %q; want none recorded or pinned", neither.DeveloperDir, pin)
+	}
+
+	langpack.PretendCommandLineTools(t, "/usr/bin")
+	langpack.PretendDeveloperDir(t, "", errors.New("xcode-select failed"))
+	if failed, _, _ := judge(t); !strings.Contains(failed.Unverified, "cw cannot read the active developer directory: xcode-select failed") {
+		t.Errorf("macOS, xcode-select -p failing: unverified %q, want the failure named", failed.Unverified)
+	}
+
+	langpack.PretendDeveloperDir(t, "/usr", nil)
+	for _, value := range []string{"Xcode.app/Contents/Developer", " /usr"} {
+		if refused, _, _ := judge(t, "DEVELOPER_DIR="+value); !strings.Contains(refused.Unverified, fmt.Sprintf("DEVELOPER_DIR is %q, not an absolute path", value)) {
+			t.Errorf("macOS, DEVELOPER_DIR=%q: unverified %q, want it refused as not absolute", value, refused.Unverified)
+		}
+	}
+
+	langpack.PretendHost(t, "linux", identity)
+	langpack.PretendDeveloperDir(t, owned, nil)
+	if linux, pin, _ := judge(t); strings.Contains(linux.Unverified, "developer directory") || linux.DeveloperDir != "" || slices.Contains(pin, "xcrun_nocache=1") || len(pinned(pin)) != 0 {
+		t.Errorf("Linux: C = %+v, pin %q; want no developer directory judged, recorded or pinned", linux, pin)
+	}
+}
+
+// Review of #198: xcode-select -p is read as printed, less one final
+// newline. Oracle: one absolute path on one line is returned as printed,
+// with or without that newline, and the program runs with the environment
+// given (a script that prints its DEVELOPER_DIR returns the one passed);
+// a failing run, no output, a relative path, a path that starts with a
+// space (absolute only once trimmed), two lines, output beyond the limit
+// (whose kept head is one absolute line) and a program that cannot start
+// are each refused, naming the program.
+func TestXcodeSelectPrintTakesOneAbsoluteLine(t *testing.T) {
+	scripts := t.TempDir()
+	for i, c := range []struct {
+		name, body, want string
+	}{
+		{"one line", "printf '/Applications/Xcode.app/Contents/Developer\\n'\n", "/Applications/Xcode.app/Contents/Developer"},
+		{"no final newline", "printf '/Library/Developer/CommandLineTools'\n", "/Library/Developer/CommandLineTools"},
+		{"a trailing space kept", "printf '/usr \\n'\n", "/usr "},
+		{"failing", "echo /usr; exit 1\n", ""},
+		{"nothing printed", "exit 0\n", ""},
+		{"a relative path", "echo Xcode.app/Contents/Developer\n", ""},
+		{"a leading space", "echo ' /usr'\n", ""},
+		{"two lines", "printf '/usr\\n/opt\\n'\n", ""},
+		{"a carriage return", "printf '/usr\\r\\n'\n", ""},
+		{"more than the output limit on one line", "printf /; head -c 8192 /dev/zero | tr '\\0' a\n", ""},
+		{"DEVELOPER_DIR of its environment", "printf '%s\\n' \"$DEVELOPER_DIR\"\n", "/from/the/check"},
+		{"a program that cannot start", "", ""},
+	} {
+		program := gtScript(t, filepath.Join(scripts, fmt.Sprint(i)), "xcode-select", c.body)
+		if c.body == "" {
+			program = filepath.Join(scripts, "none", "xcode-select")
+		}
+		got, err := langpack.XcodeSelectPrint(t.Context(), program, scripts, []string{"PATH=/usr/bin:/bin", "DEVELOPER_DIR=/from/the/check"})
+		switch {
+		case c.want != "" && (err != nil || got != c.want):
+			t.Errorf("%s: XcodeSelectPrint = %q, %v; want %q", c.name, got, err, c.want)
+		case c.want == "" && (err == nil || got != "" || !strings.Contains(err.Error(), "`"+program+" -p` did not print one absolute directory")):
+			t.Errorf("%s: XcodeSelectPrint = %q, %v; want it refused, naming %s", c.name, got, err, program)
+		}
+	}
+}
+
+// rootLink returns a link that only root can change to a directory that
+// only root can change, and the directory it resolves to: /bin on a
+// merged-/usr Linux, /etc or /var on macOS.
+func rootLink(t *testing.T) (string, string) {
+	t.Helper()
+	for _, link := range []string{"/bin", "/etc", "/var"} {
+		info, err := os.Lstat(link)
+		if err != nil || info.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		if stat, ok := info.Sys().(*syscall.Stat_t); !ok || stat.Uid != 0 {
+			continue
+		}
+		if resolved, err := filepath.EvalSymlinks(link); err == nil && resolved != link {
+			return link, resolved
+		}
+	}
+	t.Fatal("precondition: no root-owned link to a directory among /bin, /etc and /var")
+	return "", ""
+}
+
+// ctJudgeDarwin returns a function that runs ReadGoEnv as on macOS (through
+// PretendHost) with the real go, and returns the judged C toolchain and the
+// DEVELOPER_DIR values pinned.
+func ctJudgeDarwin(t *testing.T) func(t *testing.T, overrides ...string) (*langpack.CToolchain, []string) {
+	t.Helper()
+	dir := t.TempDir()
+	tool, err := langpack.ResolveGo(t.Context(), "go", dir, ctEnv(t))
+	if err != nil {
+		t.Fatalf("precondition: the real go does not verify: %v", err)
+	}
+	identity := filepath.Join(t.TempDir(), "identity")
+	if err := os.WriteFile(identity, []byte("0 0 4294967295\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	langpack.PretendHost(t, "darwin", identity)
+	return func(t *testing.T, overrides ...string) (*langpack.CToolchain, []string) {
+		t.Helper()
+		got, pin, _, err := langpack.ReadGoEnv(t.Context(), tool, dir, ctEnv(t, overrides...))
+		if err != nil || got.C == nil || !got.C.CGO {
+			t.Fatalf("ReadGoEnv = %+v, %v; want a judged C toolchain with cgo on", got, err)
+		}
+		var pinned []string
+		for _, entry := range pin {
+			if value, ok := strings.CutPrefix(entry, "DEVELOPER_DIR="); ok {
+				pinned = append(pinned, value)
+			}
+		}
+		return got.C, pinned
+	}
+}
+
+// Round 2 review of #198: what the docs promise of the directory judged.
+// Oracles, through PretendHost(darwin): the directory recorded and pinned
+// is the one the walk resolved, not the path as printed or configured, both
+// for the active directory and for the Command Line Tools (a root-owned
+// link such as /bin pins /usr/bin); when both pass, the active one is used;
+// a path that resolves to a file, such as /usr/bin/env, does not pass as a
+// developer directory, and nothing is pinned.
+func TestReadGoEnvPinsTheDeveloperDirectoryTheWalkResolved(t *testing.T) {
+	judge := ctJudgeDarwin(t)
+	link, resolved := rootLink(t)
+	owned := t.TempDir()
+
+	langpack.PretendDeveloperDir(t, link, nil)
+	langpack.PretendCommandLineTools(t, owned)
+	if got, pinned := judge(t); got.DeveloperDir != resolved || !slices.Equal(pinned, []string{resolved}) {
+		t.Errorf("active %s: developer_dir %q, DEVELOPER_DIR pinned %q; want %s for both", link, got.DeveloperDir, pinned, resolved)
+	}
+
+	langpack.PretendDeveloperDir(t, owned, nil)
+	langpack.PretendCommandLineTools(t, link)
+	if got, pinned := judge(t); got.DeveloperDir != resolved || !slices.Equal(pinned, []string{resolved}) {
+		t.Errorf("Command Line Tools %s: developer_dir %q, DEVELOPER_DIR pinned %q; want %s for both", link, got.DeveloperDir, pinned, resolved)
+	}
+
+	langpack.PretendDeveloperDir(t, "/usr", nil)
+	langpack.PretendCommandLineTools(t, "/usr/bin")
+	if got, pinned := judge(t); got.DeveloperDir != "/usr" || !slices.Equal(pinned, []string{"/usr"}) {
+		t.Errorf("both pass: developer_dir %q, DEVELOPER_DIR pinned %q; want the active /usr", got.DeveloperDir, pinned)
+	}
+
+	langpack.PretendDeveloperDir(t, "/usr/bin/env", nil)
+	langpack.PretendCommandLineTools(t, owned)
+	if got, pinned := judge(t); !strings.Contains(got.Unverified, "the active developer directory /usr/bin/env (") || !strings.Contains(got.Unverified, "is not a directory") || got.DeveloperDir != "" || len(pinned) != 0 {
+		t.Errorf("active /usr/bin/env: C = %+v, pinned %q; want it refused as not a directory and nothing pinned", got, pinned)
+	}
+}
+
+// Round 2 review of #198: judgeC runs xcode-select with the check's
+// environment. Oracle, through PretendHost(darwin) and a script in place of
+// /usr/bin/xcode-select that prints its DEVELOPER_DIR: with
+// DEVELOPER_DIR=/usr/bin in the check's environment, /usr/bin is what is
+// judged, recorded and pinned.
+func TestReadGoEnvRunsXcodeSelectWithTheChecksEnvironment(t *testing.T) {
+	judge := ctJudgeDarwin(t)
+	langpack.PretendCommandLineTools(t, t.TempDir())
+	langpack.PretendXcodeSelect(t, gtScript(t, t.TempDir(), "xcode-select", "printf '%s\\n' \"$DEVELOPER_DIR\"\n"))
+	if got, pinned := judge(t, "DEVELOPER_DIR=/usr/bin"); got.DeveloperDir != "/usr/bin" || !slices.Equal(pinned, []string{"/usr/bin"}) {
+		t.Errorf("C = %+v, DEVELOPER_DIR pinned %q; want /usr/bin judged, recorded and pinned", got, pinned)
 	}
 }

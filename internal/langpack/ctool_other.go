@@ -9,3 +9,8 @@ import "errors"
 func trustedFile(string) (string, error) {
 	return "", errors.New("cw cannot tell who can change a file on this system")
 }
+
+// trustedDir cannot tell who can change a directory outside Unix either.
+func trustedDir(string) (string, error) {
+	return "", errors.New("cw cannot tell who can change a directory on this system")
+}

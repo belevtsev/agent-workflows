@@ -50,3 +50,37 @@ func PretendHost(t testing.TB, goos, uidMap string) *bool {
 	t.Cleanup(func() { hostOS, uidMapFile, runHelpers = savedOS, savedMap, savedRun })
 	return &asked
 }
+
+// PretendDeveloperDir makes judgeC, until t ends, take developer as the
+// directory xcode-select -p prints, or fail with err. Call it only from a
+// test that is not parallel, as it replaces a package variable.
+func PretendDeveloperDir(t testing.TB, developer string, err error) {
+	t.Helper()
+	saved := activeDeveloperDir
+	activeDeveloperDir = func(context.Context, string, []string) (string, error) { return developer, err }
+	t.Cleanup(func() { activeDeveloperDir = saved })
+}
+
+// PretendCommandLineTools makes judgeC, until t ends, take dir as the
+// Command Line Tools directory it falls back to on macOS. Call it only from
+// a test that is not parallel, as it replaces a package variable.
+func PretendCommandLineTools(t testing.TB, dir string) {
+	t.Helper()
+	saved := commandLineToolsDir
+	commandLineToolsDir = dir
+	t.Cleanup(func() { commandLineToolsDir = saved })
+}
+
+// XcodeSelectPrint is xcodeSelectPrint, which a test runs with a script in
+// place of xcode-select.
+var XcodeSelectPrint = xcodeSelectPrint
+
+// PretendXcodeSelect makes judgeC, until t ends, run program in place of
+// /usr/bin/xcode-select. Call it only from a test that is not parallel, as
+// it replaces a package variable.
+func PretendXcodeSelect(t testing.TB, program string) {
+	t.Helper()
+	saved := xcodeSelect
+	xcodeSelect = program
+	t.Cleanup(func() { xcodeSelect = saved })
+}

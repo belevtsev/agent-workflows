@@ -43,6 +43,11 @@ type CToolchain struct {
 	CXX  *CTool `json:"cxx,omitempty"`
 	FC   *CTool `json:"fc,omitempty"`
 	SWIG *CTool `json:"swig,omitempty"`
+	// DeveloperDir is, on macOS, the developer directory judged
+	// (judgeActiveDeveloperDir) that the run was given as DEVELOPER_DIR, so
+	// the /usr/bin/clang shim runs the toolchain there; empty elsewhere or
+	// when none passed. A run in another directory has another env_key.
+	DeveloperDir string `json:"developer_dir,omitempty"`
 	// Unverified says why cw could not verify the toolchain; empty when it
 	// did or cgo was off.
 	Unverified string `json:"unverified,omitempty"`
@@ -98,6 +103,16 @@ var (
 	// runHelpers is judgeHelpers; a test replaces it to see whether judgeC
 	// asks the compiler for its assembler and linker.
 	runHelpers = judgeHelpers
+	// activeDeveloperDir is xcodeSelectPrint of xcodeSelect; a test
+	// replaces it to judge a developer directory of its choosing on any
+	// system.
+	activeDeveloperDir = func(ctx context.Context, dir string, env []string) (string, error) {
+		return xcodeSelectPrint(ctx, xcodeSelect, dir, env)
+	}
+	// commandLineToolsDir is where the Command Line Tools install, the
+	// developer directory judged when the active one does not pass; a test
+	// replaces it.
+	commandLineToolsDir = "/Library/Developer/CommandLineTools"
 )
 
 // judgeC judges the C toolchain that the go command which printed values runs
@@ -138,6 +153,19 @@ func judgeC(ctx context.Context, printed map[string]string, dir string, env []st
 	}
 	if reason := judgeDeveloperDir(hostOS, lastValue(env, "DEVELOPER_DIR"), xcodeSelectLink); reason != "" {
 		reasons = append(reasons, reason)
+	}
+	if hostOS == "darwin" {
+		// xcrun caches its tool lookups per user, in a file the user can
+		// write; with the cache off it finds clang in the developer
+		// directory, which must then pass like a compiler and is pinned.
+		pin = append(pin, "xcrun_nocache=1")
+		developer, reason := judgeActiveDeveloperDir(ctx, dir, env)
+		if reason != "" {
+			reasons = append(reasons, reason)
+		} else {
+			judged.DeveloperDir = developer
+			pin = append(pin, "DEVELOPER_DIR="+developer)
+		}
 	}
 	if hostOS == "linux" {
 		if reason := judgeUserNamespace(uidMapFile); reason != "" {
@@ -313,17 +341,66 @@ const xcodeSelectLink = "/var/db/xcode_select_link"
 
 // judgeDeveloperDir returns why DEVELOPER_DIR (value), which makes macOS's
 // xcrun shims run the toolchain of another developer directory, does not
-// pass, or "" when it is empty, goos is not darwin, or it resolves to the
-// directory that xcode-select chose, recorded at selectLink.
+// pass, or "" when it is empty, goos is not darwin, or it is an absolute path
+// that resolves to the directory that xcode-select chose, recorded at
+// selectLink. A relative value, such as one that starts with a space, names
+// a different directory in each directory a shim runs in.
 func judgeDeveloperDir(goos, value, selectLink string) string {
 	if value == "" || goos != "darwin" {
 		return ""
+	}
+	if !filepath.IsAbs(value) {
+		return fmt.Sprintf("DEVELOPER_DIR is %s, not an absolute path", quoteLimited(value))
 	}
 	selected, err := filepath.EvalSymlinks(selectLink)
 	if named, namedErr := filepath.EvalSymlinks(value); err != nil || namedErr != nil || named != selected {
 		return "DEVELOPER_DIR names a developer directory other than the one xcode-select chose"
 	}
 	return ""
+}
+
+// xcodeSelect is macOS's xcode-select, on the sealed system volume; a test
+// replaces it with a script.
+var xcodeSelect = "/usr/bin/xcode-select"
+
+// xcodeSelectPrint returns the developer directory that `program -p`
+// (xcode-select) prints in dir with env: the one the xcrun shims,
+// /usr/bin/clang among them, run the C toolchain from (DEVELOPER_DIR, judged
+// before, or the one xcode-select chose). Only the final newline is removed,
+// so the directory returned is the one printed, spaces included; it must be
+// one absolute path on one line.
+func xcodeSelectPrint(ctx context.Context, program, dir string, env []string) (string, error) {
+	got := proc.Run(ctx, proc.Spec{Path: program, Args: []string{"-p"}, Dir: dir, Env: env, StdoutLimit: goRootLimit, StderrLimit: goRootLimit})
+	printed := strings.TrimSuffix(string(got.Stdout), "\n")
+	if got.Stopped || got.Err != nil || got.Code != 0 || got.Overflow || !filepath.IsAbs(printed) || strings.ContainsAny(printed, "\r\n") {
+		return "", fmt.Errorf("`%s -p` did not print one absolute directory", program)
+	}
+	return printed, nil
+}
+
+// judgeActiveDeveloperDir returns the developer directory the run is to be
+// given as DEVELOPER_DIR, or why there is none. That is the active one
+// (activeDeveloperDir) when it passes trustedDir, as a compiler must: a
+// user-owned Xcode.app holds a clang the user can replace behind the
+// /usr/bin/clang shim. Otherwise it is the Command Line Tools
+// (commandLineToolsDir) when they pass, so an Xcode under /Applications,
+// which the admin group can write, does not cost credit where the Command
+// Line Tools are installed. The directory returned is the one trustedDir
+// resolved, and pinning it keeps the shim from resolving another.
+func judgeActiveDeveloperDir(ctx context.Context, dir string, env []string) (string, string) {
+	active, err := activeDeveloperDir(ctx, dir, env)
+	if err != nil {
+		return "", "cw cannot read the active developer directory: " + err.Error()
+	}
+	resolved, activeErr := trustedDir(active)
+	if activeErr == nil {
+		return resolved, ""
+	}
+	resolved, fallbackErr := trustedDir(commandLineToolsDir)
+	if fallbackErr == nil {
+		return resolved, ""
+	}
+	return "", fmt.Sprintf("neither the active developer directory %s (%v) nor the Command Line Tools directory %s (%v) is one that only root or another user can change, so xcrun would run a C toolchain the user can replace; to earn credit, install the Command Line Tools (xcode-select --install) or select a developer directory that only root can change (sudo xcode-select -s DIR)", active, activeErr, commandLineToolsDir, fallbackErr)
 }
 
 // lastValue returns the value of the last entry for name in env, as a
