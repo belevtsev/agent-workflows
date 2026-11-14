@@ -54,7 +54,7 @@ asked for the work to go on alone. Each can be undone.
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
   improve anything.
-- The size limit of the gate's code. It holds 5,999 of 6,000 lines after
+- The size limit of the gate's code. It holds 5,996 of 6,000 lines after
   the guard learned to read a command as words. The next change to the gate
   needs a cut elsewhere, or the owner's word on the limit.
 - Confirming the behaviour on macOS, on Windows and on Codex. The build
@@ -211,9 +211,10 @@ The job `Native Go` passed on Linux. Every finding of that run is listed here.
 | --- | --- | --- |
 | A test compared the files before and after a refused command while the background maintenance of git removed its lock. | Linux, macOS | Changed: the test repositories start no maintenance. The new test of the harness failed before the change, locally. |
 | The guard did not ask about an edit that creates a folder under `.git/cw` or `.git/hooks` when the repository is reached through a link. | macOS, Windows | Changed: the deepest folder that exists is resolved. The test failed before the change on Linux, through a link. |
-| The git directory kept forward slashes while the two other directories had the form of the system. | Windows | Changed. Not run on Windows yet. |
-| A store that is a file was read as "no mode", so the gate enforced without reporting the error. | Windows | Changed: the store is looked at before the mode. Not run on Windows yet. |
-| `cw init` failed once with "put process in a job object: Access is denied": the program had exited before it joined its job. | Windows | Changed: a program that has exited is no failure. Not run on Windows yet. |
-| A child of a program was still running after the run. The program joins its job after it has started, so under load a child can start first. | Windows | Open. The program has to start suspended, join the job and then continue. That needs more lines than the size limit leaves. |
+| The git directory kept forward slashes while the two other directories had the form of the system. | Windows | Changed. Passed in the second run. |
+| A store that is a file was read as "no mode", so the gate enforced without reporting the error. | Windows | Changed: the store is looked at before the mode. Passed in the second run. |
+| `cw init` failed once with "put process in a job object: Access is denied": the program was ending before it joined its job. The second run showed the same for other git calls. | Windows | Changed: the program starts suspended, joins its job and then continues. Not run on Windows yet. |
+| A child of a program was still running after the run. The program joined its job after it had started, so under load a child could start first. | Windows | Changed by the same suspended start. Not run on Windows yet. |
 | `cw` links the package `net` through `golang.org/x/sys/windows`. | Windows | Changed: the test reads the packages for all three systems and holds that no other package imports a network package. The documents say so. |
-| Two tests were wrong for Windows: one wrote a path with backslashes into `cw.toml`, one looked for the text of the hook on the wrong stream of PowerShell. | Windows | Changed. Not run on Windows yet. |
+| Two tests were wrong for Windows: one wrote a path with backslashes into `cw.toml`, one looked for the text of the hook on the wrong stream of PowerShell. | Windows | Changed. Both passed in the second run. |
+| Two runs at once: one was refused the file that holds its temporary index, while Windows was still removing the directory for the other. Found by the second run. | Windows | Changed: the two steps are repeated also when the file is refused, with a short pause. Not run on Windows yet. |

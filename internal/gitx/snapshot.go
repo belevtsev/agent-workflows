@@ -2,15 +2,16 @@ package gitx
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // WorktreeError is a working tree that git cannot record as it is on disk.
@@ -81,11 +82,7 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 	} else if !filepath.IsAbs(source) {
 		source = filepath.Join(r.dir, source)
 	}
-	var suffix [8]byte
-	if _, err := rand.Read(suffix[:]); err != nil {
-		return "", nil, err
-	}
-	path = filepath.Join(tmp, fmt.Sprintf("index-%d-%s", os.Getpid(), hex.EncodeToString(suffix[:])))
+	path = filepath.Join(tmp, fmt.Sprintf("index-%d-%s", os.Getpid(), rand.Text()))
 	hold := path + ".hold"
 	if err := holdDir(tmp, hold); err != nil {
 		return "", nil, err
@@ -102,35 +99,29 @@ func (r *Repo) copyIndex(tmp string) (path string, cleanup func(), err error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return path, cleanup, nil // no index yet: git starts from an empty one
 	}
+	info, statErr := os.Stat(source)
+	if err = cmp.Or(err, statErr); err == nil {
+		err = os.WriteFile(path, data, 0o600)
+	}
+	if err == nil {
+		err = os.Chtimes(path, info.ModTime(), info.ModTime())
+	}
 	if err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	info, err := os.Stat(source)
-	if err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		cleanup()
-		return "", nil, err
-	}
-	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
 		cleanup()
 		return "", nil, err
 	}
 	return path, cleanup, nil
 }
 
-// holdDir creates the directory and an empty file in it. Another process may
-// remove the empty directory between the two steps, so they are repeated.
-func holdDir(dir, file string) error {
-	var err error
-	for range 5 {
-		if err = os.MkdirAll(dir, 0o755); err != nil {
-			return err
+// holdDir creates the directory and an empty file in it, again when another process removed the
+// directory in between: the file is then not found, or refused while Windows still removes it.
+func holdDir(dir, file string) (err error) {
+	for attempt := range 8 {
+		time.Sleep(time.Duration(attempt) * time.Millisecond)
+		if err = os.MkdirAll(dir, 0o755); err == nil {
+			err = os.WriteFile(file, nil, 0o600)
 		}
-		if err = os.WriteFile(file, nil, 0o600); !errors.Is(err, fs.ErrNotExist) {
+		if !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, fs.ErrPermission) {
 			return err
 		}
 	}

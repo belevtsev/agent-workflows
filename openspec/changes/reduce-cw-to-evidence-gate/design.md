@@ -320,9 +320,11 @@ record is written.
 
 - **Windows locks:** `LockFileEx`, released by the system when the handle
   closes or the process dies.
-- **Windows process tree:** a job object with kill-on-close, to which the
-  program is assigned as soon as it has started. A process the program starts
-  in that instant can escape; this limit is stated in the documents.
+- **Windows process tree:** a job object with kill-on-close. The program
+  starts suspended, is assigned to the job and then continues, so every
+  process it starts is in the job. The first CI run on Windows showed why:
+  assigned after its start, a program had under load already ended or
+  already started a child.
 - **Windows programs:** found by `PATHEXT`, as the system does. For a `.bat`
   or `.cmd` file, an argument that holds anything but letters, digits and
   `_ . / : = + , @ \ -` makes `cw run` refuse the check and name every such

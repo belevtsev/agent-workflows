@@ -7,19 +7,18 @@ import (
 	"fmt"
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
-// Windows has no process groups and no signals. Run instead puts the program
-// in a job object of its own as soon as it has started; the processes it then
-// starts join the job too, and ending the job ends them all.
+// Windows has no process groups and no signals. Run instead starts the program
+// suspended, puts it in a job object of its own and lets it continue; the
+// processes it then starts join the job too, and ending the job ends them all.
 //
 // Differences from Linux and macOS:
-//   - The program is assigned to the job just after it starts, not before: a
-//     process it starts in that instant is not in the job and escapes.
 //   - The job is created with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, so if cw
 //     itself dies, Windows ends the run's processes when the handle closes.
 //   - A stop (timeout or cancelled ctx) terminates the job at once: there is
@@ -47,12 +46,16 @@ const (
 // endGroup, stopGroup or leaveGroup that ends its run.
 var jobs sync.Map // *exec.Cmd -> windows.Handle
 
-// ownGroup does nothing: a job object can only be joined once the process
-// exists (joinGroup).
-func ownGroup(*exec.Cmd, bool) {}
+// ntResumeProcess continues a suspended process. Go keeps no handle to the first thread, which ResumeThread needs.
+var ntResumeProcess = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtResumeProcess")
+
+// ownGroup makes the program start suspended; joinGroup lets it run once it is in its job object.
+func ownGroup(command *exec.Cmd, _ bool) {
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_SUSPENDED}
+}
 
 // joinGroup puts a started command in a new job object that kills its
-// members when its last handle closes. When that fails, it kills and reaps
+// members when its last handle closes, and lets it run. When that fails, it kills and reaps
 // the command and returns the error, so no process of the run is left
 // outside a job.
 func joinGroup(command *exec.Cmd) error {
@@ -66,7 +69,7 @@ func joinGroup(command *exec.Cmd) error {
 	return nil
 }
 
-// newJob creates a kill-on-close job object and assigns process pid to it.
+// newJob creates a kill-on-close job object, assigns the suspended process pid to it and continues it.
 // The pid names the command's process: os.Process holds a handle to it until
 // Wait, so the id cannot have been reused.
 func newJob(pid int) (windows.Handle, error) {
@@ -78,15 +81,18 @@ func newJob(pid int) (windows.Handle, error) {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
-	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(pid)) //nolint:gosec // G115: a Windows process id fits in 32 bits.
+	process, err := windows.OpenProcess(windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.PROCESS_SUSPEND_RESUME, false, uint32(pid)) //nolint:gosec // G115: a Windows process id fits in 32 bits.
 	if err != nil {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
-	err = windows.AssignProcessToJobObject(job, process)
-	exited, _ := windows.WaitForSingleObject(process, 0) // a program that has exited cannot join, and has nothing left to end
+	if err = windows.AssignProcessToJobObject(job, process); err == nil {
+		if status, _, _ := ntResumeProcess.Call(uintptr(process)); status != 0 {
+			err = windows.NTStatus(status) //nolint:gosec // G115: an NTSTATUS has 32 bits.
+		}
+	}
 	_ = windows.CloseHandle(process)
-	if err != nil && exited != windows.WAIT_OBJECT_0 {
+	if err != nil {
 		_ = windows.CloseHandle(job)
 		return 0, err
 	}
