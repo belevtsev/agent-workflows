@@ -35,6 +35,14 @@ jobs:
           persist-credentials: false
       - name: Test
         uses: ./.github/actions/go-test
+      # Success measure 2: the time of one hook decision. The plain test run
+      # above skips it. The harness builds cw with go build and no -race, and
+      # this step runs without -race. On Windows it reports only.
+      - name: Measure the hook cost
+        shell: bash
+        env:
+          CW_COST: '1'
+        run: go test -count=1 -v ./scenarios/cost/
 
   lint:
     name: Lint and vulnerabilities
