@@ -1,22 +1,30 @@
-# Documentation
+# Documents
 
-| Read this | When you want to |
-|---|---|
-| [Agents](agents.md) | See which worker agents exist, what each produces and which contract it follows |
-| [Workflow and local integrations](workflow.md) | Understand how the coordinator, workers, model policy and records fit together |
-| [Decision flow](decision-flow.md) | Follow the states a substantial task goes through, from classification to completion |
-| [Advisers](advisers.md) | Set up optional adviser keys, consult advisers at checkpoints and adjudicate their answers |
-| [Operations](operations.md) | Install or remove the Codex skills, find `cw` state and config paths, and read `cw` exit statuses |
-| [Packs](packs.md) | Choose the packs `cw task verify` applies, or add a language pack |
-| [Development](development.md) | Build, test and release `cw` itself |
-| [Skill evaluation](skill-evaluation.md) | Measure whether a skill or agent change helps, with routing fixtures and evals |
-| [Evidence](evidence.md) | See what has been measured about the workflow so far, and what has not |
-| [Diagrams](diagrams/) | Edit the workflow diagram specifications (render them with the `archify` skill) |
+Start with the first two. The rest is reference.
+
+| Document | What it holds |
+| --- | --- |
+| [Quick start](quickstart.md) | The five commands in a new repository. A test executes them. |
+| [Try it](try-it.md) | Everything on this branch that can be tried by hand, with the output to expect, and what was never run. |
+| [Benchmarks](benchmarks.md) | What `cw` costs: the time of a commit and of each command against the size of a repository, and the tokens of an agent with the gate and with the roles on two small tasks. |
+| [Operations](operations.md) | Every command, `cw.toml`, the exit statuses and where `cw` keeps its records. |
+| [Hooks](hooks.md) | The three git hooks, a hook shared with another tool, the plugin's hooks, and the known limits. |
+| [Evidence](evidence.md) | What a recorded passing run is, what it proves and what it does not. |
+| [Roles](roles.md) | The seven roles, their models, what each may write, and `cw-roles.toml`. |
+| [The task workflow](workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `cw change`. |
+| [Tokens](tokens.md) | What `cw tokens` counts, what "workflow tokens" are, and when a count is unknown. |
+| [Evaluation](evaluation.md) | The cases only a model run can show, and the comparison with one agent. No case was run; one first trial of the skill `cw` is recorded. |
+| [What other tools taught us](other-tools.md) | What users report about hook managers, agent guardrails, specification workflows and skills, with sources, and what `cw` did about each finding. |
+| [Development](development.md) | How to build, test and release `cw`. |
 
 Elsewhere in the repository:
 
-- [skills/](https://github.com/belevtsev/agent-workflows/blob/main/skills/README.md): the catalog of first-party skills.
-- [agents/](https://github.com/belevtsev/agent-workflows/tree/main/agents): the worker agent definitions (guide: [agents](agents.md)).
-- [third_party/](https://github.com/belevtsev/agent-workflows/blob/main/third_party/README.md): vendored skills and how they are maintained.
-- [evals/](https://github.com/belevtsev/agent-workflows/blob/main/evals/README.md): eval suites for the agents.
-- [CONTRIBUTING](https://github.com/belevtsev/agent-workflows/blob/main/CONTRIBUTING.md), [CODE_OF_CONDUCT](https://github.com/belevtsev/agent-workflows/blob/main/CODE_OF_CONDUCT.md), [SECURITY](https://github.com/belevtsev/agent-workflows/blob/main/SECURITY.md), [CHANGELOG](https://github.com/belevtsev/agent-workflows/blob/main/CHANGELOG.md).
+- [README](../README.md): what `cw` is, how to install it, and its known limits.
+- [The skill `cw`](../skills/cw/SKILL.md): how a coding agent works in a gated
+  repository, with seven worked examples that a test replays against `cw`.
+- [The production plan](../openspec/production-plan.md): what was built, how
+  each part was checked, and what is left for the owner.
+- [The specifications](../openspec/changes/): the requirements and scenarios
+  of the gate and of the roles.
+- [Security](../SECURITY.md), [contributing](../CONTRIBUTING.md),
+  [changelog](../CHANGELOG.md), [third-party notices](../THIRD_PARTY.md).

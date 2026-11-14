@@ -1,0 +1,25 @@
+package slug
+
+// Acceptance tests for the task `slug`. No arm of the benchmark saw this file.
+// Each case follows from the comment of Slugify and the words of the task.
+
+import "testing"
+
+func TestAccepted(t *testing.T) {
+	for title, want := range map[string]string{
+		"Hello,  World":  "hello-world",
+		"Hello World":    "hello-world",
+		"  a  b  ":       "a-b",
+		"A--B":           "a-b",
+		"":               "",
+		"x_y":            "x-y",
+		"123 go":         "123-go",
+		"...":            "",
+		"one, two; three": "one-two-three",
+		"already-fine":   "already-fine",
+	} {
+		if got := Slugify(title); got != want {
+			t.Errorf("Slugify(%q) = %q, want %q", title, got, want)
+		}
+	}
+}

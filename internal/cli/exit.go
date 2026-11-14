@@ -1,103 +1,55 @@
 package cli
 
 import (
-	"context"
 	"errors"
-
-	"github.com/belevtsev/agent-workflows/v3/internal/consult"
-	"github.com/belevtsev/agent-workflows/v3/internal/taskflow"
+	"fmt"
 )
 
-// Exit statuses: one table for every cw command, documented under "Exit
-// statuses" in docs/operations.md. Each outcome takes the row that names it.
+// The exit statuses of cw. Every command uses this one table.
 const (
-	// ExitOK: the command did what was asked.
-	ExitOK = 0
-	// ExitFailure: cw could not do it, for example invalid input, an I/O
-	// error, or a damaged or locked record.
-	ExitFailure = 1
-	// ExitUsage: the command line is wrong; nothing ran.
-	ExitUsage = 2
-	// ExitDenied: the gate blocks the operation.
-	ExitDenied = 3
-	// ExitRefused: a precondition or the record's state refuses the operation.
-	ExitRefused = 4
-	// ExitNegative: the command worked and the answer is no, such as an
-	// incomplete verification or a failed check.
-	ExitNegative = 5
-	// ExitUnknown: cw publish cannot establish whether a step happened.
-	ExitUnknown = 6
-	// ExitMismatch: cw publish read back a step that differs from the request.
-	ExitMismatch = 7
-	// ExitCancelled: the command was interrupted.
-	ExitCancelled = 130
+	ExitOK          = 0 // cw did what was asked and the answer is yes
+	ExitFailure     = 1 // cw could not do it
+	ExitUsage       = 2 // the command line is wrong
+	ExitDenied      = 3 // a hook denies
+	ExitForeignHook = 4 // a hook of another tool is left for the user to edit
+	ExitNotVerified = 5 // a check did not pass, or the content is not verified
 )
 
-// sentinelExits gives the exit status of each error that names an outcome,
-// matched in order with errors.Is. A new sentinel is one row.
-var sentinelExits = []struct {
-	err    error
-	status int
-}{
-	{context.Canceled, ExitCancelled},
-	{taskflow.ErrIncomplete, ExitNegative},
-	{taskflow.ErrCheckFailed, ExitNegative},
-	// A task record this cw cannot read: upgrade cw, or move the record
-	// out of the task store and start a new task.
-	{taskflow.ErrNewerRecord, ExitRefused},
-	{taskflow.ErrLegacyRecord, ExitRefused},
-	// A round or cost past the profile's limit without the owner's words.
-	{taskflow.ErrOverBudget, ExitRefused},
+// exitError carries an exit status. An empty message means the command has
+// already printed everything it had to say.
+type exitError struct {
+	code int
+	msg  string
 }
 
-type usageError struct{ error }
+func (e *exitError) Error() string { return e.msg }
 
-func usage(err error) error { return usageError{err} }
-
-// reportedExit is the exit status of a command that has already written its
-// own result, so the entrypoint adds no further error line.
-type reportedExit int
-
-func (reportedExit) Error() string { return "" }
-
-// finish returns err, else status as a reportedExit, else nil for ExitOK.
-func finish(status int, err error) error {
-	if err != nil {
-		return err
-	}
-	if status != ExitOK {
-		return reportedExit(status)
-	}
-	return nil
+// failf is a failure: cw could not do what was asked.
+func failf(format string, args ...any) error {
+	return &exitError{code: ExitFailure, msg: fmt.Sprintf(format, args...)}
 }
 
-// ExitCode maps an error from Execute to its exit status.
+// usagef is a wrong command line.
+func usagef(format string, args ...any) error {
+	return &exitError{code: ExitUsage, msg: fmt.Sprintf(format, args...)}
+}
+
+// exit ends a command with a status after the command printed its own text.
+func exit(code int) error {
+	if code == ExitOK {
+		return nil
+	}
+	return &exitError{code: code}
+}
+
+// ExitCode is the exit status for the error a command returned.
 func ExitCode(err error) int {
 	if err == nil {
 		return ExitOK
 	}
-	for _, row := range sentinelExits {
-		if errors.Is(err, row.err) {
-			return row.status
-		}
-	}
-	if status, ok := errors.AsType[reportedExit](err); ok {
-		return int(status)
-	}
-	if _, ok := errors.AsType[usageError](err); ok {
-		return ExitUsage
+	var e *exitError
+	if errors.As(err, &e) {
+		return e.code
 	}
 	return ExitFailure
-}
-
-// consultExit is the exit status of a consult.Run outcome.
-func consultExit(outcome int) int {
-	switch outcome {
-	case consult.Complete:
-		return ExitOK
-	case consult.Incomplete:
-		return ExitNegative
-	default:
-		return ExitFailure
-	}
 }

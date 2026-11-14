@@ -333,32 +333,3 @@ func TestAcquireRefusesUnsafeOrMissingLockFiles(t *testing.T) {
 		t.Fatalf("a refused Acquire changed the directory: %d entries %v, target %q %v", len(entries), err, data, readErr)
 	}
 }
-
-// Oracle: with Dir, the lock file is opened in that open directory; after the
-// directory is renamed and its old path made a symlink elsewhere, Verify still
-// succeeds and a path-based Acquire under the new name finds the lock held.
-func TestDirAnchorsTheLockFileToAnOpenDirectory(t *testing.T) {
-	parent := t.TempDir()
-	original, moved, elsewhere := filepath.Join(parent, "store"), filepath.Join(parent, "moved"), t.TempDir()
-	if err := os.Mkdir(original, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	dir, err := os.Open(original)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dir.Close()
-	lock := hold(t, "state.lock", fslock.Options{Dir: dir})
-	if err := os.Rename(original, moved); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(elsewhere, original); err != nil {
-		t.Fatal(err)
-	}
-	if err := lock.Verify(); err != nil {
-		t.Fatalf("Verify after the directory path moved: %v", err)
-	}
-	if err := tryOnce(filepath.Join(moved, "state.lock"), false); !errors.Is(err, fslock.ErrBusy) {
-		t.Fatalf("Acquire in the moved directory: %v, want ErrBusy", err)
-	}
-}

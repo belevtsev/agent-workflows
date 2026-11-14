@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      thorough:
+        description: Run the race detector on macOS and Windows too, and the tests that wait ten minutes
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,20 +20,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The Go packages are tested in four shards per system, so that the required
-  # checks finish in about four minutes on Linux and five on macOS; one job
-  # for all packages took six to ten and eight to sixteen. The shards are not
-  # required checks: the two jobs named "Native Go / <system>" below are, and
-  # each passes only when all of its shards pass. Both matrices list every
-  # shard the go-test action selects (TestCIShardJobsRunEveryShard).
-  go-linux:
-    name: Go shard ${{ matrix.shard }} of 4 / ubuntu-latest
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  # The job names are the required checks of the branch protection:
+  # "Native Go / ubuntu-latest" and "Native Go / macos-latest". The Windows
+  # job is not required until the owner makes it so.
+  go:
+    name: Native Go / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.thorough && 50 || 20 }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     env:
       GOWORK: 'off'
     steps:
@@ -36,60 +38,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Test this shard
+      - name: Test
         uses: ./.github/actions/go-test
         with:
-          shard: ${{ matrix.shard }}
-
-  go-macos:
-    name: Go shard ${{ matrix.shard }} of 4 / macos-latest
-    runs-on: macos-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    env:
-      GOWORK: 'off'
-    steps:
-      - name: Check out exact source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Test this shard
-        uses: ./.github/actions/go-test
-        with:
-          shard: ${{ matrix.shard }}
-
-  # always() makes these run after a failed or cancelled shard too: a skipped
-  # required check would count as passed.
-  go-linux-result:
-    name: Native Go / ubuntu-latest
-    needs: go-linux
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require every shard to pass
+          thorough: ${{ inputs.thorough }}
+      # Success measure 2: the time of one hook decision. The plain test run
+      # above skips it. The harness builds cw with go build and no -race, and
+      # this step runs without -race. On Windows it reports only.
+      - name: Measure the hook cost
+        shell: bash
         env:
-          RESULT: ${{ needs.go-linux.result }}
-        run: |
-          echo "Go shards on ubuntu-latest: $RESULT"
-          test "$RESULT" = success
-
-  go-macos-result:
-    name: Native Go / macos-latest
-    needs: go-macos
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require every shard to pass
-        env:
-          RESULT: ${{ needs.go-macos.result }}
-        run: |
-          echo "Go shards on macos-latest: $RESULT"
-          test "$RESULT" = success
+          CW_COST: '1'
+        run: go test -count=1 -v ./scenarios/cost/
 
   lint:
     name: Lint and vulnerabilities
@@ -114,23 +74,177 @@ jobs:
         with:
           version: v2.15.0
           install-mode: goinstall
-      # The runner is Linux; this also lints the darwin-only files.
+      # The runner is Linux; these also lint the files of the other systems.
       - name: Lint the darwin build
         env:
           GOOS: darwin
         run: golangci-lint run ./...
+      - name: Lint the windows build
+        env:
+          GOOS: windows
+        run: golangci-lint run ./...
       # Pinned so a new govulncheck release cannot fail CI without a
       # repository change; new vulnerability data still can, by design.
-      # Installed for the runner, so the darwin step below can still run it.
       - name: Install pinned govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Check reachable vulnerabilities
         run: govulncheck ./...
-      # Releases also ship darwin binaries; this checks the darwin build.
       - name: Check reachable vulnerabilities in the darwin build
         env:
           GOOS: darwin
         run: govulncheck ./...
+      - name: Check reachable vulnerabilities in the windows build
+        env:
+          GOOS: windows
+        run: govulncheck ./...
+
+  # This repository uses its own gate. `cw run --base` counts a check as
+  # passed on the base revision, so only the checks whose content changed run.
+  gate:
+    name: Gate / cw run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
+    steps:
+      - name: Check out exact source with its history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up pinned Go with dependency cache
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # The check `lint` of cw.toml needs the linter on PATH.
+      - name: Install the pinned linter
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+      # The check `record` of cw.toml needs cw itself on PATH.
+      - name: Build cw
+        run: |
+          go build -o "$RUNNER_TEMP/cw-bin/cw" ./cmd/cw
+          echo "$RUNNER_TEMP/cw-bin" >> "$GITHUB_PATH"
+      - name: Run the declared checks
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            cw run --base "$BASE"
+          else
+            cw run
+          fi
+
+  # The archives of a release, built from this commit as release.yml builds
+  # them from a tag, and published nowhere: the artifact `cw-archives` of the
+  # run holds them. They carry the tag that the README installs.
+  archives:
+    name: Release archives
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOWORK: 'off'
+    outputs:
+      tag: ${{ steps.name.outputs.tag }}
+      revision: ${{ steps.name.outputs.revision }}
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up pinned Go with dependency cache
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Read the tag that the README installs
+        id: name
+        run: |
+          tag=$(sed -n 's/^tag=\(v[0-9][0-9A-Za-z.-]*\)$/\1/p' README.md | head -n 1)
+          if [ -z "$tag" ]; then
+            echo "README.md has no line tag=v<version>."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      # The same tools and versions as release.yml.
+      - name: Install pinned syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.55.0
+      - name: Take the release notes from the changelog
+        env:
+          TAG: ${{ steps.name.outputs.tag }}
+        run: sh .github/scripts/release-notes.sh "$TAG" > "$RUNNER_TEMP/release-notes.md"
+      - name: Build archives, SBOMs and SHA256SUMS
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.18.3
+          args: release --snapshot --clean --release-notes ${{ runner.temp }}/release-notes.md
+        env:
+          GORELEASER_CURRENT_TAG: ${{ steps.name.outputs.tag }}
+      - name: List what was built
+        run: |
+          cat dist/SHA256SUMS
+          for archive in dist/*.tar.gz dist/*.zip; do
+            grep -q " $(basename "$archive")\$" dist/SHA256SUMS || { echo "SHA256SUMS does not list $archive"; exit 1; }
+            [ -f "$archive.sbom.json" ] || { echo "$archive has no SBOM"; exit 1; }
+          done
+          [ "$(ls dist/*.tar.gz dist/*.zip | wc -l)" -eq 6 ] || { echo "expected six archives"; exit 1; }
+          cp "$RUNNER_TEMP/release-notes.md" dist/release-notes.md
+      - name: Keep the archives with the run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cw-archives
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sbom.json
+            dist/SHA256SUMS
+            dist/release-notes.md
+          if-no-files-found: error
+          retention-days: 30
+
+  # Success measure 4: the first install instruction of the README, followed
+  # on each system on a PATH without go, with the archives of the job above
+  # in place of a release. .github/scripts/install-test.* say what is checked.
+  install:
+    name: Install without Go / ${{ matrix.os }}
+    needs: archives
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      TAG: ${{ needs.archives.outputs.tag }}
+      REVISION: ${{ needs.archives.outputs.revision }}
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fetch the archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cw-archives
+          path: ${{ runner.temp }}/archives
+      - name: Follow the install instruction for Linux and macOS
+        if: runner.os != 'Windows'
+        run: sh .github/scripts/install-test.sh "$TAG" "$REVISION" "$RUNNER_TEMP/archives"
+      - name: Follow the install instruction in PowerShell 7
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/install-test.ps1 -Tag $env:TAG -Revision $env:REVISION -Archives "$env:RUNNER_TEMP\archives"
+      - name: Follow the install instruction in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./.github/scripts/install-test.ps1 -Tag $env:TAG -Revision $env:REVISION -Archives "$env:RUNNER_TEMP\archives"
 
   plugins:
     name: Plugin manifests
@@ -144,7 +258,5 @@ jobs:
       # Pinned so a validator release cannot fail CI without a repository change.
       - name: Install Claude Code
         run: npm install --global @anthropic-ai/claude-code@2.1.316
-      - name: Validate the plugins
-        run: |
-          claude plugin validate .
-          claude plugin validate ./third_party/cc-skills-golang
+      - name: Validate the plugin
+        run: claude plugin validate .

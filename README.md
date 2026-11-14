@@ -1,271 +1,202 @@
-# agent-workflows
+# cw
 
-An engineering workflow for Claude Code and Codex that takes a change from spec
-to a reviewed, tested and verified commit.
+`cw` is one small program for any git repository, in any language. It does
+three things:
 
-[![CI](https://img.shields.io/github/actions/workflow/status/belevtsev/agent-workflows/ci.yml?branch=main&label=CI)](https://github.com/belevtsev/agent-workflows/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/belevtsev/agent-workflows)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/belevtsev/agent-workflows?include_prereleases)](https://github.com/belevtsev/agent-workflows/releases)
+- **A gate.** A commit or a push is allowed only when every check the
+  repository declares in `cw.toml` has a recorded passing run on exactly that
+  content. Git hooks enforce it, for people and for coding agents alike.
+- **Roles.** A coding agent takes a task from a specification to tested code
+  through seven roles, each with one job, its own model and a limit on what it
+  may change. `cw` checks afterwards what a program can check.
+- **A token count.** `cw tokens` says what a task cost, role by role, and how
+  much of it the workflow itself used.
 
-Coding agents often ship code that nobody reviewed, that has no tests, or that
-is tested by the agent that wrote it. This project splits a substantial change
-across agents with separate contexts: one writes the spec, one designs, one
-implements, another writes tests from the contract without seeing the code, and
-another reviews. The `cw` command records each step, and on Claude Code a hook
-asks the agent to stop and pass `cw task verify` before it commits; see
-[what the gate does not stop](#the-verify-gate). `cw` runs on macOS and Linux
-only ([Quick start](#quick-start)).
+The gate is a guardrail, not a sandbox: it stops a mistake, and it does not
+stop a person who decides to go around it.
 
-What has been measured so far, and what has not: [evidence](docs/evidence.md).
+## State
 
-## How it works
+- This is a pre-release. The first install instruction below works once the
+  release `v3.0.0-beta.1` is published; the
+  [releases](https://github.com/belevtsev/agent-workflows/releases) show
+  whether it is. CI builds the archives of that release from every commit and
+  follows the instruction with them on Linux, macOS and Windows.
+- **Nothing here is measured to improve anything.** The gate has not yet been
+  used on real work. The plugin and the roles ran with a model in scratch
+  repositories only, on two small tasks:
+  [benchmarks](docs/benchmarks.md) says what that showed and what it cost.
+  The [production plan](openspec/production-plan.md) says what was built and
+  how each part was checked.
+- It was built and tried by hand on Linux. Its tests pass in CI on Linux,
+  macOS and Windows; nothing was tried by hand on macOS or Windows.
 
-<img src="docs/diagrams/workflow-overview.svg" alt="Flow of a substantial task: spec-writer and reviewer (spec, skipped with a reviewed spec or a precise request), architect and reviewer (design and contract), implementer in parallel with test-engineer and reviewer (tests), integrate and run, then reviewer (code, on the integrated source against the contract, the design and coverage) and implementer, with the adversarial-tester beside the code review if the plan opts in, whose failing tests go to the implementer, then cw task verify, then the coordinator publishes with cw publish, with github-worker as the fallback when cw publish does not fit. Findings loop back to each author; optional advisers join at four decision points." width="820">
+## Install
 
-A substantial task runs the `lite` profile by default, with four agents: the
-implementer and the test engineer work in parallel from one contract, a
-reviewer checks the tests, the coordinator integrates and runs them, and a
-reviewer checks the code before `cw task verify`. `standard` adds the architect
-and a design review, for an open design choice or a public interface change;
-`strict` also adds the spec writer and a spec review, when you ask or the change
-touches security, data integrity or concurrency
-([profiles](docs/operations.md#profiles)). The diagram shows `strict`.
-Each stage's review findings go back to its author, capped per stage. Advisers,
-when available, join only at four decision points after the before checkpoint;
-without them the loop runs unchanged, and the coordinator decides either way.
-The staged flow is for [substantial tasks](global/AGENTS.md#substantial-tasks).
-For any other task the agent writes the tests itself, checks its diff against
-the Code Review Rules before reporting, and commits or pushes only with your
-authorization; it dispatches no workers.
+`cw` is one file, and it needs git. It uses options that git has had since
+version 2.24, and was tried by hand with git 2.53 only. On Windows the git
+hooks are shell scripts, run by the `sh` of Git for Windows.
 
-| Agent | Gets | Produces | Claude Code model alias |
-| --- | --- | --- | --- |
-| spec-writer (`strict`) | source documents | an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change folder, a change log | `opus`, high |
-| architect (`standard`, `strict`) | the reviewed spec or request | design, interface contract, implementation brief | `opus`, xhigh |
-| implementer | brief and contract | the change, a self-review | `opus`, high |
-| test-engineer | contract and interface, never the code | test matrix, tests, requirement map | `opus`, high |
-| adversarial-tester (opt-in) | contract, design, the integrated source and its coverage | tests that fail on the code, each a finding | `opus`, high |
-| reviewer | per stage: the spec; the design; the tests, never the implementation; or the integrated source and its changed files, checked against the interface contract, the design and, when one exists, the final check's coverage profile | graded findings with evidence; a failing test for each behaviour finding | `opus`, high |
-| github-worker | verified facts, your approval | commit, push, PR when `cw publish` does not fit (hunk-level scopes, fork PRs, conversions) | `sonnet`, medium |
+**From a release, without Go.** The archive is checked against `SHA256SUMS`
+before anything is unpacked.
 
-The table is not a one-way pipeline: every review loops back to its stage's
-author, except that a code review finding about a test goes to a fresh test
-engineer, by requirement ID, contract-level inputs and expected outcome only;
-the implementer and the test engineer run in parallel from the same
-contract.
-
-An alias resolves to Claude Code's current release of that model; the
-[Claude Code policy](skills/task-orchestration/model-policy.claude.yaml) sets
-each role. Codex uses [model-policy.yaml](skills/task-orchestration/model-policy.yaml).
-See [agents](docs/agents.md) and the
-[role contracts](skills/task-orchestration/references/contracts/README.md).
-
-## Quick start
-
-**Requirements.** macOS or Linux (Windows is not supported), Claude Code or
-Codex, git and Go; the [host requirements](docs/operations.md#host-requirements)
-table gives the minimum versions and why. The session-start hook says when it finds an
-older client, or a plugin and `cw` whose versions differ
-([session start](docs/hooks.md#session-start)).
-
-**Languages.** Go modules (`go.mod` at the top of the task's path) get the
-package-level `go test` rule in [`cw task verify`](#the-verify-gate); other
-repositories need any one passed check.
-
-Install `cw`, which records tasks and runs checks, from the release archive for
-your system on the
-[v3.0.0-rc.2 release page](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-rc.2)
-([steps](docs/operations.md#get-cw)), or build that tag with Go 1.27.1 or newer:
+Linux and macOS:
 
 ```sh
-go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2
+tag=v3.0.0-beta.1
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+base=https://github.com/belevtsev/agent-workflows/releases/download/$tag
+curl -fsSLO "$base/cw_${tag}_${os}_${arch}.tar.gz"
+curl -fsSLO "$base/SHA256SUMS"
+grep " cw_${tag}_${os}_${arch}.tar.gz\$" SHA256SUMS | (sha256sum -c - 2>/dev/null || shasum -a 256 -c -) &&
+  tar -xzf "cw_${tag}_${os}_${arch}.tar.gz" cw &&
+  mkdir -p "$HOME/.local/bin" && mv cw "$HOME/.local/bin/cw"
 ```
 
-The project owner pushes each release tag; the release page and `go install`
-work once `v3.0.0-rc.2` is tagged.
+Windows, in PowerShell:
 
-**Claude Code.** Add the marketplace:
+```powershell
+$tag = "v3.0.0-beta.1"
+$arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+$base = "https://github.com/belevtsev/agent-workflows/releases/download/$tag"
+$zip = "cw_${tag}_windows_${arch}.zip"
+Invoke-WebRequest "$base/$zip" -OutFile $zip
+Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
+$want = (Select-String -Path SHA256SUMS -Pattern " $zip$").Line.Split(" ")[0]
+if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $want) { throw "the checksum of $zip does not match" }
+Expand-Archive $zip -DestinationPath "$env:LOCALAPPDATA\cw" -Force
+```
+
+Then put the directory that holds `cw` on your `PATH`, and open a new shell.
+`$HOME/.local/bin` is not on `PATH` by default on macOS, nor on some Linux
+systems. For bash, or a shell that reads `~/.profile`:
 
 ```sh
-claude plugin marketplace add belevtsev/agent-workflows
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
 ```
 
-Install the plugin, then start a new session:
+For zsh, the shell of macOS, write the same line to `~/.zprofile`. On Windows,
+in PowerShell, for your user:
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\cw", "User")
+```
+
+The hooks look for `cw` only in the entries of `PATH` that are absolute paths; see
+[hooks](docs/hooks.md#when-cw-is-not-on-path).
+
+**With Go.** `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-beta.1`
+
+**From this branch, today.** Building from source needs Go 1.27. In the root
+of this checkout:
 
 ```sh
-claude plugin install agent-workflows@agent-workflows
+mkdir -p "$HOME/.local/bin"
+go build -o "$HOME/.local/bin/cw" ./cmd/cw
 ```
 
-**Codex.** Add the marketplace:
+Do not leave a built `cw` in the root of a repository: git does not ignore it,
+so it becomes part of the content every check is judged on.
+[The test guide](docs/try-it.md) builds it into a folder of its own.
+
+## The five commands
+
+In a repository of yours:
 
 ```sh
-codex plugin marketplace add belevtsev/agent-workflows
+cw init                          # creates cw.toml, installs three git hooks
+cw add test -- <your test command>
+cw run                           # runs the checks and records the result
+git add -A
+git commit -m "..."              # allowed: the content has a passing run
 ```
 
-Then run `codex`, open `/plugins`, install `agent-workflows`, trust its
-hooks in `/hooks` and start a new session. Until you trust them, Codex runs
-none of the hooks and the plugin gives the skills only: no conventions and no commit
-hook. Trust them again after an update that changes them, such as the one that
-added the Codex hooks file. The alternative, `cw install --host codex`, adds archify, typesafe-ai and
-the Docker skills and writes the `AGENTS.md` instruction block, but installs no
-hooks. [What each shape gives](docs/operations.md#codex).
+Change a file and commit again without `cw run`: the commit is denied, and the
+message names the check that has no passing run and the command to run. The
+[quick start](docs/quickstart.md) is the same five commands as a text that a
+test executes.
 
-Check that `cw` can read your repository:
+## For a coding agent
 
-```sh
-cw doctor --summary --repo "$PWD"
+The gate needs no plugin: the git hooks decide. The plugin in this repository
+adds three small things on Claude Code and on Codex. It tells a new session
+what the gate requires; it stops a git call that skips the hooks, such as
+`git commit --no-verify` or `git commit -n`, a `cw` call that turns the gate
+off, and an edit of `cw.toml`, a hook file, the git configuration or a record
+of `cw`; and it gives `cw tokens record` the notices that a role or the session
+has ended. Claude Code asks you before such a call. Codex refuses it and gives
+the reason, because Codex cannot ask from a hook; run the call yourself if you
+want it. The guard is a reminder, not a wall:
+[operations](docs/operations.md#what-it-misses) lists what it misses.
+
+It ships two skills. [`cw`](skills/cw/SKILL.md) tells an agent how to work in
+a gated repository: the loop for any change, what each denial means, and
+seven worked examples that a test replays against `cw`. `task` is the role
+workflow below. On Claude Code the plugin also ships the seven roles as
+agents; on Codex a role is started from the text `cw roles text <role>`
+prints. Nothing was run on Codex.
+
+On Claude Code:
+
+```text
+/plugin install agent-workflows --marketplace belevtsev/agent-workflows
 ```
 
-It prints `"status":"ok"` when nothing blocks the workflow; `problems` names
-what does. Optional tools are only counted, in `optional_missing`; `--all`
-lists them ([diagnostics](docs/operations.md#global-project-diagnostics-and-evidence)).
+On Codex, add this repository as a marketplace with
+`codex plugin marketplace add belevtsev/agent-workflows`, then add the plugin
+`agent-workflows` with `codex plugin add`. Codex does not run the hooks of a
+plugin when it installs it. Its documentation says: "Installing or enabling a
+plugin doesn't automatically trust its hooks … Codex skips them until the user
+reviews and trusts the current hook definition." Until you review and trust
+them, the session gets no text from `cw context`, no guard and no token
+records. The git hooks still decide.
 
-## Your first task
+## The roles
 
-The [quick start](docs/quickstart.md) takes one task by hand, in ten minutes, from `cw task init` to a verified
-commit. In daily use you ask, answer questions and approve the commit, and the agent runs those commands:
+`cw roles` prints the seven roles: `lookup`, `spec-writer`, `architect`,
+`quality-engineer`, `developer`, `reviewer` and `git`, each with its model, its
+effort and what it may write. A repository changes the models in
+`cw-roles.toml`. The texts name no language and no build tool; the commands of
+a repository come from its `cw.toml`.
 
-1. Ask in your repository, for example `/agent-workflows:task-orchestration Add retries to the HTTP client`.
-2. The agent writes the plan ([starter plan](docs/operations.md#starter-plan)) and starts the task under a [profile](docs/operations.md#profiles).
-3. Workers implement and test the change, and checks run through `cw task run`, so the record holds the real result.
-4. An independent reviewer reviews the change, then `cw task verify` runs the gate; past 80% of the budget the task stops and asks you.
-5. You approve the commit, which goes through once verify passes on the current source.
+- [Roles](docs/roles.md): what each role does and may change.
+- [The task workflow](docs/workflow.md): the two paths, the record of a task
+  under `openspec/changes/<task>/`, and what `cw change` checks.
+- [Tokens](docs/tokens.md): what is counted, and what "workflow tokens" mean.
 
-## The verify gate
+Whether seven roles give better code than one agent working alone is **not
+measured**. The roles cost tokens that one agent would not spend, and
+`cw tokens` shows how many. [The evaluation](docs/evaluation.md) says how the
+comparison is to be made; it has not been run. A first run on two small tasks
+is in [benchmarks](docs/benchmarks.md): it shows what the roles cost there,
+not whether the code is better.
 
-The gate is a guardrail for a cooperative agent that skipped a step, not a
-defence against an agent that sets out to bypass it. On Claude Code the plugin
-reads each Bash command for `git commit` and `git push`. While an open
-substantial task for the repository (not abandoned, touched in the last 14
-days) has no passing `cw task verify` on the current source, the hook denies
-the command and asks the agent to stop and verify first. Editing a verified
-file reopens the task. With no task at all, a large change gets a prompt
-suggesting `cw task start`.
+## Known limits
 
-It does not stop an edited or damaged task store, a fake toolchain on `PATH`,
-or `cw task abandon` run by the agent from a script (the hook asks you before
-one it can see), nor git run by a script, an alias or a command form the hook
-does not parse, unless `cw gate install` added git's own pre-commit,
-pre-push and pre-merge-commit hooks to the repository
-([git hooks](docs/hooks.md#installing-the-git-hooks)). See the
-[threat model](SECURITY.md#threat-model) and the
-[known bypasses](docs/hooks.md#known-bypasses).
+- `git commit --no-verify` and `git push --no-verify` skip the hooks. So does
+  a clone in which nobody ran `cw init`. A check in continuous integration,
+  `cw run --base <rev>`, is the backstop.
+- A passing run proves that the check passed on that content on that machine.
+  It proves nothing about what the check does not test.
+- The hooks judge what git is about to record. They do not run the checks:
+  `cw run` does, before the commit.
+- `cw` reads the records of Claude Code and Codex to count tokens. Their
+  format is not documented by either host, so a count can be `unknown`.
 
-`cw publish` commits a verified task's files, pushes them and creates or edits
-the pull request, and applies the same gate itself, so it holds under Codex as
-well. The coordinator runs it with your approval; the command never approves
-anything on its own. See the
-[publication reference](skills/task-orchestration/references/github-worker.md).
+More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 
-When a task applies the `go` pack, verify also needs passed direct `go test`
-runs for the host's `GOOS`/`GOARCH`, with allowlisted flags only (no `-run`
-or `-skip`, in argv or in the `GOFLAGS` that `go env` reports) and, with cgo
-on, a C toolchain `cw` verified
-([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)): one with `-race`
-covering each changed package (a plain run, with a recorded limitation,
-where `-race` cannot run on the host), one covering each package whose tests
-link a changed package, and `go test ./...` after a change to module or
-vendored files, build constraints, generated code, embedded files or shared
-testdata. A pass after a failed run of the same check at the same source
-and `GOFLAGS` earns no credit until the source changes, and skipped tests
-are listed. A task keeps the rule
-it recorded at start; see [the Go package-test rule](docs/operations.md#the-go-package-test-rule).
-The `go` pack is selected by default. A task records it when `go.mod` or
-`go.work` is at the top of the selected path at start, and the rule then checks
-packages whenever `go.mod` is at the top at verify. A task that started with
-neither file gets no Go rule, even if it creates `go.mod` later. `cw pack add`
-and `cw pack remove` affect only tasks started afterwards; an open task keeps
-the pack set it recorded. `cw pack list` shows the selection.
-`cw pack remove go` writes an explicit `packs.json`, which drops the Go rule for
-all of that user's repositories and leaves only the fallback rule (any passed
-check); `cw pack add go`, or deleting `packs.json`, restores it.
+## The previous workflow
 
-A task that merges its base branch covers the merged packages by adding a
-check with `cw task add-checks` after `git merge --no-ff <base>`; the plan
-itself never changes. See
-[Merging the base branch during a task](docs/operations.md#merging-the-base-branch-during-a-task).
+Versions up to 2.0.96 were a larger workflow of skills and task records. It is
+kept on the branch `workflow-v3`. On this branch its files are under
+`_quarantine/`, as reading material; nothing there is built or tested.
 
-**See why a commit is blocked.** The denial names up to three blocking tasks
-and counts the rest. This lists a task's problems, such as a missing review or
-an unmet requirement:
+## Documents
 
-```sh
-cw task verify --task <task-id>
-```
+[docs/README.md](docs/README.md) lists every document. To try what is here,
+start with [docs/try-it.md](docs/try-it.md).
 
-**Give a task up** so it stops blocking:
+## License
 
-```sh
-cw task abandon --task <task-id> --reason "replaced by a new task"
-```
-
-**Let git run the gate too.** `cw gate install` writes git's pre-commit,
-pre-push and pre-merge-commit hooks for one repository, so a commit, merge
-commit or push from a script, an alias or a terminal meets the same gate;
-`cw gate uninstall` removes them:
-
-```sh
-cw gate install --repo /path/to/repo
-```
-
-`cw` never writes them unasked. While a task is open in a repository without
-them, the session-start context suggests the command once per task and `cw doctor` reports
-`git_hooks` as `missing`
-([installing the git hooks](docs/hooks.md#installing-the-git-hooks)).
-
-**Turn the gate off.** Set the plugin option `enforce_verify` to `false`
-(and `small_task_prompt` to `false` for the prompt), then restart Claude Code:
-
-```sh
-echo '{"enforce_verify":"false"}' | claude plugin configure agent-workflows@agent-workflows --values-stdin
-```
-
-On Codex, start Codex with `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` (and
-`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) in its environment instead.
-
-The gate fails open: without `cw` on `PATH`, or on an internal error, the
-command goes ahead. Codex runs the same hooks, from its own hooks file, once you trust them in `/hooks`;
-it cannot ask, so there the hook denies where Claude Code asks, except that
-the asks about a task record (damaged or from a newer `cw`) or a task store
-it cannot read or locate let the command go ahead. Details:
-[hooks](docs/hooks.md#codex).
-
-## Language packs
-
-A pack tells `cw task verify` what a changed task in one language must have
-run. Packs are built into `cw`; today there is one, `go`, selected by default.
-`cw pack list` shows the built-in packs and your selection, and
-`cw pack add <id>` and `cw pack remove <id>` change it for tasks started
-afterwards (`cw lang` is an alias). See [packs](docs/packs.md), which also
-covers adding a pack.
-
-The Go skills are separate: the `cc-skills-golang` plugin in the same
-marketplace, plus a few Go skills in core. On Codex, install it from
-`/plugins` (`cw install --host codex` already links it); on Claude Code:
-
-```sh
-claude plugin install cc-skills-golang@agent-workflows
-```
-
-## Skills
-
-`task-orchestration` runs substantial changes and `code-review` reviews diffs;
-the rest are specialists those two point to. Most load when a task matches;
-some run only by name. See the [skill catalog](skills/README.md).
-
-## Configuration
-
-Paths, state, config and the model policy lookup:
-[operations](docs/operations.md).
-
-## Advisers (optional)
-
-`cw consult` can ask hosted advisers at decision checkpoints; the coordinator
-decides from source evidence. See [advisers](docs/advisers.md).
-
-## Contributing, security, license
-
-See [CONTRIBUTING](CONTRIBUTING.md) and the [docs index](docs/README.md).
-Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
-Report vulnerabilities as described in [SECURITY](SECURITY.md). Licensed under
-the [MIT License](LICENSE).
+MIT, see [LICENSE](LICENSE). Third-party code: [THIRD_PARTY.md](THIRD_PARTY.md).

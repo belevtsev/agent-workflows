@@ -1,226 +1,301 @@
 # Evidence
 
-What has been measured about this workflow, and what has not. Every number
-comes from a run you can repeat with the commands under
-[Reproduce](#reproduce).
+The gate allows a commit or a push when every declared check has a recorded
+passing run on exactly the content that git records or sends. This page says
+what such a run is, what "the same content" means, what a passing run proves
+and what it does not, and when `cw run` executes a check again.
 
-## State on 2026-11-14
+The examples on this page were produced on Linux with git 2.53. Temporary
+paths are shortened to `<repository>`.
 
-- **Measured:** one full local run of the six agent eval suites: 29 cases,
-  one run each.
-- **Result:** four suites have every case at or above the pass floor of 0.8.
-  `architect` and `adversarial-tester` each have one case below it. The
-  mutant gate passes. The adversarial gate fails on one case.
-- **Most failed graders trace to the evals, not the agents.** See
-  [Why graders failed](#why-graders-failed).
-- **Changed since, not measured again:** the five causes that lay in the
-  evals. See
-  [Changes to the evals after this run](#changes-to-the-evals-after-this-run).
-- **Not measured:** a comparison with and without the workflow, end-to-end
-  tasks, token counts and run-to-run variance. See
-  [What this does not show](#what-this-does-not-show).
+## A recorded passing run
 
-## Local run of the agent evals, 2026-11-14
+`cw run` writes one record per run under `cw/runs/` in the common git
+directory ([Operations](operations.md#where-cw-keeps-its-records) lists the
+files). A record holds:
 
-### Method
+- the check's `id`, `run` and `paths`, as `cw.toml` declared them;
+- `tree`: the snapshot of the working tree the run started on;
+- `content_key`: the key of the checked content of that tree, explained below;
+- the outcome, the exit status, the start and end times, and the path of the
+  log;
+- `seq`: the order in which the ends of runs on this content were recorded.
 
-- **Source:** `main` at `7225e7e`.
-- **Cases:** the six suites under [`evals/`](../evals/README.md). Each case
-  dispatches one plugin agent once with a brief. Graders then check what the
-  agent wrote against its contract.
-- **Command:** per suite, the flags `.github/workflows/evals.yml` had at
-  that commit, which did not grant `Bash(cw task schema *)`; see
-  [Reproduce](#reproduce).
-- **Models:** `claude-opus-5-5` runs the agents. `claude-haiku-5-5` judges
-  the 55 `llm` graders with three votes each.
-- **Host:** Linux (Ubuntu 26.04), Go 1.26.4, Claude Code 2.1.311.
-- **Differences from the workflow:** the workflow pins Claude Code 2.1.316
-  and runs one case at a time with an API key. This run used a logged-in
-  subscription, three cases at a time (`-j 3`), and a cost ceiling four times
-  the workflow's default at that commit (5 US dollars per three cases) so
-  that no run was cut.
-- **Validity check:** the trace of every run was read for its Bash results.
-  Of 198 Bash calls none failed for the sandbox, and 42 `go` commands ran
-  inside the runs. Three earlier attempts were discarded because the agents
-  could not run Bash; [`evals/README.md`](../evals/README.md#run-locally)
-  names the causes.
+A run is passing when its outcome is `passed`: the program exited 0, and the
+snapshot of the working tree after it equals the snapshot before it.
 
-### Results
+## The same content
 
-| Suite | Cases | At or above 0.8 | Lowest score | Mean score | Graders passed | Wall time | List price |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `spec-writer` | 3 | 3 | 0.952 | 0.984 | 55 of 56 | 3 min 29 s | 2.39 USD |
-| `architect` | 4 | 3 | 0.75 | 0.906 | 31 of 34 | 16 min 10 s | 8.39 USD |
-| `implementer` | 3 | 3 | 0.875 | 0.875 | 21 of 24 | 2 min 14 s | 1.35 USD |
-| `test-engineer` | 4 | 4 | 0.818 | 0.909 | 43 of 47 | 10 min 34 s | 5.03 USD |
-| `adversarial-tester` | 3 | 2 | 0.786 | 0.881 | 37 of 42 | 3 min 28 s | 2.34 USD |
-| `reviewer` | 12 | 12 | 0.857 | 0.939 | 148 of 158 | 13 min 19 s | 8.58 USD |
+### How content is identified
 
-Totals: 335 of 361 graders passed. The list price is 28.08 US dollars, which
-is what the CLI estimates for an API key; a subscription pays in usage. The
-run took 36 minutes of wall time on two tracks.
+The content of a working tree is its snapshot: the git tree that `git add -A`
+followed by `git commit` would record. `cw` computes it from a copy of the
+index, so the index, `HEAD` and the files on disk do not change. The snapshot
+holds:
 
-| Gate | Result |
-| --- | --- |
-| `TestEvalResult`, floor 0.8 for every case | Passes for `spec-writer`, `implementer`, `test-engineer` and `reviewer`. Fails for `architect` (`config-hot-reload`, 0.75) and `adversarial-tester` (`loader-once-race`, 0.786). |
-| `TestMutantGate` | Passes: in all four `test-engineer` cases the authored tests pass on the implementation and fail on every mutant. |
-| `TestAdversarialGate` | Passes for `frame-length-limit` and `path-prefix-escape`. Fails for `loader-once-race`: one kept test still fails after the case's fix. |
+- every tracked file as it is on disk, after git's own conversions: line
+  endings, clean filters and `core.fileMode`;
+- every untracked file that git does not ignore;
+- a submodule as the commit it has checked out;
+- a symbolic link as the link, not as the content it leads to.
 
-### Why graders failed
+It does not hold ignored files. A file listed in `.gitignore`, such as a build
+directory, is not part of the content, and changing it changes nothing for
+`cw`. A `cw.toml` that git ignores is not part of the content either, and the
+tree then has no declaration.
 
-26 graders failed. Grouped by cause:
+There is no limit on the number or the size of the files: git hashes them.
 
-| Cause | Failed | Reading |
-| --- | ---: | --- |
-| `handoff-shape` | 9 | Contract and eval. Each agent wrote a finding as a string; the handoff schema and the grader want an object. The review contracts ask for "one line" per finding and name the shape only as what `cw task schema handoff` prints. A run cannot execute that command, because it grants only `go` commands. |
-| `map-names-tests` | 3 | Eval or contract. The grader wants each line of the requirement map to say how its test fails. The test-engineer contract asks only for the test's file and name. |
-| `self-review-cites-evidence` | 3 | Agent, at least in part. In the one self-review read in full, two checklist items have no `path:line` evidence. None lists a log path, because the run may not redirect output. The cause in the other two cases is not established. |
-| `probe-run` | 2 | Eval. The grader looks for `go test`. The agents ran `go -C <dir> test`, which it does not match. |
-| `no-passing-test-kept` and the adversarial gate, `loader-once-race` | 1 | Eval, probably. The agent kept a second test: a `Get` that waits on a failed load returns the loader's value with the error, where requirement R2 says `""`. The fixture does that before and after the case's fix, and the case assumes one defect. The contract does not say whether R2 covers a waiting `Get`. |
-| `design-quality`, `config-hot-reload` | 1 | Eval. The rubric asks what happens when a reload races a shutdown. The case's brief and fixture have no shutdown, and the design does not treat one. Asked directly with the rubric, the judge model names that item as missing. |
-| Single `llm` graders | 6 | Not established: `spec-quality`, `untested-requirement-caught`, `planted-defects-caught`, `contract-testable` (two cases) and `tests-from-contract`. Five of them judged files of 8,000 characters or more, where the CLI warns that judges are noisy. |
-| `contract-read` | 1 | Not examined. |
+The snapshot cannot be taken, and `cw run` and `cw status` exit 1 and name the
+path, when git cannot record the working tree as it is on disk:
 
-The two cases below the floor:
-
-- **`adversarial-tester/loader-once-race` (0.786)** failed `handoff-shape`,
-  `probe-run` and `no-passing-test-kept`: the first, fourth and fifth rows
-  above.
-- **`architect/config-hot-reload` (0.75)** failed two `llm` graders,
-  `design-quality` by three votes to none and `contract-testable` by two to
-  one: the sixth and seventh rows above.
-
-### Rerun of `architect/config-hot-reload`
-
-The case ran three more times with the same flags. The scores were 0.875,
-0.875 and 0.75, so the case falls below the floor in two of its four runs.
-`design-quality` failed in all four runs, each time by three votes to none.
-`contract-testable` failed in two of the four.
-
-### Changes to the evals after this run
-
-Five of the causes above lay in the evals. They were changed after the run.
-No suite has run since, so their effect on the scores is not measured.
-
-| Cause | Change |
-| --- | --- |
-| `handoff-shape` | A run can call `cw task schema handoff`, as the contracts tell the agent to: the command grants `Bash(cw task schema *)` and needs `cw` on `PATH`. |
-| `map-names-tests` | The grader asks what the contract asks: per requirement a test's file and name, or `uncovered` with a reason. |
-| `probe-run` | The graders that look for `go test` also match `go -C <dir> test`. |
-| `loader-once-race` | In the fixture a `Get` that waits on a failed load returns `""` with the error, so the seeded defect is the only one. Requirement R3 of the case's contract now says so. |
-| `design-quality`, `config-hot-reload` | The rubric no longer asks about a shutdown. |
-
-The `self-review-cites-evidence`, single `llm` grader and `contract-read`
-rows are unchanged.
-
-### Per-case results
-
-A case's score is the share of its graders that passed.
-
-#### `spec-writer`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `avatar-upload-gaps` | 1 | 16 of 16 | none | 3 min 15 s | 0.75 USD |
-| `bookmark-export-brief` | 0.952 | 20 of 21 | `spec-quality` | 3 min 29 s | 0.89 USD |
-| `link-expiry-delta` | 1 | 19 of 19 | none | 3 min 17 s | 0.79 USD |
-
-#### `architect`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `config-hot-reload` | 0.75 | 6 of 8 | `contract-testable`, `design-quality` | 7 min 56 s | 1.57 USD |
-| `ledger-money-adr` | 1 | 10 of 10 | none | 14 min 52 s | 2.68 USD |
-| `outbox-publisher` | 1 | 8 of 8 | none | 13 min 3 s | 2.66 USD |
-| `rate-limiter-boundary` | 0.875 | 7 of 8 | `contract-testable` | 8 min 14 s | 1.49 USD |
-
-#### `implementer`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `bounded-worker-pool` | 0.875 | 7 of 8 | `self-review-cites-evidence` | 2 min 14 s | 0.52 USD |
-| `idempotency-claims` | 0.875 | 7 of 8 | `self-review-cites-evidence` | 1 min 29 s | 0.42 USD |
-| `parse-limits-config` | 0.875 | 7 of 8 | `self-review-cites-evidence` | 1 min 33 s | 0.43 USD |
-
-#### `test-engineer`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `clamp-claude-md-probe` | 1 | 14 of 14 | none | 2 min 33 s | 0.66 USD |
-| `notes-init-e2e` | 0.818 | 9 of 11 | `map-names-tests`, `tests-from-contract` | 10 min 34 s | 2.04 USD |
-| `retry-budget-matrix` | 0.909 | 10 of 11 | `map-names-tests` | 6 min 41 s | 1.36 USD |
-| `ttl-cache-matrix` | 0.909 | 10 of 11 | `map-names-tests` | 4 min 39 s | 1 USD |
-
-#### `adversarial-tester`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `frame-length-limit` | 0.929 | 13 of 14 | `probe-run` | 3 min 7 s | 0.8 USD |
-| `loader-once-race` | 0.786 | 11 of 14 | `handoff-shape`, `no-passing-test-kept`, `probe-run` | 3 min 28 s | 0.85 USD |
-| `path-prefix-escape` | 0.929 | 13 of 14 | `handoff-shape` | 2 min 29 s | 0.71 USD |
-
-#### `reviewer`
-
-| Case | Score | Graders passed | Failed graders | Time | List price |
-| --- | ---: | ---: | --- | ---: | ---: |
-| `code-price-cache` | 0.917 | 11 of 12 | `untested-requirement-caught` | 3 min 3 s | 0.78 USD |
-| `code-upload-quota` | 1 | 13 of 13 | none | 3 min 21 s | 0.78 USD |
-| `code-webhook-dispatch` | 1 | 12 of 12 | none | 2 min 58 s | 0.72 USD |
-| `design-job-timeout-units` | 0.857 | 12 of 14 | `contract-read`, `handoff-shape` | 2 min 17 s | 0.58 USD |
-| `design-revision-scope-growth` | 1 | 11 of 11 | none | 2 min 36 s | 0.65 USD |
-| `design-webhook-retries` | 0.929 | 13 of 14 | `handoff-shape` | 2 min 2 s | 0.51 USD |
-| `spec-audit-export-tasks` | 0.947 | 18 of 19 | `handoff-shape` | 2 min 35 s | 0.63 USD |
-| `spec-claude-md-probe` | 1 | 11 of 11 | none | 1 min 36 s | 0.46 USD |
-| `spec-invoice-reminders` | 0.909 | 10 of 11 | `handoff-shape` | 1 min 54 s | 0.55 USD |
-| `spec-team-invites-scope` | 0.909 | 10 of 11 | `handoff-shape` | 1 min 52 s | 0.53 USD |
-| `tests-rate-limiter` | 0.933 | 14 of 15 | `handoff-shape` | 4 min 32 s | 1.12 USD |
-| `tests-session-sweeper` | 0.867 | 13 of 15 | `handoff-shape`, `planted-defects-caught` | 5 min 28 s | 1.35 USD |
-
-## What this does not show
-
-- **No comparison with a plain agent.** The suites run one arm
-  (`--ablation none`), because a baseline arm cannot dispatch the plugin's
-  agents. Nothing here says a change made with the workflow is better than
-  one made without it.
-- **No end-to-end task.** Each case exercises one agent on fixtures. No case
-  takes a change through `cw task verify`.
-- **No token counts.** The result file holds list price and time only.
-- **No variance.** Each case ran once. A case near the floor can land on
-  either side of it.
-- **No CI run.** `.github/workflows/evals.yml` has not run with an API key;
-  these are local results.
-- **No raw results in the tree.** The result files and traces are kept
-  outside the repository.
-
-## Reproduce
-
-Prepare the host as [`evals/README.md`](../evals/README.md#run-locally)
-says, with this checkout's `cw` on `PATH`. Then, from the plugin root, for
-each suite (`spec-writer`, `architect`, `implementer`, `test-engineer`,
-`adversarial-tester`, `reviewer`):
-
-```sh
-suite=architect
-runs="$HOME/.cache/evals-run/$suite"
-mkdir -p "$runs"
-TMPDIR="$runs" claude plugin eval . --tag "$suite" --ablation none \
-  --scaffold --trust-plugin --keep-temp --no-publish \
-  --model claude-opus-5-5 --judge-model claude-haiku-5-5 --threshold 0.8 \
-  --max-cost-usd 30 -j 3 \
-  --allow-tools Write Edit "Bash(go *)" "Bash(cw task schema *)" \
-  --json "$runs/result.json"
-EVAL_RESULT_JSON="$runs/result.json" EVAL_PASS_FLOOR=0.8 \
-  go test ./evals/ -run '^TestEvalResult$' -count=1 -v
+```text
+cw: the working tree cannot be recorded: README.md is marked skip-worktree and differs from the index
 ```
 
-For `test-engineer` and `adversarial-tester`, open the kept run directories
-and run the suite's gate:
+The same holds for a file marked assume-unchanged that differs, a sparse
+checkout that keeps tracked files off the disk, a submodule or nested
+repository with uncommitted changes, a submodule that holds a path marked
+assume-unchanged or skip-worktree, a submodule that is not checked out but
+whose folder holds files, and any case in which `git add -A` fails, such as a
+nested repository with no commit:
 
-```sh
-chmod 700 "$runs"/claude-eval-* "$runs"/claude-eval-*/sealed
-EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestMutantGate$' -count=1 -v
-EVAL_ARTEFACTS_DIR="$runs" go test ./evals/ -run '^TestAdversarialGate$' -count=1 -v
+```text
+cw: the working tree cannot be recorded: git add -A failed:
+error: 'sub/' does not have a commit checked out
+error: unable to index file 'sub/'
+fatal: adding files failed
 ```
 
-The run reported above did not grant `Bash(cw task schema *)`. Every run is
-a real model call on your account, and scores differ from run to run.
+### What paths changes
+
+Each check has a content key for a tree:
+
+- A check without `paths` depends on every path. Its key is the id of the whole
+  tree, so any change to any non-ignored file, `cw.toml` included, makes a new
+  content that needs a new run.
+- A check with `paths` depends only on the entries whose path matches a
+  pattern, and on every submodule entry. Its key is the SHA-256 of those
+  entries as `git ls-tree -r` lists them: mode, type, object id and path. Two
+  trees hold the same checked content for the check exactly when these entries
+  are the same. A tree holds a submodule as one entry, which no pattern for a
+  file inside it matches, so a submodule entry counts in the key of every
+  check that has `paths`: a new commit of any submodule needs a new run.
+
+So for a check with `paths = ["src/**"]`:
+
+- an edit of `README.md` keeps the check satisfied;
+- an edit inside `src/`, a new file in `src/`, a file removed from `src/`, or a
+  changed executable mark there needs a new run;
+- a file moved out of `src/` needs a new run. Renames are not detected: a moved
+  file differs at its old path and at its new one;
+- content that was checked earlier is recognised again: after `src/app.txt` is
+  changed and changed back, the earlier run counts again.
+
+`paths` is a promise by the repository about what the check reads: nothing
+else. `cw` does not check the promise. When a check reads a file outside its
+`paths`, a pass is carried over to content the check never saw. A symbolic
+link is recorded as a link, so the content behind it is not part of the key,
+even when the link matches a pattern. A pattern that matches no entry gives the
+same key for every tree that has no such entry, so one pass then counts for all
+of them.
+
+A pattern that names a folder of the tree matches nothing, because a pattern
+matches files. Such a declaration is invalid, and `cw run`, `cw status` and a
+hook say which pattern to write:
+
+```text
+cw: cw.toml:9: the pattern `src` of the check `folder` names a folder, and a pattern matches files; for everything in the folder write `src/**`
+```
+
+### The index against the working tree
+
+`cw run` and `cw status` judge the snapshot of the working tree. A hook judges
+the tree git is about to record: for a commit, the tree of the index.
+
+When everything is staged, the two are the same tree. When part of the work is
+not staged, the commit records other content than the one `cw run` checked,
+and the hook denies the commit unless the difference lies outside the `paths`
+of every check. `cw status` shows the difference before you commit:
+
+```text
+verified: every declared check has a passing run on this content
+  unit  satisfied
+  lint  satisfied
+index: differs from the working tree; not staged:
+  src/new.txt
+a commit of the index alone would be denied: its content has no passing run of every check
+  lint  not run on this content
+stage everything with `git add -A`, or run the checks on what you will commit
+```
+
+## What a passing run proves
+
+A passing run proves that, on this machine, the program of the check exited 0
+when it started from the root of a working tree whose snapshot was that tree,
+and that the snapshot after the run equals the snapshot before it. Only these
+two snapshots are compared: a file that changed during the run and changed
+back before it ended is not seen.
+
+It does not prove:
+
+- that the check tests anything. `cw` knows no language and reads no test
+  report; a check whose program is `true` passes;
+- anything about what the check does not test;
+- anything about the environment: the version of a compiler or a tool, the
+  environment variables, the ignored files, such as caches or a local
+  configuration, the network, or the state of another machine. The program
+  runs with the environment of the `cw run` that started it. To make the
+  version of a tool part of the content, keep it in a committed file that the
+  check reads, such as a lock file or a file of tool versions, and name that
+  file in `paths` when the check has `paths`: a new version is then new
+  content, and the check runs again;
+- that `paths` is right: see [What paths changes](#what-paths-changes);
+- that the record is genuine. The records are plain files in the git directory.
+  A process that writes there can forge one. The gate trusts the git directory;
+  it is a guardrail, not a defence against someone who decides to go around
+  it;
+- anything in another clone. Records are not shared between clones, and not
+  with continuous integration, which runs the checks again
+  ([Operations](operations.md#continuous-integration)).
+
+## When a run is reused
+
+For each selected check, `cw run` takes a snapshot, computes the check's content
+key, and reads the records of that check and that key. The check is satisfied,
+and `cw run` does not execute it again, when the run that decides is `passed`:
+
+1. Only records with the same `id`, the same `run` and the same `paths`, in the
+   same order, count. The `timeout` does not matter.
+2. Among those, only decisive runs decide: `passed`, `failed` and `timed_out`.
+   A run that ended `source_changed` or `interrupted`, or that is executing
+   now, decides nothing.
+3. The decisive run whose end was recorded last decides. The order is `seq`,
+   not the clock, so a clock that was set back does not reorder runs. Of two
+   runs with the same `seq`, the one that did not pass is the later.
+4. That run decides only when it ended within the last 30 days, and not later
+   than now. An older run never decides in its place, so a pass does not come
+   back because a later failure aged out.
+
+`cw run` executes the check again in every other case:
+
+- the content changed, so no record exists for the new key;
+- the most recent decisive run failed or timed out. A pass after a failure on
+  the same content replaces the failure, and `cw stats` counts it as a pass
+  after a failure;
+- the deciding run is older than 30 days, or dated in the future;
+- a record of this check and content cannot be read;
+- the declaration of the check changed (see below).
+
+```text
+$ cw run
+== unit: satisfied, not run again: run 20261114T144211Z-f48b9af5 passed on this content
+== lint: true
+== lint: passed in 0s
+every declared check has a passing run on this content
+```
+
+`cw run` takes a new snapshot before each check. When an earlier check in the
+same `cw run` changed the working tree, the next check runs on that changed
+content, and the earlier one ends `source_changed`.
+
+A check that writes a file into the working tree, such as a coverage report,
+ends `source_changed`, also when the file lies outside its `paths`. The line
+names the files and says what to do:
+
+```text
+== writes: sh -c echo r > coverage.out
+== writes: source_changed: the source changed during the run: coverage.out; when the check writes these files, list them in .gitignore or write them outside the working tree
+   log: <repository>/.git/cw/logs/20261114T175338Z-db4d8cac.log
+not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again
+```
+
+A second `cw run` can pass only because the file is then already there with
+the same content; the check still writes into the working tree.
+
+### --force
+
+`cw run --force` executes the selected checks even when they are satisfied.
+The new run becomes the most recent one: a `--force` run that fails makes the
+check `failed` on that content, even after an earlier pass. `cw run <id>
+--force` executes only the named checks.
+
+### Timeouts
+
+Each check has a timeout, `10m` unless `cw.toml` sets one from `1s` to `6h`.
+When it passes, `cw` stops the program and every process it started, and the
+run ends `timed_out`:
+
+```text
+== slow: sleep 5
+== slow: timed_out after 1s: the check did not end within its timeout of 1s
+   log: <repository>/.git/cw/logs/20261114T144258Z-6d1dadd1.log
+not verified: 1 of 1 checks did not pass; fix what each log shows, then run `cw run` again
+```
+
+`timed_out` is decisive: the check is not satisfied on that content until a
+later run passes. A process that the program left running when it exited is
+stopped too. When such a process held the output open, `cw` prints a warning
+that names the cause; the outcome stays the one the exit status gave.
+
+When `cw run` itself receives SIGINT, SIGTERM or SIGHUP, or on Windows Ctrl+C,
+it stops the program and records the run as `interrupted`. When the `cw` process dies without
+recording an end, the next command reports that run as `interrupted`, and
+nothing waits for it.
+
+## When a check's declaration changes
+
+The records of a check are filed under its `id` and its content key, and they
+count only with the same `run` and `paths`. So when `cw.toml` changes:
+
+| Change | Effect on the records |
+| --- | --- |
+| `run` changes | The old runs no longer count. The check is `not run` until it runs again. |
+| `paths` changes, also only its order | The old runs no longer count. |
+| `timeout` changes | The old runs still count. |
+| `id` changes | The check has no records under the new id. |
+| a check is removed | Its records stay until they age out; they count again if the same check comes back on the same content. |
+| any edit of `cw.toml` | `cw.toml` is part of the tree, so every check without `paths`, and every check whose `paths` match `cw.toml`, needs a new run. |
+
+When a commit changes or removes a check that the tree of `HEAD` declares, the
+hook prints a notice; see [Hooks](hooks.md#pre-commit-and-pre-merge-commit).
+
+## What cw status says
+
+`cw status` judges the snapshot of the working tree with the same rules. It
+executes nothing. Each check gets one state:
+
+| State | Text in `cw status` | When |
+| --- | --- | --- |
+| `satisfied` | `satisfied` | The deciding run passed. |
+| `not run` | `not run on this content` | No decisive run of this check counts on this content: none was made, the last one is older than 30 days or dated in the future, a record cannot be read, or the declaration changed. When the last run on this content decided nothing, the text adds it, such as `(the last run ended source_changed: the source changed during the run: coverage.out)`. |
+| `failed` | `failed with exit status 3; log: <path>` | The deciding run failed. When the program could not be started, or did not exit on its own, the text says so and names it. |
+| `timed out` | `timed out: the check did not end within its timeout of 1s; log: <path>` | The deciding run timed out. |
+
+`(a run is executing now)` is added when a run of the check on this content is
+executing. A record that cannot be read, and a run dated in the future, also
+print a warning on standard error:
+
+```text
+cw: warning: the record <repository>/.git/cw/runs/lint/18a2e10dc060a52237948f45a54caf408e5eab3f/20261114T144923Z-d0538c16.json cannot be read (not a run record: unexpected end of JSON input); `lint` does not count as run on this content until it runs again
+cw: warning: run 20261114T144923Z-ce79e12c of `unit` is dated in the future (2026-11-16T14:49:23Z); it does not count
+```
+
+The next run of that check on that content that ends decisively renames the
+unreadable record to `<name>.damaged`, and it is ignored from then on. A record
+dated in the future is not renamed; a later run outranks it by its `seq`.
+
+The first line of `cw status` sums up the snapshot:
+
+| First line | Exit status |
+| --- | --- |
+| `verified: every declared check has a passing run on this content` | 0 |
+| `no checks are declared, so every commit is allowed` | 0 |
+| `not verified: a commit of this content would be denied` | 5 |
+| `not verified, but no hook of cw judges a commit in this clone yet` | 5 |
+
+The last line is printed in a clone where the hooks of `cw` are not installed,
+so git would allow the commit. A warning on standard error names `cw init`.
+
+[Operations](operations.md#cw-status) describes the rest of the output and the
+JSON form.

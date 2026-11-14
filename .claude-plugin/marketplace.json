@@ -3,20 +3,14 @@
   "name": "agent-workflows",
   "owner": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
   "metadata": {
-    "description": "Engineering workflow for Claude Code: reviews at every stage, independent test engineers, a verify gate, and curated Go skills.",
-    "version": "3.0.0-rc.2"
+    "description": "cw: a gate on commits and pushes, roles for a task, and a token count.",
+    "version": "3.0.0-beta.1"
   },
   "plugins": [
     {
       "name": "agent-workflows",
       "source": "./",
-      "description": "Workflow skills, worker agents and the task-orchestration flow for substantial changes.",
-      "category": "development"
-    },
-    {
-      "name": "cc-skills-golang",
-      "source": "./third_party/cc-skills-golang",
-      "description": "Curated Go skill pack: a fork of samber/cc-skills-golang with rewritten entrypoints and no tool pre-approval.",
+      "description": "Session context for the cw gate, a question before a command that would skip it, a skill on how to work with the gate, seven roles and a skill for a task workflow, and a record of the tokens a task used.",
       "category": "development"
     }
   ]

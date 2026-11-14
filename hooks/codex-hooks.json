@@ -1,31 +1,51 @@
 {
-  "description": "agent-workflows for Codex (named by .codex-plugin/plugin.json, in place of hooks/hooks.json): load the working conventions at session start, gate git commit and push on a passing cw task verify, deny cw task abandon and cw's owner approval for the user to run, and sample the session's usage before cw task commands. Each command passes --host codex and, when an older cw rejects the flag (exit 2), runs it again without the flag, so the gate stays on",
+  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a git call that skips the hooks, a cw call that turns the gate off, or a patch of cw.toml, a hook file, the git configuration or a record of cw, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. The commands for sh run cw only from an entry of PATH that is an absolute path. The commands for Windows go to the root of the session's drive and then to the Windows folder before they run cw, so a relative entry of PATH is read from there and not from the session's directory. Every command exits 0, so an old or missing cw blocks nothing. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${PLUGIN_ROOT}/global/AGENTS.md\"; if ! command -v cw >/dev/null 2>&1; then cat \"$f\"; printf '%s\\n' 'agent-workflows: the commit and push verify gate is inactive because cw was not found on PATH. Install cw with `go install github.com/belevtsev/agent-workflows/v3/cmd/cw@v3.0.0-rc.2` (Go 1.27.1 or newer) or from the release archive: https://github.com/belevtsev/agent-workflows/blob/main/docs/operations.md#get-cw'; else out=$(cw hook session-start --host codex --instructions \"$f\" --cache \"${PLUGIN_DATA}\" 2>/dev/null); s=$?; if [ \"$s\" -eq 2 ]; then out=$(cw hook session-start --instructions \"$f\" --cache \"${PLUGIN_DATA}\" 2>/dev/null); s=$?; fi; if [ \"$s\" -eq 0 ] && [ -n \"$out\" ]; then printf '%s\\n' \"$out\"; else cat \"$f\"; fi; fi",
-            "timeout": 15
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" context --host codex;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/cw.toml\" ]; then echo \"cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install\"; fi;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& pushd .& cd \\& cd /d %SystemRoot% && (cw context --host codex 2>nul & if errorlevel 9009 (popd & if exist cw.toml echo cw is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/agent-workflows#install)) & exit /b 0",
+            "timeout": 10
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|apply_patch",
         "hooks": [
           {
             "type": "command",
-            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook pre-publish --host codex 2>/dev/null; [ \"$?\" -ne 2 ] || cw hook pre-publish; exit 0",
-            "timeout": 30
-          },
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" guard --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw guard --host codex 2>nul & exit /b 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "command -v cw >/dev/null 2>&1 || exit 0; cw hook task-usage --host codex >/dev/null 2>&1; [ \"$?\" -ne 2 ] || cw hook task-usage >/dev/null 2>&1; exit 0",
-            "timeout": 15
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v cw 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host codex;; esac; true'",
+            "commandWindows": "set NoDefaultCurrentDirectoryInExePath=1& cd \\& cd /d %SystemRoot% && cw tokens record --host codex 2>nul & exit /b 0",
+            "timeout": 3
           }
         ]
       }

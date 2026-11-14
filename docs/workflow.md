@@ -1,334 +1,597 @@
-# Workflow and local integrations
+# The task workflow
 
-The [global conventions](../global/AGENTS.md) keep user scope, authorization,
-source evidence, and verification consistent, and say when a task is substantial.
-A substantial task follows the
-[task-orchestration](../skills/task-orchestration/SKILL.md) decision flow; each
-rule of that flow lives in one of its references, which this page links rather
-than repeats. A plan or review remains a plan or review until implementation is
-authorized. Publishing, messaging, committing, pushing, and infrastructure
-changes need authorization for that action.
+The task workflow takes one task from the developer's words to a gated commit through the seven
+[roles](roles.md). It has two parts:
 
-For substantial work, the coordinator reads
-[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml), and under
-Claude Code also
-[`model-policy.claude.yaml`](../skills/task-orchestration/model-policy.claude.yaml),
-which replaces its profiles and roles. These are editable routing policies
-interpreted by the skill; neither host loads the YAML as native settings or changes
-a running chat's model automatically. How the coordinator resolves profiles,
-overrides and mismatches is in
-[profiles and policy](../skills/task-orchestration/references/hosts.md).
+- **Instructions for a model.** The coordinator's text (`cw roles text coordinator`, the skill
+  `/agent-workflows:task` on Claude Code) and the seven role texts say who does what and in which
+  order. A model follows them or does not; `cw` does not run the steps.
+- **Commands that check files.** `cw change status` and `cw change check` read the record of a
+  task under `openspec/changes/<task>/`, `cw roles check` compares what a role changed with its
+  limit, and the gate decides about commits. [What cw checks](#what-cw-checks) lists exactly what
+  is enforced.
 
-The skill reads the routing from the policy files it ships with; `cw` reads only
-the consultation part of a policy (see [model policy](operations.md#model-policy)).
-No policy edit grants
-publication authority or relaxes substantive role scopes, independent authorship,
-adviser or review requirements.
+No part of this workflow has been run with a model. Whether it gives better results than one agent
+working alone is not measured; see [the evaluation](evaluation.md).
 
-The table shows the Codex defaults by profile; each profile's model is in
-[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml). Under Claude
-Code, which names models by alias, the `github` profile uses `sonnet` at `medium`,
-and the Claude-only `review_followup` role (every
-later review of a stage, after that stage's first full review) uses it at `high`;
-Codex keeps every review on its stage's role. Summarization uses `sonnet`
-and lookup `haiku`, both at `high`. Other roles use `opus` at `high`, except
-the decision roles (planning, architecture and diagnosis), which keep `xhigh`. See the
-[host mapping](../skills/task-orchestration/references/hosts.md).
+## The flow
 
-| Work | Codex profile | Effort |
+This section restates the coordinator's instructions and the task-flow specification. Every step
+here is an instruction to the coordinator or to a role. `cw` enforces only what the next section,
+[What cw checks](#what-cw-checks), lists.
+
+### Before the first role
+
+1. The coordinator runs `cw status`. When the repository root holds no `cw.toml`, nothing can be
+   verified yet. `lookup` finds the commands the repository already uses to test and to lint, the
+   coordinator proposes them as checks, and after the developer's yes it runs `cw init` and one
+   `cw add <id> -- <your test command>` for each. The coordinator runs each proposed command once
+   before it becomes a check. In a repository with no code, the design names
+   the checks, and they are declared before the first commit that holds code. No work is called
+   verified while no check is declared.
+2. `cw-roles.toml` must name the test paths under `[paths]`. When it does not, `lookup` finds
+   where the tests live, and the coordinator writes the file after the developer's yes.
+3. When `git status --porcelain` prints anything, the coordinator shows it and asks the developer
+   to commit it or set it aside before any role starts.
+4. For a task that already has a change folder, the coordinator runs `cw change status <task>`
+   and continues at the stage it prints: the first one that is not finished. A finished stage is
+   not repeated, and `commit` means everything before it is finished. The tasks are ticked after
+   the review of the code, so `code` is printed until then.
+
+### Two paths
+
+- **Full path**: the task needs a requirement written or changed: new behaviour, or a change to
+  behaviour that is specified or relied on. It writes a change folder.
+- **Small path**: the intended behaviour is already clear and does not change: a defect against
+  stated behaviour, a refactoring, a change of tests only. It writes no change folder.
+
+Size does not choose the path.
+
+A change of a few lines with a plain cause, which one test can pin down, needs neither path. The
+coordinator says so and offers to make the change directly, as the skill
+[`cw`](../skills/cw/SKILL.md) describes: the test, the change, `cw run`, the commit. It takes a
+path for such a change only when the developer asks.
+
+Before any role writes, the coordinator tells the developer which path it takes and why, and
+follows the developer when the developer chooses the other one.
+
+### The full path
+
+| Stage | Role that writes | Then |
 | --- | --- | --- |
-| Coordination and substantive implementation, testing, review, or documentation | `sol` | `high` |
-| Planning, architecture, or diagnosis | `decision` | `max` |
-| Routine commits, PR drafting from verified facts, and submission | `github` | `high` |
-| Other bounded execution | `luna_execution` | `xhigh` |
-| Bounded read-only lookup or summarization | `luna` | `high` |
+| spec | `lookup` finds the specifications the repository holds; `spec-writer` writes `proposal.md` and `specs/` | the developer answers the open questions and `spec-writer` writes the answers in; `reviewer` reviews; the developer approves the specification |
+| design | `architect` writes `design.md` and `tasks.md` | `reviewer` reviews; the developer approves the design |
+| tests | `quality-engineer` writes the tests and `tests.md`, and changes or removes the existing tests that no longer hold | the coordinator runs `cw run` |
+| code | `developer` writes the code, one group of `tasks.md` per start, each labelled `code <round>` | the coordinator runs `cw run` after each start |
+| review | `reviewer` reviews the code | findings go back to `developer`; when no finding is open, the coordinator ticks the finished tasks in `tasks.md` |
+| commit | `git` commits | `cw change status <task>` prints `done` |
 
-The policy preserves fixed specialist settings and describes availability
-fallbacks. `max` is configured for the decision roles, and other `sol` work
-uses it on explicit user request; `ultra` requires an explicit user request.
-The coordinator still delegates useful independent assignments and obtains
-required independent design challenges. Automatic escalation is disabled. A
-worker's evidence does not authorize an external action, and consultation
-results do not prove correctness or grant permission. A verified substantial
-task is published with `cw publish`, run by the coordinator under the user's
-authorization; its fallback cases, or a user request for a bounded worker,
-dispatch the [GitHub worker](../skills/task-orchestration/references/github-worker.md); a small
-task commits and pushes directly under the user's authorization. Pass model and
-effort explicitly and verify effective host settings.
-`fallbacks.github_unavailable: report_blocker`, when present, overrides
-the general expensive fallback for these three roles on both hosts; historical
-policies without it retain their fallback behavior.
+When `tasks.md` has one group and no role is started a second time for a stage, the roles other
+than `lookup` start in this order: `spec-writer`, `reviewer`, `architect`, `reviewer`,
+`quality-engineer`, `developer`, `reviewer`, `git`. That is eight starts. `lookup` may be started
+at any stage.
 
-## Review loops
+When `developer` reports that a test is wrong or must change, the coordinator starts
+`quality-engineer` with that report, as stage `tests` with the next round, before `developer`
+continues. `quality-engineer` is the only role that changes or removes an existing test.
 
-A substantial task runs the `lite` profile by default: implementer ∥ test
-engineer ⇄ reviewer (tests) → integrate and run → reviewer (code) ⇄
-implementer → `cw task verify` → gated commit. `standard` adds architect ⇄
-reviewer (design) first, for an open design choice or a public interface
-change; `strict` also adds spec writer ⇄ reviewer (spec), when the user asks or
-the change touches security, data integrity or concurrency
-([profiles](operations.md#profiles)). One `reviewer` agent runs every
-stage with the contract its brief names; findings go back to that stage's
-author; the severity grades and the per-stage review cap are in
-[review stages](../skills/task-orchestration/references/worker-handoffs.md#review-stages).
-The [code review](../skills/task-orchestration/references/contracts/code-review.md)
-reads the integrated source against `interface-contract.md` and `design.md`,
-with the final check's coverage profile when one exists: it classifies each
-unexecuted changed block, and each behaviour finding carries a test that fails
-on the current source. The test engineer never sees coverage; an untested
-requirement reaches a fresh one only as its requirement ID, contract-level
-inputs and expected outcome. Such a reproduction test stays as a regression
-test authored with source access: it is not requirement coverage and needs
-no test-engineer dispatch.
-A task that is not substantial skips the flow, and the
-[contracts overview](../skills/task-orchestration/references/contracts/README.md#flow)
-says when a `strict` task skips the spec stage. After the before checkpoint,
-which is unchanged, advisers join only at four decision points and only when
-available
-([adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow)).
+### The small path
 
-## Independent test engineers
+Tests by `quality-engineer`, code by `developer`, review by `reviewer`, commit by `git`: four
+starts when the review returns no finding.
 
-When a substantial task adds or materially changes behavioral tests, helpers,
-fixtures, golden data, fuzz seeds or tolerances, or when the user asks, the
-coordinator dispatches a fresh
-[test engineer](../skills/task-orchestration/references/contracts/test-engineer.md)
-under the `test_engineer` role. A task that is not
-[substantial](../global/AGENTS.md#substantial-tasks) dispatches no workers: the
-agent writes the tests itself and checks its diff against the Code Review Rules.
-That contract holds the
-input boundary, the Go declaration extract, feedback, replacement and record
-rules; the
-[host mapping](../skills/task-orchestration/references/hosts.md)
-says how to start one on each host, and a [test review](../skills/task-orchestration/references/contracts/test-review.md)
-checks its tests before integration.
+- For a defect, the new test must fail before the code changes. The coordinator runs `cw run` to
+  see it fail before `developer` starts.
+- For a refactoring, the tests must pass before and after.
+- For a change of tests only, `developer` is not started.
 
-## Opt-in adversarial tester
+The coordinator still gives the task a name of the same form as a change folder's, because the
+[label of each brief](tokens.md#the-label) needs one. No change folder is written, so a small-path
+task cannot be continued from files: when the coordinator stops one, it tells the developer the
+stage, the round and the open findings.
 
-A plan opts in at classify, before `cw task start`, when the change touches
-concurrency, parsing or untrusted input, security or data integrity, or when the
-user asks. A fresh
-[adversarial tester](../skills/task-orchestration/references/contracts/adversarial-tester.md)
-then reads the interface contract, `design.md`, the integrated source and the
-coverage profile, and tries to break the change in parallel with code review.
-Every test it keeps fails on the integrated source and cites the requirement or
-design rule it shows broken; each is a finding for the implementer and stays as
-a regression test written with source access. It never counts as black-box
-coverage, and the test engineer never sees it.
+### Starting a role
 
-## Local configuration
+- Each role starts as a new worker with none of the coordinator's conversation, on the model and
+  effort `cw roles` prints, given on the call that starts it. When a host offers to copy or fork
+  the conversation into a new agent, the coordinator does not use it: the copy would be counted
+  twice, and the label would not be the first message.
+- On some providers a model alias resolves to an older model that takes no effort or a lower one,
+  and the host then lowers the effort without saying so; `cw roles` prints what is asked for, not
+  what the provider ran.
+- When the host cannot run the role on that model, the coordinator stops before the role writes
+  anything, tells the developer the role and the model, and waits.
+- The developer's own instruction about models comes first. When it names a model for agents, the
+  coordinator uses it and says once which roles it changes.
+- The first line of every brief is `cw-task: <task> <stage> <round>`.
+- The brief names the files to read and what to hand back. A brief for `reviewer` holds no opinion,
+  summary or excuse from the role that wrote the work.
 
-Neither the plugins nor `cw install --host codex` edit a host's model settings.
-The coordinator profiles in the policies correspond to these values, which you set
-yourself if you want them. In Codex `config.toml`, with `model` set to the `sol`
-profile's model in
-[`model-policy.yaml`](../skills/task-orchestration/model-policy.yaml):
+### After every role
 
-```toml
-model = "<the sol profile's model>"
-model_reasoning_effort = "high"
+1. Before the role starts, the coordinator notes the `tree` that `cw status --json` prints.
+2. When the role ends, it runs `cw roles check <role> --from <that tree>`, with `--task <task>` on
+   the full path.
+3. On exit 5 it starts the same role again with the paths the command listed. It neither accepts
+   the work nor repairs it. When the same role exceeds its limit a second time, it stops and asks
+   the developer. When a role that writes nothing left a file, it asks the developer to remove
+   the file, or removes it after their yes; the file is never in the commit.
+4. After `spec-writer` and after `architect`, it runs `cw change check <task>`. On exit 5 it
+   starts the same role again with the output, before any review.
+
+### Open questions and approvals
+
+- A role writes a question it cannot answer from its sources into the record, and does not guess.
+- When `proposal.md` holds open questions, the coordinator puts them to the developer first and
+  starts `spec-writer` again with the answers. `reviewer` reviews only a specification without
+  open questions; then the developer approves it.
+- The coordinator puts every open question of a stage to the developer before it asks for the
+  approval of that stage.
+- `architect` does not start before the developer has approved the specification, nor
+  `quality-engineer` before the developer has approved the design.
+- Nothing is pushed and no pull request is opened until the developer says so.
+- The coordinator records each approval in `reviews.md`, with its date and the content id that
+  `cw change status` prints for that stage.
+
+### Review rounds
+
+- Every finding goes back to the role that wrote the work, in a new start with the next round
+  number, and the changed work is reviewed again.
+- A stage has at most two review rounds. When the second review still has a `blocker` or `major`
+  finding open, the coordinator stops and asks the developer how to go on.
+- `reviewer` never changes the work, and neither does the coordinator.
+- Each finding ends as `resolved`, `rejected` or `deferred`. `rejected` and `deferred` need a
+  reason. A `blocker` or `major` finding is never deferred.
+- Only the developer rejects a `blocker` or `major` finding, and the coordinator writes their words
+  in Reason. The coordinator may reject a `minor` finding with a reason.
+
+### Tests before code
+
+On both paths the tests stage ends before `developer` starts, apart from the interface described
+below. Between the two the coordinator runs `cw run`. For new behaviour and for a defect it is expected to fail, because the behaviour is not
+there yet; for a refactoring the tests must pass before and after. When the new tests of new
+behaviour or of a defect pass, the coordinator tells the developer that they did not fail without
+the code.
+
+In a language that compiles, the expected failure is that the names of the design's interface are
+missing; `quality-engineer` says which names are missing and that nothing else fails. When the
+tests must be seen failing on behaviour, the first group of `tasks.md` is that interface with
+empty bodies, and `developer` builds it before the tests stage.
+
+### Commits through the gate
+
+`git` makes every commit of the task after `cw run`, through the hooks, and no command of the
+session passes `--no-verify`. On the full path one commit holds the change folder, the tests and
+the code.
+
+### Done means verified
+
+The coordinator calls a task done only when all of these hold:
+
+1. `cw status` exits 0.
+2. The commit of the task exists.
+3. On the full path, `cw change check <task>` exits 0 and `cw change status <task>` prints `done`.
+
+Whatever a role says about a result that no run of `cw` shows is reported as that role's claim.
+When a check still fails, the task is not done, and the coordinator names the check. At the end it
+runs `cw tokens --task <task>` and gives the developer the totals.
+
+### No state outside the record
+
+The workflow keeps no notes, locks or state of a task anywhere but in its change folder and in
+git. Another session can continue from these alone. An unfinished or abandoned change folder
+blocks nothing: the gate does not read change folders unless a repository declares
+`cw change check` as a check.
+
+## What cw checks
+
+| What | Checked by | When |
+| --- | --- | --- |
+| A commit or a push holds content with a passing run of every declared check | the git hooks that `cw init` installs | at every commit and push in a clone where `cw init` ran, unless `--no-verify` skips the hooks |
+| A role changed only the paths of its limit | `cw roles check` | only when someone runs it; it reports and undoes nothing |
+| The files of a change folder obey their rules | `cw change check` | when someone runs it, or at every commit when `cw.toml` declares it as a check |
+| The stage of a task, and whether a review or an approval is of the current content | `cw change status` | when someone runs it; it reports and changes nothing |
+| A git call that skips the hooks, or an edit of `cw.toml`, a hook file or a record of `cw` | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
+
+What no program checks:
+
+- Which path was chosen, and whether the developer agreed.
+- Whether the developer gave an approval. `cw change status` checks that an approval row exists
+  and that its content id is current; the coordinator writes that row.
+- The order of the roles, the number of review rounds, whether the developer or the coordinator
+  rejected a finding, and whether a reviewer's brief held the author's opinion.
+- Whether the tests ran and failed before the code was written. `cw run` records each run, and
+  nothing compares the order.
+- Which model a role ran on. [`cw tokens`](tokens.md) shows the model names the host's record
+  gives.
+- On Claude Code, the host applies the `tools` list of each role file. `cw` does not.
+
+## The record of a task
+
+On the full path the record of a task is the folder `openspec/changes/<task>/`. `<task>` is
+lower-case words joined by hyphens. `cw` reads the folder itself and needs no other program.
+
+| File | Written by | Format |
+| --- | --- | --- |
+| `proposal.md` | `spec-writer` | Free text: why, what changes, what is not part of it, and `## Open questions`. |
+| `specs/<capability>/spec.md` | `spec-writer` | `## ADDED Requirements`, `## MODIFIED Requirements` or `## REMOVED Requirements`; under them `### Requirement: <name>`, a text with `SHALL` or `MUST`, a `Source:` line, and `#### Scenario: <name>` with one `- **WHEN**` line and one `- **THEN**` line. |
+| `design.md` | `architect` | Free text, plus a table under `## Building blocks` with the columns Block, Responsibility, Depends on, New, Reuse considered, and a table under `## Rules` with the columns Rule, Checked by. |
+| `tasks.md` | `architect`; the coordinator ticks the boxes after the review of the code has no open finding | `- [ ] N.M <text>. Size: S\|M\|L. Depends on: <ids or none>. Check: <...>. Source: <...>.` under `## N. <group>`. |
+| `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `cw` does not read it. |
+| `reviews.md` | the coordinator | Under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. |
+
+How `cw` reads these files:
+
+- A line inside a fenced code block is not read, so an example in a file is never taken for
+  content. Line ends of any system are read alike.
+- A cell may stand in backticks. `\|` is a bar inside a cell. A table is found by the `##` heading
+  above it; the table of `tests.md` is the first table with a column Scenario. Column names are
+  matched without regard to case.
+- `SHALL` or `MUST` counts in the text of a requirement above its first scenario. A `Source:` line
+  counts anywhere in the requirement.
+- A task may go on in indented lines. A task names a requirement when its text holds the name.
+- In `design.md`, New is `yes` or `no`; Depends on and Checked by hold names separated by commas,
+  and `none`, `nothing` or `-` mean none. A dependency on a name the table does not hold is not
+  followed. Checked by is `review` or the id of a check of `cw.toml`.
+- The test file of `tests.md` is a path from the root of the repository.
+- In `reviews.md`, Stage is `spec`, `design` or `code`; What is `spec` or `design`; Round is a
+  number from 1; Severity is `blocker`, `major` or `minor`; Disposition is `open`, `resolved`,
+  `rejected` or `deferred`. Content is the content id that `cw change status` printed for that
+  stage when the review or the approval was given.
+- A file that is missing breaks no rule. `cw change status` names it as missing at its stage.
+
+### An example folder
+
+A complete folder for the task `add-greeting`, at the stage `done`. It assumes that `cw.toml`
+declares a check with the id `test`, and that `tests/greeting_test.txt` exists and holds the
+texts `greets_by_name` and `greets_without_name`. With these six files committed together with
+the code, `cw change check` exited 0 and `cw change status add-greeting` printed `done` in a trial
+repository. The content ids in `reviews.md` are the ones that trial printed: the `code` id depends
+on every file of the repository outside `openspec/changes/`, so in your repository write the ids
+your `cw change status add-greeting` prints.
+
+`openspec/changes/add-greeting/proposal.md`:
+
+```markdown
+# Add a greeting
+
+## Why
+
+The program prints nothing when it starts. The request asks it to greet the user by name.
+
+## What changes
+
+- The program prints `Hello, <name>.` when it is given a name, and `Hello.` when it is not.
+
+## Not part of this change
+
+- Greetings in other languages.
+
+## Open questions
+
+None.
 ```
 
-In Claude Code `settings.json`, which accepts the alias:
+`openspec/changes/add-greeting/specs/greeting/spec.md`:
+
+```markdown
+# greeting
+
+## ADDED Requirements
+
+### Requirement: Greeting text
+
+The program SHALL print `Hello, <name>.` when it is given a name, and `Hello.` when it is not.
+
+Source: the request of 14 November 2026, "greet the user by name".
+
+#### Scenario: A name is given
+
+- **WHEN** the program runs with the name `Ann`
+- **THEN** it prints `Hello, Ann.`
+
+#### Scenario: No name is given
+
+- **WHEN** the program runs with no name
+- **THEN** it prints `Hello.`
+```
+
+`openspec/changes/add-greeting/design.md`:
+
+```markdown
+# Design: add-greeting
+
+One new block makes the text; the existing entry point prints it.
+
+## Building blocks
+
+| Block | Responsibility | Depends on | New | Reuse considered |
+| --- | --- | --- | --- | --- |
+| `greeter` | Makes the greeting text from an optional name | none | yes | `src/format`: it formats numbers only |
+| `app` | Prints what `greeter` returns | `greeter` | no | |
+
+## Rules
+
+| Rule | Checked by |
+| --- | --- |
+| `greeter` reads no file and prints nothing | review |
+| Both scenarios have a passing test | test |
+```
+
+`openspec/changes/add-greeting/tasks.md`:
+
+```markdown
+# Tasks: add-greeting
+
+## 1. Greeting
+
+- [x] 1.1 Build `greeter`. Size: S. Depends on: none. Check: the tests of both scenarios pass. Source: Greeting text.
+- [x] 1.2 Print the greeting from `app`. Size: S. Depends on: 1.1. Check: `cw run` passes. Source: Greeting text.
+```
+
+`openspec/changes/add-greeting/tests.md`:
+
+```markdown
+# Tests: add-greeting
+
+| Scenario | Test file | Text |
+| --- | --- | --- |
+| A name is given | `tests/greeting_test.txt` | `greets_by_name` |
+| No name is given | `tests/greeting_test.txt` | `greets_without_name` |
+```
+
+`openspec/changes/add-greeting/reviews.md`:
+
+```markdown
+# Reviews: add-greeting
+
+## Reviews
+
+| Stage | Round | Date | Content |
+| --- | --- | --- | --- |
+| spec | 1 | 2026-11-14 | aec69cbdb37f |
+| design | 1 | 2026-11-14 | f709ae597d40 |
+| code | 1 | 2026-11-14 | 011f904865b6 |
+
+## Findings
+
+| Id | Stage | Round | Severity | Where | Finding | Disposition | Reason |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| F1 | spec | 1 | minor | specs/greeting/spec.md:7 | The text does not say what a name may hold | rejected | Any text is a name; the request sets no limit |
+
+## Approvals
+
+| What | Date | Content |
+| --- | --- | --- |
+| spec | 2026-11-14 | aec69cbdb37f |
+| design | 2026-11-14 | f709ae597d40 |
+```
+
+## cw change status
+
+```text
+cw change status [<task>] [--json]
+```
+
+Prints the stage of a change folder, decided from its files and from git alone. It changes no
+file. Without a task it prints one line for each folder under `openspec/changes/`, except
+`archive/` and folders whose name starts with a dot.
+
+### Stages
+
+The stage is the first one in this table whose condition does not hold, or `done` when all hold.
+The output lists what is missing for that stage.
+
+| Stage | Its condition |
+| --- | --- |
+| `spec` | `proposal.md` exists; at least one `specs/<capability>/spec.md` exists; the specifications break none of their rules (see [the rules](#the-rules)); `reviews.md` holds a review with Stage `spec` that counts, and an approval `spec` that counts; no finding of the stage `spec` is `open`. |
+| `design` | `design.md` and `tasks.md` exist and break none of the rules of the design and the tasks; `reviews.md` holds a review `design` that counts and an approval `design` that counts; no finding of the stage `design` is `open`. |
+| `tests` | `tests.md` has a row for every scenario of the requirements under `ADDED` and `MODIFIED`, matched by the exact name. A change without scenarios needs no `tests.md`. |
+| `code` | Every task of `tasks.md` is checked. |
+| `review` | `reviews.md` holds a review `code` that counts, and no finding of the stage `code` is `open`. |
+| `commit` | The folder in the working tree is the folder in `HEAD`. |
+| `done` | All of the above hold. |
+
+`cw change status` does not apply the rules of `tests.md` and `reviews.md`: a row that names a
+test file without its text, or a `major` finding that is `deferred`, does not change the stage.
+`cw change check` finds those, and `cw change status` counts them: it prints
+`broken rules: <n>` when there are any, and `broken_rules` in its JSON. A stage says how far the
+record is, not that its files are valid. This is why "done" in
+[Done means verified](#done-means-verified) needs both commands.
+
+### Content ids
+
+A content id is the first 12 hexadecimal characters of a SHA-256. `cw change status` prints three:
+
+| Id | Made from |
+| --- | --- |
+| `spec` | `proposal.md` and every file under `specs/`, in the order of their paths, each with its path; line ends read as LF. |
+| `design` | `design.md` and `tasks.md`, line ends read as LF, every task mark `- [x] ` read as `- [ ] `. Ticking a task does not change this id. |
+| `code` | The entries of a snapshot of the working tree, as git lists a tree, for every path outside `openspec/changes/`. Untracked files git does not ignore are part of the snapshot. |
+
+An id is empty, printed as `none`, when none of its files exists. An empty id matches nothing.
+
+### When a review or an approval counts
+
+- A review or an approval counts while its Content is the id of that stage in the working tree.
+- A review of the code also counts when `HEAD` holds the change folder exactly as the working tree
+  does, and its Content is the `code` id of the last commit that changed the folder. The task was
+  committed with the code that was reviewed, and later work is later work: after the task's commit,
+  editing and committing other files leaves the task `done`.
+- When a review or an approval no longer counts, `cw change status` says so and prints the
+  current id. For example, after `SHALL` was changed to `MUST` in the approved specification:
+
+  ```text
+  add-greeting: spec
+    the review and the approval of the specification were given for other content; the content id is now `7a9e0d180351`
+  content ids: spec 7a9e0d180351, design 86a687cc7c6d, code 60d50c98aef8
+  ```
+
+  And after the code changed while the change folder was not committed:
+
+  ```text
+  add-greeting: review
+    the review of the code was given for other content; the content id is now `8e3af834419c`
+  content ids: spec 93eafcdc213a, design 86a687cc7c6d, code 8e3af834419c
+  ```
+
+### Output and exit statuses
+
+With a task, the text output is the stage, each missing item on its own line, the number of
+scenarios that are not automated when there is one, and the three ids:
+
+```text
+add-greeting: code
+  task 1.2 is not checked
+content ids: spec 93eafcdc213a, design 86a687cc7c6d, code 60d50c98aef8
+```
+
+With `--json` and a task:
 
 ```json
 {
-  "model": "opus",
-  "effortLevel": "high"
+  "task": "add-greeting",
+  "stage": "code",
+  "missing": [
+    "task 1.2 is not checked"
+  ],
+  "not_automated": 0,
+  "content": {
+    "spec": "93eafcdc213a",
+    "design": "86a687cc7c6d",
+    "code": "60d50c98aef8"
+  },
+  "broken_rules": 0
 }
 ```
 
-`cw install --host codex` prints the further recommended Codex settings from
-[`global/codex-defaults.toml`](../global/codex-defaults.toml) without editing
-`config.toml`. Paths, trusted projects, plugins, MCP settings, permissions, and
-authentication remain local decisions. A running session keeps its existing
-settings.
+Without a task, the text output is one line per folder, such as
+``add-x: spec (3 missing; `cw change status add-x` names them)``, and the JSON output is
+`{"changes": [...]}` with one object as above for each folder. In JSON an empty id is `""`.
 
-The shared policy is version 3. Its `sol` profile, `sol_unavailable` fallback and
-`max_for_sol` rule keep their names as schema identifiers, whichever model the
-`sol` profile runs. `max_for_sol: configured_or_explicit_user_request`
-permits a configured Max default when `configured_max_profiles` exactly lists every
-Max-default profile; today that is `decision`. Older `explicit_user_request`
-policies remain readable and continue rejecting configured Max for the `sol` profile. The repository check
-(`go test ./internal/skillcheck`) loads the policies.
+| Exit | When |
+| --- | --- |
+| 0 | The stage is printed, at any stage. |
+| 1 | The named folder does not exist (`cw: openspec/changes/no-such-task/ does not exist`), or the directory is not in a git repository. |
+| 2 | The command line is wrong: more than one task, or a task name that is not lower-case words joined by hyphens. |
 
-Use compact skill triggers, relevant references, and bounded worker briefs to
-control context. Pass exact source revisions, ownership, constraints, and the
-required evidence rather than the whole conversation. Effort labels alone do not
-prove savings; compare equivalent tasks using quality, elapsed time, and actual
-token usage. See [model guidance](https://learn.chatgpt.com/docs/models) and
-[manual routing evaluations](skill-evaluation.md).
+## cw change check
 
-## Production planning with OpenSpec
+```text
+cw change check [<task>]
+```
 
-[`production-plan`](../skills/production-plan/SKILL.md) automatically uses
-OpenSpec in a scoped project with its own initialized configuration/layout or
-declared store. OpenSpec supplies the change's schema, templates, dependencies,
-and artifact paths; the skill supplies source-grounded engineering decisions,
-failure behavior, acceptance evidence, and required design review. Its focused
-[integration reference](../skills/production-plan/references/openspec.md) is loaded
-only for that workflow. An unrelated workspace or machine-wide default store
-does not opt a project in.
+Checks the files of the named folder, or of every folder under `openspec/changes/` except
+`archive/`, against the rules below. A folder at an earlier stage passes when the files it has obey
+their rules: a missing file breaks no rule.
 
-For an existing OpenSpec project, ask:
+### The rules
 
-> Use $production-plan to plan the retry change in this project, continuing
-> change `retry-delivery`. Keep our accepted decisions and completed history.
+Specifications, for each `specs/<capability>/spec.md`:
 
-When saving planning artifacts is intended, name that boundary:
+- Two requirements of one file have the same name.
+- A requirement under `ADDED` has the name of a requirement that
+  `openspec/specs/<capability>/spec.md` holds. It must be under `MODIFIED`.
+- A requirement that is not under `REMOVED` holds neither `SHALL` nor `MUST`, has no `Source:`
+  line, or has no scenario.
+- A scenario of such a requirement does not hold exactly one `- **WHEN**` line and one
+  `- **THEN**` line.
 
-> Use $production-plan to update only the planning artifacts for `retry-delivery`.
-> Add unchecked follow-up work for changed requirements and stop at the handoff.
+Tasks, in `tasks.md`:
 
-Plan Mode always returns a complete chat preview without writing files. An
-explicit chat-only request also keeps the plan in chat. Other projects retain
-ordinary chat planning. Missing or incompatible OpenSpec tools/configuration
-are reported as prerequisites while useful planning continues; the suite does
-not install OpenSpec, initialize projects, or change global profiles.
+- The file holds no task of the form `- [ ] 1.1 <text>`.
+- A task lacks `Size:`, `Depends on:`, `Check:` or `Source:`.
+- A task depends on a task that is not earlier in the list.
+- A requirement of the change, under any of the three headings, is named by no task.
 
-The default schema maps purpose/scope into the proposal, observable behavior
-into specifications, engineering decisions/evidence into design, and ordered
-implementation/verification into unchecked tasks. Custom schemas and optional
-artifacts follow the project's actual instructions. Artifact validation and
-completion are distinct from implementation completion and production evidence.
-Planning does not automatically apply, sync, archive, commit, or publish a change.
+Design, in `design.md`:
 
-OpenSpec remains an optional project dependency. This adapter's compatibility
-baseline is 1.14.1; inspect the installed version and command capabilities for
-later releases. CLI inspection disables telemetry and completion hooks per
-process without changing user settings. See the [official CLI reference](https://openspec.dev/docs/cli)
-and [evaluation boundaries](skill-evaluation.md).
+- There is no table under `## Building blocks` or `## Rules`, or a table lacks one of its columns.
+- New holds something other than `yes` or `no`; a block has no responsibility.
+- The dependencies of the blocks form a cycle.
+- A new block names no existing code under Reuse considered.
+- A rule has nothing under Checked by, or names a check that `cw.toml` does not declare.
 
-## Decision advisers
+Tests, in `tests.md`:
 
-Advisers are optional hosted models that return typed Choice judgments at the two
-decision checkpoints of a substantial task. They need no separate executable or
-SDK: `cw consult` makes plain HTTPS calls. An adviser participates only when it is
-configured: enabled in the policy's `consultation.providers` with its pinned model,
-with its key present in the process environment or the saved credentials, opted
-in to, and not disabled in your preferences. You opt in by saving the key with
-`cw keys set`, by listing the provider ID under `advisers.enabled` in
-`preferences.json`, or by passing `--policy`; a key in the environment alone binds
-no adviser. To disable one and keep its key, list its provider
-ID under `advisers.disabled` in `preferences.json` in the configuration directory,
-edited by hand; tasks started afterwards do not bind it.
+- There is no table with the column Scenario, or the table lacks Test file or Text.
+- A row is `not automated` and gives no reason, or names no test file or no text.
+- The test file of a row does not exist, or does not hold the text.
+- The test file of a row is absolute or lies outside the repository, also through a symbolic
+  link. `cw change check` then reads nothing outside the repository.
+- Once every task is checked: a scenario of a requirement under `ADDED` or `MODIFIED` has no row,
+  or `tests.md` is missing while the change has scenarios.
 
-| Provider ID | Adviser | Pinned model | Key | Shipped default |
-| --- | --- | --- | --- | --- |
-| `subq_snap` | SubQ Snap | `subq-snap-preview` | `SUBQ_API_KEY` | Enabled |
-| `openai_decisions` | OpenAI Decisions | `gpt-6-luna` | `OPENAI_API_KEY` | Enabled |
-| `jev` | TypeSafe Jev | exact `jev-X.Y.Z`, such as `jev-1.14.0` | `TYPESAFE_API_KEY` | Opt-in |
+Reviews, in `reviews.md`:
 
-The [adviser setup](advisers.md#configure-advisers) shows masked terminal
-input, presence checks, CLI inheritance and desktop launch environments. An export
-in another terminal does not update a running agent or integration-server process;
-restart from the configured environment and open a fresh chat. Never commit key
-values, put them in prompts, or include them in logs or evidence shared with workers.
+- A table under `## Reviews`, `## Findings` or `## Approvals` lacks one of its columns.
+- A review has a Stage other than `spec`, `design` or `code`, or a Round that is not a number from
+  1; an approval has a What other than `spec` or `design`.
+- A finding has a Stage, Severity or Disposition outside its values, or a Round that is not a
+  number from 1.
+- A finding is `rejected` or `deferred` without a reason.
+- A finding is `blocker` or `major` and `deferred`.
+- Every task is checked and a finding is `open`.
 
-`cw keys set NAME` saves a key read from standard input; `cw keys status` reports,
-for each key, whether its own process has it in the environment or the private
-saved file, never the value. Keys are optional for installation and validation.
-These offline checks do not establish key validity, service availability, or access
-from a different process.
+`cw change check` does not judge whether a review or an approval is of the current content;
+`cw change status` does.
 
-### Policy and binding
+### Output and exit statuses
 
-The shared policy is version 3; any other version is rejected. `consultation` holds
-the deadline, attempt and retry settings, the
-[question patterns](../skills/task-orchestration/references/question-patterns.json)
-path, ownership, reuse, sharing, `comparison: coordinator_evidence_and_verification`,
-and `providers`: a possibly empty mapping of enabled provider IDs to pinned models.
-The Claude Code policy has no consultation section; participation follows the
-shared policy, the keys present and the user's opt-in. Policy changes require their own authorized
-change. Which advisers participate, how `cw task start` binds them, what
-`--policy` does and how to opt in to Jev are in the user-facing
-[adviser setup](advisers.md#configure-advisers) and in
-[participation](../skills/task-orchestration/references/adviser-providers.md#participation);
-the measurement behind leaving Jev out is in
-[why Jev is opt-in](../skills/task-orchestration/references/adviser-providers.md#why-jev-is-opt-in).
+Each broken rule is one line, `file:line: text`, with the file from the root of the repository.
+When the rule has no line, the form is `file: text`. A last line gives the count:
 
-### Flow and checkpoints
+```text
+openspec/changes/add-greeting/design.md:7: the building blocks depend on each other in a cycle: `greeter`, `app`
+broken rules: 1; each line above names the file, the line and the rule
+```
 
-The task coordinator owns consultations, their scope and reuse. Substantial tasks
-follow the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow):
-classify, before checkpoint, implement and verify, fresh final checkpoint, and
-complete only after `cw task verify`. When the checkpoints are required, how each
-request is prepared, sent, recorded and reused is in
-[task checkpoints](../skills/task-orchestration/references/consultation-helper.md#task-checkpoints)
-and the sections after it; the plan shape that declares them not required is in
-state 1 of the [decision flow](../skills/task-orchestration/SKILL.md#follow-the-decision-flow)
-and in the example `cw task start --help` prints.
-After the before checkpoint, advisers join only at the four
-[adviser points](../skills/task-orchestration/references/adviser-providers.md#adviser-points-in-the-flow),
-and only when the task's binding holds one; otherwise each point is skipped and
-recorded as "no advisers configured", and the flow runs unchanged.
+A folder that obeys every rule gives `add-greeting: the files obey their rules`.
 
-### Provider notes
+| Exit | When |
+| --- | --- |
+| 0 | Every folder obeys its rules, or `openspec/changes/` holds no change folder. |
+| 5 | At least one rule is broken. |
+| 1 | The named folder does not exist; a file cannot be read; a rule of `design.md` names a check and `cw.toml` cannot be read; or the directory is not in a git repository. |
+| 2 | The command line is wrong, including `--json`, which this command does not take. |
 
-**SubQ Snap.** Read SubQ's [Decisions API](https://docs.subq.ai/endpoints/decisions-api/)
-and [models](https://docs.subq.ai/using-the-api/models/). `subq-snap-preview` is the
-documented public preview alias, not an immutable version pin; records keep the
-requested and returned models. SubQ [retains data indefinitely by default](https://docs.subq.ai/using-the-api/data-retention/).
-Organization-level zero data retention is available and applies to Decisions. The
-documented per-request `store: false` opt-out applies to Chat Completions and
-Responses; this helper does not claim it for Decisions.
+### As a check in cw.toml
 
-**OpenAI Decisions.** The adviser uses `gpt-6-luna` through the dedicated
-[Decisions API](https://developers.openai.com/api/docs/guides/decisions), separately
-from dispatching a `luna` worker profile. The adapter sends deterministic text for the
-same shared state, maps questions to named Choice arrays, and normalizes named
-answers and probability arrays. A question refusal is missing coverage; valid
-choices from the same response remain usable. Read the current
-[API contract](https://developers.openai.com/api/reference/resources/decisions/methods/create)
-and applicable [data controls](https://developers.openai.com/api/docs/guides/your-data)
-before sharing.
+`cw change check` reads only the files. It takes no snapshot and keeps no state, so a repository
+can declare it as a check in `cw.toml`, as this repository does:
 
-**TypeSafe Jev (opt-in).** `skills-manifest.json` registers `typesafe-ai` from
-[`third_party/typesafe-ai`](../third_party/typesafe-ai/SKILL.md); its
-[development-consultation guide](../third_party/typesafe-ai/references/development-consultations.md)
-and the official [API contract](https://docs.typesafe.ai/api) and
-[model reference](https://docs.typesafe.ai/models) describe the service. The
-[Jev 1.13 limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13) are
-version-specific; do not describe them as verified 1.14 behavior. The
-[setup guidance](advisers.md#optional-set-up-jev) explains moving aliases and the
-separate image, Box and long-context opt-ins, which the helper never sends.
-TypeSafe is hosted in the US, offers zero data retention only to enterprise
-customers, and states in its privacy policy that it does not train on prompts.
+```toml
+[[check]]
+id = "record"
+run = ["cw", "change", "check"]
+```
 
-Before configuring any adviser, confirm that sending source excerpts to that
-provider is permitted. The local record retains the prepared request verbatim, so
-sanitizing input is the coordinator's responsibility. No credential is written into
-records.
+The gate then treats it as any other check: a commit is denied while `record` has no passing run on
+the content being committed.
 
-An optional live availability check requires an explicit request, uses only
-synthetic public text, and validates each requested model, expected question IDs,
-answer types, allowed options, finite probabilities and distributions. A successful
-response is availability evidence for that request, not evidence of calibrated
-accuracy or implementation correctness.
+## Existing specifications
 
-### Adjudication
+The current requirements of a repository live in `openspec/specs/<capability>/spec.md`. Before the
+spec stage writes, `lookup` finds the specifications the repository holds there and in every change
+folder that is not archived.
 
-The coordinator owns the final decision: the record holds each adviser's result
-and a per-question comparison and leaves `final_decision` pending, and
-`cw consult --adjudicate` validates the coordinator's decision offline. The
-decision shape and every rule it enforces are in
-[adjudicate without network access](../skills/task-orchestration/references/consultation-helper.md#adjudicate-without-network-access).
+- **A new behaviour** goes under `## ADDED Requirements`. `cw change check` refuses an `ADDED`
+  requirement whose name `openspec/specs/<capability>/spec.md` already holds for that capability.
+- **A changed behaviour** goes under `## MODIFIED Requirements`, with the same name and its full
+  new text. It obeys the same rules as an added one. No second requirement is written for the same
+  behaviour.
+- **A removed behaviour** goes under `## REMOVED Requirements`. It needs only its name, and a task
+  that names it.
+- **A specification in another form**, such as prose in a documents folder, is named in a
+  `Source:` line and left unchanged.
 
-Unavailable or refusing advisers are reported while source work continues; one
-adviser's failure preserves the other results. Installation, validation, CI and
-`cw doctor` make no consultation requests.
+## The archive
 
-## Connected services
+When the developer says that a finished change has shipped, `spec-writer` brings
+`openspec/specs/` in line with it: every added requirement present, every modified one replaced,
+every removed one gone. `reviewer` compares the two. Then the folder moves to
+`openspec/changes/archive/<task>/`. No program merges the requirements; this step is an
+instruction to the roles and is not part of either path.
 
-Authenticate Jira, Confluence, and GitHub independently in each host on each device
-using the intended account for each service. Skill installation does not
-establish connector access or copy authentication. Verify the identity and a
-permitted read for each service separately before using it for a task.
-The public repository can be cloned without GitHub authentication. Cloning does
-not verify a connector's identity, private-repository access, or write access.
-
-Use a task's explicit authorization before writing to any service. After an
-authorized write, read it back; if the result is uncertain, reconcile remotely
-before retrying. Keep company content, project history, credentials, private
-audits, and private evaluation inputs outside this reusable source repository.
-Maintained evaluation fixtures contain synthetic public examples only.
+`cw change status` and `cw change check` skip `openspec/changes/archive/`, so an archived folder
+is no longer read.

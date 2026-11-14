@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"runtime"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -15,7 +14,6 @@ import (
 // Lock is a held lock. Close releases it.
 type Lock struct {
 	file  *os.File
-	dir   *os.File
 	path  string
 	check func(*os.File) error
 }
@@ -36,7 +34,7 @@ func Acquire(ctx context.Context, path string, opts Options) (*Lock, error) {
 		defer timer.Stop()
 		deadline = timer.C
 	}
-	lock := &Lock{dir: opts.Dir, path: path, check: opts.Check}
+	lock := &Lock{path: path, check: opts.Check}
 	if err := lock.open(ctx, opts, deadline); err != nil {
 		return nil, err
 	}
@@ -95,11 +93,10 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		fd, err := unix.Openat(l.dirFD(), l.path, flags, 0)
+		fd, err := unix.Open(l.path, flags, 0)
 		if errors.Is(err, unix.ENOENT) && !opts.NoCreate {
-			fd, err = unix.Openat(l.dirFD(), l.path, flags|unix.O_CREAT|unix.O_EXCL, 0o600)
+			fd, err = unix.Open(l.path, flags|unix.O_CREAT|unix.O_EXCL, 0o600)
 		}
-		runtime.KeepAlive(l.dir)
 		switch {
 		case err == nil:
 			l.file = os.NewFile(uintptr(fd), l.path)
@@ -116,13 +113,6 @@ func (l *Lock) open(ctx context.Context, opts Options, deadline <-chan time.Time
 			return &os.PathError{Op: "open", Path: l.path, Err: err}
 		}
 	}
-}
-
-func (l *Lock) dirFD() int {
-	if l.dir == nil {
-		return unix.AT_FDCWD
-	}
-	return int(l.dir.Fd())
 }
 
 // control runs fn on the lock file's descriptor. It fails once the Lock is
@@ -164,9 +154,7 @@ func (l *Lock) Verify() error {
 	if held.Mode&unix.S_IFMT != unix.S_IFREG {
 		return &os.PathError{Op: "lock", Path: l.path, Err: ErrNotRegular}
 	}
-	err := unix.Fstatat(l.dirFD(), l.path, &named, unix.AT_SYMLINK_NOFOLLOW)
-	runtime.KeepAlive(l.dir)
-	if err != nil || named.Dev != held.Dev || named.Ino != held.Ino {
+	if err := unix.Lstat(l.path, &named); err != nil || named.Dev != held.Dev || named.Ino != held.Ino {
 		return &os.PathError{Op: "lock", Path: l.path, Err: ErrReplaced}
 	}
 	if l.check != nil {

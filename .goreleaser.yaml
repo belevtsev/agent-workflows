@@ -10,7 +10,7 @@ builds:
     env:
       - CGO_ENABLED=0
       - GOWORK=off
-    goos: [darwin, linux]
+    goos: [darwin, linux, windows]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
@@ -20,15 +20,25 @@ builds:
 archives:
   - id: cw
     formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     name_template: '{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}'
     files:
       - LICENSE
       - THIRD_PARTY.md
       - licenses/*
 
+# One file lists the SHA-256 of every archive and every SBOM.
 checksum:
   name_template: SHA256SUMS
   algorithm: sha256
+
+# One SBOM per archive, made by syft, published with the release as
+# <archive>.sbom.json. The release job installs syft.
+sboms:
+  - id: archives
+    artifacts: archive
 
 changelog:
   use: github
@@ -42,6 +52,9 @@ changelog:
       - '^test(\([^)]*\))?:'
       - '^chore(\([^)]*\))?:'
 
+# A draft: release.yml makes it public after it has attested the archives.
 release:
-  draft: false
+  draft: true
+  # A second run for the same tag replaces the draft of the first.
+  replace_existing_draft: true
   prerelease: auto

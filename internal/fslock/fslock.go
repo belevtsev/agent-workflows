@@ -8,8 +8,9 @@
 // names once the lock is held.
 //
 // Acquire polls with LOCK_NB, so a wait is bounded by the context and by
-// Options.Wait. Only Linux and macOS are supported; elsewhere Acquire fails
-// with an error that matches errors.ErrUnsupported.
+// Options.Wait. Linux and macOS use flock(2); Windows uses LockFileEx with
+// the same meaning, and fslock_windows.go lists what differs there. Elsewhere
+// Acquire fails with an error that matches errors.ErrUnsupported.
 package fslock
 
 import (
@@ -27,10 +28,6 @@ const NoWait time.Duration = -1
 
 // Options select the kind of lock and how long Acquire waits for it.
 type Options struct {
-	// Dir, when non-nil, is an open directory that path is resolved against
-	// with openat(2), so a caller that reached it without following symlinks
-	// keeps that guarantee. Dir must stay open until the Lock is closed.
-	Dir *os.File
 	// Shared takes a shared lock instead of an exclusive one, and opens the
 	// file read-only, so a reader needs only read permission.
 	Shared bool

@@ -1,904 +1,382 @@
-# Plugin hooks
+# Hooks
 
-`hooks/hooks.json` registers the agent-workflows plugin's hooks for Claude
-Code: one at session start and four before each Bash command. Codex runs
-`hooks/codex-hooks.json` instead, which `.codex-plugin/plugin.json` names, once
-you trust it: the same hooks with `--host codex`; [Codex](#codex) covers what
-differs there. Each runs `cw`; when `cw` is not on `PATH` they degrade to printing the
-conventions file or doing nothing. No hook uses a script file: every command is
-inline, which keeps the repository's automation policy (`go test ./internal/skillcheck`)
-satisfied.
+`cw init` installs three git hooks. Each one asks `cw hook` whether git may
+record or send the content, and `cw hook` answers from the records of earlier
+runs. A hook executes no check and waits for none: `cw run` produces the
+records before the commit. [Evidence](evidence.md) says what a record proves.
 
-## Session start
+The examples on this page were produced on Linux with git 2.53. Temporary
+paths are shortened to `<repository>`.
 
-On `startup`, `resume`, `clear` and `compact`, `cw hook session-start` returns
-`global/AGENTS.md` as the session's additional context. With the plugin option
-`session_doctor` set to `true` (`CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR=true`), it
-appends the one-line `cw doctor --summary` for the session's directory. That
-summary is produced with a 5 second deadline and cached for one hour under
-`${CLAUDE_PLUGIN_DATA}/doctor/<sha256 of the directory>.json`; when it cannot be
-produced in time, the conventions are returned alone.
+## What each hook judges
 
-Under Codex ([which host](#codex)), a `resume` adds nothing. A resumed
-Codex thread keeps all that earlier session starts added, and after a
-compaction, which drops it, Codex runs the hook again with `compact`
-([Codex](#codex)). `cw` then prints a SessionStart object without
-`additionalContext`: printing nothing would make the hook command print the
-file. The lines below and the doctor summary also wait for the next startup
-or compaction, so a resume never suggests `cw gate install` beside the
-`compact` run that Codex can start at the same moment. A thread started before
-you trusted the hooks gets the conventions at its next compaction. Claude
-Code's `resume` is unchanged.
+| Hook | git runs it | What `cw` judges |
+| --- | --- | --- |
+| `pre-commit` | before `git commit` records a commit, and when a conflicted `git merge`, `git cherry-pick` or `git revert` is continued | the tree of the index, which is the tree the commit records |
+| `pre-merge-commit` | before `git merge` records a merge commit | the tree of the index, which is the tree of the merge commit |
+| `pre-push` | before `git push` sends anything, also with `--dry-run` | the tree of the new tip of each ref the push updates |
 
-Between the conventions and that summary, after a blank line, it adds one
-short line for each version that is out of step, and one when git's hooks
-would catch more than the plugin hook does; the context is paid for in every
-session, so there is nothing when all is in order:
+A tree is allowed when it holds a valid `cw.toml` and every check it declares
+has a recorded passing run on that tree's content. A tree whose `cw.toml`
+declares no check is allowed.
 
-- `plugin 3.0.0-rc.3, cw 3.0.0-rc.2: upgrade cw` when the `version` of the
-  plugin manifest beside `global/` (`.claude-plugin/plugin.json`, or
-  `.codex-plugin/plugin.json` under [Codex](#codex)) and the `cw version`
-  differ on major, minor, patch or pre-release. It ends `update the plugin`
-  when `cw` is the newer one. A `cw` built between tags (`dev` or a Go
-  pseudo-version) is not compared. A `cw` older than v3.0.0-rc.2 prints no
-  line.
-- `Claude Code 2.1.291, agent-workflows needs 2.1.292: upgrade Claude Code`
-  when the client is older than the minimum in the
-  [quick start](../README.md#quick-start). No documented hook input or
-  variable carries the client version, so `cw` reads `AI_AGENT`, which Claude
-  Code sets to a value such as `claude-code_2-1-311_harness` unless the
-  environment it starts in already names another agent. Any other value, and
-  Codex, give no line.
-- `git hooks absent, so a commit or push from a script, an alias or a terminal
-  skips the verify gate: suggest cw gate install to the user`, once per task:
-  when the session's repository has an open substantial task
-  ([Which records gate](#which-records-gate)), verified or not, that has not
-  had the line yet, and `cw gate status` reports a hook `absent` from the
-  repository's own hooks directory. When the other hooks are installed, the
-  line names the absent ones and says what skips the gate without them, as
-  `git hook pre-merge-commit absent, so a merge commit made without conflicts
-  skips the verify gate: suggest cw gate install to the user` does where an
-  older `cw gate install` wrote only `pre-commit` and `pre-push`. `cw` then
-  records the suggestion as an empty file
-  `${CLAUDE_PLUGIN_DATA}/gate-suggested/<task id>` for each open
-  task, so a resume, clear or compact repeats nothing, and only a new task
-  brings the line back. Without that directory, or when the file cannot be
-  written, the line comes every time. A hook that `cw gate install` did not
-  write (`foreign`, such as a hook manager's, which may already run the
-  gate), a hooks directory that other repositories use (`shared`, where
-  install needs `--shared`), and `enforce_verify` set to `false` give no line;
-  `cw doctor` reports the first two
-  ([Installing the git hooks](#installing-the-git-hooks)). The session-start
-  doctor summary leaves out the `git_hooks` check, which the line covers. The line
-  asks the agent to suggest the command, because `cw` writes git's hooks only
-  when you ask.
+### pre-commit and pre-merge-commit
 
-The session's directory, which the last line and the doctor summary need, is
-the `cwd` of the hook input on stdin. `cw` reads stdin only when one of them
-is on, or under Codex for its `source`, and for at most 2 seconds, then takes
-its working directory, which Claude Code and Codex set to the session's
-directory. Input it cannot read gives no source, so the context is added.
+`cw` writes the tree of the index from a copy of the index file, so the index
+itself does not change. Inside the hook git points `GIT_INDEX_FILE` at the
+index the commit will use, so the judged tree is the commit's tree whether it
+was built from the index, by `git commit -a` or by `git commit <path>`.
 
-When `cw` is not on `PATH`, the hook command prints the file followed by one
-line that starts `agent-workflows: the commit and push verify gate is inactive
-because cw was not found on PATH.` and goes on with the `go install` command for
-the plugin's release tag and a link to [Get cw](operations.md#get-cw), so the
-session knows the gate below is off and can give the user the install command.
-When `cw` is present but fails or prints nothing, the hook command prints the
-file alone.
+When the commit is denied and the working tree holds other checked content
+than the commit for a check that is not satisfied, the denial lists up to 20
+paths that differ and says whether the working tree as a whole is verified:
 
-## Publication gate
-
-Three `PreToolUse` handlers run the same command, `cw hook pre-publish`: one for
-every Bash command whose text contains `git` (the condition `Bash(*git*)`), one
-for every one that contains `abandon` (`Bash(*abandon*)`,
-[Abandoning a task](#abandoning-a-task)), and one for every one that contains
-`owner-approval` (`Bash(*owner-approval*)`, [Owner approval](#owner-approval)). Claude Code checks a condition
-against each command of a compound line, so neither of the last two requires
-`cw` in the same command as `abandon` or `owner-approval`, as in
-`C=cw; $C task abandon`; quotes inside
-the word do not hide it, so `cw task aban''don` runs the second handler too;
-and it runs both when it cannot tell which commands a Bash input runs, as for
-`echo "$(printf x)"`. Where several handlers run for one command, they reach
-the same decision, and the host applies it once
-([Recorded host runs](#recorded-host-runs)). Codex ignores the conditions, so
-its hooks file has one gate handler, `cw hook pre-publish --host codex`,
-without a condition, which runs for every shell command ([Codex](#codex)). `cw hook pre-publish` then
-finds each `git commit` and `git push` in the command and the directory it
-runs in, each `cw task abandon` and each `--owner-approval` of a `cw` command,
-and exits at once, without output, when there is none.
-
-The gate asks a cooperative agent to stop when it skipped a step; it is not a
-defence against an agent that sets out to bypass it. See the
-[threat model](../SECURITY.md#threat-model) and [Known bypasses](#known-bypasses).
-
-`cw publish` applies the same gate itself, before it commits or pushes: it runs
-the same search for open records (over the task's own store and the store
-below), so the gate also holds where the hook does not run, such as under Codex
-before you trust its hooks. It refuses with exit 3 `open-record` instead of a deny. The hook does not inspect `cw publish`:
-its command text names no git, and cw runs git itself.
-
-### Recognised commands
-
-The hook reads the command the way the shell does before it expands anything
-(`internal/shellwords`): it splits it into simple commands at `;`, `&&`, `||`,
-`|`, `&`, newlines and parentheses, and into words with their quotes and
-backslash escapes resolved. Text inside quotes, in a heredoc body or in a
-comment is never a command, so `echo "todo; git commit later"`,
-`rg "foo|git commit" docs` and `cat <<'EOF'` with `git push` in its body are
-allowed.
-
-That reading fails closed, and the set of commands it trusts is deliberately
-small. It allows a command that names git outside a command only when every
-form in the line is one it reads exactly as bash, zsh and dash do, and every
-simple command in the line, inside substitutions too, is one of these:
-
-- `echo`, `printf` without `-v`, `cat`, `rg` without `--pre` or
-  `--pre-glob`, `grep`, `jq` and `cd`;
-- `git commit` and `git push`, which the gate checks anyway, and `gh pr`;
-- the reserved words `if`, `then`, `else`, `fi`, `for`, `do`, `done`,
-  `while`, `case`, `esac`, `{`, `}` and `!`.
-
-The command must also hold no `NAME=value` assignment, and no redirection
-other than a heredoc or here-string as input, `/dev/null`, or a duplicated
-descriptor such as `2>&1`; `cat > notes.md <<'EOF'` writes a file and is not
-trusted. Any other command, however harmless, keeps the decision of the
-simpler split the hook used before, which reads text in quotes and heredocs
-as commands: the hook applies both and denies when either finds a commit or
-push. It finds git:
-
-- after leading `NAME=value` assignments, shell keywords (`if`, `then`, `do`,
-  `!`, `{` and the like) and the prefixes `builtin`, `exec`, `eval`, `nohup`
-  and `noglob`;
-- after the wrappers `command`, `env`, `sudo`, `time`, `nice`, `timeout` and
-  `stdbuf` with their own options (`command -p`, `env -i`, `env -u NAME`,
-  `sudo -u USER`, `nice -n 5`, `timeout 30`, `stdbuf -oL`); `env -C DIR`
-  (also `-CDIR` or in a cluster such as `-iC DIR`), `env --chdir=DIR` and
-  `sudo -D DIR` move the command to `DIR` (within one wrapper the last
-  one wins, as in `env` and `sudo`; nested wrappers such as
-  `env -C a env -C b` move it to `a/b`);
-- around a `$(...)` or backtick substitution in the same command
-  (`GIT_COMMITTER_DATE="$(date -R)" git commit`); the command inside a
-  substitution, including one in an unquoted heredoc body, is checked too,
-  from the directory in effect where it appears;
-- inside a command string given to `sh`, `bash`, `zsh`, `dash` or `ksh` with
-  `-c` (also `-lc`, `-e -c`, `-c --` and similar), to `eval` or to
-  `env -S`; a string nested more than eight levels deep counts as a commit
-  and a push;
-- written as a path (`/usr/bin/git`), quoted (`"git"`, `'commit'`) or with a
-  backslash that bypasses an alias (`\git`);
-- with git's global options, including `-c NAME=VALUE`, `--git-dir`,
-  `--work-tree` and `-C DIR`.
-
-The directory starts as the session's working directory and moves with a
-preceding `cd DIR` or `pushd DIR`, quoted paths with spaces included, and with
-each `-C DIR`; a `cd` inside parentheses, a substitution or an `sh -c` string
-ends with them, as in a subshell; redirections on a `cd` are ignored, and
-`"$(pwd)"` or `"$(git rev-parse --show-toplevel)"` after `cd` or `-C` stays in
-the same repository. `DIR` may start with `~` or `~/`, `$HOME`, `${HOME}`,
-`$PWD` or `${PWD}`, unquoted or in double quotes: `~` and `$HOME` are the
-hook's `HOME`, which the agent's shell shares, and `$PWD` is the directory in
-effect, so `cd "$PWD"`, `cd ~/proj` and `git -C "$HOME/proj"` are followed.
-Quoted and escaped characters are literal, so `git -C "…/com~apple~CloudDocs/proj"`
-and `cd '/tmp/price$5'` are followed as written. A bare `cd` moves to `HOME`;
-`cd -L DIR`, `cd -P DIR` and `cd -- DIR` move to `DIR`, and `pushd -n DIR`
-stays where it is. A git `-C DIR` is also checked as plain text, unexpanded,
-as earlier versions of the hook read it.
-
-The hook never skips a git command after a directory change it cannot
-follow: `cd -`, `cd ""`, `popd`, `pushd` without a directory, a directory
-stack entry such as `cd +1`, other `cd` and `pushd` options, `cd -P` to a
-path with `..`, and a `DIR` the hook cannot resolve. A `DIR` cannot be
-resolved when it is another variable (`cd $OTHER`), `~user`, an unquoted
-glob, an unquoted `$HOME` or `$PWD` the shell may split (a value with a
-blank, or a command that sets `IFS`), or `~` or `$HOME` in a command that
-assigns, exports, unsets or reads `HOME` (`HOME=/x`, `export HOME=/x`,
-`unset HOME`, `read HOME`); likewise `$PWD` where `PWD` is set, and in a
-double-quoted `sh -c` or `eval` string, where the outer shell has already
-expanded it. After such a change, later git commands are checked against the
-session's working directory until an absolute `cd` or `-C`, and a record
-that gates them there asks instead of denying, naming the change
-([Asking instead of denying](#asking-instead-of-denying)). A script or
-program that runs git itself (`./release.sh`, `make publish`) is not seen,
-because the command text does not name git.
-
-### Which records gate
-
-A record governs the command when all of the following hold:
-
-- its `plan.kind` is `substantial`;
-- it has not been abandoned with `cw task abandon`;
-- its `baseline.root` is the repository's worktree root, or the main worktree's
-  root when the command runs in a linked worktree (a record started in the
-  main checkout therefore governs every linked worktree; a record started in a
-  linked worktree governs that worktree only);
-- its latest revision was written within the last 14 days. Any recording
-  command (`assess`, `run`, `assign`, `verify` and the others) writes a
-  revision, so a task that is being worked on keeps governing however long it
-  runs; one nobody has touched for 14 days stops. A revision dated after the
-  current time counts as just written, which happens after the clock steps
-  back; `cw task abandon` is the way out of a record with a wrong far-future
-  date.
-
-Starting a new record does not hide an older one: every governing record gates
-until `cw task verify` passes on the source being published, and the hook
-denies the command with a reason that names up to three gating records, why
-each gates, and both ways out: `cw task verify --task <task-id>`, or, for
-a task that is finished or was given up, `cw task abandon --task <task-id> --reason TEXT`,
-which needs the user's confirmation ([Abandoning a task](#abandoning-a-task)).
-The reason names each task by its ID, which `--task` takes, not by its directory. Past three, it
-gives the number of other gating records and points at
-[`cw task list`](operations.md#listing-tasks), which lists them.
-An abandoned record accepts no further revisions and never gates.
-
-A record is finished, and no longer governs, once another governing record
-(substantial, not abandoned, written within the 14 days) for the repository
-was started, after that verification, from exactly the bytes it was verified
-on (the newer record's `baseline_manifest.sha256` equals the
-older one's `verification.source_sha256`). Two records started on the same
-bytes before either was verified do not finish each other. The usual sequence, verify task A, commit, start
-task B, therefore releases A, and B's own record then covers every later
-change. A record started over source that changed after A's last passing
-verification does not finish A, so starting a fresh record cannot hide
-unreviewed edits.
-
-A record written by `cw` v2.0.66 to v2.0.96, or by a v3 build before
-v3.0.0-rc.1, has no `packs` or `test_rules`, or binds the removed v1 Go rule
-(`go.package-test/v1`). `cw` refuses to read it, so
-neither `cw task verify` nor `cw task abandon` can close it, but it still gates
-by the rules above, judged from its newest decodable revision. When the deny reason names it, it names its
-directory: move that directory out of the task store, then start a new task
-with `cw task start`. Such a record that a release from v2.0.66 to v2.0.96
-verified as complete is finished and does not gate, since those releases
-recorded no source digest.
-
-### Abandoning a task
-
-`cw task abandon` closes a task so that it never gates again, so the decision
-belongs to the user. With `enforce_verify` on, the hook asks before every
-`cw task abandon` it finds (`permissionDecision: "ask"`), naming each task's ID,
-plan title and directory, or the directory alone when it cannot read the
-record there. Past three tasks, it counts the rest, with the directory they
-are in when it knows each one's. It finds the command as it finds git
-([Recognised commands](#recognised-commands)): `cw` by any path, after
-wrappers and prefixes, inside substitutions, `sh -c` strings and `eval`, with
-`--task DIR` or `--task=DIR`, and `DIR` resolved from the directory in effect.
-`cw` is not among the trusted commands, so a line that runs it also gets the
-simpler split's reading: the hook asks whenever words of the line are `cw`, by
-any path, as a value such as `C=cw` or as `go run …/cmd/cw@VERSION`, `task`
-and `abandon`, in any order, and names one task it cannot identify for each
-`task abandon` beyond those it read. That covers `cw` run by `xargs`,
-`find -exec` or `go run`, or through a variable, and also asks about
-`cw task abandon --help` and about a line that only mentions the three words
-next to a command the gate does not trust, such as
-`git add -A && git commit -m "docs: cw task abandon"`. A line without the word
-`task`, such as `go test ./cmd/cw -run abandon`, and a line of trusted
-commands that only mentions them, such as `echo "cw task abandon"`, are
-allowed.
-
-A `git commit` or `git push` that a record gates in the same Bash input is
-denied, as before: it runs before the task is closed. Under Codex the ask is a
-deny ([Codex](#codex)), and the user runs `cw task abandon` themselves.
-
-### Owner approval
-
-`cw task assign --owner-approval "<the owner's words>"` lets a round past its
-stage's cap, or a third fix round on an open finding or requirement, through and
-records the words ([round caps](operations.md#round-caps), [fix rounds](operations.md#fix-rounds)),
-and `cw task assign` or `cw task run --owner-approval "cost-budget=<words>"` lets
-the task go past its budget's stop ([budget stop](operations.md#budget-stop)).
-The agent supplies that text, so with `enforce_verify` on the hook asks before
-every `cw` command it finds with `--owner-approval TEXT` or
-`--owner-approval=TEXT`, quoting each text (three at most, counting the rest),
-so a person confirms the words are theirs. Text the shell expands, with a `$`
-outside single quotes or a backtick, as in `"$(cat words.txt)"` or `"$W"`, is not
-quoted: the ask says the gate cannot read those words. It finds `cw` as it finds
-`cw task abandon`, and fails closed the same way: a line whose words include `cw`
-and `owner-approval` that it cannot read, such as `C=cw; $C task assign
---owner-approval x`, asks about words it cannot read, while trusted commands
-that only mention them, such as `echo`, are allowed. Under
-Codex the ask is a deny, and the user runs the command themselves.
-
-### Records that cannot be read
-
-Any other record that `cw` cannot load is judged by its newest revision file
-that still decodes. Such records include a revision that is not JSON (such as
-after `echo '{' > <task>/record-000002.json`), a revision file or task
-directory that other users can read, a broken revision chain, and a record a
-newer `cw` wrote. When that revision says the record governs the repository
-by the rules above, and no readable record gates, the hook asks
-(`permissionDecision: "ask"`) instead of letting the command through, with a
-reason that names the task directory and the load error of up to three such
-records and counts the others, which `cw task list` lists, and `cw publish`
-refuses with exit 3 `open-record`. To clear it, remove the task directory or
-move it out of the task store; for a record from a newer `cw`, upgrade `cw`
-instead. A task directory in which no revision decodes is ignored
-([Known bypasses](#known-bypasses)). Under Codex the command goes ahead,
-unless it also raises an ask that Codex denies
-([Asking instead of denying](#asking-instead-of-denying), [Codex](#codex)).
-
-### Which source counts
-
-Only the content of the eligible source files counts: `cw task verify` records
-a digest of each file's path, mode and bytes (`verification.source_sha256`),
-so staging or committing the verified bytes does not reopen the record, and a
-push after the commit goes ahead. Editing any eligible file does reopen it. A
-record verified by a `cw` older than this digest stays open until it is
-verified again.
-
-The digest is of the working tree, so a commit must also record the working
-tree's content. For each path a `git commit` records differently from `HEAD`,
-the staged mode and bytes must equal the file on disk, and a path the commit
-removes must be gone from disk or ignored by git. Otherwise both the plugin
-hook and git's `pre-commit` hook deny while a record that passed on the
-working tree governs the repository, naming up to three such paths. So
-`git add` of bytes that were never verified, then the verified bytes put back
-on disk, then `git commit -m x` is denied, and so is a staged mode change
-alone (`git update-index --chmod=+x`). A path left unstaged keeps `HEAD`'s content
-and is not part of the change, so a partial commit of verified files goes
-ahead. The mode is the owner's execute bit, as git reads it; where
-`core.fileMode` is `false`, git ignores the bit on disk, so the mode counts
-only for a path whose mode the commit changes.
-
-The gate runs no git filter. It compares the bytes raw, as `cw task verify`
-reads them, and explains a staged blob that differs from them by what git's
-attributes say:
-
-- `filter=lfs`: allowed when the blob is a Git LFS pointer whose `oid` and
-  `size` are the SHA-256 and size of the file on disk, denied otherwise;
-- another `filter`, `ident` or `working-tree-encoding`: the hooks ask, since
-  the gate cannot tell what that conversion makes of the file (under Codex,
-  and in git's hook, as for the other asks);
-- end-of-line conversion, when the `text`, `eol` or `crlf` attribute is set
-  or `auto`, or else `core.autocrlf` is `true` or `input`: allowed when the
-  blob is the file's bytes with each CRLF turned into LF, denied otherwise;
-- anything else is denied.
-
-A submodule's commit, which `cw task verify` does not read, and an unmerged
-path, which git refuses to commit, are not compared. `git commit --amend` is
-compared with `HEAD`, not with the commit it replaces.
-
-The plugin hook judges the agent's command before it runs, so it reads the
-commit's content from the index as it stands: all of it for `git commit`, and
-for `git commit -a`, which records the working tree of every other path, the
-paths it removes and those marked assume-unchanged or skip-worktree, which
-`-a` leaves as staged. It does not judge a commit that takes paths from the
-working tree (`git commit PATH`, `-i`, `-o`, `--pathspec-from-file`); one
-that names another index, git directory or work tree (`GIT_INDEX_FILE=`,
-`GIT_DIR=` or `GIT_WORK_TREE=` in its command, or git's `--git-dir` or
-`--work-tree`); nor one after another command in the same Bash input that
-may change the index, such as `git add -A && git commit`. Only `cd`, `pushd`,
-`popd`, `echo`, `printf`, `cat`, `rg` without `--pre`, `grep`, `jq`, `pwd`,
-`ls`, `test`, `true`, `false`, `:` and `git push` keep the index, and only
-when they redirect no output to a file other than `/dev/null`:
-`cat saved > .git/index` writes it. The `pre-commit` hook that `cw gate install` writes
-judges every commit by the index git commits (`GIT_INDEX_FILE`)
-([Git hooks](#git-hooks)).
-
-The digest is taken where the command runs. For a command in the record's own
-worktree that is the record's `baseline.selected_path`; for a command in a
-linked worktree of the record's main checkout it is that linked worktree, and
-the hook denies, naming both paths, unless its source matches the verified
-bytes.
-
-A `cw` release older than these fields rejects the unknown `source_sha256` and
-`abandonment` members, so it cannot read a record this release has verified or
-abandoned; keep every host that shares a task store on the same `cw`. The same
-holds for `amendments`, which `cw task add-checks` writes: an older `cw` cannot
-read a record carrying it, and its hook skips such a record instead of gating
-it. It also holds for the record version: every revision this `cw` writes is
-version 5, which v3.0.0-rc.2 and older cannot read; the hook of v3.0.0-rc.2
-asks about such a record instead of skipping it
-([task record format](development.md#task-record-format)).
-
-### Asking instead of denying
-
-These cases ask for confirmation (`permissionDecision: "ask"`) instead of
-denying; a deny for any git command in the same Bash input wins, and asks in
-one input are joined. Codex cannot ask, so there the first five are denies
-and the last two let the command run, unless joined with one of the first
-five ([Codex](#codex)). Like the deny, a reason names at most three tasks and
-counts the rest.
-
-- A `cw task abandon` ([Abandoning a task](#abandoning-a-task)).
-- A push from a repository whose governing records all passed verification,
-  while the working tree has uncommitted changes to tracked files: the
-  verified bytes may then not be what the pushed commits hold.
-- A commit over records that all passed verification, when nothing it stages
-  differs from the working tree except paths whose staged content a git
-  `filter` other than `lfs`, `ident` or `working-tree-encoding` produced,
-  which the gate does not run ([Which source counts](#which-source-counts)).
-- A commit or push from a repository with no governing record at all, when the
-  change it publishes meets at least two of: more than 300 changed lines
-  (added plus deleted, from `git diff --numstat`), changed files under more than
-  one top-level directory (the first path component; files at the repository
-  root count for none), and a changed non-test code file with no test file
-  changed. A commit publishes the staged changes, or with `-a`/`--all` every
-  change to a tracked file; a push publishes the commits since the merge base
-  with `@{upstream}`, or without an upstream with `refs/remotes/origin/HEAD`
-  (no ask when neither exists). Test files are `*_test.*`, `*_spec.*`,
-  `test_*`, `*.test.*`, `*.spec.*`, `*Test.*` and `*Tests.*` names and
-  anything under a `test`, `tests`, `testdata`, `__tests__` or `spec`
-  directory, in any letter case. The reason suggests
-  `cw task start`. Set the plugin option `small_task_prompt` to `false`
-  (`CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT=false`) to turn this prompt off.
-- A commit or push after a directory change the hook cannot follow, such as
-  `cd $OTHER && git commit`, `cd - && git commit` or `popd && git push`,
-  when a record gates the session's working directory, where the hook checks
-  it instead ([Recognised commands](#recognised-commands)). The reason names
-  the change as written and the gating records as the deny does.
-- A commit or push from a repository where no readable record gates, but a
-  record that governs it cannot be read
-  ([Records that cannot be read](#records-that-cannot-be-read)). The gate
-  also works out the first two asks as if that record did not exist: a push
-  of uncommitted changes over the verified records beside it, or a
-  substantial change with no other record, worded "no readable cw task
-  record". Either one is joined to this ask in the same reason.
-- A commit or push the gate would judge while the task store cannot be located
-  or read ([Task store](#task-store)).
-
-### Task store
-
-The hook reads records from `$CW_TASK_STORE` when it is set, else from the
-state directory `cw task start` writes to (`$XDG_STATE_HOME/agent-workflows/workflow-tasks`,
-else `~/.local/state/agent-workflows/workflow-tasks`). `cw task start` does not
-read `CW_TASK_STORE`, and the hook and `cw consult` do not see `--store`: keep
-the two the same. When you set the variable, give `cw task start` that
-directory with `--store`; when you start a task with `--store DIR`, set
-`CW_TASK_STORE=DIR` for the hook and for `cw consult`, which reads a task-bound
-request's task record from this store and refuses the request without it. `cw publish` reads both the store of the task it publishes (the
-task directory's parent) and this store, once each when they are the same.
-
-Without `$CW_TASK_STORE`, the hook cannot locate the store when
-`$XDG_STATE_HOME` is relative, which names no store
-([paths](operations.md#paths)), or when the home directory cannot be
-resolved. It then asks before each `git commit` and `git push` it would
-otherwise judge, instead of letting the command through unchecked, with a
-reason that names the cause: "XDG_STATE_HOME must be an absolute path; set it,
-or set CW_TASK_STORE", or "cw cannot locate the task store (resolve home
-directory); set CW_TASK_STORE to it". It asks the same way when the store
-exists but cannot be listed, such as a store directory at mode 0000 or a
-regular file in its place, with the reason "cw cannot read the task store
-(ERROR); make it a directory you can read, or set CW_TASK_STORE to one". Under
-Codex the command goes ahead ([Codex](#codex)). Commands that the rules below
-let through without reading the store, such as one outside a Git repository,
-still go ahead. A store that does not exist holds no records.
-
-## Usage sampling
-
-A fourth `PreToolUse` handler, for every Bash command whose text contains `cw`
-and then `task` (`Bash(*cw*task*)`), runs `cw hook task-usage` with its output
-discarded, so it never adds a decision to the gate's. Before each `cw task`
-command that names a task with `--task DIR`, `--task=DIR` or a task ID, it
-imports the session's transcript (`transcript_path` in the hook input: a
-Claude Code transcript, or under Codex the session's rollout) within 10
-seconds, with cw's built-in price table, as `cw task usage` does, and stores
-the sample in that task's record when it matters
-([cost budget](operations.md#cost-budget)). The
-[budget stop](operations.md#budget-stop) of the `cw task assign` or
-`cw task run` that follows then reads it. A task ID is looked up in the task
-store that command would use: a `CW_TASK_STORE`, `XDG_STATE_HOME` or `HOME`
-assignment before `cw`, then cw's `--state-dir` and `--home`, then the hook's
-own environment.
-
-It reads no transcript, stores nothing and exits 0 when the command names no
-open task with a budget (none, abandoned, unreadable or started before
-profiles), when the import fails, is incomplete, or skips a malformed line or
-an unreadable file, as for a broken or missing transcript, and on any other
-error; a session's known usage then stays as last sampled. It runs alongside
-the gate's handlers and takes the task's lock only to store a sample. Codex
-ignores the condition and runs it for every shell command; it exits at once
-for a command that names no task. Where Codex has not been told to trust the
-plugin's hooks, nothing samples, and the skill runs
-`cw task usage --codex-session FILE` itself ([Codex](#codex)). A hook timeout
-(15 seconds) stores nothing.
-
-## Fail-open rules
-
-The gate only ever blocks or asks on a positive decision. `cw hook pre-publish`
-exits 0 without output, and the command proceeds, when:
-
-- the plugin options `enforce_verify` and `small_task_prompt` are both `false`
-  (`enforce_verify=false` alone removes the deny, the uncommitted-push ask,
-  the ask about content a filter staged, the ask before `cw task abandon` and the ask for a record that cannot be
-  read, which then counts as no record);
-- the command contains no `git commit`, `git push` or `cw task abandon` the
-  hook recognises;
-- the directory the command runs in is not inside a Git repository;
-- the task store holds no governing record and the change does not look
-  substantial;
-- anything fails internally: unreadable input, a task directory in which no
-  revision decodes or that cannot be listed, a failed source capture, a missing
-  `git`, a git command that fails or times out, and a file the staged-content
-  comparison cannot read ([Which source counts](#which-source-counts)), which
-  leaves a verified record allowing the commit. Two failures ask instead: a
-  governing record that cannot be read
-  ([Records that cannot be read](#records-that-cannot-be-read)) and a task
-  store that cannot be located or read ([task store](#task-store)). A record
-  written by v2.0.66 to v2.0.96 still denies: `cw` refuses it at its first
-  revision, so it gates even when a later revision is damaged;
-- under Codex, either of those two asks, unless it is joined with an ask that
-  Codex turns into a deny: Codex cannot ask, and a deny would block the user on
-  a file or setting they may not be able to fix from there ([Codex](#codex)).
-
-A 20 second deadline bounds the hook's Git and source-capture work. A record
-whose source identity cannot be captured in time is skipped, like a record
-whose capture fails; other records can still gate the command.
-
-The hook never exits 2, and the command strings in `hooks/hooks.json` end with
-`exit 0` rather than `exec`-ing `cw`, so even a `cw` too old to know the hook
-subcommand cannot block. A hook timeout (30 seconds) is treated by Claude Code
-as a non-blocking error.
-
-## Git hooks
-
-`cw hook git pre-commit`, `cw hook git pre-push` and
-`cw hook git pre-merge-commit` apply the same gate from git's own `pre-commit`,
-`pre-push` and `pre-merge-commit` hooks, so a commit, merge commit or push is
-checked however it starts: through an alias, a script, `make` or `xargs`, or
-from a terminal. `cw gate install` writes the three hooks into a repository
-([Installing the git hooks](#installing-the-git-hooks)), or a hook of your own
-can call them. Git runs each in the worktree it publishes from, and `cw`
-judges that repository by the rules above:
-
-- `cw hook git` knows which hook runs it only from its subcommand, the hook's
-  name, which the installed script passes; it ignores git's arguments and
-  stdin. `pre-commit` and `pre-merge-commit` judge a commit, `pre-push` a
-  push.
-- Git runs `pre-merge-commit`, not `pre-commit`, before `git merge` or
-  `git pull` makes a merge commit without conflicts. When a remote-tracking
-  ref (`refs/remotes/`) contains every commit the merge takes in, as it
-  contains the base branch after `git fetch` or within `git pull`,
-  `pre-merge-commit` lets the merge commit through without a check: it takes
-  in work already on a remote, not local work that no record covers. That
-  holds for any remote-tracking branch, not only the task's base. Git names
-  the commits to the hook in `GITHEAD_<object name>` variables, since it
-  writes `MERGE_HEAD` only after the hook; when it names none, or
-  `git for-each-ref --contains` fails, the merge commit is judged as below. Any
-  other merge commit, such as one of a local branch, is judged as
-  `pre-commit` judges a commit, so it stops while a record gates, and git
-  leaves the merge in progress (`git merge --abort` undoes it). A merge with
-  conflicts is committed by `git commit` or `git merge --continue`, which run
-  `pre-commit` and are judged as any commit, whatever they merge. A
-  fast-forward makes no commit and runs neither
-  ([Merging the base branch during a task](operations.md#merging-the-base-branch-during-a-task)).
-- While a record gates, the deny reason goes to stderr and `cw` exits 3
-  ([denied](operations.md#exit-statuses)); git stops at any non-zero status
-  and itself exits 1.
-- A git hook cannot ask, so each case in
-  [Asking instead of denying](#asking-instead-of-denying) prints its question
-  on stderr after `agent-workflows: warning: a git hook cannot ask for
-  confirmation`, exits 0 and git goes ahead: a record that cannot be read or
-  is from a newer `cw`, a task store that cannot be located or read, a push of
-  uncommitted changes over verified records, a commit whose staged content a
-  filter the gate does not run produced, and a substantial change with no
-  record. Git names the directory, so the ask about a directory change cannot
-  arise.
-- For the substantial-change warning, and for the rule that a commit records
-  the working tree's content ([Which source counts](#which-source-counts)), a
-  commit's change is the index git is committing (`GIT_INDEX_FILE`), so
-  `git commit -a` and `git commit PATH` count what they record.
-  `pre-merge-commit` gives no such warning: a merge
-  commit's change is the incoming branch's, such as the base branch's on
-  `git pull --no-rebase`, not work the task records.
-- Where `cw hook pre-publish` lets the command through without output
-  ([Fail-open rules](#fail-open-rules)), such as after a git failure or at the
-  20 second deadline, `cw hook git` exits 0 without output.
-
-The plugin config does not reach git. The hook reads
-`CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY` and `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`
-from git's environment, and `CW_GATE=off` turns it off, as in
-`CW_GATE=off git commit -m x`. `git commit --no-verify`,
-`git merge --no-verify` (and `git pull --no-verify`) and
-`git push --no-verify` skip git's hooks, `cw`'s included, for one command;
-`cw hook pre-publish` still checks a `git commit --no-verify` the agent runs.
-Git's hook variables, such as `GIT_DIR` and `GIT_INDEX_FILE`, reach the gate's
-own git commands, but not source capture, which runs git with a minimal
-environment of its own.
-
-### Installing the git hooks
-
-Nothing is installed unless you ask, one repository at a time (`--repo`
-defaults to the working directory; a symbolic link is followed first):
-
-```sh
-cw gate install --repo /path/to/repo
-cw gate status --repo /path/to/repo      # --json: {hooks_path, shared, hooks: [{name, path, state}]}
-cw gate uninstall --repo /path/to/repo
+```text
+cw: this commit is denied: its content has no recorded passing run of every declared check.
+  lint: not run on this content
+  The working tree holds other content than this commit. Paths that differ:
+    src/new.txt
+  The working tree as a whole is verified; this commit is not, because it records other content.
+cw: `cw run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:
+  cw run
 ```
 
-- **Where.** The hooks go in the directory git runs them from,
-  `git rev-parse --git-path hooks`: `.git/hooks`, or `core.hooksPath` when it
-  is set. `cw` runs that git without `GIT_DIR`, `GIT_WORK_TREE` and the other
-  variables that would select another repository. Linked worktrees share the
-  directory, so one install covers every worktree of the repository; only a
-  relative `core.hooksPath` resolves in each worktree's own root. When
-  `core.hooksPath` names a directory inside the worktree, the new hooks are
-  untracked files there, which `git status` lists.
-- **Shared directories.** A hooks directory can serve other repositories too:
-  `core.hooksPath` set in your global or system git configuration, or a hooks
-  directory outside the repository's git directory and work tree. Install
-  and uninstall then exit 4 ([refused](operations.md#exit-statuses)) and
-  change nothing, unless you pass `--shared`; `cw gate status` reports
-  `shared`. Install creates a missing hooks directory only inside the git
-  directory, and uninstall removes it again once it is empty; it refuses a
-  missing one anywhere else.
-- **What.** Each hook is a three-line `/bin/sh` script with mode 0755 that
-  passes its own name to `cw hook git`; `pre-commit` is:
+This is the case of a partial commit: `cw run` checked the whole working tree,
+and the commit records only part of it. Stage everything with `git add -A`, or
+set the rest aside with `git stash push --keep-index --include-untracked`, run
+`cw run` again, commit, and bring the rest back with `git stash pop`.
 
-  ```sh
-  #!/bin/sh
-  # agent-workflows: written by cw gate install; cw gate uninstall deletes this file
-  command -v cw >/dev/null 2>&1 || exit 0; exec cw hook git pre-commit "$@"
-  ```
+When a check that is not satisfied failed or timed out, the denial adds the
+line `cw: a check failed or timed out; first fix what its log shows.` before
+the command.
 
-  Install writes it to a temporary file and links that into place, so an
-  interrupted install never leaves part of a hook, and a file another program
-  puts there in the meantime is never replaced. On a file system without hard
-  links, install fails (exit 1) and changes nothing.
+After a denied merge, the merge stays in progress. Run `cw run`, then
+`git commit --no-edit` concludes it; `pre-commit` judges that commit.
 
-  The hook runs the first `cw` on git's `PATH`. With none, it exits 0 and git goes
-  ahead without a check or a message ([Known bypasses](#known-bypasses)). A
-  `cw` too old to have `cw hook git`, or, in `pre-merge-commit`, one older than
-  `cw hook git pre-merge-commit`, exits with an error, which stops git until you
-  upgrade it or run `cw gate uninstall` with the `cw` that installed the hooks.
-  An older `cw gate uninstall` does not know `pre-merge-commit` and leaves it
-  in place, so every merge commit then fails with `unknown command`: uninstall
-  with the newer `cw`, or move `pre-merge-commit` out of the hooks directory
-  (`git rev-parse --git-path hooks`). A repository whose hooks an older
-  `cw gate install` wrote has no `pre-merge-commit`: `cw gate status` reports it
-  `absent` until `cw gate install` runs again.
-- **Ownership.** `cw gate status` reports each hook as `installed` (its bytes
-  are exactly the script above, and it has an execute bit), `absent`, or
-  `foreign` (anything else at that path, including a copy of the script with
-  lines of your own). Git skips a hook it cannot execute, so the script
-  without an execute bit is `absent`, and the text output says so; install
-  restores its mode, and uninstall removes it. Install
-  replaces, and uninstall removes, only an installed hook: before either, `cw`
-  moves the file aside and checks it again, and puts back a file that changed
-  since the first check.
-- **A hook that is already there.** `cw gate install` leaves a foreign hook
-  unchanged, writes the others, exits 4 ([refused](operations.md#exit-statuses))
-  and prints the line to add after the foreign hook's first line:
+When the tree of the commit lacks a check that the tree of `HEAD` declares, or
+declares one with another `run`, `paths` or `timeout`, the hook prints a notice,
+whether it allows or denies:
 
-  ```sh
-  if command -v cw >/dev/null 2>&1; then cw hook git pre-commit "$@" </dev/null || exit $?; fi
-  ```
+```text
+cw: notice: this commit changes the required checks: `unit`: `run` was ["cat", "src/app.txt"] and becomes ["cat", "-v", "src/app.txt"]; `timeout` was 10m0s and becomes 5m0s
+```
 
-  In `pre-push` and `pre-merge-commit`, use `cw hook git pre-push` and
-  `cw hook git pre-merge-commit`. Hook managers write the hook
-  files themselves, so add the line where the manager reads it: to
-  `.husky/pre-commit` for husky, which points `core.hooksPath` at `.husky/_`;
-  as a `run:` command in `lefthook.yml` for lefthook; or as a `repo: local`
-  hook with `language: system` for the pre-commit framework. `cw gate status`
-  then still reports that hook as `foreign`.
-- **Reminders.** `cw` never installs the hooks by itself. When a substantial
-  task opens in a repository without them, the next session-start context
-  carries one line that suggests `cw gate install`, once for that task
-  ([Session start](#session-start)), and `cw doctor` reports a `git_hooks`
-  check whose detail names the absent hooks, says what skips the gate without
-  them (only a merge commit, when just `pre-merge-commit` is absent) and what
-  to do. Only the hooks missing while a task is
-  open count as a problem, so a repository that simply has no hooks does not
-  change `cw doctor --summary`, which exits 0 either way. The doctor summary
-  in the session-start context leaves the check out:
+A list is printed as `cw.toml` holds it, and an absent `paths` as `not set`. A
+check that is removed gets the line
+``cw: notice: this commit changes the required checks: `lint` is no longer declared``.
+A check that is new gets no notice.
 
-  | `cw gate status` | Open substantial task | `git_hooks` status | Listed by `--summary` |
-  | --- | --- | --- | --- |
-  | any, with `enforce_verify` `false` | either | `not_applicable`, not inspected | No |
-  | all three hooks `installed` | either | `configured` | No |
-  | a hook `foreign` | either | `detected`, with the hint to add the line above | No |
-  | otherwise a hook `absent`, directory `shared` | either | `detected`, with the hint that install needs `--shared` | No |
-  | otherwise a hook `absent` | yes | `missing` | Yes, so the summary's status is `attention` |
-  | otherwise a hook `absent` | no | `not_applicable` | No |
-  | not a repository, or git or the task store cannot be read | either | `unchecked` | No |
+### pre-push
 
-## Known bypasses
+git gives the hook one line per ref the push updates. `cw` decides each line:
 
-The gate is a guardrail for a cooperative agent that skipped a step, not a
-defence against an agent that sets out to bypass it (see the
-[threat model](../SECURITY.md#threat-model)). Each row below lets a commit or
-push through today while the repository has an open substantial task, or lets
-`cw task verify` pass on evidence it cannot check. In a repository where
-`cw gate install` wrote git's hooks, git runs the gate itself before each
-`git commit`, merge commit and `git push`, however it was started: the rows that say "Caught
-when `cw gate install` has run" no longer let a commit or push through there,
-and the last row lists what still gets past git's hooks.
+- A deletion of a ref is allowed.
+- A ref under `refs/notes/` is allowed and not judged: notes hold no content of
+  the project.
+- A tag is first peeled to the commit it names.
+- An update of a branch adds nothing, and is allowed, when the commit the
+  branch points at on the remote already contains the new tip. A branch that
+  is new on the remote always adds something.
+- An update of any other ref, such as a tag, adds nothing when the new tip of a
+  branch that the same push updates contains the commit, or when a
+  remote-tracking branch of the same remote, under `refs/remotes/<remote>/`,
+  contains it. The remote-tracking branches are the refs of the last fetch in
+  this clone.
+- Otherwise the tree of the new tip must be verified. Only the tip is judged,
+  not the commits below it.
 
-| Way around the gate | What happens today |
+One denied ref denies the whole push. A denial names the ref. When the working
+tree holds the same checked content as the pushed commit for every check that
+is not satisfied, the denial ends with `cw run`, to be run here. Otherwise it
+says where to run `cw run`:
+
+```text
+cw: the push of refs/heads/f2 is denied: its content has no recorded passing run of every declared check.
+  lint: not run on this content
+cw: `cw run` checks the working tree, so it must run in a checkout of that commit, for example in a linked worktree:
+  git worktree add --detach ../cw-check 2d251f00c5c4b2a2b18087b584fa5d60f640e2b1
+and then, in that directory:
+  cw run
+```
+
+### When a hook cannot decide
+
+A hook that cannot establish that the content is verified denies, with exit
+status 3, and names the cause:
+
+| Cause | Example |
 | --- | --- |
-| `cd - && git commit -am x`, `popd && git commit -am x`, `cd $OTHER && git commit -am x` and the other directory changes the hook cannot follow ([Recognised commands](#recognised-commands)), from a session directory that no record gates | Allowed. The hook checks the git command against the session's working directory, so it asks only when a record gates that directory. Caught when `cw gate install` has run: git runs its hook in the repository it commits to. |
-| A `cd` that fails, followed by `;`, `\|\|` or a newline: `cd ~/proj; git commit -am x` where `~/proj` does not exist, bash's `cd ""`, `cd ${HOME}x`, `cd /missing \|\| git commit -am x` | Allowed. The hook judges the directory the `cd` names; when the `cd` fails, git runs where the shell stayed. Caught when `cw gate install` has run: git's hook judges the repository git runs in. |
-| `HOME=/x cd ~/proj && git push` | Allowed from a session directory that no record gates. The shell expands `~` with the old `HOME`, before the assignment applies to `cd`, but the hook treats `HOME` as unknown in a command that assigns it ([Recognised commands](#recognised-commands)). Caught when `cw gate install` has run. |
-| `G=git; $G commit -am x` | Allowed. Git named through a variable is not recognised. Caught when `cw gate install` has run. |
-| `git -c alias.ci=commit ci -am x`, or any other git alias | Allowed. Only the `commit` and `push` subcommands are checked. Caught when `cw gate install` has run: git runs its hooks for the command an alias stands for. |
-| `xargs git commit …`, `find … -exec git commit …` | Allowed. Git run as the argument of a command other than the wrappers in [Recognised commands](#recognised-commands) is not recognised. Caught when `cw gate install` has run. |
-| `git cherry-pick`, `git revert`, `git merge`, `git merge --continue`, `git pull`, `git rebase --continue`, `git am`, `git commit-tree` followed by `git update-ref` | Allowed. These create or take in commits without `git commit`. `git merge --squash` is not one of them: it makes no commit, and the `git commit` that follows is denied. Caught when `cw gate install` has run: a merge commit, from `git merge`, `git merge --continue` or `git pull`, runs `pre-merge-commit` or, after conflicts, `pre-commit`, except that `pre-merge-commit` lets through a merge of commits on remote-tracking branches ([Git hooks](#git-hooks)). The agent's own `git merge --no-verify`, `git pull --no-verify` or `CW_GATE=off git merge` still gets past both hooks, since the plugin hook does not check a merge. The others can still make their commits, since git does not run `pre-commit` for them as it does for `git commit`; pushing them is caught. |
-| A remote-tracking ref pointed at local work, as in `git update-ref refs/remotes/origin/x side` or `git fetch . side:refs/remotes/origin/x`, followed by `git merge origin/x` | Allowed where `cw gate install` has run. `pre-merge-commit` lets through a merge of commits a remote-tracking ref contains, and nothing checks how the ref got there: rewriting one, which the plugin hook does not see, makes local work look published ([Git hooks](#git-hooks)). |
-| `gh pr create --fill`, `make commit`, `./release.sh`, `python3 -c 'import subprocess; subprocess.run(["git", "commit", …])'` | Allowed. The hook does not parse a program's own arguments or what a script runs, so git run from inside them is not seen. Caught when `cw gate install` has run: git runs its hooks whichever program starts it. |
-| A commit whose staged content the plugin hook does not judge: one after another command in the same Bash input that may change the index, as in `git add -A && cp verified.go x.go && git commit -m x` or `cat saved > .git/index && git commit -m x`; `git commit -i PATH`; or another index, git directory or work tree, as in `GIT_INDEX_FILE=… git commit` or `git --git-dir=… commit` | Allowed once the task's verify passed on the working tree: the hook reads the index before the command runs ([Which source counts](#which-source-counts)). Caught when `cw gate install` has run and the commit does not also pass `--no-verify`: `pre-commit` judges the index git commits. |
-| Git run outside the agent's shell tool (a terminal, an editor), under Codex before you trust its hooks (again after an update that changes `hooks/codex-hooks.json`), or commits made through a GitHub MCP tool or the GitHub API | Not checked: the hook reads only shell commands, Codex runs no plugin hook you have not trusted, and an API call is not a git command. `cw publish` applies the gate itself wherever it runs. Git run from a terminal or an editor, and under Codex before you trust its hooks, is caught when `cw gate install` has run, within the limits of the last row; an API call still is not. |
-| A commit from another clone of the repository, or from a worktree the record does not govern | Allowed. A record governs its own worktree root and, when it was started in the main checkout, that checkout's linked worktrees; a record started in a linked worktree governs only that worktree ([Which records gate](#which-records-gate)). |
-| An older `cw` on `PATH` that cannot read the record | Allowed. Its hook skips a record it cannot read, such as one with `amendments`, `packs` or `test_rules`, or, under a `cw` older than v3.0.0-rc.2, any record of version 4 or later ([Which source counts](#which-source-counts)). The current hook asks about a record from a newer `cw` instead ([Records that cannot be read](#records-that-cannot-be-read)). |
-| A task directory in which no revision decodes, such as `echo '{' > <task>/record-000001.json` for a task with one revision | Allowed. With no revision to read, the hook cannot tell which repository the task belongs to, so it ignores the directory. A damaged later revision asks instead ([Records that cannot be read](#records-that-cannot-be-read)). |
-| `chmod 000 <task>`, or `chmod 000` on every revision file of a task (its only one, for a new task) | Allowed. A task directory the hook cannot list, or whose revision files it cannot open, has no revision to read and is ignored, like one in which no revision decodes. |
-| A newest revision that decodes but names another `baseline.root`, has `plan.kind` `small` or carries `abandonment`, such as one copied in from another task | Allowed. The hook selects a task by its newest decodable revision and loads the whole chain only for a task that this revision says governs, so the revision hides an open record even though its chain would not load. |
-| Codex running `hooks/hooks.json` (a plugin installed before `hooks/codex-hooks.json`, or a Codex that ignores the manifest's `hooks` entry) and sending PreToolUse input without `turn_id` or without `model` | Allowed: the asks before `cw task abandon`, before an `--owner-approval`, for an unrecorded substantial change, for a push with uncommitted changes and after a directory the hook cannot resolve. That file passes no `--host`, so `cw` tells Codex apart by those two members, and without both it answers as for Claude Code, whose ask Codex does not honour. The recorded Codex inputs carry both. The denies still deny. Commit and push are caught when `cw gate install` has run ([Codex](#codex)). |
-| A record that cannot be read, under Codex: `echo '{' > <task>/record-000002.json` | Allowed. Codex cannot ask, and the hook lets the command go ahead there rather than block the user on a file it cannot judge ([Codex](#codex)). |
-| A rewritten record, such as revision 1 with `plan.kind` set to `small` | Allowed. The agent's user can write the store, and the revision hash chain is plain SHA-256 with no key, so a rewritten chain loads as valid. |
-| `cw task abandon --task <task> --reason TEXT` run where the hook cannot see it: from a script, `make` or a plan check; through a name that no word of the command spells, such as `X=c; ${X}w task abandon …`; or through a renamed copy of `cw`, such as `cw-g5 task abandon …` | Allowed. An abandoned task never gates. The hook asks before every `cw task abandon` whose words it can see ([Abandoning a task](#abandoning-a-task)), and under Codex it denies one. |
-| A task nobody touched for 14 days | Allowed, with no message: the task stops gating 14 days after its latest revision ([Which records gate](#which-records-gate)). |
-| A `go` rebuilt from modified `cmd/go` source, or a GOROOT the user can write with an edited standard library or tools | `cw task run` records a pass. A check named `go` runs only a build of `cmd/go`, so a script named `go` first on `PATH` is refused with failure `untrusted_toolchain` ([which go a check runs](operations.md#which-go-a-check-runs)), but a build of modified source still passes. A check that runs another program, such as `make`, runs whatever `PATH` names. That is a limit of the design. |
-| A C compiler chosen by `CC`, `go env -w CC` or a `gcc` first on `PATH`, which `go test` runs for `-race` and cgo builds | `cw task run` records a pass. With cgo on, the Go rule credits it only when that compiler, and on Linux its assembler and linker, are files the user cannot change, none is a compiler launcher such as `ccache`, its `CGO_*FLAGS` hold only `-O` and `-g` and no variable steers it ([the C toolchain](operations.md#the-c-toolchain-of-a-go-check)); a compiler in a directory the user can write earns no credit. What still gets past: a wrapper that root or an administrator installed (a user with `sudo` can), any toolchain when `cw` runs as root, and on macOS a file inside the developer directory changed by someone who can write there, behind the `/usr/bin/clang` shim and the directory that `cw` checks and pins as `DEVELOPER_DIR` (the active one, or else the Command Line Tools). |
-| A plan check that runs `make publish`, `python3 -c …`, `go run …` or `./release.sh` | Allowed by `cw task start`, and `cw task run` runs it with the user's rights, so it can commit and push; the hook never sees it. `cw task start` refuses shells, `env`, `sudo`, network and deployment tools, git other than inspection commands and `cw publish` by name, which guards against accidents, not against a program that does the same. Its commits and pushes are caught when `cw gate install` has run: git runs its hooks under the check too, while the task is still unverified. |
-| Self-declared agent IDs | One agent can record itself as implementer, test engineer and reviewer under different `agent_id` strings. Independence compares those strings with each other and with the plan's `coordinator_id`; nothing authenticates them. |
-| The off switches and failures: `enforce_verify=false`, `cw` not on `PATH`, an internal error or timeout in the hook | Allowed. The deny text names the `enforce_verify` switch, and the agent can run the `claude plugin configure` command itself: the hook does not inspect it, and the option applies once Claude Code restarts. See [Fail-open rules](#fail-open-rules) and [Disabling the gate](#disabling-the-gate). |
-| Where `cw gate install` wrote git's hooks, git run outside the agent's shell tool with `--no-verify` or `CW_GATE=off`, a merge the agent runs that way itself (`git merge --no-verify`, `CW_GATE=off git merge`), after `core.hooksPath` changed, or with no `cw` on git's `PATH` (a GUI client's `PATH` may be shorter) | Allowed, with no message. Git skips its hooks, or the installed hook exits 0 when it finds no `cw` ([Installing the git hooks](#installing-the-git-hooks)). |
+| `no_declaration` | the tree holds no `cw.toml` at its root, for example after `git rm cw.toml`; the denial names [A tree without cw.toml](operations.md#a-tree-without-cwtoml) |
+| `invalid_declaration` | `cw.toml` breaks a rule; the denial prints the line, such as `cw.toml:9` |
+| `tree` | the tree of the commit cannot be written, or a pushed ref names neither a commit nor a tree |
+| `store` | the records in `cw/` cannot be read; the denial names the directory |
+| `internal` | anything else, with git's own message |
 
-## Disabling the gate
+A denial names each check that is not satisfied, with its state and the log
+of the run that decided it, and ends with `cw run`. When the last run on this
+content decided nothing, the denial names how it ended, such as
+`(the last run ended source_changed: ...)`. It names no way around the gate.
 
-Set the plugin option `enforce_verify` to `false` in the plugin's configuration,
-which exports `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` to the hook, and
-`small_task_prompt` to `false` to stop the ask for unrecorded changes. Removing
-`cw` from `PATH` also disables the gate, because the command checks for `cw`
-first and exits 0 when it is absent; the session-start line then says so.
-Codex has no plugin configuration: start Codex with the variable instead, as
-in `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false codex` ([Codex](#codex)).
-`cw hook git` reads the same variables from git's environment, and also
-`CW_GATE=off` ([Git hooks](#git-hooks)); `cw gate uninstall` removes the git
-hooks that `cw gate install` wrote.
+### What a hook records
 
-## Codex
+Each decision is appended as one line to `cw/decisions/<yyyy-mm>.jsonl`: the
+time, the hook, the mode, the tree, the outcome (`allowed` or `denied`), the
+ref of a push, and for a denial the state of each check that was not satisfied
+or the cause. `cw stats` counts these lines. A line that cannot be written
+prints a warning and changes no decision.
 
-Codex runs the hooks file that `.codex-plugin/plugin.json` names in `hooks`,
-`hooks/codex-hooks.json`, in place of `hooks/hooks.json`. Each of its commands
-passes `--host codex`, and a given `--host` (`codex` or `claude-code`) decides
-the host. Without one, as `hooks/hooks.json` runs `cw`, `cw` tells Codex apart
-as it did before `--host`: by `turn_id` and `model` in the PreToolUse input,
-and at session start, whose input has no `turn_id`, by `PLUGIN_ROOT`, which
-Codex sets and Claude Code does not. So a Codex that still runs
-`hooks/hooks.json`, from a plugin installed before the Codex file or because
-it ignores the manifest's `hooks` entry, keeps the Codex decisions below.
-What follows was recorded with codex-cli 0.167.2 on 2026-11-12 and
-0.168.0 on 2026-11-13, `codex exec` and a wrapper in place of `cw` that saved
-each hook's arguments, input and environment
-([Recorded host runs](#recorded-host-runs));
-[`codex-pre-tool-use.json`](../internal/cli/testdata/codex-pre-tool-use.json)
-and [`codex-session-start.json`](../internal/cli/testdata/codex-session-start.json)
-are recorded inputs, with paths replaced by placeholders.
+## The hook file
 
-- **Trust.** Codex runs a plugin hook only after you trust it: before that,
-  no hook ran, and `codex exec` did not say so.
-  `--dangerously-bypass-hook-trust` runs untrusted hooks for one invocation.
-  Per the Codex hooks documentation, you trust hooks with `/hooks` in the CLI
-  or **Review hooks** in the desktop app, and trust is recorded against the
-  hook's hash, so review again when an update changes `hooks/codex-hooks.json`.
-  The update that added that file changed every Codex hook: trust them again
-  after it, or Codex runs none of them and only `cw publish` and git's hooks
-  ([Installing the git hooks](#installing-the-git-hooks)) apply the gate. No
-  feature flag is needed: `codex features list` shows `hooks` stable and on,
-  and `plugin_hooks` removed.
-- **Hooks file.** In the recorded runs Codex ran only the handlers of
-  `hooks/codex-hooks.json`: every call carried `--host codex`, and none came
-  from `hooks/hooks.json`. Claude Code does not read that manifest.
-- **Input.** The PreToolUse input names the shell tool `Bash` and holds `cwd`
-  and `tool_input.command`, as Claude Code's does, plus `turn_id` and `model`,
-  which Codex documents as its own extensions. Claude Code's PreToolUse input
-  has neither; without `--host`, `cw` takes the two together as the sign of
-  Codex, and one of them alone is not enough.
-- **Matcher.** Codex matches `Bash` but ignores the `if` condition, so the
-  Codex file has two PreToolUse handlers without one, each run for every shell
-  command, at the same time. `cw hook pre-publish --host codex` exits at once,
-  without output, for a command with no `git commit`, `git push`,
-  `cw task abandon` or `--owner-approval`; `cw hook task-usage --host codex`
-  samples the rollout in `transcript_path` before a `cw task` command and
-  otherwise exits at once ([Usage sampling](#usage-sampling)).
-- **An older `cw`.** A `cw` from before `--host` rejects the flag with exit 2
-  before it reads its input. Each command of the Codex file then runs the
-  same hook again without the flag, on the same input, so the gate stays on:
-  that `cw` tells Codex apart by the input's `turn_id` and `model`, and at
-  session start by `PLUGIN_ROOT`, as a current `cw` does without `--host`.
-  Any other exit status runs nothing more.
-- **Decisions.** A deny blocks the command, and the agent sees
-  `Command blocked by PreToolUse hook:` and the reason. No output lets the
-  command run. An ask is not supported: Codex ran the command without asking
-  and told the agent nothing.
-- **Environment.** Codex sets `PLUGIN_ROOT` and `PLUGIN_DATA` (also as
-  `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA`) to the plugin's copy under
-  `$CODEX_HOME/plugins/cache` and its data directory under
-  `$CODEX_HOME/plugins/data`; the Codex file reads the first two. It sets no
-  `CLAUDE_PLUGIN_OPTION_*` variable, and the hook inherits the environment
-  Codex was started with.
-- **Session start.** On `startup` the session-start hook adds
-  `global/AGENTS.md` to the session as developer context, so the trusted
-  plugin also loads the working conventions. Codex runs it again on `resume`,
-  where `cw hook session-start --host codex` adds nothing
-  ([Session start](#session-start)): after a `codex exec resume` the thread
-  held one copy. Compaction drops it from the thread's history, and the
-  `compact` run adds it back before the next request. A thread from
-  `codex exec fork` carries its parent's history, conventions included; Codex
-  names that source `fork`, which the matcher does not list, and no
-  session-start hook ran. Under Codex, `cw` compares itself with
-  `.codex-plugin/plugin.json` and skips the Claude Code version. That version
-  line is not recorded under Codex: the runs used a `cw` built between tags,
-  which is not compared.
+`cw init` writes the same short POSIX shell script for each of the three hooks,
+with mode 0755. This is `pre-commit`:
 
-So under Codex the pre-publish hook turns five asks into denies: a
-`cw task abandon`, an unrecorded substantial change, a push with uncommitted
-changes over a verified record, a commit whose staged content a filter the
-gate does not run produced, and a commit or push after a directory the
-hook cannot resolve ([Asking instead of denying](#asking-instead-of-denying)). The
-reason starts `agent-workflows: Codex cannot ask for confirmation`, carries the
-question Claude Code would ask, and says to put it to the user, who goes ahead
-by running the command outside Codex. Every reason under Codex ends by naming
-the option variables.
+```sh
+#!/bin/sh
+# cw-hook: written by `cw init`. `cw uninstall` removes this file.
+dirs=; IFS=:; set -f
+for dir in $PATH; do case "$dir" in /*) dirs="${dirs:+$dirs:}$dir" ;; esac; done; unset IFS; set +f
+cw=$([ -n "$dirs" ] && PATH=$dirs && command -v cw 2>/dev/null)
+case "$cw" in /*) exec "$cw" hook pre-commit "$@" ;; esac
+echo "cw: the cw program was not found in an entry of PATH that is an absolute path, so this pre-commit cannot be judged and is denied. An empty or relative entry is not searched." >&2
+echo "cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install" >&2
+exit 3
+```
 
-The asks for a task record that cannot be read
-([Records that cannot be read](#records-that-cannot-be-read)) and for a task
-store that cannot be located or read ([Task store](#task-store)) do not become
-denies: a deny would block the user on a file or setting they may not be able
-to fix from Codex, so under Codex the hook prints nothing and the command goes
-ahead, as Codex runs any ask. A relative `XDG_STATE_HOME` is one of these, so
-it no longer denies there. When one of them is joined with one of the
-denied asks, the command is denied: a push of uncommitted changes beside a
-record that cannot be read, or a substantial change whose only record cannot
-be read.
+- The second line is the marker. A hook file that holds it was written by `cw`;
+  `cw init` replaces it when its text differs or it cannot be executed. A file
+  without the marker belongs to another tool.
+- The script looks for `cw` only in the entries of `PATH` that are absolute
+  paths. An empty or a relative entry, such as `.`, would let the hook run a
+  file named `cw` from the repository, so the script leaves such entries out
+  before it asks the shell where `cw` is. It does not go by the form of the
+  shell's answer: the `sh` of macOS answers with an absolute path also for a
+  file it found through `.`. When no absolute entry holds `cw`, the script
+  denies and names the install instruction.
+- The hooks are written into `hooks/` of the common git directory, the one git
+  uses for every linked worktree.
+- The script finds `cw` on `PATH` at the time git runs the hook. The decision
+  is made by the installed `cw`, so a new `cw` takes effect without a new
+  `cw init`.
+- On Windows the code writes the same file; Git for Windows runs hooks in its
+  own shell. The tests run it there in CI, with git started from PowerShell
+  and from `cmd.exe`. Nobody has tried it there by hand.
 
-The plugin options are environment variables under Codex: export
-`CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY`, `CLAUDE_PLUGIN_OPTION_SMALL_TASK_PROMPT`
-or `CLAUDE_PLUGIN_OPTION_SESSION_DOCTOR` in the shell that starts Codex. In the
-recorded run, `CLAUDE_PLUGIN_OPTION_ENFORCE_VERIFY=false` let through a commit
-that the hook otherwise denied.
+## When cw is not on PATH
 
-## Recorded host runs
+The hook denies. git records or sends nothing, and the hook prints:
 
-On 2026-11-12 the plugin's hooks ran live under both hosts, each in a
-throwaway Git repository with an open substantial task, the plugin loaded from
-a checkout, and a wrapper in place of `cw` that logged each hook call before
-running the real `cw`.
+```text
+cw: the cw program was not found in an entry of PATH that is an absolute path, so this pre-commit cannot be judged and is denied. An empty or relative entry is not searched.
+cw: the install instruction is at https://github.com/belevtsev/agent-workflows#install
+```
 
-**Claude Code 2.1.311**, headless: `claude -p --plugin-dir <checkout> --model
-haiku --allowedTools Bash --permission-prompts none --include-hook-events`.
-Nobody can answer a prompt there, so an ask became a denial, and the agent
-was told the hook's reason.
+It prints the same when a `cw` could be found only through an empty or
+relative entry: with `PATH=:/usr/bin:/bin` and an executable file `cw` in the
+root of the repository, that file is not run.
 
-| Bash command | Handlers that ran | Result |
+A clone with the hooks and without `cw` cannot commit or push until `cw` is
+installed or the hooks are removed. [The README](../README.md#install) has the
+install instruction.
+
+## Observe mode
+
+`cw init --observe` sets the gate to observe. Each hook then decides as usual,
+records the decision, and allows the operation whatever the decision is,
+also when a cause prevents a decision. A decision that would have denied
+prints one line:
+
+```text
+cw: the gate only observes: this commit would have been denied because `lint` was not run on this content
+```
+
+`cw stats` counts these decisions under observe mode, apart from the enforced
+ones. `cw init` without `--observe` sets the gate back to enforce. The mode is
+the file `cw/mode` in the common git directory, so it holds for every linked
+worktree, and it is never committed.
+
+When `cw/mode` cannot be read, the hook denies with the cause `store`, also in
+observe mode.
+
+## Sharing a hook with another tool
+
+`cw init` never changes a hook file it did not write.
+
+- When `pre-commit`, `pre-merge-commit` or `pre-push` already exists without the
+  marker line, `cw init` leaves it, installs the hooks that are free, and exits
+  4. It prints the path of each file it left and the line to add:
+
+  ```text
+  cw: these hooks were written by another tool, and cw did not change them.
+  cw: add the line shown to each hook. It must be the last command of that hook:
+    <repository>/.git/hooks/pre-commit
+        cw hook pre-commit "$@"
+  ```
+
+- Add that line as the last command of the other tool's hook. A command after
+  it could change the files after `cw` judged them, and git would record a tree
+  that `cw` did not judge.
+- When the file can be executed and a line of it that is no comment holds
+  `cw hook <name>`, it counts as calling `cw`. A line that starts with `#` does
+  not count. `cw init` then exits 0, names the hook in the line
+  `left as they are, because another tool wrote them and they call cw already`,
+  and `cw status --json` reports `hooks` as `installed`.
+- When `core.hooksPath` is set, the hooks belong to the owner of that directory
+  or to a hook manager. `cw init` writes no hook at all, prints the line for
+  each of the three hooks that does not call `cw` yet, and exits 4:
+
+  ```text
+  cw: core.hooksPath is set, so cw wrote no hook. That directory belongs to its owner.
+  cw: add the line shown to each hook. It must be the last command of that hook:
+    <repository>/.githooks/pre-commit
+        cw hook pre-commit "$@"
+  ```
+
+- `cw uninstall` removes, in `hooks/` of the common git directory, each of the
+  three files that holds the marker of `cw`. In a directory that
+  `core.hooksPath` names, it removes only a file that is exactly the script
+  `cw` writes, and leaves every other file, also one with the marker that
+  someone edited. When a file it leaves still calls `cw hook`, `cw uninstall`
+  names it, prints the line to remove, and exits 4.
+
+`cw hook <name>` gives the same decision when another hook calls it, as long as
+it gets the arguments and the standard input git gave that hook: pass `"$@"`,
+and for `pre-push` do not read standard input before `cw` does.
+
+## Linked worktrees
+
+A linked worktree, made with `git worktree add`, shares the common git
+directory with the main checkout. So:
+
+- the three hooks apply in every linked worktree;
+- the records are shared: a run made in one worktree counts in another for the
+  same checked content;
+- unfinished, failing or unchecked work in one worktree changes no decision
+  about different content in another, because each decision is about one tree.
+
+When `core.hooksPath` is a relative path, git looks for the hooks relative to
+each worktree. A worktree whose directory does not hold those hook files, for
+example because they are not committed, is then not gated. `cw status` in that
+worktree warns, and `cw status --json` reports `hooks` as `missing`.
+
+## Known limits
+
+- `git commit --no-verify` (also `-n`), `git merge --no-verify` and
+  `git push --no-verify` skip the hooks. The push rule judges a commit that was
+  made with `--no-verify` when it is pushed, unless the push skips the hook as
+  well.
+- Some tools commit without the hooks, or replace the hooks directory, without
+  anyone asking for it. Reports name Aider, which passes `--no-verify` by
+  default; two versions of Cursor, which pointed `core.hooksPath` elsewhere;
+  the creation of a worktree by Claude Code, which wrote `core.hooksPath` into
+  the shared configuration; and an action that commits through the hosting
+  service and runs no local hook. [What other tools taught us](other-tools.md)
+  has the sources. `cw status` warns when the hooks git runs in a clone do not
+  call `cw`. A setting given on one command line it cannot see.
+- A clone in which nobody ran `cw init` has no hooks and is not gated. git does
+  not copy hooks with a clone. `cw status` and `cw context` say so. Continuous
+  integration with `cw run --base` is the backstop; see
+  [Operations](operations.md#continuous-integration).
+- The design states, from observation on Linux, that git does not run
+  `pre-commit` for a clean `git cherry-pick` or `git revert`, for `git rebase`
+  (also when continued) or for a fast-forward merge. The push rule judges what
+  they leave at the tip.
+- `git am` runs `pre-applypatch`, not `pre-commit`. A commit made with
+  `git commit-tree` and moved onto a branch with `git update-ref` runs no hook
+  of a commit; `git update-ref` runs `reference-transaction`, which `cw` does
+  not install. In both cases the push hook still judges the tip that is
+  pushed. `scenarios/gitfacts` holds this git behaviour as tests.
+- A file that another process stages while `pre-commit` runs is committed
+  without being judged: git does not hold the index during the hook and reads
+  it again after the hook. A hook cannot prevent this. The push hook still
+  judges the tip that is pushed.
+- A forced push that moves a branch back to a commit the remote's branch
+  already contains is allowed, and nothing is judged: the commit is already on
+  the remote.
+- The push hook does not judge a ref under `refs/notes/`, nor a ref that is no
+  branch, such as a tag, whose commit the new tip of a branch of the same push
+  contains. That branch is judged.
+- A tree without `cw.toml` cannot be committed or pushed, also when that is on
+  purpose. [A tree without cw.toml](operations.md#a-tree-without-cwtoml) says
+  what to do when a project stops using `cw`, and for a branch with other
+  content.
+- The push rule judges the tip commit of each ref, not every commit below it.
+  After a rebase or a cherry-pick of several commits, the commits below the tip
+  were never judged one by one.
+- git gives `pre-push` no sign of `--dry-run`, so a dry run is judged like a
+  push.
+- For a ref that is not a branch, "adds nothing" relies on the remote-tracking
+  branches of this clone. A push to a URL instead of a named remote has none,
+  so the tag is judged by its tree.
+- A partial commit is denied when the rest of the working tree changes the
+  checked content: the checks ran on the whole working tree.
+- When another tool's hook changes files after `cw hook` ran, git records a
+  tree that `cw` did not judge. Keep `cw hook` the last command; the push rule
+  still judges the resulting commit.
+- The gate trusts the git directory: its own records, the mode file, the hook
+  files, the refs and the configuration. A process that writes there, or a
+  person who edits a hook, can defeat it. The gate is a guardrail against a
+  mistake, not a defence against someone who decides to go around it.
+- On Windows the code treats every file as executable. There the tests in CI
+  run the hook file and the Windows commands of the Codex plugin, and skip
+  the plugin commands that are written for `sh`. Nobody has tried any of it
+  there by hand, and no agent host was started there.
+
+## Hooks of the agent plugin
+
+The plugin for Claude Code and Codex adds hooks of the agent host. They do not
+decide about commits or pushes; the git hooks do. The gate works without the
+plugin. Each command keeps only the entries of `PATH` that are absolute paths,
+as the hook file does, for all it runs: `cw`, and `git` at the start of a
+session. A file `cw` that is not executable counts as none. When no entry
+holds `cw`, the command does nothing; at the start of a session it prints the
+one line described below, unless `PATH` holds no absolute entry at all. Each
+command always exits 0, so a missing or an older `cw` blocks no tool call.
+Codex starts the `sh` that runs its commands; where that `sh` comes from is
+not in the hands of the plugin.
+
+| Host event | Claude Code (`hooks/hooks.json`) | Codex (`hooks/codex-hooks.json`) |
 | --- | --- | --- |
-| `cw task abandon --task <task> --reason probe` | the abandon handler | Ask, denied; the command did not run. |
-| `echo f3-probe` | none, and no hook event | The command ran. |
-| `cw task aban''don --task <task> --reason probe` | the abandon handler | Ask, denied, as for the plain command. |
-| `git status --short && cw task abandon --task <task> --reason probe` | both | Two asks, one denial. |
-| `echo "$(printf f3-subst)"` | both | No output from either; the command ran. |
+| `SessionStart` | `cw context --host claude` | `cw context --host codex` |
+| `PreToolUse` | `cw guard --host claude`, for the tools `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit` | `cw guard --host codex`, for the tools `Bash`, `apply_patch` |
+| `SubagentStop` | `cw tokens record --host claude` | `cw tokens record --host codex` |
+| `SessionEnd` | `cw tokens record --host claude` | `cw tokens record --host codex` |
 
-**Codex 0.167.2**: `codex exec --json --dangerously-bypass-hook-trust` with a
-temporary `CODEX_HOME` and the plugin added with `codex plugin marketplace add`
-and `codex plugin add`, as in [Codex](#codex).
-
-| Run | Hook calls | Result |
-| --- | --- | --- |
-| New session: `git status --short`, then `cw task abandon --task <task> --reason probe` | SessionStart `startup` once; `cw hook pre-publish` twice for each command, at the same time | The conventions were added once. The status ran; the abandon was blocked with `Command blocked by PreToolUse hook:` and the reason. |
-| `codex exec resume` of that session | SessionStart `resume` once | The conventions were added again: the thread held two identical copies. |
-| `codex exec resume` with `-c model_auto_compact_token_limit=30000` | SessionStart `resume` and `compact`, both after the compaction and before the next request | The compacted history held no copy; each hook added one. |
-| `codex exec fork` of another session | no SessionStart call; `cw hook pre-publish` twice | The fork's first request carried its parent's history. |
-| A copy of the plugin whose `.codex-plugin/plugin.json` names `./hooks/codex-hooks.json` | that file's SessionStart handler and its one PreToolUse handler, once each; none from `hooks/hooks.json` | The manifest's file replaces the default. |
-
-The Codex runs used a `cw` from before F19: since then a Codex `resume` adds nothing, so the conventions are not
-added again on resume, and after a compaction only the `compact` run adds them ([Session start](#session-start)).
-
-**Codex 0.168.0**, 2026-11-13, with the plugin's own `hooks/codex-hooks.json`,
-otherwise set up as above. The task was open and unverified; the prompt ran
-`echo`, then `cw task abandon --task <task> --reason probe`, then
-`git commit --allow-empty -m probe`.
-
-| Run | Hook calls | Result |
-| --- | --- | --- |
-| New session, the `cw` with `--host` | SessionStart `--host codex` once; for each command `pre-publish --host codex` and `task-usage --host codex` once each | The echo ran; the abandon and the commit were blocked, the abandon with the reason that starts `agent-workflows: Codex cannot ask for confirmation`. |
-| The same, with a `cw` from before `--host` | each hook once with `--host codex`, exit 2, then once without it, exit 0 | The same three results: the older `cw` read the input on the second call and denied both. |
-| `codex exec resume` of the first session | SessionStart `--host codex` once, with no context | The thread held one copy of the conventions. |
-| A new session without `--dangerously-bypass-hook-trust` | none | `pwd` ran; Codex did not say it skipped the untrusted hooks. |
-
-These runs did not cover SessionStart on `clear` under either host (neither
-headless mode can clear), on `resume` and `compact` under Claude Code, or in
-agents Codex spawns; hooks trusted through `/hooks` rather than
-`--dangerously-bypass-hook-trust`; the version line under Codex; or an ask
-answered in an interactive Claude Code session.
+- At the start of a session, when `cw` is not on `PATH` and the root of the
+  repository holds `cw.toml`, the command prints one line: that `cw` is not
+  installed, that every commit and push will be denied by the git hooks, and
+  where the install instruction is.
+- `cw guard` asks the user in Claude Code, and denies with the reason in Codex,
+  before a shell command with a git call that skips git's hooks or a `cw` call
+  that turns the gate off, and before an edit of `cw.toml`, of a git hook, of
+  the git configuration or of a record of `cw`. It reads the command as shell
+  words, not as text. It is a reminder for an agent; the git hooks decide. See
+  [Operations](operations.md#cw-guard), which also lists what it misses.
+- A failure to record tokens never fails the host's hook.
+  [Tokens](tokens.md) says what the token commands record.
+- The hook commands of Claude Code are written for `bash`; those of Codex are
+  wrapped in `sh -c`. Under Codex on Windows the file names `commandWindows`
+  for each event. It sets `NoDefaultCurrentDirectoryInExePath=1`, so that
+  `cmd.exe` does not look for `cw` in the working directory. Before it runs
+  `cw` it goes to the root of the session's drive and then to the Windows
+  folder, so that a relative entry of `PATH`, such as `.` or `D:tools`,
+  leads there and not into the repository. `cw` takes the session's
+  directory from the `cwd` of the host's notice. The command holds no double
+  quote and ends with `exit /b 0`. At the start of a session it runs
+  `cw context`; when `cmd.exe` finds no `cw` it can run (exit status 9009),
+  the command runs no other program and prints the line when the session's
+  directory itself holds `cw.toml`, so a session started in a subfolder gets
+  no line there. Two cases are not covered. An entry that names the session's
+  drive and no path from its root, such as `D:tools`, is read from the root
+  of that drive when the Windows folder is on another drive: it leads into
+  the repository when the repository is that root, or when the entry names
+  the repository's folder from the root. And behind an empty first entry
+  of `PATH`, `cmd.exe` ran no `cw` of a later entry on the Windows image of
+  the CI in November 2026: with such a `PATH` the commands before a tool call
+  and for the tokens do nothing, and the command at the start of a session
+  prints the line that says `cw` is not installed, although it is installed.
+  Tests run these Windows commands with `cmd.exe /C` on Windows in CI. The
+  commands for `bash` and `sh` are tested on Linux and macOS only: on Windows
+  the hosts run them in Git Bash, which the tests do not set up.
+- `hooks/codex-hooks.json` is named in `.codex-plugin/plugin.json`. The plugin
+  manifest of Claude Code, `.claude-plugin/plugin.json`, names no hooks file;
+  Claude Code reads `hooks/hooks.json` of a plugin by default.
