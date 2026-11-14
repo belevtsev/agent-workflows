@@ -1,0 +1,158 @@
+package tokens
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+)
+
+// SessionAgent is the agent of the start that is the session itself.
+const SessionAgent = "session"
+
+// Start is what cw keeps of one start: a role that ran, or the session
+// itself. It holds counts and names, and no text of a brief or an answer.
+type Start struct {
+	Version int    `json:"version"`
+	Host    string `json:"host"`
+	Session string `json:"session"`
+	Agent   string `json:"agent"`
+	// Record is the file of the host the counts were read from.
+	Record string `json:"record"`
+	Task   string `json:"task,omitempty"`
+	Stage  string `json:"stage,omitempty"`
+	Round  int    `json:"round,omitempty"`
+	// Known is false when the counts could not be read; Why says why.
+	Known  bool              `json:"known"`
+	Why    string            `json:"why,omitempty"`
+	Models map[string]Counts `json:"models,omitempty"`
+}
+
+// Notice is what a host gives its hook when a role or a session ends.
+type Notice struct {
+	Session         string `json:"session_id"`
+	Transcript      string `json:"transcript_path"`
+	AgentID         string `json:"agent_id"`
+	AgentTranscript string `json:"agent_transcript_path"`
+}
+
+var safeName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
+
+// fileName is a name that is safe as a file name: the name itself, or a
+// digest of it.
+func fileName(name string) string {
+	if safeName.MatchString(name) {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return "x" + hex.EncodeToString(sum[:8])
+}
+
+// stem is a file name without its directory and its extension.
+func stem(path string) string {
+	base := filepath.Base(filepath.FromSlash(path))
+	return strings.TrimSuffix(base, filepath.Ext(base))
+}
+
+func start(host, session, agent, record string, r reading) Start {
+	s := Start{Version: 1, Host: host, Session: session, Agent: agent, Record: record, Known: r.why == "", Why: r.why, Models: r.models}
+	if label, ok := ParseLabel(r.brief); ok && agent != SessionAgent {
+		s.Task, s.Stage, s.Round = label.Task, label.Stage, label.Round
+	}
+	return s
+}
+
+// Record reads the records a notice names and stores their counts under
+// dir: the record of the role that ended, when the notice names one, and
+// the record of the session, which every notice names. Giving the same
+// notice again writes the same files.
+func Record(dir, host string, notice Notice) error {
+	read := readClaude
+	switch host {
+	case Claude:
+	case Codex:
+		read = readCodex
+	default:
+		return fmt.Errorf("unknown host %q; the hosts are %s and %s", host, Claude, Codex)
+	}
+	session := notice.Session
+	if session == "" {
+		session = stem(notice.Transcript)
+	}
+	if session == "" || session == "." {
+		return errors.New("the notice names no session")
+	}
+	var starts []Start
+	if notice.AgentTranscript != "" {
+		agent := notice.AgentID
+		if agent == "" {
+			agent = stem(notice.AgentTranscript)
+		}
+		starts = append(starts, start(host, session, "agent-"+agent, notice.AgentTranscript, read(notice.AgentTranscript)))
+	}
+	if notice.Transcript != "" {
+		starts = append(starts, start(host, session, SessionAgent, notice.Transcript, read(notice.Transcript)))
+	}
+	if len(starts) == 0 {
+		return errors.New("the notice names no record")
+	}
+	for _, s := range starts {
+		if err := write(dir, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// write stores one start. The file appears whole or not at all.
+func write(dir string, s Start) error {
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	folder := filepath.Join(dir, fileName(s.Session))
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(folder, ".tmp-*")
+	if err != nil {
+		return err
+	}
+	_, err = tmp.Write(append(data, '\n'))
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(tmp.Name(), filepath.Join(folder, fileName(s.Agent)+".json"))
+	}
+	if err != nil {
+		_ = os.Remove(tmp.Name())
+	}
+	return err
+}
+
+// Load reads every start stored under dir, in the order of their paths. A
+// file that cannot be read is named in damaged.
+func Load(dir string) (starts []Start, damaged []string, err error) {
+	files, err := filepath.Glob(filepath.Join(dir, "*", "*.json"))
+	if err != nil {
+		return nil, nil, err
+	}
+	slices.Sort(files)
+	for _, file := range files {
+		var s Start
+		data, err := os.ReadFile(file)
+		if err != nil || json.Unmarshal(data, &s) != nil || s.Version != 1 || s.Session == "" || s.Agent == "" {
+			damaged = append(damaged, file)
+			continue
+		}
+		starts = append(starts, s)
+	}
+	return starts, damaged, nil
+}

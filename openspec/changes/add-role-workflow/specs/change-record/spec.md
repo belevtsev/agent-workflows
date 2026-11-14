@@ -22,8 +22,8 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
   - `tasks.md` with tasks 1.1 and 1.2, both checked. Each has `Size:`,
     `Depends on:`, `Check:` and `Source:`, and 1.1 names `Greeting text`.
   - `tests.md` with one row per scenario. Both name `tests/app_test.txt`,
-    with the texts `name_is_given` and `no_name_is_given`, and that file holds
-    both texts.
+    with the texts `greets_by_name` and `greets_without_name`, and that file
+    holds both texts.
   - `reviews.md` with the reviews `spec`, `design` and `code`, round 1 each;
     one finding, `minor` and `resolved`; and the approvals `spec` and
     `design`. Each review and each approval holds the content id that
@@ -99,7 +99,7 @@ Source: `skills/task-orchestration/references/contracts/spec-writer.md` and `spe
 #### Scenario: A requirement without a scenario
 
 - **WHEN** both scenarios of `Greeting text` are removed and `cw change check` runs
-- **THEN** it exits 5 and names `specs/greeting/spec.md`, the line of the requirement, and the missing scenario
+- **THEN** it exits 5, names `specs/greeting/spec.md` and the line of the requirement, and says that it has no scenario
 
 #### Scenario: A requirement that exists already
 
@@ -130,8 +130,8 @@ Source: the owner's statement of 14 November 2026 (well tested code, in any lang
 
 #### Scenario: A test is renamed
 
-- **WHEN** the text `name_is_given` in `tests/app_test.txt` is changed to `given_name` and `cw change check` runs
-- **THEN** it exits 5 and names the scenario `A name is given` and the file
+- **WHEN** the text `greets_by_name` in `tests/app_test.txt` is changed to `greets_name` and `cw change check` runs
+- **THEN** it exits 5 and names the scenario `A name is given` and the file `tests/app_test.txt`
 
 #### Scenario: A scenario without a test, when the work is called finished
 
@@ -202,7 +202,7 @@ Source: `skills/task-orchestration/references/contracts/README.md` and `code-rev
 
 ### Requirement: Reviewed content
 
-Each review and each approval in `reviews.md` SHALL hold the content id that `cw change status` printed for it: for `spec` the id of `proposal.md` and `specs/`, for `design` the id of `design.md` and `tasks.md` without their check marks, for `code` the id of every path outside the change folder. A review or an approval SHALL count only while its id is that of the working tree or, for `code`, that of the last commit that changed the folder.
+Each review and each approval in `reviews.md` SHALL hold the content id that `cw change status` printed for it: for `spec` the id of `proposal.md` and `specs/`, for `design` the id of `design.md` and `tasks.md` without their check marks, for `code` the id of every path outside `openspec/changes/`. A review or an approval SHALL count only while its id is that of the working tree or, for `code` when `HEAD` holds the folder as it is, that of the last commit that changed the folder.
 
 Source: production plan, Independent challenge, finding 9 (an approval stayed valid after the approved file changed).
 
@@ -213,7 +213,7 @@ Source: production plan, Independent challenge, finding 9 (an approval stayed va
 
 #### Scenario: The code changes after its review
 
-- **WHEN** `src/app.txt` is edited and `cw change status add-greeting` runs
+- **WHEN** an empty line is added at the end of `reviews.md`, `src/app.txt` is edited, and `cw change status add-greeting` runs
 - **THEN** it prints `review` and says that the review of the code was given for other content
 
 #### Scenario: A checked task does not undo the approval of the design
@@ -223,12 +223,12 @@ Source: production plan, Independent challenge, finding 9 (an approval stayed va
 
 #### Scenario: Later work leaves a finished task done
 
-- **WHEN** `README.md` is edited and committed after the fixture's commit, and `cw change status add-greeting` runs
+- **WHEN** `README.md` is edited and committed after the fixture's commit, `src/app.txt` is edited and not committed, and `cw change status add-greeting` runs
 - **THEN** it prints `done`
 
 ### Requirement: Usable as a check
 
-`cw change check [<task>]` SHALL read the named folder, or every folder under `openspec/changes/` except `archive/`. It SHALL exit 0 when each obeys the rules, and otherwise exit 5 and name the file, the line and the rule. A folder at an earlier stage SHALL pass when the files it has obey their rules. A repository MAY declare the command as a check in `cw.toml`; the gate then treats it as any other check.
+`cw change check [<task>]` SHALL read the named folder, or every folder under `openspec/changes/` except `archive/`. It SHALL exit 0 when each obeys the rules, and otherwise exit 5 and name the file, the line where the broken rule has one, and the rule. A folder at an earlier stage SHALL pass when the files it has obey their rules. A repository MAY declare the command as a check in `cw.toml`; the gate then treats it as any other check.
 
 Source: the first change's proposal, What Changes (a check is any program); `gate-reporting`: Exit statuses.
 

@@ -1,5 +1,5 @@
 {
-  "description": "cw for Codex: adds what `cw context` prints at the start of a session, and refuses, with the reason, a command with --no-verify or an edit of cw.toml, because Codex cannot ask from a hook. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Codex: adds what `cw context` prints at the start of a session, refuses, with the reason, a command with --no-verify or an edit of cw.toml, because Codex cannot ask from a hook, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
@@ -22,6 +22,30 @@
             "command": "if command -v cw >/dev/null 2>&1; then cw guard --host codex; fi",
             "commandWindows": "cw guard --host codex",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host codex || true; fi",
+            "commandWindows": "cw tokens record --host codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host codex || true; fi",
+            "commandWindows": "cw tokens record --host codex",
+            "timeout": 3
           }
         ]
       }

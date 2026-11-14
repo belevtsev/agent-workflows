@@ -158,6 +158,23 @@ func (r *Repo) resolve(ctx context.Context, spec string) (string, bool, error) {
 	return out, err == nil && out != "", err
 }
 
+// Object is the id of the entry at a path of a tree, and false when the
+// tree has no such entry.
+func (r *Repo) Object(ctx context.Context, tree, path string) (string, bool, error) {
+	return r.resolve(ctx, tree+":"+path)
+}
+
+// LastCommit is the newest commit in the history of HEAD that changed a
+// path, and false when there is none.
+func (r *Repo) LastCommit(ctx context.Context, path string) (string, bool, error) {
+	out, err := r.git(ctx, nil, "log", "-1", "--format=%H", "--end-of-options", "HEAD", "--", path)
+	var gitErr *Error
+	if errors.As(err, &gitErr) {
+		return "", false, nil
+	}
+	return out, err == nil && out != "", err
+}
+
 // Contains says whether commit descendant holds commit ancestor in its
 // history. A commit this repository does not have is not contained.
 func (r *Repo) Contains(ctx context.Context, ancestor, descendant string) (bool, error) {

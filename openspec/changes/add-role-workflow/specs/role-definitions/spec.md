@@ -188,7 +188,7 @@ Source: the owner's statement (any language and any codebase); review finding H4
 
 #### Scenario: A search of the texts
 
-- **WHEN** the role texts and the coordinator's instructions are searched for `go test`, `npm`, `pytest`, `cargo`, `gradle` and `maven`
+- **WHEN** the role texts, the coordinator's instructions and the files generated from them for a host are searched for `go test`, `npm`, `pytest`, `cargo`, `gradle` and `maven`
 - **THEN** none of them is found
 
 ### Requirement: One text per role
@@ -207,6 +207,11 @@ Source: review finding C1 (`hooks/hooks.json` and `hooks/codex-hooks.json` each 
 No role text SHALL exceed 8,000 characters, the coordinator's instructions SHALL NOT exceed 12,000, and all of them together SHALL NOT exceed 60,000. `cw roles` SHALL print the size of each role text.
 
 Source: review finding M24; `wc -c` at `ce9b122` (the orchestration skill and its references are 141,780 characters, the largest role contract 8,183); proposal, Open Question 10.
+
+#### Scenario: The sizes are printed
+
+- **WHEN** `cw roles --json` runs in `demo`
+- **THEN** `text_chars` of each role is the number of characters that `cw roles text <role>` prints for it
 
 #### Scenario: A text grows past its limit
 

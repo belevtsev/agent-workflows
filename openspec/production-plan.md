@@ -7,7 +7,7 @@ is the overview. The engineering content is in the two changes:
 | Part | Proposal | Requirements | Design | Tasks |
 | --- | --- | --- | --- | --- |
 | 1. The gate | [proposal](changes/reduce-cw-to-evidence-gate/proposal.md) | 54, with 145 scenarios | [design](changes/reduce-cw-to-evidence-gate/design.md) | [62 tasks](changes/reduce-cw-to-evidence-gate/tasks.md) |
-| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 44, with 82 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
+| 2. The roles | [proposal](changes/add-role-workflow/proposal.md) | 45, with 90 scenarios | [design](changes/add-role-workflow/design.md) | [27 tasks](changes/add-role-workflow/tasks.md) |
 
 ## Outcome
 
@@ -145,6 +145,12 @@ usage; and the arithmetic of the token fixture.
 | 14 Nov 2026 | Design, Records | `pass_after_failure` compares runs of the same command; a base revision implies nothing for a check that has a decisive run of its own, however old; `--name-status`; a run without an end belongs to the period it started in | Two unit tests failed against the design (the code was fixed), and two sentences of the design did not say what the code does |
 | 14 Nov 2026 | `agent-integration`, design: Plugin; proposal, Open Questions 6 and 11 | A tenth command, `cw guard`, holds the plugin's question before a tool call; Codex denies because it cannot ask | The hosts' documentation |
 | 14 Nov 2026 | `check-declaration`: fixture, the meaning of "Refused" | "Writes nothing" now says what it covers: no new or changed file or directory in the working tree, the home directory or the git directory; objects git stores for a snapshot are not counted | Three scenario tests failed because a refused `cw run` and `cw status` left an empty `cw/` directory. The code was fixed; the wording was made exact |
+| 14 Nov 2026 | `change-record`: new requirement Reviewed content; Stage from the files; fixture | Each review and each approval holds a content id and counts only for that content; a stage `commit` between `review` and `done`; the fixture is committed; six scenarios added | Challenge findings 8 and 9: an approval stayed valid after the approved file changed, and `done` was printed for a record nobody had committed |
+| 14 Nov 2026 | `role-definitions`: Write limits | `cw roles check` warns, as `cw status` does, in a clone whose hooks git does not run; one scenario added. Part 2 now has 45 requirements and 89 scenarios | Challenge finding 7 |
+| 14 Nov 2026 | `change-record`: Reviewed content | The `code` id covers every path outside `openspec/changes/`, not outside the one folder. A review of the code also counts for the last commit that changed the folder only when `HEAD` holds the folder as the working tree does. Two scenarios reworded: an edit of the code counts as a change after the review while the record is not committed, and as later work once it is | Found while building: as first written, the rule and its scenario "The code changes after its review" contradicted each other, and the id of one folder made a second task's record stale |
+| 14 Nov 2026 | `role-definitions`: Role text names no language; Text budget | The search also covers the files generated for a host; one scenario added for the sizes `cw roles` prints. Part 2 now has 90 scenarios | A scenario test failed: the header of each generated role file named a Go command, and a host gives that file to a model. The header was changed. The test agent also found that the sentence about the sizes had no scenario |
+| 14 Nov 2026 | `change-record`: three sentences | "says that it has no scenario"; "the file `tests/app_test.txt`"; "the line where the broken rule has one" | The test agent found each of them open to two readings. More rules now name a line: a requirement no task names, a scenario without a row, a cycle |
+| 14 Nov 2026 | `change-record`: fixture | The texts of the two tests are `greets_by_name` and `greets_without_name` | Found while trying the scenario "A test is renamed" by hand: `no_name_is_given` holds `name_is_given`, so the renamed test was still found |
 
 ## Progress
 

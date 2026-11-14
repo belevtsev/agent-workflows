@@ -1,5 +1,5 @@
 {
-  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, and asks before a command with --no-verify or an edit of cw.toml. The git hooks decide about commits and pushes; this file does not.",
+  "description": "cw for Claude Code: adds what `cw context` prints at the start of a session, asks before a command with --no-verify or an edit of cw.toml, and gives `cw tokens record` the notice that a role or the session has ended. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
@@ -22,6 +22,30 @@
             "shell": "bash",
             "command": "if command -v cw >/dev/null 2>&1; then cw guard --host claude; fi",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host claude || true; fi",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "if command -v cw >/dev/null 2>&1; then cw tokens record --host claude || true; fi",
+            "timeout": 30
           }
         ]
       }

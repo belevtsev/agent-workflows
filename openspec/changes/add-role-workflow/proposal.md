@@ -324,3 +324,49 @@ them is the owner's decision yet.
     Recommendation: support Codex in the first version only where its
     documentation and a test confirm each of the three; report `unknown`
     elsewhere. Settled by: Codex documentation and a test.
+
+### Answers taken on 14 November 2026
+
+The implementer gave every answer below, alone, because the owner asked for
+the work to go on without them. None is the owner's decision. Each can be
+undone as the last column says.
+
+| Question | Answer taken | How it is undone |
+| --- | --- | --- |
+| 1 | The roles run inside Claude Code or Codex; `cw` calls no model. | Nothing to undo: no model call was built. |
+| 2 | The roles live in this repository and this plugin. | Move `agents/`, `skills/task/`, `internal/roles/`, `internal/change/` and `internal/tokens/` to another repository; the gate does not import them. |
+| 3 | The seven roles of the table. | Change the list in `internal/roles/roles.go` and the texts under `internal/roles/text/`; the tests name what else must follow. |
+| 4 | The models of the table. | Per repository in `cw-roles.toml`; for everyone in `internal/roles/roles.go`. |
+| 5 | The OpenSpec folder is the one format written. | Replace `internal/change`; nothing else reads the folder. |
+| 6 | The specification, the design, and every push or pull request wait for the developer. | Edit the coordinator's instructions, `internal/roles/text/coordinator.md`. |
+| 7 | The developer role may add a test and may not change or remove one. | Change `developerLimit` in `internal/roles/roles.go`. |
+| 8 | The counts come from the host's own records, read when the host says that a role or the session has ended. | Remove the two hook entries; `cw tokens` then reports nothing. |
+| 9 | Two numbers: the flow tokens per task, and the comparison with one agent per release. | Change the split in `internal/tokens/report.go`. |
+| 10 | The limits as proposed. | Change the numbers in the size tests. |
+| 11 | 12 tasks, three languages, three trials, two arms. | Nothing was run; the owner sets the size before paying for runs. |
+| 12 | Codex is supported where its documentation says so; see below. | Remove the Codex entries from `hooks/codex-hooks.json`. |
+
+### What the Codex documentation says (question 12)
+
+Read on 14 November 2026, on the page "Hooks" of the Codex documentation.
+Nothing below was run on Codex.
+
+- **A role has ended.** Codex documents a `SubagentStop` hook. Its input holds
+  `session_id` (the parent session's id), `transcript_path`, `agent_id`,
+  `agent_type` and `agent_transcript_path`; both paths may be null.
+- **The session has ended.** Codex documents a `SessionEnd` hook for the main
+  thread. It has a time limit of one to three seconds and its output steers
+  nothing.
+- **Tokens.** No input of these two hooks holds a count. A `PostModelRequest`
+  hook holds `token_usage` "when available", and the page does not say what
+  it contains. So `cw` reads the two transcripts the notices name.
+- **The transcript.** The page says that its format "isn't a stable interface
+  for hooks and may change over time", and does not describe a line. `cw`
+  reads the lines the previous reader of this project knew. Where they hold
+  no count for a request, the report says `unknown`.
+- **A hook must not steer.** On `Stop` and `SubagentStop`, exit 2 and JSON on
+  standard output continue the turn. `cw tokens record` prints nothing on
+  standard output, and the hook command never exits 2.
+- **Starting a role on a model.** Not on that page. It stays unconfirmed, and
+  task 7.3 is the owner's.
+

@@ -39,6 +39,8 @@ func commands() []command {
 		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a command with --no-verify or an edit of cw.toml", runGuard},
 		{"uninstall", "", "Remove the hooks cw wrote and its records; cw.toml stays", runUninstall},
 		{"roles", "[--json] | check <role> --from <tree> [--task <task>] | text <role>", "Print the seven roles of the task workflow, check what a role changed, or print a role's text", runRoles},
+		{"change", "status [<task>] [--json] | check [<task>]", "Print the stage of a task's change folder, or check the rules its files must obey", runChange},
+		{"tokens", "[--task <task>] [--json] | record [--host claude|codex]", "Report the tokens a task used and the share the workflow itself took, or record them from a host's notice", runTokens},
 		{"version", "", "Print the version, the revision and the build time", runVersion},
 	}
 }
