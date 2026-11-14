@@ -157,14 +157,9 @@ func TestAHooksDirectoryKeepsAFileThatIsNotExactlyCws(t *testing.T) {
 
 	// The team's directory holds cw's script as it is, and a hook of the
 	// team that holds the marker line and more.
-	repo.Write(".githooks/pre-push", script)
+	writeProgram(t, repo.Path(".githooks/pre-push"), script)
 	team := "#!/bin/sh\n" + marker + "\nsh team-lint.sh || exit 1\ncw hook pre-commit \"$@\"\n"
-	repo.Write(".githooks/pre-commit", team)
-	for _, name := range []string{"pre-push", "pre-commit"} {
-		if err := os.Chmod(repo.Path(".githooks/"+name), 0o755); err != nil { // #nosec G302 -- a hook must be executable
-			t.Fatal(err)
-		}
-	}
+	writeProgram(t, repo.Path(".githooks/pre-commit"), team)
 	repo.Git("config", "core.hooksPath", ".githooks")
 
 	result := repo.CW("uninstall")

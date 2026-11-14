@@ -134,9 +134,7 @@ func TestInstallLeavesForeignFile(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(other), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, path, other)
 	foreign, err := Install(t.Context(), e.repo)
 	if err != nil {
 		t.Fatal(err)
@@ -215,9 +213,7 @@ func TestState(t *testing.T) {
 	}
 	// A hook of another tool that calls cw counts.
 	path := filepath.Join(e.repo.CommonDir, "hooks", "pre-commit")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\nformat\n"+Line("pre-commit")+"\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, path, "#!/bin/sh\nformat\n"+Line("pre-commit")+"\n")
 	if State(t.Context(), e.repo) != Installed {
 		t.Error("State with a shared hook that calls cw hook is not installed")
 	}
@@ -238,9 +234,7 @@ func TestState(t *testing.T) {
 		t.Error("State with an empty core.hooksPath directory is not missing")
 	}
 	for _, name := range Hooks {
-		if err := os.WriteFile(filepath.Join(e.dir, ".githooks", name), []byte(Script(name)), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		writeProgram(t, filepath.Join(e.dir, ".githooks", name), Script(name))
 	}
 	if State(t.Context(), e.repo) != Installed {
 		t.Error("State with cw hooks in core.hooksPath is not installed")
@@ -255,13 +249,9 @@ func TestUninstall(t *testing.T) {
 	}
 	shared := "#!/bin/sh\nformat\n" + Line("pre-commit") + "\n"
 	sharedPath := filepath.Join(dir, "pre-commit")
-	if err := os.WriteFile(sharedPath, []byte(shared), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, sharedPath, shared)
 	unrelated := filepath.Join(dir, "commit-msg")
-	if err := os.WriteFile(unrelated, []byte("#!/bin/sh\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, unrelated, "#!/bin/sh\n")
 	removed, foreign, err := Uninstall(t.Context(), e.repo)
 	if err != nil {
 		t.Fatal(err)
@@ -302,9 +292,7 @@ func TestUninstallWithHooksPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	own := filepath.Join(configured, "pre-push")
-	if err := os.WriteFile(own, []byte(Script("pre-push")), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, own, Script("pre-push"))
 	if _, _, err := Uninstall(t.Context(), e.repo); err != nil {
 		t.Fatal(err)
 	}
@@ -329,9 +317,7 @@ func TestUninstallLeavesAnotherToolsFileInHooksPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := "#!/bin/sh\n" + marker + "\nsh team-lint.sh || exit 1\n" + Line("pre-commit") + "\n"
-	if err := os.WriteFile(team, []byte(content), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, team, content)
 	removed, foreign, err := Uninstall(t.Context(), e.repo)
 	if err != nil || removed != 0 || len(foreign) != 1 || foreign[0].Path != team {
 		t.Errorf("Uninstall = %d removed, %v, %v; want none removed and the team's file named", removed, foreign, err)
@@ -365,9 +351,7 @@ func TestUninstallNamesTheLineTheFileHolds(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(edited), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(edited, []byte(Script("pre-push")+"# a note of the team\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, edited, Script("pre-push")+"# a note of the team\n")
 	_, foreign, err := Uninstall(t.Context(), e.repo)
 	if err != nil || len(foreign) != 1 {
 		t.Fatalf("Uninstall = %v, %v; want the changed file named", foreign, err)
@@ -401,19 +385,13 @@ func TestScriptRunsNoCWOfAnEmptyOrRelativeEntryOfPATH(t *testing.T) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "cw"), []byte("#!/bin/sh\necho ran > '"+planted+"'\n"), 0o755); err != nil {
-			t.Fatal(err)
-		}
+		writeProgram(t, filepath.Join(dir, "cw"), "#!/bin/sh\necho ran > '"+planted+"'\n")
 	}
 	installed := t.TempDir()
 	ran := filepath.Join(installed, "installed-ran")
-	if err := os.WriteFile(filepath.Join(installed, "cw"), []byte("#!/bin/sh\necho \"$@\" > '"+ran+"'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(installed, "cw"), "#!/bin/sh\necho \"$@\" > '"+ran+"'\n")
 	hook := filepath.Join(t.TempDir(), "pre-commit")
-	if err := os.WriteFile(hook, []byte(Script("pre-commit")), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, hook, Script("pre-commit"))
 	run := func(shell, path string) (int, string) {
 		command := exec.Command(shell, hook, "an argument")
 		command.Dir, command.Env = work, []string{"PATH=" + path}

@@ -43,10 +43,7 @@ func TestInitNamesAHookItLeftAlone(t *testing.T) {
 	}
 	repo := cwtest.NewRepo(t)
 	hook := ".git/hooks/pre-commit"
-	repo.Write(hook, "#!/bin/sh\necho other tool\ncw hook pre-commit \"$@\"\n")
-	if err := os.Chmod(repo.Path(hook), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, repo.Path(hook), "#!/bin/sh\necho other tool\ncw hook pre-commit \"$@\"\n")
 	got := repo.CW("init")
 	wants(t, "cw init", got, 0, "installed the hooks pre-merge-commit, pre-push", "they call cw already: pre-commit")
 	lacks(t, "cw init", got, "installed the hooks pre-commit")

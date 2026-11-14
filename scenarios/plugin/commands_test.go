@@ -87,10 +87,7 @@ func TestHookCommandsRunNoCWOfTheRepository(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "repository-cw-ran")
 	gitMarker := filepath.Join(t.TempDir(), "repository-git-ran")
 	for name, file := range map[string]string{"cw": marker, "git": gitMarker} {
-		repo.Write(name, "#!/bin/sh\necho ran > '"+file+"'\n")
-		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
-			t.Fatal(err)
-		}
+		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+file+"'\n")
 	}
 	for _, innerSh := range []string{"sh", "bash"} {
 		bin := toolFolder(t, innerSh)
@@ -137,10 +134,7 @@ func TestHookCommandsRunNothingWithoutAnAbsoluteEntryOfPATH(t *testing.T) {
 	repo := gatedDemo(t)
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
 	for _, name := range []string{"cw", "git"} {
-		repo.Write(name, "#!/bin/sh\necho ran > '"+marker+"'\n")
-		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
-			t.Fatal(err)
-		}
+		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+marker+"'\n")
 	}
 	for label, shell := range shells(t) {
 		if !filepath.IsAbs(shell) {
@@ -174,10 +168,7 @@ func TestHookCommandsRunTheInstalledCWAfterARelativeEntry(t *testing.T) {
 	repo := gatedDemo(t)
 	marker := filepath.Join(t.TempDir(), "repository-program-ran")
 	for _, name := range []string{"cw", "git"} {
-		repo.Write(name, "#!/bin/sh\necho ran > '"+marker+"'\n")
-		if err := os.Chmod(repo.Path(name), 0o755); err != nil { //nolint:gosec // the planted program must be executable
-			t.Fatal(err)
-		}
+		writeProgram(t, repo.Path(name), "#!/bin/sh\necho ran > '"+marker+"'\n")
 	}
 	for _, first := range []string{"", "."} {
 		env := withPath(repo.Env(), first+string(os.PathListSeparator)+pathOf(repo.Env()))
@@ -239,9 +230,7 @@ func TestOlderCWBlocksNoToolCall(t *testing.T) {
 	repo := gatedDemo(t)
 	older := t.TempDir()
 	script := "#!/bin/sh\necho 'usage: cw <command> [arguments]' >&2\nexit 2\n"
-	if err := os.WriteFile(filepath.Join(older, "cw"), []byte(script), 0o755); err != nil { //nolint:gosec // the older cw must be executable
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(older, "cw"), script)
 	env := withPath(repo.Env(), older+string(os.PathListSeparator)+pathOf(repo.Env()))
 	for _, h := range hostFiles {
 		for _, e := range hookEvents {

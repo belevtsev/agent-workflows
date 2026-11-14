@@ -1,7 +1,6 @@
 package declaration_test
 
 import (
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -161,10 +160,7 @@ func TestAddRefusesACommandWrittenAsOneWord(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		program = "my tools/check.bat"
 	}
-	repo.Write(program, "exit 0\n")
-	if err := os.Chmod(repo.Path(program), 0o755); err != nil { // #nosec G302 -- the program must be executable
-		t.Fatal(err)
-	}
+	writeProgram(t, repo.Path(program), "exit 0\n")
 	given := "." + string(filepath.Separator) + filepath.FromSlash(program)
 	result = repo.CW("add", "tools", "--", given, "--quick")
 	if result.Code != 0 {

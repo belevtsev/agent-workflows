@@ -171,15 +171,7 @@ func shQuote(path string) string {
 // that starts with #!, whatever its mode.
 func writeHook(t *testing.T, path, body string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(path, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, path, "#!/bin/sh\n"+body)
 }
 
 // installHook writes a hook into the hooks directory of the repository.

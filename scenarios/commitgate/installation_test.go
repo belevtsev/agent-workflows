@@ -100,9 +100,7 @@ func TestExistingPreCommitHookIsLeftAlone(t *testing.T) {
 	repo := cwtest.Demo(t)
 	dir := hooksDir(t, repo)
 	own := filepath.Join(dir, "pre-commit")
-	if err := os.WriteFile(own, []byte("#!/bin/sh\n# written by another tool\nexit 0\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, own, "#!/bin/sh\n# written by another tool\nexit 0\n")
 	before := fileSum(t, own)
 
 	result := repo.CW("init")
@@ -184,9 +182,7 @@ func TestFormatterBeforeCWInSharedHook(t *testing.T) {
 		"printf 'ok\\n\\n' > src/app.txt\n" +
 		"git add src/app.txt\n" +
 		"cw hook pre-commit \"$@\"\n"
-	if err := os.WriteFile(filepath.Join(hooksDir(t, repo), "pre-commit"), []byte(formatter), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(hooksDir(t, repo), "pre-commit"), formatter)
 	repo.CW("init")
 
 	repo.Write("README.md", "# demo\n\nchecked\n")

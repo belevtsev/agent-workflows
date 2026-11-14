@@ -40,9 +40,7 @@ func newGuardRepo(t *testing.T) *guardRepo {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(fakeGh), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(bin, "gh"), fakeGh)
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
 		if strings.HasPrefix(name, "GIT_") || strings.HasPrefix(name, "GH_") || strings.HasPrefix(name, "XDG_") || name == "HOME" || name == "PATH" {

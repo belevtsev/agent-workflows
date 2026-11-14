@@ -45,9 +45,7 @@ func TestAnotherToolsHookStillCallsCw(t *testing.T) {
 		t.Fatal(err)
 	}
 	script := "#!/bin/sh\necho another tool >&2\ncw hook pre-commit \"$@\"\n"
-	if err := os.WriteFile(preCommit, []byte(script), 0o755); err != nil { // #nosec G306 -- a hook must be executable
-		t.Fatal(err)
-	}
+	writeProgram(t, preCommit, script)
 	// The hook of the other tool already calls cw, so nothing is left for
 	// the user to edit and `cw init` exits 0 ("Hooks of other tools").
 	mustCW(t, repo, 0, "init")

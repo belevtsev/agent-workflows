@@ -2,7 +2,6 @@ package commitgate_test
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,9 +18,7 @@ func TestSharedHookThatAlreadyCallsCW(t *testing.T) {
 		"# written by another tool\n" +
 		"echo another tool runs\n" +
 		"cw hook pre-commit \"$@\"\n"
-	if err := os.WriteFile(shared, []byte(hook), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, shared, hook)
 	before := fileSum(t, shared)
 
 	result := repo.CW("init")

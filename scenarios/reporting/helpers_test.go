@@ -200,9 +200,7 @@ exit $status
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(bin, "cw"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(bin, "cw"), script)
 	path := ""
 	for _, kv := range repo.Env() {
 		if value, ok := strings.CutPrefix(kv, "PATH="); ok {

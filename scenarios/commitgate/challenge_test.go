@@ -167,10 +167,7 @@ func TestAnEmptyOrRelativeEntryOfPATHRunsNoFileOfTheRepository(t *testing.T) {
 	g.Write("src/app.txt", "ok")
 	marker := filepath.Join(t.TempDir(), "the cw of the repository ran")
 	// A builtin writes the marker, so the PATH below cannot hide that it ran.
-	g.Write("cw", "#!/bin/sh\necho ran > '"+marker+"'\nexit 0\n")
-	if err := os.Chmod(g.Path("cw"), 0o755); err != nil { // #nosec G302 -- the file must be executable to be found
-		t.Fatal(err)
-	}
+	writeProgram(t, g.Path("cw"), "#!/bin/sh\necho ran > '"+marker+"'\nexit 0\n")
 
 	// A PATH that holds git and sh and no other cw.
 	bin := t.TempDir()

@@ -61,9 +61,7 @@ func (g *gate) wrapCW() {
 		"status=$?\n" +
 		"if [ \"$1\" = hook ]; then printf '%s %s\\n' \"$2\" \"$status\" >> '" + g.exits + "'; fi\n" +
 		"exit $status\n"
-	if err := os.WriteFile(filepath.Join(dir, "cw"), []byte(script), 0o755); err != nil {
-		g.t.Fatal(err)
-	}
+	writeProgram(g.t, filepath.Join(dir, "cw"), script)
 	g.Setenv("PATH", dir+string(os.PathListSeparator)+envValue(g.Env(), "PATH"))
 }
 

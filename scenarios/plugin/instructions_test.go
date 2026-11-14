@@ -17,9 +17,7 @@ func TestSessionContextComesFromTheInstalledCW(t *testing.T) {
 	const newer = "Newer cw text 7f3a: run the checks with cw verify."
 	fake := t.TempDir()
 	script := "#!/bin/sh\nif [ \"$1\" = context ]; then echo '" + newer + "'; exit 0; fi\nexit 2\n"
-	if err := os.WriteFile(filepath.Join(fake, "cw"), []byte(script), 0o755); err != nil { //nolint:gosec // the fake cw must be executable
-		t.Fatal(err)
-	}
+	writeProgram(t, filepath.Join(fake, "cw"), script)
 	env := withPath(repo.Env(), fake+string(os.PathListSeparator)+pathOf(repo.Env()))
 	for _, h := range hostFiles {
 		t.Run(h.host, func(t *testing.T) {
