@@ -51,6 +51,8 @@ A test is named after the behaviour it checks.
 | Native Go / windows-latest | gofmt, `go vet`, `go test` |
 | Lint and vulnerabilities | `golangci-lint` and `govulncheck` for linux, darwin and windows |
 | Gate / cw run | Builds `cw` and runs the checks of `cw.toml` with `cw run --base` against the base revision |
+| Release archives | Builds the six archives, an SBOM for each and `SHA256SUMS` as a release does, named for the tag that the README installs. It publishes nothing: the artifact `cw-archives` of the run holds them |
+| Install without Go / ubuntu-latest, macos-latest, windows-latest | Follows the first install instruction of the README on a `PATH` without `go`, with those archives served from the runner, and compares what `cw version` prints with the tag and the commit. Then it follows the instruction again with one byte of the archive changed, which must install nothing. On Windows it does both in PowerShell 7 and in Windows PowerShell 5.1 |
 | Plugin manifests | `claude plugin validate .` |
 
 A thorough run is started by hand, with the input `thorough` of the workflow:
@@ -62,5 +64,38 @@ no other run showed.
 
 ## Releases
 
-A release is made when the owner pushes a `v*` tag. `.goreleaser.yaml` builds
-archives for linux, darwin and windows on amd64 and arm64, and `SHA256SUMS`.
+A release is made when the owner pushes a `v*` tag. `.github/workflows/release.yml`
+then does four things, each only when the one before it passed:
+
+1. It refuses a tag whose commit is not on `main`, or for which no run of CI
+   started by a push or by hand has passed (`.github/scripts/release-guard.sh`).
+2. It runs the tests with the race detector, the lint and the vulnerability
+   check.
+3. It builds with `.goreleaser.yaml` the archives for linux, darwin and windows
+   on amd64 and arm64, an SBOM for each and `SHA256SUMS`, publishes them as a
+   release on GitHub, and attests the build of each archive. A tag with a
+   hyphen, such as `v3.0.0-beta.1`, becomes a pre-release.
+4. It follows the first install instruction of the README on Linux, macOS and
+   Windows, exactly as written, on a `PATH` without `go`. This fails when the
+   README names another tag.
+
+Steps 1, 3 and 4 have never run: no tag of this code exists. The job `Release
+archives` of CI builds the same archives from any commit, and the jobs `Install
+without Go` install from them, so what is left untried is the publishing, the
+attestation and the download from GitHub.
+
+To try the archives of a commit before it is tagged:
+
+```sh
+gh run download <run of CI> --name cw-archives --dir cw-archives
+```
+
+To publish, the owner does two things:
+
+1. Merge the branch into `main` and wait until the run of CI for the merge
+   commit has passed.
+2. Tag that commit with the tag the README names and push the tag:
+   `git tag v3.0.0-beta.1 <commit>` and `git push origin v3.0.0-beta.1`.
+
+The README, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and
+`.codex-plugin/plugin.json` name the version; change all of them together.
