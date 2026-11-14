@@ -175,12 +175,16 @@ jobs:
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           syft-version: v1.55.0
+      - name: Take the release notes from the changelog
+        env:
+          TAG: ${{ steps.name.outputs.tag }}
+        run: sh .github/scripts/release-notes.sh "$TAG" > "$RUNNER_TEMP/release-notes.md"
       - name: Build archives, SBOMs and SHA256SUMS
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
           version: v2.18.3
-          args: release --snapshot --clean
+          args: release --snapshot --clean --release-notes ${{ runner.temp }}/release-notes.md
         env:
           GORELEASER_CURRENT_TAG: ${{ steps.name.outputs.tag }}
       - name: List what was built
@@ -191,6 +195,7 @@ jobs:
             [ -f "$archive.sbom.json" ] || { echo "$archive has no SBOM"; exit 1; }
           done
           [ "$(ls dist/*.tar.gz dist/*.zip | wc -l)" -eq 6 ] || { echo "expected six archives"; exit 1; }
+          cp "$RUNNER_TEMP/release-notes.md" dist/release-notes.md
       - name: Keep the archives with the run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -200,6 +205,7 @@ jobs:
             dist/*.zip
             dist/*.sbom.json
             dist/SHA256SUMS
+            dist/release-notes.md
           if-no-files-found: error
           retention-days: 30
 
