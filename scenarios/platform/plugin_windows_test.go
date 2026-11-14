@@ -248,9 +248,11 @@ func TestCodexWindowsCommandsRunNoProgramOfARelativeEntryOfPATH(t *testing.T) {
 						t.Errorf("the command ran a program of the repository")
 					}
 					said := strings.Contains(result.Stdout, "cw is not installed")
-					control := runCmd(t, way, neutral, installed, askCmd, notice)
+					// The control asks from the Windows folder, where the
+					// command itself runs cw.
+					control := runCmd(t, way, filepath.Dir(systemPath()), installed, askCmd, notice)
 					switch found := strings.HasPrefix(strings.TrimSpace(control.Stdout), "cw "); {
-					case found && (said || strings.TrimSpace(result.Stdout) == ""):
+					case found && (said || !strings.Contains(result.Stdout, "declared in cw.toml")):
 						t.Errorf("cmd.exe finds cw through this PATH, and the command did not print what `cw context` prints:\n%s", result.Output())
 					case !found && first != "":
 						t.Errorf("cmd.exe finds no cw through this PATH:\n%s", control.Output())

@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      thorough:
+        description: Run the race detector on macOS and Windows too, and the tests that wait ten minutes
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,7 +26,7 @@ jobs:
   go:
     name: Native Go / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: ${{ inputs.thorough && 50 || 20 }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +40,8 @@ jobs:
           persist-credentials: false
       - name: Test
         uses: ./.github/actions/go-test
+        with:
+          thorough: ${{ inputs.thorough }}
       # Success measure 2: the time of one hook decision. The plain test run
       # above skips it. The harness builds cw with go build and no -race, and
       # this step runs without -race. On Windows it reports only.

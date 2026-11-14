@@ -93,9 +93,9 @@ Source: `go doc os/exec.LookPath` and `go doc os/exec.Command`, Go 1.27.4 (a nam
 
 ### Requirement: Hooks on Windows
 
-On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. So SHALL the Windows commands of the Codex plugin, which SHALL run no program of the working directory, also not through a relative entry of `PATH`, and SHALL exit 0. A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
+On Windows the hooks that `cw init` installs SHALL run in the shell that Git for Windows runs hooks in, and SHALL find the `cw` program that is on the user's `PATH`. So SHALL the Windows commands of the Codex plugin, which SHALL run no program of the working directory, also not through a relative entry of `PATH`, and SHALL exit 0 (two exceptions follow). A commit or a push SHALL get the same decision whether git is started from PowerShell, from `cmd.exe`, from Git Bash or by another program.
 
-The Windows commands of the Codex plugin do not cover one case: when the working directory is the root of a drive, an entry of `PATH` that names that drive and no path from its root, such as `X:tools`, is read from that root.
+The exceptions hold for the Windows commands of the Codex plugin. Behind an empty first entry of `PATH`, `cmd.exe` may run no `cw` of a later entry; the commands then act as they do without `cw`. And an entry of `PATH` that names a drive and no path from its root, such as `X:tools`, is read from the root of that drive when the working directory is on it and the Windows folder is not; it leads into the working directory when that directory is the root, or when the entry names it from the root.
 
 Source: `publish-gate`, Hook installation and Fail closed; the owner's decision of 14 November 2026; second challenge of 14 November 2026 (`openspec/production-plan.md`, Independent challenge), findings S1, X2 and X10; `agent-integration`, Instruction text comes from `cw` (the line for a missing `cw`). Not observed: every git observation under proposal, Sources was made on Linux.
 

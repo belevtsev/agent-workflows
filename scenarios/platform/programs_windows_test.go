@@ -96,6 +96,48 @@ func TestArgumentsReachABatchFileAsTheyWereWritten(t *testing.T) {
 	}
 }
 
+// Requirement "Programs on Windows": an argument of plain characters reaches
+// a batch file unchanged, and a program that is not a batch file gets every
+// argument unchanged, also one that cw refuses for a batch file.
+func TestPlainArgumentsReachABatchFileAndEveryArgumentReachesAProgram(t *testing.T) {
+	t.Parallel()
+	repo := portable(t, "[[check]]\nid = \"batch\"\nrun = [\"hello\", \"--name=value\", \"a.b/c:d\", \"x+y,z@w\", \"back\\\\slash-1_2\"]\n\n"+
+		"[[check]]\nid = \"program\"\nrun = [\"printdirect\", \"a b\", \"c&d\", \"100%\", \"e^f\"]\n")
+	bin := t.TempDir()
+	results := t.TempDir()
+	viaBatch := filepath.Join(results, "via-batch")
+	direct := filepath.Join(results, "direct")
+	printer := buildProgram(t, bin, "printargs", fmt.Sprintf(printArgs, strconv.Quote(viaBatch)))
+	buildProgram(t, bin, "printdirect", fmt.Sprintf(printArgs, strconv.Quote(direct)))
+	script := "@echo off\r\n\"" + printer + "\" %*\r\n"
+	if err := os.WriteFile(filepath.Join(bin, "hello.cmd"), []byte(script), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	prependPath(repo, bin)
+
+	result := repo.CW("run", "batch", "program")
+
+	for file, want := range map[string]string{
+		viaBatch: "--name=value\na.b/c:d\nx+y,z@w\nback\\slash-1_2\n",
+		direct:   "a b\nc&d\n100%\ne^f\n",
+	} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Errorf("%s: the program was not run: %v", filepath.Base(file), err)
+			continue
+		}
+		if got := string(data); got != want {
+			t.Errorf("%s: the program received %q, want %q", filepath.Base(file), got, want)
+		}
+	}
+	if result.Code != 0 {
+		t.Errorf("cw run exit status %d, want 0", result.Code)
+	}
+	if t.Failed() {
+		t.Logf("cw run batch program (exit status %d):\n%s", result.Code, result.Output())
+	}
+}
+
 // Requirement "Programs on Windows", scenario "A batch file named from a
 // subfolder".
 func TestBatchFileRuleHoldsFromASubfolder(t *testing.T) {

@@ -365,9 +365,11 @@ not in the hands of the plugin.
   `cw context`; when `cmd.exe` finds no `cw` it can run (exit status 9009),
   the command runs no other program and prints the line when the session's
   directory itself holds `cw.toml`, so a session started in a subfolder gets
-  no line there. Two cases are not covered. When the session starts in the
-  root of a drive, an entry that names that drive and no path from its root,
-  such as `D:tools`, is read from that root. And behind an empty first entry
+  no line there. Two cases are not covered. An entry that names the session's
+  drive and no path from its root, such as `D:tools`, is read from the root
+  of that drive when the Windows folder is on another drive: it leads into
+  the repository when the repository is that root, or when the entry names
+  the repository's folder from the root. And behind an empty first entry
   of `PATH`, `cmd.exe` ran no `cw` of a later entry on the Windows image of
   the CI in November 2026: with such a `PATH` the commands before a tool call
   and for the tokens do nothing, and the command at the start of a session

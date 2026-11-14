@@ -1,7 +1,14 @@
 name: Test the Go packages
 description: >-
   Set up the pinned Go, check formatting and vet, and run every test. The race
-  detector runs on Linux.
+  detector runs on Linux; a thorough run uses it on every system.
+
+inputs:
+  thorough:
+    description: >-
+      'true' runs the race detector on every system and the tests that wait
+      ten minutes.
+    default: 'false'
 
 runs:
   using: composite
@@ -22,12 +29,23 @@ runs:
     - name: Vet
       shell: bash
       run: go vet ./...
-    # Race checks run once, on Linux, where they cover every package.
+    # Race checks run once, on Linux, where they cover every package that is
+    # not written for one system.
     - name: Test with the race detector
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && inputs.thorough != 'true'
       shell: bash
       run: go test -race -count=1 ./...
     - name: Test
-      if: runner.os != 'Linux'
+      if: runner.os != 'Linux' && inputs.thorough != 'true'
       shell: bash
       run: go test -count=1 -timeout=15m ./...
+    # A thorough run is started by hand. It also covers the code written for
+    # macOS and Windows with the race detector, which needs cgo, and runs the
+    # tests that wait ten minutes.
+    - name: Test with the race detector and the slow tests
+      if: inputs.thorough == 'true'
+      shell: bash
+      env:
+        CGO_ENABLED: '1'
+        CW_SLOW_TESTS: '1'
+      run: go test -race -count=1 -timeout=30m ./...
