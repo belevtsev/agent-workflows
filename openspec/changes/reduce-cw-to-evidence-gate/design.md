@@ -29,7 +29,7 @@ open, it says so under "Decisions taken without the owner".
 | 1 | The work is on a branch in a worktree, not on `main`. | The task list says `main`; the owner's daily `cw` and plugin load from `main`, and nobody is there to approve. | Merge the branch when satisfied. |
 | 2 | Task 1.1: the module path stays `github.com/belevtsev/agent-workflows/v3`. No tag is made. | It is the recommended answer, and a tag is the owner's. | Change `go.mod` and the imports. |
 | 3 | Open Questions 9 to 11 take their recommendations. | The owner asked for the work to go on alone. | Each is one function or one file. |
-| 4 | The command line uses the standard `flag` package, not cobra. | cobra's flag package links Go's `net` package. Without it a test can show that `cw` links no network code at all (`check-evidence`: No network). | Put cobra back; the commands do not change. |
+| 4 | The command line uses the standard `flag` package, not cobra. | cobra's flag package links Go's `net` package. Without it a test can show that `cw` links no network code at all on Linux and macOS, and none of its own on Windows (`check-evidence`: No network). | Put cobra back; the commands do not change. |
 | 5 | Nothing is deleted. Files leave by `git mv` into `_quarantine/`. | The owner's rule. | Move them back. |
 | 6 | Commits are local, authored with the identity earlier local commits used. Nothing is pushed, tagged or released, and no repository setting changes. | Publishing is the owner's. | `git branch -D` removes all of it. |
 
@@ -58,7 +58,7 @@ imports `internal/cli`. The Go modules that remain are `go-toml/v2` and
 | Rule | Checked by |
 | --- | --- |
 | No package imports `internal/cli` except `cmd/cw` | test |
-| `cw` links no network package | test |
+| `cw` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
 | A program is started only by `internal/proc`, which only `internal/gitx` (git) and `internal/runner` (a declared check) import | test |
 | Nothing outside the git directory is written, apart from `cw.toml` and the hook files | review, test |
 
@@ -336,7 +336,7 @@ record is written.
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
 | The 154 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
-| No network | A test that lists the packages `cw` links and finds no `net` | Linux | That no network code is linked; stronger than the scenario asks. |
+| No network | A test that lists the packages `cw` links for Linux, macOS and Windows. It finds no `net` for Linux and macOS. For Windows `net` is linked through `golang.org/x/sys/windows` alone, which `cw` calls for job objects and file locks; no package of `cw` imports it. | Linux | That no network code is linked on Linux and macOS, and that on Windows no code of `cw` reaches any; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |
 | Hook cost | A test that measures a hook decision on this repository and on a generated one of 30,000 files and 68 MiB | Linux | The two limits of Success measure 2 on this machine. |

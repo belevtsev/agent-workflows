@@ -464,8 +464,10 @@ host's record, and, when the counts are unknown, `"known": false` and the reason
 record gave no label it holds the `role` the notice named. It holds no text of a brief, a prompt
 or an answer: a search of the stored files for a sentence of a brief finds nothing.
 
-Nothing leaves the machine. `cw` links no network package, and a test of this repository fails
-when it does. The stored files are not committed: they are inside the git directory, not the
+Nothing leaves the machine. No package of `cw` imports a network package, and a test of this
+repository fails when one does. On Linux and macOS the program links none at all. On Windows the
+package `net` is linked through `golang.org/x/sys/windows`, which `cw` calls for job objects and
+file locks. The stored files are not committed: they are inside the git directory, not the
 working tree.
 
 ## Limits

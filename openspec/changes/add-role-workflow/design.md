@@ -283,7 +283,7 @@ between their thousands. It prints no price.
 | Rule | Checked by |
 | --- | --- |
 | No package imports `internal/cli` except `cmd/cw` | test |
-| `cw` links no network package | test |
+| `cw` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
 | A role text names no language, build tool, test framework or package manager | review, test |
 | A host's role file is generated from the role text and never edited by hand | test |
 | The files of a change folder obey the rules of `cw change check` | record |

@@ -45,7 +45,7 @@ asked for the work to go on alone. Each can be undone.
 - The cut happens on the branch, not on `main`.
 - Local commits on the branch, with the identity earlier local commits used.
 - The standard `flag` package in place of cobra, so that `cw` links no network
-  code.
+  code of its own. On Windows the system-call library links the package `net`.
 
 ## What is left for the owner
 
@@ -54,7 +54,7 @@ asked for the work to go on alone. Each can be undone.
 - Running anything with a model: the evaluation and the comparison with one
   agent (part 2, group 7). Until then no document claims that the roles
   improve anything.
-- The size limit of the gate's code. It holds 5,997 of 6,000 lines after
+- The size limit of the gate's code. It holds 5,999 of 6,000 lines after
   the guard learned to read a command as words. The next change to the gate
   needs a cut elsewhere, or the owner's word on the limit.
 - Confirming the behaviour on macOS, on Windows and on Codex. The build
@@ -201,3 +201,19 @@ usage; and the arithmetic of the token fixture.
 | M7 | done; compared with real records in M9 | `90aee13`, `501ebd8` | Local, Linux: the 16 scenarios of `token-report` each have a test and pass, 14 against records built to the shape the reader expects and 2 as tests of the documents. Three scenario tests failed first and were settled against the specification (see the table above). A record built to the table of the specification gives 655,000 tokens, of which 225,000 (34%) are workflow tokens; no text of a brief is stored. No record that Claude Code or Codex wrote was read. |
 | M8 | done, except what needs the owner | `501ebd8` | Local, Linux: `README.md`, eleven documents under `docs/` with an index, and `docs/try-it.md`, whose parts 1 to 9 were run by hand with the output shown. The quick start is executed by a test. Tests of the documents: links and anchors resolve, the index names every document, no benefit is stated while the comparison table holds no numbers. `cw.toml` declares five checks. In a second clone of this branch at `501ebd8`, made in a scratch directory, `cw init` installed the hooks, `cw run` passed all five checks, a commit was allowed, a commit of changed content was denied and named the five checks, and a commit with a failing test was denied and named the check `test`. The owner's clone was not touched: it has no hooks of this `cw` and no records. The two writers of the reference documents compared the program with the design and reported eleven cases with a concrete failure and thirteen differences; all were settled in the code or in the design, and six got a test under `scenarios/messages`. Not done: the release workflow (task 11.2), the hook-cost test (10.1), the git observations as a test (3.5), and everything that needs CI, macOS, Windows, Codex or a model. |
 | M9 | done, not run on a host | the commit after `e50e20b` | Local, Linux. **Review:** four research agents read the sources listed in `docs/other-tools.md`; its author did not open them again. Each of 48 findings has an outcome: changed, already so, rejected or deferred. **Skill:** seven examples, each replayed by `TestSkillExamplesAreReplayed` against the `cw` under test; the replay found four places where a draft showed other output than `cw` prints. **Guard:** table tests and four scenario tests through both hook files. **Tokens:** `cw tokens record` and a separate script gave the same totals for 170 real records of Claude Code and for 13 real rollouts of Codex. **Model trial:** five runs of a subagent on Opus 5.5 in scratch repositories, three with the skill and two without, read back from the repositories: no run went around the gate; one run for each cell is not a measurement. `gofmt`, `go vet` and `golangci-lint` for three systems, `govulncheck`, `go test -race -count=1 ./...` in 27 packages, the specification and task lints, and `claude plugin validate .` pass. Not done: a run of the plugin on Claude Code or Codex, the trigger test of the skill, CI. |
+
+### The first run of CI
+
+The branch was pushed on 14 November 2026 and CI ran for the first time, on pull request 219.
+The job `Native Go` passed on Linux. Every finding of that run is listed here.
+
+| Finding | System | Outcome |
+| --- | --- | --- |
+| A test compared the files before and after a refused command while the background maintenance of git removed its lock. | Linux, macOS | Changed: the test repositories start no maintenance. The new test of the harness failed before the change, locally. |
+| The guard did not ask about an edit that creates a folder under `.git/cw` or `.git/hooks` when the repository is reached through a link. | macOS, Windows | Changed: the deepest folder that exists is resolved. The test failed before the change on Linux, through a link. |
+| The git directory kept forward slashes while the two other directories had the form of the system. | Windows | Changed. Not run on Windows yet. |
+| A store that is a file was read as "no mode", so the gate enforced without reporting the error. | Windows | Changed: the store is looked at before the mode. Not run on Windows yet. |
+| `cw init` failed once with "put process in a job object: Access is denied": the program had exited before it joined its job. | Windows | Changed: a program that has exited is no failure. Not run on Windows yet. |
+| A child of a program was still running after the run. The program joins its job after it has started, so under load a child can start first. | Windows | Open. The program has to start suspended, join the job and then continue. That needs more lines than the size limit leaves. |
+| `cw` links the package `net` through `golang.org/x/sys/windows`. | Windows | Changed: the test reads the packages for all three systems and holds that no other package imports a network package. The documents say so. |
+| Two tests were wrong for Windows: one wrote a path with backslashes into `cw.toml`, one looked for the text of the hook on the wrong stream of PowerShell. | Windows | Changed. Not run on Windows yet. |
