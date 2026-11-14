@@ -60,3 +60,17 @@ func PretendDeveloperDir(t testing.TB, developer string, err error) {
 	activeDeveloperDir = func(context.Context, string, []string) (string, error) { return developer, err }
 	t.Cleanup(func() { activeDeveloperDir = saved })
 }
+
+// PretendCommandLineTools makes judgeC, until t ends, take dir as the
+// Command Line Tools directory it falls back to on macOS. Call it only from
+// a test that is not parallel, as it replaces a package variable.
+func PretendCommandLineTools(t testing.TB, dir string) {
+	t.Helper()
+	saved := commandLineToolsDir
+	commandLineToolsDir = dir
+	t.Cleanup(func() { commandLineToolsDir = saved })
+}
+
+// XcodeSelectPrint is xcodeSelectPrint, which a test runs with a script in
+// place of xcode-select.
+var XcodeSelectPrint = xcodeSelectPrint

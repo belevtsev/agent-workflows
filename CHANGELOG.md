@@ -143,8 +143,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- On macOS, a cgo Go check earns credit only when the developer directory `xcode-select -p` prints is one the user cannot change,
-  and it runs with xcrun's lookup cache off, so a user-owned `Xcode.app` no longer earns it ([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)).
+- On macOS, a cgo Go check earns credit only from a developer directory the user cannot change: the one `xcode-select -p` prints, or else
+  the Command Line Tools. The run gets that directory as `DEVELOPER_DIR` and xcrun's lookup cache off, so a user-owned `Xcode.app`
+  no longer earns it, and a relative `DEVELOPER_DIR` is refused ([the C toolchain](docs/operations.md#the-c-toolchain-of-a-go-check)).
 - After the wall clock steps back, `cw task` commands keep writing: stored times run ahead of the clock until it catches up, so runs
   made meanwhile show equal starts and `0s` in the timeline ([task record format](docs/development.md#task-record-format)).
 - A failed or interrupted `cw consult` no longer leaves an empty file at `--output`, so a retry with the same path works;

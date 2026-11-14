@@ -1204,8 +1204,9 @@ the default `gcc` (Linux) or `clang` (macOS) on `PATH`; C++ files with its
 with the `swig` on `PATH`. A wrapper compiler can add code that prints `PASS`
 and exits 0 before any test runs. So `cw` judges that toolchain after the
 `go env` read and records it on `go_env` under `c`: `cgo`, the programs `cc`,
-`cxx`, `fc` and `swig` (`path`, `sha256`) and, when it did not verify,
-`unverified` with the reasons. It verifies when:
+`cxx`, `fc` and `swig` (`path`, `sha256`), on macOS the `developer_dir`
+judged and, when it did not verify, `unverified` with the reasons. It
+verifies when:
 
 - `CC`, `CXX` and `FC` are each one program without arguments, named bare and
   looked up on the check's `PATH`, or by an absolute path. `CC` must be found;
@@ -1234,22 +1235,34 @@ and exits 0 before any test runs. So `cw` judges that toolchain after the
   `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`, `OBJC_INCLUDE_PATH`,
   `CCC_OVERRIDE_OPTIONS`, `GCONV_PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`,
   `LD_AUDIT`, `LD_RUN_PATH`, `SDKROOT`, `TOOLCHAINS` or a `DYLD_` variable is
-  set, and on macOS `DEVELOPER_DIR` is unset or names the directory
-  `xcode-select` chose.
-- On macOS, the developer directory that `xcode-select -p` prints, where the
-  `/usr/bin/clang` shim finds the toolchain it runs, passes the same test as
-  a compiler: a user-owned `Xcode.app` does not.
+  set, and on macOS `DEVELOPER_DIR` is unset or an absolute path that names
+  the directory `xcode-select` chose.
+- On macOS, a developer directory passes the same test as a compiler: the
+  active one, which `/usr/bin/xcode-select -p` prints as one absolute path on
+  one line (only its final newline is removed), or else
+  `/Library/Developer/CommandLineTools`. The `/usr/bin/clang` shim runs the
+  toolchain of that directory. A user-owned `Xcode.app` does not pass, nor
+  does an Xcode under `/Applications`, which the `admin` group can write, so
+  with either selected the Command Line Tools are judged instead. When
+  neither passes, the reason names both and says how to earn credit: install
+  the Command Line Tools (`xcode-select --install`) or select a developer
+  directory that only root can change (`sudo xcode-select -s`). An
+  `xcode-select -p` that fails or prints anything else leaves the toolchain
+  unverified.
 
 An `FC` that does not pass leaves the toolchain verified but is not run.
 
 The check then runs, at the end of its environment, with `CGO_ENABLED` as
 read and, with cgo on, the `CGO_*FLAGS` as read, `CC`, `CXX` and `FC` set to
 the paths judged, on macOS `xcrun_nocache=1` (xcrun then skips its per-user
-lookup cache), and `COMPILER_PATH` naming the directories of an assembler
+lookup cache) and `DEVELOPER_DIR` set to the developer directory judged, as
+the walk resolved it, so the shim cannot run another, and `COMPILER_PATH`
+naming the directories of an assembler
 or linker found on `PATH`. A `CXX` or `FC` that was not found, or an `FC`
 that did not pass, is set to a path under `/nonexistent`, so a package with
 C++ or Fortran files then fails to build. A go env file or `PATH` entry
-changed later changes nothing.
+changed later changes nothing, and a run judged in another developer
+directory has another `env_key`, so it is not reused.
 
 A run with cgo on whose toolchain did not verify still runs and can pass, but
 earns no Go rule credit, and verify lists it as `check <id> passed, but earns
@@ -1263,9 +1276,10 @@ earns none either: run its check again. With cgo off nothing is judged.
 This shows who can change the toolchain, not what it does. When `cw` runs as
 root, every file passes. On macOS, `cw` checks the `/usr/bin/clang` shim and
 the developer directory it runs the toolchain from, down to that directory
-only: not the files inside it, nor the assembler or linker there. The compiler's own temporary files, a `swig` added to `PATH`
-during the run, a package's `#cgo` directives (which cmd/go checks itself)
-and `pkg-config` are not judged.
+only: not the files inside it, nor the assembler or linker there. The
+compiler's own temporary files, a `swig` added to `PATH` during the run, a
+package's `#cgo` directives (which cmd/go checks itself) and `pkg-config` are
+not judged.
 
 When no go command verifies, such as a script named `go` first on `PATH`, a
 `GOROOT` of links to the real tree, a broken shim or a toolchain that cannot be
