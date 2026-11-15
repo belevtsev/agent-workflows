@@ -330,6 +330,24 @@ func TestExecuteReportsNonzeroWithoutRetryOrSubstitution(t *testing.T) {
 	}
 }
 
+// Windows job termination reports status 1; Unix signal termination has no
+// ordinary exit status. These calls have started, unlike pre-start cancellation.
+func assertStoppedExitStatus(t *testing.T, got Execution) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		if got.ExitStatus == nil {
+			t.Fatal("stopped Windows execution has no exit status, want 1")
+		}
+		if *got.ExitStatus != 1 {
+			t.Fatalf("stopped Windows execution exit status = %d, want 1", *got.ExitStatus)
+		}
+		return
+	}
+	if got.ExitStatus != nil {
+		t.Fatalf("stopped execution exit status = %d, want none after signal termination", *got.ExitStatus)
+	}
+}
+
 func TestExecuteCancellationBeforeAndDuringRun(t *testing.T) {
 	root := t.TempDir()
 	ready := filepath.Join(root, "ready")
@@ -366,9 +384,10 @@ func TestExecuteCancellationBeforeAndDuringRun(t *testing.T) {
 	cancel()
 	select {
 	case got = <-done:
-		if got.Outcome != "cancelled" || got.ExitStatus != nil || got.Answer != "answer before stop" {
+		if got.Outcome != "cancelled" || got.Answer != "answer before stop" {
 			t.Fatalf("cancelled execution = %#v", got)
 		}
+		assertStoppedExitStatus(t, got)
 	case <-deadline.C:
 		t.Fatal("cancelled CLI did not stop")
 	}
@@ -382,9 +401,10 @@ func TestExecuteTimeoutAndInvalidInputs(t *testing.T) {
 	guard, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	got := Execute(guard, root, definition, "question", "")
-	if got.Outcome != "timed_out" || got.ExitStatus != nil || guard.Err() != nil {
+	if got.Outcome != "timed_out" || got.Answer != "answer before stop" || guard.Err() != nil {
 		t.Fatalf("timed-out execution = %#v, guard=%v", got, guard.Err())
 	}
+	assertStoppedExitStatus(t, got)
 	for _, test := range []struct {
 		name       string
 		definition Definition
