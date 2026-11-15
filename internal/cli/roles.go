@@ -18,10 +18,12 @@ import (
 // taskName is the form of a task's name: lower-case words joined by hyphens.
 var taskName = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
-// runRoles prints the roles, or runs one of the two commands below it.
+// runRoles prints the roles or runs a role command.
 func runRoles(ctx context.Context, cfg Config, args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
+		case "set", "reset":
+			return runRolesEdit(ctx, cfg, args[1:], args[0] == "reset")
 		case "check":
 			return runRolesCheck(ctx, cfg, args[1:])
 		case "text":
@@ -36,7 +38,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash || (*host != "" && *host != "claude" && *host != "codex") || (*task != "" && !taskName.MatchString(*task)) {
-		return usagef("usage: kitsu roles [--host claude|codex] [--task <task>] [--json], kitsu roles check <role> --from <tree> [--task <task>] [--finalize], or kitsu roles text <role>")
+		return usagef("usage: kitsu roles [--host claude|codex] [--task <task>] [--json]; use `kitsu roles --help` for set, reset, check and text")
 	}
 	config, err := rolesConfig(ctx)
 	if err != nil {
@@ -73,7 +75,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 		fmt.Fprintf(cfg.Out, "    Advisers: %s.\n", adviserListText(access, r.ID))
 	}
 	fmt.Fprintf(cfg.Out, "\nTEXT is the size of the role's text in characters; the coordinator's instructions have %d.\n", roles.TextSize(roles.Coordinator))
-	fmt.Fprintf(cfg.Out, "A repository sets other models in %s, and names its test paths there.\n", roles.FileName)
+	fmt.Fprintf(cfg.Out, "Use `kitsu roles set <role> --host claude|codex --model <model> --reasoning <effort>`.\nOverrides and test paths live in %s.\n", roles.FileName)
 	return nil
 }
 

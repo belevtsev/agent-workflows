@@ -50,8 +50,8 @@ the specification and the design, and the commit goes through the gate.
 | `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing |
 | `git` | Runs the checks and makes the commit through the gate. | nothing |
 
-`kitsu roles` prints the seven roles, each with its model, its effort and what it may write. A repository changes the
-models in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
+`kitsu roles` prints the seven roles, each with its model, its effort and what it may write. Use
+`kitsu roles set` to save model and reasoning overrides in `kitsu-roles.toml`. The texts name no language and no build tool; the commands of a repository come from its
 `kitsu.toml`.
 
 `kitsu roles --host codex` or `kitsu roles --host claude` shows a compact table of role, model,
@@ -70,7 +70,7 @@ how the answer was addressed. Adviser answers replace no review or approval.
 
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
 2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect the role/model/reasoning/advisers table.
-   [Role configuration](docs/roles.md#kitsu-rolestoml) changes a specialist's model or effort; your host selects the coordinator.
+   [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu roles set`; your host selects the coordinator.
 3. Optionally [configure an adviser](#ask-an-adviser) to answer questions through a CLI you already use.
 4. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
    The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
@@ -88,6 +88,17 @@ kitsu tokens --task <task>
 
 The [task workflow](docs/workflow.md) explains the full path and the shorter path for work whose behavior is already clear.
 Task records and token totals appear as the workflow runs; the commands above do not launch agents themselves.
+
+Change a role's selection without editing TOML:
+
+```sh
+kitsu roles set developer --host codex --model gpt-6.1-sol --reasoning max
+kitsu roles set developer --host claude --model opus --reasoning high
+kitsu roles set reviewer --host codex --reasoning high
+kitsu roles reset developer --host codex
+```
+
+Omit `--model` or `--reasoning` to keep that value. Reset restores both defaults for that role and host.
 
 ### Ask an adviser
 

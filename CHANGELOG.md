@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Shell and PowerShell [installers](docs/release-install.md) select your platform, verify checksums, and set up user `PATH`.
   Install from release or CI artifacts without a clone or Go; rerun to update, or choose a version and directory.
+- Set or reset a role's model and reasoning from the CLI with [`kitsu roles set` and `reset`](docs/roles.md#changing-a-model),
+  preserving other repository settings without editing TOML manually.
 - Configurable [advisers](docs/advisers.md) answer role questions and compare choices, with task bindings,
   required checkpoints, recorded dispositions, and a role/model/reasoning/access table.
 - A Pomeranian mascot and matching README banner introduce Kitsu's [visual identity](docs/brand/README.md).

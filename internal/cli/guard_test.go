@@ -49,6 +49,30 @@ func guardRepo(t *testing.T, hooksPath string) (*gitx.Repo, string) {
 
 type editCase struct{ path, dir, want string }
 
+func TestGuardRoleSettingCommands(t *testing.T) {
+	t.Parallel()
+	_, root := guardRepo(t, "")
+	for _, command := range []string{
+		"kitsu roles set developer --host codex --model custom",
+		"env KITSU=1 command kitsu roles reset developer --host codex",
+		`bash -lc 'kitsu roles set reviewer --host claude --reasoning high'`,
+		`& 'C:\tools\kitsu.exe' roles reset architect --host codex`,
+	} {
+		call := toolCall{Tool: "Bash", Dir: root}
+		call.Input.Command = command
+		if got := guardReason(context.Background(), call); !strings.Contains(got, "role models or reasoning") {
+			t.Errorf("guard accepted %q: %q", command, got)
+		}
+	}
+	for _, command := range []string{"kitsu roles --host codex", "kitsu roles text developer", "echo kitsu roles set developer"} {
+		call := toolCall{Tool: "Bash", Dir: root}
+		call.Input.Command = command
+		if got := guardReason(context.Background(), call); got != "" {
+			t.Errorf("guard rejected read-only command %q: %q", command, got)
+		}
+	}
+}
+
 func checkEdits(t *testing.T, repo *gitx.Repo, cases []editCase) {
 	t.Helper()
 	for _, c := range cases {

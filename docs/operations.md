@@ -581,12 +581,14 @@ removed; 2 an argument; 4 a hook of another tool still calls `kitsu`.
 
 ## kitsu roles
 
-Prints the seven roles of the task workflow, checks which paths a role changed
+Prints or configures the seven roles of the task workflow, checks which paths a role changed
 outside its limit, or prints the text of one role. [Roles](roles.md) describes
 them.
 
 ```text
 kitsu roles [--host claude|codex] [--task <task>] [--json]
+kitsu roles set <role> --host claude|codex [--model <model>] [--reasoning <effort>] [--json]
+kitsu roles reset <role> --host claude|codex [--json]
 kitsu roles check <role> --from <tree> [--task <task>] [--finalize]
 kitsu roles text <role>
 ```
@@ -598,6 +600,11 @@ specification paths for that task's capabilities in the `--from` tree; see
 
 `--host` selects a compact role/model/reasoning/advisers table, including the coordinator's host
 session. `--task` reads adviser access from a saved task binding without personal configuration.
+
+`set` saves either or both overrides in the repository's `kitsu-roles.toml`; an omitted option
+keeps its current setting. `reset` restores both built-in defaults for the selected role and host.
+Both print the resulting selection and require a working tree. The coordinator is configured in
+your host session. See [changing a model](roles.md#changing-a-model) for examples and file handling.
 
 Exit statuses: 0 done, or the role stayed within its limit; 1 the role
 configuration cannot be read, `--from` names no tree, or the working tree

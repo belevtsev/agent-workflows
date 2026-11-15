@@ -55,15 +55,18 @@ func Split(line string) (cmds [][]string, ok bool) {
 
 // SkipsHooks says how a command line makes git skip its hooks, or "". Text
 // it cannot split skips when it holds --no-verify.
-func SkipsHooks(line string) string { return judge(line, 3) }
+func SkipsHooks(line string) string { return judge(line, 3, false) }
 
-func judge(line string, depth int) string {
+// ChangesRoles identifies commands that write the repository's role policy.
+func ChangesRoles(line string) string { return judge(line, 3, true) }
+
+func judge(line string, depth int, roleConfig bool) string {
 	cmds, ok := Split(line)
-	if !ok && strings.Contains(line, "--no-verify") {
+	if !roleConfig && !ok && strings.Contains(line, "--no-verify") {
 		return "holds --no-verify"
 	}
 	for _, words := range cmds {
-		if why := simple(words, depth); why != "" {
+		if why := simple(words, depth, roleConfig); why != "" {
 			return why
 		}
 	}
@@ -80,25 +83,40 @@ var (
 
 // simple judges one simple command. NAME=value words and wrappers before the
 // program are stepped over; after a wrapper, so is every word up to it.
-func simple(words []string, depth int) string {
+func simple(words []string, depth int, roleConfig bool) string {
 	wrapped := false
 	for i, w := range words {
 		name := strings.TrimSuffix(strings.ToLower(w[strings.LastIndexAny(w, `/\`)+1:]), ".exe")
 		switch {
 		case name == "git":
+			if roleConfig {
+				return ""
+			}
 			return gitCall(words[i+1:])
 		case slices.Contains([]string{"sh", "bash", "zsh", "dash"}, name) && depth > 0:
-			return judge(shellCommand(words[i+1:]), depth-1)
+			return judge(shellCommand(words[i+1:]), depth-1, roleConfig)
 		case name == "eval" && depth > 0:
-			return judge(strings.Join(words[i+1:], " "), depth-1)
-		case name == "kitsu" && len(words) > i+1 && (words[i+1] == "uninstall" || words[i+1] == "init" && slices.ContainsFunc(words[i+2:], observes)):
-			return "runs `" + strings.Join(words[i:], " ") + "`"
-		case strings.Contains(w, "=") && strings.Contains(strings.ToLower(w), "core.hookspath"):
+			return judge(strings.Join(words[i+1:], " "), depth-1, roleConfig)
+		case name == "kitsu":
+			return kitsuCall(words[i:], roleConfig)
+		case !roleConfig && strings.Contains(w, "=") && strings.Contains(strings.ToLower(w), "core.hookspath"):
 			return "sets core.hooksPath in the environment of git"
 		case !wrapped && !strings.Contains(w, "=") && !slices.Contains(wrappers, name):
 			return ""
 		}
 		wrapped = wrapped || slices.Contains(wrappers, name)
+	}
+	return ""
+}
+
+func kitsuCall(words []string, roleConfig bool) string {
+	args := words[1:]
+	if roleConfig {
+		if len(args) > 1 && args[0] == "roles" && (args[1] == "set" || args[1] == "reset") {
+			return "changes role models or reasoning in kitsu-roles.toml"
+		}
+	} else if len(args) > 0 && (args[0] == "uninstall" || args[0] == "init" && slices.ContainsFunc(args[1:], observes)) {
+		return "runs `" + strings.Join(words, " ") + "`"
 	}
 	return ""
 }
