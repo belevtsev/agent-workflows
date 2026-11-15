@@ -613,6 +613,66 @@ documents. Each is resolved.
 | W8 | "Where the work happens" named the deleted branch in the present tense. | It is in the past tense. |
 | W9 | The changelog defined a link for `3.0.0-rc.2` to a tag that never existed. It predates this change. | The definition is removed; the heading stays as text, like the heading `workflow-v3`. |
 
+#### The pictures and the README
+
+On 15 November 2026 the owner asked for a better README and for diagrams of high quality made
+with archify. Three diagrams are under `docs/diagrams/`, each a JSON spec of archify beside its
+SVG export: the three parts of `cw` (an `architecture`), how the gate decides and the seven roles
+on the two paths of a task (two `workflow`s). The README, `docs/hooks.md` and `docs/workflow.md`
+show them. The README was rewritten around them; its section Install is byte for byte the one
+before, because CI and the release follow that instruction as written. A test in
+`internal/repocheck` compares each spec with its export, and fails when no document shows the
+export as an image. The change went in as three pull requests, because together it holds more
+than about 600 changed lines: the reading of links and images, the diagrams with their test, and
+the README.
+
+Evidence, local runs on Linux:
+
+- archify 3.2 from the branch `workflow-v3`, run with Bun 1.3.14 and Chrome: `finalize` at the
+  quality `showcase` passed its four gates (validate, deliver, check, browser-check) for each
+  spec. Each SVG is the viewer's own export, SVG · Auto. A second render of the committed specs
+  gave the three SVGs byte for byte.
+- The pictures are 728 by 544, 804 by 528 and 800 by 404 pixels, so a README column of about 830
+  pixels shows them at about their own size. Box labels are 10 or 11 px and small texts 8 or 9
+  px; the legend of a workflow is 7.5 px (R11). They were looked at in both colour themes, and at
+  1x. Below the legend of the two workflows archify keeps an empty band: it refuses a
+  `meta.viewBox` shorter than the lanes and 124 pixels.
+- 32 changes to the real specs, exports and documents, each made alone and then undone: the test
+  failed on each of the 30 that leave an export stale or a picture unshown, and passed the 2 that
+  GitHub shows as well, an `src` in single quotes and an `<img>` over two lines.
+- `go build`, `go vet` for the three systems, `golangci-lint run` (0 issues), `cw change check` and
+  `go test -race` of all 30 packages passed.
+
+The test reads what an SVG records about itself and renders nothing. It cannot see where a box
+stands inside its lane, its phase or its boundaries, a size, the route of an arrow, or the variant
+of a group; after such a change only a look at the picture tells.
+
+Two reviewers that had not written the change read it, one after the other: the first read the
+diagrams and the test (D1 to D8), the second the whole change with the first review's outcomes
+(R1 to R11). Each finding is resolved or rejected against evidence; none is deferred.
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| D1 | The box `cw run` of the roles picture said that new tests are seen to fail before the code, in the colour of `cw`. Nothing checks that order, and a refactoring keeps its tests passing. | Resolved: the box says "runs your checks", and `quality-engineer` says "tests first". |
+| D2 | The first pictures were 965 and 980 pixels wide, with texts shrunk to 7 px; GitHub would show them smaller still. | Resolved: at most 804 pixels wide, every box text at archify's own size, two labels at 10 px. The legend is R11. |
+| D3 | `docs/workflow.md` said that the picture holds what checks each role's work. It leaves out three checks. | Resolved: the guide says that the picture shows the main step after each role and names what it leaves out. `cw roles check` has a box of its own, "after every role". |
+| D4 | The only arrow into `quality-engineer` said "you approve" and crossed into the part of both paths; nothing showed where the small path starts. | Resolved: the approvals stand under "Full path only", and the phase "Both paths: the small path starts here" marks the start. |
+| D5 | The gate picture said that `cw run` runs every check of `cw.toml`. It runs each check without a passing run. | Resolved: "runs what has not passed", in both pictures (R7). |
+| D6 | "Takes the tree git records or sends" suggested that every pushed commit is judged. | Resolved: "commit or pushed tip"; the README says "the new tip of each branch or tag at a push". |
+| D7 | The test checked only that each text of a spec appears somewhere in its SVG. | Resolved: it compares the boxes, the arrows and the other marks of a picture both ways. R1 says what came after. |
+| D8 | Any link to an SVG counted as showing it, and an `<img>` did not. | Resolved: only an image counts, in Markdown or in HTML. R10 says what came after. |
+| R1 | The test missed a swapped or removed legend entry, the variant of a phase and a repeated arrow, while its texts implied that it finds them. | Resolved: the spec and the export must hold the same title, lanes in their order, groups, phases with their variant, boundaries with their kind, legend entries by type, boxes with type, icon, texts and scope, and arrows with ends, label, variant and role, each as often as the other. A spec gives each type of its legend a label. The test's comment, `CONTRIBUTING.md` and `docs/development.md` name what it cannot see. The reviewer's trials T1 to T4 and T9 are among the 32 above. |
+| R2 | "Anything else is denied" is false in observe mode and for the pushes that are allowed without a judgement. | Resolved: the phase of the gate picture and both alt texts say "in enforce mode". Under the picture, the README and `docs/hooks.md` say that observe mode allows every commit and push, and point to the pushes allowed without a judgement. |
+| R3 | The fix "it ran in two sessions" was inexact: the skill `task` ran in three sessions, and roles started in two. | Resolved in `docs/workflow.md` and in the changelog. |
+| R4 | `meta.output` pointed into `docs/diagrams/`, so a render without an output path would leave a file there that the test refuses. | Resolved: `.archify/<name>.html`. The failure it describes does not occur: `git check-ignore -v` shows that `.gitignore` ignores `docs/diagrams/*.html`, and the test lists only files that git does not ignore. |
+| R5 | The overview showed `cw roles check` as a check of the task record. It judges every changed path. | Resolved: the box is `cw change check`, "the rules of its files". `cw roles check` stands in the roles picture, after every role. |
+| R6 | The overview's legend put the committed `openspec/changes/` among the records in the git directory. | Resolved: it is a file you commit, and the legend says "Files you commit" and "Records in the git directory". |
+| R7 | The overview still said that `cw run` "runs the checks". | Resolved: "runs what has not passed", in the picture and in its alt text. |
+| R8 | `docs/workflow.md` said that the picture shows what follows each role's work first. | Resolved before the review ended: "the main step that follows its work". |
+| R9 | The README's small path dropped "and does not change". | Resolved. |
+| R10 | An image in single quotes or over two lines was not seen, one inside an HTML comment was, and a broken `<img src='...'>` passed the link test. | Resolved: links and images are read with double quotes, single quotes or none, over several lines, and as `![text][label]`; HTML comments and code are skipped. The message names the two forms of an image, and a test of the helpers holds each form. |
+| R11 | The legends of the two workflows are 7.5 px, and "git" and "The decision" had almost the same colour. | The colours are resolved: the decision is a box of `cw` with the icon of a decision, so orange stands for git alone. The size is rejected against evidence: archify draws every workflow legend at 7.5 px (`legendFootprintOptions` in `workflow-compiler.mjs`, 7 px and a half more when drawn), with four entries as with seven, so a shorter legend would not change it. At 1x it was legible. |
+
 ## Changes to the specifications during the build
 
 | Date | Where | What changed | Why |
