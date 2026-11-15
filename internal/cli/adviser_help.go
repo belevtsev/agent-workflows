@@ -52,8 +52,12 @@ func consultHelp() string {
 
 func roleTableHelp() string {
 	return alignedHelp(
-		[2]string{"--host claude|codex", "print the selected model, reasoning and advisers for one host"},
+		[2]string{"--host claude|codex", "select a host; required with set and reset"},
 		[2]string{"--json", "print the roles as one JSON object"},
+		[2]string{"set <role>", "save model and/or reasoning overrides in the repository's kitsu-roles.toml"},
+		[2]string{"--model <model>", "with set: change only this role's model for the selected host"},
+		[2]string{"--reasoning <effort>", "with set: change reasoning effort; omit either option to keep its current setting"},
+		[2]string{"reset <role>", "remove both overrides for this role and host; restore built-in defaults"},
 		[2]string{"--task <task>", "with the table: read bound adviser access; with check: set the task write scope"},
 		[2]string{"check <role> --from <tree>", "exit 5 when writes since this tree exceed the role's scope"},
 		[2]string{"--finalize", "with spec-writer and --task: allow current specs for capabilities in --from"},

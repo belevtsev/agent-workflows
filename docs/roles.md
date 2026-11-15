@@ -189,13 +189,27 @@ model = "<another model name>"
 
 ### Changing a model
 
-Add a table for the host and the role. With the lines `[claude.developer]` and
-`model = "opus"`, `kitsu roles` prints `opus, high` for `developer` on Claude Code, and every
-other role keeps its default:
+Run these commands anywhere inside the repository; no TOML editing is needed:
 
-```text
-developer         opus, high      gpt-6.1-terra, high  3299
+```sh
+kitsu roles set developer --host codex --model gpt-6.1-sol --reasoning max
+kitsu roles set developer --host claude --model opus --reasoning high
+kitsu roles set reviewer --host codex --reasoning high
+kitsu roles --host codex
+kitsu roles reset developer --host codex
 ```
+
+`set` requires `--host claude|codex` and at least one of `--model` or `--reasoning`.
+An omitted option keeps its current override or default. `--reasoning` is saved as `effort`.
+`reset` removes both overrides for that role and host, restoring the built-in defaults.
+Both commands print the resulting selection; `--json` returns `role`, `host`, `model`, and `effort`.
+
+The commands update the repository root's `kitsu-roles.toml`, creating a version 1 file when needed.
+They preserve other roles, hosts, test paths, and unrelated comments; an edited inline table may be
+reformatted. An invalid file or a symbolic link is refused without writing it. Resetting a missing
+file creates nothing. Commit the file to share the selection with the team; there is no personal or
+per-task override in these commands. They affect newly started specialists, not workers already running.
+The coordinator uses the model and reasoning selected in your host session.
 
 `kitsu` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
 fails only when the host tries to start the role.
@@ -225,7 +239,7 @@ that is not an array of texts, or holds a pattern with an empty segment; a role 
 of the seven (`unknown role `tester`; the roles are lookup, spec-writer, ...`); a key under a role
 other than `model` and `effort`; an empty or non-text `model` or `effort`.
 
-`kitsu roles` and `kitsu roles check` read the file and refuse it. `kitsu roles text` does not read it, so
+`kitsu roles`, `set`, `reset`, and `check` read the file and refuse it. `kitsu roles text` does not read it, so
 it works even when the file is invalid.
 
 ## Commands
