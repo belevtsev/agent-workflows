@@ -91,6 +91,9 @@ func guardReason(ctx context.Context, call toolCall) string {
 	}
 	switch call.Tool {
 	case "Bash", "PowerShell":
+		if how := shellwords.ChangesRoles(command); how != "" {
+			return "This command " + how + "."
+		}
 		if how := shellwords.SkipsHooks(command); how != "" {
 			return "This command " + how + ", which skips the commit gate: the git hooks of kitsu would not deny the commit or the push."
 		}
