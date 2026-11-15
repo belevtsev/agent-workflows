@@ -100,6 +100,20 @@ param(
         throw 'The Kitsu download exceeded five redirects.'
     }
 
+    function Get-KitsuSHA256([string]$FilePath) {
+        $algorithm = [Security.Cryptography.SHA256]::Create()
+        $stream = $null
+        try {
+            $stream = [IO.File]::OpenRead($FilePath)
+            $digest = $algorithm.ComputeHash($stream)
+            return [BitConverter]::ToString($digest).Replace('-', '').ToLowerInvariant()
+        }
+        finally {
+            if ($null -ne $stream) { $stream.Dispose() }
+            $algorithm.Dispose()
+        }
+    }
+
     function Expand-KitsuExecutable([string]$ZipPath, [string]$OutputFile) {
         Add-Type -AssemblyName System.IO.Compression
         $zipStream = [IO.File]::OpenRead($ZipPath)
@@ -251,7 +265,7 @@ param(
             }
         }
         if ($matchingRows -ne 1) { throw "SHA256SUMS must list $archiveName exactly once." }
-        $actual = (Get-FileHash -LiteralPath $archiveFile -Algorithm SHA256).Hash
+        $actual = Get-KitsuSHA256 $archiveFile
         if ($actual -ine $expected) { throw "The checksum of $archiveName does not match SHA256SUMS." }
         $verifiedExe = Join-Path $work 'kitsu.exe'
         Expand-KitsuExecutable $archiveFile $verifiedExe
