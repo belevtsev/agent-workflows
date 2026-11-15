@@ -30,9 +30,9 @@ against parts of this plan, and the page says so first.
 
 ## Where the work happens
 
-- Worktree `.claude/worktrees/evidence-gate`, branch
-  `feat/evidence-gate-and-roles`, cut from `origin/main` at `3cbfb0d`. The
-  branch is merged, and was deleted on 15 November 2026.
+- The work was done in the worktree `.claude/worktrees/evidence-gate`, on the
+  branch `feat/evidence-gate-and-roles`, cut from `origin/main` at `3cbfb0d`.
+  The branch is merged, and was deleted on 15 November 2026.
 - The owner's installed `cw` and the owner's plugin are not touched. `main`
   changed only by pull requests merged on the owner's word.
 - The previous workflow is kept on the branch `workflow-v3`, at `3cbfb0d`.
@@ -84,7 +84,7 @@ Tasks that stay open on 15 November 2026, by what they wait for:
 
 | Waits for | Part 1 | Part 2 |
 | --- | --- | --- |
-| The owner's decision or account | 11.3, of which two required checks are set; 12.1, 12.2 | 7.1, 7.2, 7.3 |
+| The owner's decision or account | 11.3, of which the Windows check is required; 12.1, 12.2 | 7.1, 7.2, 7.3 |
 | The owner's machine | 1.3, 10.4 | |
 
 59 of the 64 tasks of part 1 and 24 of the 27 of part 2 are ticked: each one's
@@ -483,7 +483,7 @@ and five minor. All six are resolved in commit `a0f9971`.
 | V3 | The archives were attested after the release was public. | The release is a draft until the attestation has passed. In run 43679683213 the step that attests passed before the step that publishes. |
 | V4 | goreleaser was not told which tag it releases, so a commit with two tags could be released under the other one. | The workflow gives it the pushed tag. The snapshot build of CI is told the tag the same way. The release of run 43679683213 carries the pushed tag, and `cw version` in it prints that tag. |
 | V5 | `release-notes.sh` took a heading inside a fenced block for the end of the section, turned an image into a link to a page, and left three forms of link relative. | It skips fenced blocks, links an image to the raw file, and refuses a section with a reference link, a target in angle brackets or a target that starts with `www.`. Five more cases in `TestReleaseNotes`. |
-| V6 | `docs/development.md` said that step 2 of the release had run. | It says that no step of the release workflow has run. |
+| V6 | `docs/development.md` said that step 2 of the release had run. | It said that no step of the release workflow had run. Since the release of 15 November 2026 it records that run. |
 
 #### The plugin and the roles in Claude Code
 
@@ -569,10 +569,10 @@ remove `_quarantine/`, to require two more checks on `main` and to delete the me
 
 | What | Evidence |
 | --- | --- |
-| The branch `workflow-v3` at `3cbfb0d` (task 1.2). | `git ls-remote origin refs/heads/workflow-v3` prints `3cbfb0d`. Each of the 2,216 files that were under `_quarantine/` is on that branch at its old path with the same content and mode, compared by blob. |
+| The branch `workflow-v3` at `3cbfb0d` (task 1.2). | `git ls-remote origin refs/heads/workflow-v3` prints `3cbfb0d`. Each of the 2,216 files that were under `_quarantine/` is on that branch at the same path without `_quarantine/` in front, with the same content and mode, compared by blob. |
 | The tag `v3.0.0-beta.1` on the merge commit `511ceb1` (tasks 1.1 and 11.4). | The workflow `Release`, run 43679683213, the first run it ever had: all six jobs passed. The guard; the tests with the race detector, the lint and the vulnerability check; the build, the attestation and the publishing; and the install without Go on Linux, macOS and Windows, on Windows in both PowerShells. |
-| The release: a pre-release with thirteen files, the six archives, an SBOM for each and `SHA256SUMS` (tasks 11.2 and 11.5). | Local, Linux, with the files downloaded from the release: the twelve checksums match; `gh attestation verify` passes for the Linux archive and names the tag, the commit and the run; `install-test.sh v3.0.0-beta.1 511ceb1...` passes in a temporary home on a `PATH` without Go, and `cw version` prints the tag and the commit; the ten links in the text of the release open. |
-| Two more required checks on `main`: `Native Go / windows-latest` and `Gate / cw run`, beside the three that were required (part of task 11.3). | Read back from the branch protection: five checks. The pull request that removes `_quarantine/` is the first one they hold. |
+| The release: a pre-release with thirteen files, the six archives, an SBOM for each and `SHA256SUMS` (tasks 11.2 and 11.5). | Local, Linux, with the files downloaded from the release: the twelve checksums match; `gh attestation verify` passes for the Linux archive and names the tag, the commit and the run; `install-test.sh v3.0.0-beta.1 511ceb1...` passes in a temporary home on a `PATH` without Go, and `cw version` prints the tag and the commit; the ten files that the seventeen links in the text of the release point to open; the anchors of the links were not checked. |
+| Two more required checks on `main`: `Native Go / windows-latest` and `Gate / cw run`, beside the three that were required. The Windows check is part of task 11.3; `Gate / cw run` is not named there. | Read back from the branch protection: five checks. The pull request that removes `_quarantine/` is the first one they hold. |
 | `_quarantine/` is removed (task 11.1). | `git ls-files _quarantine` prints nothing. The formatting step of CI, the two test helpers and `.gitattributes` no longer name the folder. |
 | The remote branch `feat/evidence-gate-and-roles` is deleted. | `git ls-remote --heads origin` does not list it. Its tip `18c9396` is the second parent of the merge commit `511ceb1`. |
 
@@ -587,10 +587,29 @@ What the release showed that no run before it could:
 - The page of the repository still shows `v2.0.96` as the latest release, because a pre-release is
   never the latest. The README installs by tag, so the instruction does not depend on it.
 
-Not done, because the owner did not ask for it: the other settings of task 11.3. The job
-`Lint and vulnerabilities` is not required, secret scanning, push protection and Dependabot
-security updates are off, the topics are empty, and the description of the repository still
-speaks of the previous workflow.
+Not done: the other settings of task 11.3. The job `Lint and vulnerabilities` is not required,
+secret scanning, push protection and Dependabot security updates are off, the topics are empty,
+and the description of the repository still speaks of the previous workflow. The owner named
+two checks, and the permission system of the agent's host refused the command that would have
+changed the rest.
+
+An adviser that had not written this change read it before the merge and checked its claims
+against the repository and against GitHub. It found the 2,216 files, the release, the run, the
+five required checks and the counts of the tasks as stated, and no leftover of the folder
+outside the change folders and the changelog. It reported nine findings, all minor and all in
+documents. Each is resolved.
+
+| # | Finding | What was done |
+| --- | --- | --- |
+| W1 | The design of part 1 still said that no tag is made, that nothing is pushed, and that everything is on one local branch. | Decisions 2 and 6, the base, the environment and the section Rollback of the design say what came later, with the date. |
+| W2 | The proposal and the keep-and-cut list said that nothing is implemented and that no `v3` tag was ever published, beside the new sentence that the tag is published. | Both state their date, say that the work is carried out since, and speak of the tag in the past. |
+| W3 | The row of M11 ended with "No tag and no release exist", and the row V6 said that the development guide records no run of the release workflow. | Both are in the past, and V6 says what the guide records now. |
+| W4 | Two places counted `Gate / cw run` as part of task 11.3. The task names the lint job and the Windows job. | Both say that only the Windows check is part of the task. |
+| W5 | "The ten links in the text of the release open": the text has seventeen links to ten files. | The row says what was checked: the ten files open, the anchors were not checked. |
+| W6 | The README said that CI builds "the same six archives", beside the new sentence that they are not byte for byte the same. | "The six archives in the same way", in the README and in the development guide. |
+| W7 | "At its old path" could be read as the path under `_quarantine/`. | The changelog and this plan say: the same path without `_quarantine/` in front. The commit message of `c7054ab` keeps the first wording; no commit is amended. |
+| W8 | "Where the work happens" named the deleted branch in the present tense. | It is in the past tense. |
+| W9 | The changelog defined a link for `3.0.0-rc.2` to a tag that never existed. It predates this change. | The definition is removed; the heading stays as text, like the heading `workflow-v3`. |
 
 ## Changes to the specifications during the build
 
@@ -648,8 +667,8 @@ speaks of the previous workflow.
 | M8 | done, except what needs the owner | `501ebd8` | Local, Linux: `README.md`, eleven documents under `docs/` with an index, and `docs/try-it.md`, whose parts 1 to 9 were run by hand with the output shown. The quick start is executed by a test. Tests of the documents: links and anchors resolve, the index names every document, no benefit is stated while the comparison table holds no numbers. `cw.toml` declares five checks. In a second clone of this branch at `501ebd8`, made in a scratch directory, `cw init` installed the hooks, `cw run` passed all five checks, a commit was allowed, a commit of changed content was denied and named the five checks, and a commit with a failing test was denied and named the check `test`. The owner's clone was not touched: it has no hooks of this `cw` and no records. The two writers of the reference documents compared the program with the design and reported eleven cases with a concrete failure and thirteen differences; all were settled in the code or in the design, and six got a test under `scenarios/messages`. Not done: the release workflow (task 11.2), the hook-cost test (10.1), the git observations as a test (3.5), and everything that needs CI, macOS, Windows, Codex or a model. |
 | M9 | done, not run on a host | the commit after `e50e20b` | Local, Linux. **Review:** four research agents read the sources listed in `docs/other-tools.md`; its author did not open them again. Each of 48 findings has an outcome: changed, already so, rejected or deferred. **Skill:** seven examples, each replayed by `TestSkillExamplesAreReplayed` against the `cw` under test; the replay found four places where a draft showed other output than `cw` prints. **Guard:** table tests and four scenario tests through both hook files. **Tokens:** `cw tokens record` and a separate script gave the same totals for 170 real records of Claude Code and for 13 real rollouts of Codex. **Model trial:** five runs of a subagent on Opus 5.5 in scratch repositories, three with the skill and two without, read back from the repositories: no run went around the gate; one run for each cell is not a measurement. `gofmt`, `go vet` and `golangci-lint` for three systems, `govulncheck`, `go test -race -count=1 ./...` in 27 packages, the specification and task lints, and `claude plugin validate .` pass. Not done: a run of the plugin on Claude Code or Codex, the trigger test of the skill, CI. |
 | M10 | done, not run on a host | `c5a88ef` to `3eaa40e` | **Review:** eight advisers, 93 findings, each with an outcome under "The second challenge"; nine more defects found while the fixes were tested, the last by a thorough CI run, all fixed; a ninth adviser on the final hook commands, five findings, all resolved, and one more point (H6) rejected against three CI runs; a tenth on the last tests and the closing documents, twenty findings in two passes, all resolved. **CI, run 19, commit `3eaa40e`:** every job passed: the tests on Linux, macOS and Windows, the lint and the vulnerability check for the three builds, the plugin manifests, and `cw run` on this repository. **CI, run 43638791541, started by hand on the same commit:** every job passed with the race detector on the three systems. **Local, Linux:** `go build`, `go vet` and `golangci-lint` for the three systems, `go test -race -count=1 ./...`, `cw change check` and `claude plugin validate .` pass. Nothing was run inside Claude Code or Codex, and nobody tried macOS or Windows by hand. |
-| M11 | done; the release ran at M12 | `1c399dd` to `3285c99` | **CI, run 43645026158, commit `3285c99`:** every job passed, with the release archives built and the install without Go followed on Linux, macOS and Windows. **Review:** one adviser on the release and install steps, six findings, all resolved; V2 to V4 can run only with a pushed tag. One more as a first-time reader of the documents, nineteen findings, all resolved; every number of the benchmarks matched the raw data. **Host:** six sessions of Claude Code 2.1.311 with the plugin, started by a script in scratch repositories; two of them ran roles. **Local, Linux:** the timings of `docs/benchmarks.md`, `go test -race -count=1 ./...`, `golangci-lint` for the three systems and `cw change check`. **Local, Linux, repeated:** `go test -race -count=20` on the scenarios and on `internal/gate`, `internal/cli` and `internal/roles` passed on `3285c99`. No tag and no release exist, nothing was run on Codex, and no person used the plugin. |
-| M12 | done | the pull request that removes `_quarantine/` | **Release, run 43679683213, tag `v3.0.0-beta.1` on `511ceb1`:** all six jobs passed, the install without Go among them on Linux, macOS and Windows. **Local, Linux:** the checksums of the published files, the attestation of the Linux archive and the install script against the published release. **Settings:** two more required checks on `main`. **Removal:** `_quarantine/`, 2,216 files, each kept on `workflow-v3`. Nobody installed the release by hand on macOS or Windows, and nothing was run on Codex. |
+| M11 | done; the release ran at M12 | `1c399dd` to `3285c99` | **CI, run 43645026158, commit `3285c99`:** every job passed, with the release archives built and the install without Go followed on Linux, macOS and Windows. **Review:** one adviser on the release and install steps, six findings, all resolved; V2 to V4 can run only with a pushed tag. One more as a first-time reader of the documents, nineteen findings, all resolved; every number of the benchmarks matched the raw data. **Host:** six sessions of Claude Code 2.1.311 with the plugin, started by a script in scratch repositories; two of them ran roles. **Local, Linux:** the timings of `docs/benchmarks.md`, `go test -race -count=1 ./...`, `golangci-lint` for the three systems and `cw change check`. **Local, Linux, repeated:** `go test -race -count=20` on the scenarios and on `internal/gate`, `internal/cli` and `internal/roles` passed on `3285c99`. No tag and no release existed then, nothing was run on Codex, and no person used the plugin. |
+| M12 | done | the pull request that removes `_quarantine/` | **Release, run 43679683213, tag `v3.0.0-beta.1` on `511ceb1`:** all six jobs passed, the install without Go among them on Linux, macOS and Windows. **Local, Linux:** the checksums of the published files, the attestation of the Linux archive and the install script against the published release. **Settings:** two more required checks on `main`. **Removal:** `_quarantine/`, 2,216 files, each kept on `workflow-v3`. **Review:** one adviser on this change before the merge, nine findings, all minor, all resolved (W1 to W9). Nobody installed the release by hand on macOS or Windows, and nothing was run on Codex. |
 
 ### The first run of CI
 

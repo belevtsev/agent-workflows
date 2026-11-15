@@ -21,8 +21,8 @@ stop a person who decides to go around it.
   [`v3.0.0-beta.1`](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-beta.1),
   published on 15 November 2026. The release workflow followed the first
   install instruction below against it on Linux, macOS and Windows. CI builds
-  the same six archives from every commit and follows the instruction with
-  them.
+  the six archives in the same way from every commit and follows the
+  instruction with them.
 - **Nothing here is measured to improve anything.** The gate has not yet been
   used on real work. The plugin and the roles ran with a model in scratch
   repositories only, on two small tasks:

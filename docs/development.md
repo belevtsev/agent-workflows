@@ -88,8 +88,8 @@ each passed. What that run could not show is a refusal by step 1: the guard
 has refused a commit only in the test of its script.
 
 CI runs the commands of step 2 on every commit. Its job `Release archives`
-builds the same six archives and the same text from the commit, and its jobs
-`Install without Go` install from them. Those archives are not byte for byte
+builds the six archives in the same way, and the same text, from the commit,
+and its jobs `Install without Go` install from them. Those archives are not byte for byte
 the ones a release publishes: Go writes the version of the module into the
 program, and that is the tag only once the tag exists.
 
