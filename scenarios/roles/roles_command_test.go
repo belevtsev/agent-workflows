@@ -119,15 +119,24 @@ func TestTheTableAsJSON(t *testing.T) {
 func TestTheDefaults(t *testing.T) {
 	t.Parallel()
 	roles := rolesJSON(t, demo(t))
-	if got := roles["lookup"].Models["claude"].Model; got != "haiku" {
-		t.Errorf("the claude model of lookup is %q, want haiku", got)
+	defaults := []struct {
+		role   string
+		claude hostModel
+		codex  hostModel
+	}{
+		{role: "lookup", claude: hostModel{Model: "haiku", Effort: "medium"}, codex: hostModel{Model: "gpt-6-luna", Effort: "medium"}},
+		{role: "spec-writer", claude: hostModel{Model: "opus", Effort: "high"}, codex: hostModel{Model: "gpt-6.1-sol", Effort: "high"}},
+		{role: "architect", claude: hostModel{Model: "opus", Effort: "max"}, codex: hostModel{Model: "gpt-6.1-sol", Effort: "max"}},
+		{role: "quality-engineer", claude: hostModel{Model: "sonnet", Effort: "high"}, codex: hostModel{Model: "gpt-6.1-sol", Effort: "high"}},
+		{role: "developer", claude: hostModel{Model: "sonnet", Effort: "high"}, codex: hostModel{Model: "gpt-6.1-terra", Effort: "high"}},
+		{role: "reviewer", claude: hostModel{Model: "opus", Effort: "max"}, codex: hostModel{Model: "gpt-6.1-sol", Effort: "max"}},
+		{role: "git", claude: hostModel{Model: "haiku", Effort: "low"}, codex: hostModel{Model: "gpt-6-luna", Effort: "low"}},
 	}
-	if got := roles["git"].Models["claude"].Model; got != "sonnet" {
-		t.Errorf("the claude model of git is %q, want sonnet", got)
-	}
-	for _, id := range []string{"architect", "reviewer"} {
-		if got := roles[id].Models["claude"]; got != (hostModel{Model: "opus", Effort: "xhigh"}) {
-			t.Errorf("the claude model of %s is %+v, want opus with effort xhigh", id, got)
+	for _, expected := range defaults {
+		for host, want := range map[string]hostModel{"claude": expected.claude, "codex": expected.codex} {
+			if got := roles[expected.role].Models[host]; got != want {
+				t.Errorf("the %s model of %s is %+v, want %+v", host, expected.role, got, want)
+			}
 		}
 	}
 	// A review runs at the effort of the work it reviews.
@@ -196,7 +205,7 @@ func TestAModelNameIsNotJudged(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
 	repo.Write("kitsu-roles.toml", rolesTOML+"\n[claude.git]\nmodel = \"no-such-model\"\n")
-	result := repo.Kitsu("roles")
+	result := repo.Kitsu("roles", "--host", "claude")
 	if result.Code != 0 {
 		t.Errorf("kitsu roles exited %d, want 0:\n%s", result.Code, result.Output())
 	}

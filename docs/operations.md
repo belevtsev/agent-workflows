@@ -25,6 +25,7 @@ paths are shortened to `<repository>`.
 - [kitsu uninstall](#kitsu-uninstall)
 - [kitsu roles](#kitsu-roles)
 - [kitsu change](#kitsu-change)
+- [kitsu advisers and consult](#kitsu-advisers-and-consult)
 - [kitsu tokens](#kitsu-tokens)
 - [kitsu version](#kitsu-version)
 - [kitsu.toml](#kitsutoml)
@@ -508,7 +509,7 @@ when it holds `--no-verify`.
 An edit, or a patch, speaks up when it names one of these, or a file or folder
 inside it:
 
-- `kitsu.toml` at the root of the working tree;
+- `kitsu.toml`, `kitsu-roles.toml`, or `kitsu-advisers.toml` at the root of the working tree;
 - `hooks/` of the common git directory, and the directory `core.hooksPath`
   names;
 - `config` of the common git directory;
@@ -585,7 +586,7 @@ outside its limit, or prints the text of one role. [Roles](roles.md) describes
 them.
 
 ```text
-kitsu roles [--json]
+kitsu roles [--host claude|codex] [--task <task>] [--json]
 kitsu roles check <role> --from <tree> [--task <task>] [--finalize]
 kitsu roles text <role>
 ```
@@ -594,6 +595,9 @@ kitsu roles text <role>
 has shipped. It replaces the ordinary write limit with the exact current
 specification paths for that task's capabilities in the `--from` tree; see
 [finalization](workflow.md#the-archive).
+
+`--host` selects a compact role/model/reasoning/advisers table, including the coordinator's host
+session. `--task` reads adviser access from a saved task binding without personal configuration.
 
 Exit statuses: 0 done, or the role stayed within its limit; 1 the role
 configuration cannot be read, `--from` names no tree, or the working tree
@@ -607,6 +611,11 @@ Prints the stage of a task's change folder under `openspec/changes/`, or checks
 the rules its files must obey. [The task workflow](workflow.md) describes the
 folder and the rules.
 
+`change check` also discovers small-task adviser histories under `openspec/changes/.advice/`.
+Naming a small task checks its saved history without requiring a full change folder. It validates
+structure and references, without requiring future checkpoint answers. `change status` remains
+full-path only; use `advisers status` for small tasks.
+
 ```text
 kitsu change status [<task>] [--json]
 kitsu change check [<task>]
@@ -615,6 +624,31 @@ kitsu change check [<task>]
 Exit statuses: 0 done, or no rule is broken; 1 the folder does not exist or
 cannot be read; 2 a wrong command line or a task name that is not lower-case
 words joined by hyphens; 5 `kitsu change check` found a broken rule.
+
+## kitsu advisers and consult
+
+Configure optional adviser CLIs, bind their policy to a task, ask a question or compare choices,
+and record how the answer was addressed. [Advisers](advisers.md) describes the two configuration
+locations, role access, the version 1 request JSON, shared records, and required checkpoints.
+
+```text
+kitsu advisers list [--role <role>] [--task <task>] [--json]
+kitsu advisers bind --task <task> --workflow full|small [--refresh] [--json]
+kitsu consult --task <task> --role <role> --stage <stage> --adviser <name> --request <file|-> [--checkpoint <id>] [--json]
+kitsu advisers resolve --task <task> <id> --disposition accept|reject|defer --reason <text> [--choice <id>] [--json]
+kitsu advisers status --task <task> [--checkpoint <id>] [--json]
+kitsu advisers check --task <task> [--checkpoint <id>] [--json]
+```
+
+Only `kitsu consult` executes an adviser, once, with the configured CLI's existing authentication.
+The coordinator runs it on a role's behalf after checking that role's writes. Its request names
+explicit repository files; a failed attempt remains recorded. No API keys are saved, and there
+is no automatic retry or model fallback. Resolving an answer requires a reason; an optional
+`--choice` must name an offered option. Adviser dispositions replace no review or human approval.
+
+Exit statuses: 0 the operation completed, including a status report whose checkpoints are not
+ready; 1 configuration, record, execution, or file failure; 2 invalid arguments or request JSON;
+5 `advisers check` found an unsatisfied checkpoint.
 
 ## kitsu tokens
 
@@ -750,14 +784,19 @@ Every command uses this one table.
 | 2 | Wrong command line: an unknown command, option or check id, or a missing argument. |
 | 3 | A hook denies the commit, the merge or the push. |
 | 4 | A hook of another tool is left for you to edit: `kitsu init` or `kitsu uninstall` printed the line to add or to remove. |
-| 5 | Not verified: a check did not pass, the content has no passing run of every check, or a rule of a role or a change folder is broken. |
+| 5 | Not verified: a check did not pass, a role or change-record rule is broken, or required adviser checkpoints are unsatisfied. |
 
 ## Where kitsu keeps its records
 
-`kitsu` keeps everything it records under `kitsu/` in the common git directory. In a
+`kitsu` keeps local gate evidence and measured host usage under `kitsu/` in the common git directory. In a
 plain clone that is `.git/kitsu/`. All linked worktrees of a repository share the
 common git directory, so they share the records: a run made in one worktree
 counts in another for the same content.
+
+Shared adviser bindings, prompts, answers, and dispositions live in the worktree instead:
+`openspec/changes/<task>/advisers/` on the full path or
+`openspec/changes/.advice/<task>/` on the small path. Commit that history with the task; see
+[adviser records](advisers.md#shared-history-and-usage).
 
 ```text
 kitsu/mode                                      enforce or observe

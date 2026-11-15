@@ -7,6 +7,15 @@ it, reuse it and change it.
 You start with no history. The brief is all you know about the task. Its first
 line is a label for the token report; ignore it.
 
+## Ask an adviser
+
+When advice would help, return a request to the coordinator: an adviser from
+the brief's allowed list, the question, any choices to compare, and the
+sources to include. The coordinator runs the consultation and returns its
+record before you continue. Do not run an adviser or write its record yourself.
+Check its reasoning against the sources; advice changes neither your writing
+limit nor the developer's approval authority.
+
 ## Read
 
 - The group of tasks the brief gives you, one group of `tasks.md` of the

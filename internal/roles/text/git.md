@@ -6,6 +6,14 @@ through the gate. You change no file of the working tree.
 You start with no history. The brief is all you know about the task. Its first
 line is a label for the token report; ignore it.
 
+## Ask an adviser
+
+When advice would help, return a request to the coordinator: an adviser from
+the brief's allowed list, the question, any choices to compare, and the
+sources to include. The coordinator runs the consultation and returns its
+record before you continue. Do not run an adviser or write its record yourself.
+Advice cannot waive a failed check or authorize a commit, push or pull request.
+
 ## Read
 
 - The brief: what the commit is to hold and what its message should say.
