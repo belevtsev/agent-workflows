@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Experimental advisers: none enabled by default",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "output": ".archify/adviser-opt-in.html",
+    "legend": {
+      "entries": {
+        "frontend": {"label": "Configuration or request"},
+        "backend": {"label": "Coordinator action"},
+        "external": {"label": "Adviser API or CLI"},
+        "database": {"label": "Recorded evidence"}
+      }
+    }
+  },
+  "lanes": [
+    {"id": "opt-in", "label": "Experimental advisers: none by default"},
+    {"id": "consultation", "label": "Explicit call by an allowed role"},
+    {"id": "checkpoints", "label": "Checkpoints: separately opt in per stage"}
+  ],
+  "nodes": [
+    {"id": "definition", "lane": "opt-in", "col": 0, "type": "frontend", "label": "Define adviser", "sublabel": "Jev, Snap or CLI"},
+    {"id": "access", "lane": "opt-in", "col": 1, "type": "frontend", "label": "Allow roles", "sublabel": "repository policy"},
+    {"id": "binding", "lane": "opt-in", "col": 2, "type": "backend", "label": "Bind task", "sublabel": "snapshot policy"},
+    {"id": "question", "lane": "consultation", "col": 0, "type": "frontend", "label": "Explicit request", "sublabel": "question + context"},
+    {"id": "scope", "lane": "consultation", "col": 1, "type": "backend", "label": "Scope check", "sublabel": "after role returns"},
+    {"id": "consult", "lane": "consultation", "col": 2, "type": "external", "label": "kitsu consult", "sublabel": "native API or CLI"},
+    {"id": "decision", "lane": "consultation", "col": 3, "type": "backend", "label": "Record decision", "sublabel": "answer + rationale"},
+    {"id": "resume", "lane": "consultation", "col": 4, "type": "backend", "label": "Resume the role", "sublabel": "same write limits"},
+    {"id": "required", "lane": "checkpoints", "col": 0, "type": "frontend", "label": "Require advice", "sublabel": "spec/design/review"},
+    {"id": "refresh", "lane": "checkpoints", "col": 1, "type": "backend", "label": "Bind or refresh", "sublabel": "task checkpoints"},
+    {"id": "fresh", "lane": "checkpoints", "col": 2, "type": "database", "label": "Fresh receipt", "sublabel": "checkpoint call"},
+    {"id": "addressed", "lane": "checkpoints", "col": 3, "type": "database", "label": "Addressed receipt", "sublabel": "decision + reason"},
+    {"id": "check", "lane": "checkpoints", "col": 4, "type": "backend", "label": "advisers check", "sublabel": "before proceeding"}
+  ],
+  "edges": [
+    {"id": "define-access", "from": "definition", "to": "access"},
+    {"id": "access-bind", "from": "access", "to": "binding"},
+    {"id": "bind-consult", "from": "binding", "to": "consult", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "request-scope", "from": "question", "to": "scope"},
+    {"id": "scope-consult", "from": "scope", "to": "consult"},
+    {"id": "consult-decision", "from": "consult", "to": "decision"},
+    {"id": "decision-resume", "from": "decision", "to": "resume"},
+    {"id": "require-bind", "from": "required", "to": "refresh"},
+    {"id": "bound-receipt", "from": "refresh", "to": "fresh"},
+    {"id": "consult-receipt", "from": "consult", "to": "fresh", "label": "matching id", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "receipt-disposition", "from": "fresh", "to": "addressed"},
+    {"id": "decision-receipt", "from": "decision", "to": "addressed", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "receipt-check", "from": "addressed", "to": "check"}
+  ]
+}

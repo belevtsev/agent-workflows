@@ -19,6 +19,14 @@ with the recorded answer. Advice leaves the role's job and write limits in place
 first forms its own assessment and receives none of the author's consultations as review guidance.
 Advice supplies neither an independent review nor the developer's approval.
 
+<img src="diagrams/adviser-opt-in.svg" alt="Experimental advisers are disabled by default. Define Jev, Snap or a CLI adviser, grant repository role access, and bind the task. An allowed role supplies an explicit question and context; the coordinator checks scope, consults the API or CLI, records the answer and decision, and resumes the role within its existing limits. Required checkpoints are a separate opt-in: bind or refresh their policy, obtain a successful receipt for the checkpoint and current content, record a disposition with a reason, and check it before proceeding." width="100%">
+
+The first row enables consultations; it makes no provider call. The second row runs only for an
+explicit request. The third row applies only when you also configure required checkpoints;
+otherwise it is skipped. A checkpoint receipt must match its bound policy and current stage
+content, and have an `accept`, `reject`, or `defer` decision with a reason. Independent reviews
+and your specification/design approval still apply.
+
 ## Built-in decision advisers
 
 Discover presets without credentials, network access, or a repository:

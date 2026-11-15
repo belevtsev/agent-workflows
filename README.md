@@ -34,11 +34,14 @@ role definitions, record checks, and usage reports. The Git gate supports that w
 
 ## The roles
 
-<img src="docs/diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review, and a gated commit. Configured advice checkpoints apply to spec, design, and review. Any permitted role can ask an adviser: the coordinator checks its writes, runs the adviser CLI, records the answer and rationale, and resumes the role." width="100%">
+<img src="docs/diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you, with or without advisers. Both paths continue through tests, code, review, and a gated commit. Experimental advisers are off by default. Explicit definition and role access, followed by a task binding, allow the coordinator to check a requesting role's writes, consult an adviser API or CLI, record the answer and decision, and resume the role." width="100%">
 
 A task that needs a requirement written or changed takes the full path: specification, design, tests, code, review
 and commit. A task whose intended behaviour is already clear and does not change starts at the tests. You approve
 the specification and the design, and the commit goes through the gate.
+
+Advisers are experimental and off by default. [Opting in](docs/advisers.md) adds consultations;
+required adviser checkpoints are a separate choice. Neither replaces review or your approval.
 
 | Role | Its job | It may change |
 | --- | --- | --- |
@@ -289,7 +292,10 @@ and what it does not, and [operations](docs/operations.md) lists every command a
 
 The workflow, adviser records, token reports, and gate share the same CLI:
 
-<img src="docs/diagrams/overview.svg" alt="Kitsu connects four parts. Role selection supplies models and effort to your agent host, which writes a shared task record. Optional adviser policy is bound to the task; kitsu consult uses a configured provider CLI, records answers and decisions, and checks current stage checkpoints. Host token records supply measured usage while adviser usage remains unmeasured. The supporting Git gate runs declared checks and decides commits and pushes from content-bound evidence." width="100%">
+<img src="docs/diagrams/overview.svg" alt="Kitsu connects four parts. Role selection supplies models and effort to your agent host, which writes a shared task record. Experimental advisers are disabled by default: explicit definition and access enable API or CLI consultations, with recorded answers and decisions. Adviser checkpoints apply only if required by configuration. Host token records supply measured usage. The supporting Git gate runs declared checks and decides commits and pushes from content-bound evidence." width="100%">
+
+The usage column shows host records. `kitsu tokens` also reports provider-supplied API adviser usage
+separately; CLI adviser usage remains unmeasured. The [adviser flow](docs/advisers.md) shows the opt-in steps.
 
 ## State
 

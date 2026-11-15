@@ -44,6 +44,11 @@ The optional/experimental update also passed the full race suite, cross-target l
 checks. Its regressions verify credential-only defaults, denied consultation without access, a
 successful explicit opt-in, and provider catalog status. Updated host texts fit their existing budgets.
 
+The overview, task workflow, and adviser opt-in diagrams passed Archify's showcase validation and
+browser checks. Their canonical SVG exports were inspected in light and dark themes and are
+832, 824, and 818 pixels wide respectively. The adviser flow separates explicit access and
+consultations from separately required checkpoints; the task workflow keeps human approval visible.
+
 The full race suite includes local native HTTPS tests, legacy CLI adviser scenarios, generated
 host-file comparisons, prompt budgets, documentation links, the adviser code budget, and network
 dependency boundaries on all three target platforms. Runtime execution was on Linux; cross-target

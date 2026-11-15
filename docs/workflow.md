@@ -28,12 +28,14 @@ This section restates the coordinator's instructions and the task-flow specifica
 here is an instruction to the coordinator or to a role. `kitsu` enforces only what the next section,
 [What kitsu checks](#what-kitsu-checks), lists.
 
-<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review, and a gated commit. Configured advice checkpoints apply to spec, design, and review. Any permitted role can ask an adviser: the coordinator checks its writes, runs the adviser CLI, records the answer and rationale, and resumes the role." width="100%">
+<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you, with or without advisers. Both paths continue through tests, code, review, and a gated commit. Experimental advisers are off by default. Explicit definition and role access, followed by a task binding, allow the coordinator to check a requesting role's writes, consult an adviser API or CLI, record the answer and decision, and resume the role." width="100%">
 
 The picture holds the order of the roles, their reviews and checks, and the optional adviser
-handoff. Required advice applies only when configured; specification and design always need your
-approval on the full path. It leaves out `kitsu change check` after `spec-writer` and `architect`,
-and `kitsu run` after each start of `developer`. The text below holds every step.
+handoff. Advisers are experimental and off by default. The [adviser flow](advisers.md) shows
+configuration and the separate opt-in for required checkpoints, which run before the corresponding
+stage proceeds. Specification and design always need your approval on the full path. The picture
+leaves out `kitsu change check` after `spec-writer` and `architect`, and `kitsu run` after each start
+of `developer`. The text below holds every step.
 
 ### Before the first role
 

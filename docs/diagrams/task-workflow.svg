@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 822 652" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 4.800s; width: 822px; height: 652px; min-width: 0px;" width="822" height="652" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 824 652" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" style="--flow-cycle: 4.800s; width: 824px; height: 652px; min-width: 0px;" width="824" height="652" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -566,6 +566,17 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
   8.75% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
   27.5%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
+@keyframes archify-relay-comet-15 {
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  1.75% { opacity: var(--flow-peak, 0.9); }
+  8.75% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.083%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-15 {
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  8.75% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  27.5%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
 @keyframes archify-relay-node-0 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
@@ -658,11 +669,17 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-node-15 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  41.25% { filter: var(--ambient-node-base-filter, none); }
+  43.75%, 50% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  66.25% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-16 {
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
   52.083% { filter: var(--ambient-node-base-filter, none); }
   54.583%, 60.833% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
   77.083% { filter: var(--ambient-node-base-filter, none); }
 }
-@keyframes archify-relay-node-16 {
+@keyframes archify-relay-node-17 {
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   52.083% { filter: var(--ambient-node-base-filter, none); }
   54.583%, 60.833% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
@@ -692,8 +709,8 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
 svg[data-theme="light"] { --bg: #f4f5f7; --grid: #e9edf2; --canvas-dot: #e2e7ec; --text: #111827; --text-muted: #5b6474; --text-dim: #9aa3b2; --text-faint: #6b7280; --panel: #ffffff; --panel-border: #e5e7eb; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #64748b; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 svg[data-theme="dark"] { --bg: #020617; --grid: #1e293b; --canvas-dot: rgba(148, 163, 184, 0.16); --text: #ffffff; --text-muted: #94a3b8; --text-dim: #475569; --text-faint: #7d8da1; --panel: rgba(15, 23, 42, 0.5); --panel-border: #1e293b; --lane-fill: rgba(15, 23, 42, 0.22); --lane-stroke: #334155; --arrow: #94a3b8; --arrow-emphasis: #34d399; --mask: #0f172a; --frontend-fill: rgba(8, 51, 68, 0.4); --frontend-stroke: #22d3ee; --backend-fill: rgba(6, 78, 59, 0.4); --backend-stroke: #34d399; --database-fill: rgba(76, 29, 149, 0.4); --database-stroke: #a78bfa; --cloud-fill: rgba(120, 53, 15, 0.3); --cloud-stroke: #fbbf24; --security-fill: rgba(136, 19, 55, 0.4); --security-stroke: #fb7185; --messagebus-fill: rgba(251, 146, 60, 0.3); --messagebus-stroke: #fb923c; --external-fill: rgba(30, 41, 59, 0.5); --external-stroke: #94a3b8; --toolbar-bg: rgba(15, 23, 42, 0.8); --toolbar-border: #334155; --toolbar-text: #e2e8f0; --toolbar-hover: rgba(15, 23, 42, 0.95); --toolbar-menu-bg: #0f172a; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 rect.c-bg-rect { fill: var(--bg); }
-</style><rect x="0" y="0" width="822" height="652" class="c-bg-rect"/>
-        <title id="archify-diagram-title">The task workflow: seven roles, optional adviser calls and required checkpoints</title>
+</style><rect x="0" y="0" width="824" height="652" class="c-bg-rect"/>
+        <title id="archify-diagram-title">The task workflow: advisers are experimental and off by default</title>
         <desc id="archify-diagram-description">A workflow diagram generated by Archify.</desc>
         <!-- Definitions -->
         <defs>
@@ -739,26 +756,26 @@ rect.c-bg-rect { fill: var(--bg); }
         <rect width="100%" height="100%" fill="url(#grid)"/>
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="766" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="768" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / The role that works</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="766" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="768" height="104" rx="10" class="c-lane" stroke-width="1"/>
         <text x="54" y="198" class="t-muted" font-size="10" font-weight="600">02 / What comes next</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="766" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Advice, if configured</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="768" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="322" class="t-muted" font-size="10" font-weight="600">03 / Full path: you approve</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="766" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="446" class="t-muted" font-size="10" font-weight="600">04 / Any role can ask; the coordinator brokers the call</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="768" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="446" class="t-muted" font-size="10" font-weight="600">04 / Experimental advice: default off</text>
 
         <!-- Phase headers -->
         <path d="M 66 35 H 142" class="a-default phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
         <rect x="72.4" y="27" width="63.199999999999996" height="16" rx="8" class="c-mask phase-chip"/>
         <text x="104" y="38.5" class="t-muted" font-size="8" font-weight="600" text-anchor="middle" letter-spacing=".04em">Any stage</text>
-        <path d="M 200 35 H 402" class="a-default phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
-        <rect x="257.4" y="27" width="87.2" height="16" rx="8" class="c-mask phase-chip"/>
-        <text x="301" y="38.5" class="t-muted" font-size="8" font-weight="600" text-anchor="middle" letter-spacing=".04em">Full path only</text>
-        <path d="M 456 35 H 786" class="a-emphasis phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
+        <path d="M 200 35 H 400" class="a-default phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
+        <rect x="256.4" y="27" width="87.2" height="16" rx="8" class="c-mask phase-chip"/>
+        <text x="300" y="38.5" class="t-muted" font-size="8" font-weight="600" text-anchor="middle" letter-spacing=".04em">Full path only</text>
+        <path d="M 454 35 H 788" class="a-emphasis phase-rule" stroke-width="1" stroke-linecap="round" fill="none"/>
         <rect x="519.8" y="27" width="202.4" height="16" rx="8" class="c-mask phase-chip"/>
         <text x="621" y="38.5" class="t-backend" font-size="8" font-weight="600" text-anchor="middle" letter-spacing=".04em">Both paths: the small path starts here</text>
 
@@ -766,21 +783,22 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
         <!-- Edge paths -->
-        <path data-edge-from="consult-record" data-edge-to="consult-resume" data-edge-key="0" data-edge-id="answer-resume" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="412,491;446,491" d="M 412 491 L 446 491" class="a-default" data-animate="edge" style="--step: 5;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="developer" data-edge-to="git" data-edge-key="1" data-edge-id="code-commit" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="670,119;702,119" d="M 670 119 L 702 119" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="developer" data-edge-to="code-review" data-edge-key="2" data-edge-id="code-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="624,145;624,217" d="M 624 145 L 624 217" class="a-default" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="git" data-edge-to="gate" data-edge-key="3" data-edge-id="commit-to-gate" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="748,145;748,217" d="M 748 145 L 748 217" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="consult-run" data-edge-to="consult-record" data-edge-key="4" data-edge-id="consult-answer" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="284,491;316,491" d="M 284 491 L 316 491" class="a-default" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="design-review" data-edge-to="design-checkpoint" data-edge-key="5" data-edge-id="design-advice" data-edge-role="" data-composition-points="364,269;364,341" d="M 364 269 L 364 341" class="a-default" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="architect" data-edge-to="quality-engineer" data-edge-key="6" data-edge-id="design-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="410,119;442,119" d="M 410 119 L 442 119" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="architect" data-edge-to="design-review" data-edge-key="7" data-edge-id="design-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="364,145;364,217" d="M 364 145 L 364 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="code-review" data-edge-to="review-checkpoint" data-edge-key="8" data-edge-id="review-advice" data-edge-role="" data-composition-points="624,269;624,341" d="M 624 269 L 624 341" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="consult-scope" data-edge-to="consult-run" data-edge-key="9" data-edge-id="scope-consult" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="150,491;192,491" d="M 150 491 L 192 491" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="spec-review" data-edge-to="spec-checkpoint" data-edge-key="10" data-edge-id="spec-advice" data-edge-role="" data-composition-points="238,269;238,341" d="M 238 269 L 238 341" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="spec-writer" data-edge-to="architect" data-edge-key="11" data-edge-id="spec-design" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="284,119;318,119" d="M 284 119 L 318 119" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="spec-writer" data-edge-to="spec-review" data-edge-key="12" data-edge-id="spec-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="238,145;238,217" d="M 238 145 L 238 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="quality-engineer" data-edge-to="developer" data-edge-key="13" data-edge-id="tests-code" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="546,119;578,119" d="M 546 119 L 578 119" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="quality-engineer" data-edge-to="tests-run" data-edge-key="14" data-edge-id="tests-to-run" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="494,145;494,217" d="M 494 145 L 494 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="consult-access" data-edge-to="consult-bind" data-edge-key="0" data-edge-id="access-bind" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="152,491;192,491" d="M 152 491 L 192 491" class="a-default" data-animate="edge" style="--step: 5;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="consult-record" data-edge-to="consult-resume" data-edge-key="1" data-edge-id="answer-resume" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="670,491;702,491" d="M 670 491 L 702 491" class="a-default" data-animate="edge" style="--step: 6;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="consult-bind" data-edge-to="consult-scope" data-edge-key="2" data-edge-id="bind-scope" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="284,491;316,491" d="M 284 491 L 316 491" class="a-default" data-animate="edge" style="--step: 7;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="developer" data-edge-to="git" data-edge-key="3" data-edge-id="code-commit" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="668,119;704,119" d="M 668 119 L 704 119" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="developer" data-edge-to="code-review" data-edge-key="4" data-edge-id="code-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="622,145;622,217" d="M 622 145 L 622 217" class="a-default" data-animate="edge" style="--step: 9;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="git" data-edge-to="gate" data-edge-key="5" data-edge-id="commit-to-gate" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="750,145;750,217" d="M 750 145 L 750 217" class="a-default" data-animate="edge" style="--step: 10;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="consult-run" data-edge-to="consult-record" data-edge-key="6" data-edge-id="consult-answer" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="540,491;574,491" d="M 540 491 L 574 491" class="a-default" data-animate="edge" style="--step: 11;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="design-review" data-edge-to="design-approval" data-edge-key="7" data-edge-id="design-approval" data-edge-role="" data-composition-points="362,269;362,341" d="M 362 269 L 362 341" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="architect" data-edge-to="quality-engineer" data-edge-key="8" data-edge-id="design-tests" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="408,119;440,119" d="M 408 119 L 440 119" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="architect" data-edge-to="design-review" data-edge-key="9" data-edge-id="design-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="362,145;362,217" d="M 362 145 L 362 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="consult-scope" data-edge-to="consult-run" data-edge-key="10" data-edge-id="scope-consult" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="408,491;444,491" d="M 408 491 L 444 491" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="spec-review" data-edge-to="spec-approval" data-edge-key="11" data-edge-id="spec-approval" data-edge-role="" data-composition-points="238,269;238,341" d="M 238 269 L 238 341" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="spec-writer" data-edge-to="architect" data-edge-key="12" data-edge-id="spec-design" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="284,119;316,119" d="M 284 119 L 316 119" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="spec-writer" data-edge-to="spec-review" data-edge-key="13" data-edge-id="spec-to-review" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="238,145;238,217" d="M 238 145 L 238 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="quality-engineer" data-edge-to="developer" data-edge-key="14" data-edge-id="tests-code" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="544,119;576,119" d="M 544 119 L 576 119" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="quality-engineer" data-edge-to="tests-run" data-edge-key="15" data-edge-id="tests-to-run" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="492,145;492,217" d="M 492 145 L 492 217" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.4" marker-end="url(#arrowhead)"/>
 
         <!-- Nodes -->
         <g id="node-lookup" data-node-id="lookup" data-node-label="lookup" tabindex="0" role="button" aria-label="Focus lookup, files and facts, The role that works › Any stage" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="files and facts" data-node-context="The role that works › Any stage">
@@ -810,49 +828,49 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <g id="node-architect" data-node-id="architect" data-node-label="architect" tabindex="0" role="button" aria-label="Focus architect, design and tasks, The role that works › Full path only" aria-pressed="false" data-node-kind="backend" data-node-sublabel="design and tasks" data-node-context="The role that works › Full path only">
           <title>architect · design and tasks · The role that works › Full path only</title>
-          <rect x="318" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="318" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(324 99) scale(0.6875)">
+          <rect x="316" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="316" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(322 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="366.7" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">architect</text>
-          <text x="364" y="131" class="t-muted" font-size="8" text-anchor="middle">design and tasks</text>
+          <text data-node-label="" x="364.7" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">architect</text>
+          <text x="362" y="131" class="t-muted" font-size="8" text-anchor="middle">design and tasks</text>
         </g>
 
         <g id="node-quality-engineer" data-node-id="quality-engineer" data-node-label="quality-engineer" tabindex="0" role="button" aria-label="Focus quality-engineer, tests first, The role that works › Both paths: the small path starts here" aria-pressed="false" data-node-kind="backend" data-node-sublabel="tests first" data-node-context="The role that works › Both paths: the small path starts here">
           <title>quality-engineer · tests first · The role that works › Both paths: the small path starts here</title>
-          <rect x="442" y="93" width="104" height="52" rx="8" class="c-mask"/>
-          <rect x="442" y="93" width="104" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(448 99) scale(0.6875)">
+          <rect x="440" y="93" width="104" height="52" rx="8" class="c-mask"/>
+          <rect x="440" y="93" width="104" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(446 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="494" y="124" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">quality-engineer</text>
-          <text x="494" y="138.6" class="t-muted" font-size="8" text-anchor="middle">tests first</text>
+          <text data-node-label="" x="492" y="124" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">quality-engineer</text>
+          <text x="492" y="138.6" class="t-muted" font-size="8" text-anchor="middle">tests first</text>
         </g>
 
         <g id="node-developer" data-node-id="developer" data-node-label="developer" tabindex="0" role="button" aria-label="Focus developer, the code, The role that works › Both paths: the small path starts here" aria-pressed="false" data-node-kind="backend" data-node-sublabel="the code" data-node-context="The role that works › Both paths: the small path starts here">
           <title>developer · the code · The role that works › Both paths: the small path starts here</title>
-          <rect x="578" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="578" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(584 99) scale(0.6875)">
+          <rect x="576" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="576" y="93" width="92" height="52" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(582 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="626.7" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">developer</text>
-          <text x="624" y="131" class="t-muted" font-size="8" text-anchor="middle">the code</text>
+          <text data-node-label="" x="624.7" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">developer</text>
+          <text x="622" y="131" class="t-muted" font-size="8" text-anchor="middle">the code</text>
         </g>
 
         <g id="node-git" data-node-id="git" data-node-label="git" tabindex="0" role="button" aria-label="Focus git, the commit, The role that works › Both paths: the small path starts here" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="the commit" data-node-context="The role that works › Both paths: the small path starts here">
           <title>git · the commit · The role that works › Both paths: the small path starts here</title>
-          <rect x="702" y="93" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="702" y="93" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(708 99) scale(0.6875)">
+          <rect x="704" y="93" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="704" y="93" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 4; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(710 99) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="748" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">git</text>
-          <text x="748" y="131" class="t-muted" font-size="8" text-anchor="middle">the commit</text>
+          <text data-node-label="" x="750" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">git</text>
+          <text x="750" y="131" class="t-muted" font-size="8" text-anchor="middle">the commit</text>
         </g>
 
         <g id="node-roles-check" data-node-id="roles-check" data-node-label="kitsu roles check" tabindex="0" role="button" aria-label="Focus kitsu roles check, after every role, What comes next › Any stage" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="after every role" data-node-context="What comes next › Any stage">
@@ -882,131 +900,142 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <g id="node-design-review" data-node-id="design-review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, independent, What comes next › Full path only" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="independent" data-node-context="What comes next › Full path only">
           <title>reviewer · independent · What comes next › Full path only</title>
-          <rect x="318" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="318" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(324 223) scale(0.6875)">
+          <rect x="316" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="316" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(322 223) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="364" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="364" y="255" class="t-muted" font-size="8" text-anchor="middle">independent</text>
+          <text data-node-label="" x="362" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="362" y="255" class="t-muted" font-size="8" text-anchor="middle">independent</text>
         </g>
 
         <g id="node-tests-run" data-node-id="tests-run" data-node-label="kitsu run" tabindex="0" role="button" aria-label="Focus kitsu run, runs your checks, What comes next › Both paths: the small path starts here" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="runs your checks" data-node-context="What comes next › Both paths: the small path starts here">
           <title>kitsu run · runs your checks · What comes next › Both paths: the small path starts here</title>
-          <rect x="448" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="448" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(454 223) scale(0.6875)">
+          <rect x="446" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="446" y="217" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(452 223) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="496.7" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu run</text>
-          <text x="494" y="255" class="t-muted" font-size="8" text-anchor="middle">runs your checks</text>
+          <text data-node-label="" x="494.7" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu run</text>
+          <text x="492" y="255" class="t-muted" font-size="8" text-anchor="middle">runs your checks</text>
         </g>
 
         <g id="node-code-review" data-node-id="code-review" data-node-label="reviewer" tabindex="0" role="button" aria-label="Focus reviewer, findings go back, What comes next › Both paths: the small path starts here" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="findings go back" data-node-context="What comes next › Both paths: the small path starts here">
           <title>reviewer · findings go back · What comes next › Both paths: the small path starts here</title>
-          <rect x="578" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="578" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(584 223) scale(0.6875)">
+          <rect x="576" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="576" y="217" width="92" height="52" rx="8" class="c-messagebus" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(582 223) scale(0.6875)">
             <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
             <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
             <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
-          <text data-node-label="" x="624" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
-          <text x="624" y="255" class="t-muted" font-size="8" text-anchor="middle">findings go back</text>
+          <text data-node-label="" x="622" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">reviewer</text>
+          <text x="622" y="255" class="t-muted" font-size="8" text-anchor="middle">findings go back</text>
         </g>
 
         <g id="node-gate" data-node-id="gate" data-node-label="the gate" tabindex="0" role="button" aria-label="Focus the gate, allows or denies, What comes next › Both paths: the small path starts here" aria-pressed="false" data-node-kind="security" data-node-sublabel="allows or denies" data-node-context="What comes next › Both paths: the small path starts here">
           <title>the gate · allows or denies · What comes next › Both paths: the small path starts here</title>
-          <rect x="702" y="217" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="702" y="217" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(708 223) scale(0.6875)">
+          <rect x="704" y="217" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="704" y="217" width="92" height="52" rx="8" class="c-security" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-17;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(710 223) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" x="748" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">the gate</text>
-          <text x="748" y="255" class="t-muted" font-size="8" text-anchor="middle">allows or denies</text>
+          <text data-node-label="" x="750" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">the gate</text>
+          <text x="750" y="255" class="t-muted" font-size="8" text-anchor="middle">allows or denies</text>
         </g>
 
-        <g id="node-spec-checkpoint" data-node-id="spec-checkpoint" data-node-label="Spec advice" tabindex="0" role="button" aria-label="Focus Spec advice, then you approve, Advice, if configured › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="then you approve" data-node-context="Advice, if configured › Full path only">
-          <title>Spec advice · then you approve · Advice, if configured › Full path only</title>
+        <g id="node-spec-approval" data-node-id="spec-approval" data-node-label="Approve spec" tabindex="0" role="button" aria-label="Focus Approve spec, your decision, Full path: you approve › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="your decision" data-node-context="Full path: you approve › Full path only">
+          <title>Approve spec · your decision · Full path: you approve › Full path only</title>
           <rect x="192" y="341" width="92" height="52" rx="8" class="c-mask"/>
           <rect x="192" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(198 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="238" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Spec advice</text>
-          <text x="238" y="388.1" class="t-muted" font-size="8" text-anchor="middle">then you approve</text>
+          <text data-node-label="" x="238" y="373.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Approve spec</text>
+          <text x="238" y="388.1" class="t-muted" font-size="8" text-anchor="middle">your decision</text>
         </g>
 
-        <g id="node-design-checkpoint" data-node-id="design-checkpoint" data-node-label="Design advice" tabindex="0" role="button" aria-label="Focus Design advice, then you approve, Advice, if configured › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="then you approve" data-node-context="Advice, if configured › Full path only">
-          <title>Design advice · then you approve · Advice, if configured › Full path only</title>
-          <rect x="318" y="341" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="318" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(324 347) scale(0.6875)">
+        <g id="node-design-approval" data-node-id="design-approval" data-node-label="Approve design" tabindex="0" role="button" aria-label="Focus Approve design, your decision, Full path: you approve › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="your decision" data-node-context="Full path: you approve › Full path only">
+          <title>Approve design · your decision · Full path: you approve › Full path only</title>
+          <rect x="316" y="341" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="316" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(322 347) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="364" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Design advice</text>
-          <text x="364" y="387.8" class="t-muted" font-size="8" text-anchor="middle">then you approve</text>
+          <text data-node-label="" x="362" y="372" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Approve design</text>
+          <text x="362" y="386.6" class="t-muted" font-size="8" text-anchor="middle">your decision</text>
         </g>
 
-        <g id="node-review-checkpoint" data-node-id="review-checkpoint" data-node-label="Review advice" tabindex="0" role="button" aria-label="Focus Review advice, before the commit, Advice, if configured › Both paths: the small path starts here" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="before the commit" data-node-context="Advice, if configured › Both paths: the small path starts here">
-          <title>Review advice · before the commit · Advice, if configured › Both paths: the small path starts here</title>
-          <rect x="578" y="341" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="578" y="341" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-16;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(584 347) scale(0.6875)">
+        <g id="node-consult-access" data-node-id="consult-access" data-node-label="Explicit opt-in" tabindex="0" role="button" aria-label="Focus Explicit opt-in, definition + access, Experimental advice: default off › Any stage" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="definition + access" data-node-context="Experimental advice: default off › Any stage">
+          <title>Explicit opt-in · definition + access · Experimental advice: default off › Any stage</title>
+          <rect x="56" y="465" width="96" height="52" rx="8" class="c-mask"/>
+          <rect x="56" y="465" width="96" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(62 471) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="624" y="372.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Review advice</text>
-          <text x="624" y="387.8" class="t-muted" font-size="8" text-anchor="middle">before the commit</text>
+          <text data-node-label="" x="104" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Explicit opt-in</text>
+          <text x="104" y="509.9" class="t-muted" font-size="7.7" text-anchor="middle">definition + access</text>
         </g>
 
-        <g id="node-consult-scope" data-node-id="consult-scope" data-node-label="Scope check" tabindex="0" role="button" aria-label="Focus Scope check, after role returns, Any role can ask; the coordinator brokers the call › Any stage" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="after role returns" data-node-context="Any role can ask; the coordinator brokers the call › Any stage">
-          <title>Scope check · after role returns · Any role can ask; the coordinator brokers the call › Any stage</title>
-          <rect x="58" y="465" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="58" y="465" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(64 471) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" x="104" y="497.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Scope check</text>
-          <text x="104" y="511.8" class="t-muted" font-size="7.7" text-anchor="middle">after role returns</text>
-        </g>
-
-        <g id="node-consult-run" data-node-id="consult-run" data-node-label="Adviser CLI" tabindex="0" role="button" aria-label="Focus Adviser CLI, kitsu consult, Any role can ask; the coordinator brokers the call › Full path only" aria-pressed="false" data-node-kind="external" data-node-sublabel="kitsu consult" data-node-context="Any role can ask; the coordinator brokers the call › Full path only">
-          <title>Adviser CLI · kitsu consult · Any role can ask; the coordinator brokers the call › Full path only</title>
+        <g id="node-consult-bind" data-node-id="consult-bind" data-node-label="Bind task" tabindex="0" role="button" aria-label="Focus Bind task, snapshot policy, Experimental advice: default off › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="snapshot policy" data-node-context="Experimental advice: default off › Full path only">
+          <title>Bind task · snapshot policy · Experimental advice: default off › Full path only</title>
           <rect x="192" y="465" width="92" height="52" rx="8" class="c-mask"/>
-          <rect x="192" y="465" width="92" height="52" rx="8" class="c-external" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(198 471) scale(0.6875)">
-            <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
-            <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
+          <rect x="192" y="465" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(198 471) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="238" y="497.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Adviser CLI</text>
-          <text x="238" y="512.1" class="t-muted" font-size="8" text-anchor="middle">kitsu consult</text>
+          <text data-node-label="" x="240.7" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Bind task</text>
+          <text x="238" y="503" class="t-muted" font-size="8" text-anchor="middle">snapshot policy</text>
         </g>
 
-        <g id="node-consult-record" data-node-id="consult-record" data-node-label="Record decision" tabindex="0" role="button" aria-label="Focus Record decision, answer + rationale, Any role can ask; the coordinator brokers the call › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="answer + rationale" data-node-context="Any role can ask; the coordinator brokers the call › Full path only">
-          <title>Record decision · answer + rationale · Any role can ask; the coordinator brokers the call › Full path only</title>
-          <rect x="316" y="465" width="96" height="52" rx="8" class="c-mask"/>
-          <rect x="316" y="465" width="96" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
+        <g id="node-consult-scope" data-node-id="consult-scope" data-node-label="Scope check" tabindex="0" role="button" aria-label="Focus Scope check, after role returns, Experimental advice: default off › Full path only" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="after role returns" data-node-context="Experimental advice: default off › Full path only">
+          <title>Scope check · after role returns · Experimental advice: default off › Full path only</title>
+          <rect x="316" y="465" width="92" height="52" rx="8" class="c-mask"/>
+          <rect x="316" y="465" width="92" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(322 471) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="364" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Record decision</text>
-          <text x="364" y="510.3" class="t-muted" font-size="8" text-anchor="middle">answer + rationale</text>
+          <text data-node-label="" x="362" y="497.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Scope check</text>
+          <text x="362" y="511.8" class="t-muted" font-size="7.7" text-anchor="middle">after role returns</text>
         </g>
 
-        <g id="node-consult-resume" data-node-id="consult-resume" data-node-label="Resume the role" tabindex="0" role="button" aria-label="Focus Resume the role, same job + limits, Any role can ask; the coordinator brokers the call › Both paths: the small path starts here" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="same job + limits" data-node-context="Any role can ask; the coordinator brokers the call › Both paths: the small path starts here">
-          <title>Resume the role · same job + limits · Any role can ask; the coordinator brokers the call › Both paths: the small path starts here</title>
-          <rect x="446" y="465" width="96" height="52" rx="8" class="c-mask"/>
-          <rect x="446" y="465" width="96" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(452 471) scale(0.6875)">
+        <g id="node-consult-run" data-node-id="consult-run" data-node-label="Adviser API/CLI" tabindex="0" role="button" aria-label="Focus Adviser API/CLI, kitsu consult, Experimental advice: default off › Both paths: the small path starts here" aria-pressed="false" data-node-kind="external" data-node-sublabel="kitsu consult" data-node-context="Experimental advice: default off › Both paths: the small path starts here">
+          <title>Adviser API/CLI · kitsu consult · Experimental advice: default off › Both paths: the small path starts here</title>
+          <rect x="444" y="465" width="96" height="52" rx="8" class="c-mask"/>
+          <rect x="444" y="465" width="96" height="52" rx="8" class="c-external" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(450 471) scale(0.6875)">
+            <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
+            <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
+          </g>
+          <text data-node-label="" x="492" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Adviser API/CLI</text>
+          <text x="492" y="510.3" class="t-muted" font-size="8" text-anchor="middle">kitsu consult</text>
+        </g>
+
+        <g id="node-consult-record" data-node-id="consult-record" data-node-label="Record decision" tabindex="0" role="button" aria-label="Focus Record decision, answer + rationale, Experimental advice: default off › Both paths: the small path starts here" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="answer + rationale" data-node-context="Experimental advice: default off › Both paths: the small path starts here">
+          <title>Record decision · answer + rationale · Experimental advice: default off › Both paths: the small path starts here</title>
+          <rect x="574" y="465" width="96" height="52" rx="8" class="c-mask"/>
+          <rect x="574" y="465" width="96" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(580 471) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="494" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Resume the role</text>
-          <text x="494" y="510.3" class="t-muted" font-size="8" text-anchor="middle">same job + limits</text>
+          <text data-node-label="" x="622" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Record decision</text>
+          <text x="622" y="510.3" class="t-muted" font-size="8" text-anchor="middle">answer + rationale</text>
+        </g>
+
+        <g id="node-consult-resume" data-node-id="consult-resume" data-node-label="Resume the role" tabindex="0" role="button" aria-label="Focus Resume the role, same job + limits, Experimental advice: default off › Both paths: the small path starts here" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="same job + limits" data-node-context="Experimental advice: default off › Both paths: the small path starts here">
+          <title>Resume the role · same job + limits · Experimental advice: default off › Both paths: the small path starts here</title>
+          <rect x="702" y="465" width="96" height="52" rx="8" class="c-mask"/>
+          <rect x="702" y="465" width="96" height="52" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-16;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-frontend" transform="translate(708 471) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="750" y="495.7" class="t-primary" font-size="9.7" font-weight="600" text-anchor="middle">Resume the role</text>
+          <text x="750" y="510.3" class="t-muted" font-size="8" text-anchor="middle">same job + limits</text>
         </g>
 
         <!-- Edge labels -->
@@ -1026,28 +1055,29 @@ rect.c-bg-rect { fill: var(--bg); }
 
 
 
+
         <!-- Legend -->
         <g data-legend="">
           <text x="20" y="552" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="572" data-legend-width="127">
+          <g data-legend-semantic-kind="frontend" data-legend-x="20" data-legend-baseline="572" data-legend-width="113">
             <rect x="20" y="564" width="14" height="9" rx="2" class="c-frontend" stroke-width="1"/>
-            <text x="42" y="572" class="t-muted" font-size="7.5" font-weight="500">Coordinator action</text>
+            <text x="42" y="572" class="t-muted" font-size="7.5" font-weight="500">Workflow action</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="154" data-legend-baseline="572" data-legend-width="99">
-            <rect x="154" y="564" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="176" y="572" class="t-muted" font-size="7.5" font-weight="500">Writing role</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="140" data-legend-baseline="572" data-legend-width="99">
+            <rect x="140" y="564" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="162" y="572" class="t-muted" font-size="7.5" font-weight="500">Writing role</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-x="260" data-legend-baseline="572" data-legend-width="81">
-            <rect x="260" y="564" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="282" y="572" class="t-muted" font-size="7.5" font-weight="500">Git gate</text>
+          <g data-legend-semantic-kind="security" data-legend-x="246" data-legend-baseline="572" data-legend-width="81">
+            <rect x="246" y="564" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="268" y="572" class="t-muted" font-size="7.5" font-weight="500">Git gate</text>
           </g>
-          <g data-legend-semantic-kind="messagebus" data-legend-x="348" data-legend-baseline="572" data-legend-width="109">
-            <rect x="348" y="564" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
-            <text x="370" y="572" class="t-muted" font-size="7.5" font-weight="500">Read-only role</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-x="334" data-legend-baseline="572" data-legend-width="109">
+            <rect x="334" y="564" width="14" height="9" rx="2" class="c-messagebus" stroke-width="1"/>
+            <text x="356" y="572" class="t-muted" font-size="7.5" font-weight="500">Read-only role</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="464" data-legend-baseline="572" data-legend-width="95">
-            <rect x="464" y="564" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="486" y="572" class="t-muted" font-size="7.5" font-weight="500">Adviser CLI</text>
+          <g data-legend-semantic-kind="external" data-legend-x="450" data-legend-baseline="572" data-legend-width="127">
+            <rect x="450" y="564" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="472" y="572" class="t-muted" font-size="7.5" font-weight="500">Adviser API or CLI</text>
           </g>
         </g>
       </svg>
