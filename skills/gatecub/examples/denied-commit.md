@@ -17,11 +17,11 @@
 ```console
 $ git add -A
 $ git commit -q -m "say what total prints"
-cw: this commit is denied: its content has no recorded passing run of every declared check.
+gatecub: this commit is denied: its content has no recorded passing run of every declared check.
   test: not run on this content
   lint: not run on this content
-cw: to produce the missing evidence, run:
-  cw run
+gatecub: to produce the missing evidence, run:
+  gatecub run
 [exit 1]
 ```
 
@@ -33,7 +33,7 @@ and found none, because that content is new. Even a changed comment is new conte
 Do what the message says, then commit again with the same command.
 
 ```console
-$ cw run
+$ gatecub run
 == test: sh tests/run.sh
 tests passed
 == test: passed in 0s
@@ -45,9 +45,9 @@ $ git commit -q -m "say what total prints"
 
 ## What not to do
 
-Do not pass `--no-verify`, do not change or remove a hook, and do not write under `.git/cw/`.
+Do not pass `--no-verify`, do not change or remove a hook, and do not write under `.git/gatecub/`.
 Each of these makes a commit that looks checked and is not, and the user can no longer tell the
-two apart. If `cw run` cannot pass, read [a check that does not pass](failing-check.md). If the
+two apart. If `gatecub run` cannot pass, read [a check that does not pass](failing-check.md). If the
 commit should hold only a part of your changes, read [a part of the changes](partial-commit.md).
 
 <!-- A test replays this example from the fixture "shop": internal/repocheck/skill_test.go -->

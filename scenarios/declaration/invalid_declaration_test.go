@@ -6,18 +6,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Invalid declaration", scenario "A misspelt key is refused".
 func TestMisspeltKeyIsRefusedWithItsLine(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// The scripts leave a mark outside the repository when they execute.
 	marks := t.TempDir()
 	repo.Write("unit.sh", "touch '"+filepath.Join(marks, "unit")+"'\n")
 	repo.Write("lint.sh", "touch '"+filepath.Join(marks, "lint")+"'\n")
-	repo.Write("cw.toml", `version = 1
+	repo.Write("gatecub.toml", `version = 1
 
 [[check]]
 id = "unit"
@@ -29,17 +29,17 @@ tiemout = "5m"
 id = "lint"
 run = ["sh", "lint.sh"]
 `)
-	if line := strings.Split(repo.Read("cw.toml"), "\n")[8]; line != `tiemout = "5m"` {
-		t.Fatalf("line 9 of cw.toml is %q", line)
+	if line := strings.Split(repo.Read("gatecub.toml"), "\n")[8]; line != `tiemout = "5m"` {
+		t.Fatalf("line 9 of gatecub.toml is %q", line)
 	}
 	commitAll(repo, "misspelt key")
 	before := fingerprint(t, repo.Dir, repo.Home)
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 	if result.Code != 1 {
-		t.Errorf("cw run exited %d, want 1", result.Code)
+		t.Errorf("gatecub run exited %d, want 1", result.Code)
 	}
-	for _, want := range []string{"cw.toml:9", "tiemout"} {
+	for _, want := range []string{"gatecub.toml:9", "tiemout"} {
 		if !strings.Contains(result.Output(), want) {
 			t.Errorf("the output does not hold %q:\n%s", want, result.Output())
 		}
@@ -57,9 +57,9 @@ run = ["sh", "lint.sh"]
 // Requirement "Invalid declaration", scenario "A duplicate id is refused".
 func TestDuplicateIDIsRefusedWithBothLines(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// The checks begin on lines 11 and 21; their ids are on lines 12 and 22.
-	repo.Write("cw.toml", `version = 1
+	repo.Write("gatecub.toml", `version = 1
 
 # a
 # b
@@ -83,16 +83,16 @@ paths = ["src/**", "unit.sh"]
 id = "unit"
 run = ["sh", "lint.sh"]
 `)
-	lines := strings.Split(repo.Read("cw.toml"), "\n")
+	lines := strings.Split(repo.Read("gatecub.toml"), "\n")
 	if lines[10] != "[[check]]" || lines[11] != `id = "unit"` || lines[20] != "[[check]]" || lines[21] != `id = "unit"` {
-		t.Fatalf("the layout of cw.toml is not the one the test expects:\n%s", repo.Read("cw.toml"))
+		t.Fatalf("the layout of gatecub.toml is not the one the test expects:\n%s", repo.Read("gatecub.toml"))
 	}
 	commitAll(repo, "duplicate id")
 	before := fingerprint(t, repo.Dir, repo.Home)
 
-	result := repo.CW("status")
+	result := repo.Gatecub("status")
 	if result.Code != 1 {
-		t.Errorf("cw status exited %d, want 1", result.Code)
+		t.Errorf("gatecub status exited %d, want 1", result.Code)
 	}
 	output := result.Output()
 	if !strings.Contains(output, "unit") {
@@ -112,8 +112,8 @@ run = ["sh", "lint.sh"]
 // string is refused".
 func TestRunWrittenAsOneStringIsRefused(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	repo.Write("cw.toml", cwtest.DemoDeclaration+`
+	repo := gatecubtest.Demo(t)
+	repo.Write("gatecub.toml", gatecubtest.DemoDeclaration+`
 [[check]]
 id = "gotest"
 run = "go test ./..."
@@ -121,9 +121,9 @@ run = "go test ./..."
 	commitAll(repo, "run as a string")
 	before := fingerprint(t, repo.Dir, repo.Home)
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 	if result.Code != 1 {
-		t.Errorf("cw run exited %d, want 1", result.Code)
+		t.Errorf("gatecub run exited %d, want 1", result.Code)
 	}
 	output := strings.ToLower(result.Output())
 	for _, want := range []string{"run", "array", "string"} {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Outcome of a run", scenario "A failing check".
@@ -16,7 +16,7 @@ func TestFailingCheckEndsFailedAndTheNextStillRuns(t *testing.T) {
 	repo, trace := tracedDemo(t)
 	repo.Write("src/app.txt", "broken\n")
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 
 	unit := status(t, repo).check(t, "unit")
 	if unit.Outcome != "failed" || unit.ExitStatus == nil || *unit.ExitStatus != 3 {
@@ -38,10 +38,10 @@ func TestFailingCheckEndsFailedAndTheNextStillRuns(t *testing.T) {
 // source".
 func TestCheckThatWritesIntoTheSourceEndsSourceChanged(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	declare(t, repo, "[[check]]\nid = \"cover\"\nrun = [\"sh\", \"-c\", \"echo covered > coverage.out\"]\n")
 
-	result := repo.CW("run", "cover")
+	result := repo.Gatecub("run", "cover")
 
 	if outcome := lastRecord(t, repo, "cover")["outcome"]; outcome != "source_changed" {
 		t.Errorf("cover ended %v, want source_changed", outcome)
@@ -65,7 +65,7 @@ func TestCheckThatWritesIntoTheSourceEndsSourceChanged(t *testing.T) {
 // Requirement "Outcome of a run", scenario "A source edit during a run".
 func TestSourceEditDuringARunEndsSourceChanged(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	signals := t.TempDir()
 	started := filepath.Join(signals, "started")
 	proceed := filepath.Join(signals, "proceed")
@@ -75,7 +75,7 @@ func TestSourceEditDuringARunEndsSourceChanged(t *testing.T) {
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "lint.sh waits")
 
-	run := startCW(t, repo, nil, "run", "lint")
+	run := startGatecub(t, repo, nil, "run", "lint")
 	if !waitFor(30*time.Second, func() bool { _, err := os.Stat(started); return err == nil }) {
 		t.Fatalf("lint.sh did not start\n%s", run.out.String())
 	}
@@ -84,7 +84,7 @@ func TestSourceEditDuringARunEndsSourceChanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !run.wait(30 * time.Second) {
-		t.Fatalf("cw run lint did not end\n%s", run.out.String())
+		t.Fatalf("gatecub run lint did not end\n%s", run.out.String())
 	}
 
 	if outcome := lastRecord(t, repo, "lint")["outcome"]; outcome != "source_changed" {

@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
-// statusJSON is the object that `cw status --json` prints.
+// statusJSON is the object that `gatecub status --json` prints.
 type statusJSON struct {
 	Tree   string       `json:"tree"`
 	Checks []checkEntry `json:"checks"`
@@ -35,17 +35,17 @@ type checkEntry struct {
 	Log        string `json:"log"`
 }
 
-// status runs `cw status --json` and decodes what it prints.
-func status(t *testing.T, repo *cwtest.Repo) statusJSON {
+// status runs `gatecub status --json` and decodes what it prints.
+func status(t *testing.T, repo *gatecubtest.Repo) statusJSON {
 	t.Helper()
-	return decodeStatus(t, repo.CW("status", "--json"))
+	return decodeStatus(t, repo.Gatecub("status", "--json"))
 }
 
-func decodeStatus(t *testing.T, result cwtest.Result) statusJSON {
+func decodeStatus(t *testing.T, result gatecubtest.Result) statusJSON {
 	t.Helper()
 	var out statusJSON
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw status --json (exit status %d) printed no JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub status --json (exit status %d) printed no JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	return out
 }
@@ -57,7 +57,7 @@ func (s statusJSON) check(t *testing.T, id string) checkEntry {
 			return entry
 		}
 	}
-	t.Fatalf("cw status --json has no entry for %q: %+v", id, s.Checks)
+	t.Fatalf("gatecub status --json has no entry for %q: %+v", id, s.Checks)
 	return checkEntry{}
 }
 
@@ -71,9 +71,9 @@ func exitStatus(entry checkEntry) string {
 // tracedDemo is the demo repository whose unit.sh and lint.sh also append
 // their name to a file outside the repository each time they are executed.
 // The change is committed, so the fixture still has one clean commit on top.
-func tracedDemo(t *testing.T) (*cwtest.Repo, string) {
+func tracedDemo(t *testing.T) (*gatecubtest.Repo, string) {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	trace := filepath.Join(t.TempDir(), "trace")
 	for _, name := range []string{"unit", "lint"} {
 		script := name + ".sh"
@@ -97,24 +97,24 @@ func executed(t *testing.T, trace string) []string {
 	return strings.Fields(string(data))
 }
 
-// declare appends checks to cw.toml and commits the change.
-func declare(t *testing.T, repo *cwtest.Repo, checks string) {
+// declare appends checks to gatecub.toml and commits the change.
+func declare(t *testing.T, repo *gatecubtest.Repo, checks string) {
 	t.Helper()
-	repo.Write("cw.toml", repo.Read("cw.toml")+"\n"+checks)
+	repo.Write("gatecub.toml", repo.Read("gatecub.toml")+"\n"+checks)
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "declare more checks")
 }
 
-// checkedState runs cw run and requires both checks to pass.
-func checkedState(t *testing.T, repo *cwtest.Repo) {
+// checkedState runs gatecub run and requires both checks to pass.
+func checkedState(t *testing.T, repo *gatecubtest.Repo) {
 	t.Helper()
-	if result := repo.CW("run"); result.Code != 0 {
-		t.Fatalf("setting up the checked state: cw run exit status %d\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("run"); result.Code != 0 {
+		t.Fatalf("setting up the checked state: gatecub run exit status %d\n%s", result.Code, result.Output())
 	}
 }
 
 // lastRecord decodes the most recent record file of a check.
-func lastRecord(t *testing.T, repo *cwtest.Repo, id string) map[string]any {
+func lastRecord(t *testing.T, repo *gatecubtest.Repo, id string) map[string]any {
 	t.Helper()
 	files := repo.RecordFiles(id)
 	if len(files) == 0 {
@@ -137,7 +137,7 @@ func readRecord(t *testing.T, path string) map[string]any {
 }
 
 // logPath turns the log of a record or a status entry into a file name.
-func logPath(repo *cwtest.Repo, log string) string {
+func logPath(repo *gatecubtest.Repo, log string) string {
 	if filepath.IsAbs(log) {
 		return log
 	}
@@ -161,13 +161,13 @@ func lineWith(output string, words ...string) bool {
 	return false
 }
 
-func cwProgram(t *testing.T) string {
+func gatecubProgram(t *testing.T) string {
 	t.Helper()
-	name := "cw"
+	name := "gatecub"
 	if runtime.GOOS == "windows" {
-		name = "cw.exe"
+		name = "gatecub.exe"
 	}
-	return filepath.Join(cwtest.Binary(t), name)
+	return filepath.Join(gatecubtest.Binary(t), name)
 }
 
 // lockedBuffer collects the output of a program that runs in the background.
@@ -188,7 +188,7 @@ func (b *lockedBuffer) String() string {
 	return b.buf.String()
 }
 
-// background is a cw command the test started and may signal.
+// background is a gatecub command the test started and may signal.
 type background struct {
 	cmd   *exec.Cmd
 	out   *lockedBuffer
@@ -198,13 +198,13 @@ type background struct {
 	ended time.Time
 }
 
-// startCW starts cw in the background. A process that outlives cw and holds
+// startGatecub starts gatecub in the background. A process that outlives gatecub and holds
 // its output open cannot keep the test waiting: Wait gives up on the output
-// five seconds after cw has exited. The test's cleanup kills cw if it is
+// five seconds after gatecub has exited. The test's cleanup kills gatecub if it is
 // still running.
-func startCW(t *testing.T, repo *cwtest.Repo, prepare func(*exec.Cmd), args ...string) *background {
+func startGatecub(t *testing.T, repo *gatecubtest.Repo, prepare func(*exec.Cmd), args ...string) *background {
 	t.Helper()
-	cmd := repo.Command(cwProgram(t), args...)
+	cmd := repo.Command(gatecubProgram(t), args...)
 	out := &lockedBuffer{}
 	cmd.Stdout, cmd.Stderr = out, out
 	cmd.WaitDelay = 5 * time.Second
@@ -233,7 +233,7 @@ func startCW(t *testing.T, repo *cwtest.Repo, prepare func(*exec.Cmd), args ...s
 	return bg
 }
 
-// wait waits at most limit for cw to exit and says whether it did.
+// wait waits at most limit for gatecub to exit and says whether it did.
 func (b *background) wait(limit time.Duration) bool {
 	select {
 	case <-b.done:
@@ -243,18 +243,18 @@ func (b *background) wait(limit time.Duration) bool {
 	}
 }
 
-// runLimited runs cw in the foreground, kills it after limit, and returns how
+// runLimited runs gatecub in the foreground, kills it after limit, and returns how
 // it ended and how long it took.
-func runLimited(t *testing.T, repo *cwtest.Repo, limit time.Duration, args ...string) (cwtest.Result, time.Duration) {
+func runLimited(t *testing.T, repo *gatecubtest.Repo, limit time.Duration, args ...string) (gatecubtest.Result, time.Duration) {
 	t.Helper()
 	start := time.Now()
-	bg := startCW(t, repo, nil, args...)
+	bg := startGatecub(t, repo, nil, args...)
 	if !bg.wait(limit) {
 		_ = bg.cmd.Process.Kill()
 		<-bg.done
-		t.Fatalf("cw %s did not end within %s\n%s", strings.Join(args, " "), limit, bg.out.String())
+		t.Fatalf("gatecub %s did not end within %s\n%s", strings.Join(args, " "), limit, bg.out.String())
 	}
-	return cwtest.Result{Stdout: bg.out.String(), Code: bg.code}, bg.ended.Sub(start)
+	return gatecubtest.Result{Stdout: bg.out.String(), Code: bg.code}, bg.ended.Sub(start)
 }
 
 // pgrep lists the processes whose command line matches pattern; with parent

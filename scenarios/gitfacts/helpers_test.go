@@ -1,4 +1,4 @@
-// Package gitfacts_test holds the git behaviour that the design of cw relies
+// Package gitfacts_test holds the git behaviour that the design of gatecub relies
 // on, as tests. Each test names the observation it holds, from the proposal
 // (openspec/changes/reduce-cw-to-evidence-gate/proposal.md), sections
 // "Sources" and "Known limits". The observations were first made by hand on
@@ -14,20 +14,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // newRepo is an empty repository on main whose editor does nothing, so that
 // a continued cherry-pick, merge or revert never waits for input.
-func newRepo(t *testing.T) *cwtest.Repo {
+func newRepo(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	repo.Setenv("GIT_EDITOR", ":")
 	return repo
 }
 
 // withFile is newRepo with f.txt holding "a" in a first commit.
-func withFile(t *testing.T) *cwtest.Repo {
+func withFile(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
 	repo := newRepo(t)
 	commitFile(repo, "f.txt", "a\n", "init")
@@ -35,25 +35,25 @@ func withFile(t *testing.T) *cwtest.Repo {
 }
 
 // commitFile writes a file, stages it and commits it without the hooks.
-func commitFile(repo *cwtest.Repo, rel, content, message string) {
+func commitFile(repo *gatecubtest.Repo, rel, content, message string) {
 	repo.Write(rel, content)
 	repo.Git("add", "--", rel)
 	repo.Git("commit", "-q", "--no-verify", "-m", message)
 }
 
 // treeOf is the tree of a commit.
-func treeOf(repo *cwtest.Repo, rev string) string {
+func treeOf(repo *gatecubtest.Repo, rev string) string {
 	return repo.Git("rev-parse", rev+"^{tree}")
 }
 
 // parents is the number of parents of HEAD.
-func parents(repo *cwtest.Repo) int {
+func parents(repo *gatecubtest.Repo) int {
 	return len(strings.Fields(repo.Git("rev-list", "--parents", "-1", "HEAD"))) - 1
 }
 
 // gitPath is the absolute path of a file in the git directory, as
 // `git rev-parse --git-path` names it.
-func gitPath(repo *cwtest.Repo, name string) string {
+func gitPath(repo *gatecubtest.Repo, name string) string {
 	path := repo.Git("rev-parse", "--git-path", name)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(repo.Dir, path)
@@ -68,14 +68,14 @@ func exists(path string) bool {
 }
 
 // runEnv runs git in the repository with extra variables.
-func runEnv(t *testing.T, repo *cwtest.Repo, extra []string, args ...string) cwtest.Result {
+func runEnv(t *testing.T, repo *gatecubtest.Repo, extra []string, args ...string) gatecubtest.Result {
 	t.Helper()
 	command := repo.Command("git", args...)
 	command.Env = append(command.Env, extra...)
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
 	err := command.Run()
-	result := cwtest.Result{Stdout: stdout.String(), Stderr: stderr.String()}
+	result := gatecubtest.Result{Stdout: stdout.String(), Stderr: stderr.String()}
 	var exit *exec.ExitError
 	switch {
 	case err == nil:
@@ -91,7 +91,7 @@ func runEnv(t *testing.T, repo *cwtest.Repo, extra []string, args ...string) cwt
 // index so that the real index is not touched. This is how the design takes
 // its snapshot. When `git add -A` fails, the tree is empty and the result
 // is that of `git add -A`.
-func snapshot(t *testing.T, repo *cwtest.Repo) (string, cwtest.Result) {
+func snapshot(t *testing.T, repo *gatecubtest.Repo) (string, gatecubtest.Result) {
 	t.Helper()
 	tmp := filepath.Join(t.TempDir(), "index")
 	data, err := os.ReadFile(gitPath(repo, "index"))
@@ -115,7 +115,7 @@ func snapshot(t *testing.T, repo *cwtest.Repo) (string, cwtest.Result) {
 }
 
 // mustSnapshot is snapshot that fails the test when `git add -A` fails.
-func mustSnapshot(t *testing.T, repo *cwtest.Repo) string {
+func mustSnapshot(t *testing.T, repo *gatecubtest.Repo) string {
 	t.Helper()
 	tree, result := snapshot(t, repo)
 	if tree == "" {
@@ -175,14 +175,14 @@ func writeHook(t *testing.T, path, body string) {
 }
 
 // installHook writes a hook into the hooks directory of the repository.
-func installHook(t *testing.T, repo *cwtest.Repo, name, body string) {
+func installHook(t *testing.T, repo *gatecubtest.Repo, name, body string) {
 	t.Helper()
 	writeHook(t, gitPath(repo, "hooks/"+name), body)
 }
 
 // logTreeHook installs a hook that logs its name and the tree that
 // `git write-tree` gives inside it, and exits 0.
-func logTreeHook(t *testing.T, repo *cwtest.Repo, name string, log *hookLog) {
+func logTreeHook(t *testing.T, repo *gatecubtest.Repo, name string, log *hookLog) {
 	t.Helper()
 	installHook(t, repo, name, "echo \""+name+" $(git write-tree)\" >> "+log.sh()+"\n")
 }

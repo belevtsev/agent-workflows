@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-// Requirement "Fail closed", scenario "`cw` is missing".
-func TestCWIsMissing(t *testing.T) {
+// Requirement "Fail closed", scenario "`gatecub` is missing".
+func TestGatecubIsMissing(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("builds a PATH of symbolic links")
@@ -22,7 +22,7 @@ func TestCWIsMissing(t *testing.T) {
 	g.Write("src/app.txt", "ok")
 	before := g.head()
 
-	// A PATH that holds git and sh and nothing else, so no cw.
+	// A PATH that holds git and sh and nothing else, so no gatecub.
 	bin := t.TempDir()
 	for _, name := range []string{"git", "sh"} {
 		path, err := exec.LookPath(name)
@@ -41,7 +41,7 @@ func TestCWIsMissing(t *testing.T) {
 	err := command.Run()
 	var exit *exec.ExitError
 	if err == nil {
-		t.Errorf("git commit exited 0 without cw on PATH")
+		t.Errorf("git commit exited 0 without gatecub on PATH")
 	} else if !errors.As(err, &exit) {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestCWIsMissing(t *testing.T) {
 		t.Errorf("git recorded a commit: HEAD moved from %s to %s", before, after)
 	}
 	if !strings.Contains(output, "not found") {
-		t.Errorf("the output does not say that cw was not found:\n%s", output)
+		t.Errorf("the output does not say that gatecub was not found:\n%s", output)
 	}
 	if !strings.Contains(output, "install") {
 		t.Errorf("the output does not say where the install instruction is:\n%s", output)
@@ -64,7 +64,7 @@ func TestCWIsMissing(t *testing.T) {
 func TestInvalidDeclarationDenies(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Write("cw.toml", `version = 1
+	g.Write("gatecub.toml", `version = 1
 
 [[check]]
 id = "unit"
@@ -76,13 +76,13 @@ tiemout = "5m"
 id = "lint"
 run = ["sh", "lint.sh"]
 `)
-	if line := strings.Split(g.Read("cw.toml"), "\n")[8]; line != `tiemout = "5m"` {
-		t.Fatalf("line 9 of cw.toml is %q", line)
+	if line := strings.Split(g.Read("gatecub.toml"), "\n")[8]; line != `tiemout = "5m"` {
+		t.Fatalf("line 9 of gatecub.toml is %q", line)
 	}
-	g.Git("add", "cw.toml")
+	g.Git("add", "gatecub.toml")
 	result := g.commitDenied("pre-commit", "commit", "-m", "change")
-	if !strings.Contains(result.Stderr, "cw.toml:9") {
-		t.Errorf("the reason does not hold cw.toml:9:\n%s", result.Stderr)
+	if !strings.Contains(result.Stderr, "gatecub.toml:9") {
+		t.Errorf("the reason does not hold gatecub.toml:9:\n%s", result.Stderr)
 	}
 }
 
@@ -90,7 +90,7 @@ run = ["sh", "lint.sh"]
 func TestRemovedDeclarationDenies(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Git("rm", "-q", "cw.toml")
+	g.Git("rm", "-q", "gatecub.toml")
 	result := g.commitDenied("pre-commit", "commit", "-m", "remove")
 	assertLineWith(t, result.Stderr, "tree has no declaration")
 }

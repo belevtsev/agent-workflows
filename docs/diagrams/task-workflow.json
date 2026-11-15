@@ -10,7 +10,7 @@
       "entries": {
         "backend": {"label": "Role that changes files"},
         "messagebus": {"label": "Role that changes no file"},
-        "frontend": {"label": "The coordinator runs cw"},
+        "frontend": {"label": "The coordinator runs gatecub"},
         "security": {"label": "The gate"}
       }
     }
@@ -32,10 +32,10 @@
     {"id": "quality-engineer", "lane": "roles", "col": 3, "type": "backend", "label": "quality-engineer", "sublabel": "tests first"},
     {"id": "developer", "lane": "roles", "col": 4, "type": "backend", "label": "developer", "sublabel": "the code"},
     {"id": "git", "lane": "roles", "col": 5, "type": "messagebus", "label": "git", "sublabel": "the commit"},
-    {"id": "roles-check", "lane": "checks", "col": 0, "type": "frontend", "label": "cw roles check", "sublabel": "after every role", "icon": "backend"},
+    {"id": "roles-check", "lane": "checks", "col": 0, "type": "frontend", "label": "gatecub roles check", "sublabel": "after every role", "icon": "backend"},
     {"id": "spec-review", "lane": "checks", "col": 1, "type": "messagebus", "label": "reviewer", "sublabel": "then you approve"},
     {"id": "design-review", "lane": "checks", "col": 2, "type": "messagebus", "label": "reviewer", "sublabel": "then you approve"},
-    {"id": "tests-run", "lane": "checks", "col": 3, "type": "frontend", "label": "cw run", "sublabel": "runs your checks", "icon": "backend"},
+    {"id": "tests-run", "lane": "checks", "col": 3, "type": "frontend", "label": "gatecub run", "sublabel": "runs your checks", "icon": "backend"},
     {"id": "code-review", "lane": "checks", "col": 4, "type": "messagebus", "label": "reviewer", "sublabel": "findings go back"},
     {"id": "gate", "lane": "checks", "col": 5, "type": "security", "label": "the gate", "sublabel": "allows or denies"}
   ],

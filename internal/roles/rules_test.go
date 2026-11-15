@@ -24,7 +24,7 @@ func section(text, heading string) string {
 // that an edit that drops one fails. The texts say more than this checks.
 func TestTextsHoldTheRulesOfTheFlow(t *testing.T) {
 	cases := []struct{ id, heading, words string }{
-		{Coordinator, "After every role", "After `spec-writer` and after `architect`, run `cw change check <task>`."},
+		{Coordinator, "After every role", "After `spec-writer` and after `architect`, run `gatecub change check <task>`."},
 		{Coordinator, "After every role", "When the same role exceeds its limit a second time, stop and ask the developer."},
 		{Coordinator, "Reviews", "A stage has at most two review rounds."},
 		{Coordinator, "Reviews", "Only the developer rejects a `blocker` or `major` finding"},
@@ -48,13 +48,13 @@ func TestTextsHoldTheRulesOfTheFlow(t *testing.T) {
 }
 
 // The two paths are defined in the same words by the coordinator's text and
-// by the example of the skill cw.
+// by the example of the skill gatecub.
 func TestThePathsHaveOneDefinition(t *testing.T) {
 	text, err := Text(Coordinator)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root(t), "skills", "cw", "examples", "role-workflow.md"))
+	data, err := os.ReadFile(filepath.Join(root(t), "skills", "gatecub", "examples", "role-workflow.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestThePathsHaveOneDefinition(t *testing.T) {
 			t.Errorf("the coordinator's text does not define under \"The two paths\": %s", words)
 		}
 		if !strings.Contains(example, words) {
-			t.Errorf("skills/cw/examples/role-workflow.md does not hold: %s", words)
+			t.Errorf("skills/gatecub/examples/role-workflow.md does not hold: %s", words)
 		}
 	}
 }

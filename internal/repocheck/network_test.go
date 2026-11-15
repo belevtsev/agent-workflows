@@ -13,32 +13,32 @@ func networkPackage(pkg string) bool {
 	return pkg == "net" || strings.HasPrefix(pkg, "net/") || pkg == "crypto/tls"
 }
 
-// cw promises to open no network connection. The promise is kept by what cw
+// gatecub promises to open no network connection. The promise is kept by what gatecub
 // links, for each system it is built for, whatever system the test runs on.
 //
-// On Linux and macOS cw links no package that could open one. On Windows the
-// package net is linked by golang.org/x/sys/windows, which cw calls for job
+// On Linux and macOS gatecub links no package that could open one. On Windows the
+// package net is linked by golang.org/x/sys/windows, which gatecub calls for job
 // objects and file locks and which uses the address types of net. There the
 // test holds that this package is the only one that imports a network
-// package: no package of cw does, and no other dependency.
+// package: no package of gatecub does, and no other dependency.
 func TestCwLinksNoNetworkPackage(t *testing.T) {
 	for _, goos := range []string{"linux", "darwin", "windows"} {
-		list := exec.Command("go", "list", "-deps", "-f", `{{.ImportPath}}{{range .Imports}} {{.}}{{end}}`, "./cmd/cw")
+		list := exec.Command("go", "list", "-deps", "-f", `{{.ImportPath}}{{range .Imports}} {{.}}{{end}}`, "./cmd/gatecub")
 		list.Dir = repoRoot
 		list.Env = append(os.Environ(), "GOOS="+goos)
 		out, err := list.Output()
 		if err != nil {
-			t.Fatalf("go list -deps ./cmd/cw for %s: %v", goos, err)
+			t.Fatalf("go list -deps ./cmd/gatecub for %s: %v", goos, err)
 		}
 		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 		if len(lines) < 10 {
-			t.Fatalf("go list -deps ./cmd/cw for %s named only %d packages", goos, len(lines))
+			t.Fatalf("go list -deps ./cmd/gatecub for %s named only %d packages", goos, len(lines))
 		}
 		for _, line := range lines {
 			fields := strings.Fields(line)
 			pkg, imports := fields[0], fields[1:]
 			if networkPackage(pkg) && goos != "windows" {
-				t.Errorf("%s: cw links the network package %s", goos, pkg)
+				t.Errorf("%s: gatecub links the network package %s", goos, pkg)
 			}
 			for _, imported := range imports {
 				if networkPackage(imported) && !networkPackage(pkg) && pkg != "golang.org/x/sys/windows" {

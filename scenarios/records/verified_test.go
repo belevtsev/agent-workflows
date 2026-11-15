@@ -45,7 +45,7 @@ func TestRunOlderThanThirtyDaysAgesOut(t *testing.T) {
 		}
 	}
 
-	status := repo.CW("status")
+	status := repo.Gatecub("status")
 	assertState(t, status, "unit", "not run")
 	assertState(t, status, "lint", "not run")
 }
@@ -59,9 +59,9 @@ func TestRunDatedInTheFutureDoesNotSatisfy(t *testing.T) {
 		fields["ended_at"] = time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 	})
 
-	status := repo.CW("status")
+	status := repo.Gatecub("status")
 	assertState(t, status, "lint", "not run")
 	if !strings.Contains(strings.ToLower(status.Output()), "future") {
-		t.Errorf("cw status does not warn that the run is dated in the future:\n%s", status.Output())
+		t.Errorf("gatecub status does not warn that the run is dated in the future:\n%s", status.Output())
 	}
 }

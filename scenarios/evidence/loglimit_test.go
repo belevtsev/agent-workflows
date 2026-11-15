@@ -4,19 +4,19 @@ import (
 	"os"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Log limit", scenario "A very long log".
 func TestVeryLongLogIsCutAndStillSatisfies(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// 50 MiB of output, and exit status 0.
 	declare(t, repo, "[[check]]\nid = \"loud\"\nrun = [\"sh\", \"-c\", \"yes 0123456789abcdef | head -c 52428800\"]\n")
 	const limit = 10 << 20
 	const markerAllowance = 4 << 10 // the marker's size is not specified; a few lines
 
-	first := repo.CW("run")
+	first := repo.Gatecub("run")
 
 	record := lastRecord(t, repo, "loud")
 	if record["outcome"] != "passed" {
@@ -33,14 +33,14 @@ func TestVeryLongLogIsCutAndStillSatisfies(t *testing.T) {
 		before[id] = len(repo.RecordFiles(id))
 	}
 
-	second := repo.CW("run")
+	second := repo.Gatecub("run")
 
 	for _, id := range []string{"unit", "lint", "loud"} {
 		if after := len(repo.RecordFiles(id)); after != before[id] {
-			t.Errorf("the second cw run executed %s (%d records, %d before)", id, after, before[id])
+			t.Errorf("the second gatecub run executed %s (%d records, %d before)", id, after, before[id])
 		}
 	}
 	if t.Failed() {
-		t.Logf("first cw run exit status %d; second cw run (exit status %d):\n%s", first.Code, second.Code, second.Output())
+		t.Logf("first gatecub run exit status %d; second gatecub run (exit status %d):\n%s", first.Code, second.Code, second.Output())
 	}
 }

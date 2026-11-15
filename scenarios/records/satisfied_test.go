@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Satisfied check", scenario "A run on the same tree satisfies".
@@ -13,7 +13,7 @@ func TestRunOnTheSameTreeSatisfies(t *testing.T) {
 	t.Parallel()
 	repo := checkedState(t)
 
-	status := repo.CW("status")
+	status := repo.Gatecub("status")
 	assertState(t, status, "unit", "satisfied")
 	assertState(t, status, "lint", "satisfied")
 }
@@ -25,7 +25,7 @@ func TestChangeOutsidePathsKeepsACheckSatisfied(t *testing.T) {
 	repo := checkedState(t)
 	repo.Write("README.md", "# demo\n\nedited\n")
 
-	status := repo.CW("status")
+	status := repo.Gatecub("status")
 	assertState(t, status, "unit", "satisfied")
 	assertState(t, status, "lint", "not run")
 }
@@ -36,28 +36,28 @@ func TestChangeInsidePathsNeedsANewRun(t *testing.T) {
 	repo := checkedState(t)
 	repo.Write("src/app.txt", "ok \n")
 
-	assertState(t, repo.CW("status"), "unit", "not run")
+	assertState(t, repo.Gatecub("status"), "unit", "not run")
 }
 
 // Requirement "Satisfied check", scenario "A changed command needs a new run".
 func TestChangedCommandNeedsANewRun(t *testing.T) {
 	t.Parallel()
 	repo := checkedState(t)
-	declaration := repo.Read("cw.toml")
+	declaration := repo.Read("gatecub.toml")
 	changed := strings.Replace(declaration, `run = ["sh", "unit.sh"]`, `run = ["sh", "unit.sh", "-v"]`, 1)
 	if changed == declaration {
-		t.Fatalf("the run of unit is not in cw.toml:\n%s", declaration)
+		t.Fatalf("the run of unit is not in gatecub.toml:\n%s", declaration)
 	}
-	repo.Write("cw.toml", changed)
+	repo.Write("gatecub.toml", changed)
 
-	assertState(t, repo.CW("status"), "unit", "not run")
+	assertState(t, repo.Gatecub("status"), "unit", "not run")
 }
 
 // Requirement "Satisfied check", scenario "A later pass replaces an earlier
 // failure on the same content".
 func TestLaterPassReplacesAnEarlierFailure(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	flag := envFlag(t)
 	addEnvCheck(repo, "test", "-e", flag)
 	mustRun(t, repo, 5, "run", "env")
@@ -70,14 +70,14 @@ func TestLaterPassReplacesAnEarlierFailure(t *testing.T) {
 		t.Errorf("the program was not executed again: %d records before the second run, %d after", before, after)
 	}
 	recordWithOutcome(t, repo, "env", "passed")
-	assertState(t, repo.CW("status"), "env", "satisfied")
+	assertState(t, repo.Gatecub("status"), "env", "satisfied")
 }
 
 // Requirement "Satisfied check", scenario "A later failure replaces an earlier
 // pass".
 func TestLaterFailureReplacesAnEarlierPass(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	flag := envFlag(t)
 	addEnvCheck(repo, "test", "-e", flag)
 	createFile(t, flag)
@@ -86,13 +86,13 @@ func TestLaterFailureReplacesAnEarlierPass(t *testing.T) {
 	removeFile(t, flag)
 	mustRun(t, repo, 5, "run", "env", "--force")
 
-	assertState(t, repo.CW("status"), "env", "failed")
+	assertState(t, repo.Gatecub("status"), "env", "failed")
 }
 
 // Requirement "Satisfied check", scenario "Two runs that overlap".
 func TestOverlappingRunsAreOrderedByTheirEnd(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	flag := envFlag(t)
 	// The program waits until build/go exists in its own worktree; build/ is
 	// ignored, so the worktrees keep the same content.
@@ -103,13 +103,13 @@ func TestOverlappingRunsAreOrderedByTheirEnd(t *testing.T) {
 	repo.Git("worktree", "add", "-q", "../second")
 	first, second := repo.In("../first"), repo.In("../second")
 
-	firstRun := startCW(t, first, "run", "env")
+	firstRun := startGatecub(t, first, "run", "env")
 	waitFor(t, first.Path("build/started"))
 
 	// The second run starts after the first and ends passed before it.
 	createFile(t, flag)
 	second.Write("build/go", "")
-	if code, output := startCW(t, second, "run", "env").wait(t); code != 0 {
+	if code, output := startGatecub(t, second, "run", "env").wait(t); code != 0 {
 		t.Fatalf("the second run of env: exit status %d, want 0 (passed)\n%s", code, output)
 	}
 
@@ -120,14 +120,14 @@ func TestOverlappingRunsAreOrderedByTheirEnd(t *testing.T) {
 		t.Fatalf("the first run of env: exit status %d, want 5 (failed)\n%s", code, output)
 	}
 
-	assertState(t, first.CW("status"), "env", "failed")
+	assertState(t, first.Gatecub("status"), "env", "failed")
 }
 
 // Requirement "Satisfied check", scenario "The clock does not decide the
 // order".
 func TestTheClockDoesNotDecideTheOrder(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	flag := envFlag(t)
 	addEnvCheck(repo, "test", "-e", flag)
 	createFile(t, flag)
@@ -144,7 +144,7 @@ func TestTheClockDoesNotDecideTheOrder(t *testing.T) {
 		fields["ended_at"] = ended.Add(-time.Hour).UTC().Format(time.RFC3339Nano)
 	})
 
-	assertState(t, repo.CW("status"), "env", "failed")
+	assertState(t, repo.Gatecub("status"), "env", "failed")
 }
 
 // Requirement "Satisfied check", scenario "Content checked earlier is
@@ -155,7 +155,7 @@ func TestContentCheckedEarlierIsRecognisedAgain(t *testing.T) {
 	repo.Write("src/app.txt", "broken\n")
 	repo.Write("src/app.txt", "ok\n")
 
-	status := repo.CW("status")
+	status := repo.Gatecub("status")
 	assertState(t, status, "unit", "satisfied")
 	assertState(t, status, "lint", "satisfied")
 }

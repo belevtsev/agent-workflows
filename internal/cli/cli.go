@@ -1,4 +1,4 @@
-// Package cli holds the commands of cw, their flags and their messages.
+// Package cli holds the commands of gatecub, their flags and their messages.
 package cli
 
 import (
@@ -23,23 +23,23 @@ type command struct {
 	name    string
 	args    string // the arguments, as the usage line shows them
 	summary string
-	options string // what `cw <command> --help` prints below the summary: one line for each argument and option
+	options string // what `gatecub <command> --help` prints below the summary: one line for each argument and option
 	run     func(ctx context.Context, cfg Config, args []string) error
 }
 
 // commands lists every command in the order the help prints them.
 func commands() []command {
 	return []command{
-		{"init", "[--observe]", "Create cw.toml if it is missing and install the git hooks", "\n  --observe  record what the hooks would decide, and allow every commit and push\n", runInit},
-		{"add", "<id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]", "Append one check to cw.toml", "\n  <id>                          the name of the check\n  --paths <pattern>             a path pattern the check depends on; give it once for each pattern; without it, every path\n  --timeout <duration>          the time the check may take, from 1s to 6h; without it, 10m\n  -- <program> [<argument>...]  the program of the check and its arguments, started without a shell\n", runAdd},
+		{"init", "[--observe]", "Create gatecub.toml if it is missing and install the git hooks", "\n  --observe  record what the hooks would decide, and allow every commit and push\n", runInit},
+		{"add", "<id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]", "Append one check to gatecub.toml", "\n  <id>                          the name of the check\n  --paths <pattern>             a path pattern the check depends on; give it once for each pattern; without it, every path\n  --timeout <duration>          the time the check may take, from 1s to 6h; without it, 10m\n  -- <program> [<argument>...]  the program of the check and its arguments, started without a shell\n", runAdd},
 		{"run", "[<id>...] [--force] [--base <rev>]", "Execute the declared checks that have no passing run on this content", "\n  <id>...       consider only these checks\n  --force       execute them even when they have a passing run on this content\n  --base <rev>  count a check as passed when its checked content is the same as in the revision <rev>\n", runRun},
 		{"status", "[--json]", "Say whether a commit of the working tree would be allowed, and what is missing", "\n  --json  print one JSON object instead of text\n", runStatus},
 		{"stats", "[--since <period>] [--json]", "Count the runs and the hook decisions this repository recorded", "\n  --since <period>  count the records of this period, such as 90m, 36h, 7d or 2w; without it, 30d\n  --json            print one JSON object instead of text\n", runStats},
 		{"context", "[--host claude|codex]", "Print what an agent should know at the start of a session here", "\n  --host claude|codex  read the host's notice from standard input and judge the directory it names\n", runContext},
-		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", "\n  <name>         pre-commit, pre-merge-commit or pre-push\n  <argument>...  what git gives that hook; the hook files that cw init writes pass them on\n", runHook},
-		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a git call that skips the hooks, or an edit of cw.toml, a hook or a record", "\n  --host claude  the answer asks the user; this is the default\n  --host codex   the answer denies the call and gives the reason\n", runGuard},
-		{"uninstall", "", "Remove the hooks cw wrote and its records; cw.toml stays", "", runUninstall},
-		{"roles", "[--json] | check <role> --from <tree> [--task <task>] | text <role>", "Print the seven roles of the task workflow, check what a role changed, or print a role's text", "\n  --json                      print the roles as one JSON object\n  check <role> --from <tree>  exit 5 when the role changed a path outside its limit since the tree <tree>\n  --task <task>               with check: the change folder the role may write\n  text <role>                 print the text of one role\n", runRoles},
+		{"hook", "<name> [<argument>...]", "Decide for git: pre-commit, pre-merge-commit or pre-push", "\n  <name>         pre-commit, pre-merge-commit or pre-push\n  <argument>...  what git gives that hook; the hook files that gatecub init writes pass them on\n", runHook},
+		{"guard", "[--host claude|codex]", "For an agent host's hook: ask before a git call that skips the hooks, or an edit of gatecub.toml, a hook or a record", "\n  --host claude  the answer asks the user; this is the default\n  --host codex   the answer denies the call and gives the reason\n", runGuard},
+		{"uninstall", "", "Remove the hooks gatecub wrote and its records; gatecub.toml stays", "", runUninstall},
+		{"roles", "[--json] | check <role> --from <tree> [--task <task>] [--finalize] | text <role>", "Print the seven roles of the task workflow, check what a role changed, or print a role's text", "\n  --json                      print the roles as one JSON object\n  check <role> --from <tree>  exit 5 when the role changed a path outside its limit since the tree <tree>\n  --task <task>               with check: the task whose paths define the role's limit\n  --finalize                  with spec-writer and --task: allow only current specs for capabilities in --from\n  text <role>                 print the text of one role\n", runRoles},
 		{"change", "status [<task>] [--json] | check [<task>]", "Print the stage of a task's change folder, or check the rules its files must obey", "\n  status [<task>]  print the stage of one task, or of every task\n  --json           with status: print one JSON object instead of text\n  check [<task>]   exit 5 when the files of one task, or of any task, break a rule\n", runChange},
 		{"tokens", "[--task <task>] [--json] | record [--host claude|codex]", "Report the tokens a task used and the share the workflow itself took, or record them from a host's notice", "\n  --task <task>               print the roles and the stages of one task\n  --json                      print one JSON object instead of text\n  record --host claude|codex  record the tokens from the host's notice on standard input; without --host, claude\n", runTokens},
 		{"version", "", "Print the version, the revision and the build time", "", runVersion},
@@ -77,7 +77,7 @@ func Execute(ctx context.Context, args []string, cfg Config) error {
 		}
 		return c.run(ctx, cfg, args[1:])
 	}
-	return usagef("unknown command %q; run `cw help` for the list", name)
+	return usagef("unknown command %q; run `gatecub help` for the list", name)
 }
 
 func helpFor(cfg Config, name string) error {
@@ -87,20 +87,20 @@ func helpFor(cfg Config, name string) error {
 			return nil
 		}
 	}
-	return usagef("unknown command %q; run `cw help` for the list", name)
+	return usagef("unknown command %q; run `gatecub help` for the list", name)
 }
 
 func usageLine(c command) string {
-	return strings.TrimSpace("cw " + c.name + " " + c.args)
+	return strings.TrimSpace("gatecub " + c.name + " " + c.args)
 }
 
 func printHelp(w io.Writer) {
 	var b strings.Builder
-	b.WriteString("cw allows a commit or a push only when every check the repository\n")
-	b.WriteString("declares in cw.toml has a recorded passing run on exactly that content.\n")
+	b.WriteString("gatecub allows a commit or a push only when every check the repository\n")
+	b.WriteString("declares in gatecub.toml has a recorded passing run on exactly that content.\n")
 	b.WriteString("It also holds the roles of a task workflow, checks the record of a task,\n")
 	b.WriteString("and counts the tokens a task used.\n\n")
-	b.WriteString("usage: cw <command> [arguments]\n\ncommands:\n")
+	b.WriteString("usage: gatecub <command> [arguments]\n\ncommands:\n")
 	for _, c := range commands() {
 		fmt.Fprintf(&b, "  %s\n      %s\n", usageLine(c), c.summary)
 	}

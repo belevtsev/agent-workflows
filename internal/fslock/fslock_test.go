@@ -19,7 +19,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/fslock"
+	"github.com/belevtsev/gatecub/v3/internal/fslock"
 )
 
 // holdEnv names the lock file a re-executed test binary holds until killed.

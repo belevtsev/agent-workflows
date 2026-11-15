@@ -1,11 +1,15 @@
 # Design: reduce-cw-to-evidence-gate
 
+Current interfaces below use Gatecub. The dated context and original release decisions describe `cw`; the current module is `github.com/belevtsev/gatecub/v3`.
+
 Status: written on 14 November 2026 for an implementation that runs without
 the owner. It turns the six specifications into decisions an implementer does
 not have to make again. Where it chooses something the specifications leave
 open, it says so under "Decisions taken without the owner".
 
 ## Context
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 - **Problem.** `cw` allows unverified commits (C2, H1), blocks finished work
   (H2, H9) and cannot be installed (C1). The specifications replace it with a
@@ -39,14 +43,14 @@ open, it says so under "Decisions taken without the owner".
 
 | Block | Responsibility | Depends on | New | Reuse considered |
 | --- | --- | --- | --- | --- |
-| `cmd/cw` | Starts the program: signals and the exit status | `internal/cli` | no | |
+| `cmd/gatecub` | Starts the program: signals and the exit status | `internal/cli` | no | |
 | `internal/cli` | The commands, their flags and their messages | `internal/gate`, `internal/stats`, `internal/runner`, `internal/evidence` | no | |
 | `internal/gate` | The hook files and the three hook decisions | `internal/evidence` | no | |
 | `internal/stats` | Counts from the records | `internal/store` | yes | `internal/cli/metrics.go` on `workflow-v3`: it reads the task store, which leaves |
 | `internal/runner` | Executes one check and captures its log | `internal/store`, `internal/proc`, `internal/gitx` | yes | `internal/taskflow/checks.go` on `workflow-v3`: bound to a task and a plan; `internal/proc` is reused |
 | `internal/evidence` | Decides satisfied and verified from records | `internal/store`, `internal/decl`, `internal/gitx` | yes | `internal/taskflow/find.go` on `workflow-v3`: it decides from task records and skips what it cannot digest (C2) |
 | `internal/store` | Runs, logs, decisions, the mode, and clean-up | `internal/fslock` | yes | `internal/taskflow/storage.go` on `workflow-v3`: a chain of revisions under the home directory (H9, M4, L8); `internal/fslock` is reused |
-| `internal/decl` | `cw.toml`: parse, validate, patterns, append | none | yes | `internal/modelpolicy` on `workflow-v3`: a typo in a key is silent there (L10) |
+| `internal/decl` | `gatecub.toml`: parse, validate, patterns, append | none | yes | `internal/modelpolicy` on `workflow-v3`: a typo in a key is silent there (L10) |
 | `internal/gitx` | Every call to git | `internal/proc` | yes | `internal/projectctx/capture.go` on `workflow-v3`: it hashes every file itself, with a ceiling (C2, M5) |
 | `internal/proc` | A program in its own process group; on Windows in a job object | none | no | The Windows part is new: `group_windows.go` |
 | `internal/fslock` | A lock a dead process cannot leave behind | none | no | The Windows part is new: `fslock_windows.go`, on `LockFileEx` |
@@ -59,12 +63,12 @@ imports `internal/cli`. The Go modules that remain are `go-toml/v2` and
 
 | Rule | Checked by |
 | --- | --- |
-| No package imports `internal/cli` except `cmd/cw` | test |
-| `cw` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
+| No package imports `internal/cli` except `cmd/gatecub` | test |
+| `gatecub` links no network package (on Windows: none but through `golang.org/x/sys/windows`) | test |
 | A program is started only by `internal/proc`, which only `internal/gitx` (git) and `internal/runner` (a declared check) import | test |
-| Nothing outside the git directory is written, apart from `cw.toml` and the hook files | review, test |
+| Nothing outside the git directory is written, apart from `gatecub.toml` and the hook files | review, test |
 
-`test` is the check of this repository's `cw.toml` that runs every Go test.
+`test` is the check of this repository's `gatecub.toml` that runs every Go test.
 The first three rules are tests of `internal/repocheck`. The fourth is tested
 where a scenario says that a command writes nothing, and reviewed elsewhere.
 
@@ -74,7 +78,7 @@ All git calls go through `internal/gitx`, with the caller's environment, from
 the repository root.
 
 - **Snapshot.** Copy the index git would use (`GIT_INDEX_FILE` when set, else
-  the path `git rev-parse --git-path index` gives) to `cw/tmp/` in the common
+  the path `git rev-parse --git-path index` gives) to `gatecub/tmp/` in the common
   git directory, and give the copy the modification time of the original;
   when there is no index, start empty. With `GIT_INDEX_FILE` set to the copy,
   run `git add -A` and `git write-tree`, then remove the copy. The copy keeps
@@ -88,12 +92,15 @@ the repository root.
 - **A working tree that cannot be recorded.** Before the snapshot,
   `git ls-files -v` lists the marks. For a path marked skip-worktree (`S`) or
   assume-unchanged (a lower-case tag) that is absent from disk, or whose
-  `git hash-object` differs from the index entry, stop with exit 1 and name
+  type, mode or object differs from the index entry, stop with exit 1 and name
   the path and the mark. When `core.sparseCheckout` is true and the path is
   absent, say that the sparse checkout keeps it off the disk. When
   `git add -A` fails, print the path git names and git's own reason. The
   marks are read from the copy after `git add -A`, which leaves marked
   entries as they were, so one listing serves both this and the next rule.
+  Clear the marks and restage each marked path only in the disposable index,
+  then compare its entry with the saved one. Git applies its file-mode,
+  symbolic-link and clean-filter settings; the real index keeps its marks.
 - **A submodule or nested repository.** The snapshot records it as one
   commit. For each entry with mode 160000 in the copy, `git status
   --porcelain` runs inside it; any output stops the command with exit 1,
@@ -108,7 +115,7 @@ the repository root.
   annotated tag; its tree is judged. A ref that names a tree is judged by
   that tree. A ref that names anything else is denied, cause `tree`.
 - **Paths that differ.** `git diff-tree -r --no-renames --name-status -z A B`, which also gives the kind of each change: added, changed or removed.
-- **The declaration of a tree.** `git ls-tree T -- cw.toml`, then
+- **The declaration of a tree.** `git ls-tree T -- gatecub.toml`, then
   `git cat-file blob`. No entry means no declaration; an entry that is not a
   regular file is an invalid declaration.
 - **The entries of a tree.** `git ls-tree -r -z T`, once per tree. A submodule
@@ -116,33 +123,33 @@ the repository root.
 
 ## Declaration
 
-- Parsed from the bytes of `cw.toml` in the tree that is judged, never from a
-  second place. `cw run` and `cw status` read it from the snapshot, so a
-  `cw.toml` that git ignores is no declaration.
+- Parsed from the bytes of `gatecub.toml` in the tree that is judged, never from a
+  second place. `gatecub run` and `gatecub status` read it from the snapshot, so a
+  `gatecub.toml` that git ignores is no declaration.
 - `go-toml` decodes with unknown keys refused; its error gives the line. The
-  fields of a check are decoded loosely and validated by `cw`, so each broken
+  fields of a check are decoded loosely and validated by `gatecub`, so each broken
   rule has its own sentence. The line of a check is the line of its
   `[[check]]` header, found by scanning the file.
 - A pattern is split at `/`. `**` is a whole segment that matches any number
   of segments, also none. `*` and `?` match inside one segment. Nothing else
   is special. A pattern with an empty segment is refused: an empty pattern,
   one that begins or ends with `/`, and one that holds `//`.
-- `cw add` appends a block of text, after a newline when the file does not end
+- `gatecub add` appends a block of text, after a newline when the file does not end
   with one, and refuses when the result does not parse. Strings are written as
   TOML basic strings.
 
 ## Records
 
-Everything is under `cw/` in the common git directory.
+Everything is under `gatecub/` in the common git directory.
 
 ```
-cw/mode                                  "enforce" or "observe"
-cw/runs/<check id>/<content key>/<run id>.json
-cw/runs/<check id>/<content key>/<run id>.lock   held while the run executes
-cw/runs/<check id>/<content key>/seq.lock        held while an end is recorded
-cw/logs/<run id>.log
-cw/decisions/<yyyy-mm>.jsonl             one line per hook decision
-cw/tmp/                                  index copies
+gatecub/mode                                  "enforce" or "observe"
+gatecub/runs/<check id>/<content key>/<run id>.json
+gatecub/runs/<check id>/<content key>/<run id>.lock   held while the run executes
+gatecub/runs/<check id>/<content key>/seq.lock        held while an end is recorded
+gatecub/logs/<run id>.log
+gatecub/decisions/<yyyy-mm>.jsonl             one line per hook decision
+gatecub/tmp/                                  index copies
 ```
 
 - **The mode.** Observe only when the file holds exactly `observe`, with or
@@ -157,7 +164,7 @@ cw/tmp/                                  index copies
   temporary file, synced to disk, renamed over the unfinished one, and the
   directory is synced. Fields: `run_id`, `id`, `run`, `paths`, `tree`,
   `content_key`, `seq`, `outcome`, `exit_status` (absent when the program did
-  not exit on its own), `started_at`, `ended_at`, `log` (relative to `cw/`),
+  not exit on its own), `started_at`, `ended_at`, `log` (relative to `gatecub/`),
   and for `source_changed` up to 20 `differ` paths.
 - **Sequence number.** Under `seq.lock` of the directory, a finished record
   gets `seq`, one more than the highest in that directory. It is the order in
@@ -172,7 +179,7 @@ cw/tmp/                                  index copies
   hold the same checked content for a check exactly when their keys are
   equal, so no hook compares trees pairwise.
 - **A run that died.** A record without an outcome whose lock can be taken at
-  once, shared, belongs to a dead `cw`; it is reported as `interrupted`. No
+  once, shared, belongs to a dead `gatecub`; it is reported as `interrupted`. No
   command waits for a lock of another run.
 - **Satisfied.** Among the records in the directory of the check and the
   content key that hold the same `run` and `paths` and ended `passed`,
@@ -186,7 +193,7 @@ cw/tmp/                                  index copies
   that content that ends decisively renames the file to `<name>.damaged`,
   after which it is ignored. A record dated in the future is reported in the
   same way and never renamed.
-- **`--base`.** `cw run --base <rev>` reads the declaration of the tree of
+- **`--base`.** `gatecub run --base <rev>` reads the declaration of the tree of
   `<rev>` and computes that tree's content key for each of its checks. A
   check of the snapshot that the base declares with the same `id`, `run` and
   `paths`, with the same content key, and with no decisive record of its own
@@ -194,9 +201,9 @@ cw/tmp/                                  index copies
   written for it. The base implies nothing for a check one of whose records
   cannot be read or is dated in the future, and `paths` are the same only in
   the same order.
-- **Clean-up.** `cw run` removes the logs that were last written more than
+- **Clean-up.** `gatecub run` removes the logs that were last written more than
   30 days ago, the records and the decision files last written more than 365
-  days ago, and its copies of the index older than a day, under `cw/gc.lock`
+  days ago, and its copies of the index older than a day, under `gatecub/gc.lock`
   taken without waiting; a busy lock skips the clean-up. The age is the time
   the file was last written, which for a log and a record is the end of the
   run.
@@ -204,13 +211,13 @@ cw/tmp/                                  index copies
   `denied`), `ref` for a push, `checks` (the state of each check that was not
   satisfied: `failed`, `not_run` or `timed_out`) or `cause` (`no_declaration`,
   `invalid_declaration`, `tree`, `store`, `internal`).
-- **Index copies.** A copy lives in `cw/tmp/` only while git works on it. The
-  command that made it removes it and then removes `cw/tmp/` and `cw/` when
+- **Index copies.** A copy lives in `gatecub/tmp/` only while git works on it. The
+  command that made it removes it and then removes `gatecub/tmp/` and `gatecub/` when
   they are left empty, so a command that only reads leaves no directory
   behind. A writer that finds its directory gone creates it again.
-- **Statistics.** `cw stats` reads every run record and the decision lines of
+- **Statistics.** `gatecub stats` reads every run record and the decision lines of
   the period. `--since` takes a number and a unit: `90m`, `36h`, `7d`, `2w`;
-  the default is 30 days. `cw stats --json` prints one object:
+  the default is 30 days. `gatecub stats --json` prints one object:
 
   ```json
   {
@@ -255,7 +262,7 @@ For each selected check, in the order of the declaration:
    not be started, with the program named; `timed_out`; or `interrupted`.
 5. Replace the record and release the lock.
 
-`cw run` exits 5 when a check it executed did not end `passed`, 2 for an
+`gatecub run` exits 5 when a check it executed did not end `passed`, 2 for an
 unknown check name, and 1 when the declaration or the working tree stops it.
 SIGINT, SIGTERM and SIGHUP, and on Windows Ctrl+C, Ctrl+Break and the closing
 of the console, cancel the run; the process group is stopped before the
@@ -263,24 +270,24 @@ record is written.
 
 ## Hooks
 
-- **The hook file** is a POSIX shell script with a marker line that shows `cw`
-  wrote it. It looks for `cw` only in the entries of `PATH` that are absolute
-  paths, and runs `"$cw" hook <name> "$@"` with what it finds there, so an
+- **The hook file** is a POSIX shell script with a marker line that shows `gatecub`
+  wrote it. It looks for `gatecub` only in the entries of `PATH` that are absolute
+  paths, and runs `"$gatecub" hook <name> "$@"` with what it finds there, so an
   empty or relative entry of `PATH` cannot make it run a file of the
   repository. It does not judge by the form of what `command -v` prints: bash
   in POSIX mode, which is the `sh` of macOS, prints an absolute path also for
-  a file found through `.`. When no such entry holds `cw` it says so, names
+  a file found through `.`. When no such entry holds `gatecub` it says so, names
   the install instruction and exits 3. Git for Windows runs the same file in
   its own shell.
-- **`cw uninstall`** removes, in `hooks/` of the common git directory, each of
+- **`gatecub uninstall`** removes, in `hooks/` of the common git directory, each of
   the three files that holds the marker, and in a directory that
-  `core.hooksPath` names only a file that is exactly the script of `cw`. A file
-  it leaves that still calls `cw hook <name>` is named, with exit 4.
-- **`cw init`** creates `cw.toml` when it is missing, installs the three hooks
+  `core.hooksPath` names only a file that is exactly the script of `gatecub`. A file
+  it leaves that still calls `gatecub hook <name>` is named, with exit 4.
+- **`gatecub init`** creates `gatecub.toml` when it is missing, installs the three hooks
   in `hooks/` of the common git directory, and writes the mode. A hook file
   without the marker is left alone, and `core.hooksPath` stops every write.
-  A hook that is left alone and does not call `cw hook <name>` yet ends
-  `cw init` with exit 4 and the line to add; one that calls it already
+  A hook that is left alone and does not call `gatecub hook <name>` yet ends
+  `gatecub init` with exit 4 and the line to add; one that calls it already
   needs nothing.
 - **`pre-commit` and `pre-merge-commit`.** Write the tree of the index, read
   its declaration, list its entries once, compute the key of each check and
@@ -296,8 +303,8 @@ record is written.
 - **Gate state.** The hooks are `installed` when each of the three files git
   would run (in `core.hooksPath` when that is set, else in `hooks/` of the
   common git directory) exists, can be executed (not judged on Windows) and
-  holds `cw hook <name>` on a line that is no comment. `cw status` and `cw context` report anything else
-  and name `cw init`: it installs the hooks, or, where `core.hooksPath` is
+  holds `gatecub hook <name>` on a line that is no comment. `gatecub status` and `gatecub context` report anything else
+  and name `gatecub init`: it installs the hooks, or, where `core.hooksPath` is
   set, prints the line to add to each.
 - **Notice.** When the new tree lacks a check the tree of `HEAD` declares, or
   declares it with another `run`, `paths` or `timeout`, the hook lists it,
@@ -305,35 +312,35 @@ record is written.
 - **Fail closed.** Any cause that prevents a decision is a denial with exit 3
   that names the cause. In observe mode the hook records what it would have
   decided, prints one line and exits 0.
-- **A denial** names each check with its state and log, ends with `cw run`,
+- **A denial** names each check with its state and log, ends with `gatecub run`,
   says where to run it, and names no way around the gate.
 
 ## Plugin
 
 - **Session start.** The hook command is shell text: when an entry of `PATH`
-  that is an absolute path holds `cw`, it runs `cw context --host <host>`, which reads the
+  that is an absolute path holds `gatecub`, it runs `gatecub context --host <host>`, which reads the
   `cwd` of the host's notice; otherwise, when the root of the repository holds
-  `cw.toml`, it prints one line that says so and names the install
+  `gatecub.toml`, it prints one line that says so and names the install
   instruction. The filtered `PATH` holds for the whole command, so `git` is
-  found the same way, and a `cw` that is not executable counts as none. The
+  found the same way, and a `gatecub` that is not executable counts as none. The
   Codex command for Windows uses the commands of `cmd.exe`: it goes to the
   root of the session's drive and then to the Windows folder before it runs
-  `cw`, so that a relative entry of `PATH`, also one such as `D:tools`,
+  `gatecub`, so that a relative entry of `PATH`, also one such as `D:tools`,
   leads there and not into the repository. One case stays open: such an entry
   for the session's drive is read from the root of that drive when the
-  Windows folder is on another drive (`docs/hooks.md`). When `cmd.exe` finds no `cw` it
+  Windows folder is on another drive (`docs/hooks.md`). When `cmd.exe` finds no `gatecub` it
   can run, the command runs no other program and prints the line when the
-  session's directory holds `cw.toml`. The text an agent reads lives in `cw`, not in
+  session's directory holds `gatecub.toml`. The text an agent reads lives in `gatecub`, not in
   the hook file.
-- **Before a tool call.** The hook runs `cw guard --host <host>`, which reads
+- **Before a tool call.** The hook runs `gatecub guard --host <host>`, which reads
   the host's notice from standard input: `tool_name`, `cwd` and `tool_input`
   (`command` for the shell tool, `file_path` for an editing tool, the patch
   text for the `apply_patch` of Codex). In a repository whose root holds
-  `cw.toml` it answers in two cases: a git call in the command skips the
-  hooks or turns the gate off (`cw uninstall`, `cw init --observe`), or the
-  edited file, also through a patch given to the shell, is that `cw.toml`, a
+  `gatecub.toml` it answers in two cases: a git call in the command skips the
+  hooks or turns the gate off (`gatecub uninstall`, `gatecub init --observe`), or the
+  edited file, also through a patch given to the shell, is that `gatecub.toml`, a
   hook file in `hooks/` of the common git directory or in the directory
-  `core.hooksPath` names, the git configuration, or a record of `cw`. Paths
+  `core.hooksPath` names, the git configuration, or a record of `gatecub`. Paths
   are compared as the file system sees them, with `os.SameFile`, for the
   path and each folder above it, so another spelling, a link and a file that
   does not exist yet are judged like the place they lead to. It reads the
@@ -347,9 +354,9 @@ record is written.
   read, `hookSpecificOutput` with `permissionDecision` and
   `permissionDecisionReason`: `ask` for Claude Code, `deny` for Codex, which
   does not support `ask`. In every other case it prints nothing and exits 0.
-- **Without `cw`.** Each command of the plugin runs `cw` only by an absolute
+- **Without `gatecub`.** Each command of the plugin runs `gatecub` only by an absolute
   path from `PATH`, and ends with exit status 0, so a missing or an older
-  `cw` blocks no tool call. The git hooks still deny.
+  `gatecub` blocks no tool call. The git hooks still deny.
 - **What the plugin does not do.** It reads no git command and decides about
   no commit or push.
 
@@ -364,7 +371,7 @@ record is written.
   already started a child.
 - **Windows programs:** found by `PATHEXT`, as the system does. For a `.bat`
   or `.cmd` file, an argument that holds anything but letters, digits and
-  `_ . / : = + , @ \ -` makes `cw run` refuse the check and name every such
+  `_ . / : = + , @ \ -` makes `gatecub run` refuse the check and name every such
   argument. This is the recommended answer to Open Question 9, in its safe
   form: refuse, never guess a quoting.
 - **Release:** archives for the three systems on amd64 and arm64, and
@@ -374,8 +381,8 @@ record is written.
 
 | What | How | Where it runs | What it shows, and what it does not |
 | --- | --- | --- | --- |
-| The 206 scenarios | Tests that build `cw` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
-| No network | A test that lists the packages `cw` links for Linux, macOS and Windows. It finds no `net` for Linux and macOS. For Windows `net` is linked through `golang.org/x/sys/windows` alone, which `cw` calls for job objects and file locks; no package of `cw` imports it. | Linux | That no network code is linked on Linux and macOS, and that on Windows no code of `cw` reaches any; stronger than the scenario asks. |
+| The 206 scenarios | Tests that build `gatecub` and drive it and git in temporary repositories, written from the specifications by another agent than the implementer | Linux, locally | The behaviour on Linux. Scenarios that name Windows are written and skipped there. |
+| No network | A test that lists the packages `gatecub` links for Linux, macOS and Windows. It finds no `net` for Linux and macOS. For Windows `net` is linked through `golang.org/x/sys/windows` alone, which `gatecub` calls for job objects and file locks; no package of `gatecub` imports it. | Linux | That no network code is linked on Linux and macOS, and that on Windows no code of `gatecub` reaches any; stronger than the scenario asks. |
 | Race conditions | `go test -race ./...` | Linux | Data races the tests reach. |
 | Other systems | `GOOS=darwin` and `GOOS=windows` builds and `go vet` | Linux | That the code compiles. Nothing about behaviour. |
 | Hook cost | A test that measures a hook decision on this repository and on a generated one of 30,000 files and 68 MiB | Linux | The two limits of Success measure 2 on this machine. |
@@ -384,23 +391,23 @@ record is written.
 
 ## Failure behaviour
 
-| Condition | What `cw` does |
+| Condition | What `gatecub` does |
 | --- | --- |
 | The store directory cannot be read or written | A command exits 1 and names the directory; a hook denies and names it. |
 | A record is damaged | It is skipped with a warning; other records count. |
-| `cw` dies during a run | The next command reports that run as `interrupted`; nothing waits. |
-| Two `cw run` at once | Each writes its own record; the later end decides. |
+| `gatecub` dies during a run | The next command reports that run as `interrupted`; nothing waits. |
+| Two `gatecub run` at once | Each writes its own record; the later end decides. |
 | The index holds a conflict | `git write-tree` fails; the hook denies and prints git's reason. |
-| `cw.toml` is missing or invalid in the judged tree | A command exits 1; a hook denies. |
+| `gatecub.toml` is missing or invalid in the judged tree | A command exits 1; a hook denies. |
 | A check's program does not exist | The run ends `failed` and names the program. |
 | The disk is full while a record is written | The rename never happens, so the unfinished record reads as `interrupted`. |
 | The machine loses power after a run ended | The finished record was synced before the rename, so it is whole or absent. |
 | The clock is set back | The order of runs is their `seq`; a record dated in the future does not count. |
-| A submodule holds uncommitted changes | `cw run` and `cw status` exit 1 and name it; a hook that denies says that no snapshot could be taken. |
+| A submodule holds uncommitted changes | `gatecub run` and `gatecub status` exit 1 and name it; a hook that denies says that no snapshot could be taken. |
 
 ## What the gate trusts
 
-`cw`, the checks and the coding agent run as one user. `cw` trusts what is in
+`gatecub`, the checks and the coding agent run as one user. `gatecub` trusts what is in
 the git directory: its own records and mode file, the hook files, the refs
 and the configuration. A process that sets out to write there can defeat the
 gate, as it can with `git commit --no-verify`. The gate is a guardrail, and
@@ -410,7 +417,7 @@ the documents say so; CI is the backstop.
 
 Everything was on one local branch until the owner had it pushed, merged and
 released. [The production plan](../../production-plan.md#rollback) says how
-to go back now. The owner's installed `cw` is untouched.
+to go back now. The owner's installed `gatecub` is untouched.
 
 ## Independent challenge
 

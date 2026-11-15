@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const module = "github.com/belevtsev/agent-workflows/v3/"
+const module = "github.com/belevtsev/gatecub/v3/"
 
 // imports lists, for each package of the module, the packages of the module
 // it imports. With tests it also lists what its tests import.
@@ -48,8 +48,8 @@ func TestOnlyTheCommandImportsTheCLI(t *testing.T) {
 	t.Parallel()
 	const cli = "internal/cli"
 	for name, imported := range imports(t, true) {
-		if name != "cmd/cw" && name != cli && slices.Contains(imported, cli) {
-			t.Errorf("%s imports %s; only cmd/cw may", name, cli)
+		if name != "cmd/gatecub" && name != cli && slices.Contains(imported, cli) {
+			t.Errorf("%s imports %s; only cmd/gatecub may", name, cli)
 		}
 	}
 }
@@ -58,7 +58,7 @@ var startsProgram = regexp.MustCompile(`\bexec\.Command(Context)?\(`)
 
 // A program is started in one place, internal/proc. Two packages use it:
 // internal/gitx starts git, and internal/runner starts the program of a
-// declared check. So no other part of cw can start git or anything else.
+// declared check. So no other part of gatecub can start git or anything else.
 func TestProgramsAreStartedInOnePlace(t *testing.T) {
 	t.Parallel()
 	const proc = "internal/proc"
@@ -77,9 +77,9 @@ func TestProgramsAreStartedInOnePlace(t *testing.T) {
 		t.Fatalf("no package imports %s: the rule checks nothing", proc)
 	}
 	for _, file := range repoFiles(t) {
-		// internal/cwtest builds and drives cw for the tests.
+		// internal/gatecubtest builds and drives gatecub for the tests.
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") ||
-			strings.HasPrefix(file, proc+"/") || strings.HasPrefix(file, "internal/cwtest/") {
+			strings.HasPrefix(file, proc+"/") || strings.HasPrefix(file, "internal/gatecubtest/") {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(repoRoot, file))

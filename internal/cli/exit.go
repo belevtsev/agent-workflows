@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// The exit statuses of cw. Every command uses this one table.
+// The exit statuses of gatecub. Every command uses this one table.
 const (
-	ExitOK          = 0 // cw did what was asked and the answer is yes
-	ExitFailure     = 1 // cw could not do it
+	ExitOK          = 0 // gatecub did what was asked and the answer is yes
+	ExitFailure     = 1 // gatecub could not do it
 	ExitUsage       = 2 // the command line is wrong
 	ExitDenied      = 3 // a hook denies
 	ExitForeignHook = 4 // a hook of another tool is left for the user to edit
@@ -24,7 +24,7 @@ type exitError struct {
 
 func (e *exitError) Error() string { return e.msg }
 
-// failf is a failure: cw could not do what was asked.
+// failf is a failure: gatecub could not do what was asked.
 func failf(format string, args ...any) error {
 	return &exitError{code: ExitFailure, msg: fmt.Sprintf(format, args...)}
 }

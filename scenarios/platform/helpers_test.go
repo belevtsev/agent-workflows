@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
-// portableDeclaration is the cw.toml of the fixture `portable`.
+// portableDeclaration is the gatecub.toml of the fixture `portable`.
 const portableDeclaration = `version = 1
 
 [[check]]
@@ -27,32 +27,32 @@ run = ["git", "--version"]
 const editedReadme = "# portable\n\nedited\n"
 
 // portable creates the fixture `portable`: one commit on main that holds
-// README.md and cw.toml, after which `cw init` has run. extra holds checks
+// README.md and gatecub.toml, after which `gatecub init` has run. extra holds checks
 // that a scenario declares in addition to `git`; they are part of the one
 // commit, because the installed hooks would deny a later commit.
-func portable(t *testing.T, extra string) *cwtest.Repo {
+func portable(t *testing.T, extra string) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	declaration := portableDeclaration
 	if extra != "" {
 		declaration += "\n" + extra
 	}
-	repo.Write("cw.toml", declaration)
+	repo.Write("gatecub.toml", declaration)
 	repo.Write("README.md", "# portable\n")
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "first")
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("setting up portable: cw init exit status %d\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("setting up portable: gatecub init exit status %d\n%s", result.Code, result.Output())
 	}
 	return repo
 }
 
 // head is the commit that HEAD names.
-func head(repo *cwtest.Repo) string { return repo.Git("rev-parse", "HEAD") }
+func head(repo *gatecubtest.Repo) string { return repo.Git("rev-parse", "HEAD") }
 
 // traced makes git write its trace2 events to a new file and returns its
 // name; the events tell how each hook exited.
-func traced(t *testing.T, repo *cwtest.Repo) string {
+func traced(t *testing.T, repo *gatecubtest.Repo) string {
 	t.Helper()
 	trace := filepath.Join(t.TempDir(), "trace2.json")
 	repo.Setenv("GIT_TRACE2_EVENT", trace)
@@ -105,7 +105,7 @@ func hookExits(t *testing.T, trace, hook string) []int {
 
 // assertDenied checks the meaning of "denied" for a commit: the pre-commit
 // hook exited 3, git recorded nothing, and something is on standard error.
-func assertDenied(t *testing.T, repo *cwtest.Repo, before string, result cwtest.Result, trace string) {
+func assertDenied(t *testing.T, repo *gatecubtest.Repo, before string, result gatecubtest.Result, trace string) {
 	t.Helper()
 	if result.Code == 0 {
 		t.Errorf("git commit exited 0, want a denial")
@@ -155,11 +155,11 @@ func lineWith(output, name string, phrases ...string) bool {
 	return false
 }
 
-// outcome is the outcome of the latest run of a check that `cw status
+// outcome is the outcome of the latest run of a check that `gatecub status
 // --json` reports.
-func outcome(t *testing.T, repo *cwtest.Repo, id string) string {
+func outcome(t *testing.T, repo *gatecubtest.Repo, id string) string {
 	t.Helper()
-	result := repo.CW("status", "--json")
+	result := repo.Gatecub("status", "--json")
 	var status struct {
 		Checks []struct {
 			ID      string `json:"id"`
@@ -167,13 +167,13 @@ func outcome(t *testing.T, repo *cwtest.Repo, id string) string {
 		} `json:"checks"`
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &status); err != nil {
-		t.Fatalf("cw status --json (exit status %d) printed no JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub status --json (exit status %d) printed no JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	for _, check := range status.Checks {
 		if check.ID == id {
 			return check.Outcome
 		}
 	}
-	t.Fatalf("cw status --json has no entry for %q\n%s", id, result.Output())
+	t.Fatalf("gatecub status --json has no entry for %q\n%s", id, result.Output())
 	return ""
 }

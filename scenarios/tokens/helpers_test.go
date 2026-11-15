@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // counts are the four kinds of tokens of one start or one answer.
@@ -68,19 +68,19 @@ var s1SessionTokens = split(40000)
 // s1Starts are the role starts of S1, in the order of the fixture's table.
 func s1Starts() []start {
 	return []start{
-		{ID: "a1f0001", Role: "lookup", Label: "cw-task: add-greeting lookup 1", Sentence: "Find where the app prints its text.", Model: haiku, Tokens: split(6000), Answers: 2},
-		{ID: "a1f0002", Role: "lookup", Label: "cw-task: add-greeting lookup 1", Sentence: "Find the tests of the app.", Model: haiku, Tokens: split(4000), Answers: 1},
-		{ID: "a1f0003", Role: "spec-writer", Label: "cw-task: add-greeting spec 1", Sentence: "Write the specification of the greeting.", Model: opus, Tokens: split(60000), Answers: 3},
-		{ID: "a1f0004", Role: "reviewer", Label: "cw-task: add-greeting spec-review 1", Sentence: "Review the specification of the greeting.", Model: opus, Tokens: split(30000), Answers: 2},
-		{ID: "a1f0005", Role: "architect", Label: "cw-task: add-greeting design 1", Sentence: "Write the design of the greeting.", Model: opus, Tokens: split(80000), Answers: 3},
-		{ID: "a1f0006", Role: "reviewer", Label: "cw-task: add-greeting design-review 1", Sentence: "Review the design of the greeting.", Model: opus, Tokens: split(30000), Answers: 2},
-		{ID: "a1f0007", Role: "quality-engineer", Label: "cw-task: add-greeting tests 1", Sentence: "Write the tests of the greeting.", Model: sonnet, Tokens: split(90000), Answers: 3},
-		{ID: "a1f0008", Role: "developer", Label: "cw-task: add-greeting code 1", Sentence: developerSentence, Model: sonnet,
+		{ID: "a1f0001", Role: "lookup", Label: "gatecub-task: add-greeting lookup 1", Sentence: "Find where the app prints its text.", Model: haiku, Tokens: split(6000), Answers: 2},
+		{ID: "a1f0002", Role: "lookup", Label: "gatecub-task: add-greeting lookup 1", Sentence: "Find the tests of the app.", Model: haiku, Tokens: split(4000), Answers: 1},
+		{ID: "a1f0003", Role: "spec-writer", Label: "gatecub-task: add-greeting spec 1", Sentence: "Write the specification of the greeting.", Model: opus, Tokens: split(60000), Answers: 3},
+		{ID: "a1f0004", Role: "reviewer", Label: "gatecub-task: add-greeting spec-review 1", Sentence: "Review the specification of the greeting.", Model: opus, Tokens: split(30000), Answers: 2},
+		{ID: "a1f0005", Role: "architect", Label: "gatecub-task: add-greeting design 1", Sentence: "Write the design of the greeting.", Model: opus, Tokens: split(80000), Answers: 3},
+		{ID: "a1f0006", Role: "reviewer", Label: "gatecub-task: add-greeting design-review 1", Sentence: "Review the design of the greeting.", Model: opus, Tokens: split(30000), Answers: 2},
+		{ID: "a1f0007", Role: "quality-engineer", Label: "gatecub-task: add-greeting tests 1", Sentence: "Write the tests of the greeting.", Model: sonnet, Tokens: split(90000), Answers: 3},
+		{ID: "a1f0008", Role: "developer", Label: "gatecub-task: add-greeting code 1", Sentence: developerSentence, Model: sonnet,
 			Tokens: counts{Input: 20000, CacheWrite: 30000, CacheRead: 140000, Output: 10000}, Answers: 4},
-		{ID: "a1f0009", Role: "reviewer", Label: "cw-task: add-greeting review 1", Sentence: "Review the code of the greeting.", Model: opus, Tokens: split(50000), Answers: 2},
-		{ID: "a1f0010", Role: "developer", Label: "cw-task: add-greeting code 2", Sentence: "Fix the findings of review 1.", Model: sonnet, Tokens: split(40000), Answers: 2},
-		{ID: "a1f0011", Role: "reviewer", Label: "cw-task: add-greeting review 2", Sentence: "Review the fixes of round 2.", Model: opus, Tokens: split(20000), Answers: 1},
-		{ID: "a1f0012", Role: "git", Label: "cw-task: add-greeting commit 1", Sentence: "Commit the change with the message feat: add greeting.", Model: haiku, Tokens: split(5000), Answers: 1},
+		{ID: "a1f0009", Role: "reviewer", Label: "gatecub-task: add-greeting review 1", Sentence: "Review the code of the greeting.", Model: opus, Tokens: split(50000), Answers: 2},
+		{ID: "a1f0010", Role: "developer", Label: "gatecub-task: add-greeting code 2", Sentence: "Fix the findings of review 1.", Model: sonnet, Tokens: split(40000), Answers: 2},
+		{ID: "a1f0011", Role: "reviewer", Label: "gatecub-task: add-greeting review 2", Sentence: "Review the fixes of round 2.", Model: opus, Tokens: split(20000), Answers: 1},
+		{ID: "a1f0012", Role: "git", Label: "gatecub-task: add-greeting commit 1", Sentence: "Commit the change with the message feat: add greeting.", Model: haiku, Tokens: split(5000), Answers: 1},
 	}
 }
 
@@ -102,7 +102,7 @@ func (v variant) starts() []start {
 		}
 	}
 	if v.SecondTask {
-		starts = append(starts, start{ID: "a1f0013", Role: "developer", Label: "cw-task: fix-typo code 1",
+		starts = append(starts, start{ID: "a1f0013", Role: "developer", Label: "gatecub-task: fix-typo code 1",
 			Sentence: "Fix the typo in README.md.", Model: sonnet, Tokens: split(15000), Answers: 2})
 	}
 	return starts
@@ -185,11 +185,11 @@ func claudeAssistant(sessionID, msgID, model string, usage counts, text string) 
 // while it streams: first with part of its output, then whole. Lines with the
 // same message.id are one answer and count once.
 func claudeAnswers(sessionID, prefix, model string, c counts, n int) []any {
-	in, cw, cr, out := parts(c.Input, n), parts(c.CacheWrite, n), parts(c.CacheRead, n), parts(c.Output, n)
+	in, gatecub, cr, out := parts(c.Input, n), parts(c.CacheWrite, n), parts(c.CacheRead, n), parts(c.Output, n)
 	var lines []any
 	for i := range n {
 		id := fmt.Sprintf("msg_%s_%02d", prefix, i+1)
-		whole := counts{Input: in[i], CacheWrite: cw[i], CacheRead: cr[i], Output: out[i]}
+		whole := counts{Input: in[i], CacheWrite: gatecub[i], CacheRead: cr[i], Output: out[i]}
 		if i == 0 {
 			partial := whole
 			partial.Output = whole.Output / 2
@@ -285,10 +285,10 @@ var s2SessionTokens = split(20000)
 // so its tokens are unknown.
 func s2Starts() []start {
 	return []start{
-		{ID: "b2e0001", Role: "quality-engineer", Label: "cw-task: fix-empty-app tests 1", Sentence: "Write a test for an empty src/app.txt.", Model: codex, Tokens: split(30000), Answers: 2},
-		{ID: "b2e0002", Role: "developer", Label: "cw-task: fix-empty-app code 1", Sentence: "Make the app accept an empty src/app.txt.", Model: codex, Tokens: split(50000), Answers: 3},
-		{ID: "b2e0003", Role: "reviewer", Label: "cw-task: fix-empty-app review 1", Sentence: "Review the fix of the empty app.", Model: codex, Tokens: split(15000), Answers: 1},
-		{ID: "b2e0004", Role: "git", Label: "cw-task: fix-empty-app commit 1", Sentence: "Commit the fix.", Model: codex, Tokens: split(4000), Answers: 1, Missing: true},
+		{ID: "b2e0001", Role: "quality-engineer", Label: "gatecub-task: fix-empty-app tests 1", Sentence: "Write a test for an empty src/app.txt.", Model: codex, Tokens: split(30000), Answers: 2},
+		{ID: "b2e0002", Role: "developer", Label: "gatecub-task: fix-empty-app code 1", Sentence: "Make the app accept an empty src/app.txt.", Model: codex, Tokens: split(50000), Answers: 3},
+		{ID: "b2e0003", Role: "reviewer", Label: "gatecub-task: fix-empty-app review 1", Sentence: "Review the fix of the empty app.", Model: codex, Tokens: split(15000), Answers: 1},
+		{ID: "b2e0004", Role: "git", Label: "gatecub-task: fix-empty-app commit 1", Sentence: "Commit the fix.", Model: codex, Tokens: split(4000), Answers: 1, Missing: true},
 	}
 }
 
@@ -338,13 +338,13 @@ func codexRecord(t *testing.T, path, text string, s start) {
 		limits,
 	}
 	c := s.Tokens
-	in, cw, cr, out := parts(c.Input, s.Answers), parts(c.CacheWrite, s.Answers), parts(c.CacheRead, s.Answers), parts(c.Output, s.Answers)
+	in, gatecub, cr, out := parts(c.Input, s.Answers), parts(c.CacheWrite, s.Answers), parts(c.CacheRead, s.Answers), parts(c.Output, s.Answers)
 	var total counts
 	for i := range s.Answers {
 		if s.Missing {
 			break
 		}
-		last := counts{Input: in[i], CacheWrite: cw[i], CacheRead: cr[i], Output: out[i]}
+		last := counts{Input: in[i], CacheWrite: gatecub[i], CacheRead: cr[i], Output: out[i]}
 		total = counts{total.Input + last.Input, total.CacheWrite + last.CacheWrite, total.CacheRead + last.CacheRead, total.Output + last.Output}
 		lines = append(lines, codexMessage("assistant", "Working on it."), codexLine("event_msg", map[string]any{"type": "token_count",
 			"info": map[string]any{"total_token_usage": codexUsage(total), "last_token_usage": codexUsage(last), "model_context_window": 258400}}))
@@ -381,11 +381,11 @@ func buildS2(t *testing.T) session {
 }
 
 // demo is the repository demo of the role-definitions specification.
-func demo(t *testing.T) *cwtest.Repo {
+func demo(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	repo.Write("tests/app_test.txt", "app test\n")
-	repo.Write("cw-roles.toml", "version = 1\n\n[paths]\ntests = [\"tests/**\"]\n")
+	repo.Write("gatecub-roles.toml", "version = 1\n\n[paths]\ntests = [\"tests/**\"]\n")
 	repo.Write("openspec/changes/add-greeting/proposal.md", "# add-greeting\n")
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "fixture of role-definitions")
@@ -396,16 +396,16 @@ func demo(t *testing.T) *cwtest.Repo {
 // with the directory of the repository, as the host would give it.
 const noticeCwd = `"cwd":"/tmp/demo"`
 
-// recordNotice gives one notice to cw tokens record in repo, with the cwd of
+// recordNotice gives one notice to gatecub tokens record in repo, with the cwd of
 // repo.
-func recordNotice(t *testing.T, repo *cwtest.Repo, host, n string) cwtest.Result {
+func recordNotice(t *testing.T, repo *gatecubtest.Repo, host, n string) gatecubtest.Result {
 	t.Helper()
 	return recordNoticeIn(t, repo, repo.Dir, host, n)
 }
 
-// recordNoticeIn runs cw tokens record in the directory of runIn, with a
+// recordNoticeIn runs gatecub tokens record in the directory of runIn, with a
 // notice whose cwd is cwd.
-func recordNoticeIn(t *testing.T, runIn *cwtest.Repo, cwd, host, n string) cwtest.Result {
+func recordNoticeIn(t *testing.T, runIn *gatecubtest.Repo, cwd, host, n string) gatecubtest.Result {
 	t.Helper()
 	args := []string{"tokens", "record"}
 	if host == "codex" {
@@ -415,60 +415,60 @@ func recordNoticeIn(t *testing.T, runIn *cwtest.Repo, cwd, host, n string) cwtes
 	if err != nil {
 		t.Fatal(err)
 	}
-	return runIn.Run(strings.ReplaceAll(n, noticeCwd, `"cwd":`+string(dir)), cwProgram(t), args...)
+	return runIn.Run(strings.ReplaceAll(n, noticeCwd, `"cwd":`+string(dir)), gatecubProgram(t), args...)
 }
 
-// cwProgram is the path of the cw under test. It is a full path, because a
+// gatecubProgram is the path of the gatecub under test. It is a full path, because a
 // program name is looked up on the PATH of the test process, which may hold
-// another cw.
-func cwProgram(t *testing.T) string {
-	name := "cw"
+// another gatecub.
+func gatecubProgram(t *testing.T) string {
+	name := "gatecub"
 	if runtime.GOOS == "windows" {
-		name = "cw.exe"
+		name = "gatecub.exe"
 	}
-	return filepath.Join(cwtest.Binary(t), name)
+	return filepath.Join(gatecubtest.Binary(t), name)
 }
 
-// record gives every notice of s, in order, to cw tokens record in repo and
+// record gives every notice of s, in order, to gatecub tokens record in repo and
 // fails the test when one does not exit 0.
-func record(t *testing.T, repo *cwtest.Repo, s session) {
+func record(t *testing.T, repo *gatecubtest.Repo, s session) {
 	t.Helper()
 	for i, n := range s.Notices {
 		if r := recordNotice(t, repo, s.Host, n); r.Code != 0 {
-			t.Fatalf("cw tokens record of notice %d: exit status %d\n%s\nnotice: %s", i+1, r.Code, r.Output(), n)
+			t.Fatalf("gatecub tokens record of notice %d: exit status %d\n%s\nnotice: %s", i+1, r.Code, r.Output(), n)
 		}
 	}
 }
 
-// tokensJSON runs cw tokens with args and --json and decodes its output.
-func tokensJSON(t *testing.T, repo *cwtest.Repo, args ...string) map[string]any {
+// tokensJSON runs gatecub tokens with args and --json and decodes its output.
+func tokensJSON(t *testing.T, repo *gatecubtest.Repo, args ...string) map[string]any {
 	t.Helper()
 	args = append(append([]string{"tokens"}, args...), "--json")
-	r := repo.CW(args...)
+	r := repo.Gatecub(args...)
 	if r.Code != 0 {
-		t.Fatalf("cw %s: exit status %d\n%s", strings.Join(args, " "), r.Code, r.Output())
+		t.Fatalf("gatecub %s: exit status %d\n%s", strings.Join(args, " "), r.Code, r.Output())
 	}
 	out := map[string]any{}
 	if err := json.Unmarshal([]byte(r.Stdout), &out); err != nil {
-		t.Fatalf("cw %s did not print one JSON object: %v\n%s", strings.Join(args, " "), err, r.Output())
+		t.Fatalf("gatecub %s did not print one JSON object: %v\n%s", strings.Join(args, " "), err, r.Output())
 	}
 	return out
 }
 
-// tokensText runs cw tokens with args and returns what it printed.
-func tokensText(t *testing.T, repo *cwtest.Repo, args ...string) string {
+// tokensText runs gatecub tokens with args and returns what it printed.
+func tokensText(t *testing.T, repo *gatecubtest.Repo, args ...string) string {
 	t.Helper()
 	args = append([]string{"tokens"}, args...)
-	r := repo.CW(args...)
+	r := repo.Gatecub(args...)
 	if r.Code != 0 {
-		t.Fatalf("cw %s: exit status %d\n%s", strings.Join(args, " "), r.Code, r.Output())
+		t.Fatalf("gatecub %s: exit status %d\n%s", strings.Join(args, " "), r.Code, r.Output())
 	}
 	return r.Stdout
 }
 
 // recorded is the repository demo in which S1, changed as v says, is
 // recorded.
-func recorded(t *testing.T, v variant) *cwtest.Repo {
+func recorded(t *testing.T, v variant) *gatecubtest.Repo {
 	t.Helper()
 	repo := demo(t)
 	record(t, repo, buildS1(t, v))

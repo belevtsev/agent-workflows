@@ -1,4 +1,4 @@
-// Package gitx holds every call cw makes to git. Nothing else starts git.
+// Package gitx holds every call gatecub makes to git. Nothing else starts git.
 package gitx
 
 import (
@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/proc"
+	"github.com/belevtsev/gatecub/v3/internal/proc"
 )
 
 // ErrNotRepo is returned when the directory is not inside a git repository.
@@ -57,7 +57,7 @@ var localVars = []string{
 
 // environment is the caller's environment plus extra, with git told to take
 // no lock it does not need, so that reading never rewrites the index, and to
-// fetch no object a partial clone lacks, so that cw starts no connection.
+// fetch no object a partial clone lacks, so that gatecub starts no connection.
 func environment(foreign bool, extra ...string) []string {
 	env := os.Environ()
 	if foreign {
@@ -82,7 +82,7 @@ type call struct {
 }
 
 // run starts git without its file system monitor: a daemon that git started
-// for cw would end with the call, and the next call would start it again.
+// for gatecub would end with the call, and the next call would start it again.
 func run(ctx context.Context, c call, args ...string) ([]byte, error) {
 	result := proc.Run(ctx, proc.Spec{
 		Path: "git", Args: append([]string{"-c", "core.fsmonitor=false"}, args...), Dir: c.dir, Env: environment(c.foreign, c.env...),
@@ -92,7 +92,7 @@ func run(ctx context.Context, c call, args ...string) ([]byte, error) {
 		return nil, ctx.Err()
 	}
 	if result.Overflow {
-		return nil, fmt.Errorf("git %s printed more than cw reads", args[0])
+		return nil, fmt.Errorf("git %s printed more than gatecub reads", args[0])
 	}
 	if result.Code != 0 {
 		stderr := string(result.Stderr)

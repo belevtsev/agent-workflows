@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // The scenarios in this file come from the second challenge of 14 November
@@ -13,13 +13,13 @@ import (
 
 // withSubmodule is the demo repository with a submodule vendor/lib at its
 // first commit, committed. The checks have not run.
-func withSubmodule(t *testing.T) *cwtest.Repo {
+func withSubmodule(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	lib := cwtest.NewRepo(t)
+	lib := gatecubtest.NewRepo(t)
 	lib.Write("lib.txt", "lib\n")
 	lib.Git("add", "-A")
 	lib.Git("commit", "-q", "-m", "lib")
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	repo.Git("-c", "protocol.file.allow=always", "submodule", "add", "-q", lib.Dir, "vendor/lib")
 	repo.Git("commit", "-q", "-m", "add vendor/lib")
 	return repo
@@ -42,12 +42,12 @@ func TestASubmoduleCountsForEveryCheckWithPaths(t *testing.T) {
 	if unit.State != "not_run" {
 		t.Errorf("after vendor/lib moved, unit, whose paths are src/** and unit.sh, is %q, want not_run", unit.State)
 	}
-	result := repo.CW("status")
+	result := repo.Gatecub("status")
 	if !lineWith(result.Stdout, "unit", "not run on this content") {
-		t.Errorf("cw status does not say that unit was not run on this content:\n%s", result.Output())
+		t.Errorf("gatecub status does not say that unit was not run on this content:\n%s", result.Output())
 	}
 	if result.Code != 5 {
-		t.Errorf("cw status exited %d, want 5", result.Code)
+		t.Errorf("gatecub status exited %d, want 5", result.Code)
 	}
 }
 
@@ -64,10 +64,10 @@ func TestASubmoduleThatHidesAFileIsRefused(t *testing.T) {
 			sub.Write("lib.txt", "lib, edited where git does not look\n")
 
 			for _, command := range []string{"run", "status"} {
-				result := repo.CW(command)
+				result := repo.Gatecub(command)
 				requireRefused(t, result, "", "vendor/lib/lib.txt", mark, "clear the mark there first")
 				if len(repo.RecordFiles("unit"))+len(repo.RecordFiles("lint")) > 0 {
-					t.Errorf("cw %s recorded a run", command)
+					t.Errorf("gatecub %s recorded a run", command)
 				}
 			}
 		})
@@ -84,13 +84,13 @@ func TestASubmoduleThatIsNotCheckedOutButHoldsFilesIsRefused(t *testing.T) {
 		t.Fatalf("after git submodule deinit, vendor/lib holds %v, %v; want an empty folder", entries, err)
 	}
 	// Not checked out and empty: nothing on disk differs.
-	if result := repo.CW("status"); result.Code != 5 {
-		t.Fatalf("cw status with vendor/lib not checked out exited %d, want 5:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("status"); result.Code != 5 {
+		t.Fatalf("gatecub status with vendor/lib not checked out exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 
 	repo.Write("vendor/lib/plain.txt", "a file of no tree\n")
 	for _, command := range []string{"run", "status"} {
-		result := repo.CW(command)
+		result := repo.Gatecub(command)
 		requireRefused(t, result, "", "vendor/lib", "is a submodule that is not checked out, yet its folder holds files")
 	}
 	if len(repo.RecordFiles("unit"))+len(repo.RecordFiles("lint")) > 0 {
@@ -102,16 +102,16 @@ func TestASubmoduleThatIsNotCheckedOutButHoldsFilesIsRefused(t *testing.T) {
 // pass ends with one line".
 func TestARunInWhichACheckDidNotPassEndsWithOneLine(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	repo.Write("src/app.txt", "broken\n")
 
-	result := repo.CW("run")
+	result := repo.Gatecub("run")
 	if result.Code != 5 {
-		t.Errorf("cw run exited %d, want 5", result.Code)
+		t.Errorf("gatecub run exited %d, want 5", result.Code)
 	}
 	lines := strings.Split(strings.TrimRight(result.Stdout, "\n"), "\n")
-	want := "not verified: 1 of 2 checks did not pass; fix what each log shows, then run `cw run` again"
+	want := "not verified: 1 of 2 checks did not pass; fix what each log shows, then run `gatecub run` again"
 	if last := lines[len(lines)-1]; last != want {
-		t.Errorf("the last line of cw run is %q, want %q:\n%s", last, want, result.Output())
+		t.Errorf("the last line of gatecub run is %q, want %q:\n%s", last, want, result.Output())
 	}
 }

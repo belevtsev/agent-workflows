@@ -10,9 +10,9 @@ import (
 func TestFolderIsFound(t *testing.T) {
 	t.Parallel()
 	r := newRecord(t)
-	result := r.CW("change", "status")
+	result := r.Gatecub("change", "status")
 	if result.Code != 0 {
-		t.Errorf("cw change status exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub change status exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	lines := 0
 	for _, line := range strings.Split(result.Stdout, "\n") {
@@ -21,7 +21,7 @@ func TestFolderIsFound(t *testing.T) {
 		}
 	}
 	if lines != 1 {
-		t.Errorf("cw change status printed %d lines for add-greeting, want 1:\n%s", lines, result.Output())
+		t.Errorf("gatecub change status printed %d lines for add-greeting, want 1:\n%s", lines, result.Output())
 	}
 }
 
@@ -29,9 +29,9 @@ func TestFolderIsFound(t *testing.T) {
 func TestTaskThatDoesNotExist(t *testing.T) {
 	t.Parallel()
 	r := newRecord(t)
-	result := r.CW("change", "status", "no-such-task")
+	result := r.Gatecub("change", "status", "no-such-task")
 	if result.Code != 1 {
-		t.Errorf("cw change status no-such-task exited %d, want 1:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub change status no-such-task exited %d, want 1:\n%s", result.Code, result.Output())
 	}
 	if !strings.Contains(result.Output(), "openspec/changes/no-such-task") {
 		t.Errorf("the output does not name openspec/changes/no-such-task/:\n%s", result.Output())
@@ -46,7 +46,7 @@ func TestDesignIsMissing(t *testing.T) {
 	r.Remove(folder + "tasks.md")
 	status, text := r.assertStage("design")
 	if !strings.Contains(text, "design.md") {
-		t.Errorf("cw change status does not name design.md as missing:\n%s", text)
+		t.Errorf("gatecub change status does not name design.md as missing:\n%s", text)
 	}
 	if !strings.Contains(status.missingText(), "design.md") {
 		t.Errorf("missing does not name design.md: %v", status.Missing)
@@ -82,7 +82,7 @@ func TestRecordIsNotCommitted(t *testing.T) {
 	r.Write(folder+"reviews.md", r.Read(folder+"reviews.md")+"\n")
 	_, text := r.assertStage("commit")
 	if !strings.Contains(text, "HEAD") {
-		t.Errorf("cw change status does not say that the folder differs from HEAD:\n%s", text)
+		t.Errorf("gatecub change status does not say that the folder differs from HEAD:\n%s", text)
 	}
 }
 
@@ -91,23 +91,23 @@ func TestReadingChangesNothing(t *testing.T) {
 	t.Parallel()
 	r := newRecord(t)
 	before := r.tree()
-	if result := r.CW("change", "status"); result.Code != 0 {
-		t.Errorf("cw change status exited %d, want 0:\n%s", result.Code, result.Output())
+	if result := r.Gatecub("change", "status"); result.Code != 0 {
+		t.Errorf("gatecub change status exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	if after := r.tree(); after != before {
-		t.Errorf("cw status --json prints the tree %q after cw change status, %q before", after, before)
+		t.Errorf("gatecub status --json prints the tree %q after gatecub change status, %q before", after, before)
 	}
 }
 
-// tree is the field tree of `cw status --json`.
+// tree is the field tree of `gatecub status --json`.
 func (r *record) tree() string {
 	r.t.Helper()
-	result := r.CW("status", "--json")
+	result := r.Gatecub("status", "--json")
 	var out struct {
 		Tree string `json:"tree"`
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil || out.Tree == "" {
-		r.t.Fatalf("cw status --json (exit %d) printed no tree: %v\n%s", result.Code, err, result.Output())
+		r.t.Fatalf("gatecub status --json (exit %d) printed no tree: %v\n%s", result.Code, err, result.Output())
 	}
 	return out.Tree
 }

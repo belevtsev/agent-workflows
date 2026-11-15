@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-GitHub Security Advisories on the belevtsev/agent-workflows repository (Security
+GitHub Security Advisories on the belevtsev/gatecub repository (Security
 tab, "Report a vulnerability"), the private channel described in
 [SECURITY.md](SECURITY.md).
 All complaints will be reviewed and investigated promptly and fairly.

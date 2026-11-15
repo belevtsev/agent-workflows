@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/change"
+	"github.com/belevtsev/gatecub/v3/internal/change"
 )
 
-const changeUsage = "usage: cw change status [<task>] [--json], or cw change check [<task>]"
+const changeUsage = "usage: gatecub change status [<task>] [--json], or gatecub change check [<task>]"
 
 // runChange reads the change folders under openspec/changes/.
 func runChange(ctx context.Context, cfg Config, args []string) error {
@@ -24,7 +24,7 @@ func runChange(ctx context.Context, cfg Config, args []string) error {
 	}
 	switch {
 	case args[0] != "status" && args[0] != "check":
-		return usagef("unknown command `cw change %s`; %s", args[0], changeUsage)
+		return usagef("unknown command `gatecub change %s`; %s", args[0], changeUsage)
 	case len(p.pos) > 1 || p.dash || (*asJSON && args[0] == "check"):
 		return usagef("%s", changeUsage)
 	case len(p.pos) == 1 && !taskName.MatchString(p.pos[0]):
@@ -171,7 +171,7 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 			fmt.Fprintf(out, "scenarios that are not automated: %d\n", report.NotAutomated)
 		}
 		if report.BrokenRules > 0 {
-			fmt.Fprintf(out, "broken rules: %d; `cw change check %s` names them. The stage says how far the record is, not that its files are valid\n", report.BrokenRules, report.Task)
+			fmt.Fprintf(out, "broken rules: %d; `gatecub change check %s` names them. The stage says how far the record is, not that its files are valid\n", report.BrokenRules, report.Task)
 		}
 		fmt.Fprintf(out, "content ids: spec %s, design %s, code %s\n", orNone(report.Content.Spec), orNone(report.Content.Design), orNone(report.Content.Code))
 	case len(reports) == 0:
@@ -180,10 +180,10 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 		for _, report := range reports {
 			line := fmt.Sprintf("%s: %s", report.Task, report.Stage)
 			if n := len(report.Missing); n > 0 {
-				line += fmt.Sprintf(" (%d missing; `cw change status %s` names them)", n, report.Task)
+				line += fmt.Sprintf(" (%d missing; `gatecub change status %s` names them)", n, report.Task)
 			}
 			if report.BrokenRules > 0 {
-				line += fmt.Sprintf("; broken rules: %d (`cw change check %s`)", report.BrokenRules, report.Task)
+				line += fmt.Sprintf("; broken rules: %d (`gatecub change check %s`)", report.BrokenRules, report.Task)
 			}
 			fmt.Fprintln(out, line)
 		}

@@ -14,24 +14,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // gated is the shared fixture of publish-gate: the demo repository with a
 // bare remote origin whose main is at the first commit of demo, and with the
-// hooks that `cw init` installs. It returns the repository and the remote.
-func gated(t *testing.T) (*cwtest.Repo, *cwtest.Repo) {
+// hooks that `gatecub init` installs. It returns the repository and the remote.
+func gated(t *testing.T) (*gatecubtest.Repo, *gatecubtest.Repo) {
 	t.Helper()
 	repo, origin := withOrigin(t)
-	mustCW(t, repo, 0, "init")
+	mustGatecub(t, repo, 0, "init")
 	return repo, origin
 }
 
 // withOrigin is the demo repository with the bare remote origin, before
-// `cw init`.
-func withOrigin(t *testing.T) (*cwtest.Repo, *cwtest.Repo) {
+// `gatecub init`.
+func withOrigin(t *testing.T) (*gatecubtest.Repo, *gatecubtest.Repo) {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	bare := filepath.Join(filepath.Dir(repo.Dir), "origin.git")
 	repo.Git("init", "-q", "--bare", "-b", "main", bare)
 	repo.Git("remote", "add", "origin", bare)
@@ -39,25 +39,25 @@ func withOrigin(t *testing.T) (*cwtest.Repo, *cwtest.Repo) {
 	return repo, repo.In(bare)
 }
 
-// mustCW runs cw and fails the test when it does not exit with code.
-func mustCW(t *testing.T, repo *cwtest.Repo, code int, args ...string) cwtest.Result {
+// mustGatecub runs gatecub and fails the test when it does not exit with code.
+func mustGatecub(t *testing.T, repo *gatecubtest.Repo, code int, args ...string) gatecubtest.Result {
 	t.Helper()
-	result := repo.CW(args...)
+	result := repo.Gatecub(args...)
 	if result.Code != code {
-		t.Fatalf("cw %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
+		t.Fatalf("gatecub %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
 	}
 	return result
 }
 
-// checked runs cw run and fails the test unless both checks end passed.
-func checked(t *testing.T, repo *cwtest.Repo) {
+// checked runs gatecub run and fails the test unless both checks end passed.
+func checked(t *testing.T, repo *gatecubtest.Repo) {
 	t.Helper()
-	mustCW(t, repo, 0, "run")
+	mustGatecub(t, repo, 0, "run")
 }
 
 // refOn is the commit a ref points at in a repository, or "" when the ref
 // does not exist.
-func refOn(repo *cwtest.Repo, ref string) string {
+func refOn(repo *gatecubtest.Repo, ref string) string {
 	result := repo.TryGit("rev-parse", "--verify", "-q", ref+"^{commit}")
 	if result.Code != 0 {
 		return ""
@@ -67,7 +67,7 @@ func refOn(repo *cwtest.Repo, ref string) string {
 
 // commitAll commits everything in the working tree through the hooks and
 // fails the test when the commit is not recorded.
-func commitAll(t *testing.T, repo *cwtest.Repo, message string) string {
+func commitAll(t *testing.T, repo *gatecubtest.Repo, message string) string {
 	t.Helper()
 	repo.Git("add", "-A")
 	result := repo.TryGit("commit", "-q", "-m", message)
@@ -78,7 +78,7 @@ func commitAll(t *testing.T, repo *cwtest.Repo, message string) string {
 }
 
 // commitAround commits everything in the working tree with --no-verify.
-func commitAround(repo *cwtest.Repo, message string) string {
+func commitAround(repo *gatecubtest.Repo, message string) string {
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "--no-verify", "-m", message)
 	return refOn(repo, "HEAD")
@@ -86,7 +86,7 @@ func commitAround(repo *cwtest.Repo, message string) string {
 
 // assertSent fails the test unless git push exited 0 and each ref on the
 // remote now points at the commit given for it ("" for a deleted ref).
-func assertSent(t *testing.T, push cwtest.Result, origin *cwtest.Repo, want map[string]string) {
+func assertSent(t *testing.T, push gatecubtest.Result, origin *gatecubtest.Repo, want map[string]string) {
 	t.Helper()
 	if push.Code != 0 {
 		t.Errorf("git push exited %d, want 0\n%s", push.Code, push.Output())
@@ -101,7 +101,7 @@ func assertSent(t *testing.T, push cwtest.Result, origin *cwtest.Repo, want map[
 // assertDenied fails the test unless git push failed, each ref on the remote
 // still points where it did before ("" for a ref that did not exist), and
 // standard error holds a reason. It returns standard error.
-func assertDenied(t *testing.T, push cwtest.Result, origin *cwtest.Repo, before map[string]string) string {
+func assertDenied(t *testing.T, push gatecubtest.Result, origin *gatecubtest.Repo, before map[string]string) string {
 	t.Helper()
 	if push.Code == 0 {
 		t.Errorf("git push exited 0, want a denial\n%s", push.Output())
@@ -140,7 +140,7 @@ func exists(path string) bool {
 }
 
 // hooksDir is the hooks directory of the common git directory.
-func hooksDir(t *testing.T, repo *cwtest.Repo) string {
+func hooksDir(t *testing.T, repo *gatecubtest.Repo) string {
 	t.Helper()
 	return filepath.Join(filepath.Dir(repo.StoreDir()), "hooks")
 }

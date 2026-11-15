@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // Requirement "Record store", scenario "The working tree and the home
 // directory stay clean".
 func TestRunLeavesTheWorkingTreeAndHomeClean(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	home := filepath.Join(t.TempDir(), "home")
 	if err := os.Mkdir(home, 0o755); err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestLinkedWorktreeSeesTheSameRecords(t *testing.T) {
 	repo := checkedState(t)
 	repo.Git("worktree", "add", "-q", "../wt")
 
-	status := repo.In("../wt").CW("status")
+	status := repo.In("../wt").Gatecub("status")
 	assertState(t, status, "unit", "satisfied")
 	assertState(t, status, "lint", "satisfied")
 }

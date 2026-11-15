@@ -1,9 +1,9 @@
 {
-  "name": "agent-workflows",
-  "interface": { "displayName": "Agent Workflows" },
+  "name": "gatecub",
+  "interface": { "displayName": "Gatecub" },
   "plugins": [
     {
-      "name": "agent-workflows",
+      "name": "gatecub",
       "source": { "source": "local", "path": "./" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"

@@ -15,24 +15,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
-// checkedState is the demo repository after `cw run` has ended with both
+// checkedState is the demo repository after `gatecub run` has ended with both
 // checks passed.
-func checkedState(t *testing.T) *cwtest.Repo {
+func checkedState(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	mustRun(t, repo, 0, "run")
 	return repo
 }
 
-// mustRun runs cw and fails the test when it does not exit with code.
-func mustRun(t *testing.T, repo *cwtest.Repo, code int, args ...string) cwtest.Result {
+// mustRun runs gatecub and fails the test when it does not exit with code.
+func mustRun(t *testing.T, repo *gatecubtest.Repo, code int, args ...string) gatecubtest.Result {
 	t.Helper()
-	result := repo.CW(args...)
+	result := repo.Gatecub(args...)
 	if result.Code != code {
-		t.Fatalf("cw %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
+		t.Fatalf("gatecub %s: exit status %d, want %d\n%s", strings.Join(args, " "), result.Code, code, result.Output())
 	}
 	return result
 }
@@ -59,7 +59,7 @@ var statePattern = map[string]*regexp.Regexp{
 }
 
 // assertState checks that the line of the output that names id holds state.
-func assertState(t *testing.T, result cwtest.Result, id, state string) {
+func assertState(t *testing.T, result gatecubtest.Result, id, state string) {
 	t.Helper()
 	line, ok := lineNaming(result.Stdout, id)
 	if !ok {
@@ -75,25 +75,25 @@ func assertState(t *testing.T, result cwtest.Result, id, state string) {
 	}
 }
 
-// statusJSON runs `cw status --json` and decodes its object.
-func statusJSON(t *testing.T, repo *cwtest.Repo) map[string]any {
+// statusJSON runs `gatecub status --json` and decodes its object.
+func statusJSON(t *testing.T, repo *gatecubtest.Repo) map[string]any {
 	t.Helper()
-	result := repo.CW("status", "--json")
+	result := repo.Gatecub("status", "--json")
 	object := map[string]any{}
 	if err := json.Unmarshal([]byte(result.Stdout), &object); err != nil {
-		t.Fatalf("cw status --json: exit status %d, output is not one JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub status --json: exit status %d, output is not one JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	return object
 }
 
 // addEnvCheck declares the check `env` of the scenarios, whose program is
 // run, and returns nothing; the declaration is not committed.
-func addEnvCheck(repo *cwtest.Repo, run ...string) {
+func addEnvCheck(repo *gatecubtest.Repo, run ...string) {
 	quoted := make([]string, len(run))
 	for i, arg := range run {
 		quoted[i] = fmt.Sprintf("%q", arg)
 	}
-	repo.Write("cw.toml", cwtest.DemoDeclaration+"\n[[check]]\nid = \"env\"\nrun = ["+strings.Join(quoted, ", ")+"]\n")
+	repo.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\n[[check]]\nid = \"env\"\nrun = ["+strings.Join(quoted, ", ")+"]\n")
 }
 
 // envFlag is the file whose existence decides the check `env`; it plays the
@@ -118,7 +118,7 @@ func removeFile(t *testing.T, path string) {
 }
 
 // records reads every run record of a check.
-func records(t *testing.T, repo *cwtest.Repo, id string) map[string]map[string]any {
+func records(t *testing.T, repo *gatecubtest.Repo, id string) map[string]map[string]any {
 	t.Helper()
 	found := map[string]map[string]any{}
 	for _, path := range repo.RecordFiles(id) {
@@ -136,7 +136,7 @@ func records(t *testing.T, repo *cwtest.Repo, id string) map[string]map[string]a
 }
 
 // recordWithOutcome is the only record of a check that ended with outcome.
-func recordWithOutcome(t *testing.T, repo *cwtest.Repo, id, outcome string) string {
+func recordWithOutcome(t *testing.T, repo *gatecubtest.Repo, id, outcome string) string {
 	t.Helper()
 	var paths []string
 	for path, fields := range records(t, repo, id) {
@@ -153,18 +153,18 @@ func recordWithOutcome(t *testing.T, repo *cwtest.Repo, id, outcome string) stri
 // limit is how long a test waits for a command it started itself.
 const limit = 2 * time.Minute
 
-// background is a cw command that runs while the test goes on.
+// background is a gatecub command that runs while the test goes on.
 type background struct {
 	command *exec.Cmd
 	output  *bytes.Buffer
 	done    chan struct{}
 }
 
-// startCW starts cw in a repository and returns at once.
-func startCW(t *testing.T, repo *cwtest.Repo, args ...string) *background {
+// startGatecub starts gatecub in a repository and returns at once.
+func startGatecub(t *testing.T, repo *gatecubtest.Repo, args ...string) *background {
 	t.Helper()
 	run := &background{
-		command: repo.Command(filepath.Join(cwtest.Binary(t), "cw"), args...),
+		command: repo.Command(filepath.Join(gatecubtest.Binary(t), "gatecub"), args...),
 		output:  &bytes.Buffer{},
 		done:    make(chan struct{}),
 	}
@@ -196,7 +196,7 @@ func (b *background) wait(t *testing.T) (int, string) {
 	case <-time.After(limit):
 		_ = b.command.Process.Kill()
 		<-b.done
-		t.Fatalf("cw %s did not end within %s:\n%s", strings.Join(b.command.Args[1:], " "), limit, b.output.String())
+		t.Fatalf("gatecub %s did not end within %s:\n%s", strings.Join(b.command.Args[1:], " "), limit, b.output.String())
 		return 0, ""
 	}
 }

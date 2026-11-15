@@ -3,9 +3,9 @@
 Upstream copyright, license texts and notices remain with their files.
 Inclusion does not imply upstream endorsement.
 
-## cw dependencies
+## gatecub dependencies
 
-The `cw` binary links these pinned Go dependencies; release archives carry
+The `gatecub` binary links these pinned Go dependencies; release archives carry
 their notices:
 
 | Module | Version | Retained license |

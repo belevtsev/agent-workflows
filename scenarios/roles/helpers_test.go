@@ -16,42 +16,42 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // roleIDs are the seven roles of the requirement "Role set", in its order.
 var roleIDs = []string{"lookup", "spec-writer", "architect", "quality-engineer", "developer", "reviewer", "git"}
 
-// rolesTOML is the cw-roles.toml of the shared fixture.
+// rolesTOML is the gatecub-roles.toml of the shared fixture.
 const rolesTOML = "version = 1\n\n[paths]\ntests = [\"tests/**\"]\n"
 
 // demo is the shared fixture of role-definitions: the repository demo of
-// check-evidence with tests/app_test.txt, cw-roles.toml and the change
+// check-evidence with tests/app_test.txt, gatecub-roles.toml and the change
 // folder openspec/changes/add-greeting/, all in the first commit's history.
-func demo(t *testing.T) *cwtest.Repo {
+func demo(t *testing.T) *gatecubtest.Repo {
 	t.Helper()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	repo.Write("tests/app_test.txt", "app test\n")
-	repo.Write("cw-roles.toml", rolesTOML)
+	repo.Write("gatecub-roles.toml", rolesTOML)
 	repo.Write("openspec/changes/add-greeting/proposal.md", "# add-greeting\n")
 	repo.Git("add", "-A")
 	repo.Git("commit", "-q", "-m", "fixture of role-definitions")
 	return repo
 }
 
-// tree is the value of tree that cw status --json prints: T0 when it is
+// tree is the value of tree that gatecub status --json prints: T0 when it is
 // taken before the edits of a scenario.
-func tree(t *testing.T, repo *cwtest.Repo) string {
+func tree(t *testing.T, repo *gatecubtest.Repo) string {
 	t.Helper()
-	result := repo.CW("status", "--json")
+	result := repo.Gatecub("status", "--json")
 	var out struct {
 		Tree string `json:"tree"`
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw status --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
+		t.Fatalf("gatecub status --json (exit %d) did not print one JSON object: %v\n%s", result.Code, err, result.Output())
 	}
 	if out.Tree == "" {
-		t.Fatalf("cw status --json printed no tree:\n%s", result.Output())
+		t.Fatalf("gatecub status --json printed no tree:\n%s", result.Output())
 	}
 	return out.Tree
 }
@@ -62,7 +62,7 @@ type hostModel struct {
 	Effort string `json:"effort"`
 }
 
-// role is one entry of roles in the output of cw roles --json.
+// role is one entry of roles in the output of gatecub roles --json.
 type role struct {
 	ID        string               `json:"id"`
 	Job       string               `json:"job"`
@@ -71,19 +71,19 @@ type role struct {
 	Models    map[string]hostModel `json:"models"`
 }
 
-// rolesJSON runs cw roles --json, requires exit 0 and returns the roles by
+// rolesJSON runs gatecub roles --json, requires exit 0 and returns the roles by
 // id.
-func rolesJSON(t *testing.T, repo *cwtest.Repo) map[string]role {
+func rolesJSON(t *testing.T, repo *gatecubtest.Repo) map[string]role {
 	t.Helper()
-	result := repo.CW("roles", "--json")
+	result := repo.Gatecub("roles", "--json")
 	if result.Code != 0 {
-		t.Fatalf("cw roles --json exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Fatalf("gatecub roles --json exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	var out struct {
 		Roles []role `json:"roles"`
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		t.Fatalf("cw roles --json did not print one JSON object: %v\n%s", err, result.Output())
+		t.Fatalf("gatecub roles --json did not print one JSON object: %v\n%s", err, result.Output())
 	}
 	byID := map[string]role{}
 	for _, r := range out.Roles {

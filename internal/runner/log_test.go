@@ -10,7 +10,7 @@ import (
 )
 
 // Requirement "Log limit" (openspec/changes/reduce-cw-to-evidence-gate/specs/
-// check-evidence/spec.md): "`cw` SHALL keep at most 10 MiB of a run's output,
+// check-evidence/spec.md): "`gatecub` SHALL keep at most 10 MiB of a run's output,
 // the first 1 MiB and the last 9 MiB, and SHALL mark in the log where output
 // was dropped."
 //
@@ -92,7 +92,7 @@ func writeLog(t *testing.T, stream []byte, plan writePlan) []byte {
 
 // marker matches the line the log holds where output was dropped, and
 // captures the number of bytes it says were dropped.
-var marker = regexp.MustCompile(`\n--- cw: (\d+) bytes of output were dropped here ---\n`)
+var marker = regexp.MustCompile(`\n--- gatecub: (\d+) bytes of output were dropped here ---\n`)
 
 // describe names the part of a numbered stream that data starts with, for a
 // failure message.
@@ -190,10 +190,10 @@ func TestLogKeepsTheHeadAMarkerAndTheTail(t *testing.T) {
 // stream like any other: it ends the tail.
 func TestLogEndsWithTheLastWrite(t *testing.T) {
 	t.Parallel()
-	stream := append(numbered(headLimit+tailLimit+1000), "\ncw: the check did not end within its timeout\n"...)
+	stream := append(numbered(headLimit+tailLimit+1000), "\ngatecub: the check did not end within its timeout\n"...)
 	data := writeLog(t, stream, fixed(1<<16))
 	checkLog(t, stream, data)
-	if !bytes.HasSuffix(data, []byte("\ncw: the check did not end within its timeout\n")) {
+	if !bytes.HasSuffix(data, []byte("\ngatecub: the check did not end within its timeout\n")) {
 		t.Errorf("the log does not end with the last write; it ends %q", data[max(0, len(data)-64):])
 	}
 }

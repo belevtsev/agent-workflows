@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // deniedMerge builds the first merge scenario: in the checked state branch
 // feature adds docs/a.md, main has a later commit of its own, and git merge
 // feature runs on main and is denied. It returns how git merge ended.
-func deniedMerge(t *testing.T) (*gate, cwtest.Result) {
+func deniedMerge(t *testing.T) (*gate, gatecubtest.Result) {
 	t.Helper()
 	g := newGate(t)
 	g.Setenv("GIT_EDITOR", "true")

@@ -11,11 +11,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
-const addUsage = "usage: cw add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]"
+const addUsage = "usage: gatecub add <id> [--paths <pattern>]... [--timeout <duration>] -- <program> [<argument>...]"
 
 func runAdd(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("add")
@@ -42,14 +42,14 @@ func runAdd(ctx context.Context, cfg Config, args []string) error {
 	path := filepath.Join(s.repo.Root, decl.FileName)
 	old, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return failf("this repository has no %s; `cw init` creates one", decl.FileName)
+		return failf("this repository has no %s; `gatecub init` creates one", decl.FileName)
 	}
 	if err != nil {
 		return failf("%v", err)
 	}
 	updated, err := decl.Append(old, p.pos[0], p.rest, paths, *timeout)
 	if err != nil {
-		return failf("the check was not added, because the file would not be a valid declaration:\n%v\n`cw add` only appends a check; to change or remove one, edit %s", err, decl.FileName)
+		return failf("the check was not added, because the file would not be a valid declaration:\n%v\n`gatecub add` only appends a check; to change or remove one, edit %s", err, decl.FileName)
 	}
 	mode := fs.FileMode(0o644)
 	if info, err := os.Stat(path); err == nil {

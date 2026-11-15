@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
-	"github.com/belevtsev/agent-workflows/v3/internal/tokens"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/gatecub/v3/internal/tokens"
 )
 
 // Requirement: Notices as the host gives them, scenario: A record that grows
@@ -70,12 +70,12 @@ func TestAnInternalAgentOfTheHost(t *testing.T) {
 }
 
 // Requirement: Notices as the host gives them, scenario: The directory of the
-// notice. The hook runs in a repository without cw.toml, and the notice's
+// notice. The hook runs in a repository without gatecub.toml, and the notice's
 // cwd is demo.
 func TestTheDirectoryOfTheNotice(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
-	other := cwtest.NewRepo(t)
+	other := gatecubtest.NewRepo(t)
 	s := buildS1(t, variant{})
 	for i, n := range s.Notices {
 		if r := recordNoticeIn(t, other, repo.Dir, s.Host, n); r.Code != 0 {
@@ -88,16 +88,16 @@ func TestTheDirectoryOfTheNotice(t *testing.T) {
 	}
 }
 
-// The token report reads a task name from a label as the commands of cw read
-// it: a name cw change status refuses is no label, and the other way round.
+// The token report reads a task name from a label as the commands of gatecub read
+// it: a name gatecub change status refuses is no label, and the other way round.
 func TestTaskNamesAgreeWithTheCommands(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.NewRepo(t)
+	repo := gatecubtest.NewRepo(t)
 	for _, name := range []string{"a", "add-greeting", "a1-b2-c3", "9", "A", "a--b", "a-", "a_b", "a.b", "ä", "add greeting"} {
-		r := repo.CW("change", "status", name)
+		r := repo.Gatecub("change", "status", name)
 		refused := r.Code == 2 && strings.Contains(r.Stderr, "is not the name of a task")
-		if _, ok := tokens.ParseLabel("cw-task: " + name + " code 1"); ok == refused {
-			t.Errorf("%q: cw change status refuses it %v (exit %d), a label with it is read %v", name, refused, r.Code, ok)
+		if _, ok := tokens.ParseLabel("gatecub-task: " + name + " code 1"); ok == refused {
+			t.Errorf("%q: gatecub change status refuses it %v (exit %d), a label with it is read %v", name, refused, r.Code, ok)
 		}
 	}
 }

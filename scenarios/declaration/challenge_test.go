@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // The scenarios in this file come from the second challenge of 14 November
 // 2026 (openspec/production-plan.md, Independent challenge).
 
-// declarationWith is a cw.toml of one check `p` that runs git --version, with
+// declarationWith is a gatecub.toml of one check `p` that runs git --version, with
 // the given TOML lines added to the check.
 func declarationWith(lines string) string {
 	return "version = 1\n\n[[check]]\nid = \"p\"\nrun = [\"git\", \"--version\"]\n" + lines
@@ -22,28 +22,28 @@ func declarationWith(lines string) string {
 // refused".
 func TestDeviceNamesOfWindowsAreRefusedAsIDs(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	for _, id := range []string{"con", "prn", "aux", "nul", "com1", "lpt9"} {
-		repo.Write("cw.toml", "version = 1\n\n[[check]]\nid = \""+id+"\"\nrun = [\"git\", \"--version\"]\n")
-		result := repo.CW("status")
+		repo.Write("gatecub.toml", "version = 1\n\n[[check]]\nid = \""+id+"\"\nrun = [\"git\", \"--version\"]\n")
+		result := repo.Gatecub("status")
 		if result.Code != 1 {
-			t.Errorf("id %s: cw status exited %d, want 1", id, result.Code)
+			t.Errorf("id %s: gatecub status exited %d, want 1", id, result.Code)
 		}
-		for _, want := range []string{"cw.toml:4", "`" + id + "`", "Windows"} {
+		for _, want := range []string{"gatecub.toml:4", "`" + id + "`", "Windows"} {
 			if !strings.Contains(result.Output(), want) {
-				t.Errorf("id %s: the output of cw status does not hold %q:\n%s", id, want, result.Output())
+				t.Errorf("id %s: the output of gatecub status does not hold %q:\n%s", id, want, result.Output())
 			}
 		}
 	}
 
-	repo.Git("checkout", "-q", "--", "cw.toml")
-	sum := sha256File(repo, "cw.toml")
-	result := repo.CW("add", "aux", "--", "git", "--version")
+	repo.Git("checkout", "-q", "--", "gatecub.toml")
+	sum := sha256File(repo, "gatecub.toml")
+	result := repo.Gatecub("add", "aux", "--", "git", "--version")
 	if result.Code != 1 || !strings.Contains(result.Output(), "Windows") {
-		t.Errorf("cw add aux exited %d, want 1 and a reason that names Windows:\n%s", result.Code, result.Output())
+		t.Errorf("gatecub add aux exited %d, want 1 and a reason that names Windows:\n%s", result.Code, result.Output())
 	}
-	if after := sha256File(repo, "cw.toml"); after != sum {
-		t.Errorf("cw add aux changed cw.toml:\n%s", repo.Read("cw.toml"))
+	if after := sha256File(repo, "gatecub.toml"); after != sum {
+		t.Errorf("gatecub add aux changed gatecub.toml:\n%s", repo.Read("gatecub.toml"))
 	}
 }
 
@@ -51,13 +51,13 @@ func TestDeviceNamesOfWindowsAreRefusedAsIDs(t *testing.T) {
 // character is printed quoted".
 func TestANameWithAControlCharacterIsPrintedQuoted(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
+	repo := gatecubtest.Demo(t)
 	// A quoted TOML key that holds ESC [ 2 J, which clears a terminal.
-	repo.Write("cw.toml", cwtest.DemoDeclaration+"\"x\\u001b[2Jy\" = 1\n")
+	repo.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\"x\\u001b[2Jy\" = 1\n")
 
-	result := repo.CW("status")
+	result := repo.Gatecub("status")
 	if result.Code != 1 {
-		t.Errorf("cw status exited %d, want 1", result.Code)
+		t.Errorf("gatecub status exited %d, want 1", result.Code)
 	}
 	if strings.ContainsRune(result.Output(), 0x1b) {
 		t.Errorf("the output holds the control character ESC: %q", result.Output())
@@ -73,15 +73,15 @@ func TestANameWithAControlCharacterIsPrintedQuoted(t *testing.T) {
 // is refused".
 func TestAPatternThatNamesAFolderIsRefused(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	repo.Write("cw.toml", declarationWith("paths = [\"src\"]\n"))
+	repo := gatecubtest.Demo(t)
+	repo.Write("gatecub.toml", declarationWith("paths = [\"src\"]\n"))
 	commitAll(repo, "paths names a folder")
-	wantRefusal := func(what string, result cwtest.Result) {
+	wantRefusal := func(what string, result gatecubtest.Result) {
 		t.Helper()
 		if result.Code == 0 {
 			t.Errorf("%s exited 0, want a refusal", what)
 		}
-		for _, want := range []string{"cw.toml:3", "`src`", "names a folder", "`src/**`"} {
+		for _, want := range []string{"gatecub.toml:3", "`src`", "names a folder", "`src/**`"} {
 			if !strings.Contains(result.Output(), want) {
 				t.Errorf("the output of %s does not hold %q:\n%s", what, want, result.Output())
 			}
@@ -89,24 +89,24 @@ func TestAPatternThatNamesAFolderIsRefused(t *testing.T) {
 	}
 
 	before := fingerprint(t, repo.Dir, repo.Home)
-	run := repo.CW("run")
-	wantRefusal("cw run", run)
+	run := repo.Gatecub("run")
+	wantRefusal("gatecub run", run)
 	if run.Code != 1 {
-		t.Errorf("cw run exited %d, want 1", run.Code)
+		t.Errorf("gatecub run exited %d, want 1", run.Code)
 	}
 	if strings.Contains(run.Output(), "git version") {
-		t.Errorf("cw run executed the check:\n%s", run.Output())
+		t.Errorf("gatecub run executed the check:\n%s", run.Output())
 	}
 	assertWroteNothing(t, repo, before)
 
-	status := repo.CW("status")
-	wantRefusal("cw status", status)
+	status := repo.Gatecub("status")
+	wantRefusal("gatecub status", status)
 	if status.Code != 1 {
-		t.Errorf("cw status exited %d, want 1", status.Code)
+		t.Errorf("gatecub status exited %d, want 1", status.Code)
 	}
 
-	if result := repo.CW("init"); result.Code != 0 {
-		t.Fatalf("cw init exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Gatecub("init"); result.Code != 0 {
+		t.Fatalf("gatecub init exited %d:\n%s", result.Code, result.Output())
 	}
 	head := repo.Git("rev-parse", "HEAD")
 	repo.Write("README.md", "# demo, edited\n")
@@ -120,18 +120,18 @@ func TestAPatternThatNamesAFolderIsRefused(t *testing.T) {
 // goes after `--`".
 func TestAddWithoutTheDashesSaysWhereTheProgramGoes(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	sum := sha256File(repo, "cw.toml")
+	repo := gatecubtest.Demo(t)
+	sum := sha256File(repo, "gatecub.toml")
 
-	result := repo.CW("add", "unit2", "go", "test", "-v", "./...")
+	result := repo.Gatecub("add", "unit2", "go", "test", "-v", "./...")
 	if result.Code != 2 {
-		t.Errorf("cw add exited %d, want 2", result.Code)
+		t.Errorf("gatecub add exited %d, want 2", result.Code)
 	}
 	if !strings.Contains(result.Output(), "the program and its arguments go after `--`") {
 		t.Errorf("the output does not say where the program goes:\n%s", result.Output())
 	}
-	if after := sha256File(repo, "cw.toml"); after != sum {
-		t.Errorf("cw add changed cw.toml:\n%s", repo.Read("cw.toml"))
+	if after := sha256File(repo, "gatecub.toml"); after != sum {
+		t.Errorf("gatecub add changed gatecub.toml:\n%s", repo.Read("gatecub.toml"))
 	}
 }
 
@@ -139,19 +139,19 @@ func TestAddWithoutTheDashesSaysWhereTheProgramGoes(t *testing.T) {
 // written as one word is refused".
 func TestAddRefusesACommandWrittenAsOneWord(t *testing.T) {
 	t.Parallel()
-	repo := cwtest.Demo(t)
-	sum := sha256File(repo, "cw.toml")
+	repo := gatecubtest.Demo(t)
+	sum := sha256File(repo, "gatecub.toml")
 	before := fingerprint(t, repo.Dir, repo.Home)
 
-	result := repo.CW("add", "unit2", "--", "go test ./...")
+	result := repo.Gatecub("add", "unit2", "--", "go test ./...")
 	if result.Code != 2 {
-		t.Errorf("cw add exited %d, want 2", result.Code)
+		t.Errorf("gatecub add exited %d, want 2", result.Code)
 	}
 	if !strings.Contains(result.Output(), "one word with a space") {
 		t.Errorf("the output does not say that the program is one word with a space:\n%s", result.Output())
 	}
-	if after := sha256File(repo, "cw.toml"); after != sum {
-		t.Errorf("cw add changed cw.toml:\n%s", repo.Read("cw.toml"))
+	if after := sha256File(repo, "gatecub.toml"); after != sum {
+		t.Errorf("gatecub add changed gatecub.toml:\n%s", repo.Read("gatecub.toml"))
 	}
 	assertWroteNothing(t, repo, before)
 
@@ -162,30 +162,30 @@ func TestAddRefusesACommandWrittenAsOneWord(t *testing.T) {
 	}
 	writeProgram(t, repo.Path(program), "exit 0\n")
 	given := "." + string(filepath.Separator) + filepath.FromSlash(program)
-	result = repo.CW("add", "tools", "--", given, "--quick")
+	result = repo.Gatecub("add", "tools", "--", given, "--quick")
 	if result.Code != 0 {
-		t.Errorf("cw add of the program %q exited %d, want 0:\n%s", given, result.Code, result.Output())
+		t.Errorf("gatecub add of the program %q exited %d, want 0:\n%s", given, result.Code, result.Output())
 	}
-	if !strings.Contains(repo.Read("cw.toml"), "id = \"tools\"") {
-		t.Errorf("cw.toml does not hold the check tools:\n%s", repo.Read("cw.toml"))
+	if !strings.Contains(repo.Read("gatecub.toml"), "id = \"tools\"") {
+		t.Errorf("gatecub.toml does not hold the check tools:\n%s", repo.Read("gatecub.toml"))
 	}
 }
 
 // Requirement "Create a declaration", scenario "The next step is named".
 func TestInitNamesTheNextStep(t *testing.T) {
 	t.Parallel()
-	demo := cwtest.Demo(t)
-	result := demo.CW("init")
-	if result.Code != 0 || !strings.Contains(result.Stdout, "next: cw run\n") {
-		t.Errorf("cw init in demo exited %d and did not print the line `next: cw run`:\n%s", result.Code, result.Output())
+	demo := gatecubtest.Demo(t)
+	result := demo.Gatecub("init")
+	if result.Code != 0 || !strings.Contains(result.Stdout, "next: gatecub run\n") {
+		t.Errorf("gatecub init in demo exited %d and did not print the line `next: gatecub run`:\n%s", result.Code, result.Output())
 	}
-	if strings.Contains(result.Stdout, "next: cw add") {
-		t.Errorf("cw init in demo, whose cw.toml declares checks, names cw add as the next step:\n%s", result.Output())
+	if strings.Contains(result.Stdout, "next: gatecub add") {
+		t.Errorf("gatecub init in demo, whose gatecub.toml declares checks, names gatecub add as the next step:\n%s", result.Output())
 	}
 
-	fresh := cwtest.NewRepo(t)
-	result = fresh.CW("init")
-	if result.Code != 0 || !strings.Contains(result.Stdout, "next: cw add <id> -- <program> [<argument>...], then cw run") {
-		t.Errorf("cw init in a new repository exited %d and did not name cw add as the next step:\n%s", result.Code, result.Output())
+	fresh := gatecubtest.NewRepo(t)
+	result = fresh.Gatecub("init")
+	if result.Code != 0 || !strings.Contains(result.Stdout, "next: gatecub add <id> -- <program> [<argument>...], then gatecub run") {
+		t.Errorf("gatecub init in a new repository exited %d and did not name gatecub add as the next step:\n%s", result.Code, result.Output())
 	}
 }

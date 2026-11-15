@@ -11,14 +11,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/decl"
+	"github.com/belevtsev/gatecub/v3/internal/decl"
 	"github.com/pelletier/go-toml/v2"
 )
 
 // FileName is the roles file at the root of a repository. It is optional.
-const FileName = "cw-roles.toml"
+const FileName = "gatecub-roles.toml"
 
-// Config is what cw-roles.toml sets.
+// Config is what gatecub-roles.toml sets.
 type Config struct {
 	// Tests are the patterns of the test paths; nil when the file names
 	// none.
@@ -65,7 +65,7 @@ func Load(root string) (*Config, error) {
 }
 
 // Parse reads a roles file. It refuses an unknown key, host or role and a
-// pattern cw.toml would refuse. It does not judge a model name: hosts
+// pattern gatecub.toml would refuse. It does not judge a model name: hosts
 // change them. Every error it returns is an *Error.
 func Parse(data []byte) (*Config, error) {
 	var raw map[string]any

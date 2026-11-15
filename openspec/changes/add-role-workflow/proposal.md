@@ -1,5 +1,7 @@
 # Proposal: add-role-workflow
 
+Current interface names below use Gatecub. Dated observations describe the former `cw` tool, before this rename.
+
 Status: draft of 14 November 2026, written from the owner's two statements of
 that day (see Sources). Nothing in it was run with a model.
 
@@ -13,6 +15,8 @@ This change builds on [reduce-cw-to-evidence-gate](../reduce-cw-to-evidence-gate
 and cannot start before that change has its plugin (its tasks of group 8).
 
 ## Why
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 The owner wants one tool that takes a task from a specification to clean,
 tested code, in any language and any codebase, with named roles and the right
@@ -40,7 +44,7 @@ has today cannot be handed to other people as they are:
 
 ## What the developer gets
 
-In a repository of any language that holds `cw.toml`, inside Claude Code or
+In a repository of any language that holds `gatecub.toml`, inside Claude Code or
 Codex, the developer writes one sentence, for example "add CSV export of
 orders". Then:
 
@@ -55,15 +59,15 @@ orders". Then:
    approves.
 4. `quality-engineer` writes a test for every scenario and lists them in
    `tests.md`. It is the only role that changes or removes an existing test.
-   `cw run` is expected to fail here.
+   `gatecub run` is expected to fail here.
 5. `developer` writes the code, one group of tasks per start.
-   `cw roles check developer` then shows that it changed no existing test.
-6. `cw run` passes. `reviewer` reviews the code and the tests against the
+   `gatecub roles check developer` then shows that it changed no existing test.
+6. `gatecub run` passes. `reviewer` reviews the code and the tests against the
    specification and the design. Every finding and what was done about it is
    in `reviews.md`. When no finding is open, the coordinator ticks the tasks.
-7. `cw change check` passes. `git` commits; the gate allows it because the
+7. `gatecub change check` passes. `git` commits; the gate allows it because the
    tree is verified. A push or a pull request waits for the developer's word.
-8. `cw tokens --task add-order-csv-export` prints the tokens of every role and
+8. `gatecub tokens --task add-order-csv-export` prints the tokens of every role and
    how much of the total the workflow itself used.
 
 A task whose intended behaviour is already clear and does not change, such as
@@ -89,25 +93,25 @@ work without having written it (Open Question 3).
 The models are the ones this repository's own policy files give these jobs
 today (Sources), except that `reviewer` runs at the effort of `architect`: a
 review does not run at a lower effort than the work it reviews. A repository
-changes any cell with one line in `cw-roles.toml`. The coordinator runs on the model of the developer's session.
+changes any cell with one line in `gatecub-roles.toml`. The coordinator runs on the model of the developer's session.
 
 ## What Changes
 
 - **New:** seven roles, each one text, with its job, what it reads, what it
   may write and what it hands back. The files a host needs are generated from
   that text.
-- **New:** `cw roles` prints the table above as it applies in the repository.
-  `cw-roles.toml`, an optional committed file, changes a model or an effort
+- **New:** `gatecub roles` prints the table above as it applies in the repository.
+  `gatecub-roles.toml`, an optional committed file, changes a model or an effort
   and names the test paths.
-- **New:** `cw roles check <role> --from <tree>` says whether a role changed
+- **New:** `gatecub roles check <role> --from <tree>` says whether a role changed
   only what it may. It uses the snapshot and the differing paths of the core.
-- **New:** the change folder is the whole record of a task. `cw change status`
-  derives the stage from its files, and `cw change check` checks its rules:
+- **New:** the change folder is the whole record of a task. `gatecub change status`
+  derives the stage from its files, and `gatecub change check` checks its rules:
   requirements, tasks, tests per scenario, design, review findings. A
-  repository can declare `cw change check` as a check in `cw.toml`.
+  repository can declare `gatecub change check` as a check in `gatecub.toml`.
 - **New:** two paths, full and small, with fixed stages. Tests come before
   code. The developer approves the specification and the design.
-- **New:** `cw tokens` reports the tokens of a task by role, from the host's
+- **New:** `gatecub tokens` reports the tokens of a task by role, from the host's
   own record of the session, and splits them into writing tokens and flow
   tokens. Each release publishes the tokens of the same tasks with and without
   the workflow.
@@ -143,7 +147,7 @@ the first change.
   `internal/usagelog` (`claude.go`, `codex.go`, `lines.go`, `session.go`,
   1,223 lines), without prices, budgets and history.
 - **Plugin:** seven role texts, the coordinator's instructions, the host files
-  generated from them, and hooks that tell `cw tokens record` when a role or a
+  generated from them, and hooks that tell `gatecub tokens record` when a role or a
   session has ended.
 - **Documents:** the roles, the flow, the record and the token report; a page
   with the published comparison.
@@ -155,12 +159,12 @@ the first change.
 
 ## Non-goals
 
-- A `cw` that calls a model itself. The roles run inside the developer's
+- A `gatecub` that calls a model itself. The roles run inside the developer's
   coding agent.
 - Hosts other than Claude Code and Codex in the first version. The gate works
   with any of them.
 - Advisers: questions sent to models of other vendors (H5).
-- Money: prices, budgets and a stop on spending (M11). `cw tokens` counts
+- Money: prices, budgets and a stop on spending (M11). `gatecub tokens` counts
   tokens.
 - Language packs and domain skills. None ships with the roles.
 - Roles that run at the same time, several tasks at once, and worktrees.
@@ -172,7 +176,7 @@ the first change.
 
 ## Known limits
 
-- **The flow is instructions to a model.** `cw` checks afterwards what can be
+- **The flow is instructions to a model.** `gatecub` checks afterwards what can be
   checked: the paths a role changed, the rules of the record, and the checks
   on the content. It cannot force the order of stages inside a session.
 - **Approvals are written down by the coordinator.** Nothing proves that the
@@ -187,7 +191,7 @@ the first change.
   reviewed and traceable to tests. Whether the result is better than one agent
   working alone is not measured yet (Success measure 7).
 - **Token counts rest on fields the host does not document.** Claude Code
-  documents where the transcripts are, not what a line holds. When `cw` cannot
+  documents where the transcripts are, not what a line holds. When `gatecub` cannot
   read a count it says `unknown`.
 - **Flow tokens are a split, not a comparison.** One agent working alone would
   also search and commit, and each role re-reads files in its own context. The
@@ -209,7 +213,7 @@ the first change.
 2. **Any language.** A test finds no name of a language, build tool, test
    framework or package manager in the role texts and the coordinator's
    instructions.
-3. **Clarity.** `cw change check` passes on every change folder of this
+3. **Clarity.** `gatecub change check` passes on every change folder of this
    repository, the two that exist today included.
 4. **Size.** This change adds at most 3,500 lines of production Go; the core
    keeps its limit of 6,000. No role text exceeds 8,000 characters, the
@@ -218,7 +222,7 @@ the first change.
 5. **Role starts.** When `tasks.md` has one group and no role is started a
    second time for a stage, the full path starts at most eight roles other
    than `lookup`, and the small path at most four.
-6. **Token report.** On recorded sessions kept as test data, `cw tokens`
+6. **Token report.** On recorded sessions kept as test data, `gatecub tokens`
    prints the known counts on the three systems.
 7. **Measured benefit and extra tokens.** Before the README claims a benefit:
    at least 12 tasks in three languages, three trials each, run once with the
@@ -229,7 +233,7 @@ the first change.
 
 | Finding | Answer |
 | --- | --- |
-| H4 | No starter plan and no language pack; commands come from `cw.toml` (`role-definitions`: Role text names no language). |
+| H4 | No starter plan and no language pack; commands come from `gatecub.toml` (`role-definitions`: Role text names no language). |
 | H6 | Tests before code, and a check of the paths each role changed (`task-flow`: Tests before code, Limits are checked; `role-definitions`: Write limits). |
 | H7 | A limit on role starts, a token report, and a comparison with one agent (`task-flow`: Role starts; `token-report`). |
 | H2, H9 | No task state outside the folder and git (`task-flow`: No state outside the record). |
@@ -238,6 +242,8 @@ the first change.
 | M24 | A limit on the size of the role texts (`role-definitions`: Text budget). |
 
 ## Sources
+
+These are historical results for `cw`, before the Gatecub rename; no new Gatecub host run is claimed.
 
 - The owner's statements of 14 November 2026: the tool must bring clarity and
   better code quality in any language and codebase; implement a task from
@@ -289,8 +295,8 @@ recommendation, because the owner asked for the work to go on alone; none of
 them is the owner's decision yet.
 
 1. **Where do the roles run?** Recommendation: inside the developer's coding
-   agent, Claude Code or Codex. `cw` calls no model and needs no key. The
-   other option, a `cw` with its own model calls, is a different and much
+   agent, Claude Code or Codex. `gatecub` calls no model and needs no key. The
+   other option, a `gatecub` with its own model calls, is a different and much
    larger product. Settled by: the owner.
 2. **Where do the roles live?** Recommendation: in this repository and this
    plugin, built after the core. This changes the answer to Open Question 1 of
@@ -324,7 +330,7 @@ them is the owner's decision yet.
     languages, three trials, two arms. Settled by: the owner, who pays for the
     runs.
 12. **What does Codex allow?** Starting a role on a given model and effort,
-    telling `cw` when a role has ended, and recording tokens per role.
+    telling `gatecub` when a role has ended, and recording tokens per role.
     Recommendation: support Codex in the first version only where its
     documentation and a test confirm each of the three; report `unknown`
     elsewhere. Settled by: Codex documentation and a test.
@@ -337,14 +343,14 @@ undone as the last column says.
 
 | Question | Answer taken | How it is undone |
 | --- | --- | --- |
-| 1 | The roles run inside Claude Code or Codex; `cw` calls no model. | Nothing to undo: no model call was built. |
+| 1 | The roles run inside Claude Code or Codex; `gatecub` calls no model. | Nothing to undo: no model call was built. |
 | 2 | The roles live in this repository and this plugin. | Move `agents/`, `skills/task/`, `internal/roles/`, `internal/change/` and `internal/tokens/` to another repository; the gate does not import them. |
 | 3 | The seven roles of the table. | Change the list in `internal/roles/roles.go` and the texts under `internal/roles/text/`; the tests name what else must follow. |
-| 4 | The models of the table. | Per repository in `cw-roles.toml`; for everyone in `internal/roles/roles.go`. |
+| 4 | The models of the table. | Per repository in `gatecub-roles.toml`; for everyone in `internal/roles/roles.go`. |
 | 5 | The OpenSpec folder is the one format written. | Replace `internal/change`; nothing else reads the folder. |
 | 6 | The specification, the design, and every push or pull request wait for the developer. | Edit the coordinator's instructions, `internal/roles/text/coordinator.md`. |
 | 7 | The developer role may add a test and may not change or remove one. | Change `developerLimit` in `internal/roles/roles.go`. |
-| 8 | The counts come from the host's own records, read when the host says that a role or the session has ended. | Remove the two hook entries; `cw tokens` then reports nothing. |
+| 8 | The counts come from the host's own records, read when the host says that a role or the session has ended. | Remove the two hook entries; `gatecub tokens` then reports nothing. |
 | 9 | Two numbers: the flow tokens per task, and the comparison with one agent per release. | Change the split in `internal/tokens/report.go`. |
 | 10 | The limits as proposed. | Change the numbers in the size tests. |
 | 11 | 12 tasks, three languages, three trials, two arms. | Nothing was run; the owner sets the size before paying for runs. |
@@ -363,13 +369,13 @@ Nothing below was run on Codex.
   nothing.
 - **Tokens.** No input of these two hooks holds a count. A `PostModelRequest`
   hook holds `token_usage` "when available", and the page does not say what
-  it contains. So `cw` reads the two transcripts the notices name.
+  it contains. So `gatecub` reads the two transcripts the notices name.
 - **The transcript.** The page says that its format "isn't a stable interface
-  for hooks and may change over time", and does not describe a line. `cw`
+  for hooks and may change over time", and does not describe a line. `gatecub`
   reads the lines the previous reader of this project knew. Where they hold
   no count for a request, the report says `unknown`.
 - **A hook must not steer.** On `Stop` and `SubagentStop`, exit 2 and JSON on
-  standard output continue the turn. `cw tokens record` prints nothing on
+  standard output continue the turn. `gatecub tokens record` prints nothing on
   standard output, and the hook command never exits 2.
 - **Starting a role on a model.** Not on that page. It stays unconfirmed, and
   task 7.3 is the owner's.

@@ -62,7 +62,7 @@ func HostFiles() (map[string]string, error) {
 			return nil, err
 		}
 		model := role.Models["claude"]
-		head := fmt.Sprintf("---\nname: %s\ndescription: %s Started only by the coordinator of the cw task workflow, with a brief.\nmodel: %s\neffort: %s\ntools: %s\n---\n",
+		head := fmt.Sprintf("---\nname: %s\ndescription: %s Started only by the coordinator of the gatecub task workflow, with a brief.\nmodel: %s\neffort: %s\ntools: %s\n---\n",
 			role.ID, role.Job, model.Model, model.Effort, strings.Join(role.Tools, ", "))
 		files["agents/"+role.ID+".md"] = head + generated(role.ID) + text
 	}
@@ -70,7 +70,7 @@ func HostFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	const head = "---\nname: task\ndescription: Takes one task from a request to a gated commit with the seven roles of cw - specification, design, tests, code, review and commit. Use it when the user asks to build, change or fix something with the role workflow, or to continue a change folder under openspec/changes/.\n---\n"
+	const head = "---\nname: task\ndescription: Takes one task from a request to a gated commit with the seven roles of gatecub - specification, design, tests, code, review and commit. Use it when the user asks to build, change or fix something with the role workflow, or to continue a change folder under openspec/changes/.\n---\n"
 	files[Skill+"/SKILL.md"] = head + generated(Coordinator) + text
 	return files, nil
 }

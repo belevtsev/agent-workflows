@@ -10,7 +10,7 @@ func TestABranchIsDeletedOnTheRemote(t *testing.T) {
 	t.Parallel()
 	repo, origin := withOrigin(t)
 	repo.Git("push", "-q", "origin", "main:refs/heads/old-branch")
-	mustCW(t, repo, 0, "init")
+	mustGatecub(t, repo, 0, "init")
 	repo.Write("src/app.txt", "broken\n")
 
 	push := repo.TryGit("push", "origin", "--delete", "old-branch")
@@ -42,7 +42,7 @@ func TestABranchIsMovedBack(t *testing.T) {
 	repo.Write("docs/b.md", "b\n")
 	commitAround(repo, "b")
 	repo.Git("push", "-q", "origin", "main")
-	mustCW(t, repo, 0, "init")
+	mustGatecub(t, repo, 0, "init")
 	if len(repo.RecordFiles("unit")) > 0 || len(repo.RecordFiles("lint")) > 0 {
 		t.Fatal("the fixture already holds records")
 	}

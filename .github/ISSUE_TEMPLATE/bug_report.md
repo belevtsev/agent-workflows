@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in cw or its plugin does not work as documented
+about: Something in gatecub or its plugin does not work as documented
 labels: bug
 ---
 
@@ -15,7 +15,7 @@ labels: bug
 
 ## Environment
 
-- `cw` version (`cw version`):
+- `gatecub` version (`gatecub version`):
 - OS and architecture:
 - Agent (Codex or Claude Code) and version:
 

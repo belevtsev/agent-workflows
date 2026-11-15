@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/store"
+	"github.com/belevtsev/gatecub/v3/internal/store"
 )
 
 // Group counts the decisions of one hook in one mode with one outcome.
@@ -26,7 +26,7 @@ type Group struct {
 	Checks map[string]map[string]int `json:"checks,omitempty"`
 }
 
-// Report is what `cw stats` prints.
+// Report is what `gatecub stats` prints.
 type Report struct {
 	Since time.Time `json:"since"`
 	Until time.Time `json:"until"`

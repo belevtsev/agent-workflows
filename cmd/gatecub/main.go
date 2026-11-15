@@ -1,4 +1,4 @@
-// cw gates commits and pushes on recorded passing runs of the checks a
+// gatecub gates commits and pushes on recorded passing runs of the checks a
 // repository declares.
 package main
 
@@ -10,7 +10,7 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cli"
+	"github.com/belevtsev/gatecub/v3/internal/cli"
 )
 
 // Release builds set these with -ldflags -X.
@@ -31,7 +31,7 @@ func main() {
 	if err := cli.Execute(ctx, os.Args[1:], cli.Config{Version: v, Revision: r, BuiltAt: b, In: os.Stdin, Out: os.Stdout, Err: os.Stderr}); err != nil {
 		// A command that already reported its own result carries no message.
 		if err.Error() != "" {
-			fmt.Fprintln(os.Stderr, "cw:", err)
+			fmt.Fprintln(os.Stderr, "gatecub:", err)
 		}
 		os.Exit(cli.ExitCode(err))
 	}

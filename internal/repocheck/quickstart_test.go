@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/agent-workflows/v3/internal/cwtest"
+	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
 )
 
 // shellBlocks returns the commands of the `sh` code blocks of a document,
@@ -40,12 +40,12 @@ func shellBlocks(t *testing.T, document string) []string {
 // hand.
 func TestQuickStart(t *testing.T) {
 	commands := shellBlocks(t, "docs/quickstart.md")
-	want := []string{"git init demo", "cd demo", "cw init", "cw add version -- git --version", "cw run", "git add -A", `git commit -m "first gated commit"`}
+	want := []string{"git init demo", "cd demo", "gatecub init", "gatecub add version -- git --version", "gatecub run", "git add -A", `git commit -m "first gated commit"`}
 	if strings.Join(commands, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("docs/quickstart.md holds these commands:\n%s\nwant:\n%s", strings.Join(commands, "\n"), strings.Join(want, "\n"))
 	}
-	// cwtest.Binary is the directory that holds the cw under test.
-	binary, home, dir := filepath.Join(cwtest.Binary(t), "cw"), t.TempDir(), t.TempDir()
+	// gatecubtest.Binary is the directory that holds the gatecub under test.
+	binary, home, dir := filepath.Join(gatecubtest.Binary(t), "gatecub"), t.TempDir(), t.TempDir()
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
@@ -66,8 +66,8 @@ func TestQuickStart(t *testing.T) {
 			fields = append(strings.Fields(before), strings.TrimSuffix(message, `"`))
 		}
 		// Go finds a program on the PATH of this process, not of the
-		// command, so the cw under test is named by its file.
-		if fields[0] == "cw" {
+		// command, so the gatecub under test is named by its file.
+		if fields[0] == "gatecub" {
 			fields[0] = binary
 		}
 		run := exec.CommandContext(t.Context(), fields[0], fields[1:]...)
@@ -85,6 +85,6 @@ func TestQuickStart(t *testing.T) {
 	status := exec.CommandContext(t.Context(), binary, "status")
 	status.Dir, status.Env = dir, env
 	if output, err := status.CombinedOutput(); err != nil || !strings.Contains(string(output), "verified") {
-		t.Fatalf("`cw status` after the commit: %v\n%s", err, output)
+		t.Fatalf("`gatecub status` after the commit: %v\n%s", err, output)
 	}
 }
