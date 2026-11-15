@@ -34,6 +34,9 @@ func runChange(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
+	if args[0] == "check" {
+		return s.checkChanges(p.pos)
+	}
 	tasks := p.pos
 	if len(tasks) == 0 {
 		if tasks, err = change.List(s.repo.Root); err != nil {
@@ -51,35 +54,7 @@ func runChange(ctx context.Context, cfg Config, args []string) error {
 		}
 		folders = append(folders, folder)
 	}
-	if args[0] == "check" {
-		return s.checkChanges(folders)
-	}
 	return s.changeStatus(ctx, folders, len(p.pos) == 1, *asJSON)
-}
-
-// checkChanges prints every rule the folders break.
-func (s *session) checkChanges(folders []*change.Folder) error {
-	out, broken := s.cfg.Out, 0
-	for _, folder := range folders {
-		problems, err := change.Check(folder)
-		if err != nil {
-			return failf("%v", err)
-		}
-		for _, problem := range problems {
-			fmt.Fprintln(out, problem)
-		}
-		if broken += len(problems); len(problems) == 0 {
-			fmt.Fprintf(out, "%s: the files obey their rules\n", folder.Task)
-		}
-	}
-	switch {
-	case len(folders) == 0:
-		fmt.Fprintf(out, "%s/ holds no change folder\n", change.Dir)
-	case broken > 0:
-		fmt.Fprintf(out, "broken rules: %d; each line above names the file, the line and the rule\n", broken)
-		return exit(ExitNotVerified)
-	}
-	return nil
 }
 
 // changeGit gathers what the stage of each folder needs from git. The code
@@ -148,6 +123,9 @@ func (s *session) changeStatus(ctx context.Context, folders []*change.Folder, na
 			return failf("%v", err)
 		}
 		reports = append(reports, report)
+		if err := applyAdviserRequirements(s.repo.Root, report, git.Committed); err != nil {
+			return failf("%v", err)
+		}
 	}
 	out := s.cfg.Out
 	switch {

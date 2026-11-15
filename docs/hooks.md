@@ -353,8 +353,9 @@ not in the hands of the plugin.
   where the install instruction is.
 - `kitsu guard` asks the user in Claude Code, and denies with the reason in Codex,
   before a shell command with a git call that skips git's hooks or a `kitsu` call
-  that turns the gate off, and before an edit of `kitsu.toml`, of a git hook, of
-  the git configuration or of a record of `kitsu`. It reads the command as shell
+  that turns the gate off, and before an edit of `kitsu.toml`, `kitsu-roles.toml`,
+  `kitsu-advisers.toml`, a git hook, the git configuration, or a Kitsu record.
+  It reads the command as shell
   words, not as text. It is a reminder for an agent; the git hooks decide. See
   [Operations](operations.md#kitsu-guard), which also lists what it misses.
 - A failure to record tokens never fails the host's hook.

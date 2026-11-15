@@ -68,6 +68,10 @@ func TestEditReason(t *testing.T) {
 	common := filepath.Join(root, ".git")
 	cases := []editCase{
 		{"kitsu.toml", root, "kitsu.toml"},
+		{"kitsu-advisers.toml", root, "adviser commands"}, // creation, before the file exists
+		{"kitsu-roles.toml", root, "role models"},
+		{"sub/kitsu-advisers.toml", root, ""},
+		{"kitsu-advisers.toml.backup", root, ""},
 		{"../kitsu.toml", filepath.Join(root, "sub"), "kitsu.toml"},
 		{"sub/../kitsu.toml", root, "kitsu.toml"},
 		{filepath.Join(common, "hooks", "pre-commit"), root, "git hook"},

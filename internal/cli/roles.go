@@ -30,20 +30,28 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	}
 	flags := newFlags("roles")
 	asJSON := flags.Bool("json", false, "")
+	host, task := flags.String("host", "", ""), flags.String("task", "", "")
 	p, err := parseArgs(flags, args)
 	if err != nil {
 		return err
 	}
-	if len(p.pos) > 0 || p.dash {
-		return usagef("usage: kitsu roles [--json], kitsu roles check <role> --from <tree> [--task <task>] [--finalize], or kitsu roles text <role>")
+	if len(p.pos) > 0 || p.dash || (*host != "" && *host != "claude" && *host != "codex") || (*task != "" && !taskName.MatchString(*task)) {
+		return usagef("usage: kitsu roles [--host claude|codex] [--task <task>] [--json], kitsu roles check <role> --from <tree> [--task <task>] [--finalize], or kitsu roles text <role>")
 	}
 	config, err := rolesConfig(ctx)
 	if err != nil {
 		return err
 	}
 	all := roles.All(config)
+	access, err := roleAdviserAccess(ctx, *task)
+	if err != nil {
+		return failf("%v", err)
+	}
+	if *host != "" {
+		return printHostRoles(cfg, all, *host, access, *asJSON)
+	}
 	if *asJSON {
-		return printRolesJSON(cfg, all)
+		return printRolesJSON(cfg, all, access)
 	}
 	var table strings.Builder
 	w := tabwriter.NewWriter(&table, 0, 0, 2, ' ', 0)
@@ -62,6 +70,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	fmt.Fprintln(cfg.Out, rows[0])
 	for i, r := range all {
 		fmt.Fprintf(cfg.Out, "%s\n    %s\n    May write: %s.\n", rows[i+1], r.Job, r.Writes)
+		fmt.Fprintf(cfg.Out, "    Advisers: %s.\n", adviserListText(access, r.ID))
 	}
 	fmt.Fprintf(cfg.Out, "\nTEXT is the size of the role's text in characters; the coordinator's instructions have %d.\n", roles.TextSize(roles.Coordinator))
 	fmt.Fprintf(cfg.Out, "A repository sets other models in %s, and names its test paths there.\n", roles.FileName)
@@ -86,12 +95,13 @@ func rolesConfig(ctx context.Context) (*roles.Config, error) {
 	return config, nil
 }
 
-func printRolesJSON(cfg Config, all []roles.Role) error {
+func printRolesJSON(cfg Config, all []roles.Role, access map[string][]string) error {
 	type entry struct {
 		ID        string                 `json:"id"`
 		Job       string                 `json:"job"`
 		Writes    string                 `json:"writes"`
 		TextChars int                    `json:"text_chars"`
+		Advisers  []string               `json:"advisers"`
 		Models    map[string]roles.Model `json:"models"`
 	}
 	out := struct {
@@ -99,7 +109,7 @@ func printRolesJSON(cfg Config, all []roles.Role) error {
 		CoordinatorChars int     `json:"coordinator_text_chars"`
 	}{CoordinatorChars: roles.TextSize(roles.Coordinator)}
 	for _, r := range all {
-		out.Roles = append(out.Roles, entry{ID: r.ID, Job: r.Job, Writes: r.Writes, TextChars: roles.TextSize(r.ID), Models: r.Models})
+		out.Roles = append(out.Roles, entry{ID: r.ID, Job: r.Job, Writes: r.Writes, TextChars: roles.TextSize(r.ID), Models: r.Models, Advisers: allowedAdviserList(access, r.ID)})
 	}
 	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

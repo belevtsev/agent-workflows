@@ -8,6 +8,16 @@ author's account of it. When the brief holds the author's opinion of the work,
 disregard it and say that it was there. The first line of the brief is a label
 for the token report; ignore it.
 
+## Ask an adviser
+
+Form your own assessment before consulting an adviser. Return a request to
+the coordinator with an adviser from the brief's allowed list, your question,
+any choices to compare, and the sources to include. The coordinator runs it
+and returns its record before you continue. Do not run an adviser or write
+its record yourself. Do not receive the author's consultations as review
+guidance. Check the answer's reasoning; it cannot replace your review or the
+developer's approval, and you still change nothing.
+
 ## Read
 
 The files the brief names, and whatever they rest on:

@@ -13,12 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Configurable [advisers](docs/advisers.md) answer role questions and compare choices, with task bindings,
+  required checkpoints, recorded dispositions, and a role/model/reasoning/access table.
 - A Pomeranian mascot and matching README banner introduce Kitsu's [visual identity](docs/brand/README.md).
 - Three diagrams: the three parts of `kitsu`, how the gate decides about a commit or a push, and the seven roles on the two paths
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
 
 ### Changed
 
+- [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
+  specification, architecture, tests, implementation, review, and Git work on both supported hosts.
 - Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
 - The README introduces Kitsu and installs from source until its beta is published. The prepared archive recipes
   and installation checks live in [release installation](docs/release-install.md).

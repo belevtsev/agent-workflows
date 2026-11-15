@@ -9,6 +9,11 @@ It reports no price and no amount of money.
 The report is a split of one task's tokens. It is not a comparison with one agent working alone,
 and it shows no saving and no benefit; see [What is not measured](#what-is-not-measured).
 
+Configured [advisers](advisers.md) run through external CLIs whose usage is not parsed. The report
+lists their consultations separately as unmeasured, with unknown actual model and token usage.
+The requested model in a binding is not a verified actual model. Adviser calls add nothing to the
+measured host totals, and a report with adviser calls does not establish the task's total cost.
+
 ## What is counted
 
 For every start of a role, and for the developer's own session, `kitsu` reads four kinds of tokens:
@@ -481,8 +486,10 @@ host's record and its size before it was read, and, when the counts are unknown,
 record gave no label it holds the `role` the notice named. It holds no text of a brief, a prompt
 or an answer: a search of the stored files for a sentence of a brief finds nothing.
 
-Nothing leaves the machine. No package of `kitsu` imports a network package, and a test of this
-repository fails when one does. On Linux and macOS the program links none at all. On Windows the
+Token collection sends nothing from the machine. No package of `kitsu` imports a network package,
+and a test of this repository fails when one does. Optional adviser commands may contact their
+providers using the context the coordinator explicitly supplied; their shared task records do
+contain prompts and answers. On Linux and macOS the program links no network package. On Windows the
 package `net` is linked through `golang.org/x/sys/windows`, which `kitsu` calls for job objects and
 file locks. The stored files are not committed: they are inside the git directory, not the
 working tree.

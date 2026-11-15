@@ -50,6 +50,17 @@ func TestTheDeveloperRoleAddsATest(t *testing.T) {
 	}
 }
 
+func TestDeveloperCannotChangeAdviserPolicy(t *testing.T) {
+	t.Parallel()
+	repo := demo(t)
+	before := tree(t, repo)
+	repo.Write("kitsu-advisers.toml", "version = 1\n[access]\ndefault = []\n")
+	result := repo.Kitsu("roles", "check", "developer", "--from", before)
+	if result.Code != 5 || !namesWord(result.Output(), "kitsu-advisers.toml") {
+		t.Fatalf("changing adviser policy must exceed developer scope:\n%s", result.Output())
+	}
+}
+
 // Requirement "Write limits", scenario "The quality engineer changes
 // production code".
 func TestTheQualityEngineerChangesProductionCode(t *testing.T) {
