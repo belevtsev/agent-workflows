@@ -4,8 +4,9 @@
 them. Each role has one job, a default model and effort on Claude Code and on Codex, and a limit
 on the paths it may change. `kitsu` holds these definitions, prints them, and checks afterwards
 which paths a role changed. The roles run inside the developer's coding agent, and what a role
-does there is an instruction to a model. Optional [advisers](advisers.md) use native decision APIs
+does there is an instruction to a model. Optional, experimental [advisers](advisers.md) use native decision APIs
 or configured CLI commands through the coordinator; they change neither the role's job nor its write limit.
+None are enabled by default. Roles continue without advisers when none are allowed.
 
 The roles have run with a model in two scratch repositories only, on one small task each. See
 [What is not known](#what-is-not-known).

@@ -1,5 +1,13 @@
 # Advisers
 
+Advisers are **optional and experimental**, with **none enabled by default**. The normal Kitsu
+workflow runs without adviser setup, credentials, or required adviser checkpoints. Their effect
+on code quality, cost, and completion time has not been evaluated.
+
+Opting in requires an adviser definition and repository role access, followed by a task binding
+and an explicit consultation. API keys, personal definitions, and listing built-in presets grant
+no access on their own. Required checkpoints are a separate opt-in.
+
 An adviser answers a bounded question. Built-in TypeSafe Jev and SubQ Snap integrations return
 structured choices, scores, and yes/no probabilities through their APIs. Existing CLI advisers
 provide text advice or compare named choices using their own authentication. Both paths record
@@ -26,7 +34,9 @@ kitsu advisers providers --json
 | `subq` | `subq-snap-1.2` | `https://api.subq.ai/v1` | `SUBQ_API_KEY` |
 | `systemone` | required | required | required |
 
-These defaults follow the [TypeSafe model documentation](https://docs.typesafe.ai/models)
+These are configuration presets, not enabled advisers. The JSON catalog declares
+`experimental: true` and `enabled_by_default: false`; listing it enables nothing.
+The preset defaults follow the [TypeSafe model documentation](https://docs.typesafe.ai/models)
 and [SubQ model documentation](https://docs.subq.ai/using-the-api/models/). The common text API is
 documented by [TypeSafe](https://docs.typesafe.ai/api/system-one) and
 [SubQ](https://docs.subq.ai/endpoints/decisions-api/). The `systemone` provider supports that same
@@ -161,7 +171,12 @@ default = []
 coordinator = ["claude", "codex"]
 architect = ["claude"]
 reviewer = ["codex"]
+```
 
+To additionally require adviser answers at particular stages, explicitly append checkpoints.
+Kitsu creates no required adviser checkpoints by default:
+
+```toml
 [[checkpoints]]
 id = "design-alternatives"
 stage = "design"
@@ -291,6 +306,9 @@ They satisfy no checkpoint. Kitsu attempts no retry and selects no replacement a
 the cause and make an explicit new call when appropriate.
 
 ## Check required advice
+
+These checks apply to explicitly configured checkpoints in a task binding. Without them,
+the workflow has no adviser requirement; optional consultations still keep their history.
 
 ```sh
 kitsu advisers status --task add-order-csv-export --json

@@ -3,6 +3,11 @@
 Extend the existing adviser lifecycle with native text decisions. A consultation still has one
 request, one attempt, one saved answer, and explicitly appended dispositions.
 
+Advisers remain optional and experimental. Existing empty configuration and denied-by-default
+role access provide the opt-in boundary; no additional enable flag is needed. Credentials and
+provider discovery create no definitions, access, or checkpoints. Coordinator instructions skip
+advisers when neither role access nor a task binding exists, and preserve existing bound policy.
+
 ## Building blocks
 
 | Block | Responsibility | Depends on | New | Reuse considered |
@@ -38,7 +43,8 @@ generic disposition records and the binding pointer keep their unchanged format.
 derive the normalized native result and usage again from the saved provider response, refusing
 inconsistencies. Key rotation changes no identity; nonsecret setting drift requires refresh.
 
-The provider catalog and all discovery/check commands stay offline. Native usage is summed
+The provider catalog declares `experimental: true` and `enabled_by_default: false` in JSON, and
+explains explicit opt-in in text. It and all discovery/check commands stay offline. Native usage is summed
 separately; CLI or missing usage remains unknown. Overflow marks aggregates partial rather than
 wrapping. No monetary prices or inferred token counts are introduced.
 
@@ -47,6 +53,7 @@ wrapping. No monetary prices or inferred token counts are introduced.
 | Rule | Checked by |
 | --- | --- |
 | Presets are offline and grant no implicit access | test |
+| Credentials or definitions alone enable no adviser or required checkpoint | test |
 | CLI configurations, fingerprints, and records remain compatible | test |
 | Only supported, bounded, single-question requests can execute | test |
 | Typed answers preserve zero values and validate against the request | test |

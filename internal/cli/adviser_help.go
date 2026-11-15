@@ -20,6 +20,7 @@ func alignedHelp(rows ...[2]string) string {
 
 func adviserHelp() string {
 	return alignedHelp(
+		[2]string{"Opt-in", "configure a definition and repository role access; no advisers or checkpoints are enabled by default"},
 		[2]string{"providers", "list built-in native presets and credentials; offline, works outside a repository"},
 		[2]string{"list", "print configured advisers; --task selects the saved binding"},
 		[2]string{"bind", "snapshot configuration with --task and --workflow"},

@@ -4,6 +4,8 @@ All provider fixtures are local HTTPS servers. No paid provider or live model is
 
 | Scenario | Test file | Text |
 | --- | --- | --- |
+| Credentials and discovery enable no advisers | internal/advisers/config_test.go | TestLoadHasNoAdvisersOrAccessByDefault |
+| Definitions require explicit role access | internal/cli/adviser_native_test.go | TestNativeConsultationRequiresExplicitAccess |
 | Explicit native definitions coexist with legacy CLIs | internal/advisers/native_validation_test.go | TestNativeConfigurationAndLegacyCompatibility |
 | Typed results preserve uncertainty | internal/advisers/native_test.go | TestNativeProvidersAndRequestMapping |
 | Invalid preparation makes no attempt | internal/cli/adviser_native_test.go | TestNativePreflightRejectsBeforeRecording |
@@ -19,6 +21,11 @@ All provider fixtures are local HTTPS servers. No paid provider or live model is
 `TestNativeCancellationAndTimeout` additionally checks stopped calls while reading a response.
 Instruction semantics have not been evaluated with live models.
 
+## Changed tests
+
+- `TestLoadHasNoAdvisersOrAccessByDefault` also exercises present provider credentials and verifies no configuration is created.
+- `TestAdviserProviderCatalogIsOfflineAndNeedsNoRepository` checks the experimental and disabled-by-default catalog metadata.
+
 ## Observed validation
 
 Validated on 15 November 2026 in an isolated native-adviser worktree based on `main`, on Linux:
@@ -32,6 +39,10 @@ Validated on 15 November 2026 in an isolated native-adviser worktree based on `m
   `GOOS=darwin` and `GOOS=windows`.
 - `GOWORK=off go run ./cmd/kitsu change check` — all change folders obeyed their rules.
 - `git diff --check` — passed. Provider catalog and consult-help commands were inspected locally.
+
+The optional/experimental update also passed the full race suite, cross-target lint and vulnerability
+checks. Its regressions verify credential-only defaults, denied consultation without access, a
+successful explicit opt-in, and provider catalog status. Updated host texts fit their existing budgets.
 
 The full race suite includes local native HTTPS tests, legacy CLI adviser scenarios, generated
 host-file comparisons, prompt budgets, documentation links, the adviser code budget, and network

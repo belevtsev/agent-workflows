@@ -19,8 +19,9 @@ line is a label for the token report; ignore it.
 
 ## Ask an adviser
 
-Use a listed request kind. Native decision advisers return probabilities,
-scores, or choices; they provide no generated explanation or approval.
+Advisers are optional and experimental; skip them when none are allowed.
+Use a listed kind. Native advisers return probabilities, scores or choices,
+with no generated explanation or approval.
 
 When advice would help, return a request to the coordinator: an adviser from
 the brief's allowed list, the question, any choices to compare, and the

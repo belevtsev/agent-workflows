@@ -17,9 +17,10 @@ repositories, and it started roles in two of them; see
 [what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
 one agent working alone is not measured; see [the evaluation](evaluation.md).
 
-Optional [advisers](advisers.md) answer a role's question through a native decision API or configured
+Optional, experimental [advisers](advisers.md) answer a role's question through a native decision API or configured
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
-checkpoints can hold a stage until advice on its current content has been addressed.
+checkpoints can hold a stage until advice on its current content has been addressed. No adviser
+or adviser checkpoint is enabled by default; the normal workflow needs neither.
 
 ## The flow
 
@@ -126,9 +127,13 @@ small and full histories are an error.
 
 ### Advice and decisions
 
-1. The coordinator runs `kitsu advisers list --json` and, when configured, binds the task with
+Advisers are experimental. Do not add definitions, role access, or checkpoints unless the
+developer opts in. With no role access and no existing task binding, skip adviser setup and calls.
+
+1. The coordinator runs `kitsu advisers list --json` and, when role access is configured, binds the task with
    `kitsu advisers bind --task <task> --workflow full|small`. A later configuration change takes
    effect only after explicit `--refresh`; binding revisions and consultations stay in the history.
+   Existing task bindings retain their policy until refreshed.
 2. The brief gives each role its allowed advisers from
    `kitsu advisers list --task <task> --role <role>`. A role returns the selected adviser, its
    question, any choices or score levels, and explicit context file paths, using a listed supported

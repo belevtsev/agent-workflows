@@ -634,9 +634,11 @@ words joined by hyphens; 5 `kitsu change check` found a broken rule.
 
 ## kitsu advisers and consult
 
-Configure optional native decision providers or adviser CLIs, bind their policy to a task, ask a question,
+Configure optional, experimental native decision providers or adviser CLIs, bind their policy to a task, ask a question,
 and record how the answer was addressed. [Advisers](advisers.md) describes the two configuration
 locations, role access, version 1 and 2 request JSON, shared records, and required checkpoints.
+No advisers or required adviser checkpoints are enabled by default. Opt in with a definition
+and repository role access; credentials or provider discovery alone enable nothing.
 
 ```text
 kitsu advisers providers [--json]
@@ -650,7 +652,8 @@ kitsu advisers check --task <task> [--checkpoint <id>] [--json]
 
 Only `kitsu consult` executes an adviser, once, with the configured CLI's authentication or a native
 provider API key from its configured environment variable. `providers` is an offline catalog and
-needs no repository. Native configuration uses version 2; existing CLI configuration remains valid.
+needs no repository. Its JSON includes `experimental: true` and `enabled_by_default: false`.
+Native configuration uses version 2; existing CLI configuration remains valid.
 The coordinator runs it on a role's behalf after checking that role's writes. Its request names
 explicit repository files; a failed attempt remains recorded. No API keys are saved, and there
 is no automatic retry or model fallback. Resolving an answer requires a reason; an optional

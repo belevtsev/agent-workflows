@@ -23,7 +23,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | **Agent coordination** | A coordinator in your coding-agent host delegates work to seven specialist roles, with a defined order, review handoffs, model choices, and limits on what each role may change. |
 | **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu change` checks that record and reports the task's stage. |
 | **Token reporting** | `kitsu tokens` reports recorded token usage by task and role, including the coordination overhead. |
-| **Advisers** | Built-in Jev and SubQ Snap models make structured judgments; configured CLIs provide text advice. The coordinator records the answer and decision. |
+| **Advisers (experimental)** | Optional Jev, SubQ Snap, and CLI consultations, with recorded answers and decisions. None are enabled by default. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
 Your agent host runs the coordinator and delegates to the roles. Kitsu supplies the workflow instructions,
@@ -56,9 +56,10 @@ the specification and the design, and the commit goes through the gate.
 
 `kitsu roles --host codex` or `kitsu roles --host claude` shows a compact table of role, model,
 reasoning effort, and allowed advisers. Add `--task <task>` to show a saved task's adviser access.
-Optional advisers use native APIs or authenticated CLIs configured in `kitsu-advisers.toml` or your personal
+Optional, experimental advisers use native APIs or authenticated CLIs configured in `kitsu-advisers.toml` or your personal
 configuration. Roles return questions to the coordinator, which runs `kitsu consult` and records
-how the answer was addressed. Adviser answers replace no review or approval.
+how the answer was addressed. None are enabled by default; repository role access is an explicit opt-in.
+Adviser answers replace no review or approval.
 
 - [Roles](docs/roles.md): what each role does and may change.
 - [Advisers](docs/advisers.md): definitions, role access, advice and decisions, and required checkpoints.
@@ -71,10 +72,9 @@ how the answer was addressed. Adviser answers replace no review or approval.
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
 2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect the role/model/reasoning/advisers table.
    [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu roles set`; your host selects the coordinator.
-3. Optionally [configure an adviser](#ask-an-adviser) with a built-in decision model or a CLI you already use.
-4. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
+3. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
    The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
-5. Review the proposed specification and design when the task changes behavior, then follow implementation,
+4. Review the proposed specification and design when the task changes behavior, then follow implementation,
    tests, and review through the shared task record.
 
 You can inspect the role instructions and a recorded task from the terminal:
@@ -101,6 +101,10 @@ kitsu roles reset developer --host codex
 Omit `--model` or `--reasoning` to keep that value. Reset restores both defaults for that role and host.
 
 ### Ask an adviser
+
+Advisers are an optional experiment. The normal workflow needs no adviser configuration, API
+key, or adviser checkpoint. No adviser is enabled by default, and their effect on code quality,
+cost, and completion time has not been evaluated. The examples below explicitly opt in.
 
 For built-in **TypeSafe Jev** and **SubQ Snap**, run `kitsu advisers providers` to see presets,
 set the provider's API-key environment variable, and explicitly configure role access.
@@ -299,7 +303,8 @@ The workflow, adviser records, token reports, and gate share the same CLI:
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
-- Advisers are tested with local fake executables and HTTPS fixtures; CLI examples were checked against provider help.
+- Advisers are optional and experimental, disabled by default. They are tested with local fake executables and
+  HTTPS fixtures; CLI examples were checked against provider help.
   No live adviser quality evaluation was run. Native usage is provider-reported; CLI usage is unmeasured.
   The model-routing recommendations are not benchmarked.
   The [production plan](openspec/production-plan.md) records earlier implementation and validation work.

@@ -2,6 +2,29 @@
 
 ## ADDED Requirements
 
+### Requirement: Optional experimental advisers
+
+Advisers SHALL be optional and experimental, with none enabled by default. The normal workflow
+SHALL require no adviser configuration, credentials, consultations, or adviser checkpoints.
+Credential presence and provider discovery SHALL create no definitions or policy. Definitions
+alone SHALL grant no role access or required checkpoints. Repository role access SHALL require
+explicit opt-in; existing task bindings SHALL retain their policy until explicitly refreshed.
+CLI help, the provider catalog, documentation, and host instructions SHALL explain this status.
+
+Source: owner's instruction to keep advisers optional and experimental, with none enabled by default.
+
+#### Scenario: Credentials and discovery enable no advisers
+
+- **GIVEN** provider API keys are present but no adviser configuration exists
+- **WHEN** the provider catalog and local configuration are read
+- **THEN** no advisers, role access, checkpoints, or configuration files are created.
+
+#### Scenario: Definitions require explicit role access
+
+- **GIVEN** a native adviser definition and working credentials but no role access or checkpoints
+- **WHEN** a task is bound and its coordinator tries to consult the adviser
+- **THEN** no call or attempt is made, no adviser checkpoint is required, and adding access with an explicit refresh enables consultation.
+
 ### Requirement: Built-in provider configuration
 
 Kitsu SHALL provide TypeSafe Jev and SubQ Snap presets plus a configurable System One-compatible
@@ -101,7 +124,7 @@ Source: owner's built-in adviser request and accepted explicit-activation prefer
 #### Scenario: Provider discovery needs no repository or credentials
 
 - **WHEN** the user runs advisers providers outside a repository
-- **THEN** text or JSON lists presets, model defaults, credential variable names, and supported kinds without network calls.
+- **THEN** text or JSON lists presets, model defaults, credential variable names, and supported kinds without network calls, and marks the feature experimental and disabled by default.
 
 #### Scenario: Host instructions explain native judgments
 

@@ -27,9 +27,14 @@ func runAdviserProviders(cfg Config, args []string) error {
 	}
 	if *asJSON {
 		return printJSON(cfg, struct {
-			Providers []advisers.Provider `json:"providers"`
-		}{advisers.Providers()})
+			Experimental     bool                `json:"experimental"`
+			EnabledByDefault bool                `json:"enabled_by_default"`
+			Providers        []advisers.Provider `json:"providers"`
+		}{Experimental: true, EnabledByDefault: false, Providers: advisers.Providers()})
 	}
+	fmt.Fprintln(cfg.Out, "Experimental adviser presets; none are enabled by default.")
+	fmt.Fprintln(cfg.Out, "Configure an adviser and repository role access to opt in.")
+	fmt.Fprintln(cfg.Out)
 	w := tabwriter.NewWriter(cfg.Out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "PROVIDER\tDEFAULT MODEL\tBASE URL\tAPI KEY ENV\tKINDS")
 	for _, p := range advisers.Providers() {

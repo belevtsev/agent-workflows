@@ -34,8 +34,14 @@ func writeAdviserTestFile(t *testing.T, path, data string) {
 }
 
 func TestLoadHasNoAdvisersOrAccessByDefault(t *testing.T) {
-	isolatePersonalConfig(t)
-	got, err := Load(t.TempDir())
+	personal := isolatePersonalConfig(t)
+	t.Setenv("TYPESAFE_API_KEY", "present-but-not-enabled")
+	t.Setenv("SUBQ_API_KEY", "present-but-not-enabled")
+	if len(Providers()) == 0 {
+		t.Fatal("expected an available provider catalog")
+	}
+	root := t.TempDir()
+	got, err := Load(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,6 +50,11 @@ func TestLoadHasNoAdvisersOrAccessByDefault(t *testing.T) {
 	}
 	if Allowed(got.Access, "coordinator", "anything") {
 		t.Fatal("an absent policy granted access")
+	}
+	for _, path := range []string{personal, filepath.Join(root, FileName)} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("default discovery created configuration at %s: %v", path, err)
+		}
 	}
 }
 

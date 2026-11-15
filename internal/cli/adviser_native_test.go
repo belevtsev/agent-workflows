@@ -31,6 +31,18 @@ func TestAdviserProviderCatalogIsOfflineAndNeedsNoRepository(t *testing.T) {
 				t.Errorf("missing %s: %s", want, output.String())
 			}
 		}
+		if args[len(args)-1] == "--json" {
+			var catalog struct {
+				Experimental     bool  `json:"experimental"`
+				EnabledByDefault *bool `json:"enabled_by_default"`
+			}
+			if err := json.Unmarshal(output.Bytes(), &catalog); err != nil {
+				t.Fatal(err)
+			}
+			if !catalog.Experimental || catalog.EnabledByDefault == nil || *catalog.EnabledByDefault {
+				t.Fatalf("catalog must advertise experimental, disabled defaults: %s", output.String())
+			}
+		}
 	}
 }
 
@@ -160,6 +172,35 @@ func TestNativeConsultationWorkflowAndOfflineHistory(t *testing.T) {
 	f.run("", false, "advisers", "check", "--task", "native-task")
 	if f.calls.Load() != 1 {
 		t.Fatal("offline commands contacted provider")
+	}
+}
+
+func TestNativeConsultationRequiresExplicitAccess(t *testing.T) {
+	f := newNativeCLIFixture(t)
+	// A definition and working credentials do not opt a repository into advice.
+	f.write(advisers.FileName, strings.Split(f.configuration, "[access]")[0])
+	f.run("", true, "advisers", "bind", "--task", "native-task", "--workflow", "small", "--refresh")
+	out := f.run("", true, "advisers", "list", "--task", "native-task", "--role", "coordinator", "--json")
+	var binding advisers.Binding
+	if err := json.Unmarshal([]byte(out), &binding); err != nil {
+		t.Fatal(err)
+	}
+	if len(binding.Advisers) != 0 || len(binding.Access) != 0 || len(binding.Checkpoints) != 0 {
+		t.Fatalf("definition implicitly granted access or checkpoints: %s", out)
+	}
+	f.run("", true, "advisers", "check", "--task", "native-task")
+	f.run(`{"version":2,"kind":"boolean","question":"Ready?","context":["source.txt"]}`, false,
+		"consult", "--task", "native-task", "--role", "coordinator", "--stage", "code", "--adviser", "snap", "--request", "-")
+	items, err := advisers.ReadConsultations(f.root, "native-task")
+	if err != nil || len(items) != 0 || f.calls.Load() != 0 {
+		t.Fatalf("disabled adviser created activity: %+v, %v; calls %d", items, err, f.calls.Load())
+	}
+	// Explicit access still enables the same provider and checkpoint policy.
+	f.write(advisers.FileName, f.configuration)
+	f.run("", true, "advisers", "bind", "--task", "native-task", "--workflow", "small", "--refresh")
+	f.consult(true)
+	if f.calls.Load() != 1 {
+		t.Fatal("explicit opt-in did not reach the adviser")
 	}
 }
 

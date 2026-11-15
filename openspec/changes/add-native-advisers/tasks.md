@@ -16,3 +16,4 @@ Boxes record implementation and validation, not independent review or human appr
 
 - [x] 3.1 Update setup docs, command help, and host instructions. Size: S. Depends on: 2.2. Check: documentation links, generated host files, and prompt budgets. Source: Discoverable adviser capabilities.
 - [x] 3.2 Run repository checks and record observed outcomes. Size: M. Depends on: 3.1. Check: build, vet, race tests, lint, vulnerability, and change-record validation. Source: Built-in provider configuration; Typed single-question consultation; Bounded provider execution; Portable compatible history; Separate adviser usage; Discoverable adviser capabilities.
+- [x] 3.3 Mark advisers optional and experimental, keep all disabled by default, and verify explicit opt-in. Size: S. Depends on: 3.1. Check: credential-only defaults, denied consultation without access, provider metadata, docs, and generated instructions. Source: Optional experimental advisers.
