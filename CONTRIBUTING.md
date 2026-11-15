@@ -27,7 +27,21 @@ First-party automation is written in Go. If you need a helper, add it to the `cw
 
 ## Diagrams
 
-archify is the only diagram tool; do not add diagram sources in any other format, and no Mermaid. It is not part of this repository: get it from the branch `workflow-v3` (`third_party/archify`). Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it. Edit the spec, never the SVG, and commit both together.
+archify is the only diagram tool; do not add diagram sources in any other format, and no Mermaid. It is not part of this repository: get it from the branch `workflow-v3` (`third_party/archify`). Each diagram is a JSON spec under `docs/diagrams/` with a static SVG export next to it, and a document shows the SVG as an image. To change a diagram:
+
+1. Edit the JSON spec, never the SVG. Keep the picture narrow and its texts short: GitHub shows a README about 830 pixels wide and scales a wider picture down. The diagrams here are at most 804 pixels wide. A box of the default width holds 17 characters of small text; archify shrinks a longer one, and the `width` of a node gives it room. Give every type of box that the spec uses a label under `meta.legend.entries`: the legend then says what a colour means in this picture, and the test below can compare it.
+2. Render the viewer page with archify `finalize`, passing the spec's own `diagram_type` and `meta.quality_profile`. The diagrams here use `showcase`, the stricter profile, which also refuses arrows that cross. `finalize` validates the spec and checks the page in a headless browser, so it needs Chrome, and Node 18 or newer; the diagrams here were rendered with Bun 1.3 in place of Node. git ignores `.archify/`.
+
+   ```sh
+   git worktree add --detach ../archify origin/workflow-v3
+   node ../archify/third_party/archify/bin/archify.mjs finalize workflow docs/diagrams/gate.json .archify/gate.html --quality showcase
+   ```
+
+   `docs/diagrams/overview.json` is an `architecture`, the other two are a `workflow`.
+
+3. Open the page in a browser, choose **Export → SVG · Auto** and save the download over the committed SVG, here `docs/diagrams/gate.svg`, ending it with a newline. That export carries both colour themes and its own font. Look at it in the light theme and in the dark one.
+4. Show it in a document with `<img src="..." alt="..." width="100%">`, so that it fills the width of the page, and say in `alt` what the picture says.
+5. Commit the spec and the SVG together. A test in `internal/repocheck` fails when a spec has no SVG, when no document shows the SVG as an image, and when the SVG is not the export of its spec as far as an SVG records that: the title, the lanes, the groups, the phases, the boundaries, the legend, and every box and arrow with its texts, its type or variant, and its icon or role. It cannot see a box that only moved, a size, the route of an arrow or the variant of a group: after such a change, your look at the picture is the check.
 
 ## Pull requests
 

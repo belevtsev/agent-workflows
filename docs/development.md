@@ -34,8 +34,12 @@ and `cw` itself never does.
   `openspec/`, by someone other than the author of the code it checks. Set
   `CW_TEST_BINARY` to test a binary you built yourself.
 - `internal/repocheck` checks the repository's own documents: relative links
-  and anchors resolve, the changelog keeps short lines, and no Markdown file
-  holds a Mermaid diagram.
+  and anchors resolve, the changelog keeps short lines, no Markdown file
+  holds a Mermaid diagram, and every diagram under `docs/diagrams/` has its
+  spec, an SVG that is the export of that spec as far as an SVG records it,
+  and a document that shows the SVG as an image. The test reads what the SVG
+  records about itself; it renders nothing, so
+  [a moved box or a rerouted arrow](../CONTRIBUTING.md#diagrams) is not found.
 
 A test is named after the behaviour it checks.
 
