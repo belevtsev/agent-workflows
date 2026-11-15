@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Three diagrams: the three parts of `cw`, how the gate decides about a commit or a push, and the seven roles on the two paths
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
 
+### Changed
+
+- The README opens with the picture of the three parts, a quick start that shows the text of a denial, and how the gate
+  decides. Its install instruction is unchanged.
+
 ### Fixed
 
 - [The task workflow](docs/workflow.md) said that no part of the workflow had run with a model. A model ran the skill `task` in
