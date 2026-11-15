@@ -10,17 +10,30 @@ import (
 	"github.com/pelletier/go-toml/v2/unstable"
 )
 
-// Edit sets the nonempty fields of model, or resets both overrides. It keeps
+// Edit sets the nonempty fields of model, or resets all role overrides. It keeps
 // unrelated expressions and comments; an edited inline table is re-encoded.
 func Edit(data []byte, host, role string, model Model, reset bool) ([]byte, error) {
-	if !slices.Contains(Hosts, host) || !Known(role) {
+	return EditSelection(data, host, role, model, nil, reset, false)
+}
+
+// EditSelection changes explicit settings. A nil refs keeps skills; an empty
+// nonnil list clears them. Reset removes all overrides in the selected scope.
+func EditSelection(data []byte, host, role string, model Model, refs []string, reset, personal bool) ([]byte, error) {
+	if !slices.Contains(Hosts, host) || (!Known(role) && role != Coordinator) {
 		return nil, fmt.Errorf("unknown host %q or role %q", host, role)
 	}
-	if _, err := Parse(data); err != nil {
+	if (personal || role == Coordinator) && model != (Model{}) {
+		return nil, fmt.Errorf("only skills may be set in this scope")
+	}
+	if _, err := parseConfig(data, personal); err != nil {
 		return nil, err
 	}
-	for _, field := range []struct{ key, value string }{{"model", model.Model}, {"effort", model.Effort}} {
-		if !reset && field.value == "" {
+	for _, field := range []struct {
+		key   string
+		value any
+		set   bool
+	}{{"model", model.Model, model.Model != ""}, {"effort", model.Effort, model.Effort != ""}, {"skills", refs, refs != nil}} {
+		if !reset && !field.set || (personal || role == Coordinator) && field.key != "skills" {
 			continue
 		}
 		var err error
@@ -29,13 +42,13 @@ func Edit(data []byte, host, role string, model Model, reset bool) ([]byte, erro
 			return nil, err
 		}
 	}
-	if _, err := Parse(data); err != nil {
+	if _, err := parseConfig(data, personal); err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-func editField(data []byte, path []string, value string, reset bool) ([]byte, error) {
+func editField(data []byte, path []string, value any, reset bool) ([]byte, error) {
 	var raw map[string]any
 	if err := toml.Unmarshal(data, &raw); err != nil {
 		return nil, err

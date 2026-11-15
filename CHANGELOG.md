@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Select [existing skills](docs/skills.md) per role from local repository, personal, and plugin sources,
+  with layered bindings, source hashes, and portable selection receipts.
 - Optional, experimental [Jev and SubQ Snap advisers](docs/advisers.md#built-in-decision-advisers) provide typed decisions and separate token usage.
   None are enabled by default; definitions, repository role access, and required checkpoints need explicit opt-in.
 - Shell and PowerShell [installers](docs/release-install.md) select your platform, verify checksums, and set up user `PATH`.

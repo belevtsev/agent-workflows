@@ -18,7 +18,7 @@ import (
 // FileName is the roles file at the root of a repository. It is optional.
 const FileName = "kitsu-roles.toml"
 
-// Config is what kitsu-roles.toml sets.
+// Config holds repository policy and effective role selections.
 type Config struct {
 	// Tests are the patterns of the test paths; nil when the file names
 	// none.
@@ -26,6 +26,9 @@ type Config struct {
 	// Models holds, by host and role, the fields the file sets. An empty
 	// field keeps the default.
 	Models map[string]map[string]Model
+	// Skills holds selected references by host and role. An absent role inherits
+	// personal choices; an explicit empty list suppresses them.
+	Skills map[string]map[string][]string
 }
 
 // Problem is one broken rule of the roles file.
@@ -51,23 +54,36 @@ func (e *Error) Error() string {
 	return strings.Join(lines, "\n")
 }
 
-// Load reads the roles file at the root of a working tree. A missing file
-// is an empty configuration.
+// Load reads repository policy and merges its skill selections over personal
+// choices. An empty root reads only personal choices; missing files are empty.
 func Load(root string) (*Config, error) {
+	personal, err := LoadPersonal()
+	if err != nil || root == "" {
+		return personal, err
+	}
 	data, err := os.ReadFile(filepath.Join(root, FileName))
 	if errors.Is(err, fs.ErrNotExist) {
-		return &Config{}, nil
+		return personal, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return Parse(data)
+	repository, err := Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	mergeSkills(personal, repository)
+	return repository, nil
 }
 
 // Parse reads a roles file. It refuses an unknown key, host or role and a
 // pattern kitsu.toml would refuse. It does not judge a model name: hosts
 // change them. Every error it returns is an *Error.
 func Parse(data []byte) (*Config, error) {
+	return parseConfig(data, false)
+}
+
+func parseConfig(data []byte, personal bool) (*Config, error) {
 	var raw map[string]any
 	if err := toml.Unmarshal(data, &raw); err != nil {
 		var decodeErr *toml.DecodeError
@@ -77,19 +93,23 @@ func Parse(data []byte) (*Config, error) {
 		}
 		return nil, &Error{Problems: []Problem{{Text: "not valid TOML: " + err.Error()}}}
 	}
-	p := parser{data: data, cfg: &Config{Models: map[string]map[string]Model{}}}
+	p := parser{data: data, personal: personal, cfg: &Config{Models: map[string]map[string]Model{}, Skills: map[string]map[string][]string{}}}
 	if v, ok := raw["version"].(int64); !ok || v != 1 {
 		p.fail(p.line(`version\s*=`), "`version` must be 1")
 	}
 	for _, key := range sortedKeys(raw) {
 		switch {
 		case key == "version":
-		case key == "paths":
+		case key == "paths" && !personal:
 			p.paths(raw[key])
 		case slices.Contains(Hosts, key):
 			p.host(key, raw[key])
 		default:
-			p.fail(p.line(`\[?\s*`+regexp.QuoteMeta(key)+`\b`), "unknown key `%s`; the file holds `version`, `[paths]`, and `[claude.<role>]` and `[codex.<role>]`", key)
+			allowed := "`version`, `[paths]`, and host role tables"
+			if personal {
+				allowed = "only `version` and host role `skills` tables"
+			}
+			p.fail(p.line(`\[?\s*`+regexp.QuoteMeta(key)+`\b`), "unknown key `%s`; the file holds %s", key, allowed)
 		}
 	}
 	if len(p.problems) > 0 {
@@ -102,6 +122,7 @@ type parser struct {
 	data     []byte
 	cfg      *Config
 	problems []Problem
+	personal bool
 }
 
 func (p *parser) fail(line int, format string, args ...any) {
@@ -162,23 +183,30 @@ func (p *parser) host(host string, value any) {
 		return
 	}
 	p.cfg.Models[host] = map[string]Model{}
+	p.cfg.Skills[host] = map[string][]string{}
 	for _, role := range sortedKeys(table) {
 		header := p.line(`\[\s*` + host + `\s*\.\s*"?` + regexp.QuoteMeta(role) + `"?\s*\]`)
-		if !Known(role) {
+		if !Known(role) && role != Coordinator {
 			p.fail(header, "unknown role `%s`; the roles are %s", role, strings.Join(IDs(), ", "))
 			continue
 		}
 		fields, ok := table[role].(map[string]any)
 		if !ok {
-			p.fail(header, "`%s.%s` must be a table with `model` and `effort`", host, role)
+			p.fail(header, "`%s.%s` must be a table with role settings", host, role)
 			continue
 		}
 		var m Model
 		for _, key := range sortedKeys(fields) {
+			if key == "skills" {
+				p.skillList(host, role, fields[key], header)
+				continue
+			}
 			text, isText := fields[key].(string)
 			switch {
+			case p.personal || role == Coordinator:
+				p.fail(header, "[%s.%s] permits only `skills` in this scope", host, role)
 			case key != "model" && key != "effort":
-				p.fail(header, "unknown key `%s` under [%s.%s]; it holds `model` and `effort`", key, host, role)
+				p.fail(header, "unknown key `%s` under [%s.%s]; it holds `model`, `effort`, and `skills`", key, host, role)
 			case !isText || text == "":
 				p.fail(header, "`%s` under [%s.%s] must be a text that is not empty", key, host, role)
 			case key == "model":

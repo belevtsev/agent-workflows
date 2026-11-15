@@ -24,6 +24,7 @@ paths are shortened to `<repository>`.
 - [kitsu guard](#kitsu-guard)
 - [kitsu uninstall](#kitsu-uninstall)
 - [kitsu roles](#kitsu-roles)
+- [kitsu skills](#kitsu-skills)
 - [kitsu change](#kitsu-change)
 - [kitsu advisers and consult](#kitsu-advisers-and-consult)
 - [kitsu tokens](#kitsu-tokens)
@@ -587,8 +588,8 @@ them.
 
 ```text
 kitsu roles [--host claude|codex] [--task <task>] [--json]
-kitsu roles set <role> --host claude|codex [--model <model>] [--reasoning <effort>] [--json]
-kitsu roles reset <role> --host claude|codex [--json]
+kitsu roles set <role> --host claude|codex [--model <model>] [--reasoning <effort>] [--skills <ids>] [--root <directory>] [--global] [--json]
+kitsu roles reset <role> --host claude|codex [--global] [--json]
 kitsu roles check <role> --from <tree> [--task <task>] [--finalize]
 kitsu roles text <role>
 ```
@@ -598,13 +599,18 @@ has shipped. It replaces the ordinary write limit with the exact current
 specification paths for that task's capabilities in the `--from` tree; see
 [finalization](workflow.md#the-archive).
 
-`--host` selects a compact role/model/reasoning/advisers table, including the coordinator's host
-session. `--task` reads adviser access from a saved task binding without personal configuration.
+`--host` selects a compact role/model/reasoning/advisers table with a skills line for each role,
+including the coordinator's host session. `--task` reads adviser access from a saved task binding
+without personal adviser configuration.
 
-`set` saves either or both overrides in the repository's `kitsu-roles.toml`; an omitted option
-keeps its current setting. `reset` restores both built-in defaults for the selected role and host.
-Both print the resulting selection and require a working tree. The coordinator is configured in
-your host session. See [changing a model](roles.md#changing-a-model) for examples and file handling.
+`set` saves supplied overrides in the repository's `kitsu-roles.toml`; an omitted option keeps
+its current setting. `--skills` is a comma-separated list; `--skills ''` saves an empty list,
+suppressing inherited personal skills. `--root` is repeatable and needs `--skills`.
+`reset` removes the selected role/host's repository model, effort, and skill overrides.
+Both print the resulting selection. `--global` instead edits only personal skill bindings at
+`os.UserConfigDir()/kitsu/roles.toml` and rejects model or reasoning options. Repository skills
+replace personal lists. The coordinator accepts skills while its model stays in the host session.
+See [roles](roles.md#changing-a-model) and [skills](skills.md) for examples and file handling.
 
 Exit statuses: 0 done, or the role stayed within its limit; 1 the role
 configuration cannot be read, `--from` names no tree, or the working tree
@@ -612,13 +618,34 @@ cannot be recorded, or finalization finds no capability specification for
 the task in the starting tree; 2 a wrong command line or an unknown role;
 5 the role changed a path outside its limit.
 
+## kitsu skills
+
+Discover existing local skill sources or resolve a role's selected originals for a worker brief.
+[Skills](skills.md) describes the supported sources, qualified ids, layered bindings, and limits.
+
+```text
+kitsu skills list --host codex|claude [--root <directory>] [--json]
+kitsu skills resolve <role> --host codex|claude [--root <directory>] [--task <task>] [--workflow full|small] [--json]
+```
+
+`--root` is repeatable. These commands do not install, copy, or execute skills and start no host
+or model process. Resolution refuses missing, ambiguous, invalid, host-disabled, and manual-only
+selections and returns original source paths and SHA256 hashes. Without `--task` it is read-only.
+With a task it appends a portable immutable receipt, defaulting to `full`, which requires an
+existing task folder. Use `--workflow small` explicitly for a small task. Shared receipts omit
+machine absolute paths and skill bodies and record `load_status: unverified`.
+
+Exit statuses: 0 printed or resolved; 1 discovery, selection, configuration, or record failure;
+2 invalid arguments, host, role, task, or workflow. A successful selection proves no loading.
+
 ## kitsu change
 
 Prints the stage of a task's change folder under `openspec/changes/`, or checks
 the rules its files must obey. [The task workflow](workflow.md) describes the
 folder and the rules.
 
-`change check` also discovers small-task adviser histories under `openspec/changes/.advice/`.
+`change check` also discovers small-task adviser histories under `openspec/changes/.advice/`
+and skill receipts under `openspec/changes/.skills/`, as well as full tasks' `skills/`.
 Naming a small task checks its saved history without requiring a full change folder. It validates
 structure and references, without requiring future checkpoint answers. `change status` remains
 full-path only; use `advisers status` for small tasks.
@@ -810,6 +837,9 @@ Shared adviser bindings, prompts, answers, and dispositions live in the worktree
 `openspec/changes/<task>/advisers/` on the full path or
 `openspec/changes/.advice/<task>/` on the small path. Commit that history with the task; see
 [adviser records](advisers.md#shared-history-and-usage).
+Skill selection receipts similarly live under `openspec/changes/<task>/skills/` or
+`openspec/changes/.skills/<task>/`. These records hold ids and hashes, not installed skill bodies
+or machine absolute paths; see [skills](skills.md#record-a-worker-selection).
 
 ```text
 kitsu/mode                                      enforce or observe

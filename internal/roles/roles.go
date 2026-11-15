@@ -38,8 +38,8 @@ var (
 	// deciding is for the design and for its review: a review never runs at
 	// a lower effort than the work it reviews.
 	deciding = map[string]Model{"claude": {"opus", "max"}, "codex": {"gpt-6.1-sol", "max"}}
-	writing  = []string{"Read", "Grep", "Glob", "Edit", "Write"}
-	building = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash"}
+	writing  = []string{"Read", "Grep", "Glob", "Edit", "Write", "Skill"}
+	building = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash", "Skill"}
 )
 
 // defaults lists the roles in the order a task meets them.
@@ -48,7 +48,7 @@ var defaults = []Role{
 		ID: "lookup", Job: "Finds files, facts and existing specifications, and reports where they are.",
 		Writes: "nothing",
 		Models: map[string]Model{"claude": {"haiku", "medium"}, "codex": {"gpt-6-luna", "medium"}},
-		Tools:  []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch"},
+		Tools:  []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch", "Skill"},
 	},
 	{
 		ID: "spec-writer", Job: "Writes the requirements and their scenarios from the request and its sources.",
@@ -73,13 +73,13 @@ var defaults = []Role{
 	{
 		ID: "reviewer", Job: "Reviews a specification, a design or code that another role wrote, and reports findings.",
 		Writes: "nothing",
-		Models: deciding, Tools: []string{"Read", "Grep", "Glob", "Bash"},
+		Models: deciding, Tools: []string{"Read", "Grep", "Glob", "Bash", "Skill"},
 	},
 	{
 		ID: "git", Job: "Runs the checks and makes the commit through the gate.",
 		Writes: "nothing",
 		Models: map[string]Model{"claude": {"haiku", "low"}, "codex": {"gpt-6-luna", "low"}},
-		Tools:  []string{"Read", "Grep", "Glob", "Bash"},
+		Tools:  []string{"Read", "Grep", "Glob", "Bash", "Skill"},
 	},
 }
 

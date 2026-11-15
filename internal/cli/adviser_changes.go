@@ -11,6 +11,7 @@ import (
 
 	"github.com/belevtsev/kitsu/v3/internal/advisers"
 	"github.com/belevtsev/kitsu/v3/internal/change"
+	"github.com/belevtsev/kitsu/v3/internal/skills"
 )
 
 const smallAdviserChanges = change.Dir + "/.advice"
@@ -57,15 +58,17 @@ func smallAdviserTasks(root string) ([]string, error) {
 func (s *session) checkChanges(tasks []string) error {
 	out := s.cfg.Out
 	if len(tasks) == 0 {
+		var err error
+		tasks, err = skills.Tasks(s.repo.Root)
+		if err != nil {
+			fmt.Fprintf(out, "%v\nbroken rules: 1; skill records could not be checked\n", err)
+			return exit(ExitNotVerified)
+		}
 		small, err := smallAdviserTasks(s.repo.Root)
 		if err != nil {
 			fmt.Fprintln(out, err)
 			fmt.Fprintln(out, "broken rules: 1; adviser records could not be checked")
 			return exit(ExitNotVerified)
-		}
-		tasks, err = change.List(s.repo.Root)
-		if err != nil {
-			return failf("%v", err)
 		}
 		tasks = append(tasks, small...)
 		slices.Sort(tasks)
@@ -90,10 +93,24 @@ func (s *session) checkChanges(tasks []string) error {
 }
 
 func (s *session) checkChange(task string) (int, error) {
+	skillProblems, err := skills.ValidateSelections(s.repo.Root, task)
+	if err != nil {
+		return 0, failf("%v", err)
+	}
+	for _, problem := range skillProblems {
+		fmt.Fprintf(s.cfg.Out, "%s skill records: %s\n", task, problem)
+	}
+	if len(skillProblems) > 0 {
+		return len(skillProblems), nil
+	}
 	folder, err := change.Read(s.repo.Root, task)
 	if errors.Is(err, change.ErrNoFolder) {
 		// A malformed small history still reaches ValidateRecords below.
-		if _, adviceErr := advisers.Location(s.repo.Root, task); errors.Is(adviceErr, advisers.ErrNoBinding) {
+		hasSkills, skillErr := skills.HasSelections(s.repo.Root, task)
+		if skillErr != nil {
+			return 0, failf("%v", skillErr)
+		}
+		if _, adviceErr := advisers.Location(s.repo.Root, task); errors.Is(adviceErr, advisers.ErrNoBinding) && !hasSkills {
 			return 0, failf("%s/%s/ does not exist", change.Dir, task)
 		}
 	} else if err != nil {

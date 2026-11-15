@@ -59,13 +59,28 @@ func roleTableHelp() string {
 	return alignedHelp(
 		[2]string{"--host claude|codex", "select a host; required with set and reset"},
 		[2]string{"--json", "print the roles as one JSON object"},
-		[2]string{"set <role>", "save model and/or reasoning overrides in the repository's kitsu-roles.toml"},
+		[2]string{"set <role>", "save model, reasoning, and/or skill overrides in kitsu-roles.toml"},
 		[2]string{"--model <model>", "with set: change only this role's model for the selected host"},
 		[2]string{"--reasoning <effort>", "with set: change reasoning effort; omit either option to keep its current setting"},
-		[2]string{"reset <role>", "remove both overrides for this role and host; restore built-in defaults"},
+		[2]string{"--skills <references>", "with set: comma-separated skill IDs or unique names; an empty value clears selections"},
+		[2]string{"--root <directory>", "with set and --skills: add an explicit skill root; repeat for more roots"},
+		[2]string{"--global", "save or reset personal skills in the user config directory's kitsu/roles.toml; skills only"},
+		[2]string{"reset <role>", "remove role overrides in the selected scope; repository skills then inherit personal choices"},
 		[2]string{"--task <task>", "with the table: read bound adviser access; with check: set the task write scope"},
 		[2]string{"check <role> --from <tree>", "exit 5 when writes since this tree exceed the role's scope"},
 		[2]string{"--finalize", "with spec-writer and --task: allow current specs for capabilities in --from"},
 		[2]string{"text <role>", "print one role's instructions, or coordinator"},
+	)
+}
+
+func skillsHelp() string {
+	return alignedHelp(
+		[2]string{"list", "print existing host skill metadata and discovery warnings"},
+		[2]string{"resolve <role>", "resolve configured skill references for this role, including coordinator"},
+		[2]string{"--host claude|codex", "select the native host inventory; required"},
+		[2]string{"--root <directory>", "add an explicit skill collection or directory with SKILL.md; repeat for more"},
+		[2]string{"--task <task>", "with resolve: record the selection for this task; without it, read only"},
+		[2]string{"--workflow full|small", "with resolve and --task: select the receipt location; defaults to full"},
+		[2]string{"--json", "print metadata or resolved sources as one JSON object; loading remains unverified"},
 	)
 }

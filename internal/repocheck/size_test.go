@@ -14,6 +14,7 @@ const (
 	maxCoreLines    = 6250
 	maxRolesLines   = 4000
 	maxAdviserLines = 4000 // CLI advisers plus native typed providers and usage records.
+	maxSkillLines   = 2000
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.
@@ -30,7 +31,7 @@ func rolesCode(file string) bool {
 }
 
 func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
-	core, roles, advisers := 0, 0, 0
+	core, roles, advisers, skills := 0, 0, 0, 0
 	for _, file := range repoFiles(t) {
 		if !strings.HasSuffix(file, ".go") || strings.HasSuffix(file, "_test.go") || strings.Contains(file, "/testdata/") {
 			continue
@@ -40,7 +41,9 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		lines := bytes.Count(data, []byte("\n"))
-		if strings.HasPrefix(file, "internal/advisers/") || strings.HasPrefix(file, "internal/cli/adviser") || strings.HasPrefix(file, "internal/cli/consult") {
+		if strings.HasPrefix(file, "internal/skills/") || strings.HasPrefix(file, "internal/cli/skills") || strings.HasPrefix(file, "internal/roles/skills") {
+			skills += lines
+		} else if strings.HasPrefix(file, "internal/advisers/") || strings.HasPrefix(file, "internal/cli/adviser") || strings.HasPrefix(file, "internal/cli/consult") {
 			advisers += lines
 		} else if rolesCode(file) {
 			roles += lines
@@ -50,6 +53,7 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	}
 	t.Logf("gate: %d of %d lines; roles: %d of %d lines", core, maxCoreLines, roles, maxRolesLines)
 	t.Logf("advisers: %d of %d lines", advisers, maxAdviserLines)
+	t.Logf("skills: %d of %d lines", skills, maxSkillLines)
 	if core > maxCoreLines {
 		t.Errorf("the gate holds %d lines of Go, want at most %d", core, maxCoreLines)
 	}
@@ -58,5 +62,8 @@ func TestGoCodeStaysWithinItsSizeLimits(t *testing.T) {
 	}
 	if advisers > maxAdviserLines {
 		t.Errorf("advisers hold %d lines of Go, want at most %d", advisers, maxAdviserLines)
+	}
+	if skills > maxSkillLines {
+		t.Errorf("skill integration holds %d lines of Go, want at most %d", skills, maxSkillLines)
 	}
 }

@@ -1,11 +1,30 @@
 package kitsutest_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
+
+func TestRepositoryIsolatesInheritedAppData(t *testing.T) {
+	t.Setenv("APPDATA", filepath.Join(t.TempDir(), "real-user-config"))
+	repo := kitsutest.NewRepo(t)
+	want, count := filepath.Join(repo.Home, "AppData", "Roaming"), 0
+	for _, entry := range repo.Env() {
+		name, value, _ := strings.Cut(entry, "=")
+		if strings.EqualFold(name, "APPDATA") {
+			count++
+			if value != want {
+				t.Fatalf("APPDATA = %q, want isolated %q", value, want)
+			}
+		}
+	}
+	if count != 1 {
+		t.Fatalf("fixture contains %d APPDATA entries, want one", count)
+	}
+}
 
 func TestDemoRepositoryRunsItsChecks(t *testing.T) {
 	t.Parallel()
