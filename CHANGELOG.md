@@ -37,6 +37,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [Path completion](docs/cli.md#enable-shell-completion) follows `~/` and nested home directories correctly,
+  with native directory separators and regression coverage on all supported platforms.
 - The [installer](docs/release-install.md#path-and-updates) makes Kitsu available in new Bash login shells
   on Linux even when no user login profile exists yet.
 - Marked files are compared with Git's type, executable-mode and symbolic-link semantics, so a hidden mode change

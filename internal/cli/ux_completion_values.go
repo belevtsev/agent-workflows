@@ -327,14 +327,13 @@ func uxCompletionChecks(ctx context.Context) []uxSuggestion {
 }
 
 func uxCompletionPaths(prefix string, directoriesOnly bool) []uxSuggestion {
-	lookup := prefix
-	if strings.HasPrefix(prefix, "~/") {
+	displayDir, base := filepath.Split(prefix)
+	dir := displayDir
+	if strings.HasPrefix(displayDir, "~/") {
 		if home, err := os.UserHomeDir(); err == nil {
-			lookup = filepath.Join(home, prefix[2:])
+			dir = filepath.Join(home, displayDir[2:])
 		}
 	}
-	dir, _ := filepath.Split(lookup)
-	displayDir, base := filepath.Split(prefix)
 	if dir == "" {
 		dir = "."
 	}

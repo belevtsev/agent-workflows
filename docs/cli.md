@@ -203,6 +203,8 @@ Load the generated script through your shell's normal completion setup. For a Ba
 `source <(kitsu completion bash)` enables it without saving a file. Completion uses the same
 command metadata as help, plus read-only local names where supported. It executes no skill,
 provider, check, host, or model and needs no network connection.
+Directory suggestions end with the native path separator. Home-relative prefixes such as `~/`
+and `~/projects/` complete names inside those directories.
 
 For automation, use explicit leaf commands and `--json` where help lists it. JSON output is
 machine-readable and opens no UI. [Operations](operations.md) documents configuration, exit

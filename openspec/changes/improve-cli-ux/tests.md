@@ -28,6 +28,7 @@ or model call is needed.
 | Clear and reset have different inheritance effects | scenarios/cliux/cliux_test.go | TestCLIUXDefaultsAndSkillInheritance |
 | Each supported shell receives a completion script | internal/cli/ux_completion_scripts_test.go | TestUXCompletionGeneratedShellSyntaxAndSmoke |
 | Callback values remain local and correctly separated | internal/cli/ux_completion_test.go | TestUXCompletionCallbackProtocolAndWordbreaks |
+| Path suggestions retain native separators and support nested completion | internal/cli/ux_completion_test.go | TestUXCompletionTasksAdvisersChecksAndPaths |
 | Workflow instructions retain existing authority | not automated | Source and guard checks can verify command references and permission boundaries; a live host evaluation of instruction compliance has not been run. |
 | Diagram exports match the preferred source labels | internal/repocheck/diagrams_test.go | TestEveryDiagramHasItsSpecItsExportAndAPlace |
 
@@ -106,6 +107,8 @@ returns suggestions on its first autoloaded query, alongside source-after-compin
 encoding, preserving Unicode and literal metacharacters without changing the encoding.
 `TestUXCompletionFishPreservesQuotedMetacharacters` similarly verifies literal filename values
 and no command substitution under Fish 4.2.1.
+`TestUXCompletionHomePaths` checks home and nested directory traversal, file/directory filtering,
+basename prefixes, and continuation from a suggested native directory separator in an isolated home.
 
 Actual PTY checks exercised F1 help with
 wrapped full text and preserved drafts, complete stderr previews, Back retaining choices,
@@ -117,6 +120,24 @@ confirmed colorless output and cancellation without files after correcting the l
 `TestUXEditorCancellationWritesNothing` distinguishes explicit Cancel (0) from Ctrl+C/context
 interruption (130), with no writes. `TestCLIUXGateRemovalPreservesHostPreference` verifies the
 private host preference survives gate removal. The final full checks above include these fixes.
+
+### PR CI follow-up
+
+The initial [PR #230 CI run](https://github.com/belevtsev/kitsu/actions/runs/43751549574)
+passed nine checks and failed the native Windows test job. Its only failing test,
+`TestUXCompletionTasksAdvisersChecksAndPaths`, expected `/` after directory suggestions;
+the implementation correctly returned the native Windows separator `\`.
+No review comments or threads were present when the follow-up began.
+The corrected test now expects exact native paths and checks completing child files and
+directories. Independent review also reproduced incorrect directory listings for `~/` and
+`~/nested/`: expanding the whole prefix with `filepath.Join` removed its final separator before
+the directory was selected. Splitting the display directory before expanding it fixes this;
+five new home-path subtests failed before the production change.
+After both fixes, every command in the local validation block above passed again, including
+the full race suite with all four completion shells on `PATH`, and lint and vulnerability checks
+for Linux, Darwin, and Windows. Darwin and Windows CLI test cross-compilation also passed;
+native Windows execution is checked separately by PR CI. Independent re-review found no
+additional issue in the home-path fix.
 
 ## Limits
 

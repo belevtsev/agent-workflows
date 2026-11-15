@@ -147,17 +147,28 @@ func TestUXCompletionTasksAdvisersChecksAndPaths(t *testing.T) {
 	repo.Write("kitsu-advisers.toml", "version = 1\n[advisers.local]\nmodel = 'custom-adviser-model'\ncommand = ['never-execute-adviser', '{model}']\n[access]\ncoordinator = ['local']\n[[checkpoints]]\nid = 'before-review'\nstage = 'review'\nrole = 'coordinator'\nadvisers = ['local']\n")
 	repo.Write("my request $(touch completion-executed).json", "{}")
 	repo.Write("my directory/file", "content")
-	queries := []struct{ words, want, absent []string }{
-		{words: []string{"task", "show", ""}, want: []string{"active-task", "small-task", "skill-task"}, absent: []string{"archive", "archived-task"}},
-		{words: []string{"adviser", "ask", "l"}, want: []string{"local"}},
-		{words: []string{"adviser", "ask", "local", "--checkpoint", "b"}, want: []string{"before-review"}},
-		{words: []string{"check", "run", "u"}, want: []string{"unit"}},
-		{words: []string{"adviser", "ask", "local", "--request", "my "}, want: []string{"my directory/", "my request $(touch completion-executed).json"}},
-		{words: []string{"skill", "list", "--root", "my "}, want: []string{"my directory/"}, absent: []string{"my request $(touch completion-executed).json"}},
-		{words: []string{"check", "add", "new", "--", "my "}, want: []string{"my directory/", "my request $(touch completion-executed).json"}, absent: []string{"--help", "--timeout"}},
+	repo.Write("my directory/nested/file", "content")
+	directory := filepath.FromSlash("my directory/")
+	nestedDirectory := filepath.FromSlash("my directory/nested/")
+	file := filepath.FromSlash("my directory/file")
+	queries := []struct {
+		name                string
+		words, want, absent []string
+	}{
+		{name: "tasks", words: []string{"task", "show", ""}, want: []string{"active-task", "small-task", "skill-task"}, absent: []string{"archive", "archived-task"}},
+		{name: "advisers", words: []string{"adviser", "ask", "l"}, want: []string{"local"}},
+		{name: "checkpoints", words: []string{"adviser", "ask", "local", "--checkpoint", "b"}, want: []string{"before-review"}},
+		{name: "checks", words: []string{"check", "run", "u"}, want: []string{"unit"}},
+		{name: "request paths", words: []string{"adviser", "ask", "local", "--request", "my "}, want: []string{directory, "my request $(touch completion-executed).json"}, absent: []string{"my directory"}},
+		{name: "root directories", words: []string{"skill", "list", "--root", "my "}, want: []string{directory}, absent: []string{"my request $(touch completion-executed).json"}},
+		{name: "literal paths", words: []string{"check", "add", "new", "--", "my "}, want: []string{directory, "my request $(touch completion-executed).json"}, absent: []string{"--help", "--timeout"}},
+		{name: "nested paths", words: []string{"adviser", "ask", "local", "--request", directory}, want: []string{file, nestedDirectory}, absent: []string{file + string(filepath.Separator)}},
+		{name: "nested directories", words: []string{"skill", "list", "--root", directory}, want: []string{nestedDirectory}, absent: []string{file}},
 	}
 	for _, query := range queries {
-		uxRequireSuggestions(t, uxCompletionTestValues(uxQueryRepoCompletion(t, repo, query.words)), query.want, query.absent)
+		t.Run(query.name, func(t *testing.T) {
+			uxRequireSuggestions(t, uxCompletionTestValues(uxQueryRepoCompletion(t, repo, query.words)), query.want, query.absent)
+		})
 	}
 	if repo.Exists("completion-executed") {
 		t.Fatal("completion executed a path or provider")
