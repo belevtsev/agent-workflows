@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- A bear-cub mascot and matching README banner introduce Gatecub's [visual identity](docs/brand/README.md).
+- A Pomeranian mascot and matching README banner introduce Gatecub's [visual identity](docs/brand/README.md).
 - Three diagrams: the three parts of `gatecub`, how the gate decides about a commit or a push, and the seven roles on the two paths
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
 
