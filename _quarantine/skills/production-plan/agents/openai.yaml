@@ -1,6 +1,0 @@
-interface:
-  display_name: "Production Plan"
-  short_description: "Evidence-grounded production implementation planning"
-  default_prompt: "Use $production-plan to produce a decision-complete implementation plan grounded in the active conversation and project evidence, without implementing it."
-policy:
-  allow_implicit_invocation: true

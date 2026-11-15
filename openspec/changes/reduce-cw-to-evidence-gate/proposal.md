@@ -173,6 +173,9 @@ Changes and Non-goals.
 - **Release.** The core needs a tagged, installable release (C1) before anyone
   else can try it, with archives for the three systems. Today's release
   configuration builds for darwin and linux only (`.goreleaser.yaml`).
+  Decided on 15 November 2026 (task 1.1): the module path stays
+  `github.com/belevtsev/agent-workflows/v3`, and the first tag is
+  `v3.0.0-beta.1`. The owner approved that tag, and it was published that day.
 
 ## Non-goals
 

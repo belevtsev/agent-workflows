@@ -14,6 +14,9 @@ Rules for every task:
   not run in CI.
 - **Systems.** The Go tests pass on `ubuntu-latest`, `macos-latest` and
   `windows-latest`. Nothing was observed on macOS or Windows.
+- **Paths.** The folder `_quarantine/` was removed on 15 November 2026. A path
+  `_quarantine/<path>` that a task names is `<path>` on the branch
+  `workflow-v3`.
 - **Owner.** A task that begins with the word Owner needs the owner: it spends
   money on model runs or publishes something.
 

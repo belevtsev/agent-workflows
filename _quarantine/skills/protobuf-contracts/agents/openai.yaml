@@ -1,4 +1,0 @@
-interface:
-  display_name: "Protobuf Contracts"
-  short_description: "Evolve contracts across backend peers safely"
-  default_prompt: "Use $protobuf-contracts to assess this schema and its actual consumers for compatibility and rollout requirements."

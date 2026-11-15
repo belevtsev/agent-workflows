@@ -1,9 +1,0 @@
-Synthetic command capture; no CLI command was executed for this fixture.
-CLI version represented: 1.14.1
-working directory: /fixture/workspace/batch-api
-XDG_CONFIG_HOME: /fixture/user-config
-XDG_DATA_HOME: /fixture/user-data
-
-$ OPENSPEC_TELEMETRY=0 OPENSPEC_NO_COMPLETIONS=1 openspec status --change team-plan --json
-exit status: 0
-stdout: status.json

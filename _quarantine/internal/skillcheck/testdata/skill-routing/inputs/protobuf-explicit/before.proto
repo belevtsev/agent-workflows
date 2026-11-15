@@ -1,3 +1,0 @@
-syntax = "proto3";
-package fixture;
-message Request { string resource_id = 4; }

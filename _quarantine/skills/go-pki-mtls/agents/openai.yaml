@@ -1,4 +1,0 @@
-interface:
-  display_name: "Go PKI and mTLS"
-  short_description: "Verify identity and credential lifecycles"
-  default_prompt: "Use $go-pki-mtls to review this Go credential and mTLS flow for identity binding, recovery, and observable verification."

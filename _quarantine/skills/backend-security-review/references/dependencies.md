@@ -1,9 +1,0 @@
-# Dependency and supply-chain assessment
-
-Start from the resolved dependency graph, lockfiles or module metadata, actual build targets, replacements, and exact revision. Distinguish direct/transitive dependencies, tooling/dev-only inputs, generated resources, and deployed runtime dependencies. Do not treat a local workspace replacement as the published dependency used in CI or deployment.
-
-An advisory establishes an affected package/version range and stated conditions. Verify that the resolved version falls in that range, identify the vulnerable symbols or behavior when known, and trace actual reachable calls under the relevant build/configuration. Keep these statements separate: an advisory exists, the project resolves an affected version, a vulnerable call is reachable, and an exploit is demonstrated. `govulncheck` can strengthen call evidence; missing or incomplete call analysis remains a limit. A clean scan does not cover unsupported targets or every class of vulnerability.
-
-Supply-chain concerns need their own provenance: registry/source origin, integrity pinning, release/tag identity, maintainer or ownership changes, update/install hooks, and CI publication permissions when relevant. Unknown maintainer status, missing attestation, or sparse metadata is an uncertainty to resolve, not evidence of compromise. Use an installed supply-chain specialty only for a requested or necessary deeper assessment; do not copy its resources into this suite.
-
-If remediation is requested, choose a supported compatible version or local mitigation from project constraints and verified primary advisories. Assess affected APIs, generated output, and rollout before editing dependency files. Review authorization alone does not authorize upgrades, tool installation, release publication, or remote writes. Keep license and provenance obligations intact.

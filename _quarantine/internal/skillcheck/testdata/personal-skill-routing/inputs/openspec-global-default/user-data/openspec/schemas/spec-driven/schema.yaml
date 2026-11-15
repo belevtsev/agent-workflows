@@ -1,9 +1,0 @@
-name: spec-driven
-version: 1
-description: User-level schema available outside the current project
-artifacts:
-  - id: proposal
-    generates: proposal.md
-    template: proposal.md
-    description: Change proposal
-    requires: []

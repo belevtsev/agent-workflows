@@ -1,8 +1,0 @@
-# Go language pack. cw embeds this file (docs/packs.md).
-schema: 1
-id: go
-kind: language
-detect: [go.mod, go.work]
-commands:
-  race: [go, test, -race, -shuffle=on, ./...]
-evidence_rule: go.package-test/v2

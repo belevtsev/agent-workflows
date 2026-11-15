@@ -1,1 +1,0 @@
-{"idempotency":"Provider deduplicates successful requests only for the same key","timeout":"A request can succeed before the response deadline and return DeadlineExceeded to the caller","readback":"Lookup by original operation key is available","invariant":"One external effect per accepted operation","executed_checks":[]}

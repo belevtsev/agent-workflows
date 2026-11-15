@@ -1,6 +1,0 @@
-interface:
-  display_name: "Docker Project Foundations"
-  short_description: "Set up projects for containerized local development"
-  default_prompt: "Use $docker-project-foundations to set up or Dockerize a project."
-policy:
-  allow_implicit_invocation: false

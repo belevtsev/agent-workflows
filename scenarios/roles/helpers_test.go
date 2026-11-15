@@ -191,12 +191,12 @@ func contains(list []string, name string) bool {
 }
 
 // copyModule copies the module root into a new temporary directory, without
-// .git, _quarantine, .claude and scenarios, and returns the copy's root.
+// .git, .claude and scenarios, and returns the copy's root.
 func copyModule(t *testing.T) string {
 	t.Helper()
 	src := moduleRoot(t)
 	dst := filepath.Join(t.TempDir(), "module")
-	skip := map[string]bool{".git": true, "_quarantine": true, ".claude": true, "scenarios": true}
+	skip := map[string]bool{".git": true, ".claude": true, "scenarios": true}
 	err := filepath.WalkDir(src, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err

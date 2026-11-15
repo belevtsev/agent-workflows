@@ -1,3 +1,0 @@
-Help design a Go fuzz target for this byte-preserving packet codec. Assess the candidate assertion and skipped-input domain, propose deterministic boundary seeds and an independent semantic oracle, and give a bounded future campaign plus exact minimized-failure regression procedure. Do not execute tests or modify files.
-
-Use only the supplied synthetic artifacts and installed skill files needed for this request. Work read-only and report in chat. Do not run tests, builds, linters, scanners, helpers, installs, network calls, Jev, or external writes. Distinguish source evidence from execution and deployment.

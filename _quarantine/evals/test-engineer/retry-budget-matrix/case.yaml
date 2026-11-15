@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: retry-budget-matrix
-context:
-  scaffold_script: scaffold.sh

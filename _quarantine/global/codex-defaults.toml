@@ -1,8 +1,0 @@
-[features]
-memories = true
-
-[memories]
-generate_memories = true
-use_memories = true
-extract_model = "gpt-6-luna"
-consolidation_model = "gpt-6-luna"

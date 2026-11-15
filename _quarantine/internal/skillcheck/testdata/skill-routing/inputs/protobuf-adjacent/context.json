@@ -1,8 +1,0 @@
-{
-  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
-  "source": "synthetic snapshot",
-  "contract": "Each outgoing RPC must receive the 200ms bounded context",
-  "unchanged": "Protobuf definitions, generated bindings, request fields and deployment matrix",
-  "changed": "Call context only",
-  "observed_runtime": "none"
-}

@@ -21,7 +21,7 @@ runs:
     - name: Check formatting
       shell: bash
       run: |
-        unformatted="$(git ls-files -z '*.go' ':!:_quarantine/**' | xargs -0 gofmt -l)"
+        unformatted="$(git ls-files -z '*.go' | xargs -0 gofmt -l)"
         if [ -n "$unformatted" ]; then
           printf 'gofmt needed:\n%s\n' "$unformatted"
           exit 1

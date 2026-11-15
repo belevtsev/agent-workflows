@@ -1,6 +1,0 @@
-Synthetic capture
-working directory: project
-$ command -v openspec
-exit status: 1
-stdout: empty
-stderr: empty

@@ -1,7 +1,0 @@
-Synthetic backend: client sends HTTPS requests to an API.
-The API writes jobs and an outbox row in one database transaction.
-An outbox dispatcher publishes events to a queue, then marks rows as delivered.
-Workers consume events and call an external provider.
-Events may be redelivered; workers keep durable idempotency records.
-The desired diagram must distinguish trust boundaries, durable stores, and retry paths.
-No product names, credentials, live endpoints, or deployed evidence are supplied.

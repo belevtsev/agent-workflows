@@ -1,1 +1,0 @@
-{"authoritative_schema":"fixture contracts repository","old_go_writer":"Writes resource_id at tag 4 from selected resource","new_cpp_reader":"Uses owner_id as the authorization namespace","representations":["binary protobuf between peers","ProtoJSON for administrative clients"],"deployment":"Old writers and new readers overlap during rollout","executed_checks":[]}

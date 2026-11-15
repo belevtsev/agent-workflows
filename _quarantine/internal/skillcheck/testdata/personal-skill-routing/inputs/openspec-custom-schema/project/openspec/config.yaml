@@ -1,8 +1,0 @@
-schema: delivery-lite
-context: |
-  Batch API uses a synchronous request handler and tenant-specific limits.
-rules:
-  notes:
-    - Record compatibility, failure behavior, and rollback assumptions.
-  tasks:
-    - Keep planned checks distinct from executed evidence.

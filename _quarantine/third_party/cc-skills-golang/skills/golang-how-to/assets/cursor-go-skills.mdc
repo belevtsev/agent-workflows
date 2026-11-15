@@ -1,8 +1,0 @@
----
-description: Go workflow selection when specialized guidance is needed
-alwaysApply: false
----
-
-Use the project's documented toolchain, verification environment, and ownership rules.
-Select a Go specialist only for the concrete part of the task that needs it. When the
-appropriate workflow is unclear, `golang-how-to` can help distinguish the available skills.

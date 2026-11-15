@@ -1,8 +1,0 @@
-{
-  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
-  "source": "synthetic snapshot",
-  "contract": "ErrMissing maps to HTTP 404, nil maps to 204, other errors map to 500",
-  "changed_path": "status.go",
-  "unchanged_context": "The caller uses a parameterized database statement and fixed table name; only status mapping changed.",
-  "existing_ci": "format only"
-}

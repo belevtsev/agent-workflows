@@ -1,6 +1,0 @@
-{
-  "provenance": "Synthetic source snapshots for isolated skill evaluation. The paths are fixture paths and the SHA identifies this synthetic snapshot; they are not claims about a deployed repository.",
-  "head_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
-  "base_sha": "43475c4e2c0dde5d768414694de8de81b6ca7710",
-  "evaluation_scope": "Read supplied artifact files and selected skill references only. Do not mutate code, installation state, dependencies, services, credentials, or external systems. Consultation absence must be reported if the selected skill requires it for the decision."
-}
