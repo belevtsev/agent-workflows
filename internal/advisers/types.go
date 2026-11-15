@@ -1,4 +1,4 @@
-// Package advisers runs configured advisory commands and keeps their answers
+// Package advisers runs configured advisory providers and keeps their answers
 // and the coordinator's decisions in portable task records.
 package advisers
 
@@ -19,13 +19,16 @@ const (
 
 var ErrNoBinding = errors.New("the task has no adviser binding")
 
-// Definition is a command selected by the user. Commands and environment
+// Definition is a provider selected by the user. Commands and environment
 // values are never copied into the shared task binding.
 type Definition struct {
-	Model   string        `json:"model"`
-	Command []string      `json:"command"`
-	Timeout time.Duration `json:"timeout_ns"`
-	Source  string        `json:"source"`
+	Provider  string        `json:"provider,omitempty"`
+	BaseURL   string        `json:"base_url,omitempty"`
+	APIKeyEnv string        `json:"api_key_env,omitempty"`
+	Model     string        `json:"model"`
+	Command   []string      `json:"command"`
+	Timeout   time.Duration `json:"timeout_ns"`
+	Source    string        `json:"source"`
 }
 
 type Config struct {
@@ -42,6 +45,7 @@ type Checkpoint struct {
 }
 
 type Identity struct {
+	Provider    string `json:"provider,omitempty"`
 	Model       string `json:"model"`
 	Fingerprint string `json:"fingerprint"`
 }
@@ -63,26 +67,56 @@ type Choice struct {
 }
 
 type Request struct {
-	Version  int      `json:"version"`
-	Kind     string   `json:"kind"`
-	Question string   `json:"question"`
-	Choices  []Choice `json:"choices,omitempty"`
-	Context  []string `json:"context,omitempty"`
+	Version  int              `json:"version"`
+	Kind     string           `json:"kind"`
+	Question string           `json:"question"`
+	Choices  []Choice         `json:"choices,omitempty"`
+	Context  []string         `json:"context,omitempty"`
+	Levels   []string         `json:"levels,omitempty"`
+	Criteria *BooleanCriteria `json:"criteria,omitempty"`
+}
+
+type BooleanCriteria struct {
+	True  string `json:"true,omitempty"`
+	False string `json:"false,omitempty"`
+}
+
+// Probability stores identifiers as values, preserving arbitrary choice IDs.
+type Probability struct {
+	ID          string  `json:"id"`
+	Probability float64 `json:"probability"`
+}
+
+type DecisionResult struct {
+	Kind            string        `json:"kind"`
+	Choice          string        `json:"choice,omitempty"`
+	Score           *float64      `json:"score,omitempty"`
+	ProbabilityTrue *float64      `json:"probability_true,omitempty"`
+	Confidence      *float64      `json:"confidence,omitempty"`
+	Probabilities   []Probability `json:"probabilities,omitempty"`
+}
+
+type Usage struct {
+	InputTokens  int64 `json:"input_tokens"`
+	OutputTokens int64 `json:"output_tokens"`
 }
 
 // Content uses the same artifact identities as independent reviews.
 type Content = change.Content
 
 type Execution struct {
-	Outcome     string    `json:"outcome"`
-	Answer      string    `json:"answer"`
-	Detail      string    `json:"detail,omitempty"`
-	ExitStatus  *int      `json:"exit_status,omitempty"`
-	StartedAt   time.Time `json:"started_at"`
-	EndedAt     time.Time `json:"ended_at"`
-	ActualModel string    `json:"actual_model"`
-	UsageKnown  bool      `json:"usage_known"`
-	Diagnostics string    `json:"-"`
+	Version     int             `json:"version,omitempty"`
+	Result      *DecisionResult `json:"result,omitempty"`
+	Usage       *Usage          `json:"usage,omitempty"`
+	Outcome     string          `json:"outcome"`
+	Answer      string          `json:"answer"`
+	Detail      string          `json:"detail,omitempty"`
+	ExitStatus  *int            `json:"exit_status,omitempty"`
+	StartedAt   time.Time       `json:"started_at"`
+	EndedAt     time.Time       `json:"ended_at"`
+	ActualModel string          `json:"actual_model"`
+	UsageKnown  bool            `json:"usage_known"`
+	Diagnostics string          `json:"-"`
 }
 
 type Consultation struct {

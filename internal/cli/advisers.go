@@ -19,6 +19,8 @@ func runAdvisers(ctx context.Context, cfg Config, args []string) error {
 		args = []string{"list"}
 	}
 	switch args[0] {
+	case "providers":
+		return runAdviserProviders(cfg, args[1:])
 	case "list":
 		return runAdviserList(ctx, cfg, args[1:])
 	case "bind":
@@ -28,7 +30,7 @@ func runAdvisers(ctx context.Context, cfg Config, args []string) error {
 	case "status", "check":
 		return runAdviserStatus(ctx, cfg, args[0], args[1:])
 	default:
-		return usagef("unknown adviser command %q; use list, bind, resolve, status or check", args[0])
+		return usagef("unknown adviser command %q; use providers, list, bind, resolve, status or check", args[0])
 	}
 }
 
@@ -66,13 +68,13 @@ func runAdviserList(ctx context.Context, cfg Config, args []string) error {
 		}
 	}
 	if *asJSON {
-		return printJSON(cfg, settings)
+		return printConfiguredAdvisersJSON(cfg, settings)
 	}
 	w := tabwriter.NewWriter(cfg.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ADVISER\tMODEL\tTIMEOUT\tSOURCE")
+	fmt.Fprintln(w, "ADVISER\tPROVIDER\tMODEL\tKINDS\tTIMEOUT\tSOURCE")
 	for _, name := range sortedAdviserNames(settings.Advisers) {
 		d := settings.Advisers[name]
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", name, d.Model, d.Timeout, d.Source)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", name, adviserProviderName(d.Provider), d.Model, strings.Join(advisers.Kinds(d.Provider), ","), d.Timeout, d.Source)
 	}
 	return w.Flush()
 }
@@ -86,10 +88,11 @@ func printBoundAdvisers(cfg Config, b *advisers.Binding, role string, asJSON boo
 		}
 	}
 	if asJSON {
-		return printJSON(cfg, b)
+		return printBoundAdvisersJSON(cfg, b)
 	}
 	for _, name := range sortedAdviserNames(b.Advisers) {
-		fmt.Fprintf(cfg.Out, "%s\t%s\tbound to %s\n", name, b.Advisers[name].Model, b.ID)
+		identity := b.Advisers[name]
+		fmt.Fprintf(cfg.Out, "%s\t%s\t%s\t%s\tbound to %s\n", name, adviserProviderName(identity.Provider), identity.Model, strings.Join(advisers.Kinds(identity.Provider), ","), b.ID)
 	}
 	return nil
 }

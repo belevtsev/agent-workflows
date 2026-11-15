@@ -17,7 +17,7 @@ repositories, and it started roles in two of them; see
 [what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
 one agent working alone is not measured; see [the evaluation](evaluation.md).
 
-Optional [advisers](advisers.md) answer a role's question or compare choices through a configured
+Optional [advisers](advisers.md) answer a role's question through a native decision API or configured
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
 checkpoints can hold a stage until advice on its current content has been addressed.
 
@@ -131,7 +131,8 @@ small and full histories are an error.
    effect only after explicit `--refresh`; binding revisions and consultations stay in the history.
 2. The brief gives each role its allowed advisers from
    `kitsu advisers list --task <task> --role <role>`. A role returns the selected adviser, its
-   question, any choices, and explicit context file paths. It never executes a consultation or
+   question, any choices or score levels, and explicit context file paths, using a listed supported
+   request kind. Native yes/no answers are probabilities, not automatic approval. A role never executes a consultation or
    writes its records.
 3. The coordinator checks the role's writes first, runs `kitsu consult` with `--role` set to the
    requester, then returns the recorded answer to the requester before it resumes. Required advice

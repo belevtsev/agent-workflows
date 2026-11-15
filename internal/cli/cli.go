@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/belevtsev/kitsu/v3/internal/advisers"
 )
 
 // Config is what the program gives the commands.
 type Config struct {
-	Version  string
-	Revision string
-	BuiltAt  string
-	In       io.Reader
-	Out      io.Writer
-	Err      io.Writer
+	NativeExecute func(context.Context, *advisers.NativeCall) advisers.Execution
+	Version       string
+	Revision      string
+	BuiltAt       string
+	In            io.Reader
+	Out           io.Writer
+	Err           io.Writer
 }
 
 // command is one entry of the command table.
@@ -30,7 +33,7 @@ type command struct {
 // commands lists every command in the order the help prints them.
 func commands() []command {
 	return []command{
-		{"advisers", "list [--role <role>] [--task <task>] [--json] | bind | resolve | status | check", "Configure task adviser bindings, inspect requirements, and record dispositions", adviserHelp(), runAdvisers},
+		{"advisers", "providers [--json] | list [--role <role>] [--task <task>] [--json] | bind | resolve | status | check", "Configure task adviser bindings, inspect requirements, and record dispositions", adviserHelp(), runAdvisers},
 		{"consult", "--task <task> --role <role> --stage <stage> --adviser <name> --request <file|-> [--checkpoint <id>] [--json]", "Ask a configured adviser and keep the complete exchange in the task record", consultHelp(), runConsult},
 		{"roles", "[--host claude|codex] [--task <task>] [--json] | set <role> --host claude|codex [--model <model>] [--reasoning <effort>] [--json] | reset <role> --host claude|codex [--json] | check <role> --from <tree> [--task <task>] [--finalize] | text <role>", "Print or configure role models and reasoning, list advisers, check writes, or print instructions", roleTableHelp(), runRoles},
 		{"change", "status [<task>] [--json] | check [<task>]", "Print the stage of a task's change folder, or check the rules its files must obey", "\n  status [<task>]  print the stage of one task, or of every task\n  --json           with status: print one JSON object instead of text\n  check [<task>]   exit 5 when the files of one task, or of any task, break a rule\n", runChange},

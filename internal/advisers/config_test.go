@@ -105,7 +105,7 @@ func TestParseStrictConfiguration(t *testing.T) {
 		personal bool
 	}{
 		{name: "missing version", text: strings.TrimPrefix(valid, "version = 1\n")},
-		{name: "future version", text: strings.Replace(valid, "version = 1", "version = 2", 1)},
+		{name: "future version", text: strings.Replace(valid, "version = 1", "version = 3", 1)},
 		{name: "wrong version type", text: "version = \"1\"\n"},
 		{name: "unknown root field", text: "version = 1\nkey = true\n"},
 		{name: "unknown adviser field", text: valid + "key = true\n"},
@@ -195,7 +195,7 @@ advisers = ["local"]
 func TestLoadReportsInvalidRepositoryAndPersonalConfiguration(t *testing.T) {
 	personal := isolatePersonalConfig(t)
 	root := t.TempDir()
-	writeAdviserTestFile(t, personal, "version = 2\n")
+	writeAdviserTestFile(t, personal, "version = 3\n")
 	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), personal) {
 		t.Fatalf("personal load error = %v, want its path", err)
 	}

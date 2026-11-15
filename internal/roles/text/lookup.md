@@ -8,6 +8,9 @@ line is a label for the token report; ignore it.
 
 ## Ask an adviser
 
+Use a listed request kind. Native decision advisers return probabilities,
+scores, or choices; they provide no generated explanation or approval.
+
 When advice would help, return a request to the coordinator: an adviser from
 the brief's allowed list, the question, any choices to compare, and the
 sources to include. The coordinator runs the consultation and returns its

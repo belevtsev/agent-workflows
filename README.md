@@ -23,7 +23,7 @@ Seven specialist roles, shared task records, and token reporting, with a Git gat
 | **Agent coordination** | A coordinator in your coding-agent host delegates work to seven specialist roles, with a defined order, review handoffs, model choices, and limits on what each role may change. |
 | **Shared task records** | Requirements, design decisions, tasks, tests, and review findings give the agents a common record to work from. `kitsu change` checks that record and reports the task's stage. |
 | **Token reporting** | `kitsu tokens` reports recorded token usage by task and role, including the coordination overhead. |
-| **Advisers** | Optional configured CLIs answer a role's questions or compare choices; the coordinator records the answer and decision. |
+| **Advisers** | Built-in Jev and SubQ Snap models make structured judgments; configured CLIs provide text advice. The coordinator records the answer and decision. |
 | **Git gate** | As a supporting check, Git hooks allow commits and pushes only when the checks declared in `kitsu.toml` have passing evidence for that content. |
 
 Your agent host runs the coordinator and delegates to the roles. Kitsu supplies the workflow instructions,
@@ -56,7 +56,7 @@ the specification and the design, and the commit goes through the gate.
 
 `kitsu roles --host codex` or `kitsu roles --host claude` shows a compact table of role, model,
 reasoning effort, and allowed advisers. Add `--task <task>` to show a saved task's adviser access.
-Optional advisers use authenticated CLIs configured in `kitsu-advisers.toml` or your personal
+Optional advisers use native APIs or authenticated CLIs configured in `kitsu-advisers.toml` or your personal
 configuration. Roles return questions to the coordinator, which runs `kitsu consult` and records
 how the answer was addressed. Adviser answers replace no review or approval.
 
@@ -71,7 +71,7 @@ how the answer was addressed. Adviser answers replace no review or approval.
 1. [Install](#install) the CLI and [add the plugin](#for-a-coding-agent) to your coding-agent host.
 2. Run `kitsu roles --host codex` or `kitsu roles --host claude` to inspect the role/model/reasoning/advisers table.
    [Set a specialist's model or reasoning](docs/roles.md#changing-a-model) with `kitsu roles set`; your host selects the coordinator.
-3. Optionally [configure an adviser](#ask-an-adviser) to answer questions through a CLI you already use.
+3. Optionally [configure an adviser](#ask-an-adviser) with a built-in decision model or a CLI you already use.
 4. Give the `task` skill a coding task. On Claude Code, invoke `/kitsu:task`; on Codex, use the installed `task` skill.
    The coordinator chooses the workflow, sets up the repository's checks and role paths, and delegates each stage.
 5. Review the proposed specification and design when the task changes behavior, then follow implementation,
@@ -101,6 +101,11 @@ kitsu roles reset developer --host codex
 Omit `--model` or `--reasoning` to keep that value. Reset restores both defaults for that role and host.
 
 ### Ask an adviser
+
+For built-in **TypeSafe Jev** and **SubQ Snap**, run `kitsu advisers providers` to see presets,
+set the provider's API-key environment variable, and explicitly configure role access.
+The [native adviser guide](docs/advisers.md#built-in-decision-advisers) shows the short TOML
+definitions and choice, score, and yes/no requests. Existing CLI advisers work alongside them.
 
 Install and authenticate your chosen provider CLI first. This example uses Codex; the
 [adviser guide](docs/advisers.md) also shows Claude Code and personal definitions. In your repository,
@@ -156,7 +161,8 @@ The request, answer, execution outcome, and disposition are under
 `openspec/changes/.advice/advice-demo/`. Full tasks keep them under
 `openspec/changes/<task>/advisers/`; commit the record with the task. You can also
 [compare named choices and require stage checkpoints](docs/advisers.md#ask-a-question-or-compare-choices).
-Advice grants no approval and replaces no review. Adviser usage is reported as unmeasured.
+Advice grants no approval and replaces no review. CLI adviser usage is unmeasured; native API
+usage is reported separately when the provider supplies counts.
 
 ### Add the supporting Git gate
 
@@ -293,8 +299,9 @@ The workflow, adviser records, token reports, and gate share the same CLI:
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
-- Advisers were tested with local fake executables and checked against provider CLI help. No live adviser quality
-  evaluation was run; adviser token usage remains unmeasured. The model-routing recommendations are not benchmarked.
+- Advisers are tested with local fake executables and HTTPS fixtures; CLI examples were checked against provider help.
+  No live adviser quality evaluation was run. Native usage is provider-reported; CLI usage is unmeasured.
+  The model-routing recommendations are not benchmarked.
   The [production plan](openspec/production-plan.md) records earlier implementation and validation work.
 
 ## Known limits
@@ -319,7 +326,7 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 | [Hooks](docs/hooks.md) | The three git hooks, a hook shared with another tool, the plugin's hooks, and the known limits. |
 | [Evidence](docs/evidence.md) | What a recorded passing run is, what it proves and what it does not. |
 | [Roles](docs/roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
-| [Advisers](docs/advisers.md) | Optional CLI advisers, access by role, shared answers and decisions, and required checkpoints. |
+| [Advisers](docs/advisers.md) | Built-in decision models and CLI advisers, access by role, shared answers, and required checkpoints. |
 | [The task workflow](docs/workflow.md) | The two paths of a task, its record under `openspec/changes/<task>/`, and `kitsu change`. |
 | [Tokens](docs/tokens.md) | What `kitsu tokens` counts, what "workflow tokens" are, and when a count is unknown. |
 | [Benchmarks](docs/benchmarks.md) | What `kitsu` costs: the time of a commit and of each command, and the tokens of an agent on two small tasks. |

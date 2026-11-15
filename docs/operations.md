@@ -634,11 +634,12 @@ words joined by hyphens; 5 `kitsu change check` found a broken rule.
 
 ## kitsu advisers and consult
 
-Configure optional adviser CLIs, bind their policy to a task, ask a question or compare choices,
+Configure optional native decision providers or adviser CLIs, bind their policy to a task, ask a question,
 and record how the answer was addressed. [Advisers](advisers.md) describes the two configuration
-locations, role access, the version 1 request JSON, shared records, and required checkpoints.
+locations, role access, version 1 and 2 request JSON, shared records, and required checkpoints.
 
 ```text
+kitsu advisers providers [--json]
 kitsu advisers list [--role <role>] [--task <task>] [--json]
 kitsu advisers bind --task <task> --workflow full|small [--refresh] [--json]
 kitsu consult --task <task> --role <role> --stage <stage> --adviser <name> --request <file|-> [--checkpoint <id>] [--json]
@@ -647,7 +648,9 @@ kitsu advisers status --task <task> [--checkpoint <id>] [--json]
 kitsu advisers check --task <task> [--checkpoint <id>] [--json]
 ```
 
-Only `kitsu consult` executes an adviser, once, with the configured CLI's existing authentication.
+Only `kitsu consult` executes an adviser, once, with the configured CLI's authentication or a native
+provider API key from its configured environment variable. `providers` is an offline catalog and
+needs no repository. Native configuration uses version 2; existing CLI configuration remains valid.
 The coordinator runs it on a role's behalf after checking that role's writes. Its request names
 explicit repository files; a failed attempt remains recorded. No API keys are saved, and there
 is no automatic retry or model fallback. Resolving an answer requires a reason; an optional
@@ -845,7 +848,9 @@ script of `kitsu` in a directory that `core.hooksPath` names; then the whole
 `kitsu/` directory: runs, logs, decisions, the mode and the token records. It
 leaves `kitsu.toml`, every other hook file, and the agent plugin.
 
-`kitsu` starts no network connection. Every git call of `kitsu` sets
+Only explicit native adviser consultations start provider API connections. Adviser CLIs and
+declared check commands may also use the network. Discovery, record checks, gate decisions, and
+token collection remain offline. Every git call of `kitsu` sets
 `GIT_NO_LAZY_FETCH=1`, so that git fetches no missing object in a partial
 clone; `kitsu` then reports the object as missing.
 

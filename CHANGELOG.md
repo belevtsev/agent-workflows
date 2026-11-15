@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Built-in [Jev and SubQ Snap advisers](docs/advisers.md#built-in-decision-advisers) provide choices, scores, and yes/no probabilities,
+  with explicit access, compatible CLI history, and separate provider-reported token usage.
 - Shell and PowerShell [installers](docs/release-install.md) select your platform, verify checksums, and set up user `PATH`.
   Install from release or CI artifacts without a clone or Go; rerun to update, or choose a version and directory.
 - Set or reset a role's model and reasoning from the CLI with [`kitsu roles set` and `reset`](docs/roles.md#changing-a-model),

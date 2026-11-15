@@ -13,7 +13,7 @@ import (
 const (
 	maxCoreLines    = 6250
 	maxRolesLines   = 4000
-	maxAdviserLines = 3500
+	maxAdviserLines = 4000 // CLI advisers plus native typed providers and usage records.
 )
 
 // rolesCode says whether a Go file belongs to the role workflow.

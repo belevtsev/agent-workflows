@@ -1,15 +1,102 @@
 # Advisers
 
-An adviser answers a bounded question or compares named choices. You choose its model and an
-installed command; Kitsu sends the prompt through that command's standard input and records the
-answer with the coordinator's decision. The command uses its existing CLI authentication.
-Kitsu stores no API keys, makes no provider API calls, and supplies no model fallback or automatic
-retry. An adviser can be from the same provider as the role or from another provider.
+An adviser answers a bounded question. Built-in TypeSafe Jev and SubQ Snap integrations return
+structured choices, scores, and yes/no probabilities through their APIs. Existing CLI advisers
+provide text advice or compare named choices using their own authentication. Both paths record
+the answer and the coordinator's decision. Kitsu stores no API keys and supplies no model
+fallback or automatic retry. An adviser can be from the same provider as the role or another.
 
 The coordinator brokers every consultation. A role asks for advice, returns control, and resumes
 with the recorded answer. Advice leaves the role's job and write limits in place. A reviewer
 first forms its own assessment and receives none of the author's consultations as review guidance.
 Advice supplies neither an independent review nor the developer's approval.
+
+## Built-in decision advisers
+
+Discover presets without credentials, network access, or a repository:
+
+```sh
+kitsu advisers providers
+kitsu advisers providers --json
+```
+
+| Provider | Default model | Default base URL | Credential environment variable |
+| --- | --- | --- | --- |
+| `typesafe` | `jev-1.14.0` | `https://api.typesafe.ai/v1` | `TYPESAFE_API_KEY` |
+| `subq` | `subq-snap-1.2` | `https://api.subq.ai/v1` | `SUBQ_API_KEY` |
+| `systemone` | required | required | required |
+
+These defaults follow the [TypeSafe model documentation](https://docs.typesafe.ai/models)
+and [SubQ model documentation](https://docs.subq.ai/using-the-api/models/). The common text API is
+documented by [TypeSafe](https://docs.typesafe.ai/api/system-one) and
+[SubQ](https://docs.subq.ai/endpoints/decisions-api/). The `systemone` provider supports that same
+request/response protocol at another endpoint; it is not a generic chat-completions adapter.
+
+Set the relevant environment variable in the process running Kitsu, using a key from your
+provider account. Do not put the key in TOML. Add definitions and explicit access to
+`kitsu-advisers.toml`:
+
+```toml
+version = 2
+
+[advisers.jev]
+provider = "typesafe"
+
+[advisers.snap]
+provider = "subq"
+
+[access]
+architect = ["jev", "snap"]
+coordinator = ["jev", "snap"]
+```
+
+No role gains access just because a key is present. You can override `model`, `base_url`,
+`api_key_env`, and `timeout`. The base URL includes the API prefix (`/v1` in the presets);
+Kitsu appends `/systemone`. It must use HTTPS with no embedded credentials, query, or fragment.
+Redirects are refused. `systemone` requires all three of `model`, `base_url`, and `api_key_env`.
+Native definitions cannot include `command`; CLI definitions omit `provider`. Version 2 files
+can mix both kinds. Personal definitions still cannot grant access or require checkpoints.
+
+Bind a task, then submit one typed question using the existing command:
+
+```sh
+kitsu advisers bind --task native-advice --workflow small
+kitsu consult --task native-advice --role coordinator --stage code \
+  --adviser jev --request - <<'JSON'
+{"version":2,"kind":"boolean","question":"Does this design define cancellation behavior?","context":["README.md"]}
+JSON
+```
+
+This consultation makes a paid provider request using only the supplied question and explicit
+context. Use a file that actually describes the behavior you want evaluated. Resolve the returned
+consultation id with `accept`, `reject`, or `defer` and a reason, as with CLI advice.
+
+| Request kind | Required additional fields | Native result |
+| --- | --- | --- |
+| `decision` | `choices`: 2–255 distinct `{id,text}` options | Selected choice, per-option probabilities, confidence |
+| `score` | `levels`: 2–10 nonempty descriptions in ascending order | Fractional expected score on zero-based levels, probabilities, confidence |
+| `boolean` | None; optional `criteria.true` and `criteria.false` descriptions | Probability of yes, from 0 to 1 |
+
+`score` and `boolean` require request version 2. Existing version 1 decisions also work with
+native providers. CLI advisers support `advice` and `decision`; native providers reject `advice`
+before creating an attempt. `advisers list`, including `--task`, shows supported `kinds`.
+
+```json
+{"version":2,"kind":"score","question":"How completely does the design cover retries?","levels":["Missing","Partial","Complete"],"context":["README.md"]}
+```
+
+Human output renders the typed answer; `consult --json` retains the exact successful response
+in `execution.answer` and normalized fields in `execution.result`. Probability entries use
+`{id,probability}` pairs, so choice ids preserve case. Zero probabilities, zero confidence, and
+fractional scores remain distinct from missing fields. Yes/no answers are probabilities, not
+automatic pass/fail judgments. Confidence does not grant approval or resolve a consultation.
+
+Requests, rendered context, encoded HTTP bodies, and responses are bounded to 1 MiB. Provider
+token limits may be smaller; Kitsu reports rejection without truncating context. It makes one
+attempt with the configured timeout, retains HTTP failures without their raw error bodies,
+and never retries or switches models automatically. Missing credentials and unsupported kinds
+fail before execution and create no pending attempt. Successful API responses that echo the
+credential are discarded. Images, batched questions, and SubQ Savant are outside this integration.
 
 ## Configure definitions and access
 
@@ -94,8 +181,9 @@ seven [specialist roles](roles.md). Each checkpoint names an allowed requester a
 defined advisers. Its stage is `spec`, `design`, or `review`.
 Small workflows apply only review checkpoints because they have no specification or design stage.
 
-Configuration is strict version 1 TOML: unknown fields, unknown references, duplicates, empty
-models, and invalid timeouts are errors. Adviser names and checkpoint ids use 1 to 40 lowercase
+Configuration is strict version 1 or 2 TOML: unknown fields, unknown references, duplicates, empty
+required models, and invalid timeouts are errors. Native fields require version 2.
+Adviser names and checkpoint ids use 1 to 40 lowercase
 letters, digits, underscores, or hyphens, starting with a letter or digit. `command` is an argument
 array, executed directly without shell expansion. Exactly one argument must be the literal
 `{model}`; an optional argument may be `{answer_file}`. Each placeholder occupies its whole
@@ -146,6 +234,7 @@ histories for one task are an error.
 ## Ask a question or compare choices
 
 The request is one UTF-8 JSON document with `version`, `kind`, `question`, and optional `context`.
+Version 2 also supports the native score and boolean requests described above.
 An `advice` request has no choices. A `decision` request has at least two distinct choices, each
 with a nonempty `id` and `text`:
 
@@ -240,15 +329,23 @@ folder with the task on either workflow path. Prompts and answers may contain th
 explicitly supplied; inspect them before publishing. Command arguments, environment variables,
 and raw CLI diagnostics are not copied into shared records.
 
-The saved model is the model requested from the CLI. Kitsu cannot verify which model the provider
-actually ran. Actual model identity and adviser token usage are `unknown`; the configured model
-is never evidence of either. [`kitsu tokens`](tokens.md) reports consultations separately as
-unmeasured usage, leaving measured host totals unchanged. No live model evaluation, comparison of
-adviser quality, or claim of token savings accompanies this feature.
+CLI actual model identity and usage remain `unknown`. Native responses supply a provider-reported
+model and optional input/output token counts. These are provider claims, not independent model
+verification; the requested model alone proves neither identity nor usage. [`kitsu tokens`](tokens.md)
+reports adviser usage separately from host totals, marking mixed or missing counts incomplete.
+No live model evaluation, comparison of adviser quality, or claim of token savings accompanies
+this feature.
+
+Version 1 configurations and records remain readable. Existing CLI fingerprints are unchanged.
+Native bindings and consultations use version 2; typed version 2 requests also create version 2
+consultations. Earlier records are not rewritten, and older Kitsu versions cannot read the new
+records. Native fingerprints include provider, effective model, base URL, credential variable
+name, and timeout, but never the credential value. Key rotation needs no binding refresh.
 
 ## Command reference
 
 ```text
+kitsu advisers providers [--json]
 kitsu advisers list [--role <role>] [--task <task>] [--json]
 kitsu advisers bind --task <task> --workflow full|small [--refresh] [--json]
 kitsu consult --task <task> --role <role> --stage <stage> --adviser <name> --request <file|-> [--checkpoint <id>] [--json]
@@ -257,6 +354,6 @@ kitsu advisers status --task <task> [--checkpoint <id>] [--json]
 kitsu advisers check --task <task> [--checkpoint <id>] [--json]
 ```
 
-`list`, `bind`, and `status` do not execute a provider CLI. `check` changes no records. A failed
+`providers`, `list`, `bind`, and `status` make no provider calls. `check` changes no records. A failed
 consultation is reported as a failure and retained for inspection; successful output alone never
 records a disposition.

@@ -76,12 +76,12 @@ Run `kitsu advisers list --json`. If configured, bind once with
 advisers from `list --task <task> --role <role>` in each brief. Refresh a
 binding only to adopt the developer's configuration changes.
 
-Roles return requests to you; they never call advisers or write records.
-Check the role's writes first. Run `kitsu consult --task <task>
---role <requester> --stage <stage> --adviser <name> --request <file>`.
-For required advice use its stage and `--checkpoint <id>`. Read `kitsu consult --help` for the
-version 1 request JSON: advice or a decision with at least two choices,
-plus explicit context paths. Return the answer and record to the requester.
+Roles return questions; they never call advisers or write records. Check
+writes first, then run `kitsu consult --task <task> --role <requester>
+--stage <stage> --adviser <name> --request <file>`. CLI: advice/decision;
+native: decision/score/boolean (score/boolean need version 2). Use one question
+and explicit context; read help for the schema. Return the answer/record.
+Required calls include `--checkpoint <id>`.
 
 Before ending spec, design or review, satisfy its checkpoints on current
 content. `kitsu advisers status --task <task>` lists their ids and stages;

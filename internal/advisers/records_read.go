@@ -198,6 +198,9 @@ func (r *recordFS) consultation(rel, task, id string, bindings map[string]Bindin
 		return consultation, errors.New("consultation result must be terminal and follow its pending request")
 	}
 	consultation.Execution = result
+	if err := validateTypedExecution(consultation); err != nil {
+		return consultation, err
+	}
 	return consultation, nil
 }
 
@@ -248,8 +251,8 @@ func recordEntryID(entry fs.DirEntry) (string, error) {
 }
 
 func validateBinding(binding Binding) error {
-	if binding.Version != 1 || !validRecordID(binding.ID) || !validTask(binding.Task) || binding.CreatedAt.IsZero() {
-		return errors.New("binding requires version 1 and valid id, task and creation time")
+	if (binding.Version != 1 && binding.Version != 2) || !validRecordID(binding.ID) || !validTask(binding.Task) || binding.CreatedAt.IsZero() {
+		return errors.New("binding requires version 1 or 2 and valid id, task and creation time")
 	}
 	if binding.Workflow != "small" && binding.Workflow != "full" {
 		return errors.New("binding workflow must be small or full")
@@ -259,6 +262,11 @@ func validateBinding(binding Binding) error {
 	}
 	if err := validateIdentities(binding.Advisers); err != nil {
 		return err
+	}
+	for _, identity := range binding.Advisers {
+		if binding.Version == 1 && identity.Provider != "" {
+			return errors.New("native identities require binding version 2")
+		}
 	}
 	for role, names := range binding.Access {
 		for _, name := range names {
@@ -282,7 +290,7 @@ func validateIdentities(advisers map[string]Identity) error {
 		digest, err := hex.DecodeString(identity.Fingerprint)
 		validFingerprint := err == nil && len(digest) == 32 && hex.EncodeToString(digest) == identity.Fingerprint
 		validModel := recordText(identity.Model, MaxInput, true) && !strings.ContainsRune(identity.Model, 0)
-		if !configName.MatchString(name) || !validModel || !validFingerprint {
+		if !configName.MatchString(name) || !validModel || !validFingerprint || Kinds(identity.Provider) == nil {
 			return fmt.Errorf("binding adviser %q needs a valid name, model and definition fingerprint", name)
 		}
 	}
@@ -290,9 +298,9 @@ func validateIdentities(advisers map[string]Identity) error {
 }
 
 func validateConsultation(consultation Consultation, binding Binding) error {
-	validIDs := consultation.Version == 1 && validRecordID(consultation.ID) && consultation.BindingID == binding.ID
+	validIDs := (consultation.Version == 1 || consultation.Version == 2) && validRecordID(consultation.ID) && consultation.BindingID == binding.ID
 	if !validIDs || consultation.Task != binding.Task || !ValidRole(consultation.Role) {
-		return errors.New("consultation requires version 1, matching task and binding, and valid id and requester role")
+		return errors.New("consultation requires version 1 or 2, matching task and binding, and valid id and requester role")
 	}
 	if !slices.Contains([]string{"lookup", "spec", "spec-review", "design", "design-review", "tests", "code", "review", "commit"}, consultation.Stage) {
 		return errors.New("consultation stage is unknown")
@@ -304,7 +312,7 @@ func validateConsultation(consultation Consultation, binding Binding) error {
 	if consultation.Checkpoint != "" && !matchesCheckpoint(consultation, binding.Checkpoints) {
 		return errors.New("consultation does not match its checkpoint's stage, requester role and adviser")
 	}
-	if err := ValidateRequest(consultation.Request); err != nil {
+	if err := ValidateCapability(consultation.Identity.Provider, consultation.Request); err != nil {
 		return err
 	}
 	if !recordText(consultation.Prompt, MaxInput, true) {
@@ -315,7 +323,10 @@ func validateConsultation(consultation Consultation, binding Binding) error {
 			return errors.New("consultation content ids must be UTF-8 text of at most 256 bytes")
 		}
 	}
-	return validateExecution(consultation.Execution)
+	if err := validateExecution(consultation.Execution); err != nil {
+		return err
+	}
+	return validateTypedExecution(consultation)
 }
 
 func matchesCheckpoint(consultation Consultation, checkpoints []Checkpoint) bool {
@@ -334,6 +345,9 @@ func checkpointStage(checkpoint, stage string) bool {
 }
 
 func validateExecution(execution Execution) error {
+	if execution.Version != 0 && execution.Version != 2 {
+		return errors.New("execution version must be omitted or 2")
+	}
 	if !slices.Contains([]string{"pending", "success", "failed", "timed_out", "cancelled", "overflow"}, execution.Outcome) {
 		return errors.New("execution outcome is unknown")
 	}
@@ -342,10 +356,7 @@ func validateExecution(execution Execution) error {
 		return errors.New("execution needs bounded UTF-8 answer, detail and actual model, and a start time")
 	}
 	if execution.Outcome == "pending" {
-		if execution.Answer != "" || execution.Detail != "" || !execution.EndedAt.IsZero() || execution.ExitStatus != nil {
-			return errors.New("pending execution must not have an answer, terminal details or end time")
-		}
-		return nil
+		return validatePendingExecution(execution)
 	}
 	if execution.EndedAt.IsZero() || execution.EndedAt.Before(execution.StartedAt) {
 		return errors.New("terminal execution requires an end time at or after its start")
@@ -355,6 +366,13 @@ func validateExecution(execution Execution) error {
 	}
 	if execution.Outcome == "success" && execution.ExitStatus != nil && *execution.ExitStatus != 0 {
 		return errors.New("successful execution cannot have a failing exit status")
+	}
+	return nil
+}
+
+func validatePendingExecution(e Execution) error {
+	if e.Answer != "" || e.Detail != "" || !e.EndedAt.IsZero() || e.ExitStatus != nil || e.Result != nil || e.Usage != nil || e.UsageKnown {
+		return errors.New("pending execution must not have an answer, terminal details or end time")
 	}
 	return nil
 }

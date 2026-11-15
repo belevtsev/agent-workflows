@@ -31,9 +31,12 @@ type configDocument struct {
 }
 
 type configAdviser struct {
-	Model   string   `toml:"model"`
-	Command []string `toml:"command"`
-	Timeout *string  `toml:"timeout"`
+	Provider  *string  `toml:"provider"`
+	BaseURL   *string  `toml:"base_url"`
+	APIKeyEnv *string  `toml:"api_key_env"`
+	Model     string   `toml:"model"`
+	Command   []string `toml:"command"`
+	Timeout   *string  `toml:"timeout"`
 }
 
 // Load combines personal definitions with this repository's definitions and
@@ -85,7 +88,7 @@ func loadConfig(path string, personal bool) (*Config, error) {
 	return cfg, nil
 }
 
-// Parse reads one strict version 1 TOML configuration. References to adviser
+// Parse reads strict version 1 or 2 TOML configuration. References to adviser
 // definitions are checked after personal and repository configurations merge.
 func Parse(data []byte, personal bool) (*Config, error) {
 	if len(data) > MaxInput || !utf8.Valid(data) {
@@ -96,8 +99,8 @@ func Parse(data []byte, personal bool) (*Config, error) {
 	if err := decoder.Decode(&document); err != nil {
 		return nil, fmt.Errorf("invalid adviser TOML: %w", err)
 	}
-	if document.Version != 1 {
-		return nil, errors.New("adviser configuration version must be 1")
+	if document.Version != 1 && document.Version != 2 {
+		return nil, errors.New("adviser configuration version must be 1 or 2")
 	}
 	if personal {
 		// An empty TOML table leaves the struct's map nil. Inspect top-level
@@ -115,7 +118,10 @@ func Parse(data []byte, personal bool) (*Config, error) {
 	cfg := &Config{Advisers: map[string]Definition{}, Access: document.Access, Checkpoints: document.Checkpoints}
 	for _, name := range configKeys(document.Advisers) {
 		raw := document.Advisers[name]
-		definition := Definition{Model: raw.Model, Command: raw.Command, Timeout: DefaultTimeout}
+		definition, err := definitionFromConfig(raw, document.Version)
+		if err != nil {
+			return nil, fmt.Errorf("adviser %q: %w", name, err)
+		}
 		if raw.Timeout != nil {
 			var err error
 			definition.Timeout, err = time.ParseDuration(*raw.Timeout)
@@ -141,11 +147,24 @@ func validateDefinition(d Definition) error {
 	if strings.TrimSpace(d.Model) == "" || !utf8.ValidString(d.Model) || strings.ContainsRune(d.Model, 0) {
 		return errors.New("model must be nonempty UTF-8 text without NUL")
 	}
-	if len(d.Command) < 2 || strings.TrimSpace(d.Command[0]) == "" {
+	if d.Timeout < time.Second || d.Timeout > time.Hour {
+		return errors.New("timeout must be from 1s to 1h")
+	}
+	if d.Provider != "" {
+		return validateNativeDefinition(d)
+	}
+	if d.BaseURL != "" || d.APIKeyEnv != "" {
+		return errors.New("base_url and api_key_env require a native provider")
+	}
+	return validateCommand(d.Command)
+}
+
+func validateCommand(command []string) error {
+	if len(command) < 2 || strings.TrimSpace(command[0]) == "" {
 		return errors.New("command must name a program and contain one literal {model} argument")
 	}
 	models, files := 0, 0
-	for i, arg := range d.Command {
+	for i, arg := range command {
 		if !utf8.ValidString(arg) || strings.ContainsRune(arg, 0) {
 			return errors.New("command arguments must be UTF-8 without NUL")
 		}
@@ -159,9 +178,6 @@ func validateDefinition(d Definition) error {
 	}
 	if models != 1 || files > 1 {
 		return errors.New("command needs exactly one {model} argument and at most one {answer_file} argument")
-	}
-	if d.Timeout < time.Second || d.Timeout > time.Hour {
-		return errors.New("timeout must be from 1s to 1h")
 	}
 	return nil
 }
@@ -247,6 +263,14 @@ func ValidateConfig(cfg *Config) error {
 
 // Fingerprint identifies a definition without including where it was loaded.
 func Fingerprint(d Definition) string {
+	if d.Provider != "" {
+		data, _ := json.Marshal(struct {
+			Provider, Model, BaseURL, APIKeyEnv string
+			Timeout                             time.Duration
+		}{d.Provider, d.Model, d.BaseURL, d.APIKeyEnv, d.Timeout})
+		digest := sha256.Sum256(data)
+		return hex.EncodeToString(digest[:])
+	}
 	data, _ := json.Marshal(struct {
 		Model   string
 		Command []string

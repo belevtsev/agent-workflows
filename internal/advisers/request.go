@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-// ParseRequest reads exactly one bounded version 1 request with no unknown
+// ParseRequest reads exactly one bounded version 1 or 2 request with no unknown
 // fields. No file is opened or program started while parsing a request.
 func ParseRequest(input io.Reader) (Request, error) {
 	data, err := io.ReadAll(io.LimitReader(input, MaxInput+1))
@@ -43,6 +43,10 @@ func ParseRequest(input io.Reader) (Request, error) {
 // requestKeys refuses duplicate JSON keys, which encoding/json would otherwise
 // silently replace with their last value.
 func requestKeys(decoder *json.Decoder, depth int) error {
+	return jsonKeys(decoder, depth, true)
+}
+
+func jsonKeys(decoder *json.Decoder, depth int, lowercase bool) error {
 	if depth > 8 {
 		return errors.New("adviser request is nested too deeply")
 	}
@@ -65,12 +69,12 @@ func requestKeys(decoder *json.Decoder, depth int) error {
 			if !ok || seen[name] {
 				return errors.New("adviser request contains duplicate JSON keys")
 			}
-			if strings.ToLower(name) != name {
+			if lowercase && strings.ToLower(name) != name {
 				return fmt.Errorf("adviser request contains unknown field %q", name)
 			}
 			seen[name] = true
 		}
-		if err := requestKeys(decoder, depth+1); err != nil {
+		if err := jsonKeys(decoder, depth+1, lowercase); err != nil {
 			return err
 		}
 	}
@@ -80,11 +84,8 @@ func requestKeys(decoder *json.Decoder, depth int) error {
 
 // ValidateRequest checks the portable request fields without reading context.
 func ValidateRequest(request Request) error {
-	if request.Version != 1 {
-		return errors.New("adviser request version must be 1")
-	}
-	if request.Kind != "advice" && request.Kind != "decision" {
-		return errors.New("adviser request kind must be advice or decision")
+	if err := validateRequestKind(request); err != nil {
+		return err
 	}
 	if strings.TrimSpace(request.Question) == "" || !utf8.ValidString(request.Question) {
 		return errors.New("adviser request question must be nonempty UTF-8 text")
@@ -107,8 +108,8 @@ func ValidateRequest(request Request) error {
 }
 
 func validateChoices(kind string, choices []Choice) error {
-	if kind == "advice" && len(choices) != 0 {
-		return errors.New("an advice request must not contain choices")
+	if kind != "decision" && len(choices) != 0 {
+		return errors.New("only a decision request may contain choices")
 	}
 	if kind == "decision" && len(choices) < 2 {
 		return errors.New("a decision request needs at least two choices")
@@ -143,6 +144,12 @@ func Render(root string, request Request) (string, error) {
 		for _, choice := range request.Choices {
 			fmt.Fprintf(&prompt, "- %q: %s\n", choice.ID, choice.Text)
 		}
+	}
+	for i, level := range request.Levels {
+		fmt.Fprintf(&prompt, "\nScore level %d: %s\n", i, level)
+	}
+	if request.Criteria != nil {
+		fmt.Fprintf(&prompt, "\nTrue criteria: %s\nFalse criteria: %s\n", request.Criteria.True, request.Criteria.False)
 	}
 	if prompt.Len() > MaxInput {
 		return "", errors.New("rendered adviser prompt exceeds 1 MiB")
