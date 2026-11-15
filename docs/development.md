@@ -1,7 +1,38 @@
 # Development
 
-`kitsu` is one Go module. The command is `cmd/kitsu`; everything else is under
-`internal/`.
+Kitsu's CLI is one Go module: the command is `cmd/kitsu`, with its packages under `internal/`.
+The root `install.sh` and `install.ps1` bootstrap artifact installation without Go.
+
+## Build from source
+
+This is the contributor path. To use Kitsu without a checkout or Go, follow
+[release installation](release-install.md).
+
+Install Git and the Go version named by `go.mod` (currently Go 1.27), then clone the source:
+
+```sh
+git clone https://github.com/belevtsev/kitsu.git
+cd kitsu
+```
+
+On macOS or Linux:
+
+```sh
+GOWORK=off go install ./cmd/kitsu
+```
+
+On Windows, in PowerShell:
+
+```powershell
+$env:GOWORK = "off"
+go install ./cmd/kitsu
+```
+
+Go writes the executable to `GOBIN`, or to the `bin` directory under `GOPATH` when `GOBIN` is
+unset. Put that directory on `PATH`, open a new terminal, and run `kitsu version`.
+
+Keep built executables outside the repository root: Git does not ignore a root `kitsu`, so it
+becomes part of the content every check is judged on. [Try it](try-it.md) shows an isolated build.
 
 ## Checks
 
@@ -23,8 +54,8 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 ```
 
-`govulncheck` reads its database from the network. Nothing else here does,
-and `kitsu` itself never does.
+`govulncheck` reads its database from the network. The installers download release artifacts;
+the Kitsu CLI itself makes no network calls.
 
 ## Tests
 
@@ -54,8 +85,8 @@ A test is named after the behaviour it checks.
 | Native Go / windows-latest | gofmt, `go vet`, `go test` |
 | Lint and vulnerabilities | `golangci-lint` and `govulncheck` for linux, darwin and windows |
 | Gate / kitsu run | Builds `kitsu` and runs the checks of `kitsu.toml` with `kitsu run --base` against the base revision |
-| Release archives | Builds six archives, an SBOM for each and `SHA256SUMS`, named for the tag in [release installation](release-install.md), and the release notes. It publishes nothing: the artifact `kitsu-archives` holds them |
-| Install without Go / ubuntu-latest, macos-latest, windows-latest | Follows [release installation](release-install.md) on a `PATH` without `go`, with local archives, and compares `kitsu version` with the tag and commit. Repeats with a damaged archive, which must install nothing. Windows runs both PowerShell 7 and Windows PowerShell 5.1 |
+| Release archives | Builds six archives, an SBOM for each, both installers, `SHA256SUMS`, and release notes. It publishes nothing: the artifact `kitsu-archives` holds them |
+| Install without Go / ubuntu-latest, macos-latest, windows-latest | The `scenarios/installers` harness runs downloaded scripts with an isolated home and a `PATH` without Go or Git. It tests real archives through `KITSU_INSTALL_ARCHIVES`, version/revision, checksum rejection, updates, and `PATH`. Windows runs both PowerShell 7 and Windows PowerShell 5.1 |
 | Plugin manifests | `claude plugin validate .` |
 
 A thorough run is started by hand, with the input `thorough` of the workflow:
@@ -76,15 +107,16 @@ then does four things, each only when the one before it passed:
 2. It runs the tests with the race detector, the lint and the vulnerability
    check.
 3. It builds with `.goreleaser.yaml` the archives for linux, darwin and windows
-   on amd64 and arm64, an SBOM for each and `SHA256SUMS`, uploads them to a
+   on amd64 and arm64, an SBOM for each, both installer scripts, and `SHA256SUMS`, uploads them to a
    draft release on GitHub, attests the build of each archive, and only then
    makes the release public. A tag with a
    hyphen, such as `v3.0.0-beta.2`, becomes a pre-release. The text of the
    release is the section of `CHANGELOG.md` for that version, or the section
    `Unreleased` while the changelog has none
    (`.github/scripts/release-notes.sh`).
-4. It follows `docs/release-install.md` on Linux, macOS and Windows, exactly
-   as written, on a `PATH` without `go`. This fails when the guide names another tag.
+4. It tests the published installer assets on Linux, macOS, and Windows through
+   `scenarios/installers`, with Go and Git absent from the install environment's `PATH`, and
+   verifies the installed version and revision. Windows covers PowerShell 5.1 and 7.
 
 The former `cw` release pipeline ran once for `v3.0.0-beta.1` on 15 November
 2026; all four steps passed using that version's README instructions. That is
@@ -113,9 +145,9 @@ To publish, the owner does two things:
 After a release, give the section `Unreleased` of the changelog the heading
 of that version, and start a new section `Unreleased` above it.
 
-The README, release installation guide and plugin/marketplace manifests name
-the version; change them together. After the first Kitsu release is live and
-its installation job passes, remove the unpublished notices and link its
-verified archive instructions prominently from the README. Until then, source
-installation is the supported path; never point a Kitsu command at the old
-`cw` archives. Preparing the rename does not tag or publish a release.
+The README, release installation guide, installer defaults, and plugin/marketplace manifests
+name the version; change them together. After the first Kitsu release is live and its installation
+jobs pass, remove the unpublished notices. Until then, the installers can use a downloaded
+[`kitsu-archives` CI artifact](release-install.md#install-a-ci-artifact-before-publication) without
+a checkout or Go. Never point a Kitsu command at the old `cw` archives. Preparing the installers
+does not tag or publish a release.

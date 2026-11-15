@@ -10,7 +10,7 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | [Git gate quick start](quickstart.md) | The five commands that add check evidence and Git hooks to a repository. A test executes them. |
 | [Try it](try-it.md) | Everything on this branch that can be tried by hand, with the output to expect, and what was never run. |
 | [Migration](migration.md) | Moving from `cw` to Kitsu while preserving old records and customized hooks. |
-| [Release installation](release-install.md) | Archive installation prepared for the unpublished Kitsu beta. |
+| [Release installation](release-install.md) | One-command installers, version selection, and verified release or CI artifacts. |
 | [Brand assets](brand/README.md) | The mascot, banner, palette, and reproducible artwork brief. |
 | [Benchmarks](benchmarks.md) | Historical measurements of `cw`: hook time, command time, and tokens on two small tasks. |
 | [Operations](operations.md) | Every command, `kitsu.toml`, the exit statuses and where `kitsu` keeps its records. |

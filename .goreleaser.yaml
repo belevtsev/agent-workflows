@@ -33,6 +33,9 @@ archives:
 checksum:
   name_template: SHA256SUMS
   algorithm: sha256
+  extra_files:
+    - glob: install.sh
+    - glob: install.ps1
 
 # One SBOM per archive, made by syft, published with the release as
 # <archive>.sbom.json. The release job installs syft.
@@ -61,3 +64,6 @@ release:
   # A second run for the same tag replaces the draft of the first.
   replace_existing_draft: true
   prerelease: auto
+  extra_files:
+    - glob: install.sh
+    - glob: install.ps1

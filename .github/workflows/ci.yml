@@ -189,12 +189,16 @@ jobs:
           GORELEASER_CURRENT_TAG: ${{ steps.name.outputs.tag }}
       - name: List what was built
         run: |
+          cp install.sh install.ps1 dist/
           cat dist/SHA256SUMS
           for archive in dist/*.tar.gz dist/*.zip; do
             grep -q " $(basename "$archive")\$" dist/SHA256SUMS || { echo "SHA256SUMS does not list $archive"; exit 1; }
             [ -f "$archive.sbom.json" ] || { echo "$archive has no SBOM"; exit 1; }
           done
           [ "$(ls dist/*.tar.gz dist/*.zip | wc -l)" -eq 6 ] || { echo "expected six archives"; exit 1; }
+          for installer in install.sh install.ps1; do
+            grep -q " $installer\$" dist/SHA256SUMS || { echo "SHA256SUMS does not list $installer"; exit 1; }
+          done
           cp "$RUNNER_TEMP/release-notes.md" dist/release-notes.md
       - name: Keep the archives with the run
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -206,12 +210,13 @@ jobs:
             dist/*.sbom.json
             dist/SHA256SUMS
             dist/release-notes.md
+            dist/install.sh
+            dist/install.ps1
           if-no-files-found: error
           retention-days: 30
 
-  # Success measure 4: the first install instruction of the release-install document, followed
-  # on each system on a PATH without go, with the archives of the job above
-  # in place of a release. .github/scripts/install-test.* say what is checked.
+  # Download the standalone installers and real release archives from a local
+  # HTTP fixture, then install with neither Go nor Git on the installer's PATH.
   install:
     name: Install without Go / ${{ matrix.os }}
     needs: archives
@@ -222,29 +227,28 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     env:
-      TAG: ${{ needs.archives.outputs.tag }}
-      REVISION: ${{ needs.archives.outputs.revision }}
+      GOWORK: 'off'
+      KITSU_INSTALL_TAG: ${{ needs.archives.outputs.tag }}
+      KITSU_INSTALL_REVISION: ${{ needs.archives.outputs.revision }}
     steps:
       - name: Check out exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Set up pinned Go for the test harness
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
       - name: Fetch the archives
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: kitsu-archives
           path: ${{ runner.temp }}/archives
-      - name: Follow the install instruction for Linux and macOS
-        if: runner.os != 'Windows'
-        run: sh .github/scripts/install-test.sh "$TAG" "$REVISION" "$RUNNER_TEMP/archives"
-      - name: Follow the install instruction in PowerShell 7
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./.github/scripts/install-test.ps1 -Tag $env:TAG -Revision $env:REVISION -Archives "$env:RUNNER_TEMP\archives"
-      - name: Follow the install instruction in Windows PowerShell 5.1
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: ./.github/scripts/install-test.ps1 -Tag $env:TAG -Revision $env:REVISION -Archives "$env:RUNNER_TEMP\archives"
+      - name: Test standalone installers with release artifacts
+        env:
+          KITSU_INSTALL_ARCHIVES: ${{ runner.temp }}/archives
+        run: go test -count=1 -v ./scenarios/installers
 
   plugins:
     name: Plugin manifests

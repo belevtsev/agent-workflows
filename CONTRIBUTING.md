@@ -24,6 +24,8 @@ GOWORK=off govulncheck ./... && GOWORK=off GOOS=darwin govulncheck ./... && GOWO
 ## Go-only automation
 
 First-party automation is written in Go. If you need a helper, add it to the `kitsu` command or to a test.
+The standalone `install.sh` and `install.ps1` bootstrap scripts are the exception: they install
+release artifacts without build tools. Their integration tests and local download server are Go.
 
 ## Diagrams
 

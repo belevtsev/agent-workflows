@@ -22,11 +22,12 @@ settings keep their meaning. Paths and commands that contain an old name need ed
 
 ## 1. Install the new executable and choose the checkout
 
-Follow [Install](../README.md#install) for the renamed source. With that source checked out
-and the Go toolchain named by its `go.mod`, these commands build and install `kitsu`:
+Follow [Install](../README.md#install) for the CLI installer; no clone or Go toolchain is needed.
+Before the prepared Kitsu beta is published, use the
+[CI artifact route](release-install.md#install-a-ci-artifact-before-publication). Open a new
+terminal and check the installed executable:
 
 ```sh
-go install ./cmd/kitsu
 kitsu version
 ```
 
@@ -179,7 +180,7 @@ reviewed archive commit, as described in [The archive](workflow.md#the-archive).
 ## 5. Update plugins and produce fresh evidence
 
 Remove or disable the old `agent-workflows` plugin registration in each agent host, then
-install the new `kitsu` plugin from the renamed source using the
+install the new `kitsu` plugin through the host's marketplace using the
 [plugin instructions](../README.md#for-a-coding-agent). Restart the session so its hooks and
 role text come from the new namespace. Do not keep both plugins active. Update saved task
 briefs to `kitsu-task:` and role/skill references to the names in the table above. Existing

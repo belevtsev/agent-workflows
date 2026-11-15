@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Shell and PowerShell [installers](docs/release-install.md) select your platform, verify checksums, and set up user `PATH`.
+  Install from release or CI artifacts without a clone or Go; rerun to update, or choose a version and directory.
 - Set or reset a role's model and reasoning from the CLI with [`kitsu roles set` and `reset`](docs/roles.md#changing-a-model),
   preserving other repository settings without editing TOML manually.
 - Configurable [advisers](docs/advisers.md) answer role questions and compare choices, with task bindings,
@@ -26,11 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - [Role defaults](docs/roles.md#the-roles-at-a-glance) use different models and reasoning efforts for lookup,
   specification, architecture, tests, implementation, review, and Git work on both supported hosts.
 - Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
-- The README introduces Kitsu and installs from source until its beta is published. The prepared archive recipes
-  and installation checks live in [release installation](docs/release-install.md).
 
 ### Fixed
 
+- The [installer](docs/release-install.md#path-and-updates) makes Kitsu available in new Bash login shells
+  on Linux even when no user login profile exists yet.
 - Marked files are compared with Git's type, executable-mode and symbolic-link semantics, so a hidden mode change
   cannot produce passing evidence and an unchanged link is accepted ([evidence](docs/evidence.md)).
 - Shipped changes use `kitsu roles check spec-writer --finalize`, limited to the task's capabilities in the baseline

@@ -30,7 +30,7 @@ Your agent host runs the coordinator and delegates to the roles. Kitsu supplies 
 role definitions, record checks, and usage reports. The Git gate supports that workflow and can also be used on its own.
 
 > [!NOTE]
-> Kitsu is a pre-release. [Install from source](#install); [State](#state) covers release status and validation.
+> Kitsu is a pre-release. [Install from release or CI artifacts](#install); [State](#state) covers release status and validation.
 
 ## The roles
 
@@ -184,60 +184,38 @@ The [quick start](docs/quickstart.md) is the same five commands as a text that a
 
 ## Install
 
-`kitsu` is one file, and it needs git. It uses options that git has had since
-version 2.24, and was tried by hand with git 2.53 only. On Windows the git
-hooks are shell scripts, run by the `sh` of Git for Windows.
-
-**Build this checkout.** Kitsu's first release, `v3.0.0-beta.2`, is being
-prepared and has not been published. The older `v3.0.0-beta.1` release contains
-the `cw` executable, not Kitsu. Clone the source if needed, then build with Go 1.27:
+Install the CLI from release artifacts, without cloning this repository or installing Go.
+On macOS or Linux:
 
 ```sh
-git clone https://github.com/belevtsev/kitsu.git
-cd kitsu
+curl -fsSL https://raw.githubusercontent.com/belevtsev/kitsu/main/install.sh | sh
 ```
 
-Linux and macOS:
-
-```sh
-mkdir -p "$HOME/.local/bin"
-GOWORK=off go build -o "$HOME/.local/bin/kitsu" ./cmd/kitsu
-```
-
-Windows, in PowerShell:
+On Windows, in PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\kitsu" | Out-Null
-$env:GOWORK = "off"
-go build -o "$env:LOCALAPPDATA\kitsu\kitsu.exe" ./cmd/kitsu
+irm https://raw.githubusercontent.com/belevtsev/kitsu/main/install.ps1 | iex
 ```
 
-Then put the directory that holds `kitsu` on your `PATH`, and open a new shell.
-`$HOME/.local/bin` is not on `PATH` by default on macOS, nor on some Linux
-systems. For bash, or a shell that reads `~/.profile`:
+**Prepared for `v3.0.0-beta.2`, which is not published yet.** The commands above need the
+corresponding release assets. To try this build now, [install the CI artifact](docs/release-install.md#install-a-ci-artifact-before-publication)
+with the same scripts; that also needs no clone or Go. The old `v3.0.0-beta.1` release contains `cw`.
 
-```sh
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile
-```
+The installer selects your platform and architecture, verifies the archive checksum before
+replacing the executable, and sets up your user `PATH`. The default location is `$HOME/.local/bin`
+on macOS/Linux or `%LOCALAPPDATA%\kitsu` on Windows. Open a new terminal, then run `kitsu version`.
 
-For zsh, the shell of macOS, write the same line to `~/.zprofile`. On Windows,
-in PowerShell, for your user:
+Rerun the installer command to reinstall or update to its current default version. The
+[installation guide](docs/release-install.md) covers version pinning, custom directories, opting
+out of `PATH` changes, and manual archive installation. Contributors can [build from source](docs/development.md#build-from-source).
 
-```powershell
-[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\kitsu", "User")
-```
+Kitsu uses Git to work in a repository. On Windows its Git hooks use the `sh` supplied by Git for
+Windows. The installer installs only Kitsu's CLI; [add the plugin](#for-a-coding-agent) through
+your host's marketplace to use the coordinated workflow.
 
 The hooks look for `kitsu` only in the entries of `PATH` that are absolute paths; see
-[hooks](docs/hooks.md#when-kitsu-is-not-on-path).
-
-The [release installation guide](docs/release-install.md) holds the archive
-recipes prepared for `v3.0.0-beta.2`; they become usable after publication.
-Existing `cw` users should follow the [migration guide](docs/migration.md)
-before initializing Kitsu in an existing repository.
-
-Do not leave a built `kitsu` in the root of a repository: git does not ignore it,
-so it becomes part of the content every check is judged on.
-[The test guide](docs/try-it.md) builds it into a folder of its own.
+[hooks](docs/hooks.md#when-kitsu-is-not-on-path). Existing `cw` users should follow the
+[migration guide](docs/migration.md) before initializing Kitsu in an existing repository.
 
 ## For a coding agent
 
@@ -266,9 +244,15 @@ On Claude Code:
 /plugin install kitsu --marketplace belevtsev/kitsu
 ```
 
-On Codex, add this repository as a marketplace with `codex plugin marketplace add belevtsev/kitsu`, then
-add the plugin `kitsu` with `codex plugin add`. Codex does not run the hooks of a plugin when it installs
-it. Its documentation says: "Installing or enabling a plugin doesn't automatically trust its hooks … Codex skips
+On Codex:
+
+```sh
+codex plugin marketplace add belevtsev/kitsu
+codex plugin add kitsu@kitsu
+```
+
+Codex does not run the hooks of a plugin when it installs it. Its documentation says:
+"Installing or enabling a plugin doesn't automatically trust its hooks … Codex skips
 them until the user reviews and trusts the current hook definition." Until you review and trust them, the session
 gets no text from `kitsu context`, no guard and no token records. The git hooks still decide.
 
@@ -303,9 +287,9 @@ The workflow, adviser records, token reports, and gate share the same CLI:
   [`cw v3.0.0-beta.1`](https://github.com/belevtsev/kitsu/releases/tag/v3.0.0-beta.1)
   was published on 15 November 2026. Its installation was checked on Linux, macOS and Windows.
   CI builds the six Kitsu archives and tests the [prepared release instructions](docs/release-install.md).
-- The current implementation passed build, vet, and race-enabled tests on Linux. Lint and vulnerability checks
-  passed for Linux, macOS, and Windows targets. Native runtime tests for this change ran on Linux; the historical
-  installation results above describe `cw`. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md).
+- Local build, vet, and race-enabled tests passed on Linux. Lint and vulnerability checks passed for Linux,
+  macOS, and Windows targets. See the [adviser change checks](openspec/changes/add-configurable-advisers/tests.md)
+  and [installer validation](docs/release-install.md#what-ci-checks) for their scope.
 - Whether the workflow improves code quality or saves tokens compared with one agent is **not measured**.
   Historical scratch runs on two small tasks recorded workflow usage, without a comparative quality result:
   [benchmarks](docs/benchmarks.md). The planned [evaluation](docs/evaluation.md) has not been run.
