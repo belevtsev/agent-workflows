@@ -1,74 +1,67 @@
 # Gatecub brand assets
 
-Gatecub is an alert, friendly bear cub holding a code-change card with a teal check. The mark represents checked changes and coordinated agents.
+Gatecub's mascot is a fluffy Pomeranian in a red knit beanie, holding a code-change card with a teal check. Its pointed ears, short dog muzzle, full neck ruff and curled tail make the dog recognizable; its calm, proud expression follows the user's reference.
 
 | Asset | Size | Background | Suggested use |
 | --- | --- | --- | --- |
-| [Mascot](gatecub-mascot.png) | 1254 × 1254; 726,960 bytes | Transparent RGBA | Avatar, documentation, project badge |
-| [Banner](gatecub-banner.png) | 1280 × 640; 607,726 bytes | Opaque warm cream | README and repository social preview |
+| [Mascot](gatecub-mascot.png) | 1254 × 1254; 923,432 bytes | Transparent RGBA | Avatar, documentation, project badge |
+| [Banner](gatecub-banner.png) | 1280 × 640; 586,883 bytes | Opaque warm cream | README and repository social preview |
 
-The banner reads **Gatecub** and **Checked changes. Coordinated agents.** Keep the original proportions and leave breathing room around the bear and text. Use the transparent mascot on a light surface with enough contrast for its charcoal outline. The banner supplies its own background.
+The banner reads **Gatecub** and **Checked changes. Coordinated agents.** Keep the original proportions and leave breathing room around the dog and text. Use the transparent mascot on a light surface with enough contrast for its charcoal outline. The banner supplies its own background.
 
 Suggested alt text:
 
-- Mascot: `Gatecub bear cub holding a code-change card with a teal check mark.`
-- Banner: `Gatecub. Checked changes. Coordinated agents. A bear cub holds a checked code-change card.`
+- Mascot: `Gatecub Pomeranian in a red knit beanie, holding a code-change card with a teal check mark.`
+- Banner: `Gatecub. Checked changes. Coordinated agents. A fluffy Pomeranian in a red beanie holds a checked code-change card.`
 
 ## Color direction
 
 | Color | Value | Role |
 | --- | --- | --- |
-| Charcoal | `#202A30` | Bear, outlines, wordmark and text |
-| Cream | `#F6F0E5` | Face, card, accents and banner background |
+| Charcoal | `#202A30` | Outlines, dark fur, eyes, nose, wordmark and text |
+| Cream | `#F6F0E5` | Light fur, paws, card and banner background |
 | Teal | `#169C92` | Check mark and code accent |
+| Red | `#C83D37` | Knit beanie, inspired by the user's reference |
 
-These are the design targets; the generated PNGs retain subtle shades and antialiased edges. Do not recolor or stretch the artwork. A check mark is part of the brand, not evidence that a particular change passed checks.
+These are the design targets; the generated PNGs retain subtle shades and antialiased edges. Keep the beanie as the red accent and the card check teal. Do not recolor or stretch the artwork.
 
 ## Creation and export
 
-Created on 2026-11-15 with the built-in `image_gen` tool, using a transparent generation for the mascot and the mascot as the banner's identity reference. The banner received one targeted flat-color edit with the same tool. No API fallback or hand-drawn replacement was used.
+Updated on 2026-11-15 with the built-in `image_gen` tool. The mascot was edited from the previous Gatecub mascot using the user's Pomeranian image as species and mood guidance. The matching banner was edited from the previous banner with the new Pomeranian mascot as its identity reference. All creative changes were made with `image_gen`; no API fallback or procedural drawing was used. The private input reference is not included in this repository.
 
-The mascot's generated 1254 × 1254 dimensions and alpha were preserved. The selected banner was resized from 1774 × 887 to 1280 × 640 with Lanczos resampling. Both files were re-encoded as losslessly optimized PNGs; no palette quantization or color substitution was applied. The exact prompts are recorded below for future revisions; a new generation will not necessarily reproduce identical pixels.
+The mascot's generated 1254 × 1254 dimensions and alpha were preserved. The selected banner was resized from 1774 × 887 to 1280 × 640 using the browser's high-quality image resampling. Both PNGs were then losslessly re-encoded with Go's PNG encoder at its best compression setting. No palette quantization or color substitution was applied. Both final files are under 1 MB.
+
+The exact edit prompts that produced the current artwork follow. A new generation will not necessarily reproduce identical pixels.
 
 <details>
-<summary>Mascot generation prompt</summary>
+<summary>Pomeranian mascot edit prompt</summary>
 
 ```text
-Use case: logo-brand.
-Asset type: square transparent PNG mascot for the developer tool Gatecub.
-Primary request: Create an original flat illustrated alert bear cub holding a code-change card with a teal check mark. The cub should feel attentive, capable, friendly, and compact, with upright rounded ears, a simple expressive face, and clearly visible paws gripping the card. The rectangular card shows a few short abstract code lines and one prominent check mark, with no readable words.
-Style: clean contemporary vector-like flat illustration, bold simple silhouette, economical geometric forms, crisp edges, no photorealism, no gradients, no shadows, no texture, no 3D.
-Color palette: charcoal #202A30 for cub body and outlines, warm cream #F6F0E5 for muzzle, inner ears, paws accents and code card, teal #169C92 for the check and a minimal accent. Use only these three solid colors plus transparent background and natural antialiasing.
-Composition: 1024 by 1024 square canvas, centered complete mascot, generous transparent padding on all sides, no part clipped; legible at small sizes.
-Constraints: true transparent background, no text, no logo from another brand, no clothing, no extra objects, no watermark. The bear must hold a code-change card, with a teal check clearly visible.
+Use case: precise-object-edit / logo-brand.
+Asset type: Gatecub developer-tool mascot, square transparent PNG.
+Input image 1 is the current mascot edit target. Input image 2 is the user's Pomeranian reference: use its fluffy dog face and ruff, small dark eyes, canine muzzle, calm proud expression, and red knit beanie as species and mood guidance. Do not reproduce the reference's photographic texture or dark background.
+Primary request: Replace the bear completely with an original, clearly recognizable Pomeranian dog. Give the dog a fluffy cream-and-charcoal spitz face, broad layered neck ruff, short pointed canine muzzle with a small black nose, and small pointed triangular ears partly tucked beneath a red knit beanie. The beanie has a folded ribbed cuff and a few simple knit lines. The expression is calm, capable, friendly and a little proud, inspired by the reference. There must be no round bear ears or bear face.
+Preserve the useful compact seated mascot composition: a complete small fluffy dog with visible front paws gripping a cream code-change card, little hind paws, and a curled fluffy tail where it fits naturally. The card has a few abstract short code lines, a small code-bracket symbol, and one prominent teal check mark; no readable words.
+Style: clean flat original brand illustration, crisp vector-like contours, simplified tufts of fur, economical geometric forms, legible silhouette at small sizes. No photorealism, no detailed fur rendering, no 3D, no scenery, no cast shadows, no watermark.
+Color direction: charcoal #202A30 for outlines, dark fur accents, eyes and nose; warm cream #F6F0E5 for the main fur, paws and code card; teal #169C92 for the check and code accent; tasteful red #C83D37 for the beanie. Natural antialiasing is fine.
+Composition: square canvas, full mascot centered, generous genuinely transparent padding on all four sides. The full beanie, fur, paws, card and tail stay inside the frame. Transparent background, no text. Keep the card and check visually clear.
 ```
 
 </details>
 
 <details>
-<summary>Banner generation prompt (mascot supplied as reference)</summary>
+<summary>Matching banner edit prompt</summary>
 
 ```text
-Use case: compositing / logo-brand.
-Asset type: repository brand banner for Gatecub, final landscape size 1280 by 640 pixels, 2:1 aspect ratio.
-Input image: the supplied Gatecub mascot is the identity reference. Preserve its original alert rounded bear cub, friendly face, body silhouette, cream paws, and code-change card with teal check. Reproduce the same mascot cleanly at smaller scale on the left side.
-Primary request: produce a finished minimal brand banner with the mascot on the left and the following exact text on the right:
-Gatecub
-Checked changes. Coordinated agents.
-Composition: 2:1 wide horizontal banner, complete mascot about 480 pixels tall, centered vertically in the left 40% of the canvas; right 60% contains a clear bold wordmark and the tagline on one line below it. Plenty of balanced negative space; all content comfortably inside a 64 pixel safe margin. Use a confident rounded geometric sans-serif for Gatecub, and a smaller clean sans-serif for the tagline. Main wordmark charcoal #202A30. Tagline charcoal #202A30. Teal #169C92 is restricted to the mascot's check and small existing accents.
-Background: perfectly flat, opaque, solid warm cream #F6F0E5 across the entire canvas, no texture, no gradient, no shadows.
-Style: crisp flat original illustration, brand consistency with supplied mascot.
-Text (verbatim, spelling and punctuation must be exact): "Gatecub" and "Checked changes. Coordinated agents."
-Constraints: only those two text elements; no added slogans, symbols, watermarks, borders, mockups, textures, gradients, or scenery. Keep the mascot recognizable and the code card and check readable. Exact deliverable size requested: 1280x640.
-```
-
-</details>
-
-<details>
-<summary>Banner refinement prompt (previous banner supplied as edit target)</summary>
-
-```text
-Edit the supplied Gatecub banner. Preserve the mascot identity, full composition, all positions, typography, wording, spelling and punctuation exactly. The only change is to remove every gradient, paper texture, shading, and color variation, producing a truly flat three-color illustration on a uniform solid background. Background must be exactly one even warm cream #F6F0E5, including all four corners and every empty region; absolutely no vignette, texture, paper grain, radial shading, or lighting effect. All charcoal shapes and both text elements should be solid #202A30; teal shapes solid #169C92; cream shapes solid #F6F0E5, apart from necessary edge antialiasing. Text must remain exactly 'Gatecub' and 'Checked changes. Coordinated agents.'. Export a 1280x640 opaque PNG, aspect ratio 2:1. Do not add, remove, crop, or redesign anything.
+Use case: precise-object-edit / logo-brand.
+Asset type: Gatecub repository banner, opaque warm-cream landscape PNG, 2:1 aspect ratio, final target 1280x640.
+Input image 1 is the current Gatecub banner edit target. Input image 2 is the approved new Pomeranian mascot identity reference.
+Primary request: replace only the bear mascot on the left with the exact Pomeranian identity from input image 2: fluffy cream-and-charcoal face and neck ruff, small pointed dog ears, short canine muzzle, calm proud friendly expression, red knit beanie with folded ribbed cuff, front paws holding the cream code-change card with teal code brackets and check, little hind paws, and curled fluffy tail. Keep the complete dog inside the frame. The two assets must unmistakably depict the same mascot.
+Preserve the current banner's typography, wordmark, tagline, spelling, punctuation, spacing, balanced left-mascot/right-text composition, and warm cream background. Scale the new mascot to fit comfortably within the existing left area with breathing room; its ears, beanie and tail must not touch the wordmark or the frame.
+Text (verbatim, exactly these two elements): "Gatecub" and "Checked changes. Coordinated agents."
+Style: crisp clean flat brand illustration matching input image 2, simplified fur tufts, no photorealism, no 3D, no extra symbols or scenery. Keep the teal check visually prominent.
+Color direction: charcoal #202A30 for text, outlines and dark fur; warm cream #F6F0E5 for the background, light fur and card; teal #169C92 for card accents; red #C83D37 for the beanie. The background should read as a plain even warm cream, with no added texture, gradient or shadow.
+Constraints: no remaining bear features, no round ears, no new words, no altered lettering, no watermark. Final composition remains wide 2:1 with all content safely inside the edges. Target output 1280 by 640 pixels.
 ```
 
 </details>

@@ -2,7 +2,7 @@
 
 # Gatecub
 
-<img src="docs/brand/gatecub-banner.png" alt="Gatecub: an alert bear cub holds a checked code-change card. Checked changes. Coordinated agents." width="100%">
+<img src="docs/brand/gatecub-banner.png" alt="Gatecub: a fluffy Pomeranian in a red beanie holds a checked code-change card. Checked changes. Coordinated agents." width="100%">
 
 **Checked changes. Coordinated agents.**
 
