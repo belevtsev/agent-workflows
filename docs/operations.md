@@ -4,6 +4,9 @@ This is the reference of `kitsu`: every command, the file `kitsu.toml`, the exit
 statuses, where `kitsu` keeps its records, and how to use it in continuous
 integration. [The README](../README.md#install) says how to install it, and
 [the quick start](quickstart.md) takes a repository to its first gated commit.
+The [CLI guide](cli.md) introduces preferred command groups, host preferences, explicit
+terminal editors, and shell completion. The detailed transcripts below retain existing alias
+spellings; those commands continue to work without deprecation messages.
 
 `kitsu` itself knows no programming language. A check is a program and its
 arguments; `kitsu` starts it, waits for it, and records how it ended.
@@ -13,6 +16,7 @@ paths are shortened to `<repository>`.
 
 ## Contents
 
+- [Preferred commands](#preferred-commands)
 - [Command line](#command-line)
 - [kitsu init](#kitsu-init)
 - [kitsu add](#kitsu-add)
@@ -35,17 +39,62 @@ paths are shortened to `<repository>`.
 - [Continuous integration](#continuous-integration)
 - [A tree without kitsu.toml](#a-tree-without-kitsutoml)
 
+## Preferred commands
+
+Run `kitsu help <group> <command>` for each leaf's operands, flags, defaults, and examples.
+The preferred surface is:
+
+| Path | Operands and purpose |
+| --- | --- |
+| `task list`, `task show`, `task check` | List full and small histories, show `<task>`, or check `[<task>]` offline. Small histories keep their stage unknown. |
+| `role list`, `role show`, `role text` | List selections, inspect `<role>`, or print its original instructions. |
+| `role set`, `role edit`, `role reset`, `role check` | Change, explicitly edit, reset, or compare `<role>` with `--from <tree>`. |
+| `skill list`, `skill show`, `skill resolve` | Discover, inspect `<skill>`, or resolve `<role>` to original paths and hashes. |
+| `skill attach`, `skill detach` | Add or remove `<skill> --role <role>`; detach also works after the source disappears. |
+| `skill clear`, `skill reset` | Use `--role <role>` to save `[]` or remove only its skill override and inherit again. |
+| `adviser list`, `adviser show`, `adviser providers` | Inspect experimental configuration, one `<adviser>`, or offline provider capabilities. |
+| `adviser bind`, `adviser status`, `adviser check` | Use positional `<task>` to save or inspect its policy and checkpoints. |
+| `adviser ask` | Consult positional `<adviser>` with `--task`, `--role`, `--stage`, and `--request`; opt-in still applies. |
+| `adviser accept`, `adviser reject`, `adviser defer` | Record `<id> --task <task> --reason <text>` with optional `--choice <id>`. |
+| `check list`, `check add`, `check run`, `check stats` | Inspect checks, add `<id> -- <program> [args...]`, run `[<id>...]`, or report recorded runs. |
+| `gate init`, `gate status`, `gate uninstall` | Install hooks, inspect evidence, or remove hooks and local records, including host tokens; retain configuration and shared history. |
+| `usage show`, `usage record` | Report `--task <task>` or read a notice from stdin with explicit `--host`. |
+| `config show`, `config get` | Inspect CLI preferences and their origins; get the `host` key. |
+| `config set`, `config reset`, `config edit` | Set `host codex|claude`, reset `host`, or explicitly edit preferences; `--global` selects personal scope. |
+| `completion bash`, `completion zsh`, `completion fish`, `completion powershell` | Print shell completion scripts without installation or writes. |
+| `version`, `context`, `hook`, `guard` | Build information and advanced host/Git integration. |
+
+Preferred host-aware commands use explicit `--host`, then nonempty `KITSU_HOST`, private
+worktree `<git-dir>/kitsu-cli.toml`, and personal `os.UserConfigDir()/kitsu/config.toml` in that
+order. Preferences currently hold only version 1 and the optional host. Default `config set`
+and reset edit the worktree; `--global` edits the personal file. Shared role settings and
+personal skills stay in their existing files. Legacy ingress keeps its existing host behavior.
+
+Only `role edit` and `config edit` prompt. They require stdin/stderr terminals, reject JSON,
+support F1 field help and `--accessible`, preview changes, and revalidate before saving. Cancel
+creates no configuration or lock files; concurrent edits abort the save. Other commands remain
+noninteractive. See [the editor guide](cli.md#open-an-editor-when-you-want-one).
+For these new editors, explicit Cancel exits 0 and Ctrl+C/context cancellation exits 130;
+neither saves changes. Existing commands keep their exit-status behavior.
+
+Existing aliases preserve their execution and output, including bare `roles`, `tokens`, `run`,
+and `status`. `advisers resolve --disposition accept|reject|defer` remains available alongside
+the separate preferred disposition commands. The sections below document those retained
+spellings and their underlying behavior.
+
 ## Command line
 
 - `kitsu help` prints the list of commands and the exit statuses, and exits 0.
-  `kitsu` with no command prints the same list on standard error and exits 2.
-- `kitsu help <command>`, `kitsu <command> --help` and `kitsu <command> -h` print the
-  usage line and the summary of one command, and one line for each of its
-  arguments and options.
+  `kitsu` and preferred groups without a subcommand also print help and exit 0.
+- `kitsu help <path>`, `kitsu <group> help <subpath>`, `kitsu <path> --help`, and
+  `kitsu <path> -h` work at every supported group, leaf, and alias. Help runs before Git,
+  configuration, required-operand, or terminal checks and never executes an action or opens UI.
+- Invalid usage exits 2 with a concise error, leaf usage, and the exact help command. Typo
+  suggestions do not execute a corrected action.
 - Options may stand before or after the other arguments: `kitsu run lint --force`
   and `kitsu run --force lint` mean the same. An option takes its value as the
   next word or after `=`: `--base main` or `--base=main`.
-- Everything after `--` is passed on unread. Only `kitsu add` accepts `--`.
+- Everything after `--` in `kitsu check add` or its `kitsu add` alias is passed on unread.
 - An error is printed on standard error with the prefix `kitsu:`.
 
 ## kitsu init
@@ -825,6 +874,7 @@ Every command uses this one table.
 | 3 | A hook denies the commit, the merge or the push. |
 | 4 | A hook of another tool is left for you to edit: `kitsu init` or `kitsu uninstall` printed the line to add or to remove. |
 | 5 | Not verified: a check did not pass, a role or change-record rule is broken, or required adviser checkpoints are unsatisfied. |
+| 130 | A new explicit role/config editor was interrupted by Ctrl+C or context cancellation; nothing was saved. |
 
 ## Where kitsu keeps its records
 
@@ -840,6 +890,10 @@ Shared adviser bindings, prompts, answers, and dispositions live in the worktree
 Skill selection receipts similarly live under `openspec/changes/<task>/skills/` or
 `openspec/changes/.skills/<task>/`. These records hold ids and hashes, not installed skill bodies
 or machine absolute paths; see [skills](skills.md#record-a-worker-selection).
+Private CLI preferences use the worktree Git directory's `kitsu-cli.toml` and the personal
+`os.UserConfigDir()/kitsu/config.toml`. They select a CLI host and contain no task stage or
+shared role policy; see [host preferences](cli.md#select-your-host-once).
+Gate removal deletes its evidence and hooks while retaining these CLI preferences.
 
 ```text
 kitsu/mode                                      enforce or observe
@@ -869,17 +923,18 @@ kitsu/tokens/                                   token records; see tokens.md
   is the time the file was last written. When another `kitsu run` is already
   removing, this one skips it.
 
-Outside the git directory, `kitsu` writes only `kitsu.toml`: `kitsu init` creates it, and
-`kitsu add` writes the longer file to a temporary `.tmp-*` file beside it, syncs
-it to disk and renames that over it. Nothing is written into the home directory. The hook
-files are in the git directory. A check's program runs in the working tree
+The gate/check commands keep their worktree declaration in `kitsu.toml`: `kitsu init` creates it,
+and `kitsu add` writes the longer file to a temporary `.tmp-*` file beside it, syncs
+it to disk and renames that over it. Role, task, skill, and CLI settings use the locations
+described above. The hook files are in the git directory. A check's program runs in the working tree
 and can write there; `kitsu` records such a run as `source_changed`.
 
 `kitsu uninstall` removes the hook files that hold the marker line of `kitsu` in
 `hooks/` of the common git directory, and the files that are exactly the
 script of `kitsu` in a directory that `core.hooksPath` names; then the whole
 `kitsu/` directory: runs, logs, decisions, the mode and the token records. It
-leaves `kitsu.toml`, every other hook file, and the agent plugin.
+leaves configuration, private CLI preferences, shared OpenSpec history, every other hook file,
+and the agent plugin.
 
 Only explicit native adviser consultations start provider API connections. Adviser CLIs and
 declared check commands may also use the network. Discovery, record checks, gate decisions, and

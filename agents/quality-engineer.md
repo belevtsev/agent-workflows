@@ -84,7 +84,7 @@ limit nor the developer's approval authority.
 - Do not change production code to make a test possible. Report what is
   missing instead.
 
-Run the checks with `kitsu run` when you are done. The new tests should fail,
+Run the checks with `kitsu check run` when you are done. The new tests should fail,
 and fail because the behaviour is missing, not because of a mistake in the
 test. Read the failure and say which it is. A new test that passes before the
 code exists proves nothing: say so. In a language that compiles, the expected

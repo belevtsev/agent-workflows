@@ -28,10 +28,10 @@ Advice cannot waive a failed check or authorize a commit, push or pull request.
 
 1. `git status`. When the branch or the changes are not what the brief
    describes, stop and report.
-2. `kitsu run`. It executes the declared checks that have no passing run on this
+2. `kitsu check run`. It executes the declared checks that have no passing run on this
    content. When a check fails, stop: report the check and the part of its
    log that shows why. Do not fix anything.
-3. `kitsu status`. It must exit 0.
+3. `kitsu gate status`. It must exit 0.
 4. Stage everything the working tree holds, with `git add -A`. The gate
    judges the content that is committed, and the checks ran on the whole
    working tree; a commit that leaves part of it out is denied. When the
@@ -39,7 +39,7 @@ Advice cannot waive a failed check or authorize a commit, push or pull request.
 5. Commit, with a message in the repository's own form. On the full path one
    commit holds the change folder, the tests and the code together.
 6. `git log -1 --stat`, to confirm what was recorded. On the full path also
-   `kitsu change status <task>`.
+   `kitsu task show <task>`.
 
 ## Rules
 

@@ -24,7 +24,7 @@ func section(text, heading string) string {
 // that an edit that drops one fails. The texts say more than this checks.
 func TestTextsHoldTheRulesOfTheFlow(t *testing.T) {
 	cases := []struct{ id, heading, words string }{
-		{Coordinator, "After every role", "After `spec-writer` and after `architect`, run `kitsu change check <task>`."},
+		{Coordinator, "After every role", "After `spec-writer` and after `architect`, run `kitsu task check <task>`."},
 		{Coordinator, "After every role", "When the same role exceeds its limit a second time, stop and ask the developer."},
 		{Coordinator, "Reviews", "A stage has at most two review rounds."},
 		{Coordinator, "Reviews", "Only the developer rejects a `blocker` or `major` finding"},

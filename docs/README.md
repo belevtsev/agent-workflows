@@ -4,6 +4,8 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 
 | Document | What it holds |
 | --- | --- |
+| [CLI guide](cli.md) | Find commands, save a host preference, use explicit editors, and enable completion. |
+| [CLI command reference](cli-reference.md) | Generated command help with operands, options, defaults, and examples. |
 | [The task workflow](workflow.md) | Coordinate a task through specification, design, tests, implementation, review, and commit, using a shared task record. |
 | [Roles](roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
 | [Skills](skills.md) | Discover existing skills, select them per role, and resolve original sources for a worker brief. |

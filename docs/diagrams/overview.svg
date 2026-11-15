@@ -759,14 +759,14 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
 
         <!-- Components -->
-        <g id="node-roles" data-node-id="roles" data-node-label="kitsu roles" tabindex="0" role="button" aria-label="Focus kitsu roles, kitsu-roles.toml, Role coordination" aria-pressed="false" data-node-kind="backend" data-node-sublabel="kitsu-roles.toml" data-node-context="Role coordination">
-          <title>kitsu roles · kitsu-roles.toml · Role coordination</title>
+        <g id="node-roles" data-node-id="roles" data-node-label="kitsu role list" tabindex="0" role="button" aria-label="Focus kitsu role list, kitsu-roles.toml, Role coordination" aria-pressed="false" data-node-kind="backend" data-node-sublabel="kitsu-roles.toml" data-node-context="Role coordination">
+          <title>kitsu role list · kitsu-roles.toml · Role coordination</title>
           <rect x="40" y="80" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="40" y="80" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 86) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="115" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu roles</text>
+          <text data-node-label="" x="115" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu role list</text>
         <text x="115" y="123" class="t-muted" font-size="9" text-anchor="middle">kitsu-roles.toml</text>
         </g>
 
@@ -796,14 +796,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="115" y="335" class="t-muted" font-size="9" text-anchor="middle">specs, tests, reviews</text>
         </g>
 
-        <g id="node-change-check" data-node-id="change-check" data-node-label="kitsu change check" tabindex="0" role="button" aria-label="Focus kitsu change check, record structure, Role coordination" aria-pressed="false" data-node-kind="backend" data-node-sublabel="record structure" data-node-context="Role coordination">
-          <title>kitsu change check · record structure · Role coordination</title>
+        <g id="node-change-check" data-node-id="change-check" data-node-label="kitsu task check" tabindex="0" role="button" aria-label="Focus kitsu task check, record structure, Role coordination" aria-pressed="false" data-node-kind="backend" data-node-sublabel="record structure" data-node-context="Role coordination">
+          <title>kitsu task check · record structure · Role coordination</title>
           <rect x="40" y="398" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="40" y="398" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 6; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 404) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="115" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu change check</text>
+          <text data-node-label="" x="115" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu task check</text>
         <text x="115" y="441" class="t-muted" font-size="9" text-anchor="middle">record structure</text>
         </g>
 
@@ -821,14 +821,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="309" y="123" class="t-muted" font-size="9" text-anchor="middle">none by default</text>
         </g>
 
-        <g id="node-consult" data-node-id="consult" data-node-label="kitsu consult" tabindex="0" role="button" aria-label="Focus kitsu consult, native API or CLI, Advisers (experimental)" aria-pressed="false" data-node-kind="backend" data-node-sublabel="native API or CLI" data-node-context="Advisers (experimental)">
-          <title>kitsu consult · native API or CLI · Advisers (experimental)</title>
+        <g id="node-consult" data-node-id="consult" data-node-label="kitsu adviser ask" tabindex="0" role="button" aria-label="Focus kitsu adviser ask, native API or CLI, Advisers (experimental)" aria-pressed="false" data-node-kind="backend" data-node-sublabel="native API or CLI" data-node-context="Advisers (experimental)">
+          <title>kitsu adviser ask · native API or CLI · Advisers (experimental)</title>
           <rect x="234" y="186" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="234" y="186" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(240 192) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="309" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu consult</text>
+          <text data-node-label="" x="309" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu adviser ask</text>
         <text x="309" y="229" class="t-muted" font-size="9" text-anchor="middle">native API or CLI</text>
         </g>
 
@@ -846,14 +846,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="309" y="335" class="t-muted" font-size="9" text-anchor="middle">answers + decisions</text>
         </g>
 
-        <g id="node-adviser-check" data-node-id="adviser-check" data-node-label="advisers check" tabindex="0" role="button" aria-label="Focus advisers check, only if required, Advisers (experimental)" aria-pressed="false" data-node-kind="backend" data-node-sublabel="only if required" data-node-context="Advisers (experimental)">
-          <title>advisers check · only if required · Advisers (experimental)</title>
+        <g id="node-adviser-check" data-node-id="adviser-check" data-node-label="adviser check" tabindex="0" role="button" aria-label="Focus adviser check, only if required, Advisers (experimental)" aria-pressed="false" data-node-kind="backend" data-node-sublabel="only if required" data-node-context="Advisers (experimental)">
+          <title>adviser check · only if required · Advisers (experimental)</title>
           <rect x="234" y="398" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="234" y="398" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 9; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(240 404) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="309" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">advisers check</text>
+          <text data-node-label="" x="309" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">adviser check</text>
         <text x="309" y="441" class="t-muted" font-size="9" text-anchor="middle">only if required</text>
         </g>
 
@@ -869,14 +869,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="503" y="123" class="t-muted" font-size="9" text-anchor="middle">kept by the agent host</text>
         </g>
 
-        <g id="node-record" data-node-id="record" data-node-label="kitsu tokens record" tabindex="0" role="button" aria-label="Focus kitsu tokens record, when a role ends, Usage reporting" aria-pressed="false" data-node-kind="backend" data-node-sublabel="when a role ends" data-node-context="Usage reporting">
-          <title>kitsu tokens record · when a role ends · Usage reporting</title>
+        <g id="node-record" data-node-id="record" data-node-label="kitsu usage record" tabindex="0" role="button" aria-label="Focus kitsu usage record, when a role ends, Usage reporting" aria-pressed="false" data-node-kind="backend" data-node-sublabel="when a role ends" data-node-context="Usage reporting">
+          <title>kitsu usage record · when a role ends · Usage reporting</title>
           <rect x="428" y="186" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="428" y="186" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 10; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(434 192) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="503" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu tokens record</text>
+          <text data-node-label="" x="503" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu usage record</text>
         <text x="503" y="229" class="t-muted" font-size="9" text-anchor="middle">when a role ends</text>
         </g>
 
@@ -892,14 +892,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="503" y="335" class="t-muted" font-size="9" text-anchor="middle">measured host usage</text>
         </g>
 
-        <g id="node-tokens" data-node-id="tokens" data-node-label="kitsu tokens" tabindex="0" role="button" aria-label="Focus kitsu tokens, host usage totals, Usage reporting" aria-pressed="false" data-node-kind="backend" data-node-sublabel="host usage totals" data-node-context="Usage reporting">
-          <title>kitsu tokens · host usage totals · Usage reporting</title>
+        <g id="node-tokens" data-node-id="tokens" data-node-label="kitsu usage show" tabindex="0" role="button" aria-label="Focus kitsu usage show, host usage totals, Usage reporting" aria-pressed="false" data-node-kind="backend" data-node-sublabel="host usage totals" data-node-context="Usage reporting">
+          <title>kitsu usage show · host usage totals · Usage reporting</title>
           <rect x="428" y="398" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="428" y="398" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-15;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(434 404) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="503" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu tokens</text>
+          <text data-node-label="" x="503" y="425" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu usage show</text>
         <text x="503" y="441" class="t-muted" font-size="9" text-anchor="middle">host usage totals</text>
         </g>
 
@@ -917,14 +917,14 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="697" y="123" class="t-muted" font-size="9" text-anchor="middle">your checks</text>
         </g>
 
-        <g id="node-run" data-node-id="run" data-node-label="kitsu run" tabindex="0" role="button" aria-label="Focus kitsu run, runs missing checks, Supporting Git gate" aria-pressed="false" data-node-kind="backend" data-node-sublabel="runs missing checks" data-node-context="Supporting Git gate">
-          <title>kitsu run · runs missing checks · Supporting Git gate</title>
+        <g id="node-run" data-node-id="run" data-node-label="kitsu check run" tabindex="0" role="button" aria-label="Focus kitsu check run, runs missing checks, Supporting Git gate" aria-pressed="false" data-node-kind="backend" data-node-sublabel="runs missing checks" data-node-context="Supporting Git gate">
+          <title>kitsu check run · runs missing checks · Supporting Git gate</title>
           <rect x="622" y="186" width="150" height="58" rx="8" class="c-mask"/>
           <rect x="622" y="186" width="150" height="58" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(628 192) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="697" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu run</text>
+          <text data-node-label="" x="697" y="213" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">kitsu check run</text>
         <text x="697" y="229" class="t-muted" font-size="9" text-anchor="middle">runs missing checks</text>
         </g>
 

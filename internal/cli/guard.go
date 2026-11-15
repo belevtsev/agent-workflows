@@ -91,7 +91,7 @@ func guardReason(ctx context.Context, call toolCall) string {
 	}
 	switch call.Tool {
 	case "Bash", "PowerShell":
-		if how := shellwords.ChangesRoles(command); how != "" {
+		if how := uxChangesPolicy(command); how != "" {
 			return "This command " + how + "."
 		}
 		if how := shellwords.SkipsHooks(command); how != "" {
@@ -117,6 +117,7 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 		{filepath.Join(repo.Root, decl.FileName), "This edit changes kitsu.toml, and with it the checks this repository requires before a commit or a push."},
 		{filepath.Join(repo.Root, "kitsu-advisers.toml"), "This edit changes adviser commands, model selections, role access or required consultations."},
 		{filepath.Join(repo.Root, "kitsu-roles.toml"), "This edit changes role models, reasoning effort or write limits."},
+		{filepath.Join(repo.GitDir, uxCheckoutConfigFile), "This edit changes this checkout's CLI host preference."},
 		{filepath.Join(repo.CommonDir, "hooks"), hook},
 		{hooks, hook},
 		{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},

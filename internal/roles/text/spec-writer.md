@@ -58,7 +58,7 @@ shipped, instead write only `openspec/specs/<capability>/spec.md` for the
 capabilities of that task in its starting tree. Add, replace or remove the
 requirements as the change specifies. Change no task record or other file,
 and do not archive the folder. The coordinator checks this separate scope
-with `kitsu roles check spec-writer --from <tree> --task <task> --finalize`.
+with `kitsu role check spec-writer --from <tree> --task <task> --finalize`.
 
 ## Rules
 
@@ -86,7 +86,7 @@ with `kitsu roles check spec-writer --from <tree> --task <task> --finalize`.
 - Write no more than the behaviour needs. A requirement the request does not
   ask for, and a sentence that repeats the proposal, cost every later reader.
 
-The coordinator runs `kitsu change check <task>` after ordinary work. During
+The coordinator runs `kitsu task check <task>` after ordinary work. During
 finalization it defers that check until the change folder is archived.
 
 ## Hand back

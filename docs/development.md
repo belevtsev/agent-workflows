@@ -54,8 +54,10 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 ```
 
-`govulncheck` reads its database from the network. The installers download release artifacts;
-the Kitsu CLI itself makes no network calls.
+`govulncheck` reads its database from the network, and installers download release artifacts.
+Explicitly enabled native advisers may contact provider APIs. Help, skill discovery, completion,
+and the first-party gate and token packages operate offline. Configured checks and adviser CLIs
+can use their own networks.
 
 ## Tests
 

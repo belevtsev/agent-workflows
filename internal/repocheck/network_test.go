@@ -59,6 +59,10 @@ func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
 				continue
 			}
 			for _, imported := range pkg.Imports {
+				// Terminal OSC formatting uses URL escaping, not a network client.
+				if pkg.ImportPath == "github.com/charmbracelet/x/ansi" && imported == "net/url" {
+					continue
+				}
 				if networkPackage(imported) {
 					t.Errorf("%s: %s imports network package %s outside native advisers", goos, pkg.ImportPath, imported)
 				}

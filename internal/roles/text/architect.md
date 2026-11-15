@@ -92,7 +92,7 @@ Only `design.md` and `tasks.md` of the change folder `openspec/changes/<task>/`.
 - In a repository with no code yet, the design names the checks the code will
   have, so that `kitsu.toml` declares them before the first commit of code.
 
-The coordinator runs `kitsu change check <task>` after you. Make the files obey
+The coordinator runs `kitsu task check <task>` after you. Make the files obey
 the rules above.
 
 ## Hand back

@@ -26,14 +26,14 @@
     {"id": "binding", "lane": "opt-in", "col": 2, "type": "backend", "label": "Bind task", "sublabel": "snapshot policy"},
     {"id": "question", "lane": "consultation", "col": 0, "type": "frontend", "label": "Explicit request", "sublabel": "question + context"},
     {"id": "scope", "lane": "consultation", "col": 1, "type": "backend", "label": "Scope check", "sublabel": "after role returns"},
-    {"id": "consult", "lane": "consultation", "col": 2, "type": "external", "label": "kitsu consult", "sublabel": "native API or CLI"},
+    {"id": "consult", "lane": "consultation", "col": 2, "type": "external", "label": "kitsu adviser ask", "sublabel": "native API or CLI"},
     {"id": "decision", "lane": "consultation", "col": 3, "type": "backend", "label": "Record decision", "sublabel": "answer + rationale"},
     {"id": "resume", "lane": "consultation", "col": 4, "type": "backend", "label": "Resume the role", "sublabel": "same write limits"},
     {"id": "required", "lane": "checkpoints", "col": 0, "type": "frontend", "label": "Require advice", "sublabel": "spec/design/review"},
     {"id": "refresh", "lane": "checkpoints", "col": 1, "type": "backend", "label": "Bind or refresh", "sublabel": "task checkpoints"},
     {"id": "fresh", "lane": "checkpoints", "col": 2, "type": "database", "label": "Fresh receipt", "sublabel": "checkpoint call"},
     {"id": "addressed", "lane": "checkpoints", "col": 3, "type": "database", "label": "Addressed receipt", "sublabel": "decision + reason"},
-    {"id": "check", "lane": "checkpoints", "col": 4, "type": "backend", "label": "advisers check", "sublabel": "before proceeding"}
+    {"id": "check", "lane": "checkpoints", "col": 4, "type": "backend", "label": "adviser check", "sublabel": "before proceeding"}
   ],
   "edges": [
     {"id": "define-access", "from": "definition", "to": "access"},

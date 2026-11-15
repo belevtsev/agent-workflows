@@ -4,11 +4,11 @@ The task workflow coordinates one coding task through specification, design, tes
 review, and commit using seven [roles](roles.md). A shared task record connects their work;
 the Git gate supplies a check before commits and pushes. The workflow has two parts:
 
-- **Instructions for a model.** The coordinator's text (`kitsu roles text coordinator`, the skill
+- **Instructions for a model.** The coordinator's text (`kitsu role text coordinator`, the skill
   `/kitsu:task` on Claude Code) and the seven role texts say who does what and in which
   order. A model follows them or does not; `kitsu` does not run the steps.
-- **Commands that check files.** `kitsu change status` and `kitsu change check` read the record of a
-  task under `openspec/changes/<task>/`, `kitsu roles check` compares what a role changed with its
+- **Commands that check files.** `kitsu task show` and `kitsu task check` read the record of a
+  task under `openspec/changes/<task>/`, `kitsu role check` compares what a role changed with its
   limit, and the gate decides about commits. [What kitsu checks](#what-kitsu-checks) lists exactly what
   is enforced.
 
@@ -37,15 +37,15 @@ The picture holds the order of the roles, their reviews and checks, and the opti
 handoff. Advisers are experimental and off by default. The [adviser flow](advisers.md) shows
 configuration and the separate opt-in for required checkpoints, which run before the corresponding
 stage proceeds. Specification and design always need your approval on the full path. The picture
-leaves out `kitsu change check` after `spec-writer` and `architect`, and `kitsu run` after each start
+leaves out `kitsu task check` after `spec-writer` and `architect`, and `kitsu check run` after each start
 of `developer`. The text below holds every step.
 
 ### Before the first role
 
-1. The coordinator runs `kitsu status`. When the repository root holds no `kitsu.toml`, nothing can be
+1. The coordinator runs `kitsu gate status`. When the repository root holds no `kitsu.toml`, nothing can be
    verified yet. `lookup` finds the commands the repository already uses to test and to lint, the
-   coordinator proposes them as checks, and after the developer's yes it runs `kitsu init` and one
-   `kitsu add <id> -- <your test command>` for each. The coordinator runs each proposed command once
+   coordinator proposes them as checks, and after the developer's yes it runs `kitsu gate init` and one
+   `kitsu check add <id> -- <your test command>` for each. The coordinator runs each proposed command once
    before it becomes a check. In a repository with no code, the design names
    the checks, and they are declared before the first commit that holds code. No work is called
    verified while no check is declared.
@@ -53,7 +53,7 @@ of `developer`. The text below holds every step.
    where the tests live, and the coordinator writes the file after the developer's yes.
 3. When `git status --porcelain` prints anything, the coordinator shows it and asks the developer
    to commit it or set it aside before any role starts.
-4. For a task that already has a change folder, the coordinator runs `kitsu change status <task>`
+4. For a task that already has a change folder, the coordinator runs `kitsu task show <task>`
    and continues at the stage it prints: the first one that is not finished. A finished stage is
    not repeated, and `commit` means everything before it is finished. The tasks are ticked after
    the review of the code, so `code` is printed until then.
@@ -69,7 +69,7 @@ Size does not choose the path.
 
 A change of a few lines with a plain cause, which one test can pin down, needs neither path. The
 coordinator says so and offers to make the change directly, as the skill
-[`kitsu`](../skills/kitsu/SKILL.md) describes: the test, the change, `kitsu run`, the commit. It takes a
+[`kitsu`](../skills/kitsu/SKILL.md) describes: the test, the change, `kitsu check run`, the commit. It takes a
 path for such a change only when the developer asks.
 
 Before any role writes, the coordinator tells the developer which path it takes and why, and
@@ -81,10 +81,10 @@ follows the developer when the developer chooses the other one.
 | --- | --- | --- |
 | spec | `lookup` finds the specifications the repository holds; `spec-writer` writes `proposal.md` and `specs/` | the developer answers the open questions and `spec-writer` writes the answers in; `reviewer` reviews; the developer approves the specification |
 | design | `architect` writes `design.md` and `tasks.md` | `reviewer` reviews; the developer approves the design |
-| tests | `quality-engineer` writes the tests and `tests.md`, and changes or removes the existing tests that no longer hold | the coordinator runs `kitsu run` |
-| code | `developer` writes the code, one group of `tasks.md` per start, each labelled `code <round>` | the coordinator runs `kitsu run` after each start |
+| tests | `quality-engineer` writes the tests and `tests.md`, and changes or removes the existing tests that no longer hold | the coordinator runs `kitsu check run` |
+| code | `developer` writes the code, one group of `tasks.md` per start, each labelled `code <round>` | the coordinator runs `kitsu check run` after each start |
 | review | `reviewer` reviews the code | findings go back to `developer`; when no finding is open, the coordinator ticks the finished tasks in `tasks.md` |
-| commit | `git` commits | `kitsu change status <task>` prints `done` |
+| commit | `git` commits | `kitsu task show <task>` prints `done` |
 
 When `tasks.md` has one group and no role is started a second time for a stage, the roles other
 than `lookup` start in this order: `spec-writer`, `reviewer`, `architect`, `reviewer`,
@@ -100,7 +100,7 @@ continues. `quality-engineer` is the only role that changes or removes an existi
 Tests by `quality-engineer`, code by `developer`, review by `reviewer`, commit by `git`: four
 starts when the review returns no finding.
 
-- For a defect, the new test must fail before the code changes. The coordinator runs `kitsu run` to
+- For a defect, the new test must fail before the code changes. The coordinator runs `kitsu check run` to
   see it fail before `developer` starts.
 - For a refactoring, the tests must pass before and after.
 - For a change of tests only, `developer` is not started.
@@ -110,7 +110,7 @@ The coordinator still gives the task a name of the same form as a change folder'
 task cannot be continued from files alone: when the coordinator stops one, it tells the developer
 the stage, the round and the open findings. Adviser history, when configured, is kept separately
 under `openspec/changes/.advice/<task>/`. Promotion to the full path uses
-`kitsu advisers bind --task <task> --workflow full --refresh` and moves that whole history; competing
+`kitsu adviser bind <task> --workflow full --refresh` and moves that whole history; competing
 small and full histories are an error.
 Skill selection history uses `openspec/changes/.skills/<task>/`. Full resolution moves that whole
 history into the new task's `skills/` when no competing full skill history exists.
@@ -118,18 +118,18 @@ history into the new task's `skills/` when no competing full skill history exist
 ### Starting a role
 
 - Each role starts as a new worker with none of the coordinator's conversation, on the model and
-  effort `kitsu roles` prints, given on the call that starts it. When a host offers to copy or fork
+  effort `kitsu role list` prints, given on the call that starts it. When a host offers to copy or fork
   the conversation into a new agent, the coordinator does not use it: the copy would be counted
   twice, and the label would not be the first message.
 - On some providers a model alias resolves to an older model that takes no effort or a lower one,
-  and the host then lowers the effort without saying so; `kitsu roles` prints what is asked for, not
+  and the host then lowers the effort without saying so; `kitsu role list` prints what is asked for, not
   what the provider ran.
 - When the host cannot run the role on that model, the coordinator stops before the role writes
   anything, tells the developer the role and the model, and waits.
 - The developer's own instruction about models comes first. When it names a model for agents, the
   coordinator uses it and says once which roles it changes.
 - The first line of every brief is `kitsu-task: <task> <stage> <round>`.
-- Before the start, the coordinator runs `kitsu skills resolve <role> --host <host> --task <task>`
+- Before the start, the coordinator runs `kitsu skill resolve <role> --host <host> --task <task>`
   with `--workflow small` on the small path. It includes selected ids, original paths, and hashes
   and tells the worker to load the original instructions through a native skill tool or explicit
   reading. Missing, ambiguous, invalid, host-disabled, or manual-only selections stop the handoff.
@@ -138,8 +138,8 @@ history into the new task's `skills/` when no competing full skill history exist
 
 ### Selected skills
 
-`kitsu skills list --host codex|claude` inventories supported local sources.
-`kitsu roles set <role> --host <host> --skills <ids>` pins existing skills for that host and role;
+`kitsu skill list --host codex|claude` inventories supported local sources.
+`kitsu role set <role> --host <host> --skills <ids>` pins existing skills for that host and role;
 `--global` saves personal skill bindings. Repository arrays replace personal lists, and `[]`
 suppresses inheritance. With neither selection, the host's native skills remain available.
 
@@ -157,41 +157,41 @@ no skill records.
 Advisers are experimental. Do not add definitions, role access, or checkpoints unless the
 developer opts in. With no role access and no existing task binding, skip adviser setup and calls.
 
-1. The coordinator runs `kitsu advisers list --json` and, when role access is configured, binds the task with
-   `kitsu advisers bind --task <task> --workflow full|small`. A later configuration change takes
+1. The coordinator runs `kitsu adviser list --json` and, when role access is configured, binds the task with
+   `kitsu adviser bind <task> --workflow full|small`. A later configuration change takes
    effect only after explicit `--refresh`; binding revisions and consultations stay in the history.
    Existing task bindings retain their policy until refreshed.
 2. The brief gives each role its allowed advisers from
-   `kitsu advisers list --task <task> --role <role>`. A role returns the selected adviser, its
+   `kitsu adviser list --task <task> --role <role>`. A role returns the selected adviser, its
    question, any choices or score levels, and explicit context file paths, using a listed supported
    request kind. Native yes/no answers are probabilities, not automatic approval. A role never executes a consultation or
    writes its records.
-3. The coordinator checks the role's writes first, runs `kitsu consult` with `--role` set to the
+3. The coordinator checks the role's writes first, runs `kitsu adviser ask <adviser>` with `--role` set to the
    requester, then returns the recorded answer to the requester before it resumes. Required advice
    also names `--checkpoint <id>`. A reviewer forms its own assessment before asking and receives
    none of the author's consultations as review guidance.
 4. Before ending `spec`, `design`, or `review`, the coordinator runs
-   `kitsu advisers check --task <task> --checkpoint <id>` for every due checkpoint. It needs a
+   `kitsu adviser check <task> --checkpoint <id>` for every due checkpoint. It needs a
    successful answer for each required adviser on the current content and a recorded
    `accept`, `reject`, or `defer` with a reason. An optional `--choice` records a named option.
 5. Failed, missing, stale, or unaddressed advice holds its checkpoint. No adviser is substituted
    and no call is retried automatically. Dispositions preserve the original answer. Real findings
    follow the existing severity rules; advice replaces no review or human approval.
 
-`kitsu roles --host codex --task <task>` shows the role, model, reasoning effort, current skill
+`kitsu role list --host codex --task <task>` shows the role, model, reasoning effort, current skill
 selections, and adviser access in one table. [Advisers](advisers.md) gives the configuration and
 the request JSON format.
 
 ### After every role
 
-1. Before the role starts, the coordinator notes the `tree` that `kitsu status --json` prints.
-2. When the role ends, it runs `kitsu roles check <role> --from <that tree>`, with `--task <task>` on
+1. Before the role starts, the coordinator notes the `tree` that `kitsu gate status --json` prints.
+2. When the role ends, it runs `kitsu role check <role> --from <that tree>`, with `--task <task>` on
    the full path.
 3. On exit 5 it starts the same role again with the paths the command listed. It neither accepts
    the work nor repairs it. When the same role exceeds its limit a second time, it stops and asks
    the developer. When a role that writes nothing left a file, it asks the developer to remove
    the file, or removes it after their yes; the file is never in the commit.
-4. After `spec-writer` and after `architect`, it runs `kitsu change check <task>`. On exit 5 it
+4. After `spec-writer` and after `architect`, it runs `kitsu task check <task>`. On exit 5 it
    starts the same role again with the output, before any review.
 
 ### Open questions and approvals
@@ -206,7 +206,7 @@ the request JSON format.
   `quality-engineer` before the developer has approved the design.
 - Nothing is pushed and no pull request is opened until the developer says so.
 - The coordinator records each approval in `reviews.md`, with its date and the content id that
-  `kitsu change status` prints for that stage.
+  `kitsu task show` prints for that stage.
 
 ### Review rounds
 
@@ -223,7 +223,7 @@ the request JSON format.
 ### Tests before code
 
 On both paths the tests stage ends before `developer` starts, apart from the interface described
-below. Between the two the coordinator runs `kitsu run`. For new behaviour and for a defect it is expected to fail, because the behaviour is not
+below. Between the two the coordinator runs `kitsu check run`. For new behaviour and for a defect it is expected to fail, because the behaviour is not
 there yet; for a refactoring the tests must pass before and after. When the new tests of new
 behaviour or of a defect pass, the coordinator tells the developer that they did not fail without
 the code.
@@ -235,7 +235,7 @@ empty bodies, and `developer` builds it before the tests stage.
 
 ### Commits through the gate
 
-`git` makes every commit of the task after `kitsu run`, through the hooks, and no command of the
+`git` makes every commit of the task after `kitsu check run`, through the hooks, and no command of the
 session passes `--no-verify`. On the full path one commit holds the change folder, the tests and
 the code.
 
@@ -243,16 +243,16 @@ the code.
 
 The coordinator calls a task done only when all of these hold:
 
-1. `kitsu status` exits 0.
+1. `kitsu gate status` exits 0.
 2. The commit of the task exists.
-3. On the full path, `kitsu change check <task>` exits 0 and `kitsu change status <task>` prints `done`.
+3. On the full path, `kitsu task check <task>` exits 0 and `kitsu task show <task>` prints `done`.
 
-For a bound task, `kitsu advisers check --task <task>` also passes and the adviser records are in
+For a bound task, `kitsu adviser check <task>` also passes and the adviser records are in
 the task's commit, on either path.
 
 Whatever a role says about a result that no run of `kitsu` shows is reported as that role's claim.
 When a check still fails, the task is not done, and the coordinator names the check. At the end it
-runs `kitsu tokens --task <task>` and gives the developer the totals.
+runs `kitsu usage show --task <task>` and gives the developer the totals.
 
 ### No state outside the record
 
@@ -262,31 +262,31 @@ Skill receipts live in the full task's `skills/` or `openspec/changes/.skills/<t
 be checked offline; resolving a new worker still needs the selected original local sources.
 An unfinished or abandoned change folder
 blocks nothing: the gate does not read change folders unless a repository declares
-`kitsu change check` as a check.
+`kitsu task check` as a check.
 
 ## What kitsu checks
 
 | What | Checked by | When |
 | --- | --- | --- |
-| A commit or a push holds content with a passing run of every declared check | the git hooks that `kitsu init` installs | at every commit and push in a clone where `kitsu init` ran, unless `--no-verify` skips the hooks |
-| A role changed only the paths of its limit | `kitsu roles check` | only when someone runs it; it reports and undoes nothing |
-| The files of a change folder obey their rules | `kitsu change check` | when someone runs it, or at every commit when `kitsu.toml` declares it as a check |
-| The stage of a task, and whether a review or an approval is of the current content | `kitsu change status` | when someone runs it; it reports and changes nothing |
-| Required adviser receipts match the binding, requester, adviser, checkpoint, and current content, and have a disposition | `kitsu advisers check`; `kitsu change status` at the corresponding stage | only when run; `kitsu change check` validates record structure without requiring future advice |
-| Selected skills exist, are valid and available, and are suitable for automatic role loading | `kitsu skills resolve` | before each new worker; reads original local sources without executing them |
-| Skill selection receipts are structurally valid and portable | `kitsu change check` | for full and small histories, without the installed skill sources |
+| A commit or a push holds content with a passing run of every declared check | the git hooks that `kitsu gate init` installs | at every commit and push in a clone where `kitsu gate init` ran, unless `--no-verify` skips the hooks |
+| A role changed only the paths of its limit | `kitsu role check` | only when someone runs it; it reports and undoes nothing |
+| The files of a change folder obey their rules | `kitsu task check` | when someone runs it, or at every commit when `kitsu.toml` declares it as a check |
+| The stage of a task, and whether a review or an approval is of the current content | `kitsu task show` | when someone runs it; it reports and changes nothing |
+| Required adviser receipts match the binding, requester, adviser, checkpoint, and current content, and have a disposition | `kitsu adviser check`; `kitsu task show` at the corresponding stage | only when run; `kitsu task check` validates record structure without requiring future advice |
+| Selected skills exist, are valid and available, and are suitable for automatic role loading | `kitsu skill resolve` | before each new worker; reads original local sources without executing them |
+| Skill selection receipts are structurally valid and portable | `kitsu task check` | for full and small histories, without the installed skill sources |
 | A git call that skips the hooks, or an edit of `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml`, a hook, or a Kitsu record | the plugin's `PreToolUse` hook | on Claude Code it asks first; on Codex it refuses (see [hooks](hooks.md)) |
 
 What no program checks:
 
 - Which path was chosen, and whether the developer agreed.
-- Whether the developer gave an approval. `kitsu change status` checks that an approval row exists
+- Whether the developer gave an approval. `kitsu task show` checks that an approval row exists
   and that its content id is current; the coordinator writes that row.
 - The order of the roles, the number of review rounds, whether the developer or the coordinator
   rejected a finding, and whether a reviewer's brief held the author's opinion.
-- Whether the tests ran and failed before the code was written. `kitsu run` records each run, and
+- Whether the tests ran and failed before the code was written. `kitsu check run` records each run, and
   nothing compares the order.
-- Which model a role ran on. [`kitsu tokens`](tokens.md) shows the model names the host's record
+- Which model a role ran on. [`kitsu usage show`](tokens.md) shows the model names the host's record
   gives.
 - On Claude Code, the host applies the `tools` list of each role file. `kitsu` does not.
 - Whether a selected skill was loaded or followed. A selection receipt records `unverified`.
@@ -305,7 +305,7 @@ lower-case words joined by hyphens. `kitsu` reads the folder itself and needs no
 | `tests.md` | `quality-engineer` | A table with the columns Scenario, Test file, Text. A row that is not automated holds `not automated` as its file and a reason as its text. Under `## Changed tests`, one line for each existing test it changed or removed, with the requirement or the reason; `kitsu` does not read it. |
 | `reviews.md` | the coordinator | Under `## Reviews` the columns Stage, Round, Date, Content; under `## Findings` the columns Id, Stage, Round, Severity, Where, Finding, Disposition, Reason; under `## Approvals` the columns What, Date, Content. |
 | `advisers/` | adviser commands run by the coordinator | Saved policy revisions, immutable consultations, and appended dispositions; see [advisers](advisers.md). |
-| `skills/` | `kitsu skills resolve` run by the coordinator | Immutable version 1 selections with ids, scopes, source hashes, and unverified loading; see [skills](skills.md). |
+| `skills/` | `kitsu skill resolve` run by the coordinator | Immutable version 1 selections with ids, scopes, source hashes, and unverified loading; see [skills](skills.md). |
 
 How `kitsu` reads these files:
 
@@ -323,19 +323,19 @@ How `kitsu` reads these files:
 - The test file of `tests.md` is a path from the root of the repository.
 - In `reviews.md`, Stage is `spec`, `design` or `code`; What is `spec` or `design`; Round is a
   number from 1; Severity is `blocker`, `major` or `minor`; Disposition is `open`, `resolved`,
-  `rejected` or `deferred`. Content is the content id that `kitsu change status` printed for that
+  `rejected` or `deferred`. Content is the content id that `kitsu task show` printed for that
   stage when the review or the approval was given.
-- A file that is missing breaks no rule. `kitsu change status` names it as missing at its stage.
+- A file that is missing breaks no rule. `kitsu task show` names it as missing at its stage.
 
 ### An example folder
 
 A complete folder for the task `add-greeting`, at the stage `done`. It assumes that `kitsu.toml`
 declares a check with the id `test`, and that `tests/greeting_test.txt` exists and holds the
 texts `greets_by_name` and `greets_without_name`. With these six files committed together with
-the code, `kitsu change check` exited 0 and `kitsu change status add-greeting` printed `done` in a trial
+the code, `kitsu task check` exited 0 and `kitsu task show add-greeting` printed `done` in a trial
 repository. The content ids in `reviews.md` are the ones that trial printed: the `code` id depends
 on every file of the repository outside `openspec/changes/`, so in your repository write the ids
-your `kitsu change status add-greeting` prints.
+your `kitsu task show add-greeting` prints.
 
 `openspec/changes/add-greeting/proposal.md`:
 
@@ -413,7 +413,7 @@ One new block makes the text; the existing entry point prints it.
 ## 1. Greeting
 
 - [x] 1.1 Build `greeter`. Size: S. Depends on: none. Check: the tests of both scenarios pass. Source: Greeting text.
-- [x] 1.2 Print the greeting from `app`. Size: S. Depends on: 1.1. Check: `kitsu run` passes. Source: Greeting text.
+- [x] 1.2 Print the greeting from `app`. Size: S. Depends on: 1.1. Check: `kitsu check run` passes. Source: Greeting text.
 ```
 
 `openspec/changes/add-greeting/tests.md`:
@@ -454,15 +454,16 @@ One new block makes the text; the existing entry point prints it.
 | design | 2026-11-14 | f709ae597d40 |
 ```
 
-## kitsu change status
+## kitsu task show
 
 ```text
-kitsu change status [<task>] [--json]
+kitsu task show <task> [--json]
 ```
 
-Prints the stage of a change folder, decided from its files and from git alone. It changes no
-file. Without a task it prints one line for each folder under `openspec/changes/`, except
-`archive/` and folders whose name starts with a dot.
+Prints a full task's stage, decided from its files and git, without changing files. For a saved
+small history it reports available records with an unknown stage. Use `kitsu task list [--json]`
+to discover full tasks and saved small histories. A small receipt proves no test, review, or
+approval. The following stage and content-id descriptions apply to full tasks.
 
 ### Stages
 
@@ -479,16 +480,16 @@ The output lists what is missing for that stage.
 | `commit` | The folder in the working tree is the folder in `HEAD`. |
 | `done` | All of the above hold. |
 
-`kitsu change status` does not apply the rules of `tests.md` and `reviews.md`: a row that names a
+`kitsu task show` does not apply the rules of `tests.md` and `reviews.md`: a row that names a
 test file without its text, or a `major` finding that is `deferred`, does not change the stage.
-`kitsu change check` finds those, and `kitsu change status` counts them: it prints
-`broken rules: <n>` when there are any, and `broken_rules` in its JSON. A stage says how far the
+`kitsu task check` finds those, and `kitsu task show` counts them: it prints
+`broken rules: <n>` when there are any, and `report.broken_rules` in its JSON. A stage says how far the
 record is, not that its files are valid. This is why "done" in
 [Done means verified](#done-means-verified) needs both commands.
 
 ### Content ids
 
-A content id is the first 12 hexadecimal characters of a SHA-256. `kitsu change status` prints three:
+A content id is the first 12 hexadecimal characters of a SHA-256. `kitsu task show` prints three:
 
 | Id | Made from |
 | --- | --- |
@@ -497,6 +498,8 @@ A content id is the first 12 hexadecimal characters of a SHA-256. `kitsu change 
 | `code` | The entries of a snapshot of the working tree, as git lists a tree, for every path outside `openspec/changes/`. Untracked files git does not ignore are part of the snapshot. |
 
 An id is empty, printed as `none`, when none of its files exists. An empty id matches nothing.
+In preferred JSON, these ids are under `report.content`. Use
+`kitsu task show <task> --json` to read the values for review and approval rows.
 
 ### When a review or an approval counts
 
@@ -505,11 +508,11 @@ An id is empty, printed as `none`, when none of its files exists. An empty id ma
   does, and its Content is the `code` id of the last commit that changed the folder. The task was
   committed with the code that was reviewed, and later work is later work: after the task's commit,
   editing and committing other files leaves the task `done`.
-- When a review or an approval no longer counts, `kitsu change status` says so and prints the
+- When a review or an approval no longer counts, `kitsu task show` says so and prints the
   current id. For example, after `SHALL` was changed to `MUST` in the approved specification:
 
   ```text
-  add-greeting: spec
+  add-greeting: spec (full)
     the review and the approval of the specification were given for other content; the content id is now `7a9e0d180351`
   content ids: spec 7a9e0d180351, design 86a687cc7c6d, code 60d50c98aef8
   ```
@@ -517,7 +520,7 @@ An id is empty, printed as `none`, when none of its files exists. An empty id ma
   And after the code changed while the change folder was not committed:
 
   ```text
-  add-greeting: review
+  add-greeting: review (full)
     the review of the code was given for other content; the content id is now `8e3af834419c`
   content ids: spec 93eafcdc213a, design 86a687cc7c6d, code 8e3af834419c
   ```
@@ -528,7 +531,7 @@ With a task, the text output is the stage, each missing item on its own line, th
 scenarios that are not automated when there is one, and the three ids:
 
 ```text
-add-greeting: code
+add-greeting: code (full)
   task 1.2 is not checked
 content ids: spec 93eafcdc213a, design 86a687cc7c6d, code 60d50c98aef8
 ```
@@ -538,34 +541,40 @@ With `--json` and a task:
 ```json
 {
   "task": "add-greeting",
+  "workflow": "full",
   "stage": "code",
-  "missing": [
-    "task 1.2 is not checked"
-  ],
-  "not_automated": 0,
-  "content": {
-    "spec": "93eafcdc213a",
-    "design": "86a687cc7c6d",
-    "code": "60d50c98aef8"
-  },
-  "broken_rules": 0
+  "report": {
+    "task": "add-greeting",
+    "stage": "code",
+    "missing": [
+      "task 1.2 is not checked"
+    ],
+    "not_automated": 0,
+    "content": {
+      "spec": "93eafcdc213a",
+      "design": "86a687cc7c6d",
+      "code": "60d50c98aef8"
+    },
+    "broken_rules": 0
+  }
 }
 ```
 
-Without a task, the text output is one line per folder, such as
-``add-x: spec (3 missing; `kitsu change status add-x` names them)``, and the JSON output is
-`{"changes": [...]}` with one object as above for each folder. In JSON an empty id is `""`.
+In full-task JSON an empty content id is `""`. `task list` is the preferred inventory command;
+its JSON contains a `tasks` array of these views. Small views have `workflow: "small"`,
+`stage: "unknown"`, and no full report. The retained `change status` alias keeps its existing
+optional-task output and JSON schema.
 
 | Exit | When |
 | --- | --- |
 | 0 | The stage is printed, at any stage. |
-| 1 | The named folder does not exist (`kitsu: openspec/changes/no-such-task/ does not exist`), or the directory is not in a git repository. |
-| 2 | The command line is wrong: more than one task, or a task name that is not lower-case words joined by hyphens. |
+| 1 | The task has neither a full folder nor saved history, or the directory is not in a git repository. |
+| 2 | The command line is wrong: missing or extra tasks, or a task name that is not lower-case words joined by hyphens. |
 
-## kitsu change check
+## kitsu task check
 
 ```text
-kitsu change check [<task>]
+kitsu task check [<task>]
 ```
 
 Checks the files of the named folder, or of every folder under `openspec/changes/` except
@@ -575,9 +584,9 @@ their rules: a missing file breaks no rule.
 The command also validates saved adviser history on both paths. With no task named it discovers
 small histories under `openspec/changes/.advice/`; a named small task needs no full change folder.
 These checks validate record structure and references, leaving missing or pending checkpoints
-for `kitsu advisers check`. Malformed records, conflicting histories, invalid task entries, and
-symlink record paths fail. `kitsu change status` remains full-path only; small tasks use
-`kitsu advisers status` for checkpoint readiness.
+for `kitsu adviser check`. Malformed records, conflicting histories, invalid task entries, and
+symlink record paths fail. Small-task `task show` reports saved histories with an unknown stage;
+`kitsu adviser status <task>` reports adviser checkpoint readiness.
 
 It also checks skill receipts under full tasks' `skills/` and small tasks'
 `openspec/changes/.skills/<task>/`, including named small tasks without a full folder. These
@@ -620,7 +629,7 @@ Tests, in `tests.md`:
 - A row is `not automated` and gives no reason, or names no test file or no text.
 - The test file of a row does not exist, or does not hold the text.
 - The test file of a row is absolute or lies outside the repository, also through a symbolic
-  link. `kitsu change check` then reads nothing outside the repository.
+  link. `kitsu task check` then reads nothing outside the repository.
 - Once every task is checked: a scenario of a requirement under `ADDED` or `MODIFIED` has no row,
   or `tests.md` is missing while the change has scenarios.
 
@@ -635,8 +644,8 @@ Reviews, in `reviews.md`:
 - A finding is `blocker` or `major` and `deferred`.
 - Every task is checked and a finding is `open`.
 
-`kitsu change check` does not judge whether a review or an approval is of the current content;
-`kitsu change status` does.
+`kitsu task check` does not judge whether a review or an approval is of the current content;
+`kitsu task show` does.
 
 ### Output and exit statuses
 
@@ -659,7 +668,7 @@ A folder that obeys every rule gives `add-greeting: the files obey their rules`.
 
 ### As a check in kitsu.toml
 
-`kitsu change check` reads only the files. It takes no snapshot and keeps no state, so a repository
+`kitsu task check` reads only the files. It takes no snapshot and keeps no state, so a repository
 can declare it as a check in `kitsu.toml`, as this repository does:
 
 ```toml
@@ -677,7 +686,7 @@ The current requirements of a repository live in `openspec/specs/<capability>/sp
 spec stage writes, `lookup` finds the specifications the repository holds there and in every change
 folder that is not archived.
 
-- **A new behaviour** goes under `## ADDED Requirements`. `kitsu change check` refuses an `ADDED`
+- **A new behaviour** goes under `## ADDED Requirements`. `kitsu task check` refuses an `ADDED`
   requirement whose name `openspec/specs/<capability>/spec.md` already holds for that capability.
 - **A changed behaviour** goes under `## MODIFIED Requirements`, with the same name and its full
   new text. It obeys the same rules as an added one. No second requirement is written for the same
@@ -690,14 +699,14 @@ folder that is not archived.
 ## The archive
 
 When the developer says that a finished change has shipped, the coordinator confirms that it
-is `done` and `kitsu change check <task>` exits 0. It saves the working-tree id from `kitsu status --json`
+is `done` and `kitsu task check <task>` exits 0. It saves the working-tree id from `kitsu gate status --json`
 with `git update-ref refs/kitsu/finalize/<task> <tree>` before starting `spec-writer` with an explicit
 finalization brief. In this mode the role brings only the task's capabilities in `openspec/specs/`
 in line with the change: every added requirement present, every modified one replaced, every
 removed one gone. The coordinator checks it with:
 
 ```sh
-kitsu roles check spec-writer --from refs/kitsu/finalize/<task> --task <task> --finalize
+kitsu role check spec-writer --from refs/kitsu/finalize/<task> --task <task> --finalize
 ```
 
 The allowed paths are exactly `openspec/specs/<capability>/spec.md` for the capability spec files
@@ -714,11 +723,11 @@ snapshot that would overlook earlier writes.
 
 `reviewer` compares the synchronized specifications with the change, and its ordinary role
 check must pass. Then the coordinator moves the folder to `openspec/changes/archive/<task>/`
-and runs `kitsu change check`. Do not run the ordinary change check between synchronization and
+and runs `kitsu task check`. Do not run the ordinary change check between synchronization and
 archive: an `ADDED` requirement is now present in the living specifications, which that check
 correctly rejects while the change is active. No program merges the requirements; finalization
 is an instruction to the roles and is not part of either path. After the archive is committed
 through the gate, delete the saved ref with `git update-ref -d refs/kitsu/finalize/<task>`.
 
-`kitsu change status` and `kitsu change check` skip `openspec/changes/archive/`, so an archived folder
+`kitsu task show` and `kitsu task check` skip `openspec/changes/archive/`, so an archived folder
 is no longer read.

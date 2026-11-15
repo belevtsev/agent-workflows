@@ -150,7 +150,7 @@ var (
 	skillName   = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
 	headKey     = regexp.MustCompile(`^([A-Za-z_-]+):`)
 	namedInCode = regexp.MustCompile("`kitsu ([a-z]+)")
-	helpCommand = regexp.MustCompile(`(?m)^  kitsu ([a-z]+)`)
+	helpCommand = regexp.MustCompile(`(?m)^  (?:kitsu )?([a-z]+)\b`)
 	fixtureNote = regexp.MustCompile(`fixture "([a-z]+)"`)
 	exitNote    = regexp.MustCompile(`^\[exit (\d+)\]$`)
 	runID       = regexp.MustCompile(`\d{8}T\d{6}Z-[0-9a-f]{8}`)
@@ -374,15 +374,15 @@ func TestSkillExamplesAreReplayed(t *testing.T) {
 	}
 }
 
-// The skill names only commands that `kitsu help` lists, and each piece of
+// The skill names only commands that `kitsu help --all` lists, and each piece of
 // output it explains is printed in an example that the test replays.
 func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the kitsu under test is asked for its help through sh")
 	}
-	help, status := shell(t, t.TempDir(), skillEnvironment(t), "kitsu help", "")
+	help, status := shell(t, t.TempDir(), skillEnvironment(t), "kitsu help --all", "")
 	if status != 0 {
-		t.Fatalf("`kitsu help` exited %d:\n%s", status, help)
+		t.Fatalf("`kitsu help --all` exited %d:\n%s", status, help)
 	}
 	commands := map[string]bool{"help": true}
 	for _, match := range helpCommand.FindAllStringSubmatch(help, -1) {
@@ -393,7 +393,7 @@ func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 	for path, text := range documents {
 		for _, match := range namedInCode.FindAllStringSubmatch(text, -1) {
 			if !commands[match[1]] {
-				t.Errorf("%s names `kitsu %s`, which `kitsu help` does not list", path, match[1])
+				t.Errorf("%s names `kitsu %s`, which `kitsu help --all` does not list", path, match[1])
 			}
 		}
 		for _, block := range fencedBlocks(text) {
@@ -402,7 +402,7 @@ func TestSkillNamesRealCommandsAndOutput(t *testing.T) {
 			}
 			for _, line := range block.lines {
 				if command, found := strings.CutPrefix(line, "$ kitsu "); found && !commands[strings.Fields(command)[0]] {
-					t.Errorf("%s runs `kitsu %s`, which `kitsu help` does not list", path, command)
+					t.Errorf("%s runs `kitsu %s`, which `kitsu help --all` does not list", path, command)
 				}
 				replayed.WriteString(line + "\n")
 			}

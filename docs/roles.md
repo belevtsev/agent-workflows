@@ -13,8 +13,10 @@ also change no role job, write limit, tool grant, review, or approval rule.
 The roles have run with a model in two scratch repositories only, on one small task each. See
 [What is not known](#what-is-not-known).
 
-The order of the work, the record of a task and `kitsu change` are in
+The order of the work, the record of a task and `kitsu task` are in
 [the task workflow](workflow.md). The token count is in [tokens](tokens.md).
+The preferred commands use singular `role`; existing `roles` commands remain supported.
+[CLI help and host preferences](cli.md) can supply a host once instead of repeating `--host`.
 
 ## The roles at a glance
 
@@ -54,7 +56,7 @@ takes precedence. The local Codex model catalog was checked for these model ids,
 supported levels; availability still depends on the host and account. Historical scratch-session
 results below used earlier defaults and do not validate this routing.
 
-`kitsu roles --host codex` or `kitsu roles --host claude` prints the selected host in a compact
+`kitsu role list --host codex` or `kitsu role list --host claude` prints the selected host in a compact
 **Role / Model / Reasoning / Advisers** table with a **Skills** line beneath each role. Adviser access is configured separately in
 `kitsu-advisers.toml`; `--task <task>` reads a saved task binding, including access, without the
 personal adviser configuration. Change a specialist's model or reasoning in
@@ -81,12 +83,12 @@ run at a lower effort than the work it reviews.
 Each role starts with none of the coordinator's conversation. Its brief is all it knows. The first
 line of every brief is a label for the token report (see [tokens](tokens.md#the-label)); each role
 text tells the role to ignore it. Every role hands back the paths it wrote, the commands it ran
-with their results, and its open questions. The full texts are what `kitsu roles text <role>` prints.
+with their results, and its open questions. The full texts are what `kitsu role text <role>` prints.
 Each role may return a question, choices, and explicit source paths for an adviser named in its
 brief. The coordinator checks its writes, runs the consultation, and returns the record before
 the role resumes. Roles never execute advisers or write adviser records themselves. Reviewers
 first form their own assessment and receive none of the author's consultations as review guidance.
-Before each start, the coordinator runs `kitsu skills resolve <role> --host <host>` with the task
+Before each start, the coordinator runs `kitsu skill resolve <role> --host <host>` with the task
 and workflow, includes selected ids, original paths, and hashes in the brief, and tells the
 worker to load those originals. The `Skill` tool on Claude Code or an explicit file read supplies
 instructions; the host still owns execution. Selection receipts keep loading `unverified`.
@@ -105,7 +107,7 @@ Turns the request and its sources into requirements a test can check, in `propos
 `Source:` line and at least one scenario with one `WHEN` and one `THEN`. A value the sources do not
 give becomes an open question in `proposal.md`, not a guess. When `openspec/specs/` already holds a
 requirement for the behaviour, it changes that requirement under `## MODIFIED Requirements`. The
-coordinator runs `kitsu change check` after it.
+coordinator runs `kitsu task check` after it.
 
 ### architect
 
@@ -115,13 +117,13 @@ the existing code it considered. A rule that a program can check names a check t
 declares, or `review`. It does not change the approved specification. `developer` builds one
 group of tasks per start. When the tests must be seen failing on behaviour, the first group may
 build only the interface, with empty bodies, before the tests. The coordinator runs
-`kitsu change check` after it.
+`kitsu task check` after it.
 
 ### quality-engineer
 
 Writes the tests of the scenarios, only under the test paths, before the code exists, and on the
 full path writes `tests.md`: one row per scenario with the test file and a text that occurs in it.
-It follows the repository's own way of testing. After its work, `kitsu run` is expected to fail,
+It follows the repository's own way of testing. After its work, `kitsu check run` is expected to fail,
 because the behaviour is not there yet; in a language that compiles, because the names of the
 design's interface are missing. It changes no production code. It is the only role that changes
 or removes an existing test: the tests of behaviour that a `MODIFIED` or `REMOVED` requirement
@@ -133,13 +135,13 @@ requirement or the reason, on the full path under `## Changed tests` in `tests.m
 Writes the code that makes the tests pass, inside the design. It may add a test, and may not
 change or remove one. It does not touch `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml` or anything under `openspec/`,
 does not tick tasks, and does not commit. It builds one group of `tasks.md` per start. It runs
-`kitsu run` and reports the result as it is. A test that is wrong or must change is reported, and the
+`kitsu check run` and reports the result as it is. A test that is wrong or must change is reported, and the
 coordinator sends that report to `quality-engineer`.
 
 ### reviewer
 
 Examines a specification, a design or code that another role wrote and reports findings with a
-severity (`blocker`, `major`, `minor`), a place and the evidence. It runs `kitsu run` and `kitsu status`
+severity (`blocker`, `major`, `minor`), a place and the evidence. It runs `kitsu check run` and `kitsu gate status`
 when it reviews code, checks each test against the WHEN and THEN of its scenario, and reports an
 existing test changed or removed without a requirement or a reason from `quality-engineer`. It
 changes nothing. Its Claude Code file gives it no tool that edits or writes a file; it has a shell,
@@ -147,7 +149,7 @@ which a host cannot limit to reading.
 
 ### git
 
-Runs `git status`, `kitsu run` and `kitsu status`, stages everything with `git add -A`, and commits
+Runs `git status`, `kitsu check run` and `kitsu gate status`, stages everything with `git add -A`, and commits
 through the hooks. It never passes `--no-verify`, does not push, tag or open a pull request unless
 the brief says the developer asked for it, and does not rewrite history. It changes no file of the
 working tree.
@@ -155,9 +157,9 @@ working tree.
 ### The coordinator
 
 The coordinator is the developer's own session, not a role. Its instructions are
-`kitsu roles text coordinator`, shipped on Claude Code as the skill `/kitsu:task`. It
-chooses the path, writes each brief, starts each role on the model and effort `kitsu roles` prints,
-runs `kitsu roles check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
+`kitsu role text coordinator`, shipped on Claude Code as the skill `/kitsu:task`. It
+chooses the path, writes each brief, starts each role on the model and effort `kitsu role list` prints,
+runs `kitsu role check` after each role, keeps `reviews.md`, ticks the tasks in `tasks.md` after the
 review of the code, and asks the developer for the approvals. It writes no specification, design, test or code itself. When a
 host cannot run a role on its model, the instructions tell it to stop and tell the developer, not
 to use another model. The developer's own instruction about models comes first: when it names a
@@ -171,7 +173,7 @@ for a specialist on either host, another model or effort. It can also select exi
 for any specialist or the coordinator. Without model overrides every specialist has its built-in
 default. Skills inherit from personal bindings unless a repository array replaces them; with
 neither file, no skills are pinned. Without test paths,
-`kitsu roles check developer` and `kitsu roles check quality-engineer` exit 1, because their
+`kitsu role check developer` and `kitsu role check quality-engineer` exit 1, because their
 limits depend on the test paths.
 
 ### Format
@@ -211,14 +213,15 @@ skills = []
 Run these commands anywhere inside the repository; no TOML editing is needed:
 
 ```sh
-kitsu roles set developer --host codex --model gpt-6.1-sol --reasoning max
-kitsu roles set developer --host claude --model opus --reasoning high
-kitsu roles set reviewer --host codex --reasoning high
-kitsu roles --host codex
-kitsu roles reset developer --host codex
+kitsu role set developer --host codex --model gpt-6.1-sol --reasoning max
+kitsu role set developer --host claude --model opus --reasoning high
+kitsu role set reviewer --host codex --reasoning high
+kitsu role list --host codex
+kitsu role reset developer --host codex
 ```
 
-`set` requires `--host claude|codex` and at least one of `--model`, `--reasoning`, or `--skills`.
+`set` requires an effective host from `--host` or [CLI preferences](cli.md#select-your-host-once)
+and at least one of `--model`, `--reasoning`, or `--skills`.
 An omitted option keeps its current override or default. `--reasoning` is saved as `effort`.
 `reset` removes model, effort, and skill overrides for that role and host, restoring the built-in
 model defaults and any personal skill selection. Both commands print the resulting selection;
@@ -233,12 +236,24 @@ that host/role's personal skill selection. See [the skill guide](skills.md) for 
 `--skills ''`, duplicates, and extra roots. Settings affect newly started workers.
 The coordinator uses the model and reasoning selected in your host session.
 
+To inspect one role or explicitly open its editor:
+
+```sh
+kitsu role show developer --host codex
+kitsu role edit developer --host codex
+kitsu role edit reviewer --global --accessible
+```
+
+Only `role edit` prompts. The editor offers host model suggestions, an exact custom id, multiple
+skills, field help, and a preview before saving; global scope remains skills-only. Cancel saves
+nothing, and save revalidates sources and concurrent changes. See [terminal editors](cli.md#open-an-editor-when-you-want-one).
+
 `kitsu` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
 fails only when the host tries to start the role.
 
 The role files of the Claude Code plugin are generated with the default models. A setting in
 `kitsu-roles.toml` does not change them. It reaches a role only because the coordinator's
-instructions say to give the model and effort that `kitsu roles` prints on the call that starts the
+instructions say to give the model and effort that `kitsu role list` prints on the call that starts the
 role. In the two sessions of Claude Code named under [What is not known](#what-is-not-known),
 every role was answered by the model it was started with; both sessions used the default models.
 The proposal also notes that on Claude Code the developer's own settings can override the model
@@ -258,27 +273,28 @@ invalid or duplicate skill references; or a coordinator model or effort override
 file is skills-only. Selection and resolution also refuse missing, ambiguous, invalid,
 host-disabled, and manual-only skill entries.
 
-`kitsu roles`, `set`, `reset`, and `check` read the file and refuse it. `kitsu roles text` does not read it, so
+`kitsu role list`, `set`, `reset`, and `check` read the file and refuse it. `kitsu role text` does not read it, so
 it works even when the file is invalid.
 
 ## Commands
 
-### kitsu roles
+### kitsu role list
 
 ```text
-kitsu roles [--host claude|codex] [--task <task>] [--json]
+kitsu role list [--host claude|codex] [--task <task>] [--json]
 ```
 
-Without `--host`, prints one row for each specialist role: its id, its model and effort on Claude
+Without an effective host filter, prints one row for each specialist role: its id, its model and effort on Claude
 Code and on Codex, and the size of its text in characters. Below each row stand its job, what it
 may write, selected skills, and allowed advisers. With `--host`, the compact table includes the
 coordinator and separates model, reasoning, skills, and allowed advisers. The coordinator's model and reasoning are
-shown as the host session because Kitsu has no configured values for them. With `--task`, adviser
+shown as the host session because Kitsu has no configured values for them. A saved CLI host
+preference also selects the compact host view. With `--task`, adviser
 access comes from that task's binding and can be read offline. Examples:
 
 ```sh
-kitsu roles --host codex
-kitsu roles --host claude --task add-order-csv-export --json
+kitsu role list --host codex
+kitsu role list --host claude --task add-order-csv-export --json
 ```
 
 The default two-host output starts like this:
@@ -329,7 +345,7 @@ of the seven entries of `roles`:
 }
 ```
 
-The sizes are illustrative; `kitsu roles` prints the current values. It reads `kitsu-roles.toml` of the repository it runs
+The sizes are illustrative; `kitsu role list` prints the current values. It reads `kitsu-roles.toml` of the repository it runs
 in and personal skill bindings. Outside a git repository it prints model defaults with any
 personal skill selections.
 
@@ -339,15 +355,15 @@ personal skill selections.
 | 1 | Repository or personal role configuration is invalid. |
 | 2 | The command line is wrong, for example an extra argument. |
 
-### kitsu roles text
+### kitsu role text
 
 ```text
-kitsu roles text <role>
-kitsu roles text coordinator
+kitsu role text <role>
+kitsu role text coordinator
 ```
 
 Prints the one text of a role, or the coordinator's instructions, exactly as it is embedded in
-`kitsu`. A host without role files of its own gives this text to a new worker. The size `kitsu roles`
+`kitsu`. A host without role files of its own gives this text to a new worker. The size `kitsu role list`
 prints is the number of characters of this text, each Unicode code point counted once.
 
 | Exit | When |
@@ -355,14 +371,14 @@ prints is the number of characters of this text, each Unicode code point counted
 | 0 | The text is printed. |
 | 2 | The name is not one of the seven roles or `coordinator`, or the command line is wrong. |
 
-### kitsu roles check
+### kitsu role check
 
 ```text
-kitsu roles check <role> --from <tree> [--task <task>] [--finalize]
+kitsu role check <role> --from <tree> [--task <task>] [--finalize]
 ```
 
 Compares the working tree now with a tree from before the role started, and says which changed
-paths are outside the role's limit. The coordinator notes the `tree` that `kitsu status --json`
+paths are outside the role's limit. The coordinator notes the `tree` that `kitsu gate status --json`
 prints before it starts a role, and passes it as `--from` when the role has ended. `--from` takes
 any name git resolves to a tree, such as that id or `HEAD`. `--task` names the change folder
 `openspec/changes/<task>/`; `spec-writer` and `architect` need it, and `quality-engineer` needs it
@@ -390,10 +406,10 @@ start `developer` again with these paths; do not accept the work and do not repa
 ```
 
 When git does not run the hooks of `kitsu` in this clone, it also prints on standard error the
-warning `kitsu status` prints:
+warning `kitsu gate status` prints:
 
 ```text
-kitsu: warning: the hooks of kitsu are not installed in this clone, so git gates nothing here; run `kitsu init`
+kitsu: warning: the hooks of kitsu are not installed in this clone, so git gates nothing here; run `kitsu gate init`
 ```
 
 | Exit | When |
@@ -405,7 +421,7 @@ kitsu: warning: the hooks of kitsu are not installed in this clone, so git gates
 
 #### What it can tell and what it cannot
 
-`kitsu roles check` compares two snapshots of the working tree: the tree given by `--from` and a
+`kitsu role check` compares two snapshots of the working tree: the tree given by `--from` and a
 snapshot of the files now, tracked and untracked, without the files git ignores. It lists every
 path whose content differs and compares each with the role's limit. That is all it knows.
 
@@ -427,7 +443,7 @@ the role again with the paths it named.
 
 Each role, and the coordinator, has one text under `internal/roles/text/`: `lookup.md`,
 `spec-writer.md`, `architect.md`, `quality-engineer.md`, `developer.md`, `reviewer.md`, `git.md`
-and `coordinator.md`. These texts are embedded in `kitsu`, so `kitsu roles text` prints them.
+and `coordinator.md`. These texts are embedded in `kitsu`, so `kitsu role text` prints them.
 
 The files a host reads are generated from them:
 
@@ -461,7 +477,7 @@ What is stated, and nothing more:
 - `.codex-plugin/plugin.json` names `"skills": "./skills/"` and `"hooks":
   "./hooks/codex-hooks.json"`. It names no role files; `agents/*.md` are files for Claude Code.
 - The coordinator's instructions say: on a host other than Claude Code, give a new worker the
-  text that `kitsu roles text <role>` prints, on the model and effort `kitsu roles` prints for Codex.
+  text that `kitsu role text <role>` prints, on the model and effort `kitsu role list` prints for Codex.
 - The design states that a host without role files of its own gives this text to a new worker.
 - The proposal records that the Codex documentation does not say how a role is started on a given
   model; that question is open and is the owner's to settle.

@@ -11,6 +11,10 @@ in `kitsu.toml`: a test run, a linter, a build, any program that exits 0 when th
 execute nothing. They look the record up, and they deny a commit or a push whose content has
 no passing run of every check.
 
+Prefer grouped commands such as `kitsu gate status`, `kitsu check run`, and `kitsu task check`.
+Console transcripts here and in the examples retain valid legacy aliases with the same gate
+and evidence behavior. `kitsu help --all` lists both surfaces.
+
 ## The five rules
 
 1. **Look first.** Run `kitsu status` before you change anything, so you know whether a later
