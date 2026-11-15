@@ -3,8 +3,9 @@
 `kitsu` defines seven roles for a coding agent's task workflow, plus the coordinator that starts
 them. Each role has one job, a default model and effort on Claude Code and on Codex, and a limit
 on the paths it may change. `kitsu` holds these definitions, prints them, and checks afterwards
-which paths a role changed. `kitsu` starts no model: the roles run inside the developer's coding
-agent, and what a role does there is an instruction to a model, not something `kitsu` enforces.
+which paths a role changed. The roles run inside the developer's coding agent, and what a role
+does there is an instruction to a model. Optional [advisers](advisers.md) run as configured CLI
+commands through the coordinator; they change neither the role's job nor its write limit.
 
 The roles have run with a model in two scratch repositories only, on one small task each. See
 [What is not known](#what-is-not-known).
@@ -14,20 +15,59 @@ The order of the work, the record of a task and `kitsu change` are in
 
 ## The roles at a glance
 
-These are the defaults that `kitsu roles` prints in a repository without `kitsu-roles.toml`. "Tools"
-are the tools the generated Claude Code role file allows.
+These are the defaults in a repository without `kitsu-roles.toml`. Reasoning is the effort requested
+from the host. The coordinator uses the model and effort of your host session; Kitsu cannot read
+or configure them.
 
-| Role | Job | May change | Claude Code | Codex | Tools on Claude Code |
-| --- | --- | --- | --- | --- | --- |
-| `lookup` | Finds files, facts and existing specifications, and reports where they are. | nothing | `haiku`, `high` | `gpt-6-luna`, `high` | Read, Grep, Glob, WebFetch, WebSearch |
-| `spec-writer` | Writes the requirements and their scenarios from the request and its sources. | `proposal.md` and `specs/` of the task's change folder | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write |
-| `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Edit, Write |
-| `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
-| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `kitsu.toml`, `kitsu-roles.toml` and `openspec/`; may add a test, may not change or remove one | `opus`, `high` | `gpt-6.1-sol`, `high` | Read, Grep, Glob, Edit, Write, Bash |
-| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | `opus`, `xhigh` | `gpt-6.1-sol`, `max` | Read, Grep, Glob, Bash |
-| `git` | Runs the checks and makes the commit through the gate. | nothing | `sonnet`, `medium` | `gpt-6-luna`, `high` | Read, Grep, Glob, Bash |
+| Role | Claude Code model | Reasoning | Codex model | Reasoning |
+| --- | --- | --- | --- | --- |
+| `coordinator` | host session | host session | host session | host session |
+| `lookup` | `haiku` | `medium` | `gpt-6-luna` | `medium` |
+| `spec-writer` | `opus` | `high` | `gpt-6.1-sol` | `high` |
+| `architect` | `opus` | `max` | `gpt-6.1-sol` | `max` |
+| `quality-engineer` | `sonnet` | `high` | `gpt-6.1-sol` | `high` |
+| `developer` | `sonnet` | `high` | `gpt-6.1-terra` | `high` |
+| `reviewer` | `opus` | `max` | `gpt-6.1-sol` | `max` |
+| `git` | `haiku` | `low` | `gpt-6-luna` | `low` |
 
-The model is given as `<model>, <effort>`. "The test paths" are the patterns that `kitsu-roles.toml`
+For the coordinator session, the recommendation is `gpt-6.1-sol` with `max` on Codex or `opus`
+with `xhigh` on Claude Code. Select that in the host; `kitsu-roles.toml` configures specialists.
+These selections are recommendations based on the jobs, not results of a benchmark:
+
+| Role | Why this selection | When to choose a stronger setting explicitly |
+| --- | --- | --- |
+| `lookup` | Bounded searches and citations need little synthesis. | Use Sol or Opus with higher effort for a difficult investigation. |
+| `spec-writer` | Requirements need source reconciliation and precise scenarios. | Raise effort when sources conflict or behavior is ambiguous. |
+| `architect` | Dependencies and competing designs need the strongest reasoning setting. | Keep a strong model for cross-service design and concurrency. |
+| `quality-engineer` | Tests need careful separation of the requirement from the implementation. | Use Sol or Opus with higher effort for race, security, and failure-path tests. |
+| `developer` | Routine implementation benefits from a coding-focused model. | Use Sol or Opus with higher effort for complex debugging or concurrency. |
+| `reviewer` | Independent scrutiny needs enough effort to challenge the design. | Keep review effort at least as high as the work being reviewed. |
+| `git` | Routine checks and a gated commit are bounded operations. | Use Sol or Opus with higher effort before resolving a difficult merge conflict. |
+
+Kitsu never escalates or substitutes a model automatically. A developer's explicit model choice
+takes precedence. The local Codex model catalog was checked for these model ids, and Claude Code's
+[effort settings](https://code.claude.com/docs/en/model-config#adjust-effort-level) describe the
+supported levels; availability still depends on the host and account. Historical scratch-session
+results below used earlier defaults and do not validate this routing.
+
+`kitsu roles --host codex` or `kitsu roles --host claude` prints the selected host in a compact
+**Role / Model / Reasoning / Advisers** table. Adviser access is configured separately in
+`kitsu-advisers.toml`; `--task <task>` reads a saved task binding, including access, without the
+personal adviser configuration. Change a specialist's model or reasoning in
+[`kitsu-roles.toml`](#kitsu-rolestoml); configure adviser models and arguments as described in
+[advisers](advisers.md#configure-definitions-and-access).
+
+| Role | Job | May change | Tools on Claude Code |
+| --- | --- | --- | --- |
+| `lookup` | Finds files, facts and existing specifications, and reports where they are. | nothing | Read, Grep, Glob, WebFetch, WebSearch |
+| `spec-writer` | Writes the requirements and their scenarios from the request and its sources. | `proposal.md` and `specs/` of the task's change folder | Read, Grep, Glob, Edit, Write |
+| `architect` | Designs the building blocks, their dependencies and the tasks. | `design.md` and `tasks.md` of the task's change folder | Read, Grep, Glob, Edit, Write |
+| `quality-engineer` | Writes the tests of the scenarios before the code exists. | the test paths, and `tests.md` of the task's change folder | Read, Grep, Glob, Edit, Write, Bash |
+| `developer` | Writes the code that makes the tests pass, within the design. | any other path except `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml` and `openspec/`; may add a test, may not change or remove one | Read, Grep, Glob, Edit, Write, Bash |
+| `reviewer` | Reviews a specification, a design or code that another role wrote, and reports findings. | nothing | Read, Grep, Glob, Bash |
+| `git` | Runs the checks and makes the commit through the gate. | nothing | Read, Grep, Glob, Bash |
+
+"The test paths" are the patterns that `kitsu-roles.toml`
 names under `[paths]`. No role file gives a role the tool that starts another role; only the
 coordinator starts roles. `reviewer` runs at the effort of `architect`, because a review does not
 run at a lower effort than the work it reviews.
@@ -38,6 +78,10 @@ Each role starts with none of the coordinator's conversation. Its brief is all i
 line of every brief is a label for the token report (see [tokens](tokens.md#the-label)); each role
 text tells the role to ignore it. Every role hands back the paths it wrote, the commands it ran
 with their results, and its open questions. The full texts are what `kitsu roles text <role>` prints.
+Each role may return a question, choices, and explicit source paths for an adviser named in its
+brief. The coordinator checks its writes, runs the consultation, and returns the record before
+the role resumes. Roles never execute advisers or write adviser records themselves. Reviewers
+first form their own assessment and receive none of the author's consultations as review guidance.
 
 ### lookup
 
@@ -79,7 +123,7 @@ requirement or the reason, on the full path under `## Changed tests` in `tests.m
 ### developer
 
 Writes the code that makes the tests pass, inside the design. It may add a test, and may not
-change or remove one. It does not touch `kitsu.toml`, `kitsu-roles.toml` or anything under `openspec/`,
+change or remove one. It does not touch `kitsu.toml`, `kitsu-roles.toml`, `kitsu-advisers.toml` or anything under `openspec/`,
 does not tick tasks, and does not commit. It builds one group of `tasks.md` per start. It runs
 `kitsu run` and reports the result as it is. A test that is wrong or must change is reported, and the
 coordinator sends that report to `quality-engineer`.
@@ -128,7 +172,7 @@ version = 1
 tests = ["tests/**", "**/*_test.*"]
 
 [claude.developer]
-model = "sonnet"
+model = "opus"
 effort = "high"
 
 [codex.git]
@@ -146,11 +190,11 @@ model = "<another model name>"
 ### Changing a model
 
 Add a table for the host and the role. With the lines `[claude.developer]` and
-`model = "sonnet"`, `kitsu roles` prints `sonnet, high` for `developer` on Claude Code, and every
+`model = "opus"`, `kitsu roles` prints `opus, high` for `developer` on Claude Code, and every
 other role keeps its default:
 
 ```text
-developer         sonnet, high    gpt-6.1-sol, high  2841
+developer         opus, high      gpt-6.1-terra, high  3299
 ```
 
 `kitsu` does not judge a model name. `model = "no-such-model"` is accepted and printed; a wrong name
@@ -189,17 +233,29 @@ it works even when the file is invalid.
 ### kitsu roles
 
 ```text
-kitsu roles [--json]
+kitsu roles [--host claude|codex] [--task <task>] [--json]
 ```
 
-Prints one row for each role: its id, its model and effort on Claude Code and on Codex, and the
-size of its text in characters. Below the row of a role stand its job and what it may write:
+Without `--host`, prints one row for each specialist role: its id, its model and effort on Claude
+Code and on Codex, and the size of its text in characters. Below each row stand its job, what it
+may write, and its allowed advisers. With `--host`, the compact table includes the coordinator
+and separates model, reasoning, and allowed advisers. The coordinator's model and reasoning are
+shown as the host session because Kitsu has no configured values for them. With `--task`, adviser
+access comes from that task's binding and can be read offline. Examples:
+
+```sh
+kitsu roles --host codex
+kitsu roles --host claude --task add-order-csv-export --json
+```
+
+The default two-host output starts like this:
 
 ```text
 ROLE              CLAUDE CODE     CODEX              TEXT
-lookup            haiku, high     gpt-6-luna, high   1827
+lookup            haiku, medium   gpt-6-luna, medium  2283
     Finds files, facts and existing specifications, and reports where they are.
     May write: nothing.
+    Advisers: none.
 ```
 
 Below the table it prints the size of the coordinator's instructions. With `--json` it prints one object. Here it is shortened to one
@@ -212,11 +268,12 @@ of the seven entries of `roles`:
       "id": "architect",
       "job": "Designs the building blocks, their dependencies and the tasks.",
       "writes": "design.md and tasks.md of the task's change folder",
-      "text_chars": 3766,
+      "text_chars": 4230,
+      "advisers": null,
       "models": {
         "claude": {
           "model": "opus",
-          "effort": "xhigh"
+          "effort": "max"
         },
         "codex": {
           "model": "gpt-6.1-sol",
@@ -225,11 +282,11 @@ of the seven entries of `roles`:
       }
     }
   ],
-  "coordinator_text_chars": 11126
+  "coordinator_text_chars": 11887
 }
 ```
 
-The sizes are those of this version of the texts. It reads `kitsu-roles.toml` of the repository it runs
+The sizes are illustrative; `kitsu roles` prints the current values. It reads `kitsu-roles.toml` of the repository it runs
 in. Outside a git repository it prints the defaults.
 
 | Exit | When |

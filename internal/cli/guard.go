@@ -112,6 +112,8 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 	const hook = "This edit changes a git hook of this clone, and the git hooks of kitsu judge each commit and push."
 	guarded := [][2]string{
 		{filepath.Join(repo.Root, decl.FileName), "This edit changes kitsu.toml, and with it the checks this repository requires before a commit or a push."},
+		{filepath.Join(repo.Root, "kitsu-advisers.toml"), "This edit changes adviser commands, model selections, role access or required consultations."},
+		{filepath.Join(repo.Root, "kitsu-roles.toml"), "This edit changes role models, reasoning effort or write limits."},
 		{filepath.Join(repo.CommonDir, "hooks"), hook},
 		{hooks, hook},
 		{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},
@@ -120,6 +122,12 @@ func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, path)
+		}
+		// Configuration creation must be guarded before a target inode exists.
+		for _, g := range guarded[:3] {
+			if filepath.Clean(path) == filepath.Clean(g[0]) {
+				return g[1]
+			}
 		}
 		for at, above := filepath.Clean(path), ""; at != above; at, above = filepath.Dir(at), at {
 			info, err := os.Stat(at)

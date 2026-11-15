@@ -56,13 +56,12 @@ func TestOnlyTheCommandImportsTheCLI(t *testing.T) {
 
 var startsProgram = regexp.MustCompile(`\bexec\.Command(Context)?\(`)
 
-// A program is started in one place, internal/proc. Two packages use it:
-// internal/gitx starts git, and internal/runner starts the program of a
-// declared check. So no other part of kitsu can start git or anything else.
+// Programs start in internal/proc. Git access, declared checks and explicitly
+// requested adviser commands are the three execution boundaries.
 func TestProgramsAreStartedInOnePlace(t *testing.T) {
 	t.Parallel()
 	const proc = "internal/proc"
-	allowed := []string{"internal/gitx", "internal/runner"}
+	allowed := []string{"internal/gitx", "internal/runner", "internal/advisers"}
 	found := false
 	for name, imported := range imports(t, false) {
 		if !slices.Contains(imported, proc) {

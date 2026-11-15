@@ -32,10 +32,12 @@ type Role struct {
 }
 
 var (
-	substantive = map[string]Model{"claude": {"opus", "high"}, "codex": {"gpt-6.1-sol", "high"}}
+	substantive  = map[string]Model{"claude": {"opus", "high"}, "codex": {"gpt-6.1-sol", "high"}}
+	testWriting  = map[string]Model{"claude": {"sonnet", "high"}, "codex": {"gpt-6.1-sol", "high"}}
+	implementing = map[string]Model{"claude": {"sonnet", "high"}, "codex": {"gpt-6.1-terra", "high"}}
 	// deciding is for the design and for its review: a review never runs at
 	// a lower effort than the work it reviews.
-	deciding = map[string]Model{"claude": {"opus", "xhigh"}, "codex": {"gpt-6.1-sol", "max"}}
+	deciding = map[string]Model{"claude": {"opus", "max"}, "codex": {"gpt-6.1-sol", "max"}}
 	writing  = []string{"Read", "Grep", "Glob", "Edit", "Write"}
 	building = []string{"Read", "Grep", "Glob", "Edit", "Write", "Bash"}
 )
@@ -45,7 +47,7 @@ var defaults = []Role{
 	{
 		ID: "lookup", Job: "Finds files, facts and existing specifications, and reports where they are.",
 		Writes: "nothing",
-		Models: map[string]Model{"claude": {"haiku", "high"}, "codex": {"gpt-6-luna", "high"}},
+		Models: map[string]Model{"claude": {"haiku", "medium"}, "codex": {"gpt-6-luna", "medium"}},
 		Tools:  []string{"Read", "Grep", "Glob", "WebFetch", "WebSearch"},
 	},
 	{
@@ -61,12 +63,12 @@ var defaults = []Role{
 	{
 		ID: "quality-engineer", Job: "Writes the tests of the scenarios before the code exists.",
 		Writes: "test paths, and tests.md of the task's change folder",
-		Models: substantive, Tools: building,
+		Models: testWriting, Tools: building,
 	},
 	{
 		ID: "developer", Job: "Writes the code that makes the tests pass, within the design.",
-		Writes: "outside kitsu.toml, kitsu-roles.toml and openspec/; may add tests, not change or remove them",
-		Models: substantive, Tools: building,
+		Writes: "outside kitsu.toml, kitsu-roles.toml, kitsu-advisers.toml and openspec/; tests: add only",
+		Models: implementing, Tools: building,
 	},
 	{
 		ID: "reviewer", Job: "Reviews a specification, a design or code that another role wrote, and reports findings.",
@@ -76,7 +78,7 @@ var defaults = []Role{
 	{
 		ID: "git", Job: "Runs the checks and makes the commit through the gate.",
 		Writes: "nothing",
-		Models: map[string]Model{"claude": {"sonnet", "medium"}, "codex": {"gpt-6-luna", "high"}},
+		Models: map[string]Model{"claude": {"haiku", "low"}, "codex": {"gpt-6-luna", "low"}},
 		Tools:  []string{"Read", "Grep", "Glob", "Bash"},
 	},
 }
@@ -231,8 +233,8 @@ func limit(role string, tests []string, task string) (func(gitx.Change) string, 
 
 func developerLimit(c gitx.Change, tests []string) string {
 	switch {
-	case c.Path == decl.FileName, c.Path == FileName, strings.HasPrefix(c.Path, "openspec/"):
-		return "`developer` may not change kitsu.toml, kitsu-roles.toml or anything under openspec/"
+	case c.Path == decl.FileName, c.Path == FileName, c.Path == "kitsu-advisers.toml", strings.HasPrefix(c.Path, "openspec/"):
+		return "`developer` may not change kitsu.toml, kitsu-roles.toml, kitsu-advisers.toml or anything under openspec/"
 	case decl.MatchAny(tests, c.Path) && c.Kind != "added":
 		return "`developer` may add a test and may not change or remove one"
 	}

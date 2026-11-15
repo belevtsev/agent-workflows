@@ -50,11 +50,17 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 		fmt.Fprintf(cfg.Err, "kitsu: warning: the token record %s cannot be read; its tokens are in no sum\n", file)
 	}
 	report := tokens.Build(starts, damaged)
+	items, err := loadAdviserTokenActivity(s.repo.Root)
+	if err != nil {
+		return failf("%v", err)
+	}
+	activity := attachAdviserTokenActivity(report, items)
 	if *task == "" {
 		if *asJSON {
-			return printJSON(cfg, report)
+			return printJSON(cfg, adviserGlobalTokenJSON(report, activity))
 		}
 		printTokens(cfg.Out, report)
+		printAdviserTokenUsage(cfg.Out, activity.all)
 		return nil
 	}
 	found, sessions, unlabelled, ok := report.Find(*task)
@@ -66,9 +72,15 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 			*tokens.Task
 			Unlabelled []tokens.Unlabelled `json:"unlabelled"`
 			Sessions   []tokens.Session    `json:"sessions"`
-		}{found, unlabelled, sessions})
+			Advisers   *adviserTokenUsage  `json:"advisers,omitempty"`
+		}{found, unlabelled, sessions, activity.byTask[*task]})
 	}
-	printTask(cfg.Out, found, sessions, unlabelled)
+	if found.Starts > 0 || activity.byTask[*task] == nil {
+		printTask(cfg.Out, found, sessions, unlabelled)
+	} else {
+		fmt.Fprintln(cfg.Out, found.Task+": no measured host token usage")
+	}
+	printAdviserTokenUsage(cfg.Out, activity.byTask[*task])
 	return nil
 }
 
@@ -85,6 +97,9 @@ func printJSON(cfg Config, value any) error {
 // session ends, and stores the counts of the records the notice names. It
 // stores nothing outside a repository that holds kitsu.toml.
 func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
+	if os.Getenv("KITSU_ADVISER_CALL") != "" {
+		return nil
+	}
 	flags := newFlags("tokens record")
 	host := flags.String("host", tokens.Claude, "")
 	p, err := parseArgs(flags, args)
@@ -211,7 +226,7 @@ func printTask(out io.Writer, t *tokens.Task, sessions []tokens.Session, unlabel
 	}
 	fmt.Fprintf(out, "%s of %s%s tokens, %d%%, went to the workflow and not to the first writing of the specification, the design, the tests and the code\n",
 		commas(t.Flow.Total), commas(t.Total), known, t.FlowShare)
-	if !t.Complete {
+	if len(t.UnknownRecords) > 0 {
 		fmt.Fprintf(out, "the tokens of %s are unknown, so every sum is at least the number shown:\n", unknownWhat(t))
 		for _, record := range t.UnknownRecords {
 			fmt.Fprintf(out, "  %s\n", record)
