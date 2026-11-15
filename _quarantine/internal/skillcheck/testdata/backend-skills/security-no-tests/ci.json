@@ -1,1 +1,0 @@
-{"head_sha":"7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be","jobs":[{"name":"format","status":"passed"}],"extract_tests":null,"worker_policy":"destination is a temporary directory; process can write the containing directory; archive names are not prevalidated"}

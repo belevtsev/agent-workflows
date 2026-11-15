@@ -1,8 +1,7 @@
 # Development
 
 `cw` is one Go module. The command is `cmd/cw`; everything else is under
-`internal/`. Files under `_quarantine/` left the core: Go ignores that
-directory, and no check reads it.
+`internal/`.
 
 ## Checks
 
@@ -84,11 +83,15 @@ then does four things, each only when the one before it passed:
    Windows, exactly as written, on a `PATH` without `go`. This fails when the
    README names another tag.
 
-None of these steps has run in this workflow: no tag of this code exists. CI
-runs the commands of step 2 on every commit. Its job `Release archives` builds
-the same archives and the same text, and its jobs `Install without Go` install
-from them. What is left untried is the guard against the real repository, the
-upload, the attestation, the publishing and the download from GitHub.
+The four steps ran once, for the tag `v3.0.0-beta.1` on 15 November 2026, and
+each passed. What that run could not show is a refusal by step 1: the guard
+has refused a commit only in the test of its script.
+
+CI runs the commands of step 2 on every commit. Its job `Release archives`
+builds the six archives in the same way, and the same text, from the commit,
+and its jobs `Install without Go` install from them. Those archives are not byte for byte
+the ones a release publishes: Go writes the version of the module into the
+program, and that is the tag only once the tag exists.
 
 To try the archives of a commit before it is tagged:
 
@@ -101,7 +104,10 @@ To publish, the owner does two things:
 1. Merge the branch into `main` and wait until the run of CI for the merge
    commit has passed.
 2. Tag that commit with the tag the README names and push the tag:
-   `git tag v3.0.0-beta.1 <commit>` and `git push origin v3.0.0-beta.1`.
+   `git tag <tag> <commit>` and `git push origin <tag>`.
+
+After a release, give the section `Unreleased` of the changelog the heading
+of that version, and start a new section `Unreleased` above it.
 
 The README, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and
 `.codex-plugin/plugin.json` name the version; change all of them together.

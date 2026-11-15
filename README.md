@@ -17,11 +17,12 @@ stop a person who decides to go around it.
 
 ## State
 
-- This is a pre-release. The first install instruction below works once the
-  release `v3.0.0-beta.1` is published; the
-  [releases](https://github.com/belevtsev/agent-workflows/releases) show
-  whether it is. CI builds the archives of that release from every commit and
-  follows the instruction with them on Linux, macOS and Windows.
+- This is a pre-release:
+  [`v3.0.0-beta.1`](https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-beta.1),
+  published on 15 November 2026. The release workflow followed the first
+  install instruction below against it on Linux, macOS and Windows. CI builds
+  the six archives in the same way from every commit and follows the
+  instruction with them.
 - **Nothing here is measured to improve anything.** The gate has not yet been
   used on real work. The plugin and the roles ran with a model in scratch
   repositories only, on two small tasks:
@@ -189,8 +190,7 @@ More in [evidence](docs/evidence.md) and [hooks](docs/hooks.md).
 ## The previous workflow
 
 Versions up to 2.0.96 were a larger workflow of skills and task records. It is
-kept on the branch `workflow-v3`. On this branch its files are under
-`_quarantine/`, as reading material; nothing there is built or tested.
+kept on the branch `workflow-v3`.
 
 ## Documents
 

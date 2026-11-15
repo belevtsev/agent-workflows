@@ -1,2 +1,0 @@
-cw task verify --task <task-id>
-cw task verify --task <task-id> --full

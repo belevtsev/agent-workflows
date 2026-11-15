@@ -1,8 +1,0 @@
-{
-  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
-  "source": "synthetic snapshot",
-  "contract": "A valid packet is one length byte followed by exactly that many payload bytes. Payload length 0..255 is supported. Payload bytes, including whitespace and non-UTF-8 bytes, must be preserved. Any other packet returns ErrMalformed.",
-  "scope": "Prepare a test design and bounded future verification plan only; do not edit or run tests",
-  "tool_inventory": "Only captured source is available; no installs are permitted",
-  "existing_evidence": "One candidate seed is shown; no seed run, fuzz campaign, minimization or CI result is supplied"
-}

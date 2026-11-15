@@ -1,7 +1,9 @@
 # Proposal: reduce-cw-to-evidence-gate
 
 Status: on 14 November 2026 the owner accepted the eight recommended answers
-under Open Questions. Nothing here is implemented. What stays, moves and is
+under Open Questions. Nothing here was implemented then. It is built since,
+and was released as `v3.0.0-beta.1` on 15 November 2026. "Today" in this
+proposal means the state before the change. What stays, moves and is
 cut is in [keep-and-cut.md](keep-and-cut.md); the order of the work is in
 [tasks.md](tasks.md).
 
@@ -124,8 +126,8 @@ language, with any agent, on Linux, macOS or Windows.
   first install instruction needs no Go toolchain. Today the README lists Go as
   a requirement and names a release that does not exist (C1).
 
-No migration is owed. No `v3` tag was ever published (C1), and `v2` is end of
-life.
+No migration is owed. No `v3` tag had been published before this change
+(C1), and `v2` is end of life.
 
 ## Capabilities
 
@@ -173,6 +175,9 @@ Changes and Non-goals.
 - **Release.** The core needs a tagged, installable release (C1) before anyone
   else can try it, with archives for the three systems. Today's release
   configuration builds for darwin and linux only (`.goreleaser.yaml`).
+  Decided on 15 November 2026 (task 1.1): the module path stays
+  `github.com/belevtsev/agent-workflows/v3`, and the first tag is
+  `v3.0.0-beta.1`. The owner approved that tag, and it was published that day.
 
 ## Non-goals
 

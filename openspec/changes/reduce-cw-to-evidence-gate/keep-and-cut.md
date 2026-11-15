@@ -1,7 +1,8 @@
 # Keep-and-cut list: reduce-cw-to-evidence-gate
 
-Status: a list for the owner, written on 14 November 2026. Nothing in it has
-been carried out: no file was moved, removed or changed. It applies the
+Status: a list for the owner, written on 14 November 2026. Nothing in it had
+been carried out then: no file was moved, removed or changed. It has been
+carried out since; [tasks.md](tasks.md) says how. It applies the
 accepted [proposal](proposal.md) to every file tracked at commit `ce9b122`, the
 commit the review read.
 
@@ -237,7 +238,7 @@ not wait for it.
 
 - The layer's name.
 - The version number and module path of the first core release. `go.mod` says
-  `/v3`, and no `v3` tag was ever published (C1).
+  `/v3`, and no `v3` tag had been published when this list was written (C1).
 - The order of the work. That is `tasks.md`.
 
 ## How the cut is carried out

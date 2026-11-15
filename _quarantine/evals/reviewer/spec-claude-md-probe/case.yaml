@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: spec-claude-md-probe
-context:
-  scaffold_script: scaffold.sh

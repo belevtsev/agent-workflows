@@ -1,6 +1,0 @@
-syntax = "proto3";
-package fixture.v1;
-option go_package = "example.invalid/contracts/gen/go/fixture/v1;fixturev1";
-message PatchRequest {
-  optional bool enabled = 1;
-}

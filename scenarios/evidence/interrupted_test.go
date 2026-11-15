@@ -173,7 +173,12 @@ func TestCtrlBreakRecordsTheRunAsInterrupted(t *testing.T) {
 	}) {
 		t.Fatalf("the program of slow did not start\n%s", run.out.String())
 	}
-	t.Cleanup(func() { _ = windowsKill(pid) })
+	// The program still runs here, so the id is its own. From now on the
+	// test asks the handle, not the id.
+	running, found := watchProcess(t, pid, "powershell.exe")
+	if !found {
+		t.Fatalf("process %s, the program of slow, is not a running powershell.exe", pid)
+	}
 
 	if err := sendCtrlBreak(run.cmd.Process.Pid); err != nil {
 		t.Fatal(err)
@@ -185,7 +190,7 @@ func TestCtrlBreakRecordsTheRunAsInterrupted(t *testing.T) {
 	if outcome := lastRecord(t, repo, "slow")["outcome"]; outcome != "interrupted" {
 		t.Errorf("slow is recorded as %v, want interrupted", outcome)
 	}
-	if windowsAlive(t, pid) {
+	if running() {
 		t.Errorf("the program of slow (process %s) still runs", pid)
 	}
 	if t.Failed() {

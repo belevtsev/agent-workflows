@@ -316,26 +316,6 @@ func onlyOnWindows(t *testing.T) {
 	}
 }
 
-// windowsAlive says whether a process with this id runs on Windows.
-func windowsAlive(t *testing.T, pid string) bool {
-	t.Helper()
-	out, err := exec.Command("tasklist", "/FI", "PID eq "+pid, "/NH").Output()
-	if err != nil {
-		t.Fatalf("tasklist: %v", err)
-	}
-	for _, field := range strings.Fields(string(out)) {
-		if field == pid {
-			return true
-		}
-	}
-	return false
-}
-
-// windowsKill ends a process on Windows.
-func windowsKill(pid string) error {
-	return exec.Command("taskkill", "/F", "/T", "/PID", pid).Run()
-}
-
 // alive says whether a process with this id exists on a POSIX system.
 func alive(pid int) bool {
 	process, err := os.FindProcess(pid)

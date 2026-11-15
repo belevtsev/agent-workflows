@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -94,8 +95,13 @@ func TestReleaseNotes(t *testing.T) {
 	}
 }
 
+// installedTag is the line of the README's first install instruction that
+// names the tag to download.
+var installedTag = regexp.MustCompile(`(?m)^tag=(v\S+)$`)
+
 // The changelog of this repository gives notes for the tag that the README
-// installs.
+// installs, and the notes of the first release of this code list the
+// breaking changes.
 func TestReleaseNotesOfThisRepository(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the release job does not run on Windows")
@@ -105,18 +111,30 @@ func TestReleaseNotesOfThisRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("sh", script, "v0.0.0-test")
-	cmd.Dir = repoRoot
-	out, err := cmd.Output()
+	readme, err := os.ReadFile(filepath.Join(repoRoot, "README.md"))
 	if err != nil {
-		t.Fatalf("release-notes.sh: %v", err)
+		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), "### Breaking") {
-		t.Errorf("the notes of the next release do not list the breaking changes:\n%.400s", out)
+	found := installedTag.FindSubmatch(readme)
+	if found == nil {
+		t.Fatal("README.md has no line `tag=v...` in its install instruction")
 	}
-	for line := range strings.SplitSeq(string(out), "\n") {
+	notes := func(tag string) string {
+		cmd := exec.Command("sh", script, tag)
+		cmd.Dir = repoRoot
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("release-notes.sh %s: %v", tag, err)
+		}
+		return string(out)
+	}
+	for line := range strings.SplitSeq(notes(string(found[1])), "\n") {
 		if strings.Contains(line, "](docs/") || strings.Contains(line, "](README.md") {
 			t.Errorf("a relative link is left in the notes: %s", line)
 		}
+	}
+	const first = "v3.0.0-beta.1"
+	if out := notes(first); !strings.Contains(out, "### Breaking") {
+		t.Errorf("the notes of %s do not list the breaking changes:\n%.400s", first, out)
 	}
 }

@@ -1,6 +1,0 @@
-{
-  "exit": 1,
-  "stdout": "",
-  "stderr": null,
-  "stderr_contains": "consultation record version 3 is not supported; this cw reads version 4"
-}

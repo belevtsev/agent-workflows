@@ -1,9 +1,0 @@
-Synthetic service revision: 0000000000000000000000000000000000000001.
-An API inserts a transfer job in a database transaction, then returns its ID.
-Workers call a provider outside the database transaction and retry timeouts.
-The provider accepts a caller-supplied idempotency key and retains it for 24 hours.
-Jobs can remain queued for 48 hours. Multiple workers may resume a job after crashes.
-The requested outcome is safe retry ownership and resumable crash recovery.
-Existing user decision: retain the queue and provider; do not introduce another broker.
-Existing verification: a unit test mocks a successful call. No timeout or crash evidence.
-Deployment constraints: rolling upgrades with old and new workers running together.

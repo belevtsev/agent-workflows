@@ -1,8 +1,0 @@
-{
-  "snapshot_sha": "7d2d9f5f1d3c61a8a1e6b4e32b89a47e88f047be",
-  "source": "synthetic snapshot",
-  "contract": "Only 2xx responses are successful; 3xx, 4xx and 5xx are failures",
-  "changed": "Successful only",
-  "transport": "An existing HTTPS client is passed by the caller; its certificates, peer verification, and configuration are unchanged",
-  "observed_runtime": "none"
-}

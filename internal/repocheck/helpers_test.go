@@ -16,7 +16,6 @@ import (
 var repoRoot = filepath.Join("..", "..")
 
 // repoFiles lists the files of the checkout that git tracks or would track.
-// Files under _quarantine/ left the core and are reading material only.
 func repoFiles(t *testing.T) []string {
 	t.Helper()
 	command := exec.CommandContext(t.Context(), "git", "-C", repoRoot, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
@@ -31,9 +30,6 @@ func repoFiles(t *testing.T) []string {
 	}
 	var files []string
 	for name := range strings.SplitSeq(strings.TrimSuffix(string(output), "\x00"), "\x00") {
-		if strings.HasPrefix(name, "_quarantine/") {
-			continue
-		}
 		if _, err := os.Lstat(filepath.Join(repoRoot, name)); err == nil {
 			files = append(files, name)
 		}
@@ -42,7 +38,7 @@ func repoFiles(t *testing.T) []string {
 }
 
 // linkCheckedDocuments are the Markdown files whose links must resolve:
-// every Markdown file of the checkout outside _quarantine/.
+// every Markdown file of the checkout.
 func linkCheckedDocuments(t *testing.T) []string {
 	t.Helper()
 	var documents []string

@@ -18,20 +18,22 @@ open, it says so under "Decisions taken without the owner".
 - **Base.** Branch `feat/evidence-gate-and-roles`, cut from `origin/main` at
   `3cbfb0d`, two commits after `ce9b122`, the commit the review and the
   keep-and-cut list read. Today's workflow is kept as the local branch
-  `workflow-v3` at the same commit.
+  `workflow-v3` at the same commit. Since 15 November 2026 the repository has
+  that branch too.
 - **Environment of the build.** Linux, Go 1.27.4, git 2.53.0. No macOS and no
-  Windows machine, and no CI run, because nothing is pushed.
+  Windows machine. No CI run at first, because nothing was pushed until the
+  pull request of 14 November 2026.
 
 ## Decisions taken without the owner
 
 | # | Decision | Why | How to undo |
 | --- | --- | --- | --- |
 | 1 | The work is on a branch in a worktree, not on `main`. | The task list says `main`; the owner's daily `cw` and plugin load from `main`, and nobody is there to approve. | Merge the branch when satisfied. |
-| 2 | Task 1.1: the module path stays `github.com/belevtsev/agent-workflows/v3`. No tag is made. | It is the recommended answer, and a tag is the owner's. | Change `go.mod` and the imports. |
+| 2 | Task 1.1: the module path stays `github.com/belevtsev/agent-workflows/v3`. No tag is made without the owner. On 15 November 2026 the owner had `v3.0.0-beta.1` published. | It is the recommended answer, and a tag is the owner's. | Change `go.mod` and the imports. |
 | 3 | Open Questions 9 to 11 take their recommendations. | The owner asked for the work to go on alone. | Each is one function or one file. |
 | 4 | The command line uses the standard `flag` package, not cobra. | cobra's flag package links Go's `net` package. Without it a test can show that `cw` links no network code at all on Linux and macOS, and none of its own on Windows (`check-evidence`: No network). | Put cobra back; the commands do not change. |
 | 5 | Nothing is deleted. Files leave by `git mv` into `_quarantine/`. | The owner's rule. | Move them back. |
-| 6 | Commits are local, authored with the identity earlier local commits used. Nothing is pushed, tagged or released, and no repository setting changes. | Publishing is the owner's. | `git branch -D` removes all of it. |
+| 6 | Commits are local, authored with the identity earlier local commits used. Nothing is pushed, tagged or released, and no repository setting changes, without the owner. Each of these came later, on the owner's word. | Publishing is the owner's. | `git branch -D` removed all of it until the branch was merged. |
 
 ## Building blocks
 
@@ -406,9 +408,9 @@ the documents say so; CI is the backstop.
 
 ## Rollback
 
-Everything is on one local branch. Deleting the branch and the worktree
-restores the state before this work. `main` and the owner's installed `cw` are
-untouched.
+Everything was on one local branch until the owner had it pushed, merged and
+released. [The production plan](../../production-plan.md#rollback) says how
+to go back now. The owner's installed `cw` is untouched.
 
 ## Independent challenge
 

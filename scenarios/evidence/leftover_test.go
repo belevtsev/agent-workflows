@@ -78,7 +78,7 @@ func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 	// The program starts a second program, writes both process ids, and
 	// neither ends for 600 seconds. It is a compiled program, not a script:
 	// under load PowerShell alone can take longer to start than the timeout.
-	program := buildProgram(t, "tree", treeProgram)
+	program := buildProgram(t, "cw-test-tree", treeProgram)
 	declare(t, repo, "[[check]]\nid = \"tree\"\ntimeout = \"2s\"\nrun = [\""+filepath.ToSlash(program)+"\", \""+filepath.ToSlash(pidFile)+"\"]\n")
 
 	result, took := runLimited(t, repo, 60*time.Second, "run", "tree")
@@ -94,8 +94,9 @@ func TestTimeoutStopsTheWholeProcessTreeOnWindows(t *testing.T) {
 		t.Fatalf("the program did not write its process ids: %v\n%s", err, result.Output())
 	}
 	for _, pid := range strings.Fields(string(data)) {
-		t.Cleanup(func() { _ = windowsKill(pid) })
-		if windowsAlive(t, pid) {
+		// cw has ended, so the id may already belong to another process.
+		// Only one that still runs the check's program counts.
+		if running, found := watchProcess(t, pid, filepath.Base(program)); found && running() {
 			t.Errorf("process %s started by the check still runs", pid)
 		}
 	}

@@ -1,7 +1,0 @@
-schema: spec-driven
-context: |
-  Batch API uses a synchronous request handler and tenant-specific limits.
-  Preserve the existing HTTP 400 error contract for limits above HardLimit.
-rules:
-  tasks:
-    - Record verification as planned unless execution evidence is available.

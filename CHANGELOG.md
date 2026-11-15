@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed
+
+- The folder `_quarantine/`, which held the files of the previous workflow as reading material. Each file is kept
+  unchanged on the branch `workflow-v3`, at the same path without `_quarantine/` in front.
+
+## [3.0.0-beta.1] - 2026-11-15
+
 ### Breaking
 
 - `cw` is rebuilt as a gate that any git repository can use. Checks are declared in a committed `cw.toml`, and a commit or a
@@ -454,6 +461,6 @@ The first published v3 release candidate (`v3.0.0-rc.1` was never published): ev
 
 Last release published automatically from main.
 
-[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v3.0.0-rc.2...HEAD
-[3.0.0-rc.2]: https://github.com/belevtsev/agent-workflows/compare/v2.0.96...v3.0.0-rc.2
+[Unreleased]: https://github.com/belevtsev/agent-workflows/compare/v3.0.0-beta.1...HEAD
+[3.0.0-beta.1]: https://github.com/belevtsev/agent-workflows/releases/tag/v3.0.0-beta.1
 [2.0.96]: https://github.com/belevtsev/agent-workflows/releases/tag/v2.0.96

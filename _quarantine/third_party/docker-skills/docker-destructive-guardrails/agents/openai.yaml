@@ -1,6 +1,0 @@
-interface:
-  display_name: "Docker Destructive Command Guardrails"
-  short_description: "Apply guardrails to destructive Docker operations"
-  default_prompt: "Use $docker-destructive-guardrails before running or recommending an irreversible Docker operation."
-policy:
-  allow_implicit_invocation: true

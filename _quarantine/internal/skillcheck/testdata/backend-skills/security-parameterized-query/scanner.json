@@ -1,1 +1,0 @@
-{"provenance":"Synthetic generic scanner observation","rule":"SQL sink receives user input","path":"query.go","line":10,"inputs":"name is arbitrary authenticated-user text; owner is the middleware-bound principal","driver":"PostgreSQL driver with positional bound parameters","executed_database_test":false}

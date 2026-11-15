@@ -1,4 +1,0 @@
-interface:
-  display_name: "Backend Security Review"
-  short_description: "Review backend risks with concrete evidence"
-  default_prompt: "Use $backend-security-review to review this backend change for reachable security defects within the requested scope."

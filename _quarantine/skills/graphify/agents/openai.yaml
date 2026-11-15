@@ -1,6 +1,0 @@
-interface:
-  display_name: "Graphify"
-  short_description: "Explore Go source with a local structural graph"
-  default_prompt: "Use $graphify to find candidate Go source relationships for this investigation, then verify the relevant symbols and paths in current source."
-policy:
-  allow_implicit_invocation: true

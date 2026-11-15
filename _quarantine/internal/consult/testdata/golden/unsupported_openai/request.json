@@ -1,1 +1,0 @@
-{"state": ["list", "state"], "questions": {"claim": {"type": "choice", "instructions": {"policy": "keep intact", "steps": [1, 2.5]}, "criteria": {"supported": ["keep", "intact"], "contradicted": {"meaning": "no"}}}}}

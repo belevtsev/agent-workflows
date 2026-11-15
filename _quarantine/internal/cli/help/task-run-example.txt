@@ -1,2 +1,0 @@
-cw task run --task <task-id> --check unit
-cw task run --task <task-id> --check unit --force
