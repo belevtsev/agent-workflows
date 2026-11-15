@@ -133,7 +133,7 @@ func TestEditReasonSeesAnotherSpellingOfAName(t *testing.T) {
 	}
 	checkEdits(t, repo, []editCase{
 		{"Gatecub.TOML", root, "gatecub.toml"},
-		{"Cw.Toml", root, "gatecub.toml"},
+		{"Gatecub.Toml", root, "gatecub.toml"},
 		{".GIT/HOOKS/pre-commit", root, "git hook"},
 		{".git/Gatecub/runs/x.json", root, "records of gatecub"},
 	})
