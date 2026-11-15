@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"slices"
@@ -18,18 +19,24 @@ import (
 )
 
 type adviserTokenItem struct {
-	ID             string `json:"id"`
-	Task           string `json:"task"`
-	Adviser        string `json:"adviser"`
-	RequestedModel string `json:"requested_model"`
-	Outcome        string `json:"outcome"`
+	ID             string          `json:"id"`
+	Task           string          `json:"task"`
+	Adviser        string          `json:"adviser"`
+	RequestedModel string          `json:"requested_model"`
+	Outcome        string          `json:"outcome"`
+	ActualModel    string          `json:"actual_model,omitempty"`
+	Tokens         *advisers.Usage `json:"tokens,omitempty"`
 }
 
 type adviserTokenUsage struct {
-	Calls    int                `json:"calls"`
-	Usage    string             `json:"usage"`
-	Complete bool               `json:"complete"`
-	Items    []adviserTokenItem `json:"items"`
+	Calls         int                `json:"calls"`
+	Usage         string             `json:"usage"`
+	Complete      bool               `json:"complete"`
+	Items         []adviserTokenItem `json:"items"`
+	MeasuredCalls int                `json:"measured_calls"`
+	InputTokens   int64              `json:"input_tokens"`
+	OutputTokens  int64              `json:"output_tokens"`
+	Overflow      bool               `json:"overflow,omitempty"`
 }
 
 type adviserTokenActivity struct {
@@ -37,8 +44,8 @@ type adviserTokenActivity struct {
 	byTask map[string]*adviserTokenUsage
 }
 
-// Adviser execution has no portable usage contract. Count every recorded
-// attempt separately from measured host tokens, including pending calls.
+// Count every attempt separately from host tokens. Native providers may report
+// measured usage; CLI, pending, and otherwise unmeasured attempts remain unknown.
 func loadAdviserTokenActivity(root string) ([]adviserTokenItem, error) {
 	items := []adviserTokenItem{}
 	if root == "" {
@@ -76,6 +83,7 @@ func loadAdviserTokenActivity(root string) ([]adviserTokenItem, error) {
 		items = append(items, adviserTokenItem{
 			ID: consultation.ID, Task: consultation.Task, Adviser: consultation.Adviser,
 			RequestedModel: consultation.Identity.Model, Outcome: consultation.Execution.Outcome,
+			ActualModel: consultation.Execution.ActualModel, Tokens: consultation.Execution.Usage,
 		})
 	}
 	slices.SortFunc(items, func(a, b adviserTokenItem) int {
@@ -126,26 +134,49 @@ func attachAdviserTokenActivity(report *tokens.Report, items []adviserTokenItem)
 	if len(items) == 0 {
 		return activity
 	}
-	activity.all = &adviserTokenUsage{Calls: len(items), Usage: "unknown", Items: items}
+	activity.all = &adviserTokenUsage{Usage: "unknown"}
 	for _, item := range items {
 		usage := activity.byTask[item.Task]
 		if usage == nil {
 			usage = &adviserTokenUsage{Usage: "unknown", Items: []adviserTokenItem{}}
 			activity.byTask[item.Task] = usage
 		}
-		usage.Calls++
-		usage.Items = append(usage.Items, item)
+		addAdviserUsage(usage, item)
+		addAdviserUsage(activity.all, item)
 	}
 	for task := range activity.byTask {
 		found, _, _, exists := report.Find(task)
 		if exists {
-			found.Complete = false
+			found.Complete = found.Complete && activity.byTask[task].Complete
 			continue
 		}
 		report.Tasks = append(report.Tasks, tokens.Task{Task: task, Roles: []tokens.Entry{}, Stages: []tokens.Entry{}})
 	}
 	slices.SortFunc(report.Tasks, func(a, b tokens.Task) int { return strings.Compare(a.Task, b.Task) })
 	return activity
+}
+
+func addAdviserUsage(usage *adviserTokenUsage, item adviserTokenItem) {
+	usage.Calls++
+	usage.Items = append(usage.Items, item)
+	if counts := item.Tokens; counts != nil {
+		usage.MeasuredCalls++
+		if counts.InputTokens > math.MaxInt64-usage.InputTokens || counts.OutputTokens > math.MaxInt64-usage.OutputTokens {
+			usage.Overflow = true
+		} else if !usage.Overflow {
+			usage.InputTokens += counts.InputTokens
+			usage.OutputTokens += counts.OutputTokens
+		}
+	}
+	usage.Complete = usage.MeasuredCalls == usage.Calls && !usage.Overflow
+	switch {
+	case usage.Complete:
+		usage.Usage = "known"
+	case usage.MeasuredCalls > 0:
+		usage.Usage = "partial"
+	default:
+		usage.Usage = "unknown"
+	}
 }
 
 func adviserGlobalTokenJSON(report *tokens.Report, activity adviserTokenActivity) any {
@@ -171,11 +202,23 @@ func printAdviserTokenUsage(out io.Writer, usage *adviserTokenUsage) {
 	if usage == nil {
 		return
 	}
-	fmt.Fprintf(out, "advisers: %s; token usage unknown, outside the measured token totals\n", plural(usage.Calls, "call", "calls"))
+	if usage.MeasuredCalls == 0 {
+		fmt.Fprintf(out, "advisers: %s; token usage unknown, outside the measured host token totals\n", plural(usage.Calls, "call", "calls"))
+	} else {
+		fmt.Fprintf(out, "advisers: %s; %d input, %d output tokens (%s; %d measured calls), separate from host totals\n",
+			plural(usage.Calls, "call", "calls"), usage.InputTokens, usage.OutputTokens, usage.Usage, usage.MeasuredCalls)
+		if usage.Overflow {
+			fmt.Fprintln(out, "adviser token totals exceeded the reporting limit; inspect individual calls")
+		}
+	}
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "TASK\tADVISER\tREQUESTED MODEL\tOUTCOME\tCALL")
+	fmt.Fprintln(w, "TASK\tADVISER\tREQUESTED MODEL\tREPORTED MODEL\tINPUT\tOUTPUT\tOUTCOME\tCALL")
 	for _, item := range usage.Items {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", item.Task, item.Adviser, item.RequestedModel, item.Outcome, item.ID)
+		input, output := "unknown", "unknown"
+		if item.Tokens != nil {
+			input, output = commas(item.Tokens.InputTokens), commas(item.Tokens.OutputTokens)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", item.Task, item.Adviser, item.RequestedModel, item.ActualModel, input, output, item.Outcome, item.ID)
 	}
 	_ = w.Flush()
 }

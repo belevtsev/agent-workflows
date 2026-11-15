@@ -753,7 +753,7 @@ func TestCLIConfigurationAccess(t *testing.T) {
 	if second.Identity.Model != "changed-model" || second.BindingID != refreshed.ID || f.callCount() != 2 {
 		t.Fatalf("refreshed consultation = %#v", second)
 	}
-	f.Write(advisers.FileName, "version = 2\n")
+	f.Write(advisers.FileName, "version = 3\n")
 	requireCode(t, f.Kitsu("advisers", "list", "--json"), 1)
 	requireCode(t, f.Kitsu("advisers", "list", "--task", task, "--json"), 0)
 	requireCode(t, f.Kitsu("advisers", "status", "--task", task, "--json"), 0)

@@ -6,7 +6,7 @@ Start with the task workflow and roles to coordinate coding agents. The Git gate
 | --- | --- |
 | [The task workflow](workflow.md) | Coordinate a task through specification, design, tests, implementation, review, and commit, using a shared task record. |
 | [Roles](roles.md) | The seven roles, their models, what each may write, and `kitsu-roles.toml`. |
-| [Advisers](advisers.md) | Configure CLI advisers, select access by role, and record advice, decisions, and required checkpoints. |
+| [Advisers](advisers.md) | Opt into experimental decision models or CLI advisers, with explicit role access; none are enabled by default. |
 | [Git gate quick start](quickstart.md) | The five commands that add check evidence and Git hooks to a repository. A test executes them. |
 | [Try it](try-it.md) | Everything on this branch that can be tried by hand, with the output to expect, and what was never run. |
 | [Migration](migration.md) | Moving from `cw` to Kitsu while preserving old records and customized hooks. |

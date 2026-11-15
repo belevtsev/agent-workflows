@@ -1,48 +1,83 @@
 package repocheck
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 )
 
-// networkPackage says whether a package of the standard library could open a
-// network connection.
 func networkPackage(pkg string) bool {
 	return pkg == "net" || strings.HasPrefix(pkg, "net/") || pkg == "crypto/tls"
 }
 
-// kitsu promises to open no network connection. The promise is kept by what kitsu
-// links, for each system it is built for, whatever system the test runs on.
-//
-// On Linux and macOS kitsu links no package that could open one. On Windows the
-// package net is linked by golang.org/x/sys/windows, which kitsu calls for job
-// objects and file locks and which uses the address types of net. There the
-// test holds that this package is the only one that imports a network
-// package: no package of kitsu does, and no other dependency.
-func TestCwLinksNoNetworkPackage(t *testing.T) {
-	for _, goos := range []string{"linux", "darwin", "windows"} {
-		list := exec.Command("go", "list", "-deps", "-f", `{{.ImportPath}}{{range .Imports}} {{.}}{{end}}`, "./cmd/kitsu")
-		list.Dir = repoRoot
-		list.Env = append(os.Environ(), "GOOS="+goos)
-		out, err := list.Output()
+type linkedPackage struct {
+	ImportPath string
+	Standard   bool
+	Imports    []string
+}
+
+func linkedPackages(t *testing.T, goos string, targets ...string) []linkedPackage {
+	t.Helper()
+	args := append([]string{"list", "-deps", "-json"}, targets...)
+	list := exec.Command("go", args...)
+	list.Dir = repoRoot
+	list.Env = append(os.Environ(), "GOOS="+goos)
+	out, err := list.Output()
+	if err != nil {
+		t.Fatalf("go list for %s: %v", goos, err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(out))
+	var packages []linkedPackage
+	for {
+		var pkg linkedPackage
+		err := decoder.Decode(&pkg)
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
-			t.Fatalf("go list -deps ./cmd/kitsu for %s: %v", goos, err)
+			t.Fatal(err)
 		}
-		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-		if len(lines) < 10 {
-			t.Fatalf("go list -deps ./cmd/kitsu for %s named only %d packages", goos, len(lines))
-		}
-		for _, line := range lines {
-			fields := strings.Fields(line)
-			pkg, imports := fields[0], fields[1:]
-			if networkPackage(pkg) && goos != "windows" {
-				t.Errorf("%s: kitsu links the network package %s", goos, pkg)
+		packages = append(packages, pkg)
+	}
+	if len(packages) < 10 {
+		t.Fatalf("unexpected dependency inventory: %d packages", len(packages))
+	}
+	return packages
+}
+
+// Native advisers are the only first-party package allowed to import network
+// libraries. Standard HTTP/TLS dependencies and Windows address types are expected.
+func TestNetworkImportsStayInNativeAdvisers(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		for _, pkg := range linkedPackages(t, goos, "./cmd/kitsu") {
+			if pkg.Standard || pkg.ImportPath == "github.com/belevtsev/kitsu/v3/internal/advisers" || pkg.ImportPath == "golang.org/x/sys/windows" {
+				continue
 			}
-			for _, imported := range imports {
-				if networkPackage(imported) && !networkPackage(pkg) && pkg != "golang.org/x/sys/windows" {
-					t.Errorf("%s: %s imports the network package %s", goos, pkg, imported)
+			for _, imported := range pkg.Imports {
+				if networkPackage(imported) {
+					t.Errorf("%s: %s imports network package %s outside native advisers", goos, pkg.ImportPath, imported)
+				}
+			}
+		}
+	}
+}
+
+// Gate decisions and host token collection retain their
+// offline dependency graph. Windows x/sys uses net only for address types.
+func TestGateAndTokensRemainOffline(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		for _, pkg := range linkedPackages(t, goos, "./internal/gate", "./internal/tokens") {
+			if networkPackage(pkg.ImportPath) && goos != "windows" {
+				t.Errorf("%s: offline code links %s", goos, pkg.ImportPath)
+			}
+			for _, imported := range pkg.Imports {
+				if networkPackage(imported) && !networkPackage(pkg.ImportPath) && pkg.ImportPath != "golang.org/x/sys/windows" {
+					t.Errorf("%s: %s imports %s in offline code", goos, pkg.ImportPath, imported)
 				}
 			}
 		}

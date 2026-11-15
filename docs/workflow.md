@@ -17,9 +17,10 @@ repositories, and it started roles in two of them; see
 [what is not known](roles.md#what-is-not-known). Whether the workflow gives better results than
 one agent working alone is not measured; see [the evaluation](evaluation.md).
 
-Optional [advisers](advisers.md) answer a role's question or compare choices through a configured
+Optional, experimental [advisers](advisers.md) answer a role's question through a native decision API or configured
 CLI. The coordinator brokers these calls and records how each answer was addressed. Required
-checkpoints can hold a stage until advice on its current content has been addressed.
+checkpoints can hold a stage until advice on its current content has been addressed. No adviser
+or adviser checkpoint is enabled by default; the normal workflow needs neither.
 
 ## The flow
 
@@ -27,12 +28,14 @@ This section restates the coordinator's instructions and the task-flow specifica
 here is an instruction to the coordinator or to a role. `kitsu` enforces only what the next section,
 [What kitsu checks](#what-kitsu-checks), lists.
 
-<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you. Both paths continue through tests, code, review, and a gated commit. Configured advice checkpoints apply to spec, design, and review. Any permitted role can ask an adviser: the coordinator checks its writes, runs the adviser CLI, records the answer and rationale, and resumes the role." width="100%">
+<img src="diagrams/task-workflow.svg" alt="The task workflow. Full tasks start with specification and design, each independently reviewed and approved by you, with or without advisers. Both paths continue through tests, code, review, and a gated commit. Experimental advisers are off by default. Explicit definition and role access, followed by a task binding, allow the coordinator to check a requesting role's writes, consult an adviser API or CLI, record the answer and decision, and resume the role." width="100%">
 
 The picture holds the order of the roles, their reviews and checks, and the optional adviser
-handoff. Required advice applies only when configured; specification and design always need your
-approval on the full path. It leaves out `kitsu change check` after `spec-writer` and `architect`,
-and `kitsu run` after each start of `developer`. The text below holds every step.
+handoff. Advisers are experimental and off by default. The [adviser flow](advisers.md) shows
+configuration and the separate opt-in for required checkpoints, which run before the corresponding
+stage proceeds. Specification and design always need your approval on the full path. The picture
+leaves out `kitsu change check` after `spec-writer` and `architect`, and `kitsu run` after each start
+of `developer`. The text below holds every step.
 
 ### Before the first role
 
@@ -126,12 +129,17 @@ small and full histories are an error.
 
 ### Advice and decisions
 
-1. The coordinator runs `kitsu advisers list --json` and, when configured, binds the task with
+Advisers are experimental. Do not add definitions, role access, or checkpoints unless the
+developer opts in. With no role access and no existing task binding, skip adviser setup and calls.
+
+1. The coordinator runs `kitsu advisers list --json` and, when role access is configured, binds the task with
    `kitsu advisers bind --task <task> --workflow full|small`. A later configuration change takes
    effect only after explicit `--refresh`; binding revisions and consultations stay in the history.
+   Existing task bindings retain their policy until refreshed.
 2. The brief gives each role its allowed advisers from
    `kitsu advisers list --task <task> --role <role>`. A role returns the selected adviser, its
-   question, any choices, and explicit context file paths. It never executes a consultation or
+   question, any choices or score levels, and explicit context file paths, using a listed supported
+   request kind. Native yes/no answers are probabilities, not automatic approval. A role never executes a consultation or
    writes its records.
 3. The coordinator checks the role's writes first, runs `kitsu consult` with `--role` set to the
    requester, then returns the recorded answer to the requester before it resumes. Required advice

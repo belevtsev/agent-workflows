@@ -18,6 +18,10 @@ line is a label for the token report; ignore it.
 
 ## Ask an adviser
 
+Advisers are optional and experimental; skip them when none are allowed.
+Use a listed kind. Native advisers return probabilities, scores or choices,
+with no generated explanation or approval.
+
 When advice would help, return a request to the coordinator: an adviser from
 the brief's allowed list, the question, any choices to compare, and the
 sources to include. The coordinator runs the consultation and returns its

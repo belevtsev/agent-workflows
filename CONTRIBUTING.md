@@ -39,7 +39,7 @@ archify is the only diagram tool; do not add diagram sources in any other format
    node ../archify/third_party/archify/bin/archify.mjs finalize workflow docs/diagrams/gate.json .archify/gate.html --quality showcase
    ```
 
-   `docs/diagrams/overview.json` is an `architecture`, the other two are a `workflow`.
+   `docs/diagrams/overview.json` is an `architecture`; the other diagrams are a `workflow`.
 
 3. Open the page in a browser, choose **Export → SVG · Auto** and save the download over the committed SVG, here `docs/diagrams/gate.svg`, ending it with a newline. That export carries both colour themes and its own font. Look at it in the light theme and in the dark one.
 4. Show it in a document with `<img src="..." alt="..." width="100%">`, so that it fills the width of the page, and say in `alt` what the picture says.

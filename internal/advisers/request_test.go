@@ -39,7 +39,7 @@ func TestParseRequestRejectsAmbiguousOrInvalidDocuments(t *testing.T) {
 		{name: "null", text: "null"},
 		{name: "array", text: "[]"},
 		{name: "missing version", text: `{"kind":"advice","question":"Why?"}`},
-		{name: "future version", text: `{"version":2,"kind":"advice","question":"Why?"}`},
+		{name: "future version", text: `{"version":3,"kind":"advice","question":"Why?"}`},
 		{name: "unknown kind", text: `{"version":1,"kind":"run","question":"Why?"}`},
 		{name: "blank question", text: `{"version":1,"kind":"advice","question":" \n\t"}`},
 		{name: "unknown field", text: `{"version":1,"kind":"advice","question":"Why?","prompt":"different"}`},

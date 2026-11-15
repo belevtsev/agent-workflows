@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "The task workflow: seven roles, optional adviser calls and required checkpoints",
+    "title": "The task workflow: advisers are experimental and off by default",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/task-workflow.html",
@@ -10,17 +10,17 @@
       "entries": {
         "backend": {"label": "Writing role"},
         "messagebus": {"label": "Read-only role"},
-        "frontend": {"label": "Coordinator action"},
+        "frontend": {"label": "Workflow action"},
         "security": {"label": "Git gate"},
-        "external": {"label": "Adviser CLI"}
+        "external": {"label": "Adviser API or CLI"}
       }
     }
   },
   "lanes": [
     {"id": "roles", "label": "The role that works"},
     {"id": "checks", "label": "What comes next"},
-    {"id": "advice", "label": "Advice, if configured"},
-    {"id": "consultation", "label": "Any role can ask; the coordinator brokers the call"}
+    {"id": "approval", "label": "Full path: you approve"},
+    {"id": "consultation", "label": "Experimental advice: default off"}
   ],
   "phases": [
     {"id": "any", "label": "Any stage", "fromCol": 0, "toCol": 0},
@@ -41,13 +41,14 @@
     {"id": "tests-run", "lane": "checks", "col": 3, "type": "frontend", "label": "kitsu run", "sublabel": "runs your checks", "icon": "backend"},
     {"id": "code-review", "lane": "checks", "col": 4, "type": "messagebus", "label": "reviewer", "sublabel": "findings go back"},
     {"id": "gate", "lane": "checks", "col": 5, "type": "security", "label": "the gate", "sublabel": "allows or denies"},
-    {"id": "spec-checkpoint", "lane": "advice", "col": 1, "type": "frontend", "label": "Spec advice", "sublabel": "then you approve", "icon": "backend"},
-    {"id": "design-checkpoint", "lane": "advice", "col": 2, "type": "frontend", "label": "Design advice", "sublabel": "then you approve", "icon": "backend"},
-    {"id": "review-checkpoint", "lane": "advice", "col": 4, "type": "frontend", "label": "Review advice", "sublabel": "before the commit", "icon": "backend"},
-    {"id": "consult-scope", "lane": "consultation", "col": 0, "type": "frontend", "label": "Scope check", "sublabel": "after role returns", "icon": "backend"},
-    {"id": "consult-run", "lane": "consultation", "col": 1, "type": "external", "label": "Adviser CLI", "sublabel": "kitsu consult"},
-    {"id": "consult-record", "lane": "consultation", "col": 2, "type": "frontend", "label": "Record decision", "sublabel": "answer + rationale", "icon": "backend"},
-    {"id": "consult-resume", "lane": "consultation", "col": 3, "type": "frontend", "label": "Resume the role", "sublabel": "same job + limits", "icon": "backend"}
+    {"id": "spec-approval", "lane": "approval", "col": 1, "type": "frontend", "label": "Approve spec", "sublabel": "your decision", "icon": "backend"},
+    {"id": "design-approval", "lane": "approval", "col": 2, "type": "frontend", "label": "Approve design", "sublabel": "your decision", "icon": "backend"},
+    {"id": "consult-access", "lane": "consultation", "col": 0, "type": "frontend", "label": "Explicit opt-in", "sublabel": "definition + access", "icon": "backend"},
+    {"id": "consult-bind", "lane": "consultation", "col": 1, "type": "frontend", "label": "Bind task", "sublabel": "snapshot policy", "icon": "backend"},
+    {"id": "consult-scope", "lane": "consultation", "col": 2, "type": "frontend", "label": "Scope check", "sublabel": "after role returns", "icon": "backend"},
+    {"id": "consult-run", "lane": "consultation", "col": 3, "type": "external", "label": "Adviser API/CLI", "sublabel": "kitsu consult"},
+    {"id": "consult-record", "lane": "consultation", "col": 4, "type": "frontend", "label": "Record decision", "sublabel": "answer + rationale", "icon": "backend"},
+    {"id": "consult-resume", "lane": "consultation", "col": 5, "type": "frontend", "label": "Resume the role", "sublabel": "same job + limits", "icon": "backend"}
   ],
   "edges": [
     {"id": "spec-design", "from": "spec-writer", "to": "architect"},
@@ -59,9 +60,10 @@
     {"id": "tests-to-run", "from": "quality-engineer", "to": "tests-run"},
     {"id": "code-to-review", "from": "developer", "to": "code-review"},
     {"id": "commit-to-gate", "from": "git", "to": "gate"},
-    {"id": "spec-advice", "from": "spec-review", "to": "spec-checkpoint", "route": "drop", "fromSide": "bottom", "toSide": "top"},
-    {"id": "design-advice", "from": "design-review", "to": "design-checkpoint", "route": "drop", "fromSide": "bottom", "toSide": "top"},
-    {"id": "review-advice", "from": "code-review", "to": "review-checkpoint", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "spec-approval", "from": "spec-review", "to": "spec-approval", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "design-approval", "from": "design-review", "to": "design-approval", "route": "drop", "fromSide": "bottom", "toSide": "top"},
+    {"id": "access-bind", "from": "consult-access", "to": "consult-bind"},
+    {"id": "bind-scope", "from": "consult-bind", "to": "consult-scope"},
     {"id": "scope-consult", "from": "consult-scope", "to": "consult-run"},
     {"id": "consult-answer", "from": "consult-run", "to": "consult-record"},
     {"id": "answer-resume", "from": "consult-record", "to": "consult-resume"}

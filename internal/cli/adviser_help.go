@@ -20,11 +20,13 @@ func alignedHelp(rows ...[2]string) string {
 
 func adviserHelp() string {
 	return alignedHelp(
+		[2]string{"Opt-in", "configure a definition and repository role access; no advisers or checkpoints are enabled by default"},
+		[2]string{"providers", "list built-in native presets and credentials; offline, works outside a repository"},
 		[2]string{"list", "print configured advisers; --task selects the saved binding"},
 		[2]string{"bind", "snapshot configuration with --task and --workflow"},
 		[2]string{"resolve <id>", "append a disposition to a consultation"},
 		[2]string{"status|check", "inspect readiness or require satisfied checkpoints; never invoke models"},
-		[2]string{"--task <task>", "task name; required except with list"},
+		[2]string{"--task <task>", "task name; required except with providers or list"},
 		[2]string{"--role <role>", "with list: show only advisers this requester may consult"},
 		[2]string{"--workflow full|small", "with bind: use a change folder or lightweight task record"},
 		[2]string{"--refresh", "with bind: explicitly update the saved policy or promote small to full"},
@@ -42,11 +44,14 @@ func consultHelp() string {
 		[2]string{"--role <role>", "original requester, including coordinator"},
 		[2]string{"--stage <stage>", "workflow stage of this request"},
 		[2]string{"--adviser <name>", "allowed adviser whose definition still matches the binding"},
-		[2]string{"--request <file|->", "version 1 JSON file, or standard input"},
+		[2]string{"--request <file|->", "version 1 or 2 JSON file, or standard input; one question"},
 		[2]string{"--checkpoint <id>", "required checkpoint this consultation addresses"},
 		[2]string{"--json", "print the saved consultation, including its ID and outcome"},
 		[2]string{"Advice JSON", `{"version":1,"kind":"advice","question":"What could fail?","context":["src/app.txt"]}`},
 		[2]string{"Decision JSON", `set kind to decision and add choices: [{"id":"a","text":"First option"},{"id":"b","text":"Second option"}]`},
+		[2]string{"Score JSON", `{"version":2,"kind":"score","question":"How complete is the design?","levels":["Incomplete","Partial","Complete"]}`},
+		[2]string{"Boolean JSON", `{"version":2,"kind":"boolean","question":"Does the design handle cancellation?","criteria":{"true":"Explicit cancellation","false":"No cancellation"}}`},
+		[2]string{"Capabilities", "CLI: advice, decision. Native: decision, score, boolean. Results never automatically approve work."},
 	)
 }
 

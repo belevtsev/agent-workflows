@@ -3,16 +3,22 @@
 `kitsu tokens` reports how many tokens a task used, role by role and stage by stage, and how many of
 them went to the workflow rather than to the first writing of the specification, the design, the
 tests and the code. The counts come from the record the host keeps of a session, read when the
-plugin's hooks say that a role or the session has ended. `kitsu` never takes a count from a model.
+plugin's hooks say that a role or the session has ended. Host totals come only from these records.
 It reports no price and no amount of money.
 
 The report is a split of one task's tokens. It is not a comparison with one agent working alone,
 and it shows no saving and no benefit; see [What is not measured](#what-is-not-measured).
 
-Configured [advisers](advisers.md) run through external CLIs whose usage is not parsed. The report
-lists their consultations separately as unmeasured, with unknown actual model and token usage.
-The requested model in a binding is not a verified actual model. Adviser calls add nothing to the
-measured host totals, and a report with adviser calls does not establish the task's total cost.
+Configured [advisers](advisers.md) appear separately from measured host totals. CLI usage and
+actual models remain unknown. Native decision APIs can report input/output counts and model
+identity; the requested model alone is not evidence of either. Kitsu reports no monetary cost.
+
+The `advisers` JSON object includes `calls`, `measured_calls`, `input_tokens`, `output_tokens`,
+`complete`, and `usage` (`known`, `partial`, or `unknown`). Counts sum only provider-reported
+usage; unknown calls never become zero-token calls. Each item can include `actual_model` and
+`tokens`. A pending or failed call without usage keeps completeness false, as does any CLI
+call. A successful response made stale by content changes still retains its reported usage.
+Adviser counts do not change host totals, role totals, or workflow-share calculations.
 
 ## What is counted
 
@@ -486,13 +492,11 @@ host's record and its size before it was read, and, when the counts are unknown,
 record gave no label it holds the `role` the notice named. It holds no text of a brief, a prompt
 or an answer: a search of the stored files for a sentence of a brief finds nothing.
 
-Token collection sends nothing from the machine. No package of `kitsu` imports a network package,
-and a test of this repository fails when one does. Optional adviser commands may contact their
-providers using the context the coordinator explicitly supplied; their shared task records do
-contain prompts and answers. On Linux and macOS the program links no network package. On Windows the
-package `net` is linked through `golang.org/x/sys/windows`, which `kitsu` calls for job objects and
-file locks. The stored files are not committed: they are inside the git directory, not the
-working tree.
+Token collection sends nothing from the machine. Dependency tests keep the gate, host token
+collector, and skill inventory offline and restrict first-party network imports to native
+advisers. Optional adviser APIs and CLI commands may contact providers using the context the
+coordinator explicitly supplied; their shared task records contain prompts and answers.
+Host token files are not committed: they are inside the git directory, not the working tree.
 
 ## Limits
 

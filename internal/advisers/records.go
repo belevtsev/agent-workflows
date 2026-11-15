@@ -196,7 +196,10 @@ func snapshotBinding(task, workflow string, cfg *Config) Binding {
 		Advisers: map[string]Identity{}, Access: map[string][]string{}, Checkpoints: []Checkpoint{},
 	}
 	for name, definition := range cfg.Advisers {
-		binding.Advisers[name] = Identity{Model: definition.Model, Fingerprint: Fingerprint(definition)}
+		binding.Advisers[name] = Identity{Provider: definition.Provider, Model: definition.Model, Fingerprint: Fingerprint(definition)}
+		if definition.Provider != "" {
+			binding.Version = 2
+		}
 	}
 	for role, names := range cfg.Access {
 		binding.Access[role] = slices.Clone(names)
@@ -234,6 +237,9 @@ func Begin(root string, consultation Consultation) (*Consultation, error) {
 	}
 	consultation.Version = 1
 	consultation.Execution = Execution{Outcome: "pending", StartedAt: time.Now().UTC(), ActualModel: "unknown"}
+	if consultation.Identity.Provider != "" || consultation.Request.Version == 2 {
+		consultation.Version, consultation.Execution.Version = 2, 2
+	}
 	if consultation.BindingID != binding.ID {
 		return nil, errors.New("consultation must use the current adviser binding")
 	}
@@ -283,6 +289,9 @@ func Finish(root string, consultation Consultation) error {
 	if err = validateExecution(consultation.Execution); err != nil {
 		return err
 	}
+	if err = validateTypedExecution(consultation); err != nil {
+		return err
+	}
 	if consultation.Execution.StartedAt.Before(pending.Execution.StartedAt) {
 		return errors.New("consultation execution cannot start before its pending request")
 	}
@@ -295,7 +304,12 @@ func sameConsultation(a, b Consultation) bool {
 		a.Checkpoint == b.Checkpoint && a.Content == b.Content && a.Prompt == b.Prompt &&
 		a.Request.Version == b.Request.Version && a.Request.Kind == b.Request.Kind &&
 		a.Request.Question == b.Request.Question && slices.Equal(a.Request.Choices, b.Request.Choices) &&
-		slices.Equal(a.Request.Context, b.Request.Context)
+		slices.Equal(a.Request.Context, b.Request.Context) && slices.Equal(a.Request.Levels, b.Request.Levels) &&
+		sameCriteria(a.Request.Criteria, b.Request.Criteria)
+}
+
+func sameCriteria(a, b *BooleanCriteria) bool {
+	return a == b || a != nil && b != nil && *a == *b
 }
 
 // Resolve appends a coordinator decision. Later decisions retain and supersede

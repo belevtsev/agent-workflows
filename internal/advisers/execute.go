@@ -25,7 +25,7 @@ func Execute(ctx context.Context, root string, definition Definition, prompt, an
 	if definition.Timeout == 0 {
 		definition.Timeout = DefaultTimeout
 	}
-	if validateDefinition(definition) != nil || len(prompt) > MaxInput || !utf8.ValidString(prompt) {
+	if definition.Provider != "" || validateDefinition(definition) != nil || len(prompt) > MaxInput || !utf8.ValidString(prompt) {
 		result.Detail = "adviser configuration or prompt is invalid"
 		return result
 	}

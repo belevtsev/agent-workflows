@@ -37,7 +37,7 @@ func runConsult(ctx context.Context, cfg Config, args []string) error {
 	}
 	d, ok := settings.Advisers[*adviser]
 	identity, bound := b.Advisers[*adviser]
-	if !ok || !bound || identity.Model != d.Model || identity.Fingerprint != advisers.Fingerprint(d) {
+	if !ok || !bound || identity.Provider != d.Provider || identity.Model != d.Model || identity.Fingerprint != advisers.Fingerprint(d) {
 		return failf("adviser %q is missing or differs from the task binding; configure it and explicitly bind --refresh", *adviser)
 	}
 	if !advisers.Allowed(b.Access, *role, *adviser) {
@@ -45,6 +45,9 @@ func runConsult(ctx context.Context, cfg Config, args []string) error {
 	}
 	r, err := adviserRequest(cfg, *request)
 	if err != nil {
+		return usagef("%v", err)
+	}
+	if err := advisers.ValidateCapability(d.Provider, r); err != nil {
 		return usagef("%v", err)
 	}
 	content, _, err := s.adviserContent(ctx, *task, false)
@@ -70,6 +73,17 @@ func validConsultArguments(p parsed, task, role, stage, adviser, request string)
 }
 
 func (s *session) executeConsultation(ctx context.Context, c advisers.Consultation, d advisers.Definition, asJSON bool) error {
+	if err := advisers.ValidateCapability(d.Provider, c.Request); err != nil {
+		return usagef("%v", err)
+	}
+	var native *advisers.NativeCall
+	if d.Provider != "" {
+		var err error
+		native, err = advisers.PrepareNative(d, c.Request, c.Prompt)
+		if err != nil {
+			return failf("%v", err)
+		}
+	}
 	before, _, err := s.adviserContent(ctx, c.Task, false)
 	if err != nil {
 		return failf("verify consultation before execution: %v", err)
@@ -86,7 +100,18 @@ func (s *session) executeConsultation(ctx context.Context, c advisers.Consultati
 	if err != nil {
 		return failf("record consultation before execution: %v", err)
 	}
-	saved.Execution = advisers.Execute(ctx, s.repo.Root, d, saved.Prompt, filepath.Join(tmp, "answer.txt"))
+	if native != nil {
+		if s.cfg.NativeExecute != nil {
+			saved.Execution = s.cfg.NativeExecute(ctx, native)
+		} else {
+			saved.Execution = native.Execute(ctx, nil)
+		}
+	} else {
+		saved.Execution = advisers.Execute(ctx, s.repo.Root, d, saved.Prompt, filepath.Join(tmp, "answer.txt"))
+		if saved.Version == 2 {
+			saved.Execution.Version = 2
+		}
+	}
 	if saved.Execution.Outcome == "success" {
 		after, _, err := s.adviserContent(ctx, c.Task, false)
 		if err != nil || after != c.Content {
@@ -102,7 +127,7 @@ func (s *session) executeConsultation(ctx context.Context, c advisers.Consultati
 			return err
 		}
 	} else {
-		fmt.Fprintln(s.cfg.Out, saved.Execution.Answer)
+		printAdviserAnswer(s.cfg, saved.Execution)
 		fmt.Fprintf(s.cfg.Out, "Consultation %s: %s (%s)\n", saved.ID, saved.Execution.Outcome, time.Since(saved.Execution.StartedAt).Round(time.Millisecond))
 	}
 	if saved.Execution.Outcome != "success" {

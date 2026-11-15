@@ -34,8 +34,14 @@ func writeAdviserTestFile(t *testing.T, path, data string) {
 }
 
 func TestLoadHasNoAdvisersOrAccessByDefault(t *testing.T) {
-	isolatePersonalConfig(t)
-	got, err := Load(t.TempDir())
+	personal := isolatePersonalConfig(t)
+	t.Setenv("TYPESAFE_API_KEY", "present-but-not-enabled")
+	t.Setenv("SUBQ_API_KEY", "present-but-not-enabled")
+	if len(Providers()) == 0 {
+		t.Fatal("expected an available provider catalog")
+	}
+	root := t.TempDir()
+	got, err := Load(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,6 +50,11 @@ func TestLoadHasNoAdvisersOrAccessByDefault(t *testing.T) {
 	}
 	if Allowed(got.Access, "coordinator", "anything") {
 		t.Fatal("an absent policy granted access")
+	}
+	for _, path := range []string{personal, filepath.Join(root, FileName)} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("default discovery created configuration at %s: %v", path, err)
+		}
 	}
 }
 
@@ -105,7 +116,7 @@ func TestParseStrictConfiguration(t *testing.T) {
 		personal bool
 	}{
 		{name: "missing version", text: strings.TrimPrefix(valid, "version = 1\n")},
-		{name: "future version", text: strings.Replace(valid, "version = 1", "version = 2", 1)},
+		{name: "future version", text: strings.Replace(valid, "version = 1", "version = 3", 1)},
 		{name: "wrong version type", text: "version = \"1\"\n"},
 		{name: "unknown root field", text: "version = 1\nkey = true\n"},
 		{name: "unknown adviser field", text: valid + "key = true\n"},
@@ -195,7 +206,7 @@ advisers = ["local"]
 func TestLoadReportsInvalidRepositoryAndPersonalConfiguration(t *testing.T) {
 	personal := isolatePersonalConfig(t)
 	root := t.TempDir()
-	writeAdviserTestFile(t, personal, "version = 2\n")
+	writeAdviserTestFile(t, personal, "version = 3\n")
 	if _, err := Load(root); err == nil || !strings.Contains(err.Error(), personal) {
 		t.Fatalf("personal load error = %v, want its path", err)
 	}
