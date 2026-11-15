@@ -302,7 +302,7 @@ func TestRecordsIgnoresOtherFiles(t *testing.T) {
 	}
 }
 
-// unfinished writes a record without an outcome, as a gatecub process that died
+// unfinished writes a record without an outcome, as a kitsu process that died
 // leaves it.
 func unfinished(t *testing.T, s *Store, lockFile bool) Record {
 	t.Helper()

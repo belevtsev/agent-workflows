@@ -3,12 +3,12 @@ package roles_test
 import (
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // assertLists checks that the output names each of the paths and none of
 // the others.
-func assertLists(t *testing.T, result gatecubtest.Result, listed, notListed []string) {
+func assertLists(t *testing.T, result kitsutest.Result, listed, notListed []string) {
 	t.Helper()
 	out := result.Output()
 	for _, path := range listed {
@@ -30,9 +30,9 @@ func TestTheDeveloperRoleChangesATest(t *testing.T) {
 	t0 := tree(t, repo)
 	repo.Write("src/app.txt", "ok\nmore\n")
 	repo.Write("tests/app_test.txt", "app test\nchanged\n")
-	result := repo.Gatecub("roles", "check", "developer", "--from", t0)
+	result := repo.Kitsu("roles", "check", "developer", "--from", t0)
 	if result.Code != 5 {
-		t.Errorf("gatecub roles check developer exited %d, want 5:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check developer exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 	assertLists(t, result, []string{"tests/app_test.txt"}, []string{"src/app.txt"})
 }
@@ -44,9 +44,9 @@ func TestTheDeveloperRoleAddsATest(t *testing.T) {
 	t0 := tree(t, repo)
 	repo.Write("src/app.txt", "ok\nmore\n")
 	repo.Write("tests/extra_test.txt", "extra test\n")
-	result := repo.Gatecub("roles", "check", "developer", "--from", t0)
+	result := repo.Kitsu("roles", "check", "developer", "--from", t0)
 	if result.Code != 0 {
-		t.Errorf("gatecub roles check developer exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check developer exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 }
 
@@ -58,9 +58,9 @@ func TestTheQualityEngineerChangesProductionCode(t *testing.T) {
 	t0 := tree(t, repo)
 	repo.Write("tests/app_test.txt", "app test\nchanged\n")
 	repo.Write("src/app.txt", "ok\nmore\n")
-	result := repo.Gatecub("roles", "check", "quality-engineer", "--from", t0, "--task", "add-greeting")
+	result := repo.Kitsu("roles", "check", "quality-engineer", "--from", t0, "--task", "add-greeting")
 	if result.Code != 5 {
-		t.Errorf("gatecub roles check quality-engineer exited %d, want 5:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check quality-engineer exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 	assertLists(t, result, []string{"src/app.txt"}, []string{"tests/app_test.txt"})
 }
@@ -72,9 +72,9 @@ func TestTheQualityEngineerRemovesAnExistingTest(t *testing.T) {
 	repo := demo(t)
 	t0 := tree(t, repo)
 	repo.Remove("tests/app_test.txt")
-	result := repo.Gatecub("roles", "check", "quality-engineer", "--from", t0, "--task", "add-greeting")
+	result := repo.Kitsu("roles", "check", "quality-engineer", "--from", t0, "--task", "add-greeting")
 	if result.Code != 0 {
-		t.Errorf("gatecub roles check quality-engineer exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check quality-engineer exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 }
 
@@ -85,9 +85,9 @@ func TestARoleThatWritesNothingWroteAFile(t *testing.T) {
 	repo := demo(t)
 	t0 := tree(t, repo)
 	repo.Write("notes.txt", "a note\n")
-	result := repo.Gatecub("roles", "check", "reviewer", "--from", t0)
+	result := repo.Kitsu("roles", "check", "reviewer", "--from", t0)
 	if result.Code != 5 {
-		t.Errorf("gatecub roles check reviewer exited %d, want 5:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check reviewer exited %d, want 5:\n%s", result.Code, result.Output())
 	}
 	assertLists(t, result, []string{"notes.txt"}, nil)
 }
@@ -98,13 +98,13 @@ func TestTheSpecWriterStaysInItsFolder(t *testing.T) {
 	repo := demo(t)
 	t0 := tree(t, repo)
 	repo.Write("openspec/changes/add-greeting/specs/greeting/spec.md", "# greeting\n")
-	result := repo.Gatecub("roles", "check", "spec-writer", "--from", t0, "--task", "add-greeting")
+	result := repo.Kitsu("roles", "check", "spec-writer", "--from", t0, "--task", "add-greeting")
 	if result.Code != 0 {
-		t.Errorf("gatecub roles check spec-writer exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check spec-writer exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	// One path is "1 path differs", not "1 paths differ".
 	if want := "`spec-writer` stayed within its limit: 1 path differs from " + t0 + "\n"; result.Stdout != want {
-		t.Errorf("gatecub roles check spec-writer printed %q, want %q", result.Stdout, want)
+		t.Errorf("kitsu roles check spec-writer printed %q, want %q", result.Stdout, want)
 	}
 }
 
@@ -113,31 +113,31 @@ func TestTestPathsAreNotDeclared(t *testing.T) {
 	t.Parallel()
 	repo := demo(t)
 	t0 := tree(t, repo)
-	repo.Remove("gatecub-roles.toml")
+	repo.Remove("kitsu-roles.toml")
 	repo.Write("src/app.txt", "ok\nmore\n")
-	result := repo.Gatecub("roles", "check", "developer", "--from", t0)
+	result := repo.Kitsu("roles", "check", "developer", "--from", t0)
 	if result.Code != 1 {
-		t.Errorf("gatecub roles check developer exited %d, want 1:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check developer exited %d, want 1:\n%s", result.Code, result.Output())
 	}
 	out := result.Output()
-	if !lineWith(out, "gatecub-roles.toml", "[paths]") {
-		t.Errorf("the output does not say that gatecub-roles.toml must name the test paths under [paths]:\n%s", out)
+	if !lineWith(out, "kitsu-roles.toml", "[paths]") {
+		t.Errorf("the output does not say that kitsu-roles.toml must name the test paths under [paths]:\n%s", out)
 	}
 }
 
 // Requirement "Write limits", scenario "A clone in which nothing is gated".
 func TestACloneInWhichNothingIsGated(t *testing.T) {
 	t.Parallel()
-	repo := demo(t) // gatecub init has not run in it
+	repo := demo(t) // kitsu init has not run in it
 	t0 := tree(t, repo)
-	result := repo.Gatecub("roles", "check", "reviewer", "--from", t0)
+	result := repo.Kitsu("roles", "check", "reviewer", "--from", t0)
 	if result.Code != 0 {
-		t.Errorf("gatecub roles check reviewer exited %d, want 0:\n%s", result.Code, result.Output())
+		t.Errorf("kitsu roles check reviewer exited %d, want 0:\n%s", result.Code, result.Output())
 	}
 	out := result.Output()
 	// The wording is not fixed; the warning is one line about the hooks
-	// that names gatecub init.
-	if !lineWith(out, "hook", "gatecub init") {
-		t.Errorf("the output does not warn that the hooks are not installed, naming gatecub init:\n%s", out)
+	// that names kitsu init.
+	if !lineWith(out, "hook", "kitsu init") {
+		t.Errorf("the output does not warn that the hooks are not installed, naming kitsu init:\n%s", out)
 	}
 }

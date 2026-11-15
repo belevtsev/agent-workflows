@@ -77,14 +77,14 @@ func TestUnreadableCommandIsJudgedByItsText(t *testing.T) {
 }
 
 // Requirement "Ask before skipping": an edit of a git hook of the clone or of
-// a record of gatecub is asked in Claude Code and denied in Codex.
+// a record of kitsu is asked in Claude Code and denied in Codex.
 func TestAskBeforeAnEditOfTheHooksOrTheRecords(t *testing.T) {
 	t.Parallel()
 	needShell(t)
 	repo := gatedDemo(t)
 	targets := map[string]string{
-		"git hook":           repo.Path(".git/hooks/pre-commit"),
-		"records of gatecub": filepath.Join(repo.StoreDir(), "note"),
+		"git hook":         repo.Path(".git/hooks/pre-commit"),
+		"records of kitsu": filepath.Join(repo.StoreDir(), "note"),
 	}
 	for want, path := range targets {
 		t.Run("Write "+want, func(t *testing.T) {

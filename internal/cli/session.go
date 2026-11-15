@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/evidence"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 // session is what a command needs to work in a repository.
@@ -54,20 +54,20 @@ func (s *session) warn(warnings []string) {
 	for _, w := range warnings {
 		if !seen[w] {
 			seen[w] = true
-			fmt.Fprintln(s.cfg.Err, "gatecub: warning:", w)
+			fmt.Fprintln(s.cfg.Err, "kitsu: warning:", w)
 		}
 	}
 }
 
 // hooksMissing is the warning of every command that reports the state of
 // the gate.
-const hooksMissing = "the hooks of gatecub are not installed in this clone, so git gates nothing here; run `gatecub init`"
+const hooksMissing = "the hooks of kitsu are not installed in this clone, so git gates nothing here; run `kitsu init`"
 
 // hooksAdvice is that warning for this clone. Where core.hooksPath is set,
-// gatecub writes no hook, so `gatecub init` can only print the line to add.
+// kitsu writes no hook, so `kitsu init` can only print the line to add.
 func hooksAdvice(ctx context.Context, repo *gitx.Repo) string {
 	if dir, configured, err := repo.HooksDir(ctx); err == nil && configured {
-		return fmt.Sprintf("git runs the hooks in %s here (core.hooksPath), and they do not all call gatecub, so git gates nothing here; `gatecub init` prints the line to add to each", dir)
+		return fmt.Sprintf("git runs the hooks in %s here (core.hooksPath), and they do not all call kitsu, so git gates nothing here; `kitsu init` prints the line to add to each", dir)
 	}
 	return hooksMissing
 }

@@ -1,5 +1,5 @@
 # The checks this repository requires before a commit or a push.
-# `gatecub run` executes them; the git hooks that `gatecub init` installs enforce them.
+# `kitsu run` executes them; the git hooks that `kitsu init` installs enforce them.
 version = 1
 
 [[check]]
@@ -23,4 +23,4 @@ timeout = "10m"
 # The two change folders under openspec/changes/ obey the rules of a record.
 [[check]]
 id = "record"
-run = ["gatecub", "change", "check"]
+run = ["kitsu", "change", "check"]

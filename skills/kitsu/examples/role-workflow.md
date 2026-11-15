@@ -28,7 +28,7 @@ Most tasks are small. Do not start the workflow for a task the first row describ
 ## 2. Start it
 
 Load the skill `task` of this plugin with the user's request. In Claude Code that is
-`/gatecub:task` followed by the request. The skill makes you the coordinator: you start
+`/kitsu:task` followed by the request. The skill makes you the coordinator: you start
 the roles, check what each one changed, keep the record, and ask the user for the approvals.
 You write no specification, test or code yourself.
 
@@ -38,15 +38,15 @@ The record of a task is a folder under `openspec/changes/`. Its files say how fa
 so a task can be continued in a new session. Here a proposal exists and nothing else.
 
 ```console
-$ gatecub change status
-add-discount: spec (3 missing; `gatecub change status add-discount` names them)
-$ gatecub change status add-discount
+$ kitsu change status
+add-discount: spec (3 missing; `kitsu change status add-discount` names them)
+$ kitsu change status add-discount
 add-discount: spec
   specs/<capability>/spec.md is missing
   reviews.md holds no review of the specification
   the approval of the specification is not recorded in reviews.md
 content ids: spec <id>, design none, code <id>
-$ gatecub change check add-discount
+$ kitsu change check add-discount
 add-discount: the files obey their rules
 ```
 
@@ -63,20 +63,20 @@ description of behaviour that is already specified.
 ## 5. What it cost
 
 ```console
-$ gatecub tokens
+$ kitsu tokens
 no tokens are recorded in this clone; the plugin records them when a role or a session ends
 ```
 
-Once the plugin has recorded the roles of a task, `gatecub tokens` prints one line for each task,
-and `gatecub tokens --task add-discount` prints its roles, its stages and the share that went to the
+Once the plugin has recorded the roles of a task, `kitsu tokens` prints one line for each task,
+and `kitsu tokens --task add-discount` prints its roles, its stages and the share that went to the
 workflow itself. A count that could not be read is printed as unknown, never as 0. Give the
 user these numbers with the result, so that they can judge whether the workflow was worth it
 for this kind of task.
 
 ## 6. The commit is gated like any other
 
-The workflow ends with the same gate as the loop: the role `git` runs `gatecub run` and commits
-through the hooks. `gatecub roles` prints the seven roles, the model of each and the paths each may
+The workflow ends with the same gate as the loop: the role `git` runs `kitsu run` and commits
+through the hooks. `kitsu roles` prints the seven roles, the model of each and the paths each may
 change.
 
 <!-- A test replays this example from the fixture "task": internal/repocheck/skill_test.go -->

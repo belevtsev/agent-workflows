@@ -2,33 +2,33 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "The three parts of Gatecub: the gate, the roles and the token count",
+    "title": "The three parts of Kitsu: the gate, the roles and the token count",
     "locale": "en",
     "quality_profile": "showcase",
     "output": ".archify/overview.html",
     "legend": {
       "entries": {
         "frontend": {"label": "Files you commit"},
-        "backend": {"label": "gatecub commands"},
+        "backend": {"label": "kitsu commands"},
         "database": {"label": "Records in the git directory"},
-        "external": {"label": "Outside Gatecub"}
+        "external": {"label": "Outside Kitsu"}
       }
     }
   },
   "layout": {"mode": "grid", "cols": 3, "cellW": 140, "cellH": 58, "gapX": 84, "gapY": 48, "origin": [70, 80]},
   "components": [
-    {"id": "checks", "type": "frontend", "label": "gatecub.toml", "sublabel": "your checks", "row": 0, "col": 0, "size": [140, 58]},
-    {"id": "run", "type": "backend", "label": "gatecub run", "sublabel": "runs what has not passed", "row": 1, "col": 0, "size": [140, 58]},
-    {"id": "runs", "type": "database", "label": "gatecub/runs/", "sublabel": "one record per run", "row": 2, "col": 0, "size": [140, 58]},
-    {"id": "hook", "type": "backend", "label": "gatecub hook", "sublabel": "asked by the git hooks", "row": 3, "col": 0, "size": [140, 58]},
-    {"id": "roles", "type": "backend", "label": "gatecub roles", "sublabel": "texts, models, limits", "row": 0, "col": 1, "size": [140, 58]},
+    {"id": "checks", "type": "frontend", "label": "kitsu.toml", "sublabel": "your checks", "row": 0, "col": 0, "size": [140, 58]},
+    {"id": "run", "type": "backend", "label": "kitsu run", "sublabel": "runs what has not passed", "row": 1, "col": 0, "size": [140, 58]},
+    {"id": "runs", "type": "database", "label": "kitsu/runs/", "sublabel": "one record per run", "row": 2, "col": 0, "size": [140, 58]},
+    {"id": "hook", "type": "backend", "label": "kitsu hook", "sublabel": "asked by the git hooks", "row": 3, "col": 0, "size": [140, 58]},
+    {"id": "roles", "type": "backend", "label": "kitsu roles", "sublabel": "texts, models, limits", "row": 0, "col": 1, "size": [140, 58]},
     {"id": "agent", "type": "external", "label": "Your coding agent", "sublabel": "starts the roles", "row": 1, "col": 1, "size": [140, 58]},
     {"id": "change", "type": "frontend", "label": "openspec/changes/", "sublabel": "the record of a task", "row": 2, "col": 1, "size": [140, 58]},
-    {"id": "change-check", "type": "backend", "label": "gatecub change check", "sublabel": "the rules of its files", "row": 3, "col": 1, "size": [140, 58]},
+    {"id": "change-check", "type": "backend", "label": "kitsu change check", "sublabel": "the rules of its files", "row": 3, "col": 1, "size": [140, 58]},
     {"id": "session", "type": "external", "label": "Session record", "sublabel": "kept by the agent host", "row": 0, "col": 2, "size": [140, 58]},
-    {"id": "record", "type": "backend", "label": "gatecub tokens record", "sublabel": "when a role ends", "row": 1, "col": 2, "size": [140, 58]},
-    {"id": "counts", "type": "database", "label": "gatecub/tokens/", "sublabel": "the counts per start", "row": 2, "col": 2, "size": [140, 58]},
-    {"id": "tokens", "type": "backend", "label": "gatecub tokens", "sublabel": "tokens, role by role", "row": 3, "col": 2, "size": [140, 58]}
+    {"id": "record", "type": "backend", "label": "kitsu tokens record", "sublabel": "when a role ends", "row": 1, "col": 2, "size": [140, 58]},
+    {"id": "counts", "type": "database", "label": "kitsu/tokens/", "sublabel": "the counts per start", "row": 2, "col": 2, "size": [140, 58]},
+    {"id": "tokens", "type": "backend", "label": "kitsu tokens", "sublabel": "tokens, role by role", "row": 3, "col": 2, "size": [140, 58]}
   ],
   "boundaries": [
     {"kind": "region", "label": "The gate", "wraps": ["checks", "run", "runs", "hook"]},

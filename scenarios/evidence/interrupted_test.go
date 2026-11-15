@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // slowScript is the program of the check slow. It creates started.<pid> in
-// the directory $GATECUB_TEST_SLOW and then waits for that directory to hold
+// the directory $KITSU_TEST_SLOW and then waits for that directory to hold
 // release or to be gone. Only when neither happens for ten minutes, far
 // longer than any test waits, does it create finished.<pid> and exit 0. So
-// a program that gatecub did not stop ends by itself once the test releases it,
+// a program that kitsu did not stop ends by itself once the test releases it,
 // and the test never has to kill a process by an id that may be reused.
-const slowScript = `d="$GATECUB_TEST_SLOW"
+const slowScript = `d="$KITSU_TEST_SLOW"
 : > "$d/started.$$"
 i=0
 while test -d "$d" && ! test -e "$d/release"; do
@@ -32,12 +32,12 @@ done
 // slow declares the check slow, whose program is slowScript, commits it,
 // and returns the directory the program reports to. The test's cleanup
 // releases every program of slow that still runs.
-func slow(t *testing.T, repo *gatecubtest.Repo) string {
+func slow(t *testing.T, repo *kitsutest.Repo) string {
 	t.Helper()
 	dir := t.TempDir()
 	repo.Write("slow.sh", slowScript)
 	declare(t, repo, "[[check]]\nid = \"slow\"\nrun = [\"sh\", \"slow.sh\"]\n")
-	repo.Setenv("GATECUB_TEST_SLOW", filepath.ToSlash(dir))
+	repo.Setenv("KITSU_TEST_SLOW", filepath.ToSlash(dir))
 	t.Cleanup(func() { _ = os.WriteFile(filepath.Join(dir, "release"), nil, 0o644) })
 	return dir
 }
@@ -75,7 +75,7 @@ func waitForPrograms(t *testing.T, dir string, n int, run *background) []int {
 	return pids
 }
 
-// Requirement "Interrupted runs", scenario "`gatecub` is killed during a run".
+// Requirement "Interrupted runs", scenario "`kitsu` is killed during a run".
 // "The second command starts a new run at once" is held by content, not by
 // the clock: the program of the killed run is still waiting, and would only
 // end on its own after ten minutes, when the program of the second run has
@@ -83,18 +83,18 @@ func waitForPrograms(t *testing.T, dir string, n int, run *background) []int {
 func TestKilledRunDoesNotBlockTheNextRun(t *testing.T) {
 	skipOnWindows(t)
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	dir := slow(t, repo)
-	first := startGatecub(t, repo, nil, "run", "slow")
+	first := startKitsu(t, repo, nil, "run", "slow")
 	killed := waitForPrograms(t, dir, 1, first)[0]
 	if err := first.cmd.Process.Signal(syscall.SIGKILL); err != nil {
 		t.Fatal(err)
 	}
 	if !first.wait(60 * time.Second) {
-		t.Fatal("gatecub did not end after SIGKILL")
+		t.Fatal("kitsu did not end after SIGKILL")
 	}
 
-	second := startGatecub(t, repo, nil, "run", "slow")
+	second := startKitsu(t, repo, nil, "run", "slow")
 	waitForPrograms(t, dir, 2, second)
 	if _, err := os.Stat(filepath.Join(dir, "release")); err == nil {
 		t.Fatal("the programs were released before the test ended")
@@ -108,15 +108,15 @@ func TestKilledRunDoesNotBlockTheNextRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !second.wait(60 * time.Second) {
-		t.Fatalf("the second gatecub run slow did not end after SIGINT\n%s", second.out.String())
+		t.Fatalf("the second kitsu run slow did not end after SIGINT\n%s", second.out.String())
 	}
 
-	text := repo.Gatecub("status")
+	text := repo.Kitsu("status")
 	if lineWith(strings.ToLower(text.Output()), "slow", "running") {
-		t.Errorf("gatecub status shows a run of slow as running:\n%s", text.Output())
+		t.Errorf("kitsu status shows a run of slow as running:\n%s", text.Output())
 	}
 	if state := status(t, repo).check(t, "slow").State; state == "running" {
-		t.Errorf("gatecub status --json shows slow as running")
+		t.Errorf("kitsu status --json shows slow as running")
 	}
 }
 
@@ -126,9 +126,9 @@ func TestKilledRunDoesNotBlockTheNextRun(t *testing.T) {
 func TestHangupRecordsTheRunAsInterrupted(t *testing.T) {
 	skipOnWindows(t)
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	dir := slow(t, repo)
-	run := startGatecub(t, repo, nil, "run", "slow")
+	run := startKitsu(t, repo, nil, "run", "slow")
 	program := waitForPrograms(t, dir, 1, run)[0]
 
 	if err := run.cmd.Process.Signal(syscall.SIGHUP); err != nil {
@@ -136,10 +136,10 @@ func TestHangupRecordsTheRunAsInterrupted(t *testing.T) {
 	}
 	signalled := time.Now()
 	if !run.wait(60 * time.Second) {
-		t.Fatalf("gatecub did not exit after SIGHUP\n%s", run.out.String())
+		t.Fatalf("kitsu did not exit after SIGHUP\n%s", run.out.String())
 	}
 	if took := run.ended.Sub(signalled); took > 10*time.Second {
-		t.Errorf("gatecub took %s to exit after SIGHUP, want at most 10s", took)
+		t.Errorf("kitsu took %s to exit after SIGHUP, want at most 10s", took)
 	}
 
 	if outcome := lastRecord(t, repo, "slow")["outcome"]; outcome != "interrupted" {
@@ -160,11 +160,11 @@ func TestHangupRecordsTheRunAsInterrupted(t *testing.T) {
 func TestCtrlBreakRecordsTheRunAsInterrupted(t *testing.T) {
 	onlyOnWindows(t)
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	repo.Write("slow.ps1", "Set-Content -Path '"+pidFile+"' -Value $PID\nStart-Sleep 60\n")
 	declare(t, repo, "[[check]]\nid = \"slow\"\nrun = [\"powershell\", \"-NoProfile\", \"-ExecutionPolicy\", \"Bypass\", \"-File\", \"slow.ps1\"]\n")
-	run := startGatecub(t, repo, newConsoleGroup, "run", "slow")
+	run := startKitsu(t, repo, newConsoleGroup, "run", "slow")
 	var pid string
 	if !waitFor(30*time.Second, func() bool {
 		data, err := os.ReadFile(pidFile)
@@ -184,7 +184,7 @@ func TestCtrlBreakRecordsTheRunAsInterrupted(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !run.wait(10 * time.Second) {
-		t.Fatalf("gatecub did not exit within 10s of Ctrl+Break\n%s", run.out.String())
+		t.Fatalf("kitsu did not exit within 10s of Ctrl+Break\n%s", run.out.String())
 	}
 
 	if outcome := lastRecord(t, repo, "slow")["outcome"]; outcome != "interrupted" {

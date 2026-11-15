@@ -109,12 +109,12 @@ func TestDocumentationChangeRerunsOnlyWhatDependsOnIt(t *testing.T) {
 	g := newGate(t)
 	g.checked()
 	g.Write("README.md", "# demo\n\nmore\n")
-	result := g.Gatecub("run")
+	result := g.Kitsu("run")
 	if !strings.Contains(result.Output(), "lint.sh runs") {
-		t.Errorf("gatecub run did not execute lint.sh:\n%s", result.Output())
+		t.Errorf("kitsu run did not execute lint.sh:\n%s", result.Output())
 	}
 	if strings.Contains(result.Output(), "unit.sh runs") {
-		t.Errorf("gatecub run executed unit.sh:\n%s", result.Output())
+		t.Errorf("kitsu run executed unit.sh:\n%s", result.Output())
 	}
 	g.commitRecorded("commit", "-a", "-m", "docs")
 }

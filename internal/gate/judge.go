@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/evidence"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 // Ruling is what a hook decided about one tree. A hook decides from the
@@ -32,7 +32,7 @@ type Ruling struct {
 	// Notes are printed whatever the ruling is.
 	Notes []string
 	// Differs says how the working tree differs from the denied content;
-	// Elsewhere says that it does, so `gatecub run` here checks other content.
+	// Elsewhere says that it does, so `kitsu run` here checks other content.
 	Differs   string
 	Elsewhere bool
 }
@@ -130,7 +130,7 @@ func (g *Gate) declarationNotice(ctx context.Context, ruling Ruling) []string {
 	return notes
 }
 
-// listText is a list as gatecub.toml holds it.
+// listText is a list as kitsu.toml holds it.
 func listText(items []string) string {
 	if len(items) == 0 {
 		return "not set"
@@ -138,7 +138,7 @@ func listText(items []string) string {
 	return decl.QuoteList(items)
 }
 
-// compareWorktree says whether `gatecub run` in the working tree would check the
+// compareWorktree says whether `kitsu run` in the working tree would check the
 // denied content. It would when the working tree holds that content, or the
 // same content for every check that is not satisfied. Otherwise it says how
 // the two differ. The snapshot is taken only for a denial.
@@ -349,7 +349,7 @@ func stateText(state string) string {
 // Observed is the one line an observing hook prints for a ruling that
 // would have denied.
 func (r Ruling) Observed() string {
-	return fmt.Sprintf("gatecub: the gate only observes: %s would have been denied because %s\n", r.subject(), r.Because())
+	return fmt.Sprintf("kitsu: the gate only observes: %s would have been denied because %s\n", r.subject(), r.Because())
 }
 
 // Denial is the text a hook prints when it denies. It names each check that
@@ -359,13 +359,13 @@ func (r Ruling) Observed() string {
 func (r Ruling) Denial(st *store.Store) string {
 	var b strings.Builder
 	if r.Cause != "" {
-		fmt.Fprintf(&b, "gatecub: %s is denied: %s\n", r.subject(), r.Reason)
+		fmt.Fprintf(&b, "kitsu: %s is denied: %s\n", r.subject(), r.Reason)
 		if r.Differs != "" {
 			b.WriteString(indent(r.Differs) + "\n")
 		}
 		return b.String()
 	}
-	fmt.Fprintf(&b, "gatecub: %s is denied: its content has no recorded passing run of every declared check.\n", r.subject())
+	fmt.Fprintf(&b, "kitsu: %s is denied: its content has no recorded passing run of every declared check.\n", r.subject())
 	for _, c := range r.Verdict.Missing() {
 		fmt.Fprintf(&b, "  %s: %s\n", c.ID, Describe(st, c))
 	}
@@ -414,17 +414,17 @@ func Describe(st *store.Store, c evidence.Check) string {
 func (r Ruling) instruction() string {
 	fix := ""
 	if slices.ContainsFunc(r.Verdict.Missing(), func(c evidence.Check) bool { return c.Deciding != nil }) {
-		fix = "gatecub: a check failed or timed out; first fix what its log shows.\n"
+		fix = "kitsu: a check failed or timed out; first fix what its log shows.\n"
 	}
 	switch {
 	case !r.Elsewhere:
-		return fix + "gatecub: to produce the missing evidence, run:\n  gatecub run\n"
+		return fix + "kitsu: to produce the missing evidence, run:\n  kitsu run\n"
 	case r.Ref == "":
-		return fix + "gatecub: `gatecub run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:\n  gatecub run\n"
+		return fix + "kitsu: `kitsu run` checks the working tree as it is on disk. Make the working tree hold exactly what you commit, by staging the rest (git add -A) or by setting it aside (git stash push --keep-index --include-untracked), and run:\n  kitsu run\n"
 	case r.Commit == "":
-		return fix + "gatecub: `gatecub run` checks the working tree, so it must run in a checkout of that content:\n  gatecub run\n"
+		return fix + "kitsu: `kitsu run` checks the working tree, so it must run in a checkout of that content:\n  kitsu run\n"
 	}
-	return fix + fmt.Sprintf("gatecub: `gatecub run` checks the working tree, so it must run in a checkout of that commit, for example in a linked worktree:\n  git worktree add --detach ../gatecub-check %s\nand then, in that directory:\n  gatecub run\n", r.Commit)
+	return fix + fmt.Sprintf("kitsu: `kitsu run` checks the working tree, so it must run in a checkout of that commit, for example in a linked worktree:\n  git worktree add --detach ../kitsu-check %s\nand then, in that directory:\n  kitsu run\n", r.Commit)
 }
 
 func indent(text string) string {

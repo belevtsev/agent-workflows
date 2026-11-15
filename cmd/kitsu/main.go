@@ -1,4 +1,4 @@
-// gatecub gates commits and pushes on recorded passing runs of the checks a
+// kitsu gates commits and pushes on recorded passing runs of the checks a
 // repository declares.
 package main
 
@@ -10,7 +10,7 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/belevtsev/gatecub/v3/internal/cli"
+	"github.com/belevtsev/kitsu/v3/internal/cli"
 )
 
 // Release builds set these with -ldflags -X.
@@ -31,7 +31,7 @@ func main() {
 	if err := cli.Execute(ctx, os.Args[1:], cli.Config{Version: v, Revision: r, BuiltAt: b, In: os.Stdin, Out: os.Stdout, Err: os.Stderr}); err != nil {
 		// A command that already reported its own result carries no message.
 		if err.Error() != "" {
-			fmt.Fprintln(os.Stderr, "gatecub:", err)
+			fmt.Fprintln(os.Stderr, "kitsu:", err)
 		}
 		os.Exit(cli.ExitCode(err))
 	}

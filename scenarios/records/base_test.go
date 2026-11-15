@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // freshClone clones the demo repository, so that origin/main exists in a
 // repository that holds no records.
-func freshClone(t *testing.T) *gatecubtest.Repo {
+func freshClone(t *testing.T) *kitsutest.Repo {
 	t.Helper()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	dir := filepath.Join(t.TempDir(), "clone")
 	repo.Git("clone", "-q", repo.Dir, dir)
 	clone := repo.In(dir)
@@ -48,12 +48,12 @@ func TestCheckNewInTheChangeAlwaysRuns(t *testing.T) {
 	t.Parallel()
 	clone := freshClone(t)
 	executed := filepath.Join(t.TempDir(), "build-executed")
-	clone.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", ': >\"$0\"', '"+filepath.ToSlash(executed)+"']\npaths = [\"src/**\"]\n")
+	clone.Write("kitsu.toml", kitsutest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", ': >\"$0\"', '"+filepath.ToSlash(executed)+"']\npaths = [\"src/**\"]\n")
 	clone.Git("commit", "-q", "-am", "declare build")
 
-	result := clone.Gatecub("run", "--base", "origin/main")
+	result := clone.Kitsu("run", "--base", "origin/main")
 
 	if _, err := os.Stat(executed); err != nil {
-		t.Errorf("the program of build was not executed (gatecub run exit status %d):\n%s", result.Code, result.Output())
+		t.Errorf("the program of build was not executed (kitsu run exit status %d):\n%s", result.Code, result.Output())
 	}
 }

@@ -1,21 +1,21 @@
-# Migrate from agent-workflows / cw to Gatecub
+# Migrate from agent-workflows / cw to Kitsu
 
-Gatecub is a clean rename. It provides no `cw` alias, reads no legacy configuration,
+Kitsu is a clean rename. It provides no `cw` alias, reads no legacy configuration,
 and imports no old evidence or token records. Existing clones need the steps below;
 a new clone can follow the [quick start](quickstart.md).
 
 | Before | After |
 | --- | --- |
-| `cw` executable | `gatecub` |
-| `cw.toml` | `gatecub.toml` |
-| `cw-roles.toml` | `gatecub-roles.toml` |
-| `<common-git-dir>/cw/` | New records in `<common-git-dir>/gatecub/` |
-| `agent-workflows` plugin and marketplace | `gatecub` |
-| `/agent-workflows:cw`, `/agent-workflows:task` | `/gatecub:gatecub`, `/gatecub:task` |
-| `agent-workflows:<role>` | `gatecub:<role>` |
-| `cw-task: <task> <stage> <round>` | `gatecub-task: <task> <stage> <round>` |
-| `refs/cw/finalize/<task>` | `refs/gatecub/finalize/<task>` |
-| `github.com/belevtsev/agent-workflows/v3` | `github.com/belevtsev/gatecub/v3` |
+| `cw` executable | `kitsu` |
+| `cw.toml` | `kitsu.toml` |
+| `cw-roles.toml` | `kitsu-roles.toml` |
+| `<common-git-dir>/cw/` | New records in `<common-git-dir>/kitsu/` |
+| `agent-workflows` plugin and marketplace | `kitsu` |
+| `/agent-workflows:cw`, `/agent-workflows:task` | `/kitsu:kitsu`, `/kitsu:task` |
+| `agent-workflows:<role>` | `kitsu:<role>` |
+| `cw-task: <task> <stage> <round>` | `kitsu-task: <task> <stage> <round>` |
+| `refs/cw/finalize/<task>` | `refs/kitsu/finalize/<task>` |
+| `github.com/belevtsev/agent-workflows/v3` | `github.com/belevtsev/kitsu/v3` |
 
 The declaration format remains version 1. Check ids, arguments, path patterns and role
 settings keep their meaning. Paths and commands that contain an old name need editing.
@@ -23,15 +23,15 @@ settings keep their meaning. Paths and commands that contain an old name need ed
 ## 1. Install the new executable and choose the checkout
 
 Follow [Install](../README.md#install) for the renamed source. With that source checked out
-and the Go toolchain named by its `go.mod`, these commands build and install `gatecub`:
+and the Go toolchain named by its `go.mod`, these commands build and install `kitsu`:
 
 ```sh
-go install ./cmd/gatecub
-gatecub version
+go install ./cmd/kitsu
+kitsu version
 ```
 
 Ensure the installed executable is on `PATH`, including in the environment that starts
-Git and the agent host. The new hooks invoke `gatecub`; an installed `cw` cannot serve them.
+Git and the agent host. The new hooks invoke `kitsu`; an installed `cw` cannot serve them.
 
 Work from the root of the project being migrated. Review existing changes first. Complete
 an in-progress shipped-change finalization before migrating when possible; the saved-baseline
@@ -57,24 +57,24 @@ guessed `.git/` directory: `.git` can be a file in a linked worktree.
 When the old files are tracked and the new names do not already exist:
 
 ```sh
-git mv cw.toml gatecub.toml
+git mv cw.toml kitsu.toml
 ```
 
 If the project also has the tracked role configuration:
 
 ```sh
-git mv cw-roles.toml gatecub-roles.toml
+git mv cw-roles.toml kitsu-roles.toml
 ```
 
 For untracked files, rename them with the file manager or the shell's `mv`. If both old and
 new names exist, compare and reconcile them before proceeding; do not overwrite either.
-Rename before running `gatecub init`, so it keeps the intended checks instead of creating
+Rename before running `kitsu init`, so it keeps the intended checks instead of creating
 an empty declaration beside the old one.
 
 Review scripts, CI, agent instructions and the renamed TOML files. Change executable calls
-such as `cw run` and `cw change check` to `gatecub run` and `gatecub change check`. Update
+such as `cw run` and `cw change check` to `kitsu run` and `kitsu change check`. Update
 `paths` patterns that mention `cw.toml`, `cw-roles.toml` or another renamed file. Update
-source-install commands and repository URLs to Gatecub. A text search helps locate callers:
+source-install commands and repository URLs to Kitsu. A text search helps locate callers:
 
 ```sh
 git grep -n -E 'cw|agent-workflows' -- .
@@ -83,14 +83,14 @@ git grep -n -E 'cw|agent-workflows' -- .
 Review matches individually: dated benchmarks, review reports, the production plan, released
 changelog entries, original task records and explicitly historical sections retain the names
 they describe. Old receipts and unrelated words need no replacement either. Current runtime
-commands use Gatecub without aliases. Keep the check set; the migration is not a reason to
+commands use Kitsu without aliases. Keep the check set; the migration is not a reason to
 remove a failing check.
 
 ## 3. Replace the hooks without deleting history
 
 The affected hook names are `pre-commit`, `pre-merge-commit` and `pre-push`. Inspect each
-effective hook in the directory Git reported. Gatecub treats legacy hooks as foreign files:
-`gatecub init` leaves them intact and exits 4 until they call Gatecub. That exit also means
+effective hook in the directory Git reported. Kitsu treats legacy hooks as foreign files:
+`kitsu init` leaves them intact and exits 4 until they call Kitsu. That exit also means
 initialization may already have created its mode file and any previously empty hook slots.
 
 ### Unchanged generated hooks, with no core.hooksPath setting
@@ -100,15 +100,15 @@ no team additions or other tool's commands. The old `# cw-hook:` marker alone do
 that a file is unchanged. If uncertain, use the custom-hook instructions below.
 
 Move only those three inspected files into a new backup directory in the common Git
-directory, then let Gatecub install its scripts:
+directory, then let Kitsu install its scripts:
 
 ```sh
-backup_dir="$common_dir/gatecub-migration-$(date +%Y%m%dT%H%M%S)"
+backup_dir="$common_dir/kitsu-migration-$(date +%Y%m%dT%H%M%S)"
 mkdir "$backup_dir" &&
 mv "$common_dir/hooks/pre-commit" "$backup_dir/pre-commit" &&
 mv "$common_dir/hooks/pre-merge-commit" "$backup_dir/pre-merge-commit" &&
 mv "$common_dir/hooks/pre-push" "$backup_dir/pre-push" &&
-gatecub init
+kitsu init
 ```
 
 Stop if a command fails; inspect the remaining files before continuing. If a hook was absent,
@@ -117,22 +117,22 @@ changes `<common-git-dir>/cw/`, which remains available as history.
 
 ### Customized hooks or any configured core.hooksPath
 
-Back up each effective hook, then edit its Gatecub integration manually or through its hook
+Back up each effective hook, then edit its Kitsu integration manually or through its hook
 manager. Preserve the existing `core.hooksPath` value and all unrelated hook behavior.
 
 - Replace the old `cw hook <name> "$@"` invocation with
-  `gatecub hook <name> "$@"`, using that hook's actual name. Replace the old invocation;
+  `kitsu hook <name> "$@"`, using that hook's actual name. Replace the old invocation;
   keeping both would also run the retired gate.
 - If the script locates `cw` in a variable, update the lookup and invocation too. Use the
   new [hook script](hooks.md#the-hook-file) as the reference for an absolute-path lookup.
-  A custom wrapper must not claim the new generated `# gatecub-hook:` ownership marker,
-  because a later `gatecub init` can replace a file bearing that marker.
-- Keep the Gatecub call as the final command, propagate its exit status, and pass `"$@"`.
-  For `pre-push`, preserve Git's standard input for Gatecub. A preceding command that consumes
+  A custom wrapper must not claim the new generated `# kitsu-hook:` ownership marker,
+  because a later `kitsu init` can replace a file bearing that marker.
+- Keep the Kitsu call as the final command, propagate its exit status, and pass `"$@"`.
+  For `pre-push`, preserve Git's standard input for Kitsu. A preceding command that consumes
   it prevents the gate from receiving the ref updates; a hook manager must replay that input
   to each consumer.
-- Ensure the hooks remain executable on Unix. Run `gatecub init` again. It should exit 0
-  once each effective hook calls Gatecub; it still leaves custom hooks and their configuration
+- Ensure the hooks remain executable on Unix. Run `kitsu init` again. It should exit 0
+  once each effective hook calls Kitsu; it still leaves custom hooks and their configuration
   unchanged. Investigate exit 4 rather than replacing their directory.
 
 See [Hooks](hooks.md) for hook composition. Inspection is still necessary: the installed-state
@@ -140,7 +140,7 @@ check recognizes invocation text; it does not prove arbitrary custom shell contr
 
 ### Linked worktrees and other clones
 
-Default hooks, old history and new Gatecub records live in the common Git directory and are
+Default hooks, old history and new Kitsu records live in the common Git directory and are
 shared by linked worktrees. Replace those shared hooks once. Each worktree still checks out
 its own tracked configuration: an older branch with only `cw.toml` cannot commit through the
 new hooks until it receives the configuration migration. With a relative or worktree-specific
@@ -164,7 +164,7 @@ of overwriting it.
 ```sh
 task=add-greeting
 baseline=$(git rev-parse --verify "refs/cw/finalize/$task") &&
-printf 'create refs/gatecub/finalize/%s %s\ndelete refs/cw/finalize/%s %s\n' \
+printf 'create refs/kitsu/finalize/%s %s\ndelete refs/cw/finalize/%s %s\n' \
   "$task" "$baseline" "$task" "$baseline" | git update-ref --stdin
 ```
 
@@ -179,30 +179,30 @@ reviewed archive commit, as described in [The archive](workflow.md#the-archive).
 ## 5. Update plugins and produce fresh evidence
 
 Remove or disable the old `agent-workflows` plugin registration in each agent host, then
-install the new `gatecub` plugin from the renamed source using the
+install the new `kitsu` plugin from the renamed source using the
 [plugin instructions](../README.md#for-a-coding-agent). Restart the session so its hooks and
 role text come from the new namespace. Do not keep both plugins active. Update saved task
-briefs to `gatecub-task:` and role/skill references to the names in the table above. Existing
-`cw-task:` transcripts and old token totals remain historical; Gatecub does not import them.
+briefs to `kitsu-task:` and role/skill references to the names in the table above. Existing
+`cw-task:` transcripts and old token totals remain historical; Kitsu does not import them.
 
-The new store is `<common-git-dir>/gatecub/`. Leave `<common-git-dir>/cw/` and its contents
+The new store is `<common-git-dir>/kitsu/`. Leave `<common-git-dir>/cw/` and its contents
 where they are; do not rename or copy that directory into the new store. Old passing receipts
-and the old observe/enforce setting do not satisfy or configure Gatecub. Initialization
-enforces by default; an intentional new observing rollout uses `gatecub init --observe`.
+and the old observe/enforce setting do not satisfy or configure Kitsu. Initialization
+enforces by default; an intentional new observing rollout uses `kitsu init --observe`.
 
 After all tracked migration edits are complete, run:
 
 ```sh
-gatecub run
-gatecub status
+kitsu run
+kitsu status
 git add -A
-git commit -m "Migrate checks and agent workflows to Gatecub"
+git commit -m "Migrate checks and agent workflows to Kitsu"
 ```
 
 Use the complete run, without `--base`, to establish fresh evidence in this clone. Keep
 unrelated work separate before staging. A missing program or failed check must be resolved
 before the commit; do not bypass the hook. Update required CI jobs to install and invoke
-`gatecub` with `gatecub.toml`, and have them run the declared checks in a fresh clone too.
+`kitsu` with `kitsu.toml`, and have them run the declared checks in a fresh clone too.
 
 The migration scenarios in `scenarios/platform/migration_test.go` cover legacy configuration
 isolation, unchanged and custom hooks, linked worktrees, saved-ref transfer, fresh checks,

@@ -16,7 +16,7 @@ func TestSpecWriterFinalization(t *testing.T) {
 				repo.Write(current, "# old greeting\n")
 			}
 			before := tree(t, repo)
-			const baseline = "refs/gatecub/finalize/add-greeting"
+			const baseline = "refs/kitsu/finalize/add-greeting"
 			repo.Git("update-ref", baseline, before)
 			if kind == "removed" {
 				repo.Remove(current)
@@ -24,12 +24,12 @@ func TestSpecWriterFinalization(t *testing.T) {
 				repo.Write(current, "# current greeting\n")
 			}
 			args := []string{"roles", "check", "spec-writer", "--from", baseline, "--task", "add-greeting"}
-			ordinary := repo.Gatecub(args...)
+			ordinary := repo.Kitsu(args...)
 			if ordinary.Code != 5 {
 				t.Fatalf("ordinary scope exited %d, want 5:\n%s", ordinary.Code, ordinary.Output())
 			}
 			assertLists(t, ordinary, []string{current}, nil)
-			finalized := repo.Gatecub(append(args, "--finalize")...)
+			finalized := repo.Kitsu(append(args, "--finalize")...)
 			if finalized.Code != 0 {
 				t.Errorf("finalization exited %d, want 0:\n%s", finalized.Code, finalized.Output())
 			}
@@ -55,7 +55,7 @@ func TestFinalizationDoesNotExpandItsOwnScope(t *testing.T) {
 	for _, path := range forbidden {
 		repo.Write(path, "changed during finalization\n")
 	}
-	result := repo.Gatecub("roles", "check", "spec-writer", "--from", before, "--task", "add-greeting", "--finalize")
+	result := repo.Kitsu("roles", "check", "spec-writer", "--from", before, "--task", "add-greeting", "--finalize")
 	if result.Code != 5 {
 		t.Fatalf("finalization exited %d, want 5:\n%s", result.Code, result.Output())
 	}
@@ -83,7 +83,7 @@ func TestFinalizationRequiresTheTaskScope(t *testing.T) {
 			if c.task != "" {
 				args = append(args, "--task", c.task)
 			}
-			result := repo.Gatecub(args...)
+			result := repo.Kitsu(args...)
 			if result.Code != c.code {
 				t.Errorf("finalization exited %d, want %d:\n%s", result.Code, c.code, result.Output())
 			}

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // extensions are the extensions that Windows tries for a name without one.
@@ -41,7 +41,7 @@ func holds(dir, name string) bool {
 // `sh`, and with a directory that holds git: Git for Windows keeps git.exe
 // alone in ...\Git\cmd, while ...\Git\bin and ...\Git\usr\bin also hold
 // sh.exe.
-func pathWithoutSh(t *testing.T, repo *gatecubtest.Repo) string {
+func pathWithoutSh(t *testing.T, repo *kitsutest.Repo) string {
 	t.Helper()
 	var kept, dropped []string
 	for _, dir := range filepath.SplitList(pathOf(repo)) {
@@ -106,7 +106,7 @@ func exists(path string) bool {
 func reasonLines(output string) []string {
 	var lines []string
 	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
-		if i := strings.Index(line, "gatecub: "); i >= 0 {
+		if i := strings.Index(line, "kitsu: "); i >= 0 {
 			line = line[i:]
 		}
 		if line = strings.TrimSpace(line); line != "" {
@@ -117,7 +117,7 @@ func reasonLines(output string) []string {
 }
 
 // pathOf is the PATH that the repository's commands run with.
-func pathOf(repo *gatecubtest.Repo) string {
+func pathOf(repo *kitsutest.Repo) string {
 	path := ""
 	for _, kv := range repo.Env() {
 		name, value, _ := strings.Cut(kv, "=")
@@ -129,6 +129,6 @@ func pathOf(repo *gatecubtest.Repo) string {
 }
 
 // prependPath puts dir first on the PATH of the repository's commands.
-func prependPath(repo *gatecubtest.Repo, dir string) {
+func prependPath(repo *kitsutest.Repo, dir string) {
 	repo.Setenv("PATH", dir+string(os.PathListSeparator)+pathOf(repo))
 }

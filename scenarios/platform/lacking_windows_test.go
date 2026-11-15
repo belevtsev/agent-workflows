@@ -24,7 +24,7 @@ func TestCheckWrittenForAnotherSystem(t *testing.T) {
 	}
 	repo.Setenv("PATH", path)
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	if got := outcome(t, repo, "unit"); got != "failed" {
 		t.Errorf("unit ended %q, want failed", got)
@@ -33,10 +33,10 @@ func TestCheckWrittenForAnotherSystem(t *testing.T) {
 		t.Errorf("no line of the output says that sh was not found")
 	}
 	if exists(marker) {
-		t.Errorf("unit.sh was executed: gatecub found another shell")
+		t.Errorf("unit.sh was executed: kitsu found another shell")
 	}
 	if t.Failed() {
 		t.Logf("PATH: %s", strings.ReplaceAll(path, ";", "\n  "))
-		t.Logf("gatecub run (exit status %d):\n%s", result.Code, result.Output())
+		t.Logf("kitsu run (exit status %d):\n%s", result.Code, result.Output())
 	}
 }

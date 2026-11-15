@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
-	"github.com/belevtsev/gatecub/v3/internal/shellwords"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/shellwords"
 )
 
 // toolCall is what an agent host tells a hook before it runs a tool. Claude
@@ -27,7 +27,7 @@ type toolCall struct {
 
 // runGuard is the plugin's job before a tool call. It reads the host's notice
 // from standard input and speaks up in two cases only: a git call that skips
-// git's hooks, and an edit of gatecub.toml, of git's hooks or of gatecub's records. It
+// git's hooks, and an edit of kitsu.toml, of git's hooks or of kitsu's records. It
 // asks where the host can ask and denies with the reason where it cannot. It
 // never judges a commit or a push: the git hooks do that.
 func runGuard(ctx context.Context, cfg Config, args []string) error {
@@ -38,7 +38,7 @@ func runGuard(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash || (*host != "claude" && *host != "codex") {
-		return usagef("usage: gatecub guard [--host claude|codex], with the host's notice on standard input")
+		return usagef("usage: kitsu guard [--host claude|codex], with the host's notice on standard input")
 	}
 	var call toolCall
 	if json.NewDecoder(cfg.In).Decode(&call) != nil {
@@ -92,7 +92,7 @@ func guardReason(ctx context.Context, call toolCall) string {
 	switch call.Tool {
 	case "Bash", "PowerShell":
 		if how := shellwords.SkipsHooks(command); how != "" {
-			return "This command " + how + ", which skips the commit gate: the git hooks of gatecub would not deny the commit or the push."
+			return "This command " + how + ", which skips the commit gate: the git hooks of kitsu would not deny the commit or the push."
 		}
 		return editReason(ctx, repo, dir, patchPaths(command)) // a patch given to the shell
 	case "Edit", "Write", "MultiEdit":
@@ -109,13 +109,13 @@ func guardReason(ctx context.Context, call toolCall) string {
 // exist yet is judged like the place it leads to.
 func editReason(ctx context.Context, repo *gitx.Repo, dir string, paths []string) string {
 	hooks, _, _ := repo.HooksDir(ctx)
-	const hook = "This edit changes a git hook of this clone, and the git hooks of gatecub judge each commit and push."
+	const hook = "This edit changes a git hook of this clone, and the git hooks of kitsu judge each commit and push."
 	guarded := [][2]string{
-		{filepath.Join(repo.Root, decl.FileName), "This edit changes gatecub.toml, and with it the checks this repository requires before a commit or a push."},
+		{filepath.Join(repo.Root, decl.FileName), "This edit changes kitsu.toml, and with it the checks this repository requires before a commit or a push."},
 		{filepath.Join(repo.CommonDir, "hooks"), hook},
 		{hooks, hook},
 		{filepath.Join(repo.CommonDir, "config"), "This edit changes the git configuration of this clone, which names the hooks git runs."},
-		{filepath.Join(repo.CommonDir, "gatecub"), "This edit changes the records of gatecub, which hold the passing runs that the commit gate reads."},
+		{filepath.Join(repo.CommonDir, "kitsu"), "This edit changes the records of kitsu, which hold the passing runs that the commit gate reads."},
 	}
 	for _, path := range paths {
 		if !filepath.IsAbs(path) {

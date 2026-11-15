@@ -1,4 +1,4 @@
-// Package messages holds tests of what gatecub says in cases that no scenario of
+// Package messages holds tests of what kitsu says in cases that no scenario of
 // the specifications covers. Each was found by a reader of the program, and
 // each printed a sentence that was not true.
 package messages
@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-func wants(t *testing.T, what string, got gatecubtest.Result, code int, holds ...string) {
+func wants(t *testing.T, what string, got kitsutest.Result, code int, holds ...string) {
 	t.Helper()
 	if got.Code != code {
 		t.Errorf("%s: exit %d, want %d:\n%s", what, got.Code, code, got.Output())
@@ -26,7 +26,7 @@ func wants(t *testing.T, what string, got gatecubtest.Result, code int, holds ..
 	}
 }
 
-func lacks(t *testing.T, what string, got gatecubtest.Result, texts ...string) {
+func lacks(t *testing.T, what string, got kitsutest.Result, texts ...string) {
 	t.Helper()
 	for _, text := range texts {
 		if strings.Contains(got.Output(), text) {
@@ -35,66 +35,66 @@ func lacks(t *testing.T, what string, got gatecubtest.Result, texts ...string) {
 	}
 }
 
-// gatecub init does not say that it installed a hook another tool wrote.
+// kitsu init does not say that it installed a hook another tool wrote.
 func TestInitNamesAHookItLeftAlone(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("the hook of the other tool is a POSIX shell script")
 	}
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	hook := ".git/hooks/pre-commit"
-	writeProgram(t, repo.Path(hook), "#!/bin/sh\necho other tool\ngatecub hook pre-commit \"$@\"\n")
-	got := repo.Gatecub("init")
-	wants(t, "gatecub init", got, 0, "installed the hooks pre-merge-commit, pre-push", "they call gatecub already: pre-commit")
-	lacks(t, "gatecub init", got, "installed the hooks pre-commit")
+	writeProgram(t, repo.Path(hook), "#!/bin/sh\necho other tool\nkitsu hook pre-commit \"$@\"\n")
+	got := repo.Kitsu("init")
+	wants(t, "kitsu init", got, 0, "installed the hooks pre-merge-commit, pre-push", "they call kitsu already: pre-commit")
+	lacks(t, "kitsu init", got, "installed the hooks pre-commit")
 }
 
-// gatecub uninstall does not say that it removed what was never there.
+// kitsu uninstall does not say that it removed what was never there.
 func TestUninstallWhereNothingIs(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.NewRepo(t)
-	got := repo.Gatecub("uninstall")
-	wants(t, "gatecub uninstall", got, 0, "nothing to remove")
-	lacks(t, "gatecub uninstall", got, "removed the hooks", "is left as it is")
+	repo := kitsutest.NewRepo(t)
+	got := repo.Kitsu("uninstall")
+	wants(t, "kitsu uninstall", got, 0, "nothing to remove")
+	lacks(t, "kitsu uninstall", got, "removed the hooks", "is left as it is")
 
-	wants(t, "gatecub init", repo.Gatecub("init"), 0)
-	wants(t, "gatecub uninstall after gatecub init", repo.Gatecub("uninstall"), 0, "removed the hooks gatecub wrote", "gatecub.toml is left as it is")
+	wants(t, "kitsu init", repo.Kitsu("init"), 0)
+	wants(t, "kitsu uninstall after kitsu init", repo.Kitsu("uninstall"), 0, "removed the hooks kitsu wrote", "kitsu.toml is left as it is")
 }
 
 // An unknown option is named as it was typed.
 func TestUnknownOptionIsNamedAsTyped(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
-	wants(t, "gatecub run --nosuchflag", repo.Gatecub("run", "--nosuchflag"), 2, "unknown option: --nosuchflag")
-	wants(t, "gatecub run -x", repo.Gatecub("run", "-x"), 2, "unknown option: -x")
+	repo := kitsutest.Demo(t)
+	wants(t, "kitsu run --nosuchflag", repo.Kitsu("run", "--nosuchflag"), 2, "unknown option: --nosuchflag")
+	wants(t, "kitsu run -x", repo.Kitsu("run", "-x"), 2, "unknown option: -x")
 }
 
-// Where core.hooksPath is set gatecub writes no hook, so no text says that
-// `gatecub init` installs them.
+// Where core.hooksPath is set kitsu writes no hook, so no text says that
+// `kitsu init` installs them.
 func TestHooksPathAdvice(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	repo.Git("config", "core.hooksPath", ".githooks")
-	wants(t, "gatecub init", repo.Gatecub("init"), 4, "core.hooksPath is set, so gatecub wrote no hook")
-	context := repo.Gatecub("context")
-	wants(t, "gatecub context", context, 0, "core.hooksPath", "prints the line to add")
-	lacks(t, "gatecub context", context, "installs them")
-	status := repo.Gatecub("status")
-	wants(t, "gatecub status", status, status.Code, "core.hooksPath", "prints the line to add")
-	lacks(t, "gatecub status", status, "are not installed in this clone")
+	wants(t, "kitsu init", repo.Kitsu("init"), 4, "core.hooksPath is set, so kitsu wrote no hook")
+	context := repo.Kitsu("context")
+	wants(t, "kitsu context", context, 0, "core.hooksPath", "prints the line to add")
+	lacks(t, "kitsu context", context, "installs them")
+	status := repo.Kitsu("status")
+	wants(t, "kitsu status", status, status.Code, "core.hooksPath", "prints the line to add")
+	lacks(t, "kitsu status", status, "are not installed in this clone")
 }
 
 // An index that holds no declaration is not said to lack runs.
 func TestStatusOfAnIndexWithoutADeclaration(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.NewRepo(t)
-	wants(t, "gatecub init", repo.Gatecub("init"), 0)
-	wants(t, "gatecub add", repo.Gatecub("add", "ok", "--", "git", "--version"), 0)
-	got := repo.Gatecub("status")
-	wants(t, "gatecub status", got, 5, "a commit of the index alone would be denied: the tree has no declaration", "git add -A")
-	lacks(t, "gatecub status", got, "its content has no passing run of every check")
-	if !strings.Contains(repo.Gatecub("status", "--json").Stdout, `"index_problem"`) {
-		t.Error("gatecub status --json does not hold index_problem")
+	repo := kitsutest.NewRepo(t)
+	wants(t, "kitsu init", repo.Kitsu("init"), 0)
+	wants(t, "kitsu add", repo.Kitsu("add", "ok", "--", "git", "--version"), 0)
+	got := repo.Kitsu("status")
+	wants(t, "kitsu status", got, 5, "a commit of the index alone would be denied: the tree has no declaration", "git add -A")
+	lacks(t, "kitsu status", got, "its content has no passing run of every check")
+	if !strings.Contains(repo.Kitsu("status", "--json").Stdout, `"index_problem"`) {
+		t.Error("kitsu status --json does not hold index_problem")
 	}
 }
 
@@ -105,13 +105,13 @@ func TestACheckEndedByASignal(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("sends a POSIX signal")
 	}
-	repo := gatecubtest.NewRepo(t)
-	wants(t, "gatecub init", repo.Gatecub("init"), 0)
+	repo := kitsutest.NewRepo(t)
+	wants(t, "kitsu init", repo.Kitsu("init"), 0)
 	// The check writes its process id and waits to be ended.
-	wants(t, "gatecub add", repo.Gatecub("add", "waits", "--", "sh", "-c", "echo $$ > pid; exec sleep 60"), 0)
+	wants(t, "kitsu add", repo.Kitsu("add", "waits", "--", "sh", "-c", "echo $$ > pid; exec sleep 60"), 0)
 	repo.Write(".gitignore", "pid\n")
-	done := make(chan gatecubtest.Result, 1)
-	go func() { done <- repo.Gatecub("run") }()
+	done := make(chan kitsutest.Result, 1)
+	go func() { done <- repo.Kitsu("run") }()
 	deadline := time.Now().Add(20 * time.Second)
 	for !repo.Exists("pid") || strings.TrimSpace(repo.Read("pid")) == "" {
 		if time.Now().After(deadline) {
@@ -131,9 +131,9 @@ func TestACheckEndedByASignal(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := <-done
-	wants(t, "gatecub run", got, 5, "did not exit on its own")
-	lacks(t, "gatecub run", got, "could not be started")
+	wants(t, "kitsu run", got, 5, "did not exit on its own")
+	lacks(t, "kitsu run", got, "could not be started")
 
-	wants(t, "gatecub add", repo.Gatecub("add", "gone", "--", "no-such-program-of-this-test"), 0)
-	wants(t, "gatecub run gone", repo.Gatecub("run", "gone"), 5, "could not be started")
+	wants(t, "kitsu add", repo.Kitsu("add", "gone", "--", "no-such-program-of-this-test"), 0)
+	wants(t, "kitsu run gone", repo.Kitsu("run", "gone"), 5, "could not be started")
 }

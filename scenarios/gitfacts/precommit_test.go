@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // lastTree is the tree logged by the last hook run, after its name.
@@ -106,7 +106,7 @@ func TestWhichCommandsRunPreCommit(t *testing.T) {
 
 // Sources, second script: "When a `pre-commit` hook stages a change after
 // reading the tree, git records the changed tree, not the one the hook
-// read." Known limits: gatecub must therefore be the last command of a shared
+// read." Known limits: kitsu must therefore be the last command of a shared
 // hook.
 func TestAHookThatStagesAfterReadingChangesTheRecordedTree(t *testing.T) {
 	t.Parallel()
@@ -134,7 +134,7 @@ func TestAHookThatStagesAfterReadingChangesTheRecordedTree(t *testing.T) {
 func TestAHookThatCallsAMissingProgramFailsTheCommit(t *testing.T) {
 	t.Parallel()
 	repo := withFile(t)
-	installHook(t, repo, "pre-commit", "exec gatecub-not-installed-anywhere hook pre-commit \"$@\"\n")
+	installHook(t, repo, "pre-commit", "exec kitsu-not-installed-anywhere hook pre-commit \"$@\"\n")
 	before := repo.Git("rev-parse", "HEAD")
 	if result := repo.TryGit("commit", "-q", "--allow-empty", "-m", "x"); result.Code == 0 {
 		t.Errorf("git commit exited 0 with a hook whose program is missing\n%s", result.Output())
@@ -146,7 +146,7 @@ func TestAHookThatCallsAMissingProgramFailsTheCommit(t *testing.T) {
 
 // conflicted is a repository whose branches side and main both changed
 // f.txt, with a pre-commit hook that logs each run.
-func conflicted(t *testing.T) (*gatecubtest.Repo, *hookLog) {
+func conflicted(t *testing.T) (*kitsutest.Repo, *hookLog) {
 	t.Helper()
 	repo := withFile(t)
 	repo.Git("checkout", "-q", "-b", "side")
@@ -160,7 +160,7 @@ func conflicted(t *testing.T) (*gatecubtest.Repo, *hookLog) {
 
 // mustConflict runs a git command that must stop on a conflict, then
 // resolves f.txt and stages it.
-func mustConflict(t *testing.T, repo *gatecubtest.Repo, args ...string) {
+func mustConflict(t *testing.T, repo *kitsutest.Repo, args ...string) {
 	t.Helper()
 	if result := repo.TryGit(args...); result.Code == 0 {
 		t.Fatalf("git %s did not stop on a conflict\n%s", strings.Join(args, " "), result.Output())

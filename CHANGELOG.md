@@ -8,25 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Breaking
 
-- `cw` and Agent Workflows become Gatecub: use `gatecub`, rename configurations, and replace the old hooks and plugins.
+- `cw` and Agent Workflows become Kitsu: use `kitsu`, rename configurations, and replace the old hooks and plugins.
   No aliases or old evidence are imported; follow [migration](docs/migration.md) and rerun the checks.
 
 ### Added
 
-- A Pomeranian mascot and matching README banner introduce Gatecub's [visual identity](docs/brand/README.md).
-- Three diagrams: the three parts of `gatecub`, how the gate decides about a commit or a push, and the seven roles on the two paths
+- A Pomeranian mascot and matching README banner introduce Kitsu's [visual identity](docs/brand/README.md).
+- Three diagrams: the three parts of `kitsu`, how the gate decides about a commit or a push, and the seven roles on the two paths
   of a task. The README, [hooks](docs/hooks.md) and [the task workflow](docs/workflow.md) show them.
 
 ### Changed
 
-- The README introduces Gatecub and installs from source until its beta is published. The prepared archive recipes
+- Lead with [coding-agent coordination](README.md#the-roles) in the documentation, plugin descriptions and CLI help; the Git gate supports that workflow.
+- The README introduces Kitsu and installs from source until its beta is published. The prepared archive recipes
   and installation checks live in [release installation](docs/release-install.md).
 
 ### Fixed
 
 - Marked files are compared with Git's type, executable-mode and symbolic-link semantics, so a hidden mode change
   cannot produce passing evidence and an unchanged link is accepted ([evidence](docs/evidence.md)).
-- Shipped changes use `gatecub roles check spec-writer --finalize`, limited to the task's capabilities in the baseline
+- Shipped changes use `kitsu roles check spec-writer --finalize`, limited to the task's capabilities in the baseline
   snapshot, so current specifications can be synchronized within the role's limit ([workflow](docs/workflow.md#the-archive)).
 - Duplicate scenario names across active requirements are rejected, so one test mapping cannot cover distinct scenarios
   accidentally ([workflow](docs/workflow.md#the-rules)). Rename the duplicate and update its test-table row.
@@ -59,10 +60,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cw tokens` reports what a task used by role and stage, and the share the workflow itself took; a count that
   cannot be read is `unknown`, never zero ([tokens](docs/tokens.md)).
 - The skill `cw` tells a coding agent how to work in a gated repository: the loop for any change, what each denial
-  means, and seven examples that a test replays against `cw` ([skill](https://github.com/belevtsev/gatecub/blob/v3.0.0-beta.1/skills/cw/SKILL.md)).
+  means, and seven examples that a test replays against `cw` ([skill](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/skills/cw/SKILL.md)).
 - `cw guard` reads a shell command as words. It asks before `git commit -n`, a setting of `core.hooksPath` and an edit of
   a hook file or of a record, and no longer before a command that only mentions `--no-verify`
-  ([operations](https://github.com/belevtsev/gatecub/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
+  ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
 - `cw tokens record` reads the running totals that Codex writes; the first reader found no count in any real Codex
   record. Both readers were compared with a separate count on real records
   ([tokens](docs/tokens.md#checked-against-real-records)).
@@ -91,10 +92,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   declaration. A submodule that is not checked out but holds files, or that holds a path git is told to overlook, is
   refused ([evidence](docs/evidence.md)).
 - A push of `refs/notes/` is not judged, and a tag that a branch of the same push contains adds nothing. A tree without
-  `cw.toml` is denied with a link to what to do ([operations](https://github.com/belevtsev/gatecub/blob/v3.0.0-beta.1/docs/operations.md#a-tree-without-cwtoml)).
+  `cw.toml` is denied with a link to what to do ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#a-tree-without-cwtoml)).
 - The guard compares files as the file system sees them, also under `core.hooksPath`. It asks before `cw uninstall`,
   `cw init --observe`, an edit of the git configuration and a patch given to the shell, reads commands behind
-  `timeout`, `exec`, `nohup` and `eval`, and matches the `PowerShell` tool ([operations](https://github.com/belevtsev/gatecub/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
+  `timeout`, `exec`, `nohup` and `eval`, and matches the `PowerShell` tool ([operations](https://github.com/belevtsev/kitsu/blob/v3.0.0-beta.1/docs/operations.md#cw-guard)).
 - A denial says to fix what the log shows when a check failed, names a last run that decided nothing, and names
   `git add -A` and `git stash push --keep-index --include-untracked`. A failed `cw run` ends with one `not verified` line,
   and `source_changed` says what to do about a file a check writes.

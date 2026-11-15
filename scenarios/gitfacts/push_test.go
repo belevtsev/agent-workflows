@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // pushing is a repository with a bare remote origin that holds main, and a
 // pre-push hook that logs its first argument and each line it reads. The
 // hook uses only sh builtins.
-func pushing(t *testing.T) (*gatecubtest.Repo, *hookLog) {
+func pushing(t *testing.T) (*kitsutest.Repo, *hookLog) {
 	t.Helper()
 	repo := withFile(t)
 	remote := filepath.Join(filepath.Dir(repo.Dir), "origin.git")

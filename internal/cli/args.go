@@ -30,7 +30,7 @@ func newFlags(name string) *flag.FlagSet {
 }
 
 // parseArgs reads flags wherever they stand before "--", so that
-// "gatecub run lint --force" and "gatecub run --force lint" mean the same. What
+// "kitsu run lint --force" and "kitsu run --force lint" mean the same. What
 // follows "--" is never read as a flag.
 func parseArgs(fs *flag.FlagSet, args []string) (parsed, error) {
 	var p parsed

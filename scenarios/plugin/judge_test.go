@@ -5,18 +5,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // agentRuns runs a command line the way an agent's shell tool does, with
 // sh -c in the repository.
-func agentRuns(repo *gatecubtest.Repo, command string) gatecubtest.Result {
+func agentRuns(repo *kitsutest.Repo, command string) kitsutest.Result {
 	return repo.Run("", "sh", "-c", command)
 }
 
 // assertPluginStaysOut fails the test when the PreToolUse command of either
 // host asks or denies for a command line.
-func assertPluginStaysOut(t *testing.T, repo *gatecubtest.Repo, command string) {
+func assertPluginStaysOut(t *testing.T, repo *kitsutest.Repo, command string) {
 	t.Helper()
 	for _, h := range hostFiles {
 		assertNoDecision(t, preToolUse(t, repo, h.file, "Bash", shellInput(command)), h.host+" and "+command)
@@ -74,8 +74,8 @@ func TestCommitMessageThatMentionsAPush(t *testing.T) {
 	needShell(t)
 	repo := gatedDemo(t)
 	repo.Write("README.md", "# demo\n\nRelease notes.\n")
-	if result := repo.Gatecub("run"); result.Code != 0 {
-		t.Fatalf("gatecub run exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("run"); result.Code != 0 {
+		t.Fatalf("kitsu run exited %d:\n%s", result.Code, result.Output())
 	}
 	before := head(repo)
 	const command = "git add -A && git commit -F - <<'EOF'\n" +

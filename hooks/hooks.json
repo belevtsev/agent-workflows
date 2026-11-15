@@ -1,5 +1,5 @@
 {
-  "description": "gatecub for Claude Code: adds what `gatecub context` prints at the start of a session, asks before a git call that skips the hooks, a gatecub call that turns the gate off, or an edit, made with an edit tool, of gatecub.toml, a hook file, the git configuration or a record of gatecub, and gives `gatecub tokens record` the notice that a role or the session has ended. Each command runs gatecub only from an absolute path of PATH and always exits 0, so an old or missing gatecub blocks nothing. The git hooks decide about commits and pushes; this file does not.",
+  "description": "kitsu for Claude Code: adds what `kitsu context` prints at the start of a session, asks before a git call that skips the hooks, a kitsu call that turns the gate off, or an edit, made with an edit tool, of kitsu.toml, a hook file, the git configuration or a record of kitsu, and gives `kitsu tokens record` the notice that a role or the session has ended. Each command runs kitsu only from an absolute path of PATH and always exits 0, so an old or missing kitsu blocks nothing. The git hooks decide about commits and pushes; this file does not.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v gatecub 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" context --host claude;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/gatecub.toml\" ]; then echo \"gatecub is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/gatecub#install\"; fi;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" context --host claude;; *) if [ -f \"$(git rev-parse --show-toplevel 2>/dev/null)/kitsu.toml\" ]; then echo \"kitsu is not installed, so every commit and every push in this repository will be denied by its git hooks. The install instruction is at https://github.com/belevtsev/kitsu#install\"; fi;; esac; true",
             "timeout": 10
           }
         ]
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v gatecub 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" guard --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" guard --host claude;; esac; true",
             "timeout": 10
           }
         ]
@@ -32,7 +32,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v gatecub 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]
@@ -44,7 +44,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v gatecub 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
+            "command": "p=; IFS=:; set -f; for d in $PATH; do case \"$d\" in /*) p=\"${p:+$p:}$d\";; esac; done; unset IFS; set +f; [ -n \"$p\" ] || exit 0; PATH=$p; c=$(command -v kitsu 2>/dev/null); [ -x \"$c\" ] || c=; case \"$c\" in /*) \"$c\" tokens record --host claude;; esac; true",
             "timeout": 30
           }
         ]

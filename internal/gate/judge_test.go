@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/evidence"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 const zero = "0000000000000000000000000000000000000000"
@@ -35,8 +35,8 @@ func checkDenial(t *testing.T, r Ruling, st *store.Store, words ...string) strin
 
 func checkEndsWithRun(t *testing.T, text string) {
 	t.Helper()
-	if !strings.HasSuffix(text, "  gatecub run\n") {
-		t.Errorf("the denial does not end with the command gatecub run:\n%s", text)
+	if !strings.HasSuffix(text, "  kitsu run\n") {
+		t.Errorf("the denial does not end with the command kitsu run:\n%s", text)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestCommitAllowedWhenVerified(t *testing.T) {
 	if d := r.Decision(store.Enforce, now); d.Outcome != "allowed" || d.Checks != nil || d.Cause != "" {
 		t.Errorf("decision = %+v", d)
 	}
-	if exists(filepath.Join(e.repo.CommonDir, "gatecub", "tmp")) {
+	if exists(filepath.Join(e.repo.CommonDir, "kitsu", "tmp")) {
 		t.Error("the index copy directory is left")
 	}
 }
@@ -157,7 +157,7 @@ func TestCommitOfOnePathNamesOnlyItsChecks(t *testing.T) {
 
 func TestCommitWithoutDeclaration(t *testing.T) {
 	e := demo(t)
-	e.git("rm", "-q", "gatecub.toml")
+	e.git("rm", "-q", "kitsu.toml")
 	r := e.gate.Commit(t.Context(), "pre-commit")
 	if r.Allowed || r.Cause != store.CauseNoDeclaration || r.Verdict != nil {
 		t.Fatalf("ruling = %+v", r)
@@ -180,8 +180,8 @@ func TestCommitWithInvalidDeclaration(t *testing.T) {
 	e := demo(t)
 	lines := strings.Split(declaration, "\n")
 	lines = append(lines[:8], append([]string{`tiemout = "5m"`}, lines[8:]...)...)
-	e.write("gatecub.toml", strings.Join(lines, "\n"))
-	e.git("add", "gatecub.toml")
+	e.write("kitsu.toml", strings.Join(lines, "\n"))
+	e.git("add", "kitsu.toml")
 	r := e.gate.Commit(t.Context(), "pre-commit")
 	if r.Allowed || r.Cause != store.CauseInvalidDeclaration {
 		t.Fatalf("ruling = %+v", r)
@@ -194,7 +194,7 @@ func TestCommitWithInvalidDeclaration(t *testing.T) {
 
 func TestCommitNoticeOfChangedDeclaration(t *testing.T) {
 	e := demo(t)
-	e.write("gatecub.toml", `version = 1
+	e.write("kitsu.toml", `version = 1
 
 [[check]]
 id = "lint"
@@ -205,7 +205,7 @@ timeout = "5m"
 id = "build"
 run = ["make"]
 `)
-	e.git("add", "gatecub.toml")
+	e.git("add", "kitsu.toml")
 	tree := e.git("write-tree")
 	e.ran(tree, "lint", store.Passed)
 	e.ran(tree, "build", store.Passed)
@@ -226,8 +226,8 @@ run = ["make"]
 
 func TestCommitAddingCheckGivesNoNotice(t *testing.T) {
 	e := demo(t)
-	e.write("gatecub.toml", declaration+"\n[[check]]\nid = \"build\"\nrun = [\"make\"]\n")
-	e.git("add", "gatecub.toml")
+	e.write("kitsu.toml", declaration+"\n[[check]]\nid = \"build\"\nrun = [\"make\"]\n")
+	e.git("add", "kitsu.toml")
 	r := e.gate.Commit(t.Context(), "pre-commit")
 	if len(r.Notes) != 0 {
 		t.Errorf("notes = %q", r.Notes)
@@ -399,7 +399,7 @@ func TestPushOneRulingPerRef(t *testing.T) {
 
 func TestPushWithoutDeclaration(t *testing.T) {
 	e := demo(t)
-	e.git("rm", "-q", "gatecub.toml")
+	e.git("rm", "-q", "kitsu.toml")
 	head := e.commit("remove")
 	rulings := push(e, "refs/heads/main "+head+" refs/heads/main "+zero)
 	if len(rulings) != 1 || rulings[0].Allowed || rulings[0].Cause != store.CauseNoDeclaration {
@@ -450,7 +450,7 @@ func TestDenialText(t *testing.T) {
 		{"commit here", Ruling{Hook: "pre-commit", Verdict: v}, []string{"this commit is denied"}},
 		{"commit elsewhere", Ruling{Hook: "pre-commit", Verdict: v, Elsewhere: true, Differs: "The working tree holds other content than this commit."}, []string{"other content", "Make the working tree hold exactly"}},
 		{"merge", Ruling{Hook: "pre-merge-commit", Verdict: v}, []string{"this merge is denied"}},
-		{"push of a commit elsewhere", Ruling{Hook: "pre-push", Ref: "refs/heads/feature", Commit: "abc123", Verdict: v, Elsewhere: true}, []string{"the push of refs/heads/feature", "git worktree add --detach ../gatecub-check abc123"}},
+		{"push of a commit elsewhere", Ruling{Hook: "pre-push", Ref: "refs/heads/feature", Commit: "abc123", Verdict: v, Elsewhere: true}, []string{"the push of refs/heads/feature", "git worktree add --detach ../kitsu-check abc123"}},
 		{"push of a tree elsewhere", Ruling{Hook: "pre-push", Ref: "refs/tags/t", Verdict: v, Elsewhere: true}, []string{"checkout of that content"}},
 	}
 	for _, tc := range cases {

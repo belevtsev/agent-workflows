@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve `gatecub`. This file explains how to build, test and propose changes.
+Thanks for helping improve `kitsu`. This file explains how to build, test and propose changes.
 
 Everyone who takes part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
@@ -23,7 +23,7 @@ GOWORK=off govulncheck ./... && GOWORK=off GOOS=darwin govulncheck ./... && GOWO
 
 ## Go-only automation
 
-First-party automation is written in Go. If you need a helper, add it to the `gatecub` command or to a test.
+First-party automation is written in Go. If you need a helper, add it to the `kitsu` command or to a test.
 
 ## Diagrams
 
@@ -56,7 +56,7 @@ Releases are published when a `v*` tag is pushed. Maintainers create tags; contr
 
 ## Built with itself
 
-`gatecub.toml` declares this repository's checks: build, vet, test, lint, and `gatecub change check` on the task records under `openspec/changes/`. Run `gatecub init` in your clone to install the hooks; then a commit needs a passing `gatecub run`. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
+`kitsu.toml` declares this repository's checks: build, vet, test, lint, and `kitsu change check` on the task records under `openspec/changes/`. Run `kitsu init` in your clone to install the hooks; then a commit needs a passing `kitsu run`. Every commit written with an agent names its model in a `Co-Authored-By` trailer. Whether the gate or the roles improve results has not been measured yet.
 
 ## License
 

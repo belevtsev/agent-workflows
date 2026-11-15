@@ -12,10 +12,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
-	"github.com/belevtsev/gatecub/v3/internal/store"
-	"github.com/belevtsev/gatecub/v3/internal/tokens"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/tokens"
 )
 
 // tokensDir holds the token records of a clone.
@@ -36,7 +36,7 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("usage: gatecub tokens [--task <task>] [--json], or gatecub tokens record [--host claude|codex]")
+		return usagef("usage: kitsu tokens [--task <task>] [--json], or kitsu tokens record [--host claude|codex]")
 	}
 	s, err := open(ctx, cfg, false)
 	if err != nil {
@@ -47,7 +47,7 @@ func runTokens(ctx context.Context, cfg Config, args []string) error {
 		return failf("%v", err)
 	}
 	for _, file := range damaged {
-		fmt.Fprintf(cfg.Err, "gatecub: warning: the token record %s cannot be read; its tokens are in no sum\n", file)
+		fmt.Fprintf(cfg.Err, "kitsu: warning: the token record %s cannot be read; its tokens are in no sum\n", file)
 	}
 	report := tokens.Build(starts, damaged)
 	if *task == "" {
@@ -83,7 +83,7 @@ func printJSON(cfg Config, value any) error {
 
 // runTokensRecord reads the notice a host gives its hook when a role or a
 // session ends, and stores the counts of the records the notice names. It
-// stores nothing outside a repository that holds gatecub.toml.
+// stores nothing outside a repository that holds kitsu.toml.
 func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 	flags := newFlags("tokens record")
 	host := flags.String("host", tokens.Claude, "")
@@ -92,7 +92,7 @@ func runTokensRecord(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash || (*host != tokens.Claude && *host != tokens.Codex) {
-		return usagef("usage: gatecub tokens record [--host claude|codex], with the host's notice on standard input")
+		return usagef("usage: kitsu tokens record [--host claude|codex], with the host's notice on standard input")
 	}
 	var notice tokens.Notice
 	data, err := io.ReadAll(io.LimitReader(cfg.In, 1<<20))
@@ -169,7 +169,7 @@ func printTokens(out io.Writer, report *tokens.Report) {
 	}
 	_ = w.Flush()
 	printSessions(out, report.Sessions, report.Unlabelled)
-	fmt.Fprintln(out, "`gatecub tokens --task <task>` prints the roles and the stages of one task")
+	fmt.Fprintln(out, "`kitsu tokens --task <task>` prints the roles and the stages of one task")
 }
 
 func yesNo(yes bool) string {

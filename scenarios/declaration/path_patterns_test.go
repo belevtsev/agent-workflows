@@ -4,38 +4,38 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // No command prints whether a pattern matches a path. These tests declare a
 // check `p` whose paths is the pattern, let it pass, change one path, and
-// read from gatecub status whether `p` is still satisfied: a change to a matched
+// read from kitsu status whether `p` is still satisfied: a change to a matched
 // path makes it unsatisfied, a change to any other path does not.
 
 const satisfied = "satisfied"
 
 // patternRepo is a repository with the given files and one check `p` whose
 // paths is pattern, after a run in which `p` passed.
-func patternRepo(t *testing.T, pattern string, files ...string) *gatecubtest.Repo {
+func patternRepo(t *testing.T, pattern string, files ...string) *kitsutest.Repo {
 	t.Helper()
-	repo := gatecubtest.NewRepo(t)
-	repo.Write("gatecub.toml", fmt.Sprintf("version = 1\n\n[[check]]\nid = \"p\"\nrun = [\"git\", \"--version\"]\npaths = [%q]\n", pattern))
+	repo := kitsutest.NewRepo(t)
+	repo.Write("kitsu.toml", fmt.Sprintf("version = 1\n\n[[check]]\nid = \"p\"\nrun = [\"git\", \"--version\"]\npaths = [%q]\n", pattern))
 	for _, file := range files {
 		repo.Write(file, "first\n")
 	}
 	commitAll(repo, "first")
-	if result := repo.Gatecub("run"); result.Code != 0 {
-		t.Fatalf("gatecub run exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("run"); result.Code != 0 {
+		t.Fatalf("kitsu run exited %d:\n%s", result.Code, result.Output())
 	}
 	if state := stateOf(t, repo, "p"); state != satisfied {
-		t.Fatalf("after gatecub run, p is %q, want satisfied", state)
+		t.Fatalf("after kitsu run, p is %q, want satisfied", state)
 	}
 	return repo
 }
 
 // matches changes one path, says whether that left `p` unsatisfied, and then
 // puts the path back as it was.
-func matches(t *testing.T, repo *gatecubtest.Repo, path string) bool {
+func matches(t *testing.T, repo *kitsutest.Repo, path string) bool {
 	t.Helper()
 	repo.Write(path, "second\n")
 	matched := stateOf(t, repo, "p") != satisfied
@@ -93,19 +93,19 @@ func TestPlainNameMatchesAtTheRootOnly(t *testing.T) {
 // Requirement "Path patterns", scenario "A submodule is one entry".
 func TestNewSubmoduleCommitIsAChangeInsideItsPattern(t *testing.T) {
 	t.Parallel()
-	lib := gatecubtest.NewRepo(t)
+	lib := kitsutest.NewRepo(t)
 	lib.Write("lib.txt", "first\n")
 	commitAll(lib, "first")
 
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	repo.Git("-c", "protocol.file.allow=always", "submodule", "add", "-q", lib.Dir, "vendor/lib")
-	repo.Write("gatecub.toml", "version = 1\n\n[[check]]\nid = \"p\"\nrun = [\"git\", \"--version\"]\npaths = [\"vendor/lib/**\"]\n")
+	repo.Write("kitsu.toml", "version = 1\n\n[[check]]\nid = \"p\"\nrun = [\"git\", \"--version\"]\npaths = [\"vendor/lib/**\"]\n")
 	commitAll(repo, "first")
-	if result := repo.Gatecub("run"); result.Code != 0 {
-		t.Fatalf("gatecub run exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("run"); result.Code != 0 {
+		t.Fatalf("kitsu run exited %d:\n%s", result.Code, result.Output())
 	}
 	if state := stateOf(t, repo, "p"); state != satisfied {
-		t.Fatalf("after gatecub run, p is %q, want satisfied", state)
+		t.Fatalf("after kitsu run, p is %q, want satisfied", state)
 	}
 
 	// Move the submodule to a new commit; commit nothing else.

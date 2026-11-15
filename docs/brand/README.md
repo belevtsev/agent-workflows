@@ -1,18 +1,18 @@
-# Gatecub brand assets
+# Kitsu brand assets
 
-Gatecub's mascot is a fluffy Pomeranian in a red knit beanie, holding a code-change card with a teal check. Its pointed ears, short dog muzzle, full neck ruff and curled tail make the dog recognizable; its calm, proud expression follows the user's reference.
+Kitsu's mascot is a fluffy Pomeranian in a red knit beanie, holding a code-change card with a teal check. Its pointed ears, short dog muzzle, full neck ruff and curled tail make the dog recognizable; its calm, proud expression follows the user's reference.
 
 | Asset | Size | Background | Suggested use |
 | --- | --- | --- | --- |
-| [Mascot](gatecub-mascot.png) | 1254 × 1254; 923,432 bytes | Transparent RGBA | Avatar, documentation, project badge |
-| [Banner](gatecub-banner.png) | 1280 × 640; 586,883 bytes | Opaque warm cream | README and repository social preview |
+| [Mascot](kitsu-mascot.png) | 1254 × 1254; 923,432 bytes | Transparent RGBA | Avatar, documentation, project badge |
+| [Banner](kitsu-banner.png) | 1280 × 640; 566,035 bytes | Opaque warm cream | README and repository social preview |
 
-The banner reads **Gatecub** and **Checked changes. Coordinated agents.** Keep the original proportions and leave breathing room around the dog and text. Use the transparent mascot on a light surface with enough contrast for its charcoal outline. The banner supplies its own background.
+The banner reads **Kitsu** and **Coding agents, working together.** Keep the original proportions and leave breathing room around the dog and text. Use the transparent mascot on a light surface with enough contrast for its charcoal outline. The banner supplies its own background.
 
 Suggested alt text:
 
-- Mascot: `Gatecub Pomeranian in a red knit beanie, holding a code-change card with a teal check mark.`
-- Banner: `Gatecub. Checked changes. Coordinated agents. A fluffy Pomeranian in a red beanie holds a checked code-change card.`
+- Mascot: `Kitsu Pomeranian in a red knit beanie, holding a code-change card with a teal check mark.`
+- Banner: `Kitsu. Coding agents, working together. A fluffy Pomeranian in a red beanie holds a checked code-change card.`
 
 ## Color direction
 
@@ -27,14 +27,14 @@ These are the design targets; the generated PNGs retain subtle shades and antial
 
 ## Creation and export
 
-Updated on 2026-11-15 with the built-in `image_gen` tool. The mascot was edited from the previous Gatecub mascot using the user's Pomeranian image as species and mood guidance. The matching banner was edited from the previous banner with the new Pomeranian mascot as its identity reference. All creative changes were made with `image_gen`; no API fallback or procedural drawing was used. The private input reference is not included in this repository.
+Updated on 2026-11-15 with the built-in `image_gen` tool. The Pomeranian mascot was originally created while the project was named Gatecub, using the user's Pomeranian image as species and mood guidance. Its PNG was renamed for Kitsu without changing any bytes, pixels or alpha. The matching banner was edited from the previous Gatecub banner to replace its wordmark and tagline, with the approved Pomeranian mascot as its identity reference. All creative changes were made with `image_gen`; no API fallback or procedural drawing was used. The private input reference is not included in this repository.
 
-The mascot's generated 1254 × 1254 dimensions and alpha were preserved. The selected banner was resized from 1774 × 887 to 1280 × 640 using the browser's high-quality image resampling. Both PNGs were then losslessly re-encoded with Go's PNG encoder at its best compression setting. No palette quantization or color substitution was applied. Both final files are under 1 MB.
+The mascot retains its original 1254 × 1254 dimensions and alpha. The selected Kitsu banner was resized from 1774 × 887 to 1280 × 640 using the browser's high-quality image resampling, then losslessly re-encoded with Go's PNG encoder at its best compression setting. The mascot had already received the same lossless PNG optimization before the rename. No palette quantization or color substitution was applied. Both final files are under 1 MB.
 
-The exact edit prompts that produced the current artwork follow. A new generation will not necessarily reproduce identical pixels.
+The exact prompts follow in creation order. The historical prompts retain the name and copy used at the time; the final prompt produced the current Kitsu banner. A new generation will not necessarily reproduce identical pixels.
 
 <details>
-<summary>Pomeranian mascot edit prompt</summary>
+<summary>Historical Pomeranian mascot edit prompt — unchanged mascot</summary>
 
 ```text
 Use case: precise-object-edit / logo-brand.
@@ -50,7 +50,7 @@ Composition: square canvas, full mascot centered, generous genuinely transparent
 </details>
 
 <details>
-<summary>Matching banner edit prompt</summary>
+<summary>Historical Gatecub banner edit prompt — input to the Kitsu edit</summary>
 
 ```text
 Use case: precise-object-edit / logo-brand.
@@ -62,6 +62,23 @@ Text (verbatim, exactly these two elements): "Gatecub" and "Checked changes. Coo
 Style: crisp clean flat brand illustration matching input image 2, simplified fur tufts, no photorealism, no 3D, no extra symbols or scenery. Keep the teal check visually prominent.
 Color direction: charcoal #202A30 for text, outlines and dark fur; warm cream #F6F0E5 for the background, light fur and card; teal #169C92 for card accents; red #C83D37 for the beanie. The background should read as a plain even warm cream, with no added texture, gradient or shadow.
 Constraints: no remaining bear features, no round ears, no new words, no altered lettering, no watermark. Final composition remains wide 2:1 with all content safely inside the edges. Target output 1280 by 640 pixels.
+```
+
+</details>
+
+<details>
+<summary>Current Kitsu banner text edit prompt</summary>
+
+```text
+Use case: text-localization.
+Asset type: Kitsu repository banner, opaque warm-cream landscape PNG, 2:1 aspect ratio, final target 1280x640.
+Input image 1 is the existing repository banner edit target. Input image 2 is the approved Pomeranian mascot identity reference.
+Primary request: change only the banner's two text elements. Replace the large wordmark "Gatecub" with "Kitsu", spelled K-i-t-s-u. Replace the tagline with exactly "Coding agents, working together." Preserve the existing bold rounded charcoal wordmark style and the smaller charcoal tagline style. Keep the tagline on one line, comfortably below the wordmark, with balanced spacing and generous right margin.
+Preserve the existing Pomeranian illustration on the left: its fluffy cream-and-charcoal face and neck ruff, pointed ears, short dog muzzle, calm proud expression, red knit beanie and cuff, paws, checked code-change card, and curled tail. Keep its identity, pose, shapes, colors, scale and placement unchanged. Do not redraw or reinterpret the mascot.
+Preserve the balanced left-mascot/right-text composition and the plain warm-cream background. The shorter Kitsu wordmark should look intentionally balanced within the right-hand text area. All content stays comfortably inside the frame.
+Text (verbatim, exactly these two elements): "Kitsu" and "Coding agents, working together."
+Color direction: charcoal #202A30 for text and outlines; warm cream #F6F0E5 for background, light fur and card; teal #169C92 for card accents; red #C83D37 for the beanie. Retain the artwork's subtle existing shades and antialiased edges.
+Constraints: text replacement only, no new characters, no changed mascot species, no fox features, no bear features, no extra words, no watermark, no gradient, no texture, no additional decoration. Opaque background. Final composition remains wide 2:1; target output 1280 by 640 pixels.
 ```
 
 </details>

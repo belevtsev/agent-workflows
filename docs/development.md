@@ -1,6 +1,6 @@
 # Development
 
-`gatecub` is one Go module. The command is `cmd/gatecub`; everything else is under
+`kitsu` is one Go module. The command is `cmd/kitsu`; everything else is under
 `internal/`.
 
 ## Checks
@@ -24,15 +24,15 @@ go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 ```
 
 `govulncheck` reads its database from the network. Nothing else here does,
-and `gatecub` itself never does.
+and `kitsu` itself never does.
 
 ## Tests
 
 - Tests of a package sit beside it.
-- Tests under `scenarios/` build `gatecub` and drive it and git in temporary
+- Tests under `scenarios/` build `kitsu` and drive it and git in temporary
   repositories. Each is written from a scenario of a specification under
   `openspec/`, by someone other than the author of the code it checks. Set
-  `GATECUB_TEST_BINARY` to test a binary you built yourself.
+  `KITSU_TEST_BINARY` to test a binary you built yourself.
 - `internal/repocheck` checks the repository's own documents: relative links
   and anchors resolve, the changelog keeps short lines, no Markdown file
   holds a Mermaid diagram, and every diagram under `docs/diagrams/` has its
@@ -53,14 +53,14 @@ A test is named after the behaviour it checks.
 | Native Go / macos-latest | gofmt, `go vet`, `go test` |
 | Native Go / windows-latest | gofmt, `go vet`, `go test` |
 | Lint and vulnerabilities | `golangci-lint` and `govulncheck` for linux, darwin and windows |
-| Gate / gatecub run | Builds `gatecub` and runs the checks of `gatecub.toml` with `gatecub run --base` against the base revision |
-| Release archives | Builds six archives, an SBOM for each and `SHA256SUMS`, named for the tag in [release installation](release-install.md), and the release notes. It publishes nothing: the artifact `gatecub-archives` holds them |
-| Install without Go / ubuntu-latest, macos-latest, windows-latest | Follows [release installation](release-install.md) on a `PATH` without `go`, with local archives, and compares `gatecub version` with the tag and commit. Repeats with a damaged archive, which must install nothing. Windows runs both PowerShell 7 and Windows PowerShell 5.1 |
+| Gate / kitsu run | Builds `kitsu` and runs the checks of `kitsu.toml` with `kitsu run --base` against the base revision |
+| Release archives | Builds six archives, an SBOM for each and `SHA256SUMS`, named for the tag in [release installation](release-install.md), and the release notes. It publishes nothing: the artifact `kitsu-archives` holds them |
+| Install without Go / ubuntu-latest, macos-latest, windows-latest | Follows [release installation](release-install.md) on a `PATH` without `go`, with local archives, and compares `kitsu version` with the tag and commit. Repeats with a damaged archive, which must install nothing. Windows runs both PowerShell 7 and Windows PowerShell 5.1 |
 | Plugin manifests | `claude plugin validate .` |
 
 A thorough run is started by hand, with the input `thorough` of the workflow:
 `gh workflow run ci.yml --ref <branch> -f thorough=true`. It uses the race
-detector on macOS and Windows too and sets `GATECUB_SLOW_TESTS=1`, so the test that
+detector on macOS and Windows too and sets `KITSU_SLOW_TESTS=1`, so the test that
 waits ten minutes for the default timeout runs. Start one after a change to
 code written for one system: the first such run found a fault on Windows that
 no other run showed.
@@ -88,7 +88,7 @@ then does four things, each only when the one before it passed:
 
 The former `cw` release pipeline ran once for `v3.0.0-beta.1` on 15 November
 2026; all four steps passed using that version's README instructions. That is
-historical evidence, not a published Gatecub release. Gatecub `v3.0.0-beta.2`
+historical evidence, not a published Kitsu release. Kitsu `v3.0.0-beta.2`
 is prepared but unpublished. The guard has refused a commit only in its tests.
 
 CI runs the commands of step 2 on every commit. Its job `Release archives`
@@ -100,7 +100,7 @@ program, and that is the tag only once the tag exists.
 To try the archives of a commit before it is tagged:
 
 ```sh
-gh run download <run of CI> --name gatecub-archives --dir gatecub-archives
+gh run download <run of CI> --name kitsu-archives --dir kitsu-archives
 ```
 
 To publish, the owner does two things:
@@ -114,8 +114,8 @@ After a release, give the section `Unreleased` of the changelog the heading
 of that version, and start a new section `Unreleased` above it.
 
 The README, release installation guide and plugin/marketplace manifests name
-the version; change them together. After the first Gatecub release is live and
+the version; change them together. After the first Kitsu release is live and
 its installation job passes, remove the unpublished notices and link its
 verified archive instructions prominently from the README. Until then, source
-installation is the supported path; never point a Gatecub command at the old
+installation is the supported path; never point a Kitsu command at the old
 `cw` archives. Preparing the rename does not tag or publish a release.

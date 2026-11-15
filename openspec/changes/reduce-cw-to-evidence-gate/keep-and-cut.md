@@ -1,6 +1,6 @@
 # Keep-and-cut list: reduce-cw-to-evidence-gate
 
-This is the historical `cw` implementation record. Current interfaces are named Gatecub; see [migration](../../../docs/migration.md).
+This is the historical `cw` implementation record. Current interfaces are named Kitsu; see [migration](../../../docs/migration.md).
 
 Status: a list for the owner, written on 14 November 2026. Nothing in it had
 been carried out then: no file was moved, removed or changed. It has been

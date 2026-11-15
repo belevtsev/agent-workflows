@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // The migration starts with real legacy names and record fields rather than
@@ -44,18 +44,18 @@ func TestLegacyMigrationRequiresFreshEvidence(t *testing.T) {
 			for _, hook := range migrationHooks {
 				writeMigrationFile(t, filepath.Join(hooksDir, hook), legacyHook(hook), 0o755)
 			}
-			if result := work.Gatecub("run"); result.Code != 1 || !strings.Contains(result.Output(), "gatecub.toml") {
+			if result := work.Kitsu("run"); result.Code != 1 || !strings.Contains(result.Output(), "kitsu.toml") {
 				t.Fatalf("legacy declaration was accepted: exit %d\n%s", result.Code, result.Output())
 			}
-			if result := work.Gatecub("roles", "check", "developer", "--from", "HEAD"); result.Code != 1 || !strings.Contains(result.Output(), "gatecub-roles.toml") {
+			if result := work.Kitsu("roles", "check", "developer", "--from", "HEAD"); result.Code != 1 || !strings.Contains(result.Output(), "kitsu-roles.toml") {
 				t.Fatalf("legacy role configuration was accepted: exit %d\n%s", result.Code, result.Output())
 			}
-			work.Git("mv", "cw.toml", "gatecub.toml")
-			work.Git("mv", "cw-roles.toml", "gatecub-roles.toml")
-			if result := work.Gatecub("init"); result.Code != 4 {
+			work.Git("mv", "cw.toml", "kitsu.toml")
+			work.Git("mv", "cw-roles.toml", "kitsu-roles.toml")
+			if result := work.Kitsu("init"); result.Code != 4 {
 				t.Fatalf("init with legacy hooks exited %d, want 4\n%s", result.Code, result.Output())
 			}
-			backup := filepath.Join(filepath.Dir(legacyDir), "gatecub-migration-backup")
+			backup := filepath.Join(filepath.Dir(legacyDir), "kitsu-migration-backup")
 			if err := os.Mkdir(backup, 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -66,13 +66,13 @@ func TestLegacyMigrationRequiresFreshEvidence(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if result := work.Gatecub("init"); result.Code != 0 {
+			if result := work.Kitsu("init"); result.Code != 0 {
 				t.Fatalf("init after backing up legacy hooks: %s", result.Output())
 			}
 			if files := work.RecordFiles("git"); len(files) != 0 {
 				t.Fatalf("init imported legacy receipts: %v", files)
 			}
-			if result := work.Gatecub("tokens", "--task", "add-greeting"); result.Code != 1 || !strings.Contains(result.Output(), "no start is recorded") {
+			if result := work.Kitsu("tokens", "--task", "add-greeting"); result.Code != 1 || !strings.Contains(result.Output(), "no start is recorded") {
 				t.Fatalf("legacy token totals were imported: exit %d\n%s", result.Code, result.Output())
 			}
 			assertMigrationFile(t, filepath.Join(work.StoreDir(), "mode"), "enforce\n")
@@ -83,7 +83,7 @@ func TestLegacyMigrationRequiresFreshEvidence(t *testing.T) {
 			if !lineWith(commit.Stderr, "git", "not run on this content") {
 				t.Fatalf("legacy evidence did not produce the expected missing-check denial:\n%s", commit.Output())
 			}
-			if result := work.Gatecub("run"); result.Code != 0 {
+			if result := work.Kitsu("run"); result.Code != 0 {
 				t.Fatalf("fresh checks: %s", result.Output())
 			}
 			fresh := work.RecordFiles("git")
@@ -138,26 +138,26 @@ func TestLegacyMigrationPreservesCustomHooks(t *testing.T) {
 			for _, hook := range migrationHooks {
 				writeMigrationFile(t, filepath.Join(hooksDir, hook), custom("cw", hook), 0o755)
 			}
-			repo.Git("mv", "cw.toml", "gatecub.toml")
-			repo.Git("mv", "cw-roles.toml", "gatecub-roles.toml")
-			if result := repo.Gatecub("init"); result.Code != 4 {
+			repo.Git("mv", "cw.toml", "kitsu.toml")
+			repo.Git("mv", "cw-roles.toml", "kitsu-roles.toml")
+			if result := repo.Kitsu("init"); result.Code != 4 {
 				t.Fatalf("init with custom legacy hooks: exit %d\n%s", result.Code, result.Output())
 			}
 			for _, hook := range migrationHooks {
 				path := filepath.Join(hooksDir, hook)
 				assertMigrationFile(t, path, custom("cw", hook))
-				writeMigrationFile(t, path, custom("gatecub", hook), 0o755)
+				writeMigrationFile(t, path, custom("kitsu", hook), 0o755)
 			}
-			if result := repo.Gatecub("init"); result.Code != 0 {
+			if result := repo.Kitsu("init"); result.Code != 0 {
 				t.Fatalf("init after manually updating custom hooks: %s", result.Output())
 			}
 			for _, hook := range migrationHooks {
-				assertMigrationFile(t, filepath.Join(hooksDir, hook), custom("gatecub", hook))
+				assertMigrationFile(t, filepath.Join(hooksDir, hook), custom("kitsu", hook))
 			}
 			if configured && repo.Git("config", "--get", "core.hooksPath") != hooksDir {
 				t.Error("init changed core.hooksPath")
 			}
-			if result := repo.Gatecub("run"); result.Code != 0 {
+			if result := repo.Kitsu("run"); result.Code != 0 {
 				t.Fatalf("fresh checks: %s", result.Output())
 			}
 			if result := repo.TryGit("commit", "-m", "migrate custom hooks"); result.Code != 0 || !strings.Contains(result.Output(), "team hook runs") {
@@ -182,7 +182,7 @@ func TestLegacyMigrationPreservesFinalizationTree(t *testing.T) {
 			repo, _ := legacyProject(t)
 			tree := repo.Git("rev-parse", "HEAD^{tree}")
 			const oldRef = "refs/cw/finalize/add-greeting"
-			const newRef = "refs/gatecub/finalize/add-greeting"
+			const newRef = "refs/kitsu/finalize/add-greeting"
 			repo.Git("update-ref", oldRef, tree)
 			if collision {
 				repo.Git("update-ref", newRef, "HEAD")
@@ -206,20 +206,20 @@ func TestLegacyMigrationChangesTaskLabels(t *testing.T) {
 	t.Parallel()
 	repo, legacyDir := legacyProject(t)
 	history := migrationFiles(t, legacyDir)
-	repo.Git("mv", "cw.toml", "gatecub.toml")
-	program := "gatecub"
+	repo.Git("mv", "cw.toml", "kitsu.toml")
+	program := "kitsu"
 	if runtime.GOOS == "windows" {
 		program += ".exe"
 	}
-	program = filepath.Join(gatecubtest.Binary(t), program)
-	for _, prefix := range []string{"cw", "gatecub"} {
+	program = filepath.Join(kitsutest.Binary(t), program)
+	for _, prefix := range []string{"cw", "kitsu"} {
 		transcript := filepath.Join(t.TempDir(), "agent.jsonl")
 		content := fmt.Sprintf(`{"type":"user","message":{"role":"user","content":"%s-task: add-greeting code 1\nImplement the greeting."}}
 {"type":"assistant","message":{"id":"answer-1","model":"test-model","usage":{"input_tokens":10,"output_tokens":2}}}
 `, prefix)
 		writeMigrationFile(t, transcript, content, 0o600)
 		notice, err := json.Marshal(map[string]string{
-			"session_id": "migration", "agent_id": prefix, "agent_type": "gatecub:developer",
+			"session_id": "migration", "agent_id": prefix, "agent_type": "kitsu:developer",
 			"agent_transcript_path": transcript, "cwd": repo.Dir,
 		})
 		if err != nil {
@@ -229,7 +229,7 @@ func TestLegacyMigrationChangesTaskLabels(t *testing.T) {
 			t.Fatalf("record %s label: %s", prefix, result.Output())
 		}
 	}
-	result := repo.Gatecub("tokens", "--json")
+	result := repo.Kitsu("tokens", "--json")
 	var report struct {
 		Tasks []struct {
 			Task   string `json:"task"`
@@ -244,7 +244,7 @@ func TestLegacyMigrationChangesTaskLabels(t *testing.T) {
 		t.Fatalf("token report: %v\n%s", err, result.Output())
 	}
 	if len(report.Tasks) != 1 || report.Tasks[0].Task != "add-greeting" || report.Tasks[0].Total != 12 || report.Tasks[0].Starts != 1 {
-		t.Errorf("only the Gatecub label should contribute to the task:\n%s", result.Output())
+		t.Errorf("only the Kitsu label should contribute to the task:\n%s", result.Output())
 	}
 	if len(report.Unlabelled) != 1 || report.Unlabelled[0].Agent != "agent-cw" {
 		t.Errorf("the legacy label should leave its start unlabelled:\n%s", result.Output())
@@ -256,9 +256,9 @@ func TestLegacyMigrationChangesTaskLabels(t *testing.T) {
 
 var migrationHooks = []string{"pre-commit", "pre-merge-commit", "pre-push"}
 
-func legacyProject(t *testing.T) (*gatecubtest.Repo, string) {
+func legacyProject(t *testing.T) (*kitsutest.Repo, string) {
 	t.Helper()
-	repo := gatecubtest.NewRepo(t)
+	repo := kitsutest.NewRepo(t)
 	repo.Write("cw.toml", portableDeclaration+"paths = [\"src/app.txt\"]\n")
 	repo.Write("cw-roles.toml", "version = 1\n[paths]\ntests = [\"tests/**\"]\n")
 	repo.Write("src/app.txt", "checked content\n")

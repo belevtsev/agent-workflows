@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
-// requireRefused checks that gatecub exited 1, that its output holds every text,
+// requireRefused checks that kitsu exited 1, that its output holds every text,
 // and that no check was executed.
-func requireRefused(t *testing.T, result gatecubtest.Result, trace string, texts ...string) {
+func requireRefused(t *testing.T, result kitsutest.Result, trace string, texts ...string) {
 	t.Helper()
 	if result.Code != 1 {
 		t.Errorf("exit status %d, want 1", result.Code)
@@ -37,7 +37,7 @@ func TestSkipWorktreeFileThatDiffersIsRefused(t *testing.T) {
 	repo.Git("update-index", "--skip-worktree", "README.md")
 	repo.Write("README.md", "# demo, edited locally\n")
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	requireRefused(t, result, trace, "README.md", "skip-worktree")
 }
@@ -46,13 +46,13 @@ func TestSkipWorktreeFileThatDiffersIsRefused(t *testing.T) {
 // checkout".
 func TestSparseCheckoutIsRefused(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	repo.Git("sparse-checkout", "init", "--cone")
 	if repo.Exists("src/app.txt") {
 		t.Fatal("the sparse checkout left src/app.txt on disk")
 	}
 
-	result := repo.Gatecub("status")
+	result := repo.Kitsu("status")
 
 	if result.Code != 1 {
 		t.Errorf("exit status %d, want 1", result.Code)
@@ -72,7 +72,7 @@ func TestNestedRepositoryWithoutACommitIsRefused(t *testing.T) {
 	repo, trace := tracedDemo(t)
 	repo.Git("init", "-q", "sub")
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	// git add -A says: error: 'sub/' does not have a commit checked out
 	requireRefused(t, result, trace, "sub/", "does not have a commit checked out")
@@ -82,7 +82,7 @@ func TestNestedRepositoryWithoutACommitIsRefused(t *testing.T) {
 // with uncommitted changes".
 func TestSubmoduleWithUncommittedChangesIsRefused(t *testing.T) {
 	t.Parallel()
-	lib := gatecubtest.NewRepo(t)
+	lib := kitsutest.NewRepo(t)
 	lib.Write("lib.txt", "lib\n")
 	lib.Git("add", "-A")
 	lib.Git("commit", "-q", "-m", "lib")
@@ -91,7 +91,7 @@ func TestSubmoduleWithUncommittedChangesIsRefused(t *testing.T) {
 	repo.Git("commit", "-q", "-m", "add vendor/lib")
 	repo.Write("vendor/lib/lib.txt", "lib, edited\n")
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	requireRefused(t, result, trace, "vendor/lib")
 	if !strings.Contains(strings.ToLower(result.Output()), "uncommitted") {

@@ -1,5 +1,5 @@
-// Package store keeps what gatecub records: runs, their logs, hook decisions and
-// the mode. Everything is under gatecub/ in the common git directory, which all
+// Package store keeps what kitsu records: runs, their logs, hook decisions and
+// the mode. Everything is under kitsu/ in the common git directory, which all
 // linked working trees of a repository share.
 package store
 
@@ -20,14 +20,14 @@ const (
 	Observe = "observe"
 )
 
-// The ages after which gatecub run removes what it recorded.
+// The ages after which kitsu run removes what it recorded.
 const (
 	LogAge    = 30 * 24 * time.Hour
 	RecordAge = 365 * 24 * time.Hour
 	tmpAge    = 24 * time.Hour
 )
 
-// Store is the directory gatecub/ of one repository.
+// Store is the directory kitsu/ of one repository.
 type Store struct {
 	Dir string
 }
@@ -35,7 +35,7 @@ type Store struct {
 // Open names the store of the repository with the given common git
 // directory. Nothing is created until something is written.
 func Open(commonDir string) *Store {
-	return &Store{Dir: filepath.Join(commonDir, "gatecub")}
+	return &Store{Dir: filepath.Join(commonDir, "kitsu")}
 }
 
 // Tmp is where copies of the index live while git works on them.

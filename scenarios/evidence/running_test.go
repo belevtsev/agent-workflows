@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // Requirement "Running checks", scenario "Both checks run".
@@ -14,7 +14,7 @@ func TestBothChecksRunInDeclarationOrder(t *testing.T) {
 	t.Parallel()
 	repo, trace := tracedDemo(t)
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	if ran := executed(t, trace); !slices.Equal(ran, []string{"unit", "lint"}) {
 		t.Errorf("scripts executed: %v, want [unit lint]", ran)
@@ -41,7 +41,7 @@ func TestSatisfiedCheckIsNotRunAgain(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := repo.Gatecub("run")
+	result := repo.Kitsu("run")
 
 	if ran := executed(t, trace); len(ran) != 0 {
 		t.Errorf("scripts executed: %v, want none", ran)
@@ -68,7 +68,7 @@ func TestOnlyTheNamedCheckRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := repo.Gatecub("run", "lint", "--force")
+	result := repo.Kitsu("run", "lint", "--force")
 
 	if ran := executed(t, trace); !slices.Equal(ran, []string{"lint"}) {
 		t.Fatalf("scripts executed: %v, want [lint]\noutput (exit status %d):\n%s", ran, result.Code, result.Output())
@@ -78,12 +78,12 @@ func TestOnlyTheNamedCheckRuns(t *testing.T) {
 // Requirement "Running checks", scenario "The environment reaches the check".
 func TestEnvironmentReachesTheCheck(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	declare(t, repo, "[[check]]\nid = \"env\"\nrun = [\"env\"]\n")
 	repo.Setenv("GIT_CONFIG_KEY_0", "user.name")
 	repo.Setenv("TOKENIZERS_PARALLELISM", "false")
 
-	result := repo.Gatecub("run", "env")
+	result := repo.Kitsu("run", "env")
 
 	record := lastRecord(t, repo, "env")
 	log, _ := record["log"].(string)
@@ -110,7 +110,7 @@ func TestUnknownCheckNameIsAUsageError(t *testing.T) {
 	t.Parallel()
 	repo, trace := tracedDemo(t)
 
-	result := repo.Gatecub("run", "nosuch")
+	result := repo.Kitsu("run", "nosuch")
 
 	if result.Code != 2 {
 		t.Errorf("exit status %d, want 2", result.Code)

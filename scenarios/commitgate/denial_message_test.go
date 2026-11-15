@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // unitLog is the log of the only run record of unit, as an absolute path.
@@ -51,8 +51,8 @@ func TestWhatADenialSays(t *testing.T) {
 		t.Errorf("the reason does not hold the log of the failed run %s:\n%s", log, reason)
 	}
 	assertLineWith(t, reason, "lint", "not run")
-	if !strings.Contains(reason, "gatecub run") {
-		t.Errorf("the reason does not hold the command gatecub run:\n%s", reason)
+	if !strings.Contains(reason, "kitsu run") {
+		t.Errorf("the reason does not hold the command kitsu run:\n%s", reason)
 	}
 }
 
@@ -60,7 +60,7 @@ func TestWhatADenialSays(t *testing.T) {
 func TestWhatADenialDoesNotSay(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	var denials []gatecubtest.Result
+	var denials []kitsutest.Result
 
 	// A commit of content without a run.
 	g.Write("src/app.txt", "ok")
@@ -72,10 +72,10 @@ func TestWhatADenialDoesNotSay(t *testing.T) {
 	denials = append(denials, g.commitDenied("pre-commit", "commit", "-a", "-m", "change"))
 
 	// A commit the hook cannot judge.
-	g.Write("gatecub.toml", gatecubtest.DemoDeclaration+"tiemout = \"5m\"\n")
-	g.Git("add", "gatecub.toml")
+	g.Write("kitsu.toml", kitsutest.DemoDeclaration+"tiemout = \"5m\"\n")
+	g.Git("add", "kitsu.toml")
 	denials = append(denials, g.commitDenied("pre-commit", "commit", "-m", "change"))
-	g.Git("checkout", "-q", "HEAD", "--", "gatecub.toml")
+	g.Git("checkout", "-q", "HEAD", "--", "kitsu.toml")
 
 	// A push of a commit made around the hook.
 	g.commitNoVerify("skip")
@@ -104,7 +104,7 @@ func TestWhatADenialDoesNotSay(t *testing.T) {
 func TestRemovedCheckIsNoticed(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Write("gatecub.toml", "version = 1\n\n[[check]]\nid = \"lint\"\nrun = [\"sh\", \"lint.sh\"]\n")
+	g.Write("kitsu.toml", "version = 1\n\n[[check]]\nid = \"lint\"\nrun = [\"sh\", \"lint.sh\"]\n")
 	g.mustRun(0)
 	result := g.commitRecorded("commit", "-a", "-m", "change")
 	assertLineWith(t, result.Stderr, "unit", "no longer declared")
@@ -114,13 +114,13 @@ func TestRemovedCheckIsNoticed(t *testing.T) {
 func TestAddedCheckIsNotNoticed(t *testing.T) {
 	t.Parallel()
 	g := newGate(t)
-	g.Write("gatecub.toml", gatecubtest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", \"exit 0\"]\n")
-	g.Git("add", "gatecub.toml")
+	g.Write("kitsu.toml", kitsutest.DemoDeclaration+"\n[[check]]\nid = \"build\"\nrun = [\"sh\", \"-c\", \"exit 0\"]\n")
+	g.Git("add", "kitsu.toml")
 	g.mustRun(0)
 	g.resetExits()
 	result := g.TryGit("commit", "-m", "change")
 	if g.exits != "" && len(g.hookExits("pre-commit")) == 0 {
-		t.Errorf("the pre-commit hook did not call gatecub hook pre-commit:\n%s", result.Output())
+		t.Errorf("the pre-commit hook did not call kitsu hook pre-commit:\n%s", result.Output())
 	}
 	output := result.Output()
 	if strings.Contains(output, "no longer declared") || namesWord(output, "build") {

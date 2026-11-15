@@ -1,5 +1,5 @@
 // Package shellwords reads a shell command line as simple commands of words,
-// and says whether a call in it skips git's hooks or turns the gate of gatecub
+// and says whether a call in it skips git's hooks or turns the gate of kitsu
 // off. It runs nothing.
 package shellwords
 
@@ -91,7 +91,7 @@ func simple(words []string, depth int) string {
 			return judge(shellCommand(words[i+1:]), depth-1)
 		case name == "eval" && depth > 0:
 			return judge(strings.Join(words[i+1:], " "), depth-1)
-		case name == "gatecub" && len(words) > i+1 && (words[i+1] == "uninstall" || words[i+1] == "init" && slices.ContainsFunc(words[i+2:], observes)):
+		case name == "kitsu" && len(words) > i+1 && (words[i+1] == "uninstall" || words[i+1] == "init" && slices.ContainsFunc(words[i+2:], observes)):
 			return "runs `" + strings.Join(words[i:], " ") + "`"
 		case strings.Contains(w, "=") && strings.Contains(strings.ToLower(w), "core.hookspath"):
 			return "sets core.hooksPath in the environment of git"
@@ -103,7 +103,7 @@ func simple(words []string, depth int) string {
 	return ""
 }
 
-// observes says whether a word of `gatecub init` is the option that makes the
+// observes says whether a word of `kitsu init` is the option that makes the
 // hooks allow everything, in any of the spellings the program reads.
 func observes(word string) bool { return strings.HasPrefix(strings.TrimLeft(word, "-"), "observe") }
 

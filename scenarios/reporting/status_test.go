@@ -15,13 +15,13 @@ func TestEverythingIsSatisfied(t *testing.T) {
 	repo := gated(t)
 	checked(t, repo)
 
-	result := repo.Gatecub("status")
+	result := repo.Kitsu("status")
 	if result.Code != 0 {
-		t.Errorf("gatecub status exited %d, want 0", result.Code)
+		t.Errorf("kitsu status exited %d, want 0", result.Code)
 	}
 	for _, id := range []string{"unit", "lint"} {
 		if _, ok := lineWith(result.Stdout, id, "satisfied"); !ok {
-			t.Errorf("gatecub status prints no line with %q as satisfied:\n%s", id, result.Output())
+			t.Errorf("kitsu status prints no line with %q as satisfied:\n%s", id, result.Output())
 		}
 	}
 }
@@ -31,30 +31,30 @@ func TestSomethingIsMissing(t *testing.T) {
 	t.Parallel()
 	repo := gated(t)
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.Gatecub("run"); result.Code == 0 {
-		t.Fatalf("gatecub run exited 0 on broken content:\n%s", result.Output())
+	if result := repo.Kitsu("run"); result.Code == 0 {
+		t.Fatalf("kitsu run exited 0 on broken content:\n%s", result.Output())
 	}
 	object, _ := statusJSON(t, repo)
 	log := object.check(t, "unit").Log
 	if log == "" {
-		t.Fatalf("gatecub status --json gives no log for unit: %+v", object.Checks)
+		t.Fatalf("kitsu status --json gives no log for unit: %+v", object.Checks)
 	}
 	if _, err := os.Stat(log); err != nil {
 		t.Errorf("the log of unit cannot be read: %v", err)
 	}
 
-	result := repo.Gatecub("status")
+	result := repo.Kitsu("status")
 	if result.Code != 5 {
-		t.Errorf("gatecub status exited %d, want 5", result.Code)
+		t.Errorf("kitsu status exited %d, want 5", result.Code)
 	}
 	if _, ok := lineWith(result.Stdout, "unit", "failed", log); !ok {
-		t.Errorf("gatecub status prints no line with unit as failed and the log %s:\n%s", log, result.Output())
+		t.Errorf("kitsu status prints no line with unit as failed and the log %s:\n%s", log, result.Output())
 	}
 	if _, ok := lineWith(result.Stdout, "lint", "satisfied"); !ok {
-		t.Errorf("gatecub status prints no line with lint as satisfied:\n%s", result.Output())
+		t.Errorf("kitsu status prints no line with lint as satisfied:\n%s", result.Output())
 	}
-	if !strings.Contains(result.Output(), "gatecub run") {
-		t.Errorf("gatecub status does not print the command `gatecub run`:\n%s", result.Output())
+	if !strings.Contains(result.Output(), "kitsu run") {
+		t.Errorf("kitsu status does not print the command `kitsu run`:\n%s", result.Output())
 	}
 }
 
@@ -62,20 +62,20 @@ func TestSomethingIsMissing(t *testing.T) {
 func TestNoChecksAreDeclared(t *testing.T) {
 	t.Parallel()
 	repo := gated(t)
-	repo.Write("gatecub.toml", "version = 1\n")
+	repo.Write("kitsu.toml", "version = 1\n")
 
-	result := repo.Gatecub("status")
+	result := repo.Kitsu("status")
 	if result.Code != 0 {
-		t.Errorf("gatecub status exited %d, want 0", result.Code)
+		t.Errorf("kitsu status exited %d, want 0", result.Code)
 	}
 	// The spec gives no wording; the output must say "no check(s)" and
 	// that commits are "allowed".
 	text := strings.ToLower(result.Output())
 	if !strings.Contains(text, "no check") {
-		t.Errorf("gatecub status does not say that no checks are declared:\n%s", result.Output())
+		t.Errorf("kitsu status does not say that no checks are declared:\n%s", result.Output())
 	}
 	if !strings.Contains(text, "every commit") || !strings.Contains(text, "allowed") {
-		t.Errorf("gatecub status does not say that every commit is allowed:\n%s", result.Output())
+		t.Errorf("kitsu status does not say that every commit is allowed:\n%s", result.Output())
 	}
 }
 
@@ -97,8 +97,8 @@ func TestTheIndexFileIsNotRewritten(t *testing.T) {
 	// system with a coarse clock.
 	time.Sleep(20 * time.Millisecond)
 
-	if result := repo.Gatecub("status"); result.Code != 0 {
-		t.Errorf("gatecub status exited %d in the checked state, want 0:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("status"); result.Code != 0 {
+		t.Errorf("kitsu status exited %d in the checked state, want 0:\n%s", result.Code, result.Output())
 	}
 	after, err := os.ReadFile(index)
 	if err != nil {
@@ -109,10 +109,10 @@ func TestTheIndexFileIsNotRewritten(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(before, after) {
-		t.Errorf("gatecub status changed the bytes of .git/index")
+		t.Errorf("kitsu status changed the bytes of .git/index")
 	}
 	if !afterInfo.ModTime().Equal(beforeInfo.ModTime()) {
-		t.Errorf("gatecub status changed the modification time of .git/index from %v to %v", beforeInfo.ModTime(), afterInfo.ModTime())
+		t.Errorf("kitsu status changed the modification time of .git/index from %v to %v", beforeInfo.ModTime(), afterInfo.ModTime())
 	}
 }
 
@@ -127,9 +127,9 @@ func TestPartOfTheWorkIsStaged(t *testing.T) {
 	checked(t, repo)
 	repo.Git("add", "README.md")
 
-	result := repo.Gatecub("status")
+	result := repo.Kitsu("status")
 	if result.Code != 0 {
-		t.Errorf("gatecub status exited %d, want 0", result.Code)
+		t.Errorf("kitsu status exited %d, want 0", result.Code)
 	}
 	// The spec gives no wording: src/app.txt must be listed after the words
 	// "not staged", and a line must say that a commit of the index would be
@@ -139,13 +139,13 @@ func TestPartOfTheWorkIsStaged(t *testing.T) {
 		return strings.TrimSpace(line) == "src/app.txt"
 	})
 	if !found || !listed {
-		t.Errorf("gatecub status does not list src/app.txt as not staged:\n%s", result.Output())
+		t.Errorf("kitsu status does not list src/app.txt as not staged:\n%s", result.Output())
 	}
 	if line, ok := lineWith(result.Stdout, "README.md"); ok {
-		t.Errorf("gatecub status lists the staged README.md: %q\n%s", line, result.Output())
+		t.Errorf("kitsu status lists the staged README.md: %q\n%s", line, result.Output())
 	}
 	if _, ok := lineWith(result.Stdout, "index", "denied"); !ok {
-		t.Errorf("gatecub status does not say that a commit of the index alone would be denied:\n%s", result.Output())
+		t.Errorf("kitsu status does not say that a commit of the index alone would be denied:\n%s", result.Output())
 	}
 }
 
@@ -157,16 +157,16 @@ func TestACloneWithoutHooks(t *testing.T) {
 	clone := repo.In(t.TempDir() + "/clone")
 	repo.Git("clone", "-q", repo.Dir, clone.Dir)
 
-	result := clone.Gatecub("status")
+	result := clone.Kitsu("status")
 	// The spec gives no wording: one line must be a warning that speaks of
-	// the hooks and names `gatecub init`.
-	if _, ok := lineWith(strings.ToLower(result.Output()), "warn", "hook", "gatecub init"); !ok {
-		t.Errorf("gatecub status in the clone does not warn about the hooks and name `gatecub init`:\n%s", result.Output())
+	// the hooks and names `kitsu init`.
+	if _, ok := lineWith(strings.ToLower(result.Output()), "warn", "hook", "kitsu init"); !ok {
+		t.Errorf("kitsu status in the clone does not warn about the hooks and name `kitsu init`:\n%s", result.Output())
 	}
 }
 
 // Requirement "Gate state", scenario "A hooks directory that does not call
-// `gatecub`".
+// `kitsu`".
 func TestAHooksDirectoryThatDoesNotCallCw(t *testing.T) {
 	t.Parallel()
 	repo := gated(t)
@@ -186,8 +186,8 @@ func TestTheObjectForAFailedCheck(t *testing.T) {
 	t.Parallel()
 	repo := gated(t)
 	repo.Write("src/app.txt", "broken\n")
-	if result := repo.Gatecub("run"); result.Code == 0 {
-		t.Fatalf("gatecub run exited 0 on broken content:\n%s", result.Output())
+	if result := repo.Kitsu("run"); result.Code == 0 {
+		t.Fatalf("kitsu run exited 0 on broken content:\n%s", result.Output())
 	}
 
 	object, result := statusJSON(t, repo)

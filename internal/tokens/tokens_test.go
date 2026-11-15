@@ -10,19 +10,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/change"
-	"github.com/belevtsev/gatecub/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/change"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 func TestNoticeRole(t *testing.T) {
 	t.Parallel()
 	for name, want := range map[string]string{
-		"architect":         "architect",
-		"gatecub:architect": "architect",
-		"a:b:git":           "git",
-		"Explore":           "",
-		"gatecub:":          "",
-		"":                  "",
+		"architect":       "architect",
+		"kitsu:architect": "architect",
+		"a:b:git":         "git",
+		"Explore":         "",
+		"kitsu:":          "",
+		"":                "",
 	} {
 		if got := noticeRole(name); got != want {
 			t.Errorf("noticeRole(%q) = %q, want %q", name, got, want)
@@ -219,7 +219,7 @@ func TestCodexBriefFollowsTheHostContext(t *testing.T) {
 		`{"type":"input_text","text":"# AGENTS.md instructions for /x\n\nWrite well."},{"type":"input_text","text":"<environment_context>\n</environment_context>"}]}}`
 	r := readCodex(codexFile(t, `{"type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"rules"}]}}`,
 		context, codexUser("<environment_context>\n  <cwd>/x</cwd>\n</environment_context>"), codexModel("m"),
-		codexUser("gatecub-task: one code 1\nWrite the code."), codexCount(a, a)))
+		codexUser("kitsu-task: one code 1\nWrite the code."), codexCount(a, a)))
 	if label, ok := ParseLabel(r.brief); !ok || label.Task != "one" {
 		t.Errorf("brief %q gives no label of the task one", r.brief)
 	}
@@ -233,7 +233,7 @@ func TestRecordKeepsTheRoleOfTheNotice(t *testing.T) {
 	if err := os.WriteFile(empty, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	notice := Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "gatecub:architect"}
+	notice := Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "kitsu:architect"}
 	if err := Record(filepath.Join(dir, "tokens"), Claude, notice); err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +316,7 @@ func TestClaudeRecordOfVersion2(t *testing.T) {
 	a := Counts{Input: 3, CacheWrite: 500, CacheRead: 20000, Output: 40}
 	b := Counts{Input: 1, CacheWrite: 60, CacheRead: 20500, Output: 300}
 	lines := []string{
-		`{"parentUuid":null,"isSidechain":true,"agentId":"a1","type":"user","message":{"role":"user","content":"gatecub-task: one code 1\nWrite it."},"uuid":"u","timestamp":"t"}`,
+		`{"parentUuid":null,"isSidechain":true,"agentId":"a1","type":"user","message":{"role":"user","content":"kitsu-task: one code 1\nWrite it."},"uuid":"u","timestamp":"t"}`,
 		`{"type":"api-request","id":"r","sessionId":"s","agentId":"a1","params":{},"timestamp":"t"}`,
 		claudeLine("msg_a", "claude-opus-5-5", "tool_use", a), claudeLine("msg_a", "claude-opus-5-5", "tool_use", a), claudeLine("msg_a", "claude-opus-5-5", "tool_use", a),
 		`{"type":"user","isSidechain":true,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t","content":"the usage of x"}]},"toolUseResult":{"usage":{"input_tokens":9}}}`,
@@ -343,7 +343,7 @@ func TestClaudeRecordOfVersion2(t *testing.T) {
 func TestClaudeRecordWithADamagedLine(t *testing.T) {
 	t.Parallel()
 	const (
-		brief  = `{"type":"user","message":{"role":"user","content":"gatecub-task: one code 1\nx"}}`
+		brief  = `{"type":"user","message":{"role":"user","content":"kitsu-task: one code 1\nx"}}`
 		answer = `{"type":"assistant","message":{"id":"a","model":"m","usage":{"input_tokens":1,"output_tokens":2}}}`
 	)
 	for name, c := range map[string]struct {
@@ -421,7 +421,7 @@ func TestOneVocabulary(t *testing.T) {
 		}
 	}
 	for _, id := range roles.IDs() {
-		if noticeRole("gatecub:"+id) != id {
+		if noticeRole("kitsu:"+id) != id {
 			t.Errorf("a notice of the role %s is not read as that role", id)
 		}
 	}
@@ -435,7 +435,7 @@ func TestRecordReadsStoredStartsAgain(t *testing.T) {
 	dir := t.TempDir()
 	store := filepath.Join(dir, "tokens")
 	agent, main := filepath.Join(dir, "agent-a1.jsonl"), filepath.Join(dir, "s.jsonl")
-	brief := `{"type":"user","message":{"role":"user","content":"gatecub-task: one code 1\nx"}}`
+	brief := `{"type":"user","message":{"role":"user","content":"kitsu-task: one code 1\nx"}}`
 	answer := func(id string) string {
 		return `{"type":"assistant","message":{"id":"` + id + `","model":"m","usage":{"input_tokens":1,"output_tokens":2}}}`
 	}
@@ -498,8 +498,8 @@ func TestRecordIgnoresInternalAgentsOfClaude(t *testing.T) {
 	}
 }
 
-// What `gatecub tokens record` stores is for its user alone: the folders it
-// creates, the folder of gatecub among them, and the file of a start.
+// What `kitsu tokens record` stores is for its user alone: the folders it
+// creates, the folder of kitsu among them, and the file of a start.
 func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -510,8 +510,8 @@ func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 	if err := os.WriteFile(empty, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	store := filepath.Join(dir, "gatecub", "tokens")
-	if err := Record(store, Claude, Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "gatecub:architect"}); err != nil {
+	store := filepath.Join(dir, "kitsu", "tokens")
+	if err := Record(store, Claude, Notice{Session: "s", AgentID: "a1", AgentTranscript: empty, AgentType: "kitsu:architect"}); err != nil {
 		t.Fatal(err)
 	}
 	files, err := filepath.Glob(filepath.Join(store, "s", "*.json"))
@@ -519,7 +519,7 @@ func TestRecordKeepsItsFoldersPrivate(t *testing.T) {
 		t.Fatalf("stored the files %v (%v), want one", files, err)
 	}
 	for path, want := range map[string]os.FileMode{
-		filepath.Join(dir, "gatecub"): 0o700, store: 0o700, filepath.Join(store, "s"): 0o700, files[0]: 0o600,
+		filepath.Join(dir, "kitsu"): 0o700, store: 0o700, filepath.Join(store, "s"): 0o700, files[0]: 0o600,
 	} {
 		info, err := os.Stat(path)
 		if err != nil {

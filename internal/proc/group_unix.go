@@ -65,7 +65,7 @@ const (
 )
 
 // ownGroup puts the command in a new process group whose id is its pid, so a
-// terminal's interrupt reaches gatecub alone and Run can stop the whole group.
+// terminal's interrupt reaches kitsu alone and Run can stop the whole group.
 func ownGroup(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

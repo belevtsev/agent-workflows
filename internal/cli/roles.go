@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/belevtsev/gatecub/v3/internal/gate"
-	"github.com/belevtsev/gatecub/v3/internal/gitx"
-	"github.com/belevtsev/gatecub/v3/internal/roles"
+	"github.com/belevtsev/kitsu/v3/internal/gate"
+	"github.com/belevtsev/kitsu/v3/internal/gitx"
+	"github.com/belevtsev/kitsu/v3/internal/roles"
 )
 
 // taskName is the form of a task's name: lower-case words joined by hyphens.
@@ -35,7 +35,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) > 0 || p.dash {
-		return usagef("usage: gatecub roles [--json], gatecub roles check <role> --from <tree> [--task <task>] [--finalize], or gatecub roles text <role>")
+		return usagef("usage: kitsu roles [--json], kitsu roles check <role> --from <tree> [--task <task>] [--finalize], or kitsu roles text <role>")
 	}
 	config, err := rolesConfig(ctx)
 	if err != nil {
@@ -68,7 +68,7 @@ func runRoles(ctx context.Context, cfg Config, args []string) error {
 	return nil
 }
 
-// rolesConfig reads gatecub-roles.toml of the repository the command runs in.
+// rolesConfig reads kitsu-roles.toml of the repository the command runs in.
 // Outside a repository the roles have their defaults.
 func rolesConfig(ctx context.Context) (*roles.Config, error) {
 	dir, err := os.Getwd()
@@ -117,7 +117,7 @@ func runRolesText(cfg Config, args []string) error {
 		return err
 	}
 	if len(p.pos) != 1 || p.dash {
-		return usagef("usage: gatecub roles text <role>; the roles are %s, and %s", strings.Join(roles.IDs(), ", "), roles.Coordinator)
+		return usagef("usage: kitsu roles text <role>; the roles are %s, and %s", strings.Join(roles.IDs(), ", "), roles.Coordinator)
 	}
 	text, err := roles.Text(p.pos[0])
 	if err != nil {
@@ -139,7 +139,7 @@ func runRolesCheck(ctx context.Context, cfg Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	const usage = "usage: gatecub roles check <role> --from <tree> [--task <task>] [--finalize]"
+	const usage = "usage: kitsu roles check <role> --from <tree> [--task <task>] [--finalize]"
 	switch {
 	case len(p.pos) != 1 || p.dash || *from == "":
 		return usagef("%s", usage)

@@ -55,7 +55,7 @@ func TestSpecificationChangesAfterItsApproval(t *testing.T) {
 	_, text := r.assertStage("spec")
 	lower := strings.ToLower(text)
 	if !strings.Contains(lower, "review") || !strings.Contains(lower, "approv") {
-		t.Errorf("gatecub change status does not say that the review and the approval of the specification were given for other content:\n%s", text)
+		t.Errorf("kitsu change status does not say that the review and the approval of the specification were given for other content:\n%s", text)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestCodeChangesAfterItsReview(t *testing.T) {
 	r.Write("src/app.txt", "ok\nmore\n")
 	_, text := r.assertStage("review")
 	if !lineWith(strings.ToLower(text), "code", "review") {
-		t.Errorf("gatecub change status does not say that the review of the code was given for other content:\n%s", text)
+		t.Errorf("kitsu change status does not say that the review of the code was given for other content:\n%s", text)
 	}
 }
 
@@ -81,7 +81,7 @@ func TestCheckedTaskDoesNotUndoApprovalOfDesign(t *testing.T) {
 	status, text := r.assertStage("code")
 	for _, out := range []string{strings.ToLower(text), strings.ToLower(status.missingText())} {
 		if lineWith(out, "design", "review") || lineWith(out, "design", "approv") {
-			t.Errorf("gatecub change status names the review or the approval of the design:\n%s", out)
+			t.Errorf("kitsu change status names the review or the approval of the design:\n%s", out)
 		}
 	}
 }

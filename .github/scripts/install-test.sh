@@ -2,7 +2,7 @@
 # install-test.sh TAG REVISION [ARCHIVES]
 #
 # Follows the first install instruction of docs/release-install.md for Linux and macOS, on a
-# PATH that holds no go, and exits 0 only when `gatecub version` then prints TAG
+# PATH that holds no go, and exits 0 only when `kitsu version` then prints TAG
 # and REVISION.
 #
 # With ARCHIVES, a directory that holds the archives and SHA256SUMS, the
@@ -81,7 +81,7 @@ if [ -z "$archives" ]; then
 else
 	os=$(uname -s | tr '[:upper:]' '[:lower:]')
 	arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
-	archive=gatecub_${tag}_${os}_${arch}.tar.gz
+	archive=kitsu_${tag}_${os}_${arch}.tar.gz
 	mkdir "$work/good" "$work/damaged"
 	cp "$archives/$archive" "$archives/SHA256SUMS" "$work/good/" ||
 		fail "$archives does not hold $archive and SHA256SUMS."
@@ -95,7 +95,7 @@ else
 	printf "\\$(printf '%03o' $(((old + 1) % 256)))" |
 		dd of="$work/damaged/$archive" bs=1 seek="$at" conv=notrunc 2>/dev/null
 	cmp -s "$work/good/$archive" "$work/damaged/$archive" && fail "The damaged copy does not differ."
-	tar -xzf "$work/damaged/$archive" -O gatecub >/dev/null 2>&1 ||
+	tar -xzf "$work/damaged/$archive" -O kitsu >/dev/null 2>&1 ||
 		fail "The damaged copy does not unpack, so it cannot show that the checksum is checked."
 
 	python3 -m http.server "$port" --bind 127.0.0.1 --directory "$work" >/dev/null 2>&1 &
@@ -112,15 +112,15 @@ else
 fi
 
 follow good || fail "The install instruction failed."
-printed=$("$work/home-good/.local/bin/gatecub" version)
+printed=$("$work/home-good/.local/bin/kitsu" version)
 echo "$printed"
-echo "$printed" | grep -qx "gatecub $tag" || fail "gatecub version does not print the tag $tag."
-echo "$printed" | grep -qx "revision $revision" || fail "gatecub version does not print the revision $revision."
+echo "$printed" | grep -qx "kitsu $tag" || fail "kitsu version does not print the tag $tag."
+echo "$printed" | grep -qx "revision $revision" || fail "kitsu version does not print the revision $revision."
 
 if [ -n "$archives" ]; then
 	if follow damaged; then
 		fail "The install instruction succeeded with a damaged archive."
 	fi
-	[ ! -e "$work/home-damaged/.local/bin/gatecub" ] || fail "gatecub was installed from a damaged archive."
+	[ ! -e "$work/home-damaged/.local/bin/kitsu" ] || fail "kitsu was installed from a damaged archive."
 	echo "A damaged archive was refused and nothing was installed."
 fi

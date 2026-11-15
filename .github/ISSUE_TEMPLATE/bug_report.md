@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in gatecub or its plugin does not work as documented
+about: Something in kitsu or its plugin does not work as documented
 labels: bug
 ---
 
@@ -15,7 +15,7 @@ labels: bug
 
 ## Environment
 
-- `gatecub` version (`gatecub version`):
+- `kitsu` version (`kitsu version`):
 - OS and architecture:
 - Agent (Codex or Claude Code) and version:
 

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // hooksDir is the hooks directory of the repository's common git directory.
-func hooksDir(t *testing.T, repo *gatecubtest.Repo) string {
+func hooksDir(t *testing.T, repo *kitsutest.Repo) string {
 	t.Helper()
 	common := repo.Git("rev-parse", "--git-common-dir")
 	if !filepath.IsAbs(common) {
@@ -53,7 +53,7 @@ func fileSum(t *testing.T, path string) string {
 // Requirement "Hook installation", scenario "Hooks are installed once".
 func TestHooksAreInstalledOnce(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	dir := hooksDir(t, repo)
 	for _, name := range hookNames {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
@@ -61,15 +61,15 @@ func TestHooksAreInstalledOnce(t *testing.T) {
 		}
 	}
 
-	if result := repo.Gatecub("init"); result.Code != 0 {
-		t.Fatalf("the first gatecub init exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("init"); result.Code != 0 {
+		t.Fatalf("the first kitsu init exited %d:\n%s", result.Code, result.Output())
 	}
 	first := map[string]string{}
 	for _, name := range hookNames {
 		path := filepath.Join(dir, name)
 		info, err := os.Stat(path)
 		if err != nil {
-			t.Errorf("the hook %s is missing after gatecub init: %v", name, err)
+			t.Errorf("the hook %s is missing after kitsu init: %v", name, err)
 			continue
 		}
 		if runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
@@ -78,18 +78,18 @@ func TestHooksAreInstalledOnce(t *testing.T) {
 		first[name] = fileSum(t, path) + " " + info.Mode().String()
 	}
 
-	if result := repo.Gatecub("init"); result.Code != 0 {
-		t.Fatalf("the second gatecub init exited %d:\n%s", result.Code, result.Output())
+	if result := repo.Kitsu("init"); result.Code != 0 {
+		t.Fatalf("the second kitsu init exited %d:\n%s", result.Code, result.Output())
 	}
 	for _, name := range hookNames {
 		path := filepath.Join(dir, name)
 		info, err := os.Stat(path)
 		if err != nil {
-			t.Errorf("the hook %s is missing after the second gatecub init: %v", name, err)
+			t.Errorf("the hook %s is missing after the second kitsu init: %v", name, err)
 			continue
 		}
 		if got := fileSum(t, path) + " " + info.Mode().String(); got != first[name] {
-			t.Errorf("the hook %s changed with the second gatecub init: %s, then %s", name, first[name], got)
+			t.Errorf("the hook %s changed with the second kitsu init: %s, then %s", name, first[name], got)
 		}
 	}
 }
@@ -97,15 +97,15 @@ func TestHooksAreInstalledOnce(t *testing.T) {
 // Requirement "Hooks of other tools", scenario "An existing pre-commit hook".
 func TestExistingPreCommitHookIsLeftAlone(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	dir := hooksDir(t, repo)
 	own := filepath.Join(dir, "pre-commit")
 	writeProgram(t, own, "#!/bin/sh\n# written by another tool\nexit 0\n")
 	before := fileSum(t, own)
 
-	result := repo.Gatecub("init")
+	result := repo.Kitsu("init")
 	if result.Code != 4 {
-		t.Errorf("gatecub init exited %d, want 4", result.Code)
+		t.Errorf("kitsu init exited %d, want 4", result.Code)
 	}
 	if got := fileSum(t, own); got != before {
 		t.Errorf("the SHA-256 of pre-commit changed from %s to %s", before, got)
@@ -115,8 +115,8 @@ func TestExistingPreCommitHookIsLeftAlone(t *testing.T) {
 			t.Errorf("the hook %s is not installed: %v", name, err)
 		}
 	}
-	if !holdsLine(result.Output(), `gatecub hook pre-commit "$@"`) {
-		t.Errorf("the output does not hold the line `gatecub hook pre-commit \"$@\"`:\n%s", result.Output())
+	if !holdsLine(result.Output(), `kitsu hook pre-commit "$@"`) {
+		t.Errorf("the output does not hold the line `kitsu hook pre-commit \"$@\"`:\n%s", result.Output())
 	}
 	if !strings.Contains(result.Output(), "last") {
 		t.Errorf("the output does not say that the line must come last:\n%s", result.Output())
@@ -138,17 +138,17 @@ func holdsLine(text, want string) bool {
 // is left to its owner".
 func TestConfiguredHooksDirectoryIsLeftToItsOwner(t *testing.T) {
 	t.Parallel()
-	repo := gatecubtest.Demo(t)
+	repo := kitsutest.Demo(t)
 	repo.Git("config", "core.hooksPath", ".githooks")
 	dir := hooksDir(t, repo)
 	before := listDir(t, dir)
 
-	result := repo.Gatecub("init")
+	result := repo.Kitsu("init")
 	if result.Code != 4 {
-		t.Errorf("gatecub init exited %d, want 4", result.Code)
+		t.Errorf("kitsu init exited %d, want 4", result.Code)
 	}
 	if names := listDir(t, repo.Path(".githooks")); len(names) > 0 {
-		t.Errorf("gatecub init created files in .githooks/: %v", names)
+		t.Errorf("kitsu init created files in .githooks/: %v", names)
 	}
 	if after := listDir(t, dir); strings.Join(after, " ") != strings.Join(before, " ") {
 		t.Errorf("the hooks directory of the git directory changed from %v to %v", before, after)
@@ -156,34 +156,34 @@ func TestConfiguredHooksDirectoryIsLeftToItsOwner(t *testing.T) {
 	for _, name := range hookNames {
 		count := 0
 		for _, line := range strings.Split(result.Output(), "\n") {
-			if strings.Contains(line, "gatecub hook "+name+" ") || strings.HasSuffix(strings.TrimSpace(line), "gatecub hook "+name) {
+			if strings.Contains(line, "kitsu hook "+name+" ") || strings.HasSuffix(strings.TrimSpace(line), "kitsu hook "+name) {
 				count++
 			}
 		}
 		if count != 1 {
-			t.Errorf("the output holds %d `gatecub hook %s` lines, want 1:\n%s", count, name, result.Output())
+			t.Errorf("the output holds %d `kitsu hook %s` lines, want 1:\n%s", count, name, result.Output())
 		}
 	}
 }
 
 // Requirement "Hooks of other tools", scenario "A formatter that runs before
-// `gatecub` in a shared hook".
-func TestFormatterBeforeGatecubInSharedHook(t *testing.T) {
+// `kitsu` in a shared hook".
+func TestFormatterBeforeKitsuInSharedHook(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("the formatter hook is a POSIX shell script")
 	}
-	// The fixture without gatecub init: the formatter's hook comes first.
-	repo := gatecubtest.Demo(t)
+	// The fixture without kitsu init: the formatter's hook comes first.
+	repo := kitsutest.Demo(t)
 	g := &gate{Repo: repo, t: t}
-	g.wrapGatecub()
+	g.wrapKitsu()
 	formatter := "#!/bin/sh\n" +
 		"# another tool's pre-commit: it normalises src/app.txt\n" +
 		"printf 'ok\\n\\n' > src/app.txt\n" +
 		"git add src/app.txt\n" +
-		"gatecub hook pre-commit \"$@\"\n"
+		"kitsu hook pre-commit \"$@\"\n"
 	writeProgram(t, filepath.Join(hooksDir(t, repo), "pre-commit"), formatter)
-	repo.Gatecub("init")
+	repo.Kitsu("init")
 
 	repo.Write("README.md", "# demo\n\nchecked\n")
 	g.checked()

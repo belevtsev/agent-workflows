@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/belevtsev/gatecub/v3/internal/gate"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/gate"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 // The text a session starts with has a limit, in every state of the gate.
@@ -37,10 +37,10 @@ func TestContextTextSaysFirstWhetherTheHooksRun(t *testing.T) {
 		start      string // what the text starts with
 		holds      string // what it says further on
 	}{
-		{"installed", store.Enforce, gate.Installed, false, "This repository is gated by gatecub.", "The hooks are installed.\n"},
-		{"observing", store.Observe, gate.Installed, false, "This repository is gated by gatecub.", "The gate only observes here"},
-		{"not installed", store.Enforce, gate.Missing, false, "This repository declares checks for gatecub, but the hooks are not installed in this clone, so nothing is gated here yet; `gatecub init` installs them.", "Once they are installed, git allows a commit"},
-		{"core.hooksPath", store.Enforce, gate.Missing, true, "This repository declares checks for gatecub, but the hooks git runs in this clone (core.hooksPath) do not all call gatecub, so nothing is gated here yet;", "Once they call gatecub, git allows a commit"},
+		{"installed", store.Enforce, gate.Installed, false, "This repository is gated by kitsu.", "The hooks are installed.\n"},
+		{"observing", store.Observe, gate.Installed, false, "This repository is gated by kitsu.", "The gate only observes here"},
+		{"not installed", store.Enforce, gate.Missing, false, "This repository declares checks for kitsu, but the hooks are not installed in this clone, so nothing is gated here yet; `kitsu init` installs them.", "Once they are installed, git allows a commit"},
+		{"core.hooksPath", store.Enforce, gate.Missing, true, "This repository declares checks for kitsu, but the hooks git runs in this clone (core.hooksPath) do not all call kitsu, so nothing is gated here yet;", "Once they call kitsu, git allows a commit"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

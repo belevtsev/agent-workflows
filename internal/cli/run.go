@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/decl"
-	"github.com/belevtsev/gatecub/v3/internal/evidence"
-	"github.com/belevtsev/gatecub/v3/internal/runner"
-	"github.com/belevtsev/gatecub/v3/internal/store"
+	"github.com/belevtsev/kitsu/v3/internal/decl"
+	"github.com/belevtsev/kitsu/v3/internal/evidence"
+	"github.com/belevtsev/kitsu/v3/internal/runner"
+	"github.com/belevtsev/kitsu/v3/internal/store"
 )
 
 func runRun(ctx context.Context, cfg Config, args []string) error {
@@ -25,7 +25,7 @@ func runRun(ctx context.Context, cfg Config, args []string) error {
 		return err
 	}
 	if p.dash {
-		return usagef("run takes check ids only; usage: gatecub run [<id>...] [--force] [--base <rev>]")
+		return usagef("run takes check ids only; usage: kitsu run [<id>...] [--force] [--base <rev>]")
 	}
 	s, err := open(ctx, cfg, true)
 	if err != nil {
@@ -64,7 +64,7 @@ func runRun(ctx context.Context, cfg Config, args []string) error {
 		}
 	}
 	if failed > 0 {
-		fmt.Fprintf(cfg.Out, "not verified: %d of %d checks did not pass; fix what each log shows, then run `gatecub run` again\n", failed, len(ids))
+		fmt.Fprintf(cfg.Out, "not verified: %d of %d checks did not pass; fix what each log shows, then run `kitsu run` again\n", failed, len(ids))
 		return exit(ExitNotVerified)
 	}
 	return s.summary(ctx, base)
@@ -79,7 +79,7 @@ func selectChecks(verdict *evidence.Verdict, named []string) ([]string, error) {
 	wanted := map[string]bool{}
 	for _, id := range named {
 		if !declared[id] {
-			return nil, usagef("no check `%s` is declared in gatecub.toml", id)
+			return nil, usagef("no check `%s` is declared in kitsu.toml", id)
 		}
 		wanted[id] = true
 	}
@@ -106,7 +106,7 @@ func (s *session) runOne(ctx context.Context, id string, force bool, base *evide
 		}
 	}
 	if check == nil {
-		return false, failf("gatecub.toml changed during the run: the check `%s` is no longer declared", id)
+		return false, failf("kitsu.toml changed during the run: the check `%s` is no longer declared", id)
 	}
 	s.warn(verdict.Warnings)
 	out := s.cfg.Out

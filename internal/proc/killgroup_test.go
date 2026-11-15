@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/proc"
-	"github.com/belevtsev/gatecub/v3/internal/proc/proctest"
+	"github.com/belevtsev/kitsu/v3/internal/proc"
+	"github.com/belevtsev/kitsu/v3/internal/proc/proctest"
 )
 
 const (

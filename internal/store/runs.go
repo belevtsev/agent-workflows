@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/belevtsev/gatecub/v3/internal/fslock"
+	"github.com/belevtsev/kitsu/v3/internal/fslock"
 )
 
 // The outcomes of a run. The first three are decisive.
@@ -48,7 +48,7 @@ type Record struct {
 	DifferMore int        `json:"differ_more,omitempty"`
 	Detail     string     `json:"detail,omitempty"`
 
-	// Running is set when the record has no outcome and its gatecub process is
+	// Running is set when the record has no outcome and its kitsu process is
 	// still alive. It is not stored.
 	Running bool `json:"-"`
 }
@@ -80,7 +80,7 @@ type Run struct {
 }
 
 // Begin takes the lock of a new run and then writes its record, without an
-// outcome. The order matters: a record whose lock is free belongs to a gatecub
+// outcome. The order matters: a record whose lock is free belongs to a kitsu
 // process that died.
 func (s *Store) Begin(ctx context.Context, record Record) (*Run, error) {
 	dir := s.keyDir(record.ID, record.ContentKey)

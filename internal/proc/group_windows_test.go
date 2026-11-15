@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/belevtsev/gatecub/v3/internal/proc"
+	"github.com/belevtsev/kitsu/v3/internal/proc"
 )
 
 // roleEnv makes a re-executed test binary act as a helper program instead of
@@ -23,7 +23,7 @@ import (
 //   - "sleep" sleeps for a minute;
 //   - "spawn-exit" starts a "sleep" child, prints its pid, and exits;
 //   - "spawn-wait" starts a "sleep" child, prints its pid, and sleeps.
-const roleEnv = "GATECUB_PROC_TEST_ROLE"
+const roleEnv = "KITSU_PROC_TEST_ROLE"
 
 func TestMain(m *testing.M) {
 	if role := os.Getenv(roleEnv); role != "" {

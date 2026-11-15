@@ -1,26 +1,26 @@
 {
-  "name": "gatecub",
+  "name": "kitsu",
   "version": "3.0.0-beta.2",
-  "description": "Gatecub for Codex: tells the session that commits and pushes are gated on recorded passing checks, stops a command that would skip the gate, ships the skill `gatecub` on how to work with the gate and the skill `task` for a task workflow, and records the tokens a task used.",
+  "description": "Kitsu for Codex: workflow instructions for coordinating coding agents through specification, implementation, testing and review, with seven roles, shared task records and token reports. A Git check-evidence gate provides an additional safeguard. The role workflow has not been run on Codex.",
   "author": { "name": "Pavlo Belevtsev", "url": "https://github.com/belevtsev" },
-  "homepage": "https://github.com/belevtsev/gatecub",
-  "repository": "https://github.com/belevtsev/gatecub",
+  "homepage": "https://github.com/belevtsev/kitsu",
+  "repository": "https://github.com/belevtsev/kitsu",
   "license": "MIT",
-  "keywords": ["codex", "plugin", "git-hooks", "quality-gate", "workflow"],
+  "keywords": ["codex", "plugin", "coding-agents", "agent-coordination", "workflow", "git-hooks", "quality-gate"],
   "skills": "./skills/",
   "hooks": "./hooks/codex-hooks.json",
   "interface": {
-    "displayName": "Gatecub",
-    "logo": "./docs/brand/gatecub-mascot.png",
-    "shortDescription": "A gate on commits and pushes, backed by the gatecub command",
-    "longDescription": "Tells the session that the repository gates commits and pushes on recorded passing runs of the checks declared in gatecub.toml, and stops a command that would skip the gate. The skill `task` takes a task from a specification to tested code through seven roles, and gatecub tokens reports what the task used. The roles were never run on Codex.",
+    "displayName": "Kitsu",
+    "logo": "./docs/brand/kitsu-mascot.png",
+    "shortDescription": "Coordinate coding agents with roles, task records and token reports",
+    "longDescription": "The task skill supplies coordinator and role instructions for specification, implementation, testing and review. The agent host executes the workflow; Kitsu provides shared task records, role checks and token reports. Live orchestration has not been validated on Codex. As an additional safeguard, the Git gate requires recorded passing checks before commits and pushes, and the plugin stops commands that would skip it.",
     "developerName": "Pavlo Belevtsev",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write"],
-    "websiteURL": "https://github.com/belevtsev/gatecub",
+    "websiteURL": "https://github.com/belevtsev/kitsu",
     "defaultPrompt": [
-      "Run gatecub status and tell me which checks are missing",
-      "Run gatecub run and fix what fails"
+      "Use the task skill to plan and implement a change with specialist coding agents",
+      "Show the coding-agent roles and explain the next stage of this task"
     ]
   }
 }

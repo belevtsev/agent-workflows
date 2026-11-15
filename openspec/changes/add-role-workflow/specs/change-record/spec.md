@@ -8,7 +8,7 @@ what a session remembers.
 
 Shared fixture for the scenarios below, unless a scenario says otherwise:
 
-- The repository `demo` and the `gatecub-roles.toml` of the `role-definitions`
+- The repository `demo` and the `kitsu-roles.toml` of the `role-definitions`
   specification, and the folder `openspec/changes/add-greeting/` with these
   files:
   - `proposal.md`.
@@ -27,32 +27,32 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
   - `reviews.md` with the reviews `spec`, `design` and `code`, round 1 each;
     one finding, `minor` and `resolved`; and the approvals `spec` and
     `design`. Each review and each approval holds the content id that
-    `gatecub change status add-greeting` prints for it.
+    `kitsu change status add-greeting` prints for it.
 - The folder and `tests/app_test.txt` are committed.
-- In this state `gatecub change check` exits 0 and `gatecub change status` prints
+- In this state `kitsu change check` exits 0 and `kitsu change status` prints
   `done`.
 
 ## ADDED Requirements
 
 ### Requirement: Folder
 
-A task on the full path SHALL be recorded in `openspec/changes/<task>/` as `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md`, `tests.md` and `reviews.md`. `<task>` SHALL be lower-case words joined by hyphens. `gatecub` SHALL read the folder itself and SHALL need no other program for it.
+A task on the full path SHALL be recorded in `openspec/changes/<task>/` as `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md`, `tests.md` and `reviews.md`. `<task>` SHALL be lower-case words joined by hyphens. `kitsu` SHALL read the folder itself and SHALL need no other program for it.
 
 Source: `skills/task-orchestration/references/contracts/spec-writer.md` (an OpenSpec change folder); this repository's `openspec/changes/reduce-cw-to-evidence-gate/`; proposal, Open Question 5.
 
 #### Scenario: The folder is found
 
-- **WHEN** `gatecub change status` runs in `demo`
+- **WHEN** `kitsu change status` runs in `demo`
 - **THEN** it prints one line for `add-greeting` and exits 0
 
 #### Scenario: A task that does not exist
 
-- **WHEN** `gatecub change status no-such-task` runs
+- **WHEN** `kitsu change status no-such-task` runs
 - **THEN** it exits 1 and says that `openspec/changes/no-such-task/` does not exist
 
 ### Requirement: Stage from the files
 
-`gatecub change status [<task>] [--json]` SHALL print the stage of a change folder, decided from its files alone: the first stage of the table below whose condition does not hold, with what is missing, or `done`. It SHALL change nothing.
+`kitsu change status [<task>] [--json]` SHALL print the stage of a change folder, decided from its files alone: the first stage of the table below whose condition does not hold, with what is missing, or `done`. It SHALL change nothing.
 
 | Stage | Its condition |
 | --- | --- |
@@ -67,189 +67,189 @@ Source: review findings H2 and H9 (a task's state lives in a store that can bloc
 
 #### Scenario: The design is missing
 
-- **WHEN** `design.md` and `tasks.md` are removed and `gatecub change status add-greeting` runs
+- **WHEN** `design.md` and `tasks.md` are removed and `kitsu change status add-greeting` runs
 - **THEN** it prints `design` and names `design.md` as missing
 
 #### Scenario: A finding is still open
 
-- **WHEN** a finding of the code review is added to `reviews.md` with the disposition `open`, and `gatecub change status add-greeting` runs
+- **WHEN** a finding of the code review is added to `reviews.md` with the disposition `open`, and `kitsu change status add-greeting` runs
 - **THEN** it prints `review` and names that finding
 
 #### Scenario: A task is not checked
 
-- **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `gatecub change status add-greeting --json` runs
+- **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `kitsu change status add-greeting --json` runs
 - **THEN** `stage` is `code` and `missing` names task 1.2
 
 #### Scenario: The record is not committed
 
-- **WHEN** an empty line is added at the end of `reviews.md` and `gatecub change status add-greeting` runs
+- **WHEN** an empty line is added at the end of `reviews.md` and `kitsu change status add-greeting` runs
 - **THEN** it prints `commit` and says that the folder differs from `HEAD`
 
 #### Scenario: Reading changes nothing
 
-- **WHEN** `gatecub change status` runs
-- **THEN** `gatecub status --json` prints the same `tree` as before
+- **WHEN** `kitsu change status` runs
+- **THEN** `kitsu status --json` prints the same `tree` as before
 
 ### Requirement: Specification rules
 
-`gatecub change check` SHALL fail when a requirement holds neither `SHALL` nor `MUST`, has no `Source:` line or has no scenario; when a scenario does not hold exactly one `WHEN` and one `THEN`; when two requirements of one capability have the same name; or when a requirement under `ADDED` has the name of a requirement that `openspec/specs/` holds for that capability.
+`kitsu change check` SHALL fail when a requirement holds neither `SHALL` nor `MUST`, has no `Source:` line or has no scenario; when a scenario does not hold exactly one `WHEN` and one `THEN`; when two requirements of one capability have the same name; or when a requirement under `ADDED` has the name of a requirement that `openspec/specs/` holds for that capability.
 
-Scenario names under `ADDED` and `MODIFIED` SHALL be unique across the whole change, including different requirements and capabilities. A duplicate SHALL make `gatecub change check` fail with both locations and advice to rename it and update `tests.md`, and SHALL keep `gatecub change status` at `spec`. Scenarios under `REMOVED` are excluded because they require no test mapping.
+Scenario names under `ADDED` and `MODIFIED` SHALL be unique across the whole change, including different requirements and capabilities. A duplicate SHALL make `kitsu change check` fail with both locations and advice to rename it and update `tests.md`, and SHALL keep `kitsu change status` at `spec`. Scenarios under `REMOVED` are excluded because they require no test mapping.
 
 Source: `skills/task-orchestration/references/contracts/spec-writer.md` and `spec-review.md` (every requirement traces to a source and has a scenario); `task-flow`: Existing specifications.
 
 #### Scenario: A requirement without a scenario
 
-- **WHEN** both scenarios of `Greeting text` are removed and `gatecub change check` runs
+- **WHEN** both scenarios of `Greeting text` are removed and `kitsu change check` runs
 - **THEN** it exits 5, names `specs/greeting/spec.md` and the line of the requirement, and says that it has no scenario
 
 #### Scenario: A requirement that exists already
 
-- **WHEN** `openspec/specs/greeting/spec.md` is created with a requirement `Greeting text` and `gatecub change check` runs
+- **WHEN** `openspec/specs/greeting/spec.md` is created with a requirement `Greeting text` and `kitsu change check` runs
 - **THEN** it exits 5 and says that `Greeting text` exists and must be under `MODIFIED`
 
 #### Scenario: Two capabilities give distinct scenarios one name
 
 - **WHEN** a second capability adds a scenario named `A name is given`, only the original test row exists, and all other completion records are present
-- **THEN** `gatecub change check` exits 5 with the duplicate's location and the original location, and `gatecub change status` prints `spec` until the names and test mappings are distinct
+- **THEN** `kitsu change check` exits 5 with the duplicate's location and the original location, and `kitsu change status` prints `spec` until the names and test mappings are distinct
 
 ### Requirement: Task rules
 
-`gatecub change check` SHALL fail when a task lacks `Size:`, `Depends on:`, `Check:` or `Source:`; when it depends on a task that is not earlier in the list; or when a requirement of the change is named by no task.
+`kitsu change check` SHALL fail when a task lacks `Size:`, `Depends on:`, `Check:` or `Source:`; when it depends on a task that is not earlier in the list; or when a requirement of the change is named by no task.
 
 Source: `skills/task-orchestration/references/contracts/spec-writer.md` (each task names its size, the tasks it depends on and its check, and traces to a source); this repository's `openspec/changes/reduce-cw-to-evidence-gate/tasks.md`.
 
 #### Scenario: A requirement that no task builds
 
-- **WHEN** the name `Greeting text` is removed from task 1.1 and `gatecub change check` runs
+- **WHEN** the name `Greeting text` is removed from task 1.1 and `kitsu change check` runs
 - **THEN** it exits 5 and says that no task names `Greeting text`
 
 #### Scenario: A task without a check
 
-- **WHEN** `Check:` and its text are removed from task 1.2 and `gatecub change check` runs
+- **WHEN** `Check:` and its text are removed from task 1.2 and `kitsu change check` runs
 - **THEN** it exits 5 and names `tasks.md`, the line of task 1.2, and `Check:`
 
 ### Requirement: Test table
 
-`tests.md` SHALL hold one row per scenario, with the file of its test and a text that occurs in that file, or with `not automated` and a reason. `gatecub change check` SHALL fail when a row names a file that does not exist, does not hold the text, or lies outside the repository, and, once every task is checked, when a scenario has no row. `gatecub change status` SHALL print the number of scenarios that are not automated.
+`tests.md` SHALL hold one row per scenario, with the file of its test and a text that occurs in that file, or with `not automated` and a reason. `kitsu change check` SHALL fail when a row names a file that does not exist, does not hold the text, or lies outside the repository, and, once every task is checked, when a scenario has no row. `kitsu change status` SHALL print the number of scenarios that are not automated.
 
 Source: the owner's statement of 14 November 2026 (well tested code, in any language); review finding H8 (tests that miss what they claim to cover); proposal, Known limits; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge) (the check reads no file outside the repository).
 
 #### Scenario: A test is renamed
 
-- **WHEN** the text `greets_by_name` in `tests/app_test.txt` is changed to `greets_name` and `gatecub change check` runs
+- **WHEN** the text `greets_by_name` in `tests/app_test.txt` is changed to `greets_name` and `kitsu change check` runs
 - **THEN** it exits 5 and names the scenario `A name is given` and the file `tests/app_test.txt`
 
 #### Scenario: A test file outside the repository
 
-- **WHEN** a file beside the repository holds `greets_by_name`, the row of `A name is given` names it as `../outside_test.txt`, and `gatecub change check` runs
+- **WHEN** a file beside the repository holds `greets_by_name`, the row of `A name is given` names it as `../outside_test.txt`, and `kitsu change check` runs
 - **THEN** it exits 5, names the scenario `A name is given`, and says that the test file is outside the repository
 
 #### Scenario: A scenario without a test, when the work is called finished
 
-- **WHEN** the row of `No name is given` is removed from `tests.md` and `gatecub change check` runs
+- **WHEN** the row of `No name is given` is removed from `tests.md` and `kitsu change check` runs
 - **THEN** it exits 5 and names the scenario `No name is given`
 
 #### Scenario: A scenario without a test, while the work goes on
 
-- **WHEN** the row of `No name is given` is removed from `tests.md`, the mark of task 1.2 is changed to `[ ]`, and `gatecub change check` runs
+- **WHEN** the row of `No name is given` is removed from `tests.md`, the mark of task 1.2 is changed to `[ ]`, and `kitsu change check` runs
 - **THEN** it exits 0
 
 #### Scenario: A scenario that is not automated
 
-- **WHEN** the row of `No name is given` is changed to `not automated` with a reason, the change is committed, and `gatecub change status add-greeting` runs
+- **WHEN** the row of `No name is given` is changed to `not automated` with a reason, the change is committed, and `kitsu change status add-greeting` runs
 - **THEN** it prints `done` and says that one scenario is not automated
 
 ### Requirement: Design rules
 
-`design.md` SHALL hold a table of building blocks, each with its one responsibility, the blocks it depends on, and whether it is new, and a table of rules, each with how it is checked. `gatecub change check` SHALL fail when the dependencies form a cycle, when a new block names no existing code that was considered for reuse, or when a rule names a check that `gatecub.toml` does not declare.
+`design.md` SHALL hold a table of building blocks, each with its one responsibility, the blocks it depends on, and whether it is new, and a table of rules, each with how it is checked. `kitsu change check` SHALL fail when the dependencies form a cycle, when a new block names no existing code that was considered for reuse, or when a rule names a check that `kitsu.toml` does not declare.
 
 Source: the owner's statement (clean architecture; reusable building blocks); `skills/task-orchestration/references/contracts/architect.md` (a decision record, an interface contract and an implementation brief); the first change's `check-declaration`: Check definition.
 
 #### Scenario: Two blocks depend on each other
 
-- **WHEN** `greeter` is changed to depend on `app` and `gatecub change check` runs
+- **WHEN** `greeter` is changed to depend on `app` and `kitsu change check` runs
 - **THEN** it exits 5 and names the cycle `greeter`, `app`
 
 #### Scenario: A new block without a look at what exists
 
-- **WHEN** the entry of `greeter` for the code considered for reuse is emptied and `gatecub change check` runs
+- **WHEN** the entry of `greeter` for the code considered for reuse is emptied and `kitsu change check` runs
 - **THEN** it exits 5 and names `greeter`
 
 #### Scenario: A rule that a check enforces
 
-- **WHEN** the rule of `design.md` is changed to be checked by `lint` and `gatecub change check` runs
+- **WHEN** the rule of `design.md` is changed to be checked by `lint` and `kitsu change check` runs
 - **THEN** it exits 0
 
 #### Scenario: A rule that names a check nobody declared
 
-- **WHEN** the rule of `design.md` is changed to be checked by `layers` and `gatecub change check` runs
-- **THEN** it exits 5 and says that `gatecub.toml` declares no check `layers`
+- **WHEN** the rule of `design.md` is changed to be checked by `layers` and `kitsu change check` runs
+- **THEN** it exits 5 and says that `kitsu.toml` declares no check `layers`
 
 ### Requirement: Review records
 
-`reviews.md` SHALL hold every finding with its stage (`spec`, `design` or `code`), round, severity (`blocker`, `major` or `minor`), place and disposition: `open`, `resolved`, `rejected` or `deferred`. `gatecub change check` SHALL fail when a row holds another value, when a `rejected` or `deferred` finding has no reason, when a `blocker` or `major` finding is `deferred`, or when every task is checked and a finding is `open`.
+`reviews.md` SHALL hold every finding with its stage (`spec`, `design` or `code`), round, severity (`blocker`, `major` or `minor`), place and disposition: `open`, `resolved`, `rejected` or `deferred`. `kitsu change check` SHALL fail when a row holds another value, when a `rejected` or `deferred` finding has no reason, when a `blocker` or `major` finding is `deferred`, or when every task is checked and a finding is `open`.
 
 Source: `skills/task-orchestration/references/contracts/README.md` and `code-review.md` (findings with the severities `blocker` and `major`); `reports/Review findings 2026-11-14.md` (each finding has a status, and rejected ones a reason).
 
 #### Scenario: A major finding is put off
 
-- **WHEN** a finding with severity `major` and disposition `deferred` is added to `reviews.md` and `gatecub change check` runs
+- **WHEN** a finding with severity `major` and disposition `deferred` is added to `reviews.md` and `kitsu change check` runs
 - **THEN** it exits 5 and names that finding
 
 #### Scenario: A finding is rejected without a reason
 
-- **WHEN** the finding of the fixture is changed to `rejected` with an empty reason and `gatecub change check` runs
+- **WHEN** the finding of the fixture is changed to `rejected` with an empty reason and `kitsu change check` runs
 - **THEN** it exits 5 and names that finding
 
 #### Scenario: Finished work with an open finding
 
-- **WHEN** a finding with severity `minor` and disposition `open` is added to `reviews.md` and `gatecub change check` runs
+- **WHEN** a finding with severity `minor` and disposition `open` is added to `reviews.md` and `kitsu change check` runs
 - **THEN** it exits 5 and names that finding
 
 #### Scenario: A stage that does not exist
 
-- **WHEN** the stage of the fixture's finding is changed to `final` and `gatecub change check` runs
+- **WHEN** the stage of the fixture's finding is changed to `final` and `kitsu change check` runs
 - **THEN** it exits 5 and names `reviews.md`, the line of that finding, and `final`
 
 ### Requirement: Reviewed content
 
-Each review and each approval in `reviews.md` SHALL hold the content id that `gatecub change status` printed for it: for `spec` the id of `proposal.md` and `specs/`, for `design` the id of `design.md` and `tasks.md` without their check marks, for `code` the id of every path outside `openspec/changes/`. A review or an approval SHALL count only while its id is that of the working tree or, for `code` when `HEAD` holds the folder as it is, that of the last commit that changed the folder.
+Each review and each approval in `reviews.md` SHALL hold the content id that `kitsu change status` printed for it: for `spec` the id of `proposal.md` and `specs/`, for `design` the id of `design.md` and `tasks.md` without their check marks, for `code` the id of every path outside `openspec/changes/`. A review or an approval SHALL count only while its id is that of the working tree or, for `code` when `HEAD` holds the folder as it is, that of the last commit that changed the folder.
 
 Source: production plan, Independent challenge, finding 9 (an approval stayed valid after the approved file changed).
 
 #### Scenario: The specification changes after its approval
 
-- **WHEN** the word `SHALL` of `Greeting text` is changed to `MUST` in `specs/greeting/spec.md` and `gatecub change status add-greeting` runs
+- **WHEN** the word `SHALL` of `Greeting text` is changed to `MUST` in `specs/greeting/spec.md` and `kitsu change status add-greeting` runs
 - **THEN** it prints `spec` and says that the review and the approval of the specification were given for other content
 
 #### Scenario: The code changes after its review
 
-- **WHEN** an empty line is added at the end of `reviews.md`, `src/app.txt` is edited, and `gatecub change status add-greeting` runs
+- **WHEN** an empty line is added at the end of `reviews.md`, `src/app.txt` is edited, and `kitsu change status add-greeting` runs
 - **THEN** it prints `review` and says that the review of the code was given for other content
 
 #### Scenario: A checked task does not undo the approval of the design
 
-- **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `gatecub change status add-greeting` runs
+- **WHEN** the mark of task 1.2 in `tasks.md` is changed from `[x]` to `[ ]` and `kitsu change status add-greeting` runs
 - **THEN** it prints `code`, and names neither the review nor the approval of the design
 
 #### Scenario: Later work leaves a finished task done
 
-- **WHEN** `README.md` is edited and committed after the fixture's commit, `src/app.txt` is edited and not committed, and `gatecub change status add-greeting` runs
+- **WHEN** `README.md` is edited and committed after the fixture's commit, `src/app.txt` is edited and not committed, and `kitsu change status add-greeting` runs
 - **THEN** it prints `done`
 
 ### Requirement: Usable as a check
 
-`gatecub change check [<task>]` SHALL read the named folder, or every folder under `openspec/changes/` except `archive/`. It SHALL exit 0 when each obeys the rules, and otherwise exit 5 and name the file, the line where the broken rule has one, and the rule. A folder at an earlier stage SHALL pass when the files it has obey their rules. A repository MAY declare the command as a check in `gatecub.toml`; the gate then treats it as any other check.
+`kitsu change check [<task>]` SHALL read the named folder, or every folder under `openspec/changes/` except `archive/`. It SHALL exit 0 when each obeys the rules, and otherwise exit 5 and name the file, the line where the broken rule has one, and the rule. A folder at an earlier stage SHALL pass when the files it has obey their rules. A repository MAY declare the command as a check in `kitsu.toml`; the gate then treats it as any other check.
 
 Source: the first change's proposal, What Changes (a check is any program); `gate-reporting`: Exit statuses.
 
 #### Scenario: A folder at the first stage
 
-- **WHEN** `design.md`, `tasks.md`, `tests.md` and `reviews.md` are removed and `gatecub change check` runs
+- **WHEN** `design.md`, `tasks.md`, `tests.md` and `reviews.md` are removed and `kitsu change check` runs
 - **THEN** it exits 0
 
 #### Scenario: The gate enforces the record
 
-- **WHEN** `gatecub.toml` declares a check `record` with `run = ["gatecub", "change", "check"]`, a finding with severity `minor` and disposition `open` is added to `reviews.md`, `gatecub run` has ended, and `git commit -a -m change` runs
+- **WHEN** `kitsu.toml` declares a check `record` with `run = ["kitsu", "change", "check"]`, a finding with severity `minor` and disposition `open` is added to `reviews.md`, `kitsu run` has ended, and `git commit -a -m change` runs
 - **THEN** the commit is denied and the output names the check `record`

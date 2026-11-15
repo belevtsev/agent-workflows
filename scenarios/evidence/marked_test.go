@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/belevtsev/gatecub/v3/internal/gatecubtest"
+	"github.com/belevtsev/kitsu/v3/internal/kitsutest"
 )
 
 // A runnable local override must not produce evidence for a non-executable
@@ -20,20 +20,20 @@ func TestMarkedExecutableCannotProducePassingEvidence(t *testing.T) {
 	for _, mark := range []string{"assume-unchanged", "skip-worktree"} {
 		t.Run(mark, func(t *testing.T) {
 			t.Parallel()
-			repo := gatecubtest.NewRepo(t)
+			repo := kitsutest.NewRepo(t)
 			repo.Git("config", "core.filemode", "true")
 			repo.Write("check.sh", "#!/bin/sh\nexit 0\n")
-			repo.Write("gatecub.toml", "version = 1\n[[check]]\nid = \"script\"\nrun = [\"./check.sh\"]\n")
+			repo.Write("kitsu.toml", "version = 1\n[[check]]\nid = \"script\"\nrun = [\"./check.sh\"]\n")
 			repo.Git("add", "-A")
 			repo.Git("commit", "-qm", "non-executable script")
-			if result := repo.Gatecub("init"); result.Code != 0 {
-				t.Fatalf("gatecub init: %s", result.Output())
+			if result := repo.Kitsu("init"); result.Code != 0 {
+				t.Fatalf("kitsu init: %s", result.Output())
 			}
 			repo.Git("update-index", "--"+mark, "check.sh")
 			if err := os.Chmod(filepath.Join(repo.Dir, "check.sh"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			result := repo.Gatecub("run")
+			result := repo.Kitsu("run")
 			requireRefused(t, result, "", "check.sh", mark, "differs")
 			if records := repo.RecordFiles("script"); len(records) != 0 {
 				t.Errorf("recorded runs on a mismatched tree: %v", records)

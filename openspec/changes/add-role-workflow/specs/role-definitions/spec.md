@@ -8,7 +8,7 @@ limits, and let anyone see, change and check that in one place.
 Shared fixture for the scenarios below, unless a scenario says otherwise:
 
 - The repository `demo` of the `check-evidence` specification, with one more
-  file, `tests/app_test.txt`, and this `gatecub-roles.toml` at its root:
+  file, `tests/app_test.txt`, and this `kitsu-roles.toml` at its root:
 
   ```toml
   version = 1
@@ -18,7 +18,7 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
   ```
 
 - A change folder `openspec/changes/add-greeting/`.
-- `T0` is the value of `tree` that `gatecub status --json` prints before the edits
+- `T0` is the value of `tree` that `kitsu status --json` prints before the edits
   a scenario names.
 - "The plugin" means the plugin this project ships for Claude Code and for
   Codex. "The coordinator" is the developer's own session.
@@ -29,23 +29,23 @@ Shared fixture for the scenarios below, unless a scenario says otherwise:
 
 ### Requirement: Role set
 
-The workflow SHALL have exactly seven roles beside the coordinator: `lookup`, `spec-writer`, `architect`, `quality-engineer`, `developer`, `reviewer` and `git`. `gatecub roles` SHALL print, for each, its job in one line, what it may write, and its model and effort on each host. `gatecub roles --json` SHALL print the same as one JSON object.
+The workflow SHALL have exactly seven roles beside the coordinator: `lookup`, `spec-writer`, `architect`, `quality-engineer`, `developer`, `reviewer` and `git`. `kitsu roles` SHALL print, for each, its job in one line, what it may write, and its model and effort on each host. `kitsu roles --json` SHALL print the same as one JSON object.
 
 Source: the owner's statement of 14 November 2026 (roles such as lookup, git, architect, quality engineer and principal developer); `agents/*.md` (seven role files today); proposal, Open Question 3.
 
 #### Scenario: The table
 
-- **WHEN** `gatecub roles` runs in `demo`
+- **WHEN** `kitsu roles` runs in `demo`
 - **THEN** it prints seven rows, one for each role named above, and exits 0
 
 #### Scenario: The table as JSON
 
-- **WHEN** `gatecub roles --json` runs in `demo`
+- **WHEN** `kitsu roles --json` runs in `demo`
 - **THEN** the entry of `roles` with `id` `architect` holds `job`, `writes`, and under `models` one entry for `claude` and one for `codex`, each with `model` and `effort`
 
 ### Requirement: Default models
 
-Without a setting in `gatecub-roles.toml`, the roles SHALL have the models and efforts of the table below.
+Without a setting in `kitsu-roles.toml`, the roles SHALL have the models and efforts of the table below.
 
 | Role | Claude Code | Codex |
 | --- | --- | --- |
@@ -58,33 +58,33 @@ Source: `skills/task-orchestration/model-policy.claude.yaml` (profiles `lookup`,
 
 #### Scenario: The defaults
 
-- **WHEN** `gatecub roles --json` runs in `demo`
+- **WHEN** `kitsu roles --json` runs in `demo`
 - **THEN** on `claude` the model of `lookup` is `haiku`, of `git` `sonnet`, and of `architect` and `reviewer` `opus` with effort `xhigh`
 
 ### Requirement: Roles file
 
-A repository MAY hold `gatecub-roles.toml` at its root. Under `[claude.<role>]` and `[codex.<role>]` it SHALL be able to set `model` and `effort`, and under `[paths]` the patterns `tests`, written as the path patterns of `gatecub.toml`. `gatecub` SHALL refuse a file with an unknown key, role or host, name the file, the line and the rule, and exit 1. It SHALL NOT judge a model name.
+A repository MAY hold `kitsu-roles.toml` at its root. Under `[claude.<role>]` and `[codex.<role>]` it SHALL be able to set `model` and `effort`, and under `[paths]` the patterns `tests`, written as the path patterns of `kitsu.toml`. `kitsu` SHALL refuse a file with an unknown key, role or host, name the file, the line and the rule, and exit 1. It SHALL NOT judge a model name.
 
 Source: the owner's statement (the appropriate model for each role); `check-declaration`: Path patterns, Invalid declaration; proposal, Known limits (hosts change model names).
 
 #### Scenario: A repository changes one model
 
-- **WHEN** the lines `[claude.developer]` and `model = "sonnet"` are added to `gatecub-roles.toml` and `gatecub roles --json` runs
+- **WHEN** the lines `[claude.developer]` and `model = "sonnet"` are added to `kitsu-roles.toml` and `kitsu roles --json` runs
 - **THEN** on `claude` the model of `developer` is `sonnet`, its effort is `high`, and every other role is unchanged
 
 #### Scenario: An unknown role is refused
 
-- **WHEN** the lines `[claude.tester]` and `model = "opus"` are added to `gatecub-roles.toml` and `gatecub roles` runs
-- **THEN** it exits 1 and names `gatecub-roles.toml`, the line of `[claude.tester]`, and the role `tester` as unknown
+- **WHEN** the lines `[claude.tester]` and `model = "opus"` are added to `kitsu-roles.toml` and `kitsu roles` runs
+- **THEN** it exits 1 and names `kitsu-roles.toml`, the line of `[claude.tester]`, and the role `tester` as unknown
 
 #### Scenario: A model name is not judged
 
-- **WHEN** the lines `[claude.git]` and `model = "no-such-model"` are added to `gatecub-roles.toml` and `gatecub roles` runs
+- **WHEN** the lines `[claude.git]` and `model = "no-such-model"` are added to `kitsu-roles.toml` and `kitsu roles` runs
 - **THEN** it exits 0 and prints `no-such-model` for `git`
 
 ### Requirement: Explicit start
 
-The coordinator SHALL start every role with the model and effort `gatecub roles` prints for it on that host, given on the call that starts the role. When the developer's own instruction names a model for agents, that instruction SHALL come first, and the coordinator SHALL say once which roles it changes. Only the coordinator SHALL start a role: the role files SHALL give no role a tool that starts another.
+The coordinator SHALL start every role with the model and effort `kitsu roles` prints for it on that host, given on the call that starts the role. When the developer's own instruction names a model for agents, that instruction SHALL come first, and the coordinator SHALL say once which roles it changes. Only the coordinator SHALL start a role: the role files SHALL give no role a tool that starts another.
 
 Source: `skills/task-orchestration/references/hosts.md` (pass model and effort on every call); Claude Code documentation, `sub-agents.md` (the model on the call wins over the role file; a role can start roles of its own by default); `agents/*.md` (`disallowedTools: Skill, Agent, Workflow`); the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge).
 
@@ -95,8 +95,8 @@ Source: `skills/task-orchestration/references/hosts.md` (pass model and effort o
 
 #### Scenario: The model of the roles file is the one that runs (evaluation)
 
-- **WHEN** `gatecub-roles.toml` sets the `claude` model of `developer` to `sonnet` and the small path runs for one task on Claude Code
-- **THEN** `gatecub tokens --json` names a `sonnet` model for the role `developer`
+- **WHEN** `kitsu-roles.toml` sets the `claude` model of `developer` to `sonnet` and the small path runs for one task on Claude Code
+- **THEN** `kitsu tokens --json` names a `sonnet` model for the role `developer`
 
 ### Requirement: Model not available
 
@@ -106,12 +106,12 @@ Source: `skills/task-orchestration/references/hosts.md` ("Never silently move th
 
 #### Scenario: A model that does not exist (evaluation)
 
-- **WHEN** `gatecub-roles.toml` sets the `claude` model of `git` to `no-such-model` and a task reaches its commit stage
+- **WHEN** `kitsu-roles.toml` sets the `claude` model of `git` to `no-such-model` and a task reaches its commit stage
 - **THEN** no commit is made, and the developer is told that `git` could not run on `no-such-model`
 
 ### Requirement: Write limits
 
-Each role SHALL change only the paths the table below gives it. `gatecub roles check <role> --from <tree> [--task <task>]` SHALL compare the snapshot with that tree, exit 0 when every path that differs is within the role's limit, and otherwise exit 5 and list each path outside it. It SHALL warn, as `gatecub status` does, when git does not run the hooks of `gatecub` in this clone.
+Each role SHALL change only the paths the table below gives it. `kitsu roles check <role> --from <tree> [--task <task>]` SHALL compare the snapshot with that tree, exit 0 when every path that differs is within the role's limit, and otherwise exit 5 and list each path outside it. It SHALL warn, as `kitsu status` does, when git does not run the hooks of `kitsu` in this clone.
 
 | Role | May change |
 | --- | --- |
@@ -119,45 +119,45 @@ Each role SHALL change only the paths the table below gives it. `gatecub roles c
 | `spec-writer` | `proposal.md` and `specs/` of the task's change folder |
 | `architect` | `design.md` and `tasks.md` of the task's change folder |
 | `quality-engineer` | paths that match `tests`, existing tests included, and `tests.md` of the task's change folder; it is the only role that changes or removes an existing test |
-| `developer` | any other path, except `gatecub.toml`, `gatecub-roles.toml` and `openspec/`; it MAY add a path that matches `tests` and SHALL NOT change or remove one |
+| `developer` | any other path, except `kitsu.toml`, `kitsu-roles.toml` and `openspec/`; it MAY add a path that matches `tests` and SHALL NOT change or remove one |
 
-For a shipped change, `gatecub roles check spec-writer --from <tree> --task <task> --finalize` SHALL instead allow only `openspec/specs/<capability>/spec.md` for the capability specifications present in that task's change folder in the baseline tree. It SHALL allow adding, changing or removing those files and reject every other changed path, including the change record. Adding a capability after the baseline SHALL NOT expand the limit. `--finalize` SHALL require `spec-writer`, `--task` and a nonempty set of capability specifications in the baseline; without it the normal limit SHALL remain unchanged.
+For a shipped change, `kitsu roles check spec-writer --from <tree> --task <task> --finalize` SHALL instead allow only `openspec/specs/<capability>/spec.md` for the capability specifications present in that task's change folder in the baseline tree. It SHALL allow adding, changing or removing those files and reject every other changed path, including the change record. Adding a capability after the baseline SHALL NOT expand the limit. `--finalize` SHALL require `spec-writer`, `--task` and a nonempty set of capability specifications in the baseline; without it the normal limit SHALL remain unchanged.
 
 Source: review finding H6 (independence is one sentence in a prompt, and nothing checks it); proposal, Terms of the first change (snapshot; a path differs); proposal, Open Question 7; the independent review of the role texts, 14 November 2026 (`openspec/production-plan.md`, Independent challenge) (existing tests have one owner).
 
 #### Scenario: The developer role changes a test
 
-- **WHEN** `src/app.txt` and `tests/app_test.txt` are edited and `gatecub roles check developer --from T0` runs
+- **WHEN** `src/app.txt` and `tests/app_test.txt` are edited and `kitsu roles check developer --from T0` runs
 - **THEN** it exits 5 and lists `tests/app_test.txt` and no other path
 
 #### Scenario: The developer role adds a test
 
-- **WHEN** `src/app.txt` is edited, `tests/extra_test.txt` is created, and `gatecub roles check developer --from T0` runs
+- **WHEN** `src/app.txt` is edited, `tests/extra_test.txt` is created, and `kitsu roles check developer --from T0` runs
 - **THEN** it exits 0
 
 #### Scenario: The quality engineer changes production code
 
-- **WHEN** `tests/app_test.txt` and `src/app.txt` are edited and `gatecub roles check quality-engineer --from T0 --task add-greeting` runs
+- **WHEN** `tests/app_test.txt` and `src/app.txt` are edited and `kitsu roles check quality-engineer --from T0 --task add-greeting` runs
 - **THEN** it exits 5 and lists `src/app.txt` and no other path
 
 #### Scenario: The quality engineer removes an existing test
 
-- **WHEN** `tests/app_test.txt` is removed and `gatecub roles check quality-engineer --from T0 --task add-greeting` runs
+- **WHEN** `tests/app_test.txt` is removed and `kitsu roles check quality-engineer --from T0 --task add-greeting` runs
 - **THEN** it exits 0
 
 #### Scenario: A role that writes nothing wrote a file
 
-- **WHEN** `notes.txt` is created and `gatecub roles check reviewer --from T0` runs
+- **WHEN** `notes.txt` is created and `kitsu roles check reviewer --from T0` runs
 - **THEN** it exits 5 and lists `notes.txt`
 
 #### Scenario: The spec writer stays in its folder
 
-- **WHEN** `openspec/changes/add-greeting/specs/greeting/spec.md` is created and `gatecub roles check spec-writer --from T0 --task add-greeting` runs
+- **WHEN** `openspec/changes/add-greeting/specs/greeting/spec.md` is created and `kitsu roles check spec-writer --from T0 --task add-greeting` runs
 - **THEN** it exits 0
 
 #### Scenario: The spec writer synchronizes a shipped capability
 
-- **WHEN** T0 holds the task's `specs/greeting/spec.md`, the role changes only `openspec/specs/greeting/spec.md`, and `gatecub roles check spec-writer --from T0 --task add-greeting --finalize` runs
+- **WHEN** T0 holds the task's `specs/greeting/spec.md`, the role changes only `openspec/specs/greeting/spec.md`, and `kitsu roles check spec-writer --from T0 --task add-greeting --finalize` runs
 - **THEN** it exits 0, whereas the same check without `--finalize` exits 5
 
 #### Scenario: Finalization cannot expand its own capabilities
@@ -167,13 +167,13 @@ Source: review finding H6 (independence is one sentence in a prompt, and nothing
 
 #### Scenario: Test paths are not declared
 
-- **WHEN** `gatecub-roles.toml` is removed, `src/app.txt` is edited, and `gatecub roles check developer --from T0` runs
-- **THEN** it exits 1 and says that `gatecub-roles.toml` must name the test paths under `[paths]`
+- **WHEN** `kitsu-roles.toml` is removed, `src/app.txt` is edited, and `kitsu roles check developer --from T0` runs
+- **THEN** it exits 1 and says that `kitsu-roles.toml` must name the test paths under `[paths]`
 
 #### Scenario: A clone in which nothing is gated
 
-- **WHEN** `gatecub init` has not run in `demo` and `gatecub roles check reviewer --from T0` runs with nothing changed
-- **THEN** it exits 0 and warns that the hooks are not installed, naming `gatecub init`
+- **WHEN** `kitsu init` has not run in `demo` and `kitsu roles check reviewer --from T0` runs with nothing changed
+- **THEN** it exits 0 and warns that the hooks are not installed, naming `kitsu init`
 
 ### Requirement: Roles without a writing tool
 
@@ -199,7 +199,7 @@ Source: `skills/task-orchestration/references/hosts.md` (a new Agent call starts
 
 ### Requirement: Role text names no language
 
-The role texts and the coordinator's instructions SHALL name no programming language, build tool, test framework or package manager. They SHALL take the commands of a repository from `gatecub.toml` and its conventions from the repository's own files.
+The role texts and the coordinator's instructions SHALL name no programming language, build tool, test framework or package manager. They SHALL take the commands of a repository from `kitsu.toml` and its conventions from the repository's own files.
 
 Source: the owner's statement (any language and any codebase); review finding H4 (the starter plan and the language pack are Go only); `packs/go/pack.yaml`.
 
@@ -221,14 +221,14 @@ Source: review finding C1 (`hooks/hooks.json` and `hooks/codex-hooks.json` each 
 
 ### Requirement: Text budget
 
-No role text SHALL exceed 8,000 characters, the coordinator's instructions SHALL NOT exceed 12,000, and all of them together SHALL NOT exceed 60,000. `gatecub roles` SHALL print the size of each role text.
+No role text SHALL exceed 8,000 characters, the coordinator's instructions SHALL NOT exceed 12,000, and all of them together SHALL NOT exceed 60,000. `kitsu roles` SHALL print the size of each role text.
 
 Source: review finding M24; `wc -c` at `ce9b122` (the orchestration skill and its references are 141,780 characters, the largest role contract 8,183); proposal, Open Question 10.
 
 #### Scenario: The sizes are printed
 
-- **WHEN** `gatecub roles --json` runs in `demo`
-- **THEN** `text_chars` of each role is the number of characters that `gatecub roles text <role>` prints for it
+- **WHEN** `kitsu roles --json` runs in `demo`
+- **THEN** `text_chars` of each role is the number of characters that `kitsu roles text <role>` prints for it
 
 #### Scenario: A text grows past its limit
 
